@@ -196,5 +196,100 @@ void main() {
       notifier.setImageIndex(1);
       expect(container.read(productDetailViewModelProvider).currentImageIndex, 1);
     });
+
+    test('setQuantity ignores values below one', () {
+      final notifier = container.read(productDetailViewModelProvider.notifier);
+
+      notifier.setQuantity(3);
+      notifier.setQuantity(0);
+
+      expect(container.read(productDetailViewModelProvider).quantity, 3);
+    });
+
+    test('setSelectedOption updates option map and selected variant', () {
+      final notifier = container.read(productDetailViewModelProvider.notifier);
+
+      notifier.setSelectedOption('Size', 'Large', variantId: 'v-large');
+
+      final state = container.read(productDetailViewModelProvider);
+      expect(state.selectedOptions, {'Size': 'Large'});
+      expect(state.selectedVariantId, 'v-large');
+    });
+
+    test('setSelectedVariantId keeps prior selection when null is passed', () {
+      final notifier = container.read(productDetailViewModelProvider.notifier);
+
+      notifier.setSelectedVariantId('v-small');
+      expect(
+        container.read(productDetailViewModelProvider).selectedVariantId,
+        'v-small',
+      );
+
+      notifier.setSelectedVariantId(null);
+      expect(
+        container.read(productDetailViewModelProvider).selectedVariantId,
+        'v-small',
+      );
+    });
+
+    test('ProductDetailState.copyWith can clear seller metrics', () {
+      const metrics = SellerMetrics(avgResponseHours: 2.0);
+      const state = ProductDetailState(sellerMetrics: metrics);
+
+      final cleared = state.copyWith(clearSellerMetrics: true);
+
+      expect(cleared.sellerMetrics, isNull);
+    });
+
+    test('fetchSellerMetrics clears metrics for a blank seller id', () {
+      final notifier = container.read(productDetailViewModelProvider.notifier);
+
+      notifier.fetchSellerMetrics('   ');
+
+      final state = container.read(productDetailViewModelProvider);
+      expect(state.sellerMetrics, isNull);
+      expect(state.sellerMetricsLoading, isFalse);
+    });
+
+    test('voteHelpful posts a helpful vote when a user is signed in', () async {
+      final voteContainer = ProviderContainer(
+        overrides: [
+          orignabaseProvider.overrideWithValue(mockOrignaBase),
+          obUserIdProvider.overrideWithValue('user-1'),
+        ],
+      );
+      addTearDown(voteContainer.dispose);
+      when(
+        mockOrignaBase.request(
+          'POST',
+          ApiEndpoints.productsReviewVote,
+          body: anyNamed('body'),
+        ),
+      ).thenAnswer((_) async => <String, dynamic>{});
+
+      await voteContainer
+          .read(productDetailViewModelProvider.notifier)
+          .voteHelpful('rating-1', 'product-1', true);
+
+      verify(
+        mockOrignaBase.request(
+          'POST',
+          ApiEndpoints.productsReviewVote,
+          body: {
+            Fields.reviewId: 'rating-1',
+            'vote': 'helpful',
+          },
+        ),
+      ).called(1);
+    });
+
+    test('voteHelpful requires a signed-in user', () async {
+      await expectLater(
+        container
+            .read(productDetailViewModelProvider.notifier)
+            .voteHelpful('rating-1', 'product-1', false),
+        throwsA(isA<StateError>()),
+      );
+    });
   });
 }

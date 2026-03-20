@@ -824,7 +824,19 @@ void main() {
       );
       await pumpLayout(tester);
 
-      await tester.tap(find.byKey(const Key('profile_admin_panel_button')));
+      final adminPanelButton = find.byKey(const Key('profile_admin_panel_button'));
+      await tester.dragUntilVisible(
+        adminPanelButton,
+        find.byType(Scrollable).first,
+        const Offset(0, -300),
+      );
+      final adminPanelGesture = tester.widget<GestureDetector>(
+        find.descendant(
+          of: adminPanelButton,
+          matching: find.byType(GestureDetector),
+        ),
+      );
+      adminPanelGesture.onTap?.call();
       await tester.pump();
       await tester.pump();
 

@@ -29,6 +29,12 @@ class AuthWrapper extends ConsumerWidget {
         }
         // CASL/PIPEDA: gate on updated Terms version before allowing app access
         if (user != null) {
+          final userProfileAsync = ref.watch(userProfileProvider);
+          if (userProfileAsync.isLoading) {
+            return const Scaffold(
+              body: Center(child: ModernLoadingIndicator()),
+            );
+          }
           final needsTermsUpdate = ref.watch(needsTermsUpdateProvider);
           if (needsTermsUpdate) {
             return const _TermsUpdateGate();
@@ -76,7 +82,8 @@ class _TermsUpdateGateState extends ConsumerState<_TermsUpdateGate> {
 
   void _onScroll() {
     if (_hasScrolledToBottom) return;
-    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 80) {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 80) {
       setState(() => _hasScrolledToBottom = true);
     }
   }
@@ -91,7 +98,10 @@ class _TermsUpdateGateState extends ConsumerState<_TermsUpdateGate> {
       AppError.log(e, stackTrace: st, context: 'terms_update_gate');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('legal.terms_accept_error'.tr()), backgroundColor: DesignTokens.error),
+          SnackBar(
+            content: Text('legal.terms_accept_error'.tr()),
+            backgroundColor: DesignTokens.error,
+          ),
         );
       }
     } finally {
@@ -105,7 +115,9 @@ class _TermsUpdateGateState extends ConsumerState<_TermsUpdateGate> {
 
     return Scaffold(
       body: DecoratedBox(
-        decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: true)),
+        decoration: BoxDecoration(
+          gradient: DesignTokens.backgroundGradient(isDark: true),
+        ),
         child: SafeArea(
           child: Column(
             children: [
@@ -114,7 +126,11 @@ class _TermsUpdateGateState extends ConsumerState<_TermsUpdateGate> {
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
                 child: Column(
                   children: [
-                    const Icon(Icons.policy_outlined, size: 36, color: DesignTokens.primary),
+                    const Icon(
+                      Icons.policy_outlined,
+                      size: 36,
+                      color: DesignTokens.primary,
+                    ),
                     const SizedBox(height: 8),
                     Text(
                       'legal.terms_updated_title'.tr(),
@@ -128,26 +144,39 @@ class _TermsUpdateGateState extends ConsumerState<_TermsUpdateGate> {
                     const SizedBox(height: 4),
                     Text(
                       'legal.terms_updated_subtitle'.tr(),
-                      style: const TextStyle(color: DesignTokens.textSecondary, fontSize: 13),
+                      style: const TextStyle(
+                        color: DesignTokens.textSecondary,
+                        fontSize: 13,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                   ],
                 ),
               ),
-              Divider(color: DesignTokens.textSecondary.withValues(alpha: 0.3), height: 1),
+              Divider(
+                color: DesignTokens.textSecondary.withValues(alpha: 0.3),
+                height: 1,
+              ),
               // Scrollable terms body
               Expanded(
                 child: termsAsync.when(
                   data: (content) => ListView.builder(
                     controller: _scrollController,
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
                     itemCount: 1,
                     itemBuilder: (context, index) => Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           content,
-                          style: const TextStyle(color: DesignTokens.textSecondary, fontSize: 13, height: 1.55),
+                          style: const TextStyle(
+                            color: DesignTokens.textSecondary,
+                            fontSize: 13,
+                            height: 1.55,
+                          ),
                         ),
                         const SizedBox(height: 24),
                       ],
@@ -163,7 +192,10 @@ class _TermsUpdateGateState extends ConsumerState<_TermsUpdateGate> {
                   ),
                 ),
               ),
-              Divider(color: DesignTokens.textSecondary.withValues(alpha: 0.3), height: 1),
+              Divider(
+                color: DesignTokens.textSecondary.withValues(alpha: 0.3),
+                height: 1,
+              ),
               // Accept button — enabled only after scrolling to bottom
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
@@ -175,15 +207,22 @@ class _TermsUpdateGateState extends ConsumerState<_TermsUpdateGate> {
                         padding: const EdgeInsets.only(bottom: 8),
                         child: Text(
                           'legal.terms_scroll_to_accept'.tr(),
-                          style: const TextStyle(color: DesignTokens.textSecondary, fontSize: 12),
+                          style: const TextStyle(
+                            color: DesignTokens.textSecondary,
+                            fontSize: 12,
+                          ),
                           textAlign: TextAlign.center,
                         ),
                       ),
                     ModernButton(
                       key: const Key('btn-terms-accept'),
                       semanticsLabel: 'btn-terms-accept',
-                      label: _accepting ? 'common.loading'.tr() : 'legal.terms_accept_button'.tr(),
-                      onPressed: (_accepting || !_hasScrolledToBottom) ? null : _acceptTerms,
+                      label: _accepting
+                          ? 'common.loading'.tr()
+                          : 'legal.terms_accept_button'.tr(),
+                      onPressed: (_accepting || !_hasScrolledToBottom)
+                          ? null
+                          : _acceptTerms,
                       isPrimary: true,
                     ),
                   ],

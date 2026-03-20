@@ -1,10 +1,9 @@
-// coverage:ignore-file
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 
-import '../utils/design_tokens.dart';
+import 'package:origna_gta/utils/design_tokens.dart';
 
 /// Modern 2100 Product Card with glassmorphism
 class ModernProductCard extends StatefulWidget {

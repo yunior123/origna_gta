@@ -1,4 +1,3 @@
-// coverage:ignore-file
 import 'package:origna_gta/utils/constants.dart';
 import 'dart:ui';
 
@@ -72,8 +71,9 @@ class ReviewsSection extends ConsumerWidget {
               return Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color:
-                      isDark ? DesignTokens.darkSurface : DesignTokens.surface,
+                  color: isDark
+                      ? DesignTokens.darkSurface
+                      : DesignTokens.surface,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: DesignTokens.outlineVariant),
                 ),
@@ -106,8 +106,7 @@ class ReviewsSection extends ConsumerWidget {
                     child: RatingHistogram(counts: counts, total: total),
                   ),
                 ...ratings.map(
-                  (review) =>
-                      ReviewCard(review: review, productId: productId),
+                  (review) => ReviewCard(review: review, productId: productId),
                 ),
                 if (ratings.isEmpty && ratingCount > 0)
                   Padding(
@@ -130,8 +129,7 @@ class ReviewsSection extends ConsumerWidget {
           error: (e, _) => Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color:
-                  isDark ? DesignTokens.darkSurface : DesignTokens.surface,
+              color: isDark ? DesignTokens.darkSurface : DesignTokens.surface,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: DesignTokens.outlineVariant),
             ),
@@ -182,8 +180,9 @@ class _ReviewCardState extends ConsumerState<ReviewCard> {
       return DateTime.fromMillisecondsSinceEpoch(millis);
     }
     if (value is num) {
-      final millis =
-          value > 1000000000000 ? value.toInt() : (value * 1000).toInt();
+      final millis = value > 1000000000000
+          ? value.toInt()
+          : (value * 1000).toInt();
       return DateTime.fromMillisecondsSinceEpoch(millis);
     }
     return null;
@@ -205,8 +204,9 @@ class _ReviewCardState extends ConsumerState<ReviewCard> {
     final sellerReply = review[Fields.sellerReply] as String?;
     final userId = review[Fields.userId] as String? ?? '';
     final reviewer = userId.length > 8 ? userId.substring(0, 8) : userId;
-    final reviewerLabel =
-        reviewer.isNotEmpty ? 'User ${reviewer.toUpperCase()}' : 'Anonymous';
+    final reviewerLabel = reviewer.isNotEmpty
+        ? 'User ${reviewer.toUpperCase()}'
+        : 'Anonymous';
     final createdAt = _parseCreatedAt(review[Fields.createdAt]);
     final isVerified = review[Fields.verifiedPurchase] as bool? ?? false;
     final photoUrls =
@@ -233,8 +233,7 @@ class _ReviewCardState extends ConsumerState<ReviewCard> {
             children: [
               CircleAvatar(
                 radius: 16,
-                backgroundColor:
-                    DesignTokens.primary.withValues(alpha: 0.15),
+                backgroundColor: DesignTokens.primary.withValues(alpha: 0.15),
                 child: Text(
                   reviewerLabel.isNotEmpty
                       ? reviewerLabel[0].toUpperCase()
@@ -317,12 +316,11 @@ class _ReviewCardState extends ConsumerState<ReviewCard> {
                   child: ListView.separated(
                     scrollDirection: Axis.horizontal,
                     itemCount: photoUrls.length,
-                    separatorBuilder: (context, i) =>
-                        const SizedBox(width: 8),
+                    separatorBuilder: (context, i) => const SizedBox(width: 8),
                     itemBuilder: (context, idx) => GestureDetector(
                       onTap: isPremium
-                          ? () => _showReviewPhotoDialog(
-                              context, photoUrls, idx)
+                          ? () =>
+                                _showReviewPhotoDialog(context, photoUrls, idx)
                           : null,
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
@@ -401,8 +399,7 @@ class _ReviewCardState extends ConsumerState<ReviewCard> {
           // Review text
           if (comment.isNotEmpty) ...[
             const SizedBox(height: 10),
-            Text(comment,
-                style: const TextStyle(fontSize: 14, height: 1.5)),
+            Text(comment, style: const TextStyle(fontSize: 14, height: 1.5)),
           ],
 
           // Seller reply
@@ -455,8 +452,7 @@ class _ReviewCardState extends ConsumerState<ReviewCard> {
                 const SizedBox(width: 6),
                 _votingHelpful
                     ? Padding(
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
                         child: ModernLoadingIndicator(
                           size: 14,
                           strokeWidth: 2,
@@ -472,11 +468,9 @@ class _ReviewCardState extends ConsumerState<ReviewCard> {
                             horizontal: 8,
                             vertical: 4,
                           ),
-                          tapTargetSize:
-                              MaterialTapTargetSize.shrinkWrap,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
-                        onPressed: () =>
-                            _voteHelpful(ratingId, true),
+                        onPressed: () => _voteHelpful(ratingId, true),
                         child: Text(
                           'product.helpful_yes_count'.tr(
                             namedArgs: {'count': '$helpfulCount'},
@@ -537,8 +531,11 @@ class _ReviewCardState extends ConsumerState<ReviewCard> {
                 ),
                 child: IconButton(
                   tooltip: 'common.close'.tr(),
-                  icon: const Icon(Icons.close,
-                      color: DesignTokens.white, size: 28),
+                  icon: const Icon(
+                    Icons.close,
+                    color: DesignTokens.white,
+                    size: 28,
+                  ),
                   onPressed: () => Navigator.pop(context),
                 ),
               ),
@@ -605,7 +602,7 @@ class _WriteReviewButton extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return eligibilityAsync.when(
       loading: () => const SizedBox.shrink(),
-      error: (_, __) => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
       data: (eligibility) {
         if (eligibility.alreadyReviewed) {
           return Row(

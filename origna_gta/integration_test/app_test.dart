@@ -32,6 +32,16 @@ void main() {
     final hasBottomNav = bottomNav.evaluate().isNotEmpty;
     debugPrint('✓ Navigation check complete (BottomNav: $hasBottomNav)');
 
+    final hasStableHomeAction =
+        find.byKey(const Key('home_settings_button')).evaluate().isNotEmpty ||
+        find.byKey(const Key('home_cart_button')).evaluate().isNotEmpty;
+    expect(
+      hasStableHomeAction,
+      isTrue,
+      reason: 'Expected at least one stable home action anchor after bootstrap',
+    );
+    debugPrint('✓ Stable home action anchor available');
+
     // ===== 4. Look for text fields =====
     final textFields = find.byType(TextField);
     debugPrint('✓ TextField check complete (Found: ${textFields.evaluate().length})');
@@ -76,6 +86,32 @@ void main() {
       await tester.drag(scrollable.first, const Offset(0, -200));
       await tester.pump(const Duration(seconds: 2));
       debugPrint('✓ Scroll test passed');
+    }
+
+    // ===== 12. Product detail path =====
+    final productCard = find.byWidgetPredicate(
+      (widget) {
+        final key = widget.key;
+        return key is ValueKey<String> && key.value.startsWith('product_card_');
+      },
+      description: 'any home product card',
+    );
+    if (productCard.evaluate().isNotEmpty) {
+      await tester.tap(productCard.first, warnIfMissed: false);
+      await tester.pump(const Duration(seconds: 3));
+      expect(
+        find.byKey(const Key('productdetail_back_button')),
+        findsOneWidget,
+      );
+      debugPrint('✓ Product detail route opened from live home surface');
+
+      await tester.tap(
+        find.byKey(const Key('productdetail_back_button')),
+        warnIfMissed: false,
+      );
+      await tester.pump(const Duration(seconds: 2));
+      expect(find.byType(Scaffold), findsWidgets);
+      debugPrint('✓ Returned from product detail route');
     }
 
     // ===== Final Summary =====

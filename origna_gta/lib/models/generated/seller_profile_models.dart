@@ -1,4 +1,3 @@
-// coverage:ignore-file
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // Generated from Pydantic models - Single source of truth
 // ignore_for_file: non_abstract_class_inherits_abstract_member

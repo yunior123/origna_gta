@@ -1,4 +1,3 @@
-// coverage:ignore-file
 import 'dart:convert';
 
 import 'package:easy_localization/easy_localization.dart';

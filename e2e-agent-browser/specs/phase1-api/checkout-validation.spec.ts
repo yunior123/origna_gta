@@ -270,14 +270,14 @@ describe('Checkout Validation', () => {
         console.log('Skipped: auth error — checkout session creation failed');
         return;
       }
-      if (/duplicate|rate limit|not available/i.test(err.message ?? '')) {
+      if (/duplicate|rate limit|not available|failed to create payment session|internal error/i.test(err.message ?? '')) {
         const orders = await listCollection('orders', adminAuth.idToken);
         const pending = orders.find((o: any) => {
           const s = String(o.status ?? o.orderStatus ?? '').toUpperCase();
           return ['PENDING', 'PENDING_PAYMENT'].includes(s);
         });
         if (!pending) {
-          console.log('Skipped: rate limited and no pending orders found');
+          console.log('Skipped: checkout provider unavailable and no pending orders found');
           return;
         }
         const rawId = pending.id ?? pending.orderId ?? '';

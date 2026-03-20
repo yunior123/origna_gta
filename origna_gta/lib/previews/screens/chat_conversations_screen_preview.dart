@@ -1,9 +1,8 @@
-// coverage:ignore-file
 import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
 import 'package:origna_gta/screens/chat_conversations_screen.dart';
 
-import '../_preview_theme.dart';
+import 'package:origna_gta/previews/_preview_theme.dart';
 
 @Preview(name: 'Chat Conversations — Mobile', group: 'Screens', size: Size(390, 844))
 Widget previewChatConversationsScreenMobile() => previewMobile(child: previewScopeLoggedIn(child: ChatConversationsScreen()));

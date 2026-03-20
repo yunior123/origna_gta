@@ -1,4 +1,3 @@
-// coverage:ignore-file
 import 'package:origna_gta/utils/utils.dart';
 
 /// Documentation for SellerAccountStatus

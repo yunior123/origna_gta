@@ -96,7 +96,7 @@ jobs:
       - name: Deploy to VPS
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: 204.168.137.16
+          host: ${{ secrets.VPS_HOST }}
           username: root
           key: ${{ secrets.VPS_SSH_KEY }}
           source: origna_gta/build/web/

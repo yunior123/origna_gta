@@ -141,18 +141,16 @@ void main() {
     testWidgets('OrderSuccessGate renders and timeouts', (tester) async {
       when(mockOrderRepo.watchPaidOrderBySession(any)).thenAnswer((_) => const Stream.empty());
 
-      await tester.runAsync(() async {
-        await tester.pumpWidget(testWrapper(const OrderSuccessGate(sessionId: 's1'), overrides: [orderRepositoryProvider.overrideWithValue(mockOrderRepo)]));
-        await tester.pump();
+      await tester.pumpWidget(testWrapper(const OrderSuccessGate(sessionId: 's1'), overrides: [orderRepositoryProvider.overrideWithValue(mockOrderRepo)]));
+      await tester.pump();
 
-        expect(find.textContaining('confirming'), findsWidgets);
+      expect(find.textContaining('confirming'), findsWidgets);
 
-        // Wait for timeout (default 15s)
-        await Future.delayed(const Duration(seconds: 16));
-        await tester.pump(); // Pump to trigger timer
-        await tester.pump(const Duration(milliseconds: 500));
-        await tester.pump();
-      });
+      await tester.pump(const Duration(seconds: 91));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('verification'), findsWidgets);
+      expect(find.textContaining('orders'), findsWidgets);
     });
   });
 }

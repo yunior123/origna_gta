@@ -124,7 +124,7 @@ void main() {
               .get();
 
           expect(snapshot, isNotNull);
-          expect(snapshot.docs, isA<List>());
+          expect(snapshot.docs, isA<List<dynamic>>());
         } catch (e) {
           // May fail if collection doesn't exist yet
           expect(e, isNotNull);
@@ -182,7 +182,7 @@ void main() {
             .get();
 
         expect(snapshot, isNotNull);
-        expect(snapshot.docs, isA<List>());
+        expect(snapshot.docs, isA<List<dynamic>>());
       },
       skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
@@ -201,7 +201,7 @@ void main() {
             .get();
 
         expect(snapshot, isNotNull);
-        expect(snapshot.docs, isA<List>());
+        expect(snapshot.docs, isA<List<dynamic>>());
       },
       skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
@@ -241,7 +241,7 @@ void main() {
             .where(Fields.sellerId, isEqualTo: currentUserId!)
             .get();
 
-        expect(productSnapshot.docs, isA<List>());
+        expect(productSnapshot.docs, isA<List<dynamic>>());
 
         // Count orders
         final orderSnapshot = await ob
@@ -249,7 +249,7 @@ void main() {
             .where(Fields.sellerId, isEqualTo: currentUserId)
             .get();
 
-        expect(orderSnapshot.docs, isA<List>());
+        expect(orderSnapshot.docs, isA<List<dynamic>>());
       },
       skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
@@ -274,5 +274,5 @@ void main() {
       skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
-  });
+  }, skip: !runLive ? 'live tests disabled' : null);
 }

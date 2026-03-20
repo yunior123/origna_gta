@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:cross_file/cross_file.dart';
@@ -148,10 +149,16 @@ class FakeProductRepository implements ProductRepository {
   Future<void> toggleFavorite(String userId, String productId) async {}
 
   @override
-  Future<void> updateProduct(String productId, Map<String, dynamic> data) async {}
+  Future<void> updateProduct(
+    String productId,
+    Map<String, dynamic> data,
+  ) async {}
 
   @override
-  Future<List<String>> uploadImages(List<Uint8List> images, String productId) async => [];
+  Future<List<String>> uploadImages(
+    List<Uint8List> images,
+    String productId,
+  ) async => [];
 
   @override
   Future<String?> uploadProductVideo(XFile videoFile, String sellerId) async =>
@@ -195,6 +202,7 @@ void main() {
     required Widget child,
     AsyncValue<AppAuthUser?> authState = const AsyncValue.data(null),
     bool needsTermsUpdate = false,
+    Stream<app_models.UserModel?>? profileStream,
     AsyncValue<String> termsState = const AsyncValue.data(
       'Terms and conditions mock text.',
     ),
@@ -209,6 +217,8 @@ void main() {
           }
           return Stream.value(authState.value);
         }),
+        if (profileStream != null)
+          userProfileProvider.overrideWith((ref) => profileStream),
         needsTermsUpdateProvider.overrideWithValue(needsTermsUpdate),
         termsProvider.overrideWith((ref) async {
           if (termsState.isLoading) {
@@ -225,6 +235,26 @@ void main() {
   }
 
   group('AuthWrapper Tests', () {
+    testWidgets(
+      'shows loading indicator while authenticated profile is loading',
+      (tester) async {
+        final controller = StreamController<app_models.UserModel?>();
+        await tester.pumpWidget(
+          createTestApp(
+            child: const AuthWrapper(),
+            authState: const AsyncValue.data(verifiedUser),
+            profileStream: controller.stream,
+          ),
+        );
+        await tester.pump();
+        await tester.pump();
+
+        expect(find.byType(MainScreen), findsNothing);
+        expect(find.byType(ModernLoadingIndicator), findsOneWidget);
+        await controller.close();
+      },
+    );
+
     testWidgets('shows MainScreen directly when auth state is loading', (
       tester,
     ) async {
@@ -283,36 +313,38 @@ void main() {
       },
     );
 
-    testWidgets('shows TermsUpdateGate if user is verified but needs terms update', (
-      tester,
-    ) async {
-      await tester.pumpWidget(
-        createTestApp(
-          child: const AuthWrapper(),
-          authState: const AsyncValue.data(verifiedUser),
-          needsTermsUpdate: true,
-        ),
-      );
-      await tester.pumpAndSettle();
+    testWidgets(
+      'shows TermsUpdateGate if user is verified but needs terms update',
+      (tester) async {
+        await tester.pumpWidget(
+          createTestApp(
+            child: const AuthWrapper(),
+            authState: const AsyncValue.data(verifiedUser),
+            needsTermsUpdate: true,
+          ),
+        );
+        await tester.pumpAndSettle();
 
-      expect(find.byIcon(Icons.policy_outlined), findsOneWidget);
-      expect(find.byType(ListView), findsOneWidget);
-    });
+        expect(find.byIcon(Icons.policy_outlined), findsOneWidget);
+        expect(find.byType(ListView), findsOneWidget);
+      },
+    );
 
-    testWidgets('shows MainScreen if user is verified and terms are up to date', (
-      tester,
-    ) async {
-      await tester.pumpWidget(
-        createTestApp(
-          child: const AuthWrapper(),
-          authState: const AsyncValue.data(verifiedUser),
-          needsTermsUpdate: false,
-        ),
-      );
-      await tester.pump(const Duration(seconds: 1));
+    testWidgets(
+      'shows MainScreen if user is verified and terms are up to date',
+      (tester) async {
+        await tester.pumpWidget(
+          createTestApp(
+            child: const AuthWrapper(),
+            authState: const AsyncValue.data(verifiedUser),
+            needsTermsUpdate: false,
+          ),
+        );
+        await tester.pump(const Duration(seconds: 1));
 
-      expect(find.byType(MainScreen), findsOneWidget);
-    });
+        expect(find.byType(MainScreen), findsOneWidget);
+      },
+    );
 
     group('TermsUpdateGate Interactions', () {
       testWidgets(
@@ -342,9 +374,7 @@ void main() {
           await tester.drag(find.byType(ListView), const Offset(0, -3000));
           await tester.pumpAndSettle();
 
-          final updatedButton = tester.widget<ModernButton>(
-            acceptButtonFinder,
-          );
+          final updatedButton = tester.widget<ModernButton>(acceptButtonFinder);
           expect(updatedButton.onPressed, isNotNull);
         },
       );

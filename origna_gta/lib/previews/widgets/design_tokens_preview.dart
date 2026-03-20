@@ -1,4 +1,3 @@
-// coverage:ignore-file
 /// Flutter Widget Previewer — DesignTokens color palette & typography.
 /// Useful as a living style guide within the IDE.
 library;

@@ -1,4 +1,3 @@
-// coverage:ignore-file
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,8 +8,8 @@ import 'package:origna_gta/services/orignabase_analytics_service.dart';
 
 import 'subscription_state.dart';
 
-/// OrignaBase subscription viewmodel provider.
-final obSubscriptionViewModelProvider =
+/// Subscription viewmodel provider.
+final subscriptionViewModelProvider =
     StateNotifierProvider.autoDispose<
       OrignaBaseSubscriptionViewModel,
       SubscriptionState
@@ -18,8 +17,8 @@ final obSubscriptionViewModelProvider =
       return OrignaBaseSubscriptionViewModel(ref);
     });
 
-/// Streams the current user's subscription doc from OrignaBase for real-time updates.
-final obSubscriptionStreamProvider =
+/// Streams the current user's subscription doc for real-time updates.
+final subscriptionStreamProvider =
     StreamProvider.autoDispose<SubscriptionInfo?>((ref) {
       final uid = ref.watch(obUserIdProvider);
       if (uid == null) return Stream.value(null);
@@ -33,6 +32,7 @@ final obSubscriptionStreamProvider =
           .doc(uid)
           .get()
           .then((doc) {
+            if (controller.isClosed) return;
             if (doc == null) {
               controller.add(null);
               return;
@@ -40,6 +40,7 @@ final obSubscriptionStreamProvider =
             controller.add(SubscriptionInfo.fromMap(doc.data));
           })
           .catchError((Object e) {
+            if (controller.isClosed) return;
             controller.addError(e);
           });
 
@@ -49,8 +50,12 @@ final obSubscriptionStreamProvider =
           .doc(uid)
           .snapshots()
           .listen((change) {
+            if (controller.isClosed) return;
             controller.add(SubscriptionInfo.fromMap(change.document.data));
-          }, onError: controller.addError);
+          }, onError: (Object error, StackTrace stackTrace) {
+            if (controller.isClosed) return;
+            controller.addError(error, stackTrace);
+          });
 
       ref.onDispose(() {
         sub.cancel();
@@ -142,10 +147,14 @@ class OrignaBaseSubscriptionViewModel extends StateNotifier<SubscriptionState> {
       if (userId == null || userId.isEmpty) {
         throw StateError('Authentication required.');
       }
-      await _ob.request('POST', ApiEndpoints.subscriptionsNotificationPreferences, body: {
-        Fields.notifyNewProducts: notifyNewProducts,
-        Fields.notifyTrending: notifyTrending,
-      });
+      await _ob.request(
+        'POST',
+        ApiEndpoints.subscriptionsNotificationPreferences,
+        body: {
+          Fields.notifyNewProducts: notifyNewProducts,
+          Fields.notifyTrending: notifyTrending,
+        },
+      );
     } catch (e) {
       state = state.copyWith(errorMessage: _parseError(e));
     }

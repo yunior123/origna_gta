@@ -1,4 +1,3 @@
-// coverage:ignore-file
 import 'package:origna_gta/services/orignabase_conf_service.dart';
 
 /// Thin wrapper — delegates all config reads to [OrignaBaseConfigService].

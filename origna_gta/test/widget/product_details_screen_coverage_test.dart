@@ -10,6 +10,7 @@ import 'package:origna_gta/features/products/product_detail_viewmodel.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
+import 'package:origna_gta/features/orders/orders_provider.dart';
 import 'package:origna_gta/features/products/products_provider.dart';
 import 'package:origna_gta/features/products/stock_notification_provider.dart';
 import 'package:origna_gta/features/qa/qa_provider.dart';
@@ -32,27 +33,33 @@ void main() {
   late AppAuthUser mockUser;
 
   setUp(() {
-    mockUser = const AppAuthUser(uid: 'u1', email: 'test@example.com', emailVerified: true);
+    mockUser = const AppAuthUser(
+      uid: 'u1',
+      email: 'test@example.com',
+      emailVerified: true,
+    );
 
     SharedPreferences.setMockInitialValues({});
     initTestMocks();
 
     // Mock SharePlus method channel
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(const MethodChannel('dev.fluttercommunity.plus/share'), (
-      MethodCall methodCall,
-    ) async {
-      if (methodCall.method == 'share') {
-        return null;
-      }
-      return null;
-    });
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+          const MethodChannel('dev.fluttercommunity.plus/share'),
+          (MethodCall methodCall) async {
+            if (methodCall.method == 'share') {
+              return null;
+            }
+            return null;
+          },
+        );
   });
 
   final baseProduct = Product(
     productId: 'p1',
     name: 'Honey',
     price: 10.0,
-    imageUrls: const ['https://example.com/img1.jpg'],
+    imageUrls: const ['images/33.png'],
     description: 'Sweet honey from Canada.',
     sellerId: 's1',
     stockQuantity: 10,
@@ -62,13 +69,35 @@ void main() {
     rating: 4.5,
     ratingCount: 10,
     isLocalDeliveryOnly: false,
-    sellerAddress: const Address(street: 'S', city: 'C', state: 'ON', postalCode: 'M1M 1M1', country: 'CA'),
+    sellerAddress: const Address(
+      street: 'S',
+      city: 'C',
+      state: 'ON',
+      postalCode: 'M1M 1M1',
+      country: 'CA',
+    ),
     estimatedShipDays: 3,
     freeShipping: false,
   );
 
-  Widget createTestApp({required Widget child, List<Override> overrides = const []}) {
+  Widget createTestApp({
+    required Widget child,
+    List<Override> overrides = const [],
+  }) {
     final mockCartController = MockCartController();
+    final defaultUserProfile = models.UserModel(
+      uid: mockUser.uid,
+      email: mockUser.email ?? 'test@example.com',
+      name: 'Test User',
+      roles: const ['buyer'],
+      createdAt: DateTime.now(),
+    );
+    const defaultSellerMetrics = SellerMetrics(
+      avgResponseHours: 2.0,
+      avgShipDays: 2.0,
+      positiveRatePct: 95.0,
+      totalReviews: 12,
+    );
 
     return TestWrapper(
       overrides: [
@@ -77,9 +106,33 @@ void main() {
         sellerMetricsProvider('s1').overrideWith((ref) => const Stream.empty()),
         cartControllerProvider.overrideWithValue(mockCartController),
         authStateProvider.overrideWith((ref) => Stream.value(mockUser)),
-        subscriptionStreamProvider.overrideWith((ref) => Stream.value(const SubscriptionInfo(status: 'active', isPremium: true))),
-        qaListProvider('p1').overrideWith((ref) => Stream.value(const <QAModel>[])),
-        productRatingsProvider('p1').overrideWith((ref) => const Stream.empty()),
+        subscriptionStreamProvider.overrideWith(
+          (ref) => Stream.value(
+            const SubscriptionInfo(status: 'active', isPremium: true),
+          ),
+        ),
+        userProfileProvider.overrideWith(
+          (ref) => Stream.value(defaultUserProfile),
+        ),
+        qaListProvider(
+          'p1',
+        ).overrideWith((ref) => Stream.value(const <QAModel>[])),
+        productRatingsProvider(
+          'p1',
+        ).overrideWith((ref) => const Stream.empty()),
+        buyerOrdersProvider.overrideWith(
+          (ref) => Stream.value(const <Order>[]),
+        ),
+        sellerMetricsProvider(
+          's1',
+        ).overrideWith((ref) => Stream.value(defaultSellerMetrics)),
+        sellerMetricsProvider(
+          'u1',
+        ).overrideWith((ref) => Stream.value(defaultSellerMetrics)),
+        similarProductsProvider((
+          excludeProductId: 'p1',
+          categoryId: 1,
+        )).overrideWith((ref) => Future.value(const <Product>[])),
         ...overrides,
       ],
       child: child,
@@ -87,15 +140,51 @@ void main() {
   }
 
   group('ProductDetailScreen Coverage Expansion', () {
+    testWidgets('renders not found state when product lookup returns null', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(2000, 4000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        createTestApp(
+          overrides: [
+            productByIdProvider('p1').overrideWith((ref) async => null),
+            currentUserProvider.overrideWithValue(mockUser),
+          ],
+          child: const ProductDetailScreen(productId: 'p1'),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(find.text('Not found'), findsOneWidget);
+      expect(find.text('Product not found'), findsOneWidget);
+    });
+
     testWidgets('renders "Own product" message for sellers', (tester) async {
       await tester.pumpWidget(
         createTestApp(
           overrides: [
-            productByIdProvider('p1').overrideWith((ref) => baseProduct.copyWith(sellerId: 'u1')),
-            sellerMetricsProvider('u1').overrideWith((ref) => const Stream.empty()),
+            productByIdProvider(
+              'p1',
+            ).overrideWith((ref) => baseProduct.copyWith(sellerId: 'u1')),
+            sellerMetricsProvider(
+              'u1',
+            ).overrideWith((ref) => const Stream.empty()),
             currentUserProvider.overrideWithValue(mockUser),
             userProfileProvider.overrideWith(
-              (ref) => Stream.value(models.UserModel(uid: 'u1', email: 'test@example.com', name: 'Test User', roles: ['seller'], createdAt: DateTime.now())),
+              (ref) => Stream.value(
+                models.UserModel(
+                  uid: 'u1',
+                  email: 'test@example.com',
+                  name: 'Test User',
+                  roles: ['seller'],
+                  createdAt: DateTime.now(),
+                ),
+              ),
             ),
           ],
           child: const ProductDetailScreen(productId: 'p1'),
@@ -103,11 +192,16 @@ void main() {
       );
       await tester.pump(const Duration(seconds: 1));
 
-      expect(find.byKey(const Key('product_own_product_message')), findsOneWidget);
+      expect(
+        find.byKey(const Key('product_own_product_message')),
+        findsOneWidget,
+      );
       expect(find.byIcon(Icons.storefront), findsOneWidget);
     });
 
-    testWidgets('renders "Out of stock" and "Notify me" button', (tester) async {
+    testWidgets('renders "Out of stock" and "Notify me" button', (
+      tester,
+    ) async {
       final outOfStockProduct = baseProduct.copyWith(stockQuantity: 0);
 
       await tester.pumpWidget(
@@ -125,6 +219,56 @@ void main() {
       expect(find.byKey(const Key('product_notify_me_button')), findsOneWidget);
     });
 
+    testWidgets('requires selecting all variant options before purchase', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(2000, 4000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final variantProduct = baseProduct.copyWith(
+        hasVariants: true,
+        variantOptions: const [
+          VariantOption(name: 'Size', values: ['Small', 'Large']),
+        ],
+        variants: const [
+          ProductVariant(
+            variantId: 'v1',
+            optionValues: {'Size': 'Small'},
+            priceCents: 1000,
+            stockQuantity: 5,
+            sku: 'S1',
+          ),
+          ProductVariant(
+            variantId: 'v2',
+            optionValues: {'Size': 'Large'},
+            priceCents: 1500,
+            stockQuantity: 2,
+            sku: 'L1',
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(
+        createTestApp(
+          overrides: [
+            productByIdProvider('p1').overrideWith((ref) => variantProduct),
+            currentUserProvider.overrideWithValue(mockUser),
+          ],
+          child: const ProductDetailScreen(productId: 'p1'),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(
+        find.byKey(const Key('product_variant_selection_required')),
+        findsOneWidget,
+      );
+      expect(find.byIcon(Icons.tune_rounded), findsOneWidget);
+    });
+
     testWidgets('renders digital product specific info', (tester) async {
       final digitalProduct = baseProduct.copyWith(
         isDigital: true,
@@ -134,7 +278,10 @@ void main() {
 
       await tester.pumpWidget(
         createTestApp(
-          overrides: [productByIdProvider('p1').overrideWith((ref) => digitalProduct), currentUserProvider.overrideWithValue(mockUser)],
+          overrides: [
+            productByIdProvider('p1').overrideWith((ref) => digitalProduct),
+            currentUserProvider.overrideWithValue(mockUser),
+          ],
           child: const ProductDetailScreen(productId: 'p1'),
         ),
       );
@@ -146,11 +293,19 @@ void main() {
     });
 
     testWidgets('renders international delivery disclaimer', (tester) async {
-      final intlProduct = baseProduct.copyWith(supplier: const SupplierInfo(type: SupplierTypeValues.aliexpress, hasTracking: true));
+      final intlProduct = baseProduct.copyWith(
+        supplier: const SupplierInfo(
+          type: SupplierTypeValues.aliexpress,
+          hasTracking: true,
+        ),
+      );
 
       await tester.pumpWidget(
         createTestApp(
-          overrides: [productByIdProvider('p1').overrideWith((ref) => intlProduct), currentUserProvider.overrideWithValue(mockUser)],
+          overrides: [
+            productByIdProvider('p1').overrideWith((ref) => intlProduct),
+            currentUserProvider.overrideWithValue(mockUser),
+          ],
           child: const ProductDetailScreen(productId: 'p1'),
         ),
       );
@@ -160,12 +315,20 @@ void main() {
       expect(find.text('China'), findsOneWidget);
     });
 
-    testWidgets('shows video playback button when video present', (tester) async {
-      final videoProduct = baseProduct.copyWith(videoUrl: 'https://example.com/video.mp4', imageUrls: ['https://example.com/img1.jpg']);
+    testWidgets('shows video playback button when video present', (
+      tester,
+    ) async {
+      final videoProduct = baseProduct.copyWith(
+        videoUrl: 'https://example.com/video.mp4',
+        imageUrls: ['images/33.png'],
+      );
 
       await tester.pumpWidget(
         createTestApp(
-          overrides: [productByIdProvider('p1').overrideWith((ref) => videoProduct), currentUserProvider.overrideWithValue(mockUser)],
+          overrides: [
+            productByIdProvider('p1').overrideWith((ref) => videoProduct),
+            currentUserProvider.overrideWithValue(mockUser),
+          ],
           child: const ProductDetailScreen(productId: 'p1'),
         ),
       );
@@ -174,7 +337,9 @@ void main() {
       expect(find.byIcon(Icons.play_arrow_rounded), findsOneWidget);
     });
 
-    testWidgets('renders "Sign in to ask" in QA section when unauthenticated', (tester) async {
+    testWidgets('renders "Sign in to ask" in QA section when unauthenticated', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(2000, 4000);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -186,7 +351,9 @@ void main() {
             currentUserProvider.overrideWithValue(null),
             userIdProvider.overrideWithValue(null),
             authStateProvider.overrideWith((ref) => Stream.value(null)),
-            qaListProvider('p1').overrideWith((ref) => Stream.value(const <QAModel>[])),
+            qaListProvider(
+              'p1',
+            ).overrideWith((ref) => Stream.value(const <QAModel>[])),
           ],
           child: const ProductDetailScreen(productId: 'p1'),
         ),
@@ -197,7 +364,9 @@ void main() {
       expect(find.byIcon(Icons.forum_outlined), findsOneWidget);
     });
 
-    testWidgets('shows premium paywall when asking a question as free user', (tester) async {
+    testWidgets('shows premium paywall when asking a question as free user', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(2000, 4000);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -208,8 +377,14 @@ void main() {
             productByIdProvider('p1').overrideWith((ref) => baseProduct),
             currentUserProvider.overrideWithValue(mockUser),
             userIdProvider.overrideWithValue('u1'),
-            qaListProvider('p1').overrideWith((ref) => Stream.value(const <QAModel>[])),
-            subscriptionStreamProvider.overrideWith((ref) => Stream.value(const SubscriptionInfo(status: 'inactive', isPremium: false))),
+            qaListProvider(
+              'p1',
+            ).overrideWith((ref) => Stream.value(const <QAModel>[])),
+            subscriptionStreamProvider.overrideWith(
+              (ref) => Stream.value(
+                const SubscriptionInfo(status: 'inactive', isPremium: false),
+              ),
+            ),
           ],
           child: const ProductDetailScreen(productId: 'p1'),
         ),
@@ -230,7 +405,10 @@ void main() {
 
       await tester.pumpWidget(
         createTestApp(
-          overrides: [productByIdProvider('p1').overrideWith((ref) => slugProduct), currentUserProvider.overrideWithValue(mockUser)],
+          overrides: [
+            productByIdProvider('p1').overrideWith((ref) => slugProduct),
+            currentUserProvider.overrideWithValue(mockUser),
+          ],
           child: const ProductDetailScreen(productId: 'p1'),
         ),
       );
@@ -243,6 +421,62 @@ void main() {
       await tester.pump(const Duration(seconds: 2));
 
       // Verification happens via MethodChannel mock if needed, or just ensuring no crash
+    });
+
+    testWidgets('renders asset-backed gallery image on mobile', (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final assetImageProduct = baseProduct.copyWith(
+        imageUrls: const ['images/33.png'],
+      );
+
+      await tester.pumpWidget(
+        createTestApp(
+          overrides: [
+            productByIdProvider('p1').overrideWith((ref) => assetImageProduct),
+            currentUserProvider.overrideWithValue(mockUser),
+          ],
+          child: const ProductDetailScreen(productId: 'p1'),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(find.byIcon(Icons.camera_alt_outlined), findsNothing);
+    });
+
+    testWidgets('records recently viewed product IDs without duplicates', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(2000, 4000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      SharedPreferences.setMockInitialValues({
+        LocalStorageKeys.recentlyViewed: ['p1', 'older-product'],
+      });
+
+      await tester.pumpWidget(
+        createTestApp(
+          overrides: [
+            productByIdProvider('p1').overrideWith((ref) => baseProduct),
+            currentUserProvider.overrideWithValue(mockUser),
+          ],
+          child: const ProductDetailScreen(productId: 'p1'),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getStringList(LocalStorageKeys.recentlyViewed), [
+        'p1',
+        'older-product',
+      ]);
     });
   });
 }

@@ -437,6 +437,12 @@ class MockOrignaBase extends _i1.Mock implements _i16.OrignaBase {
           as _i18.Future<Map<String, dynamic>>);
 
   @override
+  void closeRealtime() => super.noSuchMethod(
+    Invocation.method(#closeRealtime, []),
+    returnValueForMissingStub: null,
+  );
+
+  @override
   void dispose() => super.noSuchMethod(
     Invocation.method(#dispose, []),
     returnValueForMissingStub: null,
@@ -582,6 +588,43 @@ class MockOrderRepository extends _i1.Mock implements _i19.OrderRepository {
             returnValueForMissingStub: _i18.Stream<List<_i20.Order>>.empty(),
           )
           as _i18.Stream<List<_i20.Order>>);
+
+  @override
+  _i18.Future<Map<String, dynamic>> createReturnRequest({
+    required String? orderId,
+    required List<String>? cartItemIds,
+    required String? reason,
+    String? description,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(#createReturnRequest, [], {
+              #orderId: orderId,
+              #cartItemIds: cartItemIds,
+              #reason: reason,
+              #description: description,
+            }),
+            returnValue: _i18.Future<Map<String, dynamic>>.value(
+              <String, dynamic>{},
+            ),
+            returnValueForMissingStub: _i18.Future<Map<String, dynamic>>.value(
+              <String, dynamic>{},
+            ),
+          )
+          as _i18.Future<Map<String, dynamic>>);
+
+  @override
+  _i18.Future<List<_i20.ReturnRequest>> fetchReturnRequests(String? orderId) =>
+      (super.noSuchMethod(
+            Invocation.method(#fetchReturnRequests, [orderId]),
+            returnValue: _i18.Future<List<_i20.ReturnRequest>>.value(
+              <_i20.ReturnRequest>[],
+            ),
+            returnValueForMissingStub:
+                _i18.Future<List<_i20.ReturnRequest>>.value(
+                  <_i20.ReturnRequest>[],
+                ),
+          )
+          as _i18.Future<List<_i20.ReturnRequest>>);
 }
 
 /// A class which mocks [UserRepository].

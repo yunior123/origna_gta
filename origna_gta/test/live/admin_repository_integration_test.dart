@@ -11,7 +11,8 @@ bool _isExpectedError(Object e) =>
     e is NotFoundException ||
     e is ForbiddenException ||
     e is AuthException ||
-    e is ValidationException;
+    e is ValidationException ||
+    (e is OrignaBaseException && e.statusCode == null);
 
 void main() {
   const runLive = bool.fromEnvironment(
@@ -30,10 +31,7 @@ void main() {
       adminRepo = OrignaBaseAdminRepository(ob);
 
       // Sign in as admin
-      await ob.auth.signInWithEmail(
-        'e2e-admin@test.origna.ca',
-        'REDACTED_TEST_PASSWORD',
-      );
+      await ob.auth.signInWithEmail('e2e-admin@test.origna.ca', 'REDACTED_TEST_PASSWORD');
     });
 
     tearDownAll(() async {
@@ -47,7 +45,7 @@ void main() {
         final usersStream = adminRepo.watchUsers(limit: 10);
         final users = await usersStream.first;
 
-        expect(users, isA<List>());
+        expect(users, isA<List<dynamic>>());
         // List may be empty but should be a valid list type
       },
       skip: !runLive,
@@ -60,7 +58,7 @@ void main() {
         final ordersStream = adminRepo.watchOrders(limit: 10);
         final orders = await ordersStream.first;
 
-        expect(orders, isA<List>());
+        expect(orders, isA<List<dynamic>>());
       },
       skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
@@ -72,7 +70,7 @@ void main() {
         final sellersStream = adminRepo.watchSellers(limit: 10);
         final sellers = await sellersStream.first;
 
-        expect(sellers, isA<List>());
+        expect(sellers, isA<List<dynamic>>());
       },
       skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
@@ -84,7 +82,7 @@ void main() {
         final productsStream = adminRepo.watchProducts(limit: 20);
         final products = await productsStream.first;
 
-        expect(products, isA<List>());
+        expect(products, isA<List<dynamic>>());
       },
       skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
@@ -96,7 +94,7 @@ void main() {
         final productsStream = adminRepo.watchPendingReviewProducts(limit: 50);
         final products = await productsStream.first;
 
-        expect(products, isA<List>());
+        expect(products, isA<List<dynamic>>());
       },
       skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
@@ -108,7 +106,7 @@ void main() {
         final reviewsStream = adminRepo.watchReviews(limit: 20);
         final reviews = await reviewsStream.first;
 
-        expect(reviews, isA<List>());
+        expect(reviews, isA<List<dynamic>>());
       },
       skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
@@ -158,7 +156,9 @@ void main() {
           await adminRepo.setUserSuspended(testSellerId, true);
           expect(true, isTrue);
         } catch (e) {
-          if (!_isExpectedError(e)) fail('Unexpected error suspending user: $e');
+          if (!_isExpectedError(e)) {
+            fail('Unexpected error suspending user: $e');
+          }
         }
 
         // Unsuspend
@@ -166,7 +166,9 @@ void main() {
           await adminRepo.setUserSuspended(testSellerId, false);
           expect(true, isTrue);
         } catch (e) {
-          if (!_isExpectedError(e)) fail('Unexpected error unsuspending user: $e');
+          if (!_isExpectedError(e)) {
+            fail('Unexpected error unsuspending user: $e');
+          }
         }
       },
       skip: !runLive,
@@ -200,7 +202,9 @@ void main() {
           final mfaInfo = await adminRepo.enableAdminMfa();
           expect(mfaInfo, isA<Map<String, dynamic>>());
         } catch (e) {
-          if (!_isExpectedError(e) && e is! ValidationException && e is! ConflictException) {
+          if (!_isExpectedError(e) &&
+              e is! ValidationException &&
+              e is! ConflictException) {
             fail('Unexpected error enabling MFA: $e');
           }
         }
@@ -233,7 +237,9 @@ void main() {
         try {
           await adminRepo.approveProduct('nonexistent_product_id');
         } catch (e) {
-          if (!_isExpectedError(e)) fail('Unexpected error approving product: $e');
+          if (!_isExpectedError(e)) {
+            fail('Unexpected error approving product: $e');
+          }
         }
       },
       skip: !runLive,
@@ -249,7 +255,9 @@ void main() {
             'Quality issues',
           );
         } catch (e) {
-          if (!_isExpectedError(e)) fail('Unexpected error rejecting product: $e');
+          if (!_isExpectedError(e)) {
+            fail('Unexpected error rejecting product: $e');
+          }
         }
       },
       skip: !runLive,

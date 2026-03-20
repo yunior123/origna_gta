@@ -1,4 +1,3 @@
-// coverage:ignore-file
 /// Flutter Widget Previewer — ModernButton variants.
 /// Run: flutter widget-preview start
 library;

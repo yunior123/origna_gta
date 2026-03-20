@@ -1,4 +1,3 @@
-// coverage:ignore-file
 part of '../checkout_screen.dart';
 class _AddressSection extends StatelessWidget {
   final Address address;

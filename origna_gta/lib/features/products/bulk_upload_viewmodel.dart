@@ -1,6 +1,3 @@
-// coverage:ignore-file
-import 'dart:convert';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:origna_gta/utils/csv_parser.dart';
@@ -8,13 +5,14 @@ import 'package:origna_gta/utils/csv_parser.dart';
 import 'bulk_upload_state.dart';
 
 final bulkUploadViewModelProvider =
-    StateNotifierProvider.autoDispose<BulkUploadViewModel, BulkUploadState>(
-        (ref) {
-  return BulkUploadViewModel(ref);
-});
+    StateNotifierProvider.autoDispose<BulkUploadViewModel, BulkUploadState>((
+      ref,
+    ) {
+      return BulkUploadViewModel(ref);
+    });
 
 /// ViewModel for bulk product upload feature.
-/// 
+///
 /// Responsibilities:
 /// - Parse CSV content into product maps
 /// - Validate parsed products
@@ -55,10 +53,12 @@ class BulkUploadViewModel extends StateNotifier<BulkUploadState> {
           final product = mapCsvToBulkProduct(rows[i]);
           products.add(product);
         } catch (e) {
-          errors.add(BulkProductError(
-            index: i,
-            message: e.toString().replaceFirst('FormatException: ', ''),
-          ));
+          errors.add(
+            BulkProductError(
+              index: i,
+              message: e.toString().replaceFirst('FormatException: ', ''),
+            ),
+          );
         }
       }
 
@@ -111,31 +111,18 @@ class BulkUploadViewModel extends StateNotifier<BulkUploadState> {
       final sdk = _ref.read(orignabaseProvider);
 
       // Prepare request payload
-      final requestBody = {
-        'products': products,
-      };
+      final requestBody = {'products': products};
 
       // Call bulk upload endpoint via SDK
-      final response = await sdk.call(
-        method: 'POST',
-        path: '/api/products/bulk',
-        body: jsonEncode(requestBody),
+      final response = await sdk.request(
+        'POST',
+        '/api/products/bulk',
+        body: requestBody,
       );
 
-      if (response.statusCode != 200) {
-        state = state.copyWith(
-          isUploading: false,
-          errorMessage:
-              'Upload failed: ${response.statusCode} ${response.reasonPhrase}',
-        );
-        return;
-      }
-
-      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
-      final created = (jsonResponse['created'] ?? 0) as int;
-      final failed = (jsonResponse['failed'] ?? 0) as int;
-      final errorsList = (jsonResponse['errors'] ?? []) as List<dynamic>;
-      final productIds = (jsonResponse['productIds'] ?? []) as List<dynamic>;
+      final failed = (response['failed'] ?? 0) as int;
+      final errorsList = (response['errors'] ?? []) as List<dynamic>;
+      final productIds = (response['productIds'] ?? []) as List<dynamic>;
 
       // Build created products list
       final createdList = productIds.asMap().entries.map((e) {

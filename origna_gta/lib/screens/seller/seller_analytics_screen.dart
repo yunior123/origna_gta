@@ -1,11 +1,8 @@
-// coverage:ignore-file
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
-import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/features/orders/orders_provider.dart';
-import 'package:origna_gta/models/generated/base_models.dart' show OrderStatus;
 import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/utils/constants.dart' hide PaymentStatus;
 import 'package:origna_gta/utils/design_tokens.dart';
@@ -26,7 +23,9 @@ class SellerAnalyticsScreen extends ConsumerWidget {
 
     if (user == null) {
       return Container(
-        decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
+        decoration: BoxDecoration(
+          gradient: DesignTokens.backgroundGradient(isDark: isDark),
+        ),
         child: Scaffold(
           appBar: AppBarFactory.simple(title: 'seller.analytics_title'.tr()),
           backgroundColor: DesignTokens.transparent,
@@ -42,7 +41,9 @@ class SellerAnalyticsScreen extends ConsumerWidget {
     final ordersAsync = ref.watch(sellerOrdersProvider);
 
     return Container(
-      decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
+      decoration: BoxDecoration(
+        gradient: DesignTokens.backgroundGradient(isDark: isDark),
+      ),
       child: Scaffold(
         key: const Key('seller_analytics_screen'),
         appBar: AppBarFactory.simple(title: 'seller.analytics_title'.tr()),
@@ -55,7 +56,11 @@ class SellerAnalyticsScreen extends ConsumerWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.error_outline, size: 48, color: DesignTokens.error),
+                  Icon(
+                    Icons.error_outline,
+                    size: 48,
+                    color: DesignTokens.error,
+                  ),
                   const SizedBox(height: DesignTokens.spacing12),
                   Text(
                     'errors.something_went_wrong'.tr(),
@@ -84,12 +89,21 @@ class _AnalyticsDashboard extends StatelessWidget {
 
     // Compute metrics
     final totalOrders = orders.length;
-    final completedOrders = orders.where((o) => o.orderStatus == OrderStatus.delivered).toList();
-    final ordersThisMonth = orders.where((o) => o.createdAt.isAfter(startOfMonth)).toList();
-    final cancelledOrders = orders.where((o) => o.orderStatus == OrderStatus.cancelled).length;
+    final completedOrders = orders
+        .where((o) => o.orderStatus == OrderStatus.delivered)
+        .toList();
+    final ordersThisMonth = orders
+        .where((o) => o.createdAt.isAfter(startOfMonth))
+        .toList();
+    final cancelledOrders = orders
+        .where((o) => o.orderStatus == OrderStatus.cancelled)
+        .length;
 
     // Revenue from delivered orders only (cents)
-    final totalRevenueCents = completedOrders.fold<int>(0, (sum, o) => sum + o.subtotalCents);
+    final totalRevenueCents = completedOrders.fold<int>(
+      0,
+      (sum, o) => sum + o.subtotalCents,
+    );
     final monthRevenueCents = ordersThisMonth
         .where((o) => o.orderStatus == OrderStatus.delivered)
         .fold<int>(0, (sum, o) => sum + o.subtotalCents);
@@ -99,22 +113,30 @@ class _AnalyticsDashboard extends StatelessWidget {
     for (final order in completedOrders) {
       for (final item in order.items) {
         final key = item.productId;
-        productCounts.putIfAbsent(key, () => _ProductStat(name: item.name, quantity: 0, revenueCents: 0));
+        productCounts.putIfAbsent(
+          key,
+          () => _ProductStat(name: item.name, quantity: 0, revenueCents: 0),
+        );
         productCounts[key] = _ProductStat(
           name: item.name,
           quantity: productCounts[key]!.quantity + item.quantity,
-          revenueCents: productCounts[key]!.revenueCents + ((item.price * 100).toInt() * item.quantity),
+          revenueCents:
+              productCounts[key]!.revenueCents +
+              ((item.price * 100).toInt() * item.quantity),
         );
       }
     }
-    final topProducts = productCounts.values.toList()..sort((a, b) => b.quantity.compareTo(a.quantity));
+    final topProducts = productCounts.values.toList()
+      ..sort((a, b) => b.quantity.compareTo(a.quantity));
     final displayProducts = topProducts.take(5).toList();
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(DesignTokens.spacing16),
       child: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: ResponsiveBreakpoints.contentMaxWidth),
+          constraints: const BoxConstraints(
+            maxWidth: ResponsiveBreakpoints.contentMaxWidth,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -133,7 +155,8 @@ class _AnalyticsDashboard extends StatelessWidget {
                     _KpiCard(
                       icon: Icons.attach_money_rounded,
                       label: 'seller.analytics_total_revenue'.tr(),
-                      value: '\$${(totalRevenueCents / 100).toStringAsFixed(2)}',
+                      value:
+                          '\$${(totalRevenueCents / 100).toStringAsFixed(2)}',
                       isDark: isDark,
                     ),
                     _KpiCard(
@@ -145,7 +168,8 @@ class _AnalyticsDashboard extends StatelessWidget {
                     _KpiCard(
                       icon: Icons.trending_up_rounded,
                       label: 'seller.analytics_month_revenue'.tr(),
-                      value: '\$${(monthRevenueCents / 100).toStringAsFixed(2)}',
+                      value:
+                          '\$${(monthRevenueCents / 100).toStringAsFixed(2)}',
                       isDark: isDark,
                     ),
                   ],
@@ -169,17 +193,25 @@ class _AnalyticsDashboard extends StatelessWidget {
                       ),
                       _StatusRow(
                         label: 'seller.analytics_pending'.tr(),
-                        count: orders.where((o) => o.orderStatus == OrderStatus.pending).length,
+                        count: orders
+                            .where((o) => o.orderStatus == OrderStatus.pending)
+                            .length,
                         color: DesignTokens.textSecondary,
                       ),
                       _StatusRow(
                         label: 'seller.analytics_confirmed'.tr(),
-                        count: orders.where((o) => o.orderStatus == OrderStatus.confirmed).length,
+                        count: orders
+                            .where(
+                              (o) => o.orderStatus == OrderStatus.confirmed,
+                            )
+                            .length,
                         color: DesignTokens.info,
                       ),
                       _StatusRow(
                         label: 'seller.analytics_shipped'.tr(),
-                        count: orders.where((o) => o.orderStatus == OrderStatus.shipped).length,
+                        count: orders
+                            .where((o) => o.orderStatus == OrderStatus.shipped)
+                            .length,
                         color: DesignTokens.warning,
                       ),
                       _StatusRow(
@@ -228,7 +260,11 @@ class _ProductStat {
   final int quantity;
   final int revenueCents;
 
-  const _ProductStat({required this.name, required this.quantity, required this.revenueCents});
+  const _ProductStat({
+    required this.name,
+    required this.quantity,
+    required this.revenueCents,
+  });
 }
 
 // ─── KPI Card ────────────────────────────────────────────────────────────────
@@ -239,7 +275,12 @@ class _KpiCard extends StatelessWidget {
   final String value;
   final bool isDark;
 
-  const _KpiCard({required this.icon, required this.label, required this.value, required this.isDark});
+  const _KpiCard({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.isDark,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -250,7 +291,11 @@ class _KpiCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: isDark ? DesignTokens.darkCard : DesignTokens.white,
           borderRadius: BorderRadius.circular(DesignTokens.radius16),
-          border: Border.all(color: isDark ? DesignTokens.darkOutline : DesignTokens.outlineVariant),
+          border: Border.all(
+            color: isDark
+                ? DesignTokens.darkOutline
+                : DesignTokens.outlineVariant,
+          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -262,7 +307,9 @@ class _KpiCard extends StatelessWidget {
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.w800,
-                color: isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary,
+                color: isDark
+                    ? DesignTokens.textOnDark
+                    : DesignTokens.textPrimary,
               ),
             ),
             const SizedBox(height: 4),
@@ -286,7 +333,11 @@ class _SectionCard extends StatelessWidget {
   final String title;
   final Widget child;
 
-  const _SectionCard({required this.isDark, required this.title, required this.child});
+  const _SectionCard({
+    required this.isDark,
+    required this.title,
+    required this.child,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -296,7 +347,11 @@ class _SectionCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: isDark ? DesignTokens.darkCard : DesignTokens.white,
         borderRadius: BorderRadius.circular(DesignTokens.radius16),
-        border: Border.all(color: isDark ? DesignTokens.darkOutline : DesignTokens.outlineVariant),
+        border: Border.all(
+          color: isDark
+              ? DesignTokens.darkOutline
+              : DesignTokens.outlineVariant,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -306,7 +361,9 @@ class _SectionCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w700,
-              color: isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary,
+              color: isDark
+                  ? DesignTokens.textOnDark
+                  : DesignTokens.textPrimary,
             ),
           ),
           const SizedBox(height: DesignTokens.spacing12),
@@ -324,7 +381,11 @@ class _StatusRow extends StatelessWidget {
   final int count;
   final Color color;
 
-  const _StatusRow({required this.label, required this.count, required this.color});
+  const _StatusRow({
+    required this.label,
+    required this.count,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -339,7 +400,10 @@ class _StatusRow extends StatelessWidget {
           ),
           const SizedBox(width: DesignTokens.spacing8),
           Expanded(
-            child: Text(label, style: TextStyle(fontSize: 14, color: DesignTokens.textSecondary)),
+            child: Text(
+              label,
+              style: TextStyle(fontSize: 14, color: DesignTokens.textSecondary),
+            ),
           ),
           Text(
             count.toString(),
@@ -364,7 +428,11 @@ class _TopProductRow extends StatelessWidget {
   final _ProductStat stat;
   final bool isDark;
 
-  const _TopProductRow({required this.rank, required this.stat, required this.isDark});
+  const _TopProductRow({
+    required this.rank,
+    required this.stat,
+    required this.isDark,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -382,7 +450,11 @@ class _TopProductRow extends StatelessWidget {
             child: Center(
               child: Text(
                 '$rank',
-                style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ),
@@ -396,14 +468,19 @@ class _TopProductRow extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary,
+                    color: isDark
+                        ? DesignTokens.textOnDark
+                        : DesignTokens.textPrimary,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
                   '${'seller.analytics_qty_sold'.tr()}: ${stat.quantity}',
-                  style: TextStyle(fontSize: 12, color: DesignTokens.textSecondary),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: DesignTokens.textSecondary,
+                  ),
                 ),
               ],
             ),

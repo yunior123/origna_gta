@@ -1,4 +1,3 @@
-// coverage:ignore-file
 import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart' show ApiEndpoints;
 

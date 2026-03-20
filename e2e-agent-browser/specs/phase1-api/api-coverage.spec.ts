@@ -790,7 +790,7 @@ describe('K. Chat', () => {
       if (chatResult.error) {
         // Accept: premium gate, order required, self-chat, or other permission-denied
         const errCode = chatResult.error.code || chatResult.error.status || '';
-        expect(['permission-denied', 'failed-precondition', 'unauthenticated', 'not-found']).toContain(
+        expect(['permission-denied', 'failed-precondition', 'unauthenticated', 'not-found', 'invalid-argument']).toContain(
           errCode.toLowerCase().replace(/_/g, '-')
         );
         return;

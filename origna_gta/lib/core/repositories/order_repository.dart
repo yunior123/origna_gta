@@ -1,4 +1,3 @@
-// coverage:ignore-file
 import 'package:origna_gta/models/generated/models.dart' as models;
 
 abstract class OrderRepository {

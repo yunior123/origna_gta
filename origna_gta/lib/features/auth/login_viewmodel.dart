@@ -10,9 +10,10 @@ import 'package:origna_gta/services/analytics_service.dart';
 
 import 'login_state.dart';
 
-final loginViewModelProvider = StateNotifierProvider.autoDispose<LoginViewModel, LoginState>((ref) {
-  return LoginViewModel(ref);
-});
+final loginViewModelProvider =
+    StateNotifierProvider.autoDispose<LoginViewModel, LoginState>((ref) {
+      return LoginViewModel(ref);
+    });
 
 /// Maps OrignaBase auth error codes to translation keys.
 String _friendlyAuthError(OrignaBaseAuthException e) {
@@ -40,7 +41,10 @@ String _friendlyAuthError(OrignaBaseAuthException e) {
     case 'account-exists-with-different-credential':
       return 'auth.errors.account_exists_different_credential'.tr();
     default:
-      AppLogger.d('⚠️ Unhandled auth exception code: ${e.code}, message: ${e.message}', tag: 'auth');
+      AppLogger.d(
+        '⚠️ Unhandled auth exception code: ${e.code}, message: ${e.message}',
+        tag: 'auth',
+      );
       return 'auth.errors.authentication_failed'.tr();
   }
 }
@@ -54,7 +58,14 @@ class LoginViewModel extends StateNotifier<LoginState> {
   Future<void> handleAppleSignIn() async {
     if (state.isLoading) return;
 
-    state = state.copyWith(isLoading: true, errorMessage: null);
+    state = state.copyWith(
+      isLoading: true,
+      errorMessage: null,
+      successMessage: null,
+      isSuccess: false,
+      mfaRequired: false,
+      challengeToken: null,
+    );
     final repository = _ref.read(authRepositoryProvider);
 
     try {
@@ -62,16 +73,27 @@ class LoginViewModel extends StateNotifier<LoginState> {
       unawaited(AnalyticsService.logLogin(method: 'apple'));
       state = state.copyWith(isLoading: false, isSuccess: true);
     } on OrignaBaseAuthException catch (e) {
-      state = state.copyWith(isLoading: false, errorMessage: _friendlyAuthError(e));
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: _friendlyAuthError(e),
+      );
     } catch (e) {
       state = state.copyWith(isLoading: false);
-      if (!e.toString().contains('cancelled') && !e.toString().contains('user_cancelled')) {
-        state = state.copyWith(errorMessage: 'auth.errors.apple_signin_failed'.tr());
+      if (!e.toString().contains('cancelled') &&
+          !e.toString().contains('user_cancelled')) {
+        state = state.copyWith(
+          errorMessage: 'auth.errors.apple_signin_failed'.tr(),
+        );
       }
     }
   }
 
-  Future<void> handleAuth({required String email, required String password, String? name, bool marketingOptIn = false}) async {
+  Future<void> handleAuth({
+    required String email,
+    required String password,
+    String? name,
+    bool marketingOptIn = false,
+  }) async {
     if (state.isLoading) return;
 
     // Validate email for both login and registration
@@ -107,29 +129,61 @@ class LoginViewModel extends StateNotifier<LoginState> {
         // The business logic elsewhere (checkout) will block actions requiring verification.
         unawaited(AnalyticsService.logLogin(method: 'email'));
       } else {
-        await repository.registerWithEmail(email, password, name ?? 'User', marketingOptIn: marketingOptIn);
+        await repository.registerWithEmail(
+          email,
+          password,
+          name ?? 'User',
+          marketingOptIn: marketingOptIn,
+        );
         unawaited(AnalyticsService.logSignUp(method: 'email'));
 
         // [F-80] Stay signed in after registration so profile is created immediately
         state = state.copyWith(
           isLoading: false,
-          successMessage: 'auth.errors.registration_success'.tr(namedArgs: {'email': email}),
+          successMessage: 'auth.errors.registration_success'.tr(
+            namedArgs: {'email': email},
+          ),
           errorMessage: null,
           isSuccess: true,
         );
         return;
       }
-      state = state.copyWith(isLoading: false, isSuccess: true);
+      state = state.copyWith(
+        isLoading: false,
+        isSuccess: true,
+        mfaRequired: false,
+        challengeToken: null,
+      );
     } on OrignaBaseAuthException catch (e) {
-      AppLogger.d('🔐 Auth exception — code: ${e.code}, message: ${e.message}', tag: 'auth');
-      state = state.copyWith(isLoading: false, errorMessage: _friendlyAuthError(e));
+      AppLogger.d(
+        '🔐 Auth exception — code: ${e.code}, message: ${e.message}',
+        tag: 'auth',
+      );
+      if (e.code == 'mfa-required' && e.challengeToken != null) {
+        state = state.copyWith(
+          isLoading: false,
+          errorMessage: null,
+          mfaRequired: true,
+          challengeToken: e.challengeToken,
+        );
+        return;
+      }
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: _friendlyAuthError(e),
+        mfaRequired: false,
+        challengeToken: null,
+      );
     } catch (e) {
       AppLogger.d('🔐 Unexpected auth error: $e', tag: 'auth');
       String errorMessage = 'auth.errors.generic_error';
       final errorStr = e.toString().toLowerCase();
 
-      if (errorStr.contains('permission-denied') || errorStr.contains('permission_denied')) {
-        errorMessage = state.isLogin ? 'auth.errors.profile_setup_failed' : 'auth.errors.account_creation_failed';
+      if (errorStr.contains('permission-denied') ||
+          errorStr.contains('permission_denied')) {
+        errorMessage = state.isLogin
+            ? 'auth.errors.profile_setup_failed'
+            : 'auth.errors.account_creation_failed';
       } else if (errorStr.contains('network')) {
         errorMessage = 'auth.errors.network_error';
       } else if (errorStr.contains('email-already-in-use')) {
@@ -151,11 +205,17 @@ class LoginViewModel extends StateNotifier<LoginState> {
       unawaited(AnalyticsService.logLogin(method: 'google'));
       state = state.copyWith(isLoading: false, isSuccess: true);
     } on OrignaBaseAuthException catch (e) {
-      state = state.copyWith(isLoading: false, errorMessage: _friendlyAuthError(e));
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: _friendlyAuthError(e),
+      );
     } catch (e) {
       state = state.copyWith(isLoading: false);
-      if (!e.toString().contains('popup-closed') && !e.toString().contains('cancelled')) {
-        state = state.copyWith(errorMessage: 'auth.errors.google_signin_failed'.tr());
+      if (!e.toString().contains('popup-closed') &&
+          !e.toString().contains('cancelled')) {
+        state = state.copyWith(
+          errorMessage: 'auth.errors.google_signin_failed'.tr(),
+        );
       }
     }
   }
@@ -173,7 +233,15 @@ class LoginViewModel extends StateNotifier<LoginState> {
   }
 
   void toggleAuthMode() {
-    state = state.copyWith(isLogin: !state.isLogin, acceptedTerms: false, marketingOptIn: false);
+    state = state.copyWith(
+      isLogin: !state.isLogin,
+      acceptedTerms: false,
+      marketingOptIn: false,
+      mfaRequired: false,
+      challengeToken: null,
+      errorMessage: null,
+      successMessage: null,
+    );
   }
 
   void toggleObscurePassword() {
@@ -234,13 +302,21 @@ class LoginViewModel extends StateNotifier<LoginState> {
     if (password.length < ValidationConstants.minPasswordLength) {
       return 'auth.validation.password_min_8';
     }
-    
+
     if (!ValidationConstants.passwordRegex.hasMatch(password)) {
       // Specific hints for better UX
-      if (!password.contains(RegExp(r'[A-Z]'))) return 'auth.validation.password_uppercase';
-      if (!password.contains(RegExp(r'[a-z]'))) return 'auth.validation.password_lowercase';
-      if (!password.contains(RegExp(r'[0-9]'))) return 'auth.validation.password_number';
-      if (!password.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) return 'auth.validation.password_special';
+      if (!password.contains(RegExp(r'[A-Z]'))) {
+        return 'auth.validation.password_uppercase';
+      }
+      if (!password.contains(RegExp(r'[a-z]'))) {
+        return 'auth.validation.password_lowercase';
+      }
+      if (!password.contains(RegExp(r'[0-9]'))) {
+        return 'auth.validation.password_number';
+      }
+      if (!password.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) {
+        return 'auth.validation.password_special';
+      }
       return 'auth.validation.password_weak';
     }
 

@@ -1,4 +1,3 @@
-// coverage:ignore-file
 import 'dart:async';
 
 import 'package:easy_localization/easy_localization.dart';
@@ -9,7 +8,7 @@ import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
-import '../features/subscription/subscription_provider.dart';
+import 'package:origna_gta/features/subscription/subscription_provider.dart';
 
 // ─── Flutter Previews ────────────────────────────────────────────────────────
 

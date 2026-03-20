@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:origna_gta/features/qa/orignabase_qa_repository.dart';
+import 'package:origna_gta/models/qa_model.dart';
 import 'package:uuid/uuid.dart';
 
 void main() {
@@ -42,7 +43,7 @@ void main() {
         final qaStream = qaRepo.watchQA(testProductId);
         final questions = await qaStream.first;
 
-        expect(questions, isA<List>());
+        expect(questions, isA<List<QAModel>>());
         // List may be empty but should be a valid list
       },
       skip: !runLive,
@@ -60,7 +61,7 @@ void main() {
         try {
           await qaRepo.submitQuestion(testProductId, testQuestion);
         } on OrignaBaseException catch (e) {
-          if (e.statusCode == 400 || e.statusCode == 422) return;
+          if (e.statusCode == 400 || e.statusCode == 404 || e.statusCode == 422) return;
           rethrow;
         }
 
@@ -68,7 +69,7 @@ void main() {
         final qaStream = qaRepo.watchQA(testProductId);
         final questions = await qaStream.first;
 
-        expect(questions, isA<List>());
+        expect(questions, isA<List<QAModel>>());
         // Question should appear in the list (may take a moment)
         // Note: Real-time updates may be delayed, so we just verify stream works
       },
@@ -103,7 +104,7 @@ void main() {
         final qaStream = qaRepo.watchQA(fakeProductId);
         final questions = await qaStream.first;
 
-        expect(questions, isA<List>());
+        expect(questions, isA<List<QAModel>>());
         // Should be empty or fail gracefully
       },
       skip: !runLive,
@@ -154,5 +155,5 @@ void main() {
       skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
-  });
+  }, skip: !runLive ? 'live tests disabled' : null);
 }

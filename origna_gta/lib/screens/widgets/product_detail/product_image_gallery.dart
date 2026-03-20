@@ -1,4 +1,3 @@
-// coverage:ignore-file
 import 'package:origna_gta/utils/constants.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -78,16 +77,9 @@ class ProductImageGallery extends ConsumerWidget {
                       child: GestureDetector(
                         onTap: () => onImageTap?.call(imageUrls, imgIndex),
                         child: SizedBox.expand(
-                          child: CachedNetworkImage(
-                            imageUrl: imageUrls[imgIndex],
+                          child: _GalleryImage(
+                            imageSource: imageUrls[imgIndex],
                             fit: BoxFit.cover,
-                            placeholder: (context, url) => Shimmer.fromColors(
-                              baseColor: DesignTokens.outlineVariant,
-                              highlightColor: DesignTokens.surface,
-                              child: Container(color: DesignTokens.white),
-                            ),
-                            errorWidget: (context, url, error) =>
-                                const _ImageErrorPlaceholder(),
                           ),
                         ),
                       ),
@@ -129,8 +121,8 @@ class _VideoThumbnail extends StatelessWidget {
               if (imageUrls.isNotEmpty)
                 Opacity(
                   opacity: 0.5,
-                  child: CachedNetworkImage(
-                    imageUrl: imageUrls[0],
+                  child: _GalleryImage(
+                    imageSource: imageUrls[0],
                     fit: BoxFit.cover,
                     width: double.infinity,
                     height: double.infinity,
@@ -173,6 +165,49 @@ class _VideoThumbnail extends StatelessWidget {
   }
 }
 
+class _GalleryImage extends StatelessWidget {
+  final String imageSource;
+  final BoxFit fit;
+  final double? width;
+  final double? height;
+
+  const _GalleryImage({
+    required this.imageSource,
+    required this.fit,
+    this.width,
+    this.height,
+  });
+
+  bool get _isAssetImage =>
+      imageSource.startsWith('assets/') || imageSource.startsWith('images/');
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isAssetImage) {
+      return Image.asset(
+        imageSource,
+        fit: fit,
+        width: width,
+        height: height,
+        errorBuilder: (_, _, _) => const _ImageErrorPlaceholder(),
+      );
+    }
+
+    return CachedNetworkImage(
+      imageUrl: imageSource,
+      fit: fit,
+      width: width,
+      height: height,
+      placeholder: (context, url) => Shimmer.fromColors(
+        baseColor: DesignTokens.outlineVariant,
+        highlightColor: DesignTokens.surface,
+        child: Container(color: DesignTokens.white),
+      ),
+      errorWidget: (context, url, error) => const _ImageErrorPlaceholder(),
+    );
+  }
+}
+
 /// Placeholder shown when a product image fails to load.
 class _ImageErrorPlaceholder extends StatelessWidget {
   const _ImageErrorPlaceholder();
@@ -184,10 +219,7 @@ class _ImageErrorPlaceholder extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            DesignTokens.gradientStart,
-            DesignTokens.gradientMiddle,
-          ],
+          colors: [DesignTokens.gradientStart, DesignTokens.gradientMiddle],
         ),
       ),
       child: Center(

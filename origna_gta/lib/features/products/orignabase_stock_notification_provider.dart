@@ -1,12 +1,11 @@
-// coverage:ignore-file
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 
-/// OrignaBase stock notification notifier.
+/// Stock notification notifier.
 /// Tracks local subscription state for back-in-stock notifications.
-final obStockNotificationNotifierProvider = StateNotifierProvider.autoDispose
+final stockNotificationNotifierProvider = StateNotifierProvider.autoDispose
     .family<
       OrignaBaseStockNotificationNotifier,
       AsyncValue<bool>,

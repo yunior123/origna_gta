@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../utils/design_tokens.dart';
+import 'package:origna_gta/utils/design_tokens.dart';
 import 'modern_loading_indicator.dart';
 
 /// Modern 2100 Button with gradient and smooth interactions

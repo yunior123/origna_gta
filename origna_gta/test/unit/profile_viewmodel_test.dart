@@ -10,7 +10,7 @@ class TestOrignaBaseAuth implements OrignaBaseAuth {
   int signOutCalls = 0;
 
   @override
-  void signOut() {
+  Future<void> signOut() async {
     signOutCalls += 1;
   }
 
@@ -33,7 +33,8 @@ class TestOrignaBase implements OrignaBase {
     String path, {
     Map<String, dynamic>? body,
     Map<String, String>? headers,
-  })? onRequest;
+  })?
+  onRequest;
 
   @override
   Future<Map<String, dynamic>> request(
@@ -97,7 +98,9 @@ void main() {
     });
 
     test('updateLanguage calls repository', () async {
-      await container.read(profileViewModelProvider.notifier).updateLanguage('fr');
+      await container
+          .read(profileViewModelProvider.notifier)
+          .updateLanguage('fr');
 
       expect(userRepo.updatePreferredLanguageCalls, 1);
       expect(userRepo.lastUserId, 'user_123');
@@ -105,7 +108,9 @@ void main() {
     });
 
     test('deleteAccount requires confirmation', () async {
-      await container.read(profileViewModelProvider.notifier).deleteAccount('WRONG');
+      await container
+          .read(profileViewModelProvider.notifier)
+          .deleteAccount('WRONG');
 
       final state = container.read(profileViewModelProvider);
       expect(state.errorMessage, contains('DELETE'));
@@ -113,17 +118,22 @@ void main() {
       expect(auth.signOutCalls, 0);
     });
 
-    test('deleteAccount calls OrignaBase API and signs out on correct confirmation', () async {
-      await container.read(profileViewModelProvider.notifier).deleteAccount('DELETE');
+    test(
+      'deleteAccount calls OrignaBase API and signs out on correct confirmation',
+      () async {
+        await container
+            .read(profileViewModelProvider.notifier)
+            .deleteAccount('DELETE');
 
-      expect(orignaBase.requestCalls, 1);
-      expect(orignaBase.lastMethod, 'POST');
-      expect(orignaBase.lastPath, '/api/auth/delete-account');
-      expect(orignaBase.lastBody, <String, dynamic>{
-        'userId': 'user_123',
-        'confirmation': 'DELETE_MY_ACCOUNT',
-      });
-      expect(auth.signOutCalls, 1);
-    });
+        expect(orignaBase.requestCalls, 1);
+        expect(orignaBase.lastMethod, 'POST');
+        expect(orignaBase.lastPath, '/api/auth/delete-account');
+        expect(orignaBase.lastBody, <String, dynamic>{
+          'userId': 'user_123',
+          'confirmation': 'DELETE_MY_ACCOUNT',
+        });
+        expect(auth.signOutCalls, 1);
+      },
+    );
   });
 }

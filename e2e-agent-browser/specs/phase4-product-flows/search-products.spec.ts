@@ -35,8 +35,7 @@ describe('Search & Discovery — API Tests', () => {
     for (const product of result.products) {
       expect(product.productId || product.id).toBeTruthy();
       expect(product.name).toBeTruthy();
-      // Price may be negative if test data exists with invalid prices
-      expect(product.price).toBeDefined();
+      expect(product.priceCents ?? product.price).toBeDefined();
       expect(product.sellerId).toBeTruthy();
     }
   });

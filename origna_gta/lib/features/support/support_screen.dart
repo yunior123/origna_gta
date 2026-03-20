@@ -1,4 +1,3 @@
-// coverage:ignore-file
 /// Customer Support Chat Screen
 ///
 /// Accessible from Profile → "Get Help" menu item (logged-in users only).

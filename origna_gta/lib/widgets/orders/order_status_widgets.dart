@@ -1,4 +1,3 @@
-// coverage:ignore-file
 import 'package:flutter/material.dart';
 import 'package:origna_gta/models/generated/base_models.dart' show OrderStatus;
 export 'package:origna_gta/models/generated/base_models.dart' show OrderStatus;

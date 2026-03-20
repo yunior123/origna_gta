@@ -1,4 +1,3 @@
-// coverage:ignore-file
 import 'package:origna_gta/utils/constants.dart';
 import 'package:chewie/chewie.dart';
 import 'package:flutter/material.dart';

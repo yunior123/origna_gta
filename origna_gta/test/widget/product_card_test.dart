@@ -43,7 +43,7 @@ void main() {
     description: 'Description',
     price: 99.99,
     sellerId: 'seller_123',
-    imageUrls: ['https://example.com/image.jpg'],
+    imageUrls: ['images/33.png'],
     stockQuantity: 10,
     rating: 4.5,
     ratingCount: 20,

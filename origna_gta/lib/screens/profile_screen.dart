@@ -1,4 +1,3 @@
-// coverage:ignore-file
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,10 +15,10 @@ import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:origna_gta/widgets/modern_textfield.dart';
 import 'package:share_plus/share_plus.dart';
 
-import '../core/theme_provider.dart';
-import '../features/auth/auth_provider.dart';
-import '../features/profile/profile_viewmodel.dart';
-import '../features/subscription/subscription_provider.dart';
+import 'package:origna_gta/core/theme_provider.dart';
+import 'package:origna_gta/features/auth/auth_provider.dart';
+import 'package:origna_gta/features/profile/profile_viewmodel.dart';
+import 'package:origna_gta/features/subscription/subscription_provider.dart';
 
 
 part 'parts/profile_header.dart';

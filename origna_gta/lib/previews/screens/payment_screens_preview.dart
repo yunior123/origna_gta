@@ -1,9 +1,8 @@
-// coverage:ignore-file
 import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
 import 'package:origna_gta/screens/payment_screens.dart';
 
-import '../_preview_theme.dart';
+import 'package:origna_gta/previews/_preview_theme.dart';
 
 @Preview(name: 'Payment Canceled — Mobile', group: 'Screens — Checkout Flows', size: Size(390, 844))
 Widget previewPaymentCanceledScreenMobile() => previewMobile(child: const PaymentCanceledScreen());

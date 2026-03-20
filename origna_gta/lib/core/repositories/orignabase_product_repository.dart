@@ -1,4 +1,3 @@
-// coverage:ignore-file
 import 'dart:async';
 import 'package:cross_file/cross_file.dart';
 import 'package:flutter/foundation.dart';
@@ -11,7 +10,6 @@ import 'package:origna_gta/core/repositories/product_search_helpers.dart';
 import 'package:origna_gta/core/repositories/product_image_helpers.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/models/generated/models.dart';
-import 'package:origna_gta/services/conf_services.dart';
 
 /// OrignaBase implementation of [ProductRepository].
 ///
@@ -22,14 +20,9 @@ class OrignaBaseProductRepository
     implements ProductRepository {
   final OrignaBase _ob;
   final http.Client _httpClient;
-  final ConfigService _configService;
 
-  OrignaBaseProductRepository(
-    this._ob, {
-    http.Client? httpClient,
-    ConfigService? configService,
-  }) : _httpClient = httpClient ?? http.Client(),
-       _configService = configService ?? ConfigService();
+  OrignaBaseProductRepository(this._ob, {http.Client? httpClient})
+    : _httpClient = httpClient ?? http.Client();
 
   // Mixin accessors
   @override
@@ -50,6 +43,20 @@ class OrignaBaseProductRepository
   Product docToProduct(Document doc) {
     final data = <String, dynamic>{...doc.data};
 
+    data[Fields.name] ??= data['title'] ?? 'Untitled product';
+    data[Fields.description] ??= '';
+    data[Fields.imageUrls] ??= const <String>[];
+    data[Fields.sellerId] ??= '';
+    data[Fields.categoryId] ??= 0;
+    data[Fields.stockQuantity] ??= 0;
+    data[Fields.priceCents] ??= 0;
+    data[Fields.price] ??= ((data[Fields.priceCents] as num?)?.toDouble() ?? 0) / 100;
+    data[Fields.rating] ??= 0.0;
+    data[Fields.ratingCount] ??= 0;
+    data[Fields.keywords] ??= const <String>[];
+    data[Fields.lifecycleStatus] ??= ProductLifecycleStatusValues.draft;
+    data[Fields.createdAt] ??= data[Fields.dateCreated] ?? DateTime.now().toIso8601String();
+
     // Normalize timestamps: SurrealDB returns nanosecond-precision ISO strings
     // (e.g. "2026-03-12T11:56:03.185238962+00:00") which Dart's DateTime.parse
     // cannot handle (only supports up to microseconds). Truncate to 6 decimal places.
@@ -69,7 +76,9 @@ class OrignaBaseProductRepository
     }
 
     // Strip collection prefix (e.g. "products:abc" -> "abc")
-    data[Fields.productId] = doc.id.contains(':') ? doc.id.split(':').last : doc.id;
+    data[Fields.productId] = doc.id.contains(':')
+        ? doc.id.split(':').last
+        : doc.id;
     return Product.fromJson(data);
   }
 
@@ -168,17 +177,16 @@ class OrignaBaseProductRepository
     SortOption sortOption = SortOption.relevance,
     int? minPriceCents,
     int? maxPriceCents,
-  }) =>
-      fetchProductsImpl(
-        searchQuery: searchQuery,
-        categoryId: categoryId,
-        subcategory: subcategory,
-        lastDocumentId: lastDocumentId,
-        pageSize: pageSize,
-        sortOption: sortOption,
-        minPriceCents: minPriceCents,
-        maxPriceCents: maxPriceCents,
-      );
+  }) => fetchProductsImpl(
+    searchQuery: searchQuery,
+    categoryId: categoryId,
+    subcategory: subcategory,
+    lastDocumentId: lastDocumentId,
+    pageSize: pageSize,
+    sortOption: sortOption,
+    minPriceCents: minPriceCents,
+    maxPriceCents: maxPriceCents,
+  );
 
   @override
   Future<List<Product>> fetchProductsByIds(List<String> productIds) =>
@@ -198,10 +206,7 @@ class OrignaBaseProductRepository
       final response = await _ob.request(
         'POST',
         ApiEndpoints.geocodeAutocomplete,
-        body: {
-          'query': query,
-          'country': 'ca',
-        },
+        body: {'query': query, 'country': 'ca'},
       );
       final features = response['features'];
       if (features is List) {
@@ -214,8 +219,7 @@ class OrignaBaseProductRepository
   }
 
   @override
-  Future<Product?> getProductBySlug(String slug) =>
-      getProductBySlugImpl(slug);
+  Future<Product?> getProductBySlug(String slug) => getProductBySlugImpl(slug);
 
   @override
   Future<String?> getUploadUrl(String fileName) async {
@@ -231,8 +235,7 @@ class OrignaBaseProductRepository
   Future<Map<String, String>?> getUploadVideoUrlInfo(
     String fileName,
     String contentType,
-  ) =>
-      getUploadVideoUrlInfoImpl(fileName, contentType);
+  ) => getUploadVideoUrlInfoImpl(fileName, contentType);
 
   @override
   Future<void> submitRating(
@@ -320,10 +323,7 @@ class OrignaBaseProductRepository
   }
 
   @override
-  Future<List<String>> uploadImages(
-    List<Uint8List> images,
-    String productId,
-  ) =>
+  Future<List<String>> uploadImages(List<Uint8List> images, String productId) =>
       uploadImagesImpl(images, productId);
 
   @override
@@ -358,8 +358,7 @@ class OrignaBaseProductRepository
   Future<List<String>> uploadReviewImages(
     List<Uint8List> images,
     String userId,
-  ) =>
-      uploadReviewImagesImpl(images, userId);
+  ) => uploadReviewImagesImpl(images, userId);
 
   @override
   Stream<Set<String>> watchFavorites(String userId) {

@@ -9,6 +9,7 @@ import 'package:origna_gta/features/products/product_detail_viewmodel.dart';
 import 'package:origna_gta/core/repositories/auth_repository.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
+import 'package:origna_gta/features/orders/orders_provider.dart';
 import 'package:origna_gta/features/products/products_provider.dart';
 import 'package:origna_gta/features/qa/qa_provider.dart';
 import 'package:origna_gta/features/subscription/subscription_provider.dart';
@@ -83,7 +84,7 @@ void main() {
     productId: 'p1',
     name: 'Honey',
     price: 10.0,
-    imageUrls: const ['https://example.com/img.jpg'],
+    imageUrls: const ['images/33.png'],
     description: 'Sweet honey from Canada.',
     sellerId: 's1',
     stockQuantity: 10,
@@ -109,6 +110,11 @@ void main() {
         obAuthStateProvider.overrideWith((ref) => const Stream.empty()),
         sellerMetricsProvider('s1').overrideWith((ref) => const Stream.empty()),
         sellerMetricsProvider('seller_123').overrideWith((ref) => const Stream.empty()),
+        buyerOrdersProvider.overrideWith((ref) => Stream.value(const <Order>[])),
+        similarProductsProvider((
+          excludeProductId: 'p1',
+          categoryId: 1,
+        )).overrideWith((ref) => Future.value(const <Product>[])),
         ...overrides,
       ],
       child: child,
@@ -120,6 +126,7 @@ void main() {
       tester.view.physicalSize = const Size(2000, 4000);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
 
       await tester.pumpWidget(
         createTestApp(
@@ -147,6 +154,9 @@ void main() {
 
     testWidgets('handles variant selection', (tester) async {
       tester.view.physicalSize = const Size(2000, 4000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
       final variantProduct = testProduct.copyWith(
         hasVariants: true,
         variantOptions: const [
@@ -188,6 +198,9 @@ void main() {
 
     testWidgets('add to cart interaction', (tester) async {
       tester.view.physicalSize = const Size(2000, 4000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
       when(mockCartController.addToCart(any, any, variantId: anyNamed('variantId'))).thenAnswer((_) async => true);
 
       await tester.pumpWidget(

@@ -41,7 +41,7 @@ Product _makeProduct({
     price: price,
     priceCents: priceCents,
     description: 'A test product',
-    imageUrls: const ['https://example.com/img.jpg'],
+    imageUrls: const ['images/33.png'],
     sellerId: sellerId,
     categoryId: categoryId,
     stockQuantity: stockQuantity,

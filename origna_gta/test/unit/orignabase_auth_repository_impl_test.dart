@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/core/repositories/orignabase_auth_repository.dart';
@@ -58,6 +60,7 @@ class _FakeAuth extends Fake implements OrignaBaseAuth {
   String? emailValue = 'test@example.com';
   bool mfaRequiredValue = false;
   String? challengeTokenValue;
+  Stream<AuthState> authStateChangesValue = Stream.empty();
 
   // Controllable exceptions
   Exception? registerThrowException;
@@ -93,7 +96,7 @@ class _FakeAuth extends Fake implements OrignaBaseAuth {
   }
 
   @override
-  Stream<AuthState> get authStateChanges => Stream.empty();
+  Stream<AuthState> get authStateChanges => authStateChangesValue;
 
   @override
   Future<AuthState> register(String email, String password) async {
@@ -135,7 +138,7 @@ class _FakeAuth extends Fake implements OrignaBaseAuth {
   }
 
   @override
-  void signOut() {
+  Future<void> signOut() async {
     accessTokenValue = null;
     userIdValue = null;
     emailValue = null;
@@ -177,7 +180,10 @@ class _FakeAuth extends Fake implements OrignaBaseAuth {
   }
 
   @override
-  Future<AuthState> signInWithApple(String authCode, {String? displayName}) async {
+  Future<AuthState> signInWithApple(
+    String authCode, {
+    String? displayName,
+  }) async {
     throw UnimplementedError();
   }
 }
@@ -196,11 +202,7 @@ class _FakeDocument extends Fake implements Document {
   @override
   final String collection = 'test_collection';
 
-  _FakeDocument(
-    this.id,
-    this.data, {
-    this.exists = true,
-  });
+  _FakeDocument(this.id, this.data, {this.exists = true});
 
   @override
   T? get<T>(String field) => data[field] as T?;
@@ -223,11 +225,9 @@ class _FakeDocumentRef extends Fake implements DocumentRef {
   Document? documentValue;
   Exception? getThrowException;
 
-  _FakeDocumentRef({
-    this.id = 'doc_id',
-    Document? doc,
-  })  : collection = 'test_collection',
-        documentValue = doc;
+  _FakeDocumentRef({this.id = 'doc_id', Document? doc})
+    : collection = 'test_collection',
+      documentValue = doc;
 
   void throwOnGet(Exception e) => getThrowException = e;
 
@@ -319,8 +319,11 @@ void main() {
           'Test User',
         ),
         throwsA(
-          isA<OrignaBaseAuthException>()
-              .having((e) => e.code, 'code', 'invalid-email'),
+          isA<OrignaBaseAuthException>().having(
+            (e) => e.code,
+            'code',
+            'invalid-email',
+          ),
         ),
       );
     });
@@ -336,8 +339,11 @@ void main() {
           'Test User',
         ),
         throwsA(
-          isA<OrignaBaseAuthException>()
-              .having((e) => e.code, 'code', 'email-already-in-use'),
+          isA<OrignaBaseAuthException>().having(
+            (e) => e.code,
+            'code',
+            'email-already-in-use',
+          ),
         ),
       );
     });
@@ -353,8 +359,11 @@ void main() {
           'Test User',
         ),
         throwsA(
-          isA<OrignaBaseAuthException>()
-              .having((e) => e.code, 'code', 'weak-password'),
+          isA<OrignaBaseAuthException>().having(
+            (e) => e.code,
+            'code',
+            'weak-password',
+          ),
         ),
       );
     });
@@ -391,12 +400,25 @@ void main() {
       expect(fakeOb.auth.accessToken, isNotNull);
     });
 
+    test(
+      'trims email and creates user document with lowercase email',
+      () async {
+        await repository.signInWithEmail('  USER@EXAMPLE.COM  ', 'password');
+
+        expect(fakeOb.lastRequestPath, ApiEndpoints.usersCreateProfile);
+        expect(fakeOb.lastRequestBody?[Fields.email], 'user@example.com');
+      },
+    );
+
     test('throws on invalid email format', () async {
       expect(
         () => repository.signInWithEmail('invalid-email', 'password'),
         throwsA(
-          isA<OrignaBaseAuthException>()
-              .having((e) => e.code, 'code', 'invalid-email'),
+          isA<OrignaBaseAuthException>().having(
+            (e) => e.code,
+            'code',
+            'invalid-email',
+          ),
         ),
       );
     });
@@ -408,8 +430,11 @@ void main() {
       expect(
         () => repository.signInWithEmail('nonexistent@example.com', 'password'),
         throwsA(
-          isA<OrignaBaseAuthException>()
-              .having((e) => e.code, 'code', 'user-not-found'),
+          isA<OrignaBaseAuthException>().having(
+            (e) => e.code,
+            'code',
+            'user-not-found',
+          ),
         ),
       );
     });
@@ -421,25 +446,34 @@ void main() {
       expect(
         () => repository.signInWithEmail('user@example.com', 'wrongpass'),
         throwsA(
-          isA<OrignaBaseAuthException>()
-              .having((e) => e.code, 'code', 'wrong-password'),
+          isA<OrignaBaseAuthException>().having(
+            (e) => e.code,
+            'code',
+            'wrong-password',
+          ),
         ),
       );
     });
 
-    test('throws OrignaBaseAuthException(mfa-required) when MFA is enabled', () async {
-      final auth = fakeOb.auth as _FakeAuth;
-      auth.mfaRequiredValue = true;
-      auth.challengeTokenValue = 'mfa_challenge_abc';
+    test(
+      'throws OrignaBaseAuthException(mfa-required) when MFA is enabled',
+      () async {
+        final auth = fakeOb.auth as _FakeAuth;
+        auth.mfaRequiredValue = true;
+        auth.challengeTokenValue = 'mfa_challenge_abc';
 
-      expect(
-        () => repository.signInWithEmail('user@example.com', 'correctpass'),
-        throwsA(
-          isA<OrignaBaseAuthException>()
-              .having((e) => e.code, 'code', 'mfa-required'),
-        ),
-      );
-    });
+        expect(
+          () => repository.signInWithEmail('user@example.com', 'correctpass'),
+          throwsA(
+            isA<OrignaBaseAuthException>().having(
+              (e) => e.code,
+              'code',
+              'mfa-required',
+            ),
+          ),
+        );
+      },
+    );
 
     test('throws on disabled-account error', () async {
       final auth = fakeOb.auth as _FakeAuth;
@@ -448,8 +482,11 @@ void main() {
       expect(
         () => repository.signInWithEmail('user@example.com', 'password'),
         throwsA(
-          isA<OrignaBaseAuthException>()
-              .having((e) => e.code, 'code', 'user-disabled'),
+          isA<OrignaBaseAuthException>().having(
+            (e) => e.code,
+            'code',
+            'user-disabled',
+          ),
         ),
       );
     });
@@ -461,8 +498,11 @@ void main() {
       expect(
         () => repository.signInWithEmail('user@example.com', 'password'),
         throwsA(
-          isA<OrignaBaseAuthException>()
-              .having((e) => e.code, 'code', 'too-many-requests'),
+          isA<OrignaBaseAuthException>().having(
+            (e) => e.code,
+            'code',
+            'too-many-requests',
+          ),
         ),
       );
     });
@@ -479,6 +519,7 @@ void main() {
       final auth = fakeOb.auth as _FakeAuth;
       auth.accessTokenValue = 'some_token';
       auth.userIdValue = 'user_123';
+      auth.authStateChangesValue = Stream.value(AuthState.unauthenticated);
 
       await repository.signOut();
 
@@ -487,6 +528,8 @@ void main() {
     });
 
     test('clears notification tokens', () async {
+      final auth = fakeOb.auth as _FakeAuth;
+      auth.authStateChangesValue = Stream.value(AuthState.unauthenticated);
       await repository.signOut();
       // Verify signOut was called (no exception thrown)
       expect(fakeOb.auth.accessToken, isNull);
@@ -501,8 +544,11 @@ void main() {
       expect(
         () => repository.sendEmailVerification(),
         throwsA(
-          isA<OrignaBaseAuthException>()
-              .having((e) => e.code, 'code', 'no-current-user'),
+          isA<OrignaBaseAuthException>().having(
+            (e) => e.code,
+            'code',
+            'no-current-user',
+          ),
         ),
       );
     });
@@ -548,6 +594,20 @@ void main() {
       expect(result, false);
     });
 
+    test(
+      'returns false when refreshToken yields unauthenticated state',
+      () async {
+        final auth = fakeOb.auth as _FakeAuth;
+        auth.isEmailVerifiedValue = false;
+        auth.accessTokenValue = null;
+        auth.userIdValue = null;
+
+        final result = await repository.isEmailVerified();
+
+        expect(result, false);
+      },
+    );
+
     test('returns true after refresh discovers verification', () async {
       final auth = fakeOb.auth as _FakeAuth;
       auth.isEmailVerifiedValue = false;
@@ -584,8 +644,11 @@ void main() {
       expect(
         () => repository.sendPasswordResetEmail('not-an-email'),
         throwsA(
-          isA<OrignaBaseAuthException>()
-              .having((e) => e.code, 'code', 'invalid-email'),
+          isA<OrignaBaseAuthException>().having(
+            (e) => e.code,
+            'code',
+            'invalid-email',
+          ),
         ),
       );
     });
@@ -635,8 +698,11 @@ void main() {
       expect(
         () => repository.confirmPasswordReset('invalid_code', 'NewPass123!'),
         throwsA(
-          isA<OrignaBaseAuthException>()
-              .having((e) => e.code, 'code', 'unknown'),
+          isA<OrignaBaseAuthException>().having(
+            (e) => e.code,
+            'code',
+            'unknown',
+          ),
         ),
       );
     });
@@ -681,10 +747,10 @@ void main() {
       auth.accessTokenValue = 'valid_token';
       auth.userIdValue = 'user_123';
 
-      final userDoc = _FakeDocument(
-        'user_123',
-        {'uid': 'user_123', 'email': 'test@example.com'},
-      );
+      final userDoc = _FakeDocument('user_123', {
+        'uid': 'user_123',
+        'email': 'test@example.com',
+      });
       final userRef = _FakeDocumentRef(doc: userDoc);
       fakeOb._usersCollection.setDoc('user_123', userRef);
 
@@ -707,20 +773,38 @@ void main() {
       expect(fakeOb.auth.accessToken, isNull);
     });
 
-    test('returns false when user profile doc get throws NotFoundException', () async {
-      final auth = fakeOb.auth as _FakeAuth;
-      auth.accessTokenValue = 'valid_token';
-      auth.userIdValue = 'user_123';
+    test(
+      'returns false and signs out when refresh token is no longer authenticated',
+      () async {
+        final auth = fakeOb.auth as _FakeAuth;
+        auth.accessTokenValue = 'valid_token';
+        auth.userIdValue = null;
+        auth.authStateChangesValue = Stream.value(AuthState.unauthenticated);
 
-      final userRef = _FakeDocumentRef();
-      userRef.throwOnGet(Exception('not found'));
-      fakeOb._usersCollection.setDoc('user_123', userRef);
+        final result = await repository.validateCurrentUser();
 
-      final result = await repository.validateCurrentUser();
+        expect(result, false);
+        expect(fakeOb.auth.accessToken, isNull);
+      },
+    );
 
-      expect(result, false);
-      expect(fakeOb.auth.accessToken, isNull);
-    });
+    test(
+      'returns false when user profile doc get throws NotFoundException',
+      () async {
+        final auth = fakeOb.auth as _FakeAuth;
+        auth.accessTokenValue = 'valid_token';
+        auth.userIdValue = 'user_123';
+
+        final userRef = _FakeDocumentRef();
+        userRef.throwOnGet(Exception('not found'));
+        fakeOb._usersCollection.setDoc('user_123', userRef);
+
+        final result = await repository.validateCurrentUser();
+
+        expect(result, false);
+        expect(fakeOb.auth.accessToken, isNull);
+      },
+    );
 
     test('returns false and signs out on "disabled" error', () async {
       final auth = fakeOb.auth as _FakeAuth;
@@ -797,17 +881,50 @@ void main() {
       auth.accessTokenValue = 'valid_token';
       auth.userIdValue = 'user_123';
 
-      final existingDoc = _FakeDocument(
-        'user_123',
-        {'uid': 'user_123', 'email': 'existing@example.com'},
-        exists: true,
-      );
+      final existingDoc = _FakeDocument('user_123', {
+        'uid': 'user_123',
+        'email': 'existing@example.com',
+      }, exists: true);
       final userRef = _FakeDocumentRef(doc: existingDoc);
       fakeOb._usersCollection.setDoc('user_123', userRef);
 
       await repository.ensureUserDocumentExists();
 
       expect(fakeOb.lastRequestPath, isNull);
+    });
+
+    test('returns early when refresh token is unauthenticated', () async {
+      final auth = fakeOb.auth as _FakeAuth;
+      auth.accessTokenValue = 'valid_token';
+      auth.userIdValue = null;
+
+      await repository.ensureUserDocumentExists();
+
+      expect(fakeOb.lastRequestPath, isNull);
+    });
+
+    test('recovers pending profile name and marketing preference', () async {
+      final auth = fakeOb.auth as _FakeAuth;
+      auth.accessTokenValue = 'valid_token';
+      auth.userIdValue = 'user_123';
+      auth.emailValue = 'pending@example.com';
+
+      final userRef = _FakeDocumentRef(doc: null);
+      fakeOb._usersCollection.setDoc('user_123', userRef);
+      final pendingDoc = _FakeDocument('user_123', {
+        Fields.name: 'Pending Name',
+        Fields.marketingOptIn: true,
+      });
+      fakeOb._pendingProfilesCollection.setDoc(
+        'user_123',
+        _FakeDocumentRef(doc: pendingDoc),
+      );
+
+      await repository.ensureUserDocumentExists();
+
+      expect(fakeOb.lastRequestPath, ApiEndpoints.usersCreateProfile);
+      expect(fakeOb.lastRequestBody?[Fields.name], 'Pending Name');
+      expect(fakeOb.lastRequestBody?[Fields.marketingOptIn], true);
     });
   });
 
@@ -843,16 +960,19 @@ void main() {
       expect(firstProfile, isNull);
     });
 
-    test('emits null when watching different userId than authenticated', () async {
-      final auth = fakeOb.auth as _FakeAuth;
-      auth.userIdValue = 'user_123';
-      auth.accessTokenValue = 'valid_token';
+    test(
+      'emits null when watching different userId than authenticated',
+      () async {
+        final auth = fakeOb.auth as _FakeAuth;
+        auth.userIdValue = 'user_123';
+        auth.accessTokenValue = 'valid_token';
 
-      final stream = repository.watchProfile('different_user_456');
-      final firstProfile = await stream.first;
+        final stream = repository.watchProfile('different_user_456');
+        final firstProfile = await stream.first;
 
-      expect(firstProfile, isNull);
-    });
+        expect(firstProfile, isNull);
+      },
+    );
 
     test('handles API response parsing errors gracefully', () async {
       final auth = fakeOb.auth as _FakeAuth;
@@ -876,10 +996,7 @@ void main() {
         'success': true,
         'uid': 'user_123',
         'email': 'user@example.com',
-        'address': {
-          'street': '123 Main St',
-          'city': 'Toronto',
-        },
+        'address': {'street': '123 Main St', 'city': 'Toronto'},
       };
 
       final stream = repository.watchProfile('user_123');
@@ -887,88 +1004,252 @@ void main() {
 
       expect(firstProfile?.address, isNotNull);
     });
-  });
 
-  group('OrignaBaseAuthRepository - error handling (_rethrowAsAuthException)', () {
-    test('preserves OrignaBaseAuthException', () async {
+    test('emits later auth-state changes after the initial value', () async {
       final auth = fakeOb.auth as _FakeAuth;
-      auth.signInThrowException = OrignaBaseAuthException(
-        code: 'custom-error',
-        message: 'Custom message',
-      );
+      auth.userIdValue = null;
+      auth.accessTokenValue = null;
 
-      expect(
-        () => repository.signInWithEmail('user@example.com', 'password'),
-        throwsA(
-          isA<OrignaBaseAuthException>()
-              .having((e) => e.code, 'code', 'custom-error'),
+      final controller = StreamController<AuthState>();
+      addTearDown(controller.close);
+      auth.authStateChangesValue = controller.stream;
+
+      final profilesFuture = repository
+          .watchProfile('user_123')
+          .take(2)
+          .toList();
+      fakeOb.requestResponse = {
+        'success': true,
+        'uid': 'user_123',
+        'email': 'user@example.com',
+        'name': 'Later User',
+      };
+      controller.add(
+        const AuthState(
+          status: AuthStatus.authenticated,
+          userId: 'user_123',
+          email: 'user@example.com',
         ),
       );
-    });
-
-    test('maps "already" error to "email-already-in-use"', () async {
-      final auth = fakeOb.auth as _FakeAuth;
-      auth.signInThrowException = Exception('Email already exists');
-
-      expect(
-        () => repository.signInWithEmail('user@example.com', 'password'),
-        throwsA(
-          isA<OrignaBaseAuthException>()
-              .having((e) => e.code, 'code', 'email-already-in-use'),
-        ),
-      );
-    });
-
-    test('maps "duplicate" error to "email-already-in-use"', () async {
-      final auth = fakeOb.auth as _FakeAuth;
-      auth.signInThrowException = Exception('Duplicate email');
-
-      expect(
-        () => repository.signInWithEmail('user@example.com', 'password'),
-        throwsA(
-          isA<OrignaBaseAuthException>()
-              .having((e) => e.code, 'code', 'email-already-in-use'),
-        ),
-      );
-    });
-
-    test('maps "network" error to "network-request-failed"', () async {
-      final auth = fakeOb.auth as _FakeAuth;
-      auth.signInThrowException = Exception('Network connection failed');
-
-      expect(
-        () => repository.signInWithEmail('user@example.com', 'password'),
-        throwsA(
-          isA<OrignaBaseAuthException>()
-              .having((e) => e.code, 'code', 'network-request-failed'),
-        ),
-      );
-    });
-
-    test('maps "cancelled" error to "cancelled"', () async {
-      final auth = fakeOb.auth as _FakeAuth;
-      auth.signInThrowException = Exception('Operation cancelled by user');
-
-      expect(
-        () => repository.signInWithEmail('user@example.com', 'password'),
-        throwsA(
-          isA<OrignaBaseAuthException>()
-              .having((e) => e.code, 'code', 'cancelled'),
-        ),
-      );
-    });
-
-    test('defaults to "unknown" code for unmapped errors', () async {
-      final auth = fakeOb.auth as _FakeAuth;
-      auth.signInThrowException = Exception('Some random error');
-
-      expect(
-        () => repository.signInWithEmail('user@example.com', 'password'),
-        throwsA(
-          isA<OrignaBaseAuthException>()
-              .having((e) => e.code, 'code', 'unknown'),
-        ),
-      );
+      final profiles = await profilesFuture;
+      expect(profiles.first, isNull);
+      expect(profiles.last?.name, 'Later User');
     });
   });
+
+  group(
+    'OrignaBaseAuthRepository - error handling (_rethrowAsAuthException)',
+    () {
+      test('preserves OrignaBaseAuthException', () async {
+        final auth = fakeOb.auth as _FakeAuth;
+        auth.signInThrowException = OrignaBaseAuthException(
+          code: 'custom-error',
+          message: 'Custom message',
+        );
+
+        expect(
+          () => repository.signInWithEmail('user@example.com', 'password'),
+          throwsA(
+            isA<OrignaBaseAuthException>().having(
+              (e) => e.code,
+              'code',
+              'custom-error',
+            ),
+          ),
+        );
+      });
+
+      test('maps "already" error to "email-already-in-use"', () async {
+        final auth = fakeOb.auth as _FakeAuth;
+        auth.signInThrowException = Exception('Email already exists');
+
+        expect(
+          () => repository.signInWithEmail('user@example.com', 'password'),
+          throwsA(
+            isA<OrignaBaseAuthException>().having(
+              (e) => e.code,
+              'code',
+              'email-already-in-use',
+            ),
+          ),
+        );
+      });
+
+      test('maps "duplicate" error to "email-already-in-use"', () async {
+        final auth = fakeOb.auth as _FakeAuth;
+        auth.signInThrowException = Exception('Duplicate email');
+
+        expect(
+          () => repository.signInWithEmail('user@example.com', 'password'),
+          throwsA(
+            isA<OrignaBaseAuthException>().having(
+              (e) => e.code,
+              'code',
+              'email-already-in-use',
+            ),
+          ),
+        );
+      });
+
+      test('maps "network" error to "network-request-failed"', () async {
+        final auth = fakeOb.auth as _FakeAuth;
+        auth.signInThrowException = Exception('Network connection failed');
+
+        expect(
+          () => repository.signInWithEmail('user@example.com', 'password'),
+          throwsA(
+            isA<OrignaBaseAuthException>().having(
+              (e) => e.code,
+              'code',
+              'network-request-failed',
+            ),
+          ),
+        );
+      });
+
+      test('maps "cancelled" error to "cancelled"', () async {
+        final auth = fakeOb.auth as _FakeAuth;
+        auth.signInThrowException = Exception('Operation cancelled by user');
+
+        expect(
+          () => repository.signInWithEmail('user@example.com', 'password'),
+          throwsA(
+            isA<OrignaBaseAuthException>().having(
+              (e) => e.code,
+              'code',
+              'cancelled',
+            ),
+          ),
+        );
+      });
+
+      test('defaults to "unknown" code for unmapped errors', () async {
+        final auth = fakeOb.auth as _FakeAuth;
+        auth.signInThrowException = Exception('Some random error');
+
+        expect(
+          () => repository.signInWithEmail('user@example.com', 'password'),
+          throwsA(
+            isA<OrignaBaseAuthException>().having(
+              (e) => e.code,
+              'code',
+              'unknown',
+            ),
+          ),
+        );
+      });
+
+      test('maps NotFoundException to user-not-found', () async {
+        final auth = fakeOb.auth as _FakeAuth;
+        auth.signInThrowException = NotFoundException('missing user');
+
+        expect(
+          () => repository.signInWithEmail('user@example.com', 'password'),
+          throwsA(
+            isA<OrignaBaseAuthException>().having(
+              (e) => e.code,
+              'code',
+              'user-not-found',
+            ),
+          ),
+        );
+      });
+
+      test('maps ValidationException email to invalid-email', () async {
+        final auth = fakeOb.auth as _FakeAuth;
+        auth.signInThrowException = ValidationException('email is invalid');
+
+        expect(
+          () => repository.signInWithEmail('user@example.com', 'password'),
+          throwsA(
+            isA<OrignaBaseAuthException>().having(
+              (e) => e.code,
+              'code',
+              'invalid-email',
+            ),
+          ),
+        );
+      });
+
+      test('maps ValidationException password to weak-password', () async {
+        final auth = fakeOb.auth as _FakeAuth;
+        auth.signInThrowException = ValidationException('password is weak');
+
+        expect(
+          () => repository.signInWithEmail('user@example.com', 'password'),
+          throwsA(
+            isA<OrignaBaseAuthException>().having(
+              (e) => e.code,
+              'code',
+              'weak-password',
+            ),
+          ),
+        );
+      });
+
+      test('maps ConflictException to email-already-in-use', () async {
+        final auth = fakeOb.auth as _FakeAuth;
+        auth.signInThrowException = ConflictException('duplicate');
+
+        expect(
+          () => repository.signInWithEmail('user@example.com', 'password'),
+          throwsA(
+            isA<OrignaBaseAuthException>().having(
+              (e) => e.code,
+              'code',
+              'email-already-in-use',
+            ),
+          ),
+        );
+      });
+
+      test('maps RateLimitException to too-many-requests', () async {
+        final auth = fakeOb.auth as _FakeAuth;
+        auth.signInThrowException = RateLimitException('slow down');
+
+        expect(
+          () => repository.signInWithEmail('user@example.com', 'password'),
+          throwsA(
+            isA<OrignaBaseAuthException>().having(
+              (e) => e.code,
+              'code',
+              'too-many-requests',
+            ),
+          ),
+        );
+      });
+
+      test('maps NetworkException to network-request-failed', () async {
+        final auth = fakeOb.auth as _FakeAuth;
+        auth.signInThrowException = NetworkException('offline');
+
+        expect(
+          () => repository.signInWithEmail('user@example.com', 'password'),
+          throwsA(
+            isA<OrignaBaseAuthException>().having(
+              (e) => e.code,
+              'code',
+              'network-request-failed',
+            ),
+          ),
+        );
+      });
+
+      test('maps ForbiddenException to user-disabled', () async {
+        final auth = fakeOb.auth as _FakeAuth;
+        auth.signInThrowException = ForbiddenException('blocked');
+
+        expect(
+          () => repository.signInWithEmail('user@example.com', 'password'),
+          throwsA(
+            isA<OrignaBaseAuthException>().having(
+              (e) => e.code,
+              'code',
+              'user-disabled',
+            ),
+          ),
+        );
+      });
+    },
+  );
 }

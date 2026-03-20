@@ -1,9 +1,8 @@
-// coverage:ignore-file
 import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
 import 'package:origna_gta/screens/common_screens.dart';
 
-import '../_preview_theme.dart';
+import 'package:origna_gta/previews/_preview_theme.dart';
 
 @Preview(name: 'Email Verification — Mobile', group: 'Screens — Auth Flows', size: Size(390, 844))
 Widget previewEmailVerificationRequiredScreenMobile() =>

@@ -32,7 +32,10 @@ void main() {
       cartRepo = OrignaBaseCartRepository(ob);
       final authRepo = OrignaBaseAuthRepository(ob);
 
-      await authRepo.signInWithEmail('e2e-buyer@test.origna.ca', 'REDACTED_TEST_PASSWORD');
+      await authRepo.signInWithEmail(
+        'e2e-buyer@test.origna.ca',
+        'REDACTED_TEST_PASSWORD',
+      );
       final uid = ob.auth.currentUserId;
       expect(uid, isNotNull, reason: 'Sign-in failed — no userId returned');
       userId = uid!;
@@ -47,7 +50,7 @@ void main() {
       () async {
         final cartStream = cartRepo.watchCart(userId);
         final cartItems = await cartStream.first;
-        expect(cartItems, isA<List>());
+        expect(cartItems, isA<List<dynamic>>());
       },
       skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),

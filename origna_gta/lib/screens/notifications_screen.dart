@@ -1,4 +1,3 @@
-// coverage:ignore-file
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,14 +12,15 @@ import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
 /// Live stream of the current user's notifications via OrignaBase realtime.
-final _userNotificationsProvider = StreamProvider.autoDispose<List<AppNotification>>((ref) {
-  final uid = ref.watch(currentUserProvider)?.uid;
-  if (uid == null) return Stream.value(const []);
-  return ref
-      .watch(notificationRepositoryProvider)
-      .watchNotifications(uid)
-      .map((items) => items.map(AppNotification.fromMap).toList());
-});
+final _userNotificationsProvider =
+    StreamProvider.autoDispose<List<AppNotification>>((ref) {
+      final uid = ref.watch(currentUserProvider)?.uid;
+      if (uid == null) return Stream.value(const []);
+      return ref
+          .watch(notificationRepositoryProvider)
+          .watchNotifications(uid)
+          .map((items) => items.map(AppNotification.fromMap).toList());
+    });
 
 /// Documentation for NotificationsScreen
 class NotificationsScreen extends ConsumerWidget {
@@ -41,30 +41,50 @@ class NotificationsScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _markAll(BuildContext context, String? uid, WidgetRef ref) async {
+  Future<void> _markAll(
+    BuildContext context,
+    String? uid,
+    WidgetRef ref,
+  ) async {
     if (uid == null) return;
     try {
       // MVVM FIX (AUDIT): Delegated to NotificationRepository — UI no longer builds database queries.
+      // TODO: Extract to NotificationViewModel if more notification logic is added
       await ref.read(notificationRepositoryProvider).markAllRead(uid);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('notifications.all_marked_read'.tr()), backgroundColor: DesignTokens.success, behavior: SnackBarBehavior.floating),
+          SnackBar(
+            content: Text('notifications.all_marked_read'.tr()),
+            backgroundColor: DesignTokens.success,
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     } catch (e, st) {
       AppError.log(e, stackTrace: st, context: 'NotificationsScreen._markAll');
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('errors.generic_error'.tr()), backgroundColor: DesignTokens.error, behavior: SnackBarBehavior.floating));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('errors.generic_error'.tr()),
+            backgroundColor: DesignTokens.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     }
   }
 
-  Future<void> _markRead(AppNotification notification, String? uid, WidgetRef ref) async {
+  Future<void> _markRead(
+    AppNotification notification,
+    String? uid,
+    WidgetRef ref,
+  ) async {
     if (notification.isRead || uid == null) return;
     // MVVM FIX (AUDIT): Delegated to NotificationRepository.
-    await ref.read(notificationRepositoryProvider).markRead(uid, notification.id);
+    // TODO: Extract to NotificationViewModel if more notification logic is added
+    await ref
+        .read(notificationRepositoryProvider)
+        .markRead(uid, notification.id);
   }
 }
 
@@ -92,17 +112,27 @@ class NotificationsScreenLayout extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
+      decoration: BoxDecoration(
+        gradient: DesignTokens.backgroundGradient(isDark: isDark),
+      ),
       child: Scaffold(
         backgroundColor: DesignTokens.transparent,
-        appBar: AppBarFactory.simple(title: 'notifications.title'.tr(), onBackPressed: onBack),
+        appBar: AppBarFactory.simple(
+          title: 'notifications.title'.tr(),
+          onBackPressed: onBack,
+        ),
         body: notificationsAsync.when(
           loading: () => const Center(child: ModernLoadingIndicator()),
           error: (e, _) => AnimatedEmptyState(
             icon: Icons.error_outline_rounded,
             title: 'common.error_loading'.tr(),
             subtitle: AppError.getMessage(e),
-            action: ModernButton(label: 'common.retry'.tr(), icon: Icons.refresh, isOutlined: true, onPressed: onRefresh),
+            action: ModernButton(
+              label: 'common.retry'.tr(),
+              icon: Icons.refresh,
+              isOutlined: true,
+              onPressed: onRefresh,
+            ),
           ),
           data: (notifications) {
             if (notifications.isEmpty) {
@@ -135,7 +165,8 @@ class NotificationsScreenLayout extends StatelessWidget {
             return Column(
               children: [
                 // Mark all read action bar
-                if (hasUnread && uid != null) _MarkAllReadBar(onMarkAllRead: onMarkAllRead),
+                if (hasUnread && uid != null)
+                  _MarkAllReadBar(onMarkAllRead: onMarkAllRead),
                 Expanded(
                   child: RefreshIndicator(
                     color: DesignTokens.primary,
@@ -145,7 +176,9 @@ class NotificationsScreenLayout extends StatelessWidget {
                       padding: const EdgeInsets.all(DesignTokens.spacing16),
                       itemCount: () {
                         int count = 0;
-                        if (today.isNotEmpty) count += 1 + today.length; // header + items
+                        if (today.isNotEmpty) {
+                          count += 1 + today.length; // header + items
+                        }
                         if (thisWeek.isNotEmpty) count += 1 + thisWeek.length;
                         if (earlier.isNotEmpty) count += 1 + earlier.length;
                         count += 1; // bottom spacing
@@ -155,31 +188,58 @@ class NotificationsScreenLayout extends StatelessWidget {
                         int offset = 0;
                         // Today section
                         if (today.isNotEmpty) {
-                          if (index == offset) return _SectionHeader(label: 'notifications.today'.tr());
+                          if (index == offset) {
+                            return _SectionHeader(
+                              label: 'notifications.today'.tr(),
+                            );
+                          }
                           offset++;
                           if (index < offset + today.length) {
                             final n = today[index - offset];
-                            return FadeSlideIn(child: _NotificationTile(notification: n, onMarkRead: () => onMarkRead(n)));
+                            return FadeSlideIn(
+                              child: _NotificationTile(
+                                notification: n,
+                                onMarkRead: () => onMarkRead(n),
+                              ),
+                            );
                           }
                           offset += today.length;
                         }
                         // This week section
                         if (thisWeek.isNotEmpty) {
-                          if (index == offset) return _SectionHeader(label: 'notifications.this_week'.tr());
+                          if (index == offset) {
+                            return _SectionHeader(
+                              label: 'notifications.this_week'.tr(),
+                            );
+                          }
                           offset++;
                           if (index < offset + thisWeek.length) {
                             final n = thisWeek[index - offset];
-                            return FadeSlideIn(child: _NotificationTile(notification: n, onMarkRead: () => onMarkRead(n)));
+                            return FadeSlideIn(
+                              child: _NotificationTile(
+                                notification: n,
+                                onMarkRead: () => onMarkRead(n),
+                              ),
+                            );
                           }
                           offset += thisWeek.length;
                         }
                         // Earlier section
                         if (earlier.isNotEmpty) {
-                          if (index == offset) return _SectionHeader(label: 'notifications.earlier'.tr());
+                          if (index == offset) {
+                            return _SectionHeader(
+                              label: 'notifications.earlier'.tr(),
+                            );
+                          }
                           offset++;
                           if (index < offset + earlier.length) {
                             final n = earlier[index - offset];
-                            return FadeSlideIn(child: _NotificationTile(notification: n, onMarkRead: () => onMarkRead(n)));
+                            return FadeSlideIn(
+                              child: _NotificationTile(
+                                notification: n,
+                                onMarkRead: () => onMarkRead(n),
+                              ),
+                            );
                           }
                           offset += earlier.length;
                         }
@@ -206,7 +266,14 @@ class AppNotification {
   final bool isRead;
   final DateTime createdAt;
 
-  const AppNotification({required this.id, required this.title, required this.body, required this.type, required this.isRead, required this.createdAt});
+  const AppNotification({
+    required this.id,
+    required this.title,
+    required this.body,
+    required this.type,
+    required this.isRead,
+    required this.createdAt,
+  });
 
   factory AppNotification.fromMap(Map<String, dynamic> data) {
     final ts = data[Fields.createdAt];
@@ -237,20 +304,35 @@ class _MarkAllReadBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: DesignTokens.spacing16, vertical: 10),
+      padding: const EdgeInsets.symmetric(
+        horizontal: DesignTokens.spacing16,
+        vertical: 10,
+      ),
       decoration: BoxDecoration(
         color: DesignTokens.primary.withValues(alpha: 0.08),
-        border: Border(bottom: BorderSide(color: DesignTokens.primary.withValues(alpha: 0.15))),
+        border: Border(
+          bottom: BorderSide(
+            color: DesignTokens.primary.withValues(alpha: 0.15),
+          ),
+        ),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           TextButton.icon(
             onPressed: onMarkAllRead,
-            icon: const Icon(Icons.done_all_rounded, size: 18, color: DesignTokens.primary),
+            icon: const Icon(
+              Icons.done_all_rounded,
+              size: 18,
+              color: DesignTokens.primary,
+            ),
             label: Text(
               'notifications.mark_all_read'.tr(),
-              style: const TextStyle(color: DesignTokens.primary, fontSize: 13, fontWeight: FontWeight.w600),
+              style: const TextStyle(
+                color: DesignTokens.primary,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -263,7 +345,10 @@ class _NotificationTile extends StatelessWidget {
   final AppNotification notification;
   final VoidCallback onMarkRead;
 
-  const _NotificationTile({required this.notification, required this.onMarkRead});
+  const _NotificationTile({
+    required this.notification,
+    required this.onMarkRead,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -271,7 +356,11 @@ class _NotificationTile extends StatelessWidget {
 
     return Semantics(
       button: true,
-      label: notification.isRead ? notification.title : 'notifications.unread_label'.tr(namedArgs: {'title': notification.title}),
+      label: notification.isRead
+          ? notification.title
+          : 'notifications.unread_label'.tr(
+              namedArgs: {'title': notification.title},
+            ),
       child: GestureDetector(
         onTap: onMarkRead,
         child: AnimatedContainer(
@@ -280,18 +369,26 @@ class _NotificationTile extends StatelessWidget {
           padding: const EdgeInsets.all(DesignTokens.spacing16),
           decoration: BoxDecoration(
             color: notification.isRead
-                ? (isDark ? DesignTokens.darkSurfaceVariant : DesignTokens.white.withValues(alpha: 0.9))
-                : (isDark ? DesignTokens.primary.withValues(alpha: 0.1) : DesignTokens.primary.withValues(alpha: 0.05)),
+                ? (isDark
+                      ? DesignTokens.darkSurfaceVariant
+                      : DesignTokens.white.withValues(alpha: 0.9))
+                : (isDark
+                      ? DesignTokens.primary.withValues(alpha: 0.1)
+                      : DesignTokens.primary.withValues(alpha: 0.05)),
             borderRadius: BorderRadius.circular(DesignTokens.radius16),
             border: Border.all(
               color: notification.isRead
-                  ? (isDark ? DesignTokens.white.withValues(alpha: 0.05) : DesignTokens.outline.withValues(alpha: 0.3))
+                  ? (isDark
+                        ? DesignTokens.white.withValues(alpha: 0.05)
+                        : DesignTokens.outline.withValues(alpha: 0.3))
                   : DesignTokens.primary.withValues(alpha: 0.25),
               width: notification.isRead ? 1 : 1.5,
             ),
             boxShadow: [
               BoxShadow(
-                color: DesignTokens.black.withValues(alpha: isDark ? 0.15 : 0.04),
+                color: DesignTokens.black.withValues(
+                  alpha: isDark ? 0.15 : 0.04,
+                ),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
@@ -306,11 +403,22 @@ class _NotificationTile extends StatelessWidget {
                 decoration: BoxDecoration(
                   gradient: notification.isRead
                       ? null
-                      : LinearGradient(colors: [DesignTokens.gradientStart.withValues(alpha: 0.15), DesignTokens.gradientEnd.withValues(alpha: 0.15)]),
-                  color: notification.isRead ? DesignTokens.primary.withValues(alpha: 0.08) : null,
+                      : LinearGradient(
+                          colors: [
+                            DesignTokens.gradientStart.withValues(alpha: 0.15),
+                            DesignTokens.gradientEnd.withValues(alpha: 0.15),
+                          ],
+                        ),
+                  color: notification.isRead
+                      ? DesignTokens.primary.withValues(alpha: 0.08)
+                      : null,
                   shape: BoxShape.circle,
                 ),
-                child: Icon(_iconForType(notification.type), size: 22, color: DesignTokens.primary),
+                child: Icon(
+                  _iconForType(notification.type),
+                  size: 22,
+                  color: DesignTokens.primary,
+                ),
               ),
               const SizedBox(width: 12),
               // Content
@@ -326,22 +434,36 @@ class _NotificationTile extends StatelessWidget {
                             notification.title,
                             style: TextStyle(
                               fontSize: 14,
-                              fontWeight: notification.isRead ? FontWeight.w500 : FontWeight.w700,
-                              color: isDark ? DesignTokens.white : DesignTokens.textPrimary,
+                              fontWeight: notification.isRead
+                                  ? FontWeight.w500
+                                  : FontWeight.w700,
+                              color: isDark
+                                  ? DesignTokens.white
+                                  : DesignTokens.textPrimary,
                             ),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         const SizedBox(width: 8),
-                        Text(_relativeTime(notification.createdAt), style: TextStyle(fontSize: 12, color: DesignTokens.textSecondary)),
+                        Text(
+                          _relativeTime(notification.createdAt),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: DesignTokens.textSecondary,
+                          ),
+                        ),
                       ],
                     ),
                     if (notification.body.isNotEmpty) ...[
                       const SizedBox(height: 4),
                       Text(
                         notification.body,
-                        style: TextStyle(fontSize: 13, color: DesignTokens.textSecondary, height: 1.4),
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: DesignTokens.textSecondary,
+                          height: 1.4,
+                        ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -354,7 +476,10 @@ class _NotificationTile extends StatelessWidget {
                   width: 8,
                   height: 8,
                   margin: const EdgeInsets.only(left: 8, top: 4),
-                  decoration: const BoxDecoration(color: DesignTokens.primary, shape: BoxShape.circle),
+                  decoration: const BoxDecoration(
+                    color: DesignTokens.primary,
+                    shape: BoxShape.circle,
+                  ),
                 ),
             ],
           ),
@@ -379,10 +504,24 @@ class _NotificationTile extends StatelessWidget {
   String _relativeTime(DateTime dt) {
     final diff = DateTime.now().difference(dt);
     if (diff.inMinutes < 1) return 'notifications.time_just_now'.tr();
-    if (diff.inMinutes < 60) return 'notifications.time_minutes_ago'.tr(namedArgs: {'n': diff.inMinutes.toString()});
-    if (diff.inHours < 24) return 'notifications.time_hours_ago'.tr(namedArgs: {'n': diff.inHours.toString()});
-    if (diff.inDays < 7) return 'notifications.time_days_ago'.tr(namedArgs: {'n': diff.inDays.toString()});
-    return 'notifications.time_weeks_ago'.tr(namedArgs: {'n': (diff.inDays / 7).floor().toString()});
+    if (diff.inMinutes < 60) {
+      return 'notifications.time_minutes_ago'.tr(
+        namedArgs: {'n': diff.inMinutes.toString()},
+      );
+    }
+    if (diff.inHours < 24) {
+      return 'notifications.time_hours_ago'.tr(
+        namedArgs: {'n': diff.inHours.toString()},
+      );
+    }
+    if (diff.inDays < 7) {
+      return 'notifications.time_days_ago'.tr(
+        namedArgs: {'n': diff.inDays.toString()},
+      );
+    }
+    return 'notifications.time_weeks_ago'.tr(
+      namedArgs: {'n': (diff.inDays / 7).floor().toString()},
+    );
   }
 }
 
@@ -396,7 +535,12 @@ class _SectionHeader extends StatelessWidget {
       padding: const EdgeInsets.only(top: 16, bottom: 8),
       child: Text(
         label,
-        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: DesignTokens.textSecondary, letterSpacing: 0.5),
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+          color: DesignTokens.textSecondary,
+          letterSpacing: 0.5,
+        ),
       ),
     );
   }

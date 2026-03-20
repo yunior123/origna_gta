@@ -260,6 +260,43 @@ class MockOrderRepository extends _i1.Mock implements _i16.OrderRepository {
             returnValueForMissingStub: _i17.Stream<List<_i18.Order>>.empty(),
           )
           as _i17.Stream<List<_i18.Order>>);
+
+  @override
+  _i17.Future<Map<String, dynamic>> createReturnRequest({
+    required String? orderId,
+    required List<String>? cartItemIds,
+    required String? reason,
+    String? description,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(#createReturnRequest, [], {
+              #orderId: orderId,
+              #cartItemIds: cartItemIds,
+              #reason: reason,
+              #description: description,
+            }),
+            returnValue: _i17.Future<Map<String, dynamic>>.value(
+              <String, dynamic>{},
+            ),
+            returnValueForMissingStub: _i17.Future<Map<String, dynamic>>.value(
+              <String, dynamic>{},
+            ),
+          )
+          as _i17.Future<Map<String, dynamic>>);
+
+  @override
+  _i17.Future<List<_i18.ReturnRequest>> fetchReturnRequests(String? orderId) =>
+      (super.noSuchMethod(
+            Invocation.method(#fetchReturnRequests, [orderId]),
+            returnValue: _i17.Future<List<_i18.ReturnRequest>>.value(
+              <_i18.ReturnRequest>[],
+            ),
+            returnValueForMissingStub:
+                _i17.Future<List<_i18.ReturnRequest>>.value(
+                  <_i18.ReturnRequest>[],
+                ),
+          )
+          as _i17.Future<List<_i18.ReturnRequest>>);
 }
 
 /// A class which mocks [UserRepository].
@@ -717,6 +754,12 @@ class MockOrignaBase extends _i1.Mock implements _i21.OrignaBase {
             ),
           )
           as _i17.Future<Map<String, dynamic>>);
+
+  @override
+  void closeRealtime() => super.noSuchMethod(
+    Invocation.method(#closeRealtime, []),
+    returnValueForMissingStub: null,
+  );
 
   @override
   void dispose() => super.noSuchMethod(

@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:html' as html;
+import 'dart:js_interop';
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
@@ -8,9 +8,10 @@ import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/features/products/bulk_upload_state.dart';
 import 'package:origna_gta/features/products/bulk_upload_viewmodel.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:web/web.dart' as web;
 
 /// Bulk product upload screen.
-/// 
+///
 /// Allows sellers to upload multiple products via CSV file.
 /// Features:
 /// - CSV file picker
@@ -19,7 +20,7 @@ import 'package:origna_gta/utils/design_tokens.dart';
 /// - Bulk upload with progress
 /// - Results summary
 class BulkUploadScreen extends ConsumerStatefulWidget {
-  const BulkUploadScreen({Key? key}) : super(key: key);
+  const BulkUploadScreen({super.key});
 
   @override
   ConsumerState<BulkUploadScreen> createState() => _BulkUploadScreenState();
@@ -53,8 +54,8 @@ class _BulkUploadScreenState extends ConsumerState<BulkUploadScreen> {
                 Text(
                   'bulk_upload_instructions'.tr(),
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: DesignTokens.textOnDark,
-                      ),
+                    color: DesignTokens.textOnDark,
+                  ),
                 ),
                 const SizedBox(height: 24),
 
@@ -94,19 +95,19 @@ class _BulkUploadScreenState extends ConsumerState<BulkUploadScreen> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF5C2C2C),
+                      color: DesignTokens.error.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFE74C3C)),
+                      border: Border.all(color: DesignTokens.error),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.error, color: Color(0xFFE74C3C)),
+                        const Icon(Icons.error, color: DesignTokens.error),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
                             state.errorMessage,
                             style: const TextStyle(
-                              color: Color(0xFFE74C3C),
+                              color: DesignTokens.error,
                               fontSize: 14,
                             ),
                           ),
@@ -115,16 +116,15 @@ class _BulkUploadScreenState extends ConsumerState<BulkUploadScreen> {
                     ),
                   ),
 
-                if (state.errorMessage.isNotEmpty)
-                  const SizedBox(height: 24),
+                if (state.errorMessage.isNotEmpty) const SizedBox(height: 24),
 
                 // Parse errors table
                 if (state.parseErrors.isNotEmpty) ...[
                   Text(
                     'parse_errors'.tr(),
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: const Color(0xFFE74C3C),
-                        ),
+                      color: DesignTokens.error,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   _buildErrorsTable(state.parseErrors, context),
@@ -137,12 +137,12 @@ class _BulkUploadScreenState extends ConsumerState<BulkUploadScreen> {
                     'preview'.tr(
                       args: [
                         '${state.parsedProducts.length}',
-                        '${state.totalCount}'
+                        '${state.totalCount}',
                       ],
                     ),
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: DesignTokens.textOnDark,
-                        ),
+                      color: DesignTokens.textOnDark,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   _buildPreviewTable(state.parsedProducts, context),
@@ -157,16 +157,14 @@ class _BulkUploadScreenState extends ConsumerState<BulkUploadScreen> {
                         children: [
                           const CircularProgressIndicator(
                             valueColor: AlwaysStoppedAnimation<Color>(
-                              Color(0xFF667EEA),
+                              DesignTokens.primary,
                             ),
                           ),
                           const SizedBox(height: 16),
                           Text(
                             'uploading'.tr(),
-                            style:
-                                Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                      color: DesignTokens.textOnDark,
-                                    ),
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(color: DesignTokens.textOnDark),
                           ),
                         ],
                       ),
@@ -179,15 +177,17 @@ class _BulkUploadScreenState extends ConsumerState<BulkUploadScreen> {
                       child: ElevatedButton(
                         onPressed: () => viewModel.uploadProducts(),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF27AE60),
+                          backgroundColor: DesignTokens.success,
                           padding: const EdgeInsets.symmetric(
                             horizontal: 24,
                             vertical: 12,
                           ),
                         ),
-                        child: Text('upload_all'.tr(
-                          args: ['${state.parsedProducts.length}'],
-                        )),
+                        child: Text(
+                          'upload_all'.tr(
+                            args: ['${state.parsedProducts.length}'],
+                          ),
+                        ),
                       ),
                     )
                   else
@@ -203,19 +203,20 @@ class _BulkUploadScreenState extends ConsumerState<BulkUploadScreen> {
   /// Pick CSV file from file system (web: file input).
   Future<void> _pickCsvFile(BulkUploadViewModel viewModel) async {
     // On web, use HTML file input
-    final input = html.FileUploadInputElement()
+    final input = web.HTMLInputElement()
+      ..type = 'file'
       ..accept = '.csv'
       ..click();
 
     input.onChange.listen((e) async {
       final files = input.files;
-      if (files?.isNotEmpty ?? false) {
-        final file = files![0];
-        final reader = html.FileReader();
+      if (files != null && files.length > 0) {
+        final file = files.item(0)!;
+        final reader = web.FileReader();
         reader.readAsText(file);
 
         reader.onLoadEnd.listen((_) {
-          final content = reader.result as String;
+          final content = (reader.result as JSString).toDart;
           viewModel.parseCsvContent(content);
         });
       }
@@ -225,12 +226,16 @@ class _BulkUploadScreenState extends ConsumerState<BulkUploadScreen> {
   /// Download file (web: trigger download).
   void _downloadFile(String filename, String content) {
     final bytes = utf8.encode(content);
-    final blob = html.Blob([bytes], 'text/csv');
-    final url = html.Url.createObjectUrlFromBlob(blob);
-    html.AnchorElement(href: url)
-      ..setAttribute('download', filename)
+    final blob = web.Blob(
+      [bytes.toJS].toJS,
+      web.BlobPropertyBag(type: 'text/csv'),
+    );
+    final url = web.URL.createObjectURL(blob);
+    web.HTMLAnchorElement()
+      ..href = url
+      ..download = filename
       ..click();
-    html.Url.revokeObjectUrl(url);
+    web.URL.revokeObjectURL(url);
   }
 
   /// Build errors table.
@@ -246,10 +251,12 @@ class _BulkUploadScreenState extends ConsumerState<BulkUploadScreen> {
           DataColumn(label: Text('Error')),
         ],
         rows: errors.take(10).map((error) {
-          return DataRow(cells: [
-            DataCell(Text('${error.index + 1}')),
-            DataCell(Text(error.message)),
-          ]);
+          return DataRow(
+            cells: [
+              DataCell(Text('${error.index + 1}')),
+              DataCell(Text(error.message)),
+            ],
+          );
         }).toList(),
       ),
     );
@@ -272,21 +279,23 @@ class _BulkUploadScreenState extends ConsumerState<BulkUploadScreen> {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: DataTable(
-        columns: keys
-            .map((k) => DataColumn(label: Text(k)))
-            .toList(),
+        columns: keys.map((k) => DataColumn(label: Text(k))).toList(),
         rows: previewProducts
-            .map((product) => DataRow(
-                  cells: keys
-                      .map((k) => DataCell(
-                            Text(
-                              (product[k] ?? '').toString(),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ))
-                      .toList(),
-                ))
+            .map(
+              (product) => DataRow(
+                cells: keys
+                    .map(
+                      (k) => DataCell(
+                        Text(
+                          (product[k] ?? '').toString(),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    )
+                    .toList(),
+              ),
+            )
             .toList(),
       ),
     );
@@ -300,13 +309,13 @@ class _BulkUploadScreenState extends ConsumerState<BulkUploadScreen> {
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: const Color(0xFF2C5C2C),
+            color: DesignTokens.success.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: const Color(0xFF27AE60)),
+            border: Border.all(color: DesignTokens.success),
           ),
           child: Row(
             children: [
-              const Icon(Icons.check_circle, color: Color(0xFF27AE60)),
+              const Icon(Icons.check_circle, color: DesignTokens.success),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
@@ -314,7 +323,7 @@ class _BulkUploadScreenState extends ConsumerState<BulkUploadScreen> {
                     args: ['${state.createdProducts.length}'],
                   ),
                   style: const TextStyle(
-                    color: Color(0xFF27AE60),
+                    color: DesignTokens.success,
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
                   ),
@@ -347,9 +356,9 @@ class _BulkUploadScreenState extends ConsumerState<BulkUploadScreen> {
       children: [
         Text(
           'upload_errors'.tr(),
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: const Color(0xFFE74C3C),
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(color: DesignTokens.error),
         ),
         const SizedBox(height: 12),
         _buildErrorsTable(state.uploadErrors, context),

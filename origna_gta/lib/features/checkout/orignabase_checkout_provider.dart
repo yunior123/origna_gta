@@ -1,4 +1,3 @@
-// coverage:ignore-file
 import 'dart:async';
 import 'dart:math';
 
@@ -21,17 +20,23 @@ import 'checkout_state.dart';
 
 export 'checkout_state.dart';
 
-/// OrignaBase checkout state provider.
-final obCheckoutStateProvider =
-    StateNotifierProvider.autoDispose<OrignaBaseCheckoutNotifier, CheckoutState>(
-        (ref) {
-  return OrignaBaseCheckoutNotifier(ref);
-});
+/// Checkout state provider.
+final checkoutStateProvider =
+    StateNotifierProvider.autoDispose<
+      OrignaBaseCheckoutNotifier,
+      CheckoutState
+    >((ref) {
+      return OrignaBaseCheckoutNotifier(ref);
+    });
 
-final _shippingCircuitBreaker = CircuitBreakerRegistry.get('ob_shipping_calc',
-    config: CircuitBreakerConfig.searchDefault);
-final _stripeCircuitBreaker = CircuitBreakerRegistry.get('ob_stripe_checkout',
-    config: CircuitBreakerConfig.paymentDefault);
+final _shippingCircuitBreaker = CircuitBreakerRegistry.get(
+  'ob_shipping_calc',
+  config: CircuitBreakerConfig.searchDefault,
+);
+final _stripeCircuitBreaker = CircuitBreakerRegistry.get(
+  'ob_stripe_checkout',
+  config: CircuitBreakerConfig.paymentDefault,
+);
 
 /// OrignaBase checkout notifier.
 class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
@@ -48,57 +53,68 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
   UserRepository get _userRepository => _ref.read(userRepositoryProvider);
 
   /// Apply a coupon code — validates server-side and stores discount in state.
-  Future<void> applyCoupon(String code, int subtotalCents,
-      {List<String>? sellerIds}) async {
+  Future<void> applyCoupon(
+    String code,
+    int subtotalCents, {
+    List<String>? sellerIds,
+  }) async {
     final trimmed = code.trim().toUpperCase();
     if (trimmed.isEmpty) return;
     state = state.copyWith(isCouponLoading: true, clearCouponError: true);
     try {
-      final result =
-          await _ob.request('POST', ApiEndpoints.couponsApply, body: {
-        Fields.couponCode: trimmed,
-        ApiKeys.cartSubtotalCents: subtotalCents,
-        Fields.sellerIds: sellerIds ?? [],
-      });
+      final result = await _ob.request(
+        'POST',
+        ApiEndpoints.couponsApply,
+        body: {
+          Fields.couponCode: trimmed,
+          ApiKeys.cartSubtotalCents: subtotalCents,
+          Fields.sellerIds: sellerIds ?? [],
+        },
+      );
       final data = Map<String, dynamic>.from(result as Map);
       final discountCents =
           (data[Fields.discountAmountCents] as num?)?.toInt() ?? 0;
       state = state.copyWith(
-          couponCode: trimmed,
-          couponDiscountCents: discountCents,
-          isCouponLoading: false);
+        couponCode: trimmed,
+        couponDiscountCents: discountCents,
+        isCouponLoading: false,
+      );
       final int postDiscountSubtotalCents = subtotalCents - discountCents;
-      calculateTaxes(postDiscountSubtotalCents / 100.0, shippingCost: state.shippingCost);
+      _recalculateTotalsAfterCouponChange(postDiscountSubtotalCents);
     } on OrignaBaseException catch (e) {
-      state = state.copyWith(
-          isCouponLoading: false,
-          couponError: e.message);
+      state = state.copyWith(isCouponLoading: false, couponError: e.message);
     } catch (e, st) {
       state = state.copyWith(
-          isCouponLoading: false,
-          couponError: 'checkout.coupon_apply_failed'.tr());
+        isCouponLoading: false,
+        couponError: 'checkout.coupon_apply_failed'.tr(),
+      );
       AppError.log(e, stackTrace: st, context: 'ob_checkout_applyCoupon');
     }
   }
 
   /// Verify cart prices before checkout.
   Future<Map<String, dynamic>?> verifyCartPrices(
-      List<CartItemDetailModel> items) async {
+    List<CartItemDetailModel> items,
+  ) async {
     try {
-      final result = await _ob
-          .request('POST', ApiEndpoints.checkoutVerifyPrices, body: {
-        Fields.items: items
-            .map((item) => {
+      final result = await _ob.request(
+        'POST',
+        ApiEndpoints.checkoutVerifyPrices,
+        body: {
+          Fields.items: items
+              .map(
+                (item) => {
                   Fields.productId: item.productId,
                   Fields.price: item.price,
                   Fields.quantity: item.quantity,
-                })
-            .toList(),
-      });
+                },
+              )
+              .toList(),
+        },
+      );
       return Map<String, dynamic>.from(result as Map);
     } catch (e, st) {
-      AppError.log(e,
-          stackTrace: st, context: 'ob_checkout_verifyCartPrices');
+      AppError.log(e, stackTrace: st, context: 'ob_checkout_verifyCartPrices');
       return null;
     }
   }
@@ -106,8 +122,7 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
   /// Calculate shipping cost for cart items.
   Future<void> calculateShipping(List<CartItemDetailModel> items) async {
     if (items.isEmpty) {
-      state = state.copyWith(
-          shippingError: 'checkout.errors.no_items'.tr());
+      state = state.copyWith(shippingError: 'checkout.errors.no_items'.tr());
       return;
     }
 
@@ -124,8 +139,7 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
         );
         return;
       }
-      state = state.copyWith(
-          shippingError: 'checkout.errors.no_address'.tr());
+      state = state.copyWith(shippingError: 'checkout.errors.no_address'.tr());
       return;
     }
     if (!hasPhysicalItems) {
@@ -141,28 +155,40 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
     }
 
     state = state.copyWith(
-        isCalculatingShipping: true, clearShippingError: true);
+      isCalculatingShipping: true,
+      clearShippingError: true,
+    );
 
     try {
       // cartSubtotalProvider returns INTEGER CENTS — divide by 100.0 to get dollars for analytics/tax/biometric.
       final subtotal = _ref.read(cartSubtotalProvider) / 100.0;
       final sellerCosts = await _shippingCircuitBreaker.execute(
-          () => calculateShippingCost(items, state.address,
-              chosenSpeed: state.deliverySpeed, ob: _ob));
+        () => calculateShippingCost(
+          items,
+          state.address,
+          chosenSpeed: state.deliverySpeed,
+          ob: _ob,
+        ),
+      );
 
-      final double rawCost =
-          sellerCosts.values.fold(0.0, (sum, cost) => sum + cost);
+      final double rawCost = sellerCosts.values.fold(
+        0.0,
+        (sum, cost) => sum + cost,
+      );
       // Use priceCents (integer cents) — no floating-point rounding errors.
-      final int subtotalCents =
-          items.fold(0, (sum, item) => sum + item.priceCents * item.quantity);
+      final int subtotalCents = items.fold(
+        0,
+        (sum, item) => sum + item.priceCents * item.quantity,
+      );
       // Apply coupon discount before checking free shipping threshold.
       final int postCouponSubtotalCents =
           subtotalCents - state.couponDiscountCents;
       final isFree =
           postCouponSubtotalCents >= BusinessRules.freeShippingThresholdCents;
       final cost = isFree ? 0.0 : rawCost;
-      final adjustedSellerCosts =
-          isFree ? sellerCosts.map((k, v) => MapEntry(k, 0.0)) : sellerCosts;
+      final adjustedSellerCosts = isFree
+          ? sellerCosts.map((k, v) => MapEntry(k, 0.0))
+          : sellerCosts;
 
       final Map<String, String> sellerNames = {};
       for (var item in items) {
@@ -173,15 +199,18 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
 
       final isLocal = await _checkLocalDelivery(items, state.address!);
       final itemChecks = items
-          .map((item) => DeliveryItemCheck(
-                estimatedShipDays: item.estimatedShipDays,
-                isPerishable: item.isPerishable,
-                isLocalOnly: item.isLocalDeliveryOnly,
-                isInternational: item.madeInCountry != null &&
-                    item.madeInCountry!.isNotEmpty &&
-                    item.madeInCountry != CountryValues.canada &&
-                    item.madeInCountry != CountryValues.canadaCode,
-              ))
+          .map(
+            (item) => DeliveryItemCheck(
+              estimatedShipDays: item.estimatedShipDays,
+              isPerishable: item.isPerishable,
+              isLocalOnly: item.isLocalDeliveryOnly,
+              isInternational:
+                  item.madeInCountry != null &&
+                  item.madeInCountry!.isNotEmpty &&
+                  item.madeInCountry != CountryValues.canada &&
+                  item.madeInCountry != CountryValues.canadaCode,
+            ),
+          )
           .toList();
 
       final availableSpeeds = DeliverySpeed.values
@@ -199,27 +228,32 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
         deliverySpeed: availableSpeeds.contains(state.deliverySpeed)
             ? state.deliverySpeed
             : (availableSpeeds.isNotEmpty
-                ? availableSpeeds.first
-                : DeliverySpeed.standard),
+                  ? availableSpeeds.first
+                  : DeliverySpeed.standard),
         isCalculatingShipping: false,
         hasInternationalItems: hasIntl,
       );
 
       final analytics = OrignaBaseAnalyticsService(_ob);
-      unawaited(analytics.logAddShippingInfo(
+      unawaited(
+        analytics.logAddShippingInfo(
           valueCad: subtotal,
           shippingCostCad: cost,
-          shippingTier: state.deliverySpeed.name));
+          shippingTier: state.deliverySpeed.name,
+        ),
+      );
 
       calculateTaxes(subtotal, shippingCost: cost);
     } on CircuitBreakerOpenException catch (_) {
       state = state.copyWith(
-          shippingError: 'checkout.errors.shipping_unavailable'.tr(),
-          isCalculatingShipping: false);
+        shippingError: 'checkout.errors.shipping_unavailable'.tr(),
+        isCalculatingShipping: false,
+      );
     } catch (e) {
       state = state.copyWith(
-          shippingError: 'checkout.errors.shipping_calc_failed'.tr(),
-          isCalculatingShipping: false);
+        shippingError: 'checkout.errors.shipping_calc_failed'.tr(),
+        isCalculatingShipping: false,
+      );
     }
   }
 
@@ -236,8 +270,10 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
     try {
       final addresses = await _ref.read(userAddressesProvider.future);
       if (addresses.isNotEmpty) {
-        final defaultAddress = addresses.firstWhere((a) => a.isDefault,
-            orElse: () => addresses.first);
+        final defaultAddress = addresses.firstWhere(
+          (a) => a.isDefault,
+          orElse: () => addresses.first,
+        );
         state = state.copyWith(address: defaultAddress);
       } else {
         final user = await _userRepository.getUserProfile(userId);
@@ -246,13 +282,15 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
         }
       }
     } catch (e, st) {
-      AppError.log(e,
-          stackTrace: st, context: 'ob_checkout_initialize');
+      AppError.log(e, stackTrace: st, context: 'ob_checkout_initialize');
     }
   }
 
-  void removeCoupon() =>
-      state = state.copyWith(clearCoupon: true, clearCouponError: true);
+  void removeCoupon() {
+    final subtotalCents = _ref.read(cartSubtotalProvider);
+    state = state.copyWith(clearCoupon: true, clearCouponError: true);
+    _recalculateTotalsAfterCouponChange(subtotalCents);
+  }
 
   void reset() => state = const CheckoutState();
 
@@ -283,26 +321,23 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
     }
     final hasPhysicalItems = items.any((item) => !item.isDigital);
     if (hasPhysicalItems && !hasValidAddress(state.address)) {
-      return CheckoutError(
-          message: 'checkout.errors.address_required'.tr());
+      return CheckoutError(message: 'checkout.errors.address_required'.tr());
     }
     if (subtotal <= 0) {
-      return CheckoutError(
-          message: 'checkout.errors.invalid_total'.tr());
+      return CheckoutError(message: 'checkout.errors.invalid_total'.tr());
     }
     if (user.email.trim().isEmpty) {
-      return CheckoutError(
-          message: 'checkout.errors.missing_email'.tr());
+      return CheckoutError(message: 'checkout.errors.missing_email'.tr());
     }
     if (state.isProcessing) {
-      return CheckoutError(
-          message: 'checkout.errors.already_processing'.tr());
+      return CheckoutError(message: 'checkout.errors.already_processing'.tr());
     }
 
     state = state.copyWith(isProcessing: true, clearCheckoutError: true);
     final analytics = OrignaBaseAnalyticsService(_ob);
-    unawaited(analytics.logBeginCheckout(
-        valueCad: subtotal, itemCount: items.length));
+    unawaited(
+      analytics.logBeginCheckout(valueCad: subtotal, itemCount: items.length),
+    );
 
     try {
       // Biometric guard for high-value transactions
@@ -312,24 +347,25 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
             await localAuth.canCheckBiometrics;
         final canAuthenticate =
             canAuthenticateWithBiometrics ||
-                await localAuth.isDeviceSupported();
+            await localAuth.isDeviceSupported();
 
         if (canAuthenticate) {
           try {
             final didAuthenticate = await localAuth.authenticate(
-              localizedReason:
-                  'auth_biometric_required_higher_value'.tr(),
+              localizedReason: 'auth_biometric_required_higher_value'.tr(),
               biometricOnly: false,
             );
             if (!didAuthenticate) {
               state = state.copyWith(isProcessing: false);
               return CheckoutError(
-                  message: 'checkout.errors.biometric_failed'.tr());
+                message: 'checkout.errors.biometric_failed'.tr(),
+              );
             }
           } catch (e) {
             state = state.copyWith(isProcessing: false);
             return CheckoutError(
-                message: 'checkout.errors.biometric_error'.tr());
+              message: 'checkout.errors.biometric_error'.tr(),
+            );
           }
         }
       }
@@ -341,39 +377,36 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
           state.idempotencyKey ?? _generateIdempotencyKey(userId);
       state = state.copyWith(idempotencyKey: idempotencyKey);
 
-      final deliveryInstructions =
-          _ref.read(deliveryInstructionsProvider);
+      final deliveryInstructions = _ref.read(deliveryInstructionsProvider);
 
       final orderData = {
         Fields.items: items
-            .map((item) => {
-                  Fields.productId: item.productId,
-                  Fields.name: item.name,
-                  Fields.price: item.price,
-                  Fields.quantity: item.quantity,
-                  Fields.sellerId: item.sellerId,
-                  Fields.imageUrls: item.imageUrls,
-                  Fields.isDigital: item.isDigital,
-                  if (item.buyerNote != null &&
-                      item.buyerNote!.isNotEmpty)
-                    Fields.buyerNote: item.buyerNote,
-                  if (item.variantId != null)
-                    Fields.variantId: item.variantId,
-                  if (item.variantTitle != null)
-                    Fields.variantTitle: item.variantTitle,
-                  if (item.variantOptions != null)
-                    Fields.variantOptions: item.variantOptions,
-                })
+            .map(
+              (item) => {
+                Fields.productId: item.productId,
+                Fields.name: item.name,
+                Fields.price: item.price,
+                Fields.quantity: item.quantity,
+                Fields.sellerId: item.sellerId,
+                Fields.imageUrls: item.imageUrls,
+                Fields.isDigital: item.isDigital,
+                if (item.buyerNote != null && item.buyerNote!.isNotEmpty)
+                  Fields.buyerNote: item.buyerNote,
+                if (item.variantId != null) Fields.variantId: item.variantId,
+                if (item.variantTitle != null)
+                  Fields.variantTitle: item.variantTitle,
+                if (item.variantOptions != null)
+                  Fields.variantOptions: item.variantOptions,
+              },
+            )
             .toList(),
         ApiKeys.subtotalCents: (subtotal * 100).round(),
         Fields.shippingAddress: state.address?.toMap() ?? {},
         Fields.deliverySpeed: state.deliverySpeed.value,
         Fields.deliveryInstructions: deliveryInstructions,
-        if (state.couponCode != null)
-          Fields.couponCode: state.couponCode,
+        if (state.couponCode != null) Fields.couponCode: state.couponCode,
         ApiKeys.idempotencyKey: idempotencyKey,
-        if (items.any((i) => i.isDigital))
-          ApiKeys.eulaAccepted: eulaAccepted,
+        if (items.any((i) => i.isDigital)) ApiKeys.eulaAccepted: eulaAccepted,
         if (items.any((i) => i.isAgeRestricted))
           ApiKeys.ageVerificationAccepted: ageVerificationAccepted,
       };
@@ -381,43 +414,44 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
       // Verify cart prices — fail open
       try {
         final verifyData = await verifyCartPrices(items);
-        if (verifyData != null &&
-            verifyData[ApiKeys.hasChanges] == true) {
+        if (verifyData != null && verifyData[ApiKeys.hasChanges] == true) {
           state = state.copyWith(isProcessing: false);
-          final priceChanges =
-              verifyData[ApiKeys.priceChanges] as List? ?? [];
-          final stockChanges =
-              verifyData[ApiKeys.stockChanges] as List? ?? [];
+          final priceChanges = verifyData[ApiKeys.priceChanges] as List? ?? [];
+          final stockChanges = verifyData[ApiKeys.stockChanges] as List? ?? [];
           final removedProducts =
               verifyData[ApiKeys.removedProducts] as List? ?? [];
           final reasons = <String>[
             if (priceChanges.isNotEmpty)
-              'checkout.errors.price_changed'.tr(namedArgs: {
-                'count': priceChanges.length.toString()
-              }),
+              'checkout.errors.price_changed'.tr(
+                namedArgs: {'count': priceChanges.length.toString()},
+              ),
             if (stockChanges.isNotEmpty)
-              'checkout.errors.stock_changed'.tr(namedArgs: {
-                'count': stockChanges.length.toString()
-              }),
+              'checkout.errors.stock_changed'.tr(
+                namedArgs: {'count': stockChanges.length.toString()},
+              ),
             if (removedProducts.isNotEmpty)
-              'checkout.errors.items_removed'.tr(namedArgs: {
-                'count': removedProducts.length.toString()
-              }),
+              'checkout.errors.items_removed'.tr(
+                namedArgs: {'count': removedProducts.length.toString()},
+              ),
           ];
           return CheckoutError(
-              message: reasons.isEmpty
-                  ? 'checkout.errors.cart_changed'.tr()
-                  : reasons.join(' '),
-              code: 'price-drift');
+            message: reasons.isEmpty
+                ? 'checkout.errors.cart_changed'.tr()
+                : reasons.join(' '),
+            code: 'price-drift',
+          );
         }
       } catch (e, st) {
-        AppError.log(e,
-            stackTrace: st,
-            context: 'ob_checkout_verifyCartPrices');
+        AppError.log(
+          e,
+          stackTrace: st,
+          context: 'ob_checkout_verifyCartPrices',
+        );
       }
 
-      final result = await _stripeCircuitBreaker
-          .execute(() => _orderRepository.createCheckoutSession(orderData));
+      final result = await _stripeCircuitBreaker.execute(
+        () => _orderRepository.createCheckoutSession(orderData),
+      );
 
       if (!mounted) return CheckoutError(message: 'Operation cancelled');
 
@@ -426,18 +460,18 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
         final orderId = result[Fields.orderId] as String;
         if (checkoutUrl != null && checkoutUrl.isNotEmpty) {
           state = state.copyWith(
-              isProcessing: false, clearIdempotencyKey: true);
+            isProcessing: false,
+            clearIdempotencyKey: true,
+          );
           _ref.invalidate(cartItemsProvider);
           return CheckoutSuccess(
-              checkoutUrl: checkoutUrl,
-              orderId: orderId,
-              sessionId:
-                  result[ApiKeys.sessionId] as String? ?? '');
+            checkoutUrl: checkoutUrl,
+            orderId: orderId,
+            sessionId: result[ApiKeys.sessionId] as String? ?? '',
+          );
         }
-        state = state.copyWith(
-            isProcessing: false, clearIdempotencyKey: true);
-        return CheckoutAlreadyProcessed(
-            existingOrderId: orderId);
+        state = state.copyWith(isProcessing: false, clearIdempotencyKey: true);
+        return CheckoutAlreadyProcessed(existingOrderId: orderId);
       }
 
       final checkoutUrl = result[ApiKeys.checkoutUrl] as String;
@@ -446,58 +480,69 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
       final serverTaxAmountCents =
           (result[Fields.taxAmountCents] as num?)?.toInt() ?? 0;
 
-      await _orderRepository.updateLastSession(
-          userId, sessionId, orderId);
+      await _orderRepository.updateLastSession(userId, sessionId, orderId);
 
       if (!mounted) return CheckoutError(message: 'Operation cancelled');
 
       state = state.copyWith(
-          isProcessing: false,
-          clearIdempotencyKey: true,
-          serverTaxAmountCents: serverTaxAmountCents);
+        isProcessing: false,
+        clearIdempotencyKey: true,
+        serverTaxAmountCents: serverTaxAmountCents,
+      );
       _ref.invalidate(cartItemsProvider);
 
       return CheckoutSuccess(
-          checkoutUrl: checkoutUrl,
-          orderId: orderId,
-          sessionId: sessionId);
+        checkoutUrl: checkoutUrl,
+        orderId: orderId,
+        sessionId: sessionId,
+      );
     } on CircuitBreakerOpenException {
       if (!mounted) return CheckoutError(message: 'Operation cancelled');
       state = state.copyWith(
-          isProcessing: false,
-          checkoutError:
-              'Payment service is temporarily unavailable. Please try again in a moment.');
+        isProcessing: false,
+        checkoutError:
+            'Payment service is temporarily unavailable. Please try again in a moment.',
+      );
       return CheckoutError(
-          message:
-              'Payment service is temporarily unavailable. Please try again in a moment.',
-          code: 'service-unavailable');
+        message:
+            'Payment service is temporarily unavailable. Please try again in a moment.',
+        code: 'service-unavailable',
+      );
     } on OrignaBaseException catch (e) {
       if (!mounted) return CheckoutError(message: 'Operation cancelled');
-      state = state.copyWith(
-          isProcessing: false, checkoutError: e.message);
+      state = state.copyWith(isProcessing: false, checkoutError: e.message);
       return CheckoutError(message: e.message);
     } catch (e, st) {
       if (!mounted) return CheckoutError(message: 'Operation cancelled');
-      AppError.log(e,
-          stackTrace: st, context: 'ob_checkout_startCheckout');
+      AppError.log(e, stackTrace: st, context: 'ob_checkout_startCheckout');
       state = state.copyWith(
-          isProcessing: false,
-          checkoutError: AppError.getMessage(e));
+        isProcessing: false,
+        checkoutError: AppError.getMessage(e),
+      );
       return CheckoutError(message: AppError.getMessage(e));
     }
   }
 
   void updateAddress(Address address) {
-    state = state.copyWith(
-        address: address, clearIdempotencyKey: true);
+    state = state.copyWith(address: address, clearIdempotencyKey: true);
+  }
+
+  void _recalculateTotalsAfterCouponChange(int subtotalCents) {
+    _ref.read(cartWithDetailsProvider).whenData(calculateShipping);
+    calculateTaxes(subtotalCents / 100.0, shippingCost: state.shippingCost);
   }
 
   double _calculateDistanceKm(
-      double lat1, double lon1, double lat2, double lon2) {
+    double lat1,
+    double lon1,
+    double lat2,
+    double lon2,
+  ) {
     const earthRadiusKm = 6371.0;
     final dLat = _toRadians(lat2 - lat1);
     final dLon = _toRadians(lon2 - lon1);
-    final a = sin(dLat / 2) * sin(dLat / 2) +
+    final a =
+        sin(dLat / 2) * sin(dLat / 2) +
         cos(_toRadians(lat1)) *
             cos(_toRadians(lat2)) *
             sin(dLon / 2) *
@@ -507,7 +552,9 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
   }
 
   Future<bool> _checkLocalDelivery(
-      List<CartItemDetailModel> items, Address buyerAddress) async {
+    List<CartItemDetailModel> items,
+    Address buyerAddress,
+  ) async {
     if (buyerAddress.latitude == null || buyerAddress.longitude == null) {
       return false;
     }
@@ -517,10 +564,11 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
         return false;
       }
       final distance = _calculateDistanceKm(
-          buyerAddress.latitude!,
-          buyerAddress.longitude!,
-          sellerAddr.latitude!,
-          sellerAddr.longitude!);
+        buyerAddress.latitude!,
+        buyerAddress.longitude!,
+        sellerAddr.latitude!,
+        sellerAddr.longitude!,
+      );
       if (distance > _localDeliveryRadiusKm) return false;
     }
     return true;

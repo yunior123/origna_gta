@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../utils/design_tokens.dart';
+import 'package:origna_gta/utils/design_tokens.dart';
 
 /// Documentation for BottomNavItem
 class BottomNavItem {

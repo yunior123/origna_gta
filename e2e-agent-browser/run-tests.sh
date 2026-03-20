@@ -55,20 +55,21 @@ run_phase() {
   local name="$1"; shift
   echo "▶ $name"
   local start=$(date +%s)
-  bun test "$@" --timeout "$TIMEOUT" || true
+  bun test "$@" --timeout "$TIMEOUT"
   local end=$(date +%s)
   echo "✓ $name done in $((end - start))s"
 }
 
 case "$PHASE" in
   api)   run_phase "Phase 1: API" specs/phase1-api/ --max-concurrency "$API_CONCURRENCY" ;;
-  smoke) run_phase "Phase 2: Smoke" specs/phase2-smoke/ ;;
-  auth)  run_phase "Phase 3: Auth" specs/phase3-auth-nav/ ;;
-  prod)  run_phase "Phase 4: Products" specs/phase4-product-flows/ ;;
-  flow)  run_phase "Phase 5: Flows" specs/phase5-complex-flows/ ;;
-  pay)   run_phase "Phase 6: Stripe" specs/phase6-stripe/ ;;
+  smoke) run_phase "Phase 2: Smoke" specs/phase2-smoke/ --max-concurrency 1 ;;
+  auth)  run_phase "Phase 3: Auth" specs/phase3-auth-nav/ --max-concurrency 1 ;;
+  prod)  run_phase "Phase 4: Products" specs/phase4-product-flows/ --max-concurrency 1 ;;
+  flow)  run_phase "Phase 5: Flows" specs/phase5-complex-flows/ --max-concurrency 1 ;;
+  pay)   run_phase "Phase 6: Stripe" specs/phase6-stripe/ --max-concurrency 1 ;;
   all)
     TOTAL_START=$(date +%s)
+    SUITE_STATUS=0
 
     echo "╔══════════════════════════════════════════╗"
     echo "║  E2E Suite v3 — Parallel Execution       ║"
@@ -107,7 +108,7 @@ case "$PHASE" in
     bun test $BROWSER_FILES \
       --timeout "$TIMEOUT" \
       --max-concurrency "$BROWSER_CONCURRENCY" \
-      || true
+      || SUITE_STATUS=1
     BROWSER_END=$(date +%s)
     BROWSER_ELAPSED=$((BROWSER_END - BROWSER_START))
     echo "✓ Browser tests done in ${BROWSER_ELAPSED}s"
@@ -116,7 +117,7 @@ case "$PHASE" in
     # ── Wait for background API tests ──
     echo "══════════════════════════════════════"
     echo "▶ Waiting for API tests..."
-    wait $API_PID || true
+    wait $API_PID || SUITE_STATUS=1
     API_ELAPSED=$(( $(date +%s) - API_START ))
     echo "✓ API tests done in ${API_ELAPSED}s"
     echo "── API test output ──"
@@ -151,6 +152,7 @@ REPORT
       echo "  4. Chrome OOM — ps aux | grep -c 'chrome.*defunct'"
       echo "  5. Bump concurrency: E2E_BROWSER_CONCURRENCY=6 ./run-tests.sh all"
     fi
+    exit $SUITE_STATUS
     ;;
   *) echo "Usage: ./run-tests.sh [all|api|smoke|auth|prod|flow|pay]"; exit 1 ;;
 esac

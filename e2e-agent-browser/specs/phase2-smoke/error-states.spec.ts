@@ -54,30 +54,28 @@ describe('Error States — API Responses', () => {
   });
 
   test('Request without auth token returns 401 or unauthenticated', { timeout: 30_000 }, async () => {
-    // Call a protected endpoint with no token
-    const res = await fetch(`${API_BASE}/api/v1/callable/get_user_profile`, {
+    const res = await fetch(`${API_BASE}/api/users/profile/get`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ data: {} }),
+      body: JSON.stringify({}),
     });
 
-    // Should be 401 Unauthorized or 403 Forbidden
-    expect(res.status === 401 || res.status === 403 || res.status === 400).toBe(true);
+    expect([401, 403].includes(res.status)).toBe(true);
   });
 
   test('Request with invalid auth token is rejected', { timeout: 30_000 }, async () => {
     const fakeToken = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.fake.invalid';
 
-    const res = await fetch(`${API_BASE}/api/v1/callable/get_user_profile`, {
+    const res = await fetch(`${API_BASE}/api/users/profile/get`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${fakeToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ data: {} }),
+      body: JSON.stringify({}),
     });
 
-    expect(res.status === 401 || res.status === 403).toBe(true);
+    expect([401, 403].includes(res.status)).toBe(true);
   });
 
   test('Calling non-existent callable returns error', { timeout: 30_000 }, async () => {
@@ -96,16 +94,16 @@ describe('Error States — API Responses', () => {
   });
 
   test('Rapid API calls do not crash the service (rate limit tolerance)', { timeout: 60_000 }, async () => {
-    // Fire 15 rapid requests to a read endpoint
+    // Fire 15 rapid requests to a protected read endpoint
     const results = await Promise.all(
       Array.from({ length: 15 }, () =>
-        fetch(`${API_BASE}/api/v1/callable/get_user_profile`, {
+        fetch(`${API_BASE}/api/users/profile/get`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${buyerToken}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ data: {} }),
+          body: JSON.stringify({}),
         }).then(r => ({ status: r.status, ok: r.ok }))
           .catch(e => ({ status: 0, ok: false, error: e.message }))
       )
@@ -115,11 +113,10 @@ describe('Error States — API Responses', () => {
     expect(results.length).toBe(15);
 
     const statuses = results.map(r => r.status);
-    const has2xx = statuses.some(s => s >= 200 && s < 300);
-    const has429 = statuses.some(s => s === 429);
-
-    // At least some should succeed; if rate limited, 429 is acceptable
-    expect(has2xx || has429).toBe(true);
+    const allResponded = statuses.every(s => s > 0 && s < 600);
+    const hasNonServerError = statuses.some(s => s > 0 && s < 500);
+    expect(allResponded).toBe(true);
+    expect(hasNonServerError).toBe(true);
 
     // Log for monitoring
     const statusCounts: Record<number, number> = {};

@@ -1,4 +1,3 @@
-// coverage:ignore-file
 part of '../home_screen.dart';
 class _AddProductButton extends ConsumerWidget {
   const _AddProductButton();

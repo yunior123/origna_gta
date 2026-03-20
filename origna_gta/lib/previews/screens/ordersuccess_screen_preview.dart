@@ -1,9 +1,8 @@
-// coverage:ignore-file
 import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
 import 'package:origna_gta/screens/ordersuccess_screen.dart';
 
-import '../_preview_theme.dart';
+import 'package:origna_gta/previews/_preview_theme.dart';
 
 Widget _orderSuccessContent() => previewScope(
   child: Scaffold(body: Center(child: OrderSuccessScreen(orderId: 'preview-id'))),

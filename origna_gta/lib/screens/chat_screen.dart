@@ -1,4 +1,3 @@
-// coverage:ignore-file
 import 'dart:async';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
@@ -12,9 +11,8 @@ import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:origna_gta/widgets/premium_paywall_widget.dart';
 
-import '../core/schema/schema_constants.dart';
-import '../features/chat/chat_provider.dart';
-import '../features/chat/chat_repository.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
+import 'package:origna_gta/features/chat/chat_provider.dart';
 
 /// Documentation for ChatScreenArgs
 class ChatScreenArgs {
@@ -29,7 +27,11 @@ class ChatScreen extends ConsumerStatefulWidget {
   final String productId;
   final String productTitle;
 
-  const ChatScreen({super.key, required this.productId, required this.productTitle});
+  const ChatScreen({
+    super.key,
+    required this.productId,
+    required this.productTitle,
+  });
 
   @override
   ConsumerState<ChatScreen> createState() => _ChatScreenState();
@@ -81,82 +83,104 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       body: Align(
         alignment: Alignment.topCenter,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: ResponsiveBreakpoints.contentMaxWidth),
+          constraints: const BoxConstraints(
+            maxWidth: ResponsiveBreakpoints.contentMaxWidth,
+          ),
           child: Column(
-        children: [
-          if (vmState.isOwnProduct)
-            Expanded(
-              child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.storefront, size: 48, color: DesignTokens.textSecondary),
-                      const SizedBox(height: 16),
-                      Text(
-                        'chat.own_product_title'.tr(),
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(color: isDark ? DesignTokens.white : DesignTokens.textPrimary),
-                        textAlign: TextAlign.center,
+            children: [
+              if (vmState.isOwnProduct)
+                Expanded(
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.storefront,
+                            size: 48,
+                            color: DesignTokens.textSecondary,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'chat.own_product_title'.tr(),
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(
+                                  color: isDark
+                                      ? DesignTokens.white
+                                      : DesignTokens.textPrimary,
+                                ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'chat.own_product_body'.tr(),
+                            style: TextStyle(color: DesignTokens.textSecondary),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'chat.own_product_body'.tr(),
-                        style: TextStyle(color: DesignTokens.textSecondary),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
+                    ),
+                  ),
+                )
+              else if (vmState.isPremiumRequired)
+                Expanded(
+                  child: Center(
+                    child: PremiumPaywallWidget(
+                      featureName: 'subscription.chat_with_sellers'.tr(),
+                    ),
+                  ),
+                )
+              else if (vmState.errorMessage != null)
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Text(
+                    vmState.errorMessage!,
+                    style: TextStyle(color: DesignTokens.error),
+                  ),
+                )
+              else if (vmState.isLoading && vmState.chatId == null)
+                const Expanded(child: Center(child: ModernLoadingIndicator()))
+              else if (vmState.chatId != null) ...[
+                Expanded(
+                  child: _MessagesList(
+                    chatId: vmState.chatId!,
+                    productId: widget.productId,
+                    myUid: myUid,
+                    isDark: isDark,
+                    scrollController: _scrollController,
+                    onNewMessages: _scrollToBottom,
+                    onFocusInput: () => _inputFocusNode.requestFocus(),
                   ),
                 ),
-              ),
-            )
-          else if (vmState.isPremiumRequired)
-            Expanded(
-              child: Center(
-                child: PremiumPaywallWidget(featureName: 'subscription.chat_with_sellers'.tr()),
-              ),
-            )
-          else if (vmState.errorMessage != null)
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Text(vmState.errorMessage!, style: TextStyle(color: DesignTokens.error)),
-            )
-          else if (vmState.isLoading && vmState.chatId == null)
-            const Expanded(child: Center(child: ModernLoadingIndicator()))
-          else if (vmState.chatId != null) ...[
-            Expanded(
-              child: _MessagesList(
-                chatId: vmState.chatId!,
-                productId: widget.productId,
-                myUid: myUid,
-                isDark: isDark,
-                scrollController: _scrollController,
-                onNewMessages: _scrollToBottom,
-                onFocusInput: () => _inputFocusNode.requestFocus(),
-              ),
-            ),
-            _MessageInput(
-              controller: _textController,
-              focusNode: _inputFocusNode,
-              isDark: isDark,
-              isSending: vmState.isLoading && vmState.chatId != null,
-              onSend: () async {
-                final text = _textController.text.trim();
-                if (text.isEmpty) return;
-                _textController.clear();
-                try {
-                  await ref.read(chatViewModelProvider(widget.productId).notifier).sendMessage(text);
-                  WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
-                } catch (_) {
-                  // Only restore text if input is empty — don't overwrite what the user typed next
-                  if (_textController.text.trim().isEmpty) {
-                    _textController.text = text;
-                  }
-                }
-              },
-            ),
-          ],
-        ],
+                _MessageInput(
+                  controller: _textController,
+                  focusNode: _inputFocusNode,
+                  isDark: isDark,
+                  isSending: vmState.isLoading && vmState.chatId != null,
+                  onSend: () async {
+                    final text = _textController.text.trim();
+                    if (text.isEmpty) return;
+                    _textController.clear();
+                    try {
+                      await ref
+                          .read(
+                            chatViewModelProvider(widget.productId).notifier,
+                          )
+                          .sendMessage(text);
+                      WidgetsBinding.instance.addPostFrameCallback(
+                        (_) => _scrollToBottom(),
+                      );
+                    } catch (_) {
+                      // Only restore text if input is empty — don't overwrite what the user typed next
+                      if (_textController.text.trim().isEmpty) {
+                        _textController.text = text;
+                      }
+                    }
+                  },
+                ),
+              ],
+            ],
           ),
         ),
       ),
@@ -188,7 +212,8 @@ class _MessagesList extends ConsumerStatefulWidget {
 }
 
 class _MessagesListState extends ConsumerState<_MessagesList> {
-  ProviderSubscription<AsyncValue<List<ChatMessage>>>? _chatMessagesSubscription;
+  ProviderSubscription<AsyncValue<List<ChatMessage>>>?
+  _chatMessagesSubscription;
 
   @override
   Widget build(BuildContext context) {
@@ -220,14 +245,16 @@ class _MessagesListState extends ConsumerState<_MessagesList> {
         return _ChatDeleteScope(
           onDelete: (messageId) async {
             try {
-              await ref.read(chatRepositoryProvider).deleteMessage(
-                widget.chatId,
-                messageId,
-              );
+              await ref
+                  .read(chatRepositoryProvider)
+                  .deleteMessage(widget.chatId, messageId);
             } catch (e) {
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('chat.delete_failed'.tr()), backgroundColor: DesignTokens.error),
+                  SnackBar(
+                    content: Text('chat.delete_failed'.tr()),
+                    backgroundColor: DesignTokens.error,
+                  ),
                 );
               }
             }
@@ -274,7 +301,7 @@ class _MessagesListState extends ConsumerState<_MessagesList> {
     _chatMessagesSubscription = ref.listenManual(
       chatMessagesProvider(widget.chatId),
       (prev, next) {
-        if (next == null || !next.hasValue) return;
+        if (!next.hasValue) return;
         final prevCount = prev?.value?.length ?? 0;
         final nextCount = next.value?.length ?? 0;
         if (nextCount > prevCount) {
@@ -363,7 +390,11 @@ class _MessageBubble extends StatelessWidget {
   final bool isMe;
   final bool isDark;
 
-  const _MessageBubble({required this.message, required this.isMe, required this.isDark});
+  const _MessageBubble({
+    required this.message,
+    required this.isMe,
+    required this.isDark,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -377,7 +408,9 @@ class _MessageBubble extends StatelessWidget {
           child: Text(
             'chat.message_deleted'.tr(),
             style: TextStyle(
-              color: isDark ? DesignTokens.textDisabled : DesignTokens.textTertiary,
+              color: isDark
+                  ? DesignTokens.textDisabled
+                  : DesignTokens.textTertiary,
               fontSize: 13,
               fontStyle: FontStyle.italic,
             ),
@@ -410,13 +443,22 @@ class _MessageBubble extends StatelessWidget {
                           Navigator.pop(context);
                           Clipboard.setData(ClipboardData(text: message.text));
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('chat.message_copied'.tr()), duration: const Duration(seconds: 1)),
+                            SnackBar(
+                              content: Text('chat.message_copied'.tr()),
+                              duration: const Duration(seconds: 1),
+                            ),
                           );
                         },
                       ),
                       ListTile(
-                        leading: Icon(Icons.delete_outline, color: DesignTokens.error),
-                        title: Text('chat.delete_message'.tr(), style: TextStyle(color: DesignTokens.error)),
+                        leading: Icon(
+                          Icons.delete_outline,
+                          color: DesignTokens.error,
+                        ),
+                        title: Text(
+                          'chat.delete_message'.tr(),
+                          style: TextStyle(color: DesignTokens.error),
+                        ),
                         onTap: () {
                           Navigator.pop(context);
                           // Delegate deletion to parent via callback stored in context
@@ -430,18 +472,25 @@ class _MessageBubble extends StatelessWidget {
             } else {
               Clipboard.setData(ClipboardData(text: message.text));
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('chat.message_copied'.tr()), duration: const Duration(seconds: 1)),
+                SnackBar(
+                  content: Text('chat.message_copied'.tr()),
+                  duration: const Duration(seconds: 1),
+                ),
               );
             }
           },
           child: Container(
             margin: const EdgeInsets.only(bottom: 8),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.72),
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.sizeOf(context).width * 0.72,
+            ),
             decoration: BoxDecoration(
               color: isMe
                   ? DesignTokens.primary
-                  : (isDark ? DesignTokens.darkSurface : DesignTokens.surfaceVariant),
+                  : (isDark
+                        ? DesignTokens.darkSurface
+                        : DesignTokens.surfaceVariant),
               borderRadius: BorderRadius.only(
                 topLeft: const Radius.circular(16),
                 topRight: const Radius.circular(16),
@@ -456,7 +505,11 @@ class _MessageBubble extends StatelessWidget {
                 Text(
                   message.text,
                   style: TextStyle(
-                    color: isMe ? DesignTokens.white : (isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary),
+                    color: isMe
+                        ? DesignTokens.white
+                        : (isDark
+                              ? DesignTokens.textOnDark
+                              : DesignTokens.textPrimary),
                     fontSize: 15,
                   ),
                 ),
@@ -465,7 +518,9 @@ class _MessageBubble extends StatelessWidget {
                   DateFormat.jm().format(message.createdAt),
                   style: TextStyle(
                     fontSize: 11,
-                    color: isMe ? DesignTokens.white.withValues(alpha: 0.65) : DesignTokens.textSecondary,
+                    color: isMe
+                        ? DesignTokens.white.withValues(alpha: 0.65)
+                        : DesignTokens.textSecondary,
                   ),
                 ),
               ],
@@ -498,7 +553,13 @@ class _MessageInput extends StatelessWidget {
   final bool isSending;
   final VoidCallback onSend;
 
-  const _MessageInput({required this.controller, required this.isDark, required this.onSend, this.focusNode, this.isSending = false});
+  const _MessageInput({
+    required this.controller,
+    required this.isDark,
+    required this.onSend,
+    this.focusNode,
+    this.isSending = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -511,7 +572,11 @@ class _MessageInput extends StatelessWidget {
       ),
       decoration: BoxDecoration(
         color: isDark ? DesignTokens.darkSurface : DesignTokens.white,
-        border: Border(top: BorderSide(color: isDark ? DesignTokens.darkOutline : DesignTokens.outline)),
+        border: Border(
+          top: BorderSide(
+            color: isDark ? DesignTokens.darkOutline : DesignTokens.outline,
+          ),
+        ),
       ),
       child: Row(
         children: [
@@ -524,7 +589,13 @@ class _MessageInput extends StatelessWidget {
               maxLength: BusinessRules.maxMessageLength,
               maxLengthEnforcement: MaxLengthEnforcement.enforced,
               // Hide the default counter label — VM error message handles user feedback.
-              buildCounter: (context, {required currentLength, required isFocused, maxLength}) => null,
+              buildCounter:
+                  (
+                    context, {
+                    required currentLength,
+                    required isFocused,
+                    maxLength,
+                  }) => null,
               textCapitalization: TextCapitalization.sentences,
               decoration: InputDecoration(
                 hintText: 'chat.type_a_message'.tr(),
@@ -534,8 +605,13 @@ class _MessageInput extends StatelessWidget {
                   borderSide: BorderSide.none,
                 ),
                 filled: true,
-                fillColor: isDark ? DesignTokens.darkSurfaceVariant : DesignTokens.surfaceVariant,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                fillColor: isDark
+                    ? DesignTokens.darkSurfaceVariant
+                    : DesignTokens.surfaceVariant,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
               ),
               onSubmitted: isSending ? null : (_) => onSend(),
             ),
@@ -548,7 +624,7 @@ class _MessageInput extends StatelessWidget {
               key: const Key('chat_send_button'),
               icon: const Icon(Icons.send_rounded),
               onPressed: isSending ? null : onSend,
-              tooltip: 'Send',
+              tooltip: 'send'.tr(),
               style: IconButton.styleFrom(
                 backgroundColor: DesignTokens.primary,
                 foregroundColor: DesignTokens.white,

@@ -1,11 +1,10 @@
-// coverage:ignore-file
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'bulk_upload_state.freezed.dart';
 
 /// Represents a validation error for a single product in the bulk upload.
 @freezed
-class BulkProductError with _$BulkProductError {
+abstract class BulkProductError with _$BulkProductError {
   const factory BulkProductError({
     required int index,
     required String message,
@@ -14,7 +13,7 @@ class BulkProductError with _$BulkProductError {
 
 /// Represents a successfully created product.
 @freezed
-class CreatedProduct with _$CreatedProduct {
+abstract class CreatedProduct with _$CreatedProduct {
   const factory CreatedProduct({
     required int index,
     required String productId,
@@ -24,12 +23,12 @@ class CreatedProduct with _$CreatedProduct {
 
 /// State for the bulk upload feature.
 @freezed
-class BulkUploadState with _$BulkUploadState {
+abstract class BulkUploadState with _$BulkUploadState {
   const factory BulkUploadState({
     /// CSV content (raw text)
     @Default('') String csvContent,
 
-    /// Parsed products (List<Map<String, dynamic>>)
+    /// Parsed products (`List<Map<String, dynamic>>`)
     @Default([]) List<Map<String, dynamic>> parsedProducts,
 
     /// Validation errors from CSV parsing

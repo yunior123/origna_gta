@@ -1,10 +1,11 @@
-// coverage:ignore-file
 part of '../profile_screen.dart';
+
 class _DeleteAccountDialog extends ConsumerStatefulWidget {
   const _DeleteAccountDialog();
 
   @override
-  ConsumerState<_DeleteAccountDialog> createState() => _DeleteAccountDialogState();
+  ConsumerState<_DeleteAccountDialog> createState() =>
+      _DeleteAccountDialogState();
 }
 
 class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
@@ -18,7 +19,9 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
     final viewModel = ref.read(profileViewModelProvider.notifier);
 
     return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius20)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(DesignTokens.radius20),
+      ),
       backgroundColor: isDark ? DesignTokens.darkSurface : Colors.white,
       title: Row(
         children: [
@@ -26,7 +29,13 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
           const SizedBox(width: 12),
           Text(
             'profile.delete_account'.tr(),
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary),
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: isDark
+                  ? DesignTokens.textOnDark
+                  : DesignTokens.textPrimary,
+            ),
           ),
         ],
       ),
@@ -37,10 +46,17 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
           children: [
             Text(
               'profile.delete_warning_short'.tr(),
-              style: TextStyle(color: DesignTokens.error, fontWeight: FontWeight.w600, fontSize: 14),
+              style: TextStyle(
+                color: DesignTokens.error,
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
             ),
             const SizedBox(height: 16),
-            Text('profile.type_delete'.tr(), style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13)),
+            Text(
+              'profile.type_delete'.tr(),
+              style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13),
+            ),
             const SizedBox(height: 12),
             ModernTextField(
               controller: confirmController,
@@ -54,16 +70,23 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          style: TextButton.styleFrom(foregroundColor: DesignTokens.textSecondary),
+          style: TextButton.styleFrom(
+            foregroundColor: DesignTokens.textSecondary,
+          ),
           child: Text('common.cancel'.tr()),
         ),
         ModernButton(
-          onPressed: confirmController.text == 'profile.type_delete_keyword'.tr() && !profileState.isLoading
+          onPressed:
+              confirmController.text == 'profile.type_delete_keyword'.tr() &&
+                  !profileState.isLoading
               ? () => viewModel.deleteAccount(confirmController.text.trim())
               : null,
           label: 'profile.delete_account'.tr(),
           isLoading: profileState.isLoading,
-          backgroundColor: confirmController.text == 'profile.type_delete_keyword'.tr() ? DesignTokens.error : DesignTokens.textDisabled,
+          backgroundColor:
+              confirmController.text == 'profile.type_delete_keyword'.tr()
+              ? DesignTokens.error
+              : DesignTokens.textDisabled,
         ),
       ],
     );
@@ -80,28 +103,28 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
   void initState() {
     super.initState();
     confirmController = TextEditingController();
-    _deleteAccountSubscription = ref.listenManual(
-      profileViewModelProvider,
-      (_, next) {
-        if (!mounted) return;
-        if (next.isDeleted) {
-          Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('auth.account_deleted'.tr()),
-              backgroundColor: DesignTokens.success,
-            ),
-          );
-        } else if (next.errorMessage != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(next.errorMessage!),
-              backgroundColor: DesignTokens.error,
-            ),
-          );
-        }
-      },
-    );
+    _deleteAccountSubscription = ref.listenManual(profileViewModelProvider, (
+      _,
+      next,
+    ) {
+      if (!mounted) return;
+      if (next.isDeleted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('auth.account_deleted'.tr()),
+            backgroundColor: DesignTokens.success,
+          ),
+        );
+      } else if (next.errorMessage != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(next.errorMessage!),
+            backgroundColor: DesignTokens.error,
+          ),
+        );
+      }
+    });
   }
 }
 
@@ -111,10 +134,12 @@ class _EmailVerificationRequiredView extends ConsumerStatefulWidget {
   const _EmailVerificationRequiredView({required this.user});
 
   @override
-  ConsumerState<_EmailVerificationRequiredView> createState() => _EmailVerificationRequiredViewState();
+  ConsumerState<_EmailVerificationRequiredView> createState() =>
+      _EmailVerificationRequiredViewState();
 }
 
-class _EmailVerificationRequiredViewState extends ConsumerState<_EmailVerificationRequiredView> {
+class _EmailVerificationRequiredViewState
+    extends ConsumerState<_EmailVerificationRequiredView> {
   bool _isChecking = false;
   bool _isResending = false;
 
@@ -135,10 +160,19 @@ class _EmailVerificationRequiredViewState extends ConsumerState<_EmailVerificati
                 child: Container(
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: [DesignTokens.warning.withValues(alpha: 0.15), DesignTokens.warning.withValues(alpha: 0.08)]),
+                    gradient: LinearGradient(
+                      colors: [
+                        DesignTokens.warning.withValues(alpha: 0.15),
+                        DesignTokens.warning.withValues(alpha: 0.08),
+                      ],
+                    ),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(Icons.mark_email_unread_outlined, size: 56, color: DesignTokens.warning),
+                  child: Icon(
+                    Icons.mark_email_unread_outlined,
+                    size: 56,
+                    color: DesignTokens.warning,
+                  ),
                 ),
               ),
               const SizedBox(height: 24),
@@ -146,18 +180,34 @@ class _EmailVerificationRequiredViewState extends ConsumerState<_EmailVerificati
                 delay: const Duration(milliseconds: 50),
                 child: Text(
                   'profile.verify_email_title'.tr(),
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary),
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: isDark
+                        ? DesignTokens.textOnDark
+                        : DesignTokens.textPrimary,
+                  ),
                 ),
               ),
               const SizedBox(height: 8),
               FadeSlideIn(
                 delay: const Duration(milliseconds: 75),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                  decoration: BoxDecoration(color: DesignTokens.primary.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(20)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: DesignTokens.primary.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
                   child: Text(
                     widget.user.email ?? '',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: DesignTokens.primary),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: DesignTokens.primary,
+                    ),
                   ),
                 ),
               ),
@@ -167,14 +217,27 @@ class _EmailVerificationRequiredViewState extends ConsumerState<_EmailVerificati
                 child: Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: isDark ? DesignTokens.darkSurfaceVariant.withValues(alpha: 0.5) : DesignTokens.surface,
+                    color: isDark
+                        ? DesignTokens.darkSurfaceVariant.withValues(alpha: 0.5)
+                        : DesignTokens.surface,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: isDark ? DesignTokens.darkOutline : DesignTokens.outlineVariant),
+                    border: Border.all(
+                      color: isDark
+                          ? DesignTokens.darkOutline
+                          : DesignTokens.outlineVariant,
+                    ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('profile.verify_email_desc'.tr(), style: TextStyle(fontSize: 14, color: DesignTokens.textSecondary, height: 1.5)),
+                      Text(
+                        'profile.verify_email_desc'.tr(),
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: DesignTokens.textSecondary,
+                          height: 1.5,
+                        ),
+                      ),
                       const SizedBox(height: 16),
                       _buildStep('1', 'profile.verify_step_1'.tr()),
                       _buildStep('2', 'profile.verify_step_2'.tr()),
@@ -187,7 +250,9 @@ class _EmailVerificationRequiredViewState extends ConsumerState<_EmailVerificati
               FadeSlideIn(
                 delay: const Duration(milliseconds: 150),
                 child: ModernButton(
-                  label: _isChecking ? 'profile.checking_button'.tr() : 'profile.verified_button'.tr(),
+                  label: _isChecking
+                      ? 'profile.checking_button'.tr()
+                      : 'profile.verified_button'.tr(),
                   icon: Icons.check_circle_outline,
                   isLoading: _isChecking,
                   onPressed: _isChecking ? () {} : _checkVerification,
@@ -197,7 +262,9 @@ class _EmailVerificationRequiredViewState extends ConsumerState<_EmailVerificati
               FadeSlideIn(
                 delay: const Duration(milliseconds: 175),
                 child: ModernButton(
-                  label: _isResending ? 'profile.sending_button'.tr() : 'profile.resend_verification_button'.tr(),
+                  label: _isResending
+                      ? 'profile.sending_button'.tr()
+                      : 'profile.resend_verification_button'.tr(),
                   icon: Icons.send_outlined,
                   isPrimary: false,
                   isLoading: _isResending,
@@ -212,9 +279,12 @@ class _EmailVerificationRequiredViewState extends ConsumerState<_EmailVerificati
                   icon: Icons.logout,
                   isPrimary: false,
                   onPressed: () async {
-                    await ref.read(authRepositoryProvider).signOut();
+                    await ref.read(authActionsProvider).signOut();
                     if (context.mounted) {
-                      Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
+                      Navigator.of(context).pushNamedAndRemoveUntil(
+                        AppRoutes.home,
+                        (route) => false,
+                      );
                     }
                   },
                 ),
@@ -237,17 +307,33 @@ class _EmailVerificationRequiredViewState extends ConsumerState<_EmailVerificati
           Container(
             width: 24,
             height: 24,
-            decoration: BoxDecoration(gradient: DesignTokens.primaryGradient, shape: BoxShape.circle),
+            decoration: BoxDecoration(
+              gradient: DesignTokens.primaryGradient,
+              shape: BoxShape.circle,
+            ),
             child: Center(
               child: Text(
                 number,
-                style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(text, style: TextStyle(fontSize: 14, color: isDark ? DesignTokens.outlineVariant : DesignTokens.textPrimary, height: 1.4)),
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 14,
+                color: isDark
+                    ? DesignTokens.outlineVariant
+                    : DesignTokens.textPrimary,
+                height: 1.4,
+              ),
+            ),
           ),
         ],
       ),
@@ -258,10 +344,10 @@ class _EmailVerificationRequiredViewState extends ConsumerState<_EmailVerificati
     if (!mounted) return;
     setState(() => _isChecking = true);
     try {
-      final verified = await ref.read(authRepositoryProvider).isEmailVerified();
+      final verified = await ref.read(authActionsProvider).isEmailVerified();
       if (!mounted) return;
       if (verified) {
-        await ref.read(authRepositoryProvider).ensureUserDocumentExists();
+        await ref.read(authActionsProvider).ensureUserDocumentExists();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -274,15 +360,23 @@ class _EmailVerificationRequiredViewState extends ConsumerState<_EmailVerificati
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('profile.not_verified_error'.tr()), backgroundColor: DesignTokens.warning, behavior: SnackBarBehavior.floating),
+            SnackBar(
+              content: Text('profile.not_verified_error'.tr()),
+              backgroundColor: DesignTokens.warning,
+              behavior: SnackBarBehavior.floating,
+            ),
           );
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('errors.verification_error'.tr()), backgroundColor: DesignTokens.error, behavior: SnackBarBehavior.floating));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('errors.verification_error'.tr()),
+            backgroundColor: DesignTokens.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _isChecking = false);
@@ -293,17 +387,23 @@ class _EmailVerificationRequiredViewState extends ConsumerState<_EmailVerificati
     if (!mounted) return;
     setState(() => _isResending = true);
     try {
-      await ref.read(authRepositoryProvider).sendEmailVerification();
+      await ref.read(authActionsProvider).sendEmailVerification();
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('profile.verification_sent'.tr()), backgroundColor: DesignTokens.primary, behavior: SnackBarBehavior.floating));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('profile.verification_sent'.tr()),
+          backgroundColor: DesignTokens.primary,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              e.toString().contains('too-many-requests') ? 'Please wait before requesting another email.' : 'Failed to send email. Please try again later.',
+              e.toString().contains('too-many-requests')
+                  ? 'Please wait before requesting another email.'
+                  : 'Failed to send email. Please try again later.',
             ),
             backgroundColor: DesignTokens.error,
             behavior: SnackBarBehavior.floating,
@@ -324,7 +424,10 @@ class _ProfileCompletionBar extends StatelessWidget {
   /// Authoritative premium flag from subscriptionStreamProvider — never
   /// use userModel.isPremium here as it can lag behind subscription updates.
   final bool isPremium;
-  const _ProfileCompletionBar({required this.userModel, required this.isPremium});
+  const _ProfileCompletionBar({
+    required this.userModel,
+    required this.isPremium,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -352,12 +455,21 @@ class _ProfileCompletionBar extends StatelessWidget {
                 'profile.completion'.tr(),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 0.4),
+                style: TextStyle(
+                  color: DesignTokens.white.withValues(alpha: 0.7),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.4,
+                ),
               ),
             ),
             Text(
               '$pctInt%',
-              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ],
         ),
@@ -368,7 +480,9 @@ class _ProfileCompletionBar extends StatelessWidget {
             value: pct,
             minHeight: 5,
             backgroundColor: Colors.white.withValues(alpha: 0.15),
-            valueColor: const AlwaysStoppedAnimation<Color>(DesignTokens.accent),
+            valueColor: const AlwaysStoppedAnimation<Color>(
+              DesignTokens.accent,
+            ),
           ),
         ),
       ],
@@ -384,7 +498,13 @@ class _ThemePill extends StatelessWidget {
   final bool isDark;
   final VoidCallback onTap;
 
-  const _ThemePill({required this.icon, required this.label, required this.selected, required this.isDark, required this.onTap});
+  const _ThemePill({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.isDark,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -393,8 +513,15 @@ class _ThemePill extends StatelessWidget {
       child: AnimatedContainer(
         duration: DesignTokens.durationFast,
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(gradient: selected ? DesignTokens.primaryGradient : null, borderRadius: BorderRadius.circular(DesignTokens.radius20)),
-        child: Icon(icon, size: 16, color: selected ? Colors.white : DesignTokens.textSecondary),
+        decoration: BoxDecoration(
+          gradient: selected ? DesignTokens.primaryGradient : null,
+          borderRadius: BorderRadius.circular(DesignTokens.radius20),
+        ),
+        child: Icon(
+          icon,
+          size: 16,
+          color: selected ? Colors.white : DesignTokens.textSecondary,
+        ),
       ),
     );
   }

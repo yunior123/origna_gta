@@ -1985,8 +1985,8 @@ abstract final class ApiEndpoints {
 
   // --- Payments ---
   static const paymentsCapture = '/api/payments/capture';
-  static const paymentsProvidersList = '/api/payments/providers/list';
-  static const paymentsProvidersUpdate = '/api/payments/providers/update';
+  static const paymentsProvidersList = '/api/admin/payment-providers/get';
+  static const paymentsProvidersUpdate = '/api/admin/payment-providers/update';
 
   // --- Coupons ---
   static const couponsApply = '/api/coupons/apply';

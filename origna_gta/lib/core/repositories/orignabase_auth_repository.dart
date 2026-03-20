@@ -28,7 +28,11 @@ class OrignaBaseAuthException implements Exception {
   final String? message;
   final String? challengeToken;
 
-  OrignaBaseAuthException({required this.code, this.message, this.challengeToken});
+  OrignaBaseAuthException({
+    required this.code,
+    this.message,
+    this.challengeToken,
+  });
 
   @override
   String toString() =>
@@ -79,7 +83,10 @@ class OrignaBaseAuthRepository implements AuthRepository {
         // Send verification email
         try {
           await _ob.auth.sendEmailVerification();
-          AppLogger.d('Verification email sent to $trimmedEmail during registration', tag: 'auth');
+          AppLogger.d(
+            'Verification email sent to $trimmedEmail during registration',
+            tag: 'auth',
+          );
         } catch (e) {
           AppLogger.w('Failed to send verification email: $e', tag: 'auth');
         }
@@ -101,7 +108,22 @@ class OrignaBaseAuthRepository implements AuthRepository {
     }
 
     try {
-      final authState = await _ob.auth.signInWithEmail(trimmedEmail, password);
+      AuthState authState;
+      var attempt = 0;
+      while (true) {
+        try {
+          authState = await _ob.auth.signInWithEmail(trimmedEmail, password);
+          break;
+        } on RateLimitException catch (_) {
+          attempt += 1;
+          if (attempt >= 3) rethrow;
+          await Future<void>.delayed(Duration(seconds: attempt));
+        } on NetworkException catch (_) {
+          attempt += 1;
+          if (attempt >= 3) rethrow;
+          await Future<void>.delayed(Duration(milliseconds: 500 * attempt));
+        }
+      }
 
       if (authState.isAuthenticated && authState.userId != null) {
         await _createUserDocumentIfNeeded(
@@ -116,6 +138,7 @@ class OrignaBaseAuthRepository implements AuthRepository {
         throw OrignaBaseAuthException(
           code: 'mfa-required',
           message: 'Multi-factor authentication required',
+          challengeToken: authState.challengeToken,
         );
       }
     } catch (e) {
@@ -242,7 +265,10 @@ class OrignaBaseAuthRepository implements AuthRepository {
                   Fields.updatedAt: DateTime.now().toIso8601String(),
                 });
           } catch (e) {
-            AppLogger.d('Failed to save Apple name to pending_profiles: $e', tag: 'auth');
+            AppLogger.d(
+              'Failed to save Apple name to pending_profiles: $e',
+              tag: 'auth',
+            );
           }
         }
 
@@ -263,7 +289,10 @@ class OrignaBaseAuthRepository implements AuthRepository {
     try {
       await OrignaBaseNotificationService.instance.clearTokenFromOrignaBase();
     } catch (e) {
-      AppLogger.d('Failed to clear notification token on sign out: $e', tag: 'auth');
+      AppLogger.d(
+        'Failed to clear notification token on sign out: $e',
+        tag: 'auth',
+      );
     }
 
     _ob.auth.signOut();
@@ -424,7 +453,10 @@ class OrignaBaseAuthRepository implements AuthRepository {
           .doc(authState.userId!)
           .get();
       if (userDoc == null) {
-        AppLogger.d('User profile not found, signing out stale session', tag: 'auth');
+        AppLogger.d(
+          'User profile not found, signing out stale session',
+          tag: 'auth',
+        );
         await signOut();
         return false;
       }
@@ -574,10 +606,7 @@ class OrignaBaseAuthRepository implements AuthRepository {
 
     // Match on OrignaBase SDK typed exceptions first (statusCode-based)
     if (e is NotFoundException) {
-      throw OrignaBaseAuthException(
-        code: 'user-not-found',
-        message: e.message,
-      );
+      throw OrignaBaseAuthException(code: 'user-not-found', message: e.message);
     }
     if (e is AuthException) {
       // 401 — covers wrong password, invalid credentials, expired tokens
@@ -588,10 +617,7 @@ class OrignaBaseAuthRepository implements AuthRepository {
           message: e.message,
         );
       }
-      throw OrignaBaseAuthException(
-        code: 'wrong-password',
-        message: e.message,
-      );
+      throw OrignaBaseAuthException(code: 'wrong-password', message: e.message);
     }
     if (e is ValidationException) {
       // 422 — covers invalid email, weak password
@@ -608,10 +634,7 @@ class OrignaBaseAuthRepository implements AuthRepository {
           message: e.message,
         );
       }
-      throw OrignaBaseAuthException(
-        code: 'invalid-email',
-        message: e.message,
-      );
+      throw OrignaBaseAuthException(code: 'invalid-email', message: e.message);
     }
     if (e is ConflictException) {
       // 409 — duplicate email
@@ -634,15 +657,12 @@ class OrignaBaseAuthRepository implements AuthRepository {
       );
     }
     if (e is ForbiddenException) {
-      throw OrignaBaseAuthException(
-        code: 'user-disabled',
-        message: e.message,
-      );
+      throw OrignaBaseAuthException(code: 'user-disabled', message: e.message);
     }
 
     // Fallback for non-SDK exceptions (e.g. platform errors, cancellations)
     final errorStr = e.toString().toLowerCase();
-    
+
     // Pattern matching for common error messages
     if (errorStr.contains('cancelled') || errorStr.contains('canceled')) {
       throw OrignaBaseAuthException(
@@ -670,7 +690,8 @@ class OrignaBaseAuthRepository implements AuthRepository {
       );
     }
     // "wrong password" or just "password" in auth context = wrong-password
-    if (errorStr.contains('wrong') || (errorStr.contains('password') && !errorStr.contains('weak'))) {
+    if (errorStr.contains('wrong') ||
+        (errorStr.contains('password') && !errorStr.contains('weak'))) {
       throw OrignaBaseAuthException(
         code: 'wrong-password',
         message: e.toString(),
@@ -697,5 +718,4 @@ class OrignaBaseAuthRepository implements AuthRepository {
 
     throw OrignaBaseAuthException(code: 'unknown', message: e.toString());
   }
-
 }

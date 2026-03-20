@@ -13,7 +13,7 @@ class _FakeAuth implements OrignaBaseAuth {
   int signOutCalls = 0;
 
   @override
-  void signOut() => signOutCalls++;
+  Future<void> signOut() async => signOutCalls++;
 
   @override
   dynamic noSuchMethod(Invocation i) => super.noSuchMethod(i);
@@ -31,8 +31,12 @@ class _FakeOb implements OrignaBase {
   String? lastPath;
 
   @override
-  Future<Map<String, dynamic>> request(String method, String path,
-      {Map<String, dynamic>? body, Map<String, String>? headers}) async {
+  Future<Map<String, dynamic>> request(
+    String method,
+    String path, {
+    Map<String, dynamic>? body,
+    Map<String, String>? headers,
+  }) async {
     lastMethod = method;
     lastPath = path;
     if (nextError != null) throw nextError!;
@@ -87,7 +91,7 @@ void main() {
 
   group('OrignaBaseProfileViewModel', () {
     test('initial state has no loading/error/success', () {
-      final state = container.read(obProfileViewModelProvider);
+      final state = container.read(profileViewModelProvider);
       expect(state.isLoading, isFalse);
       expect(state.errorMessage, isNull);
       expect(state.successMessage, isNull);
@@ -95,7 +99,7 @@ void main() {
     });
 
     test('signOut calls auth.signOut()', () async {
-      await container.read(obProfileViewModelProvider.notifier).signOut();
+      await container.read(profileViewModelProvider.notifier).signOut();
       expect(fakeAuth.signOutCalls, 1);
     });
 
@@ -103,17 +107,17 @@ void main() {
       final c = makeContainer(userId: null);
       addTearDown(c.dispose);
 
-      await c.read(obProfileViewModelProvider.notifier).updateLanguage('fr');
+      await c.read(profileViewModelProvider.notifier).updateLanguage('fr');
 
       expect(fakeUserRepo.updateLangCalls, 0);
     });
 
     test('updateLanguage sets successMessage on success', () async {
       await container
-          .read(obProfileViewModelProvider.notifier)
+          .read(profileViewModelProvider.notifier)
           .updateLanguage('fr');
 
-      final state = container.read(obProfileViewModelProvider);
+      final state = container.read(profileViewModelProvider);
       expect(state.isLoading, isFalse);
       expect(state.errorMessage, isNull);
       expect(fakeUserRepo.updateLangCalls, 1);
@@ -123,10 +127,10 @@ void main() {
       fakeUserRepo.nextError = Exception('network error');
 
       await container
-          .read(obProfileViewModelProvider.notifier)
+          .read(profileViewModelProvider.notifier)
           .updateLanguage('en');
 
-      final state = container.read(obProfileViewModelProvider);
+      final state = container.read(profileViewModelProvider);
       expect(state.isLoading, isFalse);
       expect(state.errorMessage, isNotNull);
     });
@@ -135,16 +139,16 @@ void main() {
       final c = makeContainer(userId: null);
       addTearDown(c.dispose);
 
-      await c.read(obProfileViewModelProvider.notifier).exportData();
+      await c.read(profileViewModelProvider.notifier).exportData();
 
-      final state = c.read(obProfileViewModelProvider);
+      final state = c.read(profileViewModelProvider);
       expect(state.errorMessage, isNotNull);
     });
 
     test('exportData calls ob.request on success', () async {
-      await container.read(obProfileViewModelProvider.notifier).exportData();
+      await container.read(profileViewModelProvider.notifier).exportData();
 
-      final state = container.read(obProfileViewModelProvider);
+      final state = container.read(profileViewModelProvider);
       expect(state.isLoading, isFalse);
       expect(fakeOb.lastMethod, 'POST');
     });
@@ -152,28 +156,28 @@ void main() {
     test('exportData sets errorMessage on failure', () async {
       fakeOb.nextError = Exception('server error');
 
-      await container.read(obProfileViewModelProvider.notifier).exportData();
+      await container.read(profileViewModelProvider.notifier).exportData();
 
-      final state = container.read(obProfileViewModelProvider);
+      final state = container.read(profileViewModelProvider);
       expect(state.errorMessage, isNotNull);
     });
 
     test('deleteAccount rejects wrong confirmation', () async {
       await container
-          .read(obProfileViewModelProvider.notifier)
+          .read(profileViewModelProvider.notifier)
           .deleteAccount('REMOVE');
 
-      final state = container.read(obProfileViewModelProvider);
+      final state = container.read(profileViewModelProvider);
       expect(state.errorMessage, isNotNull);
       expect(state.isDeleted, isFalse);
     });
 
     test('deleteAccount sets isDeleted=true on success', () async {
       await container
-          .read(obProfileViewModelProvider.notifier)
+          .read(profileViewModelProvider.notifier)
           .deleteAccount('DELETE');
 
-      final state = container.read(obProfileViewModelProvider);
+      final state = container.read(profileViewModelProvider);
       expect(state.isDeleted, isTrue);
       expect(state.isLoading, isFalse);
       expect(fakeAuth.signOutCalls, 1);
@@ -183,9 +187,9 @@ void main() {
       final c = makeContainer(userId: null);
       addTearDown(c.dispose);
 
-      await c.read(obProfileViewModelProvider.notifier).deleteAccount('DELETE');
+      await c.read(profileViewModelProvider.notifier).deleteAccount('DELETE');
 
-      final state = c.read(obProfileViewModelProvider);
+      final state = c.read(profileViewModelProvider);
       expect(state.errorMessage, isNotNull);
       expect(state.isDeleted, isFalse);
     });

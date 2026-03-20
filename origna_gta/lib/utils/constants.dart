@@ -6,7 +6,23 @@ export 'package:easy_localization/easy_localization.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 
 // Re-export schema constants so existing imports keep working
-export 'package:origna_gta/core/schema/schema_constants.dart' show Collections, Fields, OrderStatusValues, PaymentStatusValues, DeliveryStatusValues, PayoutStatusValues, ShippingApprovalStatusValues, UserRoleValues, ProductLifecycleStatusValues, SchemaRegistry, BusinessRules, CategoryIds, ApiKeys, ProvinceCodeValues, EmailConfig;
+export 'package:origna_gta/core/schema/schema_constants.dart'
+    show
+        Collections,
+        Fields,
+        OrderStatusValues,
+        PaymentStatusValues,
+        DeliveryStatusValues,
+        PayoutStatusValues,
+        ShippingApprovalStatusValues,
+        UserRoleValues,
+        ProductLifecycleStatusValues,
+        SchemaRegistry,
+        BusinessRules,
+        CategoryIds,
+        ApiKeys,
+        ProvinceCodeValues,
+        EmailConfig;
 
 // ============================================================================
 // APP CONFIGURATION
@@ -19,7 +35,8 @@ class AppConfig {
   static const String websiteUrl = 'https://www.orignaventures.ca';
   static const String currency = 'cad';
   static const String currencySymbol = '\$';
-  static const int autoConfirmDays = 5; // Auto-confirm orders after 5 days (2-day safety margin before Stripe 7-day auth expires)
+  static const int autoConfirmDays =
+      5; // Auto-confirm orders after 5 days (2-day safety margin before Stripe 7-day auth expires)
 }
 
 // ============================================================================
@@ -35,7 +52,10 @@ enum CaptureMethod {
   const CaptureMethod(this.value);
 
   static CaptureMethod fromValue(String value) {
-    return CaptureMethod.values.firstWhere((e) => e.value == value, orElse: () => CaptureMethod.automatic);
+    return CaptureMethod.values.firstWhere(
+      (e) => e.value == value,
+      orElse: () => CaptureMethod.automatic,
+    );
   }
 }
 
@@ -71,15 +91,30 @@ enum DeliverySpeed {
   standard('standard', 'Free Delivery', '3-5 business days', 0.0),
   express('express', 'Express', '1-2 business days', 9.99),
   sameDay('same_day', 'Same Day', 'Delivered today', 14.99),
-  international('international', 'International Standard', '15-30 business days', 0.0),
-  internationalExpress('international_express', 'International Express', '7-15 business days', 19.99);
+  international(
+    'international',
+    'International Standard',
+    '15-30 business days',
+    0.0,
+  ),
+  internationalExpress(
+    'international_express',
+    'International Express',
+    '7-15 business days',
+    19.99,
+  );
 
   final String value;
   final String displayName;
   final String estimatedTime;
   final double baseSurcharge; // Added to base shipping cost
 
-  const DeliverySpeed(this.value, this.displayName, this.estimatedTime, this.baseSurcharge);
+  const DeliverySpeed(
+    this.value,
+    this.displayName,
+    this.estimatedTime,
+    this.baseSurcharge,
+  );
 
   /// Translation helpers
   String get translatedName => 'checkout.delivery_speed.$value.name'.tr();
@@ -104,7 +139,10 @@ enum DeliverySpeed {
 
   /// Check if this delivery speed is available for given items
   /// Same-day only available for local/perishable items within delivery radius
-  bool isAvailableForItems(List<DeliveryItemCheck> items, bool isLocalDelivery) {
+  bool isAvailableForItems(
+    List<DeliveryItemCheck> items,
+    bool isLocalDelivery,
+  ) {
     final hasInternational = items.any((item) => item.isInternational);
 
     switch (this) {
@@ -113,13 +151,17 @@ enum DeliverySpeed {
       case DeliverySpeed.sameDay:
         // Domestic speeds only available if NO international items in cart
         if (hasInternational) return false;
-        
+
         if (this == DeliverySpeed.standard) return true;
-        if (this == DeliverySpeed.express) return items.any((item) => item.estimatedShipDays <= 2);
-        
+        if (this == DeliverySpeed.express) {
+          return items.any((item) => item.estimatedShipDays <= 2);
+        }
+
         // sameDay logic
         if (!isLocalDelivery) return false;
-        return items.every((item) => item.estimatedShipDays <= 1 || item.isPerishable);
+        return items.every(
+          (item) => item.estimatedShipDays <= 1 || item.isPerishable,
+        );
 
       case DeliverySpeed.international:
       case DeliverySpeed.internationalExpress:
@@ -129,7 +171,10 @@ enum DeliverySpeed {
   }
 
   static DeliverySpeed fromValue(String value) {
-    return DeliverySpeed.values.firstWhere((e) => e.value == value, orElse: () => DeliverySpeed.standard);
+    return DeliverySpeed.values.firstWhere(
+      (e) => e.value == value,
+      orElse: () => DeliverySpeed.standard,
+    );
   }
 }
 
@@ -159,7 +204,10 @@ enum DeliveryStatus {
 
   /// Parse from string value
   static DeliveryStatus fromValue(String value) {
-    return DeliveryStatus.values.firstWhere((e) => e.value == value, orElse: () => DeliveryStatus.pending);
+    return DeliveryStatus.values.firstWhere(
+      (e) => e.value == value,
+      orElse: () => DeliveryStatus.pending,
+    );
   }
 }
 
@@ -231,7 +279,10 @@ enum PaymentStatus {
 
   /// Parse from string value
   static PaymentStatus fromValue(String value) {
-    return PaymentStatus.values.firstWhere((e) => e.value == value, orElse: () => PaymentStatus.awaitingPayment);
+    return PaymentStatus.values.firstWhere(
+      (e) => e.value == value,
+      orElse: () => PaymentStatus.awaitingPayment,
+    );
   }
 }
 
@@ -270,7 +321,10 @@ enum PayoutStatus {
   }
 
   static PayoutStatus fromValue(String value) {
-    return PayoutStatus.values.firstWhere((e) => e.value == value, orElse: () => PayoutStatus.pending);
+    return PayoutStatus.values.firstWhere(
+      (e) => e.value == value,
+      orElse: () => PayoutStatus.pending,
+    );
   }
 }
 
@@ -339,7 +393,14 @@ class SellerDeliveryOption {
     if (map.containsKey('type') || map.containsKey('costCents')) {
       final rawDiscounts = map['quantityDiscounts'];
       final discounts = rawDiscounts is List
-          ? rawDiscounts.whereType<Map>().map((d) => ShippingQuantityDiscount.fromMap(d.cast<String, dynamic>())).toList()
+          ? rawDiscounts
+                .whereType<Map<dynamic, dynamic>>()
+                .map(
+                  (d) => ShippingQuantityDiscount.fromMap(
+                    d.cast<String, dynamic>(),
+                  ),
+                )
+                .toList()
           : const <ShippingQuantityDiscount>[];
 
       return SellerDeliveryOption(
@@ -349,7 +410,8 @@ class SellerDeliveryOption {
         estimatedDays: (map['estimatedDays'] as num?)?.toInt() ?? 0,
         quantityDiscounts: discounts,
         maxItemsPerShipment: (map['maxItemsPerShipment'] as num?)?.toInt() ?? 0,
-        additionalItemCostCents: (map['additionalItemCostCents'] as num?)?.toInt() ?? 0,
+        additionalItemCostCents:
+            (map['additionalItemCostCents'] as num?)?.toInt() ?? 0,
         availableNationwide: map['availableNationwide'] as bool? ?? true,
       );
     }
@@ -360,7 +422,8 @@ class SellerDeliveryOption {
 
     final altSpeed = map['speed'] as String? ?? DeliverySpeed.standard.value;
     final altDays = (map['estimatedDays'] as num?)?.toInt() ?? 5;
-    final altPriceCents = (((map['price'] as num?)?.toDouble() ?? 0.0) * 100).round();
+    final altPriceCents = (((map['price'] as num?)?.toDouble() ?? 0.0) * 100)
+        .round();
 
     final displayName = DeliverySpeed.fromValue(altSpeed).displayName;
     return SellerDeliveryOption(
@@ -382,7 +445,8 @@ class SellerDeliveryOption {
   double get additionalItemCostDollars => additionalItemCostCents / 100.0;
 
   /// Get price display text
-  String get priceText => costCents == 0 ? 'Free' : '\$${costDollars.toStringAsFixed(2)}';
+  String get priceText =>
+      costCents == 0 ? 'Free' : '\$${costDollars.toStringAsFixed(2)}';
 
   /// Calculate effective shipping cost for a given quantity.
   /// Mirrors backend `ShippingQuantityDiscount` logic.
@@ -392,7 +456,8 @@ class SellerDeliveryOption {
     ShippingQuantityDiscount? bestDiscount;
     for (final discount in quantityDiscounts) {
       if (quantity >= discount.minQuantity) {
-        if (bestDiscount == null || discount.minQuantity > bestDiscount.minQuantity) {
+        if (bestDiscount == null ||
+            discount.minQuantity > bestDiscount.minQuantity) {
           bestDiscount = discount;
         }
       }
@@ -412,7 +477,10 @@ class SellerDeliveryOption {
         case 'percent':
           return baseCost * (1 - bestDiscount.discountValue / 100);
         case 'fixed':
-          return (baseCost - bestDiscount.discountValue).clamp(0, double.infinity);
+          return (baseCost - bestDiscount.discountValue).clamp(
+            0,
+            double.infinity,
+          );
         case 'flat_rate':
           return bestDiscount.discountValue;
         default:
@@ -428,17 +496,34 @@ class SellerDeliveryOption {
     'description': description,
     'costCents': costCents,
     'estimatedDays': estimatedDays,
-    if (quantityDiscounts.isNotEmpty) 'quantityDiscounts': quantityDiscounts.map((d) => d.toMap()).toList(),
+    if (quantityDiscounts.isNotEmpty)
+      'quantityDiscounts': quantityDiscounts.map((d) => d.toMap()).toList(),
     if (maxItemsPerShipment != 0) 'maxItemsPerShipment': maxItemsPerShipment,
-    if (additionalItemCostCents != 0) 'additionalItemCostCents': additionalItemCostCents,
+    if (additionalItemCostCents != 0)
+      'additionalItemCostCents': additionalItemCostCents,
     if (!availableNationwide) 'availableNationwide': availableNationwide,
   };
 
   /// Create default options for a new product
   static List<SellerDeliveryOption> defaultOptions() => [
-    const SellerDeliveryOption(type: 'standard', description: 'Standard Delivery', costCents: 0, estimatedDays: 5),
-    const SellerDeliveryOption(type: 'express', description: 'Express Delivery', costCents: 999, estimatedDays: 2),
-    const SellerDeliveryOption(type: 'same_day', description: 'Same Day Delivery', costCents: 1499, estimatedDays: 0),
+    const SellerDeliveryOption(
+      type: 'standard',
+      description: 'Standard Delivery',
+      costCents: 0,
+      estimatedDays: 5,
+    ),
+    const SellerDeliveryOption(
+      type: 'express',
+      description: 'Express Delivery',
+      costCents: 999,
+      estimatedDays: 2,
+    ),
+    const SellerDeliveryOption(
+      type: 'same_day',
+      description: 'Same Day Delivery',
+      costCents: 1499,
+      estimatedDays: 0,
+    ),
   ];
 }
 
@@ -466,7 +551,10 @@ enum ShippingApprovalStatus {
   }
 
   static ShippingApprovalStatus fromValue(String value) {
-    return ShippingApprovalStatus.values.firstWhere((e) => e.value == value, orElse: () => ShippingApprovalStatus.notRequired);
+    return ShippingApprovalStatus.values.firstWhere(
+      (e) => e.value == value,
+      orElse: () => ShippingApprovalStatus.notRequired,
+    );
   }
 }
 

@@ -1,4 +1,3 @@
-// coverage:ignore-file
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,7 +10,7 @@ import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:origna_gta/utils/safe_url_launcher.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../features/subscription/subscription_provider.dart';
+import 'package:origna_gta/features/subscription/subscription_provider.dart';
 
 /// Documentation for SubscriptionScreen
 class SubscriptionScreen extends ConsumerStatefulWidget {

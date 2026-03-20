@@ -1,4 +1,3 @@
-// coverage:ignore-file
 // Migrated: delegates to OrignaBase chat repository.
 // Screens continue using ChatRepository, ChatMessage, ChatThread.
 

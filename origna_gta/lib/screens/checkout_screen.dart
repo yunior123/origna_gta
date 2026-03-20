@@ -1,4 +1,3 @@
-// coverage:ignore-file
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -65,10 +64,15 @@ class _CheckoutStepper extends StatelessWidget {
                 decoration: BoxDecoration(
                   gradient: isCompleted
                       ? const LinearGradient(
-                          colors: [DesignTokens.primary, DesignTokens.secondary],
+                          colors: [
+                            DesignTokens.primary,
+                            DesignTokens.secondary,
+                          ],
                         )
                       : null,
-                  color: isCompleted ? null : DesignTokens.primary.withValues(alpha: 0.12),
+                  color: isCompleted
+                      ? null
+                      : DesignTokens.primary.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(1),
                 ),
               ),
@@ -88,21 +92,27 @@ class _CheckoutStepper extends StatelessWidget {
                   color: isCompleted
                       ? DesignTokens.success
                       : isCurrent
-                          ? DesignTokens.primary
-                          : DesignTokens.primary.withValues(alpha: 0.12),
+                      ? DesignTokens.primary
+                      : DesignTokens.primary.withValues(alpha: 0.12),
                   border: isCurrent
                       ? Border.all(color: DesignTokens.primary, width: 2)
                       : null,
                 ),
                 child: Center(
                   child: isCompleted
-                      ? const Icon(Icons.check_rounded, size: 14, color: DesignTokens.white)
+                      ? const Icon(
+                          Icons.check_rounded,
+                          size: 14,
+                          color: DesignTokens.white,
+                        )
                       : Text(
                           '${stepIndex + 1}',
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w800,
-                            color: isCurrent ? DesignTokens.white : DesignTokens.primary.withValues(alpha: 0.5),
+                            color: isCurrent
+                                ? DesignTokens.white
+                                : DesignTokens.primary.withValues(alpha: 0.5),
                           ),
                         ),
                 ),
@@ -113,7 +123,9 @@ class _CheckoutStepper extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w500,
-                  color: isCurrent ? DesignTokens.primary : DesignTokens.textSecondary,
+                  color: isCurrent
+                      ? DesignTokens.primary
+                      : DesignTokens.textSecondary,
                 ),
               ),
             ],
@@ -123,24 +135,6 @@ class _CheckoutStepper extends StatelessWidget {
     );
   }
 }
-
-/// Provider for terms acceptance state — shared between _TermsText and _CheckoutButton
-final checkoutTermsAcceptedProvider = StateProvider.autoDispose<bool>((ref) => false);
-
-/// Tracks whether the user has interacted with the terms checkbox — gates error state
-final checkoutTermsInteractedProvider = StateProvider.autoDispose<bool>((ref) => false);
-
-/// Provider for digital product EULA acceptance — required when cart contains digital items
-final checkoutEulaAcceptedProvider = StateProvider.autoDispose<bool>((ref) => false);
-
-/// Tracks whether user has interacted with the EULA checkbox — gates error display
-final checkoutEulaInteractedProvider = StateProvider.autoDispose<bool>((ref) => false);
-
-/// Provider for age verification acceptance — required when cart contains age-restricted items
-final checkoutAgeVerifAcceptedProvider = StateProvider.autoDispose<bool>((ref) => false);
-
-/// Tracks whether user has interacted with the age gate checkbox — gates error display
-final checkoutAgeVerifInteractedProvider = StateProvider.autoDispose<bool>((ref) => false);
 
 /// Documentation for CheckoutScreen
 class CheckoutScreen extends ConsumerStatefulWidget {
@@ -159,25 +153,41 @@ class _CheckoutContent extends ConsumerWidget {
   final UserModel userModel;
   final VoidCallback onRefreshShipping;
 
-  const _CheckoutContent({required this.items, required this.subtotal, required this.userModel, required this.onRefreshShipping});
+  const _CheckoutContent({
+    required this.items,
+    required this.subtotal,
+    required this.userModel,
+    required this.onRefreshShipping,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final address = ref.watch(checkoutStateProvider.select((state) => state.address));
-    final shippingCost = ref.watch(checkoutStateProvider.select((state) => state.shippingCost));
+    final address = ref.watch(
+      checkoutStateProvider.select((state) => state.address),
+    );
+    final shippingCost = ref.watch(
+      checkoutStateProvider.select((state) => state.shippingCost),
+    );
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final hasPhysicalItems = items.any((item) => !item.isDigital);
-    final paymentProvider = ref.watch(checkoutStateProvider.select((state) => state.paymentProvider));
+    final paymentProvider = ref.watch(
+      checkoutStateProvider.select((state) => state.paymentProvider),
+    );
     final notifier = ref.read(checkoutStateProvider.notifier);
 
     if (address == null) {
       if (!hasPhysicalItems) {
         // Digital-only: use profile address province for tax, fallback to Ontario
         final rawState = userModel.address?.state;
-        final digitalProvince = (rawState != null && rawState.trim().isNotEmpty) ? rawState.trim() : ProvinceCodeValues.ontario;
+        final digitalProvince = (rawState != null && rawState.trim().isNotEmpty)
+            ? rawState.trim()
+            : ProvinceCodeValues.ontario;
         final digitalTaxRate = getTaxRate(digitalProvince);
-        final digitalCouponDiscountCents = ref.watch(checkoutStateProvider.select((s) => s.couponDiscountCents));
-        final digitalEffective = (subtotal - digitalCouponDiscountCents / 100.0).clamp(0.0, double.infinity);
+        final digitalCouponDiscountCents = ref.watch(
+          checkoutStateProvider.select((s) => s.couponDiscountCents),
+        );
+        final digitalEffective = (subtotal - digitalCouponDiscountCents / 100.0)
+            .clamp(0.0, double.infinity);
         // Platform fee is deducted from the seller's payout — NOT added to the buyer's charge.
         // Stripe PaymentIntent = discounted_subtotal + tax only. The fee row is informational only.
         final digitalTax = digitalEffective * digitalTaxRate;
@@ -197,32 +207,60 @@ class _CheckoutContent extends ConsumerWidget {
                       GlassContainer(
                         child: Row(
                           children: [
-                            Icon(Icons.download_done, color: DesignTokens.primary),
+                            Icon(
+                              Icons.download_done,
+                              color: DesignTokens.primary,
+                            ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
                                 'checkout.digital_delivery_no_address'.tr(),
-                                style: TextStyle(color: isDark ? DesignTokens.outline : DesignTokens.textPrimary, fontWeight: FontWeight.w600),
+                                style: TextStyle(
+                                  color: isDark
+                                      ? DesignTokens.outline
+                                      : DesignTokens.textPrimary,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
                           ],
                         ),
                       ),
                       const SizedBox(height: 28),
-                      _PaymentProviderSection(selectedProvider: paymentProvider, onChanged: notifier.setPaymentProvider),
+                      _PaymentProviderSection(
+                        selectedProvider: paymentProvider,
+                        onChanged: notifier.setPaymentProvider,
+                      ),
                       const SizedBox(height: 28),
-                      _CouponSection(subtotalCents: (subtotal * 100).round(), sellerIds: items.map((i) => i.sellerId).where((id) => id.isNotEmpty).toSet().toList()),
+                      _CouponSection(
+                        subtotalCents: (subtotal * 100).round(),
+                        sellerIds: items
+                            .map((i) => i.sellerId)
+                            .where((id) => id.isNotEmpty)
+                            .toSet()
+                            .toList(),
+                      ),
                       const SizedBox(height: 28),
-                      _OrderSummary(items: items, subtotal: subtotal, state: digitalProvince),
+                      _OrderSummary(
+                        items: items,
+                        subtotal: subtotal,
+                        state: digitalProvince,
+                      ),
                       const SizedBox(height: 40),
                     ],
                   ),
                 ),
               ),
               const _BuyerProtectionBanner(),
-              _CheckoutButton(items: items, userModel: userModel, subtotal: subtotal, total: digitalTotal),
+              _CheckoutButton(
+                items: items,
+                userModel: userModel,
+                subtotal: subtotal,
+                total: digitalTotal,
+              ),
               const _DigitalEulaText(),
-              if (items.any((item) => item.isAgeRestricted)) const _AgeGateText(),
+              if (items.any((item) => item.isAgeRestricted))
+                const _AgeGateText(),
               _TermsText(),
               const SizedBox(height: 16),
               _SecurityInfo(),
@@ -233,13 +271,17 @@ class _CheckoutContent extends ConsumerWidget {
       return _NoAddressView(onRefreshShipping: onRefreshShipping);
     }
 
-    final couponDiscountCents = ref.watch(checkoutStateProvider.select((s) => s.couponDiscountCents));
+    final couponDiscountCents = ref.watch(
+      checkoutStateProvider.select((s) => s.couponDiscountCents),
+    );
     final discount = couponDiscountCents / 100.0;
     final effectiveSubtotal = (subtotal - discount).clamp(0.0, double.infinity);
     final taxRate = getTaxRate(address.state);
     // Platform fee is deducted from the seller's payout — NOT added to the buyer's charge.
     // Stripe PaymentIntent = discounted_subtotal + shipping + tax only. Fee row is informational.
-    final taxableAmount = effectiveSubtotal + shippingCost; // GST/HST applies to shipping in Canada
+    final taxableAmount =
+        effectiveSubtotal +
+        shippingCost; // GST/HST applies to shipping in Canada
     final tax = taxableAmount * taxRate;
     final totalWithTax = effectiveSubtotal + tax + shippingCost;
 
@@ -252,7 +294,9 @@ class _CheckoutContent extends ConsumerWidget {
     // Form sections (shared between both layouts)
     final formSections = <Widget>[
       _AddressSection(address: address, onRefreshShipping: onRefreshShipping),
-      SizedBox(height: ResponsiveBreakpoints.getSpacing(context, SpacingSize.xl)),
+      SizedBox(
+        height: ResponsiveBreakpoints.getSpacing(context, SpacingSize.xl),
+      ),
       if (hasPhysicalItems) ...[
         _FreeShippingBanner(subtotal: subtotal),
         const SizedBox(height: 12),
@@ -267,7 +311,12 @@ class _CheckoutContent extends ConsumerWidget {
               Expanded(
                 child: Text(
                   'checkout.digital_delivery_no_shipping'.tr(),
-                  style: TextStyle(color: isDark ? DesignTokens.outline : DesignTokens.textPrimary, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    color: isDark
+                        ? DesignTokens.outline
+                        : DesignTokens.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
@@ -275,15 +324,30 @@ class _CheckoutContent extends ConsumerWidget {
         ),
         const SizedBox(height: 28),
       ],
-      _PaymentProviderSection(selectedProvider: paymentProvider, onChanged: notifier.setPaymentProvider),
+      _PaymentProviderSection(
+        selectedProvider: paymentProvider,
+        onChanged: notifier.setPaymentProvider,
+      ),
       const SizedBox(height: 28),
-      _CouponSection(subtotalCents: (subtotal * 100).round(), sellerIds: items.map((i) => i.sellerId).where((id) => id.isNotEmpty).toSet().toList()),
+      _CouponSection(
+        subtotalCents: (subtotal * 100).round(),
+        sellerIds: items
+            .map((i) => i.sellerId)
+            .where((id) => id.isNotEmpty)
+            .toSet()
+            .toList(),
+      ),
     ];
 
     // Sticky bottom actions (same in both layouts)
     final bottomActions = <Widget>[
       const _BuyerProtectionBanner(),
-      _CheckoutButton(items: items, userModel: userModel, subtotal: subtotal, total: totalWithTax),
+      _CheckoutButton(
+        items: items,
+        userModel: userModel,
+        subtotal: subtotal,
+        total: totalWithTax,
+      ),
       if (items.any((item) => item.isDigital)) const _DigitalEulaText(),
       if (items.any((item) => item.isAgeRestricted)) const _AgeGateText(),
       _TermsText(),
@@ -291,7 +355,11 @@ class _CheckoutContent extends ConsumerWidget {
       _SecurityInfo(),
     ];
 
-    final orderSummary = _OrderSummary(items: items, subtotal: subtotal, state: address.state);
+    final orderSummary = _OrderSummary(
+      items: items,
+      subtotal: subtotal,
+      state: address.state,
+    );
 
     // Desktop: 2-column — form left (60%), sticky order summary right (40%)
     if (isDesktop) {
@@ -306,7 +374,10 @@ class _CheckoutContent extends ConsumerWidget {
                   Expanded(
                     child: SingleChildScrollView(
                       padding: EdgeInsets.fromLTRB(hPad, hPad, hPad / 2, hPad),
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: formSections),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: formSections,
+                      ),
                     ),
                   ),
                   ...bottomActions,
@@ -322,8 +393,20 @@ class _CheckoutContent extends ConsumerWidget {
                   decoration: BoxDecoration(
                     color: isDark ? DesignTokens.darkCard : DesignTokens.white,
                     borderRadius: BorderRadius.circular(DesignTokens.radius16),
-                    border: Border.all(color: isDark ? DesignTokens.white.withValues(alpha: 0.06) : DesignTokens.outline.withValues(alpha: 0.3)),
-                    boxShadow: [BoxShadow(color: DesignTokens.primary.withValues(alpha: isDark ? 0.1 : 0.06), blurRadius: 12, offset: const Offset(0, 4))],
+                    border: Border.all(
+                      color: isDark
+                          ? DesignTokens.white.withValues(alpha: 0.06)
+                          : DesignTokens.outline.withValues(alpha: 0.3),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: DesignTokens.primary.withValues(
+                          alpha: isDark ? 0.1 : 0.06,
+                        ),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.all(16),
@@ -386,7 +469,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       body: Center(
         child: ConstrainedBox(
           constraints: BoxConstraints(
-            maxWidth: ResponsiveBreakpoints.isDesktop(context) ? ResponsiveBreakpoints.contentMaxWidth : 800,
+            maxWidth: ResponsiveBreakpoints.isDesktop(context)
+                ? ResponsiveBreakpoints.contentMaxWidth
+                : 800,
           ),
           child: userProfileAsync.when(
             loading: () => const ModernLoadingIndicator.fullScreen(),
@@ -396,9 +481,16 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.error_outline_rounded, size: 48, color: DesignTokens.error),
+                    Icon(
+                      Icons.error_outline_rounded,
+                      size: 48,
+                      color: DesignTokens.error,
+                    ),
                     const SizedBox(height: 16),
-                    Text(AppError.getMessage(error), textAlign: TextAlign.center),
+                    Text(
+                      AppError.getMessage(error),
+                      textAlign: TextAlign.center,
+                    ),
                     const SizedBox(height: 16),
                     ModernButton(
                       label: 'common.retry'.tr(),
@@ -414,7 +506,12 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
               if (userProfile == null) {
                 return Center(child: Text('checkout.please_login'.tr()));
               }
-              return _CheckoutContent(items: widget.items, subtotal: widget.total, userModel: userProfile, onRefreshShipping: _refreshShipping);
+              return _CheckoutContent(
+                items: widget.items,
+                subtotal: widget.total,
+                userModel: userProfile,
+                onRefreshShipping: _refreshShipping,
+              );
             },
           ),
         ),

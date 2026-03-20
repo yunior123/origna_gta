@@ -1,4 +1,3 @@
-// coverage:ignore-file
 part of '../home_screen.dart';
 class _PaginationLoader extends ConsumerWidget {
   const _PaginationLoader();

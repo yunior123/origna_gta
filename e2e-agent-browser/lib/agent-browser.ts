@@ -33,7 +33,7 @@ export class AgentBrowser {
     return result.stdout.toString();
   }
 
-  async open(url: string): Promise<void> {
+  async open(url: string, timeoutMs = 60_000): Promise<void> {
     if (!url.includes('checkout.stripe.com')) {
       let currentUrl = '';
       try { currentUrl = this.run(['eval', 'window.location.href'], 5_000).trim().replace(/^"|"$/g, ''); } catch { /* no page open yet */ }
@@ -46,7 +46,7 @@ export class AgentBrowser {
     if (url.includes('checkout.stripe.com')) {
       this.wasOnStripe = true;
     }
-    this.run(['open', url], 60_000);
+    this.run(['open', url], timeoutMs);
   }
 
   async clearState(): Promise<void> {

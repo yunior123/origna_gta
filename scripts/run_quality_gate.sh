@@ -5,11 +5,7 @@ set -euo pipefail
 
 FLUTTER_THRESHOLD="${FLUTTER_THRESHOLD:-80}"
 FLUTTER_INTEGRATION_THRESHOLD="${FLUTTER_INTEGRATION_THRESHOLD:-70}"
-E2E_SPECS="${E2E_SPECS:-playwright_ui/smoke-home-profile.spec.ts}"
-E2E_CONFIG="${E2E_CONFIG:-playwright.config.dev.ts}"
-E2E_PROJECT="${E2E_PROJECT:-chromium}"
-E2E_WORKERS="${E2E_WORKERS:-1}"
-E2E_FAIL_ON_FLAKY="${E2E_FAIL_ON_FLAKY:-false}"
+E2E_SPECS="${E2E_SPECS:-specs/phase1-api/}"
 RUN_FLUTTER_INTEGRATION_COVERAGE="${RUN_FLUTTER_INTEGRATION_COVERAGE:-false}"
 FLUTTER_INTEGRATION_DEVICE="${FLUTTER_INTEGRATION_DEVICE:-linux}"
 FLUTTER_INTEGRATION_USE_XVFB="${FLUTTER_INTEGRATION_USE_XVFB:-false}"
@@ -72,26 +68,11 @@ if [[ "$RUN_FLUTTER_INTEGRATION_COVERAGE" == "true" ]]; then
   fi
 fi
 
-# ── Playwright E2E ────────────────────────────────────────────────────────────
-echo "=== Playwright E2E (config: ${E2E_CONFIG}, specs: ${E2E_SPECS}) ==="
-IFS=',' read -ra SPEC_LIST <<< "$E2E_SPECS"
-SPEC_ARGS=()
-for SPEC in "${SPEC_LIST[@]}"; do
-  SPEC_ARGS+=("$SPEC")
-done
+# ── E2E (Bun + agent-browser) ────────────────────────────────────────────────
+echo "=== E2E tests (specs: ${E2E_SPECS}) ==="
 
-cd e2e
-FAIL_ON_FLAKY_FLAG=""
-if [[ "$E2E_FAIL_ON_FLAKY" == "true" ]]; then
-  FAIL_ON_FLAKY_FLAG="--forbid-only"
-fi
-
-npx playwright test \
-  --config="$E2E_CONFIG" \
-  --project="$E2E_PROJECT" \
-  --workers="$E2E_WORKERS" \
-  $FAIL_ON_FLAKY_FLAG \
-  "${SPEC_ARGS[@]}" || { echo "FAIL: Playwright E2E"; PASS=false; }
+cd e2e-agent-browser
+bun test "$E2E_SPECS" || { echo "FAIL: E2E tests"; PASS=false; }
 cd ..
 
 # ── Result ────────────────────────────────────────────────────────────────────

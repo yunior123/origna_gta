@@ -1,4 +1,3 @@
-// coverage:ignore-file
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,7 +7,7 @@ import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:origna_gta/widgets/modern_textfield.dart';
 
-import '../features/auth/reset_password_view_model.dart';
+import 'package:origna_gta/features/auth/reset_password_view_model.dart';
 
 /// Documentation for ResetPasswordScreen
 class ResetPasswordScreen extends ConsumerStatefulWidget {

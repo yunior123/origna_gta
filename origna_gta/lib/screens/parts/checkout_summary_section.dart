@@ -1,4 +1,3 @@
-// coverage:ignore-file
 part of '../checkout_screen.dart';
 class _DeliveryOptionsSection extends ConsumerWidget {
   const _DeliveryOptionsSection();

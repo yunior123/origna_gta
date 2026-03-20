@@ -1,4 +1,3 @@
-// coverage:ignore-file
 // Migrated: delegates to OrignaBase for seller account status.
 // Screens continue using sellerAccountStatusProvider, refreshSellerStatusProvider.
 

@@ -1,4 +1,3 @@
-// coverage:ignore-file
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,8 +8,8 @@ import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 
-import '../features/profile/address_state.dart';
-import '../features/profile/address_viewmodel.dart';
+import 'package:origna_gta/features/profile/address_state.dart';
+import 'package:origna_gta/features/profile/address_viewmodel.dart';
 
 // ─── Flutter Previews ────────────────────────────────────────────────────────
 
@@ -20,7 +19,8 @@ class AddEditAddressScreen extends ConsumerStatefulWidget {
   const AddEditAddressScreen({super.key, this.address});
 
   @override
-  ConsumerState<AddEditAddressScreen> createState() => _AddEditAddressScreenState();
+  ConsumerState<AddEditAddressScreen> createState() =>
+      _AddEditAddressScreenState();
 }
 
 class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
@@ -39,9 +39,15 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
+      decoration: BoxDecoration(
+        gradient: DesignTokens.backgroundGradient(isDark: isDark),
+      ),
       child: Scaffold(
-        appBar: AppBarFactory.simple(title: widget.address == null ? 'address.add_address'.tr() : 'address.edit_address'.tr()),
+        appBar: AppBarFactory.simple(
+          title: widget.address == null
+              ? 'address.add_address'.tr()
+              : 'address.edit_address'.tr(),
+        ),
         backgroundColor: DesignTokens.transparent,
         body: Center(
           child: ConstrainedBox(
@@ -54,46 +60,78 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Address Label Section
-                    _buildSectionTitle('address.label'.tr(), Icons.label_outlined),
+                    _buildSectionTitle(
+                      'address.label'.tr(),
+                      Icons.label_outlined,
+                    ),
                     const SizedBox(height: DesignTokens.spacing12),
                     Wrap(
                       spacing: 10,
-                      children: [AddressLabelValues.home, AddressLabelValues.work, AddressLabelValues.other].map((label) {
-                        final isSelected = state.selectedLabel == label;
-                        final displayLabel = label == AddressLabelValues.home
-                            ? 'address.home'.tr()
-                            : label == AddressLabelValues.work
-                            ? 'address.work'.tr()
-                            : 'address.other'.tr();
-                        return Semantics(
-                          button: true,
-                          label: 'chip-address-label-${label.toLowerCase()}',
-                          selected: isSelected,
-                          child: ChoiceChip(
-                            label: Text(displayLabel),
-                            selected: isSelected,
-                            onSelected: (selected) => viewModel.setLabel(label),
-                            selectedColor: DesignTokens.primary,
-                            backgroundColor: isDark ? DesignTokens.darkSurface : DesignTokens.white,
-                            labelStyle: TextStyle(
-                              color: isSelected ? DesignTokens.white : (isDark ? DesignTokens.white : DesignTokens.textPrimary),
-                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                              side: BorderSide(color: isSelected ? DesignTokens.primary : (isDark ? DesignTokens.textPrimary : DesignTokens.outlineVariant)),
-                            ),
-                            elevation: isSelected ? 2 : 0,
-                            shadowColor: DesignTokens.primary.withValues(alpha: 0.3),
-                          ),
-                        );
-                      }).toList(),
+                      children:
+                          [
+                            AddressLabelValues.home,
+                            AddressLabelValues.work,
+                            AddressLabelValues.other,
+                          ].map((label) {
+                            final isSelected = state.selectedLabel == label;
+                            final displayLabel =
+                                label == AddressLabelValues.home
+                                ? 'address.home'.tr()
+                                : label == AddressLabelValues.work
+                                ? 'address.work'.tr()
+                                : 'address.other'.tr();
+                            return Semantics(
+                              button: true,
+                              label:
+                                  'chip-address-label-${label.toLowerCase()}',
+                              selected: isSelected,
+                              child: ChoiceChip(
+                                label: Text(displayLabel),
+                                selected: isSelected,
+                                onSelected: (selected) =>
+                                    viewModel.setLabel(label),
+                                selectedColor: DesignTokens.primary,
+                                backgroundColor: isDark
+                                    ? DesignTokens.darkSurface
+                                    : DesignTokens.white,
+                                labelStyle: TextStyle(
+                                  color: isSelected
+                                      ? DesignTokens.white
+                                      : (isDark
+                                            ? DesignTokens.white
+                                            : DesignTokens.textPrimary),
+                                  fontWeight: isSelected
+                                      ? FontWeight.w600
+                                      : FontWeight.w500,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(
+                                    DesignTokens.radius12,
+                                  ),
+                                  side: BorderSide(
+                                    color: isSelected
+                                        ? DesignTokens.primary
+                                        : (isDark
+                                              ? DesignTokens.textPrimary
+                                              : DesignTokens.outlineVariant),
+                                  ),
+                                ),
+                                elevation: isSelected ? 2 : 0,
+                                shadowColor: DesignTokens.primary.withValues(
+                                  alpha: 0.3,
+                                ),
+                              ),
+                            );
+                          }).toList(),
                     ),
 
                     const SizedBox(height: DesignTokens.spacing24),
 
                     // Address Details Section
-                    _buildSectionTitle('address.details'.tr(), Icons.location_on_outlined),
+                    _buildSectionTitle(
+                      'address.details'.tr(),
+                      Icons.location_on_outlined,
+                    ),
                     const SizedBox(height: DesignTokens.spacing12),
 
                     GlassContainer(
@@ -105,15 +143,22 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                             label: 'address.street'.tr(),
                             icon: Icons.location_on_outlined,
                             onChanged: viewModel.onStreetChanged,
-                            validator: (v) => v?.isEmpty ?? true ? 'common.required'.tr() : null,
+                            validator: (v) => v?.isEmpty ?? true
+                                ? 'common.required'.tr()
+                                : null,
                           ),
-                          if (state.showSuggestions && state.addressSuggestions.isNotEmpty)
+                          if (state.showSuggestions &&
+                              state.addressSuggestions.isNotEmpty)
                             Container(
                               key: const Key('address_suggestions'),
                               margin: const EdgeInsets.only(top: 8, bottom: 8),
                               decoration: BoxDecoration(
-                                color: isDark ? DesignTokens.darkSurface : DesignTokens.white,
-                                borderRadius: BorderRadius.circular(DesignTokens.radius12),
+                                color: isDark
+                                    ? DesignTokens.darkSurface
+                                    : DesignTokens.white,
+                                borderRadius: BorderRadius.circular(
+                                  DesignTokens.radius12,
+                                ),
                                 boxShadow: DesignTokens.shadowMd,
                               ),
                               child: ListView.builder(
@@ -123,30 +168,66 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                                 itemBuilder: (context, i) {
                                   final s = state.addressSuggestions[i];
                                   return ListTile(
-                                    leading: Icon(Icons.location_on, color: DesignTokens.primary, size: 20),
-                                    title: Text(
-                                      (s['properties']?['formatted'] as String?) ?? '',
-                                      style: TextStyle(fontSize: 13, color: isDark ? DesignTokens.white : DesignTokens.textPrimary),
+                                    leading: Icon(
+                                      Icons.location_on,
+                                      color: DesignTokens.primary,
+                                      size: 20,
                                     ),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius8)),
+                                    title: Text(
+                                      (s['properties']?['formatted']
+                                              as String?) ??
+                                          '',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: isDark
+                                            ? DesignTokens.white
+                                            : DesignTokens.textPrimary,
+                                      ),
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(
+                                        DesignTokens.radius8,
+                                      ),
+                                    ),
                                     onTap: () {
                                       viewModel.selectAddress(s);
-                                      final props = s['properties'] as Map<String, dynamic>?;
-                                      final street = (props?['street'] as String?)?.trim() ?? '';
-                                      final houseNumber =
-                                          (props?['housenumber'] as String?)?.trim() ??
-                                          (props?['house_number'] as String?)?.trim() ??
-                                          (props?['address_line1'] as String?)?.trim() ??
+                                      final props =
+                                          s['properties']
+                                              as Map<String, dynamic>?;
+                                      final street =
+                                          (props?['street'] as String?)
+                                              ?.trim() ??
                                           '';
-                                      final formatted = (props?['formatted'] as String?)?.trim() ?? '';
+                                      final houseNumber =
+                                          (props?['housenumber'] as String?)
+                                              ?.trim() ??
+                                          (props?['house_number'] as String?)
+                                              ?.trim() ??
+                                          (props?['address_line1'] as String?)
+                                              ?.trim() ??
+                                          '';
+                                      final formatted =
+                                          (props?['formatted'] as String?)
+                                              ?.trim() ??
+                                          '';
 
-                                      final fullStreet = (houseNumber.isNotEmpty && street.isNotEmpty)
+                                      final fullStreet =
+                                          (houseNumber.isNotEmpty &&
+                                              street.isNotEmpty)
                                           ? '$houseNumber $street'
-                                          : (street.isNotEmpty ? street : formatted);
+                                          : (street.isNotEmpty
+                                                ? street
+                                                : formatted);
 
                                       _streetController.text = fullStreet;
-                                      _cityController.text = (s['properties']?['city'] as String?) ?? '';
-                                      _postalCodeController.text = (s['properties']?['postcode'] as String?) ?? '';
+                                      _cityController.text =
+                                          (s['properties']?['city']
+                                              as String?) ??
+                                          '';
+                                      _postalCodeController.text =
+                                          (s['properties']?['postcode']
+                                              as String?) ??
+                                          '';
                                     },
                                   );
                                 },
@@ -165,34 +246,70 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                             controller: _cityController,
                             label: 'address.city'.tr(),
                             icon: Icons.location_city_outlined,
-                            validator: (v) => v?.isEmpty ?? true ? 'common.required'.tr() : null,
+                            validator: (v) => v?.isEmpty ?? true
+                                ? 'common.required'.tr()
+                                : null,
                           ),
                           const SizedBox(height: DesignTokens.spacing16),
                           DropdownButtonFormField<String>(
                             key: ValueKey(state.selectedProvince),
                             isExpanded: true,
-                            menuMaxHeight: ResponsiveBreakpoints.dropdownMaxHeight(context),
+                            menuMaxHeight:
+                                ResponsiveBreakpoints.dropdownMaxHeight(
+                                  context,
+                                ),
                             initialValue: state.selectedProvince,
                             decoration: InputDecoration(
                               labelText: 'address.province'.tr(),
-                              prefixIcon: Icon(Icons.map_outlined, color: DesignTokens.primary.withValues(alpha: 0.7)),
+                              prefixIcon: Icon(
+                                Icons.map_outlined,
+                                color: DesignTokens.primary.withValues(
+                                  alpha: 0.7,
+                                ),
+                              ),
                               border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                                borderSide: BorderSide(color: isDark ? DesignTokens.textPrimary : DesignTokens.outlineVariant),
+                                borderRadius: BorderRadius.circular(
+                                  DesignTokens.radius12,
+                                ),
+                                borderSide: BorderSide(
+                                  color: isDark
+                                      ? DesignTokens.textPrimary
+                                      : DesignTokens.outlineVariant,
+                                ),
                               ),
                               enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                                borderSide: BorderSide(color: isDark ? DesignTokens.textPrimary : DesignTokens.outlineVariant),
+                                borderRadius: BorderRadius.circular(
+                                  DesignTokens.radius12,
+                                ),
+                                borderSide: BorderSide(
+                                  color: isDark
+                                      ? DesignTokens.textPrimary
+                                      : DesignTokens.outlineVariant,
+                                ),
                               ),
                               focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                                borderSide: const BorderSide(color: DesignTokens.primary, width: 2),
+                                borderRadius: BorderRadius.circular(
+                                  DesignTokens.radius12,
+                                ),
+                                borderSide: const BorderSide(
+                                  color: DesignTokens.primary,
+                                  width: 2,
+                                ),
                               ),
                               filled: true,
-                              fillColor: isDark ? DesignTokens.darkSurface : DesignTokens.white,
+                              fillColor: isDark
+                                  ? DesignTokens.darkSurface
+                                  : DesignTokens.white,
                             ),
                             items: ProvinceCodeValues.all
-                                .map((code) => DropdownMenuItem(value: code, child: Text('${ProvinceCodeValues.names[code]} ($code)')))
+                                .map(
+                                  (code) => DropdownMenuItem(
+                                    value: code,
+                                    child: Text(
+                                      '${ProvinceCodeValues.names[code]} ($code)',
+                                    ),
+                                  ),
+                                )
                                 .toList(),
                             onChanged: (v) => viewModel.setProvince(v!),
                           ),
@@ -204,9 +321,15 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                             icon: Icons.markunread_mailbox_outlined,
                             textCapitalization: TextCapitalization.characters,
                             validator: (v) {
-                              if (v == null || v.isEmpty) return 'common.required'.tr();
-                              final cleaned = v.replaceAll(' ', '').toUpperCase();
-                              if (!RegExp(r'^[A-Z]\d[A-Z]\d[A-Z]\d$').hasMatch(cleaned)) {
+                              if (v == null || v.isEmpty) {
+                                return 'common.required'.tr();
+                              }
+                              final cleaned = v
+                                  .replaceAll(' ', '')
+                                  .toUpperCase();
+                              if (!RegExp(
+                                r'^[A-Z]\d[A-Z]\d[A-Z]\d$',
+                              ).hasMatch(cleaned)) {
                                 return 'address.valid_postal'.tr();
                               }
                               return null;
@@ -220,7 +343,9 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                             icon: Icons.phone_outlined,
                             keyboardType: TextInputType.phone,
                             validator: (v) {
-                              if (v == null || v.isEmpty) return 'common.required'.tr();
+                              if (v == null || v.isEmpty) {
+                                return 'common.required'.tr();
+                              }
                               // E.164 format: + followed by 1-15 digits, starting with non-zero
                               final e164 = RegExp(r'^\+[1-9]\d{1,14}$');
                               // Canadian specific: +1 followed by exactly 10 digits
@@ -230,7 +355,8 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                                 return 'address.valid_phone'.tr();
                               }
                               // If starts with +1, must be exactly +1XXXXXXXXXX
-                              if (trimmed.startsWith('+1') && !canadian.hasMatch(trimmed)) {
+                              if (trimmed.startsWith('+1') &&
+                                  !canadian.hasMatch(trimmed)) {
                                 return 'address.valid_phone'.tr();
                               }
                               return null;
@@ -248,10 +374,17 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                       onChanged: (v) => viewModel.setDefault(v),
                       title: Text(
                         'address.set_as_default'.tr(),
-                        style: TextStyle(color: isDark ? DesignTokens.white : DesignTokens.textPrimary, fontWeight: FontWeight.w600),
+                        style: TextStyle(
+                          color: isDark
+                              ? DesignTokens.white
+                              : DesignTokens.textPrimary,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       activeThumbColor: DesignTokens.primary,
-                      activeTrackColor: DesignTokens.primary.withValues(alpha: 0.5),
+                      activeTrackColor: DesignTokens.primary.withValues(
+                        alpha: 0.5,
+                      ),
                       contentPadding: EdgeInsets.zero,
                       tileColor: DesignTokens.transparent,
                     ),
@@ -263,7 +396,9 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                       label: 'btn-save-address',
                       child: ModernButton(
                         key: const Key('btn_save_address'),
-                        label: state.isLoading ? 'address.saving'.tr() : 'address.save_address'.tr(),
+                        label: state.isLoading
+                            ? 'address.saving'.tr()
+                            : 'address.save_address'.tr(),
                         imageIcon: 'assets/icons/save_icon.png',
                         isLoading: state.isLoading,
                         onPressed: state.isLoading
@@ -311,7 +446,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
       previous,
       next,
     ) {
-      if (next == null || !mounted) return;
+      if (!mounted) return;
       if (next.isSuccess) {
         final messenger = ScaffoldMessenger.of(context);
         Navigator.pop(context);
@@ -345,7 +480,11 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
       _apartmentController.text = widget.address!.apartment;
       _phoneController.text = widget.address!.phoneNumber ?? '';
     }
-    Future.microtask(() => ref.read(addressViewModelProvider.notifier).setInitialData(widget.address));
+    Future.microtask(
+      () => ref
+          .read(addressViewModelProvider.notifier)
+          .setInitialData(widget.address),
+    );
   }
 
   Widget _buildSectionTitle(String title, IconData icon) {
@@ -355,7 +494,12 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            gradient: LinearGradient(colors: [DesignTokens.primary.withValues(alpha: 0.15), DesignTokens.secondary.withValues(alpha: 0.15)]),
+            gradient: LinearGradient(
+              colors: [
+                DesignTokens.primary.withValues(alpha: 0.15),
+                DesignTokens.secondary.withValues(alpha: 0.15),
+              ],
+            ),
             borderRadius: BorderRadius.circular(DesignTokens.radius8),
           ),
           child: Icon(icon, size: 18, color: DesignTokens.primary),
@@ -366,7 +510,11 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
             title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: isDark ? DesignTokens.white : DesignTokens.textPrimary),
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: isDark ? DesignTokens.white : DesignTokens.textPrimary,
+            ),
           ),
         ),
       ],
@@ -391,17 +539,29 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
       textCapitalization: textCapitalization,
       onChanged: onChanged,
       validator: validator,
-      style: TextStyle(color: isDark ? DesignTokens.white : DesignTokens.textPrimary),
+      style: TextStyle(
+        color: isDark ? DesignTokens.white : DesignTokens.textPrimary,
+      ),
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: icon != null ? Icon(icon, color: DesignTokens.primary.withValues(alpha: 0.7)) : null,
+        prefixIcon: icon != null
+            ? Icon(icon, color: DesignTokens.primary.withValues(alpha: 0.7))
+            : null,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(DesignTokens.radius12),
-          borderSide: BorderSide(color: isDark ? DesignTokens.textPrimary : DesignTokens.outlineVariant),
+          borderSide: BorderSide(
+            color: isDark
+                ? DesignTokens.textPrimary
+                : DesignTokens.outlineVariant,
+          ),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(DesignTokens.radius12),
-          borderSide: BorderSide(color: isDark ? DesignTokens.textPrimary : DesignTokens.outlineVariant),
+          borderSide: BorderSide(
+            color: isDark
+                ? DesignTokens.textPrimary
+                : DesignTokens.outlineVariant,
+          ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(DesignTokens.radius12),

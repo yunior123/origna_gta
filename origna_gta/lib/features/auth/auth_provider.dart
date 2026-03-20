@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/core/repositories/auth_repository.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/utils.dart';
 
@@ -39,4 +40,22 @@ final needsTermsUpdateProvider = Provider.autoDispose<bool>((ref) {
         },
       ) ??
       false;
+});
+
+// ============================================================================
+// AUTH ACTIONS — wraps repository calls so screens never read repositories directly
+// ============================================================================
+
+class AuthActions {
+  final AuthRepository _repo;
+  const AuthActions(this._repo);
+
+  Future<void> signOut() => _repo.signOut();
+  Future<bool> isEmailVerified() => _repo.isEmailVerified();
+  Future<void> ensureUserDocumentExists() => _repo.ensureUserDocumentExists();
+  Future<void> sendEmailVerification() => _repo.sendEmailVerification();
+}
+
+final authActionsProvider = Provider<AuthActions>((ref) {
+  return AuthActions(ref.watch(authRepositoryProvider));
 });

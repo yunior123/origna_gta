@@ -1,9 +1,8 @@
-// coverage:ignore-file
 import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
 import 'package:origna_gta/screens/cartitem_screen.dart';
 
-import '../_preview_theme.dart';
+import 'package:origna_gta/previews/_preview_theme.dart';
 
 Widget _cartItemContent() => previewScope(
   child: Scaffold(

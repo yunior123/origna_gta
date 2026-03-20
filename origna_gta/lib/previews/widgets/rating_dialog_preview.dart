@@ -1,4 +1,3 @@
-// coverage:ignore-file
 import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
 import 'package:origna_gta/features/subscription/subscription_provider.dart';

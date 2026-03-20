@@ -60,7 +60,7 @@ void main() {
     name: 'Test Product',
     description: 'Description',
     price: 50.0,
-    imageUrls: ['https://example.com/image.png'],
+    imageUrls: ['images/33.png'],
     quantity: 2,
     createdAt: DateTime.now(),
     sellerAddress: testAddress,

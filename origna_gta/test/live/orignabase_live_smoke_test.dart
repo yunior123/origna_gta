@@ -69,6 +69,24 @@ void main() {
           await Future<void>.delayed(const Duration(milliseconds: 250));
         }
 
+        if (EnvConfig().isEmulator) {
+          final fallback = await ob
+              .collection(Collections.products)
+              .where(
+                Fields.lifecycleStatus,
+                isEqualTo: ProductLifecycleStatusValues.active,
+              )
+              .limit(1)
+              .get();
+          expect(
+            fallback.docs,
+            isNotEmpty,
+            reason:
+                'Expected at least one active product in emulator fallback, got $result',
+          );
+          return;
+        }
+
         fail('Expected at least one active indexed product in dev, got $result');
       },
       skip: !runLive,

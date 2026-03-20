@@ -1,4 +1,3 @@
-// coverage:ignore-file
 /// Shared preview theme helpers for Flutter Widget Previewer.
 /// All preview functions import this to ensure consistent look.
 library;

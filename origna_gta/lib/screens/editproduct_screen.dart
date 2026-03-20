@@ -1,4 +1,3 @@
-// coverage:ignore-file
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,8 +11,8 @@ import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
-import '../../features/products/edit_product_state.dart';
-import '../../features/products/edit_product_viewmodel.dart';
+import 'package:origna_gta/features/products/edit_product_state.dart';
+import 'package:origna_gta/features/products/edit_product_viewmodel.dart';
 
 /// Documentation for EditProductScreen
 class EditProductScreen extends ConsumerStatefulWidget {
@@ -355,7 +354,9 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                   ],
                   DropdownButtonFormField<String>(
                     key: const Key('product_edit_category_dropdown'),
-                    menuMaxHeight: ResponsiveBreakpoints.dropdownMaxHeight(context),
+                    menuMaxHeight: ResponsiveBreakpoints.dropdownMaxHeight(
+                      context,
+                    ),
                     initialValue: _categoryController.text.isNotEmpty
                         ? _categoryController.text
                         : null,
@@ -539,7 +540,8 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: DropdownButtonFormField<String>(
-                          menuMaxHeight: ResponsiveBreakpoints.dropdownMaxHeight(context),
+                          menuMaxHeight:
+                              ResponsiveBreakpoints.dropdownMaxHeight(context),
                           initialValue: state.selectedProvince,
                           decoration: InputDecoration(
                             labelText: 'product.province'.tr(),
@@ -571,7 +573,10 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                   _buildSectionTitle('product.images'.tr()),
                   _buildImageGrid(state, viewModel),
                   const SizedBox(height: 12),
-                  ProductAddImages(imageModels: state.newImages),
+                  ProductAddImages(
+                    imageModels: state.newImages,
+                    onImagesChanged: viewModel.updateNewImages,
+                  ),
                   const SizedBox(height: 24),
                   _buildSectionTitle('product.product_video'.tr()),
                   ProductAddVideo(
@@ -802,7 +807,9 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
             onTap: () {
               viewModel.selectAddress(s);
               _streetController.text =
-                  (props['street'] as String?) ?? (props['formatted'] as String?) ?? '';
+                  (props['street'] as String?) ??
+                  (props['formatted'] as String?) ??
+                  '';
               _cityController.text = (props['city'] as String?) ?? '';
               _postalCodeController.text = (props['postcode'] as String?) ?? '';
             },
@@ -1025,7 +1032,9 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
           Text(
             'product.download_links'.tr(),
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              color: Theme.of(context).brightness == Brightness.dark ? DesignTokens.white : DesignTokens.textPrimary,
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? DesignTokens.white
+                  : DesignTokens.textPrimary,
             ),
           ),
           const SizedBox(height: 4),

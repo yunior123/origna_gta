@@ -1,4 +1,3 @@
-// coverage:ignore-file
 import 'package:origna_gta/utils/constants.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -82,7 +81,9 @@ class VariantAndCartSection extends ConsumerWidget {
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: isDark ? DesignTokens.white : DesignTokens.textPrimary,
+                      color: isDark
+                          ? DesignTokens.white
+                          : DesignTokens.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -339,6 +340,12 @@ class _AddToCartButtonState extends ConsumerState<AddToCartButton> {
       productDetailViewModelProvider.select((state) => state.quantity),
     );
     final currentUser = ref.watch(currentUserProvider);
+    final notifState = ref.watch(
+      stockNotificationNotifierProvider((
+        productId: widget.productId,
+        variantKey: widget.variantKey,
+      )),
+    );
     final isOwnProduct =
         currentUser != null && currentUser.uid == widget.sellerId;
 
@@ -397,12 +404,6 @@ class _AddToCartButtonState extends ConsumerState<AddToCartButton> {
     }
 
     if (widget.stockQuantity <= 0) {
-      final notifState = ref.watch(
-        stockNotificationNotifierProvider((
-          productId: widget.productId,
-          variantKey: widget.variantKey,
-        )),
-      );
       final isSubscribed = notifState.value ?? false;
       final isLoading = notifState.isLoading;
       return Semantics(
@@ -527,8 +528,7 @@ class _AddToCartButtonState extends ConsumerState<AddToCartButton> {
     try {
       final success = await ref
           .read(cartControllerProvider)
-          .addToCart(widget.productId, quantity,
-              variantId: widget.variantKey);
+          .addToCart(widget.productId, quantity, variantId: widget.variantKey);
       if (!success || !context.mounted) return;
 
       final cartDetails = await ref.read(cartWithDetailsProvider.future);
@@ -600,8 +600,7 @@ class _AddToCartButtonState extends ConsumerState<AddToCartButton> {
       if (context.mounted) {
         messenger.showSnackBar(
           SnackBar(
-            content:
-                Text(AppError.getMessage(e, 'product.notify_error'.tr())),
+            content: Text(AppError.getMessage(e, 'product.notify_error'.tr())),
             backgroundColor: DesignTokens.error,
           ),
         );

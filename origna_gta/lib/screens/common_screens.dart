@@ -1,4 +1,3 @@
-// coverage:ignore-file
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
@@ -22,12 +21,16 @@ class AdminRequiredGate extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final profileRoles = ref.watch(userProfileProvider.select((a) => a.valueOrNull?.roles));
+    final profileRoles = ref.watch(
+      userProfileProvider.select((a) => a.valueOrNull?.roles),
+    );
 
     // Still loading profile — show spinner
     if (profileRoles == null) {
       return Container(
-        decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
+        decoration: BoxDecoration(
+          gradient: DesignTokens.backgroundGradient(isDark: isDark),
+        ),
         child: const Scaffold(
           backgroundColor: DesignTokens.transparent,
           body: Center(child: ModernLoadingIndicator()),
@@ -38,7 +41,9 @@ class AdminRequiredGate extends ConsumerWidget {
     // Not admin — redirect home
     if (!profileRoles.contains(UserRoles.admin)) {
       return Container(
-        decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
+        decoration: BoxDecoration(
+          gradient: DesignTokens.backgroundGradient(isDark: isDark),
+        ),
         child: Scaffold(
           appBar: AppBarFactory.simple(title: 'admin.access_denied'.tr()),
           backgroundColor: DesignTokens.transparent,
@@ -51,13 +56,23 @@ class AdminRequiredGate extends ConsumerWidget {
                   children: [
                     Container(
                       padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(color: DesignTokens.error.withValues(alpha: 0.1), shape: BoxShape.circle),
-                      child: Icon(Icons.admin_panel_settings_rounded, size: 56, color: DesignTokens.error),
+                      decoration: BoxDecoration(
+                        color: DesignTokens.error.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.admin_panel_settings_rounded,
+                        size: 56,
+                        color: DesignTokens.error,
+                      ),
                     ),
                     const SizedBox(height: DesignTokens.spacing20),
                     Text(
                       'admin.privileges_required'.tr(),
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 32),
@@ -66,7 +81,11 @@ class AdminRequiredGate extends ConsumerWidget {
                       icon: Icons.home_outlined,
                       isPrimary: false,
                       isOutlined: true,
-                      onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false),
+                      onPressed: () =>
+                          Navigator.of(context).pushNamedAndRemoveUntil(
+                            AppRoutes.home,
+                            (route) => false,
+                          ),
                     ),
                   ],
                 ),
@@ -94,22 +113,33 @@ class AuthRequiredGate extends ConsumerWidget {
 
     return authState.when(
       loading: () => Container(
-        decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
+        decoration: BoxDecoration(
+          gradient: DesignTokens.backgroundGradient(isDark: isDark),
+        ),
         child: Scaffold(
           backgroundColor: DesignTokens.transparent,
           body: Center(
             child: ShaderMask(
-              shaderCallback: (bounds) => DesignTokens.primaryGradient.createShader(bounds),
-              child: const ModernLoadingIndicator(color: DesignTokens.white, strokeWidth: 3, centered: false),
+              shaderCallback: (bounds) =>
+                  DesignTokens.primaryGradient.createShader(bounds),
+              child: const ModernLoadingIndicator(
+                color: DesignTokens.white,
+                strokeWidth: 3,
+                centered: false,
+              ),
             ),
           ),
         ),
       ),
-      error: (error, _) => ErrorScreen(message: 'errors.auth_error'.tr(namedArgs: {'error': error.toString()})),
+      error: (error, _) => ErrorScreen(
+        message: 'errors.auth_error'.tr(namedArgs: {'error': error.toString()}),
+      ),
       data: (user) {
         if (user == null) {
           return Container(
-            decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
+            decoration: BoxDecoration(
+              gradient: DesignTokens.backgroundGradient(isDark: isDark),
+            ),
             child: Scaffold(
               appBar: AppBarFactory.simple(title: 'auth.sign_in_required'.tr()),
               backgroundColor: DesignTokens.transparent,
@@ -125,10 +155,21 @@ class AuthRequiredGate extends ConsumerWidget {
                           child: Container(
                             padding: const EdgeInsets.all(24),
                             decoration: BoxDecoration(
-                              gradient: LinearGradient(colors: [DesignTokens.primary.withValues(alpha: 0.12), DesignTokens.secondary.withValues(alpha: 0.08)]),
+                              gradient: LinearGradient(
+                                colors: [
+                                  DesignTokens.primary.withValues(alpha: 0.12),
+                                  DesignTokens.secondary.withValues(
+                                    alpha: 0.08,
+                                  ),
+                                ],
+                              ),
                               shape: BoxShape.circle,
                             ),
-                            child: Icon(Icons.lock_outline_rounded, size: 56, color: DesignTokens.primary),
+                            child: Icon(
+                              Icons.lock_outline_rounded,
+                              size: 56,
+                              color: DesignTokens.primary,
+                            ),
                           ),
                         ),
                         const SizedBox(height: 24),
@@ -136,7 +177,13 @@ class AuthRequiredGate extends ConsumerWidget {
                           delay: const Duration(milliseconds: 50),
                           child: Text(
                             'auth.please_sign_in'.tr(),
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: isDark ? DesignTokens.white : DesignTokens.textPrimary),
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: isDark
+                                  ? DesignTokens.white
+                                  : DesignTokens.textPrimary,
+                            ),
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -144,7 +191,10 @@ class AuthRequiredGate extends ConsumerWidget {
                           delay: const Duration(milliseconds: 100),
                           child: Text(
                             'auth.need_account_access'.tr(),
-                            style: TextStyle(fontSize: 14, color: DesignTokens.textSecondary),
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: DesignTokens.textSecondary,
+                            ),
                             textAlign: TextAlign.center,
                           ),
                         ),
@@ -154,17 +204,26 @@ class AuthRequiredGate extends ConsumerWidget {
                           child: ModernButton(
                             label: 'auth.sign_in'.tr(),
                             icon: Icons.login_rounded,
-                            onPressed: () => Navigator.of(context).pushNamed(AppRoutes.login),
+                            onPressed: () => Navigator.of(
+                              context,
+                            ).pushNamed(AppRoutes.login),
                           ),
                         ),
                         const SizedBox(height: 12),
                         FadeSlideIn(
                           delay: const Duration(milliseconds: 200),
                           child: TextButton(
-                            onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false),
+                            onPressed: () =>
+                                Navigator.of(context).pushNamedAndRemoveUntil(
+                                  AppRoutes.home,
+                                  (route) => false,
+                                ),
                             child: Text(
                               'seller.go_home'.tr(),
-                              style: TextStyle(color: DesignTokens.primary, fontWeight: FontWeight.w600),
+                              style: TextStyle(
+                                color: DesignTokens.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                         ),
@@ -180,7 +239,9 @@ class AuthRequiredGate extends ConsumerWidget {
         // Wait for profile to load before granting access — null profile is not a pass.
         final userProfileAsync = ref.watch(userProfileProvider);
         if (userProfileAsync.isLoading) {
-          return const Scaffold(body: Center(child: ModernLoadingIndicator(centered: false)));
+          return const Scaffold(
+            body: Center(child: ModernLoadingIndicator(centered: false)),
+          );
         }
         // Fail closed on error — never grant access when profile can't be loaded
         if (userProfileAsync.hasError) {
@@ -191,9 +252,16 @@ class AuthRequiredGate extends ConsumerWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.error_outline, size: 48, color: DesignTokens.error),
+                    Icon(
+                      Icons.error_outline,
+                      size: 48,
+                      color: DesignTokens.error,
+                    ),
                     const SizedBox(height: 16),
-                    Text('auth.profile_load_error'.tr(), textAlign: TextAlign.center),
+                    Text(
+                      'auth.profile_load_error'.tr(),
+                      textAlign: TextAlign.center,
+                    ),
                   ],
                 ),
               ),
@@ -203,9 +271,13 @@ class AuthRequiredGate extends ConsumerWidget {
         final userProfile = userProfileAsync.valueOrNull;
         if (userProfile?.suspended == true) {
           return Container(
-            decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
+            decoration: BoxDecoration(
+              gradient: DesignTokens.backgroundGradient(isDark: isDark),
+            ),
             child: Scaffold(
-              appBar: AppBarFactory.simple(title: 'auth.account_suspended'.tr()),
+              appBar: AppBarFactory.simple(
+                title: 'auth.account_suspended'.tr(),
+              ),
               backgroundColor: DesignTokens.transparent,
               body: Center(
                 child: ConstrainedBox(
@@ -216,20 +288,40 @@ class AuthRequiredGate extends ConsumerWidget {
                       children: [
                         Container(
                           padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(color: DesignTokens.error.withValues(alpha: 0.1), shape: BoxShape.circle),
-                          child: Icon(Icons.block_rounded, size: 56, color: DesignTokens.error),
+                          decoration: BoxDecoration(
+                            color: DesignTokens.error.withValues(alpha: 0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.block_rounded,
+                            size: 56,
+                            color: DesignTokens.error,
+                          ),
                         ),
                         const SizedBox(height: DesignTokens.spacing20),
-                        Text('auth.account_suspended'.tr(), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                        Text(
+                          'auth.account_suspended'.tr(),
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                         const SizedBox(height: DesignTokens.spacing8),
-                        Text('auth.contact_support'.tr(), style: TextStyle(color: DesignTokens.textSecondary)),
+                        Text(
+                          'auth.contact_support'.tr(),
+                          style: TextStyle(color: DesignTokens.textSecondary),
+                        ),
                         const SizedBox(height: 32),
                         ModernButton(
                           label: 'seller.go_home'.tr(),
                           icon: Icons.home_outlined,
                           isPrimary: false,
                           isOutlined: true,
-                          onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false),
+                          onPressed: () =>
+                              Navigator.of(context).pushNamedAndRemoveUntil(
+                                AppRoutes.home,
+                                (route) => false,
+                              ),
                         ),
                       ],
                     ),
@@ -254,7 +346,8 @@ class EmailVerificationRequiredScreen extends ConsumerStatefulWidget {
   const EmailVerificationRequiredScreen({super.key});
 
   @override
-  ConsumerState<EmailVerificationRequiredScreen> createState() => _EmailVerificationRequiredScreenState();
+  ConsumerState<EmailVerificationRequiredScreen> createState() =>
+      _EmailVerificationRequiredScreenState();
 }
 
 /// Generic error screen
@@ -268,7 +361,9 @@ class ErrorScreen extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
+      decoration: BoxDecoration(
+        gradient: DesignTokens.backgroundGradient(isDark: isDark),
+      ),
       child: Scaffold(
         appBar: AppBarFactory.simple(title: 'errors.error_title'.tr()),
         backgroundColor: DesignTokens.transparent,
@@ -284,10 +379,19 @@ class ErrorScreen extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(colors: [DesignTokens.error.withValues(alpha: 0.15), DesignTokens.error.withValues(alpha: 0.08)]),
+                        gradient: LinearGradient(
+                          colors: [
+                            DesignTokens.error.withValues(alpha: 0.15),
+                            DesignTokens.error.withValues(alpha: 0.08),
+                          ],
+                        ),
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(Icons.error_outline_rounded, size: 64, color: DesignTokens.error),
+                      child: Icon(
+                        Icons.error_outline_rounded,
+                        size: 64,
+                        color: DesignTokens.error,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -295,7 +399,13 @@ class ErrorScreen extends StatelessWidget {
                     delay: const Duration(milliseconds: 50),
                     child: Text(
                       'errors.generic_error'.tr(),
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: isDark ? DesignTokens.white : DesignTokens.textPrimary),
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: isDark
+                            ? DesignTokens.white
+                            : DesignTokens.textPrimary,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -304,7 +414,11 @@ class ErrorScreen extends StatelessWidget {
                     child: Text(
                       message,
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 14, color: DesignTokens.textSecondary, height: 1.5),
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: DesignTokens.textSecondary,
+                        height: 1.5,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 32),
@@ -313,7 +427,11 @@ class ErrorScreen extends StatelessWidget {
                     child: ModernButton(
                       label: 'seller.go_home'.tr(),
                       icon: Icons.home_outlined,
-                      onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false),
+                      onPressed: () =>
+                          Navigator.of(context).pushNamedAndRemoveUntil(
+                            AppRoutes.home,
+                            (route) => false,
+                          ),
                     ),
                   ),
                 ],
@@ -326,7 +444,8 @@ class ErrorScreen extends StatelessWidget {
   }
 }
 
-class _EmailVerificationRequiredScreenState extends ConsumerState<EmailVerificationRequiredScreen> {
+class _EmailVerificationRequiredScreenState
+    extends ConsumerState<EmailVerificationRequiredScreen> {
   bool _isChecking = false;
   bool _isResending = false;
 
@@ -336,7 +455,9 @@ class _EmailVerificationRequiredScreenState extends ConsumerState<EmailVerificat
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
+      decoration: BoxDecoration(
+        gradient: DesignTokens.backgroundGradient(isDark: isDark),
+      ),
       child: Scaffold(
         appBar: AppBarFactory.simple(title: 'email_verification.title'.tr()),
         backgroundColor: DesignTokens.transparent,
@@ -352,10 +473,19 @@ class _EmailVerificationRequiredScreenState extends ConsumerState<EmailVerificat
                     child: Container(
                       padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(colors: [DesignTokens.warning.withValues(alpha: 0.15), DesignTokens.warning.withValues(alpha: 0.08)]),
+                        gradient: LinearGradient(
+                          colors: [
+                            DesignTokens.warning.withValues(alpha: 0.15),
+                            DesignTokens.warning.withValues(alpha: 0.08),
+                          ],
+                        ),
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(Icons.mark_email_unread_outlined, size: 56, color: DesignTokens.warning),
+                      child: Icon(
+                        Icons.mark_email_unread_outlined,
+                        size: 56,
+                        color: DesignTokens.warning,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -363,7 +493,13 @@ class _EmailVerificationRequiredScreenState extends ConsumerState<EmailVerificat
                     delay: const Duration(milliseconds: 50),
                     child: Text(
                       'email_verification.title'.tr(),
-                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: isDark ? DesignTokens.white : DesignTokens.textPrimary),
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        color: isDark
+                            ? DesignTokens.white
+                            : DesignTokens.textPrimary,
+                      ),
                     ),
                   ),
                   if (user?.email != null) ...[
@@ -371,11 +507,21 @@ class _EmailVerificationRequiredScreenState extends ConsumerState<EmailVerificat
                     FadeSlideIn(
                       delay: const Duration(milliseconds: 75),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                        decoration: BoxDecoration(color: DesignTokens.primary.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(20)),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: DesignTokens.primary.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
                         child: Text(
                           user?.email ?? '',
-                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: DesignTokens.primary),
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: DesignTokens.primary,
+                          ),
                         ),
                       ),
                     ),
@@ -386,18 +532,45 @@ class _EmailVerificationRequiredScreenState extends ConsumerState<EmailVerificat
                     child: Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: isDark ? DesignTokens.darkSurfaceVariant.withValues(alpha: 0.5) : DesignTokens.surface,
+                        color: isDark
+                            ? DesignTokens.darkSurfaceVariant.withValues(
+                                alpha: 0.5,
+                              )
+                            : DesignTokens.surface,
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: isDark ? DesignTokens.textPrimary : DesignTokens.outlineVariant),
+                        border: Border.all(
+                          color: isDark
+                              ? DesignTokens.textPrimary
+                              : DesignTokens.outlineVariant,
+                        ),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('email_verification.instruction_title'.tr(), style: TextStyle(fontSize: 14, color: DesignTokens.textSecondary, height: 1.5)),
+                          Text(
+                            'email_verification.instruction_title'.tr(),
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: DesignTokens.textSecondary,
+                              height: 1.5,
+                            ),
+                          ),
                           const SizedBox(height: 16),
-                          _buildStep(context, '1', 'email_verification.step1'.tr()),
-                          _buildStep(context, '2', 'email_verification.step2'.tr()),
-                          _buildStep(context, '3', 'email_verification.step3'.tr()),
+                          _buildStep(
+                            context,
+                            '1',
+                            'email_verification.step1'.tr(),
+                          ),
+                          _buildStep(
+                            context,
+                            '2',
+                            'email_verification.step2'.tr(),
+                          ),
+                          _buildStep(
+                            context,
+                            '3',
+                            'email_verification.step3'.tr(),
+                          ),
                         ],
                       ),
                     ),
@@ -406,7 +579,9 @@ class _EmailVerificationRequiredScreenState extends ConsumerState<EmailVerificat
                   FadeSlideIn(
                     delay: const Duration(milliseconds: 150),
                     child: ModernButton(
-                      label: _isChecking ? 'email_verification.checking'.tr() : 'email_verification.verify_button'.tr(),
+                      label: _isChecking
+                          ? 'email_verification.checking'.tr()
+                          : 'email_verification.verify_button'.tr(),
                       icon: Icons.check_circle_outline,
                       isLoading: _isChecking,
                       onPressed: _isChecking ? () {} : _checkVerification,
@@ -416,7 +591,9 @@ class _EmailVerificationRequiredScreenState extends ConsumerState<EmailVerificat
                   FadeSlideIn(
                     delay: const Duration(milliseconds: 175),
                     child: ModernButton(
-                      label: _isResending ? 'email_verification.sending'.tr() : 'email_verification.resend_button'.tr(),
+                      label: _isResending
+                          ? 'email_verification.sending'.tr()
+                          : 'email_verification.resend_button'.tr(),
                       icon: Icons.send_outlined,
                       isPrimary: false,
                       isLoading: _isResending,
@@ -428,15 +605,25 @@ class _EmailVerificationRequiredScreenState extends ConsumerState<EmailVerificat
                     delay: const Duration(milliseconds: 200),
                     child: TextButton.icon(
                       onPressed: () async {
-                        await ref.read(authRepositoryProvider).signOut();
+                        await ref.read(authActionsProvider).signOut();
                         if (context.mounted) {
-                          Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
+                          Navigator.of(context).pushNamedAndRemoveUntil(
+                            AppRoutes.home,
+                            (route) => false,
+                          );
                         }
                       },
-                      icon: Icon(Icons.logout, size: 16, color: DesignTokens.textSecondary),
+                      icon: Icon(
+                        Icons.logout,
+                        size: 16,
+                        color: DesignTokens.textSecondary,
+                      ),
                       label: Text(
                         'email_verification.different_account'.tr(),
-                        style: TextStyle(color: DesignTokens.textSecondary, fontWeight: FontWeight.w500),
+                        style: TextStyle(
+                          color: DesignTokens.textSecondary,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
                   ),
@@ -459,17 +646,33 @@ class _EmailVerificationRequiredScreenState extends ConsumerState<EmailVerificat
           Container(
             width: 24,
             height: 24,
-            decoration: BoxDecoration(gradient: DesignTokens.primaryGradient, shape: BoxShape.circle),
+            decoration: BoxDecoration(
+              gradient: DesignTokens.primaryGradient,
+              shape: BoxShape.circle,
+            ),
             child: Center(
               child: Text(
                 number,
-                style: const TextStyle(color: DesignTokens.white, fontSize: 12, fontWeight: FontWeight.w700),
+                style: const TextStyle(
+                  color: DesignTokens.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(text, style: TextStyle(fontSize: 14, color: isDark ? DesignTokens.outlineVariant : DesignTokens.textPrimary, height: 1.4)),
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 14,
+                color: isDark
+                    ? DesignTokens.outlineVariant
+                    : DesignTokens.textPrimary,
+                height: 1.4,
+              ),
+            ),
           ),
         ],
       ),
@@ -481,32 +684,44 @@ class _EmailVerificationRequiredScreenState extends ConsumerState<EmailVerificat
     try {
       final user = ref.read(currentUserProvider);
       if (user != null) {
-        final verified = await ref.read(authRepositoryProvider).isEmailVerified();
+        final verified = await ref.read(authActionsProvider).isEmailVerified();
         if (verified) {
-          await ref.read(authRepositoryProvider).ensureUserDocumentExists();
+          await ref.read(authActionsProvider).ensureUserDocumentExists();
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('🎉 ${'email_verification.verified_success'.tr()}'),
+                content: Text(
+                  '🎉 ${'email_verification.verified_success'.tr()}',
+                ),
                 backgroundColor: DesignTokens.success,
                 behavior: SnackBarBehavior.floating,
               ),
             );
-            Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
+            Navigator.of(
+              context,
+            ).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
           }
         } else {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('email_verification.not_verified_error'.tr()), backgroundColor: DesignTokens.warning, behavior: SnackBarBehavior.floating),
+              SnackBar(
+                content: Text('email_verification.not_verified_error'.tr()),
+                backgroundColor: DesignTokens.warning,
+                behavior: SnackBarBehavior.floating,
+              ),
             );
           }
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('errors.verification_error'.tr()), backgroundColor: DesignTokens.error, behavior: SnackBarBehavior.floating));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('errors.verification_error'.tr()),
+            backgroundColor: DesignTokens.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _isChecking = false);
@@ -516,17 +731,25 @@ class _EmailVerificationRequiredScreenState extends ConsumerState<EmailVerificat
   Future<void> _resendEmail() async {
     setState(() => _isResending = true);
     try {
-      await ref.read(authRepositoryProvider).sendEmailVerification();
+      await ref.read(authActionsProvider).sendEmailVerification();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('✅ ${'email_verification.sent_success'.tr()}'), backgroundColor: DesignTokens.primary, behavior: SnackBarBehavior.floating),
+          SnackBar(
+            content: Text('✅ ${'email_verification.sent_success'.tr()}'),
+            backgroundColor: DesignTokens.primary,
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e.toString().contains('too-many-requests') ? 'email_verification.too_many_requests'.tr() : 'email_verification.send_failed'.tr()),
+            content: Text(
+              e.toString().contains('too-many-requests')
+                  ? 'email_verification.too_many_requests'.tr()
+                  : 'email_verification.send_failed'.tr(),
+            ),
             backgroundColor: DesignTokens.error,
             behavior: SnackBarBehavior.floating,
           ),

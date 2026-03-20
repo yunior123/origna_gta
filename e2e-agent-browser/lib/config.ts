@@ -46,7 +46,7 @@ function deriveOrignaBaseUrl(targetEnv: E2EEnvironment): string {
 export const WEB_APP_URL = process.env.E2E_TARGET_URL ?? 'https://dev.orignagta.ca';
 export const TARGET_ENV = inferE2EEnvironment(WEB_APP_URL);
 export const ORIGNABASE_URL = deriveOrignaBaseUrl(TARGET_ENV);
-export const DEFAULT_PASS = 'REDACTED_TEST_PASSWORD';
+export const DEFAULT_PASS = process.env.E2E_TEST_PASSWORD || 'REDACTED_TEST_PASSWORD';
 
 export const STRIPE_CARD = {
   number: '4242424242424242',
@@ -85,12 +85,12 @@ export const TEST_ACCOUNTS = {
   SUSPENDED_EMAIL: 'e2e-buyer@test.origna.ca',
   NON_ONBOARDED_SELLER: 'e2e-buyer@test.origna.ca',
   // Real accounts — for full-flow E2E with actual email delivery
-  REAL_ADMIN_EMAIL: 'yr62813@gmail.com',
-  REAL_ADMIN_PASS: 'REDACTED_TEST_PASSWORD',
-  REAL_SELLER_EMAIL: 'yuniorrodriguezo4601@yahoo.com',
-  REAL_SELLER_PASS: 'REDACTED_TEST_PASSWORD',
-  REAL_BUYER_EMAIL: 'yuniorrodriguezo460@gmail.com',
-  REAL_BUYER_PASS: 'REDACTED_TEST_PASSWORD',
+  REAL_ADMIN_EMAIL: process.env.E2E_ADMIN_EMAIL || 'e2e-admin@test.origna.ca',
+  REAL_ADMIN_PASS: process.env.E2E_TEST_PASSWORD || 'REDACTED_TEST_PASSWORD',
+  REAL_SELLER_EMAIL: process.env.E2E_SELLER_EMAIL || 'e2e-seller@test.origna.ca',
+  REAL_SELLER_PASS: process.env.E2E_TEST_PASSWORD || 'REDACTED_TEST_PASSWORD',
+  REAL_BUYER_EMAIL: process.env.E2E_BUYER_EMAIL || 'e2e-buyer@test.origna.ca',
+  REAL_BUYER_PASS: process.env.E2E_TEST_PASSWORD || 'REDACTED_TEST_PASSWORD',
 };
 
 export const TEST_UIDS = {

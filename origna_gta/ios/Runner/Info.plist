@@ -62,8 +62,8 @@
 		</dict>
 		<key>NSAppTransportSecurity</key>
 		<dict>
-			<key>NSAllowsArbitraryLoads</key>
-			<true/>
+    <key>NSAllowsArbitraryLoads</key>
+    <false/>
 		</dict>
 		<key>NSLocalNetworkUsageDescription</key>
 		<string>OrignaGTA needs access to local network for development emulators</string>

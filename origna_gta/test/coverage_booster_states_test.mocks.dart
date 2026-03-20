@@ -502,6 +502,43 @@ class MockOrderRepository extends _i1.Mock implements _i10.OrderRepository {
             returnValueForMissingStub: _i4.Stream<List<_i5.Order>>.empty(),
           )
           as _i4.Stream<List<_i5.Order>>);
+
+  @override
+  _i4.Future<Map<String, dynamic>> createReturnRequest({
+    required String? orderId,
+    required List<String>? cartItemIds,
+    required String? reason,
+    String? description,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(#createReturnRequest, [], {
+              #orderId: orderId,
+              #cartItemIds: cartItemIds,
+              #reason: reason,
+              #description: description,
+            }),
+            returnValue: _i4.Future<Map<String, dynamic>>.value(
+              <String, dynamic>{},
+            ),
+            returnValueForMissingStub: _i4.Future<Map<String, dynamic>>.value(
+              <String, dynamic>{},
+            ),
+          )
+          as _i4.Future<Map<String, dynamic>>);
+
+  @override
+  _i4.Future<List<_i5.ReturnRequest>> fetchReturnRequests(String? orderId) =>
+      (super.noSuchMethod(
+            Invocation.method(#fetchReturnRequests, [orderId]),
+            returnValue: _i4.Future<List<_i5.ReturnRequest>>.value(
+              <_i5.ReturnRequest>[],
+            ),
+            returnValueForMissingStub:
+                _i4.Future<List<_i5.ReturnRequest>>.value(
+                  <_i5.ReturnRequest>[],
+                ),
+          )
+          as _i4.Future<List<_i5.ReturnRequest>>);
 }
 
 /// A class which mocks [UserRepository].

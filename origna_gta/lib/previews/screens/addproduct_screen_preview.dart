@@ -1,4 +1,3 @@
-// coverage:ignore-file
 import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
 import 'package:origna_gta/features/seller/warehouses_viewmodel.dart';
@@ -6,7 +5,7 @@ import 'package:origna_gta/models/generated/base_models.dart';
 import 'package:origna_gta/models/generated/product_models.dart';
 import 'package:origna_gta/screens/addproduct_screen.dart';
 
-import '../_preview_theme.dart';
+import 'package:origna_gta/previews/_preview_theme.dart';
 
 Widget _addProduct() => previewScope(
   extraOverrides: [

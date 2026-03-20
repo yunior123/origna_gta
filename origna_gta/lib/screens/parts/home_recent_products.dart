@@ -1,4 +1,3 @@
-// coverage:ignore-file
 part of '../home_screen.dart';
 // ============================================================================
 // GAP #6 — Recently Viewed horizontal section

@@ -1,9 +1,8 @@
-// coverage:ignore-file
 import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
 import 'package:origna_gta/screens/authwrapper_screen.dart';
 
-import '../_preview_theme.dart';
+import 'package:origna_gta/previews/_preview_theme.dart';
 
 @Preview(name: 'Auth Wrapper — Mobile', group: 'Auth Screens', size: Size(390, 844))
 Widget previewAuthWrapperScreenMobile() => previewMobile(child: previewScope(child: AuthWrapper()));

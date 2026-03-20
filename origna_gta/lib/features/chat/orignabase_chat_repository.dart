@@ -1,4 +1,3 @@
-// coverage:ignore-file
 import 'dart:async';
 import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';

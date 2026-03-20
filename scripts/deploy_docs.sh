@@ -6,7 +6,7 @@
 set -e
 
 DOCS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/docs-site"
-REMOTE_HOST="root@204.168.137.16"
+REMOTE_HOST="${VPS_HOST:-root@204.168.137.16}"
 REMOTE_PATH="/var/www/orignagta/docs/current"
 
 echo "📦 Building docs site..."

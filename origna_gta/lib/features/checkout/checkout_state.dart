@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/utils.dart';
@@ -15,7 +16,11 @@ class CheckoutSuccess extends CheckoutResult {
   final String orderId;
   final String sessionId;
 
-  CheckoutSuccess({required this.checkoutUrl, required this.orderId, required this.sessionId});
+  CheckoutSuccess({
+    required this.checkoutUrl,
+    required this.orderId,
+    required this.sessionId,
+  });
 }
 
 /// Documentation for CheckoutError
@@ -41,7 +46,8 @@ class CheckoutAlreadyProcessed extends CheckoutResult {
 /// Documentation for CheckoutState
 class CheckoutState {
   final Address? address;
-  final double baseShippingCost; // Base shipping before delivery speed surcharge
+  final double
+  baseShippingCost; // Base shipping before delivery speed surcharge
   final Map<String, double> sellerShippingCosts; // Breakdown per seller
   final Map<String, String> sellerNames; // Seller names for display
   final DeliverySpeed deliverySpeed;
@@ -58,9 +64,11 @@ class CheckoutState {
   final int couponDiscountCents;
   final bool isCouponLoading;
   final String? couponError;
+
   /// F-77: Server-calculated tax amount in cents returned from create_checkout_session.
   /// Use this for display in the review screen instead of client-side estimates.
   final int serverTaxAmountCents;
+
   /// F-74: Indicates if any item in the cart is shipped from outside Canada.
   final bool hasInternationalItems;
 
@@ -96,7 +104,8 @@ class CheckoutState {
     return baseShippingCost + deliverySpeed.baseSurcharge;
   }
 
-  double get taxAmount => taxBreakdown.values.fold(0.0, (total, v) => total + v);
+  double get taxAmount =>
+      taxBreakdown.values.fold(0.0, (total, v) => total + v);
 
   CheckoutState copyWith({
     Address? address,
@@ -131,21 +140,66 @@ class CheckoutState {
       sellerShippingCosts: sellerShippingCosts ?? this.sellerShippingCosts,
       sellerNames: sellerNames ?? this.sellerNames,
       deliverySpeed: deliverySpeed ?? this.deliverySpeed,
-      availableDeliverySpeeds: availableDeliverySpeeds ?? this.availableDeliverySpeeds,
+      availableDeliverySpeeds:
+          availableDeliverySpeeds ?? this.availableDeliverySpeeds,
       isLocalDelivery: isLocalDelivery ?? this.isLocalDelivery,
       taxBreakdown: taxBreakdown ?? this.taxBreakdown,
-      isCalculatingShipping: isCalculatingShipping ?? this.isCalculatingShipping,
-      shippingError: clearShippingError ? null : (shippingError ?? this.shippingError),
+      isCalculatingShipping:
+          isCalculatingShipping ?? this.isCalculatingShipping,
+      shippingError: clearShippingError
+          ? null
+          : (shippingError ?? this.shippingError),
       isProcessing: isProcessing ?? this.isProcessing,
-      idempotencyKey: clearIdempotencyKey ? null : (idempotencyKey ?? this.idempotencyKey),
-      checkoutError: clearCheckoutError ? null : (checkoutError ?? this.checkoutError),
+      idempotencyKey: clearIdempotencyKey
+          ? null
+          : (idempotencyKey ?? this.idempotencyKey),
+      checkoutError: clearCheckoutError
+          ? null
+          : (checkoutError ?? this.checkoutError),
       paymentProvider: paymentProvider ?? this.paymentProvider,
       couponCode: clearCoupon ? null : (couponCode ?? this.couponCode),
-      couponDiscountCents: clearCoupon ? 0 : (couponDiscountCents ?? this.couponDiscountCents),
+      couponDiscountCents: clearCoupon
+          ? 0
+          : (couponDiscountCents ?? this.couponDiscountCents),
       isCouponLoading: isCouponLoading ?? this.isCouponLoading,
       couponError: clearCouponError ? null : (couponError ?? this.couponError),
       serverTaxAmountCents: serverTaxAmountCents ?? this.serverTaxAmountCents,
-      hasInternationalItems: hasInternationalItems ?? this.hasInternationalItems,
+      hasInternationalItems:
+          hasInternationalItems ?? this.hasInternationalItems,
     );
   }
 }
+
+// ============================================================================
+// CHECKOUT UI STATE PROVIDERS
+// ============================================================================
+
+/// Provider for terms acceptance state — shared between _TermsText and _CheckoutButton
+final checkoutTermsAcceptedProvider = StateProvider.autoDispose<bool>(
+  (ref) => false,
+);
+
+/// Tracks whether the user has interacted with the terms checkbox — gates error state
+final checkoutTermsInteractedProvider = StateProvider.autoDispose<bool>(
+  (ref) => false,
+);
+
+/// Provider for digital product EULA acceptance — required when cart contains digital items
+final checkoutEulaAcceptedProvider = StateProvider.autoDispose<bool>(
+  (ref) => false,
+);
+
+/// Tracks whether user has interacted with the EULA checkbox — gates error display
+final checkoutEulaInteractedProvider = StateProvider.autoDispose<bool>(
+  (ref) => false,
+);
+
+/// Provider for age verification acceptance — required when cart contains age-restricted items
+final checkoutAgeVerifAcceptedProvider = StateProvider.autoDispose<bool>(
+  (ref) => false,
+);
+
+/// Tracks whether user has interacted with the age gate checkbox — gates error display
+final checkoutAgeVerifInteractedProvider = StateProvider.autoDispose<bool>(
+  (ref) => false,
+);

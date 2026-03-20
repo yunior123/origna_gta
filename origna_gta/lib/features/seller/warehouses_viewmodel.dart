@@ -1,4 +1,3 @@
-// coverage:ignore-file
 // Migrated: delegates to OrignaBase warehouses viewmodel.
 // Screens continue using warehousesViewModelProvider, sellerWarehousesStreamProvider, WarehousesViewModel.
 

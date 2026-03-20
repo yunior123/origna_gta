@@ -48,7 +48,7 @@ void main() {
     quantity: 2,
     sellerId: 'seller_123',
     status: 'pending',
-    imageUrls: ['https://example.com/image.png'],
+    imageUrls: ['images/33.png'],
   );
 
   final testOrder = models.Order(

@@ -1,4 +1,3 @@
-// coverage:ignore-file
 // OrderSuccessScreen
 import 'dart:math' as math;
 
@@ -24,7 +23,14 @@ class OrderSuccessScreen extends StatefulWidget {
   /// True when all items are local-delivery-only (show hours, not days)
   final bool isLocalDelivery;
 
-  const OrderSuccessScreen({super.key, required this.orderId, this.valueCad = 0, this.itemCount = 0, this.estimatedShipDays, this.isLocalDelivery = false});
+  const OrderSuccessScreen({
+    super.key,
+    required this.orderId,
+    this.valueCad = 0,
+    this.itemCount = 0,
+    this.estimatedShipDays,
+    this.isLocalDelivery = false,
+  });
 
   @override
   State<OrderSuccessScreen> createState() => _OrderSuccessScreenState();
@@ -39,7 +45,8 @@ class _ConfettiAnimation extends StatefulWidget {
   State<_ConfettiAnimation> createState() => _ConfettiAnimationState();
 }
 
-class _ConfettiAnimationState extends State<_ConfettiAnimation> with SingleTickerProviderStateMixin {
+class _ConfettiAnimationState extends State<_ConfettiAnimation>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late List<_Particle> _particles;
 
@@ -48,7 +55,10 @@ class _ConfettiAnimationState extends State<_ConfettiAnimation> with SingleTicke
     return IgnorePointer(
       child: AnimatedBuilder(
         animation: _controller,
-        builder: (context, child) => CustomPaint(painter: _ConfettiPainter(_particles, _controller.value), child: const SizedBox.expand()),
+        builder: (context, child) => CustomPaint(
+          painter: _ConfettiPainter(_particles, _controller.value),
+          child: const SizedBox.expand(),
+        ),
       ),
     );
   }
@@ -64,7 +74,10 @@ class _ConfettiAnimationState extends State<_ConfettiAnimation> with SingleTicke
     super.initState();
     final rng = math.Random(42);
     _particles = List.generate(35, (i) => _Particle.random(rng));
-    _controller = AnimationController(vsync: this, duration: const Duration(seconds: 5))..repeat();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 5),
+    )..repeat();
   }
 }
 
@@ -77,7 +90,8 @@ class _ConfettiPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     for (final p in particles) {
-      final y = ((t * p.speedFactor + p.yOffset) % 1.0) * (size.height + 20) - 10;
+      final y =
+          ((t * p.speedFactor + p.yOffset) % 1.0) * (size.height + 20) - 10;
       final x = p.xFrac * size.width;
       final paint = Paint()..color = p.color.withValues(alpha: 0.82);
       canvas.save();
@@ -93,7 +107,14 @@ class _ConfettiPainter extends CustomPainter {
           ..close();
         canvas.drawPath(path, paint);
       } else {
-        canvas.drawRect(Rect.fromCenter(center: Offset.zero, width: p.size, height: p.size * 0.55), paint);
+        canvas.drawRect(
+          Rect.fromCenter(
+            center: Offset.zero,
+            width: p.size,
+            height: p.size * 0.55,
+          ),
+          paint,
+        );
       }
       canvas.restore();
     }
@@ -109,7 +130,10 @@ class _DeliveryWindowCard extends StatelessWidget {
   final int estimatedShipDays;
   final bool isLocalDelivery;
 
-  const _DeliveryWindowCard({required this.estimatedShipDays, this.isLocalDelivery = false});
+  const _DeliveryWindowCard({
+    required this.estimatedShipDays,
+    this.isLocalDelivery = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -131,25 +155,39 @@ class _DeliveryWindowCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
       decoration: BoxDecoration(
-        color: isDark ? DesignTokens.success.withValues(alpha: 0.08) : DesignTokens.success.withValues(alpha: 0.06),
+        color: isDark
+            ? DesignTokens.success.withValues(alpha: 0.08)
+            : DesignTokens.success.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(DesignTokens.radius12),
         border: Border.all(color: DesignTokens.success.withValues(alpha: 0.25)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.local_shipping_outlined, size: 20, color: DesignTokens.success),
+          Icon(
+            Icons.local_shipping_outlined,
+            size: 20,
+            color: DesignTokens.success,
+          ),
           const SizedBox(width: 10),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 'orders.estimated_delivery'.tr(),
-                style: TextStyle(fontSize: 11, color: DesignTokens.textSecondary, fontWeight: FontWeight.w500),
+                style: TextStyle(
+                  fontSize: 11,
+                  color: DesignTokens.textSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
               Text(
                 windowLabel,
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: DesignTokens.success),
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: DesignTokens.success,
+                ),
               ),
             ],
           ),
@@ -167,7 +205,9 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
+      decoration: BoxDecoration(
+        gradient: DesignTokens.backgroundGradient(isDark: isDark),
+      ),
       child: Scaffold(
         backgroundColor: DesignTokens.transparent,
         body: SafeArea(
@@ -184,7 +224,13 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         // Celebrating mascot
-                        FadeSlideIn(child: ShopMascot(controller: _mascotController, size: 90, showSpeechBubble: false)),
+                        FadeSlideIn(
+                          child: ShopMascot(
+                            controller: _mascotController,
+                            size: 90,
+                            showSpeechBubble: false,
+                          ),
+                        ),
                         const SizedBox(height: 12),
                         FadeSlideIn(
                           delay: const Duration(milliseconds: 50),
@@ -192,24 +238,45 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen> {
                             padding: const EdgeInsets.all(28),
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
-                                colors: [DesignTokens.success.withValues(alpha: 0.15), DesignTokens.success.withValues(alpha: 0.08)],
+                                colors: [
+                                  DesignTokens.success.withValues(alpha: 0.15),
+                                  DesignTokens.success.withValues(alpha: 0.08),
+                                ],
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                               ),
                               shape: BoxShape.circle,
-                              boxShadow: [BoxShadow(color: DesignTokens.success.withValues(alpha: 0.2), blurRadius: 30, spreadRadius: 5)],
+                              boxShadow: [
+                                BoxShadow(
+                                  color: DesignTokens.success.withValues(
+                                    alpha: 0.2,
+                                  ),
+                                  blurRadius: 30,
+                                  spreadRadius: 5,
+                                ),
+                              ],
                             ),
-                            child: Icon(Icons.check_circle_rounded, size: 80, color: DesignTokens.success),
+                            child: Icon(
+                              Icons.check_circle_rounded,
+                              size: 80,
+                              color: DesignTokens.success,
+                            ),
                           ),
                         ),
                         const SizedBox(height: 32),
                         FadeSlideIn(
                           delay: const Duration(milliseconds: 100),
                           child: ShaderMask(
-                            shaderCallback: (bounds) => DesignTokens.primaryGradient.createShader(bounds),
+                            shaderCallback: (bounds) => DesignTokens
+                                .primaryGradient
+                                .createShader(bounds),
                             child: Text(
                               'orders.order_placed'.tr(),
-                              style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: DesignTokens.white),
+                              style: const TextStyle(
+                                fontSize: 26,
+                                fontWeight: FontWeight.w900,
+                                color: DesignTokens.white,
+                              ),
                               textAlign: TextAlign.center,
                             ),
                           ),
@@ -218,14 +285,27 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen> {
                         FadeSlideIn(
                           delay: const Duration(milliseconds: 150),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 10,
+                            ),
                             decoration: BoxDecoration(
-                              color: isDark ? DesignTokens.white.withValues(alpha: 0.06) : DesignTokens.surfaceVariant,
-                              borderRadius: BorderRadius.circular(DesignTokens.radius12),
+                              color: isDark
+                                  ? DesignTokens.white.withValues(alpha: 0.06)
+                                  : DesignTokens.surfaceVariant,
+                              borderRadius: BorderRadius.circular(
+                                DesignTokens.radius12,
+                              ),
                             ),
                             child: Text(
-                              'orders.order_id_label'.tr(namedArgs: {'id': widget.orderId}),
-                              style: TextStyle(fontSize: 13, color: DesignTokens.textSecondary, fontWeight: FontWeight.w500),
+                              'orders.order_id_label'.tr(
+                                namedArgs: {'id': widget.orderId},
+                              ),
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: DesignTokens.textSecondary,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           ),
                         ),
@@ -235,7 +315,11 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen> {
                           child: Text(
                             'orders.thank_you'.tr(),
                             textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 14, color: DesignTokens.textSecondary, height: 1.5),
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: DesignTokens.textSecondary,
+                              height: 1.5,
+                            ),
                           ),
                         ),
                         // ── AUDIT FIX [HIGH]: Show purchase summary (value + items) ──
@@ -246,40 +330,81 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen> {
                           FadeSlideIn(
                             delay: const Duration(milliseconds: 230),
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 14,
+                              ),
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
-                                  colors: [DesignTokens.primary.withValues(alpha: 0.08), DesignTokens.secondary.withValues(alpha: 0.08)],
+                                  colors: [
+                                    DesignTokens.primary.withValues(
+                                      alpha: 0.08,
+                                    ),
+                                    DesignTokens.secondary.withValues(
+                                      alpha: 0.08,
+                                    ),
+                                  ],
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
                                 ),
-                                borderRadius: BorderRadius.circular(DesignTokens.radius16),
-                                border: Border.all(color: DesignTokens.primary.withValues(alpha: 0.18)),
+                                borderRadius: BorderRadius.circular(
+                                  DesignTokens.radius16,
+                                ),
+                                border: Border.all(
+                                  color: DesignTokens.primary.withValues(
+                                    alpha: 0.18,
+                                  ),
+                                ),
                               ),
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   if (widget.itemCount > 0) ...[
-                                    Icon(Icons.shopping_bag_outlined, size: 18, color: DesignTokens.primary),
+                                    Icon(
+                                      Icons.shopping_bag_outlined,
+                                      size: 18,
+                                      color: DesignTokens.primary,
+                                    ),
                                     const SizedBox(width: 8),
                                     Text(
-                                      'orders.items_ordered'.tr(namedArgs: {'count': '${widget.itemCount}'}),
-                                      style: TextStyle(fontSize: 14, color: DesignTokens.textSecondary, fontWeight: FontWeight.w500),
+                                      'orders.items_ordered'.tr(
+                                        namedArgs: {
+                                          'count': '${widget.itemCount}',
+                                        },
+                                      ),
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: DesignTokens.textSecondary,
+                                        fontWeight: FontWeight.w500,
+                                      ),
                                     ),
                                   ],
-                                  if (widget.itemCount > 0 && widget.valueCad > 0) ...[
+                                  if (widget.itemCount > 0 &&
+                                      widget.valueCad > 0) ...[
                                     Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                                      child: Container(width: 1, height: 18, color: DesignTokens.outline),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 14,
+                                      ),
+                                      child: Container(
+                                        width: 1,
+                                        height: 18,
+                                        color: DesignTokens.outline,
+                                      ),
                                     ),
                                   ],
                                   if (widget.valueCad > 0)
                                     ShaderMask(
-                                      shaderCallback: (bounds) => DesignTokens.primaryGradient.createShader(bounds),
+                                      shaderCallback: (bounds) => DesignTokens
+                                          .primaryGradient
+                                          .createShader(bounds),
                                       child: Text(
                                         '\$${widget.valueCad.toStringAsFixed(2)} CAD',
-                                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: DesignTokens.white),
+                                        style: const TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w800,
+                                          color: DesignTokens.white,
+                                        ),
                                       ),
                                     ),
                                 ],
@@ -288,11 +413,15 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen> {
                           ),
                         ],
                         // Delivery window from Stitch UX
-                        if (widget.estimatedShipDays != null || widget.isLocalDelivery) ...[
+                        if (widget.estimatedShipDays != null ||
+                            widget.isLocalDelivery) ...[
                           const SizedBox(height: 16),
                           FadeSlideIn(
                             delay: const Duration(milliseconds: 250),
-                            child: _DeliveryWindowCard(estimatedShipDays: widget.estimatedShipDays ?? 0, isLocalDelivery: widget.isLocalDelivery),
+                            child: _DeliveryWindowCard(
+                              estimatedShipDays: widget.estimatedShipDays ?? 0,
+                              isLocalDelivery: widget.isLocalDelivery,
+                            ),
                           ),
                         ],
                         const SizedBox(height: 48),
@@ -304,7 +433,11 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen> {
                             child: ModernButton(
                               label: 'orders.continue_shopping'.tr(),
                               icon: Icons.shopping_bag_outlined,
-                              onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false),
+                              onPressed: () =>
+                                  Navigator.of(context).pushNamedAndRemoveUntil(
+                                    AppRoutes.home,
+                                    (route) => false,
+                                  ),
                             ),
                           ),
                         ),
@@ -320,7 +453,11 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen> {
                               isPrimary: false,
                               isOutlined: true,
                               onPressed: () {
-                                Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.orders, (route) => route.settings.name == AppRoutes.home);
+                                Navigator.of(context).pushNamedAndRemoveUntil(
+                                  AppRoutes.orders,
+                                  (route) =>
+                                      route.settings.name == AppRoutes.home,
+                                );
                               },
                             ),
                           ),
@@ -354,8 +491,18 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen> {
         _mascotController.jump();
       }
     });
-    Sentry.addBreadcrumb(Breadcrumb(message: 'order_success', data: {'orderId': widget.orderId}, timestamp: DateTime.now()));
-    AnalyticsService.logPurchase(orderId: widget.orderId, valueCad: widget.valueCad, itemCount: widget.itemCount);
+    Sentry.addBreadcrumb(
+      Breadcrumb(
+        message: 'order_success',
+        data: {'orderId': widget.orderId},
+        timestamp: DateTime.now(),
+      ),
+    );
+    AnalyticsService.logPurchase(
+      orderId: widget.orderId,
+      valueCad: widget.valueCad,
+      itemCount: widget.itemCount,
+    );
   }
 }
 
@@ -367,18 +514,25 @@ class _Particle {
   final double size;
   final double rotation;
 
-  const _Particle({required this.xFrac, required this.yOffset, required this.speedFactor, required this.color, required this.size, required this.rotation});
+  const _Particle({
+    required this.xFrac,
+    required this.yOffset,
+    required this.speedFactor,
+    required this.color,
+    required this.size,
+    required this.rotation,
+  });
 
   factory _Particle.random(math.Random rng) {
     const colors = [
-      Color(0xFFFFD700),
-      Color(0xFFFF6B6B),
-      Color(0xFF5CE1E6),
-      Color(0xFF7B61FF),
-      Color(0xFF4CAF50),
-      Color(0xFFFF9800),
-      Color(0xFFE91E63),
-      Color(0xFF00BCD4),
+      DesignTokens.goldPrimary,
+      DesignTokens.tertiary,
+      DesignTokens.accent,
+      DesignTokens.digital,
+      DesignTokens.success,
+      DesignTokens.confettiOrange,
+      DesignTokens.confettiPink,
+      DesignTokens.confettiCyan,
     ];
     return _Particle(
       xFrac: rng.nextDouble(),

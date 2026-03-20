@@ -1,4 +1,3 @@
-// coverage:ignore-file
 import 'dart:async';
 
 import 'package:orignabase/orignabase.dart';
@@ -23,6 +22,46 @@ mixin OrderQueryHelpers {
     constants.PaymentStatus.cancelled.value,
     constants.PaymentStatus.authorizationExpired.value,
   ];
+
+  /// Converts [models.PaymentStatus] enum to its database string value.
+  static String paymentStatusToString(models.PaymentStatus status) {
+    switch (status) {
+      case models.PaymentStatus.awaitingPayment:
+        return PaymentStatusValues.awaitingPayment;
+      case models.PaymentStatus.processing:
+        return PaymentStatusValues.processing;
+      case models.PaymentStatus.paid:
+        return PaymentStatusValues.paid;
+      case models.PaymentStatus.authorized:
+        return PaymentStatusValues.authorized;
+      case models.PaymentStatus.captured:
+        return PaymentStatusValues.captured;
+      case models.PaymentStatus.paymentFailed:
+        return PaymentStatusValues.paymentFailed;
+      case models.PaymentStatus.refunded:
+        return PaymentStatusValues.refunded;
+      case models.PaymentStatus.sessionExpired:
+        return PaymentStatusValues.sessionExpired;
+      case models.PaymentStatus.cancelled:
+        return PaymentStatusValues.cancelled;
+      case models.PaymentStatus.authorizationExpired:
+        return PaymentStatusValues.authorizationExpired;
+      case models.PaymentStatus.disputed:
+        return PaymentStatusValues.disputed;
+      case models.PaymentStatus.capturing:
+        return PaymentStatusValues.capturing;
+      case models.PaymentStatus.cancelling:
+        return PaymentStatusValues.cancelling;
+      case models.PaymentStatus.expiring:
+        return PaymentStatusValues.expiring;
+      case models.PaymentStatus.partiallyRefunded:
+        return PaymentStatusValues.partiallyRefunded;
+      case models.PaymentStatus.voided:
+        return PaymentStatusValues.voided;
+      case models.PaymentStatus.cancelFailed:
+        return PaymentStatusValues.cancelFailed;
+    }
+  }
 
   /// Strips `collection:` prefix for flexible ID comparison.
   static String normalizeId(String id) =>
@@ -58,23 +97,28 @@ mixin OrderQueryHelpers {
     controller
       ..onListen = () async {
         await seed();
-        wsSub = ob.collection(Collections.orders).snapshots().listen(
-          (change) {
-            if (controller.isClosed) return;
-            try {
-              final order = docToOrder(change.document);
-              if (change.type == ChangeType.delete || !accept(order)) {
-                state.remove(order.orderId);
-              } else {
-                state[order.orderId] = order;
-              }
-              controller.add(sort(state.values.toList()));
-            } catch (_) {
-              // Malformed document — skip silently.
-            }
-          },
-          onError: (_) {/* SDK reconnects automatically; state stays valid. */},
-        );
+        wsSub = ob
+            .collection(Collections.orders)
+            .snapshots()
+            .listen(
+              (change) {
+                if (controller.isClosed) return;
+                try {
+                  final order = docToOrder(change.document);
+                  if (change.type == ChangeType.delete || !accept(order)) {
+                    state.remove(order.orderId);
+                  } else {
+                    state[order.orderId] = order;
+                  }
+                  controller.add(sort(state.values.toList()));
+                } catch (_) {
+                  // Malformed document — skip silently.
+                }
+              },
+              onError: (_) {
+                /* SDK reconnects automatically; state stays valid. */
+              },
+            );
       }
       ..onCancel = () {
         wsSub?.cancel();
@@ -101,8 +145,9 @@ mixin OrderQueryHelpers {
             .limit(1)
             .get();
         if (!controller.isClosed) {
-          final order =
-              snapshot.docs.isEmpty ? null : docToOrder(snapshot.docs.first);
+          final order = snapshot.docs.isEmpty
+              ? null
+              : docToOrder(snapshot.docs.first);
           controller.add(order);
           if (order != null) timer?.cancel(); // Stop once found
         }

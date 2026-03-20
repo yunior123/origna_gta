@@ -1,4 +1,3 @@
-// coverage:ignore-file
 import 'dart:async';
 
 import 'package:orignabase/orignabase.dart';
@@ -154,12 +153,18 @@ class OrignaBaseOrderRepository
       initialQuery: () => _ob
           .collection(Collections.orders)
           .where(Fields.userId, isEqualTo: userId)
-          .where(Fields.paymentStatus, whereIn: OrderQueryHelpers.activePaymentStatuses)
+          .where(
+            Fields.paymentStatus,
+            whereIn: OrderQueryHelpers.activePaymentStatuses,
+          )
           .orderBy(Fields.createdAt, descending: true)
           .limit(BusinessRules.ordersPageSize),
       accept: (order) =>
-          OrderQueryHelpers.normalizeId(order.userId) == OrderQueryHelpers.normalizeId(userId) &&
-          OrderQueryHelpers.activePaymentStatuses.contains(order.paymentStatus),
+          OrderQueryHelpers.normalizeId(order.userId) ==
+              OrderQueryHelpers.normalizeId(userId) &&
+          OrderQueryHelpers.activePaymentStatuses.contains(
+            OrderQueryHelpers.paymentStatusToString(order.paymentStatus),
+          ),
       sort: (list) {
         list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
         return list;
@@ -177,12 +182,21 @@ class OrignaBaseOrderRepository
       initialQuery: () => _ob
           .collection(Collections.orders)
           .where(Fields.sellerIds, contains: userId)
-          .where(Fields.paymentStatus, whereIn: OrderQueryHelpers.activePaymentStatuses)
+          .where(
+            Fields.paymentStatus,
+            whereIn: OrderQueryHelpers.activePaymentStatuses,
+          )
           .limit(BusinessRules.ordersPageSize),
       accept: (order) {
         final ids = order.sellerIds;
-        return ids.any((id) => OrderQueryHelpers.normalizeId(id) == OrderQueryHelpers.normalizeId(userId)) &&
-            OrderQueryHelpers.activePaymentStatuses.contains(order.paymentStatus);
+        return ids.any(
+              (id) =>
+                  OrderQueryHelpers.normalizeId(id) ==
+                  OrderQueryHelpers.normalizeId(userId),
+            ) &&
+            OrderQueryHelpers.activePaymentStatuses.contains(
+              OrderQueryHelpers.paymentStatusToString(order.paymentStatus),
+            );
       },
       sort: (list) {
         list.sort((a, b) => b.createdAt.compareTo(a.createdAt));

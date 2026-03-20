@@ -1,4 +1,3 @@
-// coverage:ignore-file
 import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,7 +5,7 @@ import 'package:origna_gta/features/auth/mfa_viewmodel.dart';
 import 'package:origna_gta/features/auth/mfa_state.dart';
 import 'package:origna_gta/screens/mfa_setup_screen.dart';
 
-import '../_preview_theme.dart';
+import 'package:origna_gta/previews/_preview_theme.dart';
 
 Widget _setupContent() => previewScope(
   extraOverrides: [

@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orignabase/orignabase.dart';
+import 'package:origna_gta/core/providers.dart' show userIdProvider;
 import 'package:origna_gta/utils/env_config.dart';
 
 /// EnvConfig Riverpod provider (used by orignabaseProvider).
@@ -20,9 +21,5 @@ final obAuthStateProvider = StreamProvider<AuthState>((ref) {
   return ob.auth.authStateChanges;
 });
 
-/// Current authenticated user ID from OrignaBase.
-final obUserIdProvider = Provider<String?>((ref) {
-  final authState = ref.watch(obAuthStateProvider).valueOrNull;
-  if (authState == null || !authState.isAuthenticated) return null;
-  return authState.userId;
-});
+/// Alias — canonical userId lives in providers.dart.
+final obUserIdProvider = userIdProvider;

@@ -10,11 +10,15 @@ import 'package:flutter/material.dart';
 /// Documentation for DesignTokens
 class DesignTokens {
   // Primary Palette (Matched to Ecommerce Splash)
-  static const Color primary = Color(0xFF7B93FF); // Soft Cornflower Blue (WCAG AA: ≥4.5:1 on #0F0F1E)
+  static const Color primary = Color(
+    0xFF7B93FF,
+  ); // Soft Cornflower Blue (WCAG AA: ≥4.5:1 on #0F0F1E)
   static const Color secondary = Color(0xFF764BA2); // Deep Violet
   static const Color tertiary = Color(0xFFFF6B6B); // Coral
   static const Color accent = Color(0xFF5CE1E6); // Cyan (Matches web splash)
-  static const Color digital = Color(0xFF7C3AED); // Digital product badge purple
+  static const Color digital = Color(
+    0xFF7C3AED,
+  ); // Digital product badge purple
 
   // Gradient Definition (Matches index.html splash)
   static const Color gradientStart = Color(0xFF1F235A);
@@ -23,8 +27,12 @@ class DesignTokens {
 
   // Neutral Palette
   static const Color surface = Color(0xFFF8F9FA); // Off-white background
-  static const Color surfaceSubtle = Color(0xFFF8F9FF); // Slightly blue-tinted off-white
-  static const Color infoSubtle = Color(0xFFF0F7FF); // Faint info/blue tint for section backgrounds
+  static const Color surfaceSubtle = Color(
+    0xFFF8F9FF,
+  ); // Slightly blue-tinted off-white
+  static const Color infoSubtle = Color(
+    0xFFF0F7FF,
+  ); // Faint info/blue tint for section backgrounds
   static const Color surfaceVariant = Color(0xFFF3F4F9);
   static const Color outline = Color(0xFFD0D5E0);
   static const Color outlineVariant = Color(0xFFE8EBF0);
@@ -44,21 +52,33 @@ class DesignTokens {
   // Text Colors (WCAG 2.1 AA: ≥4.5:1 for normal text, ≥3:1 for large text)
   static const Color textPrimary = Color(0xFF1A1A2E);
   static const Color textSecondary = Color(0xFF6B7280);
-  static const Color textTertiary = Color(0xFF6B7280); // Was #9CA3AF (~2.8:1) → #6B7280 (~5.3:1 on white)
-  static const Color textDisabled = Color(0xFF9CA3AF); // Was #BDBDBD (~1.7:1) → #9CA3AF (~3.7:1 - decorative only)
+  static const Color textTertiary = Color(
+    0xFF6B7280,
+  ); // Was #9CA3AF (~2.8:1) → #6B7280 (~5.3:1 on white)
+  static const Color textDisabled = Color(
+    0xFF9CA3AF,
+  ); // Was #BDBDBD (~1.7:1) → #9CA3AF (~3.7:1 - decorative only)
   static const Color textOnPrimary = white;
   static const Color textOnDark = white;
   static const Color textOnDarkSecondary = Color(0xFFBDBDBD);
 
   // Semantic
   static const Color success = Color(0xFF10B981); // Emerald
-  static const Color warning = Color(0xFFF59E0B); // Amber (backgrounds/icons only)
-  static const Color warningText = Color(0xFF92400E); // WCAG AA: ~7:1 on white (for text)
+  static const Color warning = Color(
+    0xFFF59E0B,
+  ); // Amber (backgrounds/icons only)
+  static const Color warningText = Color(
+    0xFF92400E,
+  ); // WCAG AA: ~7:1 on white (for text)
   static const Color error = Color(0xFFEF4444); // Red
   static const Color info = Color(0xFF3B82F6); // Blue
   static const Color statusShipped = Color(0xFF06B6D4); // Cyan — shipped status
-  static const Color statusInTransit = Color(0xFF14B8A6); // Teal — in-transit status
-  static const Color canadaRed = Color(0xFFD80027); // Canadian flag red — Canada-only badge
+  static const Color statusInTransit = Color(
+    0xFF14B8A6,
+  ); // Teal — in-transit status
+  static const Color canadaRed = Color(
+    0xFFD80027,
+  ); // Canadian flag red — Canada-only badge
 
   // Payment provider brand colors (used in seller registration screen)
   static const Color stripeViolet = Color(0xFF635BFF);
@@ -68,6 +88,18 @@ class DesignTokens {
   static const Color wiseGreen = Color(0xFF9FE870);
   static const Color wiseSky = Color(0xFF00B9FF);
 
+  // Google brand colors (used in Google Sign-In button)
+  static const Color googleBlue = Color(0xFF4285F4);
+  static const Color googleRed = Color(0xFFEA4335);
+  static const Color googleYellow = Color(0xFFFBBC05);
+  static const Color googleGreen = Color(0xFF34A853);
+
+  // Google dark mode UI colors
+  static const Color googleDarkBg = Color(0xFF131314);
+  static const Color googleDarkBorder = Color(0xFF5F6368);
+  static const Color googleLightBorder = Color(0xFFDEDEDE);
+  static const Color googleDarkText = Color(0xFF3C4043);
+
   // Timeline inactive step colors
   static const Color timelineInactiveDark = Color(0xFF3A3A50);
   static const Color timelineInactiveLight = Color(0xFFE0E4EE);
@@ -75,11 +107,16 @@ class DesignTokens {
   // Derived Semantic (additional shades)
   static const Color successDark = Color(0xFF059669); // Darker emerald
   static const Color warningIcon = Color(0xFFF57C00); // Orange warning icon
-  static const Color warningSubtle = Color(0xFFFFF3E0); // Light warning background
+  static const Color warningSubtle = Color(
+    0xFFFFF3E0,
+  ); // Light warning background
 
   // Medal/Rank Colors
   static const Color goldPrimary = Color(0xFFFFD700);
   static const Color goldDark = Color(0xFFFFA000);
+  static const Color confettiOrange = Color(0xFFFF9800);
+  static const Color confettiPink = Color(0xFFE91E63);
+  static const Color confettiCyan = Color(0xFF00BCD4);
   static const Color silverPrimary = Color(0xFFB0BEC5);
   static const Color silverDark = Color(0xFF78909C);
   static const Color bronzePrimary = Color(0xFFCD7F32);
@@ -105,9 +142,17 @@ class DesignTokens {
   static const Color promoAccentLight = Color(0xFF1976D2);
 
   // Gradients
-  static const LinearGradient primaryGradient = LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [primary, secondary]);
+  static const LinearGradient primaryGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [primary, secondary],
+  );
 
-  static const LinearGradient secondaryGradient = LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [secondary, primary]);
+  static const LinearGradient secondaryGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [secondary, primary],
+  );
 
   static const LinearGradient premiumGradient = LinearGradient(
     begin: Alignment.topLeft,
@@ -146,13 +191,21 @@ class DesignTokens {
   static const double radius32 = 32;
 
   // Elevation / Shadow
-  static const List<BoxShadow> shadowSm = [BoxShadow(color: Color(0x0A000000), blurRadius: 2, offset: Offset(0, 1))];
+  static const List<BoxShadow> shadowSm = [
+    BoxShadow(color: Color(0x0A000000), blurRadius: 2, offset: Offset(0, 1)),
+  ];
 
-  static const List<BoxShadow> shadowMd = [BoxShadow(color: Color(0x10000000), blurRadius: 4, offset: Offset(0, 2))];
+  static const List<BoxShadow> shadowMd = [
+    BoxShadow(color: Color(0x10000000), blurRadius: 4, offset: Offset(0, 2)),
+  ];
 
-  static const List<BoxShadow> shadowLg = [BoxShadow(color: Color(0x15000000), blurRadius: 12, offset: Offset(0, 4))];
+  static const List<BoxShadow> shadowLg = [
+    BoxShadow(color: Color(0x15000000), blurRadius: 12, offset: Offset(0, 4)),
+  ];
 
-  static const List<BoxShadow> shadowXl = [BoxShadow(color: Color(0x1A000000), blurRadius: 20, offset: Offset(0, 8))];
+  static const List<BoxShadow> shadowXl = [
+    BoxShadow(color: Color(0x1A000000), blurRadius: 20, offset: Offset(0, 8)),
+  ];
 
   // Glassmorphism
   static const double glassOpacity = 0.8;
@@ -187,9 +240,7 @@ class DesignTokens {
     return LinearGradient(
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
-      colors: isDark
-          ? [darkSurface, darkSurfaceVariant]
-          : [surface, white],
+      colors: isDark ? [darkSurface, darkSurfaceVariant] : [surface, white],
     );
   }
 }
@@ -210,7 +261,9 @@ class GlassContainer extends StatelessWidget {
     this.color,
     this.opacity,
     this.blur = DesignTokens.gloopBlur,
-    this.borderRadius = const BorderRadius.all(Radius.circular(DesignTokens.radius16)),
+    this.borderRadius = const BorderRadius.all(
+      Radius.circular(DesignTokens.radius16),
+    ),
     this.shadows,
     this.padding = const EdgeInsets.all(DesignTokens.spacing16),
   });
@@ -218,9 +271,20 @@ class GlassContainer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final resolvedColor = color ?? (isDark ? DesignTokens.darkCard : DesignTokens.surfaceVariant);
+    final resolvedColor =
+        color ?? (isDark ? DesignTokens.darkCard : DesignTokens.surfaceVariant);
     final resolvedOpacity = opacity ?? (isDark ? 0.7 : 0.92);
-    final resolvedShadows = shadows ?? (isDark ? [BoxShadow(color: DesignTokens.black.withValues(alpha: 0.26), blurRadius: 8, offset: const Offset(0, 4))] : DesignTokens.shadowMd);
+    final resolvedShadows =
+        shadows ??
+        (isDark
+            ? [
+                BoxShadow(
+                  color: DesignTokens.black.withValues(alpha: 0.26),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ]
+            : DesignTokens.shadowMd);
 
     return ClipRRect(
       borderRadius: borderRadius,
@@ -232,8 +296,10 @@ class GlassContainer extends StatelessWidget {
             color: resolvedColor.withValues(alpha: resolvedOpacity),
             borderRadius: borderRadius,
             border: Border.all(
-              color: isDark ? DesignTokens.white.withValues(alpha: 0.1) : DesignTokens.white.withValues(alpha: 0.4),
-              width: 1.5
+              color: isDark
+                  ? DesignTokens.white.withValues(alpha: 0.1)
+                  : DesignTokens.white.withValues(alpha: 0.4),
+              width: 1.5,
             ),
             boxShadow: resolvedShadows,
           ),

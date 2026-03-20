@@ -6,7 +6,7 @@
 set -e
 
 ENVIRONMENT="${1:-dev}"
-VPS_HOST="204.168.137.16"
+VPS_HOST="${VPS_IP:-204.168.137.16}"
 VPS_USER="root"
 VPS_DOCS_DIR="/var/www/orignagta/mcp-docs"
 LOCAL_DOCS_DIR="$(cd "$(dirname "$0")/.." && pwd)/mcp-docs"

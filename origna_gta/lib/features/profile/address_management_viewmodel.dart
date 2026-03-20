@@ -1,4 +1,3 @@
-// coverage:ignore-file
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 

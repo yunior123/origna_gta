@@ -151,7 +151,12 @@ describe('Address Management — UI', () => {
       expect(hasMenuItems || snap.refs.length > 0).toBeTruthy();
     } else {
       // Settings page navigated but profile still loading (API slow) — page is accessible
-      const snap = await browser.waitForChange({ minRefs: 1, timeout: 5_000 });
+      let snap: any;
+      try {
+        snap = await browser.waitForChange({ minRefs: 1, timeout: 5_000 });
+      } catch {
+        snap = await browser.snapshot({ interactive: true, compact: true });
+      }
       // Verify we're NOT still on home page (we actually navigated)
       const stillOnHome = browser.findByLabel(snap, /btn-home-settings/) && !browser.findByLabel(snap, /Param[eè]tres|Configuration|Retour|profil|btn-sign-out/i);
       expect(!stillOnHome).toBeTruthy();

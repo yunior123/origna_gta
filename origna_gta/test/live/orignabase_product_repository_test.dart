@@ -23,13 +23,18 @@ void main() {
       productRepo = OrignaBaseProductRepository(ob);
     });
 
-    tearDown(() {
+    tearDown(() async {
+      await ob.auth.signOut();
       container.dispose();
     });
 
     test(
       'fetchProductById returns null for nonexistent product',
       () async {
+        await ob.auth.signInWithEmail(
+          'e2e-buyer@test.origna.ca',
+          'REDACTED_TEST_PASSWORD',
+        );
         final env = EnvConfig();
         expect(
           env.orignabaseUrl,
@@ -37,8 +42,9 @@ void main() {
           reason: 'ORIGNABASE_URL dart-define required for live tests',
         );
 
-        final product =
-            await productRepo.fetchProductById('nonexistent_product_123');
+        final product = await productRepo.fetchProductById(
+          'nonexistent_product_123',
+        );
         expect(product, isNull);
       },
       skip: !runLive,
@@ -48,6 +54,10 @@ void main() {
     test(
       'fetchProductById returns product for valid ID',
       () async {
+        await ob.auth.signInWithEmail(
+          'e2e-buyer@test.origna.ca',
+          'REDACTED_TEST_PASSWORD',
+        );
         // Use a stable test product ID that exists in dev
         const testProductId = 'e2e_product_test_seller';
 
@@ -65,12 +75,14 @@ void main() {
     test(
       'fetchProducts returns list of products',
       () async {
-        final result = await productRepo.fetchProducts(
-          pageSize: 10,
+        await ob.auth.signInWithEmail(
+          'e2e-buyer@test.origna.ca',
+          'REDACTED_TEST_PASSWORD',
         );
+        final result = await productRepo.fetchProducts(pageSize: 10);
 
         expect(result, isNotNull);
-        expect(result.products, isA<List>());
+        expect(result.products, isA<List<dynamic>>());
         // Result may be empty but should not throw
       },
       skip: !runLive,
@@ -80,16 +92,16 @@ void main() {
     test(
       'fetchProducts respects pageSize parameter',
       () async {
-        final result1 = await productRepo.fetchProducts(
-          pageSize: 5,
+        await ob.auth.signInWithEmail(
+          'e2e-buyer@test.origna.ca',
+          'REDACTED_TEST_PASSWORD',
         );
+        final result1 = await productRepo.fetchProducts(pageSize: 5);
 
-        final result2 = await productRepo.fetchProducts(
-          pageSize: 10,
-        );
+        final result2 = await productRepo.fetchProducts(pageSize: 10);
 
-        expect(result1.products, isA<List>());
-        expect(result2.products, isA<List>());
+        expect(result1.products, isA<List<dynamic>>());
+        expect(result2.products, isA<List<dynamic>>());
         // Different page sizes should work without throwing
       },
       skip: !runLive,
@@ -99,6 +111,10 @@ void main() {
     test(
       'getProductBySlug returns product or null',
       () async {
+        await ob.auth.signInWithEmail(
+          'e2e-buyer@test.origna.ca',
+          'REDACTED_TEST_PASSWORD',
+        );
         // Try to fetch by a slug (may or may not exist)
         final product = await productRepo.getProductBySlug('nonexistent-slug');
 
@@ -114,11 +130,15 @@ void main() {
     test(
       'fetchProductsByIds returns products for valid IDs',
       () async {
+        await ob.auth.signInWithEmail(
+          'e2e-buyer@test.origna.ca',
+          'REDACTED_TEST_PASSWORD',
+        );
         const testIds = ['e2e_product_test_seller'];
 
         final products = await productRepo.fetchProductsByIds(testIds);
 
-        expect(products, isA<List>());
+        expect(products, isA<List<dynamic>>());
         // May contain matches or be empty, but should not throw
       },
       skip: !runLive,
@@ -128,10 +148,11 @@ void main() {
     test(
       'getAutocompleteSuggestions returns list of suggestions',
       () async {
-        final suggestions =
-            await productRepo.getAutocompleteSuggestions('test');
+        final suggestions = await productRepo.getAutocompleteSuggestions(
+          'test',
+        );
 
-        expect(suggestions, isA<List>());
+        expect(suggestions, isA<List<dynamic>>());
         // May be empty but should not throw
       },
       skip: !runLive,

@@ -1,4 +1,3 @@
-// coverage:ignore-file
 const _omit = Object();
 
 /// State for MFA setup and management flow.

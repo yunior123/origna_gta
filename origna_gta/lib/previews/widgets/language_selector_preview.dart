@@ -1,4 +1,3 @@
-// coverage:ignore-file
 import 'package:flutter/widget_previews.dart';
 import 'package:flutter/material.dart';
 import 'package:origna_gta/previews/_preview_theme.dart';

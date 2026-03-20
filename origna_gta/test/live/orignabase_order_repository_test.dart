@@ -33,7 +33,10 @@ void main() {
       orderRepo = OrignaBaseOrderRepository(ob);
       final authRepo = OrignaBaseAuthRepository(ob);
 
-      await authRepo.signInWithEmail('e2e-buyer@test.origna.ca', 'REDACTED_TEST_PASSWORD');
+      await authRepo.signInWithEmail(
+        'e2e-buyer@test.origna.ca',
+        'REDACTED_TEST_PASSWORD',
+      );
       final uid = ob.auth.currentUserId;
       expect(uid, isNotNull, reason: 'Buyer sign-in failed');
       buyerUserId = uid!;
@@ -58,7 +61,7 @@ void main() {
       () async {
         final ordersStream = orderRepo.watchBuyerOrders(buyerUserId);
         final orders = await ordersStream.first;
-        expect(orders, isA<List>());
+        expect(orders, isA<List<dynamic>>());
       },
       skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
@@ -79,7 +82,9 @@ void main() {
       final authRepo = OrignaBaseAuthRepository(ob);
 
       await authRepo.signInWithEmail(
-          'e2e-seller@test.origna.ca', 'REDACTED_TEST_PASSWORD');
+        'e2e-seller@test.origna.ca',
+        'REDACTED_TEST_PASSWORD',
+      );
       final uid = ob.auth.currentUserId;
       expect(uid, isNotNull, reason: 'Seller sign-in failed');
       sellerUserId = uid!;
@@ -94,7 +99,7 @@ void main() {
       () async {
         final ordersStream = orderRepo.watchSellerOrders(sellerUserId);
         final orders = await ordersStream.first;
-        expect(orders, isA<List>());
+        expect(orders, isA<List<dynamic>>());
       },
       skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
@@ -114,7 +119,10 @@ void main() {
       orderRepo = OrignaBaseOrderRepository(ob);
       final authRepo = OrignaBaseAuthRepository(ob);
 
-      await authRepo.signInWithEmail('e2e-admin@test.origna.ca', 'REDACTED_TEST_PASSWORD');
+      await authRepo.signInWithEmail(
+        'e2e-admin@test.origna.ca',
+        'REDACTED_TEST_PASSWORD',
+      );
       final uid = ob.auth.currentUserId;
       expect(uid, isNotNull, reason: 'Admin sign-in failed');
       adminUserId = uid!;

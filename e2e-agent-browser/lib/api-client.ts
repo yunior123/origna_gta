@@ -330,6 +330,44 @@ export async function callCallable(fn: string, data: any, token: string, timeout
   function portedRequest(fnName: string, payload: any): { path: string; body: any } | null {
     const userId = tokenUserId(token);
     switch (fnName) {
+      case 'get_product': {
+        const productId = String(payload?.productId ?? payload?.id ?? '');
+        if (!productId) return null;
+        return {
+          path: '/graphql',
+          body: {
+            query: `query GetProduct($collection: String!, $id: String!) { get(collection: $collection, id: $id) }`,
+            variables: { collection: 'products', id: productId },
+          },
+        };
+      }
+      case 'get_product_detail': {
+        const productId = String(payload?.productId ?? payload?.id ?? '');
+        if (!productId) return null;
+        return {
+          path: '/graphql',
+          body: {
+            query: `query GetProduct($collection: String!, $id: String!) { get(collection: $collection, id: $id) }`,
+            variables: { collection: 'products', id: productId },
+          },
+        };
+      }
+      case 'get_similar_products':
+        return {
+          path: '/api/products/list',
+          body: {
+            limit: payload?.limit ?? 5,
+            page: 1,
+          },
+        };
+      case 'get_seller_products':
+        return {
+          path: '/api/products/seller/list',
+          body: {
+            userId,
+            limit: payload?.limit ?? 50,
+          },
+        };
       case 'create_checkout_session': {
         const { userId: _uid, ...checkoutRest } = payload ?? {};
         return { path: '/api/checkout/session', body: checkoutRest };
@@ -352,6 +390,18 @@ export async function callCallable(fn: string, data: any, token: string, timeout
         return { path: '/api/auth/delete-account', body: payload };
       case 'submit_rating':
         return { path: '/api/products/submit-rating', body: payload };
+      case 'submit_review':
+        return {
+          path: '/api/products/submit-rating',
+          body: {
+            productId: payload?.productId,
+            userId,
+            orderId: payload?.orderId,
+            rating: payload?.rating,
+            reviewText: payload?.reviewText ?? payload?.comment ?? payload?.review ?? '',
+            reviewImageUrls: payload?.reviewImageUrls ?? payload?.images ?? [],
+          },
+        };
       case 'ask_question':
         return { path: '/api/products/questions/ask', body: { userId, ...payload } };
       case 'answer_question':
@@ -368,40 +418,52 @@ export async function callCallable(fn: string, data: any, token: string, timeout
         };
       case 'update_notification_preferences':
         return { path: '/api/users/notification-preferences', body: { userId, ...payload } };
+      case 'get_notifications':
+        return {
+          path: '/graphql',
+          body: {
+            query: `query ListNotifications($collection: String!, $filters: JSON, $limit: Int) { list(collection: $collection, filters: $filters, limit: $limit) }`,
+            variables: {
+              collection: 'notifications',
+              filters: { userId: { _eq: userId } },
+              limit: payload?.limit ?? 20,
+            },
+          },
+        };
+      case 'add_address':
       case 'add_buyer_address':
+      case 'create_address':
         return {
           path: '/api/users/address/add',
           body: {
             userId,
-            street: payload?.street,
-            apartment: payload?.apartment,
+            street: payload?.street ?? payload?.streetAddress,
             city: payload?.city,
             province: payload?.province ?? payload?.state,
             postalCode: payload?.postalCode,
-            country: payload?.country,
-            phoneNumber: payload?.phoneNumber,
-            label: payload?.label,
+            country: payload?.country === 'CA' ? 'Canada' : (payload?.country ?? 'Canada'),
+            label: payload?.label ?? payload?.fullName,
             isDefault: payload?.isDefault ?? false,
           },
         };
       case 'update_buyer_address':
+      case 'update_address':
         return {
           path: '/api/users/address/update',
           body: {
             userId,
             addressId: payload?.addressId,
-            street: payload?.street,
-            apartment: payload?.apartment,
-            city: payload?.city,
-            province: payload?.province ?? payload?.state,
-            postalCode: payload?.postalCode,
-            country: payload?.country,
-            phoneNumber: payload?.phoneNumber,
-            label: payload?.label,
-            isDefault: payload?.isDefault,
+            street: payload?.street ?? payload?.streetAddress ?? '123 Main St',
+            city: payload?.city ?? 'Toronto',
+            province: payload?.province ?? payload?.state ?? 'ON',
+            postalCode: payload?.postalCode ?? 'M5V 3A8',
+            country: payload?.country === 'CA' ? 'Canada' : (payload?.country ?? 'Canada'),
+            label: payload?.label ?? payload?.fullName,
+            isDefault: payload?.isDefault ?? false,
           },
         };
       case 'delete_buyer_address':
+      case 'delete_address':
         return {
           path: '/api/users/address/delete',
           body: {
@@ -410,11 +472,41 @@ export async function callCallable(fn: string, data: any, token: string, timeout
           },
         };
       case 'set_default_buyer_address':
+      case 'set_default_address':
         return {
           path: '/api/users/address/set-default',
           body: {
             userId,
             addressId: payload?.addressId,
+          },
+        };
+      case 'get_address': {
+        const addressId = String(payload?.addressId ?? '');
+        if (!addressId) return null;
+        return {
+          path: '/graphql',
+          body: {
+            query: `query ListAddresses($collection: String!, $filters: JSON, $limit: Int) { list(collection: $collection, filters: $filters, limit: $limit) }`,
+            variables: {
+              collection: 'addresses',
+              filters: { userId: { _eq: userId } },
+              limit: 100,
+              targetAddressId: addressId,
+            },
+          },
+        };
+      }
+      case 'get_addresses':
+      case 'get_user_addresses':
+        return {
+          path: '/graphql',
+          body: {
+            query: `query ListAddresses($collection: String!, $filters: JSON, $limit: Int) { list(collection: $collection, filters: $filters, limit: $limit) }`,
+            variables: {
+              collection: 'addresses',
+              filters: { userId: { _eq: userId } },
+              limit: payload?.limit ?? 100,
+            },
           },
         };
       case 'get_mail_logs':
@@ -452,7 +544,8 @@ export async function callCallable(fn: string, data: any, token: string, timeout
             includeInactive: payload?.includeInactive ?? false,
           },
         };
-      case 'create_product_atomic': {
+      case 'create_product_atomic':
+      case 'create_product': {
         if (!userId) return null;
         const {
           productData,
@@ -495,6 +588,17 @@ export async function callCallable(fn: string, data: any, token: string, timeout
           },
         };
       }
+      case 'update_product_status':
+        return {
+          path: '/api/products/update',
+          body: {
+            productId: payload?.productId,
+            userId,
+            productData: {
+              lifecycleStatus: payload?.status ?? payload?.lifecycleStatus,
+            },
+          },
+        };
       case 'delete_product':
         return {
           path: '/api/products/delete',
@@ -657,14 +761,14 @@ export async function callCallable(fn: string, data: any, token: string, timeout
       case 'generate_software_download_session':
         return { path: '/api/digital/software-download', body: { userId, productId: payload?.productId } };
       case 'get_address_suggestions':
-        return { path: '/api/addresses/suggestions', body: { query: payload?.query } };
+        return { path: '/api/geocode/autocomplete', body: { query: payload?.query } };
       case 'get_chat_threads':
         return { path: '/api/chat/threads', body: { userId, ...payload } };
       case 'get_connect_account_status':
         return { path: '/api/connect/status', body: { userId } };
       case 'get_or_create_chat':
         return { path: '/api/chat/get-or-create', body: {
-          otherUserId: payload?.otherUserId ?? payload?.other_user_id ?? payload?.participantId,
+          otherUserId: String(payload?.otherUserId ?? payload?.other_user_id ?? payload?.participantId ?? '').replace(/^users:/, ''),
           productId: payload?.productId ?? payload?.product_id ?? null,
         }};
       case 'get_order_detail': {
@@ -698,6 +802,30 @@ export async function callCallable(fn: string, data: any, token: string, timeout
           },
         };
       }
+      case 'get_buyer_orders':
+        return {
+          path: '/graphql',
+          body: {
+            query: `query ListBuyerOrders($collection: String!, $filters: JSON, $limit: Int) { list(collection: $collection, filters: $filters, limit: $limit) }`,
+            variables: {
+              collection: 'orders',
+              filters: { buyerId: { _eq: userId } },
+              limit: payload?.limit ?? 50,
+            },
+          },
+        };
+      case 'get_seller_orders':
+        return {
+          path: '/graphql',
+          body: {
+            query: `query ListSellerOrders($collection: String!, $filters: JSON, $limit: Int) { list(collection: $collection, filters: $filters, limit: $limit) }`,
+            variables: {
+              collection: 'orders',
+              filters: { sellerId: { _eq: userId } },
+              limit: payload?.limit ?? 50,
+            },
+          },
+        };
       case 'get_payment_providers':
         return { path: '/api/payments/providers/list', body: { ...payload } };
       case 'get_product_questions':
@@ -721,7 +849,18 @@ export async function callCallable(fn: string, data: any, token: string, timeout
       case 'report_message':
         return { path: '/api/chat/report', body: { userId, messageId: payload?.messageId, reason: payload?.reason } };
       case 'search_products':
-        return { path: '/api/products/search', body: { ...payload } };
+        return {
+          path: '/api/search/products',
+          body: {
+            query: payload?.query ?? '',
+            categoryId: payload?.filters?.categoryId ?? payload?.categoryId,
+            minPrice: payload?.filters?.priceCents?.min ?? payload?.minPrice ?? payload?.minPriceCents,
+            maxPrice: payload?.filters?.priceCents?.max ?? payload?.maxPrice ?? payload?.maxPriceCents,
+            limit: payload?.limit ?? 20,
+            offset: Math.max(0, payload?.offset ?? 0),
+            sort: payload?.sort,
+          },
+        };
       case 'send_chat_message':
         return { path: '/api/chat/send', body: { userId, threadId: payload?.threadId, message: payload?.message } };
       case 'send_message':
@@ -763,7 +902,8 @@ export async function callCallable(fn: string, data: any, token: string, timeout
       case 'clear_cart':
         return { path: '/api/cart/clear', body: { userId } };
       case 'update_cart_quantity':
-        return { path: '/api/cart/update', body: { userId, productId: payload?.productId, quantity: payload?.quantity } };
+      case 'update_cart_item':
+        return { path: '/api/cart/update-quantity', body: { userId, productId: payload?.productId, quantity: payload?.quantity } };
       case 'verify_cart_prices':
         return { path: '/api/cart/verify-prices', body: { userId, cartItems: payload?.cartItems } };
       case 'verify_license':
@@ -790,10 +930,79 @@ export async function callCallable(fn: string, data: any, token: string, timeout
           checkoutUrl,
         };
       }
-      case 'get_orders': {
+      case 'get_orders':
+      case 'get_buyer_orders':
+      case 'get_seller_orders': {
         const rawList = body?.data?.list ?? body?.orders ?? [];
         const orders = Array.isArray(rawList) ? rawList : (typeof rawList === 'string' ? JSON.parse(rawList) : []);
         return { success: true, orders };
+      }
+      case 'submit_review':
+        return {
+          success: body?.success ?? true,
+          reviewId: body?.reviewId ?? body?.ratingId ?? body?.id ?? null,
+          ...body,
+        };
+      case 'get_product':
+      case 'get_product_detail': {
+        const product = parseGraphQLValue(body?.data?.get ?? body);
+        const normalized = product && typeof product === 'object' ? product : {};
+        const rawId = String((normalized as any).id ?? (normalized as any).productId ?? '');
+        const productId = rawId.includes(':') ? rawId.split(':').pop() : rawId;
+        const images = Array.isArray((normalized as any).imageUrls)
+          ? (normalized as any).imageUrls
+          : Array.isArray((normalized as any).images)
+            ? (normalized as any).images
+            : [];
+        if (fn === 'get_product_detail') {
+          return {
+            success: true,
+            product: {
+              ...normalized,
+              productId,
+              id: (normalized as any).id ?? productId,
+              images,
+              sellerName: (normalized as any).sellerName ?? (normalized as any).seller ?? (normalized as any).sellerId,
+              averageRating: (normalized as any).averageRating ?? (normalized as any).rating ?? 0,
+              reviewCount: (normalized as any).reviewCount ?? (normalized as any).totalReviews ?? 0,
+            },
+          };
+        }
+        return { ...normalized, productId, images };
+      }
+      case 'get_address': {
+        const address = parseGraphQLValue(body?.data?.get ?? body);
+        const nested = address?.address ?? {};
+        const rawId = address?.id ? String(address.id) : '';
+        const addressId = rawId.includes(':') ? rawId.split(':').pop() : rawId;
+        return {
+          ...address,
+          ...nested,
+          id: addressId,
+          addressId,
+          fullName: address?.label ?? '',
+          streetAddress: nested.street,
+        };
+      }
+      case 'get_addresses':
+      case 'get_user_addresses': {
+        const raw = body?.data?.list ?? [];
+        const addresses = Array.isArray(raw)
+          ? raw.map((address: any) => {
+              const nested = address?.address ?? {};
+              const rawId = address?.id ? String(address.id) : '';
+              const addressId = rawId.includes(':') ? rawId.split(':').pop() : rawId;
+              return {
+                ...address,
+                ...nested,
+                id: addressId,
+                addressId,
+                fullName: address?.label ?? '',
+                streetAddress: nested.street,
+              };
+            })
+          : [];
+        return { success: true, addresses, items: addresses };
       }
       case 'get_order_detail': {
         const order = body?.data?.get ?? body;
@@ -812,8 +1021,22 @@ export async function callCallable(fn: string, data: any, token: string, timeout
         const metrics = Array.isArray(rawMetrics) ? rawMetrics : [];
         return { success: true, metrics };
       }
+      case 'get_notifications': {
+        const rawNotifications = body?.data?.list ?? body?.notifications ?? [];
+        const notifications = Array.isArray(rawNotifications) ? rawNotifications : [];
+        return {
+          success: true,
+          notifications,
+          data: notifications,
+          nextOffset:
+            typeof (body?.nextOffset ?? body?.next_offset) === 'number'
+              ? (body?.nextOffset ?? body?.next_offset)
+              : undefined,
+        };
+      }
       case 'get_products_paginated':
       case 'get_seller_products_paginated':
+      case 'get_seller_products':
         return {
           success: true,
           products: Array.isArray(body?.products) ? body.products : [],
@@ -821,6 +1044,35 @@ export async function callCallable(fn: string, data: any, token: string, timeout
           hasMore: Boolean(body?.hasMore ?? body?.has_more),
           totalFetched: body?.totalFetched ?? body?.total_fetched ?? 0,
         };
+      case 'get_similar_products': {
+        const products = Array.isArray(body?.products) ? body.products : [];
+        return { success: true, products, similar: products };
+      }
+      case 'get_cart': {
+        const items = Array.isArray(body) ? body : (Array.isArray(body?.items) ? body.items : []);
+        return {
+          success: true,
+          items,
+          cartItems: items,
+          totalCents: body?.totalCents ?? body?.totalAmountCents ?? 0,
+          totalAmountCents: body?.totalAmountCents ?? body?.totalCents ?? 0,
+        };
+      }
+      case 'search_products': {
+        const results = Array.isArray(body?.hits)
+          ? body.hits
+          : Array.isArray(body?.results)
+            ? body.results
+            : Array.isArray(body)
+              ? body
+              : [];
+        return {
+          success: true,
+          results,
+          products: results,
+          total: body?.estimatedTotalHits ?? body?.total ?? results.length,
+        };
+      }
       case 'toggle_favorite':
         return {
           success: Boolean(body?.success),
@@ -1144,7 +1396,7 @@ export async function buildMultiSellerPayload(
 // STRIPE TEST HELPERS — Complete checkout programmatically
 // ════════════════════════════════════════════════════════════════════
 
-const STRIPE_TEST_KEY = process.env.STRIPE_TEST_KEY || 'REDACTED_SECRET';
+const STRIPE_TEST_KEY = process.env.STRIPE_TEST_KEY;
 
 /**
  * Programmatically complete a Stripe Checkout Session by:

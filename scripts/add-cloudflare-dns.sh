@@ -18,7 +18,7 @@ curl -s -X POST "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records
   --data '{
     "type": "A",
     "name": "docs",
-    "content": "204.168.137.16",
+    "content": "${VPS_IP:-204.168.137.16}",
     "ttl": 1,
     "proxied": true
   }' | python3 -c "import sys,json; r=json.load(sys.stdin); print(f'docs.orignagta.ca: {\"OK\" if r[\"success\"] else r[\"errors\"]}')"
@@ -29,7 +29,7 @@ curl -s -X POST "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records
   --data '{
     "type": "A",
     "name": "mcp.docs",
-    "content": "204.168.137.16",
+    "content": "${VPS_IP:-204.168.137.16}",
     "ttl": 1,
     "proxied": true
   }' | python3 -c "import sys,json; r=json.load(sys.stdin); print(f'mcp.docs.orignagta.ca: {\"OK\" if r[\"success\"] else r[\"errors\"]}')"

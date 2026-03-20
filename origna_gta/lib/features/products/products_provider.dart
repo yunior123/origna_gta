@@ -2,10 +2,13 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/repositories/product_repository.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/services/analytics_service.dart';
+import 'package:origna_gta/utils/utils.dart';
 
 // ============================================================================
 // FILTER STATE PROVIDERS
@@ -13,7 +16,9 @@ import 'package:origna_gta/services/analytics_service.dart';
 
 /// Full product details for all favorites — chunked into 30-ID batches and
 /// fetched in parallel to avoid the batch query limit.
-final favoritedProductsProvider = FutureProvider.autoDispose<List<Product>>((ref) async {
+final favoritedProductsProvider = FutureProvider.autoDispose<List<Product>>((
+  ref,
+) async {
   final favoriteIds = ref.watch(favoritesProvider).valueOrNull ?? {};
   if (favoriteIds.isEmpty) return [];
 
@@ -22,15 +27,20 @@ final favoritedProductsProvider = FutureProvider.autoDispose<List<Product>>((ref
 
   // Chunk into 30-ID batches (batch query limit)
   final chunks = [
-    for (var i = 0; i < ids.length; i += 30) ids.sublist(i, min(i + 30, ids.length)),
+    for (var i = 0; i < ids.length; i += 30)
+      ids.sublist(i, min(i + 30, ids.length)),
   ];
   // Fetch chunks in parallel
-  final results = await Future.wait(chunks.map((c) => repository.fetchProductsByIds(c)));
+  final results = await Future.wait(
+    chunks.map((c) => repository.fetchProductsByIds(c)),
+  );
   return results.expand((x) => x).toList();
 });
 
 /// Favorites controller
-final favoritesControllerProvider = Provider.autoDispose<FavoritesController>((ref) {
+final favoritesControllerProvider = Provider.autoDispose<FavoritesController>((
+  ref,
+) {
   return FavoritesController(ref);
 });
 
@@ -58,7 +68,9 @@ final favoritesProvider = StreamProvider.autoDispose<Set<String>>((ref) {
 });
 
 /// Convenience provider that uses current filter state
-final filteredProductsProvider = FutureProvider.autoDispose<List<Product>>((ref) async {
+final filteredProductsProvider = FutureProvider.autoDispose<List<Product>>((
+  ref,
+) async {
   final categoryId = ref.watch(selectedCategoryProvider);
   final searchQuery = ref.watch(searchQueryProvider);
 
@@ -68,40 +80,57 @@ final filteredProductsProvider = FutureProvider.autoDispose<List<Product>>((ref)
 });
 
 /// Fetches a single product by ID
-final productByIdProvider = FutureProvider.autoDispose.family<Product?, String>((ref, productId) async {
-  final repository = ref.watch(productRepositoryProvider);
-  return repository.fetchProductById(productId);
-});
+final productByIdProvider = FutureProvider.autoDispose.family<Product?, String>(
+  (ref, productId) async {
+    final repository = ref.watch(productRepositoryProvider);
+    return repository.fetchProductById(productId);
+  },
+);
 
 /// Fetches a single product by slug
-final productBySlugProvider = FutureProvider.autoDispose.family<Product?, String>((ref, slug) async {
-  final repository = ref.watch(productRepositoryProvider);
-  return repository.getProductBySlug(slug);
-});
+final productBySlugProvider = FutureProvider.autoDispose
+    .family<Product?, String>((ref, slug) async {
+      final repository = ref.watch(productRepositoryProvider);
+      return repository.getProductBySlug(slug);
+    });
 
 /// Fetches products based on query parameters
-final productsProvider = FutureProvider.autoDispose.family<List<Product>, ProductQuery>((ref, query) async {
-  final repository = ref.watch(productRepositoryProvider);
-  final result = await repository.fetchProducts(categoryId: query.categoryId, searchQuery: query.searchQuery, pageSize: query.limit);
-  return result.products;
-});
+final productsProvider = FutureProvider.autoDispose
+    .family<List<Product>, ProductQuery>((ref, query) async {
+      final repository = ref.watch(productRepositoryProvider);
+      final result = await repository.fetchProducts(
+        categoryId: query.categoryId,
+        searchQuery: query.searchQuery,
+        pageSize: query.limit,
+      );
+      return result.products;
+    });
 
 /// ({@macro similarProductsParams}) — fetches up to 8 active products in the
 /// same category, excluding the current product. Used by the "Customers also
 /// bought" row on the product detail screen.
-final similarProductsProvider = FutureProvider.autoDispose.family<List<Product>, ({String excludeProductId, int categoryId})>(
-  (ref, params) async {
-    final repository = ref.watch(productRepositoryProvider);
-    final result = await repository.fetchProducts(categoryId: params.categoryId, pageSize: 12);
-    return result.products.where((p) => p.productId != params.excludeProductId).take(8).toList();
-  },
-);
+final similarProductsProvider = FutureProvider.autoDispose
+    .family<List<Product>, ({String excludeProductId, int categoryId})>((
+      ref,
+      params,
+    ) async {
+      final repository = ref.watch(productRepositoryProvider);
+      final result = await repository.fetchProducts(
+        categoryId: params.categoryId,
+        pageSize: 12,
+      );
+      return result.products
+          .where((p) => p.productId != params.excludeProductId)
+          .take(8)
+          .toList();
+    });
 
 /// Streams the count of unanswered product questions for a seller
-final sellerUnansweredQaProvider = StreamProvider.autoDispose.family<int, String>((ref, sellerId) {
-  final repository = ref.watch(productRepositoryProvider);
-  return repository.watchUnansweredQuestionsCount(sellerId);
-});
+final sellerUnansweredQaProvider = StreamProvider.autoDispose
+    .family<int, String>((ref, sellerId) {
+      final repository = ref.watch(productRepositoryProvider);
+      return repository.watchUnansweredQuestionsCount(sellerId);
+    });
 
 // ============================================================================
 // FAVORITES PROVIDER
@@ -129,15 +158,30 @@ class FavoritesController {
   }
 
   /// Toggle favorite status
-  Future<void> toggleFavorite(String productId, {String? productName, double? priceCad}) async {
+  Future<void> toggleFavorite(
+    String productId, {
+    String? productName,
+    double? priceCad,
+  }) async {
     final userId = _userId;
     if (userId == null) return;
     final wasFavorited = isFavorite(productId);
     await _repository.toggleFavorite(userId, productId);
     if (productName != null && priceCad != null && !wasFavorited) {
-      unawaited(AnalyticsService.logAddToWishlist(productId: productId, productName: productName, priceCad: priceCad));
+      unawaited(
+        AnalyticsService.logAddToWishlist(
+          productId: productId,
+          productName: productName,
+          priceCad: priceCad,
+        ),
+      );
     } else if (productName != null && wasFavorited) {
-      unawaited(AnalyticsService.logRemoveFromWishlist(productId: productId, productName: productName));
+      unawaited(
+        AnalyticsService.logRemoveFromWishlist(
+          productId: productId,
+          productName: productName,
+        ),
+      );
     }
   }
 }
@@ -156,6 +200,56 @@ class ProductQuery {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is ProductQuery && runtimeType == other.runtimeType && categoryId == other.categoryId && searchQuery == other.searchQuery && limit == other.limit;
+      other is ProductQuery &&
+          runtimeType == other.runtimeType &&
+          categoryId == other.categoryId &&
+          searchQuery == other.searchQuery &&
+          limit == other.limit;
 }
 
+/// Stream provider for product ratings.
+final productRatingsProvider = StreamProvider.autoDispose
+    .family<List<Map<String, dynamic>>, String>((ref, productId) {
+      final ob = ref.watch(orignabaseProvider);
+      final ratings = ob.collection(Collections.productRatings);
+
+      Future<List<Map<String, dynamic>>> fetchRatings() async {
+        final snapshot = await ratings
+            .where(Fields.productId, isEqualTo: productId)
+            .orderBy(Fields.createdAt, descending: true)
+            .limit(10)
+            .get();
+        return snapshot.docs
+            .map(
+              (doc) => <String, dynamic>{...doc.data, Fields.ratingId: doc.id},
+            )
+            .toList();
+      }
+
+      return Stream.multi((controller) async {
+        try {
+          controller.add(await fetchRatings());
+        } catch (error, stackTrace) {
+          AppError.log(
+            error,
+            stackTrace: stackTrace,
+            context: 'productRatingsProvider[$productId]',
+          );
+          controller.add(const []);
+        }
+        final subscription = ratings
+            .snapshots()
+            .asyncMap((_) => fetchRatings())
+            .listen(
+              controller.add,
+              onError: (Object e, StackTrace st) {
+                AppError.log(
+                  e,
+                  stackTrace: st,
+                  context: 'productRatingsProvider.realtime[$productId]',
+                );
+              },
+            );
+        controller.onCancel = () => subscription.cancel();
+      });
+    });

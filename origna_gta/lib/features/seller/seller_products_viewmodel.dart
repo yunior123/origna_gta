@@ -1,4 +1,3 @@
-// coverage:ignore-file
 // Migrated: delegates to OrignaBase seller products viewmodel.
 // Screens continue using sellerProductsViewModelProvider, sellerProductsProvider.
 

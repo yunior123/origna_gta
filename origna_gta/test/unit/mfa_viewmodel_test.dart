@@ -13,10 +13,7 @@ import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:orignabase/orignabase.dart';
 
-@GenerateNiceMocks([
-  MockSpec<OrignaBase>(),
-  MockSpec<OrignaBaseAuth>(),
-])
+@GenerateNiceMocks([MockSpec<OrignaBase>(), MockSpec<OrignaBaseAuth>()])
 import 'mfa_viewmodel_test.mocks.dart';
 
 // =============================================================================
@@ -135,7 +132,7 @@ void main() {
       );
       addTearDown(container.dispose);
 
-      container.listen(userProfileProvider, (_, __) {});
+      container.listen(userProfileProvider, (_, _) {});
       await Future<void>.delayed(Duration.zero);
 
       final vm = container.read(mfaViewModelProvider.notifier);
@@ -144,27 +141,30 @@ void main() {
       expect(container.read(mfaViewModelProvider).mfaEnabled, isTrue);
     });
 
-    test('sets mfaEnabled=false when userProfile has mfaEnabled=false', () async {
-      final container = _createContainer(
-        mockOb: mockOb,
-        userProfile: _makeUser(mfaEnabled: false),
-      );
-      addTearDown(container.dispose);
+    test(
+      'sets mfaEnabled=false when userProfile has mfaEnabled=false',
+      () async {
+        final container = _createContainer(
+          mockOb: mockOb,
+          userProfile: _makeUser(mfaEnabled: false),
+        );
+        addTearDown(container.dispose);
 
-      container.listen(userProfileProvider, (_, __) {});
-      await Future<void>.delayed(Duration.zero);
+        container.listen(userProfileProvider, (_, _) {});
+        await Future<void>.delayed(Duration.zero);
 
-      final vm = container.read(mfaViewModelProvider.notifier);
-      vm.checkStatus();
+        final vm = container.read(mfaViewModelProvider.notifier);
+        vm.checkStatus();
 
-      expect(container.read(mfaViewModelProvider).mfaEnabled, isFalse);
-    });
+        expect(container.read(mfaViewModelProvider).mfaEnabled, isFalse);
+      },
+    );
 
     test('does nothing when userProfile is null', () async {
       final container = _createContainer(mockOb: mockOb);
       addTearDown(container.dispose);
 
-      container.listen(userProfileProvider, (_, __) {});
+      container.listen(userProfileProvider, (_, _) {});
       await Future<void>.delayed(Duration.zero);
 
       final vm = container.read(mfaViewModelProvider.notifier);
@@ -179,33 +179,37 @@ void main() {
   // 3. startSetup() success
   // ---------------------------------------------------------------------------
   group('startSetup', () {
-    test('success sets step=1, qrCodeBase64, manualKey, appleOtpauthUrl', () async {
-      when(mockAuth.setupMfa()).thenAnswer((_) async => MfaSetupResult(
+    test(
+      'success sets step=1, qrCodeBase64, manualKey, appleOtpauthUrl',
+      () async {
+        when(mockAuth.setupMfa()).thenAnswer(
+          (_) async => MfaSetupResult(
             qrCodeBase64: 'testQrData',
             manualKey: 'JBSWY3DPEHPK3PXP',
             appleOtpauthUrl: 'otpauth://totp/test',
-          ));
+          ),
+        );
 
-      final container = _createContainer(mockOb: mockOb);
-      addTearDown(container.dispose);
+        final container = _createContainer(mockOb: mockOb);
+        addTearDown(container.dispose);
 
-      final vm = container.read(mfaViewModelProvider.notifier);
-      await vm.startSetup();
+        final vm = container.read(mfaViewModelProvider.notifier);
+        await vm.startSetup();
 
-      final state = container.read(mfaViewModelProvider);
-      expect(state.isLoading, isFalse);
-      expect(state.currentStep, 1);
-      expect(state.qrCodeBase64, 'testQrData');
-      expect(state.manualKey, 'JBSWY3DPEHPK3PXP');
-      expect(state.appleOtpauthUrl, 'otpauth://totp/test');
-      expect(state.errorMessage, isNull);
-    });
+        final state = container.read(mfaViewModelProvider);
+        expect(state.isLoading, isFalse);
+        expect(state.currentStep, 1);
+        expect(state.qrCodeBase64, 'testQrData');
+        expect(state.manualKey, 'JBSWY3DPEHPK3PXP');
+        expect(state.appleOtpauthUrl, 'otpauth://totp/test');
+        expect(state.errorMessage, isNull);
+      },
+    );
 
     test('success with null appleOtpauthUrl', () async {
-      when(mockAuth.setupMfa()).thenAnswer((_) async => MfaSetupResult(
-            qrCodeBase64: 'qr',
-            manualKey: 'key',
-          ));
+      when(mockAuth.setupMfa()).thenAnswer(
+        (_) async => MfaSetupResult(qrCodeBase64: 'qr', manualKey: 'key'),
+      );
 
       final container = _createContainer(mockOb: mockOb);
       addTearDown(container.dispose);
@@ -238,8 +242,9 @@ void main() {
     });
 
     test('failure with OrignaBaseException sets errorMessage', () async {
-      when(mockAuth.setupMfa())
-          .thenThrow(OrignaBaseException('Auth required', statusCode: 401));
+      when(
+        mockAuth.setupMfa(),
+      ).thenThrow(OrignaBaseException('Auth required', statusCode: 401));
 
       final container = _createContainer(mockOb: mockOb);
       addTearDown(container.dispose);
@@ -258,23 +263,28 @@ void main() {
   // 5. verifySetup() success
   // ---------------------------------------------------------------------------
   group('verifySetup', () {
-    test('success sets step=3, recoveryCodes populated, mfaEnabled=true', () async {
-      final recoveryCodes = ['ABCD-1234', 'EFGH-5678', 'IJKL-9012'];
-      when(mockAuth.verifyMfaSetup(any)).thenAnswer((_) async => recoveryCodes);
+    test(
+      'success sets step=3, recoveryCodes populated, mfaEnabled=true',
+      () async {
+        final recoveryCodes = ['ABCD-1234', 'EFGH-5678', 'IJKL-9012'];
+        when(
+          mockAuth.verifyMfaSetup(any),
+        ).thenAnswer((_) async => recoveryCodes);
 
-      final container = _createContainer(mockOb: mockOb);
-      addTearDown(container.dispose);
+        final container = _createContainer(mockOb: mockOb);
+        addTearDown(container.dispose);
 
-      final vm = container.read(mfaViewModelProvider.notifier);
-      await vm.verifySetup('123456');
+        final vm = container.read(mfaViewModelProvider.notifier);
+        await vm.verifySetup('123456');
 
-      final state = container.read(mfaViewModelProvider);
-      expect(state.isLoading, isFalse);
-      expect(state.currentStep, 3);
-      expect(state.recoveryCodes, recoveryCodes);
-      expect(state.mfaEnabled, isTrue);
-      expect(state.errorMessage, isNull);
-    });
+        final state = container.read(mfaViewModelProvider);
+        expect(state.isLoading, isFalse);
+        expect(state.currentStep, 3);
+        expect(state.recoveryCodes, recoveryCodes);
+        expect(state.mfaEnabled, isTrue);
+        expect(state.errorMessage, isNull);
+      },
+    );
 
     test('success with empty recovery codes list', () async {
       when(mockAuth.verifyMfaSetup(any)).thenAnswer((_) async => <String>[]);
@@ -296,10 +306,9 @@ void main() {
     // -------------------------------------------------------------------------
     test('failure sets errorMessage and stays on current step', () async {
       // First set up successfully to get to step 1.
-      when(mockAuth.setupMfa()).thenAnswer((_) async => MfaSetupResult(
-            qrCodeBase64: 'qr',
-            manualKey: 'key',
-          ));
+      when(mockAuth.setupMfa()).thenAnswer(
+        (_) async => MfaSetupResult(qrCodeBase64: 'qr', manualKey: 'key'),
+      );
 
       final container = _createContainer(mockOb: mockOb);
       addTearDown(container.dispose);
@@ -309,8 +318,9 @@ void main() {
       expect(container.read(mfaViewModelProvider).currentStep, 1);
 
       // Now fail verification.
-      when(mockAuth.verifyMfaSetup(any))
-          .thenThrow(Exception('Invalid TOTP code'));
+      when(
+        mockAuth.verifyMfaSetup(any),
+      ).thenThrow(Exception('Invalid TOTP code'));
       await vm.verifySetup('000000');
 
       final state = container.read(mfaViewModelProvider);
@@ -321,8 +331,9 @@ void main() {
     });
 
     test('failure with OrignaBaseException preserves step', () async {
-      when(mockAuth.verifyMfaSetup(any))
-          .thenThrow(OrignaBaseException('Code expired', statusCode: 400));
+      when(
+        mockAuth.verifyMfaSetup(any),
+      ).thenThrow(OrignaBaseException('Code expired', statusCode: 400));
 
       final container = _createContainer(mockOb: mockOb);
       addTearDown(container.dispose);
@@ -355,8 +366,9 @@ void main() {
     });
 
     test('preserves other state fields', () async {
-      when(mockAuth.verifyMfaSetup(any))
-          .thenAnswer((_) async => ['RC1', 'RC2']);
+      when(
+        mockAuth.verifyMfaSetup(any),
+      ).thenAnswer((_) async => ['RC1', 'RC2']);
 
       final container = _createContainer(mockOb: mockOb);
       addTearDown(container.dispose);
@@ -412,13 +424,14 @@ void main() {
   // ---------------------------------------------------------------------------
   group('disable', () {
     test('success resets all state, mfaEnabled=false', () async {
-      when(mockAuth.setupMfa()).thenAnswer((_) async => MfaSetupResult(
-            qrCodeBase64: 'qr',
-            manualKey: 'key',
-            appleOtpauthUrl: 'url',
-          ));
-      when(mockAuth.verifyMfaSetup(any))
-          .thenAnswer((_) async => ['RC1']);
+      when(mockAuth.setupMfa()).thenAnswer(
+        (_) async => MfaSetupResult(
+          qrCodeBase64: 'qr',
+          manualKey: 'key',
+          appleOtpauthUrl: 'url',
+        ),
+      );
+      when(mockAuth.verifyMfaSetup(any)).thenAnswer((_) async => ['RC1']);
       when(mockAuth.disableMfa(any)).thenAnswer((_) async {});
 
       final container = _createContainer(mockOb: mockOb);
@@ -453,8 +466,7 @@ void main() {
     // 10. disable() failure
     // -------------------------------------------------------------------------
     test('failure sets errorMessage and mfaEnabled stays true', () async {
-      when(mockAuth.verifyMfaSetup(any))
-          .thenAnswer((_) async => ['RC1']);
+      when(mockAuth.verifyMfaSetup(any)).thenAnswer((_) async => ['RC1']);
 
       final container = _createContainer(mockOb: mockOb);
       addTearDown(container.dispose);
@@ -466,8 +478,7 @@ void main() {
       expect(container.read(mfaViewModelProvider).mfaEnabled, isTrue);
 
       // Disable fails.
-      when(mockAuth.disableMfa(any))
-          .thenThrow(Exception('Wrong TOTP code'));
+      when(mockAuth.disableMfa(any)).thenThrow(Exception('Wrong TOTP code'));
       await vm.disable('000000');
 
       final state = container.read(mfaViewModelProvider);
@@ -477,8 +488,7 @@ void main() {
     });
 
     test('failure with OrignaBaseException keeps mfaEnabled true', () async {
-      when(mockAuth.verifyMfaSetup(any))
-          .thenAnswer((_) async => ['RC1']);
+      when(mockAuth.verifyMfaSetup(any)).thenAnswer((_) async => ['RC1']);
 
       final container = _createContainer(mockOb: mockOb);
       addTearDown(container.dispose);
@@ -488,8 +498,9 @@ void main() {
       // Simulate MFA enabled.
       await vm.verifySetup('123456');
 
-      when(mockAuth.disableMfa(any))
-          .thenThrow(OrignaBaseException('Forbidden', statusCode: 403));
+      when(
+        mockAuth.disableMfa(any),
+      ).thenThrow(OrignaBaseException('Forbidden', statusCode: 403));
       await vm.disable('000000');
 
       final state = container.read(mfaViewModelProvider);
@@ -574,13 +585,16 @@ void main() {
   // ---------------------------------------------------------------------------
   group('Full MFA setup flow', () {
     test('setup -> verify -> confirmSaved transitions through steps', () async {
-      when(mockAuth.setupMfa()).thenAnswer((_) async => MfaSetupResult(
-            qrCodeBase64: 'qrData',
-            manualKey: 'SECRET',
-            appleOtpauthUrl: 'otpauth://totp/app',
-          ));
-      when(mockAuth.verifyMfaSetup(any))
-          .thenAnswer((_) async => ['RECOVERY-1', 'RECOVERY-2', 'RECOVERY-3']);
+      when(mockAuth.setupMfa()).thenAnswer(
+        (_) async => MfaSetupResult(
+          qrCodeBase64: 'qrData',
+          manualKey: 'SECRET',
+          appleOtpauthUrl: 'otpauth://totp/app',
+        ),
+      );
+      when(
+        mockAuth.verifyMfaSetup(any),
+      ).thenAnswer((_) async => ['RECOVERY-1', 'RECOVERY-2', 'RECOVERY-3']);
 
       final container = _createContainer(mockOb: mockOb);
       addTearDown(container.dispose);
@@ -612,10 +626,9 @@ void main() {
     });
 
     test('setup -> verify fail -> retry verify -> success', () async {
-      when(mockAuth.setupMfa()).thenAnswer((_) async => MfaSetupResult(
-            qrCodeBase64: 'qr',
-            manualKey: 'key',
-          ));
+      when(mockAuth.setupMfa()).thenAnswer(
+        (_) async => MfaSetupResult(qrCodeBase64: 'qr', manualKey: 'key'),
+      );
 
       int callCount = 0;
       when(mockAuth.verifyMfaSetup(any)).thenAnswer((_) async {

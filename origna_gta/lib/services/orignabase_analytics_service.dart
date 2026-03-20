@@ -1,4 +1,3 @@
-// coverage:ignore-file
 import 'package:flutter/foundation.dart';
 import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/utils/app_logger.dart';

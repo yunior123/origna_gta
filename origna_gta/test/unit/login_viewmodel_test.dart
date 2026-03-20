@@ -9,7 +9,13 @@ import 'package:origna_gta/utils/utils.dart';
 
 class FakeAuthRepository implements AuthRepository {
   Future<void> Function(String email, String password)? onSignInWithEmail;
-  Future<void> Function(String email, String password, String name, bool marketingOptIn)? onRegisterWithEmail;
+  Future<void> Function(
+    String email,
+    String password,
+    String name,
+    bool marketingOptIn,
+  )?
+  onRegisterWithEmail;
   Future<void> Function()? onSignInWithGoogle;
   Future<void> Function()? onSignInWithApple;
   Future<void> Function(String email)? onSendPasswordResetEmail;
@@ -120,49 +126,90 @@ void main() {
 
     test('handleAuth (login) calls signInWithEmail and succeeds', () async {
       final viewModel = container.read(loginViewModelProvider.notifier);
-      fakeAuthRepo.onSignInWithEmail =
-          (email, password) => Future<void>.value();
+      fakeAuthRepo.onSignInWithEmail = (email, password) =>
+          Future<void>.value();
 
-      await viewModel.handleAuth(email: 'test@example.com', password: 'Password123!');
+      await viewModel.handleAuth(
+        email: 'test@example.com',
+        password: 'Password123!',
+      );
 
       expect(container.read(loginViewModelProvider).isSuccess, isTrue);
       expect(container.read(loginViewModelProvider).isLoading, isFalse);
       expect(fakeAuthRepo.signInWithEmailCalls, 1);
     });
 
-    test('handleAuth (register) calls registerWithEmail and succeeds', () async {
+    test('handleAuth surfaces MFA challenge state', () async {
       final viewModel = container.read(loginViewModelProvider.notifier);
-      // Set to registration mode
-      viewModel.toggleAuthMode();
+      fakeAuthRepo.onSignInWithEmail = (_, _) async {
+        throw _authException('mfa-required', challengeToken: 'challenge-123');
+      };
 
-      fakeAuthRepo.onRegisterWithEmail =
-          (email, password, name, marketingOptIn) => Future<void>.value();
+      await viewModel.handleAuth(
+        email: 'test@example.com',
+        password: 'Password123!',
+      );
 
-      await viewModel.handleAuth(email: 'newuser@example.com', password: 'SecurePassword123!', name: 'John Doe');
-
-      expect(container.read(loginViewModelProvider).isSuccess, isTrue);
-      expect(fakeAuthRepo.registerWithEmailCalls, 1);
+      final state = container.read(loginViewModelProvider);
+      expect(state.mfaRequired, isTrue);
+      expect(state.challengeToken, 'challenge-123');
+      expect(state.errorMessage, isNull);
+      expect(state.isSuccess, isFalse);
     });
+
+    test(
+      'handleAuth (register) calls registerWithEmail and succeeds',
+      () async {
+        final viewModel = container.read(loginViewModelProvider.notifier);
+        // Set to registration mode
+        viewModel.toggleAuthMode();
+
+        fakeAuthRepo.onRegisterWithEmail =
+            (email, password, name, marketingOptIn) => Future<void>.value();
+
+        await viewModel.handleAuth(
+          email: 'newuser@example.com',
+          password: 'SecurePassword123!',
+          name: 'John Doe',
+        );
+
+        expect(container.read(loginViewModelProvider).isSuccess, isTrue);
+        expect(fakeAuthRepo.registerWithEmailCalls, 1);
+      },
+    );
 
     test('handleAuth validates weak password on registration', () async {
       final viewModel = container.read(loginViewModelProvider.notifier);
       viewModel.toggleAuthMode(); // Register mode
 
-      await viewModel.handleAuth(email: 'test@example.com', password: '123', name: 'User');
+      await viewModel.handleAuth(
+        email: 'test@example.com',
+        password: '123',
+        name: 'User',
+      );
 
       expect(container.read(loginViewModelProvider).errorMessage, isNotNull);
       // It returns the key when not found, which is what we check
-      expect(container.read(loginViewModelProvider).errorMessage, anyOf(contains('password_min_8'), isNotEmpty));
+      expect(
+        container.read(loginViewModelProvider).errorMessage,
+        anyOf(contains('password_min_8'), isNotEmpty),
+      );
       expect(fakeAuthRepo.registerWithEmailCalls, 0);
     });
 
     test('handleAuth validates invalid email', () async {
       final viewModel = container.read(loginViewModelProvider.notifier);
 
-      await viewModel.handleAuth(email: 'invalid-email', password: 'Password123!');
+      await viewModel.handleAuth(
+        email: 'invalid-email',
+        password: 'Password123!',
+      );
 
       expect(container.read(loginViewModelProvider).errorMessage, isNotNull);
-      expect(container.read(loginViewModelProvider).errorMessage, anyOf(contains('email_invalid_validation'), isNotEmpty));
+      expect(
+        container.read(loginViewModelProvider).errorMessage,
+        anyOf(contains('email_invalid_validation'), isNotEmpty),
+      );
     });
 
     test('handleGoogleSignIn succeeds', () async {
@@ -273,20 +320,48 @@ void main() {
         viewModel.toggleAuthMode(); // Register mode
 
         // Required
-        await viewModel.handleAuth(email: 'test@example.com', password: 'Password123!', name: ' ');
-        expect(container.read(loginViewModelProvider).errorMessage, anyOf(contains('name_required'), isNotEmpty));
+        await viewModel.handleAuth(
+          email: 'test@example.com',
+          password: 'Password123!',
+          name: ' ',
+        );
+        expect(
+          container.read(loginViewModelProvider).errorMessage,
+          anyOf(contains('name_required'), isNotEmpty),
+        );
 
         // Too short
-        await viewModel.handleAuth(email: 'test@example.com', password: 'Password123!', name: 'A');
-        expect(container.read(loginViewModelProvider).errorMessage, anyOf(contains('name_too_short'), isNotEmpty));
+        await viewModel.handleAuth(
+          email: 'test@example.com',
+          password: 'Password123!',
+          name: 'A',
+        );
+        expect(
+          container.read(loginViewModelProvider).errorMessage,
+          anyOf(contains('name_too_short'), isNotEmpty),
+        );
 
         // Too long
-        await viewModel.handleAuth(email: 'test@example.com', password: 'Password123!', name: 'A' * 61);
-        expect(container.read(loginViewModelProvider).errorMessage, anyOf(contains('name_too_long'), isNotEmpty));
+        await viewModel.handleAuth(
+          email: 'test@example.com',
+          password: 'Password123!',
+          name: 'A' * 61,
+        );
+        expect(
+          container.read(loginViewModelProvider).errorMessage,
+          anyOf(contains('name_too_long'), isNotEmpty),
+        );
 
         // Invalid format
-        await viewModel.handleAuth(email: 'test@example.com', password: 'Password123!', name: 'John123');
-        expect(container.read(loginViewModelProvider).errorMessage, anyOf(contains('name_invalid_format'), isNotEmpty));
+        await viewModel.handleAuth(
+          email: 'test@example.com',
+          password: 'Password123!',
+          name: 'John123',
+        );
+        expect(
+          container.read(loginViewModelProvider).errorMessage,
+          anyOf(contains('name_invalid_format'), isNotEmpty),
+        );
       });
 
       test('handleAuth validates password complexity on registration', () async {
@@ -296,25 +371,61 @@ void main() {
         const validEmail = 'test@example.com';
 
         // Missing uppercase
-        await viewModel.handleAuth(email: validEmail, password: 'password123!', name: 'User');
-        expect(container.read(loginViewModelProvider).errorMessage, anyOf(contains('password_uppercase'), isNotEmpty));
+        await viewModel.handleAuth(
+          email: validEmail,
+          password: 'password123!',
+          name: 'User',
+        );
+        expect(
+          container.read(loginViewModelProvider).errorMessage,
+          anyOf(contains('password_uppercase'), isNotEmpty),
+        );
 
         // Missing lowercase
-        await viewModel.handleAuth(email: validEmail, password: 'PASSWORD123!', name: 'User');
-        expect(container.read(loginViewModelProvider).errorMessage, anyOf(contains('password_lowercase'), isNotEmpty));
+        await viewModel.handleAuth(
+          email: validEmail,
+          password: 'PASSWORD123!',
+          name: 'User',
+        );
+        expect(
+          container.read(loginViewModelProvider).errorMessage,
+          anyOf(contains('password_lowercase'), isNotEmpty),
+        );
 
         // Missing number
-        await viewModel.handleAuth(email: validEmail, password: 'Password!', name: 'User');
-        expect(container.read(loginViewModelProvider).errorMessage, anyOf(contains('password_number'), isNotEmpty));
+        await viewModel.handleAuth(
+          email: validEmail,
+          password: 'Password!',
+          name: 'User',
+        );
+        expect(
+          container.read(loginViewModelProvider).errorMessage,
+          anyOf(contains('password_number'), isNotEmpty),
+        );
 
         // Missing special
-        await viewModel.handleAuth(email: validEmail, password: 'Password123', name: 'User');
-        expect(container.read(loginViewModelProvider).errorMessage, anyOf(contains('password_special'), isNotEmpty));
+        await viewModel.handleAuth(
+          email: validEmail,
+          password: 'Password123',
+          name: 'User',
+        );
+        expect(
+          container.read(loginViewModelProvider).errorMessage,
+          anyOf(contains('password_special'), isNotEmpty),
+        );
 
         // Common password
-        await viewModel.handleAuth(email: validEmail, password: 'password123!', name: 'User'); // wait 'password' is not 'password123!'
+        await viewModel.handleAuth(
+          email: validEmail,
+          password: 'password123!',
+          name: 'User',
+        ); // wait 'password' is not 'password123!'
         // Let's use a real common password
-        await viewModel.handleAuth(email: validEmail, password: 'Password1!', name: 'User');
+        await viewModel.handleAuth(
+          email: validEmail,
+          password: 'Password1!',
+          name: 'User',
+        );
         // ValidationConstants.commonPasswords has 'password'
         // If I use 'password', it might fail complexity first.
         // Complexity regex: r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>])[A-Za-z\d!@#$%^&*(),.?":{}|<>]{8,}$'
@@ -329,11 +440,20 @@ void main() {
 
         // Too short
         await viewModel.handleAuth(email: 'a@b.c', password: 'Password123!');
-        expect(container.read(loginViewModelProvider).errorMessage, anyOf(contains('email_too_short'), isNotEmpty));
+        expect(
+          container.read(loginViewModelProvider).errorMessage,
+          anyOf(contains('email_too_short'), isNotEmpty),
+        );
 
         // Too long
-        await viewModel.handleAuth(email: '${'a' * 250}@example.com', password: 'Password123!');
-        expect(container.read(loginViewModelProvider).errorMessage, anyOf(contains('email_too_long'), isNotEmpty));
+        await viewModel.handleAuth(
+          email: '${'a' * 250}@example.com',
+          password: 'Password123!',
+        );
+        expect(
+          container.read(loginViewModelProvider).errorMessage,
+          anyOf(contains('email_too_long'), isNotEmpty),
+        );
       });
     });
 
@@ -359,8 +479,15 @@ void main() {
           fakeAuthRepo.onSignInWithEmail = (email, password) async {
             throw _authException(code);
           };
-          await viewModel.handleAuth(email: 'test@example.com', password: 'Password123!');
-          expect(container.read(loginViewModelProvider).errorMessage, isNotNull, reason: 'Failed for code: $code');
+          await viewModel.handleAuth(
+            email: 'test@example.com',
+            password: 'Password123!',
+          );
+          expect(
+            container.read(loginViewModelProvider).errorMessage,
+            isNotNull,
+            reason: 'Failed for code: $code',
+          );
         }
       });
 
@@ -371,27 +498,53 @@ void main() {
         fakeAuthRepo.onSignInWithEmail = (email, password) async {
           throw Exception('permission-denied');
         };
-        await viewModel.handleAuth(email: 'test@example.com', password: 'Password123!');
-        expect(container.read(loginViewModelProvider).errorMessage, anyOf(contains('profile_setup_failed'), isNotEmpty));
+        await viewModel.handleAuth(
+          email: 'test@example.com',
+          password: 'Password123!',
+        );
+        expect(
+          container.read(loginViewModelProvider).errorMessage,
+          anyOf(contains('profile_setup_failed'), isNotEmpty),
+        );
 
         // Network error (generic)
         fakeAuthRepo.onSignInWithEmail = (email, password) async {
           throw Exception('network error');
         };
-        await viewModel.handleAuth(email: 'test@example.com', password: 'Password123!');
-        expect(container.read(loginViewModelProvider).errorMessage, anyOf(contains('network_error'), isNotEmpty));
+        await viewModel.handleAuth(
+          email: 'test@example.com',
+          password: 'Password123!',
+        );
+        expect(
+          container.read(loginViewModelProvider).errorMessage,
+          anyOf(contains('network_error'), isNotEmpty),
+        );
 
         // Unknown auth exception code
         fakeAuthRepo.onSignInWithEmail = (email, password) async {
           throw _authException('unknown-code');
         };
-        await viewModel.handleAuth(email: 'test@example.com', password: 'Password123!');
-        expect(container.read(loginViewModelProvider).errorMessage, anyOf(contains('authentication_failed'), isNotEmpty));
+        await viewModel.handleAuth(
+          email: 'test@example.com',
+          password: 'Password123!',
+        );
+        expect(
+          container.read(loginViewModelProvider).errorMessage,
+          anyOf(contains('authentication_failed'), isNotEmpty),
+        );
       });
     });
   });
 }
 
-OrignaBaseAuthException _authException(String code, [String? message]) {
-  return OrignaBaseAuthException(code: code, message: message);
+OrignaBaseAuthException _authException(
+  String code, {
+  String? message,
+  String? challengeToken,
+}) {
+  return OrignaBaseAuthException(
+    code: code,
+    message: message,
+    challengeToken: challengeToken,
+  );
 }

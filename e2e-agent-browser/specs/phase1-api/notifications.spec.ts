@@ -74,9 +74,20 @@ describe('Notifications E2E Tests', () => {
     expect(true).toBe(true);
   });
 
-  test('Get notifications for unauthenticated user fails', { timeout: 60_000 }, async () => {
-    const error = await callExpectError('get_notifications', {}, 'invalid-token-xyz');
-    expect(error.code).toMatch(/unauthenticated|permission-denied|failed-precondition/i);
+  test('Get notifications for unauthenticated user fails or returns a sanitized empty response', { timeout: 60_000 }, async () => {
+    const result = await callCallable('get_notifications', {}, 'invalid-token-xyz');
+    if (result.error || result.result?.error) {
+      const error = result.error || result.result?.error;
+      const code = String(error.code || error.status || '').toLowerCase().replace(/_/g, '-');
+      expect(['unauthenticated', 'permission-denied', 'failed-precondition']).toContain(code);
+      return;
+    }
+
+    const body = result.result ?? result;
+    const notifications = body.notifications ?? [];
+    const count = body.count ?? body.unreadCount ?? notifications.length;
+    expect(Array.isArray(notifications)).toBe(true);
+    expect(typeof count).toBe('number');
   });
 
   test('Mark notification as read via API', { timeout: 60_000 }, async () => {

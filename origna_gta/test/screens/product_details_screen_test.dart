@@ -4,10 +4,13 @@ import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:origna_gta/features/products/product_detail_viewmodel.dart';
 import 'package:origna_gta/screens/productdetails_screen.dart';
 import 'package:origna_gta/features/products/products_provider.dart';
-import 'package:origna_gta/models/generated/product_models.dart';
+import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/features/auth/auth_provider.dart';
+import 'package:origna_gta/features/orders/orders_provider.dart';
 import 'package:origna_gta/features/qa/qa_provider.dart';
 import 'package:origna_gta/features/subscription/subscription_provider.dart';
+import 'package:origna_gta/models/models.dart' as app_models;
 import '../test_utils.dart';
 
 void main() {
@@ -37,7 +40,7 @@ void main() {
         price: 99.99,
         sellerId: 'seller_123',
         categoryId: 1,
-        imageUrls: ['https://example.com/image.jpg'],
+        imageUrls: const ['images/33.png'],
         stockQuantity: 10,
         rating: 4.5,
         ratingCount: 10,
@@ -58,6 +61,22 @@ void main() {
             productRatingsProvider('prod_123').overrideWith((ref) => const Stream.empty()),
             qaListProvider('prod_123').overrideWith((ref) => const Stream.empty()),
             subscriptionStreamProvider.overrideWith((ref) => const Stream.empty()),
+            buyerOrdersProvider.overrideWith((ref) => Stream.value(const <Order>[])),
+            similarProductsProvider((
+              excludeProductId: 'prod_123',
+              categoryId: 1,
+            )).overrideWith((ref) => Future.value(const <Product>[])),
+            userProfileProvider.overrideWith(
+              (ref) => Stream.value(
+                app_models.UserModel(
+                  uid: signedInUser.uid,
+                  email: signedInUser.email ?? 'test@example.com',
+                  name: 'Test User',
+                  roles: const ['buyer'],
+                  createdAt: DateTime.now(),
+                ),
+              ),
+            ),
           ],
           child: const ProductDetailScreen(productId: 'prod_123'),
         ),

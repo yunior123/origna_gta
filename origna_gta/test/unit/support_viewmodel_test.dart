@@ -11,6 +11,17 @@ import 'package:origna_gta/features/support/support_state.dart';
 // ---------------------------------------------------------------------------
 
 class _FakeOb implements OrignaBase {
+  _FakeOb({this.responder});
+
+  final Future<Map<String, dynamic>> Function(
+    String method,
+    String path, {
+    Map<String, dynamic>? body,
+    Map<String, String>? headers,
+  })?
+  responder;
+  final List<Map<String, dynamic>?> requestBodies = [];
+
   @override
   Future<Map<String, dynamic>> request(
     String method,
@@ -18,11 +29,16 @@ class _FakeOb implements OrignaBase {
     Map<String, dynamic>? body,
     Map<String, String>? headers,
   }) async {
-    // Return a fake support chat response
-    return {
-      'reply': 'I can help you with that!',
-      'escalated': false,
-    };
+    requestBodies.add(body);
+    if (responder != null) {
+      return responder!(
+        method,
+        path,
+        body: body,
+        headers: headers,
+      );
+    }
+    return {'reply': 'I can help you with that!', 'escalated': false};
   }
 
   @override
@@ -36,11 +52,13 @@ class _FakeOb implements OrignaBase {
 void main() {
   group('SupportViewModel - initial state and basic validation', () {
     late ProviderContainer container;
+    late _FakeOb fakeOb;
 
     setUp(() {
+      fakeOb = _FakeOb();
       container = ProviderContainer(
         overrides: [
-          orignabaseProvider.overrideWithValue(_FakeOb()),
+          orignabaseProvider.overrideWithValue(fakeOb),
           currentUserProvider.overrideWithValue(null),
         ],
       );
@@ -120,6 +138,19 @@ void main() {
       expect(userMessages.length, greaterThanOrEqualTo(2));
     });
 
+    test('sendMessage trims whitespace before storing and sending', () async {
+      await container
+          .read(supportViewModelProvider.notifier)
+          .sendMessage('  Hello there  ');
+
+      final state = container.read(supportViewModelProvider);
+      expect(state.messages.first.text, 'Hello there');
+      expect(
+        fakeOb.requestBodies.single?['messages'][0]['content'],
+        'Hello there',
+      );
+    });
+
     test('sendMessage message is timestamped', () async {
       final before = DateTime.now();
       await container
@@ -183,7 +214,7 @@ void main() {
     test('SupportState messages list is mutable copy', () {
       const state = SupportState();
       expect(state.messages, isEmpty);
-      expect(state.messages, isA<List>());
+      expect(state.messages, isA<List<SupportMessage>>());
     });
 
     test('SupportState toString works', () {
@@ -340,6 +371,122 @@ void main() {
       const state = SupportState(errorMessage: 'error');
       final cleared = state.copyWith(clearError: true);
       expect(cleared.errorMessage, isNull);
+    });
+
+    test('startConversation maps each category to the expected opening label', () async {
+      final labels = <SupportCategory, String>{
+        SupportCategory.orderStatus: 'order status',
+        SupportCategory.refundRequest: 'refund request',
+        SupportCategory.accountIssue: 'account issue',
+        SupportCategory.billingDispute: 'billing dispute',
+        SupportCategory.other: 'general inquiry',
+      };
+
+      for (final entry in labels.entries) {
+        fakeOb.requestBodies.clear();
+
+        await container
+            .read(supportViewModelProvider.notifier)
+            .startConversation(entry.key);
+
+        expect(
+          fakeOb.requestBodies.single?['messages'][0]['content'],
+          'I need help with: ${entry.value}',
+        );
+        expect(
+          container.read(supportViewModelProvider).messages.single.role,
+          MessageRole.agent,
+        );
+      }
+    });
+
+    test('sendMessage marks state escalated when backend flags escalation', () async {
+      final escalatedContainer = ProviderContainer(
+        overrides: [
+          orignabaseProvider.overrideWithValue(
+            _FakeOb(
+              responder: (
+                method,
+                path, {
+                body,
+                headers,
+              }) async => {
+                'reply': 'A human will contact you shortly.',
+                'escalated': true,
+              },
+            ),
+          ),
+          currentUserProvider.overrideWithValue(
+            const AppAuthUser(uid: 'u1', email: 'user@example.com'),
+          ),
+        ],
+      );
+      addTearDown(escalatedContainer.dispose);
+
+      await escalatedContainer
+          .read(supportViewModelProvider.notifier)
+          .sendMessage('Please escalate');
+
+      final state = escalatedContainer.read(supportViewModelProvider);
+      expect(state.isEscalated, isTrue);
+      expect(state.messages.last.text, contains('human'));
+    });
+
+    test('sendMessage keeps only the user message when backend reply is empty', () async {
+      final emptyReplyContainer = ProviderContainer(
+        overrides: [
+          orignabaseProvider.overrideWithValue(
+            _FakeOb(
+              responder: (
+                method,
+                path, {
+                body,
+                headers,
+              }) async => {'reply': '   ', 'escalated': false},
+            ),
+          ),
+          currentUserProvider.overrideWithValue(null),
+        ],
+      );
+      addTearDown(emptyReplyContainer.dispose);
+
+      await emptyReplyContainer
+          .read(supportViewModelProvider.notifier)
+          .sendMessage('Hello');
+
+      final state = emptyReplyContainer.read(supportViewModelProvider);
+      expect(state.isLoading, isFalse);
+      expect(state.messages.length, 1);
+      expect(state.messages.single.role, MessageRole.user);
+    });
+
+    test('startConversation stores an error message when backend call fails', () async {
+      final failingContainer = ProviderContainer(
+        overrides: [
+          orignabaseProvider.overrideWithValue(
+            _FakeOb(
+              responder: (
+                method,
+                path, {
+                body,
+                headers,
+              }) async {
+                throw Exception('support backend down');
+              },
+            ),
+          ),
+          currentUserProvider.overrideWithValue(null),
+        ],
+      );
+      addTearDown(failingContainer.dispose);
+
+      await failingContainer
+          .read(supportViewModelProvider.notifier)
+          .startConversation(SupportCategory.other);
+
+      final state = failingContainer.read(supportViewModelProvider);
+      expect(state.isLoading, isFalse);
+      expect(state.errorMessage, isNotNull);
     });
   });
 

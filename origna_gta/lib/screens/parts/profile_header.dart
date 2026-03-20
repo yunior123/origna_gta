@@ -1,4 +1,3 @@
-// coverage:ignore-file
 part of '../profile_screen.dart';
 class ProfileScreenLayout extends StatelessWidget {
   final AsyncValue<UserModel?> userProfileAsync;

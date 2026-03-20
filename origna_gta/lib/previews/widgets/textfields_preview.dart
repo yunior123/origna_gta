@@ -1,4 +1,3 @@
-// coverage:ignore-file
 /// Flutter Widget Previewer — ModernTextField variants.
 library;
 

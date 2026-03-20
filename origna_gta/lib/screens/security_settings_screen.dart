@@ -1,9 +1,7 @@
-// coverage:ignore-file
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/features/auth/mfa_state.dart';
 import 'package:origna_gta/features/auth/mfa_viewmodel.dart';
@@ -12,23 +10,26 @@ import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
 /// Security data loaded via Riverpod provider instead of manual setState.
-final _securityDataProvider = FutureProvider.autoDispose<({
-  List<Map<String, dynamic>> loginHistory,
-  List<Map<String, dynamic>> knownDevices,
-  List<Map<String, dynamic>> securityAlerts,
-})>((ref) async {
-  final auth = ref.watch(orignabaseProvider).auth;
-  final results = await Future.wait<List<Map<String, dynamic>>>([
-    auth.getLoginHistory(limit: 10),
-    auth.getKnownDevices(),
-    auth.getSecurityAlerts(),
-  ]);
-  return (
-    loginHistory: results[0],
-    knownDevices: results[1],
-    securityAlerts: results[2],
-  );
-});
+final _securityDataProvider =
+    FutureProvider.autoDispose<
+      ({
+        List<Map<String, dynamic>> loginHistory,
+        List<Map<String, dynamic>> knownDevices,
+        List<Map<String, dynamic>> securityAlerts,
+      })
+    >((ref) async {
+      final auth = ref.watch(orignabaseProvider).auth;
+      final results = await Future.wait<List<Map<String, dynamic>>>([
+        auth.getLoginHistory(limit: 10),
+        auth.getKnownDevices(),
+        auth.getSecurityAlerts(),
+      ]);
+      return (
+        loginHistory: results[0],
+        knownDevices: results[1],
+        securityAlerts: results[2],
+      );
+    });
 
 /// Security settings screen — lets users enable/disable MFA,
 /// view login history, manage known devices, and review security alerts.
@@ -36,10 +37,12 @@ class SecuritySettingsScreen extends ConsumerStatefulWidget {
   const SecuritySettingsScreen({super.key});
 
   @override
-  ConsumerState<SecuritySettingsScreen> createState() => _SecuritySettingsScreenState();
+  ConsumerState<SecuritySettingsScreen> createState() =>
+      _SecuritySettingsScreenState();
 }
 
-class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen> {
+class _SecuritySettingsScreenState
+    extends ConsumerState<SecuritySettingsScreen> {
   @override
   void initState() {
     super.initState();
@@ -62,45 +65,53 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
     return SensitiveContent(
       sensitivity: ContentSensitivity.sensitive,
       child: Scaffold(
-      backgroundColor: isDark ? DesignTokens.darkBackground : null,
-      appBar: AppBar(
-        title: Text('security.title'.tr()),
-        backgroundColor: isDark ? DesignTokens.darkSurface : null,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 600),
-            child: Column(
-              children: [
-                _buildMfaStatusCard(mfaState, isDark),
-                if (mfaState.isLoading)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 16),
-                    child: ModernLoadingIndicator(),
-                  ),
-                if (mfaState.errorMessage != null)
-                  _buildErrorBanner(mfaState.errorMessage!),
-                if (securityAlerts.isNotEmpty) ...[
+        backgroundColor: isDark ? DesignTokens.darkBackground : null,
+        appBar: AppBar(
+          title: Text('security.title'.tr()),
+          backgroundColor: isDark ? DesignTokens.darkSurface : null,
+        ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 600),
+              child: Column(
+                children: [
+                  _buildMfaStatusCard(mfaState, isDark),
+                  if (mfaState.isLoading)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 16),
+                      child: ModernLoadingIndicator(),
+                    ),
+                  if (mfaState.errorMessage != null)
+                    _buildErrorBanner(mfaState.errorMessage!),
+                  if (securityAlerts.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    _buildSecurityAlerts(securityAlerts, isDark),
+                  ],
                   const SizedBox(height: 16),
-                  _buildSecurityAlerts(securityAlerts, isDark),
-                ],
-                const SizedBox(height: 16),
-                _buildLoginHistoryCard(loginHistory, isLoadingSecurity, isDark),
-                const SizedBox(height: 16),
-                _buildKnownDevicesCard(knownDevices, isLoadingSecurity, isDark),
-                if (isLoadingSecurity)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 16),
-                    child: ModernLoadingIndicator(),
+                  _buildLoginHistoryCard(
+                    loginHistory,
+                    isLoadingSecurity,
+                    isDark,
                   ),
-              ],
+                  const SizedBox(height: 16),
+                  _buildKnownDevicesCard(
+                    knownDevices,
+                    isLoadingSecurity,
+                    isDark,
+                  ),
+                  if (isLoadingSecurity)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 16),
+                      child: ModernLoadingIndicator(),
+                    ),
+                ],
+              ),
             ),
           ),
         ),
       ),
-    ),
     );
   }
 
@@ -123,7 +134,11 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
                     gradient: DesignTokens.primaryGradient,
                     borderRadius: BorderRadius.circular(DesignTokens.radius12),
                   ),
-                  child: const Icon(Icons.shield_rounded, color: DesignTokens.white, size: 22),
+                  child: const Icon(
+                    Icons.shield_rounded,
+                    color: DesignTokens.white,
+                    size: 22,
+                  ),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -132,19 +147,28 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
                     children: [
                       Text(
                         'security.title'.tr(),
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         'security.subtitle'.tr(),
-                        style: TextStyle(fontSize: 12, color: DesignTokens.textSecondary),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: DesignTokens.textSecondary,
+                        ),
                       ),
                     ],
                   ),
                 ),
                 Flexible(
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: mfaState.mfaEnabled
                           ? DesignTokens.success.withValues(alpha: 0.12)
@@ -155,9 +179,13 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
-                          mfaState.mfaEnabled ? Icons.check_circle_rounded : Icons.cancel_rounded,
+                          mfaState.mfaEnabled
+                              ? Icons.check_circle_rounded
+                              : Icons.cancel_rounded,
                           size: 14,
-                          color: mfaState.mfaEnabled ? DesignTokens.success : DesignTokens.textSecondary,
+                          color: mfaState.mfaEnabled
+                              ? DesignTokens.success
+                              : DesignTokens.textSecondary,
                         ),
                         const SizedBox(width: 4),
                         Flexible(
@@ -166,7 +194,9 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
                                 ? 'security.mfa_enabled'.tr()
                                 : 'security.mfa_disabled'.tr(),
                             style: TextStyle(
-                              color: mfaState.mfaEnabled ? DesignTokens.success : DesignTokens.textSecondary,
+                              color: mfaState.mfaEnabled
+                                  ? DesignTokens.success
+                                  : DesignTokens.textSecondary,
                               fontWeight: FontWeight.w700,
                               fontSize: 11,
                             ),
@@ -195,9 +225,14 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
                   label: Text('security.enable_mfa'.tr()),
                   style: FilledButton.styleFrom(
                     backgroundColor: DesignTokens.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 12,
+                      horizontal: 24,
+                    ),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(DesignTokens.radius12),
+                      borderRadius: BorderRadius.circular(
+                        DesignTokens.radius12,
+                      ),
                     ),
                   ),
                 ),
@@ -211,9 +246,14 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
                   label: Text('security.disable_mfa'.tr()),
                   style: FilledButton.styleFrom(
                     backgroundColor: DesignTokens.error,
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 12,
+                      horizontal: 24,
+                    ),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(DesignTokens.radius12),
+                      borderRadius: BorderRadius.circular(
+                        DesignTokens.radius12,
+                      ),
                     ),
                   ),
                 ),
@@ -224,7 +264,10 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
     );
   }
 
-  Widget _buildSecurityAlerts(List<Map<String, dynamic>> securityAlerts, bool isDark) {
+  Widget _buildSecurityAlerts(
+    List<Map<String, dynamic>> securityAlerts,
+    bool isDark,
+  ) {
     return Card(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(DesignTokens.radius16),
@@ -237,12 +280,19 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
           children: [
             Row(
               children: [
-                Icon(Icons.warning_amber_rounded, color: DesignTokens.warning, size: 24),
+                Icon(
+                  Icons.warning_amber_rounded,
+                  color: DesignTokens.warning,
+                  size: 24,
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     'security.security_alerts'.tr(),
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ],
@@ -270,7 +320,10 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
                   children: [
                     Text(
                       alertType,
-                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
                     ),
                     if (alertDetails.isNotEmpty) ...[
                       const SizedBox(height: 4),
@@ -305,8 +358,9 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
                                 vertical: 8,
                               ),
                               shape: RoundedRectangleBorder(
-                                borderRadius:
-                                    BorderRadius.circular(DesignTokens.radius12),
+                                borderRadius: BorderRadius.circular(
+                                  DesignTokens.radius12,
+                                ),
                               ),
                             ),
                             child: Text('security.yes_it_was_me'.tr()),
@@ -325,8 +379,9 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
                                 vertical: 8,
                               ),
                               shape: RoundedRectangleBorder(
-                                borderRadius:
-                                    BorderRadius.circular(DesignTokens.radius12),
+                                borderRadius: BorderRadius.circular(
+                                  DesignTokens.radius12,
+                                ),
                               ),
                             ),
                             child: Text('common.no'.tr()),
@@ -344,7 +399,11 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
     );
   }
 
-  Widget _buildLoginHistoryCard(List<Map<String, dynamic>> loginHistory, bool isLoadingSecurity, bool isDark) {
+  Widget _buildLoginHistoryCard(
+    List<Map<String, dynamic>> loginHistory,
+    bool isLoadingSecurity,
+    bool isDark,
+  ) {
     return Card(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(DesignTokens.radius16),
@@ -357,11 +416,18 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
           children: [
             Row(
               children: [
-                Icon(Icons.history_rounded, color: DesignTokens.primary, size: 22),
+                Icon(
+                  Icons.history_rounded,
+                  color: DesignTokens.primary,
+                  size: 22,
+                ),
                 const SizedBox(width: 10),
                 Text(
                   'security.login_history'.tr(),
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ],
             ),
@@ -372,7 +438,10 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
                 child: Center(
                   child: Text(
                     'security.no_login_history'.tr(),
-                    style: TextStyle(color: DesignTokens.textSecondary, fontSize: 14),
+                    style: TextStyle(
+                      color: DesignTokens.textSecondary,
+                      fontSize: 14,
+                    ),
                   ),
                 ),
               )
@@ -383,7 +452,7 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: loginHistory.length,
-                  separatorBuilder: (_, __) => Divider(
+                  separatorBuilder: (_, _) => Divider(
                     color: DesignTokens.outlineVariant.withValues(alpha: 0.3),
                     height: 1,
                   ),
@@ -397,8 +466,9 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
 
                     String formattedDate = date;
                     try {
-                      formattedDate = DateFormat('MMM d, yyyy HH:mm')
-                          .format(DateTime.parse(date));
+                      formattedDate = DateFormat(
+                        'MMM d, yyyy HH:mm',
+                      ).format(DateTime.parse(date));
                     } catch (_) {}
 
                     return Padding(
@@ -470,7 +540,11 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
     );
   }
 
-  Widget _buildKnownDevicesCard(List<Map<String, dynamic>> knownDevices, bool isLoadingSecurity, bool isDark) {
+  Widget _buildKnownDevicesCard(
+    List<Map<String, dynamic>> knownDevices,
+    bool isLoadingSecurity,
+    bool isDark,
+  ) {
     return Card(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(DesignTokens.radius16),
@@ -483,11 +557,18 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
           children: [
             Row(
               children: [
-                Icon(Icons.devices_rounded, color: DesignTokens.primary, size: 22),
+                Icon(
+                  Icons.devices_rounded,
+                  color: DesignTokens.primary,
+                  size: 22,
+                ),
                 const SizedBox(width: 10),
                 Text(
                   'security.known_devices'.tr(),
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ],
             ),
@@ -498,7 +579,10 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
                 child: Center(
                   child: Text(
                     'security.no_devices'.tr(),
-                    style: TextStyle(color: DesignTokens.textSecondary, fontSize: 14),
+                    style: TextStyle(
+                      color: DesignTokens.textSecondary,
+                      fontSize: 14,
+                    ),
                   ),
                 ),
               )
@@ -509,7 +593,7 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: knownDevices.length,
-                  separatorBuilder: (_, __) => Divider(
+                  separatorBuilder: (_, _) => Divider(
                     color: DesignTokens.outlineVariant.withValues(alpha: 0.3),
                     height: 1,
                   ),
@@ -521,8 +605,9 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
 
                     String formattedDate = lastUsed;
                     try {
-                      formattedDate = DateFormat('MMM d, yyyy HH:mm')
-                          .format(DateTime.parse(lastUsed));
+                      formattedDate = DateFormat(
+                        'MMM d, yyyy HH:mm',
+                      ).format(DateTime.parse(lastUsed));
                     } catch (_) {}
 
                     return Padding(
@@ -592,9 +677,15 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
       ),
       child: Row(
         children: [
-          Icon(Icons.error_outline_rounded, color: DesignTokens.error, size: 20),
+          Icon(
+            Icons.error_outline_rounded,
+            color: DesignTokens.error,
+            size: 20,
+          ),
           const SizedBox(width: 10),
-          Expanded(child: Text(message, style: TextStyle(color: DesignTokens.error))),
+          Expanded(
+            child: Text(message, style: TextStyle(color: DesignTokens.error)),
+          ),
         ],
       ),
     );
@@ -651,7 +742,11 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
                 keyboardType: TextInputType.number,
                 maxLength: 6,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 20, letterSpacing: 6, fontFamily: 'monospace'),
+                style: const TextStyle(
+                  fontSize: 20,
+                  letterSpacing: 6,
+                  fontFamily: 'monospace',
+                ),
                 decoration: InputDecoration(
                   labelText: 'security.totp_code'.tr(),
                   hintText: '000000',

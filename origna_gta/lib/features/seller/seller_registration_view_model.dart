@@ -1,4 +1,3 @@
-// coverage:ignore-file
 // Migrated: delegates to OrignaBase seller registration viewmodel.
 // Screens continue using paymentProviderStatusProvider, sellerRegistrationViewModelProvider.
 

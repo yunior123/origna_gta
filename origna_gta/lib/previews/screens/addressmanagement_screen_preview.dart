@@ -1,11 +1,10 @@
-// coverage:ignore-file
 import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/models/models.dart';
 import 'package:origna_gta/screens/addressmanagement_screen.dart';
 
-import '../_preview_theme.dart';
+import 'package:origna_gta/previews/_preview_theme.dart';
 
 final _mockAddresses = [
   Address(

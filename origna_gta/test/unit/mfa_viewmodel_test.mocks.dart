@@ -437,6 +437,12 @@ class MockOrignaBase extends _i1.Mock implements _i15.OrignaBase {
           as _i17.Future<Map<String, dynamic>>);
 
   @override
+  void closeRealtime() => super.noSuchMethod(
+    Invocation.method(#closeRealtime, []),
+    returnValueForMissingStub: null,
+  );
+
+  @override
   void dispose() => super.noSuchMethod(
     Invocation.method(#dispose, []),
     returnValueForMissingStub: null,

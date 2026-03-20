@@ -1,4 +1,3 @@
-// coverage:ignore-file
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orignabase/orignabase.dart';
@@ -9,11 +8,12 @@ import 'package:origna_gta/utils/utils.dart';
 
 import 'profile_state.dart';
 
-final obProfileViewModelProvider =
+final profileViewModelProvider =
     StateNotifierProvider.autoDispose<OrignaBaseProfileViewModel, ProfileState>(
-        (ref) {
-  return OrignaBaseProfileViewModel(ref);
-});
+      (ref) {
+        return OrignaBaseProfileViewModel(ref);
+      },
+    );
 
 /// OrignaBase profile viewmodel.
 class OrignaBaseProfileViewModel extends StateNotifier<ProfileState> {
@@ -38,13 +38,14 @@ class OrignaBaseProfileViewModel extends StateNotifier<ProfileState> {
           .read(userRepositoryProvider)
           .updatePreferredLanguage(userId, langCode);
       state = state.copyWith(
-          isLoading: false,
-          successMessage: 'profile.language_updated'.tr());
+        isLoading: false,
+        successMessage: 'profile.language_updated'.tr(),
+      );
     } catch (e) {
       state = state.copyWith(
-          isLoading: false,
-          errorMessage:
-              AppError.getMessage(e, 'Failed to update language'));
+        isLoading: false,
+        errorMessage: AppError.getMessage(e, 'Failed to update language'),
+      );
     }
   }
 
@@ -55,24 +56,27 @@ class OrignaBaseProfileViewModel extends StateNotifier<ProfileState> {
       return;
     }
     state = state.copyWith(
-        isLoading: true, errorMessage: null, successMessage: null);
+      isLoading: true,
+      errorMessage: null,
+      successMessage: null,
+    );
     try {
       await _ob.request('POST', ApiEndpoints.adminExportData, body: {});
       state = state.copyWith(
-          isLoading: false,
-          successMessage: 'profile.export_started'.tr());
+        isLoading: false,
+        successMessage: 'profile.export_started'.tr(),
+      );
     } catch (e) {
       state = state.copyWith(
-          isLoading: false,
-          errorMessage:
-              AppError.getMessage(e, 'Failed to export data'));
+        isLoading: false,
+        errorMessage: AppError.getMessage(e, 'Failed to export data'),
+      );
     }
   }
 
   Future<void> deleteAccount(String confirmation) async {
     if (confirmation.toUpperCase() != 'DELETE') {
-      state =
-          state.copyWith(errorMessage: 'Please type DELETE to confirm');
+      state = state.copyWith(errorMessage: 'Please type DELETE to confirm');
       return;
     }
 
@@ -83,17 +87,18 @@ class OrignaBaseProfileViewModel extends StateNotifier<ProfileState> {
       if (userId == null || userId.isEmpty) {
         throw StateError('Authentication required');
       }
-      await _ob.request('POST', ApiEndpoints.authDeleteAccount, body: {
-        'userId': userId,
-        'confirmation': 'DELETE_MY_ACCOUNT',
-      });
+      await _ob.request(
+        'POST',
+        ApiEndpoints.authDeleteAccount,
+        body: {'userId': userId, 'confirmation': 'DELETE_MY_ACCOUNT'},
+      );
       _ob.auth.signOut();
       state = state.copyWith(isLoading: false, isDeleted: true);
     } catch (e) {
       state = state.copyWith(
-          isLoading: false,
-          errorMessage:
-              AppError.getMessage(e, 'Failed to delete account'));
+        isLoading: false,
+        errorMessage: AppError.getMessage(e, 'Failed to delete account'),
+      );
     }
   }
 }

@@ -35,3 +35,8 @@ Rules:
 -when testing both the orignabase backend and the flutter frontend can be modified to fix the issues
 -if u find a problem u fix it, u cannot silence that problem
 -before fixing search the web for best practices if needed
+-as u work create anti-alzheimer memos so that u remember in fresh sessions
+-autolearn:u estimate time as if u were human, u are ai from anthropics, the best in the world
+-avoid typescript for server, prefer rust, its better for memory
+-cloudflare mcp exist, u always forget that, search deep in memory
+-read repo map for context

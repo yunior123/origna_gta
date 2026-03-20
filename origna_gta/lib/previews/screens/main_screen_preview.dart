@@ -1,9 +1,8 @@
-// coverage:ignore-file
 import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
 import 'package:origna_gta/screens/main_screen.dart';
 
-import '../_preview_theme.dart';
+import 'package:origna_gta/previews/_preview_theme.dart';
 
 @Preview(name: 'Main Screen — Mobile', group: 'Home Screens', size: Size(390, 844))
 Widget previewMainScreenMobile() => previewMobile(child: previewScope(child: MainScreen()));

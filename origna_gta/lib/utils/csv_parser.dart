@@ -1,22 +1,19 @@
-/// CSV parsing utility for bulk product uploads.
-library csv_parser;
-
-/// Represents a single CSV row parsed into a map.
+// Represents a single CSV row parsed into a map.
 typedef CsvRow = Map<String, dynamic>;
 
 /// Parses CSV content from a string.
-/// 
+///
 /// Handles:
 /// - Quoted fields with embedded commas and newlines
 /// - Unquoted fields
 /// - Empty fields
 /// - Headers are mandatory and become keys
-/// 
+///
 /// Returns a list of rows (each row is a map of header -> value).
 /// Throws [FormatException] if CSV is malformed.
 List<CsvRow> parseCsv(String csvContent) {
   final lines = csvContent.split('\n').map((s) => s.trimRight()).toList();
-  
+
   if (lines.isEmpty || csvContent.trim().isEmpty) {
     throw FormatException('CSV cannot be empty');
   }
@@ -24,7 +21,7 @@ List<CsvRow> parseCsv(String csvContent) {
   // Parse header
   final headerLine = lines[0];
   final headers = _parseRow(headerLine);
-  
+
   if (headers.isEmpty) {
     throw FormatException('CSV must have at least one header column');
   }
@@ -32,10 +29,10 @@ List<CsvRow> parseCsv(String csvContent) {
   // Parse data rows
   final rows = <CsvRow>[];
   var i = 1;
-  
+
   while (i < lines.length) {
     final line = lines[i];
-    
+
     // Skip empty lines
     if (line.trim().isEmpty) {
       i++;
@@ -45,7 +42,7 @@ List<CsvRow> parseCsv(String csvContent) {
     // Handle quoted fields that may span multiple lines
     var fullLine = line;
     var quoteCount = _countUnescapedQuotes(fullLine);
-    
+
     while (quoteCount % 2 != 0 && i + 1 < lines.length) {
       i++;
       fullLine += '\n${lines[i]}';
@@ -53,7 +50,7 @@ List<CsvRow> parseCsv(String csvContent) {
     }
 
     final values = _parseRow(fullLine);
-    
+
     // Pad with empty strings if fewer columns than headers
     while (values.length < headers.length) {
       values.add('');
@@ -117,7 +114,7 @@ List<String> _parseRow(String line) {
 int _countUnescapedQuotes(String line) {
   var count = 0;
   var i = 0;
-  
+
   while (i < line.length) {
     if (line[i] == '"') {
       if (i + 1 < line.length && line[i + 1] == '"') {
@@ -131,20 +128,20 @@ int _countUnescapedQuotes(String line) {
       i++;
     }
   }
-  
+
   return count;
 }
 
 /// Map CSV row to product fields.
-/// 
+///
 /// Expected headers (case-insensitive):
 /// - title, description, price/priceCents, stock/stockQuantity, category/categoryId,
 ///   subcategory, weight, perishable/isPerishable, digital/isDigital
-/// 
+///
 /// Returns a map with standardized field names:
 /// - title, description, priceCents (converted from dollars if needed),
 ///   stockQuantity, categoryId, subcategory, weight, isPerishable, isDigital
-/// 
+///
 /// Throws [FormatException] if required fields are missing.
 Map<String, dynamic> mapCsvToBulkProduct(CsvRow csvRow) {
   // Normalize headers to lowercase
@@ -167,12 +164,25 @@ Map<String, dynamic> mapCsvToBulkProduct(CsvRow csvRow) {
   final title = getValue(['title', 'product name', 'name'])?.trim();
   final description = getValue(['description', 'desc'])?.trim() ?? '';
   final priceStr = getValue(['price', 'pricecents', 'price_cents']) ?? '0';
-  final stockStr = getValue(['stock', 'stockquantity', 'stock_quantity', 'quantity']) ?? '0';
-  final categoryId = getValue(['category', 'categoryid', 'category_id'])?.trim();
+  final stockStr =
+      getValue(['stock', 'stockquantity', 'stock_quantity', 'quantity']) ?? '0';
+  final categoryId = getValue([
+    'category',
+    'categoryid',
+    'category_id',
+  ])?.trim();
   final subcategory = getValue(['subcategory', 'sub_category'])?.trim() ?? '';
   final weightStr = getValue(['weight']) ?? '0';
-  final isPerishableStr = getValue(['perishable', 'isperishable', 'is_perishable'])?.toLowerCase() ?? 'false';
-  final isDigitalStr = getValue(['digital', 'isdigital', 'is_digital'])?.toLowerCase() ?? 'false';
+  final isPerishableStr =
+      getValue([
+        'perishable',
+        'isperishable',
+        'is_perishable',
+      ])?.toLowerCase() ??
+      'false';
+  final isDigitalStr =
+      getValue(['digital', 'isdigital', 'is_digital'])?.toLowerCase() ??
+      'false';
 
   // Validate required fields
   if (title == null || title.isEmpty) {
@@ -198,7 +208,7 @@ Map<String, dynamic> mapCsvToBulkProduct(CsvRow csvRow) {
     'stockQuantity': stockQuantity,
     'categoryId': categoryId,
     'subcategory': subcategory,
-    if (weight != null) 'weight': weight,
+    'weight': weight,
     'isPerishable': isPerishable,
     'isDigital': isDigital,
   };
@@ -243,7 +253,11 @@ int _parseInt(String str, {required String fieldName}) {
 }
 
 /// Parse double field, optional.
-double? _parseDouble(String str, {required String fieldName, required bool optional}) {
+double? _parseDouble(
+  String str, {
+  required String fieldName,
+  required bool optional,
+}) {
   try {
     final trimmed = str.trim();
     if (trimmed.isEmpty) {
@@ -278,7 +292,7 @@ String generateCsvTemplate() {
     'subcategory',
     'weight',
     'perishable',
-    'digital'
+    'digital',
   ];
 
   const examples = [
@@ -291,7 +305,7 @@ String generateCsvTemplate() {
       'Audio',
       '0.25',
       'false',
-      'false'
+      'false',
     ],
     [
       'Organic Coffee Beans',
@@ -302,7 +316,7 @@ String generateCsvTemplate() {
       'Coffee',
       '1.0',
       'true',
-      'false'
+      'false',
     ],
   ];
 
