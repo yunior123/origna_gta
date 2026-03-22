@@ -69,10 +69,9 @@ dependencies:
   chewie: ^1.13.0
   cross_file: ^0.3.5+2
 
-  # OrignaBase — Rust BaaS (Firebase replacement, gradual migration)
+# OrignaBase — Rust BaaS (Firebase replacement, gradual migration)
   orignabase:
-    path: '../orignabase/sdks/flutter/orignabase'
-
+    path: ../orignabase/sdks/flutter/orignabase
 
 dev_dependencies:
   flutter_test:

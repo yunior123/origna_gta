@@ -16,8 +16,8 @@ class _AddProductButton extends ConsumerWidget {
     final isSuspended = ref.watch(userProfileProvider.select((a) => a.valueOrNull?.suspended)) ?? false;
 
     // Only show for sellers or admins
-    final isSeller = profileRoles?.contains(UserRoles.seller) ?? false;
-    final isAdmin = profileRoles?.contains(UserRoles.admin) ?? false;
+    final isSeller = profileRoles?.contains(UserRole.seller) ?? false;
+    final isAdmin = profileRoles?.contains(UserRole.admin) ?? false;
 
     final userCanAccess = isSeller || isAdmin;
 

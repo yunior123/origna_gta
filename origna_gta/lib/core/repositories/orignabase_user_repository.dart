@@ -5,6 +5,7 @@ import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/core/repositories/user_repository.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart'
     show ApiEndpoints, Collections, Fields, PolicyVersionValues;
+import 'package:origna_gta/models/generated/base_models.dart' show UserRole;
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/app_logger.dart';
 import 'package:origna_gta/utils/utils.dart';
@@ -47,7 +48,7 @@ class OrignaBaseUserRepository implements UserRepository {
     if (userId == null || userId.isEmpty) {
       throw Exception('Not authenticated');
     }
-    
+
     final addressId = const Uuid().v4().replaceAll('-', '');
     final docRef = _ob.collection(Collections.addresses).doc(addressId);
 
@@ -56,7 +57,9 @@ class OrignaBaseUserRepository implements UserRepository {
       ..._addressPayload(address),
     });
     if (created == null) {
-      throw OrignaBaseException('Failed to create address — permission denied or internal error');
+      throw OrignaBaseException(
+        'Failed to create address — permission denied or internal error',
+      );
     }
 
     if (address.isDefault) {
@@ -72,10 +75,10 @@ class OrignaBaseUserRepository implements UserRepository {
     if (userId == null || userId.isEmpty) {
       throw Exception('Not authenticated');
     }
-    
+
     final docRef = _ob.collection(Collections.addresses).doc(addressId);
     final doc = await docRef.get();
-    
+
     if (doc != null && doc.exists && doc.data[Fields.userId] == userId) {
       await docRef.delete();
     } else {
@@ -142,10 +145,10 @@ class OrignaBaseUserRepository implements UserRepository {
     if (userId == null || userId.isEmpty) {
       throw Exception('Not authenticated');
     }
-    
+
     final docRef = _ob.collection(Collections.addresses).doc(addressId);
     final doc = await docRef.get();
-    
+
     if (doc != null && doc.exists && doc.data[Fields.userId] == userId) {
       await docRef.update({Fields.isDefault: true});
       await _clearOtherDefaultAddresses(userId, addressId);
@@ -153,8 +156,11 @@ class OrignaBaseUserRepository implements UserRepository {
       throw Exception('Address not found or unauthorized');
     }
   }
-  
-  Future<void> _clearOtherDefaultAddresses(String userId, String exceptAddressId) async {
+
+  Future<void> _clearOtherDefaultAddresses(
+    String userId,
+    String exceptAddressId,
+  ) async {
     try {
       final snapshot = await _ob
           .collection(Collections.addresses)
@@ -177,7 +183,10 @@ class OrignaBaseUserRepository implements UserRepository {
       }
     } catch (e) {
       // Best effort to clear other defaults
-      AppLogger.w('Warning: failed to clear other default addresses: $e', tag: 'user');
+      AppLogger.w(
+        'Warning: failed to clear other default addresses: $e',
+        tag: 'user',
+      );
     }
   }
 
@@ -202,7 +211,8 @@ class OrignaBaseUserRepository implements UserRepository {
     if (rawAddress is Map<String, dynamic>) {
       final merged = <String, dynamic>{...rawAddress};
       if (doc.containsKey('label')) merged['label'] = doc['label'];
-      if (doc.containsKey('isDefault')) merged[Fields.isDefault] = doc['isDefault'];
+      if (doc.containsKey('isDefault'))
+        merged[Fields.isDefault] = doc['isDefault'];
       return Address.fromMap(merged, docId: bareDocId);
     }
     return Address.fromMap(doc, docId: bareDocId);
@@ -214,10 +224,10 @@ class OrignaBaseUserRepository implements UserRepository {
     if (userId == null || userId.isEmpty) {
       throw Exception('Not authenticated');
     }
-    
+
     final docRef = _ob.collection(Collections.addresses).doc(addressId);
     final doc = await docRef.get();
-    
+
     if (doc != null && doc.exists && doc.data[Fields.userId] == userId) {
       await docRef.update(_addressPayload(address));
       if (address.isDefault) {
@@ -396,9 +406,13 @@ class OrignaBaseUserRepository implements UserRepository {
     Map<String, dynamic>? userData,
     Map<String, dynamic>? spData,
   ) {
-    final roles = List<String>.from(userData?[Fields.roles] as Iterable? ?? const <String>[]);
+    final rawRoles = userData?[Fields.roles] as Iterable? ?? const [];
+    final roles = rawRoles
+        .map((r) => r is UserRole ? r.name : r.toString())
+        .toList();
     final isSeller =
-        roles.contains(UserRoles.seller) || roles.contains(UserRoles.admin);
+        roles.contains(UserRoleValues.seller) ||
+        roles.contains(UserRoleValues.admin);
     final chargesEnabled = spData?[Fields.chargesEnabled] == true;
     final payoutsEnabled = spData?[Fields.payoutsEnabled] == true;
     final onboardingCompleted = spData?[Fields.onboardingCompleted] == true;

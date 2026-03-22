@@ -404,7 +404,7 @@ void main() {
 
     test('displayText switch cases', () {
       expect(ShippingApprovalStatus.notRequired.displayText, 'Not Required');
-      expect(ShippingApprovalStatus.pending.displayText, 'Awaiting Approval');
+      expect(ShippingApprovalStatus.pending.displayText, 'Pending Approval');
       expect(ShippingApprovalStatus.approved.displayText, 'Approved');
       expect(ShippingApprovalStatus.rejected.displayText, 'Rejected');
     });

@@ -1722,3 +1722,256 @@ class MockDocument extends _i1.Mock implements _i17.Document {
           )
           as bool);
 }
+
+/// A class which mocks [Query].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockQuery extends _i1.Mock implements _i18.Query {
+  @override
+  _i15.OrignaBase get client =>
+      (super.noSuchMethod(
+            Invocation.getter(#client),
+            returnValue: _FakeOrignaBase_15(this, Invocation.getter(#client)),
+            returnValueForMissingStub: _FakeOrignaBase_15(
+              this,
+              Invocation.getter(#client),
+            ),
+          )
+          as _i15.OrignaBase);
+
+  @override
+  String get collectionName =>
+      (super.noSuchMethod(
+            Invocation.getter(#collectionName),
+            returnValue: _i19.dummyValue<String>(
+              this,
+              Invocation.getter(#collectionName),
+            ),
+            returnValueForMissingStub: _i19.dummyValue<String>(
+              this,
+              Invocation.getter(#collectionName),
+            ),
+          )
+          as String);
+
+  @override
+  _i18.Query where(
+    String? field, {
+    dynamic isEqualTo,
+    dynamic isNotEqualTo,
+    dynamic isGreaterThan,
+    dynamic isGreaterThanOrEqualTo,
+    dynamic isLessThan,
+    dynamic isLessThanOrEqualTo,
+    List<dynamic>? whereIn,
+    dynamic contains,
+    dynamic startsWith,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(
+              #where,
+              [field],
+              {
+                #isEqualTo: isEqualTo,
+                #isNotEqualTo: isNotEqualTo,
+                #isGreaterThan: isGreaterThan,
+                #isGreaterThanOrEqualTo: isGreaterThanOrEqualTo,
+                #isLessThan: isLessThan,
+                #isLessThanOrEqualTo: isLessThanOrEqualTo,
+                #whereIn: whereIn,
+                #contains: contains,
+                #startsWith: startsWith,
+              },
+            ),
+            returnValue: _FakeQuery_19(
+              this,
+              Invocation.method(
+                #where,
+                [field],
+                {
+                  #isEqualTo: isEqualTo,
+                  #isNotEqualTo: isNotEqualTo,
+                  #isGreaterThan: isGreaterThan,
+                  #isGreaterThanOrEqualTo: isGreaterThanOrEqualTo,
+                  #isLessThan: isLessThan,
+                  #isLessThanOrEqualTo: isLessThanOrEqualTo,
+                  #whereIn: whereIn,
+                  #contains: contains,
+                  #startsWith: startsWith,
+                },
+              ),
+            ),
+            returnValueForMissingStub: _FakeQuery_19(
+              this,
+              Invocation.method(
+                #where,
+                [field],
+                {
+                  #isEqualTo: isEqualTo,
+                  #isNotEqualTo: isNotEqualTo,
+                  #isGreaterThan: isGreaterThan,
+                  #isGreaterThanOrEqualTo: isGreaterThanOrEqualTo,
+                  #isLessThan: isLessThan,
+                  #isLessThanOrEqualTo: isLessThanOrEqualTo,
+                  #whereIn: whereIn,
+                  #contains: contains,
+                  #startsWith: startsWith,
+                },
+              ),
+            ),
+          )
+          as _i18.Query);
+
+  @override
+  _i18.Query orderBy(String? field, {bool? descending = false}) =>
+      (super.noSuchMethod(
+            Invocation.method(#orderBy, [field], {#descending: descending}),
+            returnValue: _FakeQuery_19(
+              this,
+              Invocation.method(#orderBy, [field], {#descending: descending}),
+            ),
+            returnValueForMissingStub: _FakeQuery_19(
+              this,
+              Invocation.method(#orderBy, [field], {#descending: descending}),
+            ),
+          )
+          as _i18.Query);
+
+  @override
+  _i18.Query limit(int? count) =>
+      (super.noSuchMethod(
+            Invocation.method(#limit, [count]),
+            returnValue: _FakeQuery_19(
+              this,
+              Invocation.method(#limit, [count]),
+            ),
+            returnValueForMissingStub: _FakeQuery_19(
+              this,
+              Invocation.method(#limit, [count]),
+            ),
+          )
+          as _i18.Query);
+
+  @override
+  _i18.Query offset(int? count) =>
+      (super.noSuchMethod(
+            Invocation.method(#offset, [count]),
+            returnValue: _FakeQuery_19(
+              this,
+              Invocation.method(#offset, [count]),
+            ),
+            returnValueForMissingStub: _FakeQuery_19(
+              this,
+              Invocation.method(#offset, [count]),
+            ),
+          )
+          as _i18.Query);
+
+  @override
+  _i18.Query startAfter(_i17.Document? document) =>
+      (super.noSuchMethod(
+            Invocation.method(#startAfter, [document]),
+            returnValue: _FakeQuery_19(
+              this,
+              Invocation.method(#startAfter, [document]),
+            ),
+            returnValueForMissingStub: _FakeQuery_19(
+              this,
+              Invocation.method(#startAfter, [document]),
+            ),
+          )
+          as _i18.Query);
+
+  @override
+  _i18.Query startAfterId(String? documentId) =>
+      (super.noSuchMethod(
+            Invocation.method(#startAfterId, [documentId]),
+            returnValue: _FakeQuery_19(
+              this,
+              Invocation.method(#startAfterId, [documentId]),
+            ),
+            returnValueForMissingStub: _FakeQuery_19(
+              this,
+              Invocation.method(#startAfterId, [documentId]),
+            ),
+          )
+          as _i18.Query);
+
+  @override
+  _i18.Query select(List<String>? fields) =>
+      (super.noSuchMethod(
+            Invocation.method(#select, [fields]),
+            returnValue: _FakeQuery_19(
+              this,
+              Invocation.method(#select, [fields]),
+            ),
+            returnValueForMissingStub: _FakeQuery_19(
+              this,
+              Invocation.method(#select, [fields]),
+            ),
+          )
+          as _i18.Query);
+
+  @override
+  _i20.Future<_i17.QuerySnapshot> get() =>
+      (super.noSuchMethod(
+            Invocation.method(#get, []),
+            returnValue: _i20.Future<_i17.QuerySnapshot>.value(
+              _FakeQuerySnapshot_20(this, Invocation.method(#get, [])),
+            ),
+            returnValueForMissingStub: _i20.Future<_i17.QuerySnapshot>.value(
+              _FakeQuerySnapshot_20(this, Invocation.method(#get, [])),
+            ),
+          )
+          as _i20.Future<_i17.QuerySnapshot>);
+}
+
+/// A class which mocks [QuerySnapshot].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockQuerySnapshot extends _i1.Mock implements _i17.QuerySnapshot {
+  @override
+  List<_i17.Document> get docs =>
+      (super.noSuchMethod(
+            Invocation.getter(#docs),
+            returnValue: <_i17.Document>[],
+            returnValueForMissingStub: <_i17.Document>[],
+          )
+          as List<_i17.Document>);
+
+  @override
+  int get size =>
+      (super.noSuchMethod(
+            Invocation.getter(#size),
+            returnValue: 0,
+            returnValueForMissingStub: 0,
+          )
+          as int);
+
+  @override
+  bool get hasMore =>
+      (super.noSuchMethod(
+            Invocation.getter(#hasMore),
+            returnValue: false,
+            returnValueForMissingStub: false,
+          )
+          as bool);
+
+  @override
+  bool get isEmpty =>
+      (super.noSuchMethod(
+            Invocation.getter(#isEmpty),
+            returnValue: false,
+            returnValueForMissingStub: false,
+          )
+          as bool);
+
+  @override
+  bool get isNotEmpty =>
+      (super.noSuchMethod(
+            Invocation.getter(#isNotEmpty),
+            returnValue: false,
+            returnValueForMissingStub: false,
+          )
+          as bool);
+}

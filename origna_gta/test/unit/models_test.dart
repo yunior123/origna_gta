@@ -268,7 +268,7 @@ void main() {
       expect(user.uid, 'user123');
       expect(user.email, 'test@example.com');
       expect(user.name, 'John Doe');
-      expect(user.roles, ['buyer', 'seller']);
+      expect(user.roles, [UserRole.buyer, UserRole.seller]);
       expect(user.address?.city, 'Toronto');
       expect(user.customerId, 'cus_123');
       // Stripe fields are always null/false from fromMap — loaded separately from seller_profiles
@@ -364,7 +364,7 @@ void main() {
       );
 
       expect(updated.name, 'Jane Doe');
-      expect(updated.roles, ['buyer', 'seller']);
+      expect(updated.roles, [UserRole.buyer, UserRole.seller]);
       expect(updated.email, 'test@example.com'); // Unchanged
       expect(original.name, 'John Doe'); // Original unchanged
     });

@@ -907,9 +907,9 @@ class ProductModel {
     return ProductModel(
       id: map[Fields.productId]?.toString() ?? '',
       name: map[Fields.name]?.toString() ?? '',
-      priceCents:
-          _parseInt(map[Fields.priceCents]) ??
-          _parseDouble(map[Fields.price]) * 100 ~/ 1,
+      priceCents: map[Fields.priceCents] != null
+          ? _parseInt(map[Fields.priceCents])
+          : (_parseDouble(map[Fields.price]) * 100).round(),
       imageUrls: _parseStringList(map[Fields.imageUrls]),
       sellerAddress: _parseAddress(map[Fields.sellerAddress]),
       description: map[Fields.description]?.toString() ?? '',
@@ -1161,12 +1161,14 @@ class UserModel {
   });
 
   factory UserModel.fromMap(Map<String, dynamic> map) {
-    // Convert string roles to UserRole enum
-    final roleStrings = map[Fields.roles] is Iterable
-        ? (map[Fields.roles] as Iterable).map((r) => r.toString()).toList()
-        : <String>[];
-    final roles = roleStrings.map((r) {
-      switch (r) {
+    // Convert string roles to UserRole enum (handles both String and UserRole inputs)
+    final rawRoles = map[Fields.roles] is Iterable
+        ? (map[Fields.roles] as Iterable).toList()
+        : <dynamic>[];
+    final roles = rawRoles.map((r) {
+      if (r is UserRole) return r;
+      final s = r.toString();
+      switch (s) {
         case 'admin':
           return UserRole.admin;
         case 'seller':
@@ -1223,13 +1225,13 @@ class UserModel {
 
   /// Check if user is a seller or admin with payouts enabled
   bool get canReceivePayouts =>
-      (roles.contains(UserRoles.seller) || roles.contains(UserRoles.admin)) &&
+      (roles.contains(UserRole.seller) || roles.contains(UserRole.admin)) &&
       payoutsEnabled &&
       onboardingCompleted;
 
   /// Check if user can sell products (seller/admin + onboarding + payouts/charges enabled)
   bool get canSell =>
-      (roles.contains(UserRoles.seller) || roles.contains(UserRoles.admin)) &&
+      (roles.contains(UserRole.seller) || roles.contains(UserRole.admin)) &&
       onboardingCompleted &&
       chargesEnabled &&
       payoutsEnabled &&
@@ -1315,7 +1317,7 @@ class UserModel {
       Fields.uid: uid,
       Fields.email: email,
       Fields.name: name,
-      Fields.roles: roles,
+      Fields.roles: roles.map((r) => r.name).toList(),
       Fields.address: address?.toMap(),
       Fields.createdAt: (createdAt),
       Fields.customerId: customerId,

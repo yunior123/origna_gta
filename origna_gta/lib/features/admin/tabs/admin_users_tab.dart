@@ -168,9 +168,9 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
                     final matchesRole = _roleFilter == 'all'
                         ? true
                         : _roleFilter == 'buyer'
-                        ? !roles.contains(UserRoles.seller) &&
-                              !roles.contains(UserRoles.admin)
-                        : roles.contains(_roleFilter);
+                        ? !roles.contains(UserRole.seller) &&
+                              !roles.contains(UserRole.admin)
+                        : roles.any((r) => r.name == _roleFilter);
 
                     return matchesSearch && matchesRole;
                   }).toList();
@@ -378,22 +378,22 @@ class _UserCard extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(DesignTokens.radius12),
               ),
               itemBuilder: (context) => [
-                if (!roles.contains(UserRoles.seller))
+                if (!roles.contains(UserRole.seller))
                   _menuItem(
                     'make_seller',
                     Icons.store_rounded,
                     'admin.users.make_seller'.tr(),
                     DesignTokens.primary,
                   ),
-                if (roles.contains(UserRoles.seller) &&
-                    !roles.contains(UserRoles.admin))
+                if (roles.contains(UserRole.seller) &&
+                    !roles.contains(UserRole.admin))
                   _menuItem(
                     'remove_seller',
                     Icons.store_rounded,
                     'admin.users.remove_seller'.tr(),
                     DesignTokens.warning,
                   ),
-                if (!roles.contains(UserRoles.admin))
+                if (!roles.contains(UserRole.admin))
                   _menuItem(
                     'make_admin',
                     Icons.admin_panel_settings_rounded,

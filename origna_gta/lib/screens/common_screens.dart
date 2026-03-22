@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
+import 'package:origna_gta/models/generated/base_models.dart';
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/env_config.dart';
@@ -39,7 +40,7 @@ class AdminRequiredGate extends ConsumerWidget {
     }
 
     // Not admin — redirect home
-    if (!profileRoles.contains(UserRoles.admin)) {
+    if (!profileRoles.contains(UserRole.admin)) {
       return Container(
         decoration: BoxDecoration(
           gradient: DesignTokens.backgroundGradient(isDark: isDark),

@@ -722,7 +722,15 @@ class MockAssetLoader extends AssetLoader {
         "checkout_cancelled": "Cancelled",
         "no_charge_message": "No charge was made",
         "back_to_home": "Back to Home",
+        "welcome_to_premium": "Welcome to Premium!",
+        "subscription_active_desc":
+            "Your subscription is now active. Enjoy all premium benefits!",
+        "start_shopping": "Start Shopping",
+        "activation_delayed_title": "Activation Delayed",
+        "activation_delayed_desc":
+            "We're processing your subscription. Please try again in a moment.",
       },
+      "common": {"refresh": "Refresh", "back_to_home": "Back to Home"},
       "categories": {
         "electronics": "Electronics",
         "computers": "Computers",

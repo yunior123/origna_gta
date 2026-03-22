@@ -337,6 +337,7 @@ void main() {
       final spDoc = _FakeDocument('user_123', {
         Fields.chargesEnabled: true,
         Fields.payoutsEnabled: true,
+        Fields.onboardingCompleted: true,
         Fields.pendingRequirements: [],
       });
 

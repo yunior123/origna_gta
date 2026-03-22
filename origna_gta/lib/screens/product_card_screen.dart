@@ -53,7 +53,7 @@ class _ProductCardState extends ConsumerState<ProductCard>
     final name = widget.product.name;
     final price = widget.product.price;
     final rating = widget.product.rating.toDouble();
-    final isAdmin = widget.userModel?.roles.contains(UserRoles.admin) ?? false;
+    final isAdmin = widget.userModel?.roles.contains(UserRole.admin) ?? false;
     final isOwner = widget.userModel?.uid == widget.product.sellerId;
     final canManageProduct = isAdmin || isOwner;
     final isOutOfStock = widget.product.stockQuantity <= 0;

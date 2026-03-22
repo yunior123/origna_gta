@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:origna_gta/models/generated/user_models.dart';
 import 'package:origna_gta/models/generated/base_models.dart';
@@ -292,7 +293,12 @@ void main() {
       };
 
       final original = User.fromJson(json);
-      final restored = User.fromJson(original.toJson());
+      // toJson() doesn't deep-serialize nested objects (missing explicitToJson),
+      // so roundtrip through JSON encode/decode to get pure maps
+      final jsonStr = jsonEncode(original.toJson());
+      final restored = User.fromJson(
+        jsonDecode(jsonStr) as Map<String, dynamic>,
+      );
 
       expect(restored.uid, original.uid);
       expect(restored.email, original.email);

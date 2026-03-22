@@ -59,8 +59,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // so the grid aspect ratio can accommodate the extra row height.
     final profileRoles = ref.watch(userProfileProvider.select((a) => a.valueOrNull?.roles));
     final canManageProducts =
-        (profileRoles?.contains(UserRoles.admin) ?? false) ||
-        (profileRoles?.contains(UserRoles.seller) ?? false);
+        (profileRoles?.contains(UserRole.admin) ?? false) ||
+        (profileRoles?.contains(UserRole.seller) ?? false);
 
     // Choix de la mascotte selon la parité du jour
     // Both providers are watched unconditionally to comply with Riverpod's

@@ -118,13 +118,13 @@ void main() {
         expect(() => parseCsv(''), throwsFormatException);
       });
 
-      test('throws on whitespace-only - single space does not throw', () {
-        final result = parseCsv(' ');
-        expect(result, isEmpty);
+      test('throws on whitespace-only content', () {
+        expect(() => parseCsv(' '), throwsFormatException);
       });
 
-      test('throws on CSV with no data rows', () {
-        expect(() => parseCsv('header'), throwsFormatException);
+      test('returns empty list for CSV with only header', () {
+        final result = parseCsv('header');
+        expect(result, isEmpty);
       });
 
       test('skips empty lines in middle', () {

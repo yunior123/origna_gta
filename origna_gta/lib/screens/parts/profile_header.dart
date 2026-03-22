@@ -98,8 +98,8 @@ class ProfileScreenLayout extends StatelessWidget {
               );
             }
 
-            final isSeller = userModel.roles.contains(UserRoles.seller) || userModel.roles.contains(UserRoles.admin);
-            final isAdmin = userModel.roles.contains(UserRoles.admin);
+            final isSeller = userModel.roles.contains(UserRole.seller) || userModel.roles.contains(UserRole.admin);
+            final isAdmin = userModel.roles.contains(UserRole.admin);
 
             final maxWidth = ResponsiveBreakpoints.getValue<double>(context: context, mobile: double.infinity, mobilePlus: 500, tablet: 600, desktop: 700);
             final padding = ResponsiveBreakpoints.getSpacing(context, SpacingSize.lg);
@@ -581,8 +581,8 @@ class ProfileScreenLayout extends StatelessWidget {
 
   Widget _buildProfileHeader(UserModel userModel, bool isDark, {required bool isPremium}) {
     final initials = userModel.name.isNotEmpty ? userModel.name[0].toUpperCase() : 'U';
-    final isSeller = userModel.roles.contains(UserRoles.seller) || userModel.roles.contains(UserRoles.admin);
-    final isAdmin = userModel.roles.contains(UserRoles.admin);
+    final isSeller = userModel.roles.contains(UserRole.seller) || userModel.roles.contains(UserRole.admin);
+    final isAdmin = userModel.roles.contains(UserRole.admin);
 
     return Builder(
       builder: (context) {

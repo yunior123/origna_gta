@@ -96,7 +96,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     final canManage =
         product != null &&
         (profileSnapshot?.uid == product.sellerId ||
-            profileSnapshot?.roles.contains(UserRoles.admin) == true);
+            profileSnapshot?.roles.contains(UserRole.admin) == true);
 
     return Scaffold(
       bottomNavigationBar:
