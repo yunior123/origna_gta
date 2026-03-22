@@ -92,7 +92,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
         : (product?.price ?? 0.0);
     final isOutOfStock =
         (matchedVariant?.stockQuantity ?? (product?.stockQuantity ?? 1)) <= 0;
-    final profileSnapshot = ref.watch(userProfileProvider).valueOrNull;
+    final profileSnapshot = ref.watch(
+      userProfileProvider.select((a) => a.valueOrNull),
+    );
     final canManage =
         product != null &&
         (profileSnapshot?.uid == product.sellerId ||

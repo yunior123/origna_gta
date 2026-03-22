@@ -32,13 +32,17 @@ class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final user = ref.watch(userProfileProvider).value;
+    final user = ref.watch(userProfileProvider.select((a) => a.valueOrNull));
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     if (user == null) {
       return Scaffold(
         appBar: AppBarFactory.simple(title: tr('seller.my_products')),
-        body: AnimatedEmptyState(icon: Icons.login_rounded, title: tr('seller.login_required_title'), subtitle: tr('seller.login_required_subtitle')),
+        body: AnimatedEmptyState(
+          icon: Icons.login_rounded,
+          title: tr('seller.login_required_title'),
+          subtitle: tr('seller.login_required_subtitle'),
+        ),
       );
     }
 
@@ -47,13 +51,21 @@ class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen> {
     final bulkVm = ref.read(sellerProductsViewModelProvider.notifier);
 
     return Container(
-      decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
+      decoration: BoxDecoration(
+        gradient: DesignTokens.backgroundGradient(isDark: isDark),
+      ),
       child: Scaffold(
         key: const Key('seller_products_screen'),
         appBar: AppBarFactory.custom(
           title: tr('seller.my_products'),
           subtitle: productsAsync.valueOrNull?.isNotEmpty == true
-              ? tr('seller.products_count', namedArgs: {'count': (productsAsync.valueOrNull?.length ?? 0).toString()})
+              ? tr(
+                  'seller.products_count',
+                  namedArgs: {
+                    'count': (productsAsync.valueOrNull?.length ?? 0)
+                        .toString(),
+                  },
+                )
               : null,
           actions: [
             // FE-M3: Q&A badge — same as seller_orders_screen
@@ -64,7 +76,8 @@ class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen> {
               child: IconButton(
                 icon: const Icon(Icons.cloud_upload_outlined),
                 tooltip: tr('bulk_upload_title'),
-                onPressed: () => Navigator.pushNamed(context, AppRoutes.sellerBulkUpload),
+                onPressed: () =>
+                    Navigator.pushNamed(context, AppRoutes.sellerBulkUpload),
               ),
             ),
             Semantics(
@@ -73,7 +86,8 @@ class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen> {
               child: IconButton(
                 icon: const Icon(Icons.add_box_outlined),
                 tooltip: tr('seller.add_product'),
-                onPressed: () => Navigator.pushNamed(context, AppRoutes.addProduct),
+                onPressed: () =>
+                    Navigator.pushNamed(context, AppRoutes.addProduct),
               ),
             ),
           ],
@@ -85,7 +99,12 @@ class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen> {
             icon: Icons.error_outline_rounded,
             title: tr('seller.something_wrong'),
             subtitle: AppError.getMessage(e),
-            action: ModernButton(label: 'common.retry'.tr(), icon: Icons.refresh, onPressed: () => ref.invalidate(sellerProductsProvider), isOutlined: true),
+            action: ModernButton(
+              label: 'common.retry'.tr(),
+              icon: Icons.refresh,
+              onPressed: () => ref.invalidate(sellerProductsProvider),
+              isOutlined: true,
+            ),
           ),
           data: (products) {
             if (products.isEmpty) {
@@ -97,7 +116,8 @@ class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen> {
                 action: ModernButton(
                   label: tr('seller.add_product'),
                   icon: Icons.add_box_outlined,
-                  onPressed: () => Navigator.pushNamed(context, AppRoutes.addProduct),
+                  onPressed: () =>
+                      Navigator.pushNamed(context, AppRoutes.addProduct),
                 ),
               );
             }
@@ -110,11 +130,17 @@ class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen> {
                     selectedCount: bulkState.selectedIds.length,
                     totalCount: products.length,
                     isLoading: bulkState.isLoading,
-                    onSelectAll: () => bulkVm.selectAll(products.map((p) => p.productId).toList()),
+                    onSelectAll: () => bulkVm.selectAll(
+                      products.map((p) => p.productId).toList(),
+                    ),
                     onClearSelection: bulkVm.clearSelection,
                     onActivate: () => bulkVm.bulkAction('activate'),
                     onPause: () => bulkVm.bulkAction('pause'),
-                    onArchive: () => _confirmArchive(context, bulkVm, bulkState.selectedIds.length),
+                    onArchive: () => _confirmArchive(
+                      context,
+                      bulkVm,
+                      bulkState.selectedIds.length,
+                    ),
                   ),
                 // Product list
                 Expanded(
@@ -122,30 +148,43 @@ class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen> {
                     child: ConstrainedBox(
                       // Cap to 840px on desktop — product list shouldn't stretch to 1200px
                       constraints: BoxConstraints(
-                        maxWidth: ResponsiveBreakpoints.isDesktop(context) ? 840.0 : ResponsiveBreakpoints.contentMaxWidth.toDouble(),
+                        maxWidth: ResponsiveBreakpoints.isDesktop(context)
+                            ? 840.0
+                            : ResponsiveBreakpoints.contentMaxWidth.toDouble(),
                       ),
                       child: RefreshIndicator(
                         color: DesignTokens.primary,
-                        onRefresh: () async => ref.invalidate(sellerProductsProvider),
+                        onRefresh: () async =>
+                            ref.invalidate(sellerProductsProvider),
                         child: ListView.builder(
                           physics: const AlwaysScrollableScrollPhysics(),
                           padding: const EdgeInsets.all(DesignTokens.spacing16),
                           itemCount: products.length,
                           itemBuilder: (context, index) {
                             final product = products[index];
-                            final isSelected = bulkState.selectedIds.contains(product.productId);
+                            final isSelected = bulkState.selectedIds.contains(
+                              product.productId,
+                            );
                             return FadeSlideIn(
-                              delay: Duration(milliseconds: 30 * index.clamp(0, 10)),
+                              delay: Duration(
+                                milliseconds: 30 * index.clamp(0, 10),
+                              ),
                               child: _SellerProductCard(
                                 product: product,
                                 isSelected: isSelected,
-                                isSelectionMode: bulkState.selectedIds.isNotEmpty,
-                                onToggle: () => bulkVm.toggleSelection(product.productId),
+                                isSelectionMode:
+                                    bulkState.selectedIds.isNotEmpty,
+                                onToggle: () =>
+                                    bulkVm.toggleSelection(product.productId),
                                 onLongPress: () {
                                   HapticFeedback.mediumImpact();
                                   bulkVm.toggleSelection(product.productId);
                                 },
-                                onEdit: () => Navigator.pushNamed(context, AppRoutes.editProduct, arguments: EditProductArgs(product: product)),
+                                onEdit: () => Navigator.pushNamed(
+                                  context,
+                                  AppRoutes.editProduct,
+                                  arguments: EditProductArgs(product: product),
+                                ),
                               ),
                             );
                           },
@@ -162,14 +201,26 @@ class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen> {
     );
   }
 
-  void _confirmArchive(BuildContext context, SellerProductsViewModel vm, int count) {
+  void _confirmArchive(
+    BuildContext context,
+    SellerProductsViewModel vm,
+    int count,
+  ) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(tr('seller.archive_products_title')),
-        content: Text(tr('seller.archive_confirmation', namedArgs: {'count': count.toString()})),
+        content: Text(
+          tr(
+            'seller.archive_confirmation',
+            namedArgs: {'count': count.toString()},
+          ),
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(tr('common.cancel'))),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(tr('common.cancel')),
+          ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: DesignTokens.error),
             onPressed: () {
@@ -225,7 +276,12 @@ class _ActionChip extends StatelessWidget {
   final Color color;
   final VoidCallback onTap;
 
-  const _ActionChip({required this.label, required this.icon, required this.color, required this.onTap});
+  const _ActionChip({
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -245,7 +301,11 @@ class _ActionChip extends StatelessWidget {
             const SizedBox(width: 4),
             Text(
               label,
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color),
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
             ),
           ],
         ),
@@ -261,17 +321,30 @@ class _ApprovalBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (color, label) = switch (lifecycleStatus) {
-      ProductLifecycleStatusValues.underReview => (DesignTokens.info, tr('seller.under_review')),
-      ProductLifecycleStatusValues.rejected => (DesignTokens.error, tr('seller.rejected')),
+      ProductLifecycleStatusValues.underReview => (
+        DesignTokens.info,
+        tr('seller.under_review'),
+      ),
+      ProductLifecycleStatusValues.rejected => (
+        DesignTokens.error,
+        tr('seller.rejected'),
+      ),
       _ => (DesignTokens.textSecondary, lifecycleStatus),
     };
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(6)),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(6),
+      ),
       child: Text(
         label,
-        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: color),
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+          color: color,
+        ),
       ),
     );
   }
@@ -304,32 +377,64 @@ class _BulkActionBar extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
         color: DesignTokens.primary.withValues(alpha: 0.08),
-        border: Border(bottom: BorderSide(color: DesignTokens.primary.withValues(alpha: 0.2))),
+        border: Border(
+          bottom: BorderSide(
+            color: DesignTokens.primary.withValues(alpha: 0.2),
+          ),
+        ),
       ),
       child: Row(
         children: [
-          GestureDetector(onTap: onClearSelection, child: const Icon(Icons.close_rounded, size: 20)),
+          GestureDetector(
+            onTap: onClearSelection,
+            child: const Icon(Icons.close_rounded, size: 20),
+          ),
           const SizedBox(width: 8),
           Text(
-            tr('seller.selected_count', namedArgs: {'count': selectedCount.toString()}),
+            tr(
+              'seller.selected_count',
+              namedArgs: {'count': selectedCount.toString()},
+            ),
             style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
           ),
           if (selectedCount < totalCount) ...[
             const SizedBox(width: 8),
             GestureDetector(
               onTap: onSelectAll,
-              child: Text(tr('seller.select_all'), style: TextStyle(color: DesignTokens.primary, fontSize: 13)),
+              child: Text(
+                tr('seller.select_all'),
+                style: TextStyle(color: DesignTokens.primary, fontSize: 13),
+              ),
             ),
           ],
           const Spacer(),
           if (isLoading)
-            const SizedBox(width: 20, height: 20, child: ModernLoadingIndicator(strokeWidth: 2, centered: false))
+            const SizedBox(
+              width: 20,
+              height: 20,
+              child: ModernLoadingIndicator(strokeWidth: 2, centered: false),
+            )
           else ...[
-            _ActionChip(label: tr('seller.activate'), icon: Icons.check_circle_outline, color: DesignTokens.success, onTap: onActivate),
+            _ActionChip(
+              label: tr('seller.activate'),
+              icon: Icons.check_circle_outline,
+              color: DesignTokens.success,
+              onTap: onActivate,
+            ),
             const SizedBox(width: 6),
-            _ActionChip(label: tr('seller.pause'), icon: Icons.pause_circle_outline, color: DesignTokens.warning, onTap: onPause),
+            _ActionChip(
+              label: tr('seller.pause'),
+              icon: Icons.pause_circle_outline,
+              color: DesignTokens.warning,
+              onTap: onPause,
+            ),
             const SizedBox(width: 6),
-            _ActionChip(label: tr('seller.archive'), icon: Icons.archive_outlined, color: DesignTokens.error, onTap: onArchive),
+            _ActionChip(
+              label: tr('seller.archive'),
+              icon: Icons.archive_outlined,
+              color: DesignTokens.error,
+              onTap: onArchive,
+            ),
           ],
         ],
       ),
@@ -340,7 +445,10 @@ class _BulkActionBar extends StatelessWidget {
 class _RejectionBanner extends StatelessWidget {
   final String reason;
   final VoidCallback onFixAndResubmit;
-  const _RejectionBanner({required this.reason, required this.onFixAndResubmit});
+  const _RejectionBanner({
+    required this.reason,
+    required this.onFixAndResubmit,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -350,18 +458,29 @@ class _RejectionBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: DesignTokens.error.withValues(alpha: 0.07),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: DesignTokens.error.withValues(alpha: 0.25), width: 1),
+        border: Border.all(
+          color: DesignTokens.error.withValues(alpha: 0.25),
+          width: 1,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(Icons.info_outline_rounded, size: 13, color: DesignTokens.error),
+              Icon(
+                Icons.info_outline_rounded,
+                size: 13,
+                color: DesignTokens.error,
+              ),
               const SizedBox(width: 4),
               Text(
                 tr('seller.rejection_reason_label'),
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: DesignTokens.error),
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: DesignTokens.error,
+                ),
               ),
             ],
           ),
@@ -377,15 +496,25 @@ class _RejectionBanner extends StatelessWidget {
             width: double.infinity,
             child: TextButton.icon(
               onPressed: onFixAndResubmit,
-              icon: Icon(Icons.edit_outlined, size: 14, color: DesignTokens.primary),
+              icon: Icon(
+                Icons.edit_outlined,
+                size: 14,
+                color: DesignTokens.primary,
+              ),
               label: Text(
                 tr('seller.fix_and_resubmit'),
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: DesignTokens.primary),
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: DesignTokens.primary,
+                ),
               ),
               style: TextButton.styleFrom(
                 backgroundColor: DesignTokens.primary.withValues(alpha: 0.08),
                 padding: const EdgeInsets.symmetric(vertical: 6),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(6),
+                ),
                 minimumSize: Size.zero,
               ),
             ),
@@ -431,7 +560,12 @@ class _SellerProductCard extends StatelessWidget {
               ? DesignTokens.darkSurfaceVariant
               : DesignTokens.white,
           borderRadius: BorderRadius.circular(DesignTokens.radius12),
-          border: Border.all(color: isSelected ? DesignTokens.primary : DesignTokens.outline.withValues(alpha: 0.15), width: isSelected ? 1.5 : 1),
+          border: Border.all(
+            color: isSelected
+                ? DesignTokens.primary
+                : DesignTokens.outline.withValues(alpha: 0.15),
+            width: isSelected ? 1.5 : 1,
+          ),
           boxShadow: [
             BoxShadow(
               color: DesignTokens.black.withValues(alpha: isDark ? 0.15 : 0.04),
@@ -447,8 +581,12 @@ class _SellerProductCard extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(right: 10),
                 child: Icon(
-                  isSelected ? Icons.check_circle_rounded : Icons.circle_outlined,
-                  color: isSelected ? DesignTokens.primary : DesignTokens.textDisabled,
+                  isSelected
+                      ? Icons.check_circle_rounded
+                      : Icons.circle_outlined,
+                  color: isSelected
+                      ? DesignTokens.primary
+                      : DesignTokens.textDisabled,
                   size: 22,
                 ),
               ),
@@ -474,7 +612,10 @@ class _SellerProductCard extends StatelessWidget {
                 children: [
                   Text(
                     product.name,
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -482,20 +623,30 @@ class _SellerProductCard extends StatelessWidget {
                   Row(
                     children: [
                       _StatusBadge(status: product.lifecycleStatus),
-                      if (product.lifecycleStatus != ProductLifecycleStatusValues.active) ...[
+                      if (product.lifecycleStatus !=
+                          ProductLifecycleStatusValues.active) ...[
                         const SizedBox(width: 6),
-                        _ApprovalBadge(lifecycleStatus: product.lifecycleStatus),
+                        _ApprovalBadge(
+                          lifecycleStatus: product.lifecycleStatus,
+                        ),
                       ],
                       const Spacer(),
                       Text(
                         '\$${product.price.toStringAsFixed(2)}',
-                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: DesignTokens.primary),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                          color: DesignTokens.primary,
+                        ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    tr('seller.stock_count', namedArgs: {'count': product.stockQuantity.toString()}),
+                    tr(
+                      'seller.stock_count',
+                      namedArgs: {'count': product.stockQuantity.toString()},
+                    ),
                     style: TextStyle(
                       fontSize: 12,
                       color: product.stockQuantity <= 0
@@ -505,18 +656,28 @@ class _SellerProductCard extends StatelessWidget {
                           : DesignTokens.textSecondary,
                     ),
                   ),
-                  if (product.lifecycleStatus == ProductLifecycleStatusValues.rejected &&
+                  if (product.lifecycleStatus ==
+                          ProductLifecycleStatusValues.rejected &&
                       product.approvalRejectionReason != null &&
                       product.approvalRejectionReason!.isNotEmpty) ...[
                     const SizedBox(height: 8),
-                    _RejectionBanner(reason: product.approvalRejectionReason!, onFixAndResubmit: onEdit),
+                    _RejectionBanner(
+                      reason: product.approvalRejectionReason!,
+                      onFixAndResubmit: onEdit,
+                    ),
                   ],
                 ],
               ),
             ),
             // Edit arrow — hide when rejection banner is shown (button replaces it)
-            if (!isSelectionMode && product.lifecycleStatus != ProductLifecycleStatusValues.rejected)
-              Icon(Icons.chevron_right_rounded, color: DesignTokens.textDisabled, size: 20),
+            if (!isSelectionMode &&
+                product.lifecycleStatus !=
+                    ProductLifecycleStatusValues.rejected)
+              Icon(
+                Icons.chevron_right_rounded,
+                color: DesignTokens.textDisabled,
+                size: 20,
+              ),
           ],
         ),
       ),
@@ -530,13 +691,23 @@ class _SellerProductCard extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8),
         gradient: LinearGradient(
-          colors: [DesignTokens.primary.withValues(alpha: 0.12), DesignTokens.secondary.withValues(alpha: 0.08)],
+          colors: [
+            DesignTokens.primary.withValues(alpha: 0.12),
+            DesignTokens.secondary.withValues(alpha: 0.08),
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        border: Border.all(color: DesignTokens.primary.withValues(alpha: 0.15), width: 1),
+        border: Border.all(
+          color: DesignTokens.primary.withValues(alpha: 0.15),
+          width: 1,
+        ),
       ),
-      child: Icon(Icons.camera_alt_outlined, color: DesignTokens.primary.withValues(alpha: 0.6), size: 22),
+      child: Icon(
+        Icons.camera_alt_outlined,
+        color: DesignTokens.primary.withValues(alpha: 0.6),
+        size: 22,
+      ),
     );
   }
 }
@@ -548,8 +719,12 @@ class _SellerProductsSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final baseColor = isDark ? DesignTokens.darkCard : DesignTokens.outlineVariant;
-    final highlightColor = isDark ? DesignTokens.darkSurfaceVariant : DesignTokens.surface;
+    final baseColor = isDark
+        ? DesignTokens.darkCard
+        : DesignTokens.outlineVariant;
+    final highlightColor = isDark
+        ? DesignTokens.darkSurfaceVariant
+        : DesignTokens.surface;
 
     return Shimmer.fromColors(
       baseColor: baseColor,
@@ -561,7 +736,10 @@ class _SellerProductsSkeleton extends StatelessWidget {
         itemBuilder: (_, index) => Container(
           margin: const EdgeInsets.only(bottom: DesignTokens.spacing12),
           height: 100,
-          decoration: BoxDecoration(color: DesignTokens.white, borderRadius: BorderRadius.circular(DesignTokens.radius16)),
+          decoration: BoxDecoration(
+            color: DesignTokens.white,
+            borderRadius: BorderRadius.circular(DesignTokens.radius16),
+          ),
         ),
       ),
     );
@@ -575,22 +753,50 @@ class _StatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (color, label) = switch (status) {
-      ProductLifecycleStatusValues.active => (DesignTokens.success, tr('seller.active')),
-      ProductLifecycleStatusValues.paused => (DesignTokens.warning, tr('seller.pause')),
-      ProductLifecycleStatusValues.archived => (DesignTokens.textDisabled, tr('seller.archived')),
-      ProductLifecycleStatusValues.draft => (DesignTokens.info, tr('seller.draft')),
-      ProductLifecycleStatusValues.underReview => (DesignTokens.info, tr('seller.under_review')),
-      ProductLifecycleStatusValues.rejected => (DesignTokens.error, tr('seller.rejected')),
-      ProductLifecycleStatusValues.approved => (DesignTokens.success, tr('seller.approved')),
+      ProductLifecycleStatusValues.active => (
+        DesignTokens.success,
+        tr('seller.active'),
+      ),
+      ProductLifecycleStatusValues.paused => (
+        DesignTokens.warning,
+        tr('seller.pause'),
+      ),
+      ProductLifecycleStatusValues.archived => (
+        DesignTokens.textDisabled,
+        tr('seller.archived'),
+      ),
+      ProductLifecycleStatusValues.draft => (
+        DesignTokens.info,
+        tr('seller.draft'),
+      ),
+      ProductLifecycleStatusValues.underReview => (
+        DesignTokens.info,
+        tr('seller.under_review'),
+      ),
+      ProductLifecycleStatusValues.rejected => (
+        DesignTokens.error,
+        tr('seller.rejected'),
+      ),
+      ProductLifecycleStatusValues.approved => (
+        DesignTokens.success,
+        tr('seller.approved'),
+      ),
       _ => (DesignTokens.textSecondary, status),
     };
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(6)),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(6),
+      ),
       child: Text(
         label,
-        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: color),
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+          color: color,
+        ),
       ),
     );
   }
@@ -603,9 +809,15 @@ class _UnansweredQaBadge extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final count = ref.watch(sellerUnansweredQaProvider(sellerId)).valueOrNull ?? 0;
+    final count =
+        ref.watch(
+          sellerUnansweredQaProvider(sellerId).select((a) => a.valueOrNull),
+        ) ??
+        0;
     return Tooltip(
-      message: count > 0 ? 'seller.unanswered_questions_plural'.tr(args: [count.toString()]) : 'seller.no_pending_questions'.tr(),
+      message: count > 0
+          ? 'seller.unanswered_questions_plural'.tr(args: [count.toString()])
+          : 'seller.no_pending_questions'.tr(),
       child: Stack(
         clipBehavior: Clip.none,
         children: [
@@ -614,8 +826,13 @@ class _UnansweredQaBadge extends ConsumerWidget {
             label: 'btn-seller-qa-badge',
             child: IconButton(
               icon: const Icon(Icons.forum_outlined),
-              tooltip: count > 0 ? 'seller.unanswered_questions_plural'.tr(args: [count.toString()]) : 'seller.no_pending_questions'.tr(),
-              onPressed: () => Navigator.pushNamed(context, AppRoutes.sellerOrders),
+              tooltip: count > 0
+                  ? 'seller.unanswered_questions_plural'.tr(
+                      args: [count.toString()],
+                    )
+                  : 'seller.no_pending_questions'.tr(),
+              onPressed: () =>
+                  Navigator.pushNamed(context, AppRoutes.sellerOrders),
             ),
           ),
           if (count > 0)
@@ -633,7 +850,11 @@ class _UnansweredQaBadge extends ConsumerWidget {
                 child: Center(
                   child: Text(
                     count > 99 ? '99+' : '$count',
-                    style: const TextStyle(color: DesignTokens.white, fontSize: 9, fontWeight: FontWeight.w700),
+                    style: const TextStyle(
+                      color: DesignTokens.white,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ),

@@ -1,4 +1,5 @@
 part of '../home_screen.dart';
+
 class _PaginationLoader extends ConsumerWidget {
   const _PaginationLoader();
 
@@ -58,7 +59,9 @@ class _ProductGrid extends ConsumerWidget {
     final errorMessage = ref.watch(
       homeViewModelProvider.select((state) => state.errorMessage),
     );
-    final userProfile = ref.watch(userProfileProvider).valueOrNull;
+    final userProfile = ref.watch(
+      userProfileProvider.select((a) => a.valueOrNull),
+    );
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     // Error state with retry

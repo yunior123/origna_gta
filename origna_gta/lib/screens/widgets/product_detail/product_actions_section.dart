@@ -339,7 +339,7 @@ class _AddToCartButtonState extends ConsumerState<AddToCartButton> {
     final quantity = ref.watch(
       productDetailViewModelProvider.select((state) => state.quantity),
     );
-    final currentUser = ref.watch(currentUserProvider);
+    final currentUserUid = ref.watch(currentUserProvider.select((u) => u?.uid));
     final notifState = ref.watch(
       stockNotificationNotifierProvider((
         productId: widget.productId,
@@ -347,7 +347,7 @@ class _AddToCartButtonState extends ConsumerState<AddToCartButton> {
       )),
     );
     final isOwnProduct =
-        currentUser != null && currentUser.uid == widget.sellerId;
+        currentUserUid != null && currentUserUid == widget.sellerId;
 
     if (isOwnProduct) {
       return Semantics(

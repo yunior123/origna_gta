@@ -504,8 +504,12 @@ class _AdminQuickStats extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final sellers = ref.watch(adminSellersProvider);
-    final users = ref.watch(adminUsersProvider);
+    final sellers = ref.watch(
+      adminSellersProvider.select((a) => a.whenOrNull(data: (s) => s.length)),
+    );
+    final users = ref.watch(
+      adminUsersProvider.select((a) => a.whenOrNull(data: (u) => u.length)),
+    );
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -531,13 +535,13 @@ class _AdminQuickStats extends ConsumerWidget {
           _statRow(
             Icons.store_rounded,
             'admin.sellers_tab'.tr(),
-            sellers.whenOrNull(data: (s) => s.length.toString()) ?? '...',
+            sellers?.toString() ?? '...',
           ),
           const SizedBox(height: 6),
           _statRow(
             Icons.people_rounded,
             'admin.users_tab'.tr(),
-            users.whenOrNull(data: (u) => u.length.toString()) ?? '...',
+            users?.toString() ?? '...',
           ),
         ],
       ),

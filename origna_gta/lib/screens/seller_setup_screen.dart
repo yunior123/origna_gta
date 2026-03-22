@@ -17,7 +17,8 @@ class SellerSetupCompleteScreen extends ConsumerStatefulWidget {
   const SellerSetupCompleteScreen({super.key});
 
   @override
-  ConsumerState<SellerSetupCompleteScreen> createState() => _SellerSetupCompleteScreenState();
+  ConsumerState<SellerSetupCompleteScreen> createState() =>
+      _SellerSetupCompleteScreenState();
 }
 
 /// Screen shown when seller needs to refresh/retry Stripe Connect onboarding
@@ -29,7 +30,9 @@ class SellerSetupRefreshScreen extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
+      decoration: BoxDecoration(
+        gradient: DesignTokens.backgroundGradient(isDark: isDark),
+      ),
       child: Scaffold(
         backgroundColor: DesignTokens.transparent,
         body: SafeArea(
@@ -48,21 +51,41 @@ class SellerSetupRefreshScreen extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: DesignTokens.info.withValues(alpha: 0.1),
                             shape: BoxShape.circle,
-                            boxShadow: [BoxShadow(color: DesignTokens.info.withValues(alpha: 0.15), blurRadius: 24, offset: const Offset(0, 8))],
+                            boxShadow: [
+                              BoxShadow(
+                                color: DesignTokens.info.withValues(
+                                  alpha: 0.15,
+                                ),
+                                blurRadius: 24,
+                                offset: const Offset(0, 8),
+                              ),
+                            ],
                           ),
-                          child: Icon(Icons.refresh_rounded, size: 72, color: DesignTokens.info),
+                          child: Icon(
+                            Icons.refresh_rounded,
+                            size: 72,
+                            color: DesignTokens.info,
+                          ),
                         ),
                         const SizedBox(height: DesignTokens.spacing32),
                         Text(
                           'seller.continue_setup_title'.tr(),
-                          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.3),
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.3,
+                          ),
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: DesignTokens.spacing16),
                         Text(
                           'seller.continue_setup_body'.tr(),
                           textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 15, color: DesignTokens.textSecondary, height: 1.6),
+                          style: TextStyle(
+                            fontSize: 15,
+                            color: DesignTokens.textSecondary,
+                            height: 1.6,
+                          ),
                         ),
                         const SizedBox(height: DesignTokens.spacing40),
                         SizedBox(
@@ -71,17 +94,26 @@ class SellerSetupRefreshScreen extends StatelessWidget {
                             label: 'seller.continue_setup'.tr(),
                             icon: Icons.arrow_forward_rounded,
                             onPressed: () {
-                              Navigator.of(context).pushReplacementNamed(AppRoutes.sellerRegistration);
+                              Navigator.of(context).pushReplacementNamed(
+                                AppRoutes.sellerRegistration,
+                              );
                             },
                             height: 54,
                           ),
                         ),
                         const SizedBox(height: DesignTokens.spacing12),
                         TextButton(
-                          onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false),
+                          onPressed: () =>
+                              Navigator.of(context).pushNamedAndRemoveUntil(
+                                AppRoutes.home,
+                                (route) => false,
+                              ),
                           child: Text(
                             'seller.back_to_home'.tr(),
-                            style: TextStyle(color: DesignTokens.primary, fontWeight: FontWeight.w600),
+                            style: TextStyle(
+                              color: DesignTokens.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                       ],
@@ -99,22 +131,37 @@ class SellerSetupRefreshScreen extends StatelessWidget {
 
 enum _CheckResult { success, pending, error }
 
-class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteScreen> {
-  static const _minCheckInterval = Duration(seconds: 10); // Rate limit: 10 seconds between checks
-  bool _isRefreshing = false;
-  String? _statusMessage;
-  DateTime? _lastCheckTime;
+// ─── Riverpod state for SellerSetupCompleteScreen ────────────────────────────
+final _sellerSetupRefreshingProvider = StateProvider.autoDispose<bool>(
+  (ref) => false,
+);
+final _sellerSetupMessageProvider = StateProvider.autoDispose<String?>(
+  (ref) => null,
+);
+final _sellerSetupCheckResultProvider =
+    StateProvider.autoDispose<_CheckResult?>((ref) => null);
 
-  _CheckResult? _checkResult;
+class _SellerSetupCompleteScreenState
+    extends ConsumerState<SellerSetupCompleteScreen> {
+  static const _minCheckInterval = Duration(
+    seconds: 10,
+  ); // Rate limit: 10 seconds between checks
+  DateTime? _lastCheckTime;
 
   @override
   Widget build(BuildContext context) {
     final statusAsync = ref.watch(sellerAccountStatusProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    if (_isRefreshing) {
+    final isRefreshing = ref.watch(_sellerSetupRefreshingProvider);
+    final statusMessage = ref.watch(_sellerSetupMessageProvider);
+    final checkResult = ref.watch(_sellerSetupCheckResultProvider);
+
+    if (isRefreshing) {
       return Container(
-        decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
+        decoration: BoxDecoration(
+          gradient: DesignTokens.backgroundGradient(isDark: isDark),
+        ),
         child: Scaffold(
           backgroundColor: DesignTokens.transparent,
           body: Center(
@@ -126,19 +173,30 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: isDark ? DesignTokens.white.withValues(alpha: 0.05) : DesignTokens.white,
+                        color: isDark
+                            ? DesignTokens.white.withValues(alpha: 0.05)
+                            : DesignTokens.white,
                         shape: BoxShape.circle,
                         boxShadow: DesignTokens.shadowMd,
                       ),
                       child: ShaderMask(
-                        shaderCallback: (bounds) => DesignTokens.primaryGradient.createShader(bounds),
-                        child: const ModernLoadingIndicator(strokeWidth: 3, color: DesignTokens.white, centered: false),
+                        shaderCallback: (bounds) =>
+                            DesignTokens.primaryGradient.createShader(bounds),
+                        child: const ModernLoadingIndicator(
+                          strokeWidth: 3,
+                          color: DesignTokens.white,
+                          centered: false,
+                        ),
                       ),
                     ),
                     const SizedBox(height: DesignTokens.spacing20),
                     Text(
                       'seller.checking_status'.tr(),
-                      style: TextStyle(fontSize: 15, color: DesignTokens.textSecondary, fontWeight: FontWeight.w500),
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: DesignTokens.textSecondary,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ],
                 ),
@@ -150,7 +208,9 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
     }
 
     return Container(
-      decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
+      decoration: BoxDecoration(
+        gradient: DesignTokens.backgroundGradient(isDark: isDark),
+      ),
       child: Scaffold(
         backgroundColor: DesignTokens.transparent,
         body: SafeArea(
@@ -168,24 +228,37 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
                           Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              color: isDark ? DesignTokens.white.withValues(alpha: 0.05) : DesignTokens.white,
+                              color: isDark
+                                  ? DesignTokens.white.withValues(alpha: 0.05)
+                                  : DesignTokens.white,
                               shape: BoxShape.circle,
                               boxShadow: DesignTokens.shadowMd,
                             ),
                             child: ShaderMask(
-                              shaderCallback: (bounds) => DesignTokens.primaryGradient.createShader(bounds),
-                              child: const ModernLoadingIndicator(strokeWidth: 3, color: DesignTokens.white, centered: false),
+                              shaderCallback: (bounds) => DesignTokens
+                                  .primaryGradient
+                                  .createShader(bounds),
+                              child: const ModernLoadingIndicator(
+                                strokeWidth: 3,
+                                color: DesignTokens.white,
+                                centered: false,
+                              ),
                             ),
                           ),
                           const SizedBox(height: DesignTokens.spacing20),
                           Text(
                             'seller.verifying_account'.tr(),
-                            style: TextStyle(fontSize: 15, color: DesignTokens.textSecondary, fontWeight: FontWeight.w500),
+                            style: TextStyle(
+                              fontSize: 15,
+                              color: DesignTokens.textSecondary,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ],
                       ),
                     ),
-                    error: (error, _) => _buildError(context, 'seller.failed_verify'.tr()),
+                    error: (error, _) =>
+                        _buildError(context, 'seller.failed_verify'.tr()),
                     data: (status) {
                       if (status.isComplete) {
                         return _buildSuccess(context);
@@ -215,23 +288,46 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
             decoration: BoxDecoration(
               color: DesignTokens.error.withValues(alpha: 0.1),
               shape: BoxShape.circle,
-              boxShadow: [BoxShadow(color: DesignTokens.error.withValues(alpha: 0.15), blurRadius: 24, offset: const Offset(0, 8))],
+              boxShadow: [
+                BoxShadow(
+                  color: DesignTokens.error.withValues(alpha: 0.15),
+                  blurRadius: 24,
+                  offset: const Offset(0, 8),
+                ),
+              ],
             ),
-            child: Icon(Icons.error_outline_rounded, size: 56, color: DesignTokens.error),
+            child: Icon(
+              Icons.error_outline_rounded,
+              size: 56,
+              color: DesignTokens.error,
+            ),
           ),
           const SizedBox(height: DesignTokens.spacing24),
-          Text(error, textAlign: TextAlign.center, style: const TextStyle(fontSize: 15, height: 1.5)),
+          Text(
+            error,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 15, height: 1.5),
+          ),
           const SizedBox(height: DesignTokens.spacing32),
           SizedBox(
             width: double.infinity,
-            child: ModernButton(label: 'common.retry'.tr(), onPressed: _checkStatusAgain, height: 52),
+            child: ModernButton(
+              label: 'common.retry'.tr(),
+              onPressed: _checkStatusAgain,
+              height: 52,
+            ),
           ),
           const SizedBox(height: DesignTokens.spacing12),
           TextButton(
-            onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false),
+            onPressed: () => Navigator.of(
+              context,
+            ).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false),
             child: Text(
               'seller.go_home'.tr(),
-              style: TextStyle(color: DesignTokens.primary, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                color: DesignTokens.primary,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -253,21 +349,45 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
             decoration: BoxDecoration(
               color: DesignTokens.warning.withValues(alpha: 0.1),
               shape: BoxShape.circle,
-              boxShadow: [BoxShadow(color: DesignTokens.warning.withValues(alpha: 0.15), blurRadius: 24, offset: const Offset(0, 8))],
+              boxShadow: [
+                BoxShadow(
+                  color: DesignTokens.warning.withValues(alpha: 0.15),
+                  blurRadius: 24,
+                  offset: const Offset(0, 8),
+                ),
+              ],
             ),
-            child: Icon(hasDocumentRequirements ? Icons.badge_outlined : Icons.assignment_outlined, size: 72, color: DesignTokens.warning),
+            child: Icon(
+              hasDocumentRequirements
+                  ? Icons.badge_outlined
+                  : Icons.assignment_outlined,
+              size: 72,
+              color: DesignTokens.warning,
+            ),
           ),
           const SizedBox(height: DesignTokens.spacing32),
           Text(
-            hasDocumentRequirements ? 'seller.identity_verification_required'.tr() : 'seller.complete_your_setup'.tr(),
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.3),
+            hasDocumentRequirements
+                ? 'seller.identity_verification_required'.tr()
+                : 'seller.complete_your_setup'.tr(),
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.3,
+            ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: DesignTokens.spacing16),
           Text(
-            hasDocumentRequirements ? 'seller.stripe_verify_body'.tr() : 'seller.stripe_finish_body'.tr(),
+            hasDocumentRequirements
+                ? 'seller.stripe_verify_body'.tr()
+                : 'seller.stripe_finish_body'.tr(),
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 15, color: DesignTokens.textSecondary, height: 1.6),
+            style: TextStyle(
+              fontSize: 15,
+              color: DesignTokens.textSecondary,
+              height: 1.6,
+            ),
           ),
           const SizedBox(height: DesignTokens.spacing24),
           if (requirementsDescription.isNotEmpty) ...[
@@ -276,7 +396,9 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
               decoration: BoxDecoration(
                 color: DesignTokens.warning.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(DesignTokens.radius16),
-                border: Border.all(color: DesignTokens.warning.withValues(alpha: 0.25)),
+                border: Border.all(
+                  color: DesignTokens.warning.withValues(alpha: 0.25),
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -285,18 +407,36 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
                     children: [
                       Container(
                         padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(color: DesignTokens.warning.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
-                        child: Icon(Icons.info_outline_rounded, color: DesignTokens.warning, size: 16),
+                        decoration: BoxDecoration(
+                          color: DesignTokens.warning.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          Icons.info_outline_rounded,
+                          color: DesignTokens.warning,
+                          size: 16,
+                        ),
                       ),
                       const SizedBox(width: 10),
                       Text(
                         'seller.still_needed'.tr(),
-                        style: TextStyle(fontWeight: FontWeight.w700, color: DesignTokens.warning, fontSize: 14),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: DesignTokens.warning,
+                          fontSize: 14,
+                        ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 10),
-                  Text('• $requirementsDescription', style: TextStyle(fontSize: 14, color: DesignTokens.textPrimary, height: 1.5)),
+                  Text(
+                    '• $requirementsDescription',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: DesignTokens.textPrimary,
+                      height: 1.5,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -305,10 +445,14 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
           SizedBox(
             width: double.infinity,
             child: ModernButton(
-              label: hasDocumentRequirements ? 'seller.submit_documents'.tr() : 'seller.continue_setup'.tr(),
+              label: hasDocumentRequirements
+                  ? 'seller.submit_documents'.tr()
+                  : 'seller.continue_setup'.tr(),
               icon: Icons.arrow_forward_rounded,
               onPressed: () {
-                Navigator.of(context).pushReplacementNamed(AppRoutes.sellerRegistration);
+                Navigator.of(
+                  context,
+                ).pushReplacementNamed(AppRoutes.sellerRegistration);
               },
               height: 54,
               backgroundColor: DesignTokens.warning,
@@ -319,7 +463,10 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
             onPressed: _goToHome,
             child: Text(
               'seller.go_to_home'.tr(),
-              style: TextStyle(color: DesignTokens.primary, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                color: DesignTokens.primary,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -338,57 +485,88 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
             decoration: BoxDecoration(
               color: DesignTokens.warning.withValues(alpha: 0.1),
               shape: BoxShape.circle,
-              boxShadow: [BoxShadow(color: DesignTokens.warning.withValues(alpha: 0.15), blurRadius: 24, offset: const Offset(0, 8))],
+              boxShadow: [
+                BoxShadow(
+                  color: DesignTokens.warning.withValues(alpha: 0.15),
+                  blurRadius: 24,
+                  offset: const Offset(0, 8),
+                ),
+              ],
             ),
-            child: Icon(Icons.hourglass_empty_rounded, size: 72, color: DesignTokens.warning),
+            child: Icon(
+              Icons.hourglass_empty_rounded,
+              size: 72,
+              color: DesignTokens.warning,
+            ),
           ),
           const SizedBox(height: DesignTokens.spacing32),
           Text(
             'seller.identity_pending'.tr(),
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.3),
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.3,
+            ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: DesignTokens.spacing16),
           Text(
             'seller.identity_pending_body'.tr(),
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 15, color: DesignTokens.textSecondary, height: 1.6),
+            style: TextStyle(
+              fontSize: 15,
+              color: DesignTokens.textSecondary,
+              height: 1.6,
+            ),
           ),
           const SizedBox(height: DesignTokens.spacing40),
           SizedBox(
             width: double.infinity,
-            child: ModernButton(label: 'seller.go_to_home'.tr(), onPressed: _goToHome, height: 54),
+            child: ModernButton(
+              label: 'seller.go_to_home'.tr(),
+              onPressed: _goToHome,
+              height: 54,
+            ),
           ),
           const SizedBox(height: DesignTokens.spacing12),
           TextButton(
             onPressed: _checkStatusAgain,
             child: Text(
               'seller.check_verification'.tr(),
-              style: TextStyle(color: DesignTokens.primary, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                color: DesignTokens.primary,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
-          if (_statusMessage != null) ...[
+          if (statusMessage != null) ...[
             const SizedBox(height: DesignTokens.spacing16),
             FadeSlideIn(
               child: Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: _checkResult == _CheckResult.success
+                  color:
+                      ref.read(_sellerSetupCheckResultProvider) ==
+                          _CheckResult.success
                       ? DesignTokens.success.withValues(alpha: 0.1)
-                      : _checkResult == _CheckResult.error
+                      : ref.read(_sellerSetupCheckResultProvider) ==
+                            _CheckResult.error
                       ? DesignTokens.error.withValues(alpha: 0.1)
                       : DesignTokens.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(DesignTokens.radius12),
                 ),
                 child: Text(
-                  _statusMessage!,
+                  ref.read(_sellerSetupMessageProvider)!,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
-                    color: _checkResult == _CheckResult.success
+                    color:
+                        ref.read(_sellerSetupCheckResultProvider) ==
+                            _CheckResult.success
                         ? DesignTokens.success
-                        : _checkResult == _CheckResult.error
+                        : ref.read(_sellerSetupCheckResultProvider) ==
+                              _CheckResult.error
                         ? DesignTokens.error
                         : DesignTokens.primary,
                   ),
@@ -411,16 +589,32 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
             decoration: BoxDecoration(
               color: DesignTokens.success.withValues(alpha: 0.1),
               shape: BoxShape.circle,
-              boxShadow: [BoxShadow(color: DesignTokens.success.withValues(alpha: 0.2), blurRadius: 24, offset: const Offset(0, 8))],
+              boxShadow: [
+                BoxShadow(
+                  color: DesignTokens.success.withValues(alpha: 0.2),
+                  blurRadius: 24,
+                  offset: const Offset(0, 8),
+                ),
+              ],
             ),
-            child: Icon(Icons.check_circle_rounded, size: 72, color: DesignTokens.success),
+            child: Icon(
+              Icons.check_circle_rounded,
+              size: 72,
+              color: DesignTokens.success,
+            ),
           ),
           const SizedBox(height: DesignTokens.spacing32),
           ShaderMask(
-            shaderCallback: (bounds) => DesignTokens.primaryGradient.createShader(bounds),
+            shaderCallback: (bounds) =>
+                DesignTokens.primaryGradient.createShader(bounds),
             child: Text(
               'seller.account_ready'.tr(),
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: DesignTokens.white, letterSpacing: -0.3),
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+                color: DesignTokens.white,
+                letterSpacing: -0.3,
+              ),
               textAlign: TextAlign.center,
             ),
           ),
@@ -428,12 +622,21 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
           Text(
             'seller.account_ready_body'.tr(),
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 15, color: DesignTokens.textSecondary, height: 1.5),
+            style: TextStyle(
+              fontSize: 15,
+              color: DesignTokens.textSecondary,
+              height: 1.5,
+            ),
           ),
           const SizedBox(height: DesignTokens.spacing40),
           SizedBox(
             width: double.infinity,
-            child: ModernButton(label: 'seller.start_selling'.tr(), icon: Icons.storefront_rounded, onPressed: _goToHome, height: 54),
+            child: ModernButton(
+              label: 'seller.start_selling'.tr(),
+              icon: Icons.storefront_rounded,
+              onPressed: _goToHome,
+              height: 54,
+            ),
           ),
         ],
       ),
@@ -446,21 +649,22 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
       final elapsed = DateTime.now().difference(_lastCheckTime!);
       if (elapsed < _minCheckInterval) {
         final remaining = _minCheckInterval - elapsed;
-        setState(() {
-          _checkResult = _CheckResult.pending;
-          _statusMessage = 'seller.wait_seconds'.tr(namedArgs: {'seconds': remaining.inSeconds.toString()});
-        });
+        ref.read(_sellerSetupCheckResultProvider.notifier).state =
+            _CheckResult.pending;
+        ref
+            .read(_sellerSetupMessageProvider.notifier)
+            .state = 'seller.wait_seconds'.tr(
+          namedArgs: {'seconds': remaining.inSeconds.toString()},
+        );
         return;
       }
     }
 
     _lastCheckTime = DateTime.now();
 
-    setState(() {
-      _isRefreshing = true;
-      _statusMessage = null;
-      _checkResult = null;
-    });
+    ref.read(_sellerSetupRefreshingProvider.notifier).state = true;
+    ref.read(_sellerSetupMessageProvider.notifier).state = null;
+    ref.read(_sellerSetupCheckResultProvider.notifier).state = null;
 
     try {
       // Use refreshSellerStatusProvider to manually sync with Stripe backend
@@ -471,41 +675,41 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
       ref.invalidate(userProfileProvider);
 
       if (mounted) {
-        setState(() {
-          _isRefreshing = false;
-          if (status.isComplete) {
-            _checkResult = _CheckResult.success;
-            _statusMessage = 'seller.verification_complete'.tr();
-          } else {
-            _checkResult = _CheckResult.pending;
-            _statusMessage = 'seller.verification_in_progress'.tr();
-          }
-        });
+        ref.read(_sellerSetupRefreshingProvider.notifier).state = false;
+        if (status.isComplete) {
+          ref.read(_sellerSetupCheckResultProvider.notifier).state =
+              _CheckResult.success;
+          ref.read(_sellerSetupMessageProvider.notifier).state =
+              'seller.verification_complete'.tr();
+        } else {
+          ref.read(_sellerSetupCheckResultProvider.notifier).state =
+              _CheckResult.pending;
+          ref.read(_sellerSetupMessageProvider.notifier).state =
+              'seller.verification_in_progress'.tr();
+        }
 
         // Clear message after 5 seconds
         Future.delayed(const Duration(seconds: 5), () {
           if (mounted) {
-            setState(() {
-              _statusMessage = null;
-              _checkResult = null;
-            });
+            ref.read(_sellerSetupMessageProvider.notifier).state = null;
+            ref.read(_sellerSetupCheckResultProvider.notifier).state = null;
           }
         });
       }
     } catch (e) {
       if (mounted) {
-        setState(() {
-          _isRefreshing = false;
-          _checkResult = _CheckResult.error;
-          _statusMessage = 'seller.status_check_failed'.tr();
-        });
+        ref.read(_sellerSetupRefreshingProvider.notifier).state = false;
+        ref.read(_sellerSetupCheckResultProvider.notifier).state =
+            _CheckResult.error;
+        ref.read(_sellerSetupMessageProvider.notifier).state =
+            'seller.status_check_failed'.tr();
       }
     }
   }
 
   Future<void> _goToHome() async {
     // Show loading indicator
-    setState(() => _isRefreshing = true);
+    ref.read(_sellerSetupRefreshingProvider.notifier).state = true;
 
     try {
       // Call backend to sync Stripe status with database
@@ -520,7 +724,9 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
 
     if (mounted) {
       // Use pushNamedAndRemoveUntil to properly update browser URL on web
-      Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
+      Navigator.of(
+        context,
+      ).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
     }
   }
 }

@@ -20,7 +20,6 @@ import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/features/profile/profile_viewmodel.dart';
 import 'package:origna_gta/features/subscription/subscription_provider.dart';
 
-
 part 'parts/profile_header.dart';
 part 'parts/profile_settings_section.dart';
 
@@ -38,28 +37,41 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final userProfileAsync = ref.watch(userProfileProvider);
-    final profileState = ref.watch(profileViewModelProvider);
+    final isExportLoading = ref.watch(
+      profileViewModelProvider.select((s) => s.isLoading),
+    );
     final viewModel = ref.read(profileViewModelProvider.notifier);
     final currentUser = ref.watch(currentUserProvider);
     final themeMode = ref.watch(themeModeProvider);
-    final isPremium = ref.watch(subscriptionStreamProvider).whenOrNull(data: (s) => s?.isPremium) ?? userProfileAsync.valueOrNull?.isPremium ?? false;
+    final isPremium =
+        ref.watch(
+          subscriptionStreamProvider.select((a) => a.valueOrNull?.isPremium),
+        ) ??
+        userProfileAsync.valueOrNull?.isPremium ??
+        false;
 
     return ProfileScreenLayout(
       userProfileAsync: userProfileAsync,
       currentUser: currentUser,
-      isExportLoading: profileState.isLoading,
+      isExportLoading: isExportLoading,
       themeMode: themeMode,
       isPremium: isPremium,
       onSignIn: () => Navigator.pushNamed(context, AppRoutes.login),
       onSignOut: () async {
         await viewModel.signOut();
         if (context.mounted) {
-          Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
+          Navigator.of(
+            context,
+          ).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
         }
       },
-      onDeleteAccountRequested: () => showDialog(context: context, builder: (context) => const _DeleteAccountDialog()),
+      onDeleteAccountRequested: () => showDialog(
+        context: context,
+        builder: (context) => const _DeleteAccountDialog(),
+      ),
       onExportData: () => viewModel.exportData(),
-      onThemeChange: (mode) => ref.read(themeModeProvider.notifier).state = mode,
+      onThemeChange: (mode) =>
+          ref.read(themeModeProvider.notifier).state = mode,
       onLanguageChange: (lang) async {
         final newLocale = Locale(lang);
         await context.setLocale(newLocale);
@@ -71,7 +83,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   @override
   void initState() {
     super.initState();
-    _profileSubscription = ref.listenManual(profileViewModelProvider, (_, next) {
+    _profileSubscription = ref.listenManual(profileViewModelProvider, (
+      _,
+      next,
+    ) {
       if (!mounted) return;
       if (next.successMessage != null) {
         ScaffoldMessenger.of(context).showSnackBar(

@@ -20,9 +20,23 @@ Future<void> showRatingDialog({
 }) {
   return showDialog(
     context: context,
-    builder: (context) => RatingDialog(orderId: orderId, productId: productId, productName: productName, onRatingSubmitted: onRatingSubmitted),
+    builder: (context) => RatingDialog(
+      orderId: orderId,
+      productId: productId,
+      productName: productName,
+      onRatingSubmitted: onRatingSubmitted,
+    ),
   );
 }
+
+// ─── Riverpod state for RatingDialog ─────────────────────────────────────────
+final _ratingSelectedProvider = StateProvider.autoDispose<int>((ref) => 0);
+final _ratingSubmittingProvider = StateProvider.autoDispose<bool>(
+  (ref) => false,
+);
+final _ratingImagesProvider = StateProvider.autoDispose<List<Uint8List>>(
+  (ref) => [],
+);
 
 /// Documentation for RatingDialog
 class RatingDialog extends ConsumerStatefulWidget {
@@ -31,7 +45,13 @@ class RatingDialog extends ConsumerStatefulWidget {
   final String productName;
   final VoidCallback? onRatingSubmitted;
 
-  const RatingDialog({super.key, required this.orderId, required this.productId, required this.productName, this.onRatingSubmitted});
+  const RatingDialog({
+    super.key,
+    required this.orderId,
+    required this.productId,
+    required this.productName,
+    this.onRatingSubmitted,
+  });
 
   @override
   ConsumerState<RatingDialog> createState() => _RatingDialogState();
@@ -46,7 +66,11 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final isPremium = ref.watch(subscriptionStreamProvider.select((a) => a.valueOrNull?.isPremium)) ?? false;
+    final isPremium =
+        ref.watch(
+          subscriptionStreamProvider.select((a) => a.valueOrNull?.isPremium),
+        ) ??
+        false;
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       title: Text('rating.title'.tr()),
@@ -62,14 +86,22 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
               overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 16),
-            Text('rating.prompt'.tr(), style: const TextStyle(color: DesignTokens.textSecondary)),
+            Text(
+              'rating.prompt'.tr(),
+              style: const TextStyle(color: DesignTokens.textSecondary),
+            ),
             const SizedBox(height: 16),
             _buildStarRating(),
             const SizedBox(height: 8),
             Center(
               child: Text(
                 _getRatingText(),
-                style: TextStyle(color: _selectedRating > 0 ? DesignTokens.warning : DesignTokens.textSecondary, fontWeight: FontWeight.w500),
+                style: TextStyle(
+                  color: _selectedRating > 0
+                      ? DesignTokens.warning
+                      : DesignTokens.textSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -84,7 +116,9 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
                 hintText: 'rating.review_body_hint'.tr(),
                 alignLabelWithHint: true,
                 counterText: '',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -97,15 +131,25 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
         Semantics(
           button: true,
           label: 'rating.cancel_label'.tr(),
-          child: TextButton(onPressed: _isSubmitting ? null : () => Navigator.pop(context), child: Text('common.cancel'.tr())),
+          child: TextButton(
+            onPressed: _isSubmitting ? null : () => Navigator.pop(context),
+            child: Text('common.cancel'.tr()),
+          ),
         ),
         Semantics(
           button: true,
           label: 'rating.submit_label'.tr(),
           child: ElevatedButton(
-            onPressed: (_selectedRating == 0 || _isSubmitting) ? null : _submitRating,
-            style: ElevatedButton.styleFrom(backgroundColor: DesignTokens.primary, foregroundColor: DesignTokens.white),
-            child: _isSubmitting ? const ModernLoadingIndicator.small(color: DesignTokens.white) : Text('common.submit'.tr()),
+            onPressed: (_selectedRating == 0 || _isSubmitting)
+                ? null
+                : _submitRating,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: DesignTokens.primary,
+              foregroundColor: DesignTokens.white,
+            ),
+            child: _isSubmitting
+                ? const ModernLoadingIndicator.small(color: DesignTokens.white)
+                : Text('common.submit'.tr()),
           ),
         ),
       ],
@@ -127,7 +171,10 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
           margin: const EdgeInsets.only(right: 8),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(8),
-            image: DecorationImage(image: MemoryImage(bytes), fit: BoxFit.cover),
+            image: DecorationImage(
+              image: MemoryImage(bytes),
+              fit: BoxFit.cover,
+            ),
           ),
         ),
         Positioned(
@@ -137,8 +184,15 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
             onTap: () => setState(() => _reviewImages.removeAt(index)),
             child: Container(
               padding: const EdgeInsets.all(2),
-              decoration: BoxDecoration(color: DesignTokens.black.withValues(alpha: 0.54), shape: BoxShape.circle),
-              child: const Icon(Icons.close, color: DesignTokens.white, size: 12),
+              decoration: BoxDecoration(
+                color: DesignTokens.black.withValues(alpha: 0.54),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.close,
+                color: DesignTokens.white,
+                size: 12,
+              ),
             ),
           ),
         ),
@@ -154,18 +208,35 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
           children: [
             Text(
               'rating.add_photos'.tr(),
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: DesignTokens.textSecondary),
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: DesignTokens.textSecondary,
+              ),
             ),
             const SizedBox(width: 4),
             if (isPremium)
-              Text('(${_reviewImages.length}/3)', style: const TextStyle(fontSize: 12, color: DesignTokens.textDisabled))
+              Text(
+                '(${_reviewImages.length}/3)',
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: DesignTokens.textDisabled,
+                ),
+              )
             else
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(gradient: DesignTokens.primaryGradient, borderRadius: BorderRadius.circular(4)),
+                decoration: BoxDecoration(
+                  gradient: DesignTokens.primaryGradient,
+                  borderRadius: BorderRadius.circular(4),
+                ),
                 child: Text(
                   'common.premium'.tr(),
-                  style: const TextStyle(fontSize: 10, color: DesignTokens.white, fontWeight: FontWeight.w700),
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: DesignTokens.white,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
           ],
@@ -181,7 +252,10 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
               },
               child: Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 12,
+                  horizontal: 10,
+                ),
                 decoration: BoxDecoration(
                   color: DesignTokens.surface,
                   borderRadius: BorderRadius.circular(8),
@@ -189,12 +263,26 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.lock_rounded, color: DesignTokens.textDisabled, size: 20),
+                    const Icon(
+                      Icons.lock_rounded,
+                      color: DesignTokens.textDisabled,
+                      size: 20,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: Text('rating.photos_premium_only'.tr(), style: const TextStyle(fontSize: 12, color: DesignTokens.textSecondary)),
+                      child: Text(
+                        'rating.photos_premium_only'.tr(),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: DesignTokens.textSecondary,
+                        ),
+                      ),
                     ),
-                    const Icon(Icons.chevron_right_rounded, color: DesignTokens.textDisabled, size: 18),
+                    const Icon(
+                      Icons.chevron_right_rounded,
+                      color: DesignTokens.textDisabled,
+                      size: 18,
+                    ),
                   ],
                 ),
               ),
@@ -203,7 +291,9 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
         else
           Row(
             children: [
-              ..._reviewImages.asMap().entries.map((entry) => _buildImageThumb(entry.key, entry.value)),
+              ..._reviewImages.asMap().entries.map(
+                (entry) => _buildImageThumb(entry.key, entry.value),
+              ),
               if (_reviewImages.length < 3)
                 GestureDetector(
                   onTap: _pickImage,
@@ -212,11 +302,18 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
                     height: 60,
                     margin: const EdgeInsets.only(right: 8),
                     decoration: BoxDecoration(
-                      border: Border.all(color: DesignTokens.outlineVariant, style: BorderStyle.solid),
+                      border: Border.all(
+                        color: DesignTokens.outlineVariant,
+                        style: BorderStyle.solid,
+                      ),
                       borderRadius: BorderRadius.circular(8),
                       color: DesignTokens.surface,
                     ),
-                    child: const Icon(Icons.add_photo_alternate_outlined, color: DesignTokens.textSecondary, size: 28),
+                    child: const Icon(
+                      Icons.add_photo_alternate_outlined,
+                      color: DesignTokens.textSecondary,
+                      size: 28,
+                    ),
                   ),
                 ),
             ],
@@ -232,14 +329,22 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
         final starNumber = index + 1;
         return Semantics(
           button: true,
-          label: 'rating.star_label'.tr(namedArgs: {'count': starNumber.toString()}),
+          label: 'rating.star_label'.tr(
+            namedArgs: {'count': starNumber.toString()},
+          ),
           child: GestureDetector(
             onTap: () {
               setState(() => _selectedRating = starNumber);
             },
             child: Padding(
-              padding: const EdgeInsets.all(4), // WCAG 2.5.8: 4+40+4=48dp touch target
-              child: Icon(starNumber <= _selectedRating ? Icons.star : Icons.star_border, color: DesignTokens.warning, size: 40),
+              padding: const EdgeInsets.all(
+                4,
+              ), // WCAG 2.5.8: 4+40+4=48dp touch target
+              child: Icon(
+                starNumber <= _selectedRating ? Icons.star : Icons.star_border,
+                color: DesignTokens.warning,
+                size: 40,
+              ),
             ),
           ),
         );
@@ -265,7 +370,11 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
   }
 
   Future<void> _pickImage() async {
-    final picked = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 80, maxWidth: 1200);
+    final picked = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+      maxWidth: 1200,
+    );
     if (picked == null) return;
     final bytes = await picked.readAsBytes();
     if (mounted) setState(() => _reviewImages.add(bytes));
@@ -282,7 +391,9 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
       widget.orderId,
       widget.productId,
       _selectedRating,
-      reviewImages: _reviewImages.isNotEmpty ? List.unmodifiable(_reviewImages) : null,
+      reviewImages: _reviewImages.isNotEmpty
+          ? List.unmodifiable(_reviewImages)
+          : null,
       reviewText: reviewText.isNotEmpty ? reviewText : null,
     );
 
@@ -290,11 +401,20 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
 
     if (success) {
       navigator.pop();
-      messenger.showSnackBar(SnackBar(content: Text('rating.thank_you'.tr()), backgroundColor: DesignTokens.success));
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('rating.thank_you'.tr()),
+          backgroundColor: DesignTokens.success,
+        ),
+      );
       widget.onRatingSubmitted?.call();
     } else {
-      final error = ref.read(productRatingViewModelProvider).errorMessage ?? 'rating.error_submitting'.tr();
-      messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: DesignTokens.error));
+      final error =
+          ref.read(productRatingViewModelProvider).errorMessage ??
+          'rating.error_submitting'.tr();
+      messenger.showSnackBar(
+        SnackBar(content: Text(error), backgroundColor: DesignTokens.error),
+      );
       setState(() => _isSubmitting = false);
     }
   }

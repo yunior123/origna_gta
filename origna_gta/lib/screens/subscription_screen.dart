@@ -17,8 +17,7 @@ class SubscriptionScreen extends ConsumerStatefulWidget {
   const SubscriptionScreen({super.key});
 
   @override
-  ConsumerState<SubscriptionScreen> createState() =>
-      _SubscriptionScreenState();
+  ConsumerState<SubscriptionScreen> createState() => _SubscriptionScreenState();
 }
 
 class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
@@ -31,10 +30,14 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
+      decoration: BoxDecoration(
+        gradient: DesignTokens.backgroundGradient(isDark: isDark),
+      ),
       child: Scaffold(
         backgroundColor: DesignTokens.transparent,
-        appBar: AppBarFactory.simple(title: 'subscription.premium_membership'.tr()),
+        appBar: AppBarFactory.simple(
+          title: 'subscription.premium_membership'.tr(),
+        ),
         body: subAsync.when(
           loading: () => const Center(child: ModernLoadingIndicator()),
           error: (e, _) => Center(
@@ -43,7 +46,11 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.error_outline, size: 48, color: DesignTokens.error),
+                  Icon(
+                    Icons.error_outline,
+                    size: 48,
+                    color: DesignTokens.error,
+                  ),
                   const SizedBox(height: 12),
                   Text(
                     'common.error_loading'.tr(),
@@ -54,7 +61,8 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
               ),
             ),
           ),
-          data: (subInfo) => _buildContent(context, ref, vmState, subInfo, isDark),
+          data: (subInfo) =>
+              _buildContent(context, ref, vmState, subInfo, isDark),
         ),
       ),
     );
@@ -83,7 +91,14 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
     super.dispose();
   }
 
-  Widget _buildBenefitCard(IconData icon, Color iconColor, String title, String subtitle, {String? semanticsLabel, bool isDark = false}) {
+  Widget _buildBenefitCard(
+    IconData icon,
+    Color iconColor,
+    String title,
+    String subtitle, {
+    String? semanticsLabel,
+    bool isDark = false,
+  }) {
     return Semantics(
       label: semanticsLabel,
       container: true,
@@ -93,8 +108,16 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
         decoration: BoxDecoration(
           color: isDark ? DesignTokens.darkCard : DesignTokens.white,
           borderRadius: BorderRadius.circular(16),
-          border: isDark ? Border.all(color: DesignTokens.white.withValues(alpha: 0.08)) : null,
-          boxShadow: [BoxShadow(color: DesignTokens.black.withValues(alpha: isDark ? 0.2 : 0.05), blurRadius: 12, offset: const Offset(0, 4))],
+          border: isDark
+              ? Border.all(color: DesignTokens.white.withValues(alpha: 0.08))
+              : null,
+          boxShadow: [
+            BoxShadow(
+              color: DesignTokens.black.withValues(alpha: isDark ? 0.2 : 0.05),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Padding(
           padding: const EdgeInsets.all(14),
@@ -105,7 +128,10 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                 height: 44,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [iconColor.withValues(alpha: 0.15), iconColor.withValues(alpha: 0.05)],
+                    colors: [
+                      iconColor.withValues(alpha: 0.15),
+                      iconColor.withValues(alpha: 0.05),
+                    ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -118,13 +144,35 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary)),
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                        color: isDark
+                            ? DesignTokens.textOnDark
+                            : DesignTokens.textPrimary,
+                      ),
+                    ),
                     const SizedBox(height: 3),
-                    Text(subtitle, style: TextStyle(fontSize: 13, color: isDark ? DesignTokens.textOnDarkSecondary : DesignTokens.textSecondary, height: 1.4)),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: isDark
+                            ? DesignTokens.textOnDarkSecondary
+                            : DesignTokens.textSecondary,
+                        height: 1.4,
+                      ),
+                    ),
                   ],
                 ),
               ),
-              const Icon(Icons.check_circle_rounded, color: DesignTokens.success, size: 20),
+              const Icon(
+                Icons.check_circle_rounded,
+                color: DesignTokens.success,
+                size: 20,
+              ),
             ],
           ),
         ),
@@ -132,308 +180,487 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
     );
   }
 
-  Widget _buildContent(BuildContext context, WidgetRef ref, SubscriptionState vmState, SubscriptionInfo? subInfo, bool isDark) {
+  Widget _buildContent(
+    BuildContext context,
+    WidgetRef ref,
+    SubscriptionState vmState,
+    SubscriptionInfo? subInfo,
+    bool isDark,
+  ) {
     final vm = ref.read(subscriptionViewModelProvider.notifier);
     final isPremium = subInfo?.isPremium ?? false;
-    final userAsync = ref.watch(userProfileProvider);
-    final notifyNew = userAsync.valueOrNull?.notifyNewProducts ?? false;
-    final notifyTrending = userAsync.valueOrNull?.notifyTrending ?? false;
+    final notifyNew =
+        ref.watch(
+          userProfileProvider.select((a) => a.valueOrNull?.notifyNewProducts),
+        ) ??
+        false;
+    final notifyTrending =
+        ref.watch(
+          userProfileProvider.select((a) => a.valueOrNull?.notifyTrending),
+        ) ??
+        false;
 
     // Benefit icon colours — each gets its own semantic colour
     const benefitIcons = [
-      (Icons.percent_rounded,         DesignTokens.success),
+      (Icons.percent_rounded, DesignTokens.success),
       (Icons.chat_bubble_outline_rounded, DesignTokens.primary),
       (Icons.question_answer_outlined, DesignTokens.secondary),
       (Icons.notifications_active_outlined, DesignTokens.warning),
-      (Icons.photo_camera_outlined,   DesignTokens.tertiary),
+      (Icons.photo_camera_outlined, DesignTokens.tertiary),
     ];
 
     return Align(
       alignment: Alignment.topCenter,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: ResponsiveBreakpoints.contentMaxWidth),
-    child: SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // ── Hero section (dark gradient, premium feel) ──────────────────
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [DesignTokens.gradientStart, DesignTokens.gradientMiddle, DesignTokens.gradientEnd],
-              ),
-            ),
-            child: Stack(
-              children: [
-                // Decorative blobs
-                Positioned(
-                  top: -30, right: -30,
-                  child: Container(
-                    width: 160, height: 160,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: RadialGradient(colors: [DesignTokens.accent.withValues(alpha: 0.18), DesignTokens.transparent]),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  bottom: -20, left: -40,
-                  child: Container(
-                    width: 140, height: 140,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: RadialGradient(colors: [DesignTokens.tertiary.withValues(alpha: 0.15), DesignTokens.transparent]),
-                    ),
-                  ),
-                ),
-                // Content
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 36, 24, 36),
-                  child: Column(
-                    children: [
-                      // Mascot + Glow ring row
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          // Mascot cheering on the left
-                          _PremiumMascot(isPremium: isPremium),
-                          const SizedBox(width: 16),
-                      // Glow ring + icon
-                      Container(
-                        width: 100,
-                        height: 100,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: const LinearGradient(
-                            colors: [DesignTokens.warning, DesignTokens.tertiary],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          boxShadow: [
-                            BoxShadow(color: DesignTokens.warning.withValues(alpha: 0.5), blurRadius: 32, spreadRadius: 4),
-                            BoxShadow(color: DesignTokens.warning.withValues(alpha: 0.2), blurRadius: 60, spreadRadius: 10),
-                          ],
-                        ),
-                        child: const Icon(Icons.workspace_premium, color: DesignTokens.white, size: 50),
-                      ),
-                        ], // Row children
-                      ), // Row
-                      const SizedBox(height: 20),
-                      // "✨ PREMIUM" chip badge
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: DesignTokens.white.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: DesignTokens.white.withValues(alpha: 0.3)),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Text('✨', style: TextStyle(fontSize: 13)),
-                            const SizedBox(width: 6),
-                            Text(
-                              isPremium ? 'subscription.badge_premium_member'.tr() : 'subscription.badge_unlock_premium'.tr(),
-                              style: const TextStyle(color: DesignTokens.white, fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 1.2),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      Semantics(
-                        label: isPremium ? 'lbl-premium-member' : 'lbl-upgrade-to-premium',
-                        container: true,
-                        excludeSemantics: true,
-                        child: Text(
-                          isPremium ? 'subscription.youre_premium_member'.tr() : 'subscription.upgrade_to_premium'.tr(),
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: DesignTokens.white, height: 1.2),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Semantics(
-                        label: isPremium ? 'lbl-enjoy-benefits' : 'lbl-price-monthly',
-                        container: true,
-                        excludeSemantics: true,
-                        child: Text(
-                          isPremium ? 'subscription.enjoy_benefits'.tr() : 'subscription.price_monthly'.tr(),
-                          textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 15, color: DesignTokens.white.withValues(alpha: 0.8)),
-                        ),
-                      ),
+        constraints: const BoxConstraints(
+          maxWidth: ResponsiveBreakpoints.contentMaxWidth,
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // ── Hero section (dark gradient, premium feel) ──────────────────
+              Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      DesignTokens.gradientStart,
+                      DesignTokens.gradientMiddle,
+                      DesignTokens.gradientEnd,
                     ],
                   ),
                 ),
-              ],
-            ),
-          ),
-
-          // ── Benefits list ─────────────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildBenefitCard(
-                  benefitIcons[0].$1, benefitIcons[0].$2,
-                  'subscription.no_platform_fee'.tr(), 'subscription.no_platform_fee_desc'.tr(),
-                  semanticsLabel: 'benefit-no-platform-fee',
-                  isDark: isDark,
-                ),
-                _buildBenefitCard(
-                  benefitIcons[1].$1, benefitIcons[1].$2,
-                  'subscription.chat_with_sellers'.tr(), 'subscription.chat_with_sellers_desc'.tr(),
-                  semanticsLabel: 'benefit-chat-with-sellers',
-                  isDark: isDark,
-                ),
-                _buildBenefitCard(
-                  benefitIcons[2].$1, benefitIcons[2].$2,
-                  'subscription.ask_questions'.tr(), 'subscription.ask_questions_desc'.tr(),
-                  semanticsLabel: 'benefit-ask-questions',
-                  isDark: isDark,
-                ),
-                _buildBenefitCard(
-                  benefitIcons[3].$1, benefitIcons[3].$2,
-                  'subscription.smart_notifications'.tr(), 'subscription.smart_notifications_desc'.tr(),
-                  semanticsLabel: 'benefit-smart-notifications',
-                  isDark: isDark,
-                ),
-                _buildBenefitCard(
-                  benefitIcons[4].$1, benefitIcons[4].$2,
-                  'subscription.photo_reviews'.tr(), 'subscription.photo_reviews_desc'.tr(),
-                  semanticsLabel: 'benefit-photo-reviews',
-                  isDark: isDark,
-                ),
-                const SizedBox(height: 24),
-
-                if (isPremium) ...[
-                  _buildStatusCard(subInfo!, isDark),
-                  const SizedBox(height: 24),
-                  _buildNotificationPrefs(ref, vm, notifyNew, notifyTrending, isDark),
-                  const SizedBox(height: 24),
-                  if (!subInfo.cancelAtPeriodEnd)
-                    Semantics(
-                      button: true,
-                      label: 'btn-cancel-subscription',
-                      child: OutlinedButton(
-                        onPressed: vmState.isLoading ? null : () => _confirmCancel(context, vm),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: DesignTokens.error,
-                          side: BorderSide(color: DesignTokens.error),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: Stack(
+                  children: [
+                    // Decorative blobs
+                    Positioned(
+                      top: -30,
+                      right: -30,
+                      child: Container(
+                        width: 160,
+                        height: 160,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: RadialGradient(
+                            colors: [
+                              DesignTokens.accent.withValues(alpha: 0.18),
+                              DesignTokens.transparent,
+                            ],
+                          ),
                         ),
-                        child: vmState.isLoading
-                            ? const ModernLoadingIndicator(size: 20)
-                            : Text('subscription.cancel_subscription'.tr(), style: const TextStyle(fontWeight: FontWeight.w600)),
                       ),
-                    )
-                  else
-                    Column(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: DesignTokens.warning.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: DesignTokens.warning.withValues(alpha: 0.3)),
-                          ),
-                          child: Text(
-                            'subscription.subscription_ends_on'.tr(namedArgs: {'date': _formatDate(subInfo.currentPeriodEnd)}),
-                            textAlign: TextAlign.center,
-                            style: TextStyle(color: DesignTokens.warning, fontWeight: FontWeight.w500),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Semantics(
-                          button: true,
-                          label: 'btn-reactivate-subscription',
-                          child: OutlinedButton(
-                            onPressed: vmState.isLoading ? null : () => vm.reactivateSubscription(),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: DesignTokens.primary,
-                              side: BorderSide(color: DesignTokens.primary),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
-                            child: vmState.isLoading
-                                ? const ModernLoadingIndicator(size: 20)
-                                : Text('subscription.reactivate_subscription'.tr(), style: const TextStyle(fontWeight: FontWeight.w600)),
-                          ),
-                        ),
-                      ],
                     ),
-                ] else ...[
-                  if (vmState.errorMessage != null)
+                    Positioned(
+                      bottom: -20,
+                      left: -40,
+                      child: Container(
+                        width: 140,
+                        height: 140,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: RadialGradient(
+                            colors: [
+                              DesignTokens.tertiary.withValues(alpha: 0.15),
+                              DesignTokens.transparent,
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Content
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Text(
-                        vmState.errorMessage!,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: DesignTokens.error, fontSize: 14),
-                      ),
-                    ),
-                  // Premium CTA with golden gradient
-                  Semantics(
-                    button: true,
-                    label: 'btn-subscribe-premium',
-                    child: Container(
-                      height: 56,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [DesignTokens.tertiary, DesignTokens.warning, DesignTokens.tertiary],
-                          begin: Alignment.centerLeft,
-                          end: Alignment.centerRight,
-                        ),
-                        borderRadius: BorderRadius.circular(DesignTokens.radius16),
-                        boxShadow: [BoxShadow(color: DesignTokens.warning.withValues(alpha: 0.4), blurRadius: 20, offset: const Offset(0, 8))],
-                      ),
-                      child: vmState.isLoading
-                          ? const Center(child: ModernLoadingIndicator(size: 24, color: DesignTokens.white))
-                          : Material(
-                              color: DesignTokens.transparent,
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(16),
-                                onTap: vmState.isLoading ? null : vm.createSubscription,
-                                child: Center(
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Icon(Icons.workspace_premium, color: DesignTokens.white, size: 22),
-                                      const SizedBox(width: 10),
-                                      Text(
-                                        'subscription.subscribe_button'.tr(),
-                                        style: const TextStyle(color: DesignTokens.white, fontWeight: FontWeight.w800, fontSize: 16, letterSpacing: 0.3),
-                                      ),
+                      padding: const EdgeInsets.fromLTRB(24, 36, 24, 36),
+                      child: Column(
+                        children: [
+                          // Mascot + Glow ring row
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              // Mascot cheering on the left
+                              _PremiumMascot(isPremium: isPremium),
+                              const SizedBox(width: 16),
+                              // Glow ring + icon
+                              Container(
+                                width: 100,
+                                height: 100,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: const LinearGradient(
+                                    colors: [
+                                      DesignTokens.warning,
+                                      DesignTokens.tertiary,
                                     ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
                                   ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: DesignTokens.warning.withValues(
+                                        alpha: 0.5,
+                                      ),
+                                      blurRadius: 32,
+                                      spreadRadius: 4,
+                                    ),
+                                    BoxShadow(
+                                      color: DesignTokens.warning.withValues(
+                                        alpha: 0.2,
+                                      ),
+                                      blurRadius: 60,
+                                      spreadRadius: 10,
+                                    ),
+                                  ],
+                                ),
+                                child: const Icon(
+                                  Icons.workspace_premium,
+                                  color: DesignTokens.white,
+                                  size: 50,
+                                ),
+                              ),
+                            ], // Row children
+                          ), // Row
+                          const SizedBox(height: 20),
+                          // "✨ PREMIUM" chip badge
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: DesignTokens.white.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: DesignTokens.white.withValues(
+                                  alpha: 0.3,
                                 ),
                               ),
                             ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text('✨', style: TextStyle(fontSize: 13)),
+                                const SizedBox(width: 6),
+                                Text(
+                                  isPremium
+                                      ? 'subscription.badge_premium_member'.tr()
+                                      : 'subscription.badge_unlock_premium'
+                                            .tr(),
+                                  style: const TextStyle(
+                                    color: DesignTokens.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 1.2,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          Semantics(
+                            label: isPremium
+                                ? 'lbl-premium-member'
+                                : 'lbl-upgrade-to-premium',
+                            container: true,
+                            excludeSemantics: true,
+                            child: Text(
+                              isPremium
+                                  ? 'subscription.youre_premium_member'.tr()
+                                  : 'subscription.upgrade_to_premium'.tr(),
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 26,
+                                fontWeight: FontWeight.w800,
+                                color: DesignTokens.white,
+                                height: 1.2,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Semantics(
+                            label: isPremium
+                                ? 'lbl-enjoy-benefits'
+                                : 'lbl-price-monthly',
+                            container: true,
+                            excludeSemantics: true,
+                            child: Text(
+                              isPremium
+                                  ? 'subscription.enjoy_benefits'.tr()
+                                  : 'subscription.price_monthly'.tr(),
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 15,
+                                color: DesignTokens.white.withValues(
+                                  alpha: 0.8,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
-                const SizedBox(height: 40),
-              ],
-            ),
+                  ],
+                ),
+              ),
+
+              // ── Benefits list ─────────────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildBenefitCard(
+                      benefitIcons[0].$1,
+                      benefitIcons[0].$2,
+                      'subscription.no_platform_fee'.tr(),
+                      'subscription.no_platform_fee_desc'.tr(),
+                      semanticsLabel: 'benefit-no-platform-fee',
+                      isDark: isDark,
+                    ),
+                    _buildBenefitCard(
+                      benefitIcons[1].$1,
+                      benefitIcons[1].$2,
+                      'subscription.chat_with_sellers'.tr(),
+                      'subscription.chat_with_sellers_desc'.tr(),
+                      semanticsLabel: 'benefit-chat-with-sellers',
+                      isDark: isDark,
+                    ),
+                    _buildBenefitCard(
+                      benefitIcons[2].$1,
+                      benefitIcons[2].$2,
+                      'subscription.ask_questions'.tr(),
+                      'subscription.ask_questions_desc'.tr(),
+                      semanticsLabel: 'benefit-ask-questions',
+                      isDark: isDark,
+                    ),
+                    _buildBenefitCard(
+                      benefitIcons[3].$1,
+                      benefitIcons[3].$2,
+                      'subscription.smart_notifications'.tr(),
+                      'subscription.smart_notifications_desc'.tr(),
+                      semanticsLabel: 'benefit-smart-notifications',
+                      isDark: isDark,
+                    ),
+                    _buildBenefitCard(
+                      benefitIcons[4].$1,
+                      benefitIcons[4].$2,
+                      'subscription.photo_reviews'.tr(),
+                      'subscription.photo_reviews_desc'.tr(),
+                      semanticsLabel: 'benefit-photo-reviews',
+                      isDark: isDark,
+                    ),
+                    const SizedBox(height: 24),
+
+                    if (isPremium) ...[
+                      _buildStatusCard(subInfo!, isDark),
+                      const SizedBox(height: 24),
+                      _buildNotificationPrefs(
+                        ref,
+                        vm,
+                        notifyNew,
+                        notifyTrending,
+                        isDark,
+                      ),
+                      const SizedBox(height: 24),
+                      if (!subInfo.cancelAtPeriodEnd)
+                        Semantics(
+                          button: true,
+                          label: 'btn-cancel-subscription',
+                          child: OutlinedButton(
+                            onPressed: vmState.isLoading
+                                ? null
+                                : () => _confirmCancel(context, vm),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: DesignTokens.error,
+                              side: BorderSide(color: DesignTokens.error),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: vmState.isLoading
+                                ? const ModernLoadingIndicator(size: 20)
+                                : Text(
+                                    'subscription.cancel_subscription'.tr(),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                          ),
+                        )
+                      else
+                        Column(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: DesignTokens.warning.withValues(
+                                  alpha: 0.1,
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: DesignTokens.warning.withValues(
+                                    alpha: 0.3,
+                                  ),
+                                ),
+                              ),
+                              child: Text(
+                                'subscription.subscription_ends_on'.tr(
+                                  namedArgs: {
+                                    'date': _formatDate(
+                                      subInfo.currentPeriodEnd,
+                                    ),
+                                  },
+                                ),
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: DesignTokens.warning,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Semantics(
+                              button: true,
+                              label: 'btn-reactivate-subscription',
+                              child: OutlinedButton(
+                                onPressed: vmState.isLoading
+                                    ? null
+                                    : () => vm.reactivateSubscription(),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: DesignTokens.primary,
+                                  side: BorderSide(color: DesignTokens.primary),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 14,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                child: vmState.isLoading
+                                    ? const ModernLoadingIndicator(size: 20)
+                                    : Text(
+                                        'subscription.reactivate_subscription'
+                                            .tr(),
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                              ),
+                            ),
+                          ],
+                        ),
+                    ] else ...[
+                      if (vmState.errorMessage != null)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Text(
+                            vmState.errorMessage!,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: DesignTokens.error,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      // Premium CTA with golden gradient
+                      Semantics(
+                        button: true,
+                        label: 'btn-subscribe-premium',
+                        child: Container(
+                          height: 56,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [
+                                DesignTokens.tertiary,
+                                DesignTokens.warning,
+                                DesignTokens.tertiary,
+                              ],
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                            ),
+                            borderRadius: BorderRadius.circular(
+                              DesignTokens.radius16,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: DesignTokens.warning.withValues(
+                                  alpha: 0.4,
+                                ),
+                                blurRadius: 20,
+                                offset: const Offset(0, 8),
+                              ),
+                            ],
+                          ),
+                          child: vmState.isLoading
+                              ? const Center(
+                                  child: ModernLoadingIndicator(
+                                    size: 24,
+                                    color: DesignTokens.white,
+                                  ),
+                                )
+                              : Material(
+                                  color: DesignTokens.transparent,
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(16),
+                                    onTap: vmState.isLoading
+                                        ? null
+                                        : vm.createSubscription,
+                                    child: Center(
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(
+                                            Icons.workspace_premium,
+                                            color: DesignTokens.white,
+                                            size: 22,
+                                          ),
+                                          const SizedBox(width: 10),
+                                          Text(
+                                            'subscription.subscribe_button'
+                                                .tr(),
+                                            style: const TextStyle(
+                                              color: DesignTokens.white,
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 16,
+                                              letterSpacing: 0.3,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 40),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
-    ),
+        ),
       ), // ConstrainedBox
     ); // Align
   }
 
-  Widget _buildNotificationPrefs(WidgetRef ref, SubscriptionViewModel vm, bool notifyNew, bool notifyTrending, bool isDark) {
+  Widget _buildNotificationPrefs(
+    WidgetRef ref,
+    SubscriptionViewModel vm,
+    bool notifyNew,
+    bool notifyTrending,
+    bool isDark,
+  ) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
         color: isDark ? DesignTokens.darkSurface : DesignTokens.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isDark ? DesignTokens.darkOutline : DesignTokens.outline),
+        border: Border.all(
+          color: isDark ? DesignTokens.darkOutline : DesignTokens.outline,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -442,11 +669,18 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Text(
               'subscription.notification_preferences'.tr(),
-              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary),
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                color: isDark
+                    ? DesignTokens.textOnDark
+                    : DesignTokens.textPrimary,
+              ),
             ),
           ),
           GestureDetector(
-            onTap: () => vm.updateNotificationPreferences(notifyNewProducts: !notifyNew),
+            onTap: () =>
+                vm.updateNotificationPreferences(notifyNewProducts: !notifyNew),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
               child: Row(
@@ -455,8 +689,18 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('subscription.new_products'.tr(), style: const TextStyle(fontSize: 14)),
-                        Text('subscription.new_products_desc'.tr(), style: const TextStyle(fontSize: 12, height: 1.5, color: DesignTokens.textSecondary)),
+                        Text(
+                          'subscription.new_products'.tr(),
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                        Text(
+                          'subscription.new_products_desc'.tr(),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            height: 1.5,
+                            color: DesignTokens.textSecondary,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -466,7 +710,9 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                       height: 28,
                       child: Switch.adaptive(
                         value: notifyNew,
-                        onChanged: (val) => vm.updateNotificationPreferences(notifyNewProducts: val),
+                        onChanged: (val) => vm.updateNotificationPreferences(
+                          notifyNewProducts: val,
+                        ),
                         activeThumbColor: DesignTokens.primary,
                       ),
                     ),
@@ -476,7 +722,9 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
             ),
           ),
           GestureDetector(
-            onTap: () => vm.updateNotificationPreferences(notifyTrending: !notifyTrending),
+            onTap: () => vm.updateNotificationPreferences(
+              notifyTrending: !notifyTrending,
+            ),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
               child: Row(
@@ -485,8 +733,17 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('subscription.trending_products'.tr(), style: const TextStyle(fontSize: 14)),
-                        Text('subscription.trending_products_desc'.tr(), style: const TextStyle(fontSize: 12, color: DesignTokens.textSecondary)),
+                        Text(
+                          'subscription.trending_products'.tr(),
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                        Text(
+                          'subscription.trending_products_desc'.tr(),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: DesignTokens.textSecondary,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -496,7 +753,9 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                       height: 28,
                       child: Switch.adaptive(
                         value: notifyTrending,
-                        onChanged: (val) => vm.updateNotificationPreferences(notifyTrending: val),
+                        onChanged: (val) => vm.updateNotificationPreferences(
+                          notifyTrending: val,
+                        ),
                         activeThumbColor: DesignTokens.primary,
                       ),
                     ),
@@ -514,7 +773,12 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [DesignTokens.primary.withValues(alpha: 0.1), DesignTokens.secondary.withValues(alpha: 0.1)]),
+        gradient: LinearGradient(
+          colors: [
+            DesignTokens.primary.withValues(alpha: 0.1),
+            DesignTokens.secondary.withValues(alpha: 0.1),
+          ],
+        ),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: DesignTokens.primary.withValues(alpha: 0.2)),
       ),
@@ -523,14 +787,34 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Flexible(child: Text('subscription.status_label'.tr(), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13))),
+              Flexible(
+                child: Text(
+                  'subscription.status_label'.tr(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: DesignTokens.textSecondary,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
               const SizedBox(width: 8),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(color: DesignTokens.success.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(20)),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: DesignTokens.success.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(20),
+                ),
                 child: Text(
                   info.status.toUpperCase(),
-                  style: TextStyle(color: DesignTokens.success, fontWeight: FontWeight.bold, fontSize: 12),
+                  style: TextStyle(
+                    color: DesignTokens.success,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
                 ),
               ),
             ],
@@ -540,11 +824,27 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Flexible(child: Text('subscription.renews_label'.tr(), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13))),
+                Flexible(
+                  child: Text(
+                    'subscription.renews_label'.tr(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: DesignTokens.textSecondary,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
                 const SizedBox(width: 8),
                 Text(
                   _formatDate(info.currentPeriodEnd),
-                  style: TextStyle(color: isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary, fontWeight: FontWeight.w500, fontSize: 13),
+                  style: TextStyle(
+                    color: isDark
+                        ? DesignTokens.textOnDark
+                        : DesignTokens.textPrimary,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 13,
+                  ),
                 ),
               ],
             ),
@@ -564,7 +864,10 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
           Semantics(
             button: true,
             label: 'btn-keep-premium',
-            child: TextButton(onPressed: () => Navigator.pop(ctx), child: Text('subscription.keep_premium'.tr())),
+            child: TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('subscription.keep_premium'.tr()),
+            ),
           ),
           Semantics(
             button: true,
@@ -574,7 +877,10 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                 Navigator.pop(ctx);
                 vm.cancelSubscription();
               },
-              child: Text('subscription.cancel_subscription'.tr(), style: TextStyle(color: DesignTokens.error)),
+              child: Text(
+                'subscription.cancel_subscription'.tr(),
+                style: TextStyle(color: DesignTokens.error),
+              ),
             ),
           ),
         ],
@@ -620,7 +926,11 @@ class _PremiumMascotState extends State<_PremiumMascot> {
 
   @override
   Widget build(BuildContext context) {
-    return ShopMascot(controller: _controller, size: 72, showSpeechBubble: false);
+    return ShopMascot(
+      controller: _controller,
+      size: 72,
+      showSpeechBubble: false,
+    );
   }
 }
 

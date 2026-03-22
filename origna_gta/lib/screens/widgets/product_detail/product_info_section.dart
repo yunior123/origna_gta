@@ -12,7 +12,6 @@ import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_card.dart';
 import 'package:origna_gta/widgets/premium_paywall_widget.dart';
 
-
 /// Seller info card with metrics and trust badges.
 class SellerInfoCard extends ConsumerWidget {
   final Product product;
@@ -22,7 +21,10 @@ class SellerInfoCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isPremium =
-        ref.watch(subscriptionStreamProvider).valueOrNull?.isPremium ?? false;
+        ref.watch(
+          subscriptionStreamProvider.select((a) => a.valueOrNull?.isPremium),
+        ) ??
+        false;
     final currentUserId = ref.watch(obUserIdProvider);
     final isOwnProduct = currentUserId == product.sellerId;
 
@@ -54,7 +56,9 @@ class SellerInfoCard extends ConsumerWidget {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: isDark ? DesignTokens.white : DesignTokens.textPrimary,
+                    color: isDark
+                        ? DesignTokens.white
+                        : DesignTokens.textPrimary,
                   ),
                 ),
               ),
@@ -89,18 +93,18 @@ class SellerInfoCard extends ConsumerWidget {
                             isScrollControlled: true,
                             backgroundColor: DesignTokens.transparent,
                             builder: (context) => Container(
-                              height:
-                                  MediaQuery.of(context).size.height * 0.7,
+                              height: MediaQuery.of(context).size.height * 0.7,
                               decoration: BoxDecoration(
-                                color:
-                                    Theme.of(context).scaffoldBackgroundColor,
+                                color: Theme.of(
+                                  context,
+                                ).scaffoldBackgroundColor,
                                 borderRadius: const BorderRadius.vertical(
                                   top: Radius.circular(24),
                                 ),
                               ),
                               child: PremiumPaywallWidget(
-                                featureName:
-                                    'subscription.chat_with_sellers'.tr(),
+                                featureName: 'subscription.chat_with_sellers'
+                                    .tr(),
                               ),
                             ),
                           );
@@ -204,7 +208,9 @@ class MetricPill extends StatelessWidget {
         color: isDark ? DesignTokens.darkCard : DesignTokens.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isDark ? DesignTokens.darkOutline : DesignTokens.outlineVariant,
+          color: isDark
+              ? DesignTokens.darkOutline
+              : DesignTokens.outlineVariant,
         ),
       ),
       child: Row(

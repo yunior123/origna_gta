@@ -13,6 +13,20 @@ import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
+// ─── Riverpod state for ReturnRequestScreen ─────────────────────────────────
+final _returnSelectedItemsProvider = StateProvider.autoDispose<Set<String>>(
+  (ref) => {},
+);
+final _returnSelectedReasonProvider = StateProvider.autoDispose<String?>(
+  (ref) => null,
+);
+final _returnIsSubmittingProvider = StateProvider.autoDispose<bool>(
+  (ref) => false,
+);
+final _returnSubmittedProvider = StateProvider.autoDispose<bool>(
+  (ref) => false,
+);
+
 /// Return reason options for the buyer.
 const _returnReasons = [
   ('defective', 'returns.reason_defective'),
@@ -34,11 +48,7 @@ class ReturnRequestScreen extends ConsumerStatefulWidget {
 }
 
 class _ReturnRequestScreenState extends ConsumerState<ReturnRequestScreen> {
-  final _selectedItems = <String>{};
-  String? _selectedReason;
   final _descriptionController = TextEditingController();
-  bool _isSubmitting = false;
-  bool _submitted = false;
 
   @override
   void dispose() {
@@ -50,6 +60,10 @@ class _ReturnRequestScreenState extends ConsumerState<ReturnRequestScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final orderAsync = ref.watch(orderByIdProvider(widget.orderId));
+    final selectedItems = ref.watch(_returnSelectedItemsProvider);
+    final selectedReason = ref.watch(_returnSelectedReasonProvider);
+    final isSubmitting = ref.watch(_returnIsSubmittingProvider);
+    final submitted = ref.watch(_returnSubmittedProvider);
 
     return Container(
       decoration: BoxDecoration(
@@ -58,7 +72,7 @@ class _ReturnRequestScreenState extends ConsumerState<ReturnRequestScreen> {
       child: Scaffold(
         appBar: AppBarFactory.simple(title: 'returns.request_return'.tr()),
         backgroundColor: DesignTokens.transparent,
-        body: _submitted
+        body: submitted
             ? _buildConfirmation(isDark)
             : orderAsync.when(
                 loading: () => const Center(child: ModernLoadingIndicator()),
@@ -97,12 +111,19 @@ class _ReturnRequestScreenState extends ConsumerState<ReturnRequestScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.info_outline, size: 48, color: DesignTokens.textSecondary),
+              Icon(
+                Icons.info_outline,
+                size: 48,
+                color: DesignTokens.textSecondary,
+              ),
               const SizedBox(height: 16),
               Text(
                 'returns.no_eligible_items'.tr(),
                 textAlign: TextAlign.center,
-                style: TextStyle(color: DesignTokens.textSecondary, fontSize: 15),
+                style: TextStyle(
+                  color: DesignTokens.textSecondary,
+                  fontSize: 15,
+                ),
               ),
             ],
           ),
@@ -151,7 +172,7 @@ class _ReturnRequestScreenState extends ConsumerState<ReturnRequestScreen> {
               Semantics(
                 label: 'input-return-reason',
                 child: DropdownButtonFormField<String>(
-                  initialValue: _selectedReason,
+                  initialValue: ref.read(_returnSelectedReasonProvider),
                   decoration: InputDecoration(
                     hintText: 'returns.reason_hint'.tr(),
                     filled: true,
@@ -167,7 +188,8 @@ class _ReturnRequestScreenState extends ConsumerState<ReturnRequestScreen> {
                   }).toList(),
                   onChanged: (value) {
                     if (!mounted) return;
-                    setState(() => _selectedReason = value);
+                    ref.read(_returnSelectedReasonProvider.notifier).state =
+                        value;
                   },
                 ),
               ),
@@ -207,10 +229,13 @@ class _ReturnRequestScreenState extends ConsumerState<ReturnRequestScreen> {
                   button: true,
                   label: 'btn-submit-return',
                   child: ModernButton(
-                    onPressed: _canSubmit ? _submitReturn : null,
+                    onPressed:
+                        _canSubmit(selectedItems, selectedReason, isSubmitting)
+                        ? _submitReturn
+                        : null,
                     label: 'returns.submit'.tr(),
                     icon: Icons.assignment_return,
-                    isLoading: _isSubmitting,
+                    isLoading: isSubmitting,
                   ),
                 ),
               ),
@@ -227,7 +252,8 @@ class _ReturnRequestScreenState extends ConsumerState<ReturnRequestScreen> {
     DateTime? latestDelivery;
     for (final item in order.items) {
       if (item.deliveredAt != null) {
-        if (latestDelivery == null || item.deliveredAt!.isAfter(latestDelivery)) {
+        if (latestDelivery == null ||
+            item.deliveredAt!.isAfter(latestDelivery)) {
           latestDelivery = item.deliveredAt;
         }
       }
@@ -258,9 +284,9 @@ class _ReturnRequestScreenState extends ConsumerState<ReturnRequestScreen> {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'returns.window_notice'.tr(namedArgs: {
-                'days': daysLeft.toString(),
-              }),
+              'returns.window_notice'.tr(
+                namedArgs: {'days': daysLeft.toString()},
+              ),
               style: TextStyle(
                 fontSize: 13,
                 color: DesignTokens.info,
@@ -275,7 +301,8 @@ class _ReturnRequestScreenState extends ConsumerState<ReturnRequestScreen> {
 
   Widget _buildItemTile(OrderItem item, bool isDark) {
     final itemKey = item.cartItemId ?? item.productId;
-    final isSelected = _selectedItems.contains(itemKey);
+    final selectedItems = ref.watch(_returnSelectedItemsProvider);
+    final isSelected = selectedItems.contains(itemKey);
     final imageUrl = item.imageUrls.isNotEmpty ? item.imageUrls.first : null;
 
     return Padding(
@@ -287,13 +314,17 @@ class _ReturnRequestScreenState extends ConsumerState<ReturnRequestScreen> {
           child: InkWell(
             onTap: () {
               if (!mounted) return;
-              setState(() {
-                if (isSelected) {
-                  _selectedItems.remove(itemKey);
-                } else {
-                  _selectedItems.add(itemKey);
-                }
-              });
+              final current = ref.read(_returnSelectedItemsProvider);
+              if (isSelected) {
+                ref.read(_returnSelectedItemsProvider.notifier).state = {
+                  ...current,
+                }..remove(itemKey);
+              } else {
+                ref.read(_returnSelectedItemsProvider.notifier).state = {
+                  ...current,
+                  itemKey,
+                };
+              }
             },
             borderRadius: BorderRadius.circular(DesignTokens.radius12),
             child: Container(
@@ -305,8 +336,8 @@ class _ReturnRequestScreenState extends ConsumerState<ReturnRequestScreen> {
                   color: isSelected
                       ? DesignTokens.primary
                       : (isDark
-                          ? DesignTokens.white.withValues(alpha: 0.08)
-                          : DesignTokens.outlineVariant),
+                            ? DesignTokens.white.withValues(alpha: 0.08)
+                            : DesignTokens.outlineVariant),
                   width: isSelected ? 2 : 1,
                 ),
               ),
@@ -317,13 +348,16 @@ class _ReturnRequestScreenState extends ConsumerState<ReturnRequestScreen> {
                     value: isSelected,
                     onChanged: (val) {
                       if (!mounted) return;
-                      setState(() {
-                        if (val == true) {
-                          _selectedItems.add(itemKey);
-                        } else {
-                          _selectedItems.remove(itemKey);
-                        }
-                      });
+                      final current = ref.read(_returnSelectedItemsProvider);
+                      if (val == true) {
+                        ref.read(_returnSelectedItemsProvider.notifier).state =
+                            {...current, itemKey};
+                      } else {
+                        ref
+                            .read(_returnSelectedItemsProvider.notifier)
+                            .state = {...current}
+                          ..remove(itemKey);
+                      }
                     },
                     activeColor: DesignTokens.primary,
                     shape: RoundedRectangleBorder(
@@ -342,8 +376,14 @@ class _ReturnRequestScreenState extends ConsumerState<ReturnRequestScreen> {
                         errorWidget: (context, url, error) => Container(
                           width: 48,
                           height: 48,
-                          color: DesignTokens.textSecondary.withValues(alpha: 0.1),
-                          child: Icon(Icons.image, size: 20, color: DesignTokens.textSecondary),
+                          color: DesignTokens.textSecondary.withValues(
+                            alpha: 0.1,
+                          ),
+                          child: Icon(
+                            Icons.image,
+                            size: 20,
+                            color: DesignTokens.textSecondary,
+                          ),
                         ),
                       ),
                     )
@@ -352,10 +392,16 @@ class _ReturnRequestScreenState extends ConsumerState<ReturnRequestScreen> {
                       width: 48,
                       height: 48,
                       decoration: BoxDecoration(
-                        color: DesignTokens.textSecondary.withValues(alpha: 0.1),
+                        color: DesignTokens.textSecondary.withValues(
+                          alpha: 0.1,
+                        ),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Icon(Icons.image, size: 20, color: DesignTokens.textSecondary),
+                      child: Icon(
+                        Icons.image,
+                        size: 20,
+                        color: DesignTokens.textSecondary,
+                      ),
                     ),
                   const SizedBox(width: 12),
                   // Name and price
@@ -370,7 +416,9 @@ class _ReturnRequestScreenState extends ConsumerState<ReturnRequestScreen> {
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
-                            color: isDark ? DesignTokens.white : DesignTokens.textPrimary,
+                            color: isDark
+                                ? DesignTokens.white
+                                : DesignTokens.textPrimary,
                           ),
                         ),
                         const SizedBox(height: 4),
@@ -393,39 +441,40 @@ class _ReturnRequestScreenState extends ConsumerState<ReturnRequestScreen> {
     );
   }
 
-  bool get _canSubmit =>
-      _selectedItems.isNotEmpty &&
-      _selectedReason != null &&
-      !_isSubmitting;
+  bool _canSubmit(Set<String> items, String? reason, bool submitting) =>
+      items.isNotEmpty && reason != null && !submitting;
 
   Future<void> _submitReturn() async {
-    if (!_canSubmit) return;
+    final selectedItems = ref.read(_returnSelectedItemsProvider);
+    final selectedReason = ref.read(_returnSelectedReasonProvider);
+    final isSubmitting = ref.read(_returnIsSubmittingProvider);
+    if (!_canSubmit(selectedItems, selectedReason, isSubmitting)) return;
 
     if (!mounted) return;
-    setState(() => _isSubmitting = true);
+    ref.read(_returnIsSubmittingProvider.notifier).state = true;
 
     try {
-      await ref.read(orderRepositoryProvider).createReturnRequest(
+      await ref
+          .read(orderRepositoryProvider)
+          .createReturnRequest(
             orderId: widget.orderId,
-            cartItemIds: _selectedItems.toList(),
-            reason: _selectedReason!,
+            cartItemIds: selectedItems.toList(),
+            reason: selectedReason!,
             description: _descriptionController.text.trim().isEmpty
                 ? null
                 : _descriptionController.text.trim(),
           );
 
       if (!mounted) return;
-      setState(() {
-        _isSubmitting = false;
-        _submitted = true;
-      });
+      ref.read(_returnIsSubmittingProvider.notifier).state = false;
+      ref.read(_returnSubmittedProvider.notifier).state = true;
 
       // Invalidate order + return requests caches
       ref.invalidate(orderByIdProvider(widget.orderId));
       ref.invalidate(returnRequestsProvider(widget.orderId));
     } catch (e) {
       if (!mounted) return;
-      setState(() => _isSubmitting = false);
+      ref.read(_returnIsSubmittingProvider.notifier).state = false;
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -474,10 +523,7 @@ class _ReturnRequestScreenState extends ConsumerState<ReturnRequestScreen> {
             Text(
               'returns.submitted_message'.tr(),
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: DesignTokens.textSecondary,
-              ),
+              style: TextStyle(fontSize: 14, color: DesignTokens.textSecondary),
             ),
             const SizedBox(height: 32),
             Semantics(
