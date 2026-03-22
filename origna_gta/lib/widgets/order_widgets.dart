@@ -19,6 +19,13 @@ import 'package:origna_gta/widgets/rating_dialog.dart';
 import 'package:origna_gta/utils/safe_url_launcher.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+// ─── Riverpod state for download buttons ─────────────────────────────────────
+final _bookDownloadLoadingProvider = StateProvider.autoDispose<bool>(
+  (ref) => false,
+);
+final _softwareDownloadLoadingProvider =
+    StateProvider.autoDispose<Map<String, bool>>((ref) => {});
+
 /// Maps per-item delivery status string → 3-step package timeline step.
 /// Steps: 0=Preparing, 1=Shipped, 2=Delivered
 int getItemDeliveryStep(String status) {
@@ -703,12 +710,11 @@ class StatusConfig {
 }
 
 class _BookDownloadButtonState extends ConsumerState<BookDownloadButton> {
-  bool _loading = false;
-
   @override
   Widget build(BuildContext context) {
+    final loading = ref.watch(_bookDownloadLoadingProvider);
     return ElevatedButton.icon(
-      icon: _loading
+      icon: loading
           ? const SizedBox(
               width: 16,
               height: 16,
@@ -716,12 +722,12 @@ class _BookDownloadButtonState extends ConsumerState<BookDownloadButton> {
             )
           : const Icon(Icons.download_outlined, size: 16),
       label: Text('orders.download_book'.tr()),
-      onPressed: _loading ? null : _download,
+      onPressed: loading ? null : _download,
     );
   }
 
   Future<void> _download() async {
-    setState(() => _loading = true);
+    ref.read(_bookDownloadLoadingProvider.notifier).state = true;
     try {
       final ob = ref.read(orignabaseProvider);
       final result = await ob.request(
@@ -743,7 +749,8 @@ class _BookDownloadButtonState extends ConsumerState<BookDownloadButton> {
         ).showSnackBar(SnackBar(content: Text('orders.download_failed'.tr())));
       }
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted)
+        ref.read(_bookDownloadLoadingProvider.notifier).state = false;
     }
   }
 }
@@ -2445,12 +2452,11 @@ class _ReturnStatusSection extends ConsumerWidget {
 }
 
 class _SoftwareDownloadLinksState extends ConsumerState<SoftwareDownloadLinks> {
-  final Map<String, bool> _loading = {};
-
   @override
   Widget build(BuildContext context) {
     final builds = widget.item.digitalBuilds ?? {};
     if (builds.isEmpty) return const SizedBox.shrink();
+    final loadingMap = ref.watch(_softwareDownloadLoadingProvider);
 
     const platformLabels = {
       'macos': 'macOS',
@@ -2470,7 +2476,7 @@ class _SoftwareDownloadLinksState extends ConsumerState<SoftwareDownloadLinks> {
           spacing: 8,
           runSpacing: 4,
           children: builds.keys.map((platform) {
-            final isLoading = _loading[platform] == true;
+            final isLoading = loadingMap[platform] == true;
             final label = platformLabels[platform] ?? platform;
             return OutlinedButton.icon(
               icon: isLoading
@@ -2494,7 +2500,11 @@ class _SoftwareDownloadLinksState extends ConsumerState<SoftwareDownloadLinks> {
   }
 
   Future<void> _download(String platform) async {
-    setState(() => _loading[platform] = true);
+    final current = ref.read(_softwareDownloadLoadingProvider);
+    ref.read(_softwareDownloadLoadingProvider.notifier).state = {
+      ...current,
+      platform: true,
+    };
     try {
       final ob = ref.read(orignabaseProvider);
       final result = await ob.request(
@@ -2519,7 +2529,13 @@ class _SoftwareDownloadLinksState extends ConsumerState<SoftwareDownloadLinks> {
         ).showSnackBar(SnackBar(content: Text('orders.download_failed'.tr())));
       }
     } finally {
-      if (mounted) setState(() => _loading[platform] = false);
+      if (mounted) {
+        final cur = ref.read(_softwareDownloadLoadingProvider);
+        ref.read(_softwareDownloadLoadingProvider.notifier).state = {
+          ...cur,
+          platform: false,
+        };
+      }
     }
   }
 }

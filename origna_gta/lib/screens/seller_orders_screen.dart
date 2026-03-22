@@ -168,41 +168,8 @@ class SellerOrdersScreen extends ConsumerWidget {
               );
             }
 
-            // Compute seller's earnings summary (display-only approximation)
-            var totalRevenue = 0.0;
-            var pendingCount = 0;
-            var completedCount = 0;
-            // Terminal/excluded statuses: not active orders
-            const excludedStatuses = {
-              OrderStatus.cancelled,
-              OrderStatus.failed,
-              OrderStatus.expired,
-              OrderStatus.refunded,
-              OrderStatus.partiallyRefunded,
-              OrderStatus.disputed,
-            };
-            for (final order in orders) {
-              final sellerItems = order.items.where(
-                (i) => i.sellerId == user.uid,
-              );
-              final subtotal = sellerItems.fold<double>(
-                0.0,
-                (acc, i) => acc + i.price * i.quantity,
-              );
-              // Derive seller's share of platform fee proportional to their items
-              final orderSubtotal = order.subtotal > 0
-                  ? order.subtotal
-                  : subtotal;
-              final feeShare = orderSubtotal > 0
-                  ? (order.platformFeeTotal / orderSubtotal) * subtotal
-                  : 0.0;
-              totalRevenue += subtotal - feeShare;
-              if (order.orderStatus == OrderStatus.delivered) {
-                completedCount++;
-              } else if (!excludedStatuses.contains(order.orderStatus)) {
-                pendingCount++;
-              }
-            }
+            // Earnings computed in provider — no business logic in build()
+            final earnings = ref.watch(sellerEarningsSummaryProvider);
 
             // Cap to 840px on desktop for readability — cards shouldn't stretch to 1200px
             final ordersMaxWidth = ResponsiveBreakpoints.isDesktop(context)
@@ -225,9 +192,9 @@ class SellerOrdersScreen extends ConsumerWidget {
                             bottom: DesignTokens.spacing16,
                           ),
                           child: _EarningsSummaryCard(
-                            totalRevenue: totalRevenue,
-                            pendingCount: pendingCount,
-                            completedCount: completedCount,
+                            totalRevenue: earnings.totalRevenue,
+                            pendingCount: earnings.pendingCount,
+                            completedCount: earnings.completedCount,
                             isDark: isDark,
                           ),
                         );

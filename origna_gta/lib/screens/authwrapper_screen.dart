@@ -52,6 +52,10 @@ class AuthWrapper extends ConsumerWidget {
   }
 }
 
+// ─── Riverpod state for TermsUpdateGate ──────────────────────────────────────
+final _termsAcceptingProvider = StateProvider.autoDispose<bool>((ref) => false);
+final _termsScrolledProvider = StateProvider.autoDispose<bool>((ref) => false);
+
 /// Un-bypassable full-screen gate shown when the user's accepted terms version
 /// differs from the current required version. User must read and accept before
 /// proceeding. No back button or skip action.
@@ -63,8 +67,6 @@ class _TermsUpdateGate extends ConsumerStatefulWidget {
 }
 
 class _TermsUpdateGateState extends ConsumerState<_TermsUpdateGate> {
-  bool _accepting = false;
-  bool _hasScrolledToBottom = false;
   final ScrollController _scrollController = ScrollController();
 
   @override
@@ -81,16 +83,16 @@ class _TermsUpdateGateState extends ConsumerState<_TermsUpdateGate> {
   }
 
   void _onScroll() {
-    if (_hasScrolledToBottom) return;
+    if (ref.read(_termsScrolledProvider)) return;
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 80) {
-      setState(() => _hasScrolledToBottom = true);
+      ref.read(_termsScrolledProvider.notifier).state = true;
     }
   }
 
   Future<void> _acceptTerms() async {
-    if (_accepting) return;
-    setState(() => _accepting = true);
+    if (ref.read(_termsAcceptingProvider)) return;
+    ref.read(_termsAcceptingProvider.notifier).state = true;
     try {
       await ref.read(userRepositoryProvider).recordTermsAcceptance();
       // Provider will auto-update via database stream — no manual navigation needed.
@@ -105,13 +107,15 @@ class _TermsUpdateGateState extends ConsumerState<_TermsUpdateGate> {
         );
       }
     } finally {
-      if (mounted) setState(() => _accepting = false);
+      if (mounted) ref.read(_termsAcceptingProvider.notifier).state = false;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final termsAsync = ref.watch(termsProvider);
+    final accepting = ref.watch(_termsAcceptingProvider);
+    final hasScrolledToBottom = ref.watch(_termsScrolledProvider);
 
     return Scaffold(
       body: DecoratedBox(
@@ -202,7 +206,7 @@ class _TermsUpdateGateState extends ConsumerState<_TermsUpdateGate> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    if (!_hasScrolledToBottom)
+                    if (!hasScrolledToBottom)
                       Padding(
                         padding: const EdgeInsets.only(bottom: 8),
                         child: Text(
@@ -217,10 +221,10 @@ class _TermsUpdateGateState extends ConsumerState<_TermsUpdateGate> {
                     ModernButton(
                       key: const Key('btn-terms-accept'),
                       semanticsLabel: 'btn-terms-accept',
-                      label: _accepting
+                      label: accepting
                           ? 'common.loading'.tr()
                           : 'legal.terms_accept_button'.tr(),
-                      onPressed: (_accepting || !_hasScrolledToBottom)
+                      onPressed: (accepting || !hasScrolledToBottom)
                           ? null
                           : _acceptTerms,
                       isPrimary: true,

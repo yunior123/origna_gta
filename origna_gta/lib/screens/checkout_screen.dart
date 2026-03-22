@@ -165,9 +165,6 @@ class _CheckoutContent extends ConsumerWidget {
     final address = ref.watch(
       checkoutStateProvider.select((state) => state.address),
     );
-    final shippingCost = ref.watch(
-      checkoutStateProvider.select((state) => state.shippingCost),
-    );
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final hasPhysicalItems = items.any((item) => !item.isDigital);
     final paymentProvider = ref.watch(
@@ -182,16 +179,13 @@ class _CheckoutContent extends ConsumerWidget {
         final digitalProvince = (rawState != null && rawState.trim().isNotEmpty)
             ? rawState.trim()
             : ProvinceCodeValues.ontario;
-        final digitalTaxRate = getTaxRate(digitalProvince);
-        final digitalCouponDiscountCents = ref.watch(
-          checkoutStateProvider.select((s) => s.couponDiscountCents),
+        // Business logic computed in provider — screen only renders.
+        final digitalTotal = ref.watch(
+          checkoutBuyerTotalProvider((
+            subtotal: subtotal,
+            province: digitalProvince,
+          )),
         );
-        final digitalEffective = (subtotal - digitalCouponDiscountCents / 100.0)
-            .clamp(0.0, double.infinity);
-        // Platform fee is deducted from the seller's payout — NOT added to the buyer's charge.
-        // Stripe PaymentIntent = discounted_subtotal + tax only. The fee row is informational only.
-        final digitalTax = digitalEffective * digitalTaxRate;
-        final digitalTotal = digitalEffective + digitalTax;
         return Container(
           decoration: BoxDecoration(
             gradient: DesignTokens.backgroundGradient(isDark: isDark),
@@ -271,19 +265,10 @@ class _CheckoutContent extends ConsumerWidget {
       return _NoAddressView(onRefreshShipping: onRefreshShipping);
     }
 
-    final couponDiscountCents = ref.watch(
-      checkoutStateProvider.select((s) => s.couponDiscountCents),
+    // Business logic computed in providers — screen only renders.
+    final totalWithTax = ref.watch(
+      checkoutBuyerTotalProvider((subtotal: subtotal, province: address.state)),
     );
-    final discount = couponDiscountCents / 100.0;
-    final effectiveSubtotal = (subtotal - discount).clamp(0.0, double.infinity);
-    final taxRate = getTaxRate(address.state);
-    // Platform fee is deducted from the seller's payout — NOT added to the buyer's charge.
-    // Stripe PaymentIntent = discounted_subtotal + shipping + tax only. Fee row is informational.
-    final taxableAmount =
-        effectiveSubtotal +
-        shippingCost; // GST/HST applies to shipping in Canada
-    final tax = taxableAmount * taxRate;
-    final totalWithTax = effectiveSubtotal + tax + shippingCost;
 
     final isDesktop = ResponsiveBreakpoints.isDesktop(context);
     final hPad = ResponsiveBreakpoints.getSpacing(context, SpacingSize.lg);

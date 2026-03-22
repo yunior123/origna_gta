@@ -1,5 +1,17 @@
 part of '../profile_screen.dart';
 
+// ─── Riverpod state for profile settings ─────────────────────────────────────
+// Note: These providers are defined in the part file but accessible via the library.
+final _deleteConfirmTextProvider = StateProvider.autoDispose<String>(
+  (ref) => '',
+);
+final _emailVerifyCheckingProvider = StateProvider.autoDispose<bool>(
+  (ref) => false,
+);
+final _emailVerifyResendingProvider = StateProvider.autoDispose<bool>(
+  (ref) => false,
+);
+
 class _DeleteAccountDialog extends ConsumerStatefulWidget {
   const _DeleteAccountDialog();
 
@@ -17,6 +29,8 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final profileState = ref.watch(profileViewModelProvider);
     final viewModel = ref.read(profileViewModelProvider.notifier);
+    // Watch the confirm text so the button enables/disables reactively
+    ref.watch(_deleteConfirmTextProvider);
 
     return AlertDialog(
       shape: RoundedRectangleBorder(
@@ -62,7 +76,8 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
               controller: confirmController,
               hint: 'profile.type_delete_hint'.tr(),
               prefixIcon: Icons.lock_outline,
-              onChanged: (value) => setState(() {}),
+              onChanged: (value) =>
+                  ref.read(_deleteConfirmTextProvider.notifier).state = value,
             ),
           ],
         ),
@@ -140,12 +155,11 @@ class _EmailVerificationRequiredView extends ConsumerStatefulWidget {
 
 class _EmailVerificationRequiredViewState
     extends ConsumerState<_EmailVerificationRequiredView> {
-  bool _isChecking = false;
-  bool _isResending = false;
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isChecking = ref.watch(_emailVerifyCheckingProvider);
+    final isResending = ref.watch(_emailVerifyResendingProvider);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -250,25 +264,25 @@ class _EmailVerificationRequiredViewState
               FadeSlideIn(
                 delay: const Duration(milliseconds: 150),
                 child: ModernButton(
-                  label: _isChecking
+                  label: isChecking
                       ? 'profile.checking_button'.tr()
                       : 'profile.verified_button'.tr(),
                   icon: Icons.check_circle_outline,
-                  isLoading: _isChecking,
-                  onPressed: _isChecking ? () {} : _checkVerification,
+                  isLoading: isChecking,
+                  onPressed: isChecking ? () {} : _checkVerification,
                 ),
               ),
               const SizedBox(height: 12),
               FadeSlideIn(
                 delay: const Duration(milliseconds: 175),
                 child: ModernButton(
-                  label: _isResending
+                  label: isResending
                       ? 'profile.sending_button'.tr()
                       : 'profile.resend_verification_button'.tr(),
                   icon: Icons.send_outlined,
                   isPrimary: false,
-                  isLoading: _isResending,
-                  onPressed: _isResending ? () {} : _resendEmail,
+                  isLoading: isResending,
+                  onPressed: isResending ? () {} : _resendEmail,
                 ),
               ),
               const SizedBox(height: 20),
@@ -342,7 +356,7 @@ class _EmailVerificationRequiredViewState
 
   Future<void> _checkVerification() async {
     if (!mounted) return;
-    setState(() => _isChecking = true);
+    ref.read(_emailVerifyCheckingProvider.notifier).state = true;
     try {
       final verified = await ref.read(authActionsProvider).isEmailVerified();
       if (!mounted) return;
@@ -379,13 +393,14 @@ class _EmailVerificationRequiredViewState
         );
       }
     } finally {
-      if (mounted) setState(() => _isChecking = false);
+      if (mounted)
+        ref.read(_emailVerifyCheckingProvider.notifier).state = false;
     }
   }
 
   Future<void> _resendEmail() async {
     if (!mounted) return;
-    setState(() => _isResending = true);
+    ref.read(_emailVerifyResendingProvider.notifier).state = true;
     try {
       await ref.read(authActionsProvider).sendEmailVerification();
       if (!mounted) return;
@@ -411,7 +426,8 @@ class _EmailVerificationRequiredViewState
         );
       }
     } finally {
-      if (mounted) setState(() => _isResending = false);
+      if (mounted)
+        ref.read(_emailVerifyResendingProvider.notifier).state = false;
     }
   }
 }

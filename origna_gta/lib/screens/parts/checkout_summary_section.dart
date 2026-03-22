@@ -1,13 +1,22 @@
 part of '../checkout_screen.dart';
+
 class _DeliveryOptionsSection extends ConsumerWidget {
   const _DeliveryOptionsSection();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final availableSpeeds = ref.watch(checkoutStateProvider.select((state) => state.availableDeliverySpeeds));
-    final selectedSpeed = ref.watch(checkoutStateProvider.select((state) => state.deliverySpeed));
-    final isCalculating = ref.watch(checkoutStateProvider.select((state) => state.isCalculatingShipping));
-    final baseShippingCost = ref.watch(checkoutStateProvider.select((state) => state.baseShippingCost));
+    final availableSpeeds = ref.watch(
+      checkoutStateProvider.select((state) => state.availableDeliverySpeeds),
+    );
+    final selectedSpeed = ref.watch(
+      checkoutStateProvider.select((state) => state.deliverySpeed),
+    );
+    final isCalculating = ref.watch(
+      checkoutStateProvider.select((state) => state.isCalculatingShipping),
+    );
+    final baseShippingCost = ref.watch(
+      checkoutStateProvider.select((state) => state.baseShippingCost),
+    );
 
     if (isCalculating) {
       final isDarkCalc = Theme.of(context).brightness == Brightness.dark;
@@ -17,11 +26,25 @@ class _DeliveryOptionsSection extends ConsumerWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Flexible(child: Text('checkout.delivery_speed_title'.tr(), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold))),
+              Flexible(
+                child: Text(
+                  'checkout.delivery_speed_title'.tr(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
               const SizedBox(
                 width: 20,
                 height: 20,
-                child: ModernLoadingIndicator(strokeWidth: 2.5, color: DesignTokens.primary, centered: false),
+                child: ModernLoadingIndicator(
+                  strokeWidth: 2.5,
+                  color: DesignTokens.primary,
+                  centered: false,
+                ),
               ),
             ],
           ),
@@ -50,7 +73,17 @@ class _DeliveryOptionsSection extends ConsumerWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Flexible(child: Text('checkout.delivery_speed_title'.tr(), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold))),
+            Flexible(
+              child: Text(
+                'checkout.delivery_speed_title'.tr(),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
             IconButton(
               onPressed: () => _showDeliveryInfo(context),
               icon: const Icon(Icons.info_outline, size: 20),
@@ -65,7 +98,9 @@ class _DeliveryOptionsSection extends ConsumerWidget {
           final isAvailable = availableSpeeds.contains(speed);
           final isSelected = selectedSpeed == speed;
           // Show total shipping cost (base + surcharge), not just surcharge
-          final totalCost = speed == DeliverySpeed.standard ? baseShippingCost : baseShippingCost + speed.baseSurcharge;
+          final totalCost = speed == DeliverySpeed.standard
+              ? baseShippingCost
+              : baseShippingCost + speed.baseSurcharge;
 
           return Padding(
             padding: const EdgeInsets.only(bottom: 8),
@@ -74,7 +109,11 @@ class _DeliveryOptionsSection extends ConsumerWidget {
               label: 'btn-delivery-speed-${speed.name}',
               child: GestureDetector(
                 key: Key('checkout_delivery_speed_${speed.name}'),
-                onTap: isAvailable ? () => ref.read(checkoutStateProvider.notifier).setDeliverySpeed(speed) : null,
+                onTap: isAvailable
+                    ? () => ref
+                          .read(checkoutStateProvider.notifier)
+                          .setDeliverySpeed(speed)
+                    : null,
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
                   padding: const EdgeInsets.all(16),
@@ -83,11 +122,22 @@ class _DeliveryOptionsSection extends ConsumerWidget {
                     color: isSelected
                         ? DesignTokens.primary.withValues(alpha: 0.08)
                         : (Theme.of(context).brightness == Brightness.dark
-                            ? DesignTokens.darkCard
-                            : DesignTokens.white),
+                              ? DesignTokens.darkCard
+                              : DesignTokens.white),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: isSelected ? DesignTokens.primary : DesignTokens.outlineVariant, width: isSelected ? 1.5 : 1),
-                    boxShadow: [BoxShadow(color: DesignTokens.black.withValues(alpha: 0.04), blurRadius: 6, offset: const Offset(0, 1))],
+                    border: Border.all(
+                      color: isSelected
+                          ? DesignTokens.primary
+                          : DesignTokens.outlineVariant,
+                      width: isSelected ? 1.5 : 1,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: DesignTokens.black.withValues(alpha: 0.04),
+                        blurRadius: 6,
+                        offset: const Offset(0, 1),
+                      ),
+                    ],
                   ),
                   child: Opacity(
                     opacity: isAvailable ? 1.0 : 0.5,
@@ -98,14 +148,22 @@ class _DeliveryOptionsSection extends ConsumerWidget {
                           height: 24,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            border: Border.all(color: isSelected ? DesignTokens.primary : DesignTokens.outline, width: 2),
+                            border: Border.all(
+                              color: isSelected
+                                  ? DesignTokens.primary
+                                  : DesignTokens.outline,
+                              width: 2,
+                            ),
                           ),
                           child: isSelected
                               ? Center(
                                   child: Container(
                                     width: 12,
                                     height: 12,
-                                    decoration: const BoxDecoration(shape: BoxShape.circle, color: DesignTokens.primary),
+                                    decoration: const BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: DesignTokens.primary,
+                                    ),
                                   ),
                                 )
                               : null,
@@ -123,7 +181,9 @@ class _DeliveryOptionsSection extends ConsumerWidget {
                                       style: TextStyle(
                                         fontWeight: FontWeight.w600,
                                         fontSize: 16,
-                                        color: isAvailable ? DesignTokens.textPrimary : DesignTokens.textSecondary,
+                                        color: isAvailable
+                                            ? DesignTokens.textPrimary
+                                            : DesignTokens.textSecondary,
                                       ),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
@@ -132,24 +192,45 @@ class _DeliveryOptionsSection extends ConsumerWidget {
                                   if (speed == DeliverySpeed.sameDay) ...[
                                     const SizedBox(width: 8),
                                     Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                      decoration: BoxDecoration(color: DesignTokens.success, borderRadius: BorderRadius.circular(4)),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: DesignTokens.success,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
                                       child: Text(
                                         'checkout.local'.tr(),
-                                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: DesignTokens.white),
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          color: DesignTokens.white,
+                                        ),
                                       ),
                                     ),
                                   ],
                                 ],
                               ),
                               const SizedBox(height: 4),
-                              Text(speed.translatedTime, style: TextStyle(fontSize: 13, color: DesignTokens.textSecondary)),
-                              if (!isAvailable && speed == DeliverySpeed.sameDay)
+                              Text(
+                                speed.translatedTime,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: DesignTokens.textSecondary,
+                                ),
+                              ),
+                              if (!isAvailable &&
+                                  speed == DeliverySpeed.sameDay)
                                 Padding(
                                   padding: const EdgeInsets.only(top: 4),
                                   child: Text(
                                     'checkout.local_only_50km'.tr(),
-                                    style: TextStyle(fontSize: 11, color: DesignTokens.tertiary, fontStyle: FontStyle.italic),
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: DesignTokens.tertiary,
+                                      fontStyle: FontStyle.italic,
+                                    ),
                                   ),
                                 ),
                             ],
@@ -157,8 +238,16 @@ class _DeliveryOptionsSection extends ConsumerWidget {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          totalCost > 0 ? '\$${totalCost.toStringAsFixed(2)}' : 'checkout.free'.tr(),
-                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: totalCost > 0 ? DesignTokens.textPrimary : DesignTokens.success),
+                          totalCost > 0
+                              ? '\$${totalCost.toStringAsFixed(2)}'
+                              : 'checkout.free'.tr(),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                            color: totalCost > 0
+                                ? DesignTokens.textPrimary
+                                : DesignTokens.success,
+                          ),
                         ),
                       ],
                     ),
@@ -181,7 +270,9 @@ class _DeliveryOptionsSection extends ConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: DeliverySpeed.values.map((speed) {
-              final surcharge = speed == DeliverySpeed.standard ? 0.0 : speed.baseSurcharge;
+              final surcharge = speed == DeliverySpeed.standard
+                  ? 0.0
+                  : speed.baseSurcharge;
               return Padding(
                 padding: const EdgeInsets.only(bottom: 16),
                 child: Column(
@@ -189,31 +280,69 @@ class _DeliveryOptionsSection extends ConsumerWidget {
                   children: [
                     Row(
                       children: [
-                        Text(speed.translatedName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        Text(
+                          speed.translatedName,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                         if (speed == DeliverySpeed.sameDay) ...[
                           const SizedBox(width: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(color: DesignTokens.success, borderRadius: BorderRadius.circular(4)),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: DesignTokens.success,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
                             child: Text(
                               'checkout.local'.tr(),
-                              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: DesignTokens.white),
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: DesignTokens.white,
+                              ),
                             ),
                           ),
                         ],
                       ],
                     ),
                     const SizedBox(height: 6),
-                    Text(speed.translatedTime, style: TextStyle(fontSize: 13, color: DesignTokens.textSecondary)),
+                    Text(
+                      speed.translatedTime,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: DesignTokens.textSecondary,
+                      ),
+                    ),
                     if (speed == DeliverySpeed.sameDay)
                       Text(
                         'checkout.available_local_50km'.tr(),
-                        style: TextStyle(fontSize: 12, color: DesignTokens.textSecondary, fontStyle: FontStyle.italic),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: DesignTokens.textSecondary,
+                          fontStyle: FontStyle.italic,
+                        ),
                       ),
                     const SizedBox(height: 6),
                     Text(
-                      surcharge > 0 ? 'checkout.additional_cost'.tr(namedArgs: {'amount': surcharge.toStringAsFixed(2)}) : 'checkout.no_additional_cost'.tr(),
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: surcharge > 0 ? DesignTokens.textPrimary : DesignTokens.success),
+                      surcharge > 0
+                          ? 'checkout.additional_cost'.tr(
+                              namedArgs: {
+                                'amount': surcharge.toStringAsFixed(2),
+                              },
+                            )
+                          : 'checkout.no_additional_cost'.tr(),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: surcharge > 0
+                            ? DesignTokens.textPrimary
+                            : DesignTokens.success,
+                      ),
                     ),
                   ],
                 ),
@@ -221,7 +350,12 @@ class _DeliveryOptionsSection extends ConsumerWidget {
             }).toList(),
           ),
         ),
-        actions: [TextButton(onPressed: () => Navigator.pop(context), child: Text('common.close'.tr()))],
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('common.close'.tr()),
+          ),
+        ],
       ),
     );
   }
@@ -232,27 +366,45 @@ class _OrderReviewSheet extends ConsumerWidget {
   final double subtotal;
   final VoidCallback onConfirm;
 
-  const _OrderReviewSheet({required this.items, required this.subtotal, required this.onConfirm});
+  const _OrderReviewSheet({
+    required this.items,
+    required this.subtotal,
+    required this.onConfirm,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // Use targeted selects so this sheet only rebuilds when the fields it
     // actually reads change — not on every checkoutStateProvider mutation.
-    final couponDiscountCents = ref.watch(checkoutStateProvider.select((s) => s.couponDiscountCents));
-    final addressState = ref.watch(checkoutStateProvider.select((s) => s.address?.state));
-    final formattedAddress = ref.watch(checkoutStateProvider.select((s) => s.address?.formattedAddress));
-    final couponCode = ref.watch(checkoutStateProvider.select((s) => s.couponCode));
-    final shippingCost = ref.watch(checkoutStateProvider.select((s) => s.shippingCost));
+    final couponDiscountCents = ref.watch(
+      checkoutStateProvider.select((s) => s.couponDiscountCents),
+    );
+    final addressState = ref.watch(
+      checkoutStateProvider.select((s) => s.address?.state),
+    );
+    final formattedAddress = ref.watch(
+      checkoutStateProvider.select((s) => s.address?.formattedAddress),
+    );
+    final couponCode = ref.watch(
+      checkoutStateProvider.select((s) => s.couponCode),
+    );
+    final shippingCost = ref.watch(
+      checkoutStateProvider.select((s) => s.shippingCost),
+    );
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final couponDiscount = couponDiscountCents / 100.0;
-    final effectiveSubtotal = (subtotal - couponDiscount).clamp(0.0, double.infinity);
+    // Business logic computed in providers — screen only renders.
     final province = addressState ?? ProvinceCodeValues.ontario;
     final taxRate = getTaxRate(province);
-    // Platform fee is deducted from the seller's payout — NOT added to the buyer's charge.
-    // Stripe PaymentIntent = discounted_subtotal + shipping + tax only. Fee row is informational.
+    final couponDiscount = couponDiscountCents / 100.0;
+    final total = ref.watch(
+      checkoutBuyerTotalProvider((subtotal: subtotal, province: province)),
+    );
+    // Tax is still needed for the line-item display
+    final effectiveSubtotal = ref.watch(
+      checkoutEffectiveSubtotalProvider(subtotal),
+    );
     final tax = (effectiveSubtotal + shippingCost) * taxRate;
-    final total = effectiveSubtotal + shippingCost + tax;
 
     final bgColor = isDark ? DesignTokens.darkCard : DesignTokens.white;
 
@@ -265,7 +417,13 @@ class _OrderReviewSheet extends ConsumerWidget {
         decoration: BoxDecoration(
           color: bgColor,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          boxShadow: [BoxShadow(color: DesignTokens.black.withValues(alpha: 0.2), blurRadius: 20, offset: const Offset(0, -4))],
+          boxShadow: [
+            BoxShadow(
+              color: DesignTokens.black.withValues(alpha: 0.2),
+              blurRadius: 20,
+              offset: const Offset(0, -4),
+            ),
+          ],
         ),
         child: Column(
           children: [
@@ -274,7 +432,10 @@ class _OrderReviewSheet extends ConsumerWidget {
               margin: const EdgeInsets.only(top: 12),
               width: 40,
               height: 4,
-              decoration: BoxDecoration(color: DesignTokens.outline.withValues(alpha: 0.5), borderRadius: BorderRadius.circular(2)),
+              decoration: BoxDecoration(
+                color: DesignTokens.outline.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
             // Header
             Padding(
@@ -290,7 +451,11 @@ class _OrderReviewSheet extends ConsumerWidget {
                       ).createShader(bounds),
                       child: Text(
                         'checkout.order_review_title'.tr(),
-                        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: DesignTokens.white),
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                          color: DesignTokens.white,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -301,7 +466,13 @@ class _OrderReviewSheet extends ConsumerWidget {
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-              child: Text('checkout.order_review_subtitle'.tr(), style: TextStyle(fontSize: 13, color: DesignTokens.textSecondary)),
+              child: Text(
+                'checkout.order_review_subtitle'.tr(),
+                style: TextStyle(
+                  fontSize: 13,
+                  color: DesignTokens.textSecondary,
+                ),
+              ),
             ),
             const Divider(height: 1),
             // Scrollable content
@@ -315,14 +486,22 @@ class _OrderReviewSheet extends ConsumerWidget {
                   if (index < items.length) {
                     final item = items[index];
                     return Padding(
-                      padding: EdgeInsets.only(top: index == 0 ? 0 : 0, bottom: 10),
+                      padding: EdgeInsets.only(
+                        top: index == 0 ? 0 : 0,
+                        bottom: 10,
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           if (index == 0) ...[
                             Text(
-                              'checkout.order_review_items'.tr(namedArgs: {'count': '${items.length}'}),
-                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                              'checkout.order_review_items'.tr(
+                                namedArgs: {'count': '${items.length}'},
+                              ),
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                             const SizedBox(height: 12),
                           ],
@@ -337,8 +516,10 @@ class _OrderReviewSheet extends ConsumerWidget {
                                         width: 56,
                                         height: 56,
                                         fit: BoxFit.cover,
-                                        placeholder: (context, url) => _ItemImagePlaceholder(),
-                                        errorWidget: (context, url, error) => _ItemImagePlaceholder(),
+                                        placeholder: (context, url) =>
+                                            _ItemImagePlaceholder(),
+                                        errorWidget: (context, url, error) =>
+                                            _ItemImagePlaceholder(),
                                       )
                                     : _ItemImagePlaceholder(),
                               ),
@@ -347,13 +528,33 @@ class _OrderReviewSheet extends ConsumerWidget {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(item.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600), maxLines: 2, overflow: TextOverflow.ellipsis),
+                                    Text(
+                                      item.name,
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
                                     const SizedBox(height: 2),
-                                    Text('×${item.quantity}', style: TextStyle(fontSize: 13, color: DesignTokens.textSecondary)),
+                                    Text(
+                                      '×${item.quantity}',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: DesignTokens.textSecondary,
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ),
-                              Text('\$${(item.price * item.quantity).toStringAsFixed(2)}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                              Text(
+                                '\$${(item.price * item.quantity).toStringAsFixed(2)}',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                             ],
                           ),
                         ],
@@ -367,12 +568,24 @@ class _OrderReviewSheet extends ConsumerWidget {
                       // Shipping address
                       if (formattedAddress != null) ...[
                         const Divider(height: 24),
-                        Text('checkout.order_review_shipping_to'.tr(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        Text(
+                          'checkout.order_review_shipping_to'.tr(),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                         const SizedBox(height: 8),
                         GlassContainer(
                           child: Text(
                             formattedAddress,
-                            style: TextStyle(fontSize: 14, height: 1.5, color: isDark ? DesignTokens.outline : DesignTokens.textPrimary),
+                            style: TextStyle(
+                              fontSize: 14,
+                              height: 1.5,
+                              color: isDark
+                                  ? DesignTokens.outline
+                                  : DesignTokens.textPrimary,
+                            ),
                           ),
                         ),
                       ],
@@ -381,22 +594,54 @@ class _OrderReviewSheet extends ConsumerWidget {
                       _buildPriceLine('cart.subtotal'.tr(), subtotal),
                       if (couponDiscount > 0)
                         _buildCouponLine(couponCode, couponDiscount),
-                      _buildPriceLine('checkout.estimated_shipping'.tr(), shippingCost),
                       _buildPriceLine(
-                        'checkout.tax_estimate_label'.tr(namedArgs: {'name': 'checkout.tax_label'.tr(), 'rate': (taxRate * 100).toStringAsFixed(2)}),
+                        'checkout.estimated_shipping'.tr(),
+                        shippingCost,
+                      ),
+                      _buildPriceLine(
+                        'checkout.tax_estimate_label'.tr(
+                          namedArgs: {
+                            'name': 'checkout.tax_label'.tr(),
+                            'rate': (taxRate * 100).toStringAsFixed(2),
+                          },
+                        ),
                         tax,
                       ),
                       const Divider(height: 16),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Flexible(child: Text('checkout.estimated_total'.tr(), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
+                          Flexible(
+                            child: Text(
+                              'checkout.estimated_total'.tr(),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
                           const SizedBox(width: 8),
-                          Text('\$${total.toStringAsFixed(2)}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: DesignTokens.primary)),
+                          Text(
+                            '\$${total.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: DesignTokens.primary,
+                            ),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 6),
-                      Text('checkout.tax_confirm_notice'.tr(), style: TextStyle(fontSize: 11, color: DesignTokens.textSecondary, fontStyle: FontStyle.italic)),
+                      Text(
+                        'checkout.tax_confirm_notice'.tr(),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: DesignTokens.textSecondary,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
                       const SizedBox(height: 24),
                     ],
                   );
@@ -405,7 +650,12 @@ class _OrderReviewSheet extends ConsumerWidget {
             ),
             // Confirm & Pay button
             Padding(
-              padding: EdgeInsets.fromLTRB(20, 8, 20, MediaQuery.of(context).padding.bottom + 16),
+              padding: EdgeInsets.fromLTRB(
+                20,
+                8,
+                20,
+                MediaQuery.of(context).padding.bottom + 16,
+              ),
               child: Semantics(
                 button: true,
                 label: 'btn-confirm-pay',
@@ -429,8 +679,16 @@ class _OrderReviewSheet extends ConsumerWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Expanded(child: Text(label, style: TextStyle(fontSize: 14, color: DesignTokens.textSecondary))),
-          Text('\$${amount.toStringAsFixed(2)}', style: TextStyle(fontSize: 14, color: DesignTokens.textSecondary)),
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(fontSize: 14, color: DesignTokens.textSecondary),
+            ),
+          ),
+          Text(
+            '\$${amount.toStringAsFixed(2)}',
+            style: TextStyle(fontSize: 14, color: DesignTokens.textSecondary),
+          ),
         ],
       ),
     );
@@ -445,14 +703,39 @@ class _OrderReviewSheet extends ConsumerWidget {
           Flexible(
             child: Row(
               children: [
-                const Icon(Icons.local_offer_rounded, size: 14, color: DesignTokens.success),
+                const Icon(
+                  Icons.local_offer_rounded,
+                  size: 14,
+                  color: DesignTokens.success,
+                ),
                 const SizedBox(width: 4),
-                Flexible(child: Text(code != null ? 'checkout.coupon_applied_label'.tr(namedArgs: {'code': code}) : 'checkout.coupon_applied_generic'.tr(), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, color: DesignTokens.success))),
+                Flexible(
+                  child: Text(
+                    code != null
+                        ? 'checkout.coupon_applied_label'.tr(
+                            namedArgs: {'code': code},
+                          )
+                        : 'checkout.coupon_applied_generic'.tr(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: DesignTokens.success,
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
           const SizedBox(width: 8),
-          Text('-\$${discount.toStringAsFixed(2)}', style: const TextStyle(fontSize: 14, color: DesignTokens.success, fontWeight: FontWeight.w600)),
+          Text(
+            '-\$${discount.toStringAsFixed(2)}',
+            style: const TextStyle(
+              fontSize: 14,
+              color: DesignTokens.success,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );
@@ -475,7 +758,10 @@ class _TermsText extends ConsumerWidget {
         decoration: BoxDecoration(
           color: DesignTokens.surface,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: showError ? DesignTokens.error : DesignTokens.outlineVariant, width: 1),
+          border: Border.all(
+            color: showError ? DesignTokens.error : DesignTokens.outlineVariant,
+            width: 1,
+          ),
         ),
         child: Row(
           key: const Key('checkout_terms_link'),
@@ -491,10 +777,16 @@ class _TermsText extends ConsumerWidget {
                   key: const Key('checkout_terms_checkbox'),
                   value: termsAccepted,
                   onChanged: (value) {
-                    ref.read(checkoutTermsInteractedProvider.notifier).state = true;
-                    ref.read(checkoutTermsAcceptedProvider.notifier).state = value ?? false;
+                    ref.read(checkoutTermsInteractedProvider.notifier).state =
+                        true;
+                    ref.read(checkoutTermsAcceptedProvider.notifier).state =
+                        value ?? false;
                   },
-                  side: BorderSide(color: showError ? DesignTokens.error : DesignTokens.textDisabled),
+                  side: BorderSide(
+                    color: showError
+                        ? DesignTokens.error
+                        : DesignTokens.textDisabled,
+                  ),
                 ),
               ),
             ),
@@ -502,7 +794,11 @@ class _TermsText extends ConsumerWidget {
             Expanded(
               child: RichText(
                 text: TextSpan(
-                  style: TextStyle(fontSize: 13, color: DesignTokens.textPrimary, height: 1.4),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: DesignTokens.textPrimary,
+                    height: 1.4,
+                  ),
                   children: [
                     TextSpan(text: 'checkout.terms_agree'.tr()),
                     WidgetSpan(
@@ -573,7 +869,10 @@ class _DigitalEulaText extends ConsumerWidget {
         decoration: BoxDecoration(
           color: DesignTokens.surface,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: showError ? DesignTokens.error : DesignTokens.outlineVariant, width: 1),
+          border: Border.all(
+            color: showError ? DesignTokens.error : DesignTokens.outlineVariant,
+            width: 1,
+          ),
         ),
         child: Row(
           key: const Key('checkout_digital_eula'),
@@ -589,10 +888,16 @@ class _DigitalEulaText extends ConsumerWidget {
                   key: const Key('checkout_eula_checkbox'),
                   value: eulaAccepted,
                   onChanged: (value) {
-                    ref.read(checkoutEulaInteractedProvider.notifier).state = true;
-                    ref.read(checkoutEulaAcceptedProvider.notifier).state = value ?? false;
+                    ref.read(checkoutEulaInteractedProvider.notifier).state =
+                        true;
+                    ref.read(checkoutEulaAcceptedProvider.notifier).state =
+                        value ?? false;
                   },
-                  side: BorderSide(color: showError ? DesignTokens.error : DesignTokens.textDisabled),
+                  side: BorderSide(
+                    color: showError
+                        ? DesignTokens.error
+                        : DesignTokens.textDisabled,
+                  ),
                 ),
               ),
             ),
@@ -600,7 +905,11 @@ class _DigitalEulaText extends ConsumerWidget {
             Expanded(
               child: Text(
                 'checkout.digital_eula_agree'.tr(),
-                style: TextStyle(fontSize: 13, color: DesignTokens.textPrimary, height: 1.4),
+                style: TextStyle(
+                  fontSize: 13,
+                  color: DesignTokens.textPrimary,
+                  height: 1.4,
+                ),
               ),
             ),
           ],
@@ -628,7 +937,10 @@ class _AgeGateText extends ConsumerWidget {
         decoration: BoxDecoration(
           color: DesignTokens.surface,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: showError ? DesignTokens.error : DesignTokens.outlineVariant, width: 1),
+          border: Border.all(
+            color: showError ? DesignTokens.error : DesignTokens.outlineVariant,
+            width: 1,
+          ),
         ),
         child: Row(
           key: const Key('checkout_age_gate'),
@@ -644,10 +956,18 @@ class _AgeGateText extends ConsumerWidget {
                   key: const Key('checkout_age_gate_checkbox'),
                   value: ageVerifAccepted,
                   onChanged: (value) {
-                    ref.read(checkoutAgeVerifInteractedProvider.notifier).state = true;
-                    ref.read(checkoutAgeVerifAcceptedProvider.notifier).state = value ?? false;
+                    ref
+                            .read(checkoutAgeVerifInteractedProvider.notifier)
+                            .state =
+                        true;
+                    ref.read(checkoutAgeVerifAcceptedProvider.notifier).state =
+                        value ?? false;
                   },
-                  side: BorderSide(color: showError ? DesignTokens.error : DesignTokens.textDisabled),
+                  side: BorderSide(
+                    color: showError
+                        ? DesignTokens.error
+                        : DesignTokens.textDisabled,
+                  ),
                 ),
               ),
             ),
@@ -655,7 +975,11 @@ class _AgeGateText extends ConsumerWidget {
             Expanded(
               child: Text(
                 'checkout.age_gate_agree'.tr(),
-                style: TextStyle(fontSize: 13, color: DesignTokens.textPrimary, height: 1.4),
+                style: TextStyle(
+                  fontSize: 13,
+                  color: DesignTokens.textPrimary,
+                  height: 1.4,
+                ),
               ),
             ),
           ],

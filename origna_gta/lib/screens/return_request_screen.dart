@@ -60,9 +60,6 @@ class _ReturnRequestScreenState extends ConsumerState<ReturnRequestScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final orderAsync = ref.watch(orderByIdProvider(widget.orderId));
-    final selectedItems = ref.watch(_returnSelectedItemsProvider);
-    final selectedReason = ref.watch(_returnSelectedReasonProvider);
-    final isSubmitting = ref.watch(_returnIsSubmittingProvider);
     final submitted = ref.watch(_returnSubmittedProvider);
 
     return Container(
@@ -99,6 +96,9 @@ class _ReturnRequestScreenState extends ConsumerState<ReturnRequestScreen> {
   }
 
   Widget _buildForm(Order order, bool isDark) {
+    final selectedItems = ref.watch(_returnSelectedItemsProvider);
+    final selectedReason = ref.watch(_returnSelectedReasonProvider);
+    final isSubmitting = ref.watch(_returnIsSubmittingProvider);
     // Only delivered items are eligible for return
     final eligibleItems = order.items.where((item) {
       return item.status == DeliveryStatusValues.delivered;

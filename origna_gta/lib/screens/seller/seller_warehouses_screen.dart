@@ -455,6 +455,17 @@ class _WarehouseCard extends StatelessWidget {
 // Add / Edit form bottom sheet
 // ---------------------------------------------------------------------------
 
+// ─── Riverpod state for WarehouseFormSheet ───────────────────────────────────
+final _warehouseFormTypeProvider = StateProvider.autoDispose<String>(
+  (ref) => WarehouseTypeValues.warehouse,
+);
+final _warehouseFormDefaultProvider = StateProvider.autoDispose<bool>(
+  (ref) => false,
+);
+final _warehouseFormSavingProvider = StateProvider.autoDispose<bool>(
+  (ref) => false,
+);
+
 typedef _SaveFullCallback =
     Future<void> Function({
       required String label,
@@ -473,7 +484,7 @@ typedef _SaveCallback =
       required bool isDefault,
     });
 
-class _WarehouseFormSheet extends StatefulWidget {
+class _WarehouseFormSheet extends ConsumerStatefulWidget {
   final SellerWarehouse? existing;
   final _SaveCallback onSave;
   final _SaveFullCallback onSaveFull;
@@ -485,10 +496,11 @@ class _WarehouseFormSheet extends StatefulWidget {
   });
 
   @override
-  State<_WarehouseFormSheet> createState() => _WarehouseFormSheetState();
+  ConsumerState<_WarehouseFormSheet> createState() =>
+      _WarehouseFormSheetState();
 }
 
-class _WarehouseFormSheetState extends State<_WarehouseFormSheet> {
+class _WarehouseFormSheetState extends ConsumerState<_WarehouseFormSheet> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _labelCtrl;
   late final TextEditingController _streetCtrl;
@@ -496,10 +508,6 @@ class _WarehouseFormSheetState extends State<_WarehouseFormSheet> {
   late final TextEditingController _provinceCtrl;
   late final TextEditingController _postalCtrl;
   late final TextEditingController _countryCtrl;
-
-  late String _selectedType;
-  late bool _isDefault;
-  bool _saving = false;
 
   @override
   void initState() {
@@ -511,8 +519,14 @@ class _WarehouseFormSheetState extends State<_WarehouseFormSheet> {
     _provinceCtrl = TextEditingController(text: e?.address.state ?? '');
     _postalCtrl = TextEditingController(text: e?.address.postalCode ?? '');
     _countryCtrl = TextEditingController(text: e?.address.country ?? 'Canada');
-    _selectedType = e?.type ?? WarehouseTypeValues.warehouse;
-    _isDefault = e?.isDefault ?? false;
+    // Initialize provider values from existing warehouse
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(_warehouseFormTypeProvider.notifier).state =
+          e?.type ?? WarehouseTypeValues.warehouse;
+      ref.read(_warehouseFormDefaultProvider.notifier).state =
+          e?.isDefault ?? false;
+      ref.read(_warehouseFormSavingProvider.notifier).state = false;
+    });
   }
 
   @override
@@ -528,7 +542,10 @@ class _WarehouseFormSheetState extends State<_WarehouseFormSheet> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() => _saving = true);
+    ref.read(_warehouseFormSavingProvider.notifier).state = true;
+
+    final selectedType = ref.read(_warehouseFormTypeProvider);
+    final isDefault = ref.read(_warehouseFormDefaultProvider);
 
     final addressMap = {
       Fields.street: _streetCtrl.text.trim(),
@@ -541,12 +558,13 @@ class _WarehouseFormSheetState extends State<_WarehouseFormSheet> {
     try {
       await widget.onSaveFull(
         label: _labelCtrl.text,
-        type: _selectedType,
+        type: selectedType,
         addressMap: addressMap,
-        isDefault: _isDefault,
+        isDefault: isDefault,
       );
     } finally {
-      if (mounted) setState(() => _saving = false);
+      if (mounted)
+        ref.read(_warehouseFormSavingProvider.notifier).state = false;
     }
   }
 
@@ -555,6 +573,9 @@ class _WarehouseFormSheetState extends State<_WarehouseFormSheet> {
     final isEdit = widget.existing != null;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bottom = MediaQuery.of(context).viewInsets.bottom;
+    final selectedType = ref.watch(_warehouseFormTypeProvider);
+    final isDefault = ref.watch(_warehouseFormDefaultProvider);
+    final saving = ref.watch(_warehouseFormSavingProvider);
 
     return Padding(
       padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + bottom),
@@ -605,18 +626,18 @@ class _WarehouseFormSheetState extends State<_WarehouseFormSheet> {
                   _TypeChip(
                     label: 'seller.type_warehouse'.tr(),
                     icon: Icons.warehouse_outlined,
-                    selected: _selectedType == WarehouseTypeValues.warehouse,
-                    onTap: () => setState(
-                      () => _selectedType = WarehouseTypeValues.warehouse,
-                    ),
+                    selected: selectedType == WarehouseTypeValues.warehouse,
+                    onTap: () =>
+                        ref.read(_warehouseFormTypeProvider.notifier).state =
+                            WarehouseTypeValues.warehouse,
                   ),
                   _TypeChip(
                     label: 'seller.type_personal'.tr(),
                     icon: Icons.home_outlined,
-                    selected: _selectedType == WarehouseTypeValues.personal,
-                    onTap: () => setState(
-                      () => _selectedType = WarehouseTypeValues.personal,
-                    ),
+                    selected: selectedType == WarehouseTypeValues.personal,
+                    onTap: () =>
+                        ref.read(_warehouseFormTypeProvider.notifier).state =
+                            WarehouseTypeValues.personal,
                   ),
                 ],
               ),
@@ -626,7 +647,7 @@ class _WarehouseFormSheetState extends State<_WarehouseFormSheet> {
               _Field(
                 controller: _labelCtrl,
                 label: 'seller.location_name'.tr(),
-                hint: _selectedType == WarehouseTypeValues.warehouse
+                hint: selectedType == WarehouseTypeValues.warehouse
                     ? 'seller.location_name_hint_warehouse'.tr()
                     : 'seller.location_name_hint_home'.tr(),
                 validator: (v) => (v == null || v.trim().isEmpty)
@@ -740,8 +761,10 @@ class _WarehouseFormSheetState extends State<_WarehouseFormSheet> {
               Row(
                 children: [
                   Switch(
-                    value: _isDefault,
-                    onChanged: (v) => setState(() => _isDefault = v),
+                    value: isDefault,
+                    onChanged: (v) =>
+                        ref.read(_warehouseFormDefaultProvider.notifier).state =
+                            v,
                     activeThumbColor: DesignTokens.primary,
                   ),
                   const SizedBox(width: 8),
@@ -764,7 +787,7 @@ class _WarehouseFormSheetState extends State<_WarehouseFormSheet> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _saving ? null : _submit,
+                  onPressed: saving ? null : _submit,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: DesignTokens.primary,
                     foregroundColor: DesignTokens.white,
@@ -773,7 +796,7 @@ class _WarehouseFormSheetState extends State<_WarehouseFormSheet> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: _saving
+                  child: saving
                       ? const ModernLoadingIndicator(size: 20)
                       : Text(
                           isEdit

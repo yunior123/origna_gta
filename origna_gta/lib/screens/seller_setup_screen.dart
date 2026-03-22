@@ -154,8 +154,6 @@ class _SellerSetupCompleteScreenState
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final isRefreshing = ref.watch(_sellerSetupRefreshingProvider);
-    final statusMessage = ref.watch(_sellerSetupMessageProvider);
-    final checkResult = ref.watch(_sellerSetupCheckResultProvider);
 
     if (isRefreshing) {
       return Container(
@@ -476,6 +474,8 @@ class _SellerSetupCompleteScreenState
 
   /// User has submitted the form but Stripe is verifying identity
   Widget _buildPendingVerification(BuildContext context) {
+    final statusMessage = ref.watch(_sellerSetupMessageProvider);
+    final checkResult = ref.watch(_sellerSetupCheckResultProvider);
     return FadeSlideIn(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -545,28 +545,22 @@ class _SellerSetupCompleteScreenState
               child: Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color:
-                      ref.read(_sellerSetupCheckResultProvider) ==
-                          _CheckResult.success
+                  color: checkResult == _CheckResult.success
                       ? DesignTokens.success.withValues(alpha: 0.1)
-                      : ref.read(_sellerSetupCheckResultProvider) ==
-                            _CheckResult.error
+                      : checkResult == _CheckResult.error
                       ? DesignTokens.error.withValues(alpha: 0.1)
                       : DesignTokens.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(DesignTokens.radius12),
                 ),
                 child: Text(
-                  ref.read(_sellerSetupMessageProvider)!,
+                  statusMessage,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
-                    color:
-                        ref.read(_sellerSetupCheckResultProvider) ==
-                            _CheckResult.success
+                    color: checkResult == _CheckResult.success
                         ? DesignTokens.success
-                        : ref.read(_sellerSetupCheckResultProvider) ==
-                              _CheckResult.error
+                        : checkResult == _CheckResult.error
                         ? DesignTokens.error
                         : DesignTokens.primary,
                   ),

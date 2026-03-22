@@ -351,6 +351,10 @@ class EmailVerificationRequiredScreen extends ConsumerStatefulWidget {
       _EmailVerificationRequiredScreenState();
 }
 
+// ─── Riverpod state for EmailVerificationRequiredScreen ──────────────────────
+final _evrsCheckingProvider = StateProvider.autoDispose<bool>((ref) => false);
+final _evrsResendingProvider = StateProvider.autoDispose<bool>((ref) => false);
+
 /// Generic error screen
 class ErrorScreen extends StatelessWidget {
   final String message;
@@ -447,13 +451,12 @@ class ErrorScreen extends StatelessWidget {
 
 class _EmailVerificationRequiredScreenState
     extends ConsumerState<EmailVerificationRequiredScreen> {
-  bool _isChecking = false;
-  bool _isResending = false;
-
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(currentUserProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isChecking = ref.watch(_evrsCheckingProvider);
+    final isResending = ref.watch(_evrsResendingProvider);
 
     return Container(
       decoration: BoxDecoration(
@@ -580,25 +583,25 @@ class _EmailVerificationRequiredScreenState
                   FadeSlideIn(
                     delay: const Duration(milliseconds: 150),
                     child: ModernButton(
-                      label: _isChecking
+                      label: isChecking
                           ? 'email_verification.checking'.tr()
                           : 'email_verification.verify_button'.tr(),
                       icon: Icons.check_circle_outline,
-                      isLoading: _isChecking,
-                      onPressed: _isChecking ? () {} : _checkVerification,
+                      isLoading: isChecking,
+                      onPressed: isChecking ? () {} : _checkVerification,
                     ),
                   ),
                   const SizedBox(height: 12),
                   FadeSlideIn(
                     delay: const Duration(milliseconds: 175),
                     child: ModernButton(
-                      label: _isResending
+                      label: isResending
                           ? 'email_verification.sending'.tr()
                           : 'email_verification.resend_button'.tr(),
                       icon: Icons.send_outlined,
                       isPrimary: false,
-                      isLoading: _isResending,
-                      onPressed: _isResending ? () {} : _resendEmail,
+                      isLoading: isResending,
+                      onPressed: isResending ? () {} : _resendEmail,
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -681,7 +684,7 @@ class _EmailVerificationRequiredScreenState
   }
 
   Future<void> _checkVerification() async {
-    setState(() => _isChecking = true);
+    ref.read(_evrsCheckingProvider.notifier).state = true;
     try {
       final user = ref.read(currentUserProvider);
       if (user != null) {
@@ -725,12 +728,12 @@ class _EmailVerificationRequiredScreenState
         );
       }
     } finally {
-      if (mounted) setState(() => _isChecking = false);
+      if (mounted) ref.read(_evrsCheckingProvider.notifier).state = false;
     }
   }
 
   Future<void> _resendEmail() async {
-    setState(() => _isResending = true);
+    ref.read(_evrsResendingProvider.notifier).state = true;
     try {
       await ref.read(authActionsProvider).sendEmailVerification();
       if (mounted) {
@@ -757,7 +760,7 @@ class _EmailVerificationRequiredScreenState
         );
       }
     } finally {
-      if (mounted) setState(() => _isResending = false);
+      if (mounted) ref.read(_evrsResendingProvider.notifier).state = false;
     }
   }
 }

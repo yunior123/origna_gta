@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:origna_gta/core/errors/error_codes.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
@@ -11,27 +12,42 @@ import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:video_player/video_player.dart';
 
+// ─── Riverpod state for ProductAddVideo ──────────────────────────────────────
+final _videoInitializingProvider = StateProvider.autoDispose<bool>(
+  (ref) => false,
+);
+final _videoInitErrorProvider = StateProvider.autoDispose<String?>(
+  (ref) => null,
+);
+
 /// Documentation for ProductAddVideo
-class ProductAddVideo extends StatefulWidget {
+class ProductAddVideo extends ConsumerStatefulWidget {
   final XFile? videoFile;
   final String? existingVideoUrl; // For edit screen
   final void Function(XFile file, int durationSeconds)? onVideoAdded;
   final VoidCallback? onVideoRemoved;
 
-  const ProductAddVideo({super.key, this.videoFile, this.existingVideoUrl, this.onVideoAdded, this.onVideoRemoved});
+  const ProductAddVideo({
+    super.key,
+    this.videoFile,
+    this.existingVideoUrl,
+    this.onVideoAdded,
+    this.onVideoRemoved,
+  });
 
   @override
-  State<ProductAddVideo> createState() => _ProductAddVideoState();
+  ConsumerState<ProductAddVideo> createState() => _ProductAddVideoState();
 }
 
-class _ProductAddVideoState extends State<ProductAddVideo> {
+class _ProductAddVideoState extends ConsumerState<ProductAddVideo> {
   VideoPlayerController? _controller;
-  bool _isInitializing = false;
-  String? _initError;
 
   @override
   Widget build(BuildContext context) {
-    final hasVideo = widget.videoFile != null || widget.existingVideoUrl != null;
+    final isInitializing = ref.watch(_videoInitializingProvider);
+    final initError = ref.watch(_videoInitErrorProvider);
+    final hasVideo =
+        widget.videoFile != null || widget.existingVideoUrl != null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -39,10 +55,25 @@ class _ProductAddVideoState extends State<ProductAddVideo> {
         Row(
           children: [
             Text(
-              'product.video_count'.tr(namedArgs: {'count': hasVideo ? '1' : '0'}),
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: hasVideo ? DesignTokens.success : DesignTokens.textSecondary),
+              'product.video_count'.tr(
+                namedArgs: {'count': hasVideo ? '1' : '0'},
+              ),
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: hasVideo
+                    ? DesignTokens.success
+                    : DesignTokens.textSecondary,
+              ),
             ),
-            if (hasVideo) ...[const SizedBox(width: 6), const Icon(Icons.check_circle_rounded, size: 16, color: DesignTokens.success)],
+            if (hasVideo) ...[
+              const SizedBox(width: 6),
+              const Icon(
+                Icons.check_circle_rounded,
+                size: 16,
+                color: DesignTokens.success,
+              ),
+            ],
           ],
         ),
         const SizedBox(height: 12),
@@ -55,8 +86,8 @@ class _ProductAddVideoState extends State<ProductAddVideo> {
                   padding: const EdgeInsets.only(right: 10),
                   child: _VideoTile(
                     controller: _controller,
-                    isInitializing: _isInitializing,
-                    errorMessage: _initError,
+                    isInitializing: isInitializing,
+                    errorMessage: initError,
                     onRemove: widget.onVideoRemoved ?? () {},
                   ),
                 ),
@@ -74,20 +105,35 @@ class _ProductAddVideoState extends State<ProductAddVideo> {
                       decoration: BoxDecoration(
                         color: DesignTokens.surfaceVariant,
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: DesignTokens.primary.withValues(alpha: 0.3), width: 1.5, strokeAlign: BorderSide.strokeAlignInside),
+                        border: Border.all(
+                          color: DesignTokens.primary.withValues(alpha: 0.3),
+                          width: 1.5,
+                          strokeAlign: BorderSide.strokeAlignInside,
+                        ),
                       ),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Container(
                             padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(gradient: DesignTokens.primaryGradient, borderRadius: BorderRadius.circular(12)),
-                            child: const Icon(Icons.video_library_rounded, color: DesignTokens.textOnPrimary, size: 22),
+                            decoration: BoxDecoration(
+                              gradient: DesignTokens.primaryGradient,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(
+                              Icons.video_library_rounded,
+                              color: DesignTokens.textOnPrimary,
+                              size: 22,
+                            ),
                           ),
                           const SizedBox(height: 6),
                           Text(
                             'product.add_video'.tr(),
-                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: DesignTokens.primary),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: DesignTokens.primary,
+                            ),
                           ),
                         ],
                       ),
@@ -104,7 +150,8 @@ class _ProductAddVideoState extends State<ProductAddVideo> {
   @override
   void didUpdateWidget(covariant ProductAddVideo oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.videoFile?.path != oldWidget.videoFile?.path || widget.existingVideoUrl != oldWidget.existingVideoUrl) {
+    if (widget.videoFile?.path != oldWidget.videoFile?.path ||
+        widget.existingVideoUrl != oldWidget.existingVideoUrl) {
       _initializeVideo();
     }
   }
@@ -127,26 +174,30 @@ class _ProductAddVideoState extends State<ProductAddVideo> {
     oldController?.dispose();
 
     if (widget.videoFile == null && widget.existingVideoUrl == null) {
-      if (mounted) setState(() => _isInitializing = false);
+      if (mounted) ref.read(_videoInitializingProvider.notifier).state = false;
       return;
     }
 
     if (mounted) {
-      setState(() {
-        _isInitializing = true;
-        _initError = null;
-      });
+      ref.read(_videoInitializingProvider.notifier).state = true;
+      ref.read(_videoInitErrorProvider.notifier).state = null;
     }
 
     try {
       if (widget.videoFile != null) {
         if (kIsWeb) {
-          _controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoFile!.path));
+          _controller = VideoPlayerController.networkUrl(
+            Uri.parse(widget.videoFile!.path),
+          );
         } else {
-          _controller = VideoPlayerController.file(File(widget.videoFile!.path));
+          _controller = VideoPlayerController.file(
+            File(widget.videoFile!.path),
+          );
         }
       } else if (widget.existingVideoUrl != null) {
-        _controller = VideoPlayerController.networkUrl(Uri.parse(widget.existingVideoUrl!));
+        _controller = VideoPlayerController.networkUrl(
+          Uri.parse(widget.existingVideoUrl!),
+        );
       }
 
       await _controller!.initialize();
@@ -154,10 +205,11 @@ class _ProductAddVideoState extends State<ProductAddVideo> {
       await _controller!.setVolume(0);
     } catch (e) {
       AppLogger.w('Error initializing video: $e', tag: 'video');
-      _initError = 'product.video_load_error'.tr();
+      ref.read(_videoInitErrorProvider.notifier).state =
+          'product.video_load_error'.tr();
       _controller = null;
     } finally {
-      if (mounted) setState(() => _isInitializing = false);
+      if (mounted) ref.read(_videoInitializingProvider.notifier).state = false;
     }
   }
 
@@ -173,7 +225,9 @@ class _ProductAddVideoState extends State<ProductAddVideo> {
         // Initialize temporary controller to get duration
         VideoPlayerController tmpController;
         if (kIsWeb) {
-          tmpController = VideoPlayerController.networkUrl(Uri.parse(pickedFile.path));
+          tmpController = VideoPlayerController.networkUrl(
+            Uri.parse(pickedFile.path),
+          );
         } else {
           tmpController = VideoPlayerController.file(File(pickedFile.path));
         }
@@ -182,16 +236,27 @@ class _ProductAddVideoState extends State<ProductAddVideo> {
         final durationSeconds = tmpController.value.duration.inSeconds;
         await tmpController.dispose();
 
-        final validation = validateVideoFile(sizeInBytes: length, durationInSeconds: durationSeconds);
+        final validation = validateVideoFile(
+          sizeInBytes: length,
+          durationInSeconds: durationSeconds,
+        );
 
         if (validation == VideoValidationError.tooLarge) {
           if (!mounted) return;
-          final msg = AppError.getMessage(null, 'product.video_too_large'.tr(), ErrorCodes.prodVideoTooLarge);
+          final msg = AppError.getMessage(
+            null,
+            'product.video_too_large'.tr(),
+            ErrorCodes.prodVideoTooLarge,
+          );
           AppError.show(context, msg);
           return;
         } else if (validation == VideoValidationError.tooLong) {
           if (!mounted) return;
-          final msg = AppError.getMessage(null, 'product.video_too_long'.tr(), ErrorCodes.prodVideoTooLong);
+          final msg = AppError.getMessage(
+            null,
+            'product.video_too_long'.tr(),
+            ErrorCodes.prodVideoTooLong,
+          );
           AppError.show(context, msg);
           return;
         }
@@ -199,7 +264,9 @@ class _ProductAddVideoState extends State<ProductAddVideo> {
         widget.onVideoAdded?.call(pickedFile, durationSeconds);
       }
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text('product.pick_video_failed'.tr())));
+      messenger.showSnackBar(
+        SnackBar(content: Text('product.pick_video_failed'.tr())),
+      );
     }
   }
 }
@@ -210,7 +277,12 @@ class _VideoTile extends StatelessWidget {
   final String? errorMessage;
   final VoidCallback onRemove;
 
-  const _VideoTile({this.controller, required this.isInitializing, this.errorMessage, required this.onRemove});
+  const _VideoTile({
+    this.controller,
+    required this.isInitializing,
+    this.errorMessage,
+    required this.onRemove,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -226,7 +298,10 @@ class _VideoTile extends StatelessWidget {
             border: Border.all(color: DesignTokens.primary, width: 2),
             boxShadow: DesignTokens.shadowSm,
           ),
-          child: ClipRRect(borderRadius: BorderRadius.circular(14), child: _buildVideoContent()),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: _buildVideoContent(),
+          ),
         ),
         // Primary badge
         Positioned(
@@ -234,15 +309,26 @@ class _VideoTile extends StatelessWidget {
           left: 6,
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(color: DesignTokens.black.withValues(alpha: 0.6), borderRadius: BorderRadius.circular(8)),
+            decoration: BoxDecoration(
+              color: DesignTokens.black.withValues(alpha: 0.6),
+              borderRadius: BorderRadius.circular(8),
+            ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.play_circle_fill_rounded, color: DesignTokens.textOnDark, size: 12),
+                const Icon(
+                  Icons.play_circle_fill_rounded,
+                  color: DesignTokens.textOnDark,
+                  size: 12,
+                ),
                 const SizedBox(width: 4),
                 Text(
                   'product.video_badge'.tr(),
-                  style: const TextStyle(color: DesignTokens.textOnDark, fontSize: 10, fontWeight: FontWeight.w700),
+                  style: const TextStyle(
+                    color: DesignTokens.textOnDark,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ],
             ),
@@ -262,9 +348,18 @@ class _VideoTile extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: DesignTokens.error.withValues(alpha: 0.9),
                   shape: BoxShape.circle,
-                  boxShadow: [BoxShadow(color: DesignTokens.black.withValues(alpha: 0.2), blurRadius: 4)],
+                  boxShadow: [
+                    BoxShadow(
+                      color: DesignTokens.black.withValues(alpha: 0.2),
+                      blurRadius: 4,
+                    ),
+                  ],
                 ),
-                child: const Icon(Icons.close_rounded, color: DesignTokens.textOnPrimary, size: 14),
+                child: const Icon(
+                  Icons.close_rounded,
+                  color: DesignTokens.textOnPrimary,
+                  size: 14,
+                ),
               ),
             ),
           ),
@@ -278,11 +373,21 @@ class _VideoTile extends StatelessWidget {
       return const Center(child: ModernLoadingIndicator());
     }
     if (errorMessage != null || controller == null) {
-      return Center(child: Icon(Icons.broken_image_rounded, color: DesignTokens.white.withValues(alpha: 0.5), size: 30));
+      return Center(
+        child: Icon(
+          Icons.broken_image_rounded,
+          color: DesignTokens.white.withValues(alpha: 0.5),
+          size: 30,
+        ),
+      );
     }
     return FittedBox(
       fit: BoxFit.cover,
-      child: SizedBox(width: controller!.value.size.width, height: controller!.value.size.height, child: VideoPlayer(controller!)),
+      child: SizedBox(
+        width: controller!.value.size.width,
+        height: controller!.value.size.height,
+        child: VideoPlayer(controller!),
+      ),
     );
   }
 }

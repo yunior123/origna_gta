@@ -58,9 +58,6 @@ class RatingDialog extends ConsumerStatefulWidget {
 }
 
 class _RatingDialogState extends ConsumerState<RatingDialog> {
-  int _selectedRating = 0;
-  bool _isSubmitting = false;
-  final List<Uint8List> _reviewImages = [];
   final _picker = ImagePicker();
   final _reviewTextController = TextEditingController();
 
@@ -71,6 +68,9 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
           subscriptionStreamProvider.select((a) => a.valueOrNull?.isPremium),
         ) ??
         false;
+    final selectedRating = ref.watch(_ratingSelectedProvider);
+    final isSubmitting = ref.watch(_ratingSubmittingProvider);
+    final reviewImages = ref.watch(_ratingImagesProvider);
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       title: Text('rating.title'.tr()),
@@ -91,13 +91,13 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
               style: const TextStyle(color: DesignTokens.textSecondary),
             ),
             const SizedBox(height: 16),
-            _buildStarRating(),
+            _buildStarRating(selectedRating),
             const SizedBox(height: 8),
             Center(
               child: Text(
-                _getRatingText(),
+                _getRatingText(selectedRating),
                 style: TextStyle(
-                  color: _selectedRating > 0
+                  color: selectedRating > 0
                       ? DesignTokens.warning
                       : DesignTokens.textSecondary,
                   fontWeight: FontWeight.w500,
@@ -123,7 +123,7 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
             ),
             const SizedBox(height: 16),
             // Photo picker section
-            _buildPhotoPicker(isPremium),
+            _buildPhotoPicker(isPremium, reviewImages),
           ],
         ),
       ),
@@ -132,7 +132,7 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
           button: true,
           label: 'rating.cancel_label'.tr(),
           child: TextButton(
-            onPressed: _isSubmitting ? null : () => Navigator.pop(context),
+            onPressed: isSubmitting ? null : () => Navigator.pop(context),
             child: Text('common.cancel'.tr()),
           ),
         ),
@@ -140,14 +140,14 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
           button: true,
           label: 'rating.submit_label'.tr(),
           child: ElevatedButton(
-            onPressed: (_selectedRating == 0 || _isSubmitting)
+            onPressed: (selectedRating == 0 || isSubmitting)
                 ? null
                 : _submitRating,
             style: ElevatedButton.styleFrom(
               backgroundColor: DesignTokens.primary,
               foregroundColor: DesignTokens.white,
             ),
-            child: _isSubmitting
+            child: isSubmitting
                 ? const ModernLoadingIndicator.small(color: DesignTokens.white)
                 : Text('common.submit'.tr()),
           ),
@@ -181,7 +181,11 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
           top: -2,
           right: 2,
           child: GestureDetector(
-            onTap: () => setState(() => _reviewImages.removeAt(index)),
+            onTap: () {
+              final current = ref.read(_ratingImagesProvider);
+              ref.read(_ratingImagesProvider.notifier).state = [...current]
+                ..removeAt(index);
+            },
             child: Container(
               padding: const EdgeInsets.all(2),
               decoration: BoxDecoration(
@@ -200,7 +204,7 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
     );
   }
 
-  Widget _buildPhotoPicker(bool isPremium) {
+  Widget _buildPhotoPicker(bool isPremium, List<Uint8List> reviewImages) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -217,7 +221,7 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
             const SizedBox(width: 4),
             if (isPremium)
               Text(
-                '(${_reviewImages.length}/3)',
+                '(${reviewImages.length}/3)',
                 style: const TextStyle(
                   fontSize: 12,
                   color: DesignTokens.textDisabled,
@@ -291,10 +295,10 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
         else
           Row(
             children: [
-              ..._reviewImages.asMap().entries.map(
+              ...reviewImages.asMap().entries.map(
                 (entry) => _buildImageThumb(entry.key, entry.value),
               ),
-              if (_reviewImages.length < 3)
+              if (reviewImages.length < 3)
                 GestureDetector(
                   onTap: _pickImage,
                   child: Container(
@@ -322,7 +326,7 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
     );
   }
 
-  Widget _buildStarRating() {
+  Widget _buildStarRating(int selectedRating) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(5, (index) {
@@ -334,14 +338,14 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
           ),
           child: GestureDetector(
             onTap: () {
-              setState(() => _selectedRating = starNumber);
+              ref.read(_ratingSelectedProvider.notifier).state = starNumber;
             },
             child: Padding(
               padding: const EdgeInsets.all(
                 4,
               ), // WCAG 2.5.8: 4+40+4=48dp touch target
               child: Icon(
-                starNumber <= _selectedRating ? Icons.star : Icons.star_border,
+                starNumber <= selectedRating ? Icons.star : Icons.star_border,
                 color: DesignTokens.warning,
                 size: 40,
               ),
@@ -352,8 +356,8 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
     );
   }
 
-  String _getRatingText() {
-    switch (_selectedRating) {
+  String _getRatingText(int selectedRating) {
+    switch (selectedRating) {
       case 1:
         return 'rating.poor'.tr();
       case 2:
@@ -377,22 +381,27 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
     );
     if (picked == null) return;
     final bytes = await picked.readAsBytes();
-    if (mounted) setState(() => _reviewImages.add(bytes));
+    if (mounted) {
+      final current = ref.read(_ratingImagesProvider);
+      ref.read(_ratingImagesProvider.notifier).state = [...current, bytes];
+    }
   }
 
   Future<void> _submitRating() async {
-    setState(() => _isSubmitting = true);
+    ref.read(_ratingSubmittingProvider.notifier).state = true;
 
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
     final viewModel = ref.read(productRatingViewModelProvider.notifier);
     final reviewText = _reviewTextController.text.trim();
+    final selectedRating = ref.read(_ratingSelectedProvider);
+    final reviewImages = ref.read(_ratingImagesProvider);
     final success = await viewModel.submitRating(
       widget.orderId,
       widget.productId,
-      _selectedRating,
-      reviewImages: _reviewImages.isNotEmpty
-          ? List.unmodifiable(_reviewImages)
+      selectedRating,
+      reviewImages: reviewImages.isNotEmpty
+          ? List.unmodifiable(reviewImages)
           : null,
       reviewText: reviewText.isNotEmpty ? reviewText : null,
     );
@@ -415,7 +424,7 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
       messenger.showSnackBar(
         SnackBar(content: Text(error), backgroundColor: DesignTokens.error),
       );
-      setState(() => _isSubmitting = false);
+      ref.read(_ratingSubmittingProvider.notifier).state = false;
     }
   }
 }
