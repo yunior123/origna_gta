@@ -72,6 +72,12 @@ node_modules/
 .agent-browser/
 e2e-agent-browser/node_modules/
 
+# --- Firebase artifacts (Firebase is GONE — block re-introduction) ---
+origna_gta/android/app/google-services.json
+origna_gta/ios/GoogleService-Info.plist
+origna_gta/ios/Pods/
+origna_gta/macos/Pods/
+
 # --- Flutter build/test artifacts ---
 origna_gta/build/
 origna_gta/.dart_tool/
