@@ -267,7 +267,9 @@ class CartItemDetailModel {
       productId: (map[Fields.productId] as String?) ?? '',
       name: (map[Fields.name] as String?) ?? '',
       description: (map[Fields.description] as String?) ?? '',
-      price: ((map[Fields.price] as num?) ?? 0).toDouble(),
+      price: map[Fields.priceCents] != null
+          ? (map[Fields.priceCents] as num).toInt() / 100.0
+          : ((map[Fields.price] as num?) ?? 0).toDouble(),
       priceCents: map[Fields.priceCents] != null
           ? (map[Fields.priceCents] as num).toInt()
           : ((map[Fields.price] as num?) ?? 0).toDouble() * 100 ~/ 1,

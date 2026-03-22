@@ -152,7 +152,9 @@ class _ProductAddVideoState extends ConsumerState<ProductAddVideo> {
     super.didUpdateWidget(oldWidget);
     if (widget.videoFile?.path != oldWidget.videoFile?.path ||
         widget.existingVideoUrl != oldWidget.existingVideoUrl) {
-      _initializeVideo();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _initializeVideo();
+      });
     }
   }
 
@@ -165,7 +167,9 @@ class _ProductAddVideoState extends ConsumerState<ProductAddVideo> {
   @override
   void initState() {
     super.initState();
-    _initializeVideo();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeVideo();
+    });
   }
 
   Future<void> _initializeVideo() async {

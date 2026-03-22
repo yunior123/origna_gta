@@ -317,8 +317,9 @@ class SellerDeliveryOption {
 
     final altSpeed = map['speed'] as String? ?? DeliverySpeed.standard.value;
     final altDays = (map['estimatedDays'] as num?)?.toInt() ?? 5;
-    final altPriceCents = (((map['price'] as num?)?.toDouble() ?? 0.0) * 100)
-        .round();
+    final altPriceCents = map.containsKey('priceCents')
+        ? (map['priceCents'] as num?)?.toInt() ?? 0
+        : (((map['price'] as num?)?.toDouble() ?? 0.0) * 100).round();
 
     final displayName = DeliverySpeed.fromValue(altSpeed).displayName;
     return SellerDeliveryOption(

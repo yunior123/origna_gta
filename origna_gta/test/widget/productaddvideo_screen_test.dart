@@ -132,6 +132,7 @@ void main() {
         ),
       );
       await tester.pump();
+      await tester.pump();
 
       await tester.pumpWidget(
         TestWrapper(
@@ -143,6 +144,7 @@ void main() {
           ),
         ),
       );
+      await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
       expect(find.byType(ProductAddVideo), findsOneWidget);
@@ -159,6 +161,7 @@ void main() {
           ),
         ),
       );
+      await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
       await tester.pumpWidget(const SizedBox());

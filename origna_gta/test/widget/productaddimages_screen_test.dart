@@ -114,7 +114,8 @@ void main() {
       ];
 
       await tester.pumpWidget(buildWidget(images: images));
-      await tester.pump();
+      await tester.pump(); // Process addPostFrameCallback
+      await tester.pump(); // Rebuild after provider state update
 
       expect(find.byType(ReorderableListView), findsOneWidget);
     });

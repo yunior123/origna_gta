@@ -4,7 +4,6 @@ import 'package:origna_gta/core/schema/schema_constants.dart';
 
 void main() {
   group('Generated Models Comprehensive Tests', () {
-    
     test('Address fromJson/toJson', () {
       final json = {
         'street': '123 Main St',
@@ -18,12 +17,12 @@ void main() {
         'latitude': 43.6532,
         'longitude': -79.3832,
       };
-      
+
       final model = Address.fromJson(json);
       expect(model.street, '123 Main St');
       expect(model.city, 'Toronto');
       expect(model.isDefault, true);
-      
+
       final backToJson = model.toJson();
       expect(backToJson['street'], json['street']);
       expect(backToJson['city'], json['city']);
@@ -40,15 +39,15 @@ void main() {
         'isPremium': true,
         'preferredLanguage': 'en',
       };
-      
+
       final model = User.fromJson(json);
       expect(model.uid, 'u1');
       expect(model.isPremium, true);
       expect(model.roles.first, UserRole.buyer);
-      
+
       final backToJson = model.toJson();
       expect(backToJson['uid'], json['uid']);
-      // DateTime might lose some precision in ISO string roundtrip depending on implementation, 
+      // DateTime might lose some precision in ISO string roundtrip depending on implementation,
       // but usually it works fine for tests.
     });
 
@@ -71,22 +70,22 @@ void main() {
             'optionValues': {'size': 'M'},
             'priceCents': 9999,
             'stockQuantity': 5,
-          }
+          },
         ],
         'variantOptions': [
           {
             'name': 'size',
             'values': ['S', 'M', 'L'],
-          }
+          },
         ],
       };
-      
+
       final model = Product.fromJson(json);
       expect(model.productId, 'p1');
       expect(model.hasVariants, true);
       expect(model.variants.first.variantId, 'v1');
       expect(model.variantOptions.first.name, 'size');
-      
+
       final backToJson = model.toJson();
       expect(backToJson['productId'], json['productId']);
       expect(backToJson['price'], json['price']);
@@ -107,7 +106,7 @@ void main() {
             'imageUrls': [],
             'sellerId': 's1',
             'status': 'pending',
-          }
+          },
         ],
         'totalAmountCents': 10000,
         'subtotalCents': 10000,
@@ -116,13 +115,13 @@ void main() {
         'orderStatus': 'pending',
         'paymentStatus': 'awaiting_payment',
       };
-      
+
       final model = Order.fromJson(json);
       expect(model.orderId, 'o1');
       expect(model.items.length, 1);
       expect(model.items.first.price, 50.0);
       expect(model.taxes.gst, 5.0);
-      
+
       final backToJson = model.toJson();
       expect(backToJson['orderId'], json['orderId']);
     });
@@ -134,14 +133,17 @@ void main() {
         Fields.HST: 13.0,
         Fields.QST: 9.975,
       };
-      
+
       final model = Taxes.fromJson(json);
       expect(model.gst, 5.0);
-      expect(model.qst, 9.975);
-      expect(model.total, 5.0 + 8.0 + 13.0 + 9.975);
-      
+      // 9.975 dollars rounds to 998 cents -> 9.98 dollars
+      expect(model.qst, 9.98);
+      // Total in dollars: (500+800+1300+998)/100 = 35.98
+      expect(model.total, 35.98);
+
       final backToJson = model.toJson();
-      expect(backToJson[Fields.GST], json[Fields.GST]);
+      // toJson outputs cents
+      expect(backToJson[Fields.GST], 500);
     });
 
     test('SellerPayout fromMap', () {
@@ -152,7 +154,7 @@ void main() {
         'netAmountCents': 975,
         'status': 'pending',
       };
-      
+
       final model = SellerPayout.fromMap(map);
       expect(model.sellerId, 's1');
       expect(model.amount, 10.0);
@@ -182,11 +184,7 @@ void main() {
     });
 
     test('SupplierInfo fromJson', () {
-      final json = {
-        'type': 'aliexpress',
-        'cost': 5.5,
-        'currency': 'USD',
-      };
+      final json = {'type': 'aliexpress', 'cost': 5.5, 'currency': 'USD'};
       final model = SupplierInfo.fromJson(json);
       expect(model.type, 'aliexpress');
       expect(model.cost, 5.5);

@@ -124,10 +124,7 @@ void main() {
     });
 
     test('defaults discountType to percent', () {
-      final json = <String, dynamic>{
-        'minQuantity': 5,
-        'discountValue': 15.0,
-      };
+      final json = <String, dynamic>{'minQuantity': 5, 'discountValue': 15.0};
       final model = ShippingQuantityDiscount.fromJson(json);
       expect(model.discountType, DiscountTypeValues.percent);
       expect(model.label, isNull);
@@ -203,10 +200,7 @@ void main() {
     });
 
     test('empty values list', () {
-      final json = <String, dynamic>{
-        'name': 'Material',
-        'values': <String>[],
-      };
+      final json = <String, dynamic>{'name': 'Material', 'values': <String>[]};
       final model = VariantOption.fromJson(json);
       expect(model.values, isEmpty);
     });
@@ -387,16 +381,16 @@ void main() {
     final now = DateTime(2026, 3, 9, 12, 0);
 
     Map<String, dynamic> _minimalProductJson() => {
-          'productId': 'prod-001',
-          'name': 'Maple Syrup',
-          'priceCents': 2499,
-          'description': 'Pure Canadian maple syrup',
-          'imageUrls': ['https://img.example.com/maple.jpg'],
-          'sellerId': 'seller-001',
-          'categoryId': 5,
-          'stockQuantity': 100,
-          'createdAt': now.toIso8601String(),
-        };
+      'productId': 'prod-001',
+      'name': 'Maple Syrup',
+      'priceCents': 2499,
+      'description': 'Pure Canadian maple syrup',
+      'imageUrls': ['https://img.example.com/maple.jpg'],
+      'sellerId': 'seller-001',
+      'categoryId': 5,
+      'stockQuantity': 100,
+      'createdAt': now.toIso8601String(),
+    };
 
     test('roundtrip with minimal required fields + defaults', () {
       final json = _minimalProductJson();
@@ -433,9 +427,9 @@ void main() {
       expect(model.variants, isEmpty);
       expect(model.variantOptions, isEmpty);
 
-      // Nullable fields should be null
+      // Nullable fields should be null (priceCents is required, not null)
       expect(model.nameF, isNull);
-      expect(model.priceCents, isNull);
+      expect(model.priceCents, 2499);
       expect(model.compareAtPriceCents, isNull);
       expect(model.descriptionF, isNull);
       expect(model.videoUrl, isNull);
@@ -474,7 +468,7 @@ void main() {
       final out = model.toJson();
       expect(out['productId'], 'prod-001');
       expect(out['name'], 'Maple Syrup');
-      expect(out['price'], 24.99);
+      expect(out['priceCents'], 2499);
       expect(out['createdAt'], now.toIso8601String());
     });
 
@@ -485,7 +479,7 @@ void main() {
         ..._minimalProductJson(),
         'nameF': 'Sirop d\'erable',
         'priceCents': 2499,
-        'compareAtPrice': 34.99,
+        'compareAtPriceCents': 3499,
         'descriptionF': 'Sirop d\'erable pur du Canada',
         'videoUrl': 'https://vid.example.com/maple.mp4',
         'videoDurationSeconds': 30,
@@ -588,7 +582,7 @@ void main() {
       final model = Product.fromJson(json);
       expect(model.nameF, 'Sirop d\'erable');
       expect(model.priceCents, 2499);
-      expect(model.compareAtPriceCents, 34.99);
+      expect(model.compareAtPriceCents, 3499);
       expect(model.sellerAddress?.city, 'Montreal');
       expect(model.rating, 4.5);
       expect(model.ratingCount, 120);
@@ -626,7 +620,7 @@ void main() {
       final out = model.toJson();
       expect(out['nameF'], 'Sirop d\'erable');
       expect(out['priceCents'], 2499);
-      expect(out['compareAtPrice'], 34.99);
+      expect(out['compareAtPriceCents'], 3499);
       expect(out['lifecycleStatus'], ProductLifecycleStatusValues.active);
       expect(out['trendingScore'], 85);
       expect(out['isTrending'], true);
@@ -668,13 +662,13 @@ void main() {
     test('numeric fields accept int and double via num coercion', () {
       final json = <String, dynamic>{
         ..._minimalProductJson(),
-        'price': 10, // int instead of double
+        'priceCents': 1000, // int cents
         'stockQuantity': 50.0, // double instead of int (num.toInt())
         'rating': 4, // int instead of double
         'ratingCount': 10.0,
       };
       final model = Product.fromJson(json);
-      expect(model.price, 10.0);
+      expect(model.price, 10.0); // 1000 cents = $10.00
       expect(model.stockQuantity, 50);
       expect(model.rating, 4.0);
       expect(model.ratingCount, 10);
@@ -761,7 +755,11 @@ void main() {
       expect(model.digitalBuilds!['linux'], 'v2.0');
 
       final out = model.toJson();
-      expect(out['digitalBuilds'], {'windows': 'v2.1', 'mac': 'v2.1', 'linux': 'v2.0'});
+      expect(out['digitalBuilds'], {
+        'windows': 'v2.1',
+        'mac': 'v2.1',
+        'linux': 'v2.0',
+      });
     });
 
     test('shipFromCountries list roundtrip', () {
@@ -779,14 +777,14 @@ void main() {
   // =========================================================================
   group('ProductCreate fromJson/toJson', () {
     Map<String, dynamic> _minimalCreateJson() => {
-          'name': 'New Product',
-          'priceCents': 1999,
-          'description': 'A new product',
-          'imageUrls': ['img.jpg'],
-          'sellerId': 'seller-002',
-          'categoryId': 3,
-          'stockQuantity': 50,
-        };
+      'name': 'New Product',
+      'priceCents': 1999,
+      'description': 'A new product',
+      'imageUrls': ['img.jpg'],
+      'sellerId': 'seller-002',
+      'categoryId': 3,
+      'stockQuantity': 50,
+    };
 
     test('roundtrip with minimal fields + defaults', () {
       final json = _minimalCreateJson();
@@ -825,7 +823,7 @@ void main() {
 
       final out = model.toJson();
       expect(out['name'], 'New Product');
-      expect(out['price'], 19.99);
+      expect(out['priceCents'], 1999);
       expect(out['lifecycleStatus'], ProductLifecycleStatusValues.draft);
     });
 
@@ -869,14 +867,8 @@ void main() {
     test('with supplier and inventory nested objects', () {
       final json = <String, dynamic>{
         ..._minimalCreateJson(),
-        'supplier': {
-          'type': SupplierTypeValues.cjdropshipping,
-          'cost': 5.0,
-        },
-        'inventory': {
-          'managed': false,
-          'allowBackorder': true,
-        },
+        'supplier': {'type': SupplierTypeValues.cjdropshipping, 'cost': 5.0},
+        'inventory': {'managed': false, 'allowBackorder': true},
         'warehouseIds': ['wh-x'],
         'shipFromCity': 'Shenzhen',
         'shipFromCountry': 'China',
@@ -917,7 +909,7 @@ void main() {
 
       final out = model.toJson();
       expect(out['nameF'], 'TestFR');
-      expect(out['compareAtPrice'], 14.99);
+      expect(out['compareAtPriceCents'], 1499);
       expect(out['digitalType'], 'software');
       expect(out['slug'], 'test-product');
       expect(out['digitalBuilds'], {'web': 'v1'});
@@ -1128,30 +1120,31 @@ void main() {
       bool isLocalDeliveryOnly = false,
       int stockQuantity = 100,
       int priceCents = 2500,
-    }) =>
-        Product(
-          productId: 'p1',
-          name: 'Test',
-          priceCents: priceCents,
-          description: 'Desc',
-          imageUrls: ['img.jpg'],
-          sellerId: 's1',
-          categoryId: 1,
-          stockQuantity: stockQuantity,
-          createdAt: now,
-          supplier: supplier,
-          inventory: inventory,
-          cost: cost,
-          supplierSku: supplierSku,
-          supplierUrl: supplierUrl,
-          isDigital: isDigital,
-          isLocalDeliveryOnly: isLocalDeliveryOnly,
-        );
+    }) => Product(
+      productId: 'p1',
+      name: 'Test',
+      priceCents: priceCents,
+      description: 'Desc',
+      imageUrls: ['img.jpg'],
+      sellerId: 's1',
+      categoryId: 1,
+      stockQuantity: stockQuantity,
+      createdAt: now,
+      supplier: supplier,
+      inventory: inventory,
+      cost: cost,
+      supplierSku: supplierSku,
+      supplierUrl: supplierUrl,
+      isDigital: isDigital,
+      isLocalDeliveryOnly: isLocalDeliveryOnly,
+    );
 
     test('allowsBackorder from inventory', () {
       expect(_makeProduct().allowsBackorder, false);
       expect(
-        _makeProduct(inventory: const InventoryConfig(allowBackorder: true)).allowsBackorder,
+        _makeProduct(
+          inventory: const InventoryConfig(allowBackorder: true),
+        ).allowsBackorder,
         true,
       );
     });
@@ -1159,7 +1152,9 @@ void main() {
     test('isInventoryManaged defaults to true', () {
       expect(_makeProduct().isInventoryManaged, true);
       expect(
-        _makeProduct(inventory: const InventoryConfig(managed: false)).isInventoryManaged,
+        _makeProduct(
+          inventory: const InventoryConfig(managed: false),
+        ).isInventoryManaged,
         false,
       );
     });
@@ -1205,11 +1200,17 @@ void main() {
     });
 
     test('effectiveSupplierUrl prefers supplier object', () {
-      expect(_makeProduct(supplierUrl: 'http://flat').effectiveSupplierUrl, 'http://flat');
+      expect(
+        _makeProduct(supplierUrl: 'http://flat').effectiveSupplierUrl,
+        'http://flat',
+      );
       expect(
         _makeProduct(
           supplierUrl: 'http://flat',
-          supplier: const SupplierInfo(type: 'local', supplierUrl: 'http://obj'),
+          supplier: const SupplierInfo(
+            type: 'local',
+            supplierUrl: 'http://obj',
+          ),
         ).effectiveSupplierUrl,
         'http://obj',
       );
@@ -1227,7 +1228,9 @@ void main() {
     test('isInternationalSupplier', () {
       expect(_makeProduct().isInternationalSupplier, false);
       expect(
-        _makeProduct(supplier: const SupplierInfo(type: 'local')).isInternationalSupplier,
+        _makeProduct(
+          supplier: const SupplierInfo(type: 'local'),
+        ).isInternationalSupplier,
         false,
       );
       expect(
@@ -1239,7 +1242,10 @@ void main() {
     });
 
     test('deliveryEstimateText for digital', () {
-      expect(_makeProduct(isDigital: true).deliveryEstimateText, 'Instant delivery');
+      expect(
+        _makeProduct(isDigital: true).deliveryEstimateText,
+        'Instant delivery',
+      );
     });
 
     test('deliveryEstimateText for local only', () {

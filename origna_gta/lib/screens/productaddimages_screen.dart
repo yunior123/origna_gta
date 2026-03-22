@@ -281,9 +281,12 @@ class _ProductAddImagesState extends ConsumerState<ProductAddImages> {
     super.didUpdateWidget(oldWidget);
     // Sync internal list when parent passes new images (e.g., after edit screen loads saved images)
     if (widget.imageModels != oldWidget.imageModels) {
-      ref.read(_productImagesProvider.notifier).state = List<ImageModel>.from(
-        widget.imageModels,
-      );
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ref.read(_productImagesProvider.notifier).state =
+              List<ImageModel>.from(widget.imageModels);
+        }
+      });
     }
   }
 

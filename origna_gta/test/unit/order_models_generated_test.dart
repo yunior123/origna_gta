@@ -12,102 +12,99 @@ void main() {
   // ---------------------------------------------------------------------------
 
   Map<String, dynamic> _minimalOrderItemJson() => {
-        'productId': 'prod_1',
-        'name': 'Widget',
-        'description': 'A fine widget',
-        'priceCents': 2550,
-        'quantity': 2,
-        'imageUrls': ['https://img.example.com/a.jpg'],
-        'sellerId': 'seller_1',
-      };
+    'productId': 'prod_1',
+    'name': 'Widget',
+    'description': 'A fine widget',
+    'priceCents': 2550,
+    'quantity': 2,
+    'imageUrls': ['https://img.example.com/a.jpg'],
+    'sellerId': 'seller_1',
+  };
 
   Map<String, dynamic> _fullOrderItemJson() => {
-        ..._minimalOrderItemJson(),
-        'cartItemId': 'cart_item_99',
-        'sellerAddress': {
-          'street': '456 Oak Ave',
-          'apartment': '',
-          'city': 'Montreal',
-          'state': 'QC',
-          'postalCode': 'H2X 1Y4',
-          'country': 'Canada',
-          'isDefault': false,
-        },
-        'status': DeliveryStatusValues.shipped,
-        'trackingNumber': 'TRK123456',
-        'carrier': 'Canada Post',
-        'carrierNote': 'Leave at door',
-        'sellerSku': 'SKU-001',
-        'sellerName': 'Acme Inc.',
-        'shippedAt': '2026-03-01T10:00:00.000',
-        'deliveredAt': '2026-03-05T14:00:00.000',
-        'refundedAt': null,
-        'refundReason': null,
-        'refundAmountCents': null,
-        'refundId': null,
-        'confirmedByBuyer': true,
-        'variantId': 'var_1',
-        'variantTitle': 'Large / Blue',
-        'variantOptions': {'size': 'L', 'color': 'Blue'},
-        'variantSku': 'SKU-001-L-BL',
-        'weightKg': 1.5,
-        'lengthCm': 30.0,
-        'widthCm': 20.0,
-        'heightCm': 10.0,
-        'isLocalDeliveryOnly': true,
-        'isPerishable': true,
-        'estimatedShipDays': 5,
-        'deliveryOptions': <Map<String, dynamic>>[],
-        'minimumOrderQuantity': 2,
-        'freeShipping': true,
-        'isDigital': false,
-        'licenseKey': null,
-        'digitalUnlocked': false,
-        'digitalType': null,
-        'digitalBuilds': null,
-        'taxCode': 'GST_EXEMPT',
-        'buyerNote': 'Please gift-wrap',
-        'fulfillmentWarehouseId': 'wh_01',
-      };
+    ..._minimalOrderItemJson(),
+    'cartItemId': 'cart_item_99',
+    'sellerAddress': {
+      'street': '456 Oak Ave',
+      'apartment': '',
+      'city': 'Montreal',
+      'state': 'QC',
+      'postalCode': 'H2X 1Y4',
+      'country': 'Canada',
+      'isDefault': false,
+    },
+    'status': DeliveryStatusValues.shipped,
+    'trackingNumber': 'TRK123456',
+    'carrier': 'Canada Post',
+    'carrierNote': 'Leave at door',
+    'sellerSku': 'SKU-001',
+    'sellerName': 'Acme Inc.',
+    'shippedAt': '2026-03-01T10:00:00.000',
+    'deliveredAt': '2026-03-05T14:00:00.000',
+    'refundedAt': null,
+    'refundReason': null,
+    'refundAmountCents': null,
+    'refundId': null,
+    'confirmedByBuyer': true,
+    'variantId': 'var_1',
+    'variantTitle': 'Large / Blue',
+    'variantOptions': {'size': 'L', 'color': 'Blue'},
+    'variantSku': 'SKU-001-L-BL',
+    'weightKg': 1.5,
+    'lengthCm': 30.0,
+    'widthCm': 20.0,
+    'heightCm': 10.0,
+    'isLocalDeliveryOnly': true,
+    'isPerishable': true,
+    'estimatedShipDays': 5,
+    'deliveryOptions': <Map<String, dynamic>>[],
+    'minimumOrderQuantity': 2,
+    'freeShipping': true,
+    'isDigital': false,
+    'licenseKey': null,
+    'digitalUnlocked': false,
+    'digitalType': null,
+    'digitalBuilds': null,
+    'taxCode': 'GST_EXEMPT',
+    'buyerNote': 'Please gift-wrap',
+    'fulfillmentWarehouseId': 'wh_01',
+  };
 
   Map<String, dynamic> _minimalTaxesJson() => {
-        Fields.GST: 0.0,
-        Fields.PST: 0.0,
-        Fields.HST: 0.0,
-        Fields.QST: 0.0,
-      };
+    Fields.GST: 0.0,
+    Fields.PST: 0.0,
+    Fields.HST: 0.0,
+    Fields.QST: 0.0,
+  };
 
   Map<String, dynamic> _minimalOrderJson({DateTime? createdAt}) => {
-        'orderId': 'ord_1',
-        'userId': 'user_1',
-        'items': [_minimalOrderItemJson()],
-        'totalAmountCents': 5100,
-        'subtotalCents': 5100,
-        'taxes': _minimalTaxesJson(),
-        'createdAt': (createdAt ?? DateTime(2026, 3, 1)).toIso8601String(),
-      };
+    'orderId': 'ord_1',
+    'userId': 'user_1',
+    'items': [_minimalOrderItemJson()],
+    'totalAmountCents': 5100,
+    'subtotalCents': 5100,
+    'taxes': _minimalTaxesJson(),
+    'createdAt': (createdAt ?? DateTime(2026, 3, 1)).toIso8601String(),
+  };
 
-  Map<String, dynamic> _sellerPayoutJson({
-    DateTime? payoutDate,
-  }) =>
-      {
-        'sellerId': 'seller_1',
-        'stripeAccountId': 'acct_abc',
-        'amountCents': 5000,
-        'platformFeeCents': 250,
-        'netAmountCents': 4750,
-        'status': PayoutStatusValues.completed,
-        'payoutDate': payoutDate?.toIso8601String(),
-        'stripeTransferId': 'tr_xyz',
-        'failureReason': null,
-      };
+  Map<String, dynamic> _sellerPayoutJson({DateTime? payoutDate}) => {
+    'sellerId': 'seller_1',
+    'stripeAccountId': 'acct_abc',
+    'amountCents': 5000,
+    'platformFeeCents': 250,
+    'netAmountCents': 4750,
+    'status': PayoutStatusValues.completed,
+    'payoutDate': payoutDate?.toIso8601String(),
+    'stripeTransferId': 'tr_xyz',
+    'failureReason': null,
+  };
 
   Map<String, dynamic> _ratingsJson({DateTime? createdAt}) => {
-        'productId': 'prod_1',
-        'rating': 4.5,
-        'review': 'Great product!',
-        'createdAt': (createdAt ?? DateTime(2026, 3, 5)).toIso8601String(),
-      };
+    'productId': 'prod_1',
+    'rating': 4.5,
+    'review': 'Great product!',
+    'createdAt': (createdAt ?? DateTime(2026, 3, 5)).toIso8601String(),
+  };
 
   // ---------------------------------------------------------------------------
   // ORDER ITEM
@@ -144,7 +141,7 @@ void main() {
 
       final out = model.toJson();
       expect(out['productId'], 'prod_1');
-      expect(out['price'], 25.50);
+      expect(out['priceCents'], 2550);
       expect(out['quantity'], 2);
     });
 
@@ -196,7 +193,10 @@ void main() {
         'licenseKey': 'LIC-ABCD-1234',
         'digitalUnlocked': true,
         'digitalType': 'software',
-        'digitalBuilds': {'windows': 'https://dl.example.com/win', 'mac': 'https://dl.example.com/mac'},
+        'digitalBuilds': {
+          'windows': 'https://dl.example.com/win',
+          'mac': 'https://dl.example.com/mac',
+        },
       };
       final model = OrderItem.fromJson(json);
 
@@ -204,7 +204,10 @@ void main() {
       expect(model.licenseKey, 'LIC-ABCD-1234');
       expect(model.digitalUnlocked, true);
       expect(model.digitalType, 'software');
-      expect(model.digitalBuilds, {'windows': 'https://dl.example.com/win', 'mac': 'https://dl.example.com/mac'});
+      expect(model.digitalBuilds, {
+        'windows': 'https://dl.example.com/win',
+        'mac': 'https://dl.example.com/mac',
+      });
 
       final out = model.toJson();
       expect(out['isDigital'], true);
@@ -231,10 +234,7 @@ void main() {
     });
 
     test('empty imageUrls list', () {
-      final json = {
-        ..._minimalOrderItemJson(),
-        'imageUrls': <String>[],
-      };
+      final json = {..._minimalOrderItemJson(), 'imageUrls': <String>[]};
       final model = OrderItem.fromJson(json);
       expect(model.imageUrls, isEmpty);
 
@@ -396,17 +396,25 @@ void main() {
 
   group('Taxes fromJson/toJson', () {
     test('roundtrip', () {
-      final json = {Fields.GST: 5.0, Fields.PST: 7.0, Fields.HST: 13.0, Fields.QST: 9.975};
+      final json = {
+        Fields.GST: 5.0,
+        Fields.PST: 7.0,
+        Fields.HST: 13.0,
+        Fields.QST: 9.975,
+      };
       final model = Taxes.fromJson(json);
       expect(model.gst, 5.0);
       expect(model.pst, 7.0);
       expect(model.hst, 13.0);
-      expect(model.qst, 9.975);
-      expect(model.total, 5.0 + 7.0 + 13.0 + 9.975);
+      // 9.975 dollars rounds to 998 cents -> 9.98 dollars
+      expect(model.qst, 9.98);
+      // Total: (500+700+1300+998)/100 = 34.98
+      expect(model.total, 34.98);
 
       final out = model.toJson();
-      expect(out[Fields.GST], 5.0);
-      expect(out[Fields.PST], 7.0);
+      // toJson outputs cents
+      expect(out[Fields.GST], 500);
+      expect(out[Fields.PST], 700);
     });
 
     test('defaults to zero', () {
@@ -419,16 +427,27 @@ void main() {
     });
 
     test('fromMap identical to fromJson', () {
-      final map = {Fields.GST: 1.0, Fields.PST: 2.0, Fields.HST: 3.0, Fields.QST: 4.0};
+      final map = {
+        Fields.GST: 1.0,
+        Fields.PST: 2.0,
+        Fields.HST: 3.0,
+        Fields.QST: 4.0,
+      };
       final a = Taxes.fromJson(map);
       final b = Taxes.fromMap(map);
       expect(a, b);
     });
 
-    test('toMap returns double values', () {
-      final model = Taxes(gstCents: 100, pstCents: 200, hstCents: 300, qstCents: 400);
+    test('toMap returns int cents values', () {
+      final model = Taxes(
+        gstCents: 100,
+        pstCents: 200,
+        hstCents: 300,
+        qstCents: 400,
+      );
       final m = model.toMap();
-      expect(m[Fields.GST], isA<double>());
+      expect(m[Fields.GST], isA<int>());
+      expect(m[Fields.GST], 100);
       expect(m, hasLength(4));
     });
   });
@@ -514,7 +533,12 @@ void main() {
         'subtotalCents': 10000,
         'shippingCostCents': 1500,
         'taxAmountCents': 500,
-        'taxes': {Fields.GST: 2.5, Fields.PST: 0.0, Fields.HST: 0.0, Fields.QST: 2.5},
+        'taxes': {
+          Fields.GST: 2.5,
+          Fields.PST: 0.0,
+          Fields.HST: 0.0,
+          Fields.QST: 2.5,
+        },
         'orderStatus': 'delivered',
         'paymentStatus': 'captured',
         'shippingAddress': {
@@ -563,7 +587,7 @@ void main() {
         'payoutErrors': ['transfer_failed', 'retry_limit'],
         'updatedAt': updated.toIso8601String(),
         'itemTaxes': [
-          {'productId': 'prod_1', 'gst': 1.25}
+          {'productId': 'prod_1', 'gst': 1.25},
         ],
         'taxExempt': true,
         'taxExemption': {'type': 'first_nations', 'certificateId': 'FN-123'},
@@ -791,10 +815,7 @@ void main() {
 
     for (final entry in statusMap.entries) {
       test('${entry.key} serializes to "${entry.value}"', () {
-        final json = {
-          ..._minimalOrderJson(),
-          'orderStatus': entry.value,
-        };
+        final json = {..._minimalOrderJson(), 'orderStatus': entry.value};
         final model = Order.fromJson(json);
         expect(model.orderStatus, entry.key);
 
@@ -831,10 +852,7 @@ void main() {
 
     for (final entry in statusMap.entries) {
       test('${entry.key} serializes to "${entry.value}"', () {
-        final json = {
-          ..._minimalOrderJson(),
-          'paymentStatus': entry.value,
-        };
+        final json = {..._minimalOrderJson(), 'paymentStatus': entry.value};
         final model = Order.fromJson(json);
         expect(model.paymentStatus, entry.key);
 
@@ -960,20 +978,14 @@ void main() {
     });
 
     test('OrderItem with zero quantity', () {
-      final json = {
-        ..._minimalOrderItemJson(),
-        'quantity': 0,
-      };
+      final json = {..._minimalOrderItemJson(), 'quantity': 0};
       final model = OrderItem.fromJson(json);
       expect(model.quantity, 0);
       expect(model.subtotal, 0.0);
     });
 
     test('OrderItem with zero price', () {
-      final json = {
-        ..._minimalOrderItemJson(),
-        'priceCents': 0,
-      };
+      final json = {..._minimalOrderItemJson(), 'priceCents': 0};
       final model = OrderItem.fromJson(json);
       expect(model.price, 0.0);
       expect(model.subtotal, 0.0);
@@ -984,7 +996,8 @@ void main() {
       final json = _minimalOrderJson(createdAt: created);
       final model1 = Order.fromJson(json);
       // Encode to JSON string and decode back to get plain maps
-      final roundtripped = jsonDecode(jsonEncode(model1.toJson())) as Map<String, dynamic>;
+      final roundtripped =
+          jsonDecode(jsonEncode(model1.toJson())) as Map<String, dynamic>;
       final model2 = Order.fromJson(roundtripped);
 
       expect(model2.orderId, model1.orderId);
@@ -1000,7 +1013,8 @@ void main() {
       final json = _fullOrderItemJson();
       final model1 = OrderItem.fromJson(json);
       // Encode to JSON string and decode back to get plain maps
-      final roundtripped = jsonDecode(jsonEncode(model1.toJson())) as Map<String, dynamic>;
+      final roundtripped =
+          jsonDecode(jsonEncode(model1.toJson())) as Map<String, dynamic>;
       final model2 = OrderItem.fromJson(roundtripped);
 
       expect(model2.productId, model1.productId);
@@ -1037,10 +1051,7 @@ void main() {
     });
 
     test('Order with shippingAddress null', () {
-      final json = {
-        ..._minimalOrderJson(),
-        'shippingAddress': null,
-      };
+      final json = {..._minimalOrderJson(), 'shippingAddress': null};
       final model = Order.fromJson(json);
       expect(model.shippingAddress, isNull);
 

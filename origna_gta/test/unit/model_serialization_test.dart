@@ -99,7 +99,7 @@ void main() {
       final json = product.toJson();
       expect(json['productId'], 'p1');
       expect(json['name'], 'Test Product');
-      expect(json['price'], 29.99);
+      expect(json['priceCents'], 2999);
       expect(json['sellerId'], 's1');
       expect(json['categoryId'], 1);
       expect(json['trendingScore'], 100);
@@ -1154,7 +1154,7 @@ void main() {
       final json = original.toJson();
       expect(json['productId'], original.productId);
       expect(json['name'], original.name);
-      expect(json['price'], original.price);
+      expect(json['priceCents'], original.priceCents);
       expect(json['quantity'], original.quantity);
       expect(json['sellerId'], original.sellerId);
       expect(json['trackingNumber'], original.trackingNumber);
@@ -1452,12 +1452,12 @@ void main() {
 
   group('Taxes serialization', () {
     test('fromJson with all fields', () {
-      final json = {'GST': 5.0, 'PST': 7.0, 'HST': 0.0, 'QST': 9.975};
+      final json = {'GST': 5.0, 'PST': 7.0, 'HST': 0.0, 'QST': 9.98};
       final taxes = Taxes.fromJson(json);
       expect(taxes.gst, 5.0);
       expect(taxes.pst, 7.0);
       expect(taxes.hst, 0.0);
-      expect(taxes.qst, 9.975);
+      expect(taxes.qst, 9.98);
     });
 
     test('fromJson with missing fields uses defaults', () {
@@ -1469,16 +1469,26 @@ void main() {
     });
 
     test('total getter sums correctly', () {
-      final taxes = Taxes(gstCents: 500, pstCents: 700, hstCents: 1300, qstCents: 998);
-      expect(taxes.total, closeTo(34.975, 0.001));
+      final taxes = Taxes(
+        gstCents: 500,
+        pstCents: 700,
+        hstCents: 1300,
+        qstCents: 998,
+      );
+      expect(taxes.total, closeTo(34.98, 0.01));
     });
 
     test('toJson and toMap work correctly', () {
-      final taxes = Taxes(gstCents: 500, pstCents: 700, hstCents: 0, qstCents: 0);
+      final taxes = Taxes(
+        gstCents: 500,
+        pstCents: 700,
+        hstCents: 0,
+        qstCents: 0,
+      );
       final json = taxes.toJson();
       final map = taxes.toMap();
-      expect(json['GST'], 5.0);
-      expect(map['GST'], 5.0);
+      expect(json['GST'], 500);
+      expect(map['GST'], 500);
     });
   });
 

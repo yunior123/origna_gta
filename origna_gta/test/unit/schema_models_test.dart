@@ -27,7 +27,14 @@ void main() {
     });
 
     test('Address formatted address works correctly', () {
-      final address = Address(street: '123 Main Street', apartment: 'Apt 4B', city: 'Toronto', state: 'ON', postalCode: 'M5V 3A8', country: 'Canada');
+      final address = Address(
+        street: '123 Main Street',
+        apartment: 'Apt 4B',
+        city: 'Toronto',
+        state: 'ON',
+        postalCode: 'M5V 3A8',
+        country: 'Canada',
+      );
 
       final formatted = address.formattedAddress;
       expect(formatted.contains('123 Main Street'), true);
@@ -36,7 +43,13 @@ void main() {
     });
 
     test('Address copyWith maintains immutability', () {
-      final address = Address(street: '123 Main Street', city: 'Toronto', state: 'ON', postalCode: 'M5V 3A8', country: 'Canada');
+      final address = Address(
+        street: '123 Main Street',
+        city: 'Toronto',
+        state: 'ON',
+        postalCode: 'M5V 3A8',
+        country: 'Canada',
+      );
 
       final updated = address.copyWith(city: 'Montreal', state: 'QC');
       expect(updated.city, 'Montreal');
@@ -48,7 +61,13 @@ void main() {
 
   group('Product Model Tests', () {
     test('Product creates immutable object with nested Address', () {
-      final address = Address(street: '123 Farm Road', city: 'Toronto', state: 'ON', postalCode: 'M5V 3A8', country: 'Canada');
+      final address = Address(
+        street: '123 Farm Road',
+        city: 'Toronto',
+        state: 'ON',
+        postalCode: 'M5V 3A8',
+        country: 'Canada',
+      );
 
       final product = Product(
         productId: 'prod_123',
@@ -70,7 +89,13 @@ void main() {
     });
 
     test('Product copyWith maintains immutability', () {
-      final address = Address(street: '123 Farm Road', city: 'Toronto', state: 'ON', postalCode: 'M5V 3A8', country: 'Canada');
+      final address = Address(
+        street: '123 Farm Road',
+        city: 'Toronto',
+        state: 'ON',
+        postalCode: 'M5V 3A8',
+        country: 'Canada',
+      );
 
       final product = Product(
         productId: 'prod_123',
@@ -109,8 +134,9 @@ void main() {
       final taxes = Taxes(gstCents: 250, pstCents: 350);
 
       final map = taxes.toMap();
-      expect(map['GST'], 2.5);
-      expect(map['PST'], 3.5);
+      // toMap outputs cents
+      expect(map['GST'], 250);
+      expect(map['PST'], 350);
 
       final taxes2 = Taxes.fromMap(map);
       expect(taxes2.gst, taxes.gst);
@@ -120,7 +146,13 @@ void main() {
 
   group('OrderItem Model Tests', () {
     test('OrderItem subtotal calculation', () {
-      final address = Address(street: '123 Farm Road', city: 'Toronto', state: 'ON', postalCode: 'M5V 3A8', country: 'Canada');
+      final address = Address(
+        street: '123 Farm Road',
+        city: 'Toronto',
+        state: 'ON',
+        postalCode: 'M5V 3A8',
+        country: 'Canada',
+      );
 
       final item = OrderItem(
         productId: 'prod_123',
@@ -137,7 +169,13 @@ void main() {
     });
 
     test('OrderItem copyWith maintains immutability', () {
-      final address = Address(street: '123 Farm Road', city: 'Toronto', state: 'ON', postalCode: 'M5V 3A8', country: 'Canada');
+      final address = Address(
+        street: '123 Farm Road',
+        city: 'Toronto',
+        state: 'ON',
+        postalCode: 'M5V 3A8',
+        country: 'Canada',
+      );
 
       final item = OrderItem(
         productId: 'prod_123',
@@ -151,7 +189,10 @@ void main() {
         status: DeliveryStatusValues.shipped,
       );
 
-      final updated = item.copyWith(status: DeliveryStatusValues.delivered, confirmedByBuyer: true);
+      final updated = item.copyWith(
+        status: DeliveryStatusValues.delivered,
+        confirmedByBuyer: true,
+      );
       expect(updated.status, DeliveryStatusValues.delivered);
       expect(updated.confirmedByBuyer, true);
       expect(item.status, DeliveryStatusValues.shipped); // Original unchanged
@@ -181,7 +222,13 @@ void main() {
 
   group('Order Model Tests', () {
     test('Order dollar getters derive from cents', () {
-      final address = Address(street: '123 Main St', city: 'Toronto', state: 'ON', postalCode: 'M5V 3A8', country: 'Canada');
+      final address = Address(
+        street: '123 Main St',
+        city: 'Toronto',
+        state: 'ON',
+        postalCode: 'M5V 3A8',
+        country: 'Canada',
+      );
 
       final item1 = OrderItem(
         productId: 'prod_1',
@@ -228,7 +275,13 @@ void main() {
     });
 
     test('Order copyWith maintains immutability', () {
-      final address = Address(street: '123 Main St', city: 'Toronto', state: 'ON', postalCode: 'M5V 3A8', country: 'Canada');
+      final address = Address(
+        street: '123 Main St',
+        city: 'Toronto',
+        state: 'ON',
+        postalCode: 'M5V 3A8',
+        country: 'Canada',
+      );
 
       final item = OrderItem(
         productId: 'prod_1',
@@ -256,7 +309,10 @@ void main() {
         stripeSessionId: 'session_123',
       );
 
-      final updated = order.copyWith(orderStatus: OrderStatus.delivered, confirmedByClient: true);
+      final updated = order.copyWith(
+        orderStatus: OrderStatus.delivered,
+        confirmedByClient: true,
+      );
       expect(updated.orderStatus, OrderStatus.delivered);
       expect(updated.confirmedByClient, true);
       expect(order.orderStatus, OrderStatus.pending); // Original unchanged
@@ -265,7 +321,13 @@ void main() {
 
   group('User Model Tests', () {
     test('User helper methods', () {
-      final buyer = User(uid: 'user_1', email: 'buyer@example.com', name: 'Jane Buyer', roles: [UserRole.buyer], createdAt: DateTime.now());
+      final buyer = User(
+        uid: 'user_1',
+        email: 'buyer@example.com',
+        name: 'Jane Buyer',
+        roles: [UserRole.buyer],
+        createdAt: DateTime.now(),
+      );
       expect(buyer.isSeller, false);
       expect(buyer.isAdmin, false);
       expect(buyer.canSell, false);
@@ -291,12 +353,24 @@ void main() {
       expect(sellerIncomplete.isSeller, false);
       expect(sellerIncomplete.canSell, false);
 
-      final admin = User(uid: 'user_4', email: 'admin@example.com', name: 'Admin User', roles: [UserRole.admin], createdAt: DateTime.now());
+      final admin = User(
+        uid: 'user_4',
+        email: 'admin@example.com',
+        name: 'Admin User',
+        roles: [UserRole.admin],
+        createdAt: DateTime.now(),
+      );
       expect(admin.isAdmin, true);
     });
 
     test('User copyWith maintains immutability', () {
-      final user = User(uid: 'user_123', email: 'user@example.com', name: 'John Doe', roles: [UserRole.buyer], createdAt: DateTime.now());
+      final user = User(
+        uid: 'user_123',
+        email: 'user@example.com',
+        name: 'John Doe',
+        roles: [UserRole.buyer],
+        createdAt: DateTime.now(),
+      );
 
       final updated = user.copyWith(name: 'Jane Doe', isSeller: true);
       expect(updated.name, 'Jane Doe');
