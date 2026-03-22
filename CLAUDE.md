@@ -1,42 +1,76 @@
 @~/CLAUDE.md
 
-# OrignaGTA — Project Rules
+# OrignaGTA — AI Agent Routing File
 
-Flutter e-commerce app. Backend: OrignaBase (Rust VPS, **Firebase is COMPLETELY GONE**).
+Flutter e-commerce app (Canada-first multi-vendor marketplace). Backend: OrignaBase (Rust VPS). **Firebase is GONE.**
 
-## Rules
-1. Always use subagents and delegation to gemini cli or codex cli latest models
-2. Detailed rules in `.claude/rules/` — loaded automatically per file type
+> This is a routing file. Detailed rules auto-load from `.claude/rules/`. Read `docs/REPO_MAP.md` for full architecture.
 
-## Quick Reference
+---
 
-- **Backend**: `https://api.orignagta.ca` (prod) / `https://api.dev.orignagta.ca` (dev)
-- **Design tokens**: `lib/utils/design_tokens.dart` — NEVER `Colors.*` or hex literals
-- **Auth**: Riverpod providers only — NEVER `FirebaseAuth.instance` directly
-- **Money**: always integer cents — NEVER float/double
-- **Testing**: `flutter analyze --no-fatal-infos && flutter test` before every commit
-- **Deploy**: `scripts/deploy_web.sh` — injects `TURNSTILE_SITE_KEY` + `ORIGNABASE_URL`
-- **Previews**: ALWAYS `./start-preview.sh` — never `flutter widget-preview start` directly
+## Commands
 
-## Key files
-- `lib/utils/env_config.dart` — environment + URL config
-- `lib/core/providers.dart` — Riverpod auth providers
-- `lib/utils/design_tokens.dart` — all design constants
-- `lib/core/schema_constants.dart` — field names, routes, constants
-- `e2e/playwright.config.dev.ts` — E2E config (workers: 2, 8GB constraint)
+```bash
+# Flutter (from origna_gta/)
+flutter analyze --no-fatal-infos && flutter test --exclude-tags golden
+flutter test test/unit/auth_provider_test.dart          # single test
+flutter test --name "should calculate subtotal"         # pattern match
+flutter pub run build_runner build --delete-conflicting-outputs  # codegen
+./start-preview.sh                                      # widget previews (ALWAYS this script)
 
-Rules:
--use many subagents in each session to keep main context window as clean as possible. more than 10+ agents
--u can use concurrency or parralel tasks, u just need to be careful with ram. specially with tests e2e
--no migration or backward compatibility please,  u can always wipe out entire dev db and seed again if needed
--autolearn:before running the test suite u run some smoke test first
--autolearn:always monitor test suite, avoid wasting time, fix as needed
--always kill orphan or zombie or stale chromes when testing e2e
--when testing both the orignabase backend and the flutter frontend can be modified to fix the issues
--if u find a problem u fix it, u cannot silence that problem
--before fixing search the web for best practices if needed
--as u work create anti-alzheimer memos so that u remember in fresh sessions
--autolearn:u estimate time as if u were human, u are ai from anthropics, the best in the world
--avoid typescript for server, prefer rust, its better for memory
--cloudflare mcp exist, u always forget that, search deep in memory
--read repo map for context
+# E2E (from e2e-agent-browser/)
+bun test specs/phase1-api/
+bun x tsc --noEmit
+
+# OrignaBase Rust (from orignabase/)
+cargo clippy -D warnings && cargo test
+cargo test -p ob-auth                                   # single crate
+```
+
+## Key Files
+
+| Purpose | Path |
+|---------|------|
+| Environment config | `lib/utils/env_config.dart` |
+| Auth providers | `lib/core/providers.dart` |
+| Design tokens | `lib/utils/design_tokens.dart` |
+| Schema constants | `lib/core/schema/schema_constants.dart` |
+| Repo map | `docs/REPO_MAP.md` |
+| Quality gate | `scripts/run_quality_gate.sh` |
+
+## Architecture
+
+- MVVM: Screens → ViewModels → Services → OrignaBase SDK
+- State: Riverpod providers (`lib/providers/`), AsyncNotifier for async state
+- Models: `freezed` for all value types. Money = integer cents, never float.
+- Backend: OrignaBase SDK only — never raw HTTP to SurrealDB/Meilisearch
+
+## Common Pitfalls (DO NOT)
+
+- ❌ `Colors.blue` or hex literals — use `DesignTokens.*`
+- ❌ `setState()` in screens — use Riverpod
+- ❌ `BuildContext` in ViewModels or Services
+- ❌ `double`/`float` for money — always integer cents
+- ❌ `print()` — use `AppLogger`
+- ❌ `FirebaseAuth.instance` — Firebase is gone, use OrignaBase SDK
+- ❌ Hardcoded strings, routes, or field names — use `schema_constants.dart`
+- ❌ `flutter widget-preview start` — always `./start-preview.sh`
+- ❌ Relative imports (`../`) — use `package:origna_gta/...`
+- ❌ `MediaQuery.of(context).size.width` for layout — use responsive utilities
+
+## Agent Rules
+
+- Use 10+ subagents per session to keep main context clean
+- Kill orphan Chrome processes before E2E tests
+- Run smoke tests before full test suite
+- If you find a problem, fix it — never silence it
+- Create anti-alzheimer memos as you work (document decisions in STATE.md)
+- No migration or backward compatibility — wipe dev DB and reseed if needed
+- Both OrignaBase backend and Flutter frontend can be modified to fix issues
+- Cloudflare MCP exists — search for it, you always forget
+- Prefer Rust over TypeScript for server code
+- Read `docs/REPO_MAP.md` for context before starting work
+
+## MCP
+
+Project `.mcp.json`: dart-mcp, flutter-pilot, github. Cloudflare MCP available via user-level config.

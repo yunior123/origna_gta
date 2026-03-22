@@ -25,7 +25,7 @@ void main() {
         productId: 'prod_123',
         name: 'Existing Product',
         description: 'Existing description.',
-        price: 49.99,
+        price: 4999 / 100.0,
         sellerId: 'test_user_123',
         categoryId: 1,
         imageUrls: [],

@@ -18,8 +18,13 @@ void main() {
     test('Variant models coverage', () {
       const opt = vm.VariantOption(name: 'S', values: ['V']);
       expect(opt.name, 'S');
-      
-      const variant = ProductVariant(variantId: 'v1', optionValues: {'s': 'v'}, priceCents: 100, stockQuantity: 1);
+
+      const variant = ProductVariant(
+        variantId: 'v1',
+        optionValues: {'s': 'v'},
+        priceCents: 100,
+        stockQuantity: 1,
+      );
       expect(variant.variantId, 'v1');
     });
 

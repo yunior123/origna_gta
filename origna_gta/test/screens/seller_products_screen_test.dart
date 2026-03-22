@@ -12,6 +12,7 @@ import 'package:origna_gta/models/models.dart' as models;
 import 'package:origna_gta/screens/seller_products_screen.dart';
 
 import '../test_utils.dart';
+import 'package:origna_gta/models/generated/base_models.dart';
 
 
 Product _makeProduct({
@@ -53,7 +54,7 @@ void main() {
     uid: 'test_user_123',
     name: 'Test Seller',
     email: 'seller@example.com',
-    roles: ['seller'],
+    roles: [UserRole.seller],
     createdAt: DateTime(2026, 1, 1),
   );
 

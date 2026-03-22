@@ -133,3 +133,4 @@ flutter analyze --no-fatal-infos && flutter test --exclude-tags golden
 - If you find a problem, fix it — never silence it
 - Create anti-alzheimer memos as you work (document decisions)
 - Search web for best practices before fixing issues
+- use repo map for context

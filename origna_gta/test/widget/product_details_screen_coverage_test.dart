@@ -89,7 +89,7 @@ void main() {
       uid: mockUser.uid,
       email: mockUser.email ?? 'test@example.com',
       name: 'Test User',
-      roles: const ['buyer'],
+      roles: const [UserRole.buyer],
       createdAt: DateTime.now(),
     );
     const defaultSellerMetrics = SellerMetrics(
@@ -181,7 +181,7 @@ void main() {
                   uid: 'u1',
                   email: 'test@example.com',
                   name: 'Test User',
-                  roles: ['seller'],
+                  roles: [UserRole.seller],
                   createdAt: DateTime.now(),
                 ),
               ),

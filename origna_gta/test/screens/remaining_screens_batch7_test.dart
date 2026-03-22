@@ -20,6 +20,7 @@ import '../test_utils.dart';
   MockSpec<UserRepository>(),
 ])
 import 'remaining_screens_batch7_test.mocks.dart';
+import 'package:origna_gta/models/generated/base_models.dart';
 
 void main() {
   late AppAuthUser mockUser;
@@ -44,7 +45,7 @@ void main() {
         overrides: [
           currentUserProvider.overrideWithValue(mockUser),
           userProfileProvider.overrideWith((ref) => Stream.value(models.UserModel(
-            uid: 'test_user_123', name: 'Test', email: 't@e.com', roles: const ['seller'], createdAt: DateTime.now()
+            uid: 'test_user_123', name: 'Test', email: 't@e.com', roles: const [UserRole.seller], createdAt: DateTime.now()
           ))),
           productRepositoryProvider.overrideWithValue(mockProductRepo),
           orderRepositoryProvider.overrideWithValue(mockOrderRepo),

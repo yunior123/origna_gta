@@ -32,7 +32,7 @@ void main() {
     initTestMocks();
   });
 
-  final testUser = UserModel(uid: 'user_123', email: 'test@example.com', name: 'Test User', roles: ['buyer'], createdAt: DateTime.now());
+  final testUser = UserModel(uid: 'user_123', email: 'test@example.com', name: 'Test User', roles: [UserRole.buyer], createdAt: DateTime.now());
 
   final testAddress = Address(street: '123 Main St', city: 'Toronto', state: 'ON', postalCode: 'M5V 3A8', country: 'Canada', isDefault: true);
 
@@ -40,7 +40,7 @@ void main() {
     productId: 'prod_1',
     name: 'Test Product',
     description: 'Test description',
-    price: 50.0,
+    price: 5000 / 100.0,
     quantity: 1,
     sellerId: 'seller_1',
     sellerName: 'Seller 1',

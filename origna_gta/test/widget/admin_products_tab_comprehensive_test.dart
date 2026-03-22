@@ -48,7 +48,7 @@ void main() {
     return ProductModel(
       id: id,
       name: name,
-      price: price,
+      priceCents: (price * 100).round(),
       imageUrls: imageUrls,
       sellerAddress: testAddress,
       description: 'A test product',
@@ -1025,9 +1025,8 @@ void main() {
         uid: 's1',
         email: 'seller@example.com',
         name: 'John Seller',
-        roles: ['seller'],
+        roles: [UserRole.seller],
         createdAt: DateTime(2025, 1, 1),
-        onboardingCompleted: true,
       );
       when(mockRepo.fetchUserById(any)).thenAnswer((_) async => sellerUser);
       final product = makeProduct(sellerId: 's1');

@@ -16,7 +16,7 @@ void main() {
     });
 
     test('UserModel can be instantiated', () {
-      final user = UserModel(uid: 'test_user', email: 'test@example.com', name: 'Test User', roles: ['buyer'], createdAt: DateTime.now());
+      final user = UserModel(uid: 'test_user', email: 'test@example.com', name: 'Test User', roles: [UserRole.buyer], createdAt: DateTime.now());
 
       expect(user.uid, 'test_user');
       expect(user.roles.contains('buyer'), true);
@@ -26,7 +26,7 @@ void main() {
       final product = ProductModel(
         id: 'prod_123',
         name: 'Test Product',
-        price: 29.99,
+        priceCents: 2999,
         imageUrls: [],
         sellerAddress: Address(street: '123 Test St', city: 'Toronto', state: 'ON', postalCode: 'M5V 1A1', country: 'Canada'),
         description: 'A test product',

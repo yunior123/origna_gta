@@ -1,0 +1,20 @@
+{
+  "name": "origna-gta-e2e-agent-browser",
+  "version": "1.0.0",
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.7.0"
+  },
+  "description": "E2E tests for OrignaGTA using agent-browser + Bun",
+  "scripts": {
+    "test": "./run-tests.sh all",
+    "test:api": "./run-tests.sh api",
+    "test:smoke": "./run-tests.sh smoke",
+    "test:auth": "./run-tests.sh auth",
+    "test:products": "./run-tests.sh prod",
+    "test:flows": "./run-tests.sh flow",
+    "test:stripe": "./run-tests.sh pay",
+    "typecheck": "bun x tsc --noEmit"
+  },
+  "type": "module"
+}

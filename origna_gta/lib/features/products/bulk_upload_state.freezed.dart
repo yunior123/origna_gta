@@ -1,5 +1,5 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
-
+// coverage:ignore-file
 // ignore_for_file: type=lint
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
@@ -538,7 +538,7 @@ as String,
 mixin _$BulkUploadState {
 
 /// CSV content (raw text)
- String get csvContent;/// Parsed products (List<Map<String, dynamic>>)
+ String get csvContent;/// Parsed products (`List<Map<String, dynamic>>`)
  List<Map<String, dynamic>> get parsedProducts;/// Validation errors from CSV parsing
  List<BulkProductError> get parseErrors;/// Whether currently uploading to backend
  bool get isUploading;/// Products successfully created
@@ -751,9 +751,9 @@ class _BulkUploadState implements BulkUploadState {
 
 /// CSV content (raw text)
 @override@JsonKey() final  String csvContent;
-/// Parsed products (List<Map<String, dynamic>>)
+/// Parsed products (`List<Map<String, dynamic>>`)
  final  List<Map<String, dynamic>> _parsedProducts;
-/// Parsed products (List<Map<String, dynamic>>)
+/// Parsed products (`List<Map<String, dynamic>>`)
 @override@JsonKey() List<Map<String, dynamic>> get parsedProducts {
   if (_parsedProducts is EqualUnmodifiableListView) return _parsedProducts;
   // ignore: implicit_dynamic_type

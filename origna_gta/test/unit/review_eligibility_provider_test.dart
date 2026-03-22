@@ -29,7 +29,7 @@ OrderItem _makeItem(String productId) => OrderItem(
       productId: productId,
       name: 'Test Product',
       description: 'desc',
-      price: 10.0,
+      price: 1000 / 100.0,
       quantity: 1,
       imageUrls: const [],
       sellerId: 'seller-1',

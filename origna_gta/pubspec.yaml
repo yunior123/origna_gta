@@ -99,6 +99,7 @@ dev_dependencies:
 
   meta: any
   test_api: any
+
 patrol:
   app_name: OrignaGTA
   test_directory: patrol_test

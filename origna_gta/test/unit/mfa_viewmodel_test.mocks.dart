@@ -904,10 +904,13 @@ class MockOrignaBaseAuth extends _i1.Mock implements _i3.OrignaBaseAuth {
           as _i17.Future<void>);
 
   @override
-  void signOut() => super.noSuchMethod(
-    Invocation.method(#signOut, []),
-    returnValueForMissingStub: null,
-  );
+  _i17.Future<void> signOut() =>
+      (super.noSuchMethod(
+            Invocation.method(#signOut, []),
+            returnValue: _i17.Future<void>.value(),
+            returnValueForMissingStub: _i17.Future<void>.value(),
+          )
+          as _i17.Future<void>);
 
   @override
   _i3.AuthState restoreSession({

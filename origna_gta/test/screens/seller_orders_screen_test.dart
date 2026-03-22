@@ -35,7 +35,7 @@ void main() {
     uid: 'seller_123',
     email: 'seller@example.com',
     name: 'Test Seller',
-    roles: ['seller'],
+    roles: [UserRole.seller],
     createdAt: DateTime.now(),
     address: testAddress,
   );
@@ -44,7 +44,7 @@ void main() {
     productId: 'prod_1',
     name: 'Test Product',
     description: '',
-    price: 50.0,
+    price: 5000 / 100.0,
     quantity: 2,
     sellerId: 'seller_123',
     status: 'pending',

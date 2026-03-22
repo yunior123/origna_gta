@@ -25,7 +25,7 @@ UserModel _makeUser({bool mfaEnabled = false}) {
     uid: 'user_123',
     email: 'test@example.com',
     name: 'Test User',
-    roles: const [UserRoleValues.buyer],
+    roles: const [UserRole.buyer],
     createdAt: DateTime(2026),
     mfaEnabled: mfaEnabled,
   );

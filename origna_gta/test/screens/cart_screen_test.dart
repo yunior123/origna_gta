@@ -43,7 +43,7 @@ void main() {
     uid: 'user_123',
     email: 'test@example.com',
     name: 'Test User',
-    roles: ['buyer'],
+    roles: [UserRole.buyer],
     createdAt: DateTime.now(),
     address: testAddress,
   );
@@ -59,7 +59,7 @@ void main() {
     productId: 'prod_1',
     name: 'Test Product',
     description: 'Description',
-    price: 50.0,
+    price: 5000 / 100.0,
     imageUrls: ['images/33.png'],
     quantity: 2,
     createdAt: DateTime.now(),

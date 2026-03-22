@@ -106,7 +106,7 @@ void main() {
           uid: 'user_123',
           name: 'Test User',
           email: 'test@example.com',
-          roles: ['buyer'],
+          roles: [UserRole.buyer],
           createdAt: DateTime.now(),
         ),
       ));

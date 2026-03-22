@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/features/admin/admin_providers.dart';
+import 'package:origna_gta/models/enum_extensions.dart';
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/utils.dart';
@@ -23,7 +24,7 @@ class _AdminOrderCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final total = order.total;
-    final paymentStatus = PaymentStatus.fromValue(order.paymentStatus);
+    final paymentStatus = order.paymentStatus;
     final createdAt = order.createdAt;
     final customerEmail = order.customerEmail.isNotEmpty
         ? order.customerEmail
@@ -51,150 +52,161 @@ class _AdminOrderCard extends StatelessWidget {
     return Semantics(
       label: 'card-admin-order-${order.orderId.substring(0, 8).toUpperCase()}',
       child: Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(DesignTokens.radius16),
-      ),
-      child: ExpansionTile(
-        tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        margin: const EdgeInsets.only(bottom: 12),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(DesignTokens.radius16),
         ),
-        collapsedShape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(DesignTokens.radius16),
-        ),
-        leading: Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: statusColor.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(DesignTokens.radius12),
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(DesignTokens.radius16),
           ),
-          child: Icon(Icons.receipt_long_rounded, color: statusColor, size: 22),
-        ),
-        title: Row(
-          children: [
-            Expanded(
-              child: Semantics(
-                label: 'text-order-id-${order.orderId.substring(0, 8).toUpperCase()}',
-                child: Text(
-                  'orders.order_id_prefix'.tr(
-                    namedArgs: {
-                      'id': order.orderId.substring(0, 8).toUpperCase(),
-                    },
-                  ),
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ),
+          collapsedShape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(DesignTokens.radius16),
+          ),
+          leading: Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: statusColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(DesignTokens.radius12),
             ),
-            Semantics(
-              label: 'text-order-total-${total.toStringAsFixed(2)}',
-              child: Text(
-                '\$${total.toStringAsFixed(2)}',
-                style: TextStyle(fontWeight: FontWeight.bold, color: statusColor),
-              ),
+            child: Icon(
+              Icons.receipt_long_rounded,
+              color: statusColor,
+              size: 22,
             ),
-          ],
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 4),
-            Text(
-              customerEmail,
-              style: TextStyle(fontSize: 12, color: DesignTokens.textSecondary),
-            ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: statusColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+          ),
+          title: Row(
+            children: [
+              Expanded(
+                child: Semantics(
+                  label:
+                      'text-order-id-${order.orderId.substring(0, 8).toUpperCase()}',
                   child: Text(
-                    paymentStatus.displayText,
-                    style: TextStyle(
-                      color: statusColor,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
+                    'orders.order_id_prefix'.tr(
+                      namedArgs: {
+                        'id': order.orderId.substring(0, 8).toUpperCase(),
+                      },
                     ),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
-                const SizedBox(width: 8),
-                Text(
-                  _formatDate(createdAt),
+              ),
+              Semantics(
+                label: 'text-order-total-${total.toStringAsFixed(2)}',
+                child: Text(
+                  '\$${total.toStringAsFixed(2)}',
                   style: TextStyle(
-                    fontSize: 11,
-                    color: DesignTokens.textSecondary,
+                    fontWeight: FontWeight.bold,
+                    color: statusColor,
                   ),
                 ),
-              ],
-            ),
-          ],
-        ),
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'orders.items_label'.tr(),
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 4),
+              Text(
+                customerEmail,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: DesignTokens.textSecondary,
                 ),
-                const SizedBox(height: 8),
-                ...items.map(
-                  (item) => Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
-                    child: Row(
-                      children: [
-                        Expanded(child: Text(item.name)),
-                        Text('x${item.quantity}'),
-                        const SizedBox(width: 16),
-                        Text(
-                          '\$${(item.price * item.quantity).toStringAsFixed(2)}',
-                        ),
-                      ],
+              ),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: statusColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      paymentStatus,
+                      style: TextStyle(
+                        color: statusColor,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
-                ),
-                const Divider(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    if (paymentStatus == PaymentStatus.paid)
-                      Semantics(
-                        button: true,
-                        label: 'btn-refund-order',
-                        child: TextButton.icon(
-                          onPressed: () => _showRefundDialog(context),
-                          icon: const Icon(Icons.undo, size: 18),
-                          label: Text('orders.refund'.tr()),
-                          style: TextButton.styleFrom(
-                            foregroundColor: DesignTokens.error,
+                  const SizedBox(width: 8),
+                  Text(
+                    _formatDate(createdAt),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: DesignTokens.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'orders.items_label'.tr(),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  ...items.map(
+                    (item) => Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Row(
+                        children: [
+                          Expanded(child: Text(item.name)),
+                          Text('x${item.quantity}'),
+                          const SizedBox(width: 16),
+                          Text(
+                            '\$${(item.price * item.quantity).toStringAsFixed(2)}',
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const Divider(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      if (paymentStatus == PaymentStatus.paid)
+                        Semantics(
+                          button: true,
+                          label: 'btn-refund-order',
+                          child: TextButton.icon(
+                            onPressed: () => _showRefundDialog(context),
+                            icon: const Icon(Icons.undo, size: 18),
+                            label: Text('orders.refund'.tr()),
+                            style: TextButton.styleFrom(
+                              foregroundColor: DesignTokens.error,
+                            ),
                           ),
                         ),
+                      Semantics(
+                        button: true,
+                        label: 'btn-view-order-details',
+                        child: TextButton.icon(
+                          onPressed: () => _viewOrderDetails(context),
+                          icon: const Icon(Icons.open_in_new, size: 18),
+                          label: Text('orders.full_details'.tr()),
+                        ),
                       ),
-                    Semantics(
-                      button: true,
-                      label: 'btn-view-order-details',
-                      child: TextButton.icon(
-                        onPressed: () => _viewOrderDetails(context),
-                        icon: const Icon(Icons.open_in_new, size: 18),
-                        label: Text('orders.full_details'.tr()),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
       ),
     );
   }
@@ -395,7 +407,7 @@ class _AdminOrderCard extends StatelessWidget {
               ),
               _buildDetailRow(
                 'orders.payment_status'.tr(),
-                PaymentStatus.fromValue(order.paymentStatus).displayText,
+                order.paymentStatus,
               ),
               _buildDetailRow(
                 'orders.order_total'.tr(),
@@ -519,7 +531,9 @@ class _AdminOrdersTabState extends ConsumerState<AdminOrdersTab> {
             child: Text(
               label,
               style: TextStyle(
-                color: isSelected ? DesignTokens.white : DesignTokens.textSecondary,
+                color: isSelected
+                    ? DesignTokens.white
+                    : DesignTokens.textSecondary,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                 fontSize: 13,
               ),

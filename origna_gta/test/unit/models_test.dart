@@ -1,6 +1,7 @@
 import 'package:origna_gta/core/compat/timestamp.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:origna_gta/models/models.dart';
+import 'package:origna_gta/models/enum_extensions.dart';
 import 'package:origna_gta/utils/constants.dart';
 
 void main() {
@@ -244,7 +245,7 @@ void main() {
         Fields.uid: 'user123',
         Fields.email: 'test@example.com',
         Fields.name: 'John Doe',
-        Fields.roles: ['buyer', 'seller'],
+        Fields.roles: [UserRole.buyer, UserRole.seller],
         Fields.address: {
           Fields.street: '123 Main St',
           Fields.city: 'Toronto',
@@ -282,7 +283,7 @@ void main() {
         Fields.uid: 'user123',
         Fields.email: 'test@example.com',
         Fields.name: 'John Doe',
-        Fields.roles: ['buyer'],
+        Fields.roles: [UserRole.buyer],
         Fields.createdAt: Timestamp.fromDate(DateTime(2024, 1, 15)),
       };
 
@@ -300,7 +301,7 @@ void main() {
         uid: 'user123',
         email: 'test@example.com',
         name: 'John Doe',
-        roles: ['buyer', 'seller'],
+        roles: [UserRole.buyer, UserRole.seller],
         createdAt: DateTime(2024, 1, 15),
         customerId: 'cus_123',
         stripeAccountId: 'acct_456',
@@ -325,7 +326,7 @@ void main() {
         uid: 'seller123',
         email: 'seller@example.com',
         name: 'Seller',
-        roles: ['seller'],
+        roles: [UserRole.seller],
         createdAt: DateTime.now(),
         payoutsEnabled: true,
         onboardingCompleted: true,
@@ -339,7 +340,7 @@ void main() {
         uid: 'seller123',
         email: 'seller@example.com',
         name: 'Seller',
-        roles: ['seller'],
+        roles: [UserRole.seller],
         createdAt: DateTime.now(),
         payoutsEnabled: true,
         onboardingCompleted: false,
@@ -353,13 +354,13 @@ void main() {
         uid: 'user123',
         email: 'test@example.com',
         name: 'John Doe',
-        roles: ['buyer'],
+        roles: [UserRole.buyer],
         createdAt: DateTime(2024, 1, 15),
       );
 
       final updated = original.copyWith(
         name: 'Jane Doe',
-        roles: ['buyer', 'seller'],
+        roles: [UserRole.buyer, UserRole.seller],
       );
 
       expect(updated.name, 'Jane Doe');
@@ -374,7 +375,7 @@ void main() {
       final map = {
         Fields.productId: 'prod123',
         Fields.name: 'Test Product',
-        Fields.price: 29.99,
+        Fields.priceCents: 2999,
         Fields.imageUrls: [
           'https://example.com/image1.jpg',
           'https://example.com/image2.jpg',
@@ -442,7 +443,7 @@ void main() {
       final product = ProductModel(
         id: 'prod123',
         name: 'Test Product',
-        price: 29.99,
+        priceCents: 2999,
         imageUrls: ['https://example.com/image.jpg'],
         sellerAddress: Address(
           street: '123 Main St',
@@ -474,7 +475,7 @@ void main() {
     test('price parsing handles various numeric types', () {
       // Integer
       var product = ProductModel.fromMap({
-        Fields.price: 30,
+        Fields.priceCents: 3000,
         Fields.categoryId: 1,
       });
       expect(product.price, 30.0);
@@ -1492,7 +1493,7 @@ void main() {
         uid: 'u1',
         email: 'e@e.com',
         name: 'User',
-        roles: ['seller'],
+        roles: [UserRole.seller],
         createdAt: DateTime.now(),
         onboardingCompleted: true,
         chargesEnabled: true,
@@ -1507,7 +1508,7 @@ void main() {
         uid: 'u1',
         email: 'e@e.com',
         name: 'User',
-        roles: ['seller'],
+        roles: [UserRole.seller],
         createdAt: DateTime.now(),
         onboardingCompleted: true,
         chargesEnabled: true,
@@ -1522,7 +1523,7 @@ void main() {
         uid: 'u1',
         email: 'e@e.com',
         name: 'User',
-        roles: ['seller'],
+        roles: [UserRole.seller],
         createdAt: DateTime.now(),
         onboardingCompleted: false,
         chargesEnabled: true,
@@ -1536,7 +1537,7 @@ void main() {
         uid: 'u1',
         email: 'e@e.com',
         name: 'User',
-        roles: ['buyer'],
+        roles: [UserRole.buyer],
         createdAt: DateTime.now(),
         onboardingCompleted: true,
         chargesEnabled: true,
@@ -1550,7 +1551,7 @@ void main() {
         uid: 'u1',
         email: 'e@e.com',
         name: 'User',
-        roles: ['admin'],
+        roles: [UserRole.admin],
         createdAt: DateTime.now(),
         onboardingCompleted: true,
         chargesEnabled: true,
@@ -1564,7 +1565,7 @@ void main() {
         uid: 'u1',
         email: 'e@e.com',
         name: 'Admin',
-        roles: ['admin'],
+        roles: [UserRole.admin],
         createdAt: DateTime.now(),
         payoutsEnabled: true,
         onboardingCompleted: true,
@@ -1577,7 +1578,7 @@ void main() {
         uid: 'u1',
         email: 'e@e.com',
         name: 'User',
-        roles: ['seller'],
+        roles: [UserRole.seller],
         createdAt: DateTime.now(),
         pendingRequirements: ['individual.id_number'],
       );
@@ -1587,7 +1588,7 @@ void main() {
         uid: 'u1',
         email: 'e@e.com',
         name: 'User',
-        roles: ['seller'],
+        roles: [UserRole.seller],
         createdAt: DateTime.now(),
       );
       expect(withoutReqs.hasPendingRequirements, false);
@@ -1598,7 +1599,7 @@ void main() {
         Fields.uid: 'u1',
         Fields.email: 'e@e.com',
         Fields.name: 'Seller',
-        Fields.roles: ['seller'],
+        Fields.roles: [UserRole.seller],
         Fields.createdAt: Timestamp.fromDate(DateTime(2024, 1, 1)),
         Fields.verified: true,
         Fields.verificationStatus: 'approved',
@@ -1632,7 +1633,7 @@ void main() {
         Fields.uid: 'u1',
         Fields.email: 'e@e.com',
         Fields.name: 'Premium User',
-        Fields.roles: ['buyer'],
+        Fields.roles: [UserRole.buyer],
         Fields.createdAt: Timestamp.fromDate(DateTime(2024, 1, 1)),
         Fields.isPremium: true,
         Fields.premiumSince: Timestamp.fromDate(DateTime(2024, 3, 1)),
@@ -1656,7 +1657,7 @@ void main() {
         Fields.uid: 'u1',
         Fields.email: 'e@e.com',
         Fields.name: 'User',
-        Fields.roles: ['buyer'],
+        Fields.roles: [UserRole.buyer],
         Fields.createdAt: Timestamp.fromDate(DateTime(2024, 1, 1)),
         Fields.lastCheckoutSession: 'sess_1',
         Fields.lastOrderId: 'ord_1',
@@ -1673,7 +1674,7 @@ void main() {
         uid: 'u1',
         email: 'e@e.com',
         name: 'Seller',
-        roles: ['seller'],
+        roles: [UserRole.seller],
         createdAt: DateTime(2024, 1, 1),
         stripeAccountId: 'acct_1',
         verified: true,
@@ -1706,7 +1707,7 @@ void main() {
         uid: 'u1',
         email: 'e@e.com',
         name: 'User',
-        roles: ['buyer'],
+        roles: [UserRole.buyer],
         createdAt: DateTime(2024, 1, 1),
       );
       final map = user.toMap();
@@ -1727,7 +1728,7 @@ void main() {
         uid: 'u1',
         email: 'e@e.com',
         name: 'User',
-        roles: ['buyer'],
+        roles: [UserRole.buyer],
         createdAt: DateTime.now(),
       );
       final updated = user.copyWith(
@@ -1747,7 +1748,7 @@ void main() {
       final map = {
         Fields.productId: 'p1',
         Fields.name: 'Product',
-        Fields.price: 50.0,
+        Fields.priceCents: 5000,
         Fields.categoryId: 1,
         Fields.sellerId: 's1',
         Fields.deliveryOptions: [
@@ -1837,7 +1838,7 @@ void main() {
       final product = ProductModel(
         id: 'p1',
         name: 'Test',
-        price: 10.0,
+        priceCents: 1000,
         imageUrls: [],
         sellerAddress: Address(
           street: '',
@@ -1876,7 +1877,7 @@ void main() {
       final product = ProductModel(
         id: 'p1',
         name: 'Test',
-        price: 10.0,
+        priceCents: 1000,
         imageUrls: [],
         sellerAddress: Address(
           street: '',
@@ -1905,7 +1906,7 @@ void main() {
       final product = ProductModel(
         id: 'p1',
         name: 'Test',
-        price: 10.0,
+        priceCents: 1000,
         imageUrls: ['img.jpg'],
         sellerAddress: Address(
           street: '1 St',
@@ -1947,7 +1948,7 @@ void main() {
       final product = ProductModel(
         id: 'p1',
         name: 'Test',
-        price: 10.0,
+        priceCents: 1000,
         imageUrls: [],
         sellerAddress: Address(
           street: '',

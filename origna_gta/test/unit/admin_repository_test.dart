@@ -57,7 +57,7 @@ void main() {
         uid: 'u1',
         email: 'test@ex.com',
         name: 'Test',
-        roles: ['admin'],
+        roles: [UserRole.admin],
         createdAt: DateTime.now(),
       ));
 
@@ -114,7 +114,7 @@ void main() {
 
     test('watchUsers returns stream of users', () async {
       when(repository.watchUsers()).thenAnswer((_) => Stream.value([
-        UserModel(uid: 'u1', email: 'u1@ex.com', name: 'U1', roles: ['buyer'], createdAt: DateTime.now()),
+        UserModel(uid: 'u1', email: 'u1@ex.com', name: 'U1', roles: [UserRole.buyer], createdAt: DateTime.now()),
       ]));
 
       final stream = repository.watchUsers();
@@ -155,7 +155,7 @@ void main() {
           id: 'p1',
           sellerId: 's1',
           name: 'P1',
-          price: 10.0,
+          priceCents: 1000,
           imageUrls: const [],
           sellerAddress: Address(street: 'S', city: 'C', state: 'ON', postalCode: 'M1M', country: 'CA'),
           description: 'Test',
@@ -178,7 +178,7 @@ void main() {
           name: 'P1',
           sellerId: 's1',
           lifecycleStatus: ProductLifecycleStatusValues.underReview,
-          price: 10.0,
+          priceCents: 1000,
           imageUrls: const [],
           sellerAddress: Address(street: 'S', city: 'C', state: 'ON', postalCode: 'M1M', country: 'CA'),
           description: 'Test',
@@ -195,13 +195,13 @@ void main() {
 
     test('watchSellers returns stream of sellers', () async {
       when(repository.watchSellers()).thenAnswer((_) => Stream.value([
-        UserModel(uid: 's1', email: 's1@ex.com', name: 'S1', roles: [UserRoles.seller], createdAt: DateTime.now()),
+        UserModel(uid: 's1', email: 's1@ex.com', name: 'S1', roles: [UserRole.seller], createdAt: DateTime.now()),
       ]));
 
       final stream = repository.watchSellers();
       final sellers = await stream.first;
       expect(sellers.length, 1);
-      expect(sellers.first.roles, contains(UserRoles.seller));
+      expect(sellers.first.roles, contains(UserRole.seller));
     });
 
     test('watchReviews returns stream', () async {

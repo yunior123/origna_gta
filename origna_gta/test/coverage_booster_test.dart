@@ -58,7 +58,7 @@ import 'test_utils.dart';
 /// Fake notification repository that returns empty streams without connecting.
 class _FakeNotificationRepository extends NotificationRepository {
   _FakeNotificationRepository()
-      : super(OrignaBase.initialize(url: 'http://localhost:9999'));
+    : super(OrignaBase.initialize(url: 'http://localhost:9999'));
 
   @override
   Stream<List<Map<String, dynamic>>> watchNotifications(String uid) =>
@@ -98,11 +98,21 @@ void main() {
         minPriceCents: anyNamed('minPriceCents'),
         maxPriceCents: anyNamed('maxPriceCents'),
       ),
-    ).thenAnswer((_) async => ProductQueryResult(products: [], lastDocumentId: null, hasMore: false));
+    ).thenAnswer(
+      (_) async => ProductQueryResult(
+        products: [],
+        lastDocumentId: null,
+        hasMore: false,
+      ),
+    );
 
     when(mockUserRepo.watchAddresses(any)).thenAnswer((_) => Stream.value([]));
-    when(mockOrderRepo.watchBuyerOrders(any)).thenAnswer((_) => Stream.value([]));
-    when(mockOrderRepo.watchSellerOrders(any)).thenAnswer((_) => Stream.value([]));
+    when(
+      mockOrderRepo.watchBuyerOrders(any),
+    ).thenAnswer((_) => Stream.value([]));
+    when(
+      mockOrderRepo.watchSellerOrders(any),
+    ).thenAnswer((_) => Stream.value([]));
   });
 
   Widget boosterWrapper(Widget child) {
@@ -110,7 +120,9 @@ void main() {
       overrides: [
         obUserIdProvider.overrideWithValue(null),
         obAuthStateProvider.overrideWith((ref) => const Stream.empty()),
-        notificationRepositoryProvider.overrideWithValue(_FakeNotificationRepository()),
+        notificationRepositoryProvider.overrideWithValue(
+          _FakeNotificationRepository(),
+        ),
         currentUserProvider.overrideWithValue(mockUser),
         userProfileProvider.overrideWith(
           (ref) => Stream.value(
@@ -118,9 +130,15 @@ void main() {
               uid: 'test_user',
               name: 'Test',
               email: 't@e.com',
-              roles: const ['seller', 'admin'],
+              roles: const [UserRole.seller],
               createdAt: DateTime.now(),
-              address: Address(street: 'S', city: 'C', state: 'ON', postalCode: 'M1M 1M1', country: 'CA'),
+              address: Address(
+                street: 'S',
+                city: 'C',
+                state: 'ON',
+                postalCode: 'M1M 1M1',
+                country: 'CA',
+              ),
             ),
           ),
         ),
@@ -138,151 +156,143 @@ void main() {
   }
 
   group('Coverage Booster — Pumping All Screens', () {
+    /// Helper that pumps a widget and handles pending timers from async providers.
+    Future<void> pumpScreen(WidgetTester tester, Widget screen) async {
+      await tester.pumpWidget(boosterWrapper(screen));
+      await tester.pump(const Duration(milliseconds: 100));
+      // Dispose cleanly — ignore pending timer warnings from WebSocket attempts
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+
     testWidgets('pumps HomeScreen', (tester) async {
-      await tester.pumpWidget(boosterWrapper(const HomeScreen()));
-      await tester.pump();
+      await pumpScreen(tester, const HomeScreen());
     });
 
     testWidgets('pumps ProfileScreen', (tester) async {
-      await tester.pumpWidget(boosterWrapper(const ProfileScreen()));
-      await tester.pump();
+      await pumpScreen(tester, const ProfileScreen());
     });
 
     testWidgets('pumps ProductDetailScreen', (tester) async {
-      await tester.pumpWidget(boosterWrapper(const ProductDetailScreen(productId: 'p1')));
-      await tester.pump();
+      await pumpScreen(tester, const ProductDetailScreen(productId: 'p1'));
     });
 
     testWidgets('pumps CartScreen', (tester) async {
-      await tester.pumpWidget(boosterWrapper(const CartScreen()));
-      await tester.pump();
+      await pumpScreen(tester, const CartScreen());
     });
 
     testWidgets('pumps FavoritesScreen', (tester) async {
-      await tester.pumpWidget(boosterWrapper(const FavoritesScreen()));
-      await tester.pump();
+      await pumpScreen(tester, const FavoritesScreen());
     });
 
     testWidgets('pumps SellerOrdersScreen', (tester) async {
-      await tester.pumpWidget(boosterWrapper(const SellerOrdersScreen()));
-      await tester.pump();
+      await pumpScreen(tester, const SellerOrdersScreen());
     });
 
     testWidgets('pumps OrdersScreen', (tester) async {
-      await tester.pumpWidget(boosterWrapper(const OrdersScreen()));
-      await tester.pump();
+      await pumpScreen(tester, const OrdersScreen());
     });
 
     testWidgets('pumps EditProductScreen', (tester) async {
       final p = gen.Product(
         productId: 'p1',
         name: 'N',
-        price: 10,
+        price: 10.0,
+        priceCents: 1000,
         categoryId: 1,
         sellerId: 's1',
         createdAt: DateTime.now(),
         imageUrls: const [],
         description: 'D',
         stockQuantity: 1,
-        sellerAddress: const gen.Address(street: 'S', city: 'C', state: 'ON', postalCode: 'M1M 1M1', country: 'CA'),
+        sellerAddress: const gen.Address(
+          street: 'S',
+          city: 'C',
+          state: 'ON',
+          postalCode: 'M1M 1M1',
+          country: 'CA',
+        ),
       );
-      await tester.pumpWidget(boosterWrapper(EditProductScreen(product: p)));
-      await tester.pump();
+      await pumpScreen(tester, EditProductScreen(product: p));
     });
 
     testWidgets('pumps SellerSetupCompleteScreen', (tester) async {
-      await tester.pumpWidget(boosterWrapper(const SellerSetupCompleteScreen()));
-      await tester.pump();
+      await pumpScreen(tester, const SellerSetupCompleteScreen());
     });
 
     testWidgets('pumps SubscriptionSuccessScreen', (tester) async {
-      await tester.pumpWidget(boosterWrapper(const SubscriptionSuccessScreen()));
-      await tester.pump();
+      await pumpScreen(tester, const SubscriptionSuccessScreen());
     });
 
     testWidgets('pumps LoginScreen', (tester) async {
-      await tester.pumpWidget(boosterWrapper(const LoginScreen()));
-      await tester.pump();
+      await pumpScreen(tester, const LoginScreen());
     });
 
     testWidgets('pumps ResetPasswordScreen', (tester) async {
-      await tester.pumpWidget(boosterWrapper(const ResetPasswordScreen(oobCode: '123')));
-      await tester.pump();
+      await pumpScreen(tester, const ResetPasswordScreen(oobCode: '123'));
     });
 
     testWidgets('pumps AddProductScreen', (tester) async {
-      await tester.pumpWidget(boosterWrapper(const AddProductScreen()));
-      await tester.pump();
+      await pumpScreen(tester, const AddProductScreen());
     });
 
     testWidgets('pumps AddressManagementScreen', (tester) async {
-      await tester.pumpWidget(boosterWrapper(const AddressManagementScreen()));
-      await tester.pump();
+      await pumpScreen(tester, const AddressManagementScreen());
     });
 
     testWidgets('pumps AddEditAddressScreen', (tester) async {
-      await tester.pumpWidget(boosterWrapper(const AddEditAddressScreen()));
-      await tester.pump();
+      await pumpScreen(tester, const AddEditAddressScreen());
     });
 
     testWidgets('pumps CheckoutScreen', (tester) async {
-      await tester.pumpWidget(boosterWrapper(const CheckoutScreen(items: [], total: 0)));
-      await tester.pump();
+      await pumpScreen(tester, const CheckoutScreen(items: [], total: 0));
     });
 
     testWidgets('pumps ShippingApprovalScreen', (tester) async {
-      await tester.pumpWidget(boosterWrapper(const ShippingApprovalScreen()));
-      await tester.pump();
+      await pumpScreen(tester, const ShippingApprovalScreen());
     });
 
     testWidgets('pumps SellerRegistrationScreen', (tester) async {
-      await tester.pumpWidget(boosterWrapper(const SellerRegistrationScreen()));
-      await tester.pump();
+      await pumpScreen(tester, const SellerRegistrationScreen());
     });
 
     testWidgets('pumps SubscriptionScreen', (tester) async {
-      await tester.pumpWidget(boosterWrapper(const SubscriptionScreen()));
-      await tester.pump();
+      await pumpScreen(tester, const SubscriptionScreen());
     });
 
     testWidgets('pumps PrivacyPolicyScreen', (tester) async {
-      await tester.pumpWidget(boosterWrapper(PrivacyPolicyScreen()));
-      await tester.pump();
+      await pumpScreen(tester, PrivacyPolicyScreen());
     });
 
     testWidgets('pumps TermsOfServiceScreen', (tester) async {
-      await tester.pumpWidget(boosterWrapper(TermsOfServiceScreen()));
-      await tester.pump();
+      await pumpScreen(tester, TermsOfServiceScreen());
     });
 
     testWidgets('pumps OrderDetailScreen', (tester) async {
-      await tester.pumpWidget(boosterWrapper(const OrderDetailScreen(orderId: 'o1')));
-      await tester.pump();
+      await pumpScreen(tester, const OrderDetailScreen(orderId: 'o1'));
     });
 
     testWidgets('pumps ChatConversationsScreen', (tester) async {
-      await tester.pumpWidget(boosterWrapper(const ChatConversationsScreen()));
-      await tester.pump();
+      await pumpScreen(tester, const ChatConversationsScreen());
     });
 
     testWidgets('pumps ChatScreen', (tester) async {
-      await tester.pumpWidget(boosterWrapper(const ChatScreen(productId: 'p1', productTitle: 'Title')));
-      await tester.pump();
+      await pumpScreen(
+        tester,
+        const ChatScreen(productId: 'p1', productTitle: 'Title'),
+      );
     });
 
     testWidgets('pumps NotificationsScreen', (tester) async {
-      await tester.pumpWidget(boosterWrapper(const NotificationsScreen()));
-      await tester.pump();
+      await pumpScreen(tester, const NotificationsScreen());
     });
 
     testWidgets('pumps PaymentCanceledScreen', (tester) async {
-      await tester.pumpWidget(boosterWrapper(const PaymentCanceledScreen()));
-      await tester.pump();
+      await pumpScreen(tester, const PaymentCanceledScreen());
     });
 
     testWidgets('pumps SubscriptionCancelScreen', (tester) async {
-      await tester.pumpWidget(boosterWrapper(const SubscriptionCancelScreen()));
-      await tester.pump();
+      await pumpScreen(tester, const SubscriptionCancelScreen());
     });
   });
 }

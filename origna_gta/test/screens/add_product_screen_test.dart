@@ -59,7 +59,7 @@ void main() {
       overrides: [
         currentUserProvider.overrideWithValue(mockUser),
         userProfileProvider.overrideWith(
-          (ref) => Stream.value(UserModel(uid: 'test_user_123', name: 'Test', email: 'test@example.com', roles: ['seller'], createdAt: DateTime.now())),
+          (ref) => Stream.value(UserModel(uid: 'test_user_123', name: 'Test', email: 'test@example.com', roles: [UserRole.seller], createdAt: DateTime.now())),
         ),
         productRepositoryProvider.overrideWithValue(mockProductRepo),
         locationRepositoryProvider.overrideWithValue(mockLocationRepo),

@@ -41,7 +41,7 @@ void main() {
     productId: 'prod_123',
     name: 'Test Product',
     description: 'Description',
-    price: 99.99,
+    price: 9999 / 100.0,
     sellerId: 'seller_123',
     imageUrls: ['images/33.png'],
     stockQuantity: 10,
@@ -58,7 +58,7 @@ void main() {
     uid: 'user_123',
     email: 'test@example.com',
     name: 'Test User',
-    roles: [UserRoles.buyer],
+    roles: [UserRole.buyer],
     createdAt: DateTime.now(),
   );
 
@@ -172,7 +172,7 @@ void main() {
     });
 
     testWidgets('shows admin actions for admin user', (tester) async {
-      final adminUserModel = testUserModel.copyWith(roles: [UserRoles.admin]);
+      final adminUserModel = testUserModel.copyWith(roles: [UserRole.admin]);
       await tester.pumpWidget(createTestWidget(product: testProduct, userModel: adminUserModel));
       await tester.pump();
       await tester.pump(const Duration(seconds: 1));
@@ -192,7 +192,7 @@ void main() {
     });
 
     testWidgets('can delete product after confirmation', (tester) async {
-      final adminUserModel = testUserModel.copyWith(roles: [UserRoles.admin]);
+      final adminUserModel = testUserModel.copyWith(roles: [UserRole.admin]);
       when(mockRepo.deleteProduct(any)).thenAnswer((_) async => Future.value());
       
       await tester.pumpWidget(createTestWidget(product: testProduct, userModel: adminUserModel));

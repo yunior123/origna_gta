@@ -22,7 +22,7 @@ void main() {
         uid: 'u1',
         email: 'u1@e.com',
         name: 'U1',
-        roles: ['buyer'],
+        roles: [UserRole.buyer],
         createdAt: DateTime.now(),
       ));
 

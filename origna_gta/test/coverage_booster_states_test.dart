@@ -70,22 +70,30 @@ void main() {
 
     when(mockConfig.isDev).thenReturn(true);
 
-    when(mockProductRepo.fetchProducts(
-      searchQuery: anyNamed('searchQuery'),
-      categoryId: anyNamed('categoryId'),
-      subcategory: anyNamed('subcategory'),
-      lastDocumentId: anyNamed('lastDocumentId'),
-      pageSize: anyNamed('pageSize'),
-      sortOption: anyNamed('sortOption'),
-      minPriceCents: anyNamed('minPriceCents'),
-      maxPriceCents: anyNamed('maxPriceCents'),
-    )).thenAnswer((_) async => ProductQueryResult(products: [], hasMore: false));
+    when(
+      mockProductRepo.fetchProducts(
+        searchQuery: anyNamed('searchQuery'),
+        categoryId: anyNamed('categoryId'),
+        subcategory: anyNamed('subcategory'),
+        lastDocumentId: anyNamed('lastDocumentId'),
+        pageSize: anyNamed('pageSize'),
+        sortOption: anyNamed('sortOption'),
+        minPriceCents: anyNamed('minPriceCents'),
+        maxPriceCents: anyNamed('maxPriceCents'),
+      ),
+    ).thenAnswer((_) async => ProductQueryResult(products: [], hasMore: false));
 
     when(mockUserRepo.watchAddresses(any)).thenAnswer((_) => Stream.value([]));
-    when(mockOrderRepo.watchBuyerOrders(any)).thenAnswer((_) => Stream.value([]));
-    when(mockOrderRepo.watchSellerOrders(any)).thenAnswer((_) => Stream.value([]));
+    when(
+      mockOrderRepo.watchBuyerOrders(any),
+    ).thenAnswer((_) => Stream.value([]));
+    when(
+      mockOrderRepo.watchSellerOrders(any),
+    ).thenAnswer((_) => Stream.value([]));
     when(mockUserRepo.watchSellerAccountStatus(any)).thenAnswer(
-      (_) => Stream.value(const SellerAccountStatus(isSeller: false, chargesEnabled: false)),
+      (_) => Stream.value(
+        const SellerAccountStatus(isSeller: false, chargesEnabled: false),
+      ),
     );
   });
 
@@ -99,10 +107,20 @@ void main() {
     imageUrls: const [],
     description: 'Detailed description for testing code coverage.',
     stockQuantity: 10,
-    sellerAddress: const gen.Address(street: 'S', city: 'C', state: 'ON', postalCode: 'M1M 1M1', country: 'CA'),
+    sellerAddress: const gen.Address(
+      street: 'S',
+      city: 'C',
+      state: 'ON',
+      postalCode: 'M1M 1M1',
+      country: 'CA',
+    ),
   );
 
-  Widget boosterWrapper(Widget child, {List<Override> extraOverrides = const [], ThemeMode themeMode = ThemeMode.light}) {
+  Widget boosterWrapper(
+    Widget child, {
+    List<Override> extraOverrides = const [],
+    ThemeMode themeMode = ThemeMode.light,
+  }) {
     return TestWrapper(
       overrides: [
         obUserIdProvider.overrideWithValue(null),
@@ -115,9 +133,15 @@ void main() {
               uid: 'test_user',
               name: 'Test',
               email: 't@e.com',
-              roles: const ['seller', 'admin'],
+              roles: const [UserRole.seller],
               createdAt: DateTime.now(),
-              address: Address(street: 'S', city: 'C', state: 'ON', postalCode: 'M1M 1M1', country: 'CA'),
+              address: Address(
+                street: 'S',
+                city: 'C',
+                state: 'ON',
+                postalCode: 'M1M 1M1',
+                country: 'CA',
+              ),
             ),
           ),
         ),
@@ -132,169 +156,285 @@ void main() {
         ...extraOverrides,
       ],
       child: Theme(
-        data: themeMode == ThemeMode.dark ? ThemeData.dark() : ThemeData.light(),
+        data: themeMode == ThemeMode.dark
+            ? ThemeData.dark()
+            : ThemeData.light(),
         child: Scaffold(body: child),
       ),
     );
   }
 
+  /// Helper that pumps a widget and handles pending timers from async providers.
+  Future<void> pumpScreen(
+    WidgetTester tester,
+    Widget screen, {
+    ThemeMode themeMode = ThemeMode.light,
+  }) async {
+    await tester.pumpWidget(boosterWrapper(screen, themeMode: themeMode));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 100));
+  }
+
   // ====== DARK THEME VARIANTS ======
   group('Dark Theme Coverage', () {
     testWidgets('HomeScreen dark', (tester) async {
-      await tester.pumpWidget(boosterWrapper(const HomeScreen(), themeMode: ThemeMode.dark));
-      await tester.pump();
+      await pumpScreen(tester, const HomeScreen(), themeMode: ThemeMode.dark);
     });
 
     testWidgets('ProfileScreen dark', (tester) async {
-      await tester.pumpWidget(boosterWrapper(const ProfileScreen(), themeMode: ThemeMode.dark));
-      await tester.pump();
+      await pumpScreen(
+        tester,
+        const ProfileScreen(),
+        themeMode: ThemeMode.dark,
+      );
     });
 
     testWidgets('CartScreen dark', (tester) async {
-      await tester.pumpWidget(boosterWrapper(const CartScreen(), themeMode: ThemeMode.dark));
-      await tester.pump();
+      await pumpScreen(tester, const CartScreen(), themeMode: ThemeMode.dark);
     });
 
     testWidgets('FavoritesScreen dark', (tester) async {
-      await tester.pumpWidget(boosterWrapper(const FavoritesScreen(), themeMode: ThemeMode.dark));
-      await tester.pump();
+      await pumpScreen(
+        tester,
+        const FavoritesScreen(),
+        themeMode: ThemeMode.dark,
+      );
     });
 
     testWidgets('LoginScreen dark', (tester) async {
-      await tester.pumpWidget(boosterWrapper(const LoginScreen(), themeMode: ThemeMode.dark));
-      await tester.pump();
+      await pumpScreen(tester, const LoginScreen(), themeMode: ThemeMode.dark);
     });
 
     testWidgets('SellerOrdersScreen dark', (tester) async {
-      await tester.pumpWidget(boosterWrapper(const SellerOrdersScreen(), themeMode: ThemeMode.dark));
-      await tester.pump();
+      await pumpScreen(
+        tester,
+        const SellerOrdersScreen(),
+        themeMode: ThemeMode.dark,
+      );
     });
 
     testWidgets('OrdersScreen dark', (tester) async {
-      await tester.pumpWidget(boosterWrapper(const OrdersScreen(), themeMode: ThemeMode.dark));
-      await tester.pump();
+      await pumpScreen(tester, const OrdersScreen(), themeMode: ThemeMode.dark);
     });
 
     testWidgets('AddProductScreen dark', (tester) async {
-      await tester.pumpWidget(boosterWrapper(const AddProductScreen(), themeMode: ThemeMode.dark));
-      await tester.pump();
+      await pumpScreen(
+        tester,
+        const AddProductScreen(),
+        themeMode: ThemeMode.dark,
+      );
     });
 
     testWidgets('EditProductScreen dark', (tester) async {
-      await tester.pumpWidget(boosterWrapper(EditProductScreen(product: mockProduct), themeMode: ThemeMode.dark));
-      await tester.pump();
+      await tester.pumpWidget(
+        boosterWrapper(
+          EditProductScreen(product: mockProduct),
+          themeMode: ThemeMode.dark,
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(milliseconds: 100));
     });
 
     testWidgets('ProductDetailScreen dark', (tester) async {
-      await tester.pumpWidget(boosterWrapper(const ProductDetailScreen(productId: 'p1'), themeMode: ThemeMode.dark));
-      await tester.pump();
+      await tester.pumpWidget(
+        boosterWrapper(
+          const ProductDetailScreen(productId: 'p1'),
+          themeMode: ThemeMode.dark,
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(milliseconds: 100));
     });
 
     testWidgets('CheckoutScreen dark', (tester) async {
-      await tester.pumpWidget(boosterWrapper(const CheckoutScreen(items: [], total: 0), themeMode: ThemeMode.dark));
-      await tester.pump();
+      await tester.pumpWidget(
+        boosterWrapper(
+          const CheckoutScreen(items: [], total: 0),
+          themeMode: ThemeMode.dark,
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(milliseconds: 100));
     });
 
     testWidgets('ShippingApprovalScreen dark', (tester) async {
-      await tester.pumpWidget(boosterWrapper(const ShippingApprovalScreen(), themeMode: ThemeMode.dark));
-      await tester.pump();
+      await tester.pumpWidget(
+        boosterWrapper(
+          const ShippingApprovalScreen(),
+          themeMode: ThemeMode.dark,
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(milliseconds: 100));
     });
 
     testWidgets('AddressManagementScreen dark', (tester) async {
-      await tester.pumpWidget(boosterWrapper(const AddressManagementScreen(), themeMode: ThemeMode.dark));
-      await tester.pump();
+      await tester.pumpWidget(
+        boosterWrapper(
+          const AddressManagementScreen(),
+          themeMode: ThemeMode.dark,
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(milliseconds: 100));
     });
 
     testWidgets('SubscriptionScreen dark', (tester) async {
-      await tester.pumpWidget(boosterWrapper(const SubscriptionScreen(), themeMode: ThemeMode.dark));
-      await tester.pump();
+      await pumpScreen(
+        tester,
+        const SubscriptionScreen(),
+        themeMode: ThemeMode.dark,
+      );
     });
 
     testWidgets('SellerRegistrationScreen dark', (tester) async {
-      await tester.pumpWidget(boosterWrapper(const SellerRegistrationScreen(), themeMode: ThemeMode.dark));
-      await tester.pump();
+      await tester.pumpWidget(
+        boosterWrapper(
+          const SellerRegistrationScreen(),
+          themeMode: ThemeMode.dark,
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(milliseconds: 100));
     });
 
     testWidgets('SellerSetupCompleteScreen dark', (tester) async {
-      await tester.pumpWidget(boosterWrapper(const SellerSetupCompleteScreen(), themeMode: ThemeMode.dark));
-      await tester.pump();
+      await tester.pumpWidget(
+        boosterWrapper(
+          const SellerSetupCompleteScreen(),
+          themeMode: ThemeMode.dark,
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(milliseconds: 100));
     });
 
     testWidgets('AddEditAddressScreen dark', (tester) async {
-      await tester.pumpWidget(boosterWrapper(const AddEditAddressScreen(), themeMode: ThemeMode.dark));
-      await tester.pump();
+      await pumpScreen(
+        tester,
+        const AddEditAddressScreen(),
+        themeMode: ThemeMode.dark,
+      );
     });
 
     testWidgets('SellerProductsScreen dark', (tester) async {
-      await tester.pumpWidget(boosterWrapper(const SellerProductsScreen(), themeMode: ThemeMode.dark));
-      await tester.pump();
+      await pumpScreen(
+        tester,
+        const SellerProductsScreen(),
+        themeMode: ThemeMode.dark,
+      );
     });
   });
 
   // ====== PROVIDER STATE VARIANTS ======
   group('ShippingApprovalScreen States', () {
     testWidgets('loading state', (tester) async {
-      await tester.pumpWidget(boosterWrapper(
-        const ShippingApprovalScreen(),
-        extraOverrides: [
-          pendingShippingApprovalsProvider.overrideWith((ref) => const AsyncValue.loading()),
-        ],
-      ));
-      await tester.pump();
+      await tester.pumpWidget(
+        boosterWrapper(
+          const ShippingApprovalScreen(),
+          extraOverrides: [
+            pendingShippingApprovalsProvider.overrideWith(
+              (ref) => const AsyncValue.loading(),
+            ),
+          ],
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(milliseconds: 100));
     });
 
     testWidgets('error state', (tester) async {
-      await tester.pumpWidget(boosterWrapper(
-        const ShippingApprovalScreen(),
-        extraOverrides: [
-          pendingShippingApprovalsProvider.overrideWith((ref) => AsyncValue.error('err', StackTrace.empty)),
-        ],
-      ));
-      await tester.pump();
+      await tester.pumpWidget(
+        boosterWrapper(
+          const ShippingApprovalScreen(),
+          extraOverrides: [
+            pendingShippingApprovalsProvider.overrideWith(
+              (ref) => AsyncValue.error('err', StackTrace.empty),
+            ),
+          ],
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(milliseconds: 100));
     });
 
     testWidgets('empty data state', (tester) async {
-      await tester.pumpWidget(boosterWrapper(
-        const ShippingApprovalScreen(),
-        extraOverrides: [
-          pendingShippingApprovalsProvider.overrideWith((ref) => const AsyncValue.data([])),
-        ],
-      ));
-      await tester.pump();
+      await tester.pumpWidget(
+        boosterWrapper(
+          const ShippingApprovalScreen(),
+          extraOverrides: [
+            pendingShippingApprovalsProvider.overrideWith(
+              (ref) => const AsyncValue.data([]),
+            ),
+          ],
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(milliseconds: 100));
     });
   });
 
   group('SellerProductsScreen States', () {
     testWidgets('loading state', (tester) async {
-      await tester.pumpWidget(boosterWrapper(
-        const SellerProductsScreen(),
-        extraOverrides: [
-          sellerProductsProvider.overrideWith((ref) => const Stream.empty()),
-        ],
-      ));
-      await tester.pump();
+      await tester.pumpWidget(
+        boosterWrapper(
+          const SellerProductsScreen(),
+          extraOverrides: [
+            sellerProductsProvider.overrideWith((ref) => const Stream.empty()),
+          ],
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(milliseconds: 100));
     });
 
     testWidgets('error state', (tester) async {
-      await tester.pumpWidget(boosterWrapper(
-        const SellerProductsScreen(),
-        extraOverrides: [
-          sellerProductsProvider.overrideWith((ref) => Stream.error('err')),
-        ],
-      ));
-      await tester.pump();
-      await tester.pump();
+      await tester.pumpWidget(
+        boosterWrapper(
+          const SellerProductsScreen(),
+          extraOverrides: [
+            sellerProductsProvider.overrideWith((ref) => Stream.error('err')),
+          ],
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(milliseconds: 100));
     });
 
     testWidgets('data with products', (tester) async {
-      await tester.pumpWidget(boosterWrapper(
-        const SellerProductsScreen(),
-        extraOverrides: [
-          sellerProductsProvider.overrideWith((ref) => Stream.value([mockProduct])),
-        ],
-      ));
-      await tester.pump();
-      await tester.pump();
+      await tester.pumpWidget(
+        boosterWrapper(
+          const SellerProductsScreen(),
+          extraOverrides: [
+            sellerProductsProvider.overrideWith(
+              (ref) => Stream.value([mockProduct]),
+            ),
+          ],
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(milliseconds: 100));
     });
   });
 
@@ -326,13 +466,17 @@ void main() {
     });
 
     testWidgets('EditProductScreen settles', (tester) async {
-      await tester.pumpWidget(boosterWrapper(EditProductScreen(product: mockProduct)));
+      await tester.pumpWidget(
+        boosterWrapper(EditProductScreen(product: mockProduct)),
+      );
       await tester.pump(const Duration(milliseconds: 500));
       await tester.pump(const Duration(milliseconds: 500));
     });
 
     testWidgets('CheckoutScreen settles', (tester) async {
-      await tester.pumpWidget(boosterWrapper(const CheckoutScreen(items: [], total: 0)));
+      await tester.pumpWidget(
+        boosterWrapper(const CheckoutScreen(items: [], total: 0)),
+      );
       await tester.pump(const Duration(milliseconds: 500));
       await tester.pump(const Duration(milliseconds: 500));
     });
@@ -371,7 +515,9 @@ void main() {
     });
 
     testWidgets('EditProductScreen has form fields', (tester) async {
-      await tester.pumpWidget(boosterWrapper(EditProductScreen(product: mockProduct)));
+      await tester.pumpWidget(
+        boosterWrapper(EditProductScreen(product: mockProduct)),
+      );
       await tester.pumpAndSettle();
       expect(find.byType(TextFormField), findsWidgets);
     });

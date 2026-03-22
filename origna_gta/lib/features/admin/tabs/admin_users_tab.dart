@@ -231,7 +231,9 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
             child: Text(
               label,
               style: TextStyle(
-                color: isSelected ? DesignTokens.white : DesignTokens.textSecondary,
+                color: isSelected
+                    ? DesignTokens.white
+                    : DesignTokens.textSecondary,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                 fontSize: 12,
               ),
@@ -325,7 +327,7 @@ class _UserCard extends ConsumerWidget {
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
-                              role,
+                              role.name.toUpperCase(),
                               style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w600,
@@ -464,7 +466,9 @@ class _UserCard extends ConsumerWidget {
             ),
             content: Text(
               'admin.users.confirm_remove_seller_body'.tr(
-                namedArgs: {'name': user.name.isNotEmpty ? user.name : user.email},
+                namedArgs: {
+                  'name': user.name.isNotEmpty ? user.name : user.email,
+                },
               ),
             ),
             actions: [
@@ -545,7 +549,9 @@ class _UserCard extends ConsumerWidget {
             ),
             content: Text(
               'admin.users.confirm_suspend_body'.tr(
-                namedArgs: {'name': user.name.isNotEmpty ? user.name : user.email},
+                namedArgs: {
+                  'name': user.name.isNotEmpty ? user.name : user.email,
+                },
               ),
             ),
             actions: [
@@ -643,9 +649,9 @@ class _UserCard extends ConsumerWidget {
     );
   }
 
-  Color _roleColor(String role) {
-    if (role == UserRoles.admin) return DesignTokens.secondary;
-    if (role == UserRoles.seller) return DesignTokens.info;
+  Color _roleColor(UserRole role) {
+    if (role == UserRole.admin) return DesignTokens.secondary;
+    if (role == UserRole.seller) return DesignTokens.info;
     return DesignTokens.textSecondary;
   }
 }

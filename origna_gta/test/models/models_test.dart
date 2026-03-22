@@ -248,7 +248,7 @@ void main() {
         Fields.uid: 'user_1',
         Fields.email: 'user@test.com',
         Fields.name: 'User 1',
-        Fields.roles: [UserRoleValues.buyer, UserRoleValues.seller],
+        Fields.roles: [UserRole.buyer, UserRole.seller],
         Fields.createdAt: Timestamp.now(),
         Fields.suspended: false,
         Fields.paymentProvider: PaymentProviderValues.stripe,

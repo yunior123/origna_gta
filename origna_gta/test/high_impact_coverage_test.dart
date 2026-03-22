@@ -62,7 +62,7 @@ void main() {
     });
 
     testWidgets('renders access denied for non-admin', (tester) async {
-      final nonAdminProfile = UserModel(uid: 'user1', name: 'User', email: 'u@e.com', roles: const ['buyer'], createdAt: DateTime.now());
+      final nonAdminProfile = UserModel(uid: 'user1', name: 'User', email: 'u@e.com', roles: const [UserRole.buyer], createdAt: DateTime.now());
 
       await tester.pumpWidget(testWrapper(const AdminPanelScreen(), overrides: [userProfileProvider.overrideWith((ref) => Stream.value(nonAdminProfile))]));
       await tester.pump();
@@ -73,7 +73,7 @@ void main() {
     });
 
     testWidgets('renders tabs for admin and allows switching', (tester) async {
-      final adminProfile = UserModel(uid: 'admin1', name: 'Admin', email: 'a@e.com', roles: const ['admin'], createdAt: DateTime.now());
+      final adminProfile = UserModel(uid: 'admin1', name: 'Admin', email: 'a@e.com', roles: const [UserRole.admin], createdAt: DateTime.now());
 
       await tester.pumpWidget(
         testWrapper(

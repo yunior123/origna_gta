@@ -82,6 +82,9 @@ origna_gta/nanobanana-output/
 # --- Test results (root) ---
 test-results/
 
+# --- Pre-push hooks ---
+scripts/pre_push_validation.sh
+
 # --- Audit output & cache ---
 audit/output/
 audit/.doc_cache/

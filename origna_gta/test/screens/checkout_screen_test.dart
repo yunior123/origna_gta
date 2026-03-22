@@ -23,6 +23,7 @@ import '../test_utils.dart';
   MockSpec<AuthRepository>(),
 ])
 import 'checkout_screen_test.mocks.dart';
+import 'package:origna_gta/models/generated/base_models.dart';
 
 void main() {
   const signedInUser = AppAuthUser(
@@ -57,7 +58,7 @@ void main() {
         obUserIdProvider.overrideWithValue(signedInUser.uid),
         userProfileProvider.overrideWith(
           (ref) =>
-              Stream.value(models.UserModel(uid: 'test_user_123', name: 'Test User', email: 'test@example.com', roles: ['buyer'], createdAt: DateTime.now())),
+              Stream.value(models.UserModel(uid: 'test_user_123', name: 'Test User', email: 'test@example.com', roles: [UserRole.buyer], createdAt: DateTime.now())),
         ),
         userAddressesProvider.overrideWith((ref) => Stream.value(addresses)),
         cartItemsProvider.overrideWith((ref) => Stream.value(const [])),
@@ -80,7 +81,7 @@ void main() {
         productId: 'prod_1',
         name: 'Smartphone',
         description: 'Great phone',
-        price: 50.0,
+        price: 5000 / 100.0,
         imageUrls: [],
         quantity: 1,
         createdAt: DateTime.now(),
@@ -121,7 +122,7 @@ void main() {
         productId: 'p1',
         name: 'P',
         description: '',
-        price: 10,
+        price: 1000 / 100.0,
         imageUrls: [],
         quantity: 1,
         createdAt: DateTime.now(),
@@ -145,7 +146,7 @@ void main() {
         productId: 'p1',
         name: 'P',
         description: '',
-        price: 10,
+        price: 1000 / 100.0,
         imageUrls: [],
         quantity: 1,
         createdAt: DateTime.now(),
@@ -181,7 +182,7 @@ void main() {
         productId: 'p1',
         name: 'Software',
         description: '',
-        price: 10,
+        price: 1000 / 100.0,
         imageUrls: [],
         quantity: 1,
         createdAt: DateTime.now(),
@@ -207,7 +208,7 @@ void main() {
         productId: 'p1',
         name: 'P',
         description: '',
-        price: 10,
+        price: 1000 / 100.0,
         imageUrls: [],
         quantity: 1,
         createdAt: DateTime.now(),

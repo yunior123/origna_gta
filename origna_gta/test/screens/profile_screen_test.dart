@@ -36,7 +36,7 @@ void main() {
       uid: 'test_user_123',
       name: 'Test User',
       email: 'test@example.com',
-      roles: const ['buyer'],
+      roles: const [UserRole.buyer],
       isPremium: false,
       createdAt: DateTime(2026, 1, 1),
     );
@@ -45,7 +45,7 @@ void main() {
       uid: 'test_user_123',
       name: 'Seller User',
       email: 'seller@example.com',
-      roles: const ['buyer', 'seller'],
+      roles: const [UserRole.buyer],
       isPremium: false,
       createdAt: DateTime(2026, 1, 1),
     );
@@ -54,7 +54,7 @@ void main() {
       uid: 'test_user_123',
       name: 'Admin User',
       email: 'admin@example.com',
-      roles: const ['buyer', 'admin'],
+      roles: const [UserRole.buyer],
       isPremium: false,
       createdAt: DateTime(2026, 1, 1),
     );
@@ -63,7 +63,7 @@ void main() {
       uid: 'test_user_123',
       name: 'Premium User',
       email: 'premium@example.com',
-      roles: const ['buyer'],
+      roles: const [UserRole.buyer],
       isPremium: true,
       notifyNewProducts: true,
       notifyTrending: true,
@@ -992,7 +992,7 @@ void main() {
         uid: 'test_user_123',
         name: 'Test User',
         email: 'test@example.com',
-        roles: const ['buyer'],
+        roles: const [UserRole.buyer],
         isPremium: false,
         createdAt: DateTime(2026, 1, 1),
         address: Address(
@@ -1026,7 +1026,7 @@ void main() {
         uid: 'test_user_123',
         name: 'Test User',
         email: 'test@example.com',
-        roles: const ['buyer'],
+        roles: const [UserRole.buyer],
         isPremium: false,
         notifyNewProducts: true,
         createdAt: DateTime(2026, 1, 1),

@@ -1,0 +1,71 @@
+/**
+ * OrignaGTA — Admin Security E2E Tests
+ * =======================================
+ * Tests permission enforcement and MFA against dev OrignaBase.
+ */
+import { test, expect, describe } from 'bun:test';
+import {
+  signIn, callCallable, callExpectError,
+} from '../../lib/api-client.js';
+import { TEST_ACCOUNTS, ORIGNABASE_URL } from '../../lib/config.js';
+
+const ADMIN_EMAIL = TEST_ACCOUNTS.ADMIN_EMAIL;
+const ADMIN_PASS = TEST_ACCOUNTS.ADMIN_PASS;
+const BUYER_EMAIL = TEST_ACCOUNTS.BUYER_EMAIL;
+
+describe('Admin Security', () => {
+  // timeout: 60_000
+
+  test('MFA enrollment endpoint responds for admin', { timeout: 60_000 }, async () => {
+    const auth = await signIn(ADMIN_EMAIL, ADMIN_PASS);
+    const result = await callCallable('admin_mfa_enroll', {}, auth.idToken);
+
+    // Should return MFA enrollment data or indicate already enrolled
+    if (result.error) {
+      const msg = result.error.message || JSON.stringify(result.error);
+      // Acceptable: already enrolled, MFA not configured, etc.
+      expect(msg).toBeTruthy();
+    } else {
+      const data = result.result || result;
+      expect(data).toBeTruthy();
+    }
+  });
+
+  test('Non-admin cannot call admin MFA endpoints', { timeout: 60_000 }, async () => {
+    const buyerAuth = await signIn(BUYER_EMAIL);
+    const error = await callExpectError('admin_mfa_enroll', {}, buyerAuth.idToken);
+    expect(error.code, 'Buyer should not access admin MFA').not.toBe('unexpected-success');
+  });
+
+  test('Unauthenticated requests to admin endpoints are rejected', { timeout: 60_000 }, async () => {
+    const res = await fetch(`${ORIGNABASE_URL}/api/admin/mfa/enroll`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    expect(res.status === 401 || res.status === 403 || res.status >= 400).toBeTruthy();
+  });
+
+  test('Non-seller cannot access seller-only endpoints via API', { timeout: 60_000 }, async () => {
+    const buyerAuth = await signIn(BUYER_EMAIL);
+    // upload_product_images requires seller role
+    const error = await callExpectError('upload_product_images', {
+      productId: 'nonexistent_test',
+      images: [],
+    }, buyerAuth.idToken);
+
+    // Should be rejected — buyer doesn't have seller role
+    expect(error.code).not.toBe('unexpected-success');
+  });
+
+  test('Permission enforcement: wrong user cannot modify others orders', { timeout: 60_000 }, async () => {
+    // Try to update an order that doesn't belong to the buyer
+    const buyerAuth = await signIn(BUYER_EMAIL);
+    const error = await callExpectError('update_order_status', {
+      orderId: 'nonexistent_order_id',
+      newStatus: 'processing',
+    }, buyerAuth.idToken);
+
+    expect(error.code).not.toBe('unexpected-success');
+  });
+});

@@ -220,113 +220,8 @@ enum DeliveryStatus {
 // Do NOT define OrderStatus here — use the canonical enum from base_models.dart.
 
 // ============================================================================
-// APP CONFIGURATION
-// ============================================================================
-
-/// Payment status enum with string value conversion
-enum PaymentStatus {
-  awaitingPayment(PaymentStatusValues.awaitingPayment),
-  processing(PaymentStatusValues.processing),
-  authorized(PaymentStatusValues.authorized),
-  paid(PaymentStatusValues.paid),
-  captured(PaymentStatusValues.captured),
-  paymentFailed(PaymentStatusValues.paymentFailed),
-  refunded(PaymentStatusValues.refunded),
-  sessionExpired(PaymentStatusValues.sessionExpired),
-  cancelled(PaymentStatusValues.cancelled),
-  authorizationExpired(PaymentStatusValues.authorizationExpired),
-  disputed(PaymentStatusValues.disputed),
-  capturing(PaymentStatusValues.capturing),
-  cancelling(PaymentStatusValues.cancelling),
-  expiring(PaymentStatusValues.expiring);
-
-  final String value;
-  const PaymentStatus(this.value);
-
-  /// Get display text for UI
-  String get displayText {
-    switch (this) {
-      case PaymentStatus.awaitingPayment:
-        return 'payment_status.awaiting_payment'.tr();
-      case PaymentStatus.processing:
-        return 'payment_status.processing'.tr();
-      case PaymentStatus.authorized:
-        return 'payment_status.authorized'.tr();
-      case PaymentStatus.paid:
-        return 'payment_status.paid'.tr();
-      case PaymentStatus.captured:
-        return 'payment_status.captured'.tr();
-      case PaymentStatus.paymentFailed:
-        return 'payment_status.payment_failed'.tr();
-      case PaymentStatus.refunded:
-        return 'payment_status.refunded'.tr();
-      case PaymentStatus.sessionExpired:
-        return 'payment_status.session_expired'.tr();
-      case PaymentStatus.cancelled:
-        return 'payment_status.cancelled'.tr();
-      case PaymentStatus.authorizationExpired:
-        return 'payment_status.authorization_expired'.tr();
-      case PaymentStatus.disputed:
-        return 'orders.status.disputed'.tr();
-      case PaymentStatus.capturing:
-        return 'payment_status.capturing'.tr();
-      case PaymentStatus.cancelling:
-        return 'payment_status.cancelling'.tr();
-      case PaymentStatus.expiring:
-        return 'payment_status.expiring'.tr();
-    }
-  }
-
-  /// Parse from string value
-  static PaymentStatus fromValue(String value) {
-    return PaymentStatus.values.firstWhere(
-      (e) => e.value == value,
-      orElse: () => PaymentStatus.awaitingPayment,
-    );
-  }
-}
-
-// ============================================================================
-// PAYOUT STATUS
-// ============================================================================
-
-// ============================================================================
 // DELIVERY OPTIONS
 // ============================================================================
-
-/// Payout status for seller transfers
-enum PayoutStatus {
-  pending(PayoutStatusValues.pending),
-  processing(PayoutStatusValues.processing),
-  completed(PayoutStatusValues.completed),
-  partial(PayoutStatusValues.partial),
-  failed(PayoutStatusValues.failed);
-
-  final String value;
-  const PayoutStatus(this.value);
-
-  String get displayText {
-    switch (this) {
-      case PayoutStatus.pending:
-        return 'Awaiting Confirmation';
-      case PayoutStatus.processing:
-        return 'Processing';
-      case PayoutStatus.completed:
-        return 'Paid';
-      case PayoutStatus.partial:
-        return 'Partially Paid';
-      case PayoutStatus.failed:
-        return 'Failed';
-    }
-  }
-
-  static PayoutStatus fromValue(String value) {
-    return PayoutStatus.values.firstWhere(
-      (e) => e.value == value,
-      orElse: () => PayoutStatus.pending,
-    );
-  }
-}
 
 /// Seller-defined delivery option for a product
 /// Stored in database under [Fields.deliveryOptions].
@@ -525,37 +420,6 @@ class SellerDeliveryOption {
       estimatedDays: 0,
     ),
   ];
-}
-
-/// Shipping approval status for manual capture orders
-enum ShippingApprovalStatus {
-  notRequired(ShippingApprovalStatusValues.notRequired),
-  pending(ShippingApprovalStatusValues.pending),
-  approved(ShippingApprovalStatusValues.approved),
-  rejected(ShippingApprovalStatusValues.rejected);
-
-  final String value;
-  const ShippingApprovalStatus(this.value);
-
-  String get displayText {
-    switch (this) {
-      case ShippingApprovalStatus.notRequired:
-        return 'Not Required';
-      case ShippingApprovalStatus.pending:
-        return 'Awaiting Approval';
-      case ShippingApprovalStatus.approved:
-        return 'Approved';
-      case ShippingApprovalStatus.rejected:
-        return 'Rejected';
-    }
-  }
-
-  static ShippingApprovalStatus fromValue(String value) {
-    return ShippingApprovalStatus.values.firstWhere(
-      (e) => e.value == value,
-      orElse: () => ShippingApprovalStatus.notRequired,
-    );
-  }
 }
 
 // ============================================================================

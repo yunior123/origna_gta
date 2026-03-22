@@ -46,7 +46,7 @@ void main() {
         uid: 'user_123',
         email: 'test@example.com',
         name: 'Test',
-        roles: ['buyer'],
+        roles: [UserRole.buyer],
         createdAt: DateTime.now(),
       );
       

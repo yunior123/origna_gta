@@ -133,7 +133,7 @@ void main() {
           overrides: [
             productByIdProvider('p1').overrideWith((ref) => testProduct),
             userProfileProvider.overrideWith(
-              (ref) => Stream.value(models.UserModel(uid: 'u1', name: 'User', email: 'e', roles: const ['buyer'], createdAt: DateTime.now())),
+              (ref) => Stream.value(models.UserModel(uid: 'u1', name: 'User', email: 'e', roles: const [UserRole.buyer], createdAt: DateTime.now())),
             ),
             authStateProvider.overrideWith((ref) => Stream.value(signedInUser)),
             currentUserProvider.overrideWithValue(signedInUser),
@@ -173,7 +173,7 @@ void main() {
           overrides: [
             productByIdProvider('p1').overrideWith((ref) => variantProduct),
             userProfileProvider.overrideWith(
-              (ref) => Stream.value(models.UserModel(uid: 'u1', name: 'User', email: 'e', roles: const ['buyer'], createdAt: DateTime.now())),
+              (ref) => Stream.value(models.UserModel(uid: 'u1', name: 'User', email: 'e', roles: const [UserRole.buyer], createdAt: DateTime.now())),
             ),
             authStateProvider.overrideWith((ref) => Stream.value(signedInUser)),
             currentUserProvider.overrideWithValue(signedInUser),
@@ -208,7 +208,7 @@ void main() {
           overrides: [
             productByIdProvider('p1').overrideWith((ref) => testProduct),
             userProfileProvider.overrideWith(
-              (ref) => Stream.value(models.UserModel(uid: 'u1', name: 'User', email: 'e', roles: const ['buyer'], createdAt: DateTime.now())),
+              (ref) => Stream.value(models.UserModel(uid: 'u1', name: 'User', email: 'e', roles: const [UserRole.buyer], createdAt: DateTime.now())),
             ),
             authStateProvider.overrideWith((ref) => Stream.value(signedInUser)),
             currentUserProvider.overrideWithValue(signedInUser),

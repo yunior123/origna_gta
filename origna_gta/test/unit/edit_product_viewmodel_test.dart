@@ -192,7 +192,7 @@ void main() {
       await viewModel.updateProduct(
         name: '  ',
         description: 'Valid desc',
-        price: 10,
+        price: 10.0,
         stock: 5,
         categoryId: 1,
         street: 'Valid St',
@@ -210,7 +210,7 @@ void main() {
       await viewModel.updateProduct(
         name: 'Valid Name',
         description: ' ',
-        price: 10,
+        price: 10.0,
         stock: 5,
         categoryId: 1,
         street: 'Valid St',
@@ -229,7 +229,7 @@ void main() {
       await viewModel.updateProduct(
         name: 'Name',
         description: 'Desc',
-        price: 100001,
+        price: 100001.0,
         stock: 5,
         categoryId: 1,
         street: 'St',
@@ -244,7 +244,7 @@ void main() {
       await viewModel.updateProduct(
         name: 'Name',
         description: 'Desc',
-        price: 0,
+        price: 0.0,
         stock: 5,
         categoryId: 1,
         street: 'St',
@@ -262,7 +262,7 @@ void main() {
       await viewModel.updateProduct(
         name: 'Name',
         description: 'Desc',
-        price: 10,
+        price: 10.0,
         compareAtPrice: 10.4,
         stock: 5,
         categoryId: 1,
@@ -281,7 +281,7 @@ void main() {
       await viewModel.updateProduct(
         name: 'Name',
         description: 'Desc',
-        price: 10,
+        price: 10.0,
         stock: -1,
         categoryId: 1,
         street: 'St',
@@ -299,7 +299,7 @@ void main() {
       await viewModel.updateProduct(
         name: 'Name',
         description: 'Desc',
-        price: 10,
+        price: 10.0,
         stock: 5,
         categoryId: 1,
         street: '',
@@ -319,7 +319,7 @@ void main() {
       await viewModel.updateProduct(
         name: 'Name',
         description: 'Desc',
-        price: 10,
+        price: 10.0,
         stock: 5,
         categoryId: 1,
         street: '123 St',
@@ -335,7 +335,7 @@ void main() {
       await vmNoCoords.updateProduct(
         name: 'Name',
         description: 'Desc',
-        price: 10,
+        price: 10.0,
         stock: 5,
         categoryId: 1,
         street: '123 St',
@@ -353,7 +353,7 @@ void main() {
       await viewModel.updateProduct(
         name: 'Name',
         description: 'Desc',
-        price: 10,
+        price: 10.0,
         stock: 5,
         categoryId: 1,
         street: 'St',
@@ -377,7 +377,7 @@ void main() {
       await viewModel.updateProduct(
         name: 'Name',
         description: 'Desc',
-        price: 10,
+        price: 10.0,
         stock: 5,
         categoryId: 1,
         street: 'St',
@@ -398,7 +398,7 @@ void main() {
       await viewModel.updateProduct(
         name: 'Name',
         description: 'Desc',
-        price: 10,
+        price: 10.0,
         stock: 5,
         categoryId: 1,
         street: '',
@@ -419,7 +419,7 @@ void main() {
       await viewModel.updateProduct(
         name: 'Name',
         description: 'Desc',
-        price: 10,
+        price: 10.0,
         stock: 5,
         categoryId: 1,
         street: '',
@@ -441,7 +441,7 @@ void main() {
       await viewModel.updateProduct(
         name: 'Name',
         description: 'Desc',
-        price: 10,
+        price: 10.0,
         stock: 5,
         categoryId: 1,
         street: '',
@@ -463,7 +463,7 @@ void main() {
       await viewModel.updateProduct(
         name: 'Name',
         description: 'Desc',
-        price: 10,
+        price: 10.0,
         stock: 5,
         categoryId: 1,
         street: '',
@@ -479,7 +479,7 @@ void main() {
       await viewModel.updateProduct(
         name: 'Name',
         description: 'Desc',
-        price: 10,
+        price: 10.0,
         stock: 5,
         categoryId: 1,
         street: '',
@@ -499,7 +499,7 @@ void main() {
       await viewModel.updateProduct(
         name: 'Name',
         description: 'Desc',
-        price: 10,
+        price: 10.0,
         stock: 5,
         categoryId: 1,
         street: 'St',
@@ -587,7 +587,7 @@ void main() {
       await viewModel.updateProduct(
         name: 'Name',
         description: 'Desc',
-        price: 10,
+        price: 10.0,
         stock: 5,
         categoryId: 1,
         street: '123 Initial St',
@@ -613,7 +613,7 @@ void main() {
       await viewModel.updateProduct(
         name: 'Name',
         description: 'Desc',
-        price: 10,
+        price: 10.0,
         stock: 5,
         categoryId: 1,
         street: '123 Initial St',
@@ -638,7 +638,7 @@ void main() {
       await viewModel.updateProduct(
         name: 'Name',
         description: 'Desc',
-        price: 10,
+        price: 10.0,
         stock: 5,
         categoryId: 1,
         street: 'St',
@@ -683,7 +683,7 @@ void main() {
       await viewModel.updateProduct(
         name: 'Name',
         description: 'Desc',
-        price: 100,
+        price: 100.0,
         stock: 5,
         categoryId: 1,
         street: '123 Initial St',
@@ -724,7 +724,7 @@ void main() {
       await viewModel.updateProduct(
         name: 'Name',
         description: 'Desc',
-        price: 10,
+        price: 10.0,
         stock: 5,
         categoryId: 1,
         street: 'St',
@@ -768,7 +768,7 @@ void main() {
       await viewModel.updateProduct(
         name: 'Name',
         description: 'Desc',
-        price: 10,
+        price: 10.0,
         stock: 5,
         categoryId: 1,
         street: 'St',
@@ -785,7 +785,7 @@ void main() {
       await viewModel.updateProduct(
         name: 'Name',
         description: 'Desc',
-        price: 10,
+        price: 10.0,
         stock: 5,
         categoryId: 1,
         street: 'St',
@@ -808,7 +808,7 @@ void main() {
       await viewModel.updateProduct(
         name: 'Name',
         description: 'Desc',
-        price: 10,
+        price: 10.0,
         stock: 5,
         categoryId: 1,
         street: 'St',
@@ -825,7 +825,7 @@ void main() {
       await viewModel.updateProduct(
         name: 'Name',
         description: 'Desc',
-        price: 10,
+        price: 10.0,
         stock: 5,
         categoryId: 1,
         street: 'St',

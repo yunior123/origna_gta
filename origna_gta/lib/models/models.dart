@@ -4,9 +4,14 @@ import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/models/enum_extensions.dart';
-import 'package:origna_gta/models/generated/base_models.dart' show OrderStatus;
+import 'package:origna_gta/models/generated/base_models.dart'
+    show OrderStatus, UserRole;
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/utils.dart';
+
+// Re-export enums for backward compatibility
+export 'package:origna_gta/models/generated/base_models.dart'
+    show UserRole, PaymentStatus, PayoutStatus, ShippingApprovalStatus;
 
 /// Lightweight document snapshot used by manual model factories.
 class DocumentSnapshot {
@@ -809,7 +814,7 @@ class ProductCategories {
 class ProductModel {
   final String id;
   final String name;
-  final double price;
+  final int priceCents;
   final List<String> imageUrls;
   final Address sellerAddress;
   final String description;
@@ -820,35 +825,29 @@ class ProductModel {
   final int ratingCount;
   final DateTime? createdAt;
   final List<String> searchKeywords;
-  // Shipping dimensions (optional - for better shipping calculation)
-  final double? weightKg; // Weight in kilograms
-  final double? lengthCm; // Length in centimeters
-  final double? widthCm; // Width in centimeters
-  final double? heightCm; // Height in centimeters
-  final bool
-  isLocalDeliveryOnly; // Restrict to buyers within 50km for same-day/next-day delivery
-  final int estimatedShipDays; // Seller's estimated shipping time in days
-  final String? taxCode; // Optional Stripe Tax Code (e.g. txcd_10000000)
-  // Seller-defined delivery options (standard, express, same-day with custom times/prices)
+  final double? weightKg;
+  final double? lengthCm;
+  final double? widthCm;
+  final double? heightCm;
+  final bool isLocalDeliveryOnly;
+  final int estimatedShipDays;
+  final String? taxCode;
   final List<SellerDeliveryOption> deliveryOptions;
-  final bool
-  isPerishable; // Food, flowers, etc. - affects same-day delivery logic
+  final bool isPerishable;
   final int minimumOrderQuantity;
   final bool freeShipping;
   final DateTime? deletedAt;
-  final bool isDigital; // True if product is digital (no shipping required)
-  final bool
-  isAgeRestricted; // True if buyer must confirm age 18+ before purchasing
-  final String? digitalType; // 'software' | 'book'
-  final Map<String, String>?
-  digitalBuilds; // platform -> download URL (software only)
+  final bool isDigital;
+  final bool isAgeRestricted;
+  final String? digitalType;
+  final Map<String, String>? digitalBuilds;
   final String? approvalRejectionReason;
   final String lifecycleStatus;
 
   ProductModel({
     required this.id,
     required this.name,
-    required this.price,
+    required this.priceCents,
     required this.imageUrls,
     required this.sellerAddress,
     required this.description,
@@ -881,6 +880,8 @@ class ProductModel {
            deliveryOptions ?? SellerDeliveryOption.defaultOptions(),
        searchKeywords = keywords;
 
+  double get price => priceCents / 100.0;
+
   factory ProductModel.fromDocument(DocumentSnapshot doc) {
     final data = doc.data();
 
@@ -906,7 +907,9 @@ class ProductModel {
     return ProductModel(
       id: map[Fields.productId]?.toString() ?? '',
       name: map[Fields.name]?.toString() ?? '',
-      price: _parseDouble(map[Fields.price]),
+      priceCents:
+          _parseInt(map[Fields.priceCents]) ??
+          _parseDouble(map[Fields.price]) * 100 ~/ 1,
       imageUrls: _parseStringList(map[Fields.imageUrls]),
       sellerAddress: _parseAddress(map[Fields.sellerAddress]),
       description: map[Fields.description]?.toString() ?? '',
@@ -1092,30 +1095,27 @@ class UserModel {
   final String uid;
   final String email;
   final String name;
-  final List<String> roles;
-  final Address? address; // Changed to Address object
+  final List<UserRole> roles;
+  final Address? address;
   final DateTime createdAt;
-  final String? customerId; // Stripe customer ID
+  final String? customerId;
   final String? lastCheckoutSession;
   final String? lastOrderId;
   final DateTime? lastCheckoutTimestamp;
-  // Stripe Connect fields for sellers
-  final String? stripeAccountId; // Stripe Connect account ID
-  final bool payoutsEnabled; // Can receive payouts
-  final bool chargesEnabled; // Can accept charges
-  final bool onboardingCompleted; // Completed Stripe onboarding
+  final String? stripeAccountId;
+  final bool payoutsEnabled;
+  final bool chargesEnabled;
+  final bool onboardingCompleted;
   final bool suspended;
   final DateTime? suspendedAt;
-  final String paymentProvider; // stripe
-  // Seller-specific fields
-  final bool verified; // Manual verification by admin
-  final String? verificationStatus; // pending, approved, rejected
-  final String? platform; // alibaba, dhgate, direct
-  final String? country; // Seller's country (CN, CA, etc.)
-  final String? businessName; // Company name for business sellers
-  final int payoutHoldDays; // Custom hold period before payout (default 7)
-  final List<String> pendingRequirements; // Stripe requirements still needed
-  // Premium subscription
+  final String paymentProvider;
+  final bool verified;
+  final String? verificationStatus;
+  final String? platform;
+  final String? country;
+  final String? businessName;
+  final int payoutHoldDays;
+  final List<String> pendingRequirements;
   final bool isPremium;
   final DateTime? premiumSince;
   final DateTime? premiumExpiresAt;
@@ -1123,8 +1123,6 @@ class UserModel {
   final bool notifyNewProducts;
   final bool notifyTrending;
   final bool mfaEnabled;
-
-  /// Version of ToS the user last accepted (e.g. '1.0'). Null = accepted before versioning was added.
   final String? termsVersion;
 
   UserModel({
@@ -1132,7 +1130,7 @@ class UserModel {
     required this.email,
     required this.name,
     required this.roles,
-    this.address, // Made optional since not all users may have an address
+    this.address,
     required this.createdAt,
     this.customerId,
     this.lastCheckoutSession,
@@ -1163,11 +1161,27 @@ class UserModel {
   });
 
   factory UserModel.fromMap(Map<String, dynamic> map) {
+    // Convert string roles to UserRole enum
+    final roleStrings = map[Fields.roles] is Iterable
+        ? (map[Fields.roles] as Iterable).map((r) => r.toString()).toList()
+        : <String>[];
+    final roles = roleStrings.map((r) {
+      switch (r) {
+        case 'admin':
+          return UserRole.admin;
+        case 'seller':
+          return UserRole.seller;
+        case 'buyer':
+        default:
+          return UserRole.buyer;
+      }
+    }).toList();
+
     return UserModel(
       uid: map[Fields.uid]?.toString() ?? '',
       email: map[Fields.email]?.toString() ?? '',
       name: map[Fields.name]?.toString() ?? '',
-      roles: List<String>.from(map[Fields.roles] as Iterable? ?? const []),
+      roles: roles,
       address: map[Fields.address] != null
           ? Address.fromMap(map[Fields.address] as Map<String, dynamic>)
           : null,
@@ -1229,7 +1243,7 @@ class UserModel {
     String? uid,
     String? email,
     String? name,
-    List<String>? roles,
+    List<UserRole>? roles,
     Address? address,
     DateTime? createdAt,
     String? customerId,

@@ -41,7 +41,7 @@ void main() {
       addTearDown(() => tester.view.resetPhysicalSize());
 
       final sellers = [
-        UserModel(uid: 's1', name: 'Seller 1', email: 's1@e.com', roles: ['seller'], createdAt: DateTime.now()),
+        UserModel(uid: 's1', name: 'Seller 1', email: 's1@e.com', roles: [UserRole.seller], createdAt: DateTime.now()),
       ];
       when(mockAdminRepo.watchSellers()).thenAnswer((_) => Stream.value(sellers));
 
@@ -55,7 +55,7 @@ void main() {
   group('AdminUsersTab', () {
     testWidgets('renders users list', (tester) async {
       final users = [
-        UserModel(uid: 'u1', name: 'User 1', email: 'u1@e.com', roles: ['buyer'], createdAt: DateTime.now()),
+        UserModel(uid: 'u1', name: 'User 1', email: 'u1@e.com', roles: [UserRole.buyer], createdAt: DateTime.now()),
       ];
       when(mockAdminRepo.watchUsers()).thenAnswer((_) => Stream.value(users));
 
@@ -109,7 +109,7 @@ void main() {
         ProductModel(
           id: 'p1',
           name: 'Product 1',
-          price: 10.0,
+          priceCents: 1000,
           imageUrls: [],
           sellerAddress: Address.empty(),
           description: 'Desc',

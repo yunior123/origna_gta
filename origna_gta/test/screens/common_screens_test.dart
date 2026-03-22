@@ -5,6 +5,7 @@ import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/models/models.dart' as models;
 import '../test_utils.dart';
+import 'package:origna_gta/models/generated/base_models.dart';
 
 void main() {
   const verifiedUser = AppAuthUser(
@@ -23,7 +24,7 @@ void main() {
         uid: 'admin_123',
         name: 'Admin',
         email: 'admin@example.com',
-        roles: ['admin'],
+        roles: [UserRole.admin],
         createdAt: DateTime.now(),
       );
 
@@ -42,7 +43,7 @@ void main() {
         uid: 'user_123',
         name: 'User',
         email: 'user@example.com',
-        roles: ['buyer'],
+        roles: [UserRole.buyer],
         createdAt: DateTime.now(),
       );
 

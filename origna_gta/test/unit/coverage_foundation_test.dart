@@ -168,7 +168,7 @@ void main() {
       final product = Product(
         productId: 'p1',
         name: 'Honey',
-        price: 10,
+        price: 1000 / 100.0,
         imageUrls: const ['images/33.png'],
         description: 'Sweet honey',
         sellerId: 'seller-1',
@@ -180,7 +180,7 @@ void main() {
         productId: 'p1',
         name: 'Honey',
         description: 'Sweet honey',
-        price: 10,
+        price: 1000 / 100.0,
         imageUrls: const ['images/33.png'],
         quantity: 2,
         createdAt: DateTime.utc(2026, 3, 19),

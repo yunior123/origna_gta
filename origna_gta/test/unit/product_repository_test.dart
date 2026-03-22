@@ -33,7 +33,7 @@ void main() {
           productId: 'p1',
           name: 'Test',
           description: 'Desc',
-          price: 10.0,
+          price: 1000 / 100.0,
           sellerId: 's1',
           categoryId: 1,
           imageUrls: const [],

@@ -11,10 +11,7 @@ import 'package:origna_gta/models/models.dart';
 import 'package:origna_gta/utils/constants.dart' as utils;
 import 'package:shared_preferences/shared_preferences.dart';
 
-@GenerateNiceMocks([
-  MockSpec<CartRepository>(),
-  MockSpec<ProductRepository>(),
-])
+@GenerateNiceMocks([MockSpec<CartRepository>(), MockSpec<ProductRepository>()])
 import 'cart_provider_comprehensive_test.mocks.dart';
 
 class _LegacyTimestampLike {
@@ -69,7 +66,7 @@ CartItemDetailModel _detailItem({
     productId: productId,
     name: name,
     description: 'A test product',
-    price: price,
+    price: price, priceCents: (price * 100).round(),
     imageUrls: const ['https://example.com/img.jpg'],
     quantity: quantity,
     createdAt: DateTime.now(),
@@ -126,23 +123,30 @@ void main() {
       verifyNever(mockRepo.getProductSellerId(any));
     });
 
-    test('returns false when product does not exist (sellerId is null)', () async {
-      final container = ProviderContainer(
-        overrides: [
-          cartRepositoryProvider.overrideWithValue(mockRepo),
-          userIdProvider.overrideWithValue('user1'),
-        ],
-      );
-      addTearDown(container.dispose);
+    test(
+      'returns false when product does not exist (sellerId is null)',
+      () async {
+        final container = ProviderContainer(
+          overrides: [
+            cartRepositoryProvider.overrideWithValue(mockRepo),
+            userIdProvider.overrideWithValue('user1'),
+          ],
+        );
+        addTearDown(container.dispose);
 
-      when(mockRepo.getProductSellerId('prod1')).thenAnswer((_) async => null);
+        when(
+          mockRepo.getProductSellerId('prod1'),
+        ).thenAnswer((_) async => null);
 
-      final controller = container.read(cartControllerProvider);
-      final result = await controller.addToCart('prod1', 1);
+        final controller = container.read(cartControllerProvider);
+        final result = await controller.addToCart('prod1', 1);
 
-      expect(result, isFalse);
-      verifyNever(mockRepo.addToCart(any, any, any, variantId: anyNamed('variantId')));
-    });
+        expect(result, isFalse);
+        verifyNever(
+          mockRepo.addToCart(any, any, any, variantId: anyNamed('variantId')),
+        );
+      },
+    );
 
     test('returns false when user tries to buy own product', () async {
       final container = ProviderContainer(
@@ -153,13 +157,17 @@ void main() {
       );
       addTearDown(container.dispose);
 
-      when(mockRepo.getProductSellerId('prod1')).thenAnswer((_) async => 'seller1');
+      when(
+        mockRepo.getProductSellerId('prod1'),
+      ).thenAnswer((_) async => 'seller1');
 
       final controller = container.read(cartControllerProvider);
       final result = await controller.addToCart('prod1', 1);
 
       expect(result, isFalse);
-      verifyNever(mockRepo.addToCart(any, any, any, variantId: anyNamed('variantId')));
+      verifyNever(
+        mockRepo.addToCart(any, any, any, variantId: anyNamed('variantId')),
+      );
     });
 
     test('validates variant when variantId is provided', () async {
@@ -171,17 +179,24 @@ void main() {
       );
       addTearDown(container.dispose);
 
-      when(mockRepo.getProductSellerId('prod1')).thenAnswer((_) async => 'seller1');
-      when(mockRepo.isVariantValid('prod1', 'var1')).thenAnswer((_) async => true);
-      when(mockRepo.addToCart(any, any, any, variantId: anyNamed('variantId')))
-          .thenAnswer((_) async {});
+      when(
+        mockRepo.getProductSellerId('prod1'),
+      ).thenAnswer((_) async => 'seller1');
+      when(
+        mockRepo.isVariantValid('prod1', 'var1'),
+      ).thenAnswer((_) async => true);
+      when(
+        mockRepo.addToCart(any, any, any, variantId: anyNamed('variantId')),
+      ).thenAnswer((_) async {});
 
       final controller = container.read(cartControllerProvider);
       final result = await controller.addToCart('prod1', 1, variantId: 'var1');
 
       expect(result, isTrue);
       verify(mockRepo.isVariantValid('prod1', 'var1')).called(1);
-      verify(mockRepo.addToCart('user1', 'prod1', 1, variantId: 'var1')).called(1);
+      verify(
+        mockRepo.addToCart('user1', 'prod1', 1, variantId: 'var1'),
+      ).called(1);
     });
 
     test('returns false when variant is invalid', () async {
@@ -193,14 +208,20 @@ void main() {
       );
       addTearDown(container.dispose);
 
-      when(mockRepo.getProductSellerId('prod1')).thenAnswer((_) async => 'seller1');
-      when(mockRepo.isVariantValid('prod1', 'var1')).thenAnswer((_) async => false);
+      when(
+        mockRepo.getProductSellerId('prod1'),
+      ).thenAnswer((_) async => 'seller1');
+      when(
+        mockRepo.isVariantValid('prod1', 'var1'),
+      ).thenAnswer((_) async => false);
 
       final controller = container.read(cartControllerProvider);
       final result = await controller.addToCart('prod1', 1, variantId: 'var1');
 
       expect(result, isFalse);
-      verifyNever(mockRepo.addToCart(any, any, any, variantId: anyNamed('variantId')));
+      verifyNever(
+        mockRepo.addToCart(any, any, any, variantId: anyNamed('variantId')),
+      );
     });
 
     test('returns false when repository throws exception', () async {
@@ -212,7 +233,9 @@ void main() {
       );
       addTearDown(container.dispose);
 
-      when(mockRepo.getProductSellerId('prod1')).thenThrow(Exception('Network error'));
+      when(
+        mockRepo.getProductSellerId('prod1'),
+      ).thenThrow(Exception('Network error'));
 
       final controller = container.read(cartControllerProvider);
       final result = await controller.addToCart('prod1', 1);
@@ -220,25 +243,31 @@ void main() {
       expect(result, isFalse);
     });
 
-    test('does not log analytics when productName or priceCad is null', () async {
-      final container = ProviderContainer(
-        overrides: [
-          cartRepositoryProvider.overrideWithValue(mockRepo),
-          userIdProvider.overrideWithValue('user1'),
-        ],
-      );
-      addTearDown(container.dispose);
+    test(
+      'does not log analytics when productName or priceCad is null',
+      () async {
+        final container = ProviderContainer(
+          overrides: [
+            cartRepositoryProvider.overrideWithValue(mockRepo),
+            userIdProvider.overrideWithValue('user1'),
+          ],
+        );
+        addTearDown(container.dispose);
 
-      when(mockRepo.getProductSellerId('prod1')).thenAnswer((_) async => 'seller1');
-      when(mockRepo.addToCart(any, any, any, variantId: anyNamed('variantId')))
-          .thenAnswer((_) async {});
+        when(
+          mockRepo.getProductSellerId('prod1'),
+        ).thenAnswer((_) async => 'seller1');
+        when(
+          mockRepo.addToCart(any, any, any, variantId: anyNamed('variantId')),
+        ).thenAnswer((_) async {});
 
-      final controller = container.read(cartControllerProvider);
-      // Call without productName/priceCad — should succeed without analytics
-      final result = await controller.addToCart('prod1', 2);
+        final controller = container.read(cartControllerProvider);
+        // Call without productName/priceCad — should succeed without analytics
+        final result = await controller.addToCart('prod1', 2);
 
-      expect(result, isTrue);
-    });
+        expect(result, isTrue);
+      },
+    );
 
     test('succeeds with analytics parameters', () async {
       final container = ProviderContainer(
@@ -249,13 +278,20 @@ void main() {
       );
       addTearDown(container.dispose);
 
-      when(mockRepo.getProductSellerId('prod1')).thenAnswer((_) async => 'seller1');
-      when(mockRepo.addToCart(any, any, any, variantId: anyNamed('variantId')))
-          .thenAnswer((_) async {});
+      when(
+        mockRepo.getProductSellerId('prod1'),
+      ).thenAnswer((_) async => 'seller1');
+      when(
+        mockRepo.addToCart(any, any, any, variantId: anyNamed('variantId')),
+      ).thenAnswer((_) async {});
 
       final controller = container.read(cartControllerProvider);
-      final result = await controller.addToCart('prod1', 2,
-          productName: 'Widget', priceCad: 19.99);
+      final result = await controller.addToCart(
+        'prod1',
+        2,
+        productName: 'Widget',
+        priceCad: 19.99,
+      );
 
       expect(result, isTrue);
       verify(mockRepo.addToCart('user1', 'prod1', 2)).called(1);
@@ -288,7 +324,9 @@ void main() {
       );
       addTearDown(container.dispose);
 
-      when(mockRepo.getProductSellerId('prod1')).thenAnswer((_) async => 'seller1');
+      when(
+        mockRepo.getProductSellerId('prod1'),
+      ).thenAnswer((_) async => 'seller1');
 
       final controller = container.read(cartControllerProvider);
       expect(await controller.canAddToCart('prod1'), isTrue);
@@ -303,7 +341,9 @@ void main() {
       );
       addTearDown(container.dispose);
 
-      when(mockRepo.getProductSellerId('prod1')).thenAnswer((_) async => 'user1');
+      when(
+        mockRepo.getProductSellerId('prod1'),
+      ).thenAnswer((_) async => 'user1');
 
       final controller = container.read(cartControllerProvider);
       expect(await controller.canAddToCart('prod1'), isFalse);
@@ -463,7 +503,9 @@ void main() {
       final controller = container.read(cartControllerProvider);
       await controller.updateBuyerNote('item1', 'Please wrap carefully');
 
-      verify(mockRepo.updateBuyerNote('user1', 'item1', 'Please wrap carefully')).called(1);
+      verify(
+        mockRepo.updateBuyerNote('user1', 'item1', 'Please wrap carefully'),
+      ).called(1);
     });
 
     test('calls repository with null note to clear', () async {
@@ -502,8 +544,9 @@ void main() {
     });
 
     test('returns true and creates favorite + removes from cart', () async {
-      when(mockProductRepository.toggleFavorite(any, any))
-          .thenAnswer((_) async {});
+      when(
+        mockProductRepository.toggleFavorite(any, any),
+      ).thenAnswer((_) async {});
 
       final container = ProviderContainer(
         overrides: [
@@ -523,8 +566,9 @@ void main() {
     });
 
     test('returns false on repository exception', () async {
-      when(mockProductRepository.toggleFavorite(any, any))
-          .thenThrow(Exception('favorite error'));
+      when(
+        mockProductRepository.toggleFavorite(any, any),
+      ).thenThrow(Exception('favorite error'));
 
       final container = ProviderContainer(
         overrides: [
@@ -548,9 +592,7 @@ void main() {
   group('cartItemCountProvider', () {
     test('returns 0 when cart is empty', () async {
       final container = ProviderContainer(
-        overrides: [
-          cartItemsProvider.overrideWith((ref) => Stream.value([])),
-        ],
+        overrides: [cartItemsProvider.overrideWith((ref) => Stream.value([]))],
       );
       addTearDown(container.dispose);
 
@@ -561,11 +603,13 @@ void main() {
     test('sums quantities from multiple items', () async {
       final container = ProviderContainer(
         overrides: [
-          cartItemsProvider.overrideWith((ref) => Stream.value([
-                _cartItem(cartItemId: 'i1', productId: 'p1', quantity: 3),
-                _cartItem(cartItemId: 'i2', productId: 'p2', quantity: 7),
-                _cartItem(cartItemId: 'i3', productId: 'p3', quantity: 1),
-              ])),
+          cartItemsProvider.overrideWith(
+            (ref) => Stream.value([
+              _cartItem(cartItemId: 'i1', productId: 'p1', quantity: 3),
+              _cartItem(cartItemId: 'i2', productId: 'p2', quantity: 7),
+              _cartItem(cartItemId: 'i3', productId: 'p3', quantity: 1),
+            ]),
+          ),
         ],
       );
       addTearDown(container.dispose);
@@ -577,8 +621,9 @@ void main() {
     test('returns 0 when stream has not emitted yet (loading)', () {
       final container = ProviderContainer(
         overrides: [
-          cartItemsProvider
-              .overrideWith((ref) => const Stream<List<CartItemModel>>.empty()),
+          cartItemsProvider.overrideWith(
+            (ref) => const Stream<List<CartItemModel>>.empty(),
+          ),
         ],
       );
       addTearDown(container.dispose);
@@ -596,7 +641,9 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           cartItemsProvider.overrideWith(
-              (ref) => Stream.value([_cartItem(cartItemId: 'item1', createdAt: ts)])),
+            (ref) =>
+                Stream.value([_cartItem(cartItemId: 'item1', createdAt: ts)]),
+          ),
         ],
       );
       addTearDown(container.dispose);
@@ -609,7 +656,8 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           cartItemsProvider.overrideWith(
-              (ref) => Stream.value([_cartItem(cartItemId: 'item1')])),
+            (ref) => Stream.value([_cartItem(cartItemId: 'item1')]),
+          ),
         ],
       );
       addTearDown(container.dispose);
@@ -620,9 +668,7 @@ void main() {
 
     test('returns null when cart is empty', () async {
       final container = ProviderContainer(
-        overrides: [
-          cartItemsProvider.overrideWith((ref) => Stream.value([])),
-        ],
+        overrides: [cartItemsProvider.overrideWith((ref) => Stream.value([]))],
       );
       addTearDown(container.dispose);
 
@@ -633,8 +679,9 @@ void main() {
     test('returns null when cart is loading', () {
       final container = ProviderContainer(
         overrides: [
-          cartItemsProvider
-              .overrideWith((ref) => const Stream<List<CartItemModel>>.empty()),
+          cartItemsProvider.overrideWith(
+            (ref) => const Stream<List<CartItemModel>>.empty(),
+          ),
         ],
       );
       addTearDown(container.dispose);
@@ -651,7 +698,9 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           cartItemsProvider.overrideWith(
-              (ref) => Stream.value([_cartItem(cartItemId: 'item1', quantity: 5)])),
+            (ref) =>
+                Stream.value([_cartItem(cartItemId: 'item1', quantity: 5)]),
+          ),
         ],
       );
       addTearDown(container.dispose);
@@ -665,7 +714,9 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           cartItemsProvider.overrideWith(
-              (ref) => Stream.value([_cartItem(cartItemId: 'item1', quantity: 5)])),
+            (ref) =>
+                Stream.value([_cartItem(cartItemId: 'item1', quantity: 5)]),
+          ),
         ],
       );
       addTearDown(container.dispose);
@@ -678,11 +729,13 @@ void main() {
     test('tracks correct item when multiple items exist', () async {
       final container = ProviderContainer(
         overrides: [
-          cartItemsProvider.overrideWith((ref) => Stream.value([
-                _cartItem(cartItemId: 'item1', quantity: 2),
-                _cartItem(cartItemId: 'item2', quantity: 8),
-                _cartItem(cartItemId: 'item3', quantity: 15),
-              ])),
+          cartItemsProvider.overrideWith(
+            (ref) => Stream.value([
+              _cartItem(cartItemId: 'item1', quantity: 2),
+              _cartItem(cartItemId: 'item2', quantity: 8),
+              _cartItem(cartItemId: 'item3', quantity: 15),
+            ]),
+          ),
         ],
       );
       addTearDown(container.dispose);
@@ -699,9 +752,7 @@ void main() {
   group('cartSubtotalProvider', () {
     test('returns 0.0 for empty cart', () async {
       final container = ProviderContainer(
-        overrides: [
-          cartWithDetailsProvider.overrideWith((ref) async => []),
-        ],
+        overrides: [cartWithDetailsProvider.overrideWith((ref) async => [])],
       );
       addTearDown(container.dispose);
 
@@ -712,10 +763,12 @@ void main() {
     test('calculates subtotal from price * quantity', () async {
       final container = ProviderContainer(
         overrides: [
-          cartWithDetailsProvider.overrideWith((ref) async => [
-                _detailItem(productId: 'p1', price: 10.00, quantity: 2),
-                _detailItem(productId: 'p2', price: 25.50, quantity: 3),
-              ]),
+          cartWithDetailsProvider.overrideWith(
+            (ref) async => [
+              _detailItem(productId: 'p1', price: 10.00, quantity: 2),
+              _detailItem(productId: 'p2', price: 25.50, quantity: 3),
+            ],
+          ),
         ],
       );
       addTearDown(container.dispose);
@@ -730,10 +783,11 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           cartWithDetailsProvider.overrideWith(
-              (ref) => Future<List<CartItemDetailModel>>.delayed(
-                    const Duration(hours: 1),
-                    () => [],
-                  )),
+            (ref) => Future<List<CartItemDetailModel>>.delayed(
+              const Duration(hours: 1),
+              () => [],
+            ),
+          ),
         ],
       );
       addTearDown(container.dispose);
@@ -745,7 +799,8 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           cartWithDetailsProvider.overrideWith(
-              (ref) async => [_detailItem(price: 99.99, quantity: 1)]),
+            (ref) async => [_detailItem(price: 99.99, quantity: 1)],
+          ),
         ],
       );
       addTearDown(container.dispose);
@@ -758,7 +813,8 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           cartWithDetailsProvider.overrideWith(
-              (ref) async => [_detailItem(price: 5.00, quantity: 99)]),
+            (ref) async => [_detailItem(price: 5.00, quantity: 99)],
+          ),
         ],
       );
       addTearDown(container.dispose);
@@ -786,8 +842,9 @@ void main() {
     });
 
     test('watches cart from repository when user is logged in', () async {
-      when(mockRepo.watchCart('user1'))
-          .thenAnswer((_) => Stream.value([_cartItem(quantity: 2)]));
+      when(
+        mockRepo.watchCart('user1'),
+      ).thenAnswer((_) => Stream.value([_cartItem(quantity: 2)]));
 
       final container = ProviderContainer(
         overrides: [
@@ -830,8 +887,9 @@ void main() {
   // ================================================================
   group('CartController.refreshCart', () {
     test('invalidates cartItemsProvider', () async {
-      when(mockRepo.watchCart('user1'))
-          .thenAnswer((_) => Stream.value([_cartItem()]));
+      when(
+        mockRepo.watchCart('user1'),
+      ).thenAnswer((_) => Stream.value([_cartItem()]));
 
       final container = ProviderContainer(
         overrides: [
@@ -1027,7 +1085,7 @@ void main() {
       final map = original.toMap();
       expect(map['productId'], 'p1');
       expect(map['name'], 'Widget');
-      expect(map['price'], 49.99);
+      expect(map['priceCents'], 4999);
       expect(map['quantity'], 3);
       expect(map['buyerNote'], 'Priority');
       expect(map['variantId'], 'v1');
@@ -1068,9 +1126,7 @@ void main() {
     });
 
     test('fromMap with null createdAt uses DateTime.now', () {
-      final model = CartModel.fromMap({
-        'productId': 'p1',
-      });
+      final model = CartModel.fromMap({'productId': 'p1'});
 
       expect(model.createdAt, isNotNull);
       expect(model.quantity, 1); // default

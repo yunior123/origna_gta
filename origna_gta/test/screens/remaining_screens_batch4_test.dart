@@ -10,6 +10,7 @@ import 'package:origna_gta/features/orders/orders_provider.dart';
 import 'package:origna_gta/features/seller/seller_products_viewmodel.dart';
 import 'package:origna_gta/models/models.dart' as models;
 import '../test_utils.dart';
+import 'package:origna_gta/models/generated/base_models.dart';
 
 
 void main() {
@@ -43,7 +44,7 @@ void main() {
         uid: 'test_user_123',
         name: 'Test',
         email: 'test@example.com',
-        roles: ['seller'],
+        roles: [UserRole.seller],
         createdAt: DateTime.now(),
       );
 

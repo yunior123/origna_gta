@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
+import 'package:origna_gta/models/enum_extensions.dart';
+import 'package:origna_gta/models/generated/base_models.dart'
+    show PaymentStatus;
 import 'package:origna_gta/models/generated/models.dart' as models;
-import 'package:origna_gta/utils/constants.dart' as constants;
 
 /// Extracted realtime stream helpers for [OrignaBaseOrderRepository].
 ///
@@ -15,50 +17,50 @@ mixin OrderQueryHelpers {
 
   /// Valid payment statuses for buyer/seller order streams.
   static final activePaymentStatuses = [
-    constants.PaymentStatus.authorized.value,
-    constants.PaymentStatus.captured.value,
-    constants.PaymentStatus.disputed.value,
-    constants.PaymentStatus.refunded.value,
-    constants.PaymentStatus.cancelled.value,
-    constants.PaymentStatus.authorizationExpired.value,
+    PaymentStatus.authorized.value,
+    PaymentStatus.captured.value,
+    PaymentStatus.disputed.value,
+    PaymentStatus.refunded.value,
+    PaymentStatus.cancelled.value,
+    PaymentStatus.authorizationExpired.value,
   ];
 
-  /// Converts [models.PaymentStatus] enum to its database string value.
-  static String paymentStatusToString(models.PaymentStatus status) {
+  /// Converts [PaymentStatus] enum to its database string value.
+  static String paymentStatusToString(PaymentStatus status) {
     switch (status) {
-      case models.PaymentStatus.awaitingPayment:
+      case PaymentStatus.awaitingPayment:
         return PaymentStatusValues.awaitingPayment;
-      case models.PaymentStatus.processing:
+      case PaymentStatus.processing:
         return PaymentStatusValues.processing;
-      case models.PaymentStatus.paid:
+      case PaymentStatus.paid:
         return PaymentStatusValues.paid;
-      case models.PaymentStatus.authorized:
+      case PaymentStatus.authorized:
         return PaymentStatusValues.authorized;
-      case models.PaymentStatus.captured:
+      case PaymentStatus.captured:
         return PaymentStatusValues.captured;
-      case models.PaymentStatus.paymentFailed:
+      case PaymentStatus.paymentFailed:
         return PaymentStatusValues.paymentFailed;
-      case models.PaymentStatus.refunded:
+      case PaymentStatus.refunded:
         return PaymentStatusValues.refunded;
-      case models.PaymentStatus.sessionExpired:
+      case PaymentStatus.sessionExpired:
         return PaymentStatusValues.sessionExpired;
-      case models.PaymentStatus.cancelled:
+      case PaymentStatus.cancelled:
         return PaymentStatusValues.cancelled;
-      case models.PaymentStatus.authorizationExpired:
+      case PaymentStatus.authorizationExpired:
         return PaymentStatusValues.authorizationExpired;
-      case models.PaymentStatus.disputed:
+      case PaymentStatus.disputed:
         return PaymentStatusValues.disputed;
-      case models.PaymentStatus.capturing:
+      case PaymentStatus.capturing:
         return PaymentStatusValues.capturing;
-      case models.PaymentStatus.cancelling:
+      case PaymentStatus.cancelling:
         return PaymentStatusValues.cancelling;
-      case models.PaymentStatus.expiring:
+      case PaymentStatus.expiring:
         return PaymentStatusValues.expiring;
-      case models.PaymentStatus.partiallyRefunded:
+      case PaymentStatus.partiallyRefunded:
         return PaymentStatusValues.partiallyRefunded;
-      case models.PaymentStatus.voided:
+      case PaymentStatus.voided:
         return PaymentStatusValues.voided;
-      case models.PaymentStatus.cancelFailed:
+      case PaymentStatus.cancelFailed:
         return PaymentStatusValues.cancelFailed;
     }
   }
@@ -140,7 +142,7 @@ mixin OrderQueryHelpers {
             .where(Fields.stripeSessionId, isEqualTo: sessionId)
             .where(
               Fields.paymentStatus,
-              isEqualTo: constants.PaymentStatus.captured.value,
+              isEqualTo: PaymentStatus.captured.value,
             )
             .limit(1)
             .get();

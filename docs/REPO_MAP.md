@@ -1,6 +1,6 @@
 # Origna GTA — Repo Map
 
-Last updated: 2026-03-16 (updated: CI globalSetup fix, E2E callCallable routing, origna_gta/CLAUDE.md added)
+Last updated: 2026-03-22
 
 ## Overview
 
@@ -16,7 +16,7 @@ Monorepo for Origna GTA, a Canada-first multi-vendor e-commerce platform.
 | Bot protection | Cloudflare Turnstile |
 | Web reverse proxy | Caddy (on VPS) |
 | CI | GitHub Actions |
-| E2E | Playwright (TypeScript) |
+| E2E | Playwright (TypeScript) + Bun agent-browser |
 
 No Firebase. No Cloud Functions. No Firestore. All backend is OrignaBase on the VPS.
 
@@ -64,27 +64,95 @@ origna_gta/                        # repo root
 │   │   ├── services/              # Platform/integration services
 │   │   ├── widgets/               # Shared widgets (see list below)
 │   │   └── utils/                 # Shared helpers, responsive layout
-│   ├── test/                      # Unit + widget tests
-│   ├── integration_test/          # Flutter integration tests
+│   ├── test/                      # Unit + widget + live tests
+│   │   ├── unit/                  # 131 unit test files
+│   │   ├── widget/                # 67 widget test files
+│   │   ├── screens/               # 23 screen test files
+│   │   ├── live/                  # 30 live/integration tests (gated)
+│   │   ├── golden/                # Golden tests (6 tests)
+│   │   └── helpers/               # Test utilities (EMPTY — planned)
+│   ├── integration_test/          # Flutter integration tests (7 files)
 │   └── pubspec.yaml
-├── e2e/                           # Playwright E2E test suite
-│   ├── playwright_ui/             # .spec.ts test files
-│   ├── playwright.config.dev.ts
-│   ├── playwright.config.staging.ts
-│   ├── playwright.config.ci.ts
-│   └── README.md                  # How to run E2E tests
+├── e2e/                           # Playwright E2E (TypeScript + agent-browser)
+│   ├── specs/
+│   │   ├── phase1-api/            # 33 API smoke tests
+│   │   ├── phase2-smoke/          # 13 UI quality tests
+│   │   ├── phase3-auth-nav/       # 11 auth flow tests
+│   │   ├── phase4-product-flows/  # 21 product tests
+│   │   ├── phase5-complex-flows/  # 23 cart/order/seller tests
+│   │   └── phase6-stripe/         # 13 payment tests
+│   ├── lib/
+│   │   └── config.ts              # Test accounts, Stripe tokens, URLs
+│   └── run-tests.sh               # Parallel runner (4 browsers, 10 API)
+├── e2e-agent-browser/             # Bun-based agent browser E2E (mirrors e2e/)
+│   ├── specs/                     # Same 114 specs as e2e/
+│   ├── lib/config.ts
+│   └── run-tests.sh
 ├── scripts/
 │   ├── deploy_web.sh              # VPS web deploy (staged releases)
-│   └── pre_push_validation.sh     # Pre-push quality checks
-├── .claude/
-│   ├── hooks/                     # Claude Code hooks
-│   ├── agents/                    # Sub-agent definitions
-│   └── rules/                     # Coding rules
+│   ├── run_quality_gate.sh        # 80% coverage threshold
+│   ├── deploy_mcp_docs.sh         # MCP docs deploy to VPS
+│   └── add-cloudflare-dns.sh      # Cloudflare DNS management
+├── docs/
+│   ├── REPO_MAP.md                # This file
+│   └── plans/                     # Architecture plans
+├── docs-site/                     # Next.js 14 + Nextra documentation site
+├── .claude/                       # Claude Code configuration
+│   ├── settings.json              # Hooks (PreToolUse, PostToolUse, Stop)
+│   ├── settings.local.json        # MCP permissions, tool whitelist
+│   ├── LEARNED.md                 # Cross-session knowledge archive
+│   ├── rules/                     # 6 domain rules (auto-loaded)
+│   │   ├── flutter.md
+│   │   ├── backend.md
+│   │   ├── testing.md
+│   │   ├── security.md
+│   │   ├── orders.md
+│   │   └── payments.md
+│   ├── agents/                    # 15 specialized subagents
+│   │   ├── orchestrator-agent.md
+│   │   ├── security-auditor.md
+│   │   ├── logic-auditor.md
+│   │   ├── payment-auditor.md
+│   │   ├── frontend-auditor.md
+│   │   ├── performance-auditor.md
+│   │   ├── cross-stack-auditor.md
+│   │   ├── dart-reviewer.md
+│   │   ├── flutter-tester.md
+│   │   ├── rival-agent.md
+│   │   ├── heartbeat-agent.md
+│   │   ├── legacy-code-auditor.md
+│   │   ├── legal-compliance-auditor.md
+│   │   ├── uiux-expert.md
+│   │   └── repomix-analyzer-agent.md
+│   ├── commands/                  # 24 slash commands
+│   │   ├── audit-security.md
+│   │   ├── deploy.md
+│   │   ├── test-all.md
+│   │   ├── fix-tests.md
+│   │   ├── clear-context.md
+│   │   └── ... (20 more)
+│   ├── hooks/                     # 9 lifecycle hooks
+│   │   ├── protect-production.sh
+│   │   ├── block-secrets-files.sh
+│   │   ├── flutter-analyze-dart.sh
+│   │   └── ... (6 more)
+│   ├── plans/                     # Audit reports & remediation plans
+│   └── audits/                    # Audit results
+├── .github/
+│   ├── workflows/                 # CI/CD (quality audit, Flutter web, E2E)
+│   ├── instructions/              # Copilot file-pattern instructions
+│   ├── copilot-instructions.md
+│   └── copilot-skills.md
+├── .mcp.json                      # MCP servers: dart-mcp, flutter-pilot, github
+├── .copilotignore                 # Noise exclusions for Copilot context
+├── AGENTS.md                      # Agent coding guide (build/test/style)
+├── CLAUDE.md                      # Claude Code routing rules
+├── STATE.md                       # Current project state & blockers
+├── TODOS.md                       # Active tasks
+├── BUGS.md                        # Known issues
+├── LIVE_TESTS_STATUS.md           # Live test execution report
 ├── Caddyfile                      # VPS reverse proxy config
-├── README.md                      # Root README
-├── TODOS.md                       # Active task list
-├── BUGS.md                        # Known bugs
-└── STATE.md                       # Current app state / audit
+└── Caddyfile.docs                 # Docs site reverse proxy
 ```
 
 ---
@@ -195,20 +263,78 @@ Key classes:
 
 ---
 
-## Backend (OrignaBase VPS)
+## Backend (OrignaBase Rust)
+
+### Architecture — 16 Workspace Crates
+
+```
+orignabase (single binary, 16 workspace crates)
+├── ob-core       — Config, AppState, error types, validation
+├── ob-database   — SurrealDB client, CRUD, query translator, transactions
+├── ob-auth       — JWT (RS256/HS256), Argon2id, OAuth, MFA/TOTP, email
+├── ob-graphql    — Dynamic GraphQL schema + resolvers (async-graphql)
+├── ob-security   — Rules DSL parser (pest) + evaluator
+├── ob-realtime   — WebSocket subscriptions, change dispatcher, presence
+├── ob-storage    — Local filesystem, HMAC-signed URLs, S3/R2 support
+├── ob-search     — Meilisearch client + auto-sync
+├── ob-functions  — WASM runtime (wasmi), function registry, triggers
+├── ob-analytics  — Privacy-first event tracking (hashed IPs)
+├── ob-admin      — Schema mgmt, user mgmt, HTML dashboard
+├── ob-notifications — FCM push proxy, device tokens
+├── ob-handlers   — Business logic (Stripe, orders, products, chat, etc.)
+├── ob-mcp        — MCP server (JSON-RPC 2.0 over HTTP/SSE/stdio)
+└── orignabase    — Binary entry point, CLI, server assembly
+```
+
+### VPS Configuration
 
 - **Host**: `204.168.137.16`
 - **API**: `https://api.dev.orignagta.ca` (dev), `https://api.orignagta.ca` (prod)
 - **Web**: `https://dev.orignagta.ca` (dev), `https://orignagta.ca` (prod)
 - **SurrealDB**: port 8000 (internal), namespace `orignabase`, db `production`
-- **Meilisearch**: port 7700 (internal), key `REDACTED_SECRET`
+- **Meilisearch**: port 7700 (internal)
 - **Docker Compose**: `/opt/orignabase/` on VPS
 - **Config**: `orignabase.toml` + env var overrides
 
-Key env overrides:
+### Security Features
+
+- RS256 JWT with key rotation support
+- Argon2id password hashing
+- MFA/TOTP with AES-256-GCM encrypted secrets
+- Rate limiting via `tower_governor` (10 req/60s auth, 100 req/60s API)
+- SurrealQL identifier validation
+- Security rules DSL (25+ collections, default-deny)
+- Webhook deduplication (Stripe events)
+- CORS origin whitelist (no `Any`)
+
+### Key Env Overrides
+
 - `OB_DATABASE__ENDPOINT` — SurrealDB endpoint
 - `OB_SEARCH__ENDPOINT` — Meilisearch endpoint
-- JWT keys auto-generated at `./data/keys` on first startup
+- `OB_AUTH__JWT_SECRET` — JWT signing secret
+- `OB_AUTH__TOTP_ENCRYPTION_KEY` — TOTP secret encryption (REQUIRED in prod)
+- `OB_TEST_MODE` — Enable test mode features
+
+---
+
+## OrignaBase Flutter SDK (`orignabase/sdks/flutter/orignabase/`)
+
+Pure Dart SDK (no Flutter dependency). Communicates with OrignaBase via GraphQL + REST.
+
+| Module | Purpose |
+|--------|---------|
+| `client.dart` | Main entry point, HTTP client with retry |
+| `auth.dart` | 20+ auth methods (email, Google, Apple, OIDC, MFA, magic link) |
+| `collection.dart` | CollectionRef, DocumentRef (CRUD) |
+| `query.dart` | Query builder (where, orderBy, limit, offset) |
+| `batch.dart` | WriteBatch (non-atomic, grouped by type) |
+| `field_value.dart` | ServerTimestamp, Increment, ArrayUnion, ArrayRemove, Delete |
+| `realtime.dart` | WebSocket subscriptions with auto-reconnect |
+| `storage.dart` | File upload/download/resumable |
+| `offline.dart` | Offline cache with pending write queue |
+| `aggregate.dart` | COUNT/SUM/AVG queries |
+| `config.dart` | Remote config (typed getters) |
+| `errors.dart` | 7 typed exceptions mapped from HTTP status |
 
 ---
 
@@ -226,43 +352,108 @@ Key conventions:
 
 ## E2E Tests
 
-Config files:
-- `e2e/playwright.config.dev.ts` — target: `https://dev.orignagta.ca`, workers:1, globalSetup enabled, WebGL args
-- `e2e/playwright.config.staging.ts` — staging
-- `e2e/playwright.config.ci.ts` — CI (GitHub Actions), workers:2, **globalSetup enabled** (fixed 2026-03-16), 8 shards
+### Two Test Runners
 
-Key E2E helpers (`e2e/playwright_ui/`):
-- `api-helpers.ts` — All API calls, `callCallable` routes Firebase fn names → OrignaBase REST, `signIn`, `readDoc`, `writeDoc`, `listUserAddresses`
-- `flutter-helpers.ts` — Flutter/Playwright bridge, `waitForFlutter`, `requireWebApp`, `ensureLoggedIn*`
-- `global-setup.ts` — Pre-warms auth tokens for all test accounts before workers start (avoids quota)
+| Runner | Language | Directory | Specs |
+|--------|----------|-----------|-------|
+| Playwright | TypeScript | `e2e/` | 114 specs across 6 phases |
+| Agent Browser | TypeScript + Bun | `e2e-agent-browser/` | 114 specs (mirrors e2e/) |
 
-Run instructions: `e2e/README.md`
+### Phase Breakdown
 
-Test spec files: `e2e/playwright_ui/*.spec.ts` — **62 specs** covering:
-- **Auth**: auth-gates, google-auth-config, password-reset
-- **Buyer flows**: buyer-flow, cart-manipulation, checkout-validation, favorites, order-lifecycle, order-cancellation-refund, return-request, reorder-language
-- **Seller flows**: seller-flow, seller-registration, seller-product-management, seller-screens-ui, add-product-e2e, edit-product, shipping-approval, shipping-calculation
-- **Admin**: admin-panel, admin-actions, admin-reviews, admin-security
-- **Search**: search-products, search-filters-sort, subcategory-filtering, trending-products
-- **Payments**: stripe-payment, payment-edge-cases, premium-subscription, non-premium-paywall
-- **Chat/Notifications**: chat-screen, notifications, order-notifications, new-notification-features, stock-notif
-- **Profile/Address**: profile-management, address-management
-- **Legal**: legal-screens
-- **Warehouse**: warehouse-multi-location, multi-seller-orders
-- **Security**: edge-cases-security, adversarial-injection, rate-limiting, security-access-control-deep, orignabase-security
-- **Misc**: accessibility, design-audit, visual-audit, visual-regression, coverage-gate, api-coverage, deep-ui-scenarios, product-video-e2e, digital-product-e2e, qa-product
+| Phase | Files | Coverage |
+|-------|-------|----------|
+| phase1-api | 33 | API, security, data integrity, rate limiting |
+| phase2-smoke | 13 | UI quality, loading/error states, accessibility |
+| phase3-auth-nav | 11 | Auth flows, MFA, registration, JWT rotation |
+| phase4-product-flows | 21 | Product CRUD, search, reviews, favorites, digital |
+| phase5-complex-flows | 23 | Cart, orders, seller flows, analytics, reordering |
+| phase6-stripe | 13 | Payment, webhooks, subscriptions, connect, refunds |
+
+### Config
+
+- `e2e/lib/config.ts` — Test accounts, Stripe test card `4242424242424242`, timeouts, URLs
+- `e2e/run-tests.sh` — Parallel: 4 concurrent browsers, 10 concurrent API tests, <10min target
+
+### Run Commands
+
+```bash
+cd e2e-agent-browser
+bun test specs/phase1-api/          # API smoke tests
+bun test specs/phase2-auth/         # Auth flow tests
+bun test specs/phase3-products/     # Product tests
+bun x tsc --noEmit                  # TypeScript check
+```
+
+---
+
+## MCP Configuration
+
+### Project-Level (`.mcp.json`)
+
+| Server | Type | Purpose |
+|--------|------|---------|
+| dart-mcp | NPX | Dart SDK: analyze, compile, test, format (10 tools) |
+| flutter-pilot | NPX | Flutter: live app debugging and UI inspection |
+| github | HTTP | GitHub: repos, issues, PRs, actions (18 tools) |
+
+### User-Level (in `.claude/settings.local.json`)
+
+| Plugin | Tools |
+|--------|-------|
+| Playwright | 14 browser automation tools |
+| Firebase | 3 Firestore/Firebase tools |
+| Figma | 1 design generation tool |
+| Stitch | 6 screen generation tools |
+| Gmail | 4 email tools |
+| Cloudflare | 2 DNS/worker tools |
+
+### Planned: ob-mcp (Rust)
+
+OrignaBase includes an MCP server crate (`ob-mcp`) with JSON-RPC 2.0 over HTTP/SSE/stdio. Includes safeguards: idempotency keys, spend limits, confirmation tokens. Not yet production-ready.
 
 ---
 
 ## Deploy
 
-Web (Flutter) to VPS:
+### Flutter Web to VPS
+
 ```bash
 VPS_HOST=root@204.168.137.16 ./scripts/deploy_web.sh dev
 ```
+
 Uses staged releases at `/var/www/orignagta/{env}/releases/<timestamp>` with atomic `current` symlink via Caddy.
 
 Build commands per env:
 - Dev: `flutter build web --debug --dart-define=ENVIRONMENT=dev --dart-define=FORCE_SEMANTICS=true`
 - Staging: `flutter build web --profile --dart-define=ENVIRONMENT=staging --dart-define=FORCE_SEMANTICS=true`
 - Production: `flutter build web --release --dart-define=ENVIRONMENT=production`
+
+### OrignaBase Backend
+
+Docker Compose at `/opt/orignabase/` on VPS. Binary built with `cargo build --release`. Non-root user (orignabase:1000). Health check configured.
+
+---
+
+## Quality Gates
+
+- **Flutter**: `flutter analyze --no-fatal-infos && flutter test --exclude-tags golden` (80% coverage via `run_quality_gate.sh`)
+- **Rust**: `cargo clippy -D warnings && cargo test && cargo audit` (CI)
+- **E2E**: `bun test specs/` with parallel execution
+- **Golden tests**: Excluded from normal runs, run separately via `flutter test test/golden/`
+
+---
+
+## AI Configuration
+
+| File | Purpose |
+|------|---------|
+| `CLAUDE.md` | Claude Code routing rules (42 lines) |
+| `AGENTS.md` | Full coding guide: MVVM, build/test/style (136 lines) |
+| `.claude/rules/` | 6 domain rules auto-loaded per file type |
+| `.claude/agents/` | 15 specialized subagents for delegation |
+| `.claude/commands/` | 24 slash commands |
+| `.claude/hooks/` | 9 lifecycle hooks (security, quality, validation) |
+| `.mcp.json` | 3 MCP servers |
+| `.github/copilot-skills.md` | 157 lines of learned patterns |
+| `.github/instructions/` | 5 file-pattern Copilot instructions |

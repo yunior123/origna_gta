@@ -896,7 +896,7 @@ void main() {
     test('toJson includes all fields', () {
       final model = ProductCreate(
         name: 'Test',
-        price: 9.99,
+        price: 999 / 100.0,
         description: 'Desc',
         imageUrls: ['a.jpg'],
         sellerId: 's1',

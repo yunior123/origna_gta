@@ -36,8 +36,14 @@ void main() {
       expect(DeliverySpeed.fromValue('standard'), DeliverySpeed.standard);
       expect(DeliverySpeed.fromValue('express'), DeliverySpeed.express);
       expect(DeliverySpeed.fromValue('same_day'), DeliverySpeed.sameDay);
-      expect(DeliverySpeed.fromValue('international'), DeliverySpeed.international);
-      expect(DeliverySpeed.fromValue('international_express'), DeliverySpeed.internationalExpress);
+      expect(
+        DeliverySpeed.fromValue('international'),
+        DeliverySpeed.international,
+      );
+      expect(
+        DeliverySpeed.fromValue('international_express'),
+        DeliverySpeed.internationalExpress,
+      );
       expect(DeliverySpeed.fromValue('nonexistent'), DeliverySpeed.standard);
     });
 
@@ -45,8 +51,11 @@ void main() {
       final now = DateTime.now();
       for (final speed in DeliverySpeed.values) {
         final date = speed.getEstimatedDeliveryDate();
-        expect(date.isAfter(now.subtract(const Duration(days: 1))), isTrue,
-            reason: '${speed.name} should return a future or current date');
+        expect(
+          date.isAfter(now.subtract(const Duration(days: 1))),
+          isTrue,
+          reason: '${speed.name} should return a future or current date',
+        );
       }
     });
 
@@ -70,7 +79,9 @@ void main() {
     });
 
     test('isAvailableForItems standard blocked by international', () {
-      final items = [const DeliveryItemCheck(estimatedShipDays: 3, isInternational: true)];
+      final items = [
+        const DeliveryItemCheck(estimatedShipDays: 3, isInternational: true),
+      ];
       expect(DeliverySpeed.standard.isAvailableForItems(items, false), isFalse);
     });
 
@@ -91,21 +102,39 @@ void main() {
     });
 
     test('isAvailableForItems sameDay perishable items ok', () {
-      final items = [const DeliveryItemCheck(estimatedShipDays: 3, isPerishable: true)];
+      final items = [
+        const DeliveryItemCheck(estimatedShipDays: 3, isPerishable: true),
+      ];
       expect(DeliverySpeed.sameDay.isAvailableForItems(items, true), isTrue);
     });
 
     test('isAvailableForItems international needs international items', () {
       final domestic = [const DeliveryItemCheck(estimatedShipDays: 3)];
-      final intl = [const DeliveryItemCheck(estimatedShipDays: 20, isInternational: true)];
-      expect(DeliverySpeed.international.isAvailableForItems(domestic, false), isFalse);
-      expect(DeliverySpeed.international.isAvailableForItems(intl, false), isTrue);
+      final intl = [
+        const DeliveryItemCheck(estimatedShipDays: 20, isInternational: true),
+      ];
+      expect(
+        DeliverySpeed.international.isAvailableForItems(domestic, false),
+        isFalse,
+      );
+      expect(
+        DeliverySpeed.international.isAvailableForItems(intl, false),
+        isTrue,
+      );
     });
 
-    test('isAvailableForItems internationalExpress needs international items', () {
-      final intl = [const DeliveryItemCheck(estimatedShipDays: 10, isInternational: true)];
-      expect(DeliverySpeed.internationalExpress.isAvailableForItems(intl, false), isTrue);
-    });
+    test(
+      'isAvailableForItems internationalExpress needs international items',
+      () {
+        final intl = [
+          const DeliveryItemCheck(estimatedShipDays: 10, isInternational: true),
+        ];
+        expect(
+          DeliverySpeed.internationalExpress.isAvailableForItems(intl, false),
+          isTrue,
+        );
+      },
+    );
   });
 
   group('DeliveryStatus', () {
@@ -119,7 +148,11 @@ void main() {
 
     test('displayText returns non-empty string', () {
       for (final status in DeliveryStatus.values) {
-        expect(status.displayText, isNotEmpty, reason: '${status.name} should have displayText');
+        expect(
+          status.displayText,
+          isNotEmpty,
+          reason: '${status.name} should have displayText',
+        );
       }
     });
   });
@@ -127,12 +160,27 @@ void main() {
   group('OrderStatus', () {
     test('fromValue returns correct enum', () {
       expect(OrderStatusExtension.fromValue('pending'), OrderStatus.pending);
-      expect(OrderStatusExtension.fromValue('confirmed'), OrderStatus.confirmed);
-      expect(OrderStatusExtension.fromValue('processing'), OrderStatus.processing);
+      expect(
+        OrderStatusExtension.fromValue('confirmed'),
+        OrderStatus.confirmed,
+      );
+      expect(
+        OrderStatusExtension.fromValue('processing'),
+        OrderStatus.processing,
+      );
       expect(OrderStatusExtension.fromValue('shipped'), OrderStatus.shipped);
-      expect(OrderStatusExtension.fromValue('in_transit'), OrderStatus.inTransit);
-      expect(OrderStatusExtension.fromValue('delivered'), OrderStatus.delivered);
-      expect(OrderStatusExtension.fromValue('cancelled'), OrderStatus.cancelled);
+      expect(
+        OrderStatusExtension.fromValue('in_transit'),
+        OrderStatus.inTransit,
+      );
+      expect(
+        OrderStatusExtension.fromValue('delivered'),
+        OrderStatus.delivered,
+      );
+      expect(
+        OrderStatusExtension.fromValue('cancelled'),
+        OrderStatus.cancelled,
+      );
       expect(OrderStatusExtension.fromValue('failed'), OrderStatus.failed);
       expect(OrderStatusExtension.fromValue('expired'), OrderStatus.expired);
       expect(OrderStatusExtension.fromValue('disputed'), OrderStatus.disputed);
@@ -141,62 +189,17 @@ void main() {
 
     test('displayText returns non-empty string', () {
       for (final status in OrderStatus.values) {
-        expect(status.displayText, isNotEmpty, reason: '${status.name} should have displayText');
+        expect(
+          status.displayText,
+          isNotEmpty,
+          reason: '${status.name} should have displayText',
+        );
       }
     });
   });
 
-  group('PaymentStatus', () {
-    test('fromValue returns correct enum', () {
-      expect(PaymentStatus.fromValue('awaiting_payment'), PaymentStatus.awaitingPayment);
-      expect(PaymentStatus.fromValue('authorized'), PaymentStatus.authorized);
-      expect(PaymentStatus.fromValue('paid'), PaymentStatus.paid);
-      expect(PaymentStatus.fromValue('captured'), PaymentStatus.captured);
-      expect(PaymentStatus.fromValue('refunded'), PaymentStatus.refunded);
-      expect(PaymentStatus.fromValue('cancelled'), PaymentStatus.cancelled);
-      expect(PaymentStatus.fromValue('disputed'), PaymentStatus.disputed);
-      expect(PaymentStatus.fromValue('unknown'), PaymentStatus.awaitingPayment);
-    });
-
-    test('displayText returns non-empty string', () {
-      for (final status in PaymentStatus.values) {
-        expect(status.displayText, isNotEmpty, reason: '${status.name} should have displayText');
-      }
-    });
-  });
-
-  group('PayoutStatus', () {
-    test('fromValue returns correct enum', () {
-      expect(PayoutStatus.fromValue('pending'), PayoutStatus.pending);
-      expect(PayoutStatus.fromValue('processing'), PayoutStatus.processing);
-      expect(PayoutStatus.fromValue('completed'), PayoutStatus.completed);
-      expect(PayoutStatus.fromValue('partial'), PayoutStatus.partial);
-      expect(PayoutStatus.fromValue('failed'), PayoutStatus.failed);
-      expect(PayoutStatus.fromValue('unknown'), PayoutStatus.pending);
-    });
-
-    test('displayText returns non-empty string', () {
-      for (final status in PayoutStatus.values) {
-        expect(status.displayText, isNotEmpty, reason: '${status.name} should have displayText');
-      }
-    });
-  });
-
-  group('ShippingApprovalStatus', () {
-    test('fromValue returns correct enum', () {
-      expect(ShippingApprovalStatus.fromValue('not_required'), ShippingApprovalStatus.notRequired);
-      expect(ShippingApprovalStatus.fromValue('pending'), ShippingApprovalStatus.pending);
-      expect(ShippingApprovalStatus.fromValue('approved'), ShippingApprovalStatus.approved);
-      expect(ShippingApprovalStatus.fromValue('rejected'), ShippingApprovalStatus.rejected);
-      expect(ShippingApprovalStatus.fromValue('unknown'), ShippingApprovalStatus.notRequired);
-    });
-
-    test('displayText returns non-empty string', () {
-      for (final status in ShippingApprovalStatus.values) {
-        expect(status.displayText, isNotEmpty, reason: '${status.name} should have displayText');
-      }
-    });
-  });
+  // Obsolete tests for removed enums (PaymentStatus, PayoutStatus, ShippingApprovalStatus)
+  // These enums were removed from constants.dart - only freezed versions in base_models.dart exist
 
   group('ShippingQuantityDiscount', () {
     test('fromMap creates correct object', () {
@@ -235,7 +238,10 @@ void main() {
     });
 
     test('toMap omits null label', () {
-      const discount = ShippingQuantityDiscount(minQuantity: 1, discountValue: 5.0);
+      const discount = ShippingQuantityDiscount(
+        minQuantity: 1,
+        discountValue: 5.0,
+      );
       final map = discount.toMap();
       expect(map.containsKey('label'), isFalse);
     });
@@ -294,31 +300,66 @@ void main() {
     });
 
     test('deliveryTimeText', () {
-      const sameDay = SellerDeliveryOption(type: 'same_day', description: '', costCents: 0, estimatedDays: 0);
+      const sameDay = SellerDeliveryOption(
+        type: 'same_day',
+        description: '',
+        costCents: 0,
+        estimatedDays: 0,
+      );
       expect(sameDay.deliveryTimeText, 'Same day');
 
-      const oneDay = SellerDeliveryOption(type: 'express', description: '', costCents: 0, estimatedDays: 1);
+      const oneDay = SellerDeliveryOption(
+        type: 'express',
+        description: '',
+        costCents: 0,
+        estimatedDays: 1,
+      );
       expect(oneDay.deliveryTimeText, '1 day');
 
-      const fiveDays = SellerDeliveryOption(type: 'standard', description: '', costCents: 0, estimatedDays: 5);
+      const fiveDays = SellerDeliveryOption(
+        type: 'standard',
+        description: '',
+        costCents: 0,
+        estimatedDays: 5,
+      );
       expect(fiveDays.deliveryTimeText, '5 days');
     });
 
     test('costDollars conversion', () {
-      const option = SellerDeliveryOption(type: 'x', description: '', costCents: 999, estimatedDays: 1);
+      const option = SellerDeliveryOption(
+        type: 'x',
+        description: '',
+        costCents: 999,
+        estimatedDays: 1,
+      );
       expect(option.costDollars, 9.99);
     });
 
     test('priceText', () {
-      const free = SellerDeliveryOption(type: 'x', description: '', costCents: 0, estimatedDays: 1);
+      const free = SellerDeliveryOption(
+        type: 'x',
+        description: '',
+        costCents: 0,
+        estimatedDays: 1,
+      );
       expect(free.priceText, 'Free');
 
-      const paid = SellerDeliveryOption(type: 'x', description: '', costCents: 1299, estimatedDays: 1);
+      const paid = SellerDeliveryOption(
+        type: 'x',
+        description: '',
+        costCents: 1299,
+        estimatedDays: 1,
+      );
       expect(paid.priceText, '\$12.99');
     });
 
     test('calculateCostForQuantity no discount', () {
-      const option = SellerDeliveryOption(type: 'x', description: '', costCents: 1000, estimatedDays: 1);
+      const option = SellerDeliveryOption(
+        type: 'x',
+        description: '',
+        costCents: 1000,
+        estimatedDays: 1,
+      );
       expect(option.calculateCostForQuantity(1), 10.0);
     });
 
@@ -328,7 +369,9 @@ void main() {
         description: '',
         costCents: 1000,
         estimatedDays: 1,
-        quantityDiscounts: [ShippingQuantityDiscount(minQuantity: 3, discountValue: 20.0)],
+        quantityDiscounts: [
+          ShippingQuantityDiscount(minQuantity: 3, discountValue: 20.0),
+        ],
       );
       expect(option.calculateCostForQuantity(3), closeTo(8.0, 0.01));
     });
@@ -339,7 +382,13 @@ void main() {
         description: '',
         costCents: 1000,
         estimatedDays: 1,
-        quantityDiscounts: [ShippingQuantityDiscount(minQuantity: 2, discountType: 'fixed', discountValue: 3.0)],
+        quantityDiscounts: [
+          ShippingQuantityDiscount(
+            minQuantity: 2,
+            discountType: 'fixed',
+            discountValue: 3.0,
+          ),
+        ],
       );
       expect(option.calculateCostForQuantity(2), closeTo(7.0, 0.01));
     });
@@ -350,7 +399,13 @@ void main() {
         description: '',
         costCents: 1000,
         estimatedDays: 1,
-        quantityDiscounts: [ShippingQuantityDiscount(minQuantity: 5, discountType: 'flat_rate', discountValue: 5.0)],
+        quantityDiscounts: [
+          ShippingQuantityDiscount(
+            minQuantity: 5,
+            discountType: 'flat_rate',
+            discountValue: 5.0,
+          ),
+        ],
       );
       expect(option.calculateCostForQuantity(5), 5.0);
     });
@@ -369,7 +424,12 @@ void main() {
     });
 
     test('calculateCostForQuantity zero quantity returns base', () {
-      const option = SellerDeliveryOption(type: 'x', description: '', costCents: 500, estimatedDays: 1);
+      const option = SellerDeliveryOption(
+        type: 'x',
+        description: '',
+        costCents: 500,
+        estimatedDays: 1,
+      );
       expect(option.calculateCostForQuantity(0), 5.0);
     });
 
@@ -409,7 +469,12 @@ void main() {
     });
 
     test('toMap omits defaults', () {
-      const option = SellerDeliveryOption(type: 'x', description: '', costCents: 0, estimatedDays: 1);
+      const option = SellerDeliveryOption(
+        type: 'x',
+        description: '',
+        costCents: 0,
+        estimatedDays: 1,
+      );
       final map = option.toMap();
       expect(map.containsKey('maxItemsPerShipment'), isFalse);
       expect(map.containsKey('additionalItemCostCents'), isFalse);
