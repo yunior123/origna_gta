@@ -15,6 +15,9 @@ class _FakeAuth extends Fake implements OrignaBaseAuth {
 
   @override
   String? get currentUserId => currentUserIdValue;
+
+  @override
+  String? get accessToken => null;
 }
 
 class _FakeDocument extends Fake implements Document {
@@ -673,13 +676,15 @@ void main() {
   });
 
   group('OrignaBaseProductRepository - watchFavorites', () {
-    test(
-      'method signature is correct',
-      () {
-        expect(repository.watchFavorites('user_1'), isA<Stream<Set<String>>>());
-      },
-      skip: 'Requires WebSocket - tested in integration tests',
-    );
+    test('method signature is correct', () {
+      // Verify the method exists and returns the correct type via the
+      // ProductRepository interface — calling the real implementation would
+      // attempt a WebSocket connection which is not available in unit tests.
+      expect(
+        repository.watchFavorites,
+        isA<Stream<Set<String>> Function(String)>(),
+      );
+    });
   });
 
   group('OrignaBaseProductRepository - watchUnansweredQuestionsCount', () {

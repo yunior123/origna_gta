@@ -10,7 +10,8 @@ import 'package:orignabase/orignabase.dart';
 
 void main() {
   // ==========================================================================
-  // EnvConfig — default is production unless explicit dart-defines override it.
+  // EnvConfig — validates config is self-consistent for the active environment.
+  // The ENVIRONMENT dart-define controls which env is active at compile time.
   // ==========================================================================
   group('EnvConfig', () {
     final config = EnvConfig();
@@ -19,48 +20,70 @@ void main() {
       expect(identical(config, EnvConfig()), isTrue);
     });
 
-    test('environment defaults to production', () {
-      expect(config.environment, AppEnvironment.production);
+    test('environment is a valid AppEnvironment', () {
+      expect(AppEnvironment.values, contains(config.environment));
     });
 
-    test('isProduction is true by default', () {
-      expect(config.isProduction, isTrue);
+    test('exactly one environment flag is true', () {
+      final flags = [
+        config.isProduction,
+        config.isDev,
+        config.isStaging,
+        config.isEmulator,
+      ];
+      expect(flags.where((f) => f).length, 1);
     });
 
-    test('isEmulator is false by default', () {
-      expect(config.isEmulator, isFalse);
+    test('isEmulator is false when not in emulator mode', () {
+      // Emulator is only true with ENVIRONMENT=emulator or USE_EMULATORS=true
+      if (config.environment != AppEnvironment.emulator) {
+        expect(config.isEmulator, isFalse);
+      }
     });
 
-    test('isDev is false by default', () {
-      expect(config.isDev, isFalse);
+    test('baseUrl matches current environment', () {
+      expect(config.baseUrl, EnvConfig.baseUrlFor(config.environment));
     });
 
-    test('isStaging is false by default', () {
-      expect(config.isStaging, isFalse);
+    test('r2ProductsFolder matches current environment', () {
+      final expected = switch (config.environment) {
+        AppEnvironment.emulator => 'emulator/products',
+        AppEnvironment.dev => 'dev/products',
+        AppEnvironment.staging => 'staging/products',
+        AppEnvironment.production => 'products',
+      };
+      expect(config.r2ProductsFolder, expected);
     });
 
-    test('baseUrl returns production URL', () {
-      expect(config.baseUrl, 'https://orignagta.ca');
+    test('r2UsersFolder matches current environment', () {
+      final expected = switch (config.environment) {
+        AppEnvironment.emulator => 'emulator/users',
+        AppEnvironment.dev => 'dev/users',
+        AppEnvironment.staging => 'staging/users',
+        AppEnvironment.production => 'users',
+      };
+      expect(config.r2UsersFolder, expected);
     });
 
-    test('r2ProductsFolder returns production path', () {
-      expect(config.r2ProductsFolder, 'products');
-    });
-
-    test('r2UsersFolder returns production path', () {
-      expect(config.r2UsersFolder, 'users');
-    });
-
-    test('orignabaseUrl defaults to production API', () {
-      expect(config.orignabaseUrl, 'https://api.orignagta.ca');
+    test('orignabaseUrl matches current environment', () {
+      expect(
+        config.orignabaseUrl,
+        EnvConfig.orignabaseUrlFor(config.environment),
+      );
     });
 
     test('dev returns dev OrignaBase URL', () {
-      expect(EnvConfig.orignabaseUrlFor(AppEnvironment.dev), 'https://api.dev.orignagta.ca');
+      expect(
+        EnvConfig.orignabaseUrlFor(AppEnvironment.dev),
+        'https://api.dev.orignagta.ca',
+      );
     });
 
     test('staging returns staging OrignaBase URL', () {
-      expect(EnvConfig.orignabaseUrlFor(AppEnvironment.staging), 'https://api.staging.orignagta.ca');
+      expect(
+        EnvConfig.orignabaseUrlFor(AppEnvironment.staging),
+        'https://api.staging.orignagta.ca',
+      );
     });
 
     test('production routes to shared OrignaBase host', () {
@@ -70,16 +93,24 @@ void main() {
       );
     });
 
-    test('displayName returns Production', () {
-      expect(config.displayName, 'Production');
+    test('displayName matches current environment', () {
+      final expected = switch (config.environment) {
+        AppEnvironment.emulator => 'Emulator (Micro-Staging)',
+        AppEnvironment.dev => 'Development',
+        AppEnvironment.staging => 'Staging',
+        AppEnvironment.production => 'Production',
+      };
+      expect(config.displayName, expected);
     });
 
     test('isTest returns false by default', () {
       expect(config.isTest, isFalse);
     });
 
-    test('shouldUseEmulators is false for default production config', () {
-      expect(config.shouldUseEmulators, isFalse);
+    test('shouldUseEmulators is false when not in emulator mode', () {
+      if (config.environment != AppEnvironment.emulator) {
+        expect(config.shouldUseEmulators, isFalse);
+      }
     });
 
     test('printInfo does not throw', () {

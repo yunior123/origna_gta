@@ -86,7 +86,9 @@ mixin OrderQueryHelpers {
         state.clear();
         for (final doc in snapshot.docs) {
           final order = docToOrder(doc);
-          state[order.orderId] = order;
+          if (accept(order)) {
+            state[order.orderId] = order;
+          }
         }
         if (!controller.isClosed) controller.add(sort(state.values.toList()));
       } catch (e) {

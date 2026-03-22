@@ -97,19 +97,28 @@ class RealtimeClient {
       headers['Authorization'] = 'Bearer ${_client.auth.accessToken!}';
     }
 
-    _channel = IOWebSocketChannel.connect(wsUri, headers: headers);
-    _listener = _channel!.stream.listen(
-      _handleMessage,
-      onDone: _scheduleReconnect,
-      onError: (_) => _scheduleReconnect(),
-    );
+    try {
+      _channel = IOWebSocketChannel.connect(wsUri, headers: headers);
+      _listener = _channel!.stream.listen(
+        _handleMessage,
+        onDone: _scheduleReconnect,
+        onError: (_) => _scheduleReconnect(),
+      );
 
-    // Re-register all active subscriptions after (re)connect.
-    for (final sub in _subs.values) {
-      _sendSubscribe(sub);
+      // Catch the WebSocket ready future so DNS/connection errors don't leak
+      // into the current zone as unhandled async exceptions.
+      _channel!.ready.catchError((_) => _scheduleReconnect());
+
+      // Re-register all active subscriptions after (re)connect.
+      for (final sub in _subs.values) {
+        _sendSubscribe(sub);
+      }
+
+      _reconnectAttempts = 0;
+    } catch (_) {
+      // Connection setup failed synchronously — schedule retry.
+      _scheduleReconnect();
     }
-
-    _reconnectAttempts = 0;
   }
 
   void _scheduleReconnect() {

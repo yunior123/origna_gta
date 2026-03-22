@@ -546,27 +546,23 @@ void main() {
       final items = await stream.first;
 
       expect(items.length, 2);
-    }, skip: 'Stream timing is flaky in tests');
+    });
 
-    test(
-      'filters out items with zero quantity',
-      () async {
-        final cartRef = fakeOb.usersCollection.cartSubcollection;
+    test('filters out items with zero quantity', () async {
+      final cartRef = fakeOb.usersCollection.cartSubcollection;
 
-        cartRef.queryDocs = [
-          _FakeDocument('prod_1', {
-            Fields.productId: 'prod_1',
-            Fields.quantity: 0,
-            Fields.createdAt: DateTime.now().toIso8601String(),
-          }),
-        ];
+      cartRef.queryDocs = [
+        _FakeDocument('prod_1', {
+          Fields.productId: 'prod_1',
+          Fields.quantity: 0,
+          Fields.createdAt: DateTime.now().toIso8601String(),
+        }),
+      ];
 
-        final stream = repository.watchCart('user_1');
-        final items = await stream.first;
+      final stream = repository.watchCart('user_1');
+      final items = await stream.first;
 
-        expect(items, isEmpty);
-      },
-      skip: 'Stream timing is flaky in tests',
-    );
+      expect(items, isEmpty);
+    });
   });
 }
