@@ -427,6 +427,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                 child: Center(
                   child: CachedNetworkImage(
                     imageUrl: imageUrls[i],
+                    width: double.infinity,
+                    height: double.infinity,
                     fit: BoxFit.contain,
                     placeholder: (c, u) => Shimmer.fromColors(
                       baseColor: DesignTokens.outlineVariant,

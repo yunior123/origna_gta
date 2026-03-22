@@ -56,7 +56,8 @@ class ModernProductCard extends StatefulWidget {
   State<ModernProductCard> createState() => _ModernProductCardState();
 }
 
-class _ModernProductCardState extends State<ModernProductCard> with SingleTickerProviderStateMixin {
+class _ModernProductCardState extends State<ModernProductCard>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
 
@@ -68,9 +69,13 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
     final countries = widget.shipFromCountries;
     if (countries != null && countries.length > 1) {
       if (countries.length <= 3) {
-        return 'product.ships_from_label'.tr(namedArgs: {'locations': countries.join(' · ')});
+        return 'product.ships_from_label'.tr(
+          namedArgs: {'locations': countries.join(' · ')},
+        );
       }
-      return 'product.ships_from_worldwide'.tr(namedArgs: {'count': countries.length.toString()});
+      return 'product.ships_from_worldwide'.tr(
+        namedArgs: {'count': countries.length.toString()},
+      );
     }
     // Single location — show full city, province, country
     // FAV-L2: also fall back to single country from list when no individual fields
@@ -79,9 +84,17 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
       if (widget.shipFromProvince != null) widget.shipFromProvince!,
       if (widget.shipFromCountry != null) widget.shipFromCountry!,
       // If no individual address fields but a single country is provided in the list, use it
-      if (widget.shipFromCity == null && widget.shipFromCountry == null && countries != null && countries.length == 1) countries[0],
+      if (widget.shipFromCity == null &&
+          widget.shipFromCountry == null &&
+          countries != null &&
+          countries.length == 1)
+        countries[0],
     ];
-    return parts.isEmpty ? '' : 'product.ships_from_label'.tr(namedArgs: {'locations': parts.join(', ')});
+    return parts.isEmpty
+        ? ''
+        : 'product.ships_from_label'.tr(
+            namedArgs: {'locations': parts.join(', ')},
+          );
   }
 
   @override
@@ -99,20 +112,30 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
                   namedArgs: {
                     'name': widget.productName,
                     'price': '\$${widget.price.toStringAsFixed(2)}',
-                    'originalPrice': '\$${(widget.compareAtPrice ?? 0).toStringAsFixed(2)}',
+                    'originalPrice':
+                        '\$${(widget.compareAtPrice ?? 0).toStringAsFixed(2)}',
                     'rating': widget.rating.toStringAsFixed(1),
                   },
                 )
               : 'product.a11y_regular'.tr(
-                  namedArgs: {'name': widget.productName, 'price': '\$${widget.price.toStringAsFixed(2)}', 'rating': widget.rating.toStringAsFixed(1)},
+                  namedArgs: {
+                    'name': widget.productName,
+                    'price': '\$${widget.price.toStringAsFixed(2)}',
+                    'rating': widget.rating.toStringAsFixed(1),
+                  },
                 ),
           child: GestureDetector(
             onTap: widget.onTap,
             child: Container(
               decoration: BoxDecoration(
-                color: isDark ? DesignTokens.darkSurfaceVariant.withValues(alpha: 0.6) : DesignTokens.surface,
+                color: isDark
+                    ? DesignTokens.darkSurfaceVariant.withValues(alpha: 0.6)
+                    : DesignTokens.surface,
                 borderRadius: BorderRadius.circular(DesignTokens.radius16),
-                border: Border.all(color: DesignTokens.white.withValues(alpha: 0.1), width: 1),
+                border: Border.all(
+                  color: DesignTokens.white.withValues(alpha: 0.1),
+                  width: 1,
+                ),
                 boxShadow: DesignTokens.shadowMd,
               ),
               child: ClipRRect(
@@ -131,34 +154,60 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
                               gradient: LinearGradient(
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
-                                colors: [DesignTokens.primary.withValues(alpha: 0.1), DesignTokens.secondary.withValues(alpha: 0.1)],
+                                colors: [
+                                  DesignTokens.primary.withValues(alpha: 0.1),
+                                  DesignTokens.secondary.withValues(alpha: 0.1),
+                                ],
                               ),
                             ),
                             child: widget.imageUrl.isNotEmpty
                                 ? ColorFiltered(
                                     colorFilter: widget.isOutOfStock
-                                        ? const ColorFilter.mode(DesignTokens.textSecondary, BlendMode.saturation)
-                                        : const ColorFilter.mode(DesignTokens.transparent, BlendMode.multiply),
+                                        ? const ColorFilter.mode(
+                                            DesignTokens.textSecondary,
+                                            BlendMode.saturation,
+                                          )
+                                        : const ColorFilter.mode(
+                                            DesignTokens.transparent,
+                                            BlendMode.multiply,
+                                          ),
                                     child: CachedNetworkImage(
                                       imageUrl: widget.imageUrl,
+                                      width: double.infinity,
+                                      height: double.infinity,
                                       fit: BoxFit.cover,
-                                      placeholder: (context, url) => Shimmer.fromColors(
-                                        baseColor: DesignTokens.outlineVariant,
-                                        highlightColor: DesignTokens.surface,
-                                        child: Container(color: DesignTokens.white),
-                                      ),
-                                      errorWidget: (context, url, error) => Center(
-                                        child: Container(
-                                          width: 52,
-                                          height: 52,
-                                          decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            color: DesignTokens.primary.withValues(alpha: 0.12),
-                                            border: Border.all(color: DesignTokens.primary.withValues(alpha: 0.2), width: 1.5),
+                                      placeholder: (context, url) =>
+                                          Shimmer.fromColors(
+                                            baseColor:
+                                                DesignTokens.outlineVariant,
+                                            highlightColor:
+                                                DesignTokens.surface,
+                                            child: Container(
+                                              color: DesignTokens.white,
+                                            ),
                                           ),
-                                          child: const Icon(Icons.camera_alt_outlined, color: DesignTokens.primary, size: 26),
-                                        ),
-                                      ),
+                                      errorWidget: (context, url, error) =>
+                                          Center(
+                                            child: Container(
+                                              width: 52,
+                                              height: 52,
+                                              decoration: BoxDecoration(
+                                                shape: BoxShape.circle,
+                                                color: DesignTokens.primary
+                                                    .withValues(alpha: 0.12),
+                                                border: Border.all(
+                                                  color: DesignTokens.primary
+                                                      .withValues(alpha: 0.2),
+                                                  width: 1.5,
+                                                ),
+                                              ),
+                                              child: const Icon(
+                                                Icons.camera_alt_outlined,
+                                                color: DesignTokens.primary,
+                                                size: 26,
+                                              ),
+                                            ),
+                                          ),
                                     ),
                                   )
                                 : Center(
@@ -167,10 +216,20 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
                                       height: 52,
                                       decoration: BoxDecoration(
                                         shape: BoxShape.circle,
-                                        color: DesignTokens.primary.withValues(alpha: 0.12),
-                                        border: Border.all(color: DesignTokens.primary.withValues(alpha: 0.2), width: 1.5),
+                                        color: DesignTokens.primary.withValues(
+                                          alpha: 0.12,
+                                        ),
+                                        border: Border.all(
+                                          color: DesignTokens.primary
+                                              .withValues(alpha: 0.2),
+                                          width: 1.5,
+                                        ),
                                       ),
-                                      child: const Icon(Icons.camera_alt_outlined, color: DesignTokens.primary, size: 26),
+                                      child: const Icon(
+                                        Icons.camera_alt_outlined,
+                                        color: DesignTokens.primary,
+                                        size: 26,
+                                      ),
                                     ),
                                   ),
                           ),
@@ -178,18 +237,34 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
                           if (widget.isOutOfStock)
                             Positioned.fill(
                               child: Container(
-                                color: DesignTokens.black.withValues(alpha: 0.3),
+                                color: DesignTokens.black.withValues(
+                                  alpha: 0.3,
+                                ),
                                 child: Center(
                                   child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 6,
+                                    ),
                                     decoration: BoxDecoration(
-                                      color: DesignTokens.black.withValues(alpha: 0.7),
+                                      color: DesignTokens.black.withValues(
+                                        alpha: 0.7,
+                                      ),
                                       borderRadius: BorderRadius.circular(20),
-                                      border: Border.all(color: DesignTokens.white.withValues(alpha: 0.2)),
+                                      border: Border.all(
+                                        color: DesignTokens.white.withValues(
+                                          alpha: 0.2,
+                                        ),
+                                      ),
                                     ),
                                     child: Text(
                                       'product.out_of_stock_label'.tr(),
-                                      style: const TextStyle(color: DesignTokens.white, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.2),
+                                      style: const TextStyle(
+                                        color: DesignTokens.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: 1.2,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -197,7 +272,14 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
                             ),
                           // N-10: isTrending badge (HOT / RISING)
                           if (widget.isTrending && !widget.isOutOfStock)
-                            Positioned(top: 8, left: 8, child: _TrendingBadge(score: widget.trendingScore, isCompact: false)),
+                            Positioned(
+                              top: 8,
+                              left: 8,
+                              child: _TrendingBadge(
+                                score: widget.trendingScore,
+                                isCompact: false,
+                              ),
+                            ),
                         ],
                       ),
                     ),
@@ -215,13 +297,21 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
                                 widget.productName,
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, height: 1.4),
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  height: 1.4,
+                                ),
                               ),
                             ),
                             const SizedBox(height: DesignTokens.spacing4),
                             Text(
                               widget.sellerName,
-                              style: TextStyle(fontSize: 12, color: DesignTokens.textSecondary, fontWeight: FontWeight.w500),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: DesignTokens.textSecondary,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                             // FAV-L2: only render when label is non-empty (guards against single-country list
                             // with no city/province/country fields → avoids "Ships from: " with blank text)
@@ -229,12 +319,19 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
                               const SizedBox(height: 2),
                               Row(
                                 children: [
-                                  Icon(Icons.location_on_rounded, size: 11, color: DesignTokens.textTertiary),
+                                  Icon(
+                                    Icons.location_on_rounded,
+                                    size: 11,
+                                    color: DesignTokens.textTertiary,
+                                  ),
                                   const SizedBox(width: 2),
                                   Expanded(
                                     child: Text(
                                       _shipFromLabel,
-                                      style: TextStyle(fontSize: 11, color: DesignTokens.textTertiary),
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: DesignTokens.textTertiary,
+                                      ),
                                       overflow: TextOverflow.ellipsis,
                                       maxLines: 1,
                                     ),
@@ -247,15 +344,37 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
                             if (widget.reviewCount > 0)
                               Row(
                                 children: [
-                                  Icon(Icons.star_rounded, size: 14, color: DesignTokens.warning),
+                                  Icon(
+                                    Icons.star_rounded,
+                                    size: 14,
+                                    color: DesignTokens.warning,
+                                  ),
                                   const SizedBox(width: 4),
-                                  Text(widget.rating.toStringAsFixed(1), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                                  Text(
+                                    widget.rating.toStringAsFixed(1),
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                                   const SizedBox(width: 4),
-                                  Text('(${widget.reviewCount})', style: TextStyle(fontSize: 11, color: DesignTokens.textSecondary)),
+                                  Text(
+                                    '(${widget.reviewCount})',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: DesignTokens.textSecondary,
+                                    ),
+                                  ),
                                 ],
                               )
                             else
-                              Text('product.no_reviews_card'.tr(), style: TextStyle(fontSize: 11, color: DesignTokens.textTertiary)),
+                              Text(
+                                'product.no_reviews_card'.tr(),
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: DesignTokens.textTertiary,
+                                ),
+                              ),
                             const SizedBox(height: DesignTokens.spacing8),
                             // Price and CTA
                             Row(
@@ -263,21 +382,28 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
                               children: [
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         '\$${widget.price.toStringAsFixed(2)}',
-                                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: DesignTokens.primary),
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w700,
+                                          color: DesignTokens.primary,
+                                        ),
                                         overflow: TextOverflow.ellipsis,
                                       ),
-                                      if (widget.compareAtPrice case final compareAt?)
+                                      if (widget.compareAtPrice
+                                          case final compareAt?)
                                         Text(
                                           '\$${compareAt.toStringAsFixed(2)}',
                                           style: const TextStyle(
                                             fontSize: 12,
                                             fontWeight: FontWeight.w500,
                                             color: DesignTokens.textSecondary,
-                                            decoration: TextDecoration.lineThrough,
+                                            decoration:
+                                                TextDecoration.lineThrough,
                                             decorationColor: DesignTokens.error,
                                           ),
                                           overflow: TextOverflow.ellipsis,
@@ -285,20 +411,32 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
                                     ],
                                   ),
                                 ),
-                                if (widget.onAddToCart != null && !widget.isOutOfStock) ...[
+                                if (widget.onAddToCart != null &&
+                                    !widget.isOutOfStock) ...[
                                   const SizedBox(width: 8),
                                   Semantics(
                                     button: true,
-                                    label: 'common.add_to_cart_semantics'.tr(namedArgs: {'name': widget.productName}),
+                                    label: 'common.add_to_cart_semantics'.tr(
+                                      namedArgs: {'name': widget.productName},
+                                    ),
                                     child: GestureDetector(
                                       onTap: widget.onAddToCart,
                                       child: Container(
-                                        padding: const EdgeInsets.all(14), // WCAG 2.5.8: ≥48dp touch target
+                                        padding: const EdgeInsets.all(
+                                          14,
+                                        ), // WCAG 2.5.8: ≥48dp touch target
                                         decoration: BoxDecoration(
-                                          gradient: DesignTokens.primaryGradient,
-                                          borderRadius: BorderRadius.circular(DesignTokens.radius8),
+                                          gradient:
+                                              DesignTokens.primaryGradient,
+                                          borderRadius: BorderRadius.circular(
+                                            DesignTokens.radius8,
+                                          ),
                                         ),
-                                        child: const Icon(Icons.add, size: 20, color: DesignTokens.white),
+                                        child: const Icon(
+                                          Icons.add,
+                                          size: 20,
+                                          color: DesignTokens.white,
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -328,8 +466,13 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(duration: DesignTokens.durationNormal, vsync: this);
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.05).animate(CurvedAnimation(parent: _controller, curve: DesignTokens.easeOutCubic));
+    _controller = AnimationController(
+      duration: DesignTokens.durationNormal,
+      vsync: this,
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.05).animate(
+      CurvedAnimation(parent: _controller, curve: DesignTokens.easeOutCubic),
+    );
   }
 }
 
@@ -343,20 +486,40 @@ class _TrendingBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isHot = score >= 50;
-    final label = isHot ? 'product.trending_hot'.tr() : 'product.trending_rising'.tr();
-    final colors = isHot ? [DesignTokens.hotStart, DesignTokens.hotEnd] : [DesignTokens.trendingStart, DesignTokens.trendingEnd];
-    final glowColor = isHot ? DesignTokens.hotStart : DesignTokens.trendingStart;
+    final label = isHot
+        ? 'product.trending_hot'.tr()
+        : 'product.trending_rising'.tr();
+    final colors = isHot
+        ? [DesignTokens.hotStart, DesignTokens.hotEnd]
+        : [DesignTokens.trendingStart, DesignTokens.trendingEnd];
+    final glowColor = isHot
+        ? DesignTokens.hotStart
+        : DesignTokens.trendingStart;
 
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: isCompact ? 5 : 7, vertical: isCompact ? 2 : 3),
+      padding: EdgeInsets.symmetric(
+        horizontal: isCompact ? 5 : 7,
+        vertical: isCompact ? 2 : 3,
+      ),
       decoration: BoxDecoration(
         gradient: LinearGradient(colors: colors),
         borderRadius: BorderRadius.circular(4),
-        boxShadow: [BoxShadow(color: glowColor.withValues(alpha: 0.45), blurRadius: 6, offset: const Offset(0, 2))],
+        boxShadow: [
+          BoxShadow(
+            color: glowColor.withValues(alpha: 0.45),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Text(
         label,
-        style: TextStyle(fontSize: isCompact ? 9 : 10, fontWeight: FontWeight.w800, color: DesignTokens.white, letterSpacing: 0.3),
+        style: TextStyle(
+          fontSize: isCompact ? 9 : 10,
+          fontWeight: FontWeight.w800,
+          color: DesignTokens.white,
+          letterSpacing: 0.3,
+        ),
       ),
     );
   }

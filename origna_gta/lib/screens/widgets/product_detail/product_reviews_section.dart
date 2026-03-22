@@ -506,6 +506,8 @@ class _ReviewCardState extends ConsumerState<ReviewCard> {
                 child: Center(
                   child: CachedNetworkImage(
                     imageUrl: urls[i],
+                    width: double.infinity,
+                    height: double.infinity,
                     fit: BoxFit.contain,
                     placeholder: (ctx, url) => Shimmer.fromColors(
                       baseColor: DesignTokens.outlineVariant,

@@ -108,7 +108,9 @@ class _ProductCardState extends ConsumerState<ProductCard>
                 offset: const Offset(0, 4),
               ),
               BoxShadow(
-                color: DesignTokens.black.withValues(alpha: isDark ? 0.2 : 0.04),
+                color: DesignTokens.black.withValues(
+                  alpha: isDark ? 0.2 : 0.04,
+                ),
                 blurRadius: 4,
                 offset: const Offset(0, 1),
               ),
@@ -161,6 +163,8 @@ class _ProductCardState extends ConsumerState<ProductCard>
                                                   )
                                                   ? imageUrls[index]
                                                   : '',
+                                              width: double.infinity,
+                                              height: double.infinity,
                                               fit: BoxFit.cover,
                                               placeholder: (context, url) =>
                                                   Shimmer.fromColors(
@@ -178,26 +182,29 @@ class _ProductCardState extends ConsumerState<ProductCard>
                                                     url,
                                                     error,
                                                   ) => Container(
-                                                    decoration:
-                                                        const BoxDecoration(
-                                                          gradient: LinearGradient(
-                                                            colors: [
-                                                              DesignTokens
-                                                                  .gradientStart,
-                                                              DesignTokens
-                                                                  .gradientMiddle,
-                                                            ],
-                                                            begin:
-                                                                Alignment.topLeft,
-                                                            end: Alignment
-                                                                .bottomRight,
-                                                          ),
-                                                        ),
+                                                    decoration: const BoxDecoration(
+                                                      gradient: LinearGradient(
+                                                        colors: [
+                                                          DesignTokens
+                                                              .gradientStart,
+                                                          DesignTokens
+                                                              .gradientMiddle,
+                                                        ],
+                                                        begin:
+                                                            Alignment.topLeft,
+                                                        end: Alignment
+                                                            .bottomRight,
+                                                      ),
+                                                    ),
                                                     child: Center(
                                                       child: Icon(
-                                                        Icons.camera_alt_outlined,
-                                                        size: isCompact ? 24 : 36,
-                                                        color: DesignTokens.white
+                                                        Icons
+                                                            .camera_alt_outlined,
+                                                        size: isCompact
+                                                            ? 24
+                                                            : 36,
+                                                        color: DesignTokens
+                                                            .white
                                                             .withValues(
                                                               alpha: 0.8,
                                                             ),
@@ -223,9 +230,8 @@ class _ProductCardState extends ConsumerState<ProductCard>
                                                     vertical: 6,
                                                   ),
                                               decoration: BoxDecoration(
-                                                color: DesignTokens.black.withValues(
-                                                  alpha: 0.7,
-                                                ),
+                                                color: DesignTokens.black
+                                                    .withValues(alpha: 0.7),
                                                 borderRadius:
                                                     BorderRadius.circular(20),
                                                 border: Border.all(
@@ -257,9 +263,8 @@ class _ProductCardState extends ConsumerState<ProductCard>
                                             vertical: isCompact ? 2 : 4,
                                           ),
                                           decoration: BoxDecoration(
-                                            color: DesignTokens.black.withValues(
-                                              alpha: 0.5,
-                                            ),
+                                            color: DesignTokens.black
+                                                .withValues(alpha: 0.5),
                                             borderRadius: BorderRadius.circular(
                                               isCompact ? 8 : 12,
                                             ),
@@ -495,7 +500,8 @@ class _ProductCardState extends ConsumerState<ProductCard>
                               crossAxisAlignment: CrossAxisAlignment.start,
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                if (widget.product.compareAtPrice case final compareAt?
+                                if (widget.product.compareAtPrice
+                                    case final compareAt?
                                     when compareAt > price)
                                   Text(
                                     '\$${compareAt.toStringAsFixed(2)}',
@@ -512,7 +518,8 @@ class _ProductCardState extends ConsumerState<ProductCard>
                                     fontWeight: FontWeight.bold,
                                     fontSize: priceFontSize,
                                     color:
-                                        (widget.product.compareAtPrice ?? 0) > price
+                                        (widget.product.compareAtPrice ?? 0) >
+                                            price
                                         ? DesignTokens.error
                                         : DesignTokens.primary,
                                   ),
@@ -608,7 +615,9 @@ class _ProductCardState extends ConsumerState<ProductCard>
                         button: true,
                         label: 'btn-edit-product-${widget.product.name}',
                         child: IconButton(
-                          key: Key('product_edit_button_${widget.product.name}'),
+                          key: Key(
+                            'product_edit_button_${widget.product.name}',
+                          ),
                           icon: Icon(
                             Icons.edit,
                             color: DesignTokens.primary,
@@ -806,14 +815,14 @@ class _QaBadgeButton extends ConsumerWidget {
               tooltip: count > 0
                   ? 'qa.pending_questions'.tr(namedArgs: {'count': '$count'})
                   : 'qa.no_pending_questions'.tr(),
-            onPressed: () => Navigator.pushNamed(
-              context,
-              AppRoutes.productDetails,
-              arguments: ProductDetailsArgs(
-                productId: productId,
-                product: product.toJson(),
+              onPressed: () => Navigator.pushNamed(
+                context,
+                AppRoutes.productDetails,
+                arguments: ProductDetailsArgs(
+                  productId: productId,
+                  product: product.toJson(),
+                ),
               ),
-            ),
               padding: EdgeInsets.all(isCompact ? 4 : 8),
               constraints: BoxConstraints(
                 minWidth: isCompact ? 32 : 48,
