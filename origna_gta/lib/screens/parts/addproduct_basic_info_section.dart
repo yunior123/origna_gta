@@ -172,7 +172,7 @@ extension _AddProductBasicInfoSection on _AddProductScreenState {
                 labelKey.tr(),
                 style: TextStyle(
                   fontSize: 12,
-                  color: selected ? Colors.white : DesignTokens.textPrimary,
+                  color: selected ? DesignTokens.white : DesignTokens.textPrimary,
                   fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
                 ),
               ),
@@ -225,7 +225,7 @@ extension _AddProductBasicInfoSection on _AddProductScreenState {
                   ),
                   child: const Icon(
                     Icons.translate_rounded,
-                    color: Colors.white,
+                    color: DesignTokens.white,
                     size: 20,
                   ),
                 ),

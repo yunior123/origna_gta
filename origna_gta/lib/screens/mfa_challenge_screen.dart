@@ -205,9 +205,12 @@ class _MfaChallengeScreenState extends ConsumerState<MfaChallengeScreen> {
   }
 
   Widget _buildInputForm() {
+    final isRecoveryMode = ref.watch(_mfaChallengeRecoveryModeProvider);
+    final isLoading = ref.watch(_mfaChallengeLoadingProvider);
+    final attempts = ref.watch(_mfaChallengeAttemptsProvider);
     return Column(
       children: [
-        if (_isRecoveryMode)
+        if (isRecoveryMode)
           Semantics(
             label: 'input-recovery-code',
             child: TextField(
@@ -258,7 +261,7 @@ class _MfaChallengeScreenState extends ConsumerState<MfaChallengeScreen> {
           child: Semantics(
             label: 'btn-mfa-submit',
             child: FilledButton(
-              onPressed: _isLoading ? null : _submit,
+              onPressed: isLoading ? null : _submit,
               style: FilledButton.styleFrom(
                 backgroundColor: DesignTokens.primary,
                 padding: const EdgeInsets.symmetric(vertical: 14),
@@ -266,7 +269,7 @@ class _MfaChallengeScreenState extends ConsumerState<MfaChallengeScreen> {
                   borderRadius: BorderRadius.circular(DesignTokens.radius12),
                 ),
               ),
-              child: _isLoading
+              child: isLoading
                   ? const SizedBox(
                       width: 20,
                       height: 20,
@@ -288,7 +291,7 @@ class _MfaChallengeScreenState extends ConsumerState<MfaChallengeScreen> {
           child: TextButton(
             onPressed: _toggleRecoveryMode,
             child: Text(
-              _isRecoveryMode
+              isRecoveryMode
                   ? 'mfa.use_totp_code'.tr()
                   : 'mfa.use_recovery_code'.tr(),
               style: TextStyle(color: DesignTokens.primary),
@@ -297,11 +300,11 @@ class _MfaChallengeScreenState extends ConsumerState<MfaChallengeScreen> {
         ),
 
         // Remaining attempts indicator
-        if (_attempts > 0)
+        if (attempts > 0)
           Padding(
             padding: const EdgeInsets.only(top: 8),
             child: Text(
-              '${_maxAttempts - _attempts} ${'mfa.attempts_remaining'.tr()}',
+              '${_maxAttempts - attempts} ${'mfa.attempts_remaining'.tr()}',
               style: TextStyle(fontSize: 12, color: DesignTokens.textSecondary),
             ),
           ),

@@ -249,7 +249,12 @@ class _SellerRegistrationScreenState
                           key: const Key('seller_terms_checkbox'),
                           value: _termsAccepted,
                           onChanged: (value) =>
-                              setState(() => _termsAccepted = value ?? false),
+                              ref
+                                      .read(
+                                        _sellerTermsAcceptedProvider.notifier,
+                                      )
+                                      .state =
+                                  value ?? false,
                           title: Text('seller.accept_terms'.tr()),
                           subtitle: !_termsAccepted
                               ? Text(
@@ -364,7 +369,9 @@ class _SellerRegistrationScreenState
     } else {
       // New registration - MUST accept terms
       buttonText = 'seller.start_registration'.tr();
-      onPressed = _termsAccepted ? viewModel.startRegistration : null;
+      onPressed = ref.watch(_sellerTermsAcceptedProvider)
+          ? viewModel.startRegistration
+          : null;
     }
 
     return Semantics(

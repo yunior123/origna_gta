@@ -38,7 +38,7 @@ class ProfileScreenLayout extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [isDark ? DesignTokens.darkSurface : DesignTokens.surface, isDark ? DesignTokens.darkSurfaceVariant : Colors.white],
+            colors: [isDark ? DesignTokens.darkSurface : DesignTokens.surface, isDark ? DesignTokens.darkSurfaceVariant : DesignTokens.white],
           ),
         ),
         child: userProfileAsync.when(
@@ -49,7 +49,7 @@ class ProfileScreenLayout extends StatelessWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ).createShader(bounds),
-              child: const ModernLoadingIndicator(color: Colors.white, strokeWidth: 3, centered: false),
+              child: const ModernLoadingIndicator(color: DesignTokens.white, strokeWidth: 3, centered: false),
             ),
           ),
           error: (err, stack) =>
@@ -67,7 +67,7 @@ class ProfileScreenLayout extends StatelessWidget {
                     children: [
                       ShaderMask(
                         shaderCallback: (bounds) => LinearGradient(colors: [DesignTokens.primary, DesignTokens.secondary]).createShader(bounds),
-                        child: const ModernLoadingIndicator(color: Colors.white, strokeWidth: 3, centered: false),
+                        child: const ModernLoadingIndicator(color: DesignTokens.white, strokeWidth: 3, centered: false),
                       ),
                       const SizedBox(height: 16),
                       Text('profile.setting_up'.tr(), style: TextStyle(fontSize: 16, color: DesignTokens.textSecondary)),
@@ -383,7 +383,7 @@ class ProfileScreenLayout extends StatelessWidget {
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
-            color: isDark ? DesignTokens.darkSurfaceVariant.withValues(alpha: 0.5) : Colors.white,
+            color: isDark ? DesignTokens.darkSurfaceVariant.withValues(alpha: 0.5) : DesignTokens.white,
             borderRadius: BorderRadius.circular(DesignTokens.radius12),
             border: Border.all(color: isDark ? DesignTokens.darkOutline : DesignTokens.outlineVariant, width: 1),
           ),
@@ -432,12 +432,12 @@ class ProfileScreenLayout extends StatelessWidget {
       key: key,
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: isDark ? DesignTokens.darkSurfaceVariant.withValues(alpha: 0.5) : Colors.white,
+        color: isDark ? DesignTokens.darkSurfaceVariant.withValues(alpha: 0.5) : DesignTokens.white,
         borderRadius: BorderRadius.circular(DesignTokens.radius12),
         border: Border.all(color: isDark ? DesignTokens.darkOutline : DesignTokens.outlineVariant, width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
+            color: DesignTokens.black.withValues(alpha: isDark ? 0.3 : 0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -535,7 +535,7 @@ class ProfileScreenLayout extends StatelessWidget {
                       gradient: LinearGradient(colors: [DesignTokens.primary, DesignTokens.secondary], begin: Alignment.topLeft, end: Alignment.bottomRight),
                       borderRadius: BorderRadius.circular(DesignTokens.radius8),
                     ),
-                    child: const Icon(Icons.workspace_premium, color: Colors.white, size: 20),
+                    child: const Icon(Icons.workspace_premium, color: DesignTokens.white, size: 20),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -650,7 +650,7 @@ class ProfileScreenLayout extends StatelessWidget {
                           height: avatarSize + 32,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: isPremium ? DesignTokens.warning.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.06),
+                            color: isPremium ? DesignTokens.warning.withValues(alpha: 0.1) : DesignTokens.white.withValues(alpha: 0.06),
                           ),
                         ),
                         // Middle ring
@@ -659,9 +659,9 @@ class ProfileScreenLayout extends StatelessWidget {
                           height: avatarSize + 16,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: Colors.white.withValues(alpha: 0.1),
+                            color: DesignTokens.white.withValues(alpha: 0.1),
                             border: Border.all(
-                              color: isPremium ? DesignTokens.warning.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.18),
+                              color: isPremium ? DesignTokens.warning.withValues(alpha: 0.5) : DesignTokens.white.withValues(alpha: 0.18),
                               width: isPremium ? 1.5 : 1,
                             ),
                           ),
@@ -673,20 +673,20 @@ class ProfileScreenLayout extends StatelessWidget {
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             gradient: LinearGradient(
-                              colors: [Colors.white.withValues(alpha: 0.3), Colors.white.withValues(alpha: 0.14)],
+                              colors: [DesignTokens.white.withValues(alpha: 0.3), DesignTokens.white.withValues(alpha: 0.14)],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             ),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 2.5),
+                            border: Border.all(color: DesignTokens.white.withValues(alpha: 0.5), width: 2.5),
                             boxShadow: [
-                              BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 22, offset: const Offset(0, 8)),
+                              BoxShadow(color: DesignTokens.black.withValues(alpha: 0.3), blurRadius: 22, offset: const Offset(0, 8)),
                               if (isPremium) BoxShadow(color: DesignTokens.warning.withValues(alpha: 0.35), blurRadius: 24, spreadRadius: 2),
                             ],
                           ),
                           child: Center(
                             child: Text(
                               initials,
-                              style: TextStyle(fontSize: fontSize, color: Colors.white, fontWeight: FontWeight.w900, letterSpacing: -2),
+                              style: TextStyle(fontSize: fontSize, color: DesignTokens.white, fontWeight: FontWeight.w900, letterSpacing: -2),
                             ),
                           ),
                         ),
@@ -706,9 +706,9 @@ class ProfileScreenLayout extends StatelessWidget {
                                   end: Alignment.bottomRight,
                                 ),
                                 boxShadow: [BoxShadow(color: DesignTokens.warning.withValues(alpha: 0.6), blurRadius: 8, spreadRadius: 1)],
-                                border: Border.all(color: Colors.white, width: 2),
+                                border: Border.all(color: DesignTokens.white, width: 2),
                               ),
-                              child: const Center(child: Icon(Icons.workspace_premium, size: 14, color: Colors.white)),
+                              child: const Center(child: Icon(Icons.workspace_premium, size: 14, color: DesignTokens.white)),
                             ),
                           ),
                       ],
@@ -716,13 +716,13 @@ class ProfileScreenLayout extends StatelessWidget {
                     const SizedBox(height: 18),
                     Text(
                       userModel.name,
-                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: -0.5),
+                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: DesignTokens.white, letterSpacing: -0.5),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 6),
                     Text(
                       userModel.email,
-                      style: TextStyle(fontSize: 13, color: Colors.white.withValues(alpha: 0.72), letterSpacing: 0.1),
+                      style: TextStyle(fontSize: 13, color: DesignTokens.white.withValues(alpha: 0.72), letterSpacing: 0.1),
                       textAlign: TextAlign.center,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -731,18 +731,18 @@ class ProfileScreenLayout extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.15),
+                          color: DesignTokens.white.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1),
+                          border: Border.all(color: DesignTokens.white.withValues(alpha: 0.3), width: 1),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(isAdmin ? Icons.admin_panel_settings_rounded : Icons.storefront_rounded, color: Colors.white, size: 14),
+                            Icon(isAdmin ? Icons.admin_panel_settings_rounded : Icons.storefront_rounded, color: DesignTokens.white, size: 14),
                             const SizedBox(width: 6),
                             Text(
                               isAdmin ? 'Admin' : 'Seller',
-                              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.8),
+                              style: const TextStyle(color: DesignTokens.white, fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.8),
                             ),
                           ],
                         ),
@@ -777,12 +777,12 @@ class ProfileScreenLayout extends StatelessWidget {
       key: const Key('profile_theme_button'),
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: isDark ? DesignTokens.darkSurfaceVariant.withValues(alpha: 0.5) : Colors.white,
+        color: isDark ? DesignTokens.darkSurfaceVariant.withValues(alpha: 0.5) : DesignTokens.white,
         borderRadius: BorderRadius.circular(DesignTokens.radius12),
         border: Border.all(color: isDark ? DesignTokens.darkOutline : DesignTokens.outlineVariant, width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
+            color: DesignTokens.black.withValues(alpha: isDark ? 0.3 : 0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),

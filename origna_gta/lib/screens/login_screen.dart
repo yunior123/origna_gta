@@ -149,7 +149,7 @@ class LoginScreenLayout extends StatelessWidget {
                                 child: const Icon(
                                   Icons.shopping_bag_outlined,
                                   size: 56,
-                                  color: Colors.white,
+                                  color: DesignTokens.white,
                                 ),
                               ),
                             ),
@@ -163,7 +163,7 @@ class LoginScreenLayout extends StatelessWidget {
                                 style: TextStyle(
                                   fontSize: 40,
                                   fontWeight: FontWeight.w700,
-                                  color: Colors.white,
+                                  color: DesignTokens.white,
                                   letterSpacing: -0.5,
                                 ),
                               ),
@@ -591,7 +591,7 @@ class LoginScreenLayout extends StatelessWidget {
                                         style: TextStyle(
                                           fontSize: 48,
                                           fontWeight: FontWeight.w900,
-                                          color: Colors.white,
+                                          color: DesignTokens.white,
                                         ),
                                       ),
                                     ),
@@ -626,7 +626,7 @@ class LoginScreenLayout extends StatelessWidget {
                                               child: const Icon(
                                                 Icons.check_rounded,
                                                 size: 14,
-                                                color: Colors.white,
+                                                color: DesignTokens.white,
                                               ),
                                             ),
                                             const SizedBox(width: 14),
@@ -765,7 +765,7 @@ class _GoogleGPainter extends CustomPainter {
     );
 
     // White center circle to create the "G" cutout
-    paint.color = Colors.white;
+    paint.color = DesignTokens.white;
     canvas.drawCircle(Offset(cx, cy), r * 0.58, paint);
 
     // White horizontal bar for the "G" crossbar
@@ -775,7 +775,7 @@ class _GoogleGPainter extends CustomPainter {
     canvas.drawRect(Rect.fromLTWH(cx, cy - r * 0.18, r, r * 0.36), barPaint);
 
     // Re-mask outer arc for the crossbar area (only right half shows blue in crossbar)
-    paint.color = Colors.white;
+    paint.color = DesignTokens.white;
     canvas.drawCircle(Offset(cx, cy), r * 0.58, paint);
     // Redraw the crossbar portion in the cutout
     barPaint.color = DesignTokens.googleBlue;
@@ -833,7 +833,7 @@ class _GoogleSignInButtonState extends State<_GoogleSignInButton>
             width: double.infinity,
             height: 52,
             decoration: BoxDecoration(
-              color: isDark ? DesignTokens.googleDarkBg : Colors.white,
+              color: isDark ? DesignTokens.googleDarkBg : DesignTokens.white,
               borderRadius: BorderRadius.circular(DesignTokens.radius16),
               border: Border.all(
                 color: isDark
@@ -843,7 +843,7 @@ class _GoogleSignInButtonState extends State<_GoogleSignInButton>
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.06),
+                  color: DesignTokens.black.withValues(alpha: 0.06),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -872,7 +872,7 @@ class _GoogleSignInButtonState extends State<_GoogleSignInButton>
                                 fontSize: 15,
                                 fontWeight: FontWeight.w600,
                                 color: isDark
-                                    ? Colors.white
+                                    ? DesignTokens.white
                                     : DesignTokens.googleDarkText,
                                 letterSpacing: 0.25,
                               ),

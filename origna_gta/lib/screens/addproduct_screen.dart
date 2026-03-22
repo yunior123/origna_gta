@@ -882,7 +882,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen>
                 height: 120,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: 0.06),
+                  color: DesignTokens.white.withValues(alpha: 0.06),
                 ),
               ),
             ),
@@ -894,7 +894,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen>
                 height: 80,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: 0.04),
+                  color: DesignTokens.white.withValues(alpha: 0.04),
                 ),
               ),
             ),
@@ -916,7 +916,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen>
             icon: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.15),
+                color: DesignTokens.white.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Icon(
@@ -941,7 +941,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.15),
+              color: DesignTokens.white.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Row(
@@ -955,7 +955,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen>
                   decoration: BoxDecoration(
                     color: isActive
                         ? DesignTokens.textOnPrimary
-                        : Colors.white.withValues(alpha: 0.3),
+                        : DesignTokens.white.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(4),
                   ),
                 );

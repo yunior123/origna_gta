@@ -366,7 +366,7 @@ extension _AddProductPackageLocationSection on _AddProductScreenState {
                       ),
                     ),
                     controlAffinity: ListTileControlAffinity.trailing,
-                    checkColor: Colors.white,
+                    checkColor: DesignTokens.white,
                     fillColor: WidgetStateProperty.resolveWith(
                       (states) => states.contains(WidgetState.selected)
                           ? DesignTokens.primary

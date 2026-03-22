@@ -36,7 +36,7 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(DesignTokens.radius20),
       ),
-      backgroundColor: isDark ? DesignTokens.darkSurface : Colors.white,
+      backgroundColor: isDark ? DesignTokens.darkSurface : DesignTokens.white,
       title: Row(
         children: [
           Icon(Icons.warning_rounded, color: DesignTokens.error, size: 28),
@@ -329,7 +329,7 @@ class _EmailVerificationRequiredViewState
               child: Text(
                 number,
                 style: const TextStyle(
-                  color: Colors.white,
+                  color: DesignTokens.white,
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
                 ),
@@ -482,7 +482,7 @@ class _ProfileCompletionBar extends StatelessWidget {
             Text(
               '$pctInt%',
               style: const TextStyle(
-                color: Colors.white,
+                color: DesignTokens.white,
                 fontSize: 12,
                 fontWeight: FontWeight.w800,
               ),
@@ -495,7 +495,7 @@ class _ProfileCompletionBar extends StatelessWidget {
           child: LinearProgressIndicator(
             value: pct,
             minHeight: 5,
-            backgroundColor: Colors.white.withValues(alpha: 0.15),
+            backgroundColor: DesignTokens.white.withValues(alpha: 0.15),
             valueColor: const AlwaysStoppedAnimation<Color>(
               DesignTokens.accent,
             ),
@@ -536,7 +536,7 @@ class _ThemePill extends StatelessWidget {
         child: Icon(
           icon,
           size: 16,
-          color: selected ? Colors.white : DesignTokens.textSecondary,
+          color: selected ? DesignTokens.white : DesignTokens.textSecondary,
         ),
       ),
     );

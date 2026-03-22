@@ -451,7 +451,7 @@ class _TopProductRow extends StatelessWidget {
               child: Text(
                 '$rank',
                 style: const TextStyle(
-                  color: Colors.white,
+                  color: DesignTokens.white,
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
                 ),
