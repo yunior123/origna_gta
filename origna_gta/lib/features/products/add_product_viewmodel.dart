@@ -12,9 +12,12 @@ import 'add_product_state.dart';
 import 'add_product_validation.dart';
 import 'variant_models.dart';
 
-final addProductViewModelProvider = StateNotifierProvider.autoDispose<AddProductViewModel, AddProductState>((ref) {
-  return AddProductViewModel(ref);
-});
+final addProductViewModelProvider =
+    StateNotifierProvider.autoDispose<AddProductViewModel, AddProductState>((
+      ref,
+    ) {
+      return AddProductViewModel(ref);
+    });
 
 /// Top-level isolate function for image compression — runs in a separate thread.
 Uint8List? _compressImageAddIsolate(Uint8List bytes) {
@@ -23,7 +26,11 @@ Uint8List? _compressImageAddIsolate(Uint8List bytes) {
   if (image == null) return null;
   img.Image resized = image;
   if (image.width > maxDimension || image.height > maxDimension) {
-    resized = img.copyResize(image, width: image.width > image.height ? maxDimension : null, height: image.height > image.width ? maxDimension : null);
+    resized = img.copyResize(
+      image,
+      width: image.width > image.height ? maxDimension : null,
+      height: image.height > image.width ? maxDimension : null,
+    );
   }
   return Uint8List.fromList(img.encodeJpg(resized, quality: 85));
 }
@@ -35,7 +42,8 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
 
   AddProductViewModel(this._ref) : super(AddProductState());
 
-  void addImage(ImageModel image) => state = state.copyWith(imageModels: [...state.imageModels, image]);
+  void addImage(ImageModel image) =>
+      state = state.copyWith(imageModels: [...state.imageModels, image]);
 
   /// Validates all inputs, compresses images, and creates the product via [createProductAtomic].
   ///
@@ -132,7 +140,9 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     try {
       final productRepository = _ref.read(productRepositoryProvider);
 
-      final sanitizedDeliveryOptions = state.isDigital ? <models.SellerDeliveryOption>[] : deliveryOptions;
+      final sanitizedDeliveryOptions = state.isDigital
+          ? <models.SellerDeliveryOption>[]
+          : deliveryOptions;
 
       final streetTrimmed = street.trim();
       final apartmentTrimmed = apartment.trim();
@@ -152,29 +162,48 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
         compressedImages = await _compressImages(state.imageModels);
         if (_activeRequestId != requestId) return;
         if (compressedImages.isEmpty) {
-          throw Exception('Failed to compress images. Please try different images.');
+          throw Exception(
+            'Failed to compress images. Please try different images.',
+          );
         }
       }
 
       final useWarehouses = state.selectedWarehouseIds.isNotEmpty;
       if (useWarehouses) {
         if (state.warehouseStockMap.isEmpty) {
-          state = state.copyWith(isLoading: false, errorMessage: 'product.warehouse_stock_required'.tr());
+          state = state.copyWith(
+            isLoading: false,
+            errorMessage: 'product.warehouse_stock_required'.tr(),
+          );
           return;
         }
-        final allHaveStock = state.selectedWarehouseIds.every((id) => state.warehouseStockMap.containsKey(id));
+        final allHaveStock = state.selectedWarehouseIds.every(
+          (id) => state.warehouseStockMap.containsKey(id),
+        );
         if (!allHaveStock) {
-          state = state.copyWith(isLoading: false, errorMessage: 'product.warehouse_stock_all_required'.tr());
+          state = state.copyWith(
+            isLoading: false,
+            errorMessage: 'product.warehouse_stock_all_required'.tr(),
+          );
           return;
         }
-        final totalStock = state.warehouseStockMap.values.fold(0, (a, b) => a + b);
+        final totalStock = state.warehouseStockMap.values.fold(
+          0,
+          (a, b) => a + b,
+        );
         if (totalStock == 0) {
-          state = state.copyWith(isLoading: false, errorMessage: 'product.warehouse_total_stock_zero'.tr());
+          state = state.copyWith(
+            isLoading: false,
+            errorMessage: 'product.warehouse_total_stock_zero'.tr(),
+          );
           return;
         }
         // F-82: Reject negative per-warehouse stock
         if (state.warehouseStockMap.values.any((qty) => qty < 0)) {
-          state = state.copyWith(isLoading: false, errorMessage: 'product.warehouse_stock_negative'.tr());
+          state = state.copyWith(
+            isLoading: false,
+            errorMessage: 'product.warehouse_stock_negative'.tr(),
+          );
           return;
         }
       }
@@ -188,7 +217,10 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
 
       final uid = _ref.read(userIdProvider);
       if (uid == null) {
-        state = state.copyWith(isLoading: false, errorMessage: 'errors.auth_expired'.tr());
+        state = state.copyWith(
+          isLoading: false,
+          errorMessage: 'errors.auth_expired'.tr(),
+        );
         return;
       }
 
@@ -216,7 +248,9 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
                 longitude: state.longitude,
               ),
         description: description,
-        descriptionF: descriptionF?.trim().isEmpty == true ? null : descriptionF?.trim(),
+        descriptionF: descriptionF?.trim().isEmpty == true
+            ? null
+            : descriptionF?.trim(),
         categoryId: categoryId,
         createdAt: DateTime.now(),
         rating: 0.0,
@@ -225,25 +259,36 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
         lengthCm: state.isDigital ? null : length,
         widthCm: state.isDigital ? null : width,
         heightCm: state.isDigital ? null : height,
-        isLocalDeliveryOnly: state.isDigital ? false : state.isLocalDeliveryOnly,
+        isLocalDeliveryOnly: state.isDigital
+            ? false
+            : state.isLocalDeliveryOnly,
         estimatedShipDays: () {
           // Use the 'standard' option's estimatedDays as the canonical shipping time.
           // Fall back to first available, then 0 if none exist.
           if (sanitizedDeliveryOptions.isEmpty) return 0;
-          final standard = sanitizedDeliveryOptions.where((o) => o.type == DeliveryTypeValues.standard).firstOrNull;
-          return standard?.estimatedDays ?? sanitizedDeliveryOptions.first.estimatedDays;
+          final standard = sanitizedDeliveryOptions
+              .where((o) => o.type == DeliveryTypeValues.standard)
+              .firstOrNull;
+          return standard?.estimatedDays ??
+              sanitizedDeliveryOptions.first.estimatedDays;
         }(),
         taxCode: taxCode,
         deliveryOptions: sanitizedDeliveryOptions,
         isPerishable: state.isDigital ? false : state.isPerishable,
         isDigital: state.isDigital,
         isAgeRestricted: state.isAgeRestricted,
-        digitalType: state.isDigital && state.digitalType != null ? state.digitalType : null,
-        digitalBuilds: state.isDigital && state.digitalType == DigitalTypeValues.software
+        digitalType: state.isDigital && state.digitalType != null
+            ? state.digitalType
+            : null,
+        digitalBuilds:
+            state.isDigital && state.digitalType == DigitalTypeValues.software
             ? {
-                if (state.macosDownloadUrl?.isNotEmpty == true) DigitalPlatformValues.macos: state.macosDownloadUrl!,
-                if (state.windowsDownloadUrl?.isNotEmpty == true) DigitalPlatformValues.windows: state.windowsDownloadUrl!,
-                if (state.linuxDownloadUrl?.isNotEmpty == true) DigitalPlatformValues.linux: state.linuxDownloadUrl!,
+                if (state.macosDownloadUrl?.isNotEmpty == true)
+                  DigitalPlatformValues.macos: state.macosDownloadUrl!,
+                if (state.windowsDownloadUrl?.isNotEmpty == true)
+                  DigitalPlatformValues.windows: state.windowsDownloadUrl!,
+                if (state.linuxDownloadUrl?.isNotEmpty == true)
+                  DigitalPlatformValues.linux: state.linuxDownloadUrl!,
               }
             : null,
         deviceLimit: state.isDigital ? state.deviceLimit : null,
@@ -259,8 +304,16 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
         warehouseIds: useWarehouses ? state.selectedWarehouseIds : null,
         warehouseStockMap: useWarehouses ? state.warehouseStockMap : null,
         hasVariants: state.hasVariants,
-        variants: state.hasVariants ? state.variants.map((v) => models.ProductVariant.fromJson(v.toMap())).toList() : const [],
-        variantOptions: state.hasVariants ? state.variantOptions.map((o) => models.VariantOption.fromJson(o.toMap())).toList() : const [],
+        variants: state.hasVariants
+            ? state.variants
+                  .map((v) => models.ProductVariant.fromJson(v.toMap()))
+                  .toList()
+            : const [],
+        variantOptions: state.hasVariants
+            ? state.variantOptions
+                  .map((o) => models.VariantOption.fromJson(o.toMap()))
+                  .toList()
+            : const [],
         condition: state.isDigital ? null : state.condition,
         videoUrl: null, // Will be set after upload
       );
@@ -270,7 +323,10 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
       if (state.videoFile != null) {
         state = state.copyWith(isUploadingVideo: true);
         try {
-          uploadedVideoUrl = await productRepository.uploadProductVideo(state.videoFile!, uid);
+          uploadedVideoUrl = await productRepository.uploadProductVideo(
+            state.videoFile!,
+            uid,
+          );
           if (_activeRequestId != requestId) return;
           product = product.copyWith(videoUrl: uploadedVideoUrl);
         } finally {
@@ -285,17 +341,30 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
         // Pass bookSourceUrl for digital book products — excluded from Dart Product model
         // (buyer-protected: never read back by client) but required by Python backend
         // to store the download URL server-side.
-        bookSourceUrl: (state.isDigital && state.digitalType == DigitalTypeValues.book) ? state.bookSourceUrl : null,
+        bookSourceUrl:
+            (state.isDigital && state.digitalType == DigitalTypeValues.book)
+            ? state.bookSourceUrl
+            : null,
       );
       if (_activeRequestId != requestId) return;
       state = state.copyWith(isLoading: false, isSuccess: true);
     } catch (e, st) {
-      AppError.log(e, stackTrace: st, context: 'AddProductViewModel.addProduct');
+      AppError.log(
+        e,
+        stackTrace: st,
+        context: 'AddProductViewModel.addProduct',
+      );
       final msg = AppError.getMessage(e, 'product.add_product_failed'.tr());
 
       // PROD-H2: Detect SKU already exists error from backend
-      if (msg.toLowerCase().contains('sku') && (msg.toLowerCase().contains('exists') || msg.toLowerCase().contains('déjà'))) {
-        state = state.copyWith(isLoading: false, skuError: 'product.sku_already_exists'.tr(), errorMessage: null);
+      if (msg.toLowerCase().contains('sku') &&
+          (msg.toLowerCase().contains('exists') ||
+              msg.toLowerCase().contains('déjà'))) {
+        state = state.copyWith(
+          isLoading: false,
+          skuError: 'product.sku_already_exists'.tr(),
+          errorMessage: null,
+        );
       } else {
         state = state.copyWith(isLoading: false, errorMessage: msg);
       }
@@ -315,10 +384,15 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
 
   /// Bug #16: Invalidate lat/lng when user manually edits address fields
   /// Also resets addressVerified — user must re-select from Geoapify
-  void clearCoordinates() => state = state.copyWith(latitude: null, longitude: null, addressVerified: false);
+  void clearCoordinates() => state = state.copyWith(
+    latitude: null,
+    longitude: null,
+    addressVerified: false,
+  );
 
   /// Clear error message to allow re-triggering SnackBar on next error
-  void clearError() => state = state.copyWith(errorMessage: null, skuError: null);
+  void clearError() =>
+      state = state.copyWith(errorMessage: null, skuError: null);
 
   /// PROD-H2: Clear SKU-specific error
   void clearSkuError() => state = state.copyWith(skuError: null);
@@ -335,15 +409,30 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
       return;
     }
     try {
-      final suggestions = await _ref.read(locationRepositoryProvider).getAddressSuggestions(value);
-      state = state.copyWith(addressSuggestions: suggestions, showSuggestions: suggestions.isNotEmpty);
+      final suggestions = await _ref
+          .read(locationRepositoryProvider)
+          .getAddressSuggestions(value);
+      state = state.copyWith(
+        addressSuggestions: suggestions,
+        showSuggestions: suggestions.isNotEmpty,
+      );
     } catch (e, st) {
-      AppError.log(e, stackTrace: st, context: 'AddProductViewModel.onStreetChanged');
-      state = state.copyWith(addressSuggestions: [], showSuggestions: false, errorMessage: 'product.location_error'.tr());
+      AppError.log(
+        e,
+        stackTrace: st,
+        context: 'AddProductViewModel.onStreetChanged',
+      );
+      state = state.copyWith(
+        addressSuggestions: [],
+        showSuggestions: false,
+        errorMessage: 'product.location_error'.tr(),
+      );
     }
   }
 
-  void removeImage(int index) => state = state.copyWith(imageModels: List<ImageModel>.from(state.imageModels)..removeAt(index));
+  void removeImage(int index) => state = state.copyWith(
+    imageModels: List<ImageModel>.from(state.imageModels)..removeAt(index),
+  );
   void removeVariantOption(int index) {
     final options = List<VariantOption>.from(state.variantOptions);
     options.removeAt(index);
@@ -351,7 +440,8 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     _regenerateVariants();
   }
 
-  void removeVideo() => state = state.copyWith(videoFile: null, videoDurationSeconds: null);
+  void removeVideo() =>
+      state = state.copyWith(videoFile: null, videoDurationSeconds: null);
 
   /// F-58: Reset form state when re-entering the screen after a previous success.
   /// Call from screen's initState if state.isSuccess == true.
@@ -378,27 +468,39 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
   }
 
   void setActiveStep(int step) => state = state.copyWith(activeStep: step);
-  void setAllowBackorder(bool value) => state = state.copyWith(allowBackorder: value);
+  void setAllowBackorder(bool value) =>
+      state = state.copyWith(allowBackorder: value);
 
-  void setBookSourceUrl(String? url) => state = state.copyWith(bookSourceUrl: url);
+  void setBookSourceUrl(String? url) =>
+      state = state.copyWith(bookSourceUrl: url);
 
-  void setCategoryId(String? id) => state = state.copyWith(selectedCategoryId: id, selectedSubcategory: null);
-  void setCondition(String? condition) => state = state.copyWith(condition: condition);
+  void setCategoryId(String? id) =>
+      state = state.copyWith(selectedCategoryId: id, selectedSubcategory: null);
+  void setCondition(String? condition) =>
+      state = state.copyWith(condition: condition);
 
   void setDeviceLimit(int? limit) => state = state.copyWith(deviceLimit: limit);
 
-  void setDigitalType(String? type) => state = state.copyWith(digitalType: type);
+  void setDigitalType(String? type) =>
+      state = state.copyWith(digitalType: type);
 
-  void setDiscountTierError(bool value) => state = state.copyWith(discountTierError: value);
+  void setDiscountTierError(bool value) =>
+      state = state.copyWith(discountTierError: value);
 
-  void setExpressEnabled(bool value) => state = state.copyWith(expressEnabled: value, isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly);
+  void setExpressEnabled(bool value) => state = state.copyWith(
+    expressEnabled: value,
+    isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly,
+  );
 
-  void setHasAttemptedSubmit(bool value) => state = state.copyWith(hasAttemptedSubmit: value);
+  void setHasAttemptedSubmit(bool value) =>
+      state = state.copyWith(hasAttemptedSubmit: value);
 
   void setHasTracking(bool value) => state = state.copyWith(hasTracking: value);
-  void setInventoryManaged(bool value) => state = state.copyWith(inventoryManaged: value);
+  void setInventoryManaged(bool value) =>
+      state = state.copyWith(inventoryManaged: value);
 
-  void setLinuxDownloadUrl(String? url) => state = state.copyWith(linuxDownloadUrl: url);
+  void setLinuxDownloadUrl(String? url) =>
+      state = state.copyWith(linuxDownloadUrl: url);
 
   void setLocalDeliveryOnly(bool value) => state = state.copyWith(
     isLocalDeliveryOnly: value,
@@ -407,25 +509,44 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     sameDayEnabled: value ? false : state.sameDayEnabled,
   );
 
-  void setLowStockAlertEnabled(bool value) => state = state.copyWith(lowStockAlertEnabled: value);
+  void setLowStockAlertEnabled(bool value) =>
+      state = state.copyWith(lowStockAlertEnabled: value);
 
-  void setMacosDownloadUrl(String? url) => state = state.copyWith(macosDownloadUrl: url);
+  void setMacosDownloadUrl(String? url) =>
+      state = state.copyWith(macosDownloadUrl: url);
 
-  void setMinimumOrderQuantity(int value) => state = state.copyWith(minimumOrderQuantity: value);
+  void setMinimumOrderQuantity(int value) =>
+      state = state.copyWith(minimumOrderQuantity: value);
 
-  void setProvince(String province) => state = state.copyWith(selectedProvince: province);
-  void setSameDayEnabled(bool value) => state = state.copyWith(sameDayEnabled: value, isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly);
-  void setSellerSku(String? sku) => state = state.copyWith(sellerSku: sku?.trim().isEmpty == true ? null : sku?.trim());
-  void setStandardEnabled(bool value) => state = state.copyWith(standardEnabled: value, isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly);
-  void setSubcategory(String? sub) => state = state.copyWith(selectedSubcategory: sub);
-  void setSupplierCurrency(String currency) => state = state.copyWith(selectedSupplierCurrency: currency);
+  void setProvince(String province) =>
+      state = state.copyWith(selectedProvince: province);
+  void setSameDayEnabled(bool value) => state = state.copyWith(
+    sameDayEnabled: value,
+    isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly,
+  );
+  void setSellerSku(String? sku) => state = state.copyWith(
+    sellerSku: sku?.trim().isEmpty == true ? null : sku?.trim(),
+  );
+  void setStandardEnabled(bool value) => state = state.copyWith(
+    standardEnabled: value,
+    isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly,
+  );
+  void setSubcategory(String? sub) =>
+      state = state.copyWith(selectedSubcategory: sub);
+  void setSupplierCurrency(String currency) =>
+      state = state.copyWith(selectedSupplierCurrency: currency);
 
   // C-03: Setters for business logic state
-  void setSupplierType(String type) => state = state.copyWith(selectedSupplierType: type);
+  void setSupplierType(String type) =>
+      state = state.copyWith(selectedSupplierType: type);
 
-  void setTrackQuantity(bool value) => state = state.copyWith(trackQuantity: value);
+  void setTrackQuantity(bool value) =>
+      state = state.copyWith(trackQuantity: value);
 
-  void setVideo(XFile? file, int? durationSeconds) => state = state.copyWith(videoFile: file, videoDurationSeconds: durationSeconds);
+  void setVideo(XFile? file, int? durationSeconds) => state = state.copyWith(
+    videoFile: file,
+    videoDurationSeconds: durationSeconds,
+  );
 
   void setWarehouseStock(String warehouseId, int qty) {
     final stockMap = Map<String, int>.from(state.warehouseStockMap);
@@ -433,9 +554,11 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     state = state.copyWith(warehouseStockMap: stockMap);
   }
 
-  void setWindowsDownloadUrl(String? url) => state = state.copyWith(windowsDownloadUrl: url);
+  void setWindowsDownloadUrl(String? url) =>
+      state = state.copyWith(windowsDownloadUrl: url);
 
-  void toggleAgeRestricted(bool value) => state = state.copyWith(isAgeRestricted: value);
+  void toggleAgeRestricted(bool value) =>
+      state = state.copyWith(isAgeRestricted: value);
 
   /// Toggles digital product mode, resetting delivery and perishable fields accordingly.
   ///
@@ -447,7 +570,9 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     isPerishable: value ? false : state.isPerishable,
     isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly,
     // Save standard delivery state when enabling digital; restore when disabling
-    savedStandardEnabled: value ? state.standardEnabled : state.savedStandardEnabled,
+    savedStandardEnabled: value
+        ? state.standardEnabled
+        : state.savedStandardEnabled,
     standardEnabled: value ? false : state.savedStandardEnabled,
     expressEnabled: value ? false : state.expressEnabled,
     sameDayEnabled: value ? false : state.sameDayEnabled,
@@ -478,7 +603,11 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
       );
     } else {
       // Restore previously saved express/same-day state
-      state = state.copyWith(freeShipping: false, expressEnabled: state.savedExpressEnabled, sameDayEnabled: state.savedSameDayEnabled);
+      state = state.copyWith(
+        freeShipping: false,
+        expressEnabled: state.savedExpressEnabled,
+        sameDayEnabled: state.savedSameDayEnabled,
+      );
     }
   }
 
@@ -489,19 +618,33 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     if (value) {
       state = state.copyWith(hasVariants: true);
     } else {
-      state = state.copyWith(hasVariants: false, variantOptions: [], variants: []);
+      state = state.copyWith(
+        hasVariants: false,
+        variantOptions: [],
+        variants: [],
+      );
     }
   }
 
-  void togglePerishable(bool value) => state = state.copyWith(isPerishable: value);
+  void togglePerishable(bool value) {
+    if (value) {
+      state = state.copyWith(isPerishable: true, isLocalDeliveryOnly: true);
+    } else {
+      state = state.copyWith(isPerishable: false);
+    }
+  }
 
   void toggleWarehouseSelection(String warehouseId) {
     final current = List<String>.from(state.selectedWarehouseIds);
     if (current.contains(warehouseId)) {
       current.remove(warehouseId);
       // Remove stock entry too
-      final stockMap = Map<String, int>.from(state.warehouseStockMap)..remove(warehouseId);
-      state = state.copyWith(selectedWarehouseIds: current, warehouseStockMap: stockMap);
+      final stockMap = Map<String, int>.from(state.warehouseStockMap)
+        ..remove(warehouseId);
+      state = state.copyWith(
+        selectedWarehouseIds: current,
+        warehouseStockMap: stockMap,
+      );
     } else {
       current.add(warehouseId);
       state = state.copyWith(selectedWarehouseIds: current);
@@ -509,7 +652,8 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
   }
 
   /// Bug #1: Allow ProductAddImages widget to sync images back to ViewModel
-  void updateImages(List<ImageModel> images) => state = state.copyWith(imageModels: images);
+  void updateImages(List<ImageModel> images) =>
+      state = state.copyWith(imageModels: images);
 
   void updateVariantOption(int index, String name, List<String> values) {
     final options = List<VariantOption>.from(state.variantOptions);
@@ -538,7 +682,9 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
   }
 
   Future<List<Uint8List>> _compressImages(List<ImageModel> imageModels) async {
-    final results = await Future.wait(imageModels.map((m) => _validateAndCompressImage(m.bytes)));
+    final results = await Future.wait(
+      imageModels.map((m) => _validateAndCompressImage(m.bytes)),
+    );
     return results.whereType<Uint8List>().toList();
   }
 
@@ -565,7 +711,9 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     // Map existing variants by their optionValues for preservation
     final existingByKey = <String, ProductVariantEntry>{};
     for (final v in state.variants) {
-      final key = v.optionValues.entries.map((e) => '${e.key}=${e.value}').join('|');
+      final key = v.optionValues.entries
+          .map((e) => '${e.key}=${e.value}')
+          .join('|');
       existingByKey[key] = v;
     }
 

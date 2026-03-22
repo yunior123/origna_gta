@@ -151,7 +151,7 @@ async fn handle_stripe_webhook(
             Ok(Json(json!({
                 "status": "error",
                 "event_id": event.id,
-                "error": e.to_string()
+                "error": "Webhook processing failed"
             })))
         }
     }
@@ -173,6 +173,30 @@ fn verify_stripe_signature(body: &[u8], signature: &str, secret: &str) -> bool {
     let timestamp = parts.get("t").unwrap_or(&"");
     let provided_sig = parts.get("v1").unwrap_or(&"");
 
+    // Reject empty signatures
+    if timestamp.is_empty() || provided_sig.is_empty() {
+        return false;
+    }
+
+    // Replay protection: reject webhooks older than 300 seconds
+    if let Ok(ts) = timestamp.parse::<i64>() {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs() as i64;
+        if (now - ts).abs() > 300 {
+            warn!(
+                timestamp = ts,
+                now = now,
+                "Stripe webhook timestamp too old or too far in the future"
+            );
+            return false;
+        }
+    } else {
+        warn!("Stripe webhook has non-numeric timestamp");
+        return false;
+    }
+
     // Create signed content: "{timestamp}.{body}"
     let signed_content = format!("{}.{}", timestamp, String::from_utf8_lossy(body));
 
@@ -181,10 +205,13 @@ fn verify_stripe_signature(body: &[u8], signature: &str, secret: &str) -> bool {
         HmacSha256::new_from_slice(secret.as_bytes()).expect("HMAC can take key of any size");
     mac.update(signed_content.as_bytes());
 
-    let computed_sig = hex::encode(mac.finalize().into_bytes());
-
-    // Constant-time comparison
-    computed_sig == *provided_sig
+    // Constant-time comparison via hmac::Mac::verify_slice
+    // Decode the provided hex signature to bytes for verify_slice
+    let provided_bytes = match hex::decode(provided_sig) {
+        Ok(b) => b,
+        Err(_) => return false,
+    };
+    mac.verify_slice(&provided_bytes).is_ok()
 }
 
 // ---------------------------------------------------------------------------
@@ -1176,21 +1203,21 @@ mod tests {
                 collections::ORDERS,
                 json!({
                     "id": "upd001",
-                    "orderStatus": "PENDING_PAYMENT",
+                    "orderStatus": "pending",
                     "totalAmountCents": 3000,
                     "items": [{"productId": "prod_001", "quantity": 1}]
                 }),
             )
             .await
             .unwrap();
-        let result = update_order_status(&state, "orders:upd001", "CANCELLED").await;
+        let result = update_order_status(&state, "orders:upd001", "cancelled").await;
         assert!(result.is_ok());
     }
 
     #[tokio::test]
     async fn test_update_order_status_nonexistent() {
         let state = setup_state().await;
-        let result = update_order_status(&state, "orders:no_such_order", "CANCELLED").await;
+        let result = update_order_status(&state, "orders:no_such_order", "cancelled").await;
         assert!(result.is_ok());
     }
 
@@ -1208,7 +1235,7 @@ mod tests {
                 json!({
                     "id": "prod_001",
                     "stockQuantity": 10,
-                    "title": "Test Product"
+                    "name": "Test Product"
                 }),
             )
             .await
@@ -1284,7 +1311,7 @@ mod tests {
                 json!({
                     "id": "prod_002",
                     "stockQuantity": 10,
-                    "title": "Test Product 2"
+                    "name": "Test Product 2"
                 }),
             )
             .await

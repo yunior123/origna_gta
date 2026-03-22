@@ -233,8 +233,13 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
   void toggleLocalDelivery(bool value) =>
       state = state.copyWith(isLocalDeliveryOnly: value);
 
-  void togglePerishable(bool value) =>
-      state = state.copyWith(isPerishable: value);
+  void togglePerishable(bool value) {
+    if (value) {
+      state = state.copyWith(isPerishable: true, isLocalDeliveryOnly: true);
+    } else {
+      state = state.copyWith(isPerishable: false);
+    }
+  }
 
   void toggleSoldOut(bool value) => state = state.copyWith(isSoldOut: value);
 

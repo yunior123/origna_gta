@@ -56,9 +56,12 @@ abstract final class AdminActionValues {
 /// Flutter and the backend (request params + response keys).
 abstract final class ApiKeys {
   // === REQUEST PARAMS ===
-  static const turnstileToken = 'turnstileToken'; // Cloudflare Turnstile challenge token (web-only)
-  static const eulaAccepted = 'eulaAccepted'; // Digital product EULA acceptance flag
-  static const ageVerificationAccepted = 'ageVerificationAccepted'; // Buyer age-gate confirmation for age-restricted items
+  static const turnstileToken =
+      'turnstileToken'; // Cloudflare Turnstile challenge token (web-only)
+  static const eulaAccepted =
+      'eulaAccepted'; // Digital product EULA acceptance flag
+  static const ageVerificationAccepted =
+      'ageVerificationAccepted'; // Buyer age-gate confirmation for age-restricted items
   static const add = 'add';
   static const remove = 'remove';
   static const reason = 'reason';
@@ -146,29 +149,43 @@ abstract final class ApiKeys {
 /// Business rule constants
 abstract final class BusinessRules {
   static const platformFeePercent = 2.5;
-  static const autoConfirmDays = 5; // Must be < authorizationExpiryDays (2-day safety margin)
-  static const authorizationExpiryDays = 6; // 6-day cutoff gives 24h safety margin before Stripe auto-voids at day 7
-  static const returnWindowDays = 7; // No returns/refunds after 7 days post-delivery
+  static const autoConfirmDays =
+      5; // Must be < authorizationExpiryDays (2-day safety margin)
+  static const authorizationExpiryDays =
+      6; // 6-day cutoff gives 24h safety margin before Stripe auto-voids at day 7
+  static const returnWindowDays =
+      30; // No returns/refunds after 30 days post-delivery
   static const maxCaptureAttempts = 3;
   static const defaultCurrency = 'cad';
   static const allowedShippingCountries = {'Canada', 'CA'};
-  static const ordersPageSize = 50; // Initial load limit for order lists — cursor pagination planned
-  static const favoritesPageSize = 50; // Max favorites streamed per query — pagination planned
-  static const maxShippingCostCad = 500; // $500 CAD absolute maximum shipping cost
-  static const sellerDisputeRateThreshold = 0.05; // 5% dispute rate triggers health alert
+  static const ordersPageSize =
+      50; // Initial load limit for order lists — cursor pagination planned
+  static const favoritesPageSize =
+      50; // Max favorites streamed per query — pagination planned
+  static const maxShippingCostCad =
+      500; // $500 CAD absolute maximum shipping cost
+  static const sellerDisputeRateThreshold =
+      0.05; // 5% dispute rate triggers health alert
   static const sellerRefundRateThreshold = 0.10; // 10% refund rate threshold
-  static const maxMessagesPerThread = 500; // Hard cap per thread to prevent unbounded storage
-  static const minMessageLength = 10; // Must match Python ValidationLimits.MIN_MESSAGE_LENGTH
-  static const maxMessageLength = 1000; // Must match Python ValidationLimits.MAX_MESSAGE_LENGTH
-  static const maxProductImages = 5; // Maximum number of images per product listing
+  static const maxMessagesPerThread =
+      500; // Hard cap per thread to prevent unbounded storage
+  static const minMessageLength =
+      10; // Must match Python ValidationLimits.MIN_MESSAGE_LENGTH
+  static const maxMessageLength =
+      1000; // Must match Python ValidationLimits.MAX_MESSAGE_LENGTH
+  static const maxProductImages =
+      5; // Maximum number of images per product listing
   static const maxVideoBytes = 100 * 1024 * 1024; // 100 MB max video size
   static const maxVideoDurationSeconds = 60; // 60s max video duration
   static const trendingTopN = 20; // Number of products to mark as trending
-  static const trendingWindowHours = 24; // Rolling window for trending calculation
+  static const trendingWindowHours =
+      24; // Rolling window for trending calculation
   static const trendingPurchaseWeight = 3; // Weight for purchase events
   static const trendingFavoriteWeight = 2; // Weight for favorite events
-  static const freeShippingThresholdCents = 7500; // $75 CAD — subtotals at or above qualify for free standard shipping
-  static const localDeliveryRadiusKm = 50.0; // 50km radius for local delivery Eligibility (BUG-L1)
+  static const freeShippingThresholdCents =
+      7500; // $75 CAD — subtotals at or above qualify for free standard shipping
+  static const localDeliveryRadiusKm =
+      50.0; // 50km radius for local delivery Eligibility (BUG-L1)
   // BOOT-L1: session timeout extracted to constant
   static const sessionTimeoutMinutes = 15;
   // FAV-M2: seller product list page size — cursor pagination planned for >200 sellers
@@ -176,11 +193,16 @@ abstract final class BusinessRules {
   // Sellers can be from any country — no country restriction on seller addresses
 
   // F-103: Coupon & Margin safety
-  static const minCheckoutTotalCents = 100; // $1.00 minimum to cover Stripe's $0.30 fixed fee
-  static const maxCouponDiscountRatio = 0.95; // Max 95% off via automated coupons
-  static const maxAdminCouponDiscountPercent = 90; // Admin-created coupons capped at 90%
-  static const premiumSubscriptionPriceCad = 7.86; // Monthly premium membership fee in CAD
-  static const premiumSubscriptionPriceCents = 786; // Monthly premium membership fee in cents
+  static const minCheckoutTotalCents =
+      100; // $1.00 minimum to cover Stripe's $0.30 fixed fee
+  static const maxCouponDiscountRatio =
+      0.95; // Max 95% off via automated coupons
+  static const maxAdminCouponDiscountPercent =
+      90; // Admin-created coupons capped at 90%
+  static const premiumSubscriptionPriceCad =
+      7.86; // Monthly premium membership fee in CAD
+  static const premiumSubscriptionPriceCents =
+      786; // Monthly premium membership fee in cents
 
   /// Tax rates by province
   static const taxRates = {
@@ -219,7 +241,16 @@ abstract final class CarrierValues {
   static const maritime = 'maritime';
   static const other = 'other';
 
-  static const all = {ups, fedex, canadaPost, purolator, dhl, usps, maritime, other};
+  static const all = {
+    ups,
+    fedex,
+    canadaPost,
+    purolator,
+    dhl,
+    usps,
+    maritime,
+    other,
+  };
 }
 
 abstract final class CartVerificationReasonValues {
@@ -336,9 +367,12 @@ abstract final class CloudFunctionEndpoints {
   static const reactivateSubscription = 'reactivate_subscription';
 
   // === USER PROFILE ENDPOINTS ===
-  static const updateNotificationPreferences = 'update_notification_preferences';
-  static const cleanupFcmToken = 'cleanup_fcm_token'; // T-3: FCM token cleanup on logout
-  static const updateUserProfile = 'update_user_profile'; // F-006: centralized endpoint name
+  static const updateNotificationPreferences =
+      'update_notification_preferences';
+  static const cleanupFcmToken =
+      'cleanup_fcm_token'; // T-3: FCM token cleanup on logout
+  static const updateUserProfile =
+      'update_user_profile'; // F-006: centralized endpoint name
   // === ADDRESS MANAGEMENT ENDPOINTS (F-006) ===
   static const addBuyerAddress = 'add_buyer_address';
   static const deleteBuyerAddress = 'delete_buyer_address';
@@ -355,7 +389,8 @@ abstract final class CloudFunctionEndpoints {
   static const deleteMessage = 'delete_message'; // CHAT-H2/H3
 
   // === DIGITAL DOWNLOAD ENDPOINTS ===
-  static const generateSoftwareDownloadSession = 'generate_software_download_session';
+  static const generateSoftwareDownloadSession =
+      'generate_software_download_session';
   static const generateBookDownloadSession = 'generate_book_download_session';
 
   // === COUPON ENDPOINTS (N-07) ===
@@ -377,30 +412,39 @@ abstract final class Collections {
   static const config = 'config';
   static const adminLogs = 'admin_logs';
   static const productRatings = 'product_ratings';
-  static const sellerRatings = 'seller_ratings'; // F-315: Separate seller performance
-  static const reviewVotes = 'review_votes'; // subcollection of product_ratings/{ratingId}
+  static const sellerRatings =
+      'seller_ratings'; // F-315: Separate seller performance
+  static const reviewVotes =
+      'review_votes'; // subcollection of product_ratings/{ratingId}
   static const cronLocks = '_cron_locks';
-  static const cronFailures = '_cron_failures'; // M-14: Alerting on unhandled cron exceptions
+  static const cronFailures =
+      '_cron_failures'; // M-14: Alerting on unhandled cron exceptions
 
   // Subcollections
   static const warehouses = 'warehouses'; // users/{sellerId}/warehouses
   static const cart = 'cart'; // users/{userId}/cart
   static const favorites = 'favorites'; // users/{userId}/favorites
   static const notifications = 'notifications'; // users/{uid}/notifications
-  static const fcmTokens = 'fcm_tokens'; // users/{uid}/fcm_tokens — multi-device push tokens
-  static const productQuestions = 'product_questions'; // top-level: product_questions/{questionId}
+  static const fcmTokens =
+      'fcm_tokens'; // users/{uid}/fcm_tokens — multi-device push tokens
+  static const productQuestions =
+      'product_questions'; // top-level: product_questions/{questionId}
   static const addresses = 'addresses'; // users/{userId}/addresses
   static const stockNotifications = 'stock_notifications'; // Tasks 07
   static const sellerMetrics = 'seller_metrics'; // Tasks 11
   static const coupons = 'coupons'; // N-07: coupon/promo code system
-  static const inventoryLevels = 'inventoryLevels'; // products/{productId}/inventoryLevels/{warehouseId}
+  static const inventoryLevels =
+      'inventoryLevels'; // products/{productId}/inventoryLevels/{warehouseId}
   static const orderEvents = 'events'; // orders/{orderId}/events/{eventId}
-  static const couponUses = 'coupon_uses'; // coupons/{couponId}/coupon_uses/{userId}
+  static const couponUses =
+      'coupon_uses'; // coupons/{couponId}/coupon_uses/{userId}
 
   // Digital Products Collections
   static const licenses = 'licenses'; // users/{userId}/licenses
-  static const bookAccessTokens = 'book_access_tokens'; // users/{userId}/book_access_tokens
-  static const softwareAccessTokens = 'software_access_tokens'; // users/{userId}/software_access_tokens
+  static const bookAccessTokens =
+      'book_access_tokens'; // users/{userId}/book_access_tokens
+  static const softwareAccessTokens =
+      'software_access_tokens'; // users/{userId}/software_access_tokens
 
   // Premium & Chat collections
   static const subscriptions = 'subscriptions'; // subscriptions/{userId}
@@ -408,23 +452,29 @@ abstract final class Collections {
   static const chatMessages = 'messages'; // chats/{chatId}/messages/{msgId}
 
   // Security (backend-only)
-  static const userSecurity = 'user_security'; // Backend-only MFA secrets — allow read: if false
+  static const userSecurity =
+      'user_security'; // Backend-only MFA secrets — allow read: if false
   static const sellerProfiles = 'seller_profiles'; // Seller-only profile data
-  static const sellerSkus = 'seller_skus'; // Collision docs for atomic SKU uniqueness
+  static const sellerSkus =
+      'seller_skus'; // Collision docs for atomic SKU uniqueness
 
   // Email infrastructure (backend-only — never accessed from client)
-  static const mailLogs = '_mail_logs'; // Transactional email delivery audit log
-  static const pendingRedemptions = 'pending_redemptions'; // Pending coupon/gift card redemption records
+  static const mailLogs =
+      '_mail_logs'; // Transactional email delivery audit log
+  static const pendingRedemptions =
+      'pending_redemptions'; // Pending coupon/gift card redemption records
 
   // Return tracking
   static const returnRequests = 'return_requests';
 
   // Temporary pre-verification storage (cleared after user doc creation)
   static const pendingProfiles = 'pending_profiles'; // pending_profiles/{uid}
-  static const messageReports = 'message_reports'; // F-121: Flagged messages for review
+  static const messageReports =
+      'message_reports'; // F-121: Flagged messages for review
 
   // Financial audit (backend-only)
-  static const platformDebt = 'platform_debt'; // A-05/F-139: debt records when seller reversal fails due to zero balance
+  static const platformDebt =
+      'platform_debt'; // A-05/F-139: debt records when seller reversal fails due to zero balance
 }
 
 /// Confirmation values for sensitive operations requiring explicit confirmation
@@ -445,7 +495,17 @@ abstract final class ConsentMethodValues {
   static const userPreference = 'user_preference';
   static const unsubscribe = 'unsubscribe';
 
-  static const all = {signup, signupForm, googleOauth, appleOauth, checkbox, doubleOptIn, implied, userPreference, unsubscribe};
+  static const all = {
+    signup,
+    signupForm,
+    googleOauth,
+    appleOauth,
+    checkbox,
+    doubleOptIn,
+    implied,
+    userPreference,
+    unsubscribe,
+  };
 }
 
 /// Valid values for country fields
@@ -537,13 +597,15 @@ abstract final class Documents {
 abstract final class EmailConfig {
   static const supportEmail = 'support@orignagta.ca';
   static const senderName = 'Origna GTA';
-  static const copyrightText = '\u00a9 2026 Origna Ventures Inc. All rights reserved.';
+  static const copyrightText =
+      '\u00a9 2026 Origna Ventures Inc. All rights reserved.';
   static const appTagline = "Canada's Modern Marketplace";
   static const prodUrl = 'https://orignagta.ca';
 
   // === CASL COMPLIANCE ===
   /// Physical mailing address — REQUIRED by CASL in every commercial email
-  static const physicalAddress = 'Origna Ventures Inc., 136 Shaver Ave N, Toronto, ON M9B 4N8, Canada';
+  static const physicalAddress =
+      'Origna Ventures Inc., 136 Shaver Ave N, Toronto, ON M9B 4N8, Canada';
 
   /// GST/HST Registration Number — REQUIRED on all receipts (Excise Tax Act)
   static const gstHstNumber = '708286364RC0001';
@@ -593,10 +655,13 @@ abstract final class ExternalUrls {
 abstract final class Fields {
   // === COMMON TIMESTAMPS (used across multiple collections) ===
   static const createdAt = 'createdAt';
-  static const dateCreated = 'dateCreated'; // legacy alias — products + cart now use createdAt
+  static const dateCreated =
+      'dateCreated'; // legacy alias — products + cart now use createdAt
   static const updatedAt = 'updatedAt';
-  static const version = 'version'; // Optimistic concurrency version, starts at 1
-  static const schemaVersion = 'schemaVersion'; // Schema layout version for migration tracking
+  static const version =
+      'version'; // Optimistic concurrency version, starts at 1
+  static const schemaVersion =
+      'schemaVersion'; // Schema layout version for migration tracking
   static const savedAt = 'savedAt'; // N-05: Save for Later timestamp
   static const String deletedAt = 'deletedAt';
   static const String deletedBy = 'deletedBy';
@@ -613,7 +678,8 @@ abstract final class Fields {
   static const customerId = 'customerId';
   static const fcmToken = 'fcmToken';
   static const fcmTokenUpdatedAt = 'fcmTokenUpdatedAt';
-  static const fcmTokenKey = 'token'; // Field name inside fcm_tokens subcollection docs
+  static const fcmTokenKey =
+      'token'; // Field name inside fcm_tokens subcollection docs
   static const lastCheckoutSession = 'lastCheckoutSession';
   static const lastOrderId = 'lastOrderId';
   static const lastCheckoutTimestamp = 'lastCheckoutTimestamp';
@@ -633,7 +699,8 @@ abstract final class Fields {
   static const unsuspendedBy = 'unsuspendedBy';
   static const suspendedBy = 'suspendedBy';
   static const suspensionReason = 'suspensionReason';
-  static const commissionRateBps = 'commissionRateBps'; // 250 = 2.50% (basis points)
+  static const commissionRateBps =
+      'commissionRateBps'; // 250 = 2.50% (basis points)
   static const verified = 'verified';
   static const verificationStatus = 'verificationStatus';
   static const platform = 'platform';
@@ -642,11 +709,13 @@ abstract final class Fields {
   static const avgRating = 'avgRating';
   static const totalReviews = 'totalReviews';
   static const itemRating = 'rating'; // F-315: Product quality rating
-  static const itemRatingCount = 'ratingCount'; // F-315: Number of product reviews
+  static const itemRatingCount =
+      'ratingCount'; // F-315: Number of product reviews
   static const totalSales = 'totalSales';
   static const bankAccountLast4 = 'bankAccountLast4';
   static const acceptsReturns = 'acceptsReturns';
-  static const returnWindowDaysField = 'returnWindowDays'; // seller-profile field name
+  static const returnWindowDaysField =
+      'returnWindowDays'; // seller-profile field name
 
   // === USER MFA FIELDS (admin only) ===
   static const mfaEnabled = 'mfaEnabled';
@@ -671,9 +740,11 @@ abstract final class Fields {
 
   // === PRODUCT FIELDS ===
   static const productId = 'productId';
-  static const madeInCountry = 'madeInCountry'; // F-277: For USMCA/Origin differentiation
+  static const madeInCountry =
+      'madeInCountry'; // F-277: For USMCA/Origin differentiation
   static const price = 'price';
-  static const priceCents = 'priceCents'; // Integer cents derived from price — use for arithmetic
+  static const priceCents =
+      'priceCents'; // Integer cents derived from price — use for arithmetic
 
   /// Original/crossed-out price for sale display (null = no active sale)
   static const compareAtPrice = 'compareAtPrice';
@@ -685,11 +756,14 @@ abstract final class Fields {
   static const sellerId = 'sellerId';
   static const sellerAddress = 'sellerAddress';
   static const sellerSku = 'sellerSku';
-  static const sellerName = 'sellerName'; // Seller display name snapshotted at purchase time
+  static const sellerName =
+      'sellerName'; // Seller display name snapshotted at purchase time
   static const warehouseIds = 'warehouseIds';
   static const warehouseStock = 'warehouseStock';
-  static const warehouseStockMap = 'warehouseStockMap'; // per-warehouse stock allocation: {warehouseId: qty}
-  static const fulfillmentWarehouseId = 'fulfillmentWarehouseId'; // TASK 02: warehouse used to fulfill order item
+  static const warehouseStockMap =
+      'warehouseStockMap'; // per-warehouse stock allocation: {warehouseId: qty}
+  static const fulfillmentWarehouseId =
+      'fulfillmentWarehouseId'; // TASK 02: warehouse used to fulfill order item
   static const shipFromCity = 'shipFromCity';
   static const shipFromProvince = 'shipFromProvince';
   static const shipFromCountry = 'shipFromCountry';
@@ -700,12 +774,14 @@ abstract final class Fields {
   static const rating = 'rating';
   static const ratingCount = 'ratingCount';
   static const sellerRating = 'sellerRating'; // F-315: Average seller rating
-  static const sellerRatingCount = 'sellerRatingCount'; // F-315: Number of seller ratings
+  static const sellerRatingCount =
+      'sellerRatingCount'; // F-315: Number of seller ratings
   static const keywords = 'keywords';
   static const approvalRejectionReason = 'approvalRejectionReason';
   static const lifecycleStatus = 'lifecycleStatus';
   static const isDigital = 'isDigital';
-  static const isAgeRestricted = 'isAgeRestricted'; // Product requires buyer age 18+ confirmation
+  static const isAgeRestricted =
+      'isAgeRestricted'; // Product requires buyer age 18+ confirmation
   // Digital product extended fields
   static const digitalType = 'digitalType';
   static const slug = 'slug';
@@ -719,7 +795,8 @@ abstract final class Fields {
   static const deviceId = 'deviceId';
   static const lastVerifiedAt = 'lastVerifiedAt';
   static const accessToken = 'accessToken';
-  static const productName = 'productName'; // stored in license doc; denormalized from product
+  static const productName =
+      'productName'; // stored in license doc; denormalized from product
   static const weightKg = 'weightKg';
   static const weightUnit = 'weightUnit'; // F-280: 'kg' or 'lb'
   static const lengthCm = 'lengthCm';
@@ -742,8 +819,10 @@ abstract final class Fields {
   static const supplierType = 'supplierType';
   static const isRelatedParty = 'isRelatedParty'; // F-312: Gaming prevention
   static const supplier = 'supplier';
-  static const supplierSku = 'supplierSku'; // Supplier's product SKU (internal use, not exposed to buyers)
-  static const supplierUrl = 'supplierUrl'; // Direct URL to supplier product (internal use, not exposed to buyers)
+  static const supplierSku =
+      'supplierSku'; // Supplier's product SKU (internal use, not exposed to buyers)
+  static const supplierUrl =
+      'supplierUrl'; // Direct URL to supplier product (internal use, not exposed to buyers)
   static const inventory = 'inventory';
   // Inventory sub-fields (keys inside the `inventory` map)
   static const allowBackorder = 'allowBackorder';
@@ -776,7 +855,8 @@ abstract final class Fields {
   static const taxAmountCents = 'taxAmountCents';
   static const shippingCostCents = 'shippingCostCents';
   static const itemShippingCents = 'itemShippingCents';
-  static const sellerShippingCosts = 'sellerShippingCosts'; // Map<sellerId, cents> for multi-seller orders
+  static const sellerShippingCosts =
+      'sellerShippingCosts'; // Map<sellerId, cents> for multi-seller orders
   static const shippingCostDeltaCents = 'shippingCostDeltaCents';
   static const totalAmountCents = 'totalAmountCents';
   static const currency = 'currency';
@@ -796,7 +876,8 @@ abstract final class Fields {
   static const autoCaptured = 'autoCaptured';
   static const sellerPayouts = 'sellerPayouts';
   static const platformFeeTotalCents = 'platformFeeTotalCents';
-  static const platformFeeRatio = 'platformFeeRatio'; // Stored at checkout for capture-time fee rate
+  static const platformFeeRatio =
+      'platformFeeRatio'; // Stored at checkout for capture-time fee rate
   static const payoutStatus = 'payoutStatus';
   static const ratings = 'ratings';
   static const orderRefundCents = 'refundAmountCents';
@@ -863,8 +944,10 @@ abstract final class Fields {
   static const marketingOptIn = 'marketingOptIn';
   static const consentTimestamp = 'consentTimestamp';
   static const consentMethod = 'consentMethod';
-  static const englishOnlyConsent = 'englishOnlyConsent'; // F-279: Bill 96 compliance
-  static const dateOfBirth = 'dateOfBirth'; // F-282: age verification (ISO YYYY-MM-DD)
+  static const englishOnlyConsent =
+      'englishOnlyConsent'; // F-279: Bill 96 compliance
+  static const dateOfBirth =
+      'dateOfBirth'; // F-282: age verification (ISO YYYY-MM-DD)
   static const privacyAcceptedAt = 'privacyAcceptedAt';
   static const termsAcceptedAt = 'termsAcceptedAt';
   static const privacyPolicyVersion = 'privacyPolicyVersion';
@@ -893,7 +976,8 @@ abstract final class Fields {
   static const currentPeriodStart = 'currentPeriodStart';
   static const currentPeriodEnd = 'currentPeriodEnd';
   static const cancelAtPeriodEnd = 'cancelAtPeriodEnd';
-  static const cancelScheduledAt = 'cancelScheduledAt'; // datetime — when cancellation was requested
+  static const cancelScheduledAt =
+      'cancelScheduledAt'; // datetime — when cancellation was requested
 
   // === CHAT FIELDS ===
   static const chatId = 'chatId';
@@ -907,7 +991,8 @@ abstract final class Fields {
   static const lastMessageText = 'lastMessageText'; // full text
   static const lastMessageAt = 'lastMessageAt';
   static const senderId = 'senderId';
-  static const senderDisplayName = 'senderDisplayName'; // denormalized at send time
+  static const senderDisplayName =
+      'senderDisplayName'; // denormalized at send time
   static const messageText = 'text';
   static const isRead = 'read';
   static const buyerUnreadCount = 'buyerUnreadCount';
@@ -923,8 +1008,10 @@ abstract final class Fields {
   // === CART / ORDER ITEM NOTE ===
   static const buyerNote = 'buyerNote';
   static const cartItemId = 'cartItemId';
-  static const shippingDiffCents = 'shippingDiffCents'; // recorded when PI is already captured (F-002)
-  static const taxDiffCents = 'taxDiffCents'; // recorded when PI is already captured (F-002)
+  static const shippingDiffCents =
+      'shippingDiffCents'; // recorded when PI is already captured (F-002)
+  static const taxDiffCents =
+      'taxDiffCents'; // recorded when PI is already captured (F-002)
   static const priceSnapshot = 'priceSnapshot';
 
   // === FIELDS missing from Dart (present in Python) ===
@@ -934,7 +1021,8 @@ abstract final class Fields {
   static const quantity = 'quantity';
   static const trackingNumber = 'trackingNumber';
   static const carrier = 'carrier';
-  static const carrierNote = 'carrierNote'; // Free-text override when carrier='other'
+  static const carrierNote =
+      'carrierNote'; // Free-text override when carrier='other'
   static const shippedAt = 'shippedAt';
   static const deliveredAt = 'deliveredAt';
   static const refundReason = 'refundReason';
@@ -1169,15 +1257,19 @@ abstract final class Fields {
   // === N-07: Coupon/promo code system ===
   static const couponCode = 'couponCode';
   static const couponPrereserved = 'couponPrereserved';
-  static const couponSellerId = 'couponSellerId'; // seller_id of scoped coupon (null = platform-wide)
+  static const couponSellerId =
+      'couponSellerId'; // seller_id of scoped coupon (null = platform-wide)
   static const discountAmountCents = 'discountAmountCents';
   static const minOrderCents = 'minOrderCents';
   static const maxUsesTotal = 'maxUsesTotal';
   static const maxUsesPerUser = 'maxUsesPerUser';
   static const usedCount = 'usedCount';
-  static const useCount = 'useCount'; // coupon_uses subcollection: per-user use count
-  static const usedAt = 'usedAt'; // coupon_uses subcollection: first use timestamp
-  static const lastUsedAt = 'lastUsedAt'; // coupon_uses subcollection: most recent use timestamp
+  static const useCount =
+      'useCount'; // coupon_uses subcollection: per-user use count
+  static const usedAt =
+      'usedAt'; // coupon_uses subcollection: first use timestamp
+  static const lastUsedAt =
+      'lastUsedAt'; // coupon_uses subcollection: most recent use timestamp
 
   // === N-09: Product variants ===
   static const hasVariants = 'hasVariants';
@@ -1191,7 +1283,8 @@ abstract final class Fields {
 
   // === N-11: Subcategories ===
   static const subcategory = 'subcategory';
-  static const condition = 'condition'; // Product condition: new|like_new|good|fair|for_parts
+  static const condition =
+      'condition'; // Product condition: new|like_new|good|fair|for_parts
   static const isSmallSupplier = 'isSmallSupplier';
 }
 
@@ -1253,7 +1346,8 @@ abstract final class NotificationTypes {
   static const backInStock = 'back_in_stock';
   static const refundIssued = 'refund_issued';
   static const messageReport = 'message_report'; // F-121: Flagged chat message
-  static const perishableOrderUrgent = 'perishable_order_urgent'; // GAP-13: Urgent perishable order alert to seller
+  static const perishableOrderUrgent =
+      'perishable_order_urgent'; // GAP-13: Urgent perishable order alert to seller
 
   static const all = {
     orderStatus,
@@ -1318,7 +1412,20 @@ abstract final class OrderStatusValues {
   static const expired = 'expired';
   static const disputed = 'disputed';
 
-  static const all = {pending, confirmed, processing, shipped, inTransit, delivered, cancelled, failed, expired, disputed, refunded, partiallyRefunded};
+  static const all = {
+    pending,
+    confirmed,
+    processing,
+    shipped,
+    inTransit,
+    delivered,
+    cancelled,
+    failed,
+    expired,
+    disputed,
+    refunded,
+    partiallyRefunded,
+  };
 
   static const refunded = 'refunded';
   static const partiallyRefunded = 'partially_refunded';
@@ -1331,11 +1438,14 @@ abstract final class OrderStatusValues {
     processing: [shipped, cancelled],
     shipped: [inTransit, delivered],
     inTransit: [delivered, cancelled],
-    delivered: [disputed], // Must dispute first; refund is resolved via disputed state
+    delivered: [
+      disputed,
+    ], // Must dispute first; refund is resolved via disputed state
     cancelled: [], // Terminal
     failed: [pending], // Retry
     expired: [pending], // Retry
-    disputed: [], // Terminal via Stripe webhook only — resolved by charge.refunded or dispute.closed events
+    disputed:
+        [], // Terminal via Stripe webhook only — resolved by charge.refunded or dispute.closed events
     refunded: [], // Terminal
     partiallyRefunded: [], // Terminal
   };
@@ -1404,7 +1514,16 @@ abstract final class PayoutStatusValues {
   static const partiallyReversed = 'partially_reversed';
   static const reversedDispute = 'reversed_dispute';
 
-  static const all = {pending, processing, completed, partial, failed, reversed, partiallyReversed, reversedDispute};
+  static const all = {
+    pending,
+    processing,
+    completed,
+    partial,
+    failed,
+    reversed,
+    partiallyReversed,
+    reversedDispute,
+  };
 }
 
 // =============================================================================
@@ -1615,9 +1734,11 @@ abstract final class SecurityAlertTypes {
   static const taxExemptionPendingReview = 'tax_exemption_pending_review';
   static const suspiciousTaxExemption = 'suspicious_tax_exemption';
   static const authDeletionFailed = 'auth_deletion_failed';
-  static const tokenRevocationFailed = 'token_revocation_failed'; // Suspension token revoke failed
+  static const tokenRevocationFailed =
+      'token_revocation_failed'; // Suspension token revoke failed
   static const sellerMetricsBreach = 'seller_metrics_breach'; // TASK 11
-  static const stripeTaxFallbackGst = 'stripe_tax_fallback_gst'; // Stripe Tax down for GST-exempt buyer
+  static const stripeTaxFallbackGst =
+      'stripe_tax_fallback_gst'; // Stripe Tax down for GST-exempt buyer
 }
 
 /// Security alert severity levels
@@ -1718,13 +1839,21 @@ abstract final class StripeConstants {
   static const created = 'created';
 
   // Stripe Tax types to internal tax labels
-  static const taxTypeMap = {'gst_hst': 'GST', 'gst': 'GST', 'hst': 'HST', 'pst': 'PST', 'qst': 'QST', 'rst': 'PST'};
+  static const taxTypeMap = {
+    'gst_hst': 'GST',
+    'gst': 'GST',
+    'hst': 'HST',
+    'pst': 'PST',
+    'qst': 'QST',
+    'rst': 'PST',
+  };
 }
 
 /// Stripe webhook event types
 abstract final class StripeEventTypes {
   static const checkoutCompleted = 'checkout.session.completed';
-  static const asyncPaymentSucceeded = 'checkout.session.async_payment_succeeded';
+  static const asyncPaymentSucceeded =
+      'checkout.session.async_payment_succeeded';
   static const asyncPaymentFailed = 'checkout.session.async_payment_failed';
   static const sessionExpired = 'checkout.session.expired';
   static const paymentIntentSucceeded = 'payment_intent.succeeded';
@@ -1751,27 +1880,173 @@ abstract final class StripeEventTypes {
 abstract final class SubcategoryConstants {
   /// Lookup subcategories by category ID (matches productCategories list in utils.dart).
   static const Map<int, List<String>> _byId = {
-    1: ['Smartphones', 'Laptops', 'Tablets', 'Cameras', 'Audio', 'Gaming', 'Smart Home', 'Wearables'], // Electronics
-    2: ['Laptops', 'Desktops', 'Monitors', 'Components', 'Networking', 'Accessories'], // Computers
-    3: ['Consoles', 'Video Games', 'Controllers', 'Headsets', 'PC Gaming', 'VR'], // Gaming
-    4: ['Furniture', 'Decor', 'Kitchen', 'Bedding', 'Lighting', 'Garden & Outdoor', 'Storage'], // Home & Kitchen
-    5: ["Men's Clothing", "Women's Clothing", "Kids' Clothing", 'Outerwear', 'Activewear', 'Underwear'], // Fashion
-    6: ['Sneakers', 'Boots', 'Sandals', 'Bags', 'Belts', 'Hats', 'Sunglasses'], // Shoes & Accessories
-    7: ['Watches', 'Necklaces', 'Rings', 'Earrings', 'Bracelets', 'Fine Jewelry'], // Jewelry & Watches
-    8: ['Skincare', 'Haircare', 'Makeup', 'Fragrance', "Men's Grooming"], // Beauty & Personal Care
-    9: ['Vitamins & Supplements', 'Medical Devices', 'Personal Care', 'Diet & Nutrition'], // Health & Wellness
-    10: ['Fitness', 'Outdoor Recreation', 'Team Sports', 'Water Sports', 'Winter Sports', 'Cycling'], // Sports & Fitness
-    11: ['Car Accessories', 'Motorcycle', 'Tools & Equipment', 'Replacement Parts', 'Car Care'], // Automotive
-    12: ['Power Tools', 'Hand Tools', 'Hardware', 'Plumbing', 'Electrical', 'Building Materials'], // Tools & Hardware
-    13: ['Pens & Pencils', 'Paper', 'Binders & Folders', 'Desk Accessories', 'Printers & Ink', 'School Supplies'], // Office Supplies
-    14: ['Fiction', 'Non-Fiction', 'Children', 'Textbooks', 'Comics & Graphic Novels', 'Audiobooks'], // Books
-    15: ['Guitars', 'Keyboards', 'Drums', 'Recording Equipment', 'DJ Gear', 'Accessories'], // Music & Instruments
-    16: ['Puzzles & Board Games', 'Building Toys', 'Dolls & Playsets', 'Action Figures', 'Outdoor Play'], // Toys & Games
-    17: ['Baby Clothing', 'Feeding', 'Nursery', 'Strollers', 'Toys', 'Diapering'], // Baby & Kids
-    18: ['Dogs', 'Cats', 'Fish', 'Birds', 'Small Animals', 'Reptiles'], // Pet Supplies
-    19: ['Snacks', 'Beverages', 'Health Foods', 'Specialty Foods', 'Baking', 'Pantry Staples'], // Groceries
-    20: ['Painting', 'Sculpture', 'Photography', 'Mixed Media', 'Antiques', 'Coins & Stamps'], // Art & Collectibles
-    21: ['Software', 'eBooks', 'Digital Art', 'Audio & Music', 'Courses & Tutorials', 'Templates'], // Digital Products
+    1: [
+      'Smartphones',
+      'Laptops',
+      'Tablets',
+      'Cameras',
+      'Audio',
+      'Gaming',
+      'Smart Home',
+      'Wearables',
+    ], // Electronics
+    2: [
+      'Laptops',
+      'Desktops',
+      'Monitors',
+      'Components',
+      'Networking',
+      'Accessories',
+    ], // Computers
+    3: [
+      'Consoles',
+      'Video Games',
+      'Controllers',
+      'Headsets',
+      'PC Gaming',
+      'VR',
+    ], // Gaming
+    4: [
+      'Furniture',
+      'Decor',
+      'Kitchen',
+      'Bedding',
+      'Lighting',
+      'Garden & Outdoor',
+      'Storage',
+    ], // Home & Kitchen
+    5: [
+      "Men's Clothing",
+      "Women's Clothing",
+      "Kids' Clothing",
+      'Outerwear',
+      'Activewear',
+      'Underwear',
+    ], // Fashion
+    6: [
+      'Sneakers',
+      'Boots',
+      'Sandals',
+      'Bags',
+      'Belts',
+      'Hats',
+      'Sunglasses',
+    ], // Shoes & Accessories
+    7: [
+      'Watches',
+      'Necklaces',
+      'Rings',
+      'Earrings',
+      'Bracelets',
+      'Fine Jewelry',
+    ], // Jewelry & Watches
+    8: [
+      'Skincare',
+      'Haircare',
+      'Makeup',
+      'Fragrance',
+      "Men's Grooming",
+    ], // Beauty & Personal Care
+    9: [
+      'Vitamins & Supplements',
+      'Medical Devices',
+      'Personal Care',
+      'Diet & Nutrition',
+    ], // Health & Wellness
+    10: [
+      'Fitness',
+      'Outdoor Recreation',
+      'Team Sports',
+      'Water Sports',
+      'Winter Sports',
+      'Cycling',
+    ], // Sports & Fitness
+    11: [
+      'Car Accessories',
+      'Motorcycle',
+      'Tools & Equipment',
+      'Replacement Parts',
+      'Car Care',
+    ], // Automotive
+    12: [
+      'Power Tools',
+      'Hand Tools',
+      'Hardware',
+      'Plumbing',
+      'Electrical',
+      'Building Materials',
+    ], // Tools & Hardware
+    13: [
+      'Pens & Pencils',
+      'Paper',
+      'Binders & Folders',
+      'Desk Accessories',
+      'Printers & Ink',
+      'School Supplies',
+    ], // Office Supplies
+    14: [
+      'Fiction',
+      'Non-Fiction',
+      'Children',
+      'Textbooks',
+      'Comics & Graphic Novels',
+      'Audiobooks',
+    ], // Books
+    15: [
+      'Guitars',
+      'Keyboards',
+      'Drums',
+      'Recording Equipment',
+      'DJ Gear',
+      'Accessories',
+    ], // Music & Instruments
+    16: [
+      'Puzzles & Board Games',
+      'Building Toys',
+      'Dolls & Playsets',
+      'Action Figures',
+      'Outdoor Play',
+    ], // Toys & Games
+    17: [
+      'Baby Clothing',
+      'Feeding',
+      'Nursery',
+      'Strollers',
+      'Toys',
+      'Diapering',
+    ], // Baby & Kids
+    18: [
+      'Dogs',
+      'Cats',
+      'Fish',
+      'Birds',
+      'Small Animals',
+      'Reptiles',
+    ], // Pet Supplies
+    19: [
+      'Snacks',
+      'Beverages',
+      'Health Foods',
+      'Specialty Foods',
+      'Baking',
+      'Pantry Staples',
+    ], // Groceries
+    20: [
+      'Painting',
+      'Sculpture',
+      'Photography',
+      'Mixed Media',
+      'Antiques',
+      'Coins & Stamps',
+    ], // Art & Collectibles
+    21: [
+      'Software',
+      'eBooks',
+      'Digital Art',
+      'Audio & Music',
+      'Courses & Tutorials',
+      'Templates',
+    ], // Digital Products
   };
 
   /// Lookup subcategories by category ID (matches productCategories list in utils.dart).
@@ -1795,7 +2070,16 @@ abstract final class SubscriptionStatusValues {
   static const trialing = 'trialing';
   static const unpaid = 'unpaid';
 
-  static const all = [active, canceled, inactive, pastDue, incomplete, incompleteExpired, trialing, unpaid];
+  static const all = [
+    active,
+    canceled,
+    inactive,
+    pastDue,
+    incomplete,
+    incompleteExpired,
+    trialing,
+    unpaid,
+  ];
   static const premiumActive = {active, trialing};
 }
 
@@ -1817,7 +2101,22 @@ abstract final class SupplierCurrencyValues {
   static const twd = 'TWD';
 
   static const defaultCurrency = 'USD';
-  static const all = {cad, usd, eur, gbp, cny, jpy, krw, inr, aud, mxn, brl, hkd, sgd, twd};
+  static const all = {
+    cad,
+    usd,
+    eur,
+    gbp,
+    cny,
+    jpy,
+    krw,
+    inr,
+    aud,
+    mxn,
+    brl,
+    hkd,
+    sgd,
+    twd,
+  };
 }
 
 /// Valid values for supplier platform types
@@ -1825,7 +2124,8 @@ abstract final class SupplierTypeValues {
   static const aliexpress = 'aliexpress';
   static const dhgate = 'dhgate';
   static const alibaba = 'alibaba';
-  static const s1688 = '1688'; // Can't start with number, so use 's1688' as const name
+  static const s1688 =
+      '1688'; // Can't start with number, so use 's1688' as const name
   static const temu = 'temu';
   static const cjdropshipping = 'cjdropshipping';
   static const local = 'local';
@@ -1882,7 +2182,14 @@ abstract final class SupplierTypeValues {
   };
 
   /// International suppliers (non-local)
-  static const international = {aliexpress, dhgate, alibaba, s1688, temu, cjdropshipping};
+  static const international = {
+    aliexpress,
+    dhgate,
+    alibaba,
+    s1688,
+    temu,
+    cjdropshipping,
+  };
 }
 
 abstract final class TransactionSentinel {
@@ -1892,7 +2199,8 @@ abstract final class TransactionSentinel {
 
 /// User-facing UI messages
 abstract final class UIMessages {
-  static const sessionExpired = 'Session expired due to inactivity. Please login again.';
+  static const sessionExpired =
+      'Session expired due to inactivity. Please login again.';
   static const sessionExpiredTitle = 'Session Expired';
 }
 
@@ -1953,7 +2261,8 @@ abstract final class ApiEndpoints {
   static const usersProfileGet = '/api/users/profile/get';
   static const usersProfileUpdate = '/api/users/profile/update';
   static const usersCreateProfile = '/api/users/create-profile';
-  static const usersNotificationPreferences = '/api/users/notification-preferences';
+  static const usersNotificationPreferences =
+      '/api/users/notification-preferences';
 
   // --- Products ---
   static const productsCreateAtomic = '/api/products/create-atomic';
@@ -1962,11 +2271,14 @@ abstract final class ApiEndpoints {
   static const productsUpdate = '/api/products/update';
   static const productsBulkUpdate = '/api/products/bulk-update';
   static const productsSubmitRating = '/api/products/submit-rating';
-  static const productsSubmitRatingAtomic = '/api/products/submit-rating-atomic';
+  static const productsSubmitRatingAtomic =
+      '/api/products/submit-rating-atomic';
   static const productsToggleFavorite = '/api/products/toggle-favorite';
   static const productsReviewVote = '/api/products/review-vote';
-  static const productsStockNotifySubscribe = '/api/products/stock-notify/subscribe';
-  static const productsStockNotifyUnsubscribe = '/api/products/stock-notify/unsubscribe';
+  static const productsStockNotifySubscribe =
+      '/api/products/stock-notify/subscribe';
+  static const productsStockNotifyUnsubscribe =
+      '/api/products/stock-notify/unsubscribe';
   static const productsQuestionsAsk = '/api/products/questions/ask';
   static const productsQuestionsAnswer = '/api/products/questions/answer';
 
@@ -2005,7 +2317,8 @@ abstract final class ApiEndpoints {
   static const subscriptionsCreate = '/api/subscriptions/create';
   static const subscriptionsCancel = '/api/subscriptions/cancel';
   static const subscriptionsReactivate = '/api/subscriptions/reactivate';
-  static const subscriptionsNotificationPreferences = '/api/subscriptions/notification-preferences';
+  static const subscriptionsNotificationPreferences =
+      '/api/subscriptions/notification-preferences';
 
   // --- Chat ---
   static const chatGetOrCreate = '/api/chat/get-or-create';
@@ -2038,6 +2351,7 @@ abstract final class ApiEndpoints {
   // --- Support ---
   /// Order lookup by ID — GET /api/orders/{orderId}
   static const ordersBase = '/api/orders';
+
   /// Human escalation endpoint — POST body: customer_email, customer_id, summary, conversation
   static const supportEscalate = '/api/support/escalate';
 

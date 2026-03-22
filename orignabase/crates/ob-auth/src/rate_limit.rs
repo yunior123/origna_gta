@@ -223,14 +223,18 @@ pub async fn check_rate_limit(
     let now = Utc::now().timestamp();
     let window_start = now - window_seconds;
 
-    // Count recent attempts
-    let query = format!(
-        "SELECT count() FROM mfa_attempts WHERE user_id = '{}' AND action = '{}' AND timestamp >= {} GROUP ALL",
-        user_id, action, window_start
-    );
+    // Count recent attempts (parameterized to prevent SQL injection)
+    let query = "SELECT count() FROM mfa_attempts WHERE user_id = $user_id AND action = $action AND timestamp >= $window_start GROUP ALL";
 
     let results = db
-        .query_raw(&query)
+        .query_bind_value(
+            query,
+            serde_json::json!({
+                "user_id": user_id,
+                "action": action,
+                "window_start": window_start,
+            }),
+        )
         .await
         .map_err(|e| Error::Internal(format!("Rate limit check failed: {}", e)))?;
 
