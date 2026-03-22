@@ -14,13 +14,13 @@
 - [x] middleware.rs: Warn on OB_TEST_MODE bypass, panic if ENVIRONMENT=production
 - [x] admin routes.rs: Hard-reject admin bypass in production mode
 
-### P2 — Medium
-- [ ] `ob-admin/src/routes.rs:209` — Config key uses naive escape instead of parameterized query
-- [ ] `ob-auth/src/rate_limit.rs:16-17` — EndpointRateLimiter is NotKeyed (global bucket, not per-IP)
-- [ ] `ob-core/src/server.rs:56-58` — Empty CORS origins config silently denies all
-- [ ] `ob-handlers/src/shared/validation.rs:19-28` — Price validation max ($1M) vs checkout max ($100K) mismatch
-- [ ] `ob-handlers/src/shared/validation.rs:31-38` — Email validation too permissive
-- [ ] `ob-handlers/src/payments/webhooks.rs:199` — Webhook event ID validated as SurrealDB format but Stripe uses evt_xxx
+### P2 — FIXED 2026-03-22
+- [x] Admin config: parameterized query (was naive string escape)
+- [x] Rate limiter: confirmed already per-IP keyed (DashMap<IpAddr>)
+- [x] CORS: warning log on empty allowed_origins
+- [x] Price validation: max aligned to $100K (was $1M)
+- [x] Email validation: proper regex
+- [x] Webhook event ID: removed SurrealDB format check for Stripe evt_xxx
 
 ## Cross-Stack Audit — Dart vs Rust Field Names
 
