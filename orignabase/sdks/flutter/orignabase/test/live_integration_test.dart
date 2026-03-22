@@ -18,6 +18,7 @@
 /// Run with: dart test test/live_integration_test.dart
 /// Requires: orignabase server + SurrealDB running
 @TestOn('vm')
+@Tags(['live'])
 library;
 
 import 'dart:async';
