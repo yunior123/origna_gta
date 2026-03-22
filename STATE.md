@@ -108,6 +108,23 @@
 - [x] Stress tests: k6 auth storm (983 reqs, 0% fail) + large payloads (520 reqs, avg 217ms, 0% fail)
 - Test command: `flutter test --dart-define=RUN_ORIGNABASE_LIVE_TESTS=true --dart-define=ENVIRONMENT=dev --exclude-tags golden`
 
+## Stripe Webhook Audit (2026-03-22)
+
+### Gaps — Events registered but NOT handled by OrignaBase
+- [ ] **P0** `checkout.session.completed` — primary Checkout flow event, needed for async payments
+- [ ] **P0** `charge.dispute.created` — disputes silently ignored, should flag order + notify admin
+- [ ] **P1** `checkout.session.expired` — should cancel order + release stock/coupons
+- [ ] **P1** `checkout.session.async_payment_succeeded` / `async_payment_failed`
+- [ ] **P2** `account.updated` — Stripe Connect seller status changes ignored
+- [ ] **P2** Prod endpoint uses `*` (all events) — noisy logs, switch to explicit list
+
+### Verified OK
+- [x] Webhook secrets match across vault, VPS .env, and MEMORY.md (all 3 envs)
+- [x] Delivery test: payment_intent.succeeded received + verified + parsed
+- [x] HMAC signature verification, replay protection, constant-time comparison
+- [x] Idempotency dedup via webhook_events collection
+- [x] Stripe CLI guide: `docs/stripe-cli-guide.md`
+
 ## Infrastructure
 - [x] Monorepo unified (orignabase inside origna_gta)
 - [x] Pipeline fixed (4 workflows, separate orignabase checkout removed)
