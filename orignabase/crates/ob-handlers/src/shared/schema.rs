@@ -136,11 +136,10 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum OrderStatus {
-    #[serde(alias = "PENDING_PAYMENT", rename = "pending")]
+    #[serde(rename = "pending")]
     PendingPayment,
-    #[serde(alias = "PAYMENT_AUTHORIZED", rename = "confirmed")]
+    #[serde(rename = "confirmed")]
     PaymentAuthorized,
-    #[serde(alias = "AWAITING_SHIPPING_APPROVAL")]
     AwaitingShippingApproval,
     Processing,
     Shipped,
@@ -191,23 +190,16 @@ impl OrderStatus {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum PaymentStatus {
-    #[serde(alias = "PENDING", rename = "awaiting_payment")]
+    #[serde(rename = "awaiting_payment")]
     Pending,
-    #[serde(alias = "AUTHORIZED")]
     Authorized,
-    #[serde(alias = "CAPTURED")]
     Captured,
-    #[serde(alias = "REFUNDED")]
     Refunded,
-    #[serde(alias = "PARTIAL_REFUND", rename = "partially_refunded")]
+    #[serde(rename = "partially_refunded")]
     PartialRefund,
-    #[serde(alias = "FAILED")]
     Failed,
-    #[serde(alias = "CANCELLED")]
     Cancelled,
-    #[serde(alias = "DISPUTED")]
     Disputed,
-    #[serde(alias = "EXPIRED")]
     Expired,
 }
 
