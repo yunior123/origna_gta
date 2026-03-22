@@ -4,7 +4,7 @@ description: Monitoring and triage agent for origna_gta. Use to check for: Strip
 tools: Read, Grep, Glob, Bash
 model: sonnet
 memory: project
-maxTurns: 20
+maxTurns: 15
 mcpServers:
   - gmail
 ---

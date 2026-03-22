@@ -4,6 +4,7 @@ description: Flutter performance auditor for origna_gta. Use after adding lists,
 tools: Read, Grep, Glob, Bash
 model: sonnet
 memory: project
+maxTurns: 20
 permissionMode: plan
 ---
 

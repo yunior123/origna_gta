@@ -4,7 +4,7 @@ description: Flutter test runner and fixer for origna_gta. Use after any code ch
 tools: Read, Grep, Glob, Bash, Edit, Write
 model: sonnet
 memory: project
-maxTurns: 25
+maxTurns: 15
 ---
 
 You are the Flutter test runner and fixer for origna_gta. Your job is to keep `flutter analyze --no-fatal-infos` and `flutter test --no-pub` clean.

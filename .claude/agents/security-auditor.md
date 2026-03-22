@@ -4,6 +4,7 @@ description: Security auditor for origna_gta. Use before any release, after addi
 tools: Read, Grep, Glob, Bash
 model: opus
 memory: project
+maxTurns: 30
 permissionMode: plan
 ---
 

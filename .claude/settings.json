@@ -50,6 +50,11 @@
             "type": "command",
             "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/validate-premium.sh",
             "statusMessage": "Checking premium subscription impact..."
+          },
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/dart-format.sh",
+            "statusMessage": "Auto-formatting Dart file..."
           }
         ]
       }
@@ -60,7 +65,7 @@
         "hooks": [
           {
             "type": "prompt",
-            "prompt": "An audit subagent just finished. Review the audit output in $ARGUMENTS. Check if any CRITICAL findings were reported. If there are CRITICAL findings, respond {\"ok\": false, \"reason\": \"CRITICAL bugs found — agent must provide specific fixes before stopping\"}. If there are no CRITICAL findings, respond {\"ok\": true}.",
+            "prompt": "An audit subagent just finished. Review the audit output in $ARGUMENTS. Check if any CRITICAL findings were reported. If there are CRITICAL findings, respond {\"ok\": false, \"reason\": \"CRITICAL bugs found \u2014 agent must provide specific fixes before stopping\"}. If there are no CRITICAL findings, respond {\"ok\": true}.",
             "timeout": 30
           }
         ]

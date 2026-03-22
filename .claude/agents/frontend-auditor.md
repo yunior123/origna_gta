@@ -4,6 +4,7 @@ description: Flutter UI/UX auditor for origna_gta. Use proactively after any scr
 tools: Read, Grep, Glob, Bash
 model: sonnet
 memory: project
+maxTurns: 15
 permissionMode: plan
 ---
 

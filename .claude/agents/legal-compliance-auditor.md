@@ -4,6 +4,7 @@ description: Audits Canadian legal compliance — CASL consent capture, PIPEDA/Q
 tools: Read, Grep, Glob, Bash
 model: opus
 memory: project
+maxTurns: 20
 ---
 
 # Legal & Compliance Auditor Agent

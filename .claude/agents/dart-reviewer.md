@@ -4,6 +4,7 @@ description: Senior Dart/Flutter code reviewer for origna_gta. Use proactively a
 tools: Read, Grep, Glob, Bash
 model: sonnet
 memory: project
+maxTurns: 15
 permissionMode: plan
 ---
 

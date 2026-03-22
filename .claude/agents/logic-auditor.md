@@ -4,6 +4,7 @@ description: Business logic auditor for origna_gta. Use after any change to View
 tools: Read, Grep, Glob, Bash
 model: sonnet
 memory: project
+maxTurns: 20
 permissionMode: plan
 ---
 

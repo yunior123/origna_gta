@@ -4,4 +4,5 @@ description: Audits the entire codebase for deprecated, outdated, and dead code 
 tools: Read, Grep, Glob, Bash
 model: sonnet
 memory: project
+maxTurns: 20
 ---

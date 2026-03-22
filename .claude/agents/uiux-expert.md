@@ -8,6 +8,7 @@ description: >
 tools: Read, Grep, Glob, Bash, Edit, Write
 model: opus
 memory: project
+maxTurns: 20
 skills:
   - design-system-bible
   - animation-choreography

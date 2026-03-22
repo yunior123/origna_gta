@@ -4,6 +4,7 @@ description: Cross-stack field name consistency auditor for origna_gta. Use afte
 tools: Read, Grep, Glob, Bash
 model: sonnet
 memory: project
+maxTurns: 30
 permissionMode: plan
 ---
 
