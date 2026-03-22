@@ -21,6 +21,7 @@ pub use server::OrignaGtaMcp;
 pub use transport::McpRouter;
 
 use std::sync::Arc;
+use ob_auth::JwtKeys;
 use ob_database::DatabaseClient;
 use ob_search::SearchClient;
 use ob_core::Config;
@@ -31,6 +32,7 @@ pub struct McpState {
     pub db: Arc<DatabaseClient>,
     pub search: Option<Arc<SearchClient>>,
     pub config: Arc<Config>,
+    pub jwt_keys: Arc<JwtKeys>,
 }
 
 impl McpState {
@@ -39,7 +41,8 @@ impl McpState {
         db: Arc<DatabaseClient>,
         search: Option<Arc<SearchClient>>,
         config: Arc<Config>,
+        jwt_keys: Arc<JwtKeys>,
     ) -> Self {
-        Self { db, search, config }
+        Self { db, search, config, jwt_keys }
     }
 }

@@ -1,19 +1,19 @@
 //! Transport layer — HTTP/SSE + stdio for MCP communication
 
-use crate::auth::McpContext;
+use crate::auth::{McpContext, extract_claims};
 use crate::server::JsonRpcRequest;
 use crate::safeguards::{IdempotencyTracker, SpendLimit};
 use crate::{McpState, OrignaGtaMcp};
 use axum::{
     extract::{State, Json},
-    http::StatusCode,
+    http::{StatusCode, header::AUTHORIZATION, HeaderMap},
     response::IntoResponse,
     routing::{get, post},
     Router,
 };
 use serde_json::Value;
 use std::sync::Arc;
-use tracing::info;
+use tracing::{info, debug};
 
 /// Public type exported for use in main.rs
 pub type McpRouter = Router;
@@ -37,12 +37,27 @@ pub fn create_mcp_router(state: McpState) -> Router {
 /// Handle JSON-RPC 2.0 requests
 async fn handle_rpc(
     State(mcp): State<Arc<OrignaGtaMcp>>,
+    headers: HeaderMap,
     Json(request): Json<JsonRpcRequest>,
 ) -> impl IntoResponse {
     info!(method = %request.method, "RPC request received");
 
-    // Extract auth context (in production, from Authorization header via middleware)
-    let ctx = McpContext::new();
+    // Extract auth context from Authorization header
+    let ctx = match headers.get(AUTHORIZATION).and_then(|v| v.to_str().ok()) {
+        Some(auth_header) => {
+            match extract_claims(Some(auth_header), &mcp.state.jwt_keys) {
+                Ok(claims) => {
+                    debug!(uid = %claims.uid, "Authenticated MCP request");
+                    McpContext::with_claims(claims)
+                }
+                Err(_) => {
+                    debug!("Invalid auth header, proceeding as anonymous");
+                    McpContext::new()
+                }
+            }
+        }
+        None => McpContext::new(),
+    };
 
     // Process request
     let response = mcp.handle_request(request, ctx).await;
@@ -179,6 +194,7 @@ mod tests {
             db: Arc::new(ob_database::DatabaseClient::new_mem().await),
             search: None,
             config: Arc::new(ob_core::Config::load(None).unwrap()),
+            jwt_keys: Arc::new(ob_auth::JwtKeys::from_secret("test-secret")),
         }
     }
 

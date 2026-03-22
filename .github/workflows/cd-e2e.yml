@@ -6,6 +6,7 @@ on:
     paths:
       - 'e2e-agent-browser/**'
       - 'origna_gta/lib/**'
+      - 'orignabase/**'
       - '.github/workflows/cd-e2e.yml'
   workflow_dispatch:
 
@@ -20,16 +21,6 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-
-      - name: Checkout OrignaBase SDK
-        uses: actions/checkout@v4
-        with:
-          repository: yunior123/orignabase
-          token: ${{ secrets.ORIGNABASE_REPO_TOKEN }}
-          path: orignabase
-
-      - name: Symlink OrignaBase at sibling path
-        run: ln -sfn "$GITHUB_WORKSPACE/orignabase" "$GITHUB_WORKSPACE/../orignabase"
 
       - uses: subosito/flutter-action@v2
         with:
@@ -77,14 +68,6 @@ jobs:
         with:
           channel: stable
           cache: true
-      - name: Checkout OrignaBase SDK
-        uses: actions/checkout@v4
-        with:
-          repository: yunior123/orignabase
-          token: ${{ secrets.ORIGNABASE_REPO_TOKEN }}
-          path: orignabase
-      - name: Symlink OrignaBase
-        run: ln -sfn "$GITHUB_WORKSPACE/orignabase" "$GITHUB_WORKSPACE/../orignabase"
       - name: Build Flutter web
         run: |
           cd origna_gta

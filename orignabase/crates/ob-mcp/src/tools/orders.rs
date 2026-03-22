@@ -158,6 +158,7 @@ mod tests {
             db: Arc::new(ob_database::DatabaseClient::new_mem().await),
             search: None,
             config: Arc::new(ob_core::Config::load(None).unwrap()),
+            jwt_keys: Arc::new(ob_auth::JwtKeys::from_secret("test-secret")),
         }
     }
 

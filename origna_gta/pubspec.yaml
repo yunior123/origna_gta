@@ -71,7 +71,7 @@ dependencies:
 
   # OrignaBase — Rust BaaS (Firebase replacement, gradual migration)
   orignabase:
-    path: '../../orignabase/sdks/flutter/orignabase'
+    path: '../orignabase/sdks/flutter/orignabase'
 
 
 dev_dependencies:

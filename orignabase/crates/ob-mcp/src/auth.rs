@@ -1,6 +1,7 @@
 //! MCP authentication middleware — reuses ob-auth JWT verification
 
 use crate::errors::{McpError, McpResult};
+use ob_auth::jwt::{JwtKeys, verify_token};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -37,39 +38,44 @@ impl McpClaims {
     }
 }
 
-/// Extract JWT claims from Authorization header
-pub fn extract_claims(auth_header: Option<&str>) -> McpResult<McpClaims> {
+/// Extract JWT claims from Authorization header, verifying via ob-auth
+pub fn extract_claims(auth_header: Option<&str>, jwt_keys: &JwtKeys) -> McpResult<McpClaims> {
     let header = auth_header.ok_or(McpError::Unauthorized)?;
 
     let bearer = header
         .strip_prefix("Bearer ")
         .ok_or(McpError::Unauthorized)?;
 
-    // NOTE: In actual implementation, this would call ob-auth::jwt::verify_token()
-    // For now, we stub the parsing. Full JWT verification happens in the transport layer.
-    parse_jwt_claims(bearer)
-}
-
-/// Stub JWT parsing (actual verification done by ob-auth middleware)
-fn parse_jwt_claims(token: &str) -> McpResult<McpClaims> {
-    // This is a placeholder. Real implementation would:
-    // 1. Split token into header.payload.signature
-    // 2. Decode payload as base64-json
-    // 3. Verify signature against pub key from ob-auth
-    //
-    // For now, reject if token is empty
-    if token.is_empty() {
+    if bearer.is_empty() {
         return Err(McpError::Unauthorized);
     }
 
-    // Placeholder: assume valid JWT, extract claims
-    // In production, use jsonwebtoken crate + ob-auth public key
+    parse_jwt_claims(bearer, jwt_keys)
+}
+
+/// Verify JWT and map ob-auth Claims to McpClaims
+fn parse_jwt_claims(token: &str, jwt_keys: &JwtKeys) -> McpResult<McpClaims> {
+    let claims = verify_token(token, jwt_keys)
+        .map_err(|_| McpError::Unauthorized)?;
+
+    // Reject non-access tokens (refresh, email_verify, password_reset, etc.)
+    if claims.typ != "access" {
+        return Err(McpError::Unauthorized);
+    }
+
+    // Strip "users:" prefix for short uid
+    let uid = claims
+        .sub
+        .strip_prefix("users:")
+        .unwrap_or(&claims.sub)
+        .to_string();
+
     Ok(McpClaims {
-        sub: "users:placeholder".to_string(),
-        uid: "placeholder".to_string(),
-        role: Some("buyer".to_string()),
-        iat: 0,
-        exp: i64::MAX,
+        sub: claims.sub,
+        uid,
+        role: claims.roles.into_iter().next(),
+        iat: claims.iat,
+        exp: claims.exp,
     })
 }
 
@@ -137,6 +143,13 @@ impl Default for McpContext {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ob_auth::jwt::{JwtKeys, issue_access_token, issue_refresh_token};
+
+    const TEST_SECRET: &str = "test-secret-for-mcp-unit-tests";
+
+    fn test_keys() -> JwtKeys {
+        JwtKeys::from_secret(TEST_SECRET)
+    }
 
     // ── McpClaims::has_role ──
 
@@ -224,47 +237,176 @@ mod tests {
         assert!(!c.owns_resource(""));
     }
 
-    // ── extract_claims ──
+    // ── extract_claims (real JWT verification) ──
 
     #[test]
     fn test_extract_claims_none_header() {
-        let result = extract_claims(None);
+        let keys = test_keys();
+        let result = extract_claims(None, &keys);
         assert!(result.is_err());
         assert!(matches!(result.unwrap_err(), McpError::Unauthorized));
     }
 
     #[test]
     fn test_extract_claims_no_bearer_prefix() {
-        let result = extract_claims(Some("Basic abc123"));
+        let keys = test_keys();
+        let result = extract_claims(Some("Basic abc123"), &keys);
         assert!(result.is_err());
         assert!(matches!(result.unwrap_err(), McpError::Unauthorized));
     }
 
     #[test]
     fn test_extract_claims_empty_bearer() {
-        let result = extract_claims(Some("Bearer "));
+        let keys = test_keys();
+        let result = extract_claims(Some("Bearer "), &keys);
         assert!(result.is_err());
     }
 
     #[test]
     fn test_extract_claims_valid() {
-        let result = extract_claims(Some("Bearer some.jwt.token"));
+        let keys = test_keys();
+        let token = issue_access_token(
+            "users:u1",
+            &["buyer".to_string()],
+            &keys,
+            3600,
+            true,
+        )
+        .unwrap();
+
+        let header = format!("Bearer {}", token);
+        let result = extract_claims(Some(&header), &keys);
         assert!(result.is_ok());
         let claims = result.unwrap();
-        assert_eq!(claims.uid, "placeholder");
+        assert_eq!(claims.sub, "users:u1");
+        assert_eq!(claims.uid, "u1");
         assert_eq!(claims.role, Some("buyer".into()));
     }
 
     #[test]
+    fn test_extract_claims_admin_role() {
+        let keys = test_keys();
+        let token = issue_access_token(
+            "users:admin1",
+            &["admin".to_string()],
+            &keys,
+            3600,
+            true,
+        )
+        .unwrap();
+
+        let header = format!("Bearer {}", token);
+        let claims = extract_claims(Some(&header), &keys).unwrap();
+        assert_eq!(claims.uid, "admin1");
+        assert_eq!(claims.role, Some("admin".into()));
+        assert!(claims.is_admin());
+    }
+
+    #[test]
+    fn test_extract_claims_rejects_refresh_token() {
+        let keys = test_keys();
+        let token = issue_refresh_token("users:u1", &keys, 86400).unwrap();
+
+        let header = format!("Bearer {}", token);
+        let result = extract_claims(Some(&header), &keys);
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), McpError::Unauthorized));
+    }
+
+    #[test]
+    fn test_extract_claims_invalid_token() {
+        let keys = test_keys();
+        let result = extract_claims(Some("Bearer not.a.valid.jwt"), &keys);
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), McpError::Unauthorized));
+    }
+
+    #[test]
+    fn test_extract_claims_wrong_secret() {
+        let sign_keys = JwtKeys::from_secret("signing-secret");
+        let verify_keys = JwtKeys::from_secret("different-secret");
+
+        let token = issue_access_token(
+            "users:u1",
+            &["buyer".to_string()],
+            &sign_keys,
+            3600,
+            true,
+        )
+        .unwrap();
+
+        let header = format!("Bearer {}", token);
+        let result = extract_claims(Some(&header), &verify_keys);
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), McpError::Unauthorized));
+    }
+
+    #[test]
     fn test_extract_claims_wrong_prefix_lowercase() {
-        let result = extract_claims(Some("bearer abc"));
+        let keys = test_keys();
+        let result = extract_claims(Some("bearer abc"), &keys);
         assert!(result.is_err());
     }
 
     #[test]
     fn test_extract_claims_empty_string_header() {
-        let result = extract_claims(Some(""));
+        let keys = test_keys();
+        let result = extract_claims(Some(""), &keys);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_extract_claims_uid_without_users_prefix() {
+        let keys = test_keys();
+        // sub without "users:" prefix — uid should equal sub
+        let token = issue_access_token(
+            "custom_id_123",
+            &["seller".to_string()],
+            &keys,
+            3600,
+            true,
+        )
+        .unwrap();
+
+        let header = format!("Bearer {}", token);
+        let claims = extract_claims(Some(&header), &keys).unwrap();
+        assert_eq!(claims.sub, "custom_id_123");
+        assert_eq!(claims.uid, "custom_id_123");
+        assert_eq!(claims.role, Some("seller".into()));
+    }
+
+    #[test]
+    fn test_extract_claims_multiple_roles_takes_first() {
+        let keys = test_keys();
+        let token = issue_access_token(
+            "users:u1",
+            &["admin".to_string(), "seller".to_string()],
+            &keys,
+            3600,
+            true,
+        )
+        .unwrap();
+
+        let header = format!("Bearer {}", token);
+        let claims = extract_claims(Some(&header), &keys).unwrap();
+        assert_eq!(claims.role, Some("admin".into()));
+    }
+
+    #[test]
+    fn test_extract_claims_no_roles() {
+        let keys = test_keys();
+        let token = issue_access_token(
+            "users:u1",
+            &[],
+            &keys,
+            3600,
+            true,
+        )
+        .unwrap();
+
+        let header = format!("Bearer {}", token);
+        let claims = extract_claims(Some(&header), &keys).unwrap();
+        assert_eq!(claims.role, None);
     }
 
     // ── McpContext::new ──
