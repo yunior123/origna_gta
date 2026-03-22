@@ -54,13 +54,26 @@ class _SecuritySettingsScreenState
   @override
   Widget build(BuildContext context) {
     final mfaState = ref.watch(mfaViewModelProvider);
-    final securityDataAsync = ref.watch(_securityDataProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final loginHistory = securityDataAsync.valueOrNull?.loginHistory ?? [];
-    final knownDevices = securityDataAsync.valueOrNull?.knownDevices ?? [];
-    final securityAlerts = securityDataAsync.valueOrNull?.securityAlerts ?? [];
-    final isLoadingSecurity = securityDataAsync.isLoading;
+    final loginHistory =
+        ref.watch(
+          _securityDataProvider.select((a) => a.valueOrNull?.loginHistory),
+        ) ??
+        [];
+    final knownDevices =
+        ref.watch(
+          _securityDataProvider.select((a) => a.valueOrNull?.knownDevices),
+        ) ??
+        [];
+    final securityAlerts =
+        ref.watch(
+          _securityDataProvider.select((a) => a.valueOrNull?.securityAlerts),
+        ) ??
+        [];
+    final isLoadingSecurity = ref.watch(
+      _securityDataProvider.select((a) => a.isLoading),
+    );
 
     return SensitiveContent(
       sensitivity: ContentSensitivity.sensitive,

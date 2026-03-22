@@ -331,9 +331,10 @@ class AddToCartButton extends ConsumerStatefulWidget {
   ConsumerState<AddToCartButton> createState() => _AddToCartButtonState();
 }
 
-class _AddToCartButtonState extends ConsumerState<AddToCartButton> {
-  bool _isBuyingNow = false;
+/// Private provider for AddToCartButton buying state
+final _isBuyingNowProvider = StateProvider.autoDispose<bool>((_) => false);
 
+class _AddToCartButtonState extends ConsumerState<AddToCartButton> {
   @override
   Widget build(BuildContext context) {
     final quantity = ref.watch(
@@ -448,10 +449,10 @@ class _AddToCartButtonState extends ConsumerState<AddToCartButton> {
         ModernButton(
           label: 'product.buy_now'.tr(),
           semanticsLabel: 'product_buy_now_button',
-          onPressed: _isBuyingNow
+          onPressed: ref.watch(_isBuyingNowProvider)
               ? null
               : () => _handleBuyNow(context, quantity),
-          isLoading: _isBuyingNow,
+          isLoading: ref.watch(_isBuyingNowProvider),
           key: const Key('product_buy_now_button'),
           fullWidth: true,
           icon: Icons.bolt_rounded,
@@ -524,7 +525,7 @@ class _AddToCartButtonState extends ConsumerState<AddToCartButton> {
     }
     if (!context.mounted) return;
 
-    setState(() => _isBuyingNow = true);
+    ref.read(_isBuyingNowProvider.notifier).state = true;
     try {
       final success = await ref
           .read(cartControllerProvider)
@@ -545,7 +546,7 @@ class _AddToCartButtonState extends ConsumerState<AddToCartButton> {
         arguments: CheckoutArgs(items: cartDetails, total: subtotal),
       );
     } finally {
-      if (mounted) setState(() => _isBuyingNow = false);
+      if (mounted) ref.read(_isBuyingNowProvider.notifier).state = false;
     }
   }
 

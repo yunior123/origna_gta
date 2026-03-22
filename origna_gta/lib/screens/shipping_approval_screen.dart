@@ -34,17 +34,28 @@ class ShippingApprovalScreen extends ConsumerWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 ShaderMask(
-                  shaderCallback: (bounds) => LinearGradient(colors: [DesignTokens.primary, DesignTokens.secondary]).createShader(bounds),
+                  shaderCallback: (bounds) => LinearGradient(
+                    colors: [DesignTokens.primary, DesignTokens.secondary],
+                  ).createShader(bounds),
                   child: SizedBox(
                     width: 50,
                     height: 50,
-                    child: ModernLoadingIndicator(size: 50, strokeWidth: 3, color: DesignTokens.white.withValues(alpha: 0.8), centered: false),
+                    child: ModernLoadingIndicator(
+                      size: 50,
+                      strokeWidth: 3,
+                      color: DesignTokens.white.withValues(alpha: 0.8),
+                      centered: false,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
                 Text(
                   'seller.loading_approvals'.tr(),
-                  style: TextStyle(color: DesignTokens.textSecondary, fontSize: 14, fontWeight: FontWeight.w500),
+                  style: TextStyle(
+                    color: DesignTokens.textSecondary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
             ),
@@ -57,7 +68,8 @@ class ShippingApprovalScreen extends ConsumerWidget {
               action: ModernButton(
                 label: 'common.retry'.tr(),
                 icon: Icons.refresh,
-                onPressed: () => ref.invalidate(pendingShippingApprovalsProvider),
+                onPressed: () =>
+                    ref.invalidate(pendingShippingApprovalsProvider),
                 isPrimary: false,
               ),
             ),
@@ -73,23 +85,39 @@ class ShippingApprovalScreen extends ConsumerWidget {
                       height: 120,
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [DesignTokens.success.withValues(alpha: 0.2), DesignTokens.success.withValues(alpha: 0.1)],
+                          colors: [
+                            DesignTokens.success.withValues(alpha: 0.2),
+                            DesignTokens.success.withValues(alpha: 0.1),
+                          ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(Icons.check_circle_outline, size: 60, color: DesignTokens.success),
+                      child: Icon(
+                        Icons.check_circle_outline,
+                        size: 60,
+                        color: DesignTokens.success,
+                      ),
                     ),
                     const SizedBox(height: 24),
                     Text(
                       'seller.no_pending_approvals'.tr(),
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: isDark ? DesignTokens.white : DesignTokens.textPrimary),
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: isDark
+                            ? DesignTokens.white
+                            : DesignTokens.textPrimary,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       'seller.approvals_appear_here'.tr(),
-                      style: TextStyle(fontSize: 14, color: DesignTokens.textSecondary),
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: DesignTokens.textSecondary,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                   ],
@@ -121,11 +149,15 @@ class _ApprovalCard extends ConsumerStatefulWidget {
   ConsumerState<_ApprovalCard> createState() => _ApprovalCardState();
 }
 
-class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
-  bool _isProcessing = false;
+/// Private provider for ApprovalCard processing state
+final _approvalProcessingProvider = StateProvider.autoDispose<bool>(
+  (_) => false,
+);
 
+class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
   @override
   Widget build(BuildContext context) {
+    final _isProcessing = ref.watch(_approvalProcessingProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final order = widget.order;
     final items = order.items;
@@ -134,22 +166,37 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
     final pendingTotal = order.pendingTotal;
     final originalTotal = order.total;
     final shippingDifference = actualShipping - estimatedShipping;
-    final percentIncrease = estimatedShipping > 0 ? ((shippingDifference / estimatedShipping) * 100).toStringAsFixed(0) : '0';
+    final percentIncrease = estimatedShipping > 0
+        ? ((shippingDifference / estimatedShipping) * 100).toStringAsFixed(0)
+        : '0';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            isDark ? DesignTokens.darkSurfaceVariant.withValues(alpha: 0.6) : DesignTokens.white.withValues(alpha: 0.8),
-            isDark ? DesignTokens.darkSurface.withValues(alpha: 0.4) : DesignTokens.surface.withValues(alpha: 0.6),
+            isDark
+                ? DesignTokens.darkSurfaceVariant.withValues(alpha: 0.6)
+                : DesignTokens.white.withValues(alpha: 0.8),
+            isDark
+                ? DesignTokens.darkSurface.withValues(alpha: 0.4)
+                : DesignTokens.surface.withValues(alpha: 0.6),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(DesignTokens.radius16),
-        border: Border.all(color: DesignTokens.primary.withValues(alpha: 0.2), width: 1),
-        boxShadow: [BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.1), blurRadius: 12, offset: const Offset(0, 4))],
+        border: Border.all(
+          color: DesignTokens.primary.withValues(alpha: 0.2),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: DesignTokens.primary.withValues(alpha: 0.1),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -165,37 +212,68 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       ShaderMask(
-                        shaderCallback: (bounds) => LinearGradient(colors: [DesignTokens.primary, DesignTokens.secondary]).createShader(bounds),
+                        shaderCallback: (bounds) => LinearGradient(
+                          colors: [
+                            DesignTokens.primary,
+                            DesignTokens.secondary,
+                          ],
+                        ).createShader(bounds),
                         child: Text(
                           'Order #${order.orderId.substring(0, 8).toUpperCase()}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: DesignTokens.white),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: DesignTokens.white,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 6),
                       Text(
                         DateFormat('MMM dd, yyyy').format(order.createdAt),
-                        style: TextStyle(color: DesignTokens.textSecondary, fontSize: 12, fontWeight: FontWeight.w500),
+                        style: TextStyle(
+                          color: DesignTokens.textSecondary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ],
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: [DesignTokens.warning.withValues(alpha: 0.2), DesignTokens.warning.withValues(alpha: 0.1)]),
+                    gradient: LinearGradient(
+                      colors: [
+                        DesignTokens.warning.withValues(alpha: 0.2),
+                        DesignTokens.warning.withValues(alpha: 0.1),
+                      ],
+                    ),
                     borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                    border: Border.all(color: DesignTokens.warning.withValues(alpha: 0.3)),
+                    border: Border.all(
+                      color: DesignTokens.warning.withValues(alpha: 0.3),
+                    ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.pending, size: 16, color: DesignTokens.warning),
+                      Icon(
+                        Icons.pending,
+                        size: 16,
+                        color: DesignTokens.warning,
+                      ),
                       const SizedBox(width: 6),
                       Text(
                         'seller.approval_needed'.tr(),
-                        style: TextStyle(color: DesignTokens.warning, fontWeight: FontWeight.w600, fontSize: 12),
+                        style: TextStyle(
+                          color: DesignTokens.warning,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
+                        ),
                       ),
                     ],
                   ),
@@ -204,7 +282,10 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
             ),
 
             const SizedBox(height: 20),
-            Divider(height: 1, color: DesignTokens.outlineVariant.withValues(alpha: 0.5)),
+            Divider(
+              height: 1,
+              color: DesignTokens.outlineVariant.withValues(alpha: 0.5),
+            ),
             const SizedBox(height: 20),
 
             // Shipping cost comparison
@@ -212,26 +293,40 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [DesignTokens.info.withValues(alpha: 0.15), DesignTokens.primary.withValues(alpha: 0.1)],
+                  colors: [
+                    DesignTokens.info.withValues(alpha: 0.15),
+                    DesignTokens.primary.withValues(alpha: 0.1),
+                  ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                border: Border.all(color: DesignTokens.primary.withValues(alpha: 0.3), width: 1),
+                border: Border.all(
+                  color: DesignTokens.primary.withValues(alpha: 0.3),
+                  width: 1,
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.local_shipping, size: 22, color: DesignTokens.primary),
+                      Icon(
+                        Icons.local_shipping,
+                        size: 22,
+                        color: DesignTokens.primary,
+                      ),
                       const SizedBox(width: 12),
                       Flexible(
                         child: Text(
                           'seller.shipping_cost_update'.tr(),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: DesignTokens.primary),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 16,
+                            color: DesignTokens.primary,
+                          ),
                         ),
                       ),
                     ],
@@ -245,24 +340,45 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                         children: [
                           Text(
                             'seller.estimated'.tr(),
-                            style: TextStyle(color: DesignTokens.textSecondary, fontSize: 12, fontWeight: FontWeight.w500),
+                            style: TextStyle(
+                              color: DesignTokens.textSecondary,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                           const SizedBox(height: 4),
-                          Text('\$${estimatedShipping.toStringAsFixed(2)}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                          Text(
+                            '\$${estimatedShipping.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                         ],
                       ),
-                      Icon(Icons.arrow_forward, color: DesignTokens.textDisabled),
+                      Icon(
+                        Icons.arrow_forward,
+                        color: DesignTokens.textDisabled,
+                      ),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Text(
                             'seller.actual'.tr(),
-                            style: TextStyle(color: DesignTokens.textSecondary, fontSize: 12, fontWeight: FontWeight.w500),
+                            style: TextStyle(
+                              color: DesignTokens.textSecondary,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                           const SizedBox(height: 4),
                           Text(
                             '\$${actualShipping.toStringAsFixed(2)}',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: DesignTokens.primary),
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: DesignTokens.primary,
+                            ),
                           ),
                         ],
                       ),
@@ -270,15 +386,29 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                   ),
                   const SizedBox(height: 12),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(colors: [DesignTokens.error.withValues(alpha: 0.2), DesignTokens.error.withValues(alpha: 0.1)]),
+                      gradient: LinearGradient(
+                        colors: [
+                          DesignTokens.error.withValues(alpha: 0.2),
+                          DesignTokens.error.withValues(alpha: 0.1),
+                        ],
+                      ),
                       borderRadius: BorderRadius.circular(DesignTokens.radius8),
-                      border: Border.all(color: DesignTokens.error.withValues(alpha: 0.3)),
+                      border: Border.all(
+                        color: DesignTokens.error.withValues(alpha: 0.3),
+                      ),
                     ),
                     child: Text(
                       '+\$${shippingDifference.toStringAsFixed(2)} (+$percentIncrease%)',
-                      style: TextStyle(color: DesignTokens.error, fontWeight: FontWeight.w700, fontSize: 13),
+                      style: TextStyle(
+                        color: DesignTokens.error,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
                 ],
@@ -288,7 +418,12 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
             const SizedBox(height: 20),
 
             // Order items summary
-            Text('seller.items_count'.tr(namedArgs: {'count': items.length.toString()}), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+            Text(
+              'seller.items_count'.tr(
+                namedArgs: {'count': items.length.toString()},
+              ),
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+            ),
             const SizedBox(height: 12),
             ...items
                 .take(3)
@@ -300,13 +435,20 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                         Expanded(
                           child: Text(
                             '${item.name} x${item.quantity}',
-                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         Text(
                           '\$${(item.price * item.quantity).toStringAsFixed(2)}',
-                          style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13, fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                            color: DesignTokens.textSecondary,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ],
                     ),
@@ -316,13 +458,22 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
               Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: Text(
-                  'seller.more_items'.tr(namedArgs: {'count': (items.length - 3).toString()}),
-                  style: TextStyle(color: DesignTokens.textSecondary, fontSize: 12, fontWeight: FontWeight.w500),
+                  'seller.more_items'.tr(
+                    namedArgs: {'count': (items.length - 3).toString()},
+                  ),
+                  style: TextStyle(
+                    color: DesignTokens.textSecondary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
 
             const SizedBox(height: 20),
-            Divider(height: 1, color: DesignTokens.outlineVariant.withValues(alpha: 0.5)),
+            Divider(
+              height: 1,
+              color: DesignTokens.outlineVariant.withValues(alpha: 0.5),
+            ),
             const SizedBox(height: 20),
 
             // Total comparison
@@ -337,12 +488,21 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                         'seller.original_total'.tr(),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: DesignTokens.textSecondary, fontSize: 12, fontWeight: FontWeight.w500),
+                        style: TextStyle(
+                          color: DesignTokens.textSecondary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         '\$${originalTotal.toStringAsFixed(2)}',
-                        style: TextStyle(fontSize: 16, color: DesignTokens.textSecondary, decoration: TextDecoration.lineThrough, fontWeight: FontWeight.w600),
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: DesignTokens.textSecondary,
+                          decoration: TextDecoration.lineThrough,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ],
                   ),
@@ -355,12 +515,20 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                         'seller.new_total'.tr(),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: DesignTokens.textPrimary),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: DesignTokens.textPrimary,
+                        ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         '\$${pendingTotal.toStringAsFixed(2)}',
-                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: DesignTokens.primary),
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: DesignTokens.primary,
+                        ),
                       ),
                     ],
                   ),
@@ -374,11 +542,18 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
             if (_isProcessing)
               Center(
                 child: ShaderMask(
-                  shaderCallback: (bounds) => LinearGradient(colors: [DesignTokens.primary, DesignTokens.secondary]).createShader(bounds),
+                  shaderCallback: (bounds) => LinearGradient(
+                    colors: [DesignTokens.primary, DesignTokens.secondary],
+                  ).createShader(bounds),
                   child: SizedBox(
                     width: 40,
                     height: 40,
-                    child: ModernLoadingIndicator(size: 40, strokeWidth: 3, color: DesignTokens.white.withValues(alpha: 0.8), centered: false),
+                    child: ModernLoadingIndicator(
+                      size: 40,
+                      strokeWidth: 3,
+                      color: DesignTokens.white.withValues(alpha: 0.8),
+                      centered: false,
+                    ),
                   ),
                 ),
               )
@@ -388,29 +563,44 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                   Expanded(
                     child: Container(
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(colors: [DesignTokens.error.withValues(alpha: 0.2), DesignTokens.error.withValues(alpha: 0.1)]),
-                        borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                        border: Border.all(color: DesignTokens.error.withValues(alpha: 0.4)),
+                        gradient: LinearGradient(
+                          colors: [
+                            DesignTokens.error.withValues(alpha: 0.2),
+                            DesignTokens.error.withValues(alpha: 0.1),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(
+                          DesignTokens.radius12,
+                        ),
+                        border: Border.all(
+                          color: DesignTokens.error.withValues(alpha: 0.4),
+                        ),
                       ),
                       child: Semantics(
                         button: true,
                         label: 'btn-reject-cancel',
                         child: Material(
-                        color: DesignTokens.transparent,
-                        child: InkWell(
-                          onTap: () => _showRejectConfirmation(context),
-                          borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            child: Center(
-                              child: Text(
-                                'seller.reject_cancel'.tr(),
-                                style: TextStyle(color: DesignTokens.error, fontWeight: FontWeight.w700, fontSize: 14),
+                          color: DesignTokens.transparent,
+                          child: InkWell(
+                            onTap: () => _showRejectConfirmation(context),
+                            borderRadius: BorderRadius.circular(
+                              DesignTokens.radius12,
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              child: Center(
+                                child: Text(
+                                  'seller.reject_cancel'.tr(),
+                                  style: TextStyle(
+                                    color: DesignTokens.error,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 14,
+                                  ),
+                                ),
                               ),
                             ),
                           ),
                         ),
-                      ),
                       ),
                     ),
                   ),
@@ -419,7 +609,11 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                     child: Semantics(
                       button: true,
                       label: 'btn-approve-shipping',
-                      child: ModernButton(onPressed: () => _handleApproval(true), label: 'seller.approve'.tr(), icon: Icons.check_circle),
+                      child: ModernButton(
+                        onPressed: () => _handleApproval(true),
+                        label: 'seller.approve'.tr(),
+                        icon: Icons.check_circle,
+                      ),
                     ),
                   ),
                 ],
@@ -431,23 +625,39 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
   }
 
   Future<void> _handleApproval(bool approved) async {
-    setState(() => _isProcessing = true);
+    ref.read(_approvalProcessingProvider.notifier).state = true;
     final messenger = ScaffoldMessenger.of(context);
     final viewModel = ref.read(shippingApprovalViewModelProvider.notifier);
 
-    final success = await viewModel.approveShippingCost(widget.order.orderId, approved);
+    final success = await viewModel.approveShippingCost(
+      widget.order.orderId,
+      approved,
+    );
     if (!mounted) return;
 
     if (success) {
       messenger.showSnackBar(
-        SnackBar(content: Text(approved ? 'seller.shipping_approved'.tr() : 'seller.order_cancelled'.tr()), backgroundColor: approved ? DesignTokens.success : DesignTokens.warning),
+        SnackBar(
+          content: Text(
+            approved
+                ? 'seller.shipping_approved'.tr()
+                : 'seller.order_cancelled'.tr(),
+          ),
+          backgroundColor: approved
+              ? DesignTokens.success
+              : DesignTokens.warning,
+        ),
       );
     } else {
-      final error = ref.read(shippingApprovalViewModelProvider).errorMessage ?? 'seller.failed_update_approval'.tr();
-      messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: DesignTokens.error));
+      final error =
+          ref.read(shippingApprovalViewModelProvider).errorMessage ??
+          'seller.failed_update_approval'.tr();
+      messenger.showSnackBar(
+        SnackBar(content: Text(error), backgroundColor: DesignTokens.error),
+      );
     }
 
-    setState(() => _isProcessing = false);
+    ref.read(_approvalProcessingProvider.notifier).state = false;
   }
 
   void _showRejectConfirmation(BuildContext context) {
@@ -455,7 +665,9 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius20)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(DesignTokens.radius20),
+        ),
         backgroundColor: isDark ? DesignTokens.darkSurface : DesignTokens.white,
         title: Row(
           children: [
@@ -463,22 +675,38 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
             const SizedBox(width: 12),
             Text(
               'seller.cancel_order_title'.tr(),
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: isDark ? DesignTokens.white : DesignTokens.textPrimary),
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: isDark ? DesignTokens.white : DesignTokens.textPrimary,
+              ),
             ),
           ],
         ),
         content: Text(
           'seller.cancel_order_body'.tr(),
-          style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13, height: 1.6),
+          style: TextStyle(
+            color: DesignTokens.textSecondary,
+            fontSize: 13,
+            height: 1.6,
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: Text('seller.go_back'.tr(), style: TextStyle(color: DesignTokens.textSecondary)),
+            child: Text(
+              'seller.go_back'.tr(),
+              style: TextStyle(color: DesignTokens.textSecondary),
+            ),
           ),
           Container(
             decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [DesignTokens.error.withValues(alpha: 0.9), DesignTokens.error.withValues(alpha: 0.85)]),
+              gradient: LinearGradient(
+                colors: [
+                  DesignTokens.error.withValues(alpha: 0.9),
+                  DesignTokens.error.withValues(alpha: 0.85),
+                ],
+              ),
               borderRadius: BorderRadius.circular(DesignTokens.radius12),
             ),
             child: Material(
@@ -487,20 +715,27 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                 button: true,
                 label: 'btn-confirm-cancel-order',
                 child: InkWell(
-                onTap: () {
-                  Navigator.pop(dialogContext);
-                  _handleApproval(false);
-                },
-                borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                  child: Text(
-                    'seller.yes_cancel_order'.tr(),
-                    style: TextStyle(color: DesignTokens.white, fontWeight: FontWeight.w600, fontSize: 14),
+                  onTap: () {
+                    Navigator.pop(dialogContext);
+                    _handleApproval(false);
+                  },
+                  borderRadius: BorderRadius.circular(DesignTokens.radius12),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 10,
+                    ),
+                    child: Text(
+                      'seller.yes_cancel_order'.tr(),
+                      style: TextStyle(
+                        color: DesignTokens.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
             ),
           ),
         ],
@@ -510,4 +745,3 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
 }
 
 // ─── Flutter Previews ────────────────────────────────────────────────────────
-

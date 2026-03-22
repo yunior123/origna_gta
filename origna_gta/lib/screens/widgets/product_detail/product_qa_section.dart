@@ -22,18 +22,20 @@ class QASection extends ConsumerStatefulWidget {
   ConsumerState<QASection> createState() => _QASectionState();
 }
 
-class _QASectionState extends ConsumerState<QASection> {
-  bool _showAll = false;
+/// Private provider for QA section show-all toggle
+final _qaShowAllProvider = StateProvider.autoDispose<bool>((_) => false);
 
+class _QASectionState extends ConsumerState<QASection> {
   @override
   Widget build(BuildContext context) {
+    final _showAll = ref.watch(_qaShowAllProvider);
     final qaAsync = ref.watch(qaListProvider(widget.productId));
     final currentUserId = ref.watch(userIdProvider);
     final isSeller = currentUserId == widget.sellerId;
     final isPremium =
-        ref
-            .watch(subscriptionStreamProvider)
-            .whenOrNull(data: (s) => s?.isPremium) ??
+        ref.watch(
+          subscriptionStreamProvider.select((a) => a.valueOrNull?.isPremium),
+        ) ??
         false;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -70,9 +72,11 @@ class _QASectionState extends ConsumerState<QASection> {
                 ),
                 if (qaList.length > 3 && !_showAll)
                   TextButton(
-                    onPressed: () => setState(() => _showAll = true),
+                    onPressed: () =>
+                        ref.read(_qaShowAllProvider.notifier).state = true,
                     style: TextButton.styleFrom(
-                        foregroundColor: DesignTokens.primary),
+                      foregroundColor: DesignTokens.primary,
+                    ),
                     child: Text(
                       'qa.see_all'.tr(
                         namedArgs: {'count': qaList.length.toString()},
@@ -83,8 +87,7 @@ class _QASectionState extends ConsumerState<QASection> {
                 if (!isSeller && currentUserId != null)
                   ModernButton(
                     label: 'qa.ask_question'.tr(),
-                    icon:
-                        isPremium ? Icons.help_outline : Icons.lock_rounded,
+                    icon: isPremium ? Icons.help_outline : Icons.lock_rounded,
                     isPrimary: isPremium,
                     isOutlined: !isPremium,
                     onPressed: () => isPremium
@@ -95,8 +98,7 @@ class _QASectionState extends ConsumerState<QASection> {
                   Center(
                     child: Text(
                       'qa.sign_in_to_ask'.tr(),
-                      style: const TextStyle(
-                          color: DesignTokens.textSecondary),
+                      style: const TextStyle(color: DesignTokens.textSecondary),
                     ),
                   ),
               ],
@@ -183,7 +185,8 @@ class _QASectionState extends ConsumerState<QASection> {
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             style: TextButton.styleFrom(
-                foregroundColor: DesignTokens.textSecondary),
+              foregroundColor: DesignTokens.textSecondary,
+            ),
             child: Text('common.cancel'.tr()),
           ),
           ModernButton(
@@ -209,8 +212,7 @@ class _QASectionState extends ConsumerState<QASection> {
                 );
               } else {
                 messenger.showSnackBar(
-                  SnackBar(
-                      content: Text('qa.question_submitted'.tr())),
+                  SnackBar(content: Text('qa.question_submitted'.tr())),
                 );
               }
             },
@@ -224,8 +226,7 @@ class _QASectionState extends ConsumerState<QASection> {
     showDialog<void>(
       context: context,
       builder: (ctx) => Dialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: PremiumPaywallWidget(
           featureName: 'subscription.ask_questions'.tr(),
         ),
@@ -288,8 +289,7 @@ class _QACard extends ConsumerWidget {
                     const SizedBox(height: 4),
                     Text(
                       'qa.asked_on'.tr(
-                        namedArgs: {
-                            'date': formatter.format(qa.createdAt)},
+                        namedArgs: {'date': formatter.format(qa.createdAt)},
                       ),
                       style: const TextStyle(
                         fontSize: 12,
@@ -306,13 +306,10 @@ class _QACard extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: isDark
-                    ? DesignTokens.darkSurface
-                    : DesignTokens.surface,
+                color: isDark ? DesignTokens.darkSurface : DesignTokens.surface,
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color:
-                      DesignTokens.outlineVariant.withValues(alpha: 0.5),
+                  color: DesignTokens.outlineVariant.withValues(alpha: 0.5),
                 ),
               ),
               child: Row(
@@ -337,8 +334,7 @@ class _QACard extends ConsumerWidget {
                           ),
                         ),
                         const SizedBox(height: 4),
-                        Text(qa.answer!,
-                            style: const TextStyle(fontSize: 15)),
+                        Text(qa.answer!, style: const TextStyle(fontSize: 15)),
                         if (qa.answeredAt != null) ...[
                           const SizedBox(height: 4),
                           Text(
@@ -392,7 +388,8 @@ class _QACard extends ConsumerWidget {
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             style: TextButton.styleFrom(
-                foregroundColor: DesignTokens.textSecondary),
+              foregroundColor: DesignTokens.textSecondary,
+            ),
             child: Text('common.cancel'.tr()),
           ),
           ModernButton(
@@ -403,12 +400,10 @@ class _QACard extends ConsumerWidget {
               if (controller.text.trim().isNotEmpty) {
                 ref
                     .read(qaControllerProvider.notifier)
-                    .answerQuestion(
-                        qaId: qa.id, answer: controller.text);
+                    .answerQuestion(qaId: qa.id, answer: controller.text);
                 Navigator.pop(ctx);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                      content: Text('qa.answer_submitted'.tr())),
+                  SnackBar(content: Text('qa.answer_submitted'.tr())),
                 );
               }
             },

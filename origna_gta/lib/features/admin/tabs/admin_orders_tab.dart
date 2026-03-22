@@ -426,11 +426,15 @@ class _AdminOrderCard extends StatelessWidget {
   }
 }
 
-class _AdminOrdersTabState extends ConsumerState<AdminOrdersTab> {
-  String _statusFilter = 'all';
+/// Private provider for AdminOrdersTab filter state
+final _ordersStatusFilterProvider = StateProvider.autoDispose<String>(
+  (_) => 'all',
+);
 
+class _AdminOrdersTabState extends ConsumerState<AdminOrdersTab> {
   @override
   Widget build(BuildContext context) {
+    final _statusFilter = ref.watch(_ordersStatusFilterProvider);
     return Column(
       children: [
         // Filter Bar
@@ -498,7 +502,7 @@ class _AdminOrdersTabState extends ConsumerState<AdminOrdersTab> {
   }
 
   Widget _buildFilterChip(String label, String value) {
-    final isSelected = _statusFilter == value;
+    final isSelected = ref.watch(_ordersStatusFilterProvider) == value;
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: Semantics(
@@ -506,7 +510,8 @@ class _AdminOrdersTabState extends ConsumerState<AdminOrdersTab> {
         button: true,
         selected: isSelected,
         child: GestureDetector(
-          onTap: () => setState(() => _statusFilter = value),
+          onTap: () =>
+              ref.read(_ordersStatusFilterProvider.notifier).state = value,
           child: AnimatedContainer(
             duration: DesignTokens.durationFast,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

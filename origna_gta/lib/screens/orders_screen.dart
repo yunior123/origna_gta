@@ -25,7 +25,10 @@ class _FilterRow extends StatelessWidget {
   final String selectedFilter;
 
   final ValueChanged<String> onFilterSelected;
-  const _FilterRow({required this.selectedFilter, required this.onFilterSelected});
+  const _FilterRow({
+    required this.selectedFilter,
+    required this.onFilterSelected,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -34,7 +37,11 @@ class _FilterRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
-          _OrderFilterChip(label: 'orders.filter_all'.tr(), selected: selectedFilter == _OrderFilter.all, onTap: () => onFilterSelected(_OrderFilter.all)),
+          _OrderFilterChip(
+            label: 'orders.filter_all'.tr(),
+            selected: selectedFilter == _OrderFilter.all,
+            onTap: () => onFilterSelected(_OrderFilter.all),
+          ),
           const SizedBox(width: 8),
           _OrderFilterChip(
             label: 'orders.filter_active'.tr(),
@@ -72,7 +79,11 @@ class _OrderFilterChip extends StatelessWidget {
 
   final bool selected;
   final VoidCallback onTap;
-  const _OrderFilterChip({required this.label, required this.selected, required this.onTap});
+  const _OrderFilterChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -88,9 +99,16 @@ class _OrderFilterChip extends StatelessWidget {
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: selected
-              ? const BoxDecoration(gradient: DesignTokens.primaryGradient, borderRadius: BorderRadius.all(Radius.circular(20)))
+              ? const BoxDecoration(
+                  gradient: DesignTokens.primaryGradient,
+                  borderRadius: BorderRadius.all(Radius.circular(20)),
+                )
               : BoxDecoration(
-                  border: Border.all(color: isDark ? DesignTokens.darkOutline : DesignTokens.outline),
+                  border: Border.all(
+                    color: isDark
+                        ? DesignTokens.darkOutline
+                        : DesignTokens.outline,
+                  ),
                   borderRadius: const BorderRadius.all(Radius.circular(20)),
                   color: isDark ? DesignTokens.darkCard : DesignTokens.surface,
                 ),
@@ -99,7 +117,11 @@ class _OrderFilterChip extends StatelessWidget {
             style: TextStyle(
               fontSize: 13,
               fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-              color: selected ? DesignTokens.textOnPrimary : (isDark ? DesignTokens.textOnDarkSecondary : DesignTokens.textSecondary),
+              color: selected
+                  ? DesignTokens.textOnPrimary
+                  : (isDark
+                        ? DesignTokens.textOnDarkSecondary
+                        : DesignTokens.textSecondary),
             ),
           ),
         ),
@@ -115,7 +137,9 @@ class _OrdersLoadingSkeleton extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Shimmer.fromColors(
       baseColor: isDark ? DesignTokens.darkCard : DesignTokens.outlineVariant,
-      highlightColor: isDark ? DesignTokens.darkSurfaceVariant : DesignTokens.surface,
+      highlightColor: isDark
+          ? DesignTokens.darkSurfaceVariant
+          : DesignTokens.surface,
       child: ListView.builder(
         physics: const NeverScrollableScrollPhysics(),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -123,12 +147,20 @@ class _OrdersLoadingSkeleton extends StatelessWidget {
         itemBuilder: (context, i) => Container(
           margin: const EdgeInsets.only(bottom: 12),
           height: 90,
-          decoration: BoxDecoration(color: DesignTokens.white, borderRadius: BorderRadius.circular(DesignTokens.radius16)),
+          decoration: BoxDecoration(
+            color: DesignTokens.white,
+            borderRadius: BorderRadius.circular(DesignTokens.radius16),
+          ),
         ),
       ),
     );
   }
 }
+
+/// Private provider for OrdersScreen filter state
+final _ordersFilterProvider = StateProvider.autoDispose<String>(
+  (_) => _OrderFilter.all,
+);
 
 class _OrdersScreenState extends ConsumerState<OrdersScreen> {
   static const List<OrderStatus> _activeStatuses = [
@@ -147,24 +179,29 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
     OrderStatus.partiallyRefunded,
   ];
 
-  String _selectedFilter = _OrderFilter.all;
-
   @override
   Widget build(BuildContext context) {
+    final _selectedFilter = ref.watch(_ordersFilterProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final user = ref.watch(currentUserProvider);
+    final isLoggedIn = ref.watch(currentUserProvider.select((u) => u != null));
 
-    if (user == null) {
+    if (!isLoggedIn) {
       return Scaffold(
         appBar: AppBarFactory.simple(title: 'orders.my_orders'.tr()),
-        body: AnimatedEmptyState(icon: Icons.lock_outline_rounded, title: 'auth.sign_in_required'.tr(), subtitle: 'orders.order_history_desc'.tr()),
+        body: AnimatedEmptyState(
+          icon: Icons.lock_outline_rounded,
+          title: 'auth.sign_in_required'.tr(),
+          subtitle: 'orders.order_history_desc'.tr(),
+        ),
       );
     }
 
     final ordersAsync = ref.watch(buyerOrdersProvider);
 
     return Container(
-      decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
+      decoration: BoxDecoration(
+        gradient: DesignTokens.backgroundGradient(isDark: isDark),
+      ),
       child: Scaffold(
         key: const Key('orders_screen_app_bar'),
         appBar: AppBarFactory.simple(title: 'orders.my_orders'.tr()),
@@ -183,20 +220,34 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
               );
             }
 
-            final pendingApprovalsCount = orders.where((o) => o.shippingApprovalStatus == ShippingApprovalStatus.pending).length;
-            final visibleOrders = _applyFilter(orders);
+            final pendingApprovalsCount = orders
+                .where(
+                  (o) =>
+                      o.shippingApprovalStatus ==
+                      ShippingApprovalStatus.pending,
+                )
+                .length;
+            final visibleOrders = _applyFilter(orders, _selectedFilter);
 
             // On desktop, cap order list to readable width (840px) — cards shouldn't stretch to 1200px
-            final ordersMaxWidth = ResponsiveBreakpoints.isDesktop(context) ? 840.0 : ResponsiveBreakpoints.contentMaxWidth.toDouble();
+            final ordersMaxWidth = ResponsiveBreakpoints.isDesktop(context)
+                ? 840.0
+                : ResponsiveBreakpoints.contentMaxWidth.toDouble();
 
             return Column(
               children: [
-                if (pendingApprovalsCount > 0) PendingApprovalsBanner(count: pendingApprovalsCount),
+                if (pendingApprovalsCount > 0)
+                  PendingApprovalsBanner(count: pendingApprovalsCount),
                 Align(
                   alignment: Alignment.topCenter,
                   child: ConstrainedBox(
                     constraints: BoxConstraints(maxWidth: ordersMaxWidth),
-                    child: _FilterRow(selectedFilter: _selectedFilter, onFilterSelected: (filter) => setState(() => _selectedFilter = filter)),
+                    child: _FilterRow(
+                      selectedFilter: _selectedFilter,
+                      onFilterSelected: (filter) =>
+                          ref.read(_ordersFilterProvider.notifier).state =
+                              filter,
+                    ),
                   ),
                 ),
                 Expanded(
@@ -206,17 +257,25 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                       constraints: BoxConstraints(maxWidth: ordersMaxWidth),
                       child: RefreshIndicator(
                         color: DesignTokens.primary,
-                        onRefresh: () async => ref.invalidate(buyerOrdersProvider),
+                        onRefresh: () async =>
+                            ref.invalidate(buyerOrdersProvider),
                         child: visibleOrders.isEmpty
                             ? _buildEmptyFilter()
                             : ListView.builder(
                                 physics: const AlwaysScrollableScrollPhysics(),
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
                                 itemCount: visibleOrders.length,
                                 itemBuilder: (context, index) {
                                   return FadeSlideIn(
-                                    delay: Duration(milliseconds: 50 * index.clamp(0, 8)),
-                                    child: BuyerOrderCard(order: visibleOrders[index]),
+                                    delay: Duration(
+                                      milliseconds: 50 * index.clamp(0, 8),
+                                    ),
+                                    child: BuyerOrderCard(
+                                      order: visibleOrders[index],
+                                    ),
                                   );
                                 },
                               ),
@@ -232,14 +291,20 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
     );
   }
 
-  List<Order> _applyFilter(List<Order> orders) {
-    switch (_selectedFilter) {
+  List<Order> _applyFilter(List<Order> orders, String selectedFilter) {
+    switch (selectedFilter) {
       case _OrderFilter.active:
-        return orders.where((o) => _activeStatuses.contains(o.orderStatus)).toList();
+        return orders
+            .where((o) => _activeStatuses.contains(o.orderStatus))
+            .toList();
       case _OrderFilter.delivered:
-        return orders.where((o) => o.orderStatus == OrderStatus.delivered).toList();
+        return orders
+            .where((o) => o.orderStatus == OrderStatus.delivered)
+            .toList();
       case _OrderFilter.cancelled:
-        return orders.where((o) => _cancelledStatuses.contains(o.orderStatus)).toList();
+        return orders
+            .where((o) => _cancelledStatuses.contains(o.orderStatus))
+            .toList();
       default:
         return orders;
     }
@@ -251,7 +316,11 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
       itemCount: 1,
       itemBuilder: (context, index) => Padding(
         padding: const EdgeInsets.only(top: 64),
-        child: AnimatedEmptyState(icon: Icons.inbox_outlined, title: 'orders.no_orders_found'.tr(), subtitle: 'orders.no_orders_match'.tr()),
+        child: AnimatedEmptyState(
+          icon: Icons.inbox_outlined,
+          title: 'orders.no_orders_found'.tr(),
+          subtitle: 'orders.no_orders_match'.tr(),
+        ),
       ),
     );
   }
@@ -264,11 +333,21 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.error_outline_rounded, size: 60, color: DesignTokens.error),
+            Icon(
+              Icons.error_outline_rounded,
+              size: 60,
+              color: DesignTokens.error,
+            ),
             const SizedBox(height: 16),
             Semantics(
               label: 'text-orders-load-error',
-              child: Text('orders.unable_to_load'.tr(), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              child: Text(
+                'orders.unable_to_load'.tr(),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
             const SizedBox(height: 8),
             Text(
@@ -280,7 +359,11 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
             Semantics(
               button: true,
               label: 'btn-retry-load-orders',
-              child: ModernButton(onPressed: () => ref.invalidate(buyerOrdersProvider), label: 'orders.retry'.tr(), icon: Icons.refresh),
+              child: ModernButton(
+                onPressed: () => ref.invalidate(buyerOrdersProvider),
+                label: 'orders.retry'.tr(),
+                icon: Icons.refresh,
+              ),
             ),
           ],
         ),

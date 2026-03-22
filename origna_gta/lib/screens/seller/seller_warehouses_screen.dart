@@ -58,7 +58,9 @@ class _SellerWarehousesScreenState
   @override
   Widget build(BuildContext context) {
     final warehousesAsync = ref.watch(sellerWarehousesStreamProvider);
-    final vmState = ref.watch(warehousesViewModelProvider);
+    final vmIsLoading = ref.watch(
+      warehousesViewModelProvider.select((s) => s.isLoading),
+    );
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
@@ -87,7 +89,7 @@ class _SellerWarehousesScreenState
           ),
           data: (warehouses) => _WarehousesList(
             warehouses: warehouses,
-            isActionLoading: vmState.isLoading,
+            isActionLoading: vmIsLoading,
           ),
         ),
         floatingActionButton: FloatingActionButton.extended(
@@ -95,9 +97,7 @@ class _SellerWarehousesScreenState
           foregroundColor: DesignTokens.white,
           icon: const Icon(Icons.add_location_alt_outlined),
           label: Text('seller.add_location'.tr()),
-          onPressed: vmState.isLoading
-              ? null
-              : () => _showWarehouseForm(context),
+          onPressed: vmIsLoading ? null : () => _showWarehouseForm(context),
         ),
       ),
     );

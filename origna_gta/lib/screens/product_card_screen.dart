@@ -40,14 +40,20 @@ class ProductCard extends ConsumerStatefulWidget {
   ConsumerState<ProductCard> createState() => _ProductCardState();
 }
 
+/// Private provider for ProductCard image index
+final _productCardImageIndexProvider = StateProvider.autoDispose
+    .family<int, String>((_, __) => 0);
+
 class _ProductCardState extends ConsumerState<ProductCard>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-  int _currentImageIndex = 0;
   final int _quantity = 1;
 
   @override
   Widget build(BuildContext context) {
+    final _currentImageIndex = ref.watch(
+      _productCardImageIndexProvider(widget.productId),
+    );
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final List<String> imageUrls = widget.product.imageUrls;
     final name = widget.product.name;
@@ -137,9 +143,15 @@ class _ProductCardState extends ConsumerState<ProductCard>
                                   children: [
                                     PageView.builder(
                                       itemCount: imageUrls.length,
-                                      onPageChanged: (index) => setState(
-                                        () => _currentImageIndex = index,
-                                      ),
+                                      onPageChanged: (index) =>
+                                          ref
+                                                  .read(
+                                                    _productCardImageIndexProvider(
+                                                      widget.productId,
+                                                    ).notifier,
+                                                  )
+                                                  .state =
+                                              index,
                                       itemBuilder: (context, index) {
                                         return Semantics(
                                           image: true,
@@ -790,8 +802,11 @@ class _QaBadgeButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final countAsync = ref.watch(unansweredQaCountProvider(productId));
-    final count = countAsync.valueOrNull ?? 0;
+    final count =
+        ref.watch(
+          unansweredQaCountProvider(productId).select((a) => a.valueOrNull),
+        ) ??
+        0;
 
     return Tooltip(
       message: count > 0

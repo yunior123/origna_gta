@@ -10,7 +10,7 @@ Widget _editProductContent() => previewScope(
     product: Product(
       productId: 'mock-id',
       name: 'Mock Product',
-      price: 100.0,
+      priceCents: 10000,
       description: 'Mock Description',
       imageUrls: ['https://via.placeholder.com/150'],
       sellerId: 'mock-seller',
@@ -22,26 +22,54 @@ Widget _editProductContent() => previewScope(
 );
 
 @Preview(name: 'Edit Product — Mobile', group: 'Screens', size: Size(390, 844))
-Widget previewEditProductScreenMobile() => previewMobile(child: _editProductContent());
+Widget previewEditProductScreenMobile() =>
+    previewMobile(child: _editProductContent());
 
 @Preview(name: 'Edit Product — Tablet', group: 'Screens', size: Size(768, 1024))
-Widget previewEditProductScreenTablet() => previewTablet(child: _editProductContent());
+Widget previewEditProductScreenTablet() =>
+    previewTablet(child: _editProductContent());
 
-@Preview(name: 'Edit Product — Desktop', group: 'Screens', size: Size(1280, 800))
-Widget previewEditProductScreenDesktop() => previewDesktop(child: _editProductContent());
+@Preview(
+  name: 'Edit Product — Desktop',
+  group: 'Screens',
+  size: Size(1280, 800),
+)
+Widget previewEditProductScreenDesktop() =>
+    previewDesktop(child: _editProductContent());
 
 @Preview(name: 'Edit Product — Web', group: 'Screens', size: Size(1440, 900))
-Widget previewEditProductScreenWeb() => previewWeb(child: _editProductContent());
+Widget previewEditProductScreenWeb() =>
+    previewWeb(child: _editProductContent());
 
 // ── Light ────────────────────────────────────────────────────────────────────
-@Preview(name: 'Edit Product Light — Mobile', group: 'Screens', size: Size(390, 844))
-Widget previewEditProductScreenLightMobile() => previewMobile(theme: previewLightTheme, child: _editProductContent());
+@Preview(
+  name: 'Edit Product Light — Mobile',
+  group: 'Screens',
+  size: Size(390, 844),
+)
+Widget previewEditProductScreenLightMobile() =>
+    previewMobile(theme: previewLightTheme, child: _editProductContent());
 
-@Preview(name: 'Edit Product Light — Tablet', group: 'Screens', size: Size(768, 1024))
-Widget previewEditProductScreenLightTablet() => previewTablet(theme: previewLightTheme, child: _editProductContent());
+@Preview(
+  name: 'Edit Product Light — Tablet',
+  group: 'Screens',
+  size: Size(768, 1024),
+)
+Widget previewEditProductScreenLightTablet() =>
+    previewTablet(theme: previewLightTheme, child: _editProductContent());
 
-@Preview(name: 'Edit Product Light — Desktop', group: 'Screens', size: Size(1280, 800))
-Widget previewEditProductScreenLightDesktop() => previewDesktop(theme: previewLightTheme, child: _editProductContent());
+@Preview(
+  name: 'Edit Product Light — Desktop',
+  group: 'Screens',
+  size: Size(1280, 800),
+)
+Widget previewEditProductScreenLightDesktop() =>
+    previewDesktop(theme: previewLightTheme, child: _editProductContent());
 
-@Preview(name: 'Edit Product Light — Web', group: 'Screens', size: Size(1440, 900))
-Widget previewEditProductScreenLightWeb() => previewWeb(theme: previewLightTheme, child: _editProductContent());
+@Preview(
+  name: 'Edit Product Light — Web',
+  group: 'Screens',
+  size: Size(1440, 900),
+)
+Widget previewEditProductScreenLightWeb() =>
+    previewWeb(theme: previewLightTheme, child: _editProductContent());

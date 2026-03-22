@@ -133,9 +133,13 @@ class SellerMetricsRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final metricsAsync = ref.watch(sellerMetricsProvider(sellerId));
-    final metrics = metricsAsync.valueOrNull;
-    if (metricsAsync.isLoading || metrics == null) {
+    final metrics = ref.watch(
+      sellerMetricsProvider(sellerId).select((a) => a.valueOrNull),
+    );
+    final isLoading = ref.watch(
+      sellerMetricsProvider(sellerId).select((a) => a.isLoading),
+    );
+    if (isLoading || metrics == null) {
       return const SizedBox.shrink();
     }
 

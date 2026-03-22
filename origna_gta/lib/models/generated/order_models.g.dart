@@ -226,7 +226,7 @@ _OrderCreate _$OrderCreateFromJson(Map<String, dynamic> json) => _OrderCreate(
   shippingAddress: Address.fromJson(
     json['shippingAddress'] as Map<String, dynamic>,
   ),
-  shippingCost: (json['shippingCost'] as num?)?.toDouble() ?? 0.0,
+  shippingCostCents: (json['shippingCostCents'] as num?)?.toInt() ?? 0,
   currency: json['currency'] as String? ?? BusinessRules.defaultCurrency,
   shippingApprovalRequired: json['shippingApprovalRequired'] as bool? ?? false,
 );
@@ -238,7 +238,7 @@ Map<String, dynamic> _$OrderCreateToJson(_OrderCreate instance) =>
       'customerEmail': instance.customerEmail,
       'items': instance.items,
       'shippingAddress': instance.shippingAddress,
-      'shippingCost': instance.shippingCost,
+      'shippingCostCents': instance.shippingCostCents,
       'currency': instance.currency,
       'shippingApprovalRequired': instance.shippingApprovalRequired,
     };
@@ -248,7 +248,7 @@ _OrderItem _$OrderItemFromJson(Map<String, dynamic> json) => _OrderItem(
   cartItemId: json['cartItemId'] as String?,
   name: json['name'] as String,
   description: json['description'] as String,
-  price: (json['price'] as num).toDouble(),
+  priceCents: (json['priceCents'] as num).toInt(),
   quantity: (json['quantity'] as num).toInt(),
   imageUrls: (json['imageUrls'] as List<dynamic>)
       .map((e) => e as String)
@@ -314,7 +314,7 @@ Map<String, dynamic> _$OrderItemToJson(_OrderItem instance) =>
       'cartItemId': instance.cartItemId,
       'name': instance.name,
       'description': instance.description,
-      'price': instance.price,
+      'priceCents': instance.priceCents,
       'quantity': instance.quantity,
       'imageUrls': instance.imageUrls,
       'sellerId': instance.sellerId,

@@ -76,7 +76,7 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen>
 
   @override
   Widget build(BuildContext context) {
-    final user = ref.watch(currentUserProvider);
+    final isLoggedIn = ref.watch(currentUserProvider.select((u) => u != null));
     final userProfile = ref.watch(userProfileProvider);
     final isWide = MediaQuery.sizeOf(context).width >= 900;
 
@@ -128,7 +128,7 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen>
         ),
       ),
       data: (profile) {
-        if (user == null ||
+        if (!isLoggedIn ||
             profile == null ||
             !profile.roles.contains(UserRole.admin)) {
           return Scaffold(

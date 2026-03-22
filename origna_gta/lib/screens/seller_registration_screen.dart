@@ -21,7 +21,12 @@ const List<PaymentProviderConfig> availablePaymentProviders = [
     primaryColor: DesignTokens.stripeViolet,
     secondaryColor: DesignTokens.stripeCyan,
     payoutTiming: '7 days after delivery confirmation',
-    features: ['Automatic payouts after 7-day hold period', 'Best for Canada-based sellers', 'Stripe Express instant setup', '2.9% + \$0.30 per transaction'],
+    features: [
+      'Automatic payouts after 7-day hold period',
+      'Best for Canada-based sellers',
+      'Stripe Express instant setup',
+      '2.9% + \$0.30 per transaction',
+    ],
     recommendedFor: 'Recommended for local Canadian sellers.',
   ),
   PaymentProviderConfig(
@@ -31,7 +36,12 @@ const List<PaymentProviderConfig> availablePaymentProviders = [
     primaryColor: DesignTokens.paypalNavy,
     secondaryColor: DesignTokens.paypalBlue,
     payoutTiming: '3-5 days after delivery',
-    features: ['Instant PayPal balance transfers', 'Buyer/Seller protection included', 'Wide international acceptance', '2.9% + \$0.30 per transaction'],
+    features: [
+      'Instant PayPal balance transfers',
+      'Buyer/Seller protection included',
+      'Wide international acceptance',
+      '2.9% + \$0.30 per transaction',
+    ],
     recommendedFor: 'Great for sellers with existing PayPal business accounts.',
     comingSoon: true,
   ),
@@ -42,8 +52,14 @@ const List<PaymentProviderConfig> availablePaymentProviders = [
     primaryColor: DesignTokens.wiseGreen,
     secondaryColor: DesignTokens.wiseSky,
     payoutTiming: '1-3 days international transfer',
-    features: ['Low-cost international transfers', 'Real mid-market exchange rates', 'Multi-currency accounts', '0.35% - 1% transfer fees'],
-    recommendedFor: 'Perfect for international sellers needing fast, cheap transfers.',
+    features: [
+      'Low-cost international transfers',
+      'Real mid-market exchange rates',
+      'Multi-currency accounts',
+      '0.35% - 1% transfer fees',
+    ],
+    recommendedFor:
+        'Perfect for international sellers needing fast, cheap transfers.',
     comingSoon: true,
   ),
 ];
@@ -82,14 +98,21 @@ class SellerRegistrationScreen extends ConsumerStatefulWidget {
   const SellerRegistrationScreen({super.key});
 
   @override
-  ConsumerState<SellerRegistrationScreen> createState() => _SellerRegistrationScreenState();
+  ConsumerState<SellerRegistrationScreen> createState() =>
+      _SellerRegistrationScreenState();
 }
 
-class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScreen> with WidgetsBindingObserver {
-  bool _termsAccepted = false;
+/// Private provider for seller registration terms acceptance
+final _sellerTermsAcceptedProvider = StateProvider.autoDispose<bool>(
+  (_) => false,
+);
 
+class _SellerRegistrationScreenState
+    extends ConsumerState<SellerRegistrationScreen>
+    with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
+    final _termsAccepted = ref.watch(_sellerTermsAcceptedProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     // Watch User Data
     final userProfileAsync = ref.watch(userProfileProvider);
@@ -98,7 +121,9 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
     final viewModel = ref.read(sellerRegistrationViewModelProvider.notifier);
 
     return Container(
-      decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
+      decoration: BoxDecoration(
+        gradient: DesignTokens.backgroundGradient(isDark: isDark),
+      ),
       child: Scaffold(
         appBar: AppBarFactory.simple(title: 'seller.become_seller'.tr()),
         backgroundColor: DesignTokens.transparent,
@@ -108,17 +133,28 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 ShaderMask(
-                  shaderCallback: (bounds) => LinearGradient(colors: [DesignTokens.primary, DesignTokens.secondary]).createShader(bounds),
+                  shaderCallback: (bounds) => LinearGradient(
+                    colors: [DesignTokens.primary, DesignTokens.secondary],
+                  ).createShader(bounds),
                   child: SizedBox(
                     width: 50,
                     height: 50,
-                    child: ModernLoadingIndicator(size: 50, strokeWidth: 3, color: DesignTokens.white.withValues(alpha: 0.8), centered: false),
+                    child: ModernLoadingIndicator(
+                      size: 50,
+                      strokeWidth: 3,
+                      color: DesignTokens.white.withValues(alpha: 0.8),
+                      centered: false,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
                 Text(
                   'seller.loading'.tr(),
-                  style: TextStyle(color: DesignTokens.textSecondary, fontSize: 14, fontWeight: FontWeight.w500),
+                  style: TextStyle(
+                    color: DesignTokens.textSecondary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
             ),
@@ -126,7 +162,11 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
           error: (error, stack) => Center(
             child: Padding(
               padding: const EdgeInsets.all(24),
-              child: Text('seller.error_loading_profile'.tr(namedArgs: {'error': error.toString()})),
+              child: Text(
+                'seller.error_loading_profile'.tr(
+                  namedArgs: {'error': error.toString()},
+                ),
+              ),
             ),
           ),
           data: (userModel) {
@@ -166,18 +206,35 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
                           padding: const EdgeInsets.all(16),
                           margin: const EdgeInsets.only(bottom: 20),
                           decoration: BoxDecoration(
-                            gradient: LinearGradient(colors: [DesignTokens.error.withValues(alpha: 0.2), DesignTokens.error.withValues(alpha: 0.1)]),
-                            borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                            border: Border.all(color: DesignTokens.error.withValues(alpha: 0.3)),
+                            gradient: LinearGradient(
+                              colors: [
+                                DesignTokens.error.withValues(alpha: 0.2),
+                                DesignTokens.error.withValues(alpha: 0.1),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(
+                              DesignTokens.radius12,
+                            ),
+                            border: Border.all(
+                              color: DesignTokens.error.withValues(alpha: 0.3),
+                            ),
                           ),
                           child: Row(
                             children: [
-                              Icon(Icons.error_outline, color: DesignTokens.error, size: 20),
+                              Icon(
+                                Icons.error_outline,
+                                color: DesignTokens.error,
+                                size: 20,
+                              ),
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Text(
                                   viewState.error!,
-                                  style: TextStyle(color: DesignTokens.error, fontSize: 13, fontWeight: FontWeight.w500),
+                                  style: TextStyle(
+                                    color: DesignTokens.error,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                               ),
                             ],
@@ -191,13 +248,22 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
                         child: CheckboxListTile(
                           key: const Key('seller_terms_checkbox'),
                           value: _termsAccepted,
-                          onChanged: (value) => setState(() => _termsAccepted = value ?? false),
+                          onChanged: (value) =>
+                              setState(() => _termsAccepted = value ?? false),
                           title: Text('seller.accept_terms'.tr()),
                           subtitle: !_termsAccepted
-                              ? Text('seller.accept_terms_required'.tr(), style: TextStyle(color: DesignTokens.warning, fontSize: 12))
+                              ? Text(
+                                  'seller.accept_terms_required'.tr(),
+                                  style: TextStyle(
+                                    color: DesignTokens.warning,
+                                    fontSize: 12,
+                                  ),
+                                )
                               : null,
                           controlAffinity: ListTileControlAffinity.leading,
-                          fillColor: WidgetStateProperty.resolveWith<Color?>((states) {
+                          fillColor: WidgetStateProperty.resolveWith<Color?>((
+                            states,
+                          ) {
                             if (states.contains(WidgetState.selected)) {
                               return DesignTokens.primary;
                             }
@@ -229,7 +295,9 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // When user returns from the browser (Stripe onboarding), refresh their status
     if (state == AppLifecycleState.resumed) {
-      ref.read(sellerRegistrationViewModelProvider.notifier).refreshAccountStatus();
+      ref
+          .read(sellerRegistrationViewModelProvider.notifier)
+          .refreshAccountStatus();
     }
   }
 
@@ -245,15 +313,24 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
     WidgetsBinding.instance.addObserver(this);
   }
 
-  Widget _buildActionButton(UserModel user, SellerRegistrationState viewState, SellerRegistrationViewModel viewModel) {
+  Widget _buildActionButton(
+    UserModel user,
+    SellerRegistrationState viewState,
+    SellerRegistrationViewModel viewModel,
+  ) {
     final isLoading = viewState.isLoading;
 
-    final statusAsync = ref.watch(sellerAccountStatusProvider);
-    final status = statusAsync.valueOrNull;
+    final status = ref.watch(
+      sellerAccountStatusProvider.select((a) => a.valueOrNull),
+    );
 
     // C-5: Read from sellerAccountStatusProvider instead of UserModel
-    final hasAccount = status != null && status.isSeller; // isSeller implies a seller profile exists
-    final canReceivePayouts = status?.chargesEnabled ?? false; // In SellerAccountStatus, chargesEnabled implies payoutsEnabled
+    final hasAccount =
+        status != null &&
+        status.isSeller; // isSeller implies a seller profile exists
+    final canReceivePayouts =
+        status?.chargesEnabled ??
+        false; // In SellerAccountStatus, chargesEnabled implies payoutsEnabled
     final onboardingCompleted = status?.detailsSubmitted ?? false;
     final hasPendingRequirements = status?.hasPendingRequirements ?? false;
     final hasError = viewState.error != null && viewState.error!.isNotEmpty;
@@ -265,7 +342,10 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
       // Already set up - can manage without accepting terms again
       buttonText = 'seller.manage_stripe'.tr();
       onPressed = viewModel.openStripeDashboard;
-    } else if (hasAccount && onboardingCompleted && hasPendingRequirements && !hasError) {
+    } else if (hasAccount &&
+        onboardingCompleted &&
+        hasPendingRequirements &&
+        !hasError) {
       // Has account, submitted details, but still has requirements to complete
       buttonText = 'seller.complete_documents'.tr();
       onPressed = viewModel.continueOnboarding;
@@ -311,14 +391,26 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-            gradient: LinearGradient(colors: [DesignTokens.primary.withValues(alpha: 0.2), DesignTokens.secondary.withValues(alpha: 0.1)]),
+            gradient: LinearGradient(
+              colors: [
+                DesignTokens.primary.withValues(alpha: 0.2),
+                DesignTokens.secondary.withValues(alpha: 0.1),
+              ],
+            ),
             borderRadius: BorderRadius.circular(DesignTokens.radius8),
           ),
           child: Icon(icon, color: DesignTokens.primary, size: 20),
         ),
         const SizedBox(width: 16),
         Expanded(
-          child: Text(text, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, height: 1.4)),
+          child: Text(
+            text,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              height: 1.4,
+            ),
+          ),
         ),
       ],
     );
@@ -331,24 +423,43 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            isDark ? DesignTokens.textPrimary.withValues(alpha: 0.6) : DesignTokens.white.withValues(alpha: 0.8),
-            isDark ? DesignTokens.textPrimary.withValues(alpha: 0.4) : DesignTokens.surface.withValues(alpha: 0.6),
+            isDark
+                ? DesignTokens.textPrimary.withValues(alpha: 0.6)
+                : DesignTokens.white.withValues(alpha: 0.8),
+            isDark
+                ? DesignTokens.textPrimary.withValues(alpha: 0.4)
+                : DesignTokens.surface.withValues(alpha: 0.6),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(DesignTokens.radius16),
-        border: Border.all(color: DesignTokens.primary.withValues(alpha: 0.2), width: 1),
-        boxShadow: [BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.1), blurRadius: 12, offset: const Offset(0, 4))],
+        border: Border.all(
+          color: DesignTokens.primary.withValues(alpha: 0.2),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: DesignTokens.primary.withValues(alpha: 0.1),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           ShaderMask(
-            shaderCallback: (bounds) => LinearGradient(colors: [DesignTokens.primary, DesignTokens.secondary]).createShader(bounds),
+            shaderCallback: (bounds) => LinearGradient(
+              colors: [DesignTokens.primary, DesignTokens.secondary],
+            ).createShader(bounds),
             child: Text(
               'seller.why_sell_with_us'.tr(),
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: DesignTokens.white),
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: DesignTokens.white,
+              ),
             ),
           ),
           const SizedBox(height: 20),
@@ -369,32 +480,52 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
       padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [DesignTokens.primary.withValues(alpha: 0.95), DesignTokens.secondary.withValues(alpha: 0.95)],
+          colors: [
+            DesignTokens.primary.withValues(alpha: 0.95),
+            DesignTokens.secondary.withValues(alpha: 0.95),
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(DesignTokens.radius20),
-        boxShadow: [BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.3), blurRadius: 16, offset: const Offset(0, 4))],
+        boxShadow: [
+          BoxShadow(
+            color: DesignTokens.primary.withValues(alpha: 0.3),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         children: [
           Container(
             width: 100,
             height: 100,
-            decoration: BoxDecoration(color: DesignTokens.white.withValues(alpha: 0.2), shape: BoxShape.circle),
+            decoration: BoxDecoration(
+              color: DesignTokens.white.withValues(alpha: 0.2),
+              shape: BoxShape.circle,
+            ),
             child: Icon(Icons.store, size: 50, color: DesignTokens.white),
           ),
           const SizedBox(height: 20),
           Text(
             'seller.sell_on_origna'.tr(),
-            style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: DesignTokens.white),
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: DesignTokens.white,
+            ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 12),
           Text(
             'seller.reach_customers'.tr(),
             textAlign: TextAlign.center,
-            style: TextStyle(color: DesignTokens.white.withValues(alpha: 0.9), fontSize: 14, height: 1.5),
+            style: TextStyle(
+              color: DesignTokens.white.withValues(alpha: 0.9),
+              fontSize: 14,
+              height: 1.5,
+            ),
           ),
         ],
       ),
@@ -418,7 +549,12 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [config.primaryColor.withValues(alpha: 0.1), config.secondaryColor.withValues(alpha: 0.05)]),
+        gradient: LinearGradient(
+          colors: [
+            config.primaryColor.withValues(alpha: 0.1),
+            config.secondaryColor.withValues(alpha: 0.05),
+          ],
+        ),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: config.primaryColor.withValues(alpha: 0.3)),
       ),
@@ -431,8 +567,13 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
               const SizedBox(width: 8),
               Flexible(
                 child: Text(
-                  'seller.payout_timing'.tr(namedArgs: {'timing': config.payoutTiming}),
-                  style: TextStyle(fontWeight: FontWeight.w600, color: config.primaryColor),
+                  'seller.payout_timing'.tr(
+                    namedArgs: {'timing': config.payoutTiming},
+                  ),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: config.primaryColor,
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -440,7 +581,14 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
             ],
           ),
           const SizedBox(height: 8),
-          Text(config.features.map((f) => '• $f').join('\n'), style: TextStyle(color: DesignTokens.textPrimary, fontSize: 12, height: 1.5)),
+          Text(
+            config.features.map((f) => '• $f').join('\n'),
+            style: TextStyle(
+              color: DesignTokens.textPrimary,
+              fontSize: 12,
+              height: 1.5,
+            ),
+          ),
           if (isDisabled) ...[
             const SizedBox(height: 8),
             Container(
@@ -448,7 +596,9 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
               decoration: BoxDecoration(
                 color: DesignTokens.warning.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(4),
-                border: Border.all(color: DesignTokens.warning.withValues(alpha: 0.3)),
+                border: Border.all(
+                  color: DesignTokens.warning.withValues(alpha: 0.3),
+                ),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -457,7 +607,11 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
                   const SizedBox(width: 4),
                   Text(
                     'seller.coming_soon'.tr(),
-                    style: TextStyle(fontSize: 11, color: DesignTokens.warning, fontWeight: FontWeight.w500),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: DesignTokens.warning,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ],
               ),
@@ -468,13 +622,23 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
     );
   }
 
-  Widget _buildProviderSelector(UserModel user, SellerRegistrationState state, SellerRegistrationViewModel viewModel) {
-    final provider = user.paymentProvider.isNotEmpty ? user.paymentProvider : state.paymentProvider;
-    final selectedConfig = availablePaymentProviders.firstWhere((p) => p.id == provider, orElse: () => availablePaymentProviders.first);
+  Widget _buildProviderSelector(
+    UserModel user,
+    SellerRegistrationState state,
+    SellerRegistrationViewModel viewModel,
+  ) {
+    final provider = user.paymentProvider.isNotEmpty
+        ? user.paymentProvider
+        : state.paymentProvider;
+    final selectedConfig = availablePaymentProviders.firstWhere(
+      (p) => p.id == provider,
+      orElse: () => availablePaymentProviders.first,
+    );
 
     // Watch backend provider status once — pass resolved value into the map to avoid double-watch
-    final backendStatus = ref.watch(paymentProviderStatusProvider);
-    final backendStatusMap = backendStatus.valueOrNull ?? {};
+    final backendStatusMap =
+        ref.watch(paymentProviderStatusProvider.select((a) => a.valueOrNull)) ??
+        {};
 
     return GlassContainer(
       child: Column(
@@ -482,7 +646,10 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
         children: [
           Text(
             'seller.payment_provider'.tr(),
-            style: TextStyle(fontWeight: FontWeight.w700, color: DesignTokens.primary),
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              color: DesignTokens.primary,
+            ),
           ),
           const SizedBox(height: 12),
           // Dynamic provider chips from configuration
@@ -494,7 +661,9 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
 
               // Check if provider is configured in backend (defaults to true if unknown)
               final providerStatus = backendStatusMap[config.id];
-              final isConfiguredInBackend = providerStatus == null ? true : providerStatus[ApiKeys.configured] == true;
+              final isConfiguredInBackend = providerStatus == null
+                  ? true
+                  : providerStatus[ApiKeys.configured] == true;
 
               // Provider is disabled if it's marked "comingSoon" OR not configured in backend
               final isDisabled = config.comingSoon || !isConfiguredInBackend;
@@ -505,17 +674,37 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
                     label: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(config.icon, size: 16, color: isSelected ? DesignTokens.white : (isDisabled ? DesignTokens.textSecondary : config.primaryColor)),
+                        Icon(
+                          config.icon,
+                          size: 16,
+                          color: isSelected
+                              ? DesignTokens.white
+                              : (isDisabled
+                                    ? DesignTokens.textSecondary
+                                    : config.primaryColor),
+                        ),
                         const SizedBox(width: 6),
                         Text(config.name),
                         if (isDisabled) ...[
                           const SizedBox(width: 4),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                            decoration: BoxDecoration(color: DesignTokens.warning.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(4)),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 4,
+                              vertical: 1,
+                            ),
+                            decoration: BoxDecoration(
+                              color: DesignTokens.warning.withValues(
+                                alpha: 0.15,
+                              ),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
                             child: Text(
                               'seller.soon_badge'.tr(),
-                              style: TextStyle(fontSize: 9, color: DesignTokens.warning, fontWeight: FontWeight.w600),
+                              style: TextStyle(
+                                fontSize: 9,
+                                color: DesignTokens.warning,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                         ],
@@ -525,11 +714,18 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
                     onSelected: isDisabled
                         ? null
                         : (selected) {
-                            if (selected) viewModel.setPaymentProvider(config.id);
+                            if (selected)
+                              viewModel.setPaymentProvider(config.id);
                           },
                     selectedColor: config.primaryColor,
-                    backgroundColor: isDisabled ? DesignTokens.outlineVariant : null,
-                    labelStyle: TextStyle(color: isSelected && !isDisabled ? DesignTokens.white : (isDisabled ? DesignTokens.textSecondary : null)),
+                    backgroundColor: isDisabled
+                        ? DesignTokens.outlineVariant
+                        : null,
+                    labelStyle: TextStyle(
+                      color: isSelected && !isDisabled
+                          ? DesignTokens.white
+                          : (isDisabled ? DesignTokens.textSecondary : null),
+                    ),
                   ),
                 ],
               );
@@ -539,7 +735,10 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
           // Dynamic payment timing info card based on selected provider
           _buildProviderInfoCard(selectedConfig),
           const SizedBox(height: 8),
-          Text(selectedConfig.recommendedFor, style: TextStyle(color: DesignTokens.textSecondary, fontSize: 12)),
+          Text(
+            selectedConfig.recommendedFor,
+            style: TextStyle(color: DesignTokens.textSecondary, fontSize: 12),
+          ),
         ],
       ),
     );
@@ -550,16 +749,21 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
   Widget _buildVerificationStatusCard(UserModel user) {
     // Stripe status fields live in seller_profiles/{uid}, not users/{uid}.
     // Use sellerAccountStatusProvider which correctly combines both collections.
-    final statusAsync = ref.watch(sellerAccountStatusProvider);
-    final status = statusAsync.valueOrNull;
+    final status = ref.watch(
+      sellerAccountStatusProvider.select((a) => a.valueOrNull),
+    );
 
-    final hasAccount = user.stripeAccountId != null && user.stripeAccountId!.isNotEmpty;
+    final hasAccount =
+        user.stripeAccountId != null && user.stripeAccountId!.isNotEmpty;
     final onboardingCompleted = status?.detailsSubmitted ?? false;
     final chargesEnabled = status?.chargesEnabled ?? false;
-    final payoutsEnabled = status?.chargesEnabled ?? false; // chargesEnabled combines both in SellerAccountStatus
+    final payoutsEnabled =
+        status?.chargesEnabled ??
+        false; // chargesEnabled combines both in SellerAccountStatus
 
     // Only show if user has account but verification is pending
-    if (!hasAccount || (chargesEnabled && payoutsEnabled)) return const SizedBox.shrink();
+    if (!hasAccount || (chargesEnabled && payoutsEnabled))
+      return const SizedBox.shrink();
 
     String title;
     String message;
@@ -599,10 +803,21 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
               children: [
                 Text(
                   title,
-                  style: TextStyle(fontWeight: FontWeight.bold, color: color, fontSize: 15),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                    fontSize: 15,
+                  ),
                 ),
                 const SizedBox(height: 4),
-                Text(message, style: TextStyle(color: DesignTokens.textPrimary, fontSize: 13, height: 1.4)),
+                Text(
+                  message,
+                  style: TextStyle(
+                    color: DesignTokens.textPrimary,
+                    fontSize: 13,
+                    height: 1.4,
+                  ),
+                ),
               ],
             ),
           ),

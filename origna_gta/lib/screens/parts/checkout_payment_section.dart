@@ -1,23 +1,41 @@
 part of '../checkout_screen.dart';
+
 class _CheckoutButton extends ConsumerWidget {
   final List<CartItemDetailModel> items;
   final UserModel userModel;
   final double subtotal;
   final double total;
 
-  const _CheckoutButton({required this.items, required this.userModel, required this.subtotal, required this.total});
+  const _CheckoutButton({
+    required this.items,
+    required this.userModel,
+    required this.subtotal,
+    required this.total,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isProcessing = ref.watch(checkoutStateProvider.select((state) => state.isProcessing));
-    final isCalculating = ref.watch(checkoutStateProvider.select((state) => state.isCalculatingShipping));
-    final shippingError = ref.watch(checkoutStateProvider.select((state) => state.shippingError));
+    final isProcessing = ref.watch(
+      checkoutStateProvider.select((state) => state.isProcessing),
+    );
+    final isCalculating = ref.watch(
+      checkoutStateProvider.select((state) => state.isCalculatingShipping),
+    );
+    final shippingError = ref.watch(
+      checkoutStateProvider.select((state) => state.shippingError),
+    );
     final termsAccepted = ref.watch(checkoutTermsAcceptedProvider);
     final eulaAccepted = ref.watch(checkoutEulaAcceptedProvider);
     final ageVerifAccepted = ref.watch(checkoutAgeVerifAcceptedProvider);
     final hasDigitalItems = items.any((item) => item.isDigital);
     final hasAgeRestrictedItems = items.any((item) => item.isAgeRestricted);
-    final isDisabled = isProcessing || isCalculating || shippingError != null || !termsAccepted || (hasDigitalItems && !eulaAccepted) || (hasAgeRestrictedItems && !ageVerifAccepted);
+    final isDisabled =
+        isProcessing ||
+        isCalculating ||
+        shippingError != null ||
+        !termsAccepted ||
+        (hasDigitalItems && !eulaAccepted) ||
+        (hasAgeRestrictedItems && !ageVerifAccepted);
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
@@ -29,8 +47,16 @@ class _CheckoutButton extends ConsumerWidget {
       ),
       decoration: BoxDecoration(
         color: isDark ? DesignTokens.darkSurface : DesignTokens.surface,
-        border: Border(top: BorderSide(color: DesignTokens.primary.withValues(alpha: 0.15))),
-        boxShadow: [BoxShadow(color: DesignTokens.black.withValues(alpha: 0.12), blurRadius: 24, offset: const Offset(0, -8))],
+        border: Border(
+          top: BorderSide(color: DesignTokens.primary.withValues(alpha: 0.15)),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: DesignTokens.black.withValues(alpha: 0.12),
+            blurRadius: 24,
+            offset: const Offset(0, -8),
+          ),
+        ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -40,8 +66,12 @@ class _CheckoutButton extends ConsumerWidget {
             label: 'btn-place-order',
             child: ModernButton(
               key: const Key('checkout_place_order_button'),
-              label: isProcessing ? 'common.processing'.tr() : 'checkout.place_order'.tr(),
-              onPressed: isDisabled ? null : () => _showOrderReview(context, ref),
+              label: isProcessing
+                  ? 'common.processing'.tr()
+                  : 'checkout.place_order'.tr(),
+              onPressed: isDisabled
+                  ? null
+                  : () => _showOrderReview(context, ref),
               isLoading: isProcessing,
               icon: Icons.payment,
             ),
@@ -50,11 +80,18 @@ class _CheckoutButton extends ConsumerWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.lock_outlined, size: 12, color: DesignTokens.success.withValues(alpha: 0.7)),
+              Icon(
+                Icons.lock_outlined,
+                size: 12,
+                color: DesignTokens.success.withValues(alpha: 0.7),
+              ),
               const SizedBox(width: 4),
               Text(
                 'checkout.secure_stripe'.tr(),
-                style: TextStyle(fontSize: 11, color: DesignTokens.textSecondary),
+                style: TextStyle(
+                  fontSize: 11,
+                  color: DesignTokens.textSecondary,
+                ),
               ),
             ],
           ),
@@ -102,21 +139,38 @@ class _CheckoutButton extends ConsumerWidget {
 
     final eulaAccepted = ref.read(checkoutEulaAcceptedProvider);
     final ageVerificationAccepted = ref.read(checkoutAgeVerifAcceptedProvider);
-    final result = await notifier.startCheckout(items: items, user: userModel, subtotal: subtotal, eulaAccepted: eulaAccepted, ageVerificationAccepted: ageVerificationAccepted);
+    final result = await notifier.startCheckout(
+      items: items,
+      user: userModel,
+      subtotal: subtotal,
+      eulaAccepted: eulaAccepted,
+      ageVerificationAccepted: ageVerificationAccepted,
+    );
     if (!context.mounted) return;
 
     switch (result) {
       case CheckoutSuccess(:final checkoutUrl):
         // Persist terms acceptance server-side (fire-and-forget — never blocks checkout redirect)
         // Failures are reported to Sentry so compliance gaps are visible (PIPEDA / CASL audit trail).
-        ref.read(userRepositoryProvider).recordTermsAcceptance().catchError((Object e, StackTrace st) {
-          Sentry.captureException(e, stackTrace: st, hint: Hint.withMap({'context': 'recordTermsAcceptance at checkout'}));
+        ref.read(userRepositoryProvider).recordTermsAcceptance().catchError((
+          Object e,
+          StackTrace st,
+        ) {
+          Sentry.captureException(
+            e,
+            stackTrace: st,
+            hint: Hint.withMap({
+              'context': 'recordTermsAcceptance at checkout',
+            }),
+          );
         });
         await _redirectToStripe(checkoutUrl, context);
       case CheckoutError(:final message):
         messenger.showSnackBar(
           SnackBar(
-            content: Text('checkout.checkout_error'.tr(namedArgs: {'message': message})),
+            content: Text(
+              'checkout.checkout_error'.tr(namedArgs: {'message': message}),
+            ),
             backgroundColor: DesignTokens.error,
             duration: const Duration(seconds: 5),
           ),
@@ -124,7 +178,11 @@ class _CheckoutButton extends ConsumerWidget {
       case CheckoutAlreadyProcessed(:final existingOrderId):
         messenger.showSnackBar(
           SnackBar(
-            content: Text('checkout.order_already_exists'.tr(namedArgs: {'id': existingOrderId})),
+            content: Text(
+              'checkout.order_already_exists'.tr(
+                namedArgs: {'id': existingOrderId},
+              ),
+            ),
             backgroundColor: DesignTokens.primary,
           ),
         );
@@ -137,15 +195,20 @@ class _CouponSection extends ConsumerStatefulWidget {
   // AUDIT FIX (HIGH-C4): Pass seller IDs so seller-scoped coupon validation works
   final List<String> sellerIds;
 
-  const _CouponSection({required this.subtotalCents, this.sellerIds = const []});
+  const _CouponSection({
+    required this.subtotalCents,
+    this.sellerIds = const [],
+  });
 
   @override
   ConsumerState<_CouponSection> createState() => _CouponSectionState();
 }
 
+/// Private provider for coupon remove loading state
+final _couponRemovingProvider = StateProvider.autoDispose<bool>((_) => false);
+
 class _CouponSectionState extends ConsumerState<_CouponSection> {
   final _controller = TextEditingController();
-  bool _isRemoving = false;
 
   @override
   void dispose() {
@@ -155,17 +218,28 @@ class _CouponSectionState extends ConsumerState<_CouponSection> {
 
   @override
   Widget build(BuildContext context) {
-    final couponCode = ref.watch(checkoutStateProvider.select((s) => s.couponCode));
-    final isLoading = ref.watch(checkoutStateProvider.select((s) => s.isCouponLoading));
-    final isProcessing = ref.watch(checkoutStateProvider.select((s) => s.isProcessing));
-    final couponError = ref.watch(checkoutStateProvider.select((s) => s.couponError));
+    final couponCode = ref.watch(
+      checkoutStateProvider.select((s) => s.couponCode),
+    );
+    final isLoading = ref.watch(
+      checkoutStateProvider.select((s) => s.isCouponLoading),
+    );
+    final isProcessing = ref.watch(
+      checkoutStateProvider.select((s) => s.isProcessing),
+    );
+    final couponError = ref.watch(
+      checkoutStateProvider.select((s) => s.couponError),
+    );
     final notifier = ref.read(checkoutStateProvider.notifier);
     final applied = couponCode != null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('checkout.coupon_title'.tr(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+        Text(
+          'checkout.coupon_title'.tr(),
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        ),
         const SizedBox(height: 8),
         Row(
           children: [
@@ -178,14 +252,33 @@ class _CouponSectionState extends ConsumerState<_CouponSection> {
                 decoration: InputDecoration(
                   hintText: 'checkout.coupon_hint'.tr(),
                   filled: true,
-                  fillColor: Theme.of(context).brightness == Brightness.dark ? DesignTokens.darkCard : DesignTokens.white,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: DesignTokens.outline.withValues(alpha: 0.3))),
-                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: DesignTokens.outline.withValues(alpha: 0.3))),
+                  fillColor: Theme.of(context).brightness == Brightness.dark
+                      ? DesignTokens.darkCard
+                      : DesignTokens.white,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: DesignTokens.outline.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: DesignTokens.outline.withValues(alpha: 0.3),
+                    ),
+                  ),
                   errorText: couponError,
                   prefixIcon: const Icon(Icons.local_offer_outlined, size: 20),
                   suffixIcon: applied
-                      ? Icon(Icons.check_circle, color: DesignTokens.success, size: 20)
+                      ? Icon(
+                          Icons.check_circle,
+                          color: DesignTokens.success,
+                          size: 20,
+                        )
                       : null,
                 ),
                 onSubmitted: (_) => _apply(notifier),
@@ -194,20 +287,32 @@ class _CouponSectionState extends ConsumerState<_CouponSection> {
             const SizedBox(width: 10),
             applied
                 ? TextButton(
-                    onPressed: _isRemoving
+                    onPressed: ref.watch(_couponRemovingProvider)
                         ? null
                         : () {
-                            setState(() => _isRemoving = true);
+                            ref.read(_couponRemovingProvider.notifier).state =
+                                true;
                             _controller.clear();
                             notifier.removeCoupon();
                             // Reset after frame to allow state to propagate
                             WidgetsBinding.instance.addPostFrameCallback((_) {
-                              if (mounted) setState(() => _isRemoving = false);
+                              if (mounted)
+                                ref
+                                        .read(_couponRemovingProvider.notifier)
+                                        .state =
+                                    false;
                             });
                           },
-                    child: _isRemoving
-                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                        : Text('common.remove'.tr(), style: TextStyle(color: DesignTokens.error)),
+                    child: ref.watch(_couponRemovingProvider)
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Text(
+                            'common.remove'.tr(),
+                            style: TextStyle(color: DesignTokens.error),
+                          ),
                   )
                 : SizedBox(
                     width: 100,
@@ -216,7 +321,9 @@ class _CouponSectionState extends ConsumerState<_CouponSection> {
                       label: 'common.apply'.tr(),
                       height: 48,
                       isLoading: isLoading,
-                      onPressed: (isLoading || isProcessing) ? null : () => _apply(notifier),
+                      onPressed: (isLoading || isProcessing)
+                          ? null
+                          : () => _apply(notifier),
                     ),
                   ),
           ],
@@ -229,7 +336,11 @@ class _CouponSectionState extends ConsumerState<_CouponSection> {
     final code = _controller.text.trim();
     if (code.isEmpty) return;
     // AUDIT FIX (HIGH-C4): Pass sellerIds for server-side seller-scoped validation
-    notifier.applyCoupon(code, widget.subtotalCents, sellerIds: widget.sellerIds);
+    notifier.applyCoupon(
+      code,
+      widget.subtotalCents,
+      sellerIds: widget.sellerIds,
+    );
   }
 }
 
@@ -237,7 +348,10 @@ class _PaymentProviderSection extends StatelessWidget {
   final String selectedProvider;
   final ValueChanged<String> onChanged;
 
-  const _PaymentProviderSection({required this.selectedProvider, required this.onChanged});
+  const _PaymentProviderSection({
+    required this.selectedProvider,
+    required this.onChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -246,25 +360,46 @@ class _PaymentProviderSection extends StatelessWidget {
       key: const Key('checkout_payment_section'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('checkout.payment_method_title'.tr(), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        Text(
+          'checkout.payment_method_title'.tr(),
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 12),
         Row(
-          children: [ChoiceChip(label: Text('payment.stripe'.tr()), selected: true, onSelected: (_) {})],
+          children: [
+            ChoiceChip(
+              label: Text('payment.stripe'.tr()),
+              selected: true,
+              onSelected: (_) {},
+            ),
+          ],
         ),
         const SizedBox(height: 8),
-        Text('checkout.stripe_secure_notice'.tr(), style: TextStyle(color: DesignTokens.textSecondary, fontSize: 12)),
+        Text(
+          'checkout.stripe_secure_notice'.tr(),
+          style: TextStyle(color: DesignTokens.textSecondary, fontSize: 12),
+        ),
         const SizedBox(height: 10),
         Wrap(
           spacing: 6,
           runSpacing: 4,
-          children: ['VISA', 'MC', 'AMEX', 'Apple Pay', 'Google Pay'].map((label) {
+          children: ['VISA', 'MC', 'AMEX', 'Apple Pay', 'Google Pay'].map((
+            label,
+          ) {
             return Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
                 border: Border.all(color: DesignTokens.outline),
                 borderRadius: BorderRadius.circular(4),
               ),
-              child: Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: DesignTokens.textSecondary)),
+              child: Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: DesignTokens.textSecondary,
+                ),
+              ),
             );
           }).toList(),
         ),
@@ -285,12 +420,19 @@ class _BuyerProtectionBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: DesignTokens.success.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: DesignTokens.success.withValues(alpha: 0.3), width: 1),
+        border: Border.all(
+          color: DesignTokens.success.withValues(alpha: 0.3),
+          width: 1,
+        ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.verified_user_outlined, color: DesignTokens.success, size: 20),
+          Icon(
+            Icons.verified_user_outlined,
+            color: DesignTokens.success,
+            size: 20,
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -298,19 +440,30 @@ class _BuyerProtectionBanner extends StatelessWidget {
               children: [
                 Text(
                   'checkout.buyer_protection_title'.tr(),
-                  style: TextStyle(color: DesignTokens.success, fontSize: 13, fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                    color: DesignTokens.success,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   'checkout.buyer_protection_message'.tr(),
-                  style: TextStyle(color: DesignTokens.success.withValues(alpha: 0.85), fontSize: 12, height: 1.4),
+                  style: TextStyle(
+                    color: DesignTokens.success.withValues(alpha: 0.85),
+                    fontSize: 12,
+                    height: 1.4,
+                  ),
                 ),
                 const SizedBox(height: 6),
                 Semantics(
                   link: true,
                   label: 'link-buyer-protection',
                   child: GestureDetector(
-                    onTap: () => safeLaunchUrl(Uri.parse(ExternalUrls.buyerProtectionUrl), mode: LaunchMode.externalApplication),
+                    onTap: () => safeLaunchUrl(
+                      Uri.parse(ExternalUrls.buyerProtectionUrl),
+                      mode: LaunchMode.externalApplication,
+                    ),
                     child: Text(
                       'checkout.buyer_protection_link'.tr(),
                       style: TextStyle(
@@ -341,7 +494,10 @@ class _SecurityInfo extends StatelessWidget {
       decoration: BoxDecoration(
         color: DesignTokens.info.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: DesignTokens.info.withValues(alpha: 0.3), width: 1),
+        border: Border.all(
+          color: DesignTokens.info.withValues(alpha: 0.3),
+          width: 1,
+        ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -354,10 +510,21 @@ class _SecurityInfo extends StatelessWidget {
               children: [
                 Text(
                   'checkout.secure_payment'.tr(),
-                  style: TextStyle(color: DesignTokens.info, fontSize: 13, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    color: DesignTokens.info,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 const SizedBox(height: 4),
-                Text('checkout.stripe_secure'.tr(), style: TextStyle(color: DesignTokens.info.withValues(alpha: 0.8), fontSize: 12, height: 1.4)),
+                Text(
+                  'checkout.stripe_secure'.tr(),
+                  style: TextStyle(
+                    color: DesignTokens.info.withValues(alpha: 0.8),
+                    fontSize: 12,
+                    height: 1.4,
+                  ),
+                ),
               ],
             ),
           ),
@@ -380,8 +547,12 @@ class _FreeShippingBanner extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final shippingCost = ref.watch(checkoutStateProvider.select((s) => s.shippingCost));
-    final isCalculating = ref.watch(checkoutStateProvider.select((s) => s.isCalculatingShipping));
+    final shippingCost = ref.watch(
+      checkoutStateProvider.select((s) => s.shippingCost),
+    );
+    final isCalculating = ref.watch(
+      checkoutStateProvider.select((s) => s.isCalculatingShipping),
+    );
 
     if (isCalculating || shippingCost == 0) return const SizedBox.shrink();
 
@@ -398,24 +569,40 @@ class _FreeShippingBanner extends ConsumerWidget {
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [DesignTokens.tertiary.withValues(alpha: 0.12), DesignTokens.success.withValues(alpha: 0.10)],
+          colors: [
+            DesignTokens.tertiary.withValues(alpha: 0.12),
+            DesignTokens.success.withValues(alpha: 0.10),
+          ],
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
         ),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: DesignTokens.tertiary.withValues(alpha: 0.35), width: 1),
+        border: Border.all(
+          color: DesignTokens.tertiary.withValues(alpha: 0.35),
+          width: 1,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(Icons.local_shipping_outlined, size: 17, color: DesignTokens.tertiary),
+              Icon(
+                Icons.local_shipping_outlined,
+                size: 17,
+                color: DesignTokens.tertiary,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'checkout.free_shipping_banner'.tr(namedArgs: {'amount': '\$${remaining.toStringAsFixed(2)}'}),
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: DesignTokens.tertiary),
+                  'checkout.free_shipping_banner'.tr(
+                    namedArgs: {'amount': '\$${remaining.toStringAsFixed(2)}'},
+                  ),
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: DesignTokens.tertiary,
+                  ),
                 ),
               ),
             ],
@@ -435,4 +622,3 @@ class _FreeShippingBanner extends ConsumerWidget {
     );
   }
 }
-

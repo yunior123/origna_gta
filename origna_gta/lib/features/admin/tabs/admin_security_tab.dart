@@ -9,6 +9,13 @@ import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
+/// Private providers for AdminSecurityTab MFA setup wizard state
+final _mfaSecretProvider = StateProvider.autoDispose<String?>((_) => null);
+final _mfaQrCodeUriProvider = StateProvider.autoDispose<String?>((_) => null);
+final _mfaBackupCodesProvider = StateProvider.autoDispose<List<String>>(
+  (_) => [],
+);
+
 /// Documentation for AdminSecurityTab
 class AdminSecurityTab extends ConsumerStatefulWidget {
   const AdminSecurityTab({super.key});
@@ -18,14 +25,13 @@ class AdminSecurityTab extends ConsumerStatefulWidget {
 }
 
 class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
-  // Transient MFA setup wizard state (only exists during enable flow)
-  String? _secret;
-  String? _qrCodeUri;
-  List<String> _backupCodes = [];
   final TextEditingController _mfaCodeController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
+    final _secret = ref.watch(_mfaSecretProvider);
+    final _qrCodeUri = ref.watch(_mfaQrCodeUriProvider);
+    final _backupCodes = ref.watch(_mfaBackupCodesProvider);
     final adminActionsState = ref.watch(adminActionsViewModelProvider);
     // Read MFA status reactively from user profile provider
     final mfaEnabled =
@@ -528,11 +534,9 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
               if (success && mounted) {
                 // Refresh user profile to pick up MFA status change
                 ref.invalidate(userProfileProvider);
-                setState(() {
-                  _secret = null;
-                  _qrCodeUri = null;
-                  _backupCodes = [];
-                });
+                ref.read(_mfaSecretProvider.notifier).state = null;
+                ref.read(_mfaQrCodeUriProvider.notifier).state = null;
+                ref.read(_mfaBackupCodesProvider.notifier).state = [];
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text('admin.security.mfa_disabled_success'.tr()),
@@ -555,13 +559,13 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
     final viewModel = ref.read(adminActionsViewModelProvider.notifier);
     final result = await viewModel.enableAdminMfa();
     if (result != null && mounted) {
-      setState(() {
-        _secret = result[ApiKeys.secret] as String?;
-        _qrCodeUri = result[ApiKeys.provisioningUri] as String?;
-        _backupCodes = List<String>.from(
-          result[ApiKeys.backupCodes] as Iterable? ?? [],
-        );
-      });
+      ref.read(_mfaSecretProvider.notifier).state =
+          result[ApiKeys.secret] as String?;
+      ref.read(_mfaQrCodeUriProvider.notifier).state =
+          result[ApiKeys.provisioningUri] as String?;
+      ref.read(_mfaBackupCodesProvider.notifier).state = List<String>.from(
+        result[ApiKeys.backupCodes] as Iterable? ?? [],
+      );
     }
   }
 

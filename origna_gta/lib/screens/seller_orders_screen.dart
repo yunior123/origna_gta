@@ -27,7 +27,8 @@ class SellerOrdersScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(currentUserProvider);
+    final isLoggedIn = ref.watch(currentUserProvider.select((u) => u != null));
+    final userUid = ref.watch(currentUserProvider.select((u) => u?.uid));
     final isSuspended =
         ref.watch(
           userProfileProvider.select((a) => a.valueOrNull?.suspended),
@@ -35,7 +36,7 @@ class SellerOrdersScreen extends ConsumerWidget {
         false;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    if (user == null) {
+    if (!isLoggedIn) {
       return Container(
         decoration: BoxDecoration(
           gradient: DesignTokens.backgroundGradient(isDark: isDark),
@@ -112,7 +113,7 @@ class SellerOrdersScreen extends ConsumerWidget {
         appBar: AppBarFactory.custom(
           title: 'seller.manage_orders'.tr(),
           actions: [
-            _UnansweredQaBadge(sellerId: user.uid),
+            _UnansweredQaBadge(sellerId: userUid!),
             Semantics(
               button: true,
               label: 'btn-seller-integration',
@@ -206,7 +207,7 @@ class SellerOrdersScreen extends ConsumerWidget {
                         ),
                         child: _SellerOrderCard(
                           order: order,
-                          sellerId: user.uid,
+                          sellerId: userUid!,
                         ),
                       );
                     },

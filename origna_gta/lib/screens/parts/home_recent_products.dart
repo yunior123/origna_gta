@@ -11,13 +11,20 @@ class _RecentlyViewedSection extends ConsumerStatefulWidget {
       _RecentlyViewedSectionState();
 }
 
+/// Private providers for RecentlyViewedSection state
+final _recentProductsProvider = StateProvider.autoDispose<List<Product>>(
+  (_) => [],
+);
+final _recentProductsLoadedProvider = StateProvider.autoDispose<bool>(
+  (_) => false,
+);
+
 class _RecentlyViewedSectionState
     extends ConsumerState<_RecentlyViewedSection> {
-  List<Product> _products = [];
-  bool _loaded = false;
-
   @override
   Widget build(BuildContext context) {
+    final _loaded = ref.watch(_recentProductsLoadedProvider);
+    final _products = ref.watch(_recentProductsProvider);
     if (!_loaded || _products.isEmpty) return const SizedBox.shrink();
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -32,7 +39,9 @@ class _RecentlyViewedSectionState
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w700,
-              color: isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary,
+              color: isDark
+                  ? DesignTokens.textOnDark
+                  : DesignTokens.textPrimary,
             ),
           ),
         ),
@@ -74,17 +83,20 @@ class _RecentlyViewedSectionState
       final prefs = await SharedPreferences.getInstance();
       final raw = prefs.getString(LocalStorageKeys.recentlyViewed);
       if (raw == null) {
-        if (mounted) setState(() => _loaded = true);
+        if (mounted)
+          ref.read(_recentProductsLoadedProvider.notifier).state = true;
         return;
       }
       final decoded = jsonDecode(raw);
       if (decoded is! List) {
-        if (mounted) setState(() => _loaded = true);
+        if (mounted)
+          ref.read(_recentProductsLoadedProvider.notifier).state = true;
         return;
       }
       final ids = decoded.cast<String>().take(10).toList();
       if (ids.isEmpty) {
-        if (mounted) setState(() => _loaded = true);
+        if (mounted)
+          ref.read(_recentProductsLoadedProvider.notifier).state = true;
         return;
       }
 
@@ -100,14 +112,13 @@ class _RecentlyViewedSectionState
           .toList();
 
       if (mounted) {
-        setState(() {
-          _products = ordered;
-          _loaded = true;
-        });
+        ref.read(_recentProductsProvider.notifier).state = ordered;
+        ref.read(_recentProductsLoadedProvider.notifier).state = true;
       }
     } catch (e) {
       AppLogger.w('Failed to load recently viewed: $e', tag: 'home');
-      if (mounted) setState(() => _loaded = true);
+      if (mounted)
+        ref.read(_recentProductsLoadedProvider.notifier).state = true;
     }
   }
 }

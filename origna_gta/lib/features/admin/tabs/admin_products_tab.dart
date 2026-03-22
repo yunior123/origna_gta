@@ -10,6 +10,14 @@ import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
+/// Private providers for AdminProductsTab local UI state
+final _productsSearchQueryProvider = StateProvider.autoDispose<String>(
+  (_) => '',
+);
+final _productsStockFilterProvider = StateProvider.autoDispose<String>(
+  (_) => 'all',
+);
+
 /// Documentation for AdminProductsTab
 class AdminProductsTab extends ConsumerStatefulWidget {
   const AdminProductsTab({super.key});
@@ -20,11 +28,11 @@ class AdminProductsTab extends ConsumerStatefulWidget {
 
 class _AdminProductsTabState extends ConsumerState<AdminProductsTab> {
   final TextEditingController _searchController = TextEditingController();
-  String _searchQuery = '';
-  String _stockFilter = 'all';
 
   @override
   Widget build(BuildContext context) {
+    final searchQuery = ref.watch(_productsSearchQueryProvider);
+    final stockFilter = ref.watch(_productsStockFilterProvider);
     return Column(
       children: [
         // Search and Filter
@@ -125,10 +133,10 @@ class _AdminProductsTabState extends ConsumerState<AdminProductsTab> {
                     final stock = data.stockQuantity;
 
                     final matchesSearch =
-                        _searchQuery.isEmpty || name.contains(_searchQuery);
+                        searchQuery.isEmpty || name.contains(searchQuery);
 
                     bool matchesStock = true;
-                    switch (_stockFilter) {
+                    switch (stockFilter) {
                       case 'pending_review':
                         matchesStock =
                             data.lifecycleStatus ==
@@ -180,9 +188,9 @@ class _AdminProductsTabState extends ConsumerState<AdminProductsTab> {
   void initState() {
     super.initState();
     _searchController.addListener(() {
-      setState(() {
-        _searchQuery = _searchController.text.toLowerCase();
-      });
+      ref.read(_productsSearchQueryProvider.notifier).state = _searchController
+          .text
+          .toLowerCase();
     });
   }
 
@@ -200,11 +208,14 @@ class _AdminProductsTabState extends ConsumerState<AdminProductsTab> {
                       ProductLifecycleStatusValues.underReview,
                 )
                 .length;
-            final isSelected = _stockFilter == 'pending_review';
+            final isSelected =
+                ref.watch(_productsStockFilterProvider) == 'pending_review';
             return Padding(
               padding: const EdgeInsets.only(right: 8),
               child: GestureDetector(
-                onTap: () => setState(() => _stockFilter = 'pending_review'),
+                onTap: () =>
+                    ref.read(_productsStockFilterProvider.notifier).state =
+                        'pending_review',
                 child: AnimatedContainer(
                   duration: DesignTokens.durationFast,
                   padding: const EdgeInsets.symmetric(
@@ -212,7 +223,9 @@ class _AdminProductsTabState extends ConsumerState<AdminProductsTab> {
                     vertical: 7,
                   ),
                   decoration: BoxDecoration(
-                    color: isSelected ? DesignTokens.warning : DesignTokens.white,
+                    color: isSelected
+                        ? DesignTokens.warning
+                        : DesignTokens.white,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
                       color: isSelected
@@ -279,11 +292,12 @@ class _AdminProductsTabState extends ConsumerState<AdminProductsTab> {
   }
 
   Widget _buildFilterChip(String label, String value) {
-    final isSelected = _stockFilter == value;
+    final isSelected = ref.watch(_productsStockFilterProvider) == value;
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: GestureDetector(
-        onTap: () => setState(() => _stockFilter = value),
+        onTap: () =>
+            ref.read(_productsStockFilterProvider.notifier).state = value,
         child: AnimatedContainer(
           duration: DesignTokens.durationFast,
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
@@ -308,7 +322,9 @@ class _AdminProductsTabState extends ConsumerState<AdminProductsTab> {
           child: Text(
             label,
             style: TextStyle(
-              color: isSelected ? DesignTokens.white : DesignTokens.textSecondary,
+              color: isSelected
+                  ? DesignTokens.white
+                  : DesignTokens.textSecondary,
               fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
               fontSize: 12,
             ),
@@ -595,9 +611,16 @@ class _ProductCard extends ConsumerWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text('admin.products.approve_confirm_title'.tr()),
-        content: Text('admin.products.approve_confirm_body'.tr(namedArgs: {'name': product.name})),
+        content: Text(
+          'admin.products.approve_confirm_body'.tr(
+            namedArgs: {'name': product.name},
+          ),
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('common.cancel'.tr())),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('common.cancel'.tr()),
+          ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             child: Text('admin.products.approve_action'.tr()),
@@ -801,7 +824,9 @@ class _ProductCard extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'admin.products.digital_type_label'.tr(namedArgs: {'type': product.digitalType ?? 'unknown'}),
+                'admin.products.digital_type_label'.tr(
+                  namedArgs: {'type': product.digitalType ?? 'unknown'},
+                ),
                 style: const TextStyle(fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 12),
@@ -869,7 +894,9 @@ class _ProductCard extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'admin.products.reject_product_label'.tr(namedArgs: {'name': product.name}),
+              'admin.products.reject_product_label'.tr(
+                namedArgs: {'name': product.name},
+              ),
               style: const TextStyle(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 12),

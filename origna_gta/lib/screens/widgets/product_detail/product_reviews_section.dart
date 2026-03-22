@@ -169,9 +169,10 @@ class ReviewCard extends ConsumerStatefulWidget {
   ConsumerState<ReviewCard> createState() => _ReviewCardState();
 }
 
-class _ReviewCardState extends ConsumerState<ReviewCard> {
-  bool _votingHelpful = false;
+/// Private provider for ReviewCard helpful vote loading state
+final _votingHelpfulProvider = StateProvider.autoDispose<bool>((_) => false);
 
+class _ReviewCardState extends ConsumerState<ReviewCard> {
   DateTime? _parseCreatedAt(Object? value) {
     if (value is DateTime) return value;
     if (value is String) return DateTime.tryParse(value);
@@ -450,7 +451,7 @@ class _ReviewCardState extends ConsumerState<ReviewCard> {
                   ),
                 ),
                 const SizedBox(width: 6),
-                _votingHelpful
+                ref.watch(_votingHelpfulProvider)
                     ? Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 8),
                         child: ModernLoadingIndicator(
@@ -554,7 +555,7 @@ class _ReviewCardState extends ConsumerState<ReviewCard> {
       if (mounted) showLoginPrompt(context);
       return;
     }
-    setState(() => _votingHelpful = true);
+    ref.read(_votingHelpfulProvider.notifier).state = true;
     final messenger = ScaffoldMessenger.of(context);
     try {
       await ref
@@ -582,7 +583,7 @@ class _ReviewCardState extends ConsumerState<ReviewCard> {
         );
       }
     } finally {
-      if (mounted) setState(() => _votingHelpful = false);
+      if (mounted) ref.read(_votingHelpfulProvider.notifier).state = false;
     }
   }
 }

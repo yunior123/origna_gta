@@ -30,48 +30,98 @@ OrderItem _parseOrderItem(dynamic raw) {
   final map = _safeMap(raw);
   return OrderItem(
     productId: _safeString(map[Fields.productId]),
-    cartItemId: map[Fields.cartItemId] as String?, // F-001/F-003: canonical cart item ID
+    cartItemId:
+        map[Fields.cartItemId]
+            as String?, // F-001/F-003: canonical cart item ID
     name: _safeString(map[Fields.name]),
     description: _safeString(map[Fields.description]),
-    price: _safeDouble(map[Fields.price]),
+    priceCents: map[Fields.priceCents] != null
+        ? _safeInt(map[Fields.priceCents])
+        : (_safeDouble(map[Fields.price]) * 100).round(),
     quantity: _safeInt(map[Fields.quantity], 1),
     imageUrls: _safeStringList(map[Fields.imageUrls]),
     sellerId: _safeString(map[Fields.sellerId]),
-    sellerAddress: map[Fields.sellerAddress] != null ? _safeAddress(map[Fields.sellerAddress]) : null,
+    sellerAddress: map[Fields.sellerAddress] != null
+        ? _safeAddress(map[Fields.sellerAddress])
+        : null,
     status: _safeString(map[Fields.status], DeliveryStatusValues.pending),
-    trackingNumber: map[Fields.trackingNumber] != null ? _safeString(map[Fields.trackingNumber]) : null,
-    carrier: map[Fields.carrier] != null ? _safeString(map[Fields.carrier]) : null,
-    carrierNote: map[Fields.carrierNote] != null ? _safeString(map[Fields.carrierNote]) : null,
-    sellerSku: map[Fields.sellerSku] != null ? _safeString(map[Fields.sellerSku]) : null,
-    sellerName: map[Fields.sellerName] != null ? _safeString(map[Fields.sellerName]) : null,
+    trackingNumber: map[Fields.trackingNumber] != null
+        ? _safeString(map[Fields.trackingNumber])
+        : null,
+    carrier: map[Fields.carrier] != null
+        ? _safeString(map[Fields.carrier])
+        : null,
+    carrierNote: map[Fields.carrierNote] != null
+        ? _safeString(map[Fields.carrierNote])
+        : null,
+    sellerSku: map[Fields.sellerSku] != null
+        ? _safeString(map[Fields.sellerSku])
+        : null,
+    sellerName: map[Fields.sellerName] != null
+        ? _safeString(map[Fields.sellerName])
+        : null,
     shippedAt: _parseDateTime(map[Fields.shippedAt]),
     deliveredAt: _parseDateTime(map[Fields.deliveredAt]),
     refundedAt: _parseDateTime(map[Fields.refundedAt]),
-    refundReason: map[Fields.refundReason] != null ? _safeString(map[Fields.refundReason]) : null,
-    refundAmountCents: map[Fields.refundAmountCents] != null ? _safeInt(map[Fields.refundAmountCents]) : null,
-    refundId: map[Fields.refundId] != null ? _safeString(map[Fields.refundId]) : null,
+    refundReason: map[Fields.refundReason] != null
+        ? _safeString(map[Fields.refundReason])
+        : null,
+    refundAmountCents: map[Fields.refundAmountCents] != null
+        ? _safeInt(map[Fields.refundAmountCents])
+        : null,
+    refundId: map[Fields.refundId] != null
+        ? _safeString(map[Fields.refundId])
+        : null,
     confirmedByBuyer: _safeBool(map[Fields.confirmedByBuyer]),
-    variantId: map[Fields.variantId] != null ? _safeString(map[Fields.variantId]) : null,
-    variantTitle: map[Fields.variantTitle] != null ? _safeString(map[Fields.variantTitle]) : null,
-    variantOptions: map[Fields.variantOptions] != null ? Map<String, String>.from(map[Fields.variantOptions] as Map) : null,
-    variantSku: map[Fields.variantSku] != null ? _safeString(map[Fields.variantSku]) : null,
-    weightKg: map[Fields.weightKg] != null ? _safeDouble(map[Fields.weightKg]) : null,
-    lengthCm: map[Fields.lengthCm] != null ? _safeDouble(map[Fields.lengthCm]) : null,
-    widthCm: map[Fields.widthCm] != null ? _safeDouble(map[Fields.widthCm]) : null,
-    heightCm: map[Fields.heightCm] != null ? _safeDouble(map[Fields.heightCm]) : null,
+    variantId: map[Fields.variantId] != null
+        ? _safeString(map[Fields.variantId])
+        : null,
+    variantTitle: map[Fields.variantTitle] != null
+        ? _safeString(map[Fields.variantTitle])
+        : null,
+    variantOptions: map[Fields.variantOptions] != null
+        ? Map<String, String>.from(map[Fields.variantOptions] as Map)
+        : null,
+    variantSku: map[Fields.variantSku] != null
+        ? _safeString(map[Fields.variantSku])
+        : null,
+    weightKg: map[Fields.weightKg] != null
+        ? _safeDouble(map[Fields.weightKg])
+        : null,
+    lengthCm: map[Fields.lengthCm] != null
+        ? _safeDouble(map[Fields.lengthCm])
+        : null,
+    widthCm: map[Fields.widthCm] != null
+        ? _safeDouble(map[Fields.widthCm])
+        : null,
+    heightCm: map[Fields.heightCm] != null
+        ? _safeDouble(map[Fields.heightCm])
+        : null,
     isLocalDeliveryOnly: _safeBool(map[Fields.isLocalDeliveryOnly]),
     isPerishable: _safeBool(map[Fields.isPerishable]),
     estimatedShipDays: _safeInt(map[Fields.estimatedShipDays], 3),
     minimumOrderQuantity: _safeInt(map[Fields.minimumOrderQuantity], 1),
     freeShipping: _safeBool(map[Fields.freeShipping]),
     isDigital: _safeBool(map[Fields.isDigital]),
-    licenseKey: map[Fields.licenseKey] != null ? _safeString(map[Fields.licenseKey]) : null,
+    licenseKey: map[Fields.licenseKey] != null
+        ? _safeString(map[Fields.licenseKey])
+        : null,
     digitalUnlocked: _safeBool(map[Fields.digitalUnlocked]),
-    digitalType: map[Fields.digitalType] != null ? _safeString(map[Fields.digitalType]) : null,
-    digitalBuilds: map[Fields.digitalBuilds] != null ? Map<String, String>.from(map[Fields.digitalBuilds] as Map) : null,
-    taxCode: map[Fields.taxCode] != null ? _safeString(map[Fields.taxCode]) : null,
-    buyerNote: map[Fields.buyerNote] != null ? _safeString(map[Fields.buyerNote]) : null, // ADDED
-    fulfillmentWarehouseId: map[Fields.fulfillmentWarehouseId] != null ? _safeString(map[Fields.fulfillmentWarehouseId]) : null,
+    digitalType: map[Fields.digitalType] != null
+        ? _safeString(map[Fields.digitalType])
+        : null,
+    digitalBuilds: map[Fields.digitalBuilds] != null
+        ? Map<String, String>.from(map[Fields.digitalBuilds] as Map)
+        : null,
+    taxCode: map[Fields.taxCode] != null
+        ? _safeString(map[Fields.taxCode])
+        : null,
+    buyerNote: map[Fields.buyerNote] != null
+        ? _safeString(map[Fields.buyerNote])
+        : null, // ADDED
+    fulfillmentWarehouseId: map[Fields.fulfillmentWarehouseId] != null
+        ? _safeString(map[Fields.fulfillmentWarehouseId])
+        : null,
   );
 }
 
@@ -95,12 +145,21 @@ Address _safeAddress(dynamic value) {
     city: _safeString(map[Fields.city]),
     state: _safeString(map[Fields.state]),
     postalCode: _safeString(map[Fields.postalCode]),
-    country: _safeString(map[Fields.country], BusinessRules.allowedShippingCountries.first),
-    phoneNumber: map[Fields.phoneNumber] != null ? _safeString(map[Fields.phoneNumber]) : null,
+    country: _safeString(
+      map[Fields.country],
+      BusinessRules.allowedShippingCountries.first,
+    ),
+    phoneNumber: map[Fields.phoneNumber] != null
+        ? _safeString(map[Fields.phoneNumber])
+        : null,
     isDefault: _safeBool(map[Fields.isDefault]),
     label: map[Fields.label] != null ? _safeString(map[Fields.label]) : null,
-    latitude: map[Fields.latitude] != null ? _safeDouble(map[Fields.latitude]) : null,
-    longitude: map[Fields.longitude] != null ? _safeDouble(map[Fields.longitude]) : null,
+    latitude: map[Fields.latitude] != null
+        ? _safeDouble(map[Fields.latitude])
+        : null,
+    longitude: map[Fields.longitude] != null
+        ? _safeDouble(map[Fields.longitude])
+        : null,
   );
 }
 
@@ -183,7 +242,8 @@ abstract class Order with _$Order {
     @Default([]) List<String> productIds,
     String? stripeSessionId,
     // Shipping approval
-    @Default(ShippingApprovalStatus.notRequired) ShippingApprovalStatus shippingApprovalStatus,
+    @Default(ShippingApprovalStatus.notRequired)
+    ShippingApprovalStatus shippingApprovalStatus,
     @Default(false) bool shippingApprovalRequired,
     @Default(0) int actualShippingCents,
     @Default(0) int pendingTotalCents,
@@ -235,7 +295,6 @@ abstract class Order with _$Order {
   }) = _Order;
 
   factory Order.fromMap(Map<String, dynamic> data, String docId) {
-
     OrderStatus parseOrderStatus(dynamic raw) {
       final value = raw?.toString();
       switch (value) {
@@ -332,15 +391,21 @@ abstract class Order with _$Order {
 
     // Parse taxes
     final taxesData = data[Fields.taxes];
-    final taxes = taxesData is Map ? Taxes.fromMap(_safeMap(taxesData)) : const Taxes();
+    final taxes = taxesData is Map
+        ? Taxes.fromMap(_safeMap(taxesData))
+        : const Taxes();
 
     // Parse seller payouts — use safe parser
     final payoutsData = data[Fields.sellerPayouts] as List<dynamic>? ?? [];
-    final payouts = payoutsData.map((p) => SellerPayout.fromMap(_safeMap(p))).toList();
+    final payouts = payoutsData
+        .map((p) => SellerPayout.fromMap(_safeMap(p)))
+        .toList();
 
     // Parse ratings — use safe parser
     final ratingsData = data[Fields.ratings];
-    final ratings = ratingsData is List ? ratingsData.map(_parseRating).toList() : <Ratings>[];
+    final ratings = ratingsData is List
+        ? ratingsData.map(_parseRating).toList()
+        : <Ratings>[];
 
     // Money — all cents
     final totalAmountCents = _safeInt(data[Fields.totalAmountCents]);
@@ -356,8 +421,12 @@ abstract class Order with _$Order {
       userId: _safeString(data[Fields.userId]),
       version: _safeInt(data[Fields.version], 1),
       schemaVersion: _safeInt(data[Fields.schemaVersion], 1),
-      customerId: data[Fields.customerId] != null ? _safeString(data[Fields.customerId]) : null,
-      customerEmail: data[Fields.customerEmail] != null ? _safeString(data[Fields.customerEmail]) : null,
+      customerId: data[Fields.customerId] != null
+          ? _safeString(data[Fields.customerId])
+          : null,
+      customerEmail: data[Fields.customerEmail] != null
+          ? _safeString(data[Fields.customerEmail])
+          : null,
       items: items,
       totalAmountCents: totalAmountCents,
       subtotalCents: subtotalCents,
@@ -366,24 +435,40 @@ abstract class Order with _$Order {
       taxes: taxes,
       orderStatus: parseOrderStatus(data[Fields.orderStatus]),
       paymentStatus: parsePaymentStatus(data[Fields.paymentStatus]),
-      shippingAddress: data[Fields.shippingAddress] != null ? _safeAddress(rawAddress) : null,
+      shippingAddress: data[Fields.shippingAddress] != null
+          ? _safeAddress(rawAddress)
+          : null,
       createdAt: _parseDateTime(data[Fields.createdAt]) ?? DateTime.now(),
-      currency: _safeString(data[Fields.currency], BusinessRules.defaultCurrency),
+      currency: _safeString(
+        data[Fields.currency],
+        BusinessRules.defaultCurrency,
+      ),
       sellerIds: _safeStringList(data[Fields.sellerIds]),
       productIds: _safeStringList(data[Fields.productIds]),
-      stripeSessionId: data[Fields.stripeSessionId] != null ? _safeString(data[Fields.stripeSessionId]) : null,
-      shippingApprovalStatus: parseShippingApprovalStatus(data[Fields.shippingApprovalStatus]),
-      shippingApprovalRequired: _safeBool(data[Fields.shippingApprovalRequired]),
+      stripeSessionId: data[Fields.stripeSessionId] != null
+          ? _safeString(data[Fields.stripeSessionId])
+          : null,
+      shippingApprovalStatus: parseShippingApprovalStatus(
+        data[Fields.shippingApprovalStatus],
+      ),
+      shippingApprovalRequired: _safeBool(
+        data[Fields.shippingApprovalRequired],
+      ),
       actualShippingCents: _safeInt(data[Fields.actualShippingCents]),
       pendingTotalCents: _safeInt(data[Fields.pendingTotalCents]),
       sellerPayouts: payouts,
       confirmedByClient: _safeBool(data[Fields.confirmedByClient]),
       confirmedAt: _parseDateTime(data[Fields.confirmedAt]),
       platformFeeTotalCents: _safeInt(data[Fields.platformFeeTotalCents]),
-      payoutStatus: _safeString(data[Fields.payoutStatus], PayoutStatusValues.pending),
+      payoutStatus: _safeString(
+        data[Fields.payoutStatus],
+        PayoutStatusValues.pending,
+      ),
       ratings: ratings,
       // === AUDIT FIX: Parse 18 missing fields ===
-      stripePaymentIntentId: data[Fields.stripePaymentIntentId] != null ? _safeString(data[Fields.stripePaymentIntentId]) : null,
+      stripePaymentIntentId: data[Fields.stripePaymentIntentId] != null
+          ? _safeString(data[Fields.stripePaymentIntentId])
+          : null,
       captureAttempts: _safeInt(data[Fields.captureAttempts]),
       capturedAt: _parseDateTime(data[Fields.capturedAt]),
       expiresAt: _parseDateTime(data[Fields.expiresAt]),
@@ -392,27 +477,47 @@ abstract class Order with _$Order {
       refundAmountCents: _safeInt(data[Fields.refundAmountCents]),
       refundedAt: _parseDateTime(data[Fields.refundedAt]),
       stockRestored: _safeBool(data[Fields.stockRestored]),
-      cancelledBy: data[Fields.cancelledBy] != null ? _safeString(data[Fields.cancelledBy]) : null,
+      cancelledBy: data[Fields.cancelledBy] != null
+          ? _safeString(data[Fields.cancelledBy])
+          : null,
       cancelledAt: _parseDateTime(data[Fields.cancelledAt]),
-      cancellationReason: data[Fields.cancellationReason] != null ? _safeString(data[Fields.cancellationReason]) : null,
+      cancellationReason: data[Fields.cancellationReason] != null
+          ? _safeString(data[Fields.cancellationReason])
+          : null,
       respondedAt: _parseDateTime(data[Fields.respondedAt]),
       requiresManualReview: _safeBool(data[Fields.requiresManualReview]),
-      manualReviewReason: data[Fields.manualReviewReason] != null ? _safeString(data[Fields.manualReviewReason]) : null,
+      manualReviewReason: data[Fields.manualReviewReason] != null
+          ? _safeString(data[Fields.manualReviewReason])
+          : null,
       payoutErrors: _safeStringList(data[Fields.payoutErrors]),
       updatedAt: _parseDateTime(data[Fields.updatedAt]),
       // Parse tax fields
-      itemTaxes: (data[Fields.itemTaxes] as List<dynamic>?)?.map((e) => _safeMap(e)).toList() ?? [],
+      itemTaxes:
+          (data[Fields.itemTaxes] as List<dynamic>?)
+              ?.map((e) => _safeMap(e))
+              .toList() ??
+          [],
       taxExempt: _safeBool(data[Fields.taxExempt]),
-      taxExemption: data[Fields.taxExemption] != null ? _safeMap(data[Fields.taxExemption]) : null,
+      taxExemption: data[Fields.taxExemption] != null
+          ? _safeMap(data[Fields.taxExemption])
+          : null,
       // Delivery instructions from buyer
-      deliveryInstructions: data[Fields.deliveryInstructions] != null ? _safeString(data[Fields.deliveryInstructions]) : null,
+      deliveryInstructions: data[Fields.deliveryInstructions] != null
+          ? _safeString(data[Fields.deliveryInstructions])
+          : null,
       // Coupon / promo code (N-07)
-      couponCode: data[Fields.couponCode] != null ? _safeString(data[Fields.couponCode]) : null,
+      couponCode: data[Fields.couponCode] != null
+          ? _safeString(data[Fields.couponCode])
+          : null,
       discountAmountCents: _safeInt(data[Fields.discountAmountCents]),
       // Phase 3.5 fraud / capture tracking (schema sync fix)
       fraudScore: _safeInt(data[Fields.fraudScore]),
-      sellerCaptures: data[Fields.sellerCaptures] != null ? _safeMap(data[Fields.sellerCaptures]) : null,
-      lastCaptureError: data[Fields.lastCaptureError] != null ? _safeString(data[Fields.lastCaptureError]) : null,
+      sellerCaptures: data[Fields.sellerCaptures] != null
+          ? _safeMap(data[Fields.sellerCaptures])
+          : null,
+      lastCaptureError: data[Fields.lastCaptureError] != null
+          ? _safeString(data[Fields.lastCaptureError])
+          : null,
     );
   }
 
@@ -457,12 +562,13 @@ abstract class OrderCreate with _$OrderCreate {
     required String customerEmail,
     required List<OrderItem> items,
     required Address shippingAddress,
-    @Default(0.0) double shippingCost,
+    @Default(0) int shippingCostCents,
     @Default(BusinessRules.defaultCurrency) String currency,
     @Default(false) bool shippingApprovalRequired,
   }) = _OrderCreate;
 
-  factory OrderCreate.fromJson(Map<String, dynamic> json) => _$OrderCreateFromJson(json);
+  factory OrderCreate.fromJson(Map<String, dynamic> json) =>
+      _$OrderCreateFromJson(json);
 }
 
 // ============================================================================
@@ -473,16 +579,18 @@ abstract class OrderCreate with _$OrderCreate {
 abstract class OrderItem with _$OrderItem {
   const factory OrderItem({
     required String productId,
-    String? cartItemId, // F-001/F-003: canonical cart item ID — survives duplicate-productId carts
+    String?
+    cartItemId, // F-001/F-003: canonical cart item ID — survives duplicate-productId carts
     required String name,
     required String description,
-    required double price,
+    required int priceCents,
     required int quantity,
     required List<String> imageUrls,
     required String sellerId,
     Address? sellerAddress,
     // Per-item status tracking
-    @Default(DeliveryStatusValues.pending) String status, // 'pending' | 'shipped' | 'delivered' | 'refunded'
+    @Default(DeliveryStatusValues.pending)
+    String status, // 'pending' | 'shipped' | 'delivered' | 'refunded'
     String? trackingNumber,
     String? carrier,
     String? carrierNote, // Free-text override when carrier='other'
@@ -519,14 +627,22 @@ abstract class OrderItem with _$OrderItem {
     // Tax field (new)
     String? taxCode,
     String? buyerNote, // ADDED
-    String? fulfillmentWarehouseId, // TASK 02: warehouse from which this item was fulfilled
+    String?
+    fulfillmentWarehouseId, // TASK 02: warehouse from which this item was fulfilled
   }) = _OrderItem;
-  factory OrderItem.fromJson(Map<String, dynamic> json) => _$OrderItemFromJson(json);
+  factory OrderItem.fromJson(Map<String, dynamic> json) =>
+      _$OrderItemFromJson(json);
 
   const OrderItem._();
 
-  /// Calculate item subtotal
-  double get subtotal => price * quantity;
+  /// Price in dollars for display purposes
+  double get price => priceCents / 100.0;
+
+  /// Calculate item subtotal in cents
+  int get subtotalCents => priceCents * quantity;
+
+  /// Calculate item subtotal in dollars for display
+  double get subtotal => subtotalCents / 100.0;
 }
 
 // ============================================================================
@@ -535,9 +651,15 @@ abstract class OrderItem with _$OrderItem {
 
 @freezed
 abstract class Ratings with _$Ratings {
-  const factory Ratings({required String productId, required double rating, String? review, required DateTime createdAt}) = _Ratings;
+  const factory Ratings({
+    required String productId,
+    required double rating,
+    String? review,
+    required DateTime createdAt,
+  }) = _Ratings;
 
-  factory Ratings.fromJson(Map<String, dynamic> json) => _$RatingsFromJson(json);
+  factory Ratings.fromJson(Map<String, dynamic> json) =>
+      _$RatingsFromJson(json);
 }
 
 // ============================================================================
@@ -558,19 +680,26 @@ abstract class SellerPayout with _$SellerPayout {
     String? failureReason,
   }) = _SellerPayout;
 
-  factory SellerPayout.fromJson(Map<String, dynamic> json) => _$SellerPayoutFromJson(json);
+  factory SellerPayout.fromJson(Map<String, dynamic> json) =>
+      _$SellerPayoutFromJson(json);
 
   factory SellerPayout.fromMap(Map<String, dynamic> map) {
     return SellerPayout(
       sellerId: _safeString(map[Fields.sellerId]),
-      stripeAccountId: map[Fields.stripeAccountId] != null ? _safeString(map[Fields.stripeAccountId]) : null,
+      stripeAccountId: map[Fields.stripeAccountId] != null
+          ? _safeString(map[Fields.stripeAccountId])
+          : null,
       amountCents: _safeInt(map[Fields.amountCents]),
       platformFeeCents: _safeInt(map[Fields.platformFeeCents]),
       netAmountCents: _safeInt(map[Fields.netAmountCents]),
       status: _safeString(map[Fields.status], PayoutStatusValues.pending),
       payoutDate: _parseDateTime(map[Fields.payoutDate]),
-      stripeTransferId: map[Fields.stripeTransferId] != null ? _safeString(map[Fields.stripeTransferId]) : null,
-      failureReason: map[Fields.failureReason] != null ? _safeString(map[Fields.failureReason]) : null,
+      stripeTransferId: map[Fields.stripeTransferId] != null
+          ? _safeString(map[Fields.stripeTransferId])
+          : null,
+      failureReason: map[Fields.failureReason] != null
+          ? _safeString(map[Fields.failureReason])
+          : null,
     );
   }
 
@@ -592,32 +721,73 @@ abstract class SellerPayout with _$SellerPayout {
 
 @freezed
 abstract class Taxes with _$Taxes {
-  const factory Taxes({@Default(0.0) double gst, @Default(0.0) double pst, @Default(0.0) double hst, @Default(0.0) double qst}) = _Taxes;
+  const factory Taxes({
+    @Default(0) int gstCents,
+    @Default(0) int pstCents,
+    @Default(0) int hstCents,
+    @Default(0) int qstCents,
+  }) = _Taxes;
 
   factory Taxes.fromJson(Map<String, dynamic> json) {
     return Taxes(
-      gst: ((json[Fields.GST] as num?) ?? 0.0).toDouble(),
-      pst: ((json[Fields.PST] as num?) ?? 0.0).toDouble(),
-      hst: ((json[Fields.HST] as num?) ?? 0.0).toDouble(),
-      qst: ((json[Fields.QST] as num?) ?? 0.0).toDouble(),
+      gstCents: _taxToCents(json[Fields.GST]),
+      pstCents: _taxToCents(json[Fields.PST]),
+      hstCents: _taxToCents(json[Fields.HST]),
+      qstCents: _taxToCents(json[Fields.QST]),
     );
   }
 
   factory Taxes.fromMap(Map<String, dynamic> map) => Taxes(
-    gst: ((map[Fields.GST] as num?) ?? 0.0).toDouble(),
-    pst: ((map[Fields.PST] as num?) ?? 0.0).toDouble(),
-    hst: ((map[Fields.HST] as num?) ?? 0.0).toDouble(),
-    qst: ((map[Fields.QST] as num?) ?? 0.0).toDouble(),
+    gstCents: _taxToCents(map[Fields.GST]),
+    pstCents: _taxToCents(map[Fields.PST]),
+    hstCents: _taxToCents(map[Fields.HST]),
+    qstCents: _taxToCents(map[Fields.QST]),
   );
 
   const Taxes._();
 
-  /// Calculate total tax amount
-  double get total => gst + pst + hst + qst;
+  /// Display getters (dollars)
+  double get gst => gstCents / 100.0;
+  double get pst => pstCents / 100.0;
+  double get hst => hstCents / 100.0;
+  double get qst => qstCents / 100.0;
+
+  /// Calculate total tax amount in cents
+  int get totalCents => gstCents + pstCents + hstCents + qstCents;
+
+  /// Calculate total tax amount in dollars for display
+  double get total => totalCents / 100.0;
 
   /// Convert to JSON
-  Map<String, dynamic> toJson() => {Fields.GST: gst, Fields.PST: pst, Fields.HST: hst, Fields.QST: qst};
+  Map<String, dynamic> toJson() => {
+    Fields.GST: gstCents,
+    Fields.PST: pstCents,
+    Fields.HST: hstCents,
+    Fields.QST: qstCents,
+  };
 
   /// Convert to Map
-  Map<String, double> toMap() => {Fields.GST: gst, Fields.PST: pst, Fields.HST: hst, Fields.QST: qst};
+  Map<String, int> toMap() => {
+    Fields.GST: gstCents,
+    Fields.PST: pstCents,
+    Fields.HST: hstCents,
+    Fields.QST: qstCents,
+  };
+}
+
+/// Helper: convert a tax value (could be double dollars from old data or int cents) to int cents
+int _taxToCents(dynamic value) {
+  if (value == null) return 0;
+  if (value is int) return value;
+  if (value is double) {
+    // If value looks like dollars (< 1000), convert to cents; otherwise treat as cents
+    if (value.abs() < 1000) return (value * 100).round();
+    return value.round();
+  }
+  if (value is num) return (value.toDouble() * 100).round();
+  if (value is String) {
+    final d = double.tryParse(value);
+    if (d != null) return (d * 100).round();
+  }
+  return 0;
 }

@@ -465,7 +465,7 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
         descriptionF: descriptionF?.trim().isEmpty == true
             ? null
             : descriptionF?.trim(),
-        price: price,
+        priceCents: (price * 100).round(),
         stockQuantity: state.isSoldOut ? 0 : stock,
         categoryId: categoryId,
         imageUrls: allImageUrls,
@@ -512,7 +512,9 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
         freeShipping: state.freeShipping,
         taxCode: normalizedTaxCode,
         inventory: inventory ?? _product.inventory,
-        compareAtPrice: compareAtPrice,
+        compareAtPriceCents: compareAtPrice != null
+            ? (compareAtPrice * 100).round()
+            : null,
       );
 
       // Build update map and add bookSourceUrl only if seller re-entered it

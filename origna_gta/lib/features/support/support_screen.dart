@@ -25,11 +25,14 @@ class SupportScreen extends ConsumerStatefulWidget {
   ConsumerState<SupportScreen> createState() => _SupportScreenState();
 }
 
+/// Private provider for SupportScreen conversation state
+final _conversationStartedProvider = StateProvider.autoDispose<bool>(
+  (_) => false,
+);
+
 class _SupportScreenState extends ConsumerState<SupportScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-
-  bool _conversationStarted = false;
 
   @override
   void dispose() {
@@ -51,9 +54,7 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
   }
 
   Future<void> _onCategorySelected(SupportCategory category) async {
-    setState(() {
-      _conversationStarted = true;
-    });
+    ref.read(_conversationStartedProvider.notifier).state = true;
 
     await ref
         .read(supportViewModelProvider.notifier)
@@ -83,6 +84,7 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
     }
 
     final supportState = ref.watch(supportViewModelProvider);
+    final _conversationStarted = ref.watch(_conversationStartedProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final maxWidth = ResponsiveBreakpoints.getValue<double>(
       context: context,
@@ -94,15 +96,16 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
 
     return Scaffold(
       appBar: AppBarFactory.simple(title: 'support.title'.tr()),
-      backgroundColor: isDark ? DesignTokens.darkBackground : DesignTokens.surface,
+      backgroundColor: isDark
+          ? DesignTokens.darkBackground
+          : DesignTokens.surface,
       body: Center(
         child: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: maxWidth),
           child: Column(
             children: [
               // Escalated banner
-              if (supportState.isEscalated)
-                _EscalatedBanner(isDark: isDark),
+              if (supportState.isEscalated) _EscalatedBanner(isDark: isDark),
 
               // Main content
               Expanded(
@@ -149,16 +152,39 @@ class _CategoryPicker extends StatelessWidget {
   final bool isDark;
   final void Function(SupportCategory) onCategorySelected;
 
-  const _CategoryPicker({required this.isDark, required this.onCategorySelected});
+  const _CategoryPicker({
+    required this.isDark,
+    required this.onCategorySelected,
+  });
 
   @override
   Widget build(BuildContext context) {
     final categories = [
-      (SupportCategory.orderStatus, Icons.local_shipping_outlined, 'support.category_order_status'),
-      (SupportCategory.refundRequest, Icons.assignment_return_outlined, 'support.category_refund'),
-      (SupportCategory.accountIssue, Icons.manage_accounts_outlined, 'support.category_account'),
-      (SupportCategory.billingDispute, Icons.credit_card_outlined, 'support.category_billing'),
-      (SupportCategory.other, Icons.help_outline_rounded, 'support.category_other'),
+      (
+        SupportCategory.orderStatus,
+        Icons.local_shipping_outlined,
+        'support.category_order_status',
+      ),
+      (
+        SupportCategory.refundRequest,
+        Icons.assignment_return_outlined,
+        'support.category_refund',
+      ),
+      (
+        SupportCategory.accountIssue,
+        Icons.manage_accounts_outlined,
+        'support.category_account',
+      ),
+      (
+        SupportCategory.billingDispute,
+        Icons.credit_card_outlined,
+        'support.category_billing',
+      ),
+      (
+        SupportCategory.other,
+        Icons.help_outline_rounded,
+        'support.category_other',
+      ),
     ];
 
     return SingleChildScrollView(
@@ -176,7 +202,11 @@ class _CategoryPicker extends StatelessWidget {
                   gradient: DesignTokens.primaryGradient,
                   borderRadius: BorderRadius.circular(26),
                 ),
-                child: const Icon(Icons.support_agent_rounded, color: DesignTokens.white, size: 28),
+                child: const Icon(
+                  Icons.support_agent_rounded,
+                  color: DesignTokens.white,
+                  size: 28,
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -188,12 +218,17 @@ class _CategoryPicker extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
-                        color: isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary,
+                        color: isDark
+                            ? DesignTokens.textOnDark
+                            : DesignTokens.textPrimary,
                       ),
                     ),
                     Text(
                       'support.agent_tagline'.tr(),
-                      style: TextStyle(fontSize: 12, color: DesignTokens.textSecondary),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: DesignTokens.textSecondary,
+                      ),
                     ),
                   ],
                 ),
@@ -206,7 +241,9 @@ class _CategoryPicker extends StatelessWidget {
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w600,
-              color: isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary,
+              color: isDark
+                  ? DesignTokens.textOnDark
+                  : DesignTokens.textPrimary,
             ),
           ),
           const SizedBox(height: 16),
@@ -250,14 +287,20 @@ class _CategoryTile extends StatelessWidget {
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
-            color: isDark ? DesignTokens.darkSurfaceVariant.withValues(alpha: 0.5) : DesignTokens.white,
+            color: isDark
+                ? DesignTokens.darkSurfaceVariant.withValues(alpha: 0.5)
+                : DesignTokens.white,
             borderRadius: BorderRadius.circular(DesignTokens.radius12),
             border: Border.all(
-              color: isDark ? DesignTokens.darkOutline : DesignTokens.outlineVariant,
+              color: isDark
+                  ? DesignTokens.darkOutline
+                  : DesignTokens.outlineVariant,
             ),
             boxShadow: [
               BoxShadow(
-                color: DesignTokens.black.withValues(alpha: isDark ? 0.25 : 0.04),
+                color: DesignTokens.black.withValues(
+                  alpha: isDark ? 0.25 : 0.04,
+                ),
                 blurRadius: 6,
                 offset: const Offset(0, 2),
               ),
@@ -287,11 +330,17 @@ class _CategoryTile extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
-                    color: isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary,
+                    color: isDark
+                        ? DesignTokens.textOnDark
+                        : DesignTokens.textPrimary,
                   ),
                 ),
               ),
-              Icon(Icons.chevron_right, color: DesignTokens.textDisabled, size: 20),
+              Icon(
+                Icons.chevron_right,
+                color: DesignTokens.textDisabled,
+                size: 20,
+              ),
             ],
           ),
         ),
@@ -350,7 +399,9 @@ class _ChatBubble extends StatelessWidget {
           maxWidth: MediaQuery.sizeOf(context).width * 0.78,
         ),
         child: Column(
-          crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          crossAxisAlignment: isUser
+              ? CrossAxisAlignment.end
+              : CrossAxisAlignment.start,
           children: [
             // Agent avatar row
             if (!isUser)
@@ -366,7 +417,11 @@ class _ChatBubble extends StatelessWidget {
                         gradient: DesignTokens.primaryGradient,
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(Icons.support_agent_rounded, color: DesignTokens.white, size: 14),
+                      child: const Icon(
+                        Icons.support_agent_rounded,
+                        color: DesignTokens.white,
+                        size: 14,
+                      ),
                     ),
                     const SizedBox(width: 6),
                     Text(
@@ -389,13 +444,17 @@ class _ChatBubble extends StatelessWidget {
                 color: isUser
                     ? null
                     : (isDark
-                        ? DesignTokens.darkSurfaceVariant
-                        : DesignTokens.surfaceVariant),
+                          ? DesignTokens.darkSurfaceVariant
+                          : DesignTokens.surfaceVariant),
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(16),
                   topRight: const Radius.circular(16),
-                  bottomLeft: isUser ? const Radius.circular(16) : const Radius.circular(4),
-                  bottomRight: isUser ? const Radius.circular(4) : const Radius.circular(16),
+                  bottomLeft: isUser
+                      ? const Radius.circular(16)
+                      : const Radius.circular(4),
+                  bottomRight: isUser
+                      ? const Radius.circular(4)
+                      : const Radius.circular(16),
                 ),
                 boxShadow: [
                   BoxShadow(
@@ -412,7 +471,9 @@ class _ChatBubble extends StatelessWidget {
                   height: 1.45,
                   color: isUser
                       ? DesignTokens.textOnPrimary
-                      : (isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary),
+                      : (isDark
+                            ? DesignTokens.textOnDark
+                            : DesignTokens.textPrimary),
                 ),
               ),
             ),
@@ -422,7 +483,10 @@ class _ChatBubble extends StatelessWidget {
               padding: const EdgeInsets.only(top: 3, left: 4, right: 4),
               child: Text(
                 _formatTime(message.timestamp),
-                style: TextStyle(fontSize: 10, color: DesignTokens.textDisabled),
+                style: TextStyle(
+                  fontSize: 10,
+                  color: DesignTokens.textDisabled,
+                ),
               ),
             ),
           ],
@@ -463,7 +527,9 @@ class _MessageInput extends StatelessWidget {
         color: isDark ? DesignTokens.darkSurface : DesignTokens.white,
         border: Border(
           top: BorderSide(
-            color: isDark ? DesignTokens.darkOutline : DesignTokens.outlineVariant,
+            color: isDark
+                ? DesignTokens.darkOutline
+                : DesignTokens.outlineVariant,
           ),
         ),
       ),
@@ -499,7 +565,11 @@ class _MessageInput extends StatelessWidget {
                   ),
                   child: isLoading
                       ? const ModernLoadingIndicator.small()
-                      : const Icon(Icons.send_rounded, color: DesignTokens.white, size: 20),
+                      : const Icon(
+                          Icons.send_rounded,
+                          color: DesignTokens.white,
+                          size: 20,
+                        ),
                 ),
               ),
             ),
@@ -527,12 +597,18 @@ class _EscalatedBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: DesignTokens.warning.withValues(alpha: 0.15),
         border: Border(
-          bottom: BorderSide(color: DesignTokens.warning.withValues(alpha: 0.4)),
+          bottom: BorderSide(
+            color: DesignTokens.warning.withValues(alpha: 0.4),
+          ),
         ),
       ),
       child: Row(
         children: [
-          Icon(Icons.headset_mic_rounded, color: DesignTokens.warningText, size: 18),
+          Icon(
+            Icons.headset_mic_rounded,
+            color: DesignTokens.warningText,
+            size: 18,
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(

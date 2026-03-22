@@ -17,9 +17,13 @@ class MfaSetupScreen extends ConsumerStatefulWidget {
   ConsumerState<MfaSetupScreen> createState() => _MfaSetupScreenState();
 }
 
+/// Private provider for MFA setup backup codes checkbox
+final _codesSavedCheckedProvider = StateProvider.autoDispose<bool>(
+  (_) => false,
+);
+
 class _MfaSetupScreenState extends ConsumerState<MfaSetupScreen> {
   final TextEditingController _codeController = TextEditingController();
-  bool _codesSavedChecked = false;
 
   @override
   void initState() {
@@ -45,23 +49,23 @@ class _MfaSetupScreenState extends ConsumerState<MfaSetupScreen> {
           ? ContentSensitivity.sensitive
           : ContentSensitivity.notSensitive,
       child: Scaffold(
-      backgroundColor: isDark ? DesignTokens.darkBackground : null,
-      appBar: AppBar(
-        title: Text('mfa.setup_title'.tr()),
-        backgroundColor: isDark ? DesignTokens.darkSurface : null,
-      ),
-      body: mfaState.isLoading && mfaState.currentStep == 0
-          ? const Center(child: ModernLoadingIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 500),
-                  child: _buildCurrentStep(mfaState, isDark),
+        backgroundColor: isDark ? DesignTokens.darkBackground : null,
+        appBar: AppBar(
+          title: Text('mfa.setup_title'.tr()),
+          backgroundColor: isDark ? DesignTokens.darkSurface : null,
+        ),
+        body: mfaState.isLoading && mfaState.currentStep == 0
+            ? const Center(child: ModernLoadingIndicator())
+            : SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 500),
+                    child: _buildCurrentStep(mfaState, isDark),
+                  ),
                 ),
               ),
-            ),
-    ),
+      ),
     );
   }
 
@@ -93,12 +97,17 @@ class _MfaSetupScreenState extends ConsumerState<MfaSetupScreen> {
         padding: const EdgeInsets.all(24),
         child: Column(
           children: [
-            Icon(Icons.error_outline_rounded, size: 48, color: DesignTokens.error),
+            Icon(
+              Icons.error_outline_rounded,
+              size: 48,
+              color: DesignTokens.error,
+            ),
             const SizedBox(height: 16),
             Text(message, textAlign: TextAlign.center),
             const SizedBox(height: 16),
             FilledButton(
-              onPressed: () => ref.read(mfaViewModelProvider.notifier).startSetup(),
+              onPressed: () =>
+                  ref.read(mfaViewModelProvider.notifier).startSetup(),
               child: Text('common.retry'.tr()),
             ),
           ],
@@ -130,7 +139,9 @@ class _MfaSetupScreenState extends ConsumerState<MfaSetupScreen> {
               color: DesignTokens.white,
               borderRadius: BorderRadius.circular(DesignTokens.radius12),
             ),
-            child: mfaState.qrCodeBase64 != null && mfaState.qrCodeBase64!.isNotEmpty
+            child:
+                mfaState.qrCodeBase64 != null &&
+                    mfaState.qrCodeBase64!.isNotEmpty
                 ? Image.memory(
                     base64Decode(mfaState.qrCodeBase64!),
                     width: 250,
@@ -155,8 +166,14 @@ class _MfaSetupScreenState extends ConsumerState<MfaSetupScreen> {
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: isDark ? DesignTokens.darkSurfaceVariant : DesignTokens.surface,
-            border: Border.all(color: isDark ? DesignTokens.darkOutline : DesignTokens.outlineVariant),
+            color: isDark
+                ? DesignTokens.darkSurfaceVariant
+                : DesignTokens.surface,
+            border: Border.all(
+              color: isDark
+                  ? DesignTokens.darkOutline
+                  : DesignTokens.outlineVariant,
+            ),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
@@ -164,7 +181,11 @@ class _MfaSetupScreenState extends ConsumerState<MfaSetupScreen> {
               Expanded(
                 child: SelectableText(
                   mfaState.manualKey ?? '',
-                  style: const TextStyle(fontFamily: 'monospace', fontSize: 14, letterSpacing: 2),
+                  style: const TextStyle(
+                    fontFamily: 'monospace',
+                    fontSize: 14,
+                    letterSpacing: 2,
+                  ),
                 ),
               ),
               IconButton(
@@ -172,9 +193,14 @@ class _MfaSetupScreenState extends ConsumerState<MfaSetupScreen> {
                 icon: const Icon(Icons.copy, size: 20),
                 onPressed: () async {
                   final messenger = ScaffoldMessenger.of(context);
-                  await Clipboard.setData(ClipboardData(text: mfaState.manualKey ?? ''));
+                  await Clipboard.setData(
+                    ClipboardData(text: mfaState.manualKey ?? ''),
+                  );
                   // Auto-clear clipboard after 30 seconds for security
-                  Future.delayed(const Duration(seconds: 30), () => Clipboard.setData(const ClipboardData(text: '')));
+                  Future.delayed(
+                    const Duration(seconds: 30),
+                    () => Clipboard.setData(const ClipboardData(text: '')),
+                  );
                   if (mounted) {
                     messenger.showSnackBar(
                       SnackBar(content: Text('mfa.manual_key_copied'.tr())),
@@ -230,7 +256,11 @@ class _MfaSetupScreenState extends ConsumerState<MfaSetupScreen> {
             keyboardType: TextInputType.number,
             maxLength: 6,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 24, letterSpacing: 8, fontFamily: 'monospace'),
+            style: const TextStyle(
+              fontSize: 24,
+              letterSpacing: 8,
+              fontFamily: 'monospace',
+            ),
             decoration: InputDecoration(
               hintText: '000000',
               border: OutlineInputBorder(
@@ -276,7 +306,9 @@ class _MfaSetupScreenState extends ConsumerState<MfaSetupScreen> {
                   : () {
                       final code = _codeController.text.trim();
                       if (code.length == 6) {
-                        ref.read(mfaViewModelProvider.notifier).verifySetup(code);
+                        ref
+                            .read(mfaViewModelProvider.notifier)
+                            .verifySetup(code);
                       }
                     },
               style: FilledButton.styleFrom(
@@ -335,7 +367,11 @@ class _MfaSetupScreenState extends ConsumerState<MfaSetupScreen> {
           ),
           child: Row(
             children: [
-              Icon(Icons.warning_amber_rounded, color: DesignTokens.warning, size: 20),
+              Icon(
+                Icons.warning_amber_rounded,
+                color: DesignTokens.warning,
+                size: 20,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -356,8 +392,14 @@ class _MfaSetupScreenState extends ConsumerState<MfaSetupScreen> {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: isDark ? DesignTokens.darkSurfaceVariant : DesignTokens.surface,
-            border: Border.all(color: isDark ? DesignTokens.darkOutline : DesignTokens.outlineVariant),
+            color: isDark
+                ? DesignTokens.darkSurfaceVariant
+                : DesignTokens.surface,
+            border: Border.all(
+              color: isDark
+                  ? DesignTokens.darkOutline
+                  : DesignTokens.outlineVariant,
+            ),
             borderRadius: BorderRadius.circular(DesignTokens.radius12),
           ),
           child: Column(
@@ -369,13 +411,19 @@ class _MfaSetupScreenState extends ConsumerState<MfaSetupScreen> {
                     children: [
                       Text(
                         '${index + 1}.',
-                        style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13),
+                        style: TextStyle(
+                          color: DesignTokens.textSecondary,
+                          fontSize: 13,
+                        ),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           mfaState.recoveryCodes[index],
-                          style: const TextStyle(fontFamily: 'monospace', fontSize: 14),
+                          style: const TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 14,
+                          ),
                         ),
                       ),
                     ],
@@ -394,7 +442,10 @@ class _MfaSetupScreenState extends ConsumerState<MfaSetupScreen> {
                         ClipboardData(text: mfaState.recoveryCodes.join('\n')),
                       );
                       // Auto-clear clipboard after 30 seconds for security
-                      Future.delayed(const Duration(seconds: 30), () => Clipboard.setData(const ClipboardData(text: '')));
+                      Future.delayed(
+                        const Duration(seconds: 30),
+                        () => Clipboard.setData(const ClipboardData(text: '')),
+                      );
                       if (mounted) {
                         messenger.showSnackBar(
                           SnackBar(content: Text('mfa.codes_copied'.tr())),
@@ -413,9 +464,14 @@ class _MfaSetupScreenState extends ConsumerState<MfaSetupScreen> {
 
         // Confirm saved checkbox
         CheckboxListTile(
-          value: _codesSavedChecked,
-          onChanged: (val) => setState(() => _codesSavedChecked = val ?? false),
-          title: Text('mfa.confirm_saved'.tr(), style: const TextStyle(fontSize: 14)),
+          value: ref.watch(_codesSavedCheckedProvider),
+          onChanged: (val) =>
+              ref.read(_codesSavedCheckedProvider.notifier).state =
+                  val ?? false,
+          title: Text(
+            'mfa.confirm_saved'.tr(),
+            style: const TextStyle(fontSize: 14),
+          ),
           controlAffinity: ListTileControlAffinity.leading,
           contentPadding: EdgeInsets.zero,
           activeColor: DesignTokens.primary,
@@ -428,7 +484,7 @@ class _MfaSetupScreenState extends ConsumerState<MfaSetupScreen> {
           child: Semantics(
             label: 'btn-mfa-setup-done',
             child: FilledButton(
-              onPressed: _codesSavedChecked
+              onPressed: ref.watch(_codesSavedCheckedProvider)
                   ? () {
                       ref.read(mfaViewModelProvider.notifier).confirmSaved();
                     }
@@ -466,7 +522,11 @@ class _MfaSetupScreenState extends ConsumerState<MfaSetupScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.check_circle_rounded, size: 64, color: DesignTokens.success),
+          Icon(
+            Icons.check_circle_rounded,
+            size: 64,
+            color: DesignTokens.success,
+          ),
           const SizedBox(height: 16),
           Text(
             'mfa.setup_complete'.tr(),

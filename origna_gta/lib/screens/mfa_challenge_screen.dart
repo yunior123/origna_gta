@@ -16,12 +16,18 @@ class MfaChallengeScreen extends ConsumerStatefulWidget {
   ConsumerState<MfaChallengeScreen> createState() => _MfaChallengeScreenState();
 }
 
+/// Private providers for MfaChallengeScreen state
+final _mfaChallengeLoadingProvider = StateProvider.autoDispose<bool>(
+  (_) => false,
+);
+final _mfaChallengeRecoveryModeProvider = StateProvider.autoDispose<bool>(
+  (_) => false,
+);
+final _mfaChallengeAttemptsProvider = StateProvider.autoDispose<int>((_) => 0);
+
 class _MfaChallengeScreenState extends ConsumerState<MfaChallengeScreen> {
   final TextEditingController _codeController = TextEditingController();
   final TextEditingController _recoveryController = TextEditingController();
-  bool _isRecoveryMode = false;
-  bool _isLoading = false;
-  int _attempts = 0;
   static const int _maxAttempts = 5;
 
   @override
@@ -32,19 +38,20 @@ class _MfaChallengeScreenState extends ConsumerState<MfaChallengeScreen> {
   }
 
   Future<void> _submit() async {
-    if (_isLoading) return;
+    if (ref.read(_mfaChallengeLoadingProvider)) return;
 
-    final code = _isRecoveryMode
+    final isRecoveryMode = ref.read(_mfaChallengeRecoveryModeProvider);
+    final code = isRecoveryMode
         ? _recoveryController.text.trim()
         : _codeController.text.trim();
 
     if (code.isEmpty) return;
-    if (!_isRecoveryMode && code.length != 6) return;
+    if (!isRecoveryMode && code.length != 6) return;
 
-    setState(() => _isLoading = true);
+    ref.read(_mfaChallengeLoadingProvider.notifier).state = true;
 
     final viewModel = ref.read(mfaViewModelProvider.notifier);
-    final success = _isRecoveryMode
+    final success = isRecoveryMode
         ? await viewModel.useRecoveryCode(widget.challengeToken, code)
         : await viewModel.verifyChallenge(widget.challengeToken, code);
 
@@ -62,12 +69,10 @@ class _MfaChallengeScreenState extends ConsumerState<MfaChallengeScreen> {
   }
 
   void _onFailedAttempt(String message) {
-    setState(() {
-      _isLoading = false;
-      _attempts++;
-      _codeController.clear();
-      _recoveryController.clear();
-    });
+    ref.read(_mfaChallengeLoadingProvider.notifier).state = false;
+    ref.read(_mfaChallengeAttemptsProvider.notifier).state++;
+    _codeController.clear();
+    _recoveryController.clear();
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), backgroundColor: DesignTokens.error),
@@ -75,11 +80,11 @@ class _MfaChallengeScreenState extends ConsumerState<MfaChallengeScreen> {
   }
 
   void _toggleRecoveryMode() {
-    setState(() {
-      _isRecoveryMode = !_isRecoveryMode;
-      _codeController.clear();
-      _recoveryController.clear();
-    });
+    ref.read(_mfaChallengeRecoveryModeProvider.notifier).state = !ref.read(
+      _mfaChallengeRecoveryModeProvider,
+    );
+    _codeController.clear();
+    _recoveryController.clear();
   }
 
   void _navigateToLogin() {
@@ -90,6 +95,9 @@ class _MfaChallengeScreenState extends ConsumerState<MfaChallengeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final _isLoading = ref.watch(_mfaChallengeLoadingProvider);
+    final _isRecoveryMode = ref.watch(_mfaChallengeRecoveryModeProvider);
+    final _attempts = ref.watch(_mfaChallengeAttemptsProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final attemptsExhausted = _attempts >= _maxAttempts;
 

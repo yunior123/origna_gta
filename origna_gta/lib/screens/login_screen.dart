@@ -921,10 +921,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(loginViewModelProvider);
-    final googleAvailability = ref.watch(googleAuthAvailabilityProvider);
+    final googleEnabled =
+        ref.watch(
+          googleAuthAvailabilityProvider.select((a) => a.valueOrNull?.enabled),
+        ) ??
+        false;
     final viewModel = ref.read(loginViewModelProvider.notifier);
-    final showGoogleSignIn =
-        !kIsWeb || googleAvailability.valueOrNull?.enabled == true;
+    final showGoogleSignIn = !kIsWeb || googleEnabled;
 
     return LoginScreenLayout(
       isLogin: state.isLogin,

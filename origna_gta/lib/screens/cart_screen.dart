@@ -27,10 +27,10 @@ class CartScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(currentUserProvider);
+    final isLoggedIn = ref.watch(currentUserProvider.select((u) => u != null));
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    if (user == null) {
+    if (!isLoggedIn) {
       return Scaffold(
         appBar: AppBarFactory.simple(title: 'cart.your_cart'.tr()),
         body: AnimatedEmptyState(
@@ -60,7 +60,9 @@ class CartScreen extends ConsumerWidget {
         child: Center(
           child: ConstrainedBox(
             constraints: BoxConstraints(
-              maxWidth: (ResponsiveBreakpoints.isTablet(context) || ResponsiveBreakpoints.isDesktop(context))
+              maxWidth:
+                  (ResponsiveBreakpoints.isTablet(context) ||
+                      ResponsiveBreakpoints.isDesktop(context))
                   ? ResponsiveBreakpoints.contentMaxWidth
                   : double.infinity,
             ),
@@ -132,9 +134,10 @@ class CartScreen extends ConsumerWidget {
                           if (Navigator.canPop(context)) {
                             Navigator.pop(context);
                           } else {
-                            Navigator.of(
-                              context,
-                            ).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
+                            Navigator.of(context).pushNamedAndRemoveUntil(
+                              AppRoutes.home,
+                              (route) => false,
+                            );
                           }
                         },
                       ),
@@ -142,12 +145,18 @@ class CartScreen extends ConsumerWidget {
                   );
                 }
 
-                final isWideLayout = ResponsiveBreakpoints.isTablet(context) || ResponsiveBreakpoints.isDesktop(context);
-                final summaryWidth = ResponsiveBreakpoints.isDesktop(context) ? 360.0 : 280.0;
+                final isWideLayout =
+                    ResponsiveBreakpoints.isTablet(context) ||
+                    ResponsiveBreakpoints.isDesktop(context);
+                final summaryWidth = ResponsiveBreakpoints.isDesktop(context)
+                    ? 360.0
+                    : 280.0;
 
                 final unavailableBanner = Consumer(
                   builder: (context, ref, _) {
-                    final unavailableAsync = ref.watch(unavailableCartItemsProvider);
+                    final unavailableAsync = ref.watch(
+                      unavailableCartItemsProvider,
+                    );
                     return unavailableAsync.maybeWhen(
                       data: (ids) {
                         if (ids.isEmpty) return const SizedBox.shrink();
@@ -157,16 +166,30 @@ class CartScreen extends ConsumerWidget {
                           decoration: BoxDecoration(
                             color: DesignTokens.warning.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: DesignTokens.warning.withValues(alpha: 0.4)),
+                            border: Border.all(
+                              color: DesignTokens.warning.withValues(
+                                alpha: 0.4,
+                              ),
+                            ),
                           ),
                           child: Row(
                             children: [
-                              Icon(Icons.warning_amber_rounded, size: 18, color: DesignTokens.warning),
+                              Icon(
+                                Icons.warning_amber_rounded,
+                                size: 18,
+                                color: DesignTokens.warning,
+                              ),
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
-                                  'cart.unavailable_items_warning'.tr(namedArgs: {'count': ids.length.toString()}),
-                                  style: TextStyle(fontSize: 13, color: DesignTokens.warning, fontWeight: FontWeight.w500),
+                                  'cart.unavailable_items_warning'.tr(
+                                    namedArgs: {'count': ids.length.toString()},
+                                  ),
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: DesignTokens.warning,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                               ),
                             ],
@@ -184,7 +207,10 @@ class CartScreen extends ConsumerWidget {
                     onRefresh: () async => ref.invalidate(cartItemsProvider),
                     child: ListView.builder(
                       physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                       itemCount: productIds.length,
                       itemBuilder: (context, index) {
                         final cartItemDocId = productIds[index];
@@ -205,9 +231,7 @@ class CartScreen extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
-                        child: Column(
-                          children: [unavailableBanner, itemsList],
-                        ),
+                        child: Column(children: [unavailableBanner, itemsList]),
                       ),
                       const SizedBox(width: 16),
                       SizedBox(
@@ -256,7 +280,9 @@ class _CartItemWidget extends ConsumerWidget {
     return itemAsync.when(
       loading: () => Shimmer.fromColors(
         baseColor: isDark ? DesignTokens.darkCard : DesignTokens.outlineVariant,
-        highlightColor: isDark ? DesignTokens.darkSurfaceVariant : DesignTokens.surface,
+        highlightColor: isDark
+            ? DesignTokens.darkSurfaceVariant
+            : DesignTokens.surface,
         child: Container(
           margin: const EdgeInsets.only(bottom: DesignTokens.spacing12),
           padding: const EdgeInsets.all(DesignTokens.spacing12),
@@ -311,17 +337,31 @@ class _CartItemWidget extends ConsumerWidget {
           decoration: BoxDecoration(
             color: DesignTokens.error.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: DesignTokens.error.withValues(alpha: 0.2)),
+            border: Border.all(
+              color: DesignTokens.error.withValues(alpha: 0.2),
+            ),
           ),
           padding: const EdgeInsets.all(12),
           child: Row(
             children: [
-              Icon(Icons.error_outline_rounded, color: DesignTokens.error, size: 18),
+              Icon(
+                Icons.error_outline_rounded,
+                color: DesignTokens.error,
+                size: 18,
+              ),
               const SizedBox(width: 8),
-              Expanded(child: Text('cart.item_load_error'.tr(), style: TextStyle(color: DesignTokens.error, fontSize: 13))),
+              Expanded(
+                child: Text(
+                  'cart.item_load_error'.tr(),
+                  style: TextStyle(color: DesignTokens.error, fontSize: 13),
+                ),
+              ),
               TextButton(
-                onPressed: () => ref.invalidate(cartItemDetailProvider(cartItemDocId)),
-                style: TextButton.styleFrom(foregroundColor: DesignTokens.primary),
+                onPressed: () =>
+                    ref.invalidate(cartItemDetailProvider(cartItemDocId)),
+                style: TextButton.styleFrom(
+                  foregroundColor: DesignTokens.primary,
+                ),
                 child: Text('common.retry'.tr()),
               ),
             ],
@@ -339,17 +379,36 @@ class _CartItemWidget extends ConsumerWidget {
               decoration: BoxDecoration(
                 color: DesignTokens.warning.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                border: Border.all(color: DesignTokens.warning.withValues(alpha: 0.25)),
+                border: Border.all(
+                  color: DesignTokens.warning.withValues(alpha: 0.25),
+                ),
               ),
               padding: const EdgeInsets.all(DesignTokens.spacing12),
               child: Row(
                 children: [
-                  Icon(Icons.info_outline_rounded, color: DesignTokens.warning, size: 18),
+                  Icon(
+                    Icons.info_outline_rounded,
+                    color: DesignTokens.warning,
+                    size: 18,
+                  ),
                   const SizedBox(width: 8),
-                  Expanded(child: Text('cart.item_no_longer_available'.tr(), style: TextStyle(color: DesignTokens.warningText, fontSize: 13))),
+                  Expanded(
+                    child: Text(
+                      'cart.item_no_longer_available'.tr(),
+                      style: TextStyle(
+                        color: DesignTokens.warningText,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
                   TextButton(
-                    onPressed: () => ref.read(cartControllerProvider).removeFromCart(cartItemDocId),
-                    style: TextButton.styleFrom(foregroundColor: DesignTokens.warning, textStyle: const TextStyle(fontSize: 12)),
+                    onPressed: () => ref
+                        .read(cartControllerProvider)
+                        .removeFromCart(cartItemDocId),
+                    style: TextButton.styleFrom(
+                      foregroundColor: DesignTokens.warning,
+                      textStyle: const TextStyle(fontSize: 12),
+                    ),
                     child: Text('common.remove'.tr()),
                   ),
                 ],
@@ -477,7 +536,9 @@ class _CartTotalDisplay extends ConsumerWidget {
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
-                        color: isDark ? DesignTokens.white : DesignTokens.textPrimary,
+                        color: isDark
+                            ? DesignTokens.white
+                            : DesignTokens.textPrimary,
                       ),
                     );
                   },
@@ -493,7 +554,8 @@ class _CartTotalDisplay extends ConsumerWidget {
                         (async) => async.whenData(
                           (items) => items.fold(
                             0.0,
-                            (total, item) => total + (item.price * item.quantity),
+                            (total, item) =>
+                                total + (item.price * item.quantity),
                           ),
                         ),
                       ),
@@ -503,7 +565,10 @@ class _CartTotalDisplay extends ConsumerWidget {
                       error: (_, _) => const SizedBox.shrink(),
                       data: (subtotal) => ShaderMask(
                         shaderCallback: (bounds) => LinearGradient(
-                          colors: [DesignTokens.primary, DesignTokens.secondary],
+                          colors: [
+                            DesignTokens.primary,
+                            DesignTokens.secondary,
+                          ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ).createShader(bounds),
@@ -548,7 +613,9 @@ class _CartTotalDisplay extends ConsumerWidget {
                   'cart.service_fees'.tr(),
                   style: TextStyle(
                     fontSize: 14,
-                    color: isDark ? DesignTokens.outlineVariant : DesignTokens.textPrimary,
+                    color: isDark
+                        ? DesignTokens.outlineVariant
+                        : DesignTokens.textPrimary,
                   ),
                 ),
               ),
@@ -557,13 +624,20 @@ class _CartTotalDisplay extends ConsumerWidget {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
-                  color: isDark ? DesignTokens.outlineVariant : DesignTokens.textPrimary,
+                  color: isDark
+                      ? DesignTokens.outlineVariant
+                      : DesignTokens.textPrimary,
                 ),
               ),
               const SizedBox(width: 4),
               Tooltip(
-                message:
-                    'cart.service_fee_tooltip'.tr(namedArgs: {'percent': BusinessRules.platformFeePercent.toStringAsFixed(1)}),
+                message: 'cart.service_fee_tooltip'.tr(
+                  namedArgs: {
+                    'percent': BusinessRules.platformFeePercent.toStringAsFixed(
+                      1,
+                    ),
+                  },
+                ),
                 child: Semantics(
                   button: true,
                   label: 'btn-info-service-fee',
@@ -571,18 +645,23 @@ class _CartTotalDisplay extends ConsumerWidget {
                     onTap: () => _showInfoSheet(
                       context,
                       'cart.service_fees'.tr(),
-                    'cart.service_fee_info'.tr(namedArgs: {'percent': BusinessRules.platformFeePercent.toStringAsFixed(1)}),
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                  child: Padding(
-                    padding: const EdgeInsets.all(4),
-                    child: Icon(
-                      Icons.info_outline_rounded,
-                      size: 18,
-                      color: DesignTokens.info.withValues(alpha: 0.6),
+                      'cart.service_fee_info'.tr(
+                        namedArgs: {
+                          'percent': BusinessRules.platformFeePercent
+                              .toStringAsFixed(1),
+                        },
+                      ),
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    child: Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: Icon(
+                        Icons.info_outline_rounded,
+                        size: 18,
+                        color: DesignTokens.info.withValues(alpha: 0.6),
+                      ),
                     ),
                   ),
-                ),
                 ),
               ),
             ],
@@ -604,29 +683,31 @@ class _CartTotalDisplay extends ConsumerWidget {
                   'cart.tax_estimate'.tr(),
                   style: TextStyle(
                     fontSize: 14,
-                    color: isDark ? DesignTokens.outlineVariant : DesignTokens.textPrimary,
+                    color: isDark
+                        ? DesignTokens.outlineVariant
+                        : DesignTokens.textPrimary,
                   ),
                 ),
               ),
               Consumer(
                 builder: (context, ref, _) {
-                  final profileProvince = ref
-                    .watch(userProfileProvider)
-                    .valueOrNull
-                    ?.address
-                    ?.state;
-                  final province = (profileProvince == null ||
-                      profileProvince.trim().isEmpty)
+                  final profileProvince = ref.watch(
+                    userProfileProvider.select(
+                      (a) => a.valueOrNull?.address?.state,
+                    ),
+                  );
+                  final province =
+                      (profileProvince == null ||
+                          profileProvince.trim().isEmpty)
                       ? ProvinceCodeValues.ontario
-                    : profileProvince.trim();
+                      : profileProvince.trim();
 
                   final subtotalAsync = ref.watch(
                     cartWithDetailsProvider.select(
                       (async) => async.whenData(
                         (items) => items.fold(
                           0.0,
-                          (total, item) =>
-                              total + (item.price * item.quantity),
+                          (total, item) => total + (item.price * item.quantity),
                         ),
                       ),
                     ),
@@ -656,8 +737,7 @@ class _CartTotalDisplay extends ConsumerWidget {
               ),
               const SizedBox(width: 4),
               Tooltip(
-                message:
-                    'cart.tax_tooltip'.tr(),
+                message: 'cart.tax_tooltip'.tr(),
                 child: Semantics(
                   button: true,
                   label: 'btn-info-tax-estimate',
@@ -665,18 +745,18 @@ class _CartTotalDisplay extends ConsumerWidget {
                     onTap: () => _showInfoSheet(
                       context,
                       'cart.tax_estimate_title'.tr(),
-                    'cart.tax_info'.tr(),
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                  child: Padding(
-                    padding: const EdgeInsets.all(4),
-                    child: Icon(
-                      Icons.info_outline_rounded,
-                      size: 18,
-                      color: DesignTokens.info.withValues(alpha: 0.6),
+                      'cart.tax_info'.tr(),
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    child: Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: Icon(
+                        Icons.info_outline_rounded,
+                        size: 18,
+                        color: DesignTokens.info.withValues(alpha: 0.6),
+                      ),
                     ),
                   ),
-                ),
                 ),
               ),
             ],
@@ -689,14 +769,22 @@ class _CartTotalDisplay extends ConsumerWidget {
           // Estimated Total row (subtotal + service fee [waived for premium] + estimated tax)
           Consumer(
             builder: (context, ref, _) {
-              final profileProvince = ref.watch(userProfileProvider.select((a) => a.valueOrNull?.address?.state));
-              final province = (profileProvince == null || profileProvince.trim().isEmpty)
+              final profileProvince = ref.watch(
+                userProfileProvider.select(
+                  (a) => a.valueOrNull?.address?.state,
+                ),
+              );
+              final province =
+                  (profileProvince == null || profileProvince.trim().isEmpty)
                   ? ProvinceCodeValues.ontario
                   : profileProvince.trim();
               final subtotalAsync = ref.watch(
                 cartWithDetailsProvider.select(
                   (async) => async.whenData(
-                    (items) => items.fold(0.0, (t, item) => t + (item.price * item.quantity)),
+                    (items) => items.fold(
+                      0.0,
+                      (t, item) => t + (item.price * item.quantity),
+                    ),
                   ),
                 ),
               );
@@ -723,13 +811,18 @@ class _CartTotalDisplay extends ConsumerWidget {
                               style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w700,
-                                color: isDark ? DesignTokens.white : DesignTokens.textPrimary,
+                                color: isDark
+                                    ? DesignTokens.white
+                                    : DesignTokens.textPrimary,
                               ),
                             ),
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            NumberFormat.currency(locale: 'en_CA', symbol: 'CAD \$').format(estimatedTotal),
+                            NumberFormat.currency(
+                              locale: 'en_CA',
+                              symbol: 'CAD \$',
+                            ).format(estimatedTotal),
                             style: const TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
@@ -752,82 +845,91 @@ class _CartTotalDisplay extends ConsumerWidget {
             button: true,
             label: 'btn-delivery-instructions',
             child: InkWell(
-            onTap: () => _showDeliveryInstructionsDialog(
-              context,
-              ref,
-              deliveryInstructions,
-            ),
-            borderRadius: BorderRadius.circular(8),
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-              decoration: BoxDecoration(
-                color: isDark
-                    ? DesignTokens.white.withValues(alpha: 0.05)
-                    : DesignTokens.surface,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: deliveryInstructions.isNotEmpty
-                      ? DesignTokens.primary.withValues(alpha: 0.3)
-                      : DesignTokens.transparent,
+              onTap: () => _showDeliveryInstructionsDialog(
+                context,
+                ref,
+                deliveryInstructions,
+              ),
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 8,
+                  horizontal: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? DesignTokens.white.withValues(alpha: 0.05)
+                      : DesignTokens.surface,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: deliveryInstructions.isNotEmpty
+                        ? DesignTokens.primary.withValues(alpha: 0.3)
+                        : DesignTokens.transparent,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.edit_note_outlined,
+                      size: 20,
+                      color: deliveryInstructions.isNotEmpty
+                          ? DesignTokens.primary
+                          : (isDark
+                                ? DesignTokens.textDisabled
+                                : DesignTokens.textSecondary),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'common.delivery_instructions'.tr(),
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: isDark
+                                  ? DesignTokens.white
+                                  : DesignTokens.textPrimary,
+                            ),
+                          ),
+                          if (deliveryInstructions.isNotEmpty)
+                            Text(
+                              deliveryInstructions,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: isDark
+                                    ? DesignTokens.textDisabled
+                                    : DesignTokens.textSecondary,
+                              ),
+                            )
+                          else
+                            Text(
+                              'cart.add_instructions_optional'.tr(),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: isDark
+                                    ? DesignTokens.textSecondary
+                                    : DesignTokens.textSecondary,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    Icon(
+                      Icons.edit_outlined,
+                      size: 18,
+                      color: isDark
+                          ? DesignTokens.textDisabled
+                          : DesignTokens.textSecondary,
+                    ),
+                  ],
                 ),
               ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.edit_note_outlined,
-                    size: 20,
-                    color: deliveryInstructions.isNotEmpty
-                        ? DesignTokens.primary
-                        : (isDark ? DesignTokens.textDisabled : DesignTokens.textSecondary),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'common.delivery_instructions'.tr(),
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: isDark ? DesignTokens.white : DesignTokens.textPrimary,
-                          ),
-                        ),
-                        if (deliveryInstructions.isNotEmpty)
-                          Text(
-                            deliveryInstructions,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: isDark
-                                  ? DesignTokens.textDisabled
-                                  : DesignTokens.textSecondary,
-                            ),
-                          )
-                        else
-                          Text(
-                            'cart.add_instructions_optional'.tr(),
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: isDark
-                                  ? DesignTokens.textSecondary
-                                  : DesignTokens.textSecondary,
-                              fontStyle: FontStyle.italic,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  Icon(
-                    Icons.edit_outlined,
-                    size: 18,
-                    color: isDark ? DesignTokens.textDisabled : DesignTokens.textSecondary,
-                  ),
-                ],
-              ),
             ),
-          ),
           ),
         ],
       ),
@@ -875,7 +977,9 @@ class _CartTotalDisplay extends ConsumerWidget {
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: isDark ? DesignTokens.white : DesignTokens.textPrimary,
+                      color: isDark
+                          ? DesignTokens.white
+                          : DesignTokens.textPrimary,
                     ),
                   ),
                 ),
@@ -887,7 +991,9 @@ class _CartTotalDisplay extends ConsumerWidget {
               style: TextStyle(
                 fontSize: 15,
                 height: 1.6,
-                color: isDark ? DesignTokens.outlineVariant : DesignTokens.textPrimary,
+                color: isDark
+                    ? DesignTokens.outlineVariant
+                    : DesignTokens.textPrimary,
               ),
             ),
             const SizedBox(height: 24),
@@ -929,7 +1035,9 @@ class _CartTotalDisplay extends ConsumerWidget {
               'cart.delivery_instructions_desc'.tr(),
               style: TextStyle(
                 fontSize: 14,
-                color: isDark ? DesignTokens.outlineVariant : DesignTokens.textPrimary,
+                color: isDark
+                    ? DesignTokens.outlineVariant
+                    : DesignTokens.textPrimary,
               ),
             ),
             const SizedBox(height: 16),
@@ -947,7 +1055,9 @@ class _CartTotalDisplay extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            style: TextButton.styleFrom(foregroundColor: DesignTokens.textSecondary),
+            style: TextButton.styleFrom(
+              foregroundColor: DesignTokens.textSecondary,
+            ),
             child: Text('common.cancel'.tr()),
           ),
           ModernButton(
@@ -955,7 +1065,9 @@ class _CartTotalDisplay extends ConsumerWidget {
             fullWidth: false,
             height: 40,
             onPressed: () {
-              ref.read(deliveryInstructionsProvider.notifier).state = controller.text.trim();
+              ref.read(deliveryInstructionsProvider.notifier).state = controller
+                  .text
+                  .trim();
               Navigator.pop(context);
             },
           ),
@@ -1021,8 +1133,7 @@ class _FreeShippingBar extends ConsumerWidget {
         final thresholdDollars =
             BusinessRules.freeShippingThresholdCents / 100.0;
         final qualified = subtotalDollars >= thresholdDollars;
-        final progress =
-            (subtotalDollars / thresholdDollars).clamp(0.0, 1.0);
+        final progress = (subtotalDollars / thresholdDollars).clamp(0.0, 1.0);
         final remaining = thresholdDollars - subtotalDollars;
         final remainingFormatted = NumberFormat.currency(
           locale: 'en_CA',
@@ -1036,8 +1147,8 @@ class _FreeShippingBar extends ConsumerWidget {
             color: qualified
                 ? DesignTokens.success.withValues(alpha: isDark ? 0.12 : 0.08)
                 : (isDark
-                    ? DesignTokens.primary.withValues(alpha: 0.10)
-                    : DesignTokens.surfaceSubtle),
+                      ? DesignTokens.primary.withValues(alpha: 0.10)
+                      : DesignTokens.surfaceSubtle),
             borderRadius: BorderRadius.circular(DesignTokens.radius12),
             border: Border.all(
               color: qualified
@@ -1052,14 +1163,17 @@ class _FreeShippingBar extends ConsumerWidget {
               Text(
                 qualified
                     ? 'cart.free_shipping_qualified'.tr()
-                    : 'cart.free_shipping_progress'
-                        .tr(namedArgs: {'amount': remainingFormatted}),
+                    : 'cart.free_shipping_progress'.tr(
+                        namedArgs: {'amount': remainingFormatted},
+                      ),
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                   color: qualified
                       ? DesignTokens.success
-                      : (isDark ? DesignTokens.white : DesignTokens.textPrimary),
+                      : (isDark
+                            ? DesignTokens.white
+                            : DesignTokens.textPrimary),
                 ),
               ),
               const SizedBox(height: 8),
@@ -1131,4 +1245,3 @@ extension CartItemDetailModelExtension on CartItemDetailModel {
 }
 
 // ─── Flutter Previews ────────────────────────────────────────────────────────
-

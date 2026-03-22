@@ -73,7 +73,9 @@ class _BenefitRow extends StatelessWidget {
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 14,
-                        color: isDark ? DesignTokens.white : DesignTokens.textPrimary,
+                        color: isDark
+                            ? DesignTokens.white
+                            : DesignTokens.textPrimary,
                       ),
                     ),
                     const SizedBox(width: 6),
@@ -101,6 +103,11 @@ class _BenefitRow extends StatelessWidget {
   }
 }
 
+/// Private provider for SubscriptionSuccessScreen timeout state
+final _subscriptionTimedOutProvider = StateProvider.autoDispose<bool>(
+  (_) => false,
+);
+
 class _SubscriptionSuccessScreenState
     extends ConsumerState<SubscriptionSuccessScreen>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
@@ -108,16 +115,18 @@ class _SubscriptionSuccessScreenState
   late final Animation<double> _scaleAnimation;
   late final Animation<double> _glowAnimation;
   Timer? _activationTimeout;
-  bool _timedOut = false;
   DateTime? _backgroundTime;
 
   @override
   Widget build(BuildContext context) {
+    final _timedOut = ref.watch(_subscriptionTimedOutProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final subAsync = ref.watch(subscriptionStreamProvider);
-
     // Gate the success UI on actual isPremium=true from database
-    final isPremium = subAsync.valueOrNull?.isPremium ?? false;
+    final isPremium =
+        ref.watch(
+          subscriptionStreamProvider.select((a) => a.valueOrNull?.isPremium),
+        ) ??
+        false;
 
     // HIGH-021 FIX: Prevent success screen bypass.
     // If timed out and still not premium, show a manual refresh/error state instead of success.
@@ -183,10 +192,13 @@ class _SubscriptionSuccessScreenState
                         ModernButton(
                           label: 'common.refresh'.tr(),
                           onPressed: () {
-                            setState(() {
-                              _timedOut = false;
-                              _startTimeout();
-                            });
+                            ref
+                                    .read(
+                                      _subscriptionTimedOutProvider.notifier,
+                                    )
+                                    .state =
+                                false;
+                            _startTimeout();
                             ref.invalidate(subscriptionStreamProvider);
                           },
                           icon: Icons.refresh_rounded,
@@ -385,9 +397,9 @@ class _SubscriptionSuccessScreenState
       if (_backgroundTime != null && _activationTimeout?.isActive == true) {
         final elapsed = DateTime.now().difference(_backgroundTime!).inSeconds;
         // If we were backgrounded for a long time, trigger timeout immediately on resume
-        if (elapsed > 10 && !_timedOut) {
+        if (elapsed > 10 && !ref.read(_subscriptionTimedOutProvider)) {
           _activationTimeout?.cancel();
-          setState(() => _timedOut = true);
+          ref.read(_subscriptionTimedOutProvider.notifier).state = true;
         }
       }
     }
@@ -422,7 +434,8 @@ class _SubscriptionSuccessScreenState
     _activationTimeout?.cancel();
     // 30s timeout fallback — if webhook is delayed, show a manual refresh prompt
     _activationTimeout = Timer(const Duration(seconds: 30), () {
-      if (mounted) setState(() => _timedOut = true);
+      if (mounted)
+        ref.read(_subscriptionTimedOutProvider.notifier).state = true;
     });
   }
 }

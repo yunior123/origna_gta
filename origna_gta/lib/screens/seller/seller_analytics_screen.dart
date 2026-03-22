@@ -18,10 +18,10 @@ class SellerAnalyticsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(currentUserProvider);
+    final isLoggedIn = ref.watch(currentUserProvider.select((u) => u != null));
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    if (user == null) {
+    if (!isLoggedIn) {
       return Container(
         decoration: BoxDecoration(
           gradient: DesignTokens.backgroundGradient(isDark: isDark),

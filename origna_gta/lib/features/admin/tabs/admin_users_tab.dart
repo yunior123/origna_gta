@@ -10,6 +10,12 @@ import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
+/// Private providers for AdminUsersTab local UI state
+final _usersSearchQueryProvider = StateProvider.autoDispose<String>((_) => '');
+final _usersRoleFilterProvider = StateProvider.autoDispose<String>(
+  (_) => 'all',
+);
+
 /// Documentation for AdminUsersTab
 class AdminUsersTab extends ConsumerStatefulWidget {
   const AdminUsersTab({super.key});
@@ -20,16 +26,14 @@ class AdminUsersTab extends ConsumerStatefulWidget {
 
 class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
   final TextEditingController _searchController = TextEditingController();
-  String _searchQuery = '';
-  String _roleFilter = 'all';
 
   @override
   void initState() {
     super.initState();
     _searchController.addListener(() {
-      setState(() {
-        _searchQuery = _searchController.text.toLowerCase();
-      });
+      ref.read(_usersSearchQueryProvider.notifier).state = _searchController
+          .text
+          .toLowerCase();
     });
   }
 
@@ -42,6 +46,8 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final _searchQuery = ref.watch(_usersSearchQueryProvider);
+    final _roleFilter = ref.watch(_usersRoleFilterProvider);
     return Column(
       children: [
         // Modern Search and Filter Bar
@@ -214,10 +220,10 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
   }
 
   Widget _filterChip(String label, String value) {
-    final isSelected = _roleFilter == value;
+    final isSelected = ref.watch(_usersRoleFilterProvider) == value;
     return Expanded(
       child: GestureDetector(
-        onTap: () => setState(() => _roleFilter = value),
+        onTap: () => ref.read(_usersRoleFilterProvider.notifier).state = value,
         child: AnimatedContainer(
           duration: DesignTokens.durationFast,
           padding: const EdgeInsets.symmetric(vertical: 8),

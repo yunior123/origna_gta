@@ -232,8 +232,10 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
         nameF: nameF?.trim().isEmpty == true ? null : nameF?.trim(),
         keywords: generateSearchKeywords(name),
         stockQuantity: effectiveStock,
-        price: price,
-        compareAtPrice: compareAtPrice,
+        priceCents: (price * 100).round(),
+        compareAtPriceCents: compareAtPrice != null
+            ? (compareAtPrice * 100).round()
+            : null,
         imageUrls: const [],
         sellerAddress: useWarehouses
             ? null

@@ -7,6 +7,14 @@ import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
+/// Private providers for AdminReviewsTab filter state
+final _reviewsFlaggedOnlyProvider = StateProvider.autoDispose<bool>(
+  (_) => false,
+);
+final _reviewsHasPhotosOnlyProvider = StateProvider.autoDispose<bool>(
+  (_) => false,
+);
+
 /// Documentation for AdminReviewsTab
 class AdminReviewsTab extends ConsumerStatefulWidget {
   const AdminReviewsTab({super.key});
@@ -16,11 +24,10 @@ class AdminReviewsTab extends ConsumerStatefulWidget {
 }
 
 class _AdminReviewsTabState extends ConsumerState<AdminReviewsTab> {
-  bool _flaggedOnly = false;
-  bool _hasPhotosOnly = false;
-
   @override
   Widget build(BuildContext context) {
+    final _flaggedOnly = ref.watch(_reviewsFlaggedOnlyProvider);
+    final _hasPhotosOnly = ref.watch(_reviewsHasPhotosOnlyProvider);
     final filters = (flaggedOnly: _flaggedOnly, hasPhotosOnly: _hasPhotosOnly);
     final reviewsAsync = ref.watch(adminReviewsProvider(filters));
 
@@ -40,9 +47,13 @@ class _AdminReviewsTabState extends ConsumerState<AdminReviewsTab> {
               Flexible(
                 child: FilterChip(
                   key: const Key('admin_reviews_filter_flagged'),
-                  label: Text('admin.reviews.flagged'.tr(), overflow: TextOverflow.ellipsis),
+                  label: Text(
+                    'admin.reviews.flagged'.tr(),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   selected: _flaggedOnly,
-                  onSelected: (v) => setState(() => _flaggedOnly = v),
+                  onSelected: (v) =>
+                      ref.read(_reviewsFlaggedOnlyProvider.notifier).state = v,
                   selectedColor: DesignTokens.error.withValues(alpha: 0.15),
                   checkmarkColor: DesignTokens.error,
                 ),
@@ -51,9 +62,14 @@ class _AdminReviewsTabState extends ConsumerState<AdminReviewsTab> {
               Flexible(
                 child: FilterChip(
                   key: const Key('admin_reviews_filter_photos'),
-                  label: Text('admin.reviews.has_photos'.tr(), overflow: TextOverflow.ellipsis),
+                  label: Text(
+                    'admin.reviews.has_photos'.tr(),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   selected: _hasPhotosOnly,
-                  onSelected: (v) => setState(() => _hasPhotosOnly = v),
+                  onSelected: (v) =>
+                      ref.read(_reviewsHasPhotosOnlyProvider.notifier).state =
+                          v,
                   selectedColor: DesignTokens.primary.withValues(alpha: 0.12),
                   checkmarkColor: DesignTokens.primary,
                 ),

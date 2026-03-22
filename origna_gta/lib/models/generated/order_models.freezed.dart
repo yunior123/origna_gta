@@ -579,7 +579,7 @@ $AddressCopyWith<$Res>? get shippingAddress {
 /// @nodoc
 mixin _$OrderCreate {
 
- String get userId; String get customerId; String get customerEmail; List<OrderItem> get items; Address get shippingAddress; double get shippingCost; String get currency; bool get shippingApprovalRequired;
+ String get userId; String get customerId; String get customerEmail; List<OrderItem> get items; Address get shippingAddress; int get shippingCostCents; String get currency; bool get shippingApprovalRequired;
 /// Create a copy of OrderCreate
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -592,16 +592,16 @@ $OrderCreateCopyWith<OrderCreate> get copyWith => _$OrderCreateCopyWithImpl<Orde
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is OrderCreate&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.customerId, customerId) || other.customerId == customerId)&&(identical(other.customerEmail, customerEmail) || other.customerEmail == customerEmail)&&const DeepCollectionEquality().equals(other.items, items)&&(identical(other.shippingAddress, shippingAddress) || other.shippingAddress == shippingAddress)&&(identical(other.shippingCost, shippingCost) || other.shippingCost == shippingCost)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.shippingApprovalRequired, shippingApprovalRequired) || other.shippingApprovalRequired == shippingApprovalRequired));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is OrderCreate&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.customerId, customerId) || other.customerId == customerId)&&(identical(other.customerEmail, customerEmail) || other.customerEmail == customerEmail)&&const DeepCollectionEquality().equals(other.items, items)&&(identical(other.shippingAddress, shippingAddress) || other.shippingAddress == shippingAddress)&&(identical(other.shippingCostCents, shippingCostCents) || other.shippingCostCents == shippingCostCents)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.shippingApprovalRequired, shippingApprovalRequired) || other.shippingApprovalRequired == shippingApprovalRequired));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,userId,customerId,customerEmail,const DeepCollectionEquality().hash(items),shippingAddress,shippingCost,currency,shippingApprovalRequired);
+int get hashCode => Object.hash(runtimeType,userId,customerId,customerEmail,const DeepCollectionEquality().hash(items),shippingAddress,shippingCostCents,currency,shippingApprovalRequired);
 
 @override
 String toString() {
-  return 'OrderCreate(userId: $userId, customerId: $customerId, customerEmail: $customerEmail, items: $items, shippingAddress: $shippingAddress, shippingCost: $shippingCost, currency: $currency, shippingApprovalRequired: $shippingApprovalRequired)';
+  return 'OrderCreate(userId: $userId, customerId: $customerId, customerEmail: $customerEmail, items: $items, shippingAddress: $shippingAddress, shippingCostCents: $shippingCostCents, currency: $currency, shippingApprovalRequired: $shippingApprovalRequired)';
 }
 
 
@@ -612,7 +612,7 @@ abstract mixin class $OrderCreateCopyWith<$Res>  {
   factory $OrderCreateCopyWith(OrderCreate value, $Res Function(OrderCreate) _then) = _$OrderCreateCopyWithImpl;
 @useResult
 $Res call({
- String userId, String customerId, String customerEmail, List<OrderItem> items, Address shippingAddress, double shippingCost, String currency, bool shippingApprovalRequired
+ String userId, String customerId, String customerEmail, List<OrderItem> items, Address shippingAddress, int shippingCostCents, String currency, bool shippingApprovalRequired
 });
 
 
@@ -629,15 +629,15 @@ class _$OrderCreateCopyWithImpl<$Res>
 
 /// Create a copy of OrderCreate
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? userId = null,Object? customerId = null,Object? customerEmail = null,Object? items = null,Object? shippingAddress = null,Object? shippingCost = null,Object? currency = null,Object? shippingApprovalRequired = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? userId = null,Object? customerId = null,Object? customerEmail = null,Object? items = null,Object? shippingAddress = null,Object? shippingCostCents = null,Object? currency = null,Object? shippingApprovalRequired = null,}) {
   return _then(_self.copyWith(
 userId: null == userId ? _self.userId : userId // ignore: cast_nullable_to_non_nullable
 as String,customerId: null == customerId ? _self.customerId : customerId // ignore: cast_nullable_to_non_nullable
 as String,customerEmail: null == customerEmail ? _self.customerEmail : customerEmail // ignore: cast_nullable_to_non_nullable
 as String,items: null == items ? _self.items : items // ignore: cast_nullable_to_non_nullable
 as List<OrderItem>,shippingAddress: null == shippingAddress ? _self.shippingAddress : shippingAddress // ignore: cast_nullable_to_non_nullable
-as Address,shippingCost: null == shippingCost ? _self.shippingCost : shippingCost // ignore: cast_nullable_to_non_nullable
-as double,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
+as Address,shippingCostCents: null == shippingCostCents ? _self.shippingCostCents : shippingCostCents // ignore: cast_nullable_to_non_nullable
+as int,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
 as String,shippingApprovalRequired: null == shippingApprovalRequired ? _self.shippingApprovalRequired : shippingApprovalRequired // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
@@ -733,10 +733,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String userId,  String customerId,  String customerEmail,  List<OrderItem> items,  Address shippingAddress,  double shippingCost,  String currency,  bool shippingApprovalRequired)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String userId,  String customerId,  String customerEmail,  List<OrderItem> items,  Address shippingAddress,  int shippingCostCents,  String currency,  bool shippingApprovalRequired)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _OrderCreate() when $default != null:
-return $default(_that.userId,_that.customerId,_that.customerEmail,_that.items,_that.shippingAddress,_that.shippingCost,_that.currency,_that.shippingApprovalRequired);case _:
+return $default(_that.userId,_that.customerId,_that.customerEmail,_that.items,_that.shippingAddress,_that.shippingCostCents,_that.currency,_that.shippingApprovalRequired);case _:
   return orElse();
 
 }
@@ -754,10 +754,10 @@ return $default(_that.userId,_that.customerId,_that.customerEmail,_that.items,_t
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String userId,  String customerId,  String customerEmail,  List<OrderItem> items,  Address shippingAddress,  double shippingCost,  String currency,  bool shippingApprovalRequired)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String userId,  String customerId,  String customerEmail,  List<OrderItem> items,  Address shippingAddress,  int shippingCostCents,  String currency,  bool shippingApprovalRequired)  $default,) {final _that = this;
 switch (_that) {
 case _OrderCreate():
-return $default(_that.userId,_that.customerId,_that.customerEmail,_that.items,_that.shippingAddress,_that.shippingCost,_that.currency,_that.shippingApprovalRequired);case _:
+return $default(_that.userId,_that.customerId,_that.customerEmail,_that.items,_that.shippingAddress,_that.shippingCostCents,_that.currency,_that.shippingApprovalRequired);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -774,10 +774,10 @@ return $default(_that.userId,_that.customerId,_that.customerEmail,_that.items,_t
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String userId,  String customerId,  String customerEmail,  List<OrderItem> items,  Address shippingAddress,  double shippingCost,  String currency,  bool shippingApprovalRequired)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String userId,  String customerId,  String customerEmail,  List<OrderItem> items,  Address shippingAddress,  int shippingCostCents,  String currency,  bool shippingApprovalRequired)?  $default,) {final _that = this;
 switch (_that) {
 case _OrderCreate() when $default != null:
-return $default(_that.userId,_that.customerId,_that.customerEmail,_that.items,_that.shippingAddress,_that.shippingCost,_that.currency,_that.shippingApprovalRequired);case _:
+return $default(_that.userId,_that.customerId,_that.customerEmail,_that.items,_that.shippingAddress,_that.shippingCostCents,_that.currency,_that.shippingApprovalRequired);case _:
   return null;
 
 }
@@ -789,7 +789,7 @@ return $default(_that.userId,_that.customerId,_that.customerEmail,_that.items,_t
 @JsonSerializable()
 
 class _OrderCreate implements OrderCreate {
-  const _OrderCreate({required this.userId, required this.customerId, required this.customerEmail, required final  List<OrderItem> items, required this.shippingAddress, this.shippingCost = 0.0, this.currency = BusinessRules.defaultCurrency, this.shippingApprovalRequired = false}): _items = items;
+  const _OrderCreate({required this.userId, required this.customerId, required this.customerEmail, required final  List<OrderItem> items, required this.shippingAddress, this.shippingCostCents = 0, this.currency = BusinessRules.defaultCurrency, this.shippingApprovalRequired = false}): _items = items;
   factory _OrderCreate.fromJson(Map<String, dynamic> json) => _$OrderCreateFromJson(json);
 
 @override final  String userId;
@@ -803,7 +803,7 @@ class _OrderCreate implements OrderCreate {
 }
 
 @override final  Address shippingAddress;
-@override@JsonKey() final  double shippingCost;
+@override@JsonKey() final  int shippingCostCents;
 @override@JsonKey() final  String currency;
 @override@JsonKey() final  bool shippingApprovalRequired;
 
@@ -820,16 +820,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _OrderCreate&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.customerId, customerId) || other.customerId == customerId)&&(identical(other.customerEmail, customerEmail) || other.customerEmail == customerEmail)&&const DeepCollectionEquality().equals(other._items, _items)&&(identical(other.shippingAddress, shippingAddress) || other.shippingAddress == shippingAddress)&&(identical(other.shippingCost, shippingCost) || other.shippingCost == shippingCost)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.shippingApprovalRequired, shippingApprovalRequired) || other.shippingApprovalRequired == shippingApprovalRequired));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _OrderCreate&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.customerId, customerId) || other.customerId == customerId)&&(identical(other.customerEmail, customerEmail) || other.customerEmail == customerEmail)&&const DeepCollectionEquality().equals(other._items, _items)&&(identical(other.shippingAddress, shippingAddress) || other.shippingAddress == shippingAddress)&&(identical(other.shippingCostCents, shippingCostCents) || other.shippingCostCents == shippingCostCents)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.shippingApprovalRequired, shippingApprovalRequired) || other.shippingApprovalRequired == shippingApprovalRequired));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,userId,customerId,customerEmail,const DeepCollectionEquality().hash(_items),shippingAddress,shippingCost,currency,shippingApprovalRequired);
+int get hashCode => Object.hash(runtimeType,userId,customerId,customerEmail,const DeepCollectionEquality().hash(_items),shippingAddress,shippingCostCents,currency,shippingApprovalRequired);
 
 @override
 String toString() {
-  return 'OrderCreate(userId: $userId, customerId: $customerId, customerEmail: $customerEmail, items: $items, shippingAddress: $shippingAddress, shippingCost: $shippingCost, currency: $currency, shippingApprovalRequired: $shippingApprovalRequired)';
+  return 'OrderCreate(userId: $userId, customerId: $customerId, customerEmail: $customerEmail, items: $items, shippingAddress: $shippingAddress, shippingCostCents: $shippingCostCents, currency: $currency, shippingApprovalRequired: $shippingApprovalRequired)';
 }
 
 
@@ -840,7 +840,7 @@ abstract mixin class _$OrderCreateCopyWith<$Res> implements $OrderCreateCopyWith
   factory _$OrderCreateCopyWith(_OrderCreate value, $Res Function(_OrderCreate) _then) = __$OrderCreateCopyWithImpl;
 @override @useResult
 $Res call({
- String userId, String customerId, String customerEmail, List<OrderItem> items, Address shippingAddress, double shippingCost, String currency, bool shippingApprovalRequired
+ String userId, String customerId, String customerEmail, List<OrderItem> items, Address shippingAddress, int shippingCostCents, String currency, bool shippingApprovalRequired
 });
 
 
@@ -857,15 +857,15 @@ class __$OrderCreateCopyWithImpl<$Res>
 
 /// Create a copy of OrderCreate
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? userId = null,Object? customerId = null,Object? customerEmail = null,Object? items = null,Object? shippingAddress = null,Object? shippingCost = null,Object? currency = null,Object? shippingApprovalRequired = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? userId = null,Object? customerId = null,Object? customerEmail = null,Object? items = null,Object? shippingAddress = null,Object? shippingCostCents = null,Object? currency = null,Object? shippingApprovalRequired = null,}) {
   return _then(_OrderCreate(
 userId: null == userId ? _self.userId : userId // ignore: cast_nullable_to_non_nullable
 as String,customerId: null == customerId ? _self.customerId : customerId // ignore: cast_nullable_to_non_nullable
 as String,customerEmail: null == customerEmail ? _self.customerEmail : customerEmail // ignore: cast_nullable_to_non_nullable
 as String,items: null == items ? _self._items : items // ignore: cast_nullable_to_non_nullable
 as List<OrderItem>,shippingAddress: null == shippingAddress ? _self.shippingAddress : shippingAddress // ignore: cast_nullable_to_non_nullable
-as Address,shippingCost: null == shippingCost ? _self.shippingCost : shippingCost // ignore: cast_nullable_to_non_nullable
-as double,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
+as Address,shippingCostCents: null == shippingCostCents ? _self.shippingCostCents : shippingCostCents // ignore: cast_nullable_to_non_nullable
+as int,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
 as String,shippingApprovalRequired: null == shippingApprovalRequired ? _self.shippingApprovalRequired : shippingApprovalRequired // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
@@ -888,7 +888,7 @@ $AddressCopyWith<$Res> get shippingAddress {
 mixin _$OrderItem {
 
  String get productId; String? get cartItemId;// F-001/F-003: canonical cart item ID — survives duplicate-productId carts
- String get name; String get description; double get price; int get quantity; List<String> get imageUrls; String get sellerId; Address? get sellerAddress;// Per-item status tracking
+ String get name; String get description; int get priceCents; int get quantity; List<String> get imageUrls; String get sellerId; Address? get sellerAddress;// Per-item status tracking
  String get status;// 'pending' | 'shipped' | 'delivered' | 'refunded'
  String? get trackingNumber; String? get carrier; String? get carrierNote;// Free-text override when carrier='other'
  String? get sellerSku;// Seller's SKU snapshotted at purchase time
@@ -910,16 +910,16 @@ $OrderItemCopyWith<OrderItem> get copyWith => _$OrderItemCopyWithImpl<OrderItem>
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is OrderItem&&(identical(other.productId, productId) || other.productId == productId)&&(identical(other.cartItemId, cartItemId) || other.cartItemId == cartItemId)&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.price, price) || other.price == price)&&(identical(other.quantity, quantity) || other.quantity == quantity)&&const DeepCollectionEquality().equals(other.imageUrls, imageUrls)&&(identical(other.sellerId, sellerId) || other.sellerId == sellerId)&&(identical(other.sellerAddress, sellerAddress) || other.sellerAddress == sellerAddress)&&(identical(other.status, status) || other.status == status)&&(identical(other.trackingNumber, trackingNumber) || other.trackingNumber == trackingNumber)&&(identical(other.carrier, carrier) || other.carrier == carrier)&&(identical(other.carrierNote, carrierNote) || other.carrierNote == carrierNote)&&(identical(other.sellerSku, sellerSku) || other.sellerSku == sellerSku)&&(identical(other.sellerName, sellerName) || other.sellerName == sellerName)&&(identical(other.shippedAt, shippedAt) || other.shippedAt == shippedAt)&&(identical(other.deliveredAt, deliveredAt) || other.deliveredAt == deliveredAt)&&(identical(other.refundedAt, refundedAt) || other.refundedAt == refundedAt)&&(identical(other.refundReason, refundReason) || other.refundReason == refundReason)&&(identical(other.refundAmountCents, refundAmountCents) || other.refundAmountCents == refundAmountCents)&&(identical(other.refundId, refundId) || other.refundId == refundId)&&(identical(other.confirmedByBuyer, confirmedByBuyer) || other.confirmedByBuyer == confirmedByBuyer)&&(identical(other.variantId, variantId) || other.variantId == variantId)&&(identical(other.variantTitle, variantTitle) || other.variantTitle == variantTitle)&&const DeepCollectionEquality().equals(other.variantOptions, variantOptions)&&(identical(other.variantSku, variantSku) || other.variantSku == variantSku)&&(identical(other.weightKg, weightKg) || other.weightKg == weightKg)&&(identical(other.lengthCm, lengthCm) || other.lengthCm == lengthCm)&&(identical(other.widthCm, widthCm) || other.widthCm == widthCm)&&(identical(other.heightCm, heightCm) || other.heightCm == heightCm)&&(identical(other.isLocalDeliveryOnly, isLocalDeliveryOnly) || other.isLocalDeliveryOnly == isLocalDeliveryOnly)&&(identical(other.isPerishable, isPerishable) || other.isPerishable == isPerishable)&&(identical(other.estimatedShipDays, estimatedShipDays) || other.estimatedShipDays == estimatedShipDays)&&const DeepCollectionEquality().equals(other.deliveryOptions, deliveryOptions)&&(identical(other.minimumOrderQuantity, minimumOrderQuantity) || other.minimumOrderQuantity == minimumOrderQuantity)&&(identical(other.freeShipping, freeShipping) || other.freeShipping == freeShipping)&&(identical(other.isDigital, isDigital) || other.isDigital == isDigital)&&(identical(other.licenseKey, licenseKey) || other.licenseKey == licenseKey)&&(identical(other.digitalUnlocked, digitalUnlocked) || other.digitalUnlocked == digitalUnlocked)&&(identical(other.digitalType, digitalType) || other.digitalType == digitalType)&&const DeepCollectionEquality().equals(other.digitalBuilds, digitalBuilds)&&(identical(other.taxCode, taxCode) || other.taxCode == taxCode)&&(identical(other.buyerNote, buyerNote) || other.buyerNote == buyerNote)&&(identical(other.fulfillmentWarehouseId, fulfillmentWarehouseId) || other.fulfillmentWarehouseId == fulfillmentWarehouseId));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is OrderItem&&(identical(other.productId, productId) || other.productId == productId)&&(identical(other.cartItemId, cartItemId) || other.cartItemId == cartItemId)&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.priceCents, priceCents) || other.priceCents == priceCents)&&(identical(other.quantity, quantity) || other.quantity == quantity)&&const DeepCollectionEquality().equals(other.imageUrls, imageUrls)&&(identical(other.sellerId, sellerId) || other.sellerId == sellerId)&&(identical(other.sellerAddress, sellerAddress) || other.sellerAddress == sellerAddress)&&(identical(other.status, status) || other.status == status)&&(identical(other.trackingNumber, trackingNumber) || other.trackingNumber == trackingNumber)&&(identical(other.carrier, carrier) || other.carrier == carrier)&&(identical(other.carrierNote, carrierNote) || other.carrierNote == carrierNote)&&(identical(other.sellerSku, sellerSku) || other.sellerSku == sellerSku)&&(identical(other.sellerName, sellerName) || other.sellerName == sellerName)&&(identical(other.shippedAt, shippedAt) || other.shippedAt == shippedAt)&&(identical(other.deliveredAt, deliveredAt) || other.deliveredAt == deliveredAt)&&(identical(other.refundedAt, refundedAt) || other.refundedAt == refundedAt)&&(identical(other.refundReason, refundReason) || other.refundReason == refundReason)&&(identical(other.refundAmountCents, refundAmountCents) || other.refundAmountCents == refundAmountCents)&&(identical(other.refundId, refundId) || other.refundId == refundId)&&(identical(other.confirmedByBuyer, confirmedByBuyer) || other.confirmedByBuyer == confirmedByBuyer)&&(identical(other.variantId, variantId) || other.variantId == variantId)&&(identical(other.variantTitle, variantTitle) || other.variantTitle == variantTitle)&&const DeepCollectionEquality().equals(other.variantOptions, variantOptions)&&(identical(other.variantSku, variantSku) || other.variantSku == variantSku)&&(identical(other.weightKg, weightKg) || other.weightKg == weightKg)&&(identical(other.lengthCm, lengthCm) || other.lengthCm == lengthCm)&&(identical(other.widthCm, widthCm) || other.widthCm == widthCm)&&(identical(other.heightCm, heightCm) || other.heightCm == heightCm)&&(identical(other.isLocalDeliveryOnly, isLocalDeliveryOnly) || other.isLocalDeliveryOnly == isLocalDeliveryOnly)&&(identical(other.isPerishable, isPerishable) || other.isPerishable == isPerishable)&&(identical(other.estimatedShipDays, estimatedShipDays) || other.estimatedShipDays == estimatedShipDays)&&const DeepCollectionEquality().equals(other.deliveryOptions, deliveryOptions)&&(identical(other.minimumOrderQuantity, minimumOrderQuantity) || other.minimumOrderQuantity == minimumOrderQuantity)&&(identical(other.freeShipping, freeShipping) || other.freeShipping == freeShipping)&&(identical(other.isDigital, isDigital) || other.isDigital == isDigital)&&(identical(other.licenseKey, licenseKey) || other.licenseKey == licenseKey)&&(identical(other.digitalUnlocked, digitalUnlocked) || other.digitalUnlocked == digitalUnlocked)&&(identical(other.digitalType, digitalType) || other.digitalType == digitalType)&&const DeepCollectionEquality().equals(other.digitalBuilds, digitalBuilds)&&(identical(other.taxCode, taxCode) || other.taxCode == taxCode)&&(identical(other.buyerNote, buyerNote) || other.buyerNote == buyerNote)&&(identical(other.fulfillmentWarehouseId, fulfillmentWarehouseId) || other.fulfillmentWarehouseId == fulfillmentWarehouseId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hashAll([runtimeType,productId,cartItemId,name,description,price,quantity,const DeepCollectionEquality().hash(imageUrls),sellerId,sellerAddress,status,trackingNumber,carrier,carrierNote,sellerSku,sellerName,shippedAt,deliveredAt,refundedAt,refundReason,refundAmountCents,refundId,confirmedByBuyer,variantId,variantTitle,const DeepCollectionEquality().hash(variantOptions),variantSku,weightKg,lengthCm,widthCm,heightCm,isLocalDeliveryOnly,isPerishable,estimatedShipDays,const DeepCollectionEquality().hash(deliveryOptions),minimumOrderQuantity,freeShipping,isDigital,licenseKey,digitalUnlocked,digitalType,const DeepCollectionEquality().hash(digitalBuilds),taxCode,buyerNote,fulfillmentWarehouseId]);
+int get hashCode => Object.hashAll([runtimeType,productId,cartItemId,name,description,priceCents,quantity,const DeepCollectionEquality().hash(imageUrls),sellerId,sellerAddress,status,trackingNumber,carrier,carrierNote,sellerSku,sellerName,shippedAt,deliveredAt,refundedAt,refundReason,refundAmountCents,refundId,confirmedByBuyer,variantId,variantTitle,const DeepCollectionEquality().hash(variantOptions),variantSku,weightKg,lengthCm,widthCm,heightCm,isLocalDeliveryOnly,isPerishable,estimatedShipDays,const DeepCollectionEquality().hash(deliveryOptions),minimumOrderQuantity,freeShipping,isDigital,licenseKey,digitalUnlocked,digitalType,const DeepCollectionEquality().hash(digitalBuilds),taxCode,buyerNote,fulfillmentWarehouseId]);
 
 @override
 String toString() {
-  return 'OrderItem(productId: $productId, cartItemId: $cartItemId, name: $name, description: $description, price: $price, quantity: $quantity, imageUrls: $imageUrls, sellerId: $sellerId, sellerAddress: $sellerAddress, status: $status, trackingNumber: $trackingNumber, carrier: $carrier, carrierNote: $carrierNote, sellerSku: $sellerSku, sellerName: $sellerName, shippedAt: $shippedAt, deliveredAt: $deliveredAt, refundedAt: $refundedAt, refundReason: $refundReason, refundAmountCents: $refundAmountCents, refundId: $refundId, confirmedByBuyer: $confirmedByBuyer, variantId: $variantId, variantTitle: $variantTitle, variantOptions: $variantOptions, variantSku: $variantSku, weightKg: $weightKg, lengthCm: $lengthCm, widthCm: $widthCm, heightCm: $heightCm, isLocalDeliveryOnly: $isLocalDeliveryOnly, isPerishable: $isPerishable, estimatedShipDays: $estimatedShipDays, deliveryOptions: $deliveryOptions, minimumOrderQuantity: $minimumOrderQuantity, freeShipping: $freeShipping, isDigital: $isDigital, licenseKey: $licenseKey, digitalUnlocked: $digitalUnlocked, digitalType: $digitalType, digitalBuilds: $digitalBuilds, taxCode: $taxCode, buyerNote: $buyerNote, fulfillmentWarehouseId: $fulfillmentWarehouseId)';
+  return 'OrderItem(productId: $productId, cartItemId: $cartItemId, name: $name, description: $description, priceCents: $priceCents, quantity: $quantity, imageUrls: $imageUrls, sellerId: $sellerId, sellerAddress: $sellerAddress, status: $status, trackingNumber: $trackingNumber, carrier: $carrier, carrierNote: $carrierNote, sellerSku: $sellerSku, sellerName: $sellerName, shippedAt: $shippedAt, deliveredAt: $deliveredAt, refundedAt: $refundedAt, refundReason: $refundReason, refundAmountCents: $refundAmountCents, refundId: $refundId, confirmedByBuyer: $confirmedByBuyer, variantId: $variantId, variantTitle: $variantTitle, variantOptions: $variantOptions, variantSku: $variantSku, weightKg: $weightKg, lengthCm: $lengthCm, widthCm: $widthCm, heightCm: $heightCm, isLocalDeliveryOnly: $isLocalDeliveryOnly, isPerishable: $isPerishable, estimatedShipDays: $estimatedShipDays, deliveryOptions: $deliveryOptions, minimumOrderQuantity: $minimumOrderQuantity, freeShipping: $freeShipping, isDigital: $isDigital, licenseKey: $licenseKey, digitalUnlocked: $digitalUnlocked, digitalType: $digitalType, digitalBuilds: $digitalBuilds, taxCode: $taxCode, buyerNote: $buyerNote, fulfillmentWarehouseId: $fulfillmentWarehouseId)';
 }
 
 
@@ -930,7 +930,7 @@ abstract mixin class $OrderItemCopyWith<$Res>  {
   factory $OrderItemCopyWith(OrderItem value, $Res Function(OrderItem) _then) = _$OrderItemCopyWithImpl;
 @useResult
 $Res call({
- String productId, String? cartItemId, String name, String description, double price, int quantity, List<String> imageUrls, String sellerId, Address? sellerAddress, String status, String? trackingNumber, String? carrier, String? carrierNote, String? sellerSku, String? sellerName, DateTime? shippedAt, DateTime? deliveredAt, DateTime? refundedAt, String? refundReason, int? refundAmountCents, String? refundId, bool confirmedByBuyer, String? variantId, String? variantTitle, Map<String, String>? variantOptions, String? variantSku, double? weightKg, double? lengthCm, double? widthCm, double? heightCm, bool isLocalDeliveryOnly, bool isPerishable, int estimatedShipDays, List<SellerDeliveryOption> deliveryOptions, int minimumOrderQuantity, bool freeShipping, bool isDigital, String? licenseKey, bool digitalUnlocked, String? digitalType, Map<String, String>? digitalBuilds, String? taxCode, String? buyerNote, String? fulfillmentWarehouseId
+ String productId, String? cartItemId, String name, String description, int priceCents, int quantity, List<String> imageUrls, String sellerId, Address? sellerAddress, String status, String? trackingNumber, String? carrier, String? carrierNote, String? sellerSku, String? sellerName, DateTime? shippedAt, DateTime? deliveredAt, DateTime? refundedAt, String? refundReason, int? refundAmountCents, String? refundId, bool confirmedByBuyer, String? variantId, String? variantTitle, Map<String, String>? variantOptions, String? variantSku, double? weightKg, double? lengthCm, double? widthCm, double? heightCm, bool isLocalDeliveryOnly, bool isPerishable, int estimatedShipDays, List<SellerDeliveryOption> deliveryOptions, int minimumOrderQuantity, bool freeShipping, bool isDigital, String? licenseKey, bool digitalUnlocked, String? digitalType, Map<String, String>? digitalBuilds, String? taxCode, String? buyerNote, String? fulfillmentWarehouseId
 });
 
 
@@ -947,14 +947,14 @@ class _$OrderItemCopyWithImpl<$Res>
 
 /// Create a copy of OrderItem
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? productId = null,Object? cartItemId = freezed,Object? name = null,Object? description = null,Object? price = null,Object? quantity = null,Object? imageUrls = null,Object? sellerId = null,Object? sellerAddress = freezed,Object? status = null,Object? trackingNumber = freezed,Object? carrier = freezed,Object? carrierNote = freezed,Object? sellerSku = freezed,Object? sellerName = freezed,Object? shippedAt = freezed,Object? deliveredAt = freezed,Object? refundedAt = freezed,Object? refundReason = freezed,Object? refundAmountCents = freezed,Object? refundId = freezed,Object? confirmedByBuyer = null,Object? variantId = freezed,Object? variantTitle = freezed,Object? variantOptions = freezed,Object? variantSku = freezed,Object? weightKg = freezed,Object? lengthCm = freezed,Object? widthCm = freezed,Object? heightCm = freezed,Object? isLocalDeliveryOnly = null,Object? isPerishable = null,Object? estimatedShipDays = null,Object? deliveryOptions = null,Object? minimumOrderQuantity = null,Object? freeShipping = null,Object? isDigital = null,Object? licenseKey = freezed,Object? digitalUnlocked = null,Object? digitalType = freezed,Object? digitalBuilds = freezed,Object? taxCode = freezed,Object? buyerNote = freezed,Object? fulfillmentWarehouseId = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? productId = null,Object? cartItemId = freezed,Object? name = null,Object? description = null,Object? priceCents = null,Object? quantity = null,Object? imageUrls = null,Object? sellerId = null,Object? sellerAddress = freezed,Object? status = null,Object? trackingNumber = freezed,Object? carrier = freezed,Object? carrierNote = freezed,Object? sellerSku = freezed,Object? sellerName = freezed,Object? shippedAt = freezed,Object? deliveredAt = freezed,Object? refundedAt = freezed,Object? refundReason = freezed,Object? refundAmountCents = freezed,Object? refundId = freezed,Object? confirmedByBuyer = null,Object? variantId = freezed,Object? variantTitle = freezed,Object? variantOptions = freezed,Object? variantSku = freezed,Object? weightKg = freezed,Object? lengthCm = freezed,Object? widthCm = freezed,Object? heightCm = freezed,Object? isLocalDeliveryOnly = null,Object? isPerishable = null,Object? estimatedShipDays = null,Object? deliveryOptions = null,Object? minimumOrderQuantity = null,Object? freeShipping = null,Object? isDigital = null,Object? licenseKey = freezed,Object? digitalUnlocked = null,Object? digitalType = freezed,Object? digitalBuilds = freezed,Object? taxCode = freezed,Object? buyerNote = freezed,Object? fulfillmentWarehouseId = freezed,}) {
   return _then(_self.copyWith(
 productId: null == productId ? _self.productId : productId // ignore: cast_nullable_to_non_nullable
 as String,cartItemId: freezed == cartItemId ? _self.cartItemId : cartItemId // ignore: cast_nullable_to_non_nullable
 as String?,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,description: null == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
-as String,price: null == price ? _self.price : price // ignore: cast_nullable_to_non_nullable
-as double,quantity: null == quantity ? _self.quantity : quantity // ignore: cast_nullable_to_non_nullable
+as String,priceCents: null == priceCents ? _self.priceCents : priceCents // ignore: cast_nullable_to_non_nullable
+as int,quantity: null == quantity ? _self.quantity : quantity // ignore: cast_nullable_to_non_nullable
 as int,imageUrls: null == imageUrls ? _self.imageUrls : imageUrls // ignore: cast_nullable_to_non_nullable
 as List<String>,sellerId: null == sellerId ? _self.sellerId : sellerId // ignore: cast_nullable_to_non_nullable
 as String,sellerAddress: freezed == sellerAddress ? _self.sellerAddress : sellerAddress // ignore: cast_nullable_to_non_nullable
@@ -1090,10 +1090,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String productId,  String? cartItemId,  String name,  String description,  double price,  int quantity,  List<String> imageUrls,  String sellerId,  Address? sellerAddress,  String status,  String? trackingNumber,  String? carrier,  String? carrierNote,  String? sellerSku,  String? sellerName,  DateTime? shippedAt,  DateTime? deliveredAt,  DateTime? refundedAt,  String? refundReason,  int? refundAmountCents,  String? refundId,  bool confirmedByBuyer,  String? variantId,  String? variantTitle,  Map<String, String>? variantOptions,  String? variantSku,  double? weightKg,  double? lengthCm,  double? widthCm,  double? heightCm,  bool isLocalDeliveryOnly,  bool isPerishable,  int estimatedShipDays,  List<SellerDeliveryOption> deliveryOptions,  int minimumOrderQuantity,  bool freeShipping,  bool isDigital,  String? licenseKey,  bool digitalUnlocked,  String? digitalType,  Map<String, String>? digitalBuilds,  String? taxCode,  String? buyerNote,  String? fulfillmentWarehouseId)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String productId,  String? cartItemId,  String name,  String description,  int priceCents,  int quantity,  List<String> imageUrls,  String sellerId,  Address? sellerAddress,  String status,  String? trackingNumber,  String? carrier,  String? carrierNote,  String? sellerSku,  String? sellerName,  DateTime? shippedAt,  DateTime? deliveredAt,  DateTime? refundedAt,  String? refundReason,  int? refundAmountCents,  String? refundId,  bool confirmedByBuyer,  String? variantId,  String? variantTitle,  Map<String, String>? variantOptions,  String? variantSku,  double? weightKg,  double? lengthCm,  double? widthCm,  double? heightCm,  bool isLocalDeliveryOnly,  bool isPerishable,  int estimatedShipDays,  List<SellerDeliveryOption> deliveryOptions,  int minimumOrderQuantity,  bool freeShipping,  bool isDigital,  String? licenseKey,  bool digitalUnlocked,  String? digitalType,  Map<String, String>? digitalBuilds,  String? taxCode,  String? buyerNote,  String? fulfillmentWarehouseId)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _OrderItem() when $default != null:
-return $default(_that.productId,_that.cartItemId,_that.name,_that.description,_that.price,_that.quantity,_that.imageUrls,_that.sellerId,_that.sellerAddress,_that.status,_that.trackingNumber,_that.carrier,_that.carrierNote,_that.sellerSku,_that.sellerName,_that.shippedAt,_that.deliveredAt,_that.refundedAt,_that.refundReason,_that.refundAmountCents,_that.refundId,_that.confirmedByBuyer,_that.variantId,_that.variantTitle,_that.variantOptions,_that.variantSku,_that.weightKg,_that.lengthCm,_that.widthCm,_that.heightCm,_that.isLocalDeliveryOnly,_that.isPerishable,_that.estimatedShipDays,_that.deliveryOptions,_that.minimumOrderQuantity,_that.freeShipping,_that.isDigital,_that.licenseKey,_that.digitalUnlocked,_that.digitalType,_that.digitalBuilds,_that.taxCode,_that.buyerNote,_that.fulfillmentWarehouseId);case _:
+return $default(_that.productId,_that.cartItemId,_that.name,_that.description,_that.priceCents,_that.quantity,_that.imageUrls,_that.sellerId,_that.sellerAddress,_that.status,_that.trackingNumber,_that.carrier,_that.carrierNote,_that.sellerSku,_that.sellerName,_that.shippedAt,_that.deliveredAt,_that.refundedAt,_that.refundReason,_that.refundAmountCents,_that.refundId,_that.confirmedByBuyer,_that.variantId,_that.variantTitle,_that.variantOptions,_that.variantSku,_that.weightKg,_that.lengthCm,_that.widthCm,_that.heightCm,_that.isLocalDeliveryOnly,_that.isPerishable,_that.estimatedShipDays,_that.deliveryOptions,_that.minimumOrderQuantity,_that.freeShipping,_that.isDigital,_that.licenseKey,_that.digitalUnlocked,_that.digitalType,_that.digitalBuilds,_that.taxCode,_that.buyerNote,_that.fulfillmentWarehouseId);case _:
   return orElse();
 
 }
@@ -1111,10 +1111,10 @@ return $default(_that.productId,_that.cartItemId,_that.name,_that.description,_t
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String productId,  String? cartItemId,  String name,  String description,  double price,  int quantity,  List<String> imageUrls,  String sellerId,  Address? sellerAddress,  String status,  String? trackingNumber,  String? carrier,  String? carrierNote,  String? sellerSku,  String? sellerName,  DateTime? shippedAt,  DateTime? deliveredAt,  DateTime? refundedAt,  String? refundReason,  int? refundAmountCents,  String? refundId,  bool confirmedByBuyer,  String? variantId,  String? variantTitle,  Map<String, String>? variantOptions,  String? variantSku,  double? weightKg,  double? lengthCm,  double? widthCm,  double? heightCm,  bool isLocalDeliveryOnly,  bool isPerishable,  int estimatedShipDays,  List<SellerDeliveryOption> deliveryOptions,  int minimumOrderQuantity,  bool freeShipping,  bool isDigital,  String? licenseKey,  bool digitalUnlocked,  String? digitalType,  Map<String, String>? digitalBuilds,  String? taxCode,  String? buyerNote,  String? fulfillmentWarehouseId)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String productId,  String? cartItemId,  String name,  String description,  int priceCents,  int quantity,  List<String> imageUrls,  String sellerId,  Address? sellerAddress,  String status,  String? trackingNumber,  String? carrier,  String? carrierNote,  String? sellerSku,  String? sellerName,  DateTime? shippedAt,  DateTime? deliveredAt,  DateTime? refundedAt,  String? refundReason,  int? refundAmountCents,  String? refundId,  bool confirmedByBuyer,  String? variantId,  String? variantTitle,  Map<String, String>? variantOptions,  String? variantSku,  double? weightKg,  double? lengthCm,  double? widthCm,  double? heightCm,  bool isLocalDeliveryOnly,  bool isPerishable,  int estimatedShipDays,  List<SellerDeliveryOption> deliveryOptions,  int minimumOrderQuantity,  bool freeShipping,  bool isDigital,  String? licenseKey,  bool digitalUnlocked,  String? digitalType,  Map<String, String>? digitalBuilds,  String? taxCode,  String? buyerNote,  String? fulfillmentWarehouseId)  $default,) {final _that = this;
 switch (_that) {
 case _OrderItem():
-return $default(_that.productId,_that.cartItemId,_that.name,_that.description,_that.price,_that.quantity,_that.imageUrls,_that.sellerId,_that.sellerAddress,_that.status,_that.trackingNumber,_that.carrier,_that.carrierNote,_that.sellerSku,_that.sellerName,_that.shippedAt,_that.deliveredAt,_that.refundedAt,_that.refundReason,_that.refundAmountCents,_that.refundId,_that.confirmedByBuyer,_that.variantId,_that.variantTitle,_that.variantOptions,_that.variantSku,_that.weightKg,_that.lengthCm,_that.widthCm,_that.heightCm,_that.isLocalDeliveryOnly,_that.isPerishable,_that.estimatedShipDays,_that.deliveryOptions,_that.minimumOrderQuantity,_that.freeShipping,_that.isDigital,_that.licenseKey,_that.digitalUnlocked,_that.digitalType,_that.digitalBuilds,_that.taxCode,_that.buyerNote,_that.fulfillmentWarehouseId);case _:
+return $default(_that.productId,_that.cartItemId,_that.name,_that.description,_that.priceCents,_that.quantity,_that.imageUrls,_that.sellerId,_that.sellerAddress,_that.status,_that.trackingNumber,_that.carrier,_that.carrierNote,_that.sellerSku,_that.sellerName,_that.shippedAt,_that.deliveredAt,_that.refundedAt,_that.refundReason,_that.refundAmountCents,_that.refundId,_that.confirmedByBuyer,_that.variantId,_that.variantTitle,_that.variantOptions,_that.variantSku,_that.weightKg,_that.lengthCm,_that.widthCm,_that.heightCm,_that.isLocalDeliveryOnly,_that.isPerishable,_that.estimatedShipDays,_that.deliveryOptions,_that.minimumOrderQuantity,_that.freeShipping,_that.isDigital,_that.licenseKey,_that.digitalUnlocked,_that.digitalType,_that.digitalBuilds,_that.taxCode,_that.buyerNote,_that.fulfillmentWarehouseId);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -1131,10 +1131,10 @@ return $default(_that.productId,_that.cartItemId,_that.name,_that.description,_t
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String productId,  String? cartItemId,  String name,  String description,  double price,  int quantity,  List<String> imageUrls,  String sellerId,  Address? sellerAddress,  String status,  String? trackingNumber,  String? carrier,  String? carrierNote,  String? sellerSku,  String? sellerName,  DateTime? shippedAt,  DateTime? deliveredAt,  DateTime? refundedAt,  String? refundReason,  int? refundAmountCents,  String? refundId,  bool confirmedByBuyer,  String? variantId,  String? variantTitle,  Map<String, String>? variantOptions,  String? variantSku,  double? weightKg,  double? lengthCm,  double? widthCm,  double? heightCm,  bool isLocalDeliveryOnly,  bool isPerishable,  int estimatedShipDays,  List<SellerDeliveryOption> deliveryOptions,  int minimumOrderQuantity,  bool freeShipping,  bool isDigital,  String? licenseKey,  bool digitalUnlocked,  String? digitalType,  Map<String, String>? digitalBuilds,  String? taxCode,  String? buyerNote,  String? fulfillmentWarehouseId)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String productId,  String? cartItemId,  String name,  String description,  int priceCents,  int quantity,  List<String> imageUrls,  String sellerId,  Address? sellerAddress,  String status,  String? trackingNumber,  String? carrier,  String? carrierNote,  String? sellerSku,  String? sellerName,  DateTime? shippedAt,  DateTime? deliveredAt,  DateTime? refundedAt,  String? refundReason,  int? refundAmountCents,  String? refundId,  bool confirmedByBuyer,  String? variantId,  String? variantTitle,  Map<String, String>? variantOptions,  String? variantSku,  double? weightKg,  double? lengthCm,  double? widthCm,  double? heightCm,  bool isLocalDeliveryOnly,  bool isPerishable,  int estimatedShipDays,  List<SellerDeliveryOption> deliveryOptions,  int minimumOrderQuantity,  bool freeShipping,  bool isDigital,  String? licenseKey,  bool digitalUnlocked,  String? digitalType,  Map<String, String>? digitalBuilds,  String? taxCode,  String? buyerNote,  String? fulfillmentWarehouseId)?  $default,) {final _that = this;
 switch (_that) {
 case _OrderItem() when $default != null:
-return $default(_that.productId,_that.cartItemId,_that.name,_that.description,_that.price,_that.quantity,_that.imageUrls,_that.sellerId,_that.sellerAddress,_that.status,_that.trackingNumber,_that.carrier,_that.carrierNote,_that.sellerSku,_that.sellerName,_that.shippedAt,_that.deliveredAt,_that.refundedAt,_that.refundReason,_that.refundAmountCents,_that.refundId,_that.confirmedByBuyer,_that.variantId,_that.variantTitle,_that.variantOptions,_that.variantSku,_that.weightKg,_that.lengthCm,_that.widthCm,_that.heightCm,_that.isLocalDeliveryOnly,_that.isPerishable,_that.estimatedShipDays,_that.deliveryOptions,_that.minimumOrderQuantity,_that.freeShipping,_that.isDigital,_that.licenseKey,_that.digitalUnlocked,_that.digitalType,_that.digitalBuilds,_that.taxCode,_that.buyerNote,_that.fulfillmentWarehouseId);case _:
+return $default(_that.productId,_that.cartItemId,_that.name,_that.description,_that.priceCents,_that.quantity,_that.imageUrls,_that.sellerId,_that.sellerAddress,_that.status,_that.trackingNumber,_that.carrier,_that.carrierNote,_that.sellerSku,_that.sellerName,_that.shippedAt,_that.deliveredAt,_that.refundedAt,_that.refundReason,_that.refundAmountCents,_that.refundId,_that.confirmedByBuyer,_that.variantId,_that.variantTitle,_that.variantOptions,_that.variantSku,_that.weightKg,_that.lengthCm,_that.widthCm,_that.heightCm,_that.isLocalDeliveryOnly,_that.isPerishable,_that.estimatedShipDays,_that.deliveryOptions,_that.minimumOrderQuantity,_that.freeShipping,_that.isDigital,_that.licenseKey,_that.digitalUnlocked,_that.digitalType,_that.digitalBuilds,_that.taxCode,_that.buyerNote,_that.fulfillmentWarehouseId);case _:
   return null;
 
 }
@@ -1146,7 +1146,7 @@ return $default(_that.productId,_that.cartItemId,_that.name,_that.description,_t
 @JsonSerializable()
 
 class _OrderItem extends OrderItem {
-  const _OrderItem({required this.productId, this.cartItemId, required this.name, required this.description, required this.price, required this.quantity, required final  List<String> imageUrls, required this.sellerId, this.sellerAddress, this.status = DeliveryStatusValues.pending, this.trackingNumber, this.carrier, this.carrierNote, this.sellerSku, this.sellerName, this.shippedAt, this.deliveredAt, this.refundedAt, this.refundReason, this.refundAmountCents, this.refundId, this.confirmedByBuyer = false, this.variantId, this.variantTitle, final  Map<String, String>? variantOptions, this.variantSku, this.weightKg, this.lengthCm, this.widthCm, this.heightCm, this.isLocalDeliveryOnly = false, this.isPerishable = false, this.estimatedShipDays = 3, final  List<SellerDeliveryOption> deliveryOptions = const [], this.minimumOrderQuantity = 1, this.freeShipping = false, this.isDigital = false, this.licenseKey, this.digitalUnlocked = false, this.digitalType, final  Map<String, String>? digitalBuilds, this.taxCode, this.buyerNote, this.fulfillmentWarehouseId}): _imageUrls = imageUrls,_variantOptions = variantOptions,_deliveryOptions = deliveryOptions,_digitalBuilds = digitalBuilds,super._();
+  const _OrderItem({required this.productId, this.cartItemId, required this.name, required this.description, required this.priceCents, required this.quantity, required final  List<String> imageUrls, required this.sellerId, this.sellerAddress, this.status = DeliveryStatusValues.pending, this.trackingNumber, this.carrier, this.carrierNote, this.sellerSku, this.sellerName, this.shippedAt, this.deliveredAt, this.refundedAt, this.refundReason, this.refundAmountCents, this.refundId, this.confirmedByBuyer = false, this.variantId, this.variantTitle, final  Map<String, String>? variantOptions, this.variantSku, this.weightKg, this.lengthCm, this.widthCm, this.heightCm, this.isLocalDeliveryOnly = false, this.isPerishable = false, this.estimatedShipDays = 3, final  List<SellerDeliveryOption> deliveryOptions = const [], this.minimumOrderQuantity = 1, this.freeShipping = false, this.isDigital = false, this.licenseKey, this.digitalUnlocked = false, this.digitalType, final  Map<String, String>? digitalBuilds, this.taxCode, this.buyerNote, this.fulfillmentWarehouseId}): _imageUrls = imageUrls,_variantOptions = variantOptions,_deliveryOptions = deliveryOptions,_digitalBuilds = digitalBuilds,super._();
   factory _OrderItem.fromJson(Map<String, dynamic> json) => _$OrderItemFromJson(json);
 
 @override final  String productId;
@@ -1154,7 +1154,7 @@ class _OrderItem extends OrderItem {
 // F-001/F-003: canonical cart item ID — survives duplicate-productId carts
 @override final  String name;
 @override final  String description;
-@override final  double price;
+@override final  int priceCents;
 @override final  int quantity;
  final  List<String> _imageUrls;
 @override List<String> get imageUrls {
@@ -1245,16 +1245,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _OrderItem&&(identical(other.productId, productId) || other.productId == productId)&&(identical(other.cartItemId, cartItemId) || other.cartItemId == cartItemId)&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.price, price) || other.price == price)&&(identical(other.quantity, quantity) || other.quantity == quantity)&&const DeepCollectionEquality().equals(other._imageUrls, _imageUrls)&&(identical(other.sellerId, sellerId) || other.sellerId == sellerId)&&(identical(other.sellerAddress, sellerAddress) || other.sellerAddress == sellerAddress)&&(identical(other.status, status) || other.status == status)&&(identical(other.trackingNumber, trackingNumber) || other.trackingNumber == trackingNumber)&&(identical(other.carrier, carrier) || other.carrier == carrier)&&(identical(other.carrierNote, carrierNote) || other.carrierNote == carrierNote)&&(identical(other.sellerSku, sellerSku) || other.sellerSku == sellerSku)&&(identical(other.sellerName, sellerName) || other.sellerName == sellerName)&&(identical(other.shippedAt, shippedAt) || other.shippedAt == shippedAt)&&(identical(other.deliveredAt, deliveredAt) || other.deliveredAt == deliveredAt)&&(identical(other.refundedAt, refundedAt) || other.refundedAt == refundedAt)&&(identical(other.refundReason, refundReason) || other.refundReason == refundReason)&&(identical(other.refundAmountCents, refundAmountCents) || other.refundAmountCents == refundAmountCents)&&(identical(other.refundId, refundId) || other.refundId == refundId)&&(identical(other.confirmedByBuyer, confirmedByBuyer) || other.confirmedByBuyer == confirmedByBuyer)&&(identical(other.variantId, variantId) || other.variantId == variantId)&&(identical(other.variantTitle, variantTitle) || other.variantTitle == variantTitle)&&const DeepCollectionEquality().equals(other._variantOptions, _variantOptions)&&(identical(other.variantSku, variantSku) || other.variantSku == variantSku)&&(identical(other.weightKg, weightKg) || other.weightKg == weightKg)&&(identical(other.lengthCm, lengthCm) || other.lengthCm == lengthCm)&&(identical(other.widthCm, widthCm) || other.widthCm == widthCm)&&(identical(other.heightCm, heightCm) || other.heightCm == heightCm)&&(identical(other.isLocalDeliveryOnly, isLocalDeliveryOnly) || other.isLocalDeliveryOnly == isLocalDeliveryOnly)&&(identical(other.isPerishable, isPerishable) || other.isPerishable == isPerishable)&&(identical(other.estimatedShipDays, estimatedShipDays) || other.estimatedShipDays == estimatedShipDays)&&const DeepCollectionEquality().equals(other._deliveryOptions, _deliveryOptions)&&(identical(other.minimumOrderQuantity, minimumOrderQuantity) || other.minimumOrderQuantity == minimumOrderQuantity)&&(identical(other.freeShipping, freeShipping) || other.freeShipping == freeShipping)&&(identical(other.isDigital, isDigital) || other.isDigital == isDigital)&&(identical(other.licenseKey, licenseKey) || other.licenseKey == licenseKey)&&(identical(other.digitalUnlocked, digitalUnlocked) || other.digitalUnlocked == digitalUnlocked)&&(identical(other.digitalType, digitalType) || other.digitalType == digitalType)&&const DeepCollectionEquality().equals(other._digitalBuilds, _digitalBuilds)&&(identical(other.taxCode, taxCode) || other.taxCode == taxCode)&&(identical(other.buyerNote, buyerNote) || other.buyerNote == buyerNote)&&(identical(other.fulfillmentWarehouseId, fulfillmentWarehouseId) || other.fulfillmentWarehouseId == fulfillmentWarehouseId));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _OrderItem&&(identical(other.productId, productId) || other.productId == productId)&&(identical(other.cartItemId, cartItemId) || other.cartItemId == cartItemId)&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.priceCents, priceCents) || other.priceCents == priceCents)&&(identical(other.quantity, quantity) || other.quantity == quantity)&&const DeepCollectionEquality().equals(other._imageUrls, _imageUrls)&&(identical(other.sellerId, sellerId) || other.sellerId == sellerId)&&(identical(other.sellerAddress, sellerAddress) || other.sellerAddress == sellerAddress)&&(identical(other.status, status) || other.status == status)&&(identical(other.trackingNumber, trackingNumber) || other.trackingNumber == trackingNumber)&&(identical(other.carrier, carrier) || other.carrier == carrier)&&(identical(other.carrierNote, carrierNote) || other.carrierNote == carrierNote)&&(identical(other.sellerSku, sellerSku) || other.sellerSku == sellerSku)&&(identical(other.sellerName, sellerName) || other.sellerName == sellerName)&&(identical(other.shippedAt, shippedAt) || other.shippedAt == shippedAt)&&(identical(other.deliveredAt, deliveredAt) || other.deliveredAt == deliveredAt)&&(identical(other.refundedAt, refundedAt) || other.refundedAt == refundedAt)&&(identical(other.refundReason, refundReason) || other.refundReason == refundReason)&&(identical(other.refundAmountCents, refundAmountCents) || other.refundAmountCents == refundAmountCents)&&(identical(other.refundId, refundId) || other.refundId == refundId)&&(identical(other.confirmedByBuyer, confirmedByBuyer) || other.confirmedByBuyer == confirmedByBuyer)&&(identical(other.variantId, variantId) || other.variantId == variantId)&&(identical(other.variantTitle, variantTitle) || other.variantTitle == variantTitle)&&const DeepCollectionEquality().equals(other._variantOptions, _variantOptions)&&(identical(other.variantSku, variantSku) || other.variantSku == variantSku)&&(identical(other.weightKg, weightKg) || other.weightKg == weightKg)&&(identical(other.lengthCm, lengthCm) || other.lengthCm == lengthCm)&&(identical(other.widthCm, widthCm) || other.widthCm == widthCm)&&(identical(other.heightCm, heightCm) || other.heightCm == heightCm)&&(identical(other.isLocalDeliveryOnly, isLocalDeliveryOnly) || other.isLocalDeliveryOnly == isLocalDeliveryOnly)&&(identical(other.isPerishable, isPerishable) || other.isPerishable == isPerishable)&&(identical(other.estimatedShipDays, estimatedShipDays) || other.estimatedShipDays == estimatedShipDays)&&const DeepCollectionEquality().equals(other._deliveryOptions, _deliveryOptions)&&(identical(other.minimumOrderQuantity, minimumOrderQuantity) || other.minimumOrderQuantity == minimumOrderQuantity)&&(identical(other.freeShipping, freeShipping) || other.freeShipping == freeShipping)&&(identical(other.isDigital, isDigital) || other.isDigital == isDigital)&&(identical(other.licenseKey, licenseKey) || other.licenseKey == licenseKey)&&(identical(other.digitalUnlocked, digitalUnlocked) || other.digitalUnlocked == digitalUnlocked)&&(identical(other.digitalType, digitalType) || other.digitalType == digitalType)&&const DeepCollectionEquality().equals(other._digitalBuilds, _digitalBuilds)&&(identical(other.taxCode, taxCode) || other.taxCode == taxCode)&&(identical(other.buyerNote, buyerNote) || other.buyerNote == buyerNote)&&(identical(other.fulfillmentWarehouseId, fulfillmentWarehouseId) || other.fulfillmentWarehouseId == fulfillmentWarehouseId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hashAll([runtimeType,productId,cartItemId,name,description,price,quantity,const DeepCollectionEquality().hash(_imageUrls),sellerId,sellerAddress,status,trackingNumber,carrier,carrierNote,sellerSku,sellerName,shippedAt,deliveredAt,refundedAt,refundReason,refundAmountCents,refundId,confirmedByBuyer,variantId,variantTitle,const DeepCollectionEquality().hash(_variantOptions),variantSku,weightKg,lengthCm,widthCm,heightCm,isLocalDeliveryOnly,isPerishable,estimatedShipDays,const DeepCollectionEquality().hash(_deliveryOptions),minimumOrderQuantity,freeShipping,isDigital,licenseKey,digitalUnlocked,digitalType,const DeepCollectionEquality().hash(_digitalBuilds),taxCode,buyerNote,fulfillmentWarehouseId]);
+int get hashCode => Object.hashAll([runtimeType,productId,cartItemId,name,description,priceCents,quantity,const DeepCollectionEquality().hash(_imageUrls),sellerId,sellerAddress,status,trackingNumber,carrier,carrierNote,sellerSku,sellerName,shippedAt,deliveredAt,refundedAt,refundReason,refundAmountCents,refundId,confirmedByBuyer,variantId,variantTitle,const DeepCollectionEquality().hash(_variantOptions),variantSku,weightKg,lengthCm,widthCm,heightCm,isLocalDeliveryOnly,isPerishable,estimatedShipDays,const DeepCollectionEquality().hash(_deliveryOptions),minimumOrderQuantity,freeShipping,isDigital,licenseKey,digitalUnlocked,digitalType,const DeepCollectionEquality().hash(_digitalBuilds),taxCode,buyerNote,fulfillmentWarehouseId]);
 
 @override
 String toString() {
-  return 'OrderItem(productId: $productId, cartItemId: $cartItemId, name: $name, description: $description, price: $price, quantity: $quantity, imageUrls: $imageUrls, sellerId: $sellerId, sellerAddress: $sellerAddress, status: $status, trackingNumber: $trackingNumber, carrier: $carrier, carrierNote: $carrierNote, sellerSku: $sellerSku, sellerName: $sellerName, shippedAt: $shippedAt, deliveredAt: $deliveredAt, refundedAt: $refundedAt, refundReason: $refundReason, refundAmountCents: $refundAmountCents, refundId: $refundId, confirmedByBuyer: $confirmedByBuyer, variantId: $variantId, variantTitle: $variantTitle, variantOptions: $variantOptions, variantSku: $variantSku, weightKg: $weightKg, lengthCm: $lengthCm, widthCm: $widthCm, heightCm: $heightCm, isLocalDeliveryOnly: $isLocalDeliveryOnly, isPerishable: $isPerishable, estimatedShipDays: $estimatedShipDays, deliveryOptions: $deliveryOptions, minimumOrderQuantity: $minimumOrderQuantity, freeShipping: $freeShipping, isDigital: $isDigital, licenseKey: $licenseKey, digitalUnlocked: $digitalUnlocked, digitalType: $digitalType, digitalBuilds: $digitalBuilds, taxCode: $taxCode, buyerNote: $buyerNote, fulfillmentWarehouseId: $fulfillmentWarehouseId)';
+  return 'OrderItem(productId: $productId, cartItemId: $cartItemId, name: $name, description: $description, priceCents: $priceCents, quantity: $quantity, imageUrls: $imageUrls, sellerId: $sellerId, sellerAddress: $sellerAddress, status: $status, trackingNumber: $trackingNumber, carrier: $carrier, carrierNote: $carrierNote, sellerSku: $sellerSku, sellerName: $sellerName, shippedAt: $shippedAt, deliveredAt: $deliveredAt, refundedAt: $refundedAt, refundReason: $refundReason, refundAmountCents: $refundAmountCents, refundId: $refundId, confirmedByBuyer: $confirmedByBuyer, variantId: $variantId, variantTitle: $variantTitle, variantOptions: $variantOptions, variantSku: $variantSku, weightKg: $weightKg, lengthCm: $lengthCm, widthCm: $widthCm, heightCm: $heightCm, isLocalDeliveryOnly: $isLocalDeliveryOnly, isPerishable: $isPerishable, estimatedShipDays: $estimatedShipDays, deliveryOptions: $deliveryOptions, minimumOrderQuantity: $minimumOrderQuantity, freeShipping: $freeShipping, isDigital: $isDigital, licenseKey: $licenseKey, digitalUnlocked: $digitalUnlocked, digitalType: $digitalType, digitalBuilds: $digitalBuilds, taxCode: $taxCode, buyerNote: $buyerNote, fulfillmentWarehouseId: $fulfillmentWarehouseId)';
 }
 
 
@@ -1265,7 +1265,7 @@ abstract mixin class _$OrderItemCopyWith<$Res> implements $OrderItemCopyWith<$Re
   factory _$OrderItemCopyWith(_OrderItem value, $Res Function(_OrderItem) _then) = __$OrderItemCopyWithImpl;
 @override @useResult
 $Res call({
- String productId, String? cartItemId, String name, String description, double price, int quantity, List<String> imageUrls, String sellerId, Address? sellerAddress, String status, String? trackingNumber, String? carrier, String? carrierNote, String? sellerSku, String? sellerName, DateTime? shippedAt, DateTime? deliveredAt, DateTime? refundedAt, String? refundReason, int? refundAmountCents, String? refundId, bool confirmedByBuyer, String? variantId, String? variantTitle, Map<String, String>? variantOptions, String? variantSku, double? weightKg, double? lengthCm, double? widthCm, double? heightCm, bool isLocalDeliveryOnly, bool isPerishable, int estimatedShipDays, List<SellerDeliveryOption> deliveryOptions, int minimumOrderQuantity, bool freeShipping, bool isDigital, String? licenseKey, bool digitalUnlocked, String? digitalType, Map<String, String>? digitalBuilds, String? taxCode, String? buyerNote, String? fulfillmentWarehouseId
+ String productId, String? cartItemId, String name, String description, int priceCents, int quantity, List<String> imageUrls, String sellerId, Address? sellerAddress, String status, String? trackingNumber, String? carrier, String? carrierNote, String? sellerSku, String? sellerName, DateTime? shippedAt, DateTime? deliveredAt, DateTime? refundedAt, String? refundReason, int? refundAmountCents, String? refundId, bool confirmedByBuyer, String? variantId, String? variantTitle, Map<String, String>? variantOptions, String? variantSku, double? weightKg, double? lengthCm, double? widthCm, double? heightCm, bool isLocalDeliveryOnly, bool isPerishable, int estimatedShipDays, List<SellerDeliveryOption> deliveryOptions, int minimumOrderQuantity, bool freeShipping, bool isDigital, String? licenseKey, bool digitalUnlocked, String? digitalType, Map<String, String>? digitalBuilds, String? taxCode, String? buyerNote, String? fulfillmentWarehouseId
 });
 
 
@@ -1282,14 +1282,14 @@ class __$OrderItemCopyWithImpl<$Res>
 
 /// Create a copy of OrderItem
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? productId = null,Object? cartItemId = freezed,Object? name = null,Object? description = null,Object? price = null,Object? quantity = null,Object? imageUrls = null,Object? sellerId = null,Object? sellerAddress = freezed,Object? status = null,Object? trackingNumber = freezed,Object? carrier = freezed,Object? carrierNote = freezed,Object? sellerSku = freezed,Object? sellerName = freezed,Object? shippedAt = freezed,Object? deliveredAt = freezed,Object? refundedAt = freezed,Object? refundReason = freezed,Object? refundAmountCents = freezed,Object? refundId = freezed,Object? confirmedByBuyer = null,Object? variantId = freezed,Object? variantTitle = freezed,Object? variantOptions = freezed,Object? variantSku = freezed,Object? weightKg = freezed,Object? lengthCm = freezed,Object? widthCm = freezed,Object? heightCm = freezed,Object? isLocalDeliveryOnly = null,Object? isPerishable = null,Object? estimatedShipDays = null,Object? deliveryOptions = null,Object? minimumOrderQuantity = null,Object? freeShipping = null,Object? isDigital = null,Object? licenseKey = freezed,Object? digitalUnlocked = null,Object? digitalType = freezed,Object? digitalBuilds = freezed,Object? taxCode = freezed,Object? buyerNote = freezed,Object? fulfillmentWarehouseId = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? productId = null,Object? cartItemId = freezed,Object? name = null,Object? description = null,Object? priceCents = null,Object? quantity = null,Object? imageUrls = null,Object? sellerId = null,Object? sellerAddress = freezed,Object? status = null,Object? trackingNumber = freezed,Object? carrier = freezed,Object? carrierNote = freezed,Object? sellerSku = freezed,Object? sellerName = freezed,Object? shippedAt = freezed,Object? deliveredAt = freezed,Object? refundedAt = freezed,Object? refundReason = freezed,Object? refundAmountCents = freezed,Object? refundId = freezed,Object? confirmedByBuyer = null,Object? variantId = freezed,Object? variantTitle = freezed,Object? variantOptions = freezed,Object? variantSku = freezed,Object? weightKg = freezed,Object? lengthCm = freezed,Object? widthCm = freezed,Object? heightCm = freezed,Object? isLocalDeliveryOnly = null,Object? isPerishable = null,Object? estimatedShipDays = null,Object? deliveryOptions = null,Object? minimumOrderQuantity = null,Object? freeShipping = null,Object? isDigital = null,Object? licenseKey = freezed,Object? digitalUnlocked = null,Object? digitalType = freezed,Object? digitalBuilds = freezed,Object? taxCode = freezed,Object? buyerNote = freezed,Object? fulfillmentWarehouseId = freezed,}) {
   return _then(_OrderItem(
 productId: null == productId ? _self.productId : productId // ignore: cast_nullable_to_non_nullable
 as String,cartItemId: freezed == cartItemId ? _self.cartItemId : cartItemId // ignore: cast_nullable_to_non_nullable
 as String?,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,description: null == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
-as String,price: null == price ? _self.price : price // ignore: cast_nullable_to_non_nullable
-as double,quantity: null == quantity ? _self.quantity : quantity // ignore: cast_nullable_to_non_nullable
+as String,priceCents: null == priceCents ? _self.priceCents : priceCents // ignore: cast_nullable_to_non_nullable
+as int,quantity: null == quantity ? _self.quantity : quantity // ignore: cast_nullable_to_non_nullable
 as int,imageUrls: null == imageUrls ? _self._imageUrls : imageUrls // ignore: cast_nullable_to_non_nullable
 as List<String>,sellerId: null == sellerId ? _self.sellerId : sellerId // ignore: cast_nullable_to_non_nullable
 as String,sellerAddress: freezed == sellerAddress ? _self.sellerAddress : sellerAddress // ignore: cast_nullable_to_non_nullable
@@ -1909,7 +1909,7 @@ as String?,
 /// @nodoc
 mixin _$Taxes {
 
- double get gst; double get pst; double get hst; double get qst;
+ int get gstCents; int get pstCents; int get hstCents; int get qstCents;
 /// Create a copy of Taxes
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -1920,16 +1920,16 @@ $TaxesCopyWith<Taxes> get copyWith => _$TaxesCopyWithImpl<Taxes>(this as Taxes, 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Taxes&&(identical(other.gst, gst) || other.gst == gst)&&(identical(other.pst, pst) || other.pst == pst)&&(identical(other.hst, hst) || other.hst == hst)&&(identical(other.qst, qst) || other.qst == qst));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Taxes&&(identical(other.gstCents, gstCents) || other.gstCents == gstCents)&&(identical(other.pstCents, pstCents) || other.pstCents == pstCents)&&(identical(other.hstCents, hstCents) || other.hstCents == hstCents)&&(identical(other.qstCents, qstCents) || other.qstCents == qstCents));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,gst,pst,hst,qst);
+int get hashCode => Object.hash(runtimeType,gstCents,pstCents,hstCents,qstCents);
 
 @override
 String toString() {
-  return 'Taxes(gst: $gst, pst: $pst, hst: $hst, qst: $qst)';
+  return 'Taxes(gstCents: $gstCents, pstCents: $pstCents, hstCents: $hstCents, qstCents: $qstCents)';
 }
 
 
@@ -1940,7 +1940,7 @@ abstract mixin class $TaxesCopyWith<$Res>  {
   factory $TaxesCopyWith(Taxes value, $Res Function(Taxes) _then) = _$TaxesCopyWithImpl;
 @useResult
 $Res call({
- double gst, double pst, double hst, double qst
+ int gstCents, int pstCents, int hstCents, int qstCents
 });
 
 
@@ -1957,13 +1957,13 @@ class _$TaxesCopyWithImpl<$Res>
 
 /// Create a copy of Taxes
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? gst = null,Object? pst = null,Object? hst = null,Object? qst = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? gstCents = null,Object? pstCents = null,Object? hstCents = null,Object? qstCents = null,}) {
   return _then(_self.copyWith(
-gst: null == gst ? _self.gst : gst // ignore: cast_nullable_to_non_nullable
-as double,pst: null == pst ? _self.pst : pst // ignore: cast_nullable_to_non_nullable
-as double,hst: null == hst ? _self.hst : hst // ignore: cast_nullable_to_non_nullable
-as double,qst: null == qst ? _self.qst : qst // ignore: cast_nullable_to_non_nullable
-as double,
+gstCents: null == gstCents ? _self.gstCents : gstCents // ignore: cast_nullable_to_non_nullable
+as int,pstCents: null == pstCents ? _self.pstCents : pstCents // ignore: cast_nullable_to_non_nullable
+as int,hstCents: null == hstCents ? _self.hstCents : hstCents // ignore: cast_nullable_to_non_nullable
+as int,qstCents: null == qstCents ? _self.qstCents : qstCents // ignore: cast_nullable_to_non_nullable
+as int,
   ));
 }
 
@@ -2048,10 +2048,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( double gst,  double pst,  double hst,  double qst)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int gstCents,  int pstCents,  int hstCents,  int qstCents)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Taxes() when $default != null:
-return $default(_that.gst,_that.pst,_that.hst,_that.qst);case _:
+return $default(_that.gstCents,_that.pstCents,_that.hstCents,_that.qstCents);case _:
   return orElse();
 
 }
@@ -2069,10 +2069,10 @@ return $default(_that.gst,_that.pst,_that.hst,_that.qst);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( double gst,  double pst,  double hst,  double qst)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int gstCents,  int pstCents,  int hstCents,  int qstCents)  $default,) {final _that = this;
 switch (_that) {
 case _Taxes():
-return $default(_that.gst,_that.pst,_that.hst,_that.qst);case _:
+return $default(_that.gstCents,_that.pstCents,_that.hstCents,_that.qstCents);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -2089,10 +2089,10 @@ return $default(_that.gst,_that.pst,_that.hst,_that.qst);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( double gst,  double pst,  double hst,  double qst)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int gstCents,  int pstCents,  int hstCents,  int qstCents)?  $default,) {final _that = this;
 switch (_that) {
 case _Taxes() when $default != null:
-return $default(_that.gst,_that.pst,_that.hst,_that.qst);case _:
+return $default(_that.gstCents,_that.pstCents,_that.hstCents,_that.qstCents);case _:
   return null;
 
 }
@@ -2104,13 +2104,13 @@ return $default(_that.gst,_that.pst,_that.hst,_that.qst);case _:
 
 
 class _Taxes extends Taxes {
-  const _Taxes({this.gst = 0.0, this.pst = 0.0, this.hst = 0.0, this.qst = 0.0}): super._();
+  const _Taxes({this.gstCents = 0, this.pstCents = 0, this.hstCents = 0, this.qstCents = 0}): super._();
   
 
-@override@JsonKey() final  double gst;
-@override@JsonKey() final  double pst;
-@override@JsonKey() final  double hst;
-@override@JsonKey() final  double qst;
+@override@JsonKey() final  int gstCents;
+@override@JsonKey() final  int pstCents;
+@override@JsonKey() final  int hstCents;
+@override@JsonKey() final  int qstCents;
 
 /// Create a copy of Taxes
 /// with the given fields replaced by the non-null parameter values.
@@ -2122,16 +2122,16 @@ _$TaxesCopyWith<_Taxes> get copyWith => __$TaxesCopyWithImpl<_Taxes>(this, _$ide
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Taxes&&(identical(other.gst, gst) || other.gst == gst)&&(identical(other.pst, pst) || other.pst == pst)&&(identical(other.hst, hst) || other.hst == hst)&&(identical(other.qst, qst) || other.qst == qst));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Taxes&&(identical(other.gstCents, gstCents) || other.gstCents == gstCents)&&(identical(other.pstCents, pstCents) || other.pstCents == pstCents)&&(identical(other.hstCents, hstCents) || other.hstCents == hstCents)&&(identical(other.qstCents, qstCents) || other.qstCents == qstCents));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,gst,pst,hst,qst);
+int get hashCode => Object.hash(runtimeType,gstCents,pstCents,hstCents,qstCents);
 
 @override
 String toString() {
-  return 'Taxes(gst: $gst, pst: $pst, hst: $hst, qst: $qst)';
+  return 'Taxes(gstCents: $gstCents, pstCents: $pstCents, hstCents: $hstCents, qstCents: $qstCents)';
 }
 
 
@@ -2142,7 +2142,7 @@ abstract mixin class _$TaxesCopyWith<$Res> implements $TaxesCopyWith<$Res> {
   factory _$TaxesCopyWith(_Taxes value, $Res Function(_Taxes) _then) = __$TaxesCopyWithImpl;
 @override @useResult
 $Res call({
- double gst, double pst, double hst, double qst
+ int gstCents, int pstCents, int hstCents, int qstCents
 });
 
 
@@ -2159,13 +2159,13 @@ class __$TaxesCopyWithImpl<$Res>
 
 /// Create a copy of Taxes
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? gst = null,Object? pst = null,Object? hst = null,Object? qst = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? gstCents = null,Object? pstCents = null,Object? hstCents = null,Object? qstCents = null,}) {
   return _then(_Taxes(
-gst: null == gst ? _self.gst : gst // ignore: cast_nullable_to_non_nullable
-as double,pst: null == pst ? _self.pst : pst // ignore: cast_nullable_to_non_nullable
-as double,hst: null == hst ? _self.hst : hst // ignore: cast_nullable_to_non_nullable
-as double,qst: null == qst ? _self.qst : qst // ignore: cast_nullable_to_non_nullable
-as double,
+gstCents: null == gstCents ? _self.gstCents : gstCents // ignore: cast_nullable_to_non_nullable
+as int,pstCents: null == pstCents ? _self.pstCents : pstCents // ignore: cast_nullable_to_non_nullable
+as int,hstCents: null == hstCents ? _self.hstCents : hstCents // ignore: cast_nullable_to_non_nullable
+as int,qstCents: null == qstCents ? _self.qstCents : qstCents // ignore: cast_nullable_to_non_nullable
+as int,
   ));
 }
 

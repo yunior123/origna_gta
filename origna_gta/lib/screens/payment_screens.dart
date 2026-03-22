@@ -38,7 +38,9 @@ class PaymentCanceledScreen extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
+      decoration: BoxDecoration(
+        gradient: DesignTokens.backgroundGradient(isDark: isDark),
+      ),
       child: Scaffold(
         appBar: AppBarFactory.simple(title: 'payment.canceled'.tr()),
         backgroundColor: DesignTokens.transparent,
@@ -55,11 +57,26 @@ class PaymentCanceledScreen extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.all(28),
                         decoration: BoxDecoration(
-                          gradient: LinearGradient(colors: [DesignTokens.error.withValues(alpha: 0.15), DesignTokens.error.withValues(alpha: 0.08)]),
+                          gradient: LinearGradient(
+                            colors: [
+                              DesignTokens.error.withValues(alpha: 0.15),
+                              DesignTokens.error.withValues(alpha: 0.08),
+                            ],
+                          ),
                           shape: BoxShape.circle,
-                          boxShadow: [BoxShadow(color: DesignTokens.error.withValues(alpha: 0.15), blurRadius: 30, spreadRadius: 5)],
+                          boxShadow: [
+                            BoxShadow(
+                              color: DesignTokens.error.withValues(alpha: 0.15),
+                              blurRadius: 30,
+                              spreadRadius: 5,
+                            ),
+                          ],
                         ),
-                        child: Icon(Icons.cancel_rounded, size: 72, color: DesignTokens.error),
+                        child: Icon(
+                          Icons.cancel_rounded,
+                          size: 72,
+                          color: DesignTokens.error,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 32),
@@ -67,7 +84,13 @@ class PaymentCanceledScreen extends StatelessWidget {
                       delay: const Duration(milliseconds: 100),
                       child: Text(
                         'payment.canceled'.tr(),
-                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: isDark ? DesignTokens.white : DesignTokens.textPrimary),
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w800,
+                          color: isDark
+                              ? DesignTokens.white
+                              : DesignTokens.textPrimary,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -76,7 +99,11 @@ class PaymentCanceledScreen extends StatelessWidget {
                       child: Text(
                         'payment.canceled_body'.tr(),
                         textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 15, color: DesignTokens.textSecondary, height: 1.5),
+                        style: TextStyle(
+                          fontSize: 15,
+                          color: DesignTokens.textSecondary,
+                          height: 1.5,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 40),
@@ -92,7 +119,10 @@ class PaymentCanceledScreen extends StatelessWidget {
                             if (Navigator.of(context).canPop()) {
                               Navigator.of(context).pop();
                             } else {
-                              Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
+                              Navigator.of(context).pushNamedAndRemoveUntil(
+                                AppRoutes.home,
+                                (route) => false,
+                              );
                             }
                           },
                         ),
@@ -126,7 +156,9 @@ class _ConfirmingPaymentViewState extends State<_ConfirmingPaymentView> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: widget.isDark)),
+      decoration: BoxDecoration(
+        gradient: DesignTokens.backgroundGradient(isDark: widget.isDark),
+      ),
       child: Scaffold(
         backgroundColor: DesignTokens.transparent,
         body: Center(
@@ -137,7 +169,11 @@ class _ConfirmingPaymentViewState extends State<_ConfirmingPaymentView> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   // Mascot waiting animation
-                  ShopMascot(controller: _mascotController, size: 88, showSpeechBubble: false),
+                  ShopMascot(
+                    controller: _mascotController,
+                    size: 88,
+                    showSpeechBubble: false,
+                  ),
                   const SizedBox(height: 16),
                   // Spinner ring
                   Container(
@@ -145,15 +181,26 @@ class _ConfirmingPaymentViewState extends State<_ConfirmingPaymentView> {
                     height: 56,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      gradient: LinearGradient(colors: [DesignTokens.primary.withValues(alpha: 0.15), DesignTokens.secondary.withValues(alpha: 0.15)]),
+                      gradient: LinearGradient(
+                        colors: [
+                          DesignTokens.primary.withValues(alpha: 0.15),
+                          DesignTokens.secondary.withValues(alpha: 0.15),
+                        ],
+                      ),
                     ),
                     child: Center(
                       child: ShaderMask(
-                        shaderCallback: (bounds) => DesignTokens.primaryGradient.createShader(bounds),
+                        shaderCallback: (bounds) =>
+                            DesignTokens.primaryGradient.createShader(bounds),
                         child: const SizedBox(
                           width: 28,
                           height: 28,
-                          child: ModernLoadingIndicator(size: 28, strokeWidth: 2.5, color: DesignTokens.white, centered: false),
+                          child: ModernLoadingIndicator(
+                            size: 28,
+                            strokeWidth: 2.5,
+                            color: DesignTokens.white,
+                            centered: false,
+                          ),
                         ),
                       ),
                     ),
@@ -161,10 +208,22 @@ class _ConfirmingPaymentViewState extends State<_ConfirmingPaymentView> {
                   const SizedBox(height: 20),
                   Text(
                     widget.message,
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: widget.isDark ? DesignTokens.white : DesignTokens.textPrimary),
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: widget.isDark
+                          ? DesignTokens.white
+                          : DesignTokens.textPrimary,
+                    ),
                   ),
                   const SizedBox(height: 8),
-                  Text('payment.may_take_moments'.tr(), style: TextStyle(color: DesignTokens.textSecondary, fontSize: 14)),
+                  Text(
+                    'payment.may_take_moments'.tr(),
+                    style: TextStyle(
+                      color: DesignTokens.textSecondary,
+                      fontSize: 14,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -188,26 +247,47 @@ class _ConfirmingPaymentViewState extends State<_ConfirmingPaymentView> {
   }
 }
 
+/// Private provider for OrderSuccessGate timeout state
+final _paymentTimedOutProvider = StateProvider.autoDispose<bool>((_) => false);
+
 class _OrderSuccessGateState extends ConsumerState<OrderSuccessGate> {
   static const _timeoutDuration = Duration(seconds: 90);
   Timer? _timeoutTimer;
-  bool _timedOut = false;
   ProviderSubscription<AsyncValue<models.Order?>>? _paidOrderSubscription;
 
   @override
   Widget build(BuildContext context) {
+    final _timedOut = ref.watch(_paymentTimedOutProvider);
     final orderAsync = ref.watch(paidOrderBySessionProvider(widget.sessionId));
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return orderAsync.when(
-      loading: () => _timedOut ? _buildTimeoutFallback(isDark) : _ConfirmingPaymentView(message: 'payment.confirming'.tr(), isDark: isDark),
-      error: (error, _) => ErrorScreen(message: 'payment.error_loading_order'.tr(namedArgs: {'error': error.toString()})),
+      loading: () => _timedOut
+          ? _buildTimeoutFallback(isDark)
+          : _ConfirmingPaymentView(
+              message: 'payment.confirming'.tr(),
+              isDark: isDark,
+            ),
+      error: (error, _) => ErrorScreen(
+        message: 'payment.error_loading_order'.tr(
+          namedArgs: {'error': error.toString()},
+        ),
+      ),
       data: (order) {
         if (order == null) {
-          return _timedOut ? _buildTimeoutFallback(isDark) : _ConfirmingPaymentView(message: 'payment.processing'.tr(), isDark: isDark);
+          return _timedOut
+              ? _buildTimeoutFallback(isDark)
+              : _ConfirmingPaymentView(
+                  message: 'payment.processing'.tr(),
+                  isDark: isDark,
+                );
         }
-        final isLocalDelivery = order.items.isNotEmpty && order.items.every((i) => i.isLocalDeliveryOnly);
-        final maxShipDays = (order.items.isEmpty || isLocalDelivery) ? null : order.items.map((i) => i.estimatedShipDays).reduce(math.max);
+        final isLocalDelivery =
+            order.items.isNotEmpty &&
+            order.items.every((i) => i.isLocalDeliveryOnly);
+        final maxShipDays = (order.items.isEmpty || isLocalDelivery)
+            ? null
+            : order.items.map((i) => i.estimatedShipDays).reduce(math.max);
         return OrderSuccessScreen(
           orderId: order.orderId,
           valueCad: order.pendingTotal,
@@ -238,13 +318,15 @@ class _OrderSuccessGateState extends ConsumerState<OrderSuccessGate> {
       },
     );
     _timeoutTimer = Timer(_timeoutDuration, () {
-      if (mounted) setState(() => _timedOut = true);
+      if (mounted) ref.read(_paymentTimedOutProvider.notifier).state = true;
     });
   }
 
   Widget _buildTimeoutFallback(bool isDark) {
     return Container(
-      decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
+      decoration: BoxDecoration(
+        gradient: DesignTokens.backgroundGradient(isDark: isDark),
+      ),
       child: Scaffold(
         backgroundColor: DesignTokens.transparent,
         body: Center(
@@ -262,28 +344,50 @@ class _OrderSuccessGateState extends ConsumerState<OrderSuccessGate> {
                         height: 80,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          gradient: LinearGradient(colors: [DesignTokens.warning.withValues(alpha: 0.15), DesignTokens.warning.withValues(alpha: 0.08)]),
+                          gradient: LinearGradient(
+                            colors: [
+                              DesignTokens.warning.withValues(alpha: 0.15),
+                              DesignTokens.warning.withValues(alpha: 0.08),
+                            ],
+                          ),
                         ),
-                        child: Icon(Icons.hourglass_top_rounded, size: 40, color: DesignTokens.warning),
+                        child: Icon(
+                          Icons.hourglass_top_rounded,
+                          size: 40,
+                          color: DesignTokens.warning,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 20),
                     Text(
                       'payment.verification_delayed'.tr(),
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: isDark ? DesignTokens.white : DesignTokens.textPrimary),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: isDark
+                            ? DesignTokens.white
+                            : DesignTokens.textPrimary,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 8),
                     Text(
                       'payment.check_orders_later'.tr(),
-                      style: TextStyle(color: DesignTokens.textSecondary, fontSize: 14),
+                      style: TextStyle(
+                        color: DesignTokens.textSecondary,
+                        fontSize: 14,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 32),
                     ModernButton(
                       label: 'orders.view_my_orders'.tr(),
                       icon: Icons.receipt_long_outlined,
-                      onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.orders, (route) => route.isFirst),
+                      onPressed: () =>
+                          Navigator.of(context).pushNamedAndRemoveUntil(
+                            AppRoutes.orders,
+                            (route) => route.isFirst,
+                          ),
                     ),
                     const SizedBox(height: 12),
                     ModernButton(
@@ -291,7 +395,11 @@ class _OrderSuccessGateState extends ConsumerState<OrderSuccessGate> {
                       icon: Icons.home_outlined,
                       isPrimary: false,
                       isOutlined: true,
-                      onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false),
+                      onPressed: () =>
+                          Navigator.of(context).pushNamedAndRemoveUntil(
+                            AppRoutes.home,
+                            (route) => false,
+                          ),
                     ),
                   ],
                 ),

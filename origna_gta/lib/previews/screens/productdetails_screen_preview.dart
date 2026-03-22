@@ -29,7 +29,7 @@ Widget _productDetailsContent({int stockQuantity = 5}) => previewScope(
           name: 'Premium Headphones',
           description:
               'Experience high-quality sound with these noise-canceling headphones.',
-          price: 299.99,
+          priceCents: 29999,
           stockQuantity: stockQuantity,
           imageUrls: ['images/33.png'],
           categoryId: 1,

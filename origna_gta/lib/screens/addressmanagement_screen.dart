@@ -20,7 +20,9 @@ class AddressManagementScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final addressesAsync = ref.watch(userAddressesProvider);
-    final viewModelState = ref.watch(addressManagementViewModelProvider);
+    final viewModelIsLoading = ref.watch(
+      addressManagementViewModelProvider.select((a) => a.isLoading),
+    );
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     ref.listen<AsyncValue<void>>(addressManagementViewModelProvider, (
@@ -52,7 +54,9 @@ class AddressManagementScreen extends ConsumerWidget {
       child: Scaffold(
         appBar: AppBarFactory.custom(
           title: 'profile.addresses'.tr(),
-          subtitle: 'address.count_subtitle'.tr(namedArgs: {'count': addressCount.toString(), 'max': '10'}),
+          subtitle: 'address.count_subtitle'.tr(
+            namedArgs: {'count': addressCount.toString(), 'max': '10'},
+          ),
           actions: [
             Semantics(
               button: true,
@@ -64,7 +68,10 @@ class AddressManagementScreen extends ConsumerWidget {
                     : 'address.add_address'.tr(),
                 onPressed: atAddressLimit
                     ? null
-                    : () => Navigator.pushNamed(context, AppRoutes.addEditAddress),
+                    : () => Navigator.pushNamed(
+                        context,
+                        AppRoutes.addEditAddress,
+                      ),
               ),
             ),
           ],
@@ -154,7 +161,7 @@ class AddressManagementScreen extends ConsumerWidget {
                 );
               },
             ),
-            if (viewModelState.isLoading)
+            if (viewModelIsLoading)
               Container(
                 color: DesignTokens.black.withValues(alpha: 0.3),
                 child: const Center(
@@ -285,7 +292,9 @@ class AddressManagementScreen extends ConsumerWidget {
               PopupMenuButton<String>(
                 icon: Icon(
                   Icons.more_vert,
-                  color: isDark ? DesignTokens.white.withValues(alpha: 0.7) : DesignTokens.black.withValues(alpha: 0.54),
+                  color: isDark
+                      ? DesignTokens.white.withValues(alpha: 0.7)
+                      : DesignTokens.black.withValues(alpha: 0.54),
                 ),
                 onSelected: (value) async {
                   HapticFeedback.lightImpact();
@@ -461,4 +470,3 @@ class AddressManagementScreen extends ConsumerWidget {
 }
 
 // ─── Flutter Previews ────────────────────────────────────────────────────────
-

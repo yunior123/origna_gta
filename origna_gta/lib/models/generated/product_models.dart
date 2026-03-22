@@ -14,7 +14,9 @@ part 'product_models.g.dart';
 const _internationalSupplierTypes = SupplierTypeValues.international;
 
 /// Default delivery ranges by supplier type
-({int minDays, int maxDays}) _getDeliveryRangeForSupplier(String? supplierType) {
+({int minDays, int maxDays}) _getDeliveryRangeForSupplier(
+  String? supplierType,
+) {
   return switch (supplierType) {
     SupplierTypeValues.aliexpress => (minDays: 15, maxDays: 30),
     SupplierTypeValues.dhgate => (minDays: 20, maxDays: 40),
@@ -30,7 +32,10 @@ const _internationalSupplierTypes = SupplierTypeValues.international;
 /// Get supplier region for display
 String? _getSupplierRegion(String? supplierType) {
   return switch (supplierType) {
-    SupplierTypeValues.aliexpress || SupplierTypeValues.alibaba || SupplierTypeValues.s1688 || SupplierTypeValues.temu => 'China',
+    SupplierTypeValues.aliexpress ||
+    SupplierTypeValues.alibaba ||
+    SupplierTypeValues.s1688 ||
+    SupplierTypeValues.temu => 'China',
     SupplierTypeValues.dhgate => 'China/Asia',
     SupplierTypeValues.cjdropshipping => 'Various (dropship)',
     SupplierTypeValues.local => 'Canada',
@@ -83,7 +88,8 @@ abstract class InventoryConfig with _$InventoryConfig {
     @Default(30) int reservationHoldMinutes,
   }) = _InventoryConfig;
 
-  factory InventoryConfig.fromJson(Map<String, dynamic> json) => _$InventoryConfigFromJson(json);
+  factory InventoryConfig.fromJson(Map<String, dynamic> json) =>
+      _$InventoryConfigFromJson(json);
 }
 
 // ============================================================================
@@ -96,11 +102,10 @@ abstract class Product with _$Product {
     required String productId,
     required String name,
     String? nameF,
-    required double price,
-    int? priceCents,
+    required int priceCents,
 
-    /// Original/crossed-out price for discount display (null = no sale, must be > price)
-    double? compareAtPrice,
+    /// Original/crossed-out price for discount display in cents (null = no sale, must be > priceCents)
+    int? compareAtPriceCents,
     required String description,
     String? descriptionF,
     required List<String> imageUrls,
@@ -221,16 +226,34 @@ abstract class Product with _$Product {
       _ => null,
     };
 
+    // Backward compat: if priceCents is missing but price (double) exists, convert
+    int? priceCents = data['priceCents'] as int?;
+    if (priceCents == null && data['price'] != null) {
+      priceCents = ((data['price'] as num).toDouble() * 100).round();
+    }
+
+    // Same for compareAtPriceCents
+    int? compareAtPriceCents = data['compareAtPriceCents'] as int?;
+    if (compareAtPriceCents == null && data['compareAtPrice'] != null) {
+      compareAtPriceCents = ((data['compareAtPrice'] as num).toDouble() * 100)
+          .round();
+    }
+
     final jsonMap = <String, dynamic>{
       ...data,
       'productId': docId,
       'createdAt': parsedCreatedAt.toIso8601String(),
-      if (parsedUpdatedAt != null) 'updatedAt': parsedUpdatedAt.toIso8601String(),
+      if (parsedUpdatedAt != null)
+        'updatedAt': parsedUpdatedAt.toIso8601String(),
+      if (priceCents != null) 'priceCents': priceCents,
+      if (compareAtPriceCents != null)
+        'compareAtPriceCents': compareAtPriceCents,
     };
     return Product.fromJson(jsonMap);
   }
 
-  factory Product.fromJson(Map<String, dynamic> json) => _$ProductFromJson(json);
+  factory Product.fromJson(Map<String, dynamic> json) =>
+      _$ProductFromJson(json);
 }
 
 // ============================================================================
@@ -242,10 +265,10 @@ abstract class ProductCreate with _$ProductCreate {
   const factory ProductCreate({
     required String name,
     String? nameF,
-    required double price,
+    required int priceCents,
 
-    /// Original/crossed-out price for discount display (null = no sale, must be > price)
-    double? compareAtPrice,
+    /// Original/crossed-out price for discount display in cents (null = no sale, must be > priceCents)
+    int? compareAtPriceCents,
     required String description,
     String? descriptionF,
     required List<String> imageUrls,
@@ -297,9 +320,10 @@ abstract class ProductCreate with _$ProductCreate {
     @Default([]) List<VariantOption> variantOptions,
     // === N-11: Subcategories ===
     String? subcategory,
-    }) = _ProductCreate;
+  }) = _ProductCreate;
 
-  factory ProductCreate.fromJson(Map<String, dynamic> json) => _$ProductCreateFromJson(json);
+  factory ProductCreate.fromJson(Map<String, dynamic> json) =>
+      _$ProductCreateFromJson(json);
 }
 
 // ============================================================================
@@ -313,7 +337,8 @@ abstract class VariantOption with _$VariantOption {
     required List<String> values,
   }) = _VariantOption;
 
-  factory VariantOption.fromJson(Map<String, dynamic> json) => _$VariantOptionFromJson(json);
+  factory VariantOption.fromJson(Map<String, dynamic> json) =>
+      _$VariantOptionFromJson(json);
 }
 
 // ============================================================================
@@ -331,7 +356,8 @@ abstract class ProductVariant with _$ProductVariant {
     @Default(true) bool isActive,
   }) = _ProductVariant;
 
-  factory ProductVariant.fromJson(Map<String, dynamic> json) => _$ProductVariantFromJson(json);
+  factory ProductVariant.fromJson(Map<String, dynamic> json) =>
+      _$ProductVariantFromJson(json);
 }
 
 // ============================================================================
@@ -358,7 +384,8 @@ abstract class ProductQuestion with _$ProductQuestion {
     required DateTime createdAt,
   }) = _ProductQuestion;
 
-  factory ProductQuestion.fromJson(Map<String, dynamic> json) => _$ProductQuestionFromJson(json);
+  factory ProductQuestion.fromJson(Map<String, dynamic> json) =>
+      _$ProductQuestionFromJson(json);
 }
 
 // ============================================================================
@@ -393,7 +420,8 @@ abstract class SellerDeliveryOption with _$SellerDeliveryOption {
     @Default(true) bool availableNationwide,
   }) = _SellerDeliveryOption;
 
-  factory SellerDeliveryOption.fromJson(Map<String, dynamic> json) => _$SellerDeliveryOptionFromJson(json);
+  factory SellerDeliveryOption.fromJson(Map<String, dynamic> json) =>
+      _$SellerDeliveryOptionFromJson(json);
 }
 
 // ============================================================================
@@ -435,7 +463,8 @@ abstract class SellerWarehouse with _$SellerWarehouse {
     });
   }
 
-  factory SellerWarehouse.fromJson(Map<String, dynamic> json) => _$SellerWarehouseFromJson(json);
+  factory SellerWarehouse.fromJson(Map<String, dynamic> json) =>
+      _$SellerWarehouseFromJson(json);
 }
 
 // ============================================================================
@@ -458,7 +487,8 @@ abstract class ShippingQuantityDiscount with _$ShippingQuantityDiscount {
     String? label,
   }) = _ShippingQuantityDiscount;
 
-  factory ShippingQuantityDiscount.fromJson(Map<String, dynamic> json) => _$ShippingQuantityDiscountFromJson(json);
+  factory ShippingQuantityDiscount.fromJson(Map<String, dynamic> json) =>
+      _$ShippingQuantityDiscountFromJson(json);
 }
 
 // ============================================================================
@@ -494,7 +524,8 @@ abstract class SupplierInfo with _$SupplierInfo {
     String? notes,
   }) = _SupplierInfo;
 
-  factory SupplierInfo.fromJson(Map<String, dynamic> json) => _$SupplierInfoFromJson(json);
+  factory SupplierInfo.fromJson(Map<String, dynamic> json) =>
+      _$SupplierInfoFromJson(json);
 }
 
 // ============================================================================
@@ -571,6 +602,13 @@ extension ProductExtension on Product {
     return stockQuantity <= threshold && stockQuantity > 0;
   }
 
+  /// Price in dollars for display purposes
+  double get price => priceCents / 100.0;
+
+  /// Compare-at price in dollars for display (null if no sale)
+  double? get compareAtPrice =>
+      compareAtPriceCents != null ? compareAtPriceCents! / 100.0 : null;
+
   /// Calculate profit margin percentage
   double? get marginPercent {
     final c = effectiveCost;
@@ -596,7 +634,8 @@ extension SellerDeliveryOptionExtension on SellerDeliveryOption {
     ShippingQuantityDiscount? bestDiscount;
     for (final discount in quantityDiscounts) {
       if (quantity >= discount.minQuantity) {
-        if (bestDiscount == null || discount.minQuantity > bestDiscount.minQuantity) {
+        if (bestDiscount == null ||
+            discount.minQuantity > bestDiscount.minQuantity) {
           bestDiscount = discount;
         }
       }
@@ -616,7 +655,10 @@ extension SellerDeliveryOptionExtension on SellerDeliveryOption {
         case DiscountTypeValues.percent:
           return baseCost * (1 - bestDiscount.discountValue / 100);
         case DiscountTypeValues.fixed:
-          return (baseCost - bestDiscount.discountValue).clamp(0, double.infinity);
+          return (baseCost - bestDiscount.discountValue).clamp(
+            0,
+            double.infinity,
+          );
         case DiscountTypeValues.flatRate:
           return bestDiscount.discountValue;
         default:

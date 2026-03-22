@@ -16,14 +16,17 @@ class ResetPasswordScreen extends ConsumerStatefulWidget {
   const ResetPasswordScreen({super.key, required this.oobCode});
 
   @override
-  ConsumerState<ResetPasswordScreen> createState() => _ResetPasswordScreenState();
+  ConsumerState<ResetPasswordScreen> createState() =>
+      _ResetPasswordScreenState();
 }
+
+/// Private providers for ResetPasswordScreen visibility toggles
+final _obscurePasswordProvider = StateProvider.autoDispose<bool>((_) => true);
+final _obscureConfirmProvider = StateProvider.autoDispose<bool>((_) => true);
 
 class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   final _passwordController = TextEditingController();
   final _confirmController = TextEditingController();
-  bool _obscurePassword = true;
-  bool _obscureConfirm = true;
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +39,9 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
 
     if (state.isSuccess) {
       return Container(
-        decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
+        decoration: BoxDecoration(
+          gradient: DesignTokens.backgroundGradient(isDark: isDark),
+        ),
         child: Scaffold(
           backgroundColor: DesignTokens.transparent,
           appBar: AppBarFactory.simple(title: 'auth.reset_password_title'.tr()),
@@ -46,11 +51,19 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.check_circle_outline, color: DesignTokens.success, size: 80),
+                  const Icon(
+                    Icons.check_circle_outline,
+                    color: DesignTokens.success,
+                    size: 80,
+                  ),
                   const SizedBox(height: DesignTokens.spacing24),
                   Text(
                     'auth.reset_success_title'.tr(),
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: isDark ? DesignTokens.white : DesignTokens.textPrimary),
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      color: isDark
+                          ? DesignTokens.white
+                          : DesignTokens.textPrimary,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: DesignTokens.spacing16),
@@ -63,7 +76,11 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                   Semantics(
                     button: true,
                     label: 'reset_password_go_to_login_button',
-                    child: ModernButton(label: 'auth.go_to_login'.tr(), onPressed: () => Navigator.of(context).pushReplacementNamed('/')),
+                    child: ModernButton(
+                      label: 'auth.go_to_login'.tr(),
+                      onPressed: () =>
+                          Navigator.of(context).pushReplacementNamed('/'),
+                    ),
                   ),
                 ],
               ),
@@ -74,7 +91,9 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
     }
 
     return Container(
-      decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
+      decoration: BoxDecoration(
+        gradient: DesignTokens.backgroundGradient(isDark: isDark),
+      ),
       child: Scaffold(
         backgroundColor: DesignTokens.transparent,
         appBar: AppBarFactory.simple(title: 'auth.reset_password_title'.tr()),
@@ -91,7 +110,9 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                     'auth.create_new_password'.tr(),
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: isDark ? DesignTokens.white : DesignTokens.textPrimary,
+                      color: isDark
+                          ? DesignTokens.white
+                          : DesignTokens.textPrimary,
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -99,7 +120,10 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                     const SizedBox(height: DesignTokens.spacing8),
                     Text(
                       '${'auth.resetting_for'.tr()}: ${state.userEmail}',
-                      style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13),
+                      style: TextStyle(
+                        color: DesignTokens.textSecondary,
+                        fontSize: 13,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                   ],
@@ -107,11 +131,17 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                   if (state.errorMessage != null)
                     Container(
                       padding: const EdgeInsets.all(DesignTokens.spacing12),
-                      margin: const EdgeInsets.only(bottom: DesignTokens.spacing24),
+                      margin: const EdgeInsets.only(
+                        bottom: DesignTokens.spacing24,
+                      ),
                       decoration: BoxDecoration(
                         color: DesignTokens.error.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(DesignTokens.radius8),
-                        border: Border.all(color: DesignTokens.error.withValues(alpha: 0.5)),
+                        borderRadius: BorderRadius.circular(
+                          DesignTokens.radius8,
+                        ),
+                        border: Border.all(
+                          color: DesignTokens.error.withValues(alpha: 0.5),
+                        ),
                       ),
                       child: Text(
                         state.errorMessage!,
@@ -125,10 +155,14 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                     label: 'auth.new_password'.tr(),
                     hint: '••••••••',
                     controller: _passwordController,
-                    isPassword: _obscurePassword,
+                    isPassword: ref.watch(_obscurePasswordProvider),
                     prefixIcon: Icons.lock_outline,
-                    suffixIcon: _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                    onSuffixTap: () => setState(() => _obscurePassword = !_obscurePassword),
+                    suffixIcon: ref.watch(_obscurePasswordProvider)
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
+                    onSuffixTap: () =>
+                        ref.read(_obscurePasswordProvider.notifier).state = !ref
+                            .read(_obscurePasswordProvider),
                   ),
                   const SizedBox(height: DesignTokens.spacing16),
                   ModernTextField(
@@ -137,10 +171,14 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                     label: 'auth.confirm_new_password'.tr(),
                     hint: '••••••••',
                     controller: _confirmController,
-                    isPassword: _obscureConfirm,
+                    isPassword: ref.watch(_obscureConfirmProvider),
                     prefixIcon: Icons.lock_outline,
-                    suffixIcon: _obscureConfirm ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                    onSuffixTap: () => setState(() => _obscureConfirm = !_obscureConfirm),
+                    suffixIcon: ref.watch(_obscureConfirmProvider)
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
+                    onSuffixTap: () =>
+                        ref.read(_obscureConfirmProvider.notifier).state = !ref
+                            .read(_obscureConfirmProvider),
                   ),
                   const SizedBox(height: DesignTokens.spacing32),
                   Semantics(
@@ -150,8 +188,15 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                       label: 'auth.reset_password_button'.tr(),
                       isLoading: state.isLoading,
                       onPressed: () => ref
-                          .read(resetPasswordViewModelProvider(widget.oobCode).notifier)
-                          .resetPassword(_passwordController.text.trim(), _confirmController.text.trim()),
+                          .read(
+                            resetPasswordViewModelProvider(
+                              widget.oobCode,
+                            ).notifier,
+                          )
+                          .resetPassword(
+                            _passwordController.text.trim(),
+                            _confirmController.text.trim(),
+                          ),
                     ),
                   ),
                 ],
