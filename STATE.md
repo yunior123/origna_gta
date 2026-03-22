@@ -8,11 +8,11 @@
 - [x] Webhook replay protection: reject >300s old timestamps
 - [x] Webhook error response: generic message, no internal details leaked
 
-### P1 — High (fix before launch)
-- [ ] `ob-auth/src/rate_limit.rs:54-73` — Auth rate limiter trusts X-Forwarded-For from ANY source. Only trust from 127.0.0.1
-- [ ] `ob-core/src/error.rs:51-57` — Database/Internal error details exposed in API responses. Return generic message
-- [ ] `ob-auth/src/middleware.rs:50-89` — OB_TEST_MODE bypasses ALL auth validation. Verify never set in prod
-- [ ] `ob-admin/src/routes.rs:150-152` — OB_TEST_MODE skips admin authorization entirely
+### P1 — FIXED 2026-03-22
+- [x] rate_limit.rs: XFF only trusted from 127.0.0.1 (Caddy proxy)
+- [x] error.rs: Generic "Internal server error" for Database/Internal/Config variants
+- [x] middleware.rs: Warn on OB_TEST_MODE bypass, panic if ENVIRONMENT=production
+- [x] admin routes.rs: Hard-reject admin bypass in production mode
 
 ### P2 — Medium
 - [ ] `ob-admin/src/routes.rs:209` — Config key uses naive escape instead of parameterized query

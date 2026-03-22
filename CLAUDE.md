@@ -70,6 +70,8 @@ cargo test -p ob-auth                                   # single crate
 - Cloudflare MCP exists — search for it, you always forget
 - Prefer Rust over TypeScript for server code
 - Read `docs/REPO_MAP.md` for context before starting work
+- no skipping tests, implement and run instead
+- avoid mocks for live integration tests
 
 ## MCP
 

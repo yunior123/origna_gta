@@ -53,6 +53,12 @@ fn build_cors_layer(config: &Config, is_test_mode: bool) -> CorsLayer {
         );
     }
 
+    if allowed_origins.is_empty() && !is_test_mode {
+        tracing::warn!(
+            "CORS allowed_origins is empty and not in test mode — all cross-origin requests will be denied"
+        );
+    }
+
     let cors = if allowed_origins.is_empty() {
         CorsLayer::new()
     } else {

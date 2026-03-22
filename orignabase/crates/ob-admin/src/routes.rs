@@ -215,10 +215,10 @@ async fn config_get(
 ) -> Result<([(header::HeaderName, &'static str); 1], Json<Value>)> {
     let rows = state
         .db
-        .query_raw(&format!(
-            "SELECT * FROM type::table('_config') WHERE key = '{}' LIMIT 1",
-            key.replace('\'', "\\'")
-        ))
+        .query_bind_value(
+            "SELECT * FROM type::table('_config') WHERE key = $key LIMIT 1",
+            serde_json::json!({"key": key}),
+        )
         .await?;
 
     let value = rows

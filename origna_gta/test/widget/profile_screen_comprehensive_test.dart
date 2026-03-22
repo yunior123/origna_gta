@@ -8,8 +8,6 @@ import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/features/subscription/subscription_provider.dart';
 import 'package:origna_gta/core/theme_provider.dart';
 import 'package:origna_gta/features/profile/profile_viewmodel.dart';
-import 'package:origna_gta/features/profile/orignabase_profile_viewmodel.dart';
-import 'package:origna_gta/features/profile/profile_state.dart';
 import 'package:origna_gta/models/models.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
@@ -287,7 +285,6 @@ void main() {
       tester.view.physicalSize = const Size(800, 2400);
       tester.view.devicePixelRatio = 1.0;
 
-      ThemeMode? capturedThemeMode;
       await tester.pumpWidget(
         TestWrapper(
           overrides: [

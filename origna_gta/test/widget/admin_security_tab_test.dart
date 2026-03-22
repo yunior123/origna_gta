@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/features/admin/admin_actions_viewmodel.dart';
@@ -15,23 +14,9 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../test_utils.dart';
 
 class MockAdminRepository extends Fake implements AdminRepository {
-  bool _enableMfaCalled = false;
-  bool _disableMfaCalled = false;
-  bool _verifyMfaCalled = false;
-  String? _lastMfaCode;
   Exception? _enableMfaException;
   Exception? _disableMfaException;
   Exception? _verifyMfaException;
-
-  void reset() {
-    _enableMfaCalled = false;
-    _disableMfaCalled = false;
-    _verifyMfaCalled = false;
-    _lastMfaCode = null;
-    _enableMfaException = null;
-    _disableMfaException = null;
-    _verifyMfaException = null;
-  }
 
   void setEnableMfaException(Exception e) => _enableMfaException = e;
   void setDisableMfaException(Exception e) => _disableMfaException = e;
@@ -83,8 +68,6 @@ class MockAdminRepository extends Fake implements AdminRepository {
 
   @override
   Future<void> disableAdminMfa(String code) async {
-    _disableMfaCalled = true;
-    _lastMfaCode = code;
     if (_disableMfaException != null) {
       throw _disableMfaException!;
     }
@@ -92,7 +75,6 @@ class MockAdminRepository extends Fake implements AdminRepository {
 
   @override
   Future<Map<String, dynamic>> enableAdminMfa() async {
-    _enableMfaCalled = true;
     if (_enableMfaException != null) {
       throw _enableMfaException!;
     }
@@ -149,8 +131,6 @@ class MockAdminRepository extends Fake implements AdminRepository {
 
   @override
   Future<Map<String, dynamic>> verifyAdminMfa(String code) async {
-    _verifyMfaCalled = true;
-    _lastMfaCode = code;
     if (_verifyMfaException != null) {
       throw _verifyMfaException!;
     }
@@ -178,12 +158,7 @@ void main() {
     mockAdminRepo = MockAdminRepository();
   });
 
-  Widget buildWidget({
-    bool mfaEnabled = false,
-    String? userId,
-    bool isLoading = false,
-    String? errorMessage,
-  }) {
+  Widget buildWidget({bool mfaEnabled = false, String? userId}) {
     return TestWrapper(
       overrides: [
         adminRepositoryProvider.overrideWithValue(mockAdminRepo),
@@ -618,14 +593,4 @@ void main() {
       expect(semantics, findsWidgets);
     });
   });
-}
-
-class AdminActionsViewModelMock extends StateNotifier<AdminActionsState> {
-  AdminActionsViewModelMock({bool isLoading = false, String? errorMessage})
-    : super(
-        AdminActionsState(isLoading: isLoading, errorMessage: errorMessage),
-      );
-
-  @override
-  AdminActionsState get state => super.state;
 }
