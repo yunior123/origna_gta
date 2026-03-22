@@ -126,9 +126,9 @@ impl NativeTriggerExecutor {
 
         let normalized_status = normalize_status(new_status);
         let notif_type = match normalized_status.as_str() {
-            "REQUESTED" => notification_types::RETURN_REQUESTED,
-            "APPROVED" => notification_types::RETURN_APPROVED,
-            "REJECTED" => notification_types::RETURN_REJECTED,
+            "requested" => notification_types::RETURN_REQUESTED,
+            "approved" => notification_types::RETURN_APPROVED,
+            "rejected" => notification_types::RETURN_REJECTED,
             _ => "return_status_changed",
         };
 
@@ -195,7 +195,7 @@ impl NativeTriggerExecutor {
         let normalized_status = normalize_status(new_status);
         let order_record_id = record_id(order_id);
 
-        if matches!(normalized_status.as_str(), "CONFIRMED" | "PROCESSING") {
+        if matches!(normalized_status.as_str(), "confirmed" | "processing") {
             self.cleanup_stock_notifications(after).await;
         }
 
@@ -226,7 +226,7 @@ impl NativeTriggerExecutor {
             if !order_seller_should_notify(&normalized_status) {
                 continue;
             }
-            if normalized_status == "SHIPPED"
+            if normalized_status == "shipped"
                 && seller_id == str_field(after, fields::LAST_ACTOR_ID)
             {
                 continue;
@@ -251,7 +251,7 @@ impl NativeTriggerExecutor {
             )
             .await?;
 
-            if normalized_status == "CONFIRMED" {
+            if normalized_status == "confirmed" {
                 let perishable_items = perishable_items_for_seller(after, &seller_id);
                 if !perishable_items.is_empty() {
                     let (urgent_title, urgent_body) =
@@ -290,7 +290,7 @@ impl NativeTriggerExecutor {
             return Ok(());
         }
         let normalized_payment = normalize_status(new_payment);
-        if !matches!(normalized_payment.as_str(), "REFUNDED" | "PARTIAL_REFUND") {
+        if !matches!(normalized_payment.as_str(), "refunded" | "partially_refunded") {
             return Ok(());
         }
 
@@ -351,7 +351,7 @@ impl NativeTriggerExecutor {
         let before_order_status = normalize_status(order_status(before));
         let after_order_status = normalize_status(order_status(after));
         let skip_full_order_shipped =
-            before_order_status != "SHIPPED" && after_order_status == "SHIPPED" && !is_pickup;
+            before_order_status != "shipped" && after_order_status == "shipped" && !is_pickup;
 
         let mut shipped_items = Vec::new();
         let mut delivered_items = Vec::new();
@@ -369,7 +369,7 @@ impl NativeTriggerExecutor {
             }
 
             let normalized = normalize_status(new_status);
-            if normalized == "SHIPPED" {
+            if normalized == "shipped" {
                 if !skip_full_order_shipped
                     && !item
                         .get("isDigital")
@@ -378,7 +378,7 @@ impl NativeTriggerExecutor {
                 {
                     shipped_items.push(item);
                 }
-            } else if normalized == "DELIVERED" {
+            } else if normalized == "delivered" {
                 delivered_items.push(item);
             }
         }
@@ -409,7 +409,7 @@ impl NativeTriggerExecutor {
                 json!({
                     fields::ORDER_ID: record_id(order_id),
                     "itemIds": item_batch_ids(&shipped_items),
-                    fields::STATUS: "SHIPPED",
+                    fields::STATUS: "shipped",
                 }),
             )
             .await?;
@@ -441,7 +441,7 @@ impl NativeTriggerExecutor {
                 json!({
                     fields::ORDER_ID: record_id(order_id),
                     "itemIds": item_batch_ids(&delivered_items),
-                    fields::STATUS: "DELIVERED",
+                    fields::STATUS: "delivered",
                 }),
             )
             .await?;
@@ -873,19 +873,21 @@ fn short_id(raw: &str) -> String {
 }
 
 fn normalize_status(status: &str) -> String {
-    let normalized = status.trim().replace('-', "_").to_ascii_uppercase();
+    let normalized = status.trim().replace('-', "_").to_ascii_lowercase();
     match normalized.as_str() {
-        "PARTIALLY_REFUNDED" => "PARTIAL_REFUND".to_string(),
+        "partial_refund" => "partially_refunded".to_string(),
+        "pending_payment" => "pending".to_string(),
+        "payment_authorized" => "confirmed".to_string(),
         _ => normalized,
     }
 }
 
 fn return_seller_should_notify(status: &str) -> bool {
-    matches!(normalize_status(status).as_str(), "REQUESTED" | "RECEIVED")
+    matches!(normalize_status(status).as_str(), "requested" | "received")
 }
 
 fn order_seller_should_notify(normalized_status: &str) -> bool {
-    matches!(normalized_status, "CONFIRMED" | "SHIPPED" | "DELIVERED")
+    matches!(normalized_status, "confirmed" | "shipped" | "delivered")
 }
 
 fn seller_ids(value: &Value) -> Vec<String> {
@@ -1033,23 +1035,23 @@ fn buyer_order_status_message(
     let carrier = str_field(order, fields::SHIPPING_CARRIER);
     let is_pickup = str_field(order, "deliverySpeed") == "pickup";
     match (normalize_status(status).as_str(), lang) {
-        ("CONFIRMED", "fr") => (
+        ("confirmed", "fr") => (
             format!("Commande #{oid} confirmée"),
             format!("Votre commande #{oid} a été confirmée."),
         ),
-        ("CONFIRMED", _) => (
+        ("confirmed", _) => (
             format!("Order #{oid} confirmed"),
             format!("Your order #{oid} has been confirmed."),
         ),
-        ("PROCESSING", "fr") => (
+        ("processing", "fr") => (
             format!("Commande #{oid} en préparation"),
             format!("Votre commande #{oid} est en cours de préparation."),
         ),
-        ("PROCESSING", _) => (
+        ("processing", _) => (
             format!("Order #{oid} is processing"),
             format!("Your order #{oid} is being processed."),
         ),
-        ("IN_TRANSIT", "fr") => (
+        ("in_transit", "fr") => (
             format!("Commande #{oid} en transit"),
             if tracking.is_empty() {
                 format!("Votre commande #{oid} est en transit.")
@@ -1059,7 +1061,7 @@ fn buyer_order_status_message(
                 format!("Votre commande #{oid} est en transit via {carrier}. Suivi: {tracking}.")
             },
         ),
-        ("IN_TRANSIT", _) => (
+        ("in_transit", _) => (
             format!("Order #{oid} in transit"),
             if tracking.is_empty() {
                 format!("Your order #{oid} is in transit.")
@@ -1069,15 +1071,15 @@ fn buyer_order_status_message(
                 format!("Your order #{oid} is in transit via {carrier}. Tracking: {tracking}.")
             },
         ),
-        ("SHIPPED", "fr") if is_pickup => (
+        ("shipped", "fr") if is_pickup => (
             format!("Commande #{oid} prête pour ramassage"),
             format!("Votre commande #{oid} est prête pour le ramassage."),
         ),
-        ("SHIPPED", _) if is_pickup => (
+        ("shipped", _) if is_pickup => (
             format!("Order #{oid} ready for pickup"),
             format!("Your order #{oid} is ready for pickup."),
         ),
-        ("SHIPPED", "fr") => (
+        ("shipped", "fr") => (
             format!("Commande #{oid} expédiée"),
             if tracking.is_empty() {
                 format!("Votre commande #{oid} est en route.")
@@ -1087,7 +1089,7 @@ fn buyer_order_status_message(
                 format!("Votre commande #{oid} est en route via {carrier}. Suivi: {tracking}.")
             },
         ),
-        ("SHIPPED", _) => (
+        ("shipped", _) => (
             format!("Order #{oid} shipped"),
             if tracking.is_empty() {
                 format!("Your order #{oid} is on the way.")
@@ -1097,7 +1099,7 @@ fn buyer_order_status_message(
                 format!("Your order #{oid} is on the way via {carrier}. Tracking: {tracking}.")
             },
         ),
-        ("DELIVERED", "fr")
+        ("delivered", "fr")
             if order
                 .get("confirmedByClient")
                 .and_then(|v| v.as_bool())
@@ -1112,7 +1114,7 @@ fn buyer_order_status_message(
                 format!("La réception de votre commande #{oid} a été enregistrée."),
             )
         }
-        ("DELIVERED", _)
+        ("delivered", _)
             if order
                 .get("confirmedByClient")
                 .and_then(|v| v.as_bool())
@@ -1127,43 +1129,43 @@ fn buyer_order_status_message(
                 format!("Receipt confirmation for your order #{oid} has been recorded."),
             )
         }
-        ("DELIVERED", "fr") => (
+        ("delivered", "fr") => (
             format!("Commande #{oid} livrée"),
             format!("Votre commande #{oid} a été livrée."),
         ),
-        ("DELIVERED", _) => (
+        ("delivered", _) => (
             format!("Order #{oid} delivered"),
             format!("Your order #{oid} has been delivered."),
         ),
-        ("CANCELLED", "fr") => (
+        ("cancelled", "fr") => (
             format!("Commande #{oid} annulée"),
             format!("Votre commande #{oid} a été annulée."),
         ),
-        ("CANCELLED", _) => (
+        ("cancelled", _) => (
             format!("Order #{oid} cancelled"),
             format!("Your order #{oid} has been cancelled."),
         ),
-        ("FAILED", "fr") => (
+        ("failed", "fr") => (
             format!("Paiement échoué pour la commande #{oid}"),
             format!("Le paiement de votre commande #{oid} n'a pas pu être traité."),
         ),
-        ("FAILED", _) => (
+        ("failed", _) => (
             format!("Payment failed for order #{oid}"),
             format!("Payment for your order #{oid} could not be processed."),
         ),
-        ("EXPIRED", "fr") => (
+        ("expired", "fr") => (
             format!("Commande #{oid} expirée"),
             format!("Votre commande #{oid} a expiré."),
         ),
-        ("EXPIRED", _) => (
+        ("expired", _) => (
             format!("Order #{oid} expired"),
             format!("Your order #{oid} has expired."),
         ),
-        ("DISPUTED", "fr") => (
+        ("disputed", "fr") => (
             format!("Litige ouvert pour la commande #{oid}"),
             format!("Un litige a été ouvert pour votre commande #{oid}."),
         ),
-        ("DISPUTED", _) => (
+        ("disputed", _) => (
             format!("Dispute opened for order #{oid}"),
             format!("A dispute has been opened for your order #{oid}."),
         ),
@@ -1197,59 +1199,59 @@ fn seller_order_status_message(
         })
         .unwrap_or(false);
     match (normalize_status(status).as_str(), lang) {
-        ("CONFIRMED", "fr") if is_perishable => (
+        ("confirmed", "fr") if is_perishable => (
             format!("URGENT: commande périssable #{oid}"),
             format!("Une commande périssable #{oid} a été confirmée. Expédiez-la aujourd'hui."),
         ),
-        ("CONFIRMED", _) if is_perishable => (
+        ("confirmed", _) if is_perishable => (
             format!("URGENT: perishable order #{oid}"),
             format!("Perishable order #{oid} has been confirmed. Ship it today."),
         ),
-        ("CONFIRMED", "fr") => (
+        ("confirmed", "fr") => (
             format!("Nouvelle commande #{oid}"),
             format!("Une nouvelle commande #{oid} a été confirmée."),
         ),
-        ("CONFIRMED", _) => (
+        ("confirmed", _) => (
             format!("New order #{oid}"),
             format!("A new order #{oid} has been confirmed."),
         ),
-        ("PROCESSING", "fr") => (
+        ("processing", "fr") => (
             format!("Commande #{oid} en préparation"),
             format!("La commande #{oid} est maintenant en préparation."),
         ),
-        ("PROCESSING", _) => (
+        ("processing", _) => (
             format!("Order #{oid} is processing"),
             format!("Order #{oid} is now being processed."),
         ),
-        ("SHIPPED", "fr") => (
+        ("shipped", "fr") => (
             format!("Expédition confirmée #{oid}"),
             format!("La commande #{oid} a été marquée comme expédiée."),
         ),
-        ("SHIPPED", _) => (
+        ("shipped", _) => (
             format!("Shipment confirmed #{oid}"),
             format!("Order #{oid} has been marked as shipped."),
         ),
-        ("IN_TRANSIT", "fr") => (
+        ("in_transit", "fr") => (
             format!("Commande #{oid} en transit"),
             format!("La commande #{oid} est maintenant en transit."),
         ),
-        ("IN_TRANSIT", _) => (
+        ("in_transit", _) => (
             format!("Order #{oid} in transit"),
             format!("Order #{oid} is now in transit."),
         ),
-        ("DELIVERED", "fr") => (
+        ("delivered", "fr") => (
             format!("Réception confirmée #{oid}"),
             format!("La commande #{oid} a été livrée. Le paiement est en attente."),
         ),
-        ("DELIVERED", _) => (
+        ("delivered", _) => (
             format!("Receipt confirmed #{oid}"),
             format!("Order #{oid} has been delivered. Payout is now pending."),
         ),
-        ("CANCELLED", "fr") => (
+        ("cancelled", "fr") => (
             format!("Commande #{oid} annulée"),
             format!("La commande #{oid} a été annulée."),
         ),
-        ("CANCELLED", _) => (
+        ("cancelled", _) => (
             format!("Order #{oid} cancelled"),
             format!("Order #{oid} has been cancelled."),
         ),
@@ -1272,7 +1274,7 @@ fn buyer_payment_message(
 ) -> (String, String) {
     let oid = short_id(order_id);
     match (normalize_status(status).as_str(), lang) {
-        ("REFUNDED", "fr") => (
+        ("refunded", "fr") => (
             format!("Remboursement traité pour la commande #{oid}"),
             match refund_cents.and_then(format_cents) {
                 Some(amount) => {
@@ -1281,7 +1283,7 @@ fn buyer_payment_message(
                 None => format!("Le remboursement de votre commande #{oid} a été traité."),
             },
         ),
-        ("REFUNDED", _) => (
+        ("refunded", _) => (
             format!("Refund processed for order #{oid}"),
             match refund_cents.and_then(format_cents) {
                 Some(amount) => {
@@ -1290,7 +1292,7 @@ fn buyer_payment_message(
                 None => format!("Your refund for order #{oid} has been processed."),
             },
         ),
-        ("PARTIAL_REFUND", "fr") => (
+        ("partially_refunded", "fr") => (
             format!("Remboursement partiel pour la commande #{oid}"),
             match refund_cents.and_then(format_cents) {
                 Some(amount) => format!(
@@ -1301,7 +1303,7 @@ fn buyer_payment_message(
                 }
             },
         ),
-        ("PARTIAL_REFUND", _) => (
+        ("partially_refunded", _) => (
             format!("Partial refund for order #{oid}"),
             match refund_cents.and_then(format_cents) {
                 Some(amount) => format!(
@@ -1310,19 +1312,19 @@ fn buyer_payment_message(
                 None => format!("A partial refund has been processed for your order #{oid}."),
             },
         ),
-        ("CAPTURED", "fr") => (
+        ("captured", "fr") => (
             format!("Paiement capturé pour la commande #{oid}"),
             format!("Le paiement de votre commande #{oid} a été capturé."),
         ),
-        ("CAPTURED", _) => (
+        ("captured", _) => (
             format!("Payment captured for order #{oid}"),
             format!("Payment for your order #{oid} has been captured."),
         ),
-        ("AUTHORIZED", "fr") => (
+        ("authorized", "fr") => (
             format!("Paiement autorisé pour la commande #{oid}"),
             format!("Le paiement de votre commande #{oid} a été autorisé."),
         ),
-        ("AUTHORIZED", _) => (
+        ("authorized", _) => (
             format!("Payment authorized for order #{oid}"),
             format!("Payment for your order #{oid} has been authorized."),
         ),
@@ -1339,10 +1341,10 @@ fn buyer_payment_message(
 
 fn refund_amount_cents(order: &Value, normalized_payment: &str) -> Option<i64> {
     match normalized_payment {
-        "REFUNDED" => order
+        "refunded" => order
             .get(fields::CUMULATIVE_REFUNDED_CENTS)
             .and_then(value_as_i64),
-        "PARTIAL_REFUND" => order
+        "partially_refunded" => order
             .get(fields::PARTIAL_REFUND_AMOUNT_CENTS)
             .and_then(value_as_i64),
         _ => None,
@@ -1493,61 +1495,61 @@ fn return_buyer_message(
 ) -> (String, String) {
     let oid = short_id(order_id);
     match (normalize_status(status).as_str(), lang) {
-        ("REQUESTED", "fr") => (
+        ("requested", "fr") => (
             format!("Retour demandé pour la commande #{oid}"),
             format!("Votre demande de retour {return_id} a été enregistrée."),
         ),
-        ("REQUESTED", _) => (
+        ("requested", _) => (
             format!("Return requested for order #{oid}"),
             format!("Your return request {return_id} has been submitted."),
         ),
-        ("APPROVED", "fr") => (
+        ("approved", "fr") => (
             format!("Retour approuvé pour la commande #{oid}"),
             format!("Votre demande de retour {return_id} a été approuvée."),
         ),
-        ("APPROVED", _) => (
+        ("approved", _) => (
             format!("Return approved for order #{oid}"),
             format!("Your return request {return_id} has been approved."),
         ),
-        ("REJECTED", "fr") => (
+        ("rejected", "fr") => (
             format!("Retour refusé pour la commande #{oid}"),
             format!("Votre demande de retour {return_id} a été refusée."),
         ),
-        ("REJECTED", _) => (
+        ("rejected", _) => (
             format!("Return rejected for order #{oid}"),
             format!("Your return request {return_id} has been rejected."),
         ),
-        ("LABEL_ISSUED", "fr") => (
+        ("label_issued", "fr") => (
             format!("Etiquette de retour prête pour la commande #{oid}"),
             format!("Votre etiquette de retour pour {return_id} est prête."),
         ),
-        ("LABEL_ISSUED", _) => (
+        ("label_issued", _) => (
             format!("Return label ready for order #{oid}"),
             format!("Your return shipping label for {return_id} is ready."),
         ),
-        ("RECEIVED", "fr") => (
+        ("received", "fr") => (
             format!("Retour reçu pour la commande #{oid}"),
             format!("Votre retour {return_id} a été reçu et le remboursement est en cours."),
         ),
-        ("RECEIVED", _) => (
+        ("received", _) => (
             format!("Return received for order #{oid}"),
             format!("Your return {return_id} has been received and refund processing has started."),
         ),
-        ("REFUNDED", "fr") => (
+        ("refunded", "fr") => (
             format!("Retour remboursé pour la commande #{oid}"),
             format!("Le remboursement de votre retour {return_id} a été traité."),
         ),
-        ("REFUNDED", _) => (
+        ("refunded", _) => (
             format!("Return refunded for order #{oid}"),
             format!("Refund for your return {return_id} has been processed."),
         ),
-        ("ESCALATED", "fr") => (
+        ("escalated", "fr") => (
             format!("Retour escaladé pour la commande #{oid}"),
             format!(
                 "Votre retour {return_id} a été transmis à notre équipe de support. Un administrateur examinera le dossier sous 2 jours ouvrables."
             ),
         ),
-        ("ESCALATED", _) => (
+        ("escalated", _) => (
             format!("Return escalated for order #{oid}"),
             format!(
                 "Your return {return_id} has been escalated to support. An admin will review it within 2 business days."
@@ -1572,27 +1574,27 @@ fn return_seller_message(
 ) -> (String, String) {
     let oid = short_id(order_id);
     match (normalize_status(status).as_str(), lang) {
-        ("REQUESTED", "fr") => (
+        ("requested", "fr") => (
             format!("Nouveau retour demandé pour la commande #{oid}"),
             format!("Le retour {return_id} nécessite votre révision."),
         ),
-        ("REQUESTED", _) => (
+        ("requested", _) => (
             format!("New return requested for order #{oid}"),
             format!("Return request {return_id} requires your review."),
         ),
-        ("RECEIVED", "fr") => (
+        ("received", "fr") => (
             format!("Retour reçu pour la commande #{oid}"),
             format!("Le retour {return_id} a été marqué comme reçu."),
         ),
-        ("RECEIVED", _) => (
+        ("received", _) => (
             format!("Return received for order #{oid}"),
             format!("Return {return_id} has been marked as received."),
         ),
-        ("ESCALATED", "fr") => (
+        ("escalated", "fr") => (
             format!("Retour escaladé pour la commande #{oid}"),
             format!("Le retour {return_id} a été escaladé vers le support."),
         ),
-        ("ESCALATED", _) => (
+        ("escalated", _) => (
             format!("Return escalated for order #{oid}"),
             format!("Return {return_id} has been escalated to support."),
         ),
@@ -1651,8 +1653,8 @@ mod tests {
 
     #[test]
     fn normalize_status_maps_python_partial_refund_alias() {
-        assert_eq!(normalize_status("partially_refunded"), "PARTIAL_REFUND");
-        assert_eq!(normalize_status("PARTIAL_REFUND"), "PARTIAL_REFUND");
+        assert_eq!(normalize_status("partially_refunded"), "partially_refunded");
+        assert_eq!(normalize_status("partially_refunded"), "partially_refunded");
     }
 
     #[test]
@@ -1662,9 +1664,9 @@ mod tests {
             fields::PARTIAL_REFUND_AMOUNT_CENTS: 325,
         });
 
-        assert_eq!(refund_amount_cents(&order, "REFUNDED"), Some(1250));
-        assert_eq!(refund_amount_cents(&order, "PARTIAL_REFUND"), Some(325));
-        assert_eq!(refund_amount_cents(&order, "CAPTURED"), None);
+        assert_eq!(refund_amount_cents(&order, "refunded"), Some(1250));
+        assert_eq!(refund_amount_cents(&order, "partially_refunded"), Some(325));
+        assert_eq!(refund_amount_cents(&order, "captured"), None);
     }
 
     #[test]
@@ -1685,13 +1687,13 @@ mod tests {
     fn buyer_order_status_message_handles_pickup_and_receipt_confirmation() {
         let pickup_order = json!({"deliverySpeed": "pickup"});
         let (pickup_title, pickup_body) =
-            buyer_order_status_message("SHIPPED", "orders:abc12345", &pickup_order, "en");
+            buyer_order_status_message("shipped", "orders:abc12345", &pickup_order, "en");
         assert!(pickup_title.contains("ready for pickup"));
         assert!(pickup_body.contains("ready for pickup"));
 
         let confirmed_order = json!({"confirmedByClient": true});
         let (confirmed_title, confirmed_body) =
-            buyer_order_status_message("DELIVERED", "orders:abc12345", &confirmed_order, "en");
+            buyer_order_status_message("delivered", "orders:abc12345", &confirmed_order, "en");
         assert!(confirmed_title.contains("Receipt confirmed"));
         assert!(confirmed_body.contains("has been recorded"));
     }
@@ -1702,13 +1704,13 @@ mod tests {
             fields::ITEMS: [{fields::IS_PERISHABLE: true}]
         });
         let (urgent_title, urgent_body) =
-            seller_order_status_message("CONFIRMED", "orders:abc12345", &perishable_order, "en");
+            seller_order_status_message("confirmed", "orders:abc12345", &perishable_order, "en");
         assert!(urgent_title.contains("URGENT"));
         assert!(urgent_body.contains("Ship it today"));
 
         let plain_order = json!({});
         let (delivered_title, delivered_body) =
-            seller_order_status_message("DELIVERED", "orders:abc12345", &plain_order, "en");
+            seller_order_status_message("delivered", "orders:abc12345", &plain_order, "en");
         assert!(delivered_title.contains("Receipt confirmed"));
         assert!(delivered_body.contains("Payout is now pending"));
     }
@@ -1716,7 +1718,7 @@ mod tests {
     #[test]
     fn buyer_payment_message_formats_partial_refund_amount() {
         let (title, body) =
-            buyer_payment_message("PARTIAL_REFUND", "orders:abc12345", Some(325), "en");
+            buyer_payment_message("partially_refunded", "orders:abc12345", Some(325), "en");
         assert!(title.contains("Partial refund"));
         assert!(body.contains("$3.25"));
     }
@@ -1724,12 +1726,12 @@ mod tests {
     #[test]
     fn return_messages_match_expected_recipients() {
         let (buyer_title, buyer_body) =
-            return_buyer_message("ESCALATED", "orders:abc12345", "ret12345", "en");
+            return_buyer_message("escalated", "orders:abc12345", "ret12345", "en");
         assert!(buyer_title.contains("Return escalated"));
         assert!(buyer_body.contains("support"));
 
         let (seller_title, seller_body) =
-            return_seller_message("RECEIVED", "orders:abc12345", "ret12345", "en");
+            return_seller_message("received", "orders:abc12345", "ret12345", "en");
         assert!(seller_title.contains("Return received"));
         assert!(seller_body.contains("marked as received"));
     }
@@ -1758,12 +1760,12 @@ mod tests {
 
     #[test]
     fn claim_key_scopes_notifications_by_recipient() {
-        let buyer_key = claim_key("order_status_buyer", &["order123", "CONFIRMED", "buyer_a"]);
+        let buyer_key = claim_key("order_status_buyer", &["order123", "confirmed", "buyer_a"]);
         let other_buyer_key =
-            claim_key("order_status_buyer", &["order123", "CONFIRMED", "buyer_b"]);
+            claim_key("order_status_buyer", &["order123", "confirmed", "buyer_b"]);
         let seller_key = claim_key(
             "order_status_seller",
-            &["order123", "CONFIRMED", "seller_a"],
+            &["order123", "confirmed", "seller_a"],
         );
 
         assert_ne!(buyer_key, other_buyer_key);
@@ -1807,20 +1809,20 @@ mod tests {
 
     #[test]
     fn order_seller_should_notify_matches_python_trigger_surface() {
-        assert!(order_seller_should_notify("CONFIRMED"));
-        assert!(order_seller_should_notify("SHIPPED"));
-        assert!(order_seller_should_notify("DELIVERED"));
-        assert!(!order_seller_should_notify("PROCESSING"));
-        assert!(!order_seller_should_notify("IN_TRANSIT"));
-        assert!(!order_seller_should_notify("CANCELLED"));
+        assert!(order_seller_should_notify("confirmed"));
+        assert!(order_seller_should_notify("shipped"));
+        assert!(order_seller_should_notify("delivered"));
+        assert!(!order_seller_should_notify("processing"));
+        assert!(!order_seller_should_notify("in_transit"));
+        assert!(!order_seller_should_notify("cancelled"));
     }
 
     #[test]
     fn return_seller_should_notify_matches_python_trigger_surface() {
-        assert!(return_seller_should_notify("REQUESTED"));
-        assert!(return_seller_should_notify("RECEIVED"));
-        assert!(!return_seller_should_notify("ESCALATED"));
-        assert!(!return_seller_should_notify("APPROVED"));
+        assert!(return_seller_should_notify("requested"));
+        assert!(return_seller_should_notify("received"));
+        assert!(!return_seller_should_notify("escalated"));
+        assert!(!return_seller_should_notify("approved"));
     }
 
     #[test]
@@ -1889,7 +1891,7 @@ mod tests {
             .unwrap();
 
         let before = json!({
-            fields::ORDER_STATUS: "PENDING",
+            fields::ORDER_STATUS: "pending",
             "userId": "buyer_1",
             fields::ITEMS: [{
                 fields::PRODUCT_ID: "prod_1",
@@ -1900,7 +1902,7 @@ mod tests {
             }],
         });
         let after = json!({
-            fields::ORDER_STATUS: "CONFIRMED",
+            fields::ORDER_STATUS: "confirmed",
             "userId": "buyer_1",
             fields::ITEMS: [{
                 fields::PRODUCT_ID: "prod_1",
@@ -1953,12 +1955,12 @@ mod tests {
 
         let before = json!({
             "userId": "buyer_1",
-            fields::PAYMENT_STATUS: "CAPTURED",
+            fields::PAYMENT_STATUS: "captured",
             fields::CUMULATIVE_REFUNDED_CENTS: 0,
         });
         let after = json!({
             "userId": "buyer_1",
-            fields::PAYMENT_STATUS: "REFUNDED",
+            fields::PAYMENT_STATUS: "refunded",
             fields::CUMULATIVE_REFUNDED_CENTS: 1250,
         });
 
@@ -2000,18 +2002,18 @@ mod tests {
 
         let before = json!({
             "userId": "buyer_1",
-            fields::ORDER_STATUS: "PROCESSING",
+            fields::ORDER_STATUS: "processing",
             fields::ITEMS: [
-                { fields::CART_ITEM_ID: "c1", fields::STATUS: "PROCESSING", "isDigital": false, "name": "Box A" },
-                { fields::CART_ITEM_ID: "c2", fields::STATUS: "SHIPPED", "isDigital": false, "name": "Box B" }
+                { fields::CART_ITEM_ID: "c1", fields::STATUS: "processing", "isDigital": false, "name": "Box A" },
+                { fields::CART_ITEM_ID: "c2", fields::STATUS: "shipped", "isDigital": false, "name": "Box B" }
             ],
         });
         let after = json!({
             "userId": "buyer_1",
-            fields::ORDER_STATUS: "PROCESSING",
+            fields::ORDER_STATUS: "processing",
             fields::ITEMS: [
-                { fields::CART_ITEM_ID: "c1", fields::STATUS: "SHIPPED", "isDigital": false, "name": "Box A" },
-                { fields::CART_ITEM_ID: "c2", fields::STATUS: "DELIVERED", "isDigital": false, "name": "Box B" }
+                { fields::CART_ITEM_ID: "c1", fields::STATUS: "shipped", "isDigital": false, "name": "Box A" },
+                { fields::CART_ITEM_ID: "c2", fields::STATUS: "delivered", "isDigital": false, "name": "Box B" }
             ],
         });
 
@@ -2086,20 +2088,20 @@ mod tests {
 
         let cases = vec![
             (
-                "SHIPPED",
+                "shipped",
                 json!({"deliverySpeed": "pickup"}),
                 "ready for pickup",
             ),
-            ("IN_TRANSIT", json!({}), "in transit"),
+            ("in_transit", json!({}), "in transit"),
             (
-                "DELIVERED",
+                "delivered",
                 json!({"confirmedByClient": false, "autoConfirmed": false}),
                 "has been delivered",
             ),
-            ("CANCELLED", json!({}), "has been cancelled"),
-            ("FAILED", json!({}), "could not be processed"),
-            ("EXPIRED", json!({}), "has expired"),
-            ("DISPUTED", json!({}), "dispute has been opened"),
+            ("cancelled", json!({}), "has been cancelled"),
+            ("failed", json!({}), "could not be processed"),
+            ("expired", json!({}), "has expired"),
+            ("disputed", json!({}), "dispute has been opened"),
         ];
 
         for (idx, (new_status, extra, _expected_body)) in cases.into_iter().enumerate() {
@@ -2121,7 +2123,7 @@ mod tests {
                 .handle_order_status_change(
                     &order_id,
                     &json!({
-                        fields::ORDER_STATUS: "PROCESSING",
+                        fields::ORDER_STATUS: "processing",
                         "userId": "buyer_1",
                         fields::ITEMS: [{ fields::SELLER_ID: "seller_1" }],
                     }),
@@ -2195,12 +2197,12 @@ mod tests {
             .handle_order_status_change(
                 "orders:delivered_confirmed",
                 &json!({
-                    fields::ORDER_STATUS: "SHIPPED",
+                    fields::ORDER_STATUS: "shipped",
                     "userId": "buyer_1",
                     fields::ITEMS: [{ fields::SELLER_ID: "seller_1" }],
                 }),
                 &json!({
-                    fields::ORDER_STATUS: "DELIVERED",
+                    fields::ORDER_STATUS: "delivered",
                     "userId": "buyer_1",
                     "confirmedByClient": true,
                     fields::ITEMS: [{ fields::SELLER_ID: "seller_1" }],
@@ -2213,12 +2215,12 @@ mod tests {
             .handle_order_status_change(
                 "orders:delivered_auto",
                 &json!({
-                    fields::ORDER_STATUS: "SHIPPED",
+                    fields::ORDER_STATUS: "shipped",
                     "userId": "buyer_1",
                     fields::ITEMS: [{ fields::SELLER_ID: "seller_1" }],
                 }),
                 &json!({
-                    fields::ORDER_STATUS: "DELIVERED",
+                    fields::ORDER_STATUS: "delivered",
                     "userId": "buyer_1",
                     "autoConfirmed": true,
                     fields::ITEMS: [{ fields::SELLER_ID: "seller_1" }],
@@ -2254,12 +2256,12 @@ mod tests {
         seed_user(&executor, "seller_1", "en").await;
 
         let cases = vec![
-            ("REQUESTED", "PENDING"),
-            ("APPROVED", "REQUESTED"),
-            ("REJECTED", "APPROVED"),
-            ("LABEL_ISSUED", "APPROVED"),
-            ("REFUNDED", "RECEIVED"),
-            ("ESCALATED", "REJECTED"),
+            ("requested", "pending"),
+            ("approved", "requested"),
+            ("rejected", "approved"),
+            ("label_issued", "approved"),
+            ("refunded", "received"),
+            ("escalated", "rejected"),
         ];
 
         for (idx, (new_status, old_status)) in cases.into_iter().enumerate() {
@@ -2347,18 +2349,18 @@ mod tests {
                 "orders:skip_full_shipped",
                 &json!({
                     "userId": "buyer_1",
-                    fields::ORDER_STATUS: "PROCESSING",
+                    fields::ORDER_STATUS: "processing",
                     fields::ITEMS: [
-                        { fields::CART_ITEM_ID: "c1", fields::STATUS: "PROCESSING", "isDigital": false, "name": "Physical item" },
-                        { fields::CART_ITEM_ID: "c2", fields::STATUS: "PROCESSING", "isDigital": true, "name": "Digital item" }
+                        { fields::CART_ITEM_ID: "c1", fields::STATUS: "processing", "isDigital": false, "name": "Physical item" },
+                        { fields::CART_ITEM_ID: "c2", fields::STATUS: "processing", "isDigital": true, "name": "Digital item" }
                     ],
                 }),
                 &json!({
                     "userId": "buyer_1",
-                    fields::ORDER_STATUS: "SHIPPED",
+                    fields::ORDER_STATUS: "shipped",
                     fields::ITEMS: [
-                        { fields::CART_ITEM_ID: "c1", fields::STATUS: "SHIPPED", "isDigital": false, "name": "Physical item" },
-                        { fields::CART_ITEM_ID: "c2", fields::STATUS: "SHIPPED", "isDigital": true, "name": "Digital item" }
+                        { fields::CART_ITEM_ID: "c1", fields::STATUS: "shipped", "isDigital": false, "name": "Physical item" },
+                        { fields::CART_ITEM_ID: "c2", fields::STATUS: "shipped", "isDigital": true, "name": "Digital item" }
                     ],
                 }),
             )
@@ -2407,7 +2409,7 @@ mod tests {
             collection: collections::ORDERS.into(),
             document_id: "orders:ord_1".into(),
             data: json!({}),
-            before_data: Some(json!({ fields::ORDER_STATUS: "PENDING" })),
+            before_data: Some(json!({ fields::ORDER_STATUS: "pending" })),
             after_data: None,
             timestamp: chrono::Utc::now().to_rfc3339(),
         };
@@ -2458,10 +2460,10 @@ mod tests {
             .await
             .unwrap();
 
-        let claim_id = claim_key("order_status_buyer", &["ord_1", "CONFIRMED", "buyer_1"]);
+        let claim_id = claim_key("order_status_buyer", &["ord_1", "confirmed", "buyer_1"]);
         let payload = json!({
             fields::ORDER_ID: "ord_1",
-            fields::ORDER_STATUS: "CONFIRMED",
+            fields::ORDER_STATUS: "confirmed",
         });
 
         executor
@@ -2523,7 +2525,7 @@ mod tests {
             .await
             .unwrap();
 
-        let claim_id = claim_key("order_status_buyer", &["ord_mail", "CONFIRMED", "buyer_1"]);
+        let claim_id = claim_key("order_status_buyer", &["ord_mail", "confirmed", "buyer_1"]);
         executor
             .create_notification_once(
                 &claim_id,
@@ -2579,7 +2581,7 @@ mod tests {
 
         let claim_id = claim_key(
             "order_status_buyer",
-            &["ord_no_email", "CONFIRMED", "buyer_1"],
+            &["ord_no_email", "confirmed", "buyer_1"],
         );
         executor
             .create_notification_once(
@@ -2622,7 +2624,7 @@ mod tests {
 
         let claim_id = claim_key(
             "order_status_buyer",
-            &["ord_no_push", "CONFIRMED", "buyer_1"],
+            &["ord_no_push", "confirmed", "buyer_1"],
         );
         executor
             .create_notification_once(
@@ -2754,7 +2756,7 @@ mod tests {
             document_id: "orders:ord_1".into(),
             data: json!({}),
             before_data: None,
-            after_data: Some(json!({ fields::ORDER_STATUS: "CONFIRMED" })),
+            after_data: Some(json!({ fields::ORDER_STATUS: "confirmed" })),
             timestamp: chrono::Utc::now().to_rfc3339(),
         };
         executor.handle_order_update(&event).await.unwrap();
@@ -2771,7 +2773,7 @@ mod tests {
             document_id: "return_requests:r1".into(),
             data: json!({}),
             before_data: None,
-            after_data: Some(json!({ fields::RETURN_STATUS: "REQUESTED" })),
+            after_data: Some(json!({ fields::RETURN_STATUS: "requested" })),
             timestamp: chrono::Utc::now().to_rfc3339(),
         };
         executor.handle_return_update(&event).await.unwrap();
@@ -2785,7 +2787,7 @@ mod tests {
             collection: "return_requests".into(),
             document_id: "return_requests:r1".into(),
             data: json!({}),
-            before_data: Some(json!({ fields::RETURN_STATUS: "REQUESTED" })),
+            before_data: Some(json!({ fields::RETURN_STATUS: "requested" })),
             after_data: None,
             timestamp: chrono::Utc::now().to_rfc3339(),
         };
@@ -2803,12 +2805,12 @@ mod tests {
             document_id: "return_requests:r1".into(),
             data: json!({}),
             before_data: Some(json!({
-                fields::RETURN_STATUS: "APPROVED",
+                fields::RETURN_STATUS: "approved",
                 fields::ORDER_ID: "ord_1",
                 fields::BUYER_ID: "buyer_1",
             })),
             after_data: Some(json!({
-                fields::RETURN_STATUS: "APPROVED",
+                fields::RETURN_STATUS: "approved",
                 fields::ORDER_ID: "ord_1",
                 fields::BUYER_ID: "buyer_1",
             })),
@@ -2832,7 +2834,7 @@ mod tests {
                 fields::BUYER_ID: "buyer_1",
             })),
             after_data: Some(json!({
-                fields::RETURN_STATUS: "APPROVED",
+                fields::RETURN_STATUS: "approved",
                 fields::ORDER_ID: "ord_1",
                 fields::BUYER_ID: "buyer_1",
             })),
@@ -2854,12 +2856,12 @@ mod tests {
             document_id: "return_requests:ret_fallback".into(),
             data: json!({}),
             before_data: Some(json!({
-                fields::RETURN_STATUS: "PENDING",
+                fields::RETURN_STATUS: "pending",
                 fields::ORDER_ID: "ord_1",
                 "userId": "buyer_1",
             })),
             after_data: Some(json!({
-                fields::RETURN_STATUS: "REQUESTED",
+                fields::RETURN_STATUS: "requested",
                 fields::ORDER_ID: "ord_1",
                 "userId": "buyer_1",
             })),
@@ -2889,12 +2891,12 @@ mod tests {
             document_id: "return_requests:ret_no_buyer".into(),
             data: json!({}),
             before_data: Some(json!({
-                fields::RETURN_STATUS: "PENDING",
+                fields::RETURN_STATUS: "pending",
                 fields::ORDER_ID: "ord_1",
                 fields::SELLER_ID: "seller_1",
             })),
             after_data: Some(json!({
-                fields::RETURN_STATUS: "REQUESTED",
+                fields::RETURN_STATUS: "requested",
                 fields::ORDER_ID: "ord_1",
                 fields::SELLER_ID: "seller_1",
             })),
@@ -2920,8 +2922,8 @@ mod tests {
         executor
             .handle_order_status_change(
                 "orders:ord_same",
-                &json!({ fields::ORDER_STATUS: "CONFIRMED", "userId": "buyer_1" }),
-                &json!({ fields::ORDER_STATUS: "CONFIRMED", "userId": "buyer_1" }),
+                &json!({ fields::ORDER_STATUS: "confirmed", "userId": "buyer_1" }),
+                &json!({ fields::ORDER_STATUS: "confirmed", "userId": "buyer_1" }),
             )
             .await
             .unwrap();
@@ -2938,11 +2940,11 @@ mod tests {
             .handle_order_status_change(
                 "orders:ord_no_buyer",
                 &json!({
-                    fields::ORDER_STATUS: "PENDING",
+                    fields::ORDER_STATUS: "pending",
                     fields::ITEMS: [{ fields::SELLER_ID: "seller_1" }],
                 }),
                 &json!({
-                    fields::ORDER_STATUS: "CONFIRMED",
+                    fields::ORDER_STATUS: "confirmed",
                     fields::ITEMS: [{ fields::SELLER_ID: "seller_1" }],
                 }),
             )
@@ -2970,13 +2972,13 @@ mod tests {
             .handle_order_status_change(
                 "orders:shipped_skip",
                 &json!({
-                    fields::ORDER_STATUS: "PROCESSING",
+                    fields::ORDER_STATUS: "processing",
                     "userId": "buyer_1",
                     fields::ITEMS: [{ fields::SELLER_ID: "seller_1" }],
                     fields::LAST_ACTOR_ID: "seller_1",
                 }),
                 &json!({
-                    fields::ORDER_STATUS: "SHIPPED",
+                    fields::ORDER_STATUS: "shipped",
                     "userId": "buyer_1",
                     fields::ITEMS: [{ fields::SELLER_ID: "seller_1" }],
                     fields::LAST_ACTOR_ID: "seller_1",
@@ -3007,7 +3009,7 @@ mod tests {
             .handle_order_status_change(
                 "orders:non_perishable",
                 &json!({
-                    fields::ORDER_STATUS: "PENDING",
+                    fields::ORDER_STATUS: "pending",
                     "userId": "buyer_1",
                     fields::ITEMS: [{
                         fields::SELLER_ID: "seller_1",
@@ -3016,7 +3018,7 @@ mod tests {
                     }],
                 }),
                 &json!({
-                    fields::ORDER_STATUS: "CONFIRMED",
+                    fields::ORDER_STATUS: "confirmed",
                     "userId": "buyer_1",
                     fields::ITEMS: [{
                         fields::SELLER_ID: "seller_1",
@@ -3051,8 +3053,8 @@ mod tests {
         executor
             .handle_order_payment_status_change(
                 "orders:pay_same",
-                &json!({ fields::PAYMENT_STATUS: "CAPTURED", "userId": "buyer_1" }),
-                &json!({ fields::PAYMENT_STATUS: "CAPTURED", "userId": "buyer_1" }),
+                &json!({ fields::PAYMENT_STATUS: "captured", "userId": "buyer_1" }),
+                &json!({ fields::PAYMENT_STATUS: "captured", "userId": "buyer_1" }),
             )
             .await
             .unwrap();
@@ -3064,8 +3066,8 @@ mod tests {
         executor
             .handle_order_payment_status_change(
                 "orders:pay_captured",
-                &json!({ fields::PAYMENT_STATUS: "AUTHORIZED", "userId": "buyer_1" }),
-                &json!({ fields::PAYMENT_STATUS: "CAPTURED", "userId": "buyer_1" }),
+                &json!({ fields::PAYMENT_STATUS: "authorized", "userId": "buyer_1" }),
+                &json!({ fields::PAYMENT_STATUS: "captured", "userId": "buyer_1" }),
             )
             .await
             .unwrap();
@@ -3077,8 +3079,8 @@ mod tests {
         executor
             .handle_order_payment_status_change(
                 "orders:pay_no_buyer",
-                &json!({ fields::PAYMENT_STATUS: "CAPTURED" }),
-                &json!({ fields::PAYMENT_STATUS: "REFUNDED" }),
+                &json!({ fields::PAYMENT_STATUS: "captured" }),
+                &json!({ fields::PAYMENT_STATUS: "refunded" }),
             )
             .await
             .unwrap();
@@ -3109,16 +3111,16 @@ mod tests {
                 "orders:no_cart_id",
                 &json!({
                     "userId": "buyer_1",
-                    fields::ORDER_STATUS: "PROCESSING",
+                    fields::ORDER_STATUS: "processing",
                     fields::ITEMS: [
-                        { "name": "No Cart ID Item", fields::STATUS: "PROCESSING" }
+                        { "name": "No Cart ID Item", fields::STATUS: "processing" }
                     ],
                 }),
                 &json!({
                     "userId": "buyer_1",
-                    fields::ORDER_STATUS: "PROCESSING",
+                    fields::ORDER_STATUS: "processing",
                     fields::ITEMS: [
-                        { "name": "No Cart ID Item", fields::STATUS: "SHIPPED" }
+                        { "name": "No Cart ID Item", fields::STATUS: "shipped" }
                     ],
                 }),
             )
@@ -3136,16 +3138,16 @@ mod tests {
                 "orders:same_status",
                 &json!({
                     "userId": "buyer_1",
-                    fields::ORDER_STATUS: "PROCESSING",
+                    fields::ORDER_STATUS: "processing",
                     fields::ITEMS: [
-                        { fields::CART_ITEM_ID: "c1", fields::STATUS: "SHIPPED", "name": "A" }
+                        { fields::CART_ITEM_ID: "c1", fields::STATUS: "shipped", "name": "A" }
                     ],
                 }),
                 &json!({
                     "userId": "buyer_1",
-                    fields::ORDER_STATUS: "PROCESSING",
+                    fields::ORDER_STATUS: "processing",
                     fields::ITEMS: [
-                        { fields::CART_ITEM_ID: "c1", fields::STATUS: "SHIPPED", "name": "A" }
+                        { fields::CART_ITEM_ID: "c1", fields::STATUS: "shipped", "name": "A" }
                     ],
                 }),
             )
@@ -3357,21 +3359,21 @@ mod tests {
 
     #[test]
     fn buyer_order_status_message_confirmed_fr() {
-        let (t, b) = buyer_order_status_message("CONFIRMED", "orders:abc12345", &json!({}), "fr");
+        let (t, b) = buyer_order_status_message("confirmed", "orders:abc12345", &json!({}), "fr");
         assert!(t.contains("confirmée"));
         assert!(b.contains("confirmée"));
     }
 
     #[test]
     fn buyer_order_status_message_processing_fr() {
-        let (t, b) = buyer_order_status_message("PROCESSING", "orders:abc12345", &json!({}), "fr");
+        let (t, b) = buyer_order_status_message("processing", "orders:abc12345", &json!({}), "fr");
         assert!(t.contains("préparation"));
         assert!(b.contains("préparation"));
     }
 
     #[test]
     fn buyer_order_status_message_in_transit_fr_no_tracking() {
-        let (t, b) = buyer_order_status_message("IN_TRANSIT", "orders:abc12345", &json!({}), "fr");
+        let (t, b) = buyer_order_status_message("in_transit", "orders:abc12345", &json!({}), "fr");
         assert!(t.contains("transit"));
         assert!(b.contains("en transit"));
     }
@@ -3379,7 +3381,7 @@ mod tests {
     #[test]
     fn buyer_order_status_message_in_transit_fr_with_tracking_no_carrier() {
         let order = json!({ fields::TRACKING_NUMBER: "TRK123" });
-        let (_, b) = buyer_order_status_message("IN_TRANSIT", "orders:abc12345", &order, "fr");
+        let (_, b) = buyer_order_status_message("in_transit", "orders:abc12345", &order, "fr");
         assert!(b.contains("Suivi: TRK123"));
     }
 
@@ -3387,14 +3389,14 @@ mod tests {
     fn buyer_order_status_message_in_transit_fr_with_tracking_and_carrier() {
         let order =
             json!({ fields::TRACKING_NUMBER: "TRK123", fields::SHIPPING_CARRIER: "Purolator" });
-        let (_, b) = buyer_order_status_message("IN_TRANSIT", "orders:abc12345", &order, "fr");
+        let (_, b) = buyer_order_status_message("in_transit", "orders:abc12345", &order, "fr");
         assert!(b.contains("via Purolator"));
         assert!(b.contains("Suivi: TRK123"));
     }
 
     #[test]
     fn buyer_order_status_message_in_transit_en_no_tracking() {
-        let (t, b) = buyer_order_status_message("IN_TRANSIT", "orders:abc12345", &json!({}), "en");
+        let (t, b) = buyer_order_status_message("in_transit", "orders:abc12345", &json!({}), "en");
         assert!(t.contains("in transit"));
         assert!(b.contains("is in transit."));
     }
@@ -3402,14 +3404,14 @@ mod tests {
     #[test]
     fn buyer_order_status_message_in_transit_en_with_tracking_no_carrier() {
         let order = json!({ fields::TRACKING_NUMBER: "TRK123" });
-        let (_, b) = buyer_order_status_message("IN_TRANSIT", "orders:abc12345", &order, "en");
+        let (_, b) = buyer_order_status_message("in_transit", "orders:abc12345", &order, "en");
         assert!(b.contains("Tracking: TRK123"));
     }
 
     #[test]
     fn buyer_order_status_message_in_transit_en_with_tracking_and_carrier() {
         let order = json!({ fields::TRACKING_NUMBER: "TRK123", fields::SHIPPING_CARRIER: "FedEx" });
-        let (_, b) = buyer_order_status_message("IN_TRANSIT", "orders:abc12345", &order, "en");
+        let (_, b) = buyer_order_status_message("in_transit", "orders:abc12345", &order, "en");
         assert!(b.contains("via FedEx"));
         assert!(b.contains("Tracking: TRK123"));
     }
@@ -3417,14 +3419,14 @@ mod tests {
     #[test]
     fn buyer_order_status_message_shipped_pickup_fr() {
         let order = json!({ "deliverySpeed": "pickup" });
-        let (t, b) = buyer_order_status_message("SHIPPED", "orders:abc12345", &order, "fr");
+        let (t, b) = buyer_order_status_message("shipped", "orders:abc12345", &order, "fr");
         assert!(t.contains("ramassage"));
         assert!(b.contains("ramassage"));
     }
 
     #[test]
     fn buyer_order_status_message_shipped_fr_no_tracking() {
-        let (t, b) = buyer_order_status_message("SHIPPED", "orders:abc12345", &json!({}), "fr");
+        let (t, b) = buyer_order_status_message("shipped", "orders:abc12345", &json!({}), "fr");
         assert!(t.contains("expédiée"));
         assert!(b.contains("en route"));
     }
@@ -3432,7 +3434,7 @@ mod tests {
     #[test]
     fn buyer_order_status_message_shipped_fr_with_tracking_no_carrier() {
         let order = json!({ fields::TRACKING_NUMBER: "TRK123" });
-        let (_, b) = buyer_order_status_message("SHIPPED", "orders:abc12345", &order, "fr");
+        let (_, b) = buyer_order_status_message("shipped", "orders:abc12345", &order, "fr");
         assert!(b.contains("Suivi: TRK123"));
     }
 
@@ -3440,13 +3442,13 @@ mod tests {
     fn buyer_order_status_message_shipped_fr_with_tracking_and_carrier() {
         let order =
             json!({ fields::TRACKING_NUMBER: "TRK123", fields::SHIPPING_CARRIER: "Purolator" });
-        let (_, b) = buyer_order_status_message("SHIPPED", "orders:abc12345", &order, "fr");
+        let (_, b) = buyer_order_status_message("shipped", "orders:abc12345", &order, "fr");
         assert!(b.contains("via Purolator"));
     }
 
     #[test]
     fn buyer_order_status_message_shipped_en_no_tracking() {
-        let (t, b) = buyer_order_status_message("SHIPPED", "orders:abc12345", &json!({}), "en");
+        let (t, b) = buyer_order_status_message("shipped", "orders:abc12345", &json!({}), "en");
         assert!(t.contains("shipped"));
         assert!(b.contains("on the way"));
     }
@@ -3454,21 +3456,21 @@ mod tests {
     #[test]
     fn buyer_order_status_message_shipped_en_with_tracking_no_carrier() {
         let order = json!({ fields::TRACKING_NUMBER: "TRK123" });
-        let (_, b) = buyer_order_status_message("SHIPPED", "orders:abc12345", &order, "en");
+        let (_, b) = buyer_order_status_message("shipped", "orders:abc12345", &order, "en");
         assert!(b.contains("Tracking: TRK123"));
     }
 
     #[test]
     fn buyer_order_status_message_shipped_en_with_tracking_and_carrier() {
         let order = json!({ fields::TRACKING_NUMBER: "TRK123", fields::SHIPPING_CARRIER: "UPS" });
-        let (_, b) = buyer_order_status_message("SHIPPED", "orders:abc12345", &order, "en");
+        let (_, b) = buyer_order_status_message("shipped", "orders:abc12345", &order, "en");
         assert!(b.contains("via UPS"));
     }
 
     #[test]
     fn buyer_order_status_message_delivered_confirmed_fr() {
         let order = json!({ "confirmedByClient": true });
-        let (t, b) = buyer_order_status_message("DELIVERED", "orders:abc12345", &order, "fr");
+        let (t, b) = buyer_order_status_message("delivered", "orders:abc12345", &order, "fr");
         assert!(t.contains("Réception confirmée"));
         assert!(b.contains("enregistrée"));
     }
@@ -3476,41 +3478,41 @@ mod tests {
     #[test]
     fn buyer_order_status_message_delivered_auto_confirmed_fr() {
         let order = json!({ "autoConfirmed": true });
-        let (t, _b) = buyer_order_status_message("DELIVERED", "orders:abc12345", &order, "fr");
+        let (t, _b) = buyer_order_status_message("delivered", "orders:abc12345", &order, "fr");
         assert!(t.contains("Réception confirmée"));
     }
 
     #[test]
     fn buyer_order_status_message_delivered_fr() {
-        let (t, b) = buyer_order_status_message("DELIVERED", "orders:abc12345", &json!({}), "fr");
+        let (t, b) = buyer_order_status_message("delivered", "orders:abc12345", &json!({}), "fr");
         assert!(t.contains("livrée"));
         assert!(b.contains("livrée"));
     }
 
     #[test]
     fn buyer_order_status_message_cancelled_fr() {
-        let (t, b) = buyer_order_status_message("CANCELLED", "orders:abc12345", &json!({}), "fr");
+        let (t, b) = buyer_order_status_message("cancelled", "orders:abc12345", &json!({}), "fr");
         assert!(t.contains("annulée"));
         assert!(b.contains("annulée"));
     }
 
     #[test]
     fn buyer_order_status_message_failed_fr() {
-        let (t, b) = buyer_order_status_message("FAILED", "orders:abc12345", &json!({}), "fr");
+        let (t, b) = buyer_order_status_message("failed", "orders:abc12345", &json!({}), "fr");
         assert!(t.contains("échoué"));
         assert!(b.contains("traité"));
     }
 
     #[test]
     fn buyer_order_status_message_expired_fr() {
-        let (t, b) = buyer_order_status_message("EXPIRED", "orders:abc12345", &json!({}), "fr");
+        let (t, b) = buyer_order_status_message("expired", "orders:abc12345", &json!({}), "fr");
         assert!(t.contains("expirée"));
         assert!(b.contains("expiré"));
     }
 
     #[test]
     fn buyer_order_status_message_disputed_fr() {
-        let (t, b) = buyer_order_status_message("DISPUTED", "orders:abc12345", &json!({}), "fr");
+        let (t, b) = buyer_order_status_message("disputed", "orders:abc12345", &json!({}), "fr");
         assert!(t.contains("Litige"));
         assert!(b.contains("litige"));
     }
@@ -3536,84 +3538,84 @@ mod tests {
     #[test]
     fn seller_order_status_message_confirmed_perishable_fr() {
         let order = json!({ fields::ITEMS: [{ fields::IS_PERISHABLE: true }] });
-        let (t, b) = seller_order_status_message("CONFIRMED", "orders:abc12345", &order, "fr");
+        let (t, b) = seller_order_status_message("confirmed", "orders:abc12345", &order, "fr");
         assert!(t.contains("URGENT"));
         assert!(b.contains("périssable"));
     }
 
     #[test]
     fn seller_order_status_message_confirmed_fr() {
-        let (t, b) = seller_order_status_message("CONFIRMED", "orders:abc12345", &json!({}), "fr");
+        let (t, b) = seller_order_status_message("confirmed", "orders:abc12345", &json!({}), "fr");
         assert!(t.contains("Nouvelle commande"));
         assert!(b.contains("confirmée"));
     }
 
     #[test]
     fn seller_order_status_message_confirmed_en() {
-        let (t, b) = seller_order_status_message("CONFIRMED", "orders:abc12345", &json!({}), "en");
+        let (t, b) = seller_order_status_message("confirmed", "orders:abc12345", &json!({}), "en");
         assert!(t.contains("New order"));
         assert!(b.contains("confirmed"));
     }
 
     #[test]
     fn seller_order_status_message_processing_fr() {
-        let (t, _b) = seller_order_status_message("PROCESSING", "orders:abc12345", &json!({}), "fr");
+        let (t, _b) = seller_order_status_message("processing", "orders:abc12345", &json!({}), "fr");
         assert!(t.contains("préparation"));
     }
 
     #[test]
     fn seller_order_status_message_processing_en() {
-        let (t, _b) = seller_order_status_message("PROCESSING", "orders:abc12345", &json!({}), "en");
+        let (t, _b) = seller_order_status_message("processing", "orders:abc12345", &json!({}), "en");
         assert!(t.contains("processing"));
     }
 
     #[test]
     fn seller_order_status_message_shipped_fr() {
-        let (t, _b) = seller_order_status_message("SHIPPED", "orders:abc12345", &json!({}), "fr");
+        let (t, _b) = seller_order_status_message("shipped", "orders:abc12345", &json!({}), "fr");
         assert!(t.contains("Expédition confirmée"));
     }
 
     #[test]
     fn seller_order_status_message_shipped_en() {
-        let (t, _b) = seller_order_status_message("SHIPPED", "orders:abc12345", &json!({}), "en");
+        let (t, _b) = seller_order_status_message("shipped", "orders:abc12345", &json!({}), "en");
         assert!(t.contains("Shipment confirmed"));
     }
 
     #[test]
     fn seller_order_status_message_in_transit_fr() {
-        let (t, _b) = seller_order_status_message("IN_TRANSIT", "orders:abc12345", &json!({}), "fr");
+        let (t, _b) = seller_order_status_message("in_transit", "orders:abc12345", &json!({}), "fr");
         assert!(t.contains("transit"));
     }
 
     #[test]
     fn seller_order_status_message_in_transit_en() {
-        let (t, _b) = seller_order_status_message("IN_TRANSIT", "orders:abc12345", &json!({}), "en");
+        let (t, _b) = seller_order_status_message("in_transit", "orders:abc12345", &json!({}), "en");
         assert!(t.contains("transit"));
     }
 
     #[test]
     fn seller_order_status_message_delivered_fr() {
-        let (t, b) = seller_order_status_message("DELIVERED", "orders:abc12345", &json!({}), "fr");
+        let (t, b) = seller_order_status_message("delivered", "orders:abc12345", &json!({}), "fr");
         assert!(t.contains("Réception confirmée"));
         assert!(b.contains("paiement est en attente"));
     }
 
     #[test]
     fn seller_order_status_message_delivered_en() {
-        let (t, b) = seller_order_status_message("DELIVERED", "orders:abc12345", &json!({}), "en");
+        let (t, b) = seller_order_status_message("delivered", "orders:abc12345", &json!({}), "en");
         assert!(t.contains("Receipt confirmed"));
         assert!(b.contains("Payout is now pending"));
     }
 
     #[test]
     fn seller_order_status_message_cancelled_fr() {
-        let (t, _b) = seller_order_status_message("CANCELLED", "orders:abc12345", &json!({}), "fr");
+        let (t, _b) = seller_order_status_message("cancelled", "orders:abc12345", &json!({}), "fr");
         assert!(t.contains("annulée"));
     }
 
     #[test]
     fn seller_order_status_message_cancelled_en() {
-        let (t, _b) = seller_order_status_message("CANCELLED", "orders:abc12345", &json!({}), "en");
+        let (t, _b) = seller_order_status_message("cancelled", "orders:abc12345", &json!({}), "en");
         assert!(t.contains("cancelled"));
     }
 
@@ -3635,72 +3637,72 @@ mod tests {
 
     #[test]
     fn buyer_payment_message_refunded_fr_with_amount() {
-        let (t, b) = buyer_payment_message("REFUNDED", "orders:abc12345", Some(1250), "fr");
+        let (t, b) = buyer_payment_message("refunded", "orders:abc12345", Some(1250), "fr");
         assert!(t.contains("Remboursement"));
         assert!(b.contains("$12.50"));
     }
 
     #[test]
     fn buyer_payment_message_refunded_fr_no_amount() {
-        let (t, b) = buyer_payment_message("REFUNDED", "orders:abc12345", None, "fr");
+        let (t, b) = buyer_payment_message("refunded", "orders:abc12345", None, "fr");
         assert!(t.contains("Remboursement"));
         assert!(b.contains("traité"));
     }
 
     #[test]
     fn buyer_payment_message_refunded_en_with_amount() {
-        let (t, b) = buyer_payment_message("REFUNDED", "orders:abc12345", Some(1250), "en");
+        let (t, b) = buyer_payment_message("refunded", "orders:abc12345", Some(1250), "en");
         assert!(t.contains("Refund"));
         assert!(b.contains("$12.50"));
     }
 
     #[test]
     fn buyer_payment_message_refunded_en_no_amount() {
-        let (_t, b) = buyer_payment_message("REFUNDED", "orders:abc12345", None, "en");
+        let (_t, b) = buyer_payment_message("refunded", "orders:abc12345", None, "en");
         assert!(b.contains("has been processed"));
     }
 
     #[test]
     fn buyer_payment_message_partial_refund_fr_with_amount() {
-        let (t, b) = buyer_payment_message("PARTIAL_REFUND", "orders:abc12345", Some(325), "fr");
+        let (t, b) = buyer_payment_message("partially_refunded", "orders:abc12345", Some(325), "fr");
         assert!(t.contains("partiel"));
         assert!(b.contains("$3.25"));
     }
 
     #[test]
     fn buyer_payment_message_partial_refund_fr_no_amount() {
-        let (_t, b) = buyer_payment_message("PARTIAL_REFUND", "orders:abc12345", None, "fr");
+        let (_t, b) = buyer_payment_message("partially_refunded", "orders:abc12345", None, "fr");
         assert!(b.contains("partiel"));
     }
 
     #[test]
     fn buyer_payment_message_partial_refund_en_no_amount() {
-        let (_t, b) = buyer_payment_message("PARTIAL_REFUND", "orders:abc12345", None, "en");
+        let (_t, b) = buyer_payment_message("partially_refunded", "orders:abc12345", None, "en");
         assert!(b.contains("partial refund"));
     }
 
     #[test]
     fn buyer_payment_message_captured_fr() {
-        let (t, b) = buyer_payment_message("CAPTURED", "orders:abc12345", None, "fr");
+        let (t, b) = buyer_payment_message("captured", "orders:abc12345", None, "fr");
         assert!(t.contains("capturé"));
         assert!(b.contains("capturé"));
     }
 
     #[test]
     fn buyer_payment_message_captured_en() {
-        let (t, _b) = buyer_payment_message("CAPTURED", "orders:abc12345", None, "en");
+        let (t, _b) = buyer_payment_message("captured", "orders:abc12345", None, "en");
         assert!(t.contains("captured"));
     }
 
     #[test]
     fn buyer_payment_message_authorized_fr() {
-        let (t, _b) = buyer_payment_message("AUTHORIZED", "orders:abc12345", None, "fr");
+        let (t, _b) = buyer_payment_message("authorized", "orders:abc12345", None, "fr");
         assert!(t.contains("autorisé"));
     }
 
     #[test]
     fn buyer_payment_message_authorized_en() {
-        let (t, _b) = buyer_payment_message("AUTHORIZED", "orders:abc12345", None, "en");
+        let (t, _b) = buyer_payment_message("authorized", "orders:abc12345", None, "en");
         assert!(t.contains("authorized"));
     }
 
@@ -3885,93 +3887,93 @@ mod tests {
 
     #[test]
     fn return_buyer_message_requested_fr() {
-        let (t, b) = return_buyer_message("REQUESTED", "orders:abc12345", "ret1", "fr");
+        let (t, b) = return_buyer_message("requested", "orders:abc12345", "ret1", "fr");
         assert!(t.contains("Retour demandé"));
         assert!(b.contains("enregistrée"));
     }
 
     #[test]
     fn return_buyer_message_requested_en() {
-        let (t, b) = return_buyer_message("REQUESTED", "orders:abc12345", "ret1", "en");
+        let (t, b) = return_buyer_message("requested", "orders:abc12345", "ret1", "en");
         assert!(t.contains("Return requested"));
         assert!(b.contains("submitted"));
     }
 
     #[test]
     fn return_buyer_message_approved_fr() {
-        let (t, b) = return_buyer_message("APPROVED", "orders:abc12345", "ret1", "fr");
+        let (t, b) = return_buyer_message("approved", "orders:abc12345", "ret1", "fr");
         assert!(t.contains("approuvé"));
         assert!(b.contains("approuvée"));
     }
 
     #[test]
     fn return_buyer_message_approved_en() {
-        let (t, _b) = return_buyer_message("APPROVED", "orders:abc12345", "ret1", "en");
+        let (t, _b) = return_buyer_message("approved", "orders:abc12345", "ret1", "en");
         assert!(t.contains("approved"));
     }
 
     #[test]
     fn return_buyer_message_rejected_fr() {
-        let (t, b) = return_buyer_message("REJECTED", "orders:abc12345", "ret1", "fr");
+        let (t, b) = return_buyer_message("rejected", "orders:abc12345", "ret1", "fr");
         assert!(t.contains("refusé"));
         assert!(b.contains("refusée"));
     }
 
     #[test]
     fn return_buyer_message_rejected_en() {
-        let (t, _b) = return_buyer_message("REJECTED", "orders:abc12345", "ret1", "en");
+        let (t, _b) = return_buyer_message("rejected", "orders:abc12345", "ret1", "en");
         assert!(t.contains("rejected"));
     }
 
     #[test]
     fn return_buyer_message_label_issued_fr() {
-        let (t, b) = return_buyer_message("LABEL_ISSUED", "orders:abc12345", "ret1", "fr");
+        let (t, b) = return_buyer_message("label_issued", "orders:abc12345", "ret1", "fr");
         assert!(t.contains("Etiquette"));
         assert!(b.contains("prête"));
     }
 
     #[test]
     fn return_buyer_message_label_issued_en() {
-        let (t, _b) = return_buyer_message("LABEL_ISSUED", "orders:abc12345", "ret1", "en");
+        let (t, _b) = return_buyer_message("label_issued", "orders:abc12345", "ret1", "en");
         assert!(t.contains("label ready"));
     }
 
     #[test]
     fn return_buyer_message_received_fr() {
-        let (t, b) = return_buyer_message("RECEIVED", "orders:abc12345", "ret1", "fr");
+        let (t, b) = return_buyer_message("received", "orders:abc12345", "ret1", "fr");
         assert!(t.contains("reçu"));
         assert!(b.contains("remboursement"));
     }
 
     #[test]
     fn return_buyer_message_received_en() {
-        let (t, b) = return_buyer_message("RECEIVED", "orders:abc12345", "ret1", "en");
+        let (t, b) = return_buyer_message("received", "orders:abc12345", "ret1", "en");
         assert!(t.contains("received"));
         assert!(b.contains("refund"));
     }
 
     #[test]
     fn return_buyer_message_refunded_fr() {
-        let (t, _b) = return_buyer_message("REFUNDED", "orders:abc12345", "ret1", "fr");
+        let (t, _b) = return_buyer_message("refunded", "orders:abc12345", "ret1", "fr");
         assert!(t.contains("remboursé"));
     }
 
     #[test]
     fn return_buyer_message_refunded_en() {
-        let (t, _b) = return_buyer_message("REFUNDED", "orders:abc12345", "ret1", "en");
+        let (t, _b) = return_buyer_message("refunded", "orders:abc12345", "ret1", "en");
         assert!(t.contains("refunded"));
     }
 
     #[test]
     fn return_buyer_message_escalated_fr() {
-        let (t, b) = return_buyer_message("ESCALATED", "orders:abc12345", "ret1", "fr");
+        let (t, b) = return_buyer_message("escalated", "orders:abc12345", "ret1", "fr");
         assert!(t.contains("escaladé"));
         assert!(b.contains("support"));
     }
 
     #[test]
     fn return_buyer_message_escalated_en() {
-        let (t, b) = return_buyer_message("ESCALATED", "orders:abc12345", "ret1", "en");
+        let (t, b) = return_buyer_message("escalated", "orders:abc12345", "ret1", "en");
         assert!(t.contains("escalated"));
         assert!(b.contains("support"));
     }
@@ -3994,34 +3996,34 @@ mod tests {
 
     #[test]
     fn return_seller_message_requested_fr() {
-        let (t, b) = return_seller_message("REQUESTED", "orders:abc12345", "ret1", "fr");
+        let (t, b) = return_seller_message("requested", "orders:abc12345", "ret1", "fr");
         assert!(t.contains("Nouveau retour"));
         assert!(b.contains("révision"));
     }
 
     #[test]
     fn return_seller_message_requested_en() {
-        let (t, b) = return_seller_message("REQUESTED", "orders:abc12345", "ret1", "en");
+        let (t, b) = return_seller_message("requested", "orders:abc12345", "ret1", "en");
         assert!(t.contains("New return"));
         assert!(b.contains("review"));
     }
 
     #[test]
     fn return_seller_message_received_fr() {
-        let (t, _b) = return_seller_message("RECEIVED", "orders:abc12345", "ret1", "fr");
+        let (t, _b) = return_seller_message("received", "orders:abc12345", "ret1", "fr");
         assert!(t.contains("reçu"));
     }
 
     #[test]
     fn return_seller_message_escalated_fr() {
-        let (t, b) = return_seller_message("ESCALATED", "orders:abc12345", "ret1", "fr");
+        let (t, b) = return_seller_message("escalated", "orders:abc12345", "ret1", "fr");
         assert!(t.contains("escaladé"));
         assert!(b.contains("support"));
     }
 
     #[test]
     fn return_seller_message_escalated_en() {
-        let (t, b) = return_seller_message("ESCALATED", "orders:abc12345", "ret1", "en");
+        let (t, b) = return_seller_message("escalated", "orders:abc12345", "ret1", "en");
         assert!(t.contains("escalated"));
         assert!(b.contains("support"));
     }
@@ -4066,17 +4068,17 @@ mod tests {
                 &json!({
                     "userId": "buyer_1",
                     "deliverySpeed": "pickup",
-                    fields::ORDER_STATUS: "PROCESSING",
+                    fields::ORDER_STATUS: "processing",
                     fields::ITEMS: [
-                        { fields::CART_ITEM_ID: "c1", fields::STATUS: "PROCESSING", "isDigital": false, "name": "Item A" },
+                        { fields::CART_ITEM_ID: "c1", fields::STATUS: "processing", "isDigital": false, "name": "Item A" },
                     ],
                 }),
                 &json!({
                     "userId": "buyer_1",
                     "deliverySpeed": "pickup",
-                    fields::ORDER_STATUS: "PROCESSING",
+                    fields::ORDER_STATUS: "processing",
                     fields::ITEMS: [
-                        { fields::CART_ITEM_ID: "c1", fields::STATUS: "SHIPPED", "isDigital": false, "name": "Item A" },
+                        { fields::CART_ITEM_ID: "c1", fields::STATUS: "shipped", "isDigital": false, "name": "Item A" },
                     ],
                 }),
             )
@@ -4110,18 +4112,18 @@ mod tests {
                 "orders:delivered_multi",
                 &json!({
                     "userId": "buyer_1",
-                    fields::ORDER_STATUS: "SHIPPED",
+                    fields::ORDER_STATUS: "shipped",
                     fields::ITEMS: [
-                        { fields::CART_ITEM_ID: "c1", fields::STATUS: "SHIPPED", "name": "A" },
-                        { fields::CART_ITEM_ID: "c2", fields::STATUS: "SHIPPED", "name": "B" },
+                        { fields::CART_ITEM_ID: "c1", fields::STATUS: "shipped", "name": "A" },
+                        { fields::CART_ITEM_ID: "c2", fields::STATUS: "shipped", "name": "B" },
                     ],
                 }),
                 &json!({
                     "userId": "buyer_1",
-                    fields::ORDER_STATUS: "SHIPPED",
+                    fields::ORDER_STATUS: "shipped",
                     fields::ITEMS: [
-                        { fields::CART_ITEM_ID: "c1", fields::STATUS: "DELIVERED", "name": "A" },
-                        { fields::CART_ITEM_ID: "c2", fields::STATUS: "DELIVERED", "name": "B" },
+                        { fields::CART_ITEM_ID: "c1", fields::STATUS: "delivered", "name": "A" },
+                        { fields::CART_ITEM_ID: "c2", fields::STATUS: "delivered", "name": "B" },
                     ],
                 }),
             )
@@ -4155,11 +4157,11 @@ mod tests {
                 "orders:partial",
                 &json!({
                     "userId": "buyer_1",
-                    fields::PAYMENT_STATUS: "CAPTURED",
+                    fields::PAYMENT_STATUS: "captured",
                 }),
                 &json!({
                     "userId": "buyer_1",
-                    fields::PAYMENT_STATUS: "PARTIAL_REFUND",
+                    fields::PAYMENT_STATUS: "partially_refunded",
                     fields::PARTIAL_REFUND_AMOUNT_CENTS: 550,
                 }),
             )
@@ -4184,7 +4186,7 @@ mod tests {
             .handle_order_payment_status_change(
                 "orders:empty_old",
                 &json!({ "userId": "buyer_1" }),
-                &json!({ "userId": "buyer_1", fields::PAYMENT_STATUS: "REFUNDED" }),
+                &json!({ "userId": "buyer_1", fields::PAYMENT_STATUS: "refunded" }),
             )
             .await
             .unwrap();
@@ -4199,7 +4201,7 @@ mod tests {
             .handle_order_status_change(
                 "orders:empty_old",
                 &json!({ "userId": "buyer_1" }),
-                &json!({ fields::ORDER_STATUS: "CONFIRMED", "userId": "buyer_1" }),
+                &json!({ fields::ORDER_STATUS: "confirmed", "userId": "buyer_1" }),
             )
             .await
             .unwrap();
@@ -4212,7 +4214,7 @@ mod tests {
         let item = json!({
             fields::PRODUCT_ID: "prod_1",
             "name": "Widget",
-            fields::STATUS: "SHIPPED",
+            fields::STATUS: "shipped",
         });
         let key = notification_item_key(&item);
         // Should be a hex hash string
@@ -4233,12 +4235,12 @@ mod tests {
             document_id: "return_requests:ret_ev".into(),
             data: json!({}),
             before_data: Some(json!({
-                fields::RETURN_STATUS: "PENDING",
+                fields::RETURN_STATUS: "pending",
                 fields::ORDER_ID: "ord_1",
                 fields::BUYER_ID: "buyer_1",
             })),
             after_data: Some(json!({
-                fields::RETURN_STATUS: "APPROVED",
+                fields::RETURN_STATUS: "approved",
                 fields::ORDER_ID: "ord_1",
                 fields::BUYER_ID: "buyer_1",
             })),
@@ -4257,8 +4259,8 @@ mod tests {
             collection: "orders".into(),
             document_id: "orders:ord_ev".into(),
             data: json!({}),
-            before_data: Some(json!({ fields::ORDER_STATUS: "PENDING", "userId": "b1" })),
-            after_data: Some(json!({ fields::ORDER_STATUS: "PENDING", "userId": "b1" })),
+            before_data: Some(json!({ fields::ORDER_STATUS: "pending", "userId": "b1" })),
+            after_data: Some(json!({ fields::ORDER_STATUS: "pending", "userId": "b1" })),
             timestamp: chrono::Utc::now().to_rfc3339(),
         };
         executor.handle_event(event).await.unwrap();
@@ -4288,7 +4290,7 @@ mod tests {
             .handle_order_status_change(
                 "orders:processing_clean",
                 &json!({
-                    fields::ORDER_STATUS: "CONFIRMED",
+                    fields::ORDER_STATUS: "confirmed",
                     "userId": "buyer_1",
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: "prod_1",
@@ -4296,7 +4298,7 @@ mod tests {
                     }],
                 }),
                 &json!({
-                    fields::ORDER_STATUS: "PROCESSING",
+                    fields::ORDER_STATUS: "processing",
                     "userId": "buyer_1",
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: "prod_1",
@@ -4330,13 +4332,13 @@ mod tests {
             document_id: "return_requests:ret_fr".into(),
             data: json!({}),
             before_data: Some(json!({
-                fields::RETURN_STATUS: "PENDING",
+                fields::RETURN_STATUS: "pending",
                 fields::ORDER_ID: "ord_fr",
                 fields::BUYER_ID: "buyer_fr",
                 fields::SELLER_ID: "seller_fr",
             })),
             after_data: Some(json!({
-                fields::RETURN_STATUS: "REQUESTED",
+                fields::RETURN_STATUS: "requested",
                 fields::ORDER_ID: "ord_fr",
                 fields::BUYER_ID: "buyer_fr",
                 fields::SELLER_ID: "seller_fr",
@@ -4372,7 +4374,7 @@ mod tests {
             .handle_order_status_change(
                 "orders:fr_order",
                 &json!({
-                    fields::ORDER_STATUS: "PENDING",
+                    fields::ORDER_STATUS: "pending",
                     "userId": "buyer_fr",
                     fields::ITEMS: [{
                         fields::SELLER_ID: "seller_fr",
@@ -4381,7 +4383,7 @@ mod tests {
                     }],
                 }),
                 &json!({
-                    fields::ORDER_STATUS: "CONFIRMED",
+                    fields::ORDER_STATUS: "confirmed",
                     "userId": "buyer_fr",
                     fields::ITEMS: [{
                         fields::SELLER_ID: "seller_fr",
@@ -4419,11 +4421,11 @@ mod tests {
                 "orders:fr_pay",
                 &json!({
                     "userId": "buyer_fr",
-                    fields::PAYMENT_STATUS: "CAPTURED",
+                    fields::PAYMENT_STATUS: "captured",
                 }),
                 &json!({
                     "userId": "buyer_fr",
-                    fields::PAYMENT_STATUS: "REFUNDED",
+                    fields::PAYMENT_STATUS: "refunded",
                     fields::CUMULATIVE_REFUNDED_CENTS: 2000,
                 }),
             )
@@ -4456,16 +4458,16 @@ mod tests {
                 "orders:fr_items",
                 &json!({
                     "userId": "buyer_fr",
-                    fields::ORDER_STATUS: "PROCESSING",
+                    fields::ORDER_STATUS: "processing",
                     fields::ITEMS: [
-                        { fields::CART_ITEM_ID: "c1", fields::STATUS: "PROCESSING", "name": "Lait" },
+                        { fields::CART_ITEM_ID: "c1", fields::STATUS: "processing", "name": "Lait" },
                     ],
                 }),
                 &json!({
                     "userId": "buyer_fr",
-                    fields::ORDER_STATUS: "PROCESSING",
+                    fields::ORDER_STATUS: "processing",
                     fields::ITEMS: [
-                        { fields::CART_ITEM_ID: "c1", fields::STATUS: "SHIPPED", "name": "Lait" },
+                        { fields::CART_ITEM_ID: "c1", fields::STATUS: "shipped", "name": "Lait" },
                     ],
                 }),
             )
@@ -4516,8 +4518,8 @@ mod tests {
 
     #[test]
     fn order_status_falls_back_to_status_field() {
-        let v = json!({ fields::STATUS: "SHIPPED" });
-        assert_eq!(order_status(&v), "SHIPPED");
+        let v = json!({ fields::STATUS: "shipped" });
+        assert_eq!(order_status(&v), "shipped");
     }
 
     #[test]
@@ -4850,7 +4852,7 @@ mod tests {
         let item = json!({
             fields::PRODUCT_ID: "prod_1",
             "name": "Widget",
-            fields::STATUS: "SHIPPED",
+            fields::STATUS: "shipped",
         });
         let key = notification_item_key(&item);
         // Should be a hex hash (16 chars)

@@ -766,7 +766,7 @@ async fn delete_product(
 
     // Check for pending orders containing this product
     let pending_query = format!(
-        "SELECT * FROM {} WHERE {} CONTAINS '{}' AND {} IN ['PENDING_PAYMENT', 'PROCESSING', 'SHIPPED'] LIMIT 5",
+        "SELECT * FROM {} WHERE {} CONTAINS '{}' AND {} IN ['pending', 'processing', 'shipped'] LIMIT 5",
         collections::ORDERS,
         fields::SELLER_ID,
         ob_core::escape_surreal_string(&req.user_id),
@@ -1641,7 +1641,7 @@ mod tests {
                 "order_1",
                 serde_json::json!({
                     fields::SELLER_ID: ["seller_1"],
-                    fields::STATUS: "PROCESSING",
+                    fields::STATUS: "processing",
                     fields::ITEMS: [{ fields::PRODUCT_ID: "prod_1" }],
                 }),
             )

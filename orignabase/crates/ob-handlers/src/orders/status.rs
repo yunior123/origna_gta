@@ -285,7 +285,7 @@ async fn is_user_admin(state: &HandlersState, user_id: &str) -> Result<bool, ob_
     Ok(roles.iter().any(|r| r.as_str() == Some("admin")))
 }
 
-/// Parse an OrderStatus from its serialized SCREAMING_SNAKE_CASE string.
+/// Parse an OrderStatus from its serialized snake_case string.
 fn parse_order_status(s: &str) -> Option<OrderStatus> {
     serde_json::from_value(Value::String(s.to_string())).ok()
 }
@@ -486,7 +486,7 @@ async fn update_order_status(
     let old_status_str = order
         .get("orderStatus")
         .and_then(|v| v.as_str())
-        .unwrap_or("PENDING_PAYMENT");
+        .unwrap_or("pending");
 
     let old_status = parse_order_status(old_status_str).ok_or_else(|| {
         ob_core::Error::Internal(format!("Unknown stored status: {old_status_str}"))
@@ -1083,10 +1083,10 @@ mod tests {
     #[test]
     fn test_parse_order_status() {
         assert_eq!(
-            parse_order_status("PROCESSING"),
+            parse_order_status("processing"),
             Some(OrderStatus::Processing)
         );
-        assert_eq!(parse_order_status("SHIPPED"), Some(OrderStatus::Shipped));
+        assert_eq!(parse_order_status("shipped"), Some(OrderStatus::Shipped));
         assert_eq!(parse_order_status("NONSENSE"), None);
     }
 
@@ -1117,10 +1117,10 @@ mod tests {
     #[test]
     fn test_update_order_status_request_deserialize() {
         let json_str =
-            r#"{"orderId":"o1","newStatus":"SHIPPED","userId":"u1","trackingNumber":"TN123"}"#;
+            r#"{"orderId":"o1","newStatus":"shipped","userId":"u1","trackingNumber":"TN123"}"#;
         let req: UpdateOrderStatusRequest = serde_json::from_str(json_str).unwrap();
         assert_eq!(req.order_id, "o1");
-        assert_eq!(req.new_status, "SHIPPED");
+        assert_eq!(req.new_status, "shipped");
         assert_eq!(req.tracking_number, Some("TN123".to_string()));
     }
 
@@ -1390,10 +1390,14 @@ mod tests {
 
     #[test]
     fn test_delivery_status_from_str_case_sensitive() {
+        // Uppercase no longer valid — lowercase is canonical
         assert_eq!(DeliveryStatus::from_str("Pending"), None);
         assert_eq!(DeliveryStatus::from_str("SHIPPED"), None);
         assert_eq!(DeliveryStatus::from_str("Delivered"), None);
         assert_eq!(DeliveryStatus::from_str("REFUNDED"), None);
+        // Lowercase is now valid
+        assert_eq!(DeliveryStatus::from_str("shipped"), Some(DeliveryStatus::Shipped));
+        assert_eq!(DeliveryStatus::from_str("refunded"), Some(DeliveryStatus::Refunded));
     }
 
     #[test]
@@ -1411,21 +1415,21 @@ mod tests {
     #[test]
     fn test_parse_order_status_all_valid() {
         let cases = [
-            ("PENDING_PAYMENT", OrderStatus::PendingPayment),
-            ("PAYMENT_AUTHORIZED", OrderStatus::PaymentAuthorized),
+            ("pending", OrderStatus::PendingPayment),
+            ("confirmed", OrderStatus::PaymentAuthorized),
             (
-                "AWAITING_SHIPPING_APPROVAL",
+                "awaiting_shipping_approval",
                 OrderStatus::AwaitingShippingApproval,
             ),
-            ("PROCESSING", OrderStatus::Processing),
-            ("SHIPPED", OrderStatus::Shipped),
-            ("DELIVERED", OrderStatus::Delivered),
-            ("CANCELLED", OrderStatus::Cancelled),
-            ("REFUNDED", OrderStatus::Refunded),
-            ("RETURN_REQUESTED", OrderStatus::ReturnRequested),
-            ("RETURN_APPROVED", OrderStatus::ReturnApproved),
-            ("RETURN_REJECTED", OrderStatus::ReturnRejected),
-            ("RETURNED", OrderStatus::Returned),
+            ("processing", OrderStatus::Processing),
+            ("shipped", OrderStatus::Shipped),
+            ("delivered", OrderStatus::Delivered),
+            ("cancelled", OrderStatus::Cancelled),
+            ("refunded", OrderStatus::Refunded),
+            ("return_requested", OrderStatus::ReturnRequested),
+            ("return_approved", OrderStatus::ReturnApproved),
+            ("return_rejected", OrderStatus::ReturnRejected),
+            ("returned", OrderStatus::Returned),
         ];
         for (s, expected) in &cases {
             assert_eq!(
@@ -1492,11 +1496,11 @@ mod tests {
 
     #[test]
     fn test_should_promote_order_various_payment_statuses() {
-        assert!(should_promote_order_to_delivered("CAPTURED", true));
-        assert!(!should_promote_order_to_delivered("CAPTURED", false));
-        assert!(!should_promote_order_to_delivered("AUTHORIZED", true));
-        assert!(!should_promote_order_to_delivered("PENDING", true));
-        assert!(!should_promote_order_to_delivered("REFUNDED", true));
+        assert!(should_promote_order_to_delivered("captured", true));
+        assert!(!should_promote_order_to_delivered("captured", false));
+        assert!(!should_promote_order_to_delivered("authorized", true));
+        assert!(!should_promote_order_to_delivered("awaiting_payment", true));
+        assert!(!should_promote_order_to_delivered("refunded", true));
         assert!(!should_promote_order_to_delivered("", true));
     }
 
@@ -1512,7 +1516,7 @@ mod tests {
 
     #[test]
     fn test_update_order_status_request_optional_fields() {
-        let s = r#"{"orderId":"o1","newStatus":"SHIPPED","userId":"u1"}"#;
+        let s = r#"{"orderId":"o1","newStatus":"shipped","userId":"u1"}"#;
         let req: UpdateOrderStatusRequest = serde_json::from_str(s).unwrap();
         assert!(req.tracking_number.is_none());
         assert!(req.carrier.is_none());
@@ -1530,7 +1534,7 @@ mod tests {
     fn test_update_order_status_response_serialization_with_all_items_shipped() {
         let resp = UpdateOrderStatusResponse {
             success: true,
-            new_status: "SHIPPED".to_string(),
+            new_status: "shipped".to_string(),
             all_items_shipped: Some(true),
         };
         let json = serde_json::to_value(&resp).unwrap();
@@ -1541,7 +1545,7 @@ mod tests {
     fn test_update_order_status_response_without_all_items_shipped() {
         let resp = UpdateOrderStatusResponse {
             success: true,
-            new_status: "PROCESSING".to_string(),
+            new_status: "processing".to_string(),
             all_items_shipped: None,
         };
         let json = serde_json::to_value(&resp).unwrap();

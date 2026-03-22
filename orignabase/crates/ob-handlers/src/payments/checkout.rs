@@ -44,6 +44,7 @@ pub struct CartItem {
 pub struct ShippingAddress {
     pub street: String,
     pub city: String,
+    #[serde(alias = "province", rename = "state")]
     pub province: String,
     pub postal_code: String,
     pub country: String,
@@ -456,7 +457,7 @@ async fn create_checkout_session(
 
     for (i, item) in validated_items.iter().enumerate() {
         let price_cents = item["priceCents"].as_i64().unwrap_or(0);
-        let name = item["title"].as_str().unwrap_or("Item");
+        let name = item[fields::TITLE].as_str().unwrap_or("Item");
         let qty = item["quantity"].as_u64().unwrap_or(1);
 
         form_data.push((
@@ -509,7 +510,7 @@ async fn create_checkout_session(
         fields::ORDER_ID: order_id,
         fields::BUYER_ID: user_id,
         fields::STATUS: OrderStatus::PendingPayment.as_str(),
-        fields::PAYMENT_STATUS: "PENDING",
+        fields::PAYMENT_STATUS: "awaiting_payment",
         fields::ITEMS: validated_items,
         fields::SUBTOTAL_CENTS: actual_subtotal_cents,
         fields::TAX_AMOUNT_CENTS: 0, // Reserved for future tax calculation
@@ -693,7 +694,7 @@ mod tests {
             "items": [{"productId": "abc123", "quantity": 2}],
             "shippingAddress": {
                 "street": "123 Main St", "city": "Toronto",
-                "province": "ON", "postalCode": "M5V 2H1", "country": "CA"
+                "state": "ON", "postalCode": "M5V 2H1", "country": "CA"
             },
             "userId": "user123", "subtotalCents": 5000
         }"#;
@@ -779,7 +780,7 @@ mod tests {
             "items": [{"productId": "p1", "quantity": 1}],
             "shippingAddress": {
                 "street": "1 St", "city": "Toronto",
-                "province": "ON", "postalCode": "M5V2H1", "country": "CA"
+                "state": "ON", "postalCode": "M5V2H1", "country": "CA"
             },
             "userId": "u1", "subtotalCents": 100
         }"#;
@@ -796,7 +797,7 @@ mod tests {
             "items": [{"productId": "p1", "quantity": 1}],
             "shippingAddress": {
                 "street": "1 St", "city": "Toronto",
-                "province": "ON", "postalCode": "M5V2H1", "country": "CA"
+                "state": "ON", "postalCode": "M5V2H1", "country": "CA"
             },
             "userId": "u1", "subtotalCents": 100,
             "couponCode": "SAVE10",
@@ -830,7 +831,7 @@ mod tests {
         let json = r#"{
             "street": "123 Main St",
             "city": "Toronto",
-            "province": "ON",
+            "state": "ON",
             "postalCode": "M5V 2H1",
             "country": "CA"
         }"#;
@@ -948,7 +949,7 @@ mod tests {
             "items": [{"productId": "p1", "quantity": 1}],
             "shippingAddress": {
                 "street": "1 St", "city": "Toronto",
-                "province": "ON", "postalCode": "M5V2H1", "country": "CA"
+                "state": "ON", "postalCode": "M5V2H1", "country": "CA"
             },
             "userId": "u1", "subtotalCents": 100
         }"#;
@@ -962,7 +963,7 @@ mod tests {
             "items": [{"productId": "p1", "quantity": 1}],
             "shippingAddress": {
                 "street": "1 St", "city": "Toronto",
-                "province": "ON", "postalCode": "M5V2H1", "country": "CA"
+                "state": "ON", "postalCode": "M5V2H1", "country": "CA"
             },
             "userId": "u1", "subtotalCents": 100,
             "ageVerificationAccepted": true
@@ -1355,7 +1356,7 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(order[fields::STATUS], OrderStatus::PendingPayment.as_str());
-        assert_eq!(order[fields::PAYMENT_STATUS], "PENDING");
+        assert_eq!(order[fields::PAYMENT_STATUS], "awaiting_payment");
         assert_eq!(order[fields::CHECKOUT_SESSION_ID], "cs_test_123");
         assert_eq!(order[fields::SUBTOTAL_CENTS], 3000);
         assert_eq!(order[fields::TOTAL_AMOUNT_CENTS], 3000);

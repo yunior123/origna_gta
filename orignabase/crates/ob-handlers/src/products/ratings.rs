@@ -175,7 +175,7 @@ async fn submit_rating(
         .and_then(|v| v.as_str())
         .unwrap_or("");
 
-    if order_status != "DELIVERED" && order_status != "DISPUTED" {
+    if order_status != "delivered" && order_status != "disputed" {
         return Err(ob_core::Error::Validation(
             "Order not in ratable state".into(),
         ));
@@ -813,7 +813,7 @@ mod tests {
                 "ord_1",
                 serde_json::json!({
                     fields::BUYER_ID: "buyer_1",
-                    fields::STATUS: "DELIVERED",
+                    fields::STATUS: "delivered",
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: "prod_1",
                         fields::SELLER_ID: "seller_1",
@@ -873,7 +873,7 @@ mod tests {
                 "ord_1",
                 serde_json::json!({
                     fields::BUYER_ID: "seller_1",
-                    fields::STATUS: "DELIVERED",
+                    fields::STATUS: "delivered",
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: "prod_1",
                         fields::SELLER_ID: "seller_1",
@@ -914,7 +914,7 @@ mod tests {
                 "ord_1",
                 serde_json::json!({
                     fields::BUYER_ID: "buyer_1",
-                    fields::STATUS: "DELIVERED",
+                    fields::STATUS: "delivered",
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: "prod_1",
                         fields::SELLER_ID: "seller_1",
@@ -1068,7 +1068,7 @@ mod tests {
             collections::ORDERS, "ord_1",
             serde_json::json!({
                 fields::BUYER_ID: "buyer_1",
-                fields::STATUS: "DELIVERED",
+                fields::STATUS: "delivered",
                 fields::ITEMS: [{ fields::PRODUCT_ID: "prod_1", fields::SELLER_ID: "seller_1" }],
             }),
         ).await.unwrap();
@@ -1132,7 +1132,7 @@ mod tests {
                 "ord_1",
                 serde_json::json!({
                     fields::BUYER_ID: "other_user",
-                    fields::STATUS: "DELIVERED",
+                    fields::STATUS: "delivered",
                     fields::ITEMS: [{ fields::PRODUCT_ID: "prod_1" }],
                 }),
             )
@@ -1165,7 +1165,7 @@ mod tests {
                 "ord_1",
                 serde_json::json!({
                     fields::BUYER_ID: "user_1",
-                    fields::STATUS: "PENDING_PAYMENT",
+                    fields::STATUS: "pending",
                     fields::ITEMS: [{ fields::PRODUCT_ID: "prod_1" }],
                 }),
             )
@@ -1198,7 +1198,7 @@ mod tests {
                 "ord_1",
                 serde_json::json!({
                     fields::BUYER_ID: "user_1",
-                    fields::STATUS: "DELIVERED",
+                    fields::STATUS: "delivered",
                     fields::ITEMS: [{ fields::PRODUCT_ID: "other_prod" }],
                 }),
             )
@@ -1228,7 +1228,7 @@ mod tests {
             collections::ORDERS, "ord_1",
             serde_json::json!({
                 fields::BUYER_ID: "buyer_1",
-                fields::STATUS: "DELIVERED",
+                fields::STATUS: "delivered",
                 fields::ITEMS: [{ fields::PRODUCT_ID: "prod_1", fields::SELLER_ID: "seller_1" }],
             }),
         ).await.unwrap();
@@ -1377,7 +1377,7 @@ mod tests {
             collections::ORDERS, "ord_1",
             serde_json::json!({
                 fields::BUYER_ID: "buyer_1",
-                fields::STATUS: "DELIVERED",
+                fields::STATUS: "delivered",
                 fields::ITEMS: [{ fields::PRODUCT_ID: "prod_1", fields::SELLER_ID: "seller_1" }],
             }),
         ).await.unwrap();

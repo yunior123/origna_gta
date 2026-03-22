@@ -105,7 +105,7 @@ async fn capture_payment(
         && current_status != OrderStatus::AwaitingShippingApproval.as_str()
     {
         return Err(ob_core::Error::Validation(format!(
-            "Cannot capture payment for order in status '{current_status}'. Expected PAYMENT_AUTHORIZED or AWAITING_SHIPPING_APPROVAL"
+            "Cannot capture payment for order in status '{current_status}'. Expected confirmed or awaiting_shipping_approval"
         )));
     }
 
@@ -114,7 +114,7 @@ async fn capture_payment(
         .and_then(|v| v.as_str())
         .unwrap_or("");
 
-    if current_payment != "AUTHORIZED" && current_payment != "PENDING" {
+    if current_payment != "authorized" && current_payment != "awaiting_payment" {
         return Err(ob_core::Error::Validation(format!(
             "Cannot capture payment with payment status '{current_payment}'"
         )));
@@ -302,14 +302,14 @@ mod tests {
         let resp = CapturePaymentResponse {
             success: true,
             order_id: "order-1".to_string(),
-            payment_status: "CAPTURED".to_string(),
-            order_status: "PROCESSING".to_string(),
+            payment_status: "captured".to_string(),
+            order_status: "processing".to_string(),
         };
         let json = serde_json::to_value(&resp).unwrap();
         assert_eq!(json["success"], true);
         assert_eq!(json["orderId"], "order-1");
-        assert_eq!(json["paymentStatus"], "CAPTURED");
-        assert_eq!(json["orderStatus"], "PROCESSING");
+        assert_eq!(json["paymentStatus"], "captured");
+        assert_eq!(json["orderStatus"], "processing");
     }
 
     #[test]
@@ -322,12 +322,12 @@ mod tests {
 
     #[test]
     fn test_payment_status_captured_str() {
-        assert_eq!(PaymentStatus::Captured.as_str(), "CAPTURED");
+        assert_eq!(PaymentStatus::Captured.as_str(), "captured");
     }
 
     #[test]
     fn test_order_status_processing_str() {
-        assert_eq!(OrderStatus::Processing.as_str(), "PROCESSING");
+        assert_eq!(OrderStatus::Processing.as_str(), "processing");
     }
 
     // --- Ported from Python test_handlers_payment_stripe.py capture scenarios ---
@@ -358,19 +358,19 @@ mod tests {
         let resp = CapturePaymentResponse {
             success: false,
             order_id: "order-fail".to_string(),
-            payment_status: "FAILED".to_string(),
-            order_status: "FAILED".to_string(),
+            payment_status: "failed".to_string(),
+            order_status: "failed".to_string(),
         };
         let json = serde_json::to_value(&resp).unwrap();
         assert_eq!(json["success"], false);
-        assert_eq!(json["paymentStatus"], "FAILED");
+        assert_eq!(json["paymentStatus"], "failed");
     }
 
     #[test]
     fn test_order_status_payment_authorized_str() {
         assert_eq!(
             OrderStatus::PaymentAuthorized.as_str(),
-            "PAYMENT_AUTHORIZED"
+            "confirmed"
         );
     }
 
@@ -378,18 +378,18 @@ mod tests {
     fn test_order_status_awaiting_shipping_approval_str() {
         assert_eq!(
             OrderStatus::AwaitingShippingApproval.as_str(),
-            "AWAITING_SHIPPING_APPROVAL"
+            "awaiting_shipping_approval"
         );
     }
 
     #[test]
     fn test_payment_status_authorized_str() {
-        assert_eq!(PaymentStatus::Authorized.as_str(), "AUTHORIZED");
+        assert_eq!(PaymentStatus::Authorized.as_str(), "authorized");
     }
 
     #[test]
     fn test_payment_status_failed_str() {
-        assert_eq!(PaymentStatus::Failed.as_str(), "FAILED");
+        assert_eq!(PaymentStatus::Failed.as_str(), "failed");
     }
 
     #[tokio::test]

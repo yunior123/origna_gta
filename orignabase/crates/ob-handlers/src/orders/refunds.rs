@@ -161,12 +161,12 @@ async fn is_user_admin(state: &HandlersState, user_id: &str) -> Result<bool, ob_
 fn is_valid_order_transition(from: &str, to: &str) -> bool {
     // Re-use the transition table from status.rs logic
     let pairs = [
-        ("PENDING_PAYMENT", "CANCELLED"),
-        ("PAYMENT_AUTHORIZED", "CANCELLED"),
-        ("AWAITING_SHIPPING_APPROVAL", "CANCELLED"),
-        ("PROCESSING", "CANCELLED"),
-        ("PENDING", "CANCELLED"),
-        ("CONFIRMED", "CANCELLED"),
+        ("pending", "cancelled"),
+        ("confirmed", "cancelled"),
+        ("awaiting_shipping_approval", "cancelled"),
+        ("processing", "cancelled"),
+        ("pending", "cancelled"),
+        ("confirmed", "cancelled"),
     ];
     pairs.iter().any(|(f, t)| *f == from && *t == to)
 }
@@ -329,7 +329,7 @@ async fn refund_order_item(
 
     // Payment must be captured
     let payment_status_str = str_field(&order, fields::PAYMENT_STATUS);
-    if payment_status_str != "CAPTURED" {
+    if payment_status_str != "captured" {
         return Err(ob_core::Error::Validation(
             "Cannot refund uncaptured payment".into(),
         ));
@@ -337,7 +337,7 @@ async fn refund_order_item(
 
     // Payout processing race condition check
     let payout_status = str_field(&order, "payoutStatus");
-    if payout_status == "PROCESSING" {
+    if payout_status == "processing" {
         return Err(ob_core::Error::Validation(
             "Cannot refund item while payout is currently processing. Please try again later."
                 .into(),
@@ -556,7 +556,7 @@ async fn cancel_order(
 
     // State machine validation
     let current_status = str_field(&order, "orderStatus");
-    if !is_valid_order_transition(current_status, "CANCELLED") {
+    if !is_valid_order_transition(current_status, "cancelled") {
         return Err(ob_core::Error::Validation(format!(
             "Cannot cancel order with status: {current_status}"
         )));
@@ -564,10 +564,10 @@ async fn cancel_order(
 
     // Buyers can only cancel pre-shipment
     let buyer_cancellable = [
-        "PENDING_PAYMENT",
-        "PENDING",
-        "CONFIRMED",
-        "PAYMENT_AUTHORIZED",
+        "pending",
+        "pending",
+        "confirmed",
+        "confirmed",
     ];
     if is_buyer && !is_admin && !is_seller && !buyer_cancellable.contains(&current_status) {
         return Err(ob_core::Error::Validation(
@@ -582,7 +582,7 @@ async fn cancel_order(
     let mut refunded = false;
 
     // Handle payment based on current status
-    let new_payment_status = if payment_status == "CAPTURED" && !payment_intent_id.is_empty() {
+    let new_payment_status = if payment_status == "captured" && !payment_intent_id.is_empty() {
         // Full refund
         let idempotency_key = format!("refund_{}", req.order_id);
         match stripe_refund(
@@ -597,7 +597,7 @@ async fn cancel_order(
         {
             Ok(_) => {
                 refunded = true;
-                "REFUNDED"
+                "refunded"
             }
             Err(e) => {
                 // Quarantine order for manual review instead of failing hard
@@ -617,10 +617,10 @@ async fn cancel_order(
                 return Err(e);
             }
         }
-    } else if payment_status == "AUTHORIZED" && !payment_intent_id.is_empty() {
+    } else if payment_status == "authorized" && !payment_intent_id.is_empty() {
         // Cancel the PaymentIntent to release buyer funds
         match stripe_cancel_pi(&state, payment_intent_id).await {
-            Ok(()) => "CANCELLED",
+            Ok(()) => "cancelled",
             Err(e) => {
                 let _ = state
                     .db
@@ -639,7 +639,7 @@ async fn cancel_order(
             }
         }
     } else {
-        "CANCELLED"
+        "cancelled"
     };
 
     state
@@ -648,7 +648,7 @@ async fn cancel_order(
             collections::ORDERS,
             &req.order_id,
             json!({
-                "orderStatus": "CANCELLED",
+                "orderStatus": "cancelled",
                 fields::PAYMENT_STATUS: new_payment_status,
                 "cancelledBy": req.user_id,
                 "cancelledAt": now,
@@ -812,16 +812,16 @@ mod tests {
 
     #[test]
     fn test_valid_cancel_transitions() {
-        assert!(is_valid_order_transition("PENDING_PAYMENT", "CANCELLED"));
-        assert!(is_valid_order_transition("PAYMENT_AUTHORIZED", "CANCELLED"));
-        assert!(is_valid_order_transition("PROCESSING", "CANCELLED"));
+        assert!(is_valid_order_transition("pending", "cancelled"));
+        assert!(is_valid_order_transition("confirmed", "cancelled"));
+        assert!(is_valid_order_transition("processing", "cancelled"));
     }
 
     #[test]
     fn test_invalid_cancel_transitions() {
-        assert!(!is_valid_order_transition("DELIVERED", "CANCELLED"));
-        assert!(!is_valid_order_transition("SHIPPED", "CANCELLED"));
-        assert!(!is_valid_order_transition("REFUNDED", "CANCELLED"));
+        assert!(!is_valid_order_transition("delivered", "cancelled"));
+        assert!(!is_valid_order_transition("shipped", "cancelled"));
+        assert!(!is_valid_order_transition("refunded", "cancelled"));
     }
 
     #[test]
@@ -1117,16 +1117,16 @@ mod tests {
     #[test]
     fn test_cancel_transition_all_valid_states() {
         let cancellable = [
-            "PENDING_PAYMENT",
-            "PAYMENT_AUTHORIZED",
-            "AWAITING_SHIPPING_APPROVAL",
-            "PROCESSING",
-            "PENDING",
-            "CONFIRMED",
+            "pending",
+            "confirmed",
+            "awaiting_shipping_approval",
+            "processing",
+            "pending",
+            "confirmed",
         ];
         for status in &cancellable {
             assert!(
-                is_valid_order_transition(status, "CANCELLED"),
+                is_valid_order_transition(status, "cancelled"),
                 "{status} should be cancellable"
             );
         }
@@ -1135,15 +1135,15 @@ mod tests {
     #[test]
     fn test_cancel_transition_all_invalid_states() {
         let not_cancellable = [
-            "SHIPPED",
-            "DELIVERED",
-            "REFUNDED",
-            "CANCELLED",
-            "RETURN_REQUESTED",
+            "shipped",
+            "delivered",
+            "refunded",
+            "cancelled",
+            "return_requested",
         ];
         for status in &not_cancellable {
             assert!(
-                !is_valid_order_transition(status, "CANCELLED"),
+                !is_valid_order_transition(status, "cancelled"),
                 "{status} should NOT be cancellable"
             );
         }
@@ -1151,7 +1151,7 @@ mod tests {
 
     #[test]
     fn test_cancel_transition_empty_status() {
-        assert!(!is_valid_order_transition("", "CANCELLED"));
+        assert!(!is_valid_order_transition("", "cancelled"));
     }
 
     // -----------------------------------------------------------------------
@@ -1253,7 +1253,7 @@ mod tests {
 
     #[test]
     fn test_stock_restored_guard_defaults_false() {
-        let order = json!({"orderStatus": "CANCELLED"});
+        let order = json!({"orderStatus": "cancelled"});
         assert!(!bool_field(&order, "stockRestored"));
     }
 
@@ -1265,20 +1265,20 @@ mod tests {
 
     #[test]
     fn test_payout_processing_blocks_refund() {
-        let order = json!({"payoutStatus": "PROCESSING"});
-        assert_eq!(str_field(&order, "payoutStatus"), "PROCESSING");
+        let order = json!({"payoutStatus": "processing"});
+        assert_eq!(str_field(&order, "payoutStatus"), "processing");
     }
 
     #[test]
     fn test_payout_completed_allows_refund() {
         let order = json!({"payoutStatus": "COMPLETED"});
-        assert_ne!(str_field(&order, "payoutStatus"), "PROCESSING");
+        assert_ne!(str_field(&order, "payoutStatus"), "processing");
     }
 
     #[test]
     fn test_payout_missing_allows_refund() {
-        let order = json!({"orderStatus": "CONFIRMED"});
-        assert_ne!(str_field(&order, "payoutStatus"), "PROCESSING");
+        let order = json!({"orderStatus": "confirmed"});
+        assert_ne!(str_field(&order, "payoutStatus"), "processing");
     }
 
     #[test]
@@ -1291,7 +1291,7 @@ mod tests {
 
     #[test]
     fn test_cumulative_refunded_cents_defaults_zero() {
-        let order = json!({"orderStatus": "CONFIRMED"});
+        let order = json!({"orderStatus": "confirmed"});
         assert_eq!(i64_field(&order, "cumulativeRefundedCents"), 0);
     }
 
@@ -1444,9 +1444,9 @@ mod tests {
                 collections::ORDERS,
                 "order_1",
                 json!({
-                    "orderStatus": "PENDING_PAYMENT",
+                    "orderStatus": "pending",
                     "userId": "buyer_1",
-                    fields::PAYMENT_STATUS: "AUTHORIZED",
+                    fields::PAYMENT_STATUS: "authorized",
                     "paymentIntentId": "pi_123",
                     "stockRestored": false,
                     fields::ITEMS: [{
@@ -1484,8 +1484,8 @@ mod tests {
             .get_document(collections::PRODUCTS, "prod_1")
             .await
             .unwrap();
-        assert_eq!(order["orderStatus"], "CANCELLED");
-        assert_eq!(order[fields::PAYMENT_STATUS], "CANCELLED");
+        assert_eq!(order["orderStatus"], "cancelled");
+        assert_eq!(order[fields::PAYMENT_STATUS], "cancelled");
         assert_eq!(product["stockQuantity"], 7);
     }
 
@@ -1521,7 +1521,7 @@ mod tests {
                 "order_1",
                 json!({
                     fields::ORDER_ID: "order_1",
-                    fields::PAYMENT_STATUS: "CAPTURED",
+                    fields::PAYMENT_STATUS: "captured",
                     "paymentIntentId": "pi_refund_1",
                     "subtotalCents": 2000,
                     "shippingCostCents": 300,
@@ -1629,7 +1629,7 @@ mod tests {
                 "order_digital",
                 json!({
                     fields::ORDER_ID: "order_digital",
-                    fields::PAYMENT_STATUS: "CAPTURED",
+                    fields::PAYMENT_STATUS: "captured",
                     "paymentIntentId": "pi_digital_1",
                     "subtotalCents": 1500,
                     "shippingCostCents": 0,
@@ -1690,7 +1690,7 @@ mod tests {
                 collections::ORDERS,
                 "order_already",
                 json!({
-                    fields::PAYMENT_STATUS: "CAPTURED",
+                    fields::PAYMENT_STATUS: "captured",
                     "paymentIntentId": "pi_existing",
                     "subtotalCents": 1000,
                     fields::ITEMS: [{
@@ -1754,9 +1754,9 @@ mod tests {
                 "order_cancel",
                 json!({
                     fields::ORDER_ID: "order_cancel",
-                    "orderStatus": "PENDING_PAYMENT",
+                    "orderStatus": "pending",
                     "userId": "buyer_1",
-                    fields::PAYMENT_STATUS: "CAPTURED",
+                    fields::PAYMENT_STATUS: "captured",
                     "paymentIntentId": "pi_cancel_1",
                     "stockRestored": false,
                     fields::ITEMS: [{
@@ -1794,8 +1794,8 @@ mod tests {
             .get_document(collections::PRODUCTS, "prod_1")
             .await
             .unwrap();
-        assert_eq!(order["orderStatus"], "CANCELLED");
-        assert_eq!(order[fields::PAYMENT_STATUS], "REFUNDED");
+        assert_eq!(order["orderStatus"], "cancelled");
+        assert_eq!(order[fields::PAYMENT_STATUS], "refunded");
         assert_eq!(order["cancelledBy"], "buyer_1");
         assert_eq!(product["stockQuantity"], 6);
 
@@ -1825,9 +1825,9 @@ mod tests {
                 collections::ORDERS,
                 "order_quarantine",
                 json!({
-                    "orderStatus": "PENDING_PAYMENT",
+                    "orderStatus": "pending",
                     "userId": "buyer_1",
-                    fields::PAYMENT_STATUS: "CAPTURED",
+                    fields::PAYMENT_STATUS: "captured",
                     "paymentIntentId": "pi_quarantine",
                     fields::ITEMS: []
                 }),
@@ -1898,7 +1898,7 @@ mod tests {
                 collections::ORDERS,
                 "order_nf",
                 json!({
-                    fields::PAYMENT_STATUS: "CAPTURED",
+                    fields::PAYMENT_STATUS: "captured",
                     "paymentIntentId": "pi_1",
                     "subtotalCents": 1000,
                     fields::ITEMS: [{
@@ -1942,7 +1942,7 @@ mod tests {
                 collections::ORDERS,
                 "order_perm",
                 json!({
-                    fields::PAYMENT_STATUS: "CAPTURED",
+                    fields::PAYMENT_STATUS: "captured",
                     "paymentIntentId": "pi_1",
                     "subtotalCents": 1000,
                     fields::ITEMS: [{
@@ -1986,7 +1986,7 @@ mod tests {
                 collections::ORDERS,
                 "order_uncap",
                 json!({
-                    fields::PAYMENT_STATUS: "AUTHORIZED",
+                    fields::PAYMENT_STATUS: "authorized",
                     "paymentIntentId": "pi_1",
                     "subtotalCents": 1000,
                     fields::ITEMS: [{
@@ -2030,8 +2030,8 @@ mod tests {
                 collections::ORDERS,
                 "order_payout",
                 json!({
-                    fields::PAYMENT_STATUS: "CAPTURED",
-                    "payoutStatus": "PROCESSING",
+                    fields::PAYMENT_STATUS: "captured",
+                    "payoutStatus": "processing",
                     "paymentIntentId": "pi_1",
                     "subtotalCents": 1000,
                     fields::ITEMS: [{
@@ -2078,7 +2078,7 @@ mod tests {
                 collections::ORDERS,
                 "order_expired",
                 json!({
-                    fields::PAYMENT_STATUS: "CAPTURED",
+                    fields::PAYMENT_STATUS: "captured",
                     "paymentIntentId": "pi_1",
                     "subtotalCents": 1000,
                     fields::ITEMS: [{
@@ -2123,7 +2123,7 @@ mod tests {
                 collections::ORDERS,
                 "order_nopi",
                 json!({
-                    fields::PAYMENT_STATUS: "CAPTURED",
+                    fields::PAYMENT_STATUS: "captured",
                     "subtotalCents": 1000,
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: "prod_1",
@@ -2166,7 +2166,7 @@ mod tests {
                 collections::ORDERS,
                 "order_arch",
                 json!({
-                    "orderStatus": "PENDING_PAYMENT",
+                    "orderStatus": "pending",
                     "userId": "buyer_1",
                     "archived": true,
                     fields::ITEMS: []
@@ -2203,7 +2203,7 @@ mod tests {
                 collections::ORDERS,
                 "order_noauth",
                 json!({
-                    "orderStatus": "PENDING_PAYMENT",
+                    "orderStatus": "pending",
                     "userId": "buyer_1",
                     fields::ITEMS: [{
                         fields::SELLER_ID: "seller_1",
@@ -2241,7 +2241,7 @@ mod tests {
                 collections::ORDERS,
                 "order_multi",
                 json!({
-                    "orderStatus": "PENDING_PAYMENT",
+                    "orderStatus": "pending",
                     "userId": "buyer_1",
                     fields::ITEMS: [
                         { fields::SELLER_ID: "seller_1" },
@@ -2283,7 +2283,7 @@ mod tests {
                 collections::ORDERS,
                 "order_shipped",
                 json!({
-                    "orderStatus": "SHIPPED",
+                    "orderStatus": "shipped",
                     "userId": "buyer_1",
                     fields::ITEMS: []
                 }),
@@ -2319,7 +2319,7 @@ mod tests {
                 collections::ORDERS,
                 "order_proc",
                 json!({
-                    "orderStatus": "PROCESSING",
+                    "orderStatus": "processing",
                     "userId": "buyer_1",
                     fields::ITEMS: []
                 }),
@@ -2364,9 +2364,9 @@ mod tests {
                 collections::ORDERS,
                 "order_pi_fail",
                 json!({
-                    "orderStatus": "PENDING_PAYMENT",
+                    "orderStatus": "pending",
                     "userId": "buyer_1",
-                    fields::PAYMENT_STATUS: "AUTHORIZED",
+                    fields::PAYMENT_STATUS: "authorized",
                     "paymentIntentId": "pi_fail",
                     fields::ITEMS: []
                 }),
@@ -2414,9 +2414,9 @@ mod tests {
                 collections::ORDERS,
                 "order_nopay",
                 json!({
-                    "orderStatus": "PENDING_PAYMENT",
+                    "orderStatus": "pending",
                     "userId": "buyer_1",
-                    fields::PAYMENT_STATUS: "PENDING",
+                    fields::PAYMENT_STATUS: "awaiting_payment",
                     "stockRestored": true,
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: "prod_1",
@@ -2464,9 +2464,9 @@ mod tests {
                 collections::ORDERS,
                 "order_dig_cancel",
                 json!({
-                    "orderStatus": "PENDING_PAYMENT",
+                    "orderStatus": "pending",
                     "userId": "buyer_1",
-                    fields::PAYMENT_STATUS: "PENDING",
+                    fields::PAYMENT_STATUS: "awaiting_payment",
                     "stockRestored": false,
                     fields::ITEMS: [
                         {

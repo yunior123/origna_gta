@@ -1,4 +1,4 @@
-//! Premium subscription handlers ($9.99/mo CAD).
+//! Premium subscription handlers ($7.86/mo CAD).
 //! Ported from: functions/handlers/payment_stripe.py (subscription endpoints)
 
 use axum::{Extension, Json, Router, extract::State, routing::post};
@@ -94,7 +94,7 @@ pub struct SubscriptionNotificationPrefsRequest {
     pub notify_trending: Option<bool>,
 }
 
-/// Price in cents for the premium subscription ($9.99 CAD = 999 cents).
+/// Price in cents for the premium subscription ($7.86 CAD = 786 cents).
 const PREMIUM_PRICE_CENTS: i64 = (business_rules::PREMIUM_SUBSCRIPTION_PRICE_CAD * 100.0) as i64;
 
 // ---------------------------------------------------------------------------
@@ -1184,7 +1184,7 @@ mod tests {
 
     #[test]
     fn test_premium_price_cents() {
-        assert_eq!(PREMIUM_PRICE_CENTS, 999);
+        assert_eq!(PREMIUM_PRICE_CENTS, 786);
     }
 
     #[test]
@@ -1362,7 +1362,7 @@ mod tests {
         // Verify PREMIUM_PRICE_CENTS = PREMIUM_SUBSCRIPTION_PRICE_CAD * 100
         let expected = (business_rules::PREMIUM_SUBSCRIPTION_PRICE_CAD * 100.0) as i64;
         assert_eq!(PREMIUM_PRICE_CENTS, expected);
-        assert_eq!(PREMIUM_PRICE_CENTS, 999); // $9.99
+        assert_eq!(PREMIUM_PRICE_CENTS, 786); // $9.99
     }
 
     #[test]

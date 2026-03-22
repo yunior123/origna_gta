@@ -603,8 +603,9 @@ mod tests {
 
     #[test]
     fn test_item_name_prefer_name_over_title() {
-        let item = json!({fields::NAME: "Name", fields::TITLE: "Title"});
-        assert_eq!(item_name(&item), "Name");
+        // fields::NAME and fields::TITLE both map to "name" now
+        let item = json!({fields::NAME: "Product Name"});
+        assert_eq!(item_name(&item), "Product Name");
     }
 
     #[test]

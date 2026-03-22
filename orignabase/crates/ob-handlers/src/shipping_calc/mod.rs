@@ -431,7 +431,7 @@ async fn calculate_shipping(
             
             // Validate warehouse has required fields
             let warehouse_province = warehouse_addr
-                .and_then(|w| w.get("province"))
+                .and_then(|w| w.get("state"))
                 .and_then(|v| v.as_str());
             
             if warehouse_province.is_none() {
@@ -637,7 +637,7 @@ mod tests {
         db.upsert_document(
             collections::USERS,
             seller_id,
-            json!({ "warehouseAddress": { "province": province } }),
+            json!({ "warehouseAddress": { "state": province } }),
         )
         .await
         .unwrap();

@@ -70,7 +70,7 @@ pub const APP_NAME: &str = "Origna Marketplace";
 pub const COUNTRY_CANADA: &str = "Canada";
 
 pub mod email_config {
-    pub const SUPPORT_EMAIL: &str = "support@orignaventures.ca";
+    pub const SUPPORT_EMAIL: &str = "support@orignagta.ca";
     pub const SENDER_NAME: &str = "Origna GTA";
     pub const SENDER_NAME_SECURITY: &str = "Origna GTA Security";
     pub const COPYRIGHT_TEXT: &str = "\u{00a9} 2026 Origna Ventures Inc. All rights reserved.";
@@ -134,10 +134,13 @@ pub mod external_urls {
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[serde(rename_all = "snake_case")]
 pub enum OrderStatus {
+    #[serde(alias = "PENDING_PAYMENT", rename = "pending")]
     PendingPayment,
+    #[serde(alias = "PAYMENT_AUTHORIZED", rename = "confirmed")]
     PaymentAuthorized,
+    #[serde(alias = "AWAITING_SHIPPING_APPROVAL")]
     AwaitingShippingApproval,
     Processing,
     Shipped,
@@ -157,22 +160,22 @@ pub enum OrderStatus {
 impl OrderStatus {
     pub fn as_str(&self) -> &'static str {
         match self {
-            Self::PendingPayment => "PENDING_PAYMENT",
-            Self::PaymentAuthorized => "PAYMENT_AUTHORIZED",
-            Self::AwaitingShippingApproval => "AWAITING_SHIPPING_APPROVAL",
-            Self::Processing => "PROCESSING",
-            Self::Shipped => "SHIPPED",
-            Self::Delivered => "DELIVERED",
-            Self::Cancelled => "CANCELLED",
-            Self::Refunded => "REFUNDED",
-            Self::Disputed => "DISPUTED",
-            Self::Expired => "EXPIRED",
-            Self::Failed => "FAILED",
-            Self::ReturnRequested => "RETURN_REQUESTED",
-            Self::ReturnApproved => "RETURN_APPROVED",
-            Self::ReturnRejected => "RETURN_REJECTED",
-            Self::Returned => "RETURNED",
-            Self::Archived => "ARCHIVED",
+            Self::PendingPayment => "pending",
+            Self::PaymentAuthorized => "confirmed",
+            Self::AwaitingShippingApproval => "awaiting_shipping_approval",
+            Self::Processing => "processing",
+            Self::Shipped => "shipped",
+            Self::Delivered => "delivered",
+            Self::Cancelled => "cancelled",
+            Self::Refunded => "refunded",
+            Self::Disputed => "disputed",
+            Self::Expired => "expired",
+            Self::Failed => "failed",
+            Self::ReturnRequested => "return_requested",
+            Self::ReturnApproved => "return_approved",
+            Self::ReturnRejected => "return_rejected",
+            Self::Returned => "returned",
+            Self::Archived => "archived",
         }
     }
 
@@ -186,31 +189,40 @@ impl OrderStatus {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[serde(rename_all = "snake_case")]
 pub enum PaymentStatus {
+    #[serde(alias = "PENDING", rename = "awaiting_payment")]
     Pending,
+    #[serde(alias = "AUTHORIZED")]
     Authorized,
+    #[serde(alias = "CAPTURED")]
     Captured,
+    #[serde(alias = "REFUNDED")]
     Refunded,
+    #[serde(alias = "PARTIAL_REFUND", rename = "partially_refunded")]
     PartialRefund,
+    #[serde(alias = "FAILED")]
     Failed,
+    #[serde(alias = "CANCELLED")]
     Cancelled,
+    #[serde(alias = "DISPUTED")]
     Disputed,
+    #[serde(alias = "EXPIRED")]
     Expired,
 }
 
 impl PaymentStatus {
     pub fn as_str(&self) -> &'static str {
         match self {
-            Self::Pending => "PENDING",
-            Self::Authorized => "AUTHORIZED",
-            Self::Captured => "CAPTURED",
-            Self::Refunded => "REFUNDED",
-            Self::PartialRefund => "PARTIAL_REFUND",
-            Self::Failed => "FAILED",
-            Self::Cancelled => "CANCELLED",
-            Self::Disputed => "DISPUTED",
-            Self::Expired => "EXPIRED",
+            Self::Pending => "awaiting_payment",
+            Self::Authorized => "authorized",
+            Self::Captured => "captured",
+            Self::Refunded => "refunded",
+            Self::PartialRefund => "partially_refunded",
+            Self::Failed => "failed",
+            Self::Cancelled => "cancelled",
+            Self::Disputed => "disputed",
+            Self::Expired => "expired",
         }
     }
 }
@@ -323,19 +335,19 @@ pub mod fields {
     pub const COMMISSION_RATE_BPS: &str = "commissionRateBps";
     pub const MFA_ENABLED: &str = "mfaEnabled";
     pub const EMAIL_CONSENT: &str = "emailConsent";
-    pub const LANGUAGE: &str = "language";
+    pub const LANGUAGE: &str = "preferredLanguage";
     pub const IS_PREMIUM: &str = "isPremium";
 
     // Product fields
     pub const PRODUCT_ID: &str = "productId";
     pub const SELLER_ID: &str = "sellerId";
     pub const BUYER_ID: &str = "buyerId";
-    pub const TITLE: &str = "title";
+    pub const TITLE: &str = "name";
     pub const DESCRIPTION: &str = "description";
     pub const PRICE_CENTS: &str = "priceCents";
     pub const STOCK_QUANTITY: &str = "stockQuantity";
     pub const IMAGE_URLS: &str = "imageUrls";
-    pub const CATEGORY: &str = "category";
+    pub const CATEGORY: &str = "categoryId";
     pub const IS_ACTIVE: &str = "isActive";
     pub const LIFECYCLE_STATUS: &str = "lifecycleStatus";
     pub const AVG_RATING: &str = "avgRating";
@@ -352,9 +364,9 @@ pub mod fields {
     pub const SUBTOTAL_CENTS: &str = "subtotalCents";
     pub const TAX_AMOUNT_CENTS: &str = "taxAmountCents";
     pub const SHIPPING_COST_CENTS: &str = "shippingCostCents";
-    pub const PLATFORM_FEE_CENTS: &str = "platformFeeCents";
+    pub const PLATFORM_FEE_CENTS: &str = "platformFeeTotalCents";
     pub const PAYMENT_INTENT_ID: &str = "paymentIntentId";
-    pub const CHECKOUT_SESSION_ID: &str = "checkoutSessionId";
+    pub const CHECKOUT_SESSION_ID: &str = "stripeSessionId";
     pub const PAYMENT_STATUS: &str = "paymentStatus";
     pub const CUMULATIVE_REFUNDED_CENTS: &str = "cumulativeRefundedCents";
     pub const PARTIAL_REFUND_AMOUNT_CENTS: &str = "partialRefundAmountCents";
@@ -381,7 +393,7 @@ pub mod fields {
     pub const LAST_MESSAGE: &str = "lastMessage";
     pub const LAST_MESSAGE_AT: &str = "lastMessageAt";
     pub const UNREAD_COUNT: &str = "unreadCount";
-    pub const MESSAGE_TEXT: &str = "messageText";
+    pub const MESSAGE_TEXT: &str = "text";
     pub const SENDER_ID: &str = "senderId";
     pub const READ: &str = "read";
 
@@ -395,7 +407,7 @@ pub mod fields {
     pub const COUPON_TYPE: &str = "couponType";
     pub const DISCOUNT_VALUE: &str = "discountValue";
     pub const MIN_ORDER_CENTS: &str = "minOrderCents";
-    pub const MAX_USES: &str = "maxUses";
+    pub const MAX_USES: &str = "maxUsesTotal";
     pub const USED_COUNT: &str = "usedCount";
     pub const EXPIRES_AT: &str = "expiresAt";
 
@@ -409,7 +421,7 @@ pub mod fields {
     pub const LABEL: &str = "label";
     pub const STREET: &str = "street";
     pub const CITY: &str = "city";
-    pub const PROVINCE: &str = "province";
+    pub const PROVINCE: &str = "state";
     pub const POSTAL_CODE: &str = "postalCode";
     pub const COUNTRY: &str = "country";
     pub const APARTMENT: &str = "apartment";
@@ -434,13 +446,13 @@ pub mod business_rules {
     /// Platform commission rate in basis points (2.50%).
     pub const DEFAULT_COMMISSION_RATE_BPS: u32 = 250;
     /// Premium subscription price in CAD.
-    pub const PREMIUM_SUBSCRIPTION_PRICE_CAD: f64 = 9.99;
+    pub const PREMIUM_SUBSCRIPTION_PRICE_CAD: f64 = 7.86;
     /// Maximum return window in days.
     pub const RETURN_WINDOW_DAYS: u32 = 30;
     /// Days before auto-archiving delivered/cancelled orders.
     pub const AUTO_ARCHIVE_DAYS: u32 = 30;
     /// Days before payment authorization expires.
-    pub const AUTHORIZATION_EXPIRY_DAYS: u32 = 7;
+    pub const AUTHORIZATION_EXPIRY_DAYS: u32 = 6;
     /// Maximum FCM push notifications per user per day.
     pub const MAX_PUSH_PER_DAY: u32 = 20;
     /// Abandoned cart email threshold in hours.
@@ -580,15 +592,15 @@ mod tests {
 
     #[test]
     fn test_payment_status_as_str() {
-        assert_eq!(PaymentStatus::Pending.as_str(), "PENDING");
-        assert_eq!(PaymentStatus::Authorized.as_str(), "AUTHORIZED");
-        assert_eq!(PaymentStatus::Captured.as_str(), "CAPTURED");
-        assert_eq!(PaymentStatus::Refunded.as_str(), "REFUNDED");
-        assert_eq!(PaymentStatus::PartialRefund.as_str(), "PARTIAL_REFUND");
-        assert_eq!(PaymentStatus::Failed.as_str(), "FAILED");
-        assert_eq!(PaymentStatus::Cancelled.as_str(), "CANCELLED");
-        assert_eq!(PaymentStatus::Disputed.as_str(), "DISPUTED");
-        assert_eq!(PaymentStatus::Expired.as_str(), "EXPIRED");
+        assert_eq!(PaymentStatus::Pending.as_str(), "awaiting_payment");
+        assert_eq!(PaymentStatus::Authorized.as_str(), "authorized");
+        assert_eq!(PaymentStatus::Captured.as_str(), "captured");
+        assert_eq!(PaymentStatus::Refunded.as_str(), "refunded");
+        assert_eq!(PaymentStatus::PartialRefund.as_str(), "partially_refunded");
+        assert_eq!(PaymentStatus::Failed.as_str(), "failed");
+        assert_eq!(PaymentStatus::Cancelled.as_str(), "cancelled");
+        assert_eq!(PaymentStatus::Disputed.as_str(), "disputed");
+        assert_eq!(PaymentStatus::Expired.as_str(), "expired");
     }
 
     #[test]

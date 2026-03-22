@@ -35,6 +35,7 @@ pub struct AddressPayload {
     pub label: String,
     pub street: String,
     pub city: String,
+    #[serde(alias = "province", rename = "state")]
     pub province: String,
     pub postal_code: String,
     pub country: String,
@@ -735,7 +736,7 @@ mod tests {
                     "label": "Home",
                     "street": "123 Main",
                     "city": "Toronto",
-                    "province": "ON",
+                    "state": "ON",
                     "postalCode": "M5V 2T6",
                     "country": "CA",
                 }),

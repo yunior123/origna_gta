@@ -303,7 +303,7 @@ async fn approve_shipping_cost(
 
         let payment_status = str_field(&order, fields::PAYMENT_STATUS);
         let payment_intent_id = str_field(&order, "paymentIntentId");
-        let pi_modify_blocked = payment_status == "CAPTURED" || payment_status == "AUTHORIZED";
+        let pi_modify_blocked = payment_status == "captured" || payment_status == "authorized";
 
         let mut requires_manual_review = false;
         let total_delta_cents = difference_cents + tax_difference_cents;
@@ -359,14 +359,14 @@ async fn approve_shipping_cost(
                 "respondedAt": now,
             },
             "shippingApprovalStatus": "rejected",
-            "orderStatus": "CANCELLED",
+            "orderStatus": "cancelled",
             "cancellationReason": "Buyer rejected shipping cost",
             fields::UPDATED_AT: now,
         });
 
         // If payment was already captured, issue a Stripe refund
         let payment_status = str_field(&order, fields::PAYMENT_STATUS);
-        if payment_status == "CAPTURED" {
+        if payment_status == "captured" {
             let payment_intent_id = str_field(&order, "paymentIntentId");
             if !payment_intent_id.is_empty() {
                 let idempotency_key = format!("reject-shipping-{}", req.order_id);
@@ -381,7 +381,7 @@ async fn approve_shipping_cost(
                 .await
                 {
                     Ok(_) => {
-                        update_data["paymentStatus"] = json!("REFUNDED");
+                        update_data["paymentStatus"] = json!("refunded");
                     }
                     Err(e) => {
                         warn!(
@@ -504,7 +504,7 @@ async fn update_shipping_cost(
 
     // Only confirmed/processing orders
     let order_status = str_field(&order, "orderStatus");
-    let allowed_statuses = ["CONFIRMED", "PROCESSING"];
+    let allowed_statuses = ["confirmed", "processing"];
     if !allowed_statuses.contains(&order_status) {
         return Err(ob_core::Error::Validation(
             "Can only update shipping on confirmed/processing orders".into(),
@@ -513,7 +513,7 @@ async fn update_shipping_cost(
 
     // Payment must be authorized or captured
     let payment_status = str_field(&order, fields::PAYMENT_STATUS);
-    if payment_status != "AUTHORIZED" && payment_status != "CAPTURED" {
+    if payment_status != "authorized" && payment_status != "captured" {
         return Err(ob_core::Error::Validation(format!(
             "Cannot update shipping cost: payment status is '{payment_status}'"
         )));
@@ -591,11 +591,11 @@ async fn update_shipping_cost(
         });
 
         let payment_intent_id = str_field(&order, "paymentIntentId");
-        let pi_modify_blocked = payment_status == "CAPTURED" || payment_status == "AUTHORIZED";
+        let pi_modify_blocked = payment_status == "captured" || payment_status == "authorized";
         let mut requires_manual_review = false;
 
         // Only update totals if payment not yet captured
-        if payment_status != "CAPTURED" {
+        if payment_status != "captured" {
             update_data["taxAmountCents"] = json!(new_tax);
             update_data["totalAmountCents"] = json!(new_total);
 
@@ -810,7 +810,7 @@ mod tests {
                     "sellerShippingCosts": { "seller_1": 1000 },
                     "taxAmountCents": 130,
                     "totalAmountCents": 1130,
-                    fields::PAYMENT_STATUS: "PENDING",
+                    fields::PAYMENT_STATUS: "awaiting_payment",
                 }),
             )
             .await
@@ -864,7 +864,7 @@ mod tests {
                     "taxAmountCents": 130,
                     "totalAmountCents": 1130,
                     "shippingAddress": { "state": "ON" },
-                    fields::PAYMENT_STATUS: "AUTHORIZED",
+                    fields::PAYMENT_STATUS: "authorized",
                     "paymentIntentId": "pi_123",
                 }),
             )
@@ -919,8 +919,8 @@ mod tests {
                 collections::ORDERS,
                 "ord_3",
                 json!({
-                    "orderStatus": "CONFIRMED",
-                    fields::PAYMENT_STATUS: "AUTHORIZED",
+                    "orderStatus": "confirmed",
+                    fields::PAYMENT_STATUS: "authorized",
                     fields::ITEMS: [
                         { fields::SELLER_ID: "seller_a", fields::PRODUCT_ID: "prod_1" }
                     ],
@@ -982,8 +982,8 @@ mod tests {
                 collections::ORDERS,
                 "ord_4",
                 json!({
-                    "orderStatus": "PROCESSING",
-                    fields::PAYMENT_STATUS: "CAPTURED",
+                    "orderStatus": "processing",
+                    fields::PAYMENT_STATUS: "captured",
                     "paymentIntentId": "pi_locked",
                     fields::ITEMS: [
                         { fields::SELLER_ID: "seller_c", fields::PRODUCT_ID: "prod_2" }
@@ -1241,7 +1241,7 @@ mod tests {
 
     #[test]
     fn test_expiry_check_missing_field() {
-        let order = json!({ "orderStatus": "CONFIRMED" });
+        let order = json!({ "orderStatus": "confirmed" });
         let expires_at = order.get("expiresAt").and_then(|v| v.as_str());
         assert!(
             expires_at.is_none(),
@@ -1363,7 +1363,7 @@ mod tests {
                     "userId": "buyer_1",
                     "expiresAt": past,
                     "shippingApproval": { "status": "pending" },
-                    fields::PAYMENT_STATUS: "PENDING",
+                    fields::PAYMENT_STATUS: "awaiting_payment",
                 }),
             )
             .await
@@ -1394,7 +1394,7 @@ mod tests {
                 json!({
                     "userId": "buyer_1",
                     "shippingApproval": { "status": "approved" },
-                    fields::PAYMENT_STATUS: "PENDING",
+                    fields::PAYMENT_STATUS: "awaiting_payment",
                 }),
             )
             .await
@@ -1434,7 +1434,7 @@ mod tests {
                     "sellerShippingCosts": { "seller_1": 1000 },
                     "taxAmountCents": 130,
                     "totalAmountCents": 1130,
-                    fields::PAYMENT_STATUS: "PENDING",
+                    fields::PAYMENT_STATUS: "awaiting_payment",
                 }),
             )
             .await
@@ -1489,7 +1489,7 @@ mod tests {
                     "taxAmountCents": 130,
                     "totalAmountCents": 1130,
                     "shippingAddress": { "state": "ON" },
-                    fields::PAYMENT_STATUS: "PENDING",
+                    fields::PAYMENT_STATUS: "awaiting_payment",
                     "paymentIntentId": "pi_mod",
                 }),
             )
@@ -1549,7 +1549,7 @@ mod tests {
                     "taxAmountCents": 130,
                     "totalAmountCents": 1130,
                     "shippingAddress": { "state": "ON" },
-                    fields::PAYMENT_STATUS: "PENDING",
+                    fields::PAYMENT_STATUS: "awaiting_payment",
                     "paymentIntentId": "pi_broken",
                 }),
             )
@@ -1601,7 +1601,7 @@ mod tests {
                     "taxAmountCents": 130,
                     "totalAmountCents": 1130,
                     "shippingAddress": { "state": "ON" },
-                    fields::PAYMENT_STATUS: "CAPTURED",
+                    fields::PAYMENT_STATUS: "captured",
                     "paymentIntentId": "pi_locked",
                 }),
             )
@@ -1657,7 +1657,7 @@ mod tests {
                         "requestedBy": "seller_1"
                     },
                     fields::SHIPPING_COST_CENTS: 1000,
-                    fields::PAYMENT_STATUS: "PENDING",
+                    fields::PAYMENT_STATUS: "awaiting_payment",
                     fields::ITEMS: [
                         { fields::PRODUCT_ID: "prod_1", "quantity": 2 },
                     ],
@@ -1728,7 +1728,7 @@ mod tests {
                         "requestedBy": "seller_1"
                     },
                     fields::SHIPPING_COST_CENTS: 1000,
-                    fields::PAYMENT_STATUS: "CAPTURED",
+                    fields::PAYMENT_STATUS: "captured",
                     "paymentIntentId": "pi_captured",
                     fields::ITEMS: [
                         { fields::PRODUCT_ID: "prod_2", "quantity": 1 },
@@ -1794,7 +1794,7 @@ mod tests {
                         "requestedBy": "seller_1"
                     },
                     fields::SHIPPING_COST_CENTS: 1000,
-                    fields::PAYMENT_STATUS: "CAPTURED",
+                    fields::PAYMENT_STATUS: "captured",
                     "paymentIntentId": "pi_fail",
                     fields::ITEMS: [
                         { fields::PRODUCT_ID: "prod_3", "quantity": 1 },
@@ -1854,7 +1854,7 @@ mod tests {
                     "userId": "buyer_1",
                     "shippingApproval": { "status": "pending" },
                     fields::SHIPPING_COST_CENTS: 500,
-                    fields::PAYMENT_STATUS: "PENDING",
+                    fields::PAYMENT_STATUS: "awaiting_payment",
                     fields::ITEMS: [
                         { fields::PRODUCT_ID: "prod_phys", "quantity": 1 },
                         { fields::PRODUCT_ID: "prod_dig", "quantity": 1, "isDigital": true },
@@ -1914,8 +1914,8 @@ mod tests {
                 collections::ORDERS,
                 "ord_bad",
                 json!({
-                    "orderStatus": "DELIVERED",
-                    fields::PAYMENT_STATUS: "CAPTURED",
+                    "orderStatus": "delivered",
+                    fields::PAYMENT_STATUS: "captured",
                     fields::ITEMS: [
                         { fields::SELLER_ID: "seller_1", fields::PRODUCT_ID: "p1" }
                     ],
@@ -1947,8 +1947,8 @@ mod tests {
                 collections::ORDERS,
                 "ord_pay",
                 json!({
-                    "orderStatus": "CONFIRMED",
-                    fields::PAYMENT_STATUS: "REFUNDED",
+                    "orderStatus": "confirmed",
+                    fields::PAYMENT_STATUS: "refunded",
                     fields::ITEMS: [
                         { fields::SELLER_ID: "seller_1", fields::PRODUCT_ID: "p1" }
                     ],
@@ -1996,8 +1996,8 @@ mod tests {
                 collections::ORDERS,
                 "ord_auto",
                 json!({
-                    "orderStatus": "CONFIRMED",
-                    fields::PAYMENT_STATUS: "AUTHORIZED",
+                    "orderStatus": "confirmed",
+                    fields::PAYMENT_STATUS: "authorized",
                     "paymentIntentId": "pi_auto",
                     fields::ITEMS: [
                         { fields::SELLER_ID: "seller_1", fields::PRODUCT_ID: "p1" }
@@ -2048,8 +2048,8 @@ mod tests {
                 collections::ORDERS,
                 "ord_aub",
                 json!({
-                    "orderStatus": "CONFIRMED",
-                    fields::PAYMENT_STATUS: "AUTHORIZED",
+                    "orderStatus": "confirmed",
+                    fields::PAYMENT_STATUS: "authorized",
                     "paymentIntentId": "pi_auth",
                     fields::ITEMS: [
                         { fields::SELLER_ID: "seller_1", fields::PRODUCT_ID: "p1" }

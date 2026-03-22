@@ -830,6 +830,7 @@ mod tests {
     fn test_create_coupon_response_ser() {
         let resp = CreateCouponResponse {
             success: true,
+            id: "coupons:test123".to_string(),
             coupon_code: "WINTER50".to_string(),
             created: true,
         };

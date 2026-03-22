@@ -203,7 +203,7 @@ async fn run_auto_capture(state: &HandlersState) -> std::result::Result<(), Stri
     let orders = state
         .db
         .query_bind(
-            "SELECT * FROM type::table($table) WHERE orderStatus = 'DELIVERED' AND paymentStatus IN ['CAPTURED','AUTHORIZED'] AND deliveredAt <= $cutoff LIMIT 250",
+            "SELECT * FROM type::table($table) WHERE orderStatus = 'delivered' AND paymentStatus IN ['captured','authorized'] AND deliveredAt <= $cutoff LIMIT 250",
             json!({
                 "table": collections::ORDERS,
                 "cutoff": cutoff_str
@@ -288,7 +288,7 @@ async fn run_auto_capture(state: &HandlersState) -> std::result::Result<(), Stri
                     .get(fields::STATUS)
                     .and_then(|v| v.as_str())
                     .unwrap_or("");
-                if item_status != "DELIVERED" {
+                if item_status != "delivered" {
                     continue;
                 }
                 let seller_id = item
@@ -330,7 +330,7 @@ async fn run_auto_capture(state: &HandlersState) -> std::result::Result<(), Stri
                         fields::ORDER_ID: order_id,
                         fields::SELLER_ID: seller_id,
                         "amountCents": amount_cents,
-                        "platformFeeCents": fee_cents,
+                        "platformFeeTotalCents": fee_cents,
                         "netAmountCents": net_cents,
                         fields::STATUS: "pending",
                         "autoCaptured": true,
@@ -429,7 +429,7 @@ pub async fn check_expired_authorizations(state: &HandlersState) {
 
     let cutoff = Utc::now() - Duration::days(business_rules::AUTHORIZATION_EXPIRY_DAYS as i64);
     let sql = format!(
-        "SELECT * FROM {} WHERE paymentStatus IN ['AUTHORIZED','PENDING'] AND orderStatus IN ['PENDING_PAYMENT','CONFIRMED'] AND createdAt <= '{}' LIMIT 100",
+        "SELECT * FROM {} WHERE paymentStatus IN ['authorized','awaiting_payment'] AND orderStatus IN ['pending','confirmed'] AND createdAt <= '{}' LIMIT 100",
         collections::ORDERS,
         cutoff.to_rfc3339(),
     );
@@ -489,8 +489,8 @@ pub async fn check_expired_authorizations(state: &HandlersState) {
                         collections::ORDERS,
                         normalize_record_id(id),
                         json!({
-                            "orderStatus": "EXPIRED",
-                            "paymentStatus": "CANCELLED",
+                            "orderStatus": "expired",
+                            "paymentStatus": "cancelled",
                             "cancellationReason": "authorization_expired",
                             "stockRestored": true,
                             fields::UPDATED_AT: now_str,
@@ -546,7 +546,7 @@ pub async fn auto_archive_old_orders(state: &HandlersState) {
     let result = async {
         let cutoff = Utc::now() - Duration::days(business_rules::AUTO_ARCHIVE_DAYS as i64);
         let sql = format!(
-            "SELECT * FROM {} WHERE orderStatus IN ['DELIVERED','CANCELLED','EXPIRED','FAILED','DISPUTED'] AND updatedAt <= '{}' AND (archived = false OR archived = NONE) LIMIT 200",
+            "SELECT * FROM {} WHERE orderStatus IN ['delivered','cancelled','expired','failed','disputed'] AND updatedAt <= '{}' AND (archived = false OR archived = NONE) LIMIT 200",
             collections::ORDERS,
             cutoff.to_rfc3339(),
         );
@@ -1306,10 +1306,10 @@ pub async fn compute_seller_metrics(state: &HandlersState) {
                         .get(fields::STATUS)
                         .and_then(|v| v.as_str())
                         .unwrap_or("");
-                    if item_status == "REFUNDED" {
+                    if item_status == "refunded" {
                         stats.refunded_items += 1;
                     }
-                    if order_status == "CANCELLED" {
+                    if order_status == "cancelled" {
                         stats.cancelled_items += 1;
                     }
                 }
@@ -2216,13 +2216,13 @@ mod tests {
                 collections::ORDERS,
                 order_id,
                 json!({
-                    fields::ORDER_STATUS: "DELIVERED",
-                    fields::PAYMENT_STATUS: "CAPTURED",
+                    fields::ORDER_STATUS: "delivered",
+                    fields::PAYMENT_STATUS: "captured",
                     "deliveredAt": delivered_at,
                     fields::PAYMENT_INTENT_ID: "pi_123",
                     fields::ITEMS: [
                         {
-                            fields::STATUS: "DELIVERED",
+                            fields::STATUS: "delivered",
                             fields::SELLER_ID: "seller_1",
                             fields::PRICE_CENTS: 1000,
                             "quantity": 1
@@ -2280,12 +2280,12 @@ mod tests {
                 collections::ORDERS,
                 "order_disabled",
                 json!({
-                    fields::ORDER_STATUS: "DELIVERED",
-                    fields::PAYMENT_STATUS: "CAPTURED",
+                    fields::ORDER_STATUS: "delivered",
+                    fields::PAYMENT_STATUS: "captured",
                     "deliveredAt": delivered_at,
                     fields::PAYMENT_INTENT_ID: "pi_disabled",
                     fields::ITEMS: [{
-                        fields::STATUS: "DELIVERED",
+                        fields::STATUS: "delivered",
                         fields::SELLER_ID: "seller_1",
                         fields::PRICE_CENTS: 1000,
                         "quantity": 1
@@ -2323,11 +2323,11 @@ mod tests {
                 collections::ORDERS,
                 "order_no_pi",
                 json!({
-                    fields::ORDER_STATUS: "DELIVERED",
-                    fields::PAYMENT_STATUS: "CAPTURED",
+                    fields::ORDER_STATUS: "delivered",
+                    fields::PAYMENT_STATUS: "captured",
                     "deliveredAt": delivered_at,
                     fields::ITEMS: [{
-                        fields::STATUS: "DELIVERED",
+                        fields::STATUS: "delivered",
                         fields::SELLER_ID: "seller_1",
                         fields::PRICE_CENTS: 1000,
                         "quantity": 1
@@ -2364,12 +2364,12 @@ mod tests {
                 collections::ORDERS,
                 "order_dispute",
                 json!({
-                    fields::ORDER_STATUS: "DELIVERED",
-                    fields::PAYMENT_STATUS: "CAPTURED",
+                    fields::ORDER_STATUS: "delivered",
+                    fields::PAYMENT_STATUS: "captured",
                     "deliveredAt": delivered_at,
                     fields::PAYMENT_INTENT_ID: "pi_dispute",
                     fields::ITEMS: [{
-                        fields::STATUS: "DELIVERED",
+                        fields::STATUS: "delivered",
                         fields::SELLER_ID: "seller_1",
                         fields::PRICE_CENTS: 1000,
                         "quantity": 1
@@ -2419,12 +2419,12 @@ mod tests {
                 collections::ORDERS,
                 "order_return",
                 json!({
-                    fields::ORDER_STATUS: "DELIVERED",
-                    fields::PAYMENT_STATUS: "CAPTURED",
+                    fields::ORDER_STATUS: "delivered",
+                    fields::PAYMENT_STATUS: "captured",
                     "deliveredAt": delivered_at,
                     fields::PAYMENT_INTENT_ID: "pi_return",
                     fields::ITEMS: [{
-                        fields::STATUS: "DELIVERED",
+                        fields::STATUS: "delivered",
                         fields::SELLER_ID: "seller_1",
                         fields::PRICE_CENTS: 1000,
                         "quantity": 1
@@ -2473,12 +2473,12 @@ mod tests {
                 collections::ORDERS,
                 "order_failed",
                 json!({
-                    fields::ORDER_STATUS: "DELIVERED",
-                    fields::PAYMENT_STATUS: "CAPTURED",
+                    fields::ORDER_STATUS: "delivered",
+                    fields::PAYMENT_STATUS: "captured",
                     "deliveredAt": delivered_at,
                     fields::PAYMENT_INTENT_ID: "pi_failed",
                     fields::ITEMS: [{
-                        fields::STATUS: "PROCESSING",
+                        fields::STATUS: "processing",
                         fields::SELLER_ID: "seller_1",
                         fields::PRICE_CENTS: 1000,
                         "quantity": 1
@@ -2510,7 +2510,7 @@ mod tests {
                 collections::ORDERS,
                 order_id,
                 json!({
-                    "orderStatus": "DELIVERED",
+                    "orderStatus": "delivered",
                     fields::UPDATED_AT: updated_at,
                     "archived": false
                 }),
@@ -2539,7 +2539,7 @@ mod tests {
                 collections::ORDERS,
                 "already_archived",
                 json!({
-                    "orderStatus": "DELIVERED",
+                    "orderStatus": "delivered",
                     fields::UPDATED_AT: updated_at,
                     "archived": true
                 }),
@@ -2742,11 +2742,11 @@ mod tests {
                 json!({
                     "createdAt": Utc::now().to_rfc3339(),
                     "hasDispute": true,
-                    "orderStatus": "DELIVERED",
+                    "orderStatus": "delivered",
                     fields::ITEMS: [
                         {
                             fields::SELLER_ID: seller_id,
-                            fields::STATUS: "DELIVERED"
+                            fields::STATUS: "delivered"
                         }
                     ]
                 }),
@@ -3046,8 +3046,8 @@ mod tests {
                 json!({
                     "userId": "buyer_1",
                     "createdAt": created_at,
-                    "paymentStatus": "AUTHORIZED",
-                    "orderStatus": "PENDING_PAYMENT",
+                    "paymentStatus": "authorized",
+                    "orderStatus": "pending",
                     "paymentIntentId": "pi_123",
                     "items": [{
                         "productId": "prod_1",
@@ -3077,8 +3077,8 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(order["orderStatus"], "EXPIRED");
-        assert_eq!(order["paymentStatus"], "CANCELLED");
+        assert_eq!(order["orderStatus"], "expired");
+        assert_eq!(order["paymentStatus"], "cancelled");
         assert_eq!(order["stockRestored"], true);
         assert_eq!(product["stockQuantity"], 5);
         assert_eq!(events.len(), 1);
@@ -3162,7 +3162,7 @@ mod tests {
     #[test]
     fn test_business_rules_constants_used() {
         assert_eq!(business_rules::AUTO_ARCHIVE_DAYS, 30);
-        assert_eq!(business_rules::AUTHORIZATION_EXPIRY_DAYS, 7);
+        assert_eq!(business_rules::AUTHORIZATION_EXPIRY_DAYS, 6);
         assert_eq!(business_rules::RATE_LIMIT_STALE_HOURS, 2);
         assert_eq!(business_rules::WEBHOOK_EVENT_RETENTION_DAYS, 7);
         assert_eq!(business_rules::SECURITY_ALERT_ARCHIVE_DAYS, 90);
@@ -3260,19 +3260,19 @@ mod tests {
                 collections::ORDERS,
                 "order_partial",
                 json!({
-                    fields::ORDER_STATUS: "DELIVERED",
-                    fields::PAYMENT_STATUS: "CAPTURED",
+                    fields::ORDER_STATUS: "delivered",
+                    fields::PAYMENT_STATUS: "captured",
                     "deliveredAt": delivered_at,
                     fields::PAYMENT_INTENT_ID: "pi_partial",
                     fields::ITEMS: [
                         {
-                            fields::STATUS: "DELIVERED",
+                            fields::STATUS: "delivered",
                             fields::SELLER_ID: "seller_a",
                             fields::PRICE_CENTS: 1000,
                             "quantity": 2
                         },
                         {
-                            fields::STATUS: "DELIVERED",
+                            fields::STATUS: "delivered",
                             fields::SELLER_ID: "seller_b",
                             fields::PRICE_CENTS: 500,
                             "quantity": 1
@@ -3314,8 +3314,8 @@ mod tests {
                 collections::ORDERS,
                 "order_noitems",
                 json!({
-                    fields::ORDER_STATUS: "DELIVERED",
-                    fields::PAYMENT_STATUS: "CAPTURED",
+                    fields::ORDER_STATUS: "delivered",
+                    fields::PAYMENT_STATUS: "captured",
                     "deliveredAt": delivered_at,
                     fields::PAYMENT_INTENT_ID: "pi_noitems",
                 }),
@@ -3347,14 +3347,14 @@ mod tests {
                 collections::ORDERS,
                 "order_fee",
                 json!({
-                    fields::ORDER_STATUS: "DELIVERED",
-                    fields::PAYMENT_STATUS: "CAPTURED",
+                    fields::ORDER_STATUS: "delivered",
+                    fields::PAYMENT_STATUS: "captured",
                     "deliveredAt": delivered_at,
                     fields::PAYMENT_INTENT_ID: "pi_fee",
                     "platformFeeRatio": 0.05,
                     fields::ITEMS: [
                         {
-                            fields::STATUS: "DELIVERED",
+                            fields::STATUS: "delivered",
                             fields::SELLER_ID: "seller_fee",
                             fields::PRICE_CENTS: 2000,
                             "quantity": 3
@@ -3415,8 +3415,8 @@ mod tests {
                 json!({
                     "userId": "buyer_d",
                     "createdAt": created_at,
-                    "paymentStatus": "AUTHORIZED",
-                    "orderStatus": "PENDING_PAYMENT",
+                    "paymentStatus": "authorized",
+                    "orderStatus": "pending",
                     "items": [{
                         "productId": "dprod_1",
                         "quantity": 1,
@@ -3434,7 +3434,7 @@ mod tests {
             .get_document(collections::ORDERS, "order_digital")
             .await
             .unwrap();
-        assert_eq!(order["orderStatus"], "EXPIRED");
+        assert_eq!(order["orderStatus"], "expired");
     }
 
     // -----------------------------------------------------------------------
@@ -3465,8 +3465,8 @@ mod tests {
                 json!({
                     "userId": "buyer_nopi",
                     "createdAt": created_at,
-                    "paymentStatus": "PENDING",
-                    "orderStatus": "PENDING_PAYMENT",
+                    "paymentStatus": "awaiting_payment",
+                    "orderStatus": "pending",
                     "items": [{
                         "productId": "prod_nopi",
                         "quantity": 2,
@@ -3484,7 +3484,7 @@ mod tests {
             .get_document(collections::ORDERS, "order_nopi")
             .await
             .unwrap();
-        assert_eq!(order["orderStatus"], "EXPIRED");
+        assert_eq!(order["orderStatus"], "expired");
         assert_eq!(order["stockRestored"], true);
 
         let product = state
@@ -3511,8 +3511,8 @@ mod tests {
                 json!({
                     "userId": "buyer_ei",
                     "createdAt": created_at,
-                    "paymentStatus": "AUTHORIZED",
-                    "orderStatus": "CONFIRMED",
+                    "paymentStatus": "authorized",
+                    "orderStatus": "confirmed",
                     "items": []
                 }),
             )
@@ -3526,7 +3526,7 @@ mod tests {
             .get_document(collections::ORDERS, "order_empty_items")
             .await
             .unwrap();
-        assert_eq!(order["orderStatus"], "EXPIRED");
+        assert_eq!(order["orderStatus"], "expired");
     }
 
     // -----------------------------------------------------------------------
@@ -4477,10 +4477,10 @@ mod tests {
                 json!({
                     "createdAt": Utc::now().to_rfc3339(),
                     "hasDispute": false,
-                    "orderStatus": "DELIVERED",
+                    "orderStatus": "delivered",
                     fields::ITEMS: [{
                         fields::SELLER_ID: "",
-                        fields::STATUS: "DELIVERED"
+                        fields::STATUS: "delivered"
                     }]
                 }),
             )
@@ -4511,15 +4511,15 @@ mod tests {
                 json!({
                     "createdAt": Utc::now().to_rfc3339(),
                     "hasDispute": false,
-                    "orderStatus": "CANCELLED",
+                    "orderStatus": "cancelled",
                     fields::ITEMS: [
                         {
                             fields::SELLER_ID: "seller_rc",
-                            fields::STATUS: "REFUNDED"
+                            fields::STATUS: "refunded"
                         },
                         {
                             fields::SELLER_ID: "seller_rc",
-                            fields::STATUS: "DELIVERED"
+                            fields::STATUS: "delivered"
                         }
                     ]
                 }),
@@ -4565,10 +4565,10 @@ mod tests {
                     json!({
                         "createdAt": Utc::now().to_rfc3339(),
                         "hasDispute": true,
-                        "orderStatus": "CANCELLED",
+                        "orderStatus": "cancelled",
                         fields::ITEMS: [{
                             fields::SELLER_ID: "seller_breach",
-                            fields::STATUS: "REFUNDED"
+                            fields::STATUS: "refunded"
                         }]
                     }),
                 )
@@ -5304,8 +5304,8 @@ mod tests {
                 json!({
                     "userId": "buyer_m1",
                     "createdAt": created_at,
-                    "paymentStatus": "AUTHORIZED",
-                    "orderStatus": "CONFIRMED",
+                    "paymentStatus": "authorized",
+                    "orderStatus": "confirmed",
                     "items": [{
                         "productId": "prod_m1",
                         "quantity": 1,
@@ -5335,8 +5335,8 @@ mod tests {
                 json!({
                     "userId": "buyer_m2",
                     "createdAt": created_at,
-                    "paymentStatus": "PENDING",
-                    "orderStatus": "PENDING_PAYMENT",
+                    "paymentStatus": "awaiting_payment",
+                    "orderStatus": "pending",
                     "paymentIntentId": "pi_no_stripe_key",
                     "items": [{
                         "productId": "prod_m2",
@@ -5371,8 +5371,8 @@ mod tests {
             .get_document(collections::ORDERS, "ord_multi_2")
             .await
             .unwrap();
-        assert_eq!(ord1["orderStatus"], "EXPIRED");
-        assert_eq!(ord2["orderStatus"], "EXPIRED");
+        assert_eq!(ord1["orderStatus"], "expired");
+        assert_eq!(ord2["orderStatus"], "expired");
 
         let prod1 = state
             .db
@@ -5471,10 +5471,10 @@ mod tests {
                 json!({
                     "createdAt": Utc::now().to_rfc3339(),
                     "hasDispute": false,
-                    "orderStatus": "DELIVERED",
+                    "orderStatus": "delivered",
                     fields::ITEMS: [{
                         fields::SELLER_ID: "seller_rb",
-                        fields::STATUS: "REFUNDED"
+                        fields::STATUS: "refunded"
                     }]
                 }),
             )
@@ -5505,10 +5505,10 @@ mod tests {
                 json!({
                     "createdAt": Utc::now().to_rfc3339(),
                     "hasDispute": false,
-                    "orderStatus": "CANCELLED",
+                    "orderStatus": "cancelled",
                     fields::ITEMS: [{
                         fields::SELLER_ID: "seller_cb",
-                        fields::STATUS: "DELIVERED"
+                        fields::STATUS: "delivered"
                     }]
                 }),
             )
@@ -5666,19 +5666,19 @@ mod tests {
                 collections::ORDERS,
                 "order_mixed",
                 json!({
-                    fields::ORDER_STATUS: "DELIVERED",
-                    fields::PAYMENT_STATUS: "AUTHORIZED",
+                    fields::ORDER_STATUS: "delivered",
+                    fields::PAYMENT_STATUS: "authorized",
                     "deliveredAt": delivered_at,
                     fields::PAYMENT_INTENT_ID: "pi_mixed",
                     fields::ITEMS: [
                         {
-                            fields::STATUS: "DELIVERED",
+                            fields::STATUS: "delivered",
                             fields::SELLER_ID: "seller_mix",
                             fields::PRICE_CENTS: 1000,
                             "quantity": 1
                         },
                         {
-                            fields::STATUS: "PROCESSING",
+                            fields::STATUS: "processing",
                             fields::SELLER_ID: "seller_mix",
                             fields::PRICE_CENTS: 500,
                             "quantity": 1
@@ -5708,7 +5708,7 @@ mod tests {
         let state = setup_state().await;
         let old = (Utc::now() - Duration::days(40)).to_rfc3339();
 
-        for status in &["DELIVERED", "CANCELLED", "EXPIRED", "FAILED", "DISPUTED"] {
+        for status in &["delivered", "cancelled", "expired", "failed", "disputed"] {
             state
                 .db
                 .upsert_document(
@@ -5726,7 +5726,7 @@ mod tests {
 
         auto_archive_old_orders(&state).await;
 
-        for status in &["DELIVERED", "CANCELLED", "EXPIRED", "FAILED", "DISPUTED"] {
+        for status in &["delivered", "cancelled", "expired", "failed", "disputed"] {
             let order = state
                 .db
                 .get_document(collections::ORDERS, &format!("arch_{status}"))
@@ -6163,7 +6163,7 @@ mod tests {
                 json!({
                     "createdAt": Utc::now().to_rfc3339(),
                     "hasDispute": false,
-                    "orderStatus": "DELIVERED",
+                    "orderStatus": "delivered",
                 }),
             )
             .await

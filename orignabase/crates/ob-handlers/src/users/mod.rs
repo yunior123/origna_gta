@@ -41,6 +41,7 @@ pub struct UpdateProfileRequest {
 pub struct AddressInput {
     pub street: String,
     pub city: String,
+    #[serde(alias = "province", rename = "state")]
     pub province: String,
     pub postal_code: String,
     #[serde(default = "default_country")]
@@ -115,6 +116,7 @@ pub struct AddBuyerAddressRequest {
     pub user_id: Option<String>,
     pub street: String,
     pub city: String,
+    #[serde(alias = "province", rename = "state")]
     pub province: String,
     pub postal_code: String,
     #[serde(default = "default_country")]
@@ -133,6 +135,7 @@ pub struct UpdateBuyerAddressRequest {
     pub address_id: String,
     pub street: String,
     pub city: String,
+    #[serde(alias = "province", rename = "state")]
     pub province: String,
     pub postal_code: String,
     #[serde(default = "default_country")]
@@ -247,7 +250,7 @@ fn sanitize_address_fields(
     }
     validate_string("street", street, 200)?;
     validate_string("city", city, 100)?;
-    validate_string("province", province, 50)?;
+    validate_string("state", province, 50)?;
     validate_string("postalCode", postal_code, 10)?;
     Ok(json!({
         fields::STREET: sanitize_html(street),
@@ -316,7 +319,7 @@ async fn update_profile(
         }
         validate_string("street", &addr.street, 200)?;
         validate_string("city", &addr.city, 100)?;
-        validate_string("province", &addr.province, 50)?;
+        validate_string("state", &addr.province, 50)?;
         validate_string("postalCode", &addr.postal_code, 10)?;
 
         update_data.insert(
@@ -912,7 +915,7 @@ mod tests {
     #[test]
     fn test_address_input_default_country() {
         let json_str =
-            r#"{"street":"123 Main","city":"Toronto","province":"ON","postalCode":"M5V 1A1"}"#;
+            r#"{"street":"123 Main","city":"Toronto","state":"ON","postalCode":"M5V 1A1"}"#;
         let addr: AddressInput = serde_json::from_str(json_str).unwrap();
         assert_eq!(addr.country, COUNTRY_CANADA);
     }
@@ -1077,7 +1080,7 @@ mod tests {
             "userId": "u1",
             "street": "123 Main",
             "city": "Toronto",
-            "province": "ON",
+            "state": "ON",
             "postalCode": "M5V 1A1",
             "label": "Home",
             "isDefault": true
@@ -1091,7 +1094,7 @@ mod tests {
 
     #[test]
     fn test_add_buyer_address_request_defaults() {
-        let json = r#"{"userId":"u1","street":"A","city":"B","province":"C","postalCode":"D"}"#;
+        let json = r#"{"userId":"u1","street":"A","city":"B","state":"C","postalCode":"D"}"#;
         let req: AddBuyerAddressRequest = serde_json::from_str(json).unwrap();
         assert_eq!(req.country, COUNTRY_CANADA);
         assert!(req.label.is_none());
@@ -1102,7 +1105,7 @@ mod tests {
     fn test_update_buyer_address_request_deser() {
         let json = r#"{
             "userId":"u1","addressId":"addr1",
-            "street":"456 Oak","city":"Montreal","province":"QC","postalCode":"H1A 1A1",
+            "street":"456 Oak","city":"Montreal","state":"QC","postalCode":"H1A 1A1",
             "isDefault":false
         }"#;
         let req: UpdateBuyerAddressRequest = serde_json::from_str(json).unwrap();
@@ -1136,7 +1139,7 @@ mod tests {
         let json = r#"{
             "userId": "u1",
             "name": "New Name",
-            "address": {"street":"1 A","city":"B","province":"C","postalCode":"D"},
+            "address": {"street":"1 A","city":"B","state":"C","postalCode":"D"},
             "preferredLanguage": "fr",
             "taxExemption": {"gstNumber":"123456789RT0001"}
         }"#;

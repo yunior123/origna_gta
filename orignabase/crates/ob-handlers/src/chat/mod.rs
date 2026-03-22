@@ -338,7 +338,7 @@ async fn buyer_has_chat_eligible_order(
     product_id: &str,
 ) -> Result<bool, ob_core::Error> {
     let query = format!(
-        "SELECT * FROM {} WHERE userId = $buyer_id AND {} IN ['DELIVERED', 'DISPUTED'] LIMIT 50",
+        "SELECT * FROM {} WHERE userId = $buyer_id AND {} IN ['delivered', 'disputed'] LIMIT 50",
         collections::ORDERS,
         fields::ORDER_STATUS
     );
@@ -872,7 +872,7 @@ async fn report_message(
         "messageId": req.message_id,
         "reporterId": uid,
         "reason": req.reason.unwrap_or_else(|| "Inappropriate content".into()),
-        "messageText": msg.get(fields::MESSAGE_TEXT).and_then(|v| v.as_str()).unwrap_or(""),
+        fields::MESSAGE_TEXT: msg.get(fields::MESSAGE_TEXT).and_then(|v| v.as_str()).unwrap_or(""),
         fields::SENDER_ID: msg.get(fields::SENDER_ID).and_then(|v| v.as_str()).unwrap_or(""),
         fields::STATUS: "pending",
         fields::CREATED_AT: chrono::Utc::now().to_rfc3339(),
@@ -1064,7 +1064,7 @@ mod tests {
                 json!({
                     "userId": buyer_id,
                     "productIds": [product_id],
-                    fields::ORDER_STATUS: "DELIVERED"
+                    fields::ORDER_STATUS: "delivered"
                 }),
             )
             .await
