@@ -353,6 +353,7 @@ pub mod fields {
     pub const AVG_RATING: &str = "avgRating";
     pub const TOTAL_REVIEWS: &str = "totalReviews";
     pub const IS_PERISHABLE: &str = "isPerishable";
+    pub const IS_AGE_RESTRICTED: &str = "isAgeRestricted";
 
     // Order fields
     pub const ORDER_ID: &str = "orderId";
@@ -392,7 +393,8 @@ pub mod fields {
     pub const PARTICIPANTS: &str = "participants";
     pub const LAST_MESSAGE: &str = "lastMessage";
     pub const LAST_MESSAGE_AT: &str = "lastMessageAt";
-    pub const UNREAD_COUNT: &str = "unreadCount";
+    pub const BUYER_UNREAD_COUNT: &str = "buyerUnreadCount";
+    pub const SELLER_UNREAD_COUNT: &str = "sellerUnreadCount";
     pub const MESSAGE_TEXT: &str = "text";
     pub const SENDER_ID: &str = "senderId";
     pub const READ: &str = "read";
@@ -835,6 +837,7 @@ mod tests {
         let _ = fields::AVG_RATING;
         let _ = fields::TOTAL_REVIEWS;
         let _ = fields::IS_PERISHABLE;
+        let _ = fields::IS_AGE_RESTRICTED;
         let _ = fields::ORDER_ID;
         let _ = fields::ORDER_STATUS;
         let _ = fields::RETURN_STATUS;
@@ -866,7 +869,8 @@ mod tests {
         let _ = fields::PARTICIPANTS;
         let _ = fields::LAST_MESSAGE;
         let _ = fields::LAST_MESSAGE_AT;
-        let _ = fields::UNREAD_COUNT;
+        let _ = fields::BUYER_UNREAD_COUNT;
+        let _ = fields::SELLER_UNREAD_COUNT;
         let _ = fields::MESSAGE_TEXT;
         let _ = fields::SENDER_ID;
         let _ = fields::READ;

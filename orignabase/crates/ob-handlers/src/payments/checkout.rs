@@ -302,7 +302,7 @@ async fn create_checkout_session(
 
         // Age verification for restricted items
         let age_restricted = product
-            .get("ageRestricted")
+            .get(fields::IS_AGE_RESTRICTED)
             .and_then(|v| v.as_bool())
             .unwrap_or(false);
         if age_restricted && !req.age_verification_accepted {
@@ -1164,7 +1164,7 @@ mod tests {
                     fields::LIFECYCLE_STATUS: "active",
                     fields::STOCK_QUANTITY: 3,
                     fields::PRICE_CENTS: 2500,
-                    "ageRestricted": true,
+                    fields::IS_AGE_RESTRICTED: true,
                     "isDigital": true,
                     fields::TITLE: "Restricted Digital",
                     fields::IMAGE_URLS: [],

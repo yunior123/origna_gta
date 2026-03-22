@@ -472,6 +472,13 @@ abstract final class Collections {
   static const messageReports =
       'message_reports'; // F-121: Flagged messages for review
 
+  // Cross-stack collections (used by Rust backend)
+  static const reviews = 'reviews';
+  static const buyerAddresses = 'buyer_addresses';
+  static const downloadSessions = 'download_sessions';
+  static const disputes = 'disputes';
+  static const meilisearchSyncFailures = 'meilisearch_sync_failures';
+
   // Financial audit (backend-only)
   static const platformDebt =
       'platform_debt'; // A-05/F-139: debt records when seller reversal fails due to zero balance
@@ -1020,7 +1027,10 @@ abstract final class Fields {
   // === ORDER ITEM FIELDS ===
   static const quantity = 'quantity';
   static const trackingNumber = 'trackingNumber';
-  static const carrier = 'carrier';
+  static const carrier =
+      'carrier'; // Alias for shippingCarrier (backend uses shippingCarrier)
+  static const shippingCarrier =
+      'shippingCarrier'; // Canonical field name used by Rust backend
   static const carrierNote =
       'carrierNote'; // Free-text override when carrier='other'
   static const shippedAt = 'shippedAt';

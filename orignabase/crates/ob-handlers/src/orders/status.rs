@@ -583,7 +583,7 @@ async fn update_order_status(
                 item["shippedAt"] = json!(now);
                 if let Some(ref tn) = tracking_number {
                     item["trackingNumber"] = json!(tn);
-                    item["carrier"] = json!(carrier.as_deref().unwrap_or(""));
+                    item[fields::SHIPPING_CARRIER] = json!(carrier.as_deref().unwrap_or(""));
                 }
                 any_updated = true;
             }
@@ -611,7 +611,7 @@ async fn update_order_status(
             update_data["shippedAt"] = json!(now.clone());
             if let Some(ref tn) = tracking_number {
                 update_data["trackingNumber"] = json!(tn);
-                update_data["carrier"] = json!(carrier.as_deref().unwrap_or(""));
+                update_data[fields::SHIPPING_CARRIER] = json!(carrier.as_deref().unwrap_or(""));
             }
         }
 
@@ -632,7 +632,6 @@ async fn update_order_status(
             }
             if let Some(ref c) = carrier {
                 email_order[fields::SHIPPING_CARRIER] = json!(c);
-                email_order["carrier"] = json!(c);
             }
             if let Some(ref tn) = tracking_number {
                 send_shipping_notification(&state, &email_order, tn, carrier.as_deref(), None)
@@ -668,7 +667,7 @@ async fn update_order_status(
                 item["shippedAt"] = json!(now);
                 if let Some(ref tn) = tracking_number {
                     item["trackingNumber"] = json!(tn);
-                    item["carrier"] = json!(carrier.as_deref().unwrap_or(""));
+                    item[fields::SHIPPING_CARRIER] = json!(carrier.as_deref().unwrap_or(""));
                 }
             }
         }
@@ -676,7 +675,7 @@ async fn update_order_status(
         update_data["shippedAt"] = json!(now);
         if let Some(ref tn) = tracking_number {
             update_data["trackingNumber"] = json!(tn);
-            update_data["carrier"] = json!(carrier.as_deref().unwrap_or(""));
+            update_data[fields::SHIPPING_CARRIER] = json!(carrier.as_deref().unwrap_or(""));
         }
     }
 
@@ -734,7 +733,6 @@ async fn update_order_status(
         }
         if let Some(ref c) = carrier {
             email_order[fields::SHIPPING_CARRIER] = json!(c);
-            email_order["carrier"] = json!(c);
         }
         if let Some(ref tn) = tracking_number {
             send_shipping_notification(&state, &email_order, tn, carrier.as_deref(), None).await;
@@ -877,7 +875,7 @@ async fn update_item_status(
                 items[idx]["trackingNumber"] = json!(tn);
             }
             if let Some(ref c) = carrier {
-                items[idx]["carrier"] = json!(c);
+                items[idx][fields::SHIPPING_CARRIER] = json!(c);
             }
         }
         DeliveryStatus::Delivered => {
@@ -2609,7 +2607,7 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(order["trackingNumber"], "TN999");
-        assert_eq!(order["carrier"], "FedEx");
+        assert_eq!(order[fields::SHIPPING_CARRIER], "FedEx");
     }
 
     // Test seller ships but not all items shipped yet (e.g., one item still pending from same seller)
@@ -2697,14 +2695,14 @@ mod tests {
         // p1 was pending → should be shipped with tracking
         assert_eq!(items[0]["status"], "shipped");
         assert_eq!(items[0]["trackingNumber"], "TRACK_ADM");
-        assert_eq!(items[0]["carrier"], "DHL");
+        assert_eq!(items[0][fields::SHIPPING_CARRIER], "DHL");
         // p2 was delivered → stays delivered (no tracking added)
         assert_eq!(items[1]["status"], "delivered");
         // p3 was refunded → stays refunded
         assert_eq!(items[2]["status"], "refunded");
         // Order-level tracking
         assert_eq!(order["trackingNumber"], "TRACK_ADM");
-        assert_eq!(order["carrier"], "DHL");
+        assert_eq!(order[fields::SHIPPING_CARRIER], "DHL");
     }
 
     // Admin SHIPPED cascade without tracking (lines 567-577 only, no tracking)
@@ -3005,7 +3003,7 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(order["items"][0]["trackingNumber"], "TRACK1");
-        assert_eq!(order["items"][0]["carrier"], "UPS");
+        assert_eq!(order["items"][0][fields::SHIPPING_CARRIER], "UPS");
     }
 
     // -----------------------------------------------------------------------

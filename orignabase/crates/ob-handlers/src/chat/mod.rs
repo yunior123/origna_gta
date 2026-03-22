@@ -457,8 +457,8 @@ async fn get_or_create_chat(
         fields::SELLER_ID: seller_id,
         "productTitle": product_name,
         "productImageUrl": product_image,
-        "buyerUnreadCount": 0,
-        "sellerUnreadCount": 0,
+        fields::BUYER_UNREAD_COUNT: 0,
+        fields::SELLER_UNREAD_COUNT: 0,
         "messageCount": 0,
         fields::CREATED_AT: now,
         fields::UPDATED_AT: now,
@@ -634,9 +634,9 @@ async fn send_message(
 
     // Update thread
     let target_unread = if uid == buyer_id {
-        "sellerUnreadCount"
+        fields::SELLER_UNREAD_COUNT
     } else {
-        "buyerUnreadCount"
+        fields::BUYER_UNREAD_COUNT
     };
     let mut thread_update = json!({
         fields::LAST_MESSAGE: if text.len() > 100 { &text[..100] } else { &text },
@@ -738,9 +738,9 @@ async fn mark_messages_read(
 
     if count > 0 {
         let unread_field = if uid == buyer_id {
-            "buyerUnreadCount"
+            fields::BUYER_UNREAD_COUNT
         } else {
-            "sellerUnreadCount"
+            fields::SELLER_UNREAD_COUNT
         };
         state
             .db

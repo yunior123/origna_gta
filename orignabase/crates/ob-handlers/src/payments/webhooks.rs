@@ -222,8 +222,11 @@ async fn is_duplicate_webhook(
     state: &HandlersState,
     event_id: &str,
 ) -> Result<bool, ob_core::Error> {
-    // Validate event ID format before querying
-    ob_core::validate_surreal_record_id(event_id)?;
+    // Stripe event IDs are "evt_xxx" format, not SurrealDB record IDs.
+    // Just validate non-empty and reasonable length.
+    if event_id.is_empty() || event_id.len() > 512 {
+        return Err(ob_core::Error::Validation("Invalid webhook event ID".into()));
+    }
 
     let result = state
         .db

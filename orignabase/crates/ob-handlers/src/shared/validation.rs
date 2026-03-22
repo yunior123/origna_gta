@@ -20,20 +20,22 @@ pub fn validate_amount_cents(field: &str, cents: i64) -> ob_core::Result<()> {
     if cents < 0 {
         return Err(Error::Validation(format!("{field} cannot be negative")));
     }
-    if cents > 100_000_000 {
-        // $1,000,000 max
+    if cents > 10_000_000 {
+        // $100,000 CAD max (aligned with checkout limit)
         return Err(Error::Validation(format!("{field} exceeds maximum")));
     }
     Ok(())
 }
 
-/// Validate an email address (basic check).
+/// Validate an email address using RFC 5322 simplified regex.
 pub fn validate_email(email: &str) -> ob_core::Result<()> {
-    if !email.contains('@') || !email.contains('.') {
-        return Err(Error::Validation("Invalid email address".into()));
-    }
     if email.len() > 254 {
         return Err(Error::Validation("Email too long".into()));
+    }
+    let email_regex = regex_lite::Regex::new(r"^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$")
+        .expect("static email regex should compile");
+    if !email_regex.is_match(email) {
+        return Err(Error::Validation("Invalid email address".into()));
     }
     Ok(())
 }

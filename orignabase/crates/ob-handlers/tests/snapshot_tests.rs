@@ -269,7 +269,7 @@ fn snapshot_validate_amount_cents_zero() {
 
 #[test]
 fn snapshot_validate_amount_cents_max_allowed() {
-    let result = validate_amount_cents("price", 100_000_000);
+    let result = validate_amount_cents("price", 10_000_000);
     assert!(result.is_ok());
 }
 
