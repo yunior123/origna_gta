@@ -48,10 +48,17 @@ impl Error {
 impl IntoResponse for Error {
     fn into_response(self) -> Response {
         let status = self.status_code();
+        // Never leak internal/database error details to clients
+        let message = match &self {
+            Error::Database(_) | Error::Internal(_) | Error::Config(_) => {
+                "Internal server error".to_string()
+            }
+            _ => self.to_string(),
+        };
         let body = serde_json::json!({
             "error": {
                 "code": status.as_u16(),
-                "message": self.to_string(),
+                "message": message,
             }
         });
         (status, axum::Json(body)).into_response()
@@ -223,6 +230,8 @@ mod tests {
         let bytes = resp.into_body().collect().await.unwrap().to_bytes();
         let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
         assert_eq!(json["error"]["code"], 500);
+        // Must NOT leak internal error details
+        assert_eq!(json["error"]["message"], "Internal server error");
     }
 
     #[tokio::test]
@@ -237,6 +246,23 @@ mod tests {
         let e = Error::Database("timeout".into());
         let resp = e.into_response();
         assert_eq!(resp.status(), StatusCode::INTERNAL_SERVER_ERROR);
+
+        let bytes = resp.into_body().collect().await.unwrap().to_bytes();
+        let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        // Must NOT leak database error details
+        assert_eq!(json["error"]["message"], "Internal server error");
+    }
+
+    #[tokio::test]
+    async fn test_into_response_config_hides_details() {
+        let e = Error::Config("secret config path".into());
+        let resp = e.into_response();
+        assert_eq!(resp.status(), StatusCode::INTERNAL_SERVER_ERROR);
+
+        let bytes = resp.into_body().collect().await.unwrap().to_bytes();
+        let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        // Must NOT leak config error details
+        assert_eq!(json["error"]["message"], "Internal server error");
     }
 
     #[test]

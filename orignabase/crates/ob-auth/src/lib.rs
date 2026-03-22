@@ -16,7 +16,7 @@ pub use jwt::{
     rotate_keys,
 };
 pub use key_rotation::{KeyRotationManager, fingerprint_public_key};
-pub use middleware::AuthContext;
+pub use middleware::{AuthContext, assert_test_mode_not_in_production};
 pub use oauth::{OAuthProvider, OAuthUserInfo};
 pub use rate_limit::RateLimiter;
 pub use turnstile::validate_turnstile_token;

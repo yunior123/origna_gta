@@ -1,8 +1,19 @@
 use axum::{extract::Request, http::header::AUTHORIZATION, middleware::Next, response::Response};
 use ob_core::Error;
 use std::sync::Arc;
+use tracing::warn;
 
 use crate::jwt::{Claims, JwtKeys, verify_token};
+
+/// Panics at startup if OB_TEST_MODE=1 in production environment.
+/// Call this during server initialization to prevent accidental production bypass.
+pub fn assert_test_mode_not_in_production() {
+    let test_mode = std::env::var("OB_TEST_MODE").unwrap_or_default() == "1";
+    let environment = std::env::var("ENVIRONMENT").unwrap_or_default();
+    if test_mode && environment == "production" {
+        panic!("FATAL: OB_TEST_MODE=1 is set in production environment. This bypasses authentication and is a critical security risk. Remove OB_TEST_MODE or set ENVIRONMENT to a non-production value.");
+    }
+}
 
 /// Extracted auth context available to handlers.
 #[derive(Debug, Clone)]
@@ -58,10 +69,14 @@ pub async fn auth_extractor(mut request: Request, next: Next) -> Result<Response
             if let Some(keys) = &jwt_keys {
                 match verify_token(token, keys) {
                     Ok(claims) if claims.typ == "access" => AuthContext::from_claims(claims),
-                    Ok(_) if test_mode => AuthContext::anonymous(),
+                    Ok(_) if test_mode => {
+                        warn!("OB_TEST_MODE: bypassing auth for invalid token type — falling back to anonymous");
+                        AuthContext::anonymous()
+                    }
                     Ok(_) => return Err(Error::Auth("Invalid token type".into())),
                     Err(e) => {
                         if test_mode {
+                            warn!("OB_TEST_MODE: bypassing auth for invalid JWT ({e}) — falling back to anonymous");
                             AuthContext::anonymous()
                         } else {
                             // CRITICAL FIX: Authorization header present but JWT invalid → 401
@@ -74,6 +89,7 @@ pub async fn auth_extractor(mut request: Request, next: Next) -> Result<Response
                 // JWT keys not available, but Authorization header was present
                 // Return error instead of silently becoming anonymous
                 if test_mode {
+                    warn!("OB_TEST_MODE: JWT keys not configured — falling back to anonymous");
                     AuthContext::anonymous()
                 } else {
                     return Err(Error::Auth("JWT validation keys not configured".into()));
@@ -82,6 +98,7 @@ pub async fn auth_extractor(mut request: Request, next: Next) -> Result<Response
         } else {
             // Authorization header present but doesn't start with "Bearer "
             if test_mode {
+                warn!("OB_TEST_MODE: invalid Authorization header format — falling back to anonymous");
                 AuthContext::anonymous()
             } else {
                 return Err(Error::Auth("Invalid Authorization header format".into()));

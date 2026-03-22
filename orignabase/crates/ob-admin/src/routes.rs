@@ -148,6 +148,16 @@ async fn dashboard() -> Html<&'static str> {
 
 fn require_admin(auth: &AuthContext) -> Result<()> {
     if std::env::var("OB_TEST_MODE").unwrap_or_default() == "1" {
+        // Guard: OB_TEST_MODE must never be active in production
+        let environment = std::env::var("ENVIRONMENT").unwrap_or_default();
+        if environment == "production" {
+            tracing::error!("CRITICAL: OB_TEST_MODE=1 in production — refusing admin bypass");
+            return Err(Error::Forbidden("Admin access required".into()));
+        }
+        tracing::warn!(
+            "OB_TEST_MODE: bypassing admin check for user_id={:?}",
+            auth.user_id
+        );
         return Ok(());
     }
     if !auth.authenticated {
