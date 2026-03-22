@@ -949,6 +949,14 @@ mod tests {
     use ob_database::DatabaseClient;
     use std::sync::Arc;
 
+    fn now_timestamp() -> String {
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
+            .to_string()
+    }
+
     fn make_hmac_signature(secret: &str, body: &[u8], timestamp: &str) -> String {
         let signed_content = format!("{}.{}", timestamp, String::from_utf8_lossy(body));
         let mut mac =
@@ -978,9 +986,9 @@ mod tests {
     #[test]
     fn test_signature_verification_valid() {
         let secret = "test_secret";
-        let timestamp = "1614556800";
+        let ts = now_timestamp();
         let body = br#"{"type":"payment_intent.succeeded"}"#;
-        let signature = make_hmac_signature(secret, body, timestamp);
+        let signature = make_hmac_signature(secret, body, &ts);
         assert!(verify_stripe_signature(body, &signature, secret));
     }
 
@@ -1036,7 +1044,8 @@ mod tests {
     fn test_signature_verification_empty_body() {
         let secret = "STRIPE_WEBHOOK_SECRET_REDACTED";
         let body = b"";
-        let signature = make_hmac_signature(secret, body, "1614556800");
+        let ts = now_timestamp();
+        let signature = make_hmac_signature(secret, body, &ts);
         assert!(verify_stripe_signature(body, &signature, secret));
     }
 
@@ -1044,7 +1053,8 @@ mod tests {
     fn test_signature_verification_long_body() {
         let secret = "STRIPE_WEBHOOK_SECRET_REDACTED";
         let body = br#"{"data":{"object":{"id":"pi_large","metadata":{"order_id":"ord_123","coupon_code":"SAVE10"},"amount":99999,"currency":"cad"}}}"#;
-        let signature = make_hmac_signature(secret, body, "1700000000");
+        let ts = now_timestamp();
+        let signature = make_hmac_signature(secret, body, &ts);
         assert!(verify_stripe_signature(body, &signature, secret));
     }
 
@@ -1052,7 +1062,8 @@ mod tests {
     fn test_signature_verification_signature_format_with_extra_parts() {
         let secret = "STRIPE_WEBHOOK_SECRET_REDACTED";
         let body = br#"{"id":"evt_1"}"#;
-        let sig = make_hmac_signature(secret, body, "1614556800");
+        let ts = now_timestamp();
+        let sig = make_hmac_signature(secret, body, &ts);
         let extended = format!("{},v2=extra", sig);
         assert!(verify_stripe_signature(body, &extended, secret));
     }
