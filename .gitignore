@@ -104,6 +104,18 @@ TOOLS.md
 telegram_bot/
 telegram_bot.py
 
+# --- OrignaBase Rust build artifacts ---
+orignabase/target/
+orignabase/*.profraw
+orignabase/data/keys/
+orignabase/fuzz/target/
+orignabase/Helvetica-*.ttf
+orignabase/orignabase.toml
+orignabase/secrets-*.json
+orignabase/docker/.env
+orignabase/docker/.env.staging
+orignabase/docker/.env.prod
+
 # --- IDE ---
 # .vscode/ is kept for shared tasks/settings
 .worktrees/

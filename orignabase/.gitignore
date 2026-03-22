@@ -1,0 +1,22 @@
+/target
+**/*.rs.bk
+*.bak
+*.swp
+*.swo
+.env
+docker/.env
+docker/.env.staging
+docker/.env.prod
+.DS_Store
+orignabase.toml
+secrets-staging.json
+secrets-prod.json
+data/keys/
+
+# Coverage
+coverage/
+*.profraw
+
+# Test font symlinks (for PDF coverage tests)
+Helvetica-*.ttf
+fuzz/target/

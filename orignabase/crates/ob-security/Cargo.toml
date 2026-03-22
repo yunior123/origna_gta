@@ -1,0 +1,28 @@
+[package]
+name = "ob-security"
+description = "Security rules DSL parser and evaluator for OrignaBase"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+ob-core = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+pest = { workspace = true }
+pest_derive = { workspace = true }
+tracing = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+
+[dev-dependencies]
+tokio-test = { workspace = true }
+criterion = { workspace = true }
+proptest = { workspace = true }
+insta = { workspace = true }
+rstest = { workspace = true }
+
+[[bench]]
+name = "security_bench"
+harness = false
+path = "../../benchmarks/criterion/security_bench.rs"

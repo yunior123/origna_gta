@@ -1,0 +1,483 @@
+use aws_config::BehaviorVersion;
+use aws_credential_types::Credentials;
+use aws_sdk_s3::{
+    Client,
+    config::{Builder as S3ConfigBuilder, Region},
+    primitives::ByteStream,
+};
+use ob_core::{Error, Result};
+
+use crate::{ObjectMeta, StorageBackend};
+
+/// Configuration for S3-compatible storage (AWS S3, Cloudflare R2, MinIO).
+#[derive(Debug, Clone)]
+pub struct S3Config {
+    pub bucket: String,
+    pub region: String,
+    pub endpoint: Option<String>,
+    pub access_key: String,
+    pub secret_key: String,
+}
+
+impl S3Config {
+    /// Create from environment variables (OB_STORAGE__*).
+    pub fn from_env() -> Option<Self> {
+        Some(Self {
+            bucket: std::env::var("OB_STORAGE__S3_BUCKET").ok()?,
+            region: std::env::var("OB_STORAGE__S3_REGION").unwrap_or_else(|_| "auto".to_string()),
+            endpoint: std::env::var("OB_STORAGE__S3_ENDPOINT").ok(),
+            access_key: std::env::var("OB_STORAGE__S3_ACCESS_KEY").ok()?,
+            secret_key: std::env::var("OB_STORAGE__S3_SECRET_KEY").ok()?,
+        })
+    }
+}
+
+/// S3-compatible storage backend.
+///
+/// Works with AWS S3, Cloudflare R2, MinIO, and other S3-compatible services.
+pub struct S3Storage {
+    client: Client,
+    bucket: String,
+}
+
+impl S3Storage {
+    pub async fn new(config: S3Config) -> Result<Self> {
+        let creds = Credentials::new(
+            &config.access_key,
+            &config.secret_key,
+            None,
+            None,
+            "orignabase",
+        );
+
+        let mut s3_config = S3ConfigBuilder::new()
+            .behavior_version(BehaviorVersion::latest())
+            .region(Region::new(config.region))
+            .credentials_provider(creds)
+            .force_path_style(true);
+
+        if let Some(endpoint) = &config.endpoint {
+            s3_config = s3_config.endpoint_url(endpoint);
+        }
+
+        let client = Client::from_conf(s3_config.build());
+
+        Ok(Self {
+            client,
+            bucket: config.bucket,
+        })
+    }
+
+    /// Generate a presigned URL for downloading an object.
+    pub async fn presign_download(&self, path: &str, expires_secs: u64) -> Result<String> {
+        use aws_sdk_s3::presigning::PresigningConfig;
+        use std::time::Duration;
+
+        let presigning_config = PresigningConfig::builder()
+            .expires_in(Duration::from_secs(expires_secs))
+            .build()
+            .map_err(|e| Error::Internal(format!("Presign config error: {e}")))?;
+
+        let presigned = self
+            .client
+            .get_object()
+            .bucket(&self.bucket)
+            .key(path)
+            .presigned(presigning_config)
+            .await
+            .map_err(|e| Error::Internal(format!("Presign failed: {e}")))?;
+
+        Ok(presigned.uri().to_string())
+    }
+
+    /// Generate a presigned URL for uploading an object.
+    pub async fn presign_upload(
+        &self,
+        path: &str,
+        content_type: &str,
+        expires_secs: u64,
+    ) -> Result<String> {
+        use aws_sdk_s3::presigning::PresigningConfig;
+        use std::time::Duration;
+
+        let presigning_config = PresigningConfig::builder()
+            .expires_in(Duration::from_secs(expires_secs))
+            .build()
+            .map_err(|e| Error::Internal(format!("Presign config error: {e}")))?;
+
+        let presigned = self
+            .client
+            .put_object()
+            .bucket(&self.bucket)
+            .key(path)
+            .content_type(content_type)
+            .presigned(presigning_config)
+            .await
+            .map_err(|e| Error::Internal(format!("Presign failed: {e}")))?;
+
+        Ok(presigned.uri().to_string())
+    }
+}
+
+impl StorageBackend for S3Storage {
+    async fn upload(&self, path: &str, data: &[u8], content_type: &str) -> Result<ObjectMeta> {
+        let body = ByteStream::from(data.to_vec());
+
+        self.client
+            .put_object()
+            .bucket(&self.bucket)
+            .key(path)
+            .body(body)
+            .content_type(content_type)
+            .send()
+            .await
+            .map_err(|e| Error::Internal(format!("S3 upload failed: {e}")))?;
+
+        Ok(ObjectMeta {
+            path: path.to_string(),
+            size: data.len() as u64,
+            content_type: content_type.to_string(),
+            created_at: chrono::Utc::now().to_rfc3339(),
+            updated_at: chrono::Utc::now().to_rfc3339(),
+        })
+    }
+
+    async fn download(&self, path: &str) -> Result<Vec<u8>> {
+        let resp = self
+            .client
+            .get_object()
+            .bucket(&self.bucket)
+            .key(path)
+            .send()
+            .await
+            .map_err(|e| Error::NotFound(format!("S3 download failed: {e}")))?;
+
+        let bytes = resp
+            .body
+            .collect()
+            .await
+            .map_err(|e| Error::Internal(format!("S3 read body failed: {e}")))?
+            .into_bytes()
+            .to_vec();
+
+        Ok(bytes)
+    }
+
+    async fn delete(&self, path: &str) -> Result<()> {
+        self.client
+            .delete_object()
+            .bucket(&self.bucket)
+            .key(path)
+            .send()
+            .await
+            .map_err(|e| Error::Internal(format!("S3 delete failed: {e}")))?;
+
+        Ok(())
+    }
+
+    async fn exists(&self, path: &str) -> Result<bool> {
+        match self
+            .client
+            .head_object()
+            .bucket(&self.bucket)
+            .key(path)
+            .send()
+            .await
+        {
+            Ok(_) => Ok(true),
+            Err(_) => Ok(false),
+        }
+    }
+
+    async fn metadata(&self, path: &str) -> Result<ObjectMeta> {
+        let resp = self
+            .client
+            .head_object()
+            .bucket(&self.bucket)
+            .key(path)
+            .send()
+            .await
+            .map_err(|e| Error::NotFound(format!("S3 metadata failed: {e}")))?;
+
+        Ok(ObjectMeta {
+            path: path.to_string(),
+            size: resp.content_length().unwrap_or(0) as u64,
+            content_type: resp
+                .content_type()
+                .unwrap_or("application/octet-stream")
+                .to_string(),
+            created_at: resp
+                .last_modified()
+                .map(|t| t.to_string())
+                .unwrap_or_default(),
+            updated_at: resp
+                .last_modified()
+                .map(|t| t.to_string())
+                .unwrap_or_default(),
+        })
+    }
+
+    async fn list(&self, prefix: &str) -> Result<Vec<ObjectMeta>> {
+        let resp = self
+            .client
+            .list_objects_v2()
+            .bucket(&self.bucket)
+            .prefix(prefix)
+            .send()
+            .await
+            .map_err(|e| Error::Internal(format!("S3 list failed: {e}")))?;
+
+        let objects = resp
+            .contents()
+            .iter()
+            .map(|obj| ObjectMeta {
+                path: obj.key().unwrap_or_default().to_string(),
+                size: obj.size().unwrap_or(0) as u64,
+                content_type: "application/octet-stream".to_string(),
+                created_at: obj
+                    .last_modified()
+                    .map(|t| t.to_string())
+                    .unwrap_or_default(),
+                updated_at: obj
+                    .last_modified()
+                    .map(|t| t.to_string())
+                    .unwrap_or_default(),
+            })
+            .collect();
+
+        Ok(objects)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Mutex;
+
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
+
+    #[test]
+    fn test_s3_config_fields() {
+        let config = S3Config {
+            bucket: "test-bucket".into(),
+            region: "us-east-1".into(),
+            endpoint: Some("http://localhost:9000".into()),
+            access_key: "access".into(),
+            secret_key: "secret".into(),
+        };
+        assert_eq!(config.bucket, "test-bucket");
+        assert_eq!(config.endpoint.as_deref(), Some("http://localhost:9000"));
+    }
+
+    #[test]
+    fn test_s3_config_from_env_missing() {
+        let config = S3Config::from_env();
+        let _ = config;
+    }
+
+    #[test]
+    fn test_s3_config_clone() {
+        let config = S3Config {
+            bucket: "bucket".into(),
+            region: "us-east-1".into(),
+            endpoint: None,
+            access_key: "key".into(),
+            secret_key: "secret".into(),
+        };
+        let cloned = config.clone();
+        assert_eq!(cloned.bucket, config.bucket);
+        assert_eq!(cloned.region, config.region);
+        assert_eq!(cloned.endpoint, config.endpoint);
+    }
+
+    #[test]
+    fn test_s3_config_debug() {
+        let config = S3Config {
+            bucket: "my-bucket".into(),
+            region: "eu-west-1".into(),
+            endpoint: Some("http://localhost:9000".into()),
+            access_key: "ak".into(),
+            secret_key: "sk".into(),
+        };
+        let debug_str = format!("{config:?}");
+        assert!(debug_str.contains("my-bucket"));
+        assert!(debug_str.contains("eu-west-1"));
+        assert!(debug_str.contains("localhost:9000"));
+    }
+
+    #[test]
+    fn test_s3_config_from_env_with_all_vars() {
+        let _g = ENV_LOCK.lock().unwrap();
+        unsafe { std::env::set_var("OB_STORAGE__S3_BUCKET", "test-bucket"); }
+        unsafe { std::env::set_var("OB_STORAGE__S3_REGION", "us-west-2"); }
+        unsafe { std::env::set_var("OB_STORAGE__S3_ENDPOINT", "http://localhost:9000"); }
+        unsafe { std::env::set_var("OB_STORAGE__S3_ACCESS_KEY", "test-key"); }
+        unsafe { std::env::set_var("OB_STORAGE__S3_SECRET_KEY", "test-secret"); }
+
+        let config = S3Config::from_env().unwrap();
+        assert_eq!(config.bucket, "test-bucket");
+        assert_eq!(config.region, "us-west-2");
+        assert_eq!(config.endpoint, Some("http://localhost:9000".to_string()));
+        assert_eq!(config.access_key, "test-key");
+        assert_eq!(config.secret_key, "test-secret");
+
+        unsafe { std::env::remove_var("OB_STORAGE__S3_BUCKET"); }
+        unsafe { std::env::remove_var("OB_STORAGE__S3_REGION"); }
+        unsafe { std::env::remove_var("OB_STORAGE__S3_ENDPOINT"); }
+        unsafe { std::env::remove_var("OB_STORAGE__S3_ACCESS_KEY"); }
+        unsafe { std::env::remove_var("OB_STORAGE__S3_SECRET_KEY"); }
+    }
+
+    #[test]
+    fn test_s3_config_from_env_region_defaults_to_auto() {
+        let _g = ENV_LOCK.lock().unwrap();
+        unsafe { std::env::set_var("OB_STORAGE__S3_BUCKET", "test-bucket-rto"); }
+        unsafe { std::env::set_var("OB_STORAGE__S3_ACCESS_KEY", "test-key-rto"); }
+        unsafe { std::env::set_var("OB_STORAGE__S3_SECRET_KEY", "test-secret-rto"); }
+        unsafe { std::env::remove_var("OB_STORAGE__S3_REGION"); }
+        unsafe { std::env::remove_var("OB_STORAGE__S3_ENDPOINT"); }
+
+        let config = S3Config::from_env().unwrap();
+        assert_eq!(config.region, "auto");
+        assert!(config.endpoint.is_none());
+
+        unsafe { std::env::remove_var("OB_STORAGE__S3_BUCKET"); }
+        unsafe { std::env::remove_var("OB_STORAGE__S3_ACCESS_KEY"); }
+        unsafe { std::env::remove_var("OB_STORAGE__S3_SECRET_KEY"); }
+    }
+
+    #[test]
+    fn test_s3_config_from_env_missing_bucket() {
+        let _g = ENV_LOCK.lock().unwrap();
+        unsafe { std::env::remove_var("OB_STORAGE__S3_BUCKET"); }
+        unsafe { std::env::remove_var("OB_STORAGE__S3_ACCESS_KEY"); }
+        unsafe { std::env::remove_var("OB_STORAGE__S3_SECRET_KEY"); }
+        assert!(S3Config::from_env().is_none());
+    }
+
+    #[test]
+    fn test_s3_config_from_env_missing_access_key() {
+        let _g = ENV_LOCK.lock().unwrap();
+        unsafe { std::env::set_var("OB_STORAGE__S3_BUCKET", "bucket"); }
+        unsafe { std::env::remove_var("OB_STORAGE__S3_ACCESS_KEY"); }
+        unsafe { std::env::remove_var("OB_STORAGE__S3_SECRET_KEY"); }
+        assert!(S3Config::from_env().is_none());
+        unsafe { std::env::remove_var("OB_STORAGE__S3_BUCKET"); }
+    }
+
+    #[test]
+    fn test_s3_config_from_env_missing_secret_key() {
+        let _g = ENV_LOCK.lock().unwrap();
+        unsafe { std::env::set_var("OB_STORAGE__S3_BUCKET", "bucket"); }
+        unsafe { std::env::set_var("OB_STORAGE__S3_ACCESS_KEY", "key"); }
+        unsafe { std::env::remove_var("OB_STORAGE__S3_SECRET_KEY"); }
+        assert!(S3Config::from_env().is_none());
+        unsafe { std::env::remove_var("OB_STORAGE__S3_BUCKET"); }
+        unsafe { std::env::remove_var("OB_STORAGE__S3_ACCESS_KEY"); }
+    }
+
+    #[test]
+    fn test_s3_config_empty_strings() {
+        let config = S3Config {
+            bucket: "".into(),
+            region: "".into(),
+            endpoint: None,
+            access_key: "".into(),
+            secret_key: "".into(),
+        };
+        assert!(config.bucket.is_empty());
+        assert!(config.region.is_empty());
+    }
+
+    #[test]
+    fn test_s3_config_with_endpoint_none() {
+        let config = S3Config {
+            bucket: "b".into(),
+            region: "r".into(),
+            endpoint: None,
+            access_key: "a".into(),
+            secret_key: "s".into(),
+        };
+        assert!(config.endpoint.is_none());
+    }
+
+    #[test]
+    fn test_s3_config_debug_shows_all_fields() {
+        let config = S3Config {
+            bucket: "b".into(),
+            region: "r".into(),
+            endpoint: None,
+            access_key: "ak".into(),
+            secret_key: "sk".into(),
+        };
+        let debug_str = format!("{config:?}");
+        assert!(debug_str.contains("bucket"));
+        assert!(debug_str.contains("region"));
+        assert!(debug_str.contains("endpoint"));
+        assert!(debug_str.contains("access_key"));
+        assert!(debug_str.contains("secret_key"));
+        assert!(debug_str.contains("ak"));
+        assert!(debug_str.contains("sk"));
+    }
+
+    #[test]
+    fn test_s3_config_clone_preserves_all_fields() {
+        let config = S3Config {
+            bucket: "b".into(),
+            region: "r".into(),
+            endpoint: Some("http://s3:9000".into()),
+            access_key: "ak".into(),
+            secret_key: "sk".into(),
+        };
+        let clone = config.clone();
+        assert_eq!(clone.bucket, config.bucket);
+        assert_eq!(clone.region, config.region);
+        assert_eq!(clone.endpoint, config.endpoint);
+        assert_eq!(clone.access_key, config.access_key);
+        assert_eq!(clone.secret_key, config.secret_key);
+    }
+
+    #[test]
+    fn test_s3_config_partial_env_missing_access_key() {
+        let _g = ENV_LOCK.lock().unwrap();
+        unsafe { std::env::set_var("OB_STORAGE__S3_BUCKET", "b"); }
+        unsafe { std::env::set_var("OB_STORAGE__S3_REGION", "us-east-1"); }
+        unsafe { std::env::set_var("OB_STORAGE__S3_SECRET_KEY", "sk"); }
+        unsafe { std::env::remove_var("OB_STORAGE__S3_ACCESS_KEY"); }
+        unsafe { std::env::remove_var("OB_STORAGE__S3_ENDPOINT"); }
+        assert!(S3Config::from_env().is_none());
+        unsafe { std::env::remove_var("OB_STORAGE__S3_BUCKET"); }
+        unsafe { std::env::remove_var("OB_STORAGE__S3_REGION"); }
+        unsafe { std::env::remove_var("OB_STORAGE__S3_SECRET_KEY"); }
+    }
+
+    #[test]
+    fn test_s3_config_region_empty_string_is_used() {
+        let _g = ENV_LOCK.lock().unwrap();
+        unsafe { std::env::set_var("OB_STORAGE__S3_BUCKET", "b"); }
+        unsafe { std::env::set_var("OB_STORAGE__S3_REGION", ""); }
+        unsafe { std::env::set_var("OB_STORAGE__S3_ACCESS_KEY", "ak"); }
+        unsafe { std::env::set_var("OB_STORAGE__S3_SECRET_KEY", "sk"); }
+        unsafe { std::env::remove_var("OB_STORAGE__S3_ENDPOINT"); }
+        let config = S3Config::from_env().unwrap();
+        assert_eq!(config.region, "");
+        unsafe { std::env::remove_var("OB_STORAGE__S3_BUCKET"); }
+        unsafe { std::env::remove_var("OB_STORAGE__S3_REGION"); }
+        unsafe { std::env::remove_var("OB_STORAGE__S3_ACCESS_KEY"); }
+        unsafe { std::env::remove_var("OB_STORAGE__S3_SECRET_KEY"); }
+    }
+
+    #[test]
+    fn test_s3_config_field_access() {
+        let config = S3Config {
+            bucket: "photos".into(),
+            region: "eu-central-1".into(),
+            endpoint: Some("https://r2.cloudflarestorage.com".into()),
+            access_key: "key1".into(),
+            secret_key: "secret1".into(),
+        };
+        assert_eq!(config.bucket.len(), 6);
+        assert_eq!(config.region, "eu-central-1");
+        assert!(config.endpoint.as_ref().unwrap().contains("cloudflare"));
+    }
+}

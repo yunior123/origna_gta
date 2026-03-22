@@ -4,12 +4,12 @@ Last updated: 2026-03-22
 
 ## Overview
 
-Monorepo for Origna GTA, a Canada-first multi-vendor e-commerce platform.
+Unified monorepo for Origna GTA, a Canada-first multi-vendor e-commerce platform. Frontend and backend live in the same repo.
 
-| Layer | Technology |
-|-------|-----------|
-| Mobile/Web frontend | Flutter 3.x + Dart, Riverpod, Freezed |
-| Backend API | OrignaBase (Rust, hosted on VPS 204.168.137.16) |
+| Layer | Directory | Technology |
+|-------|-----------|-----------|
+| Mobile/Web frontend | `origna_gta/` | Flutter 3.x + Dart, Riverpod, Freezed |
+| Backend API | `orignabase/` | OrignaBase (Rust, hosted on VPS 204.168.137.16) |
 | Database | SurrealDB v2 (on VPS, via OrignaBase) |
 | Search | Meilisearch v1.12 (on VPS, via OrignaBase) |
 | Payments | Stripe (Checkout + Connect + webhooks) |
@@ -25,8 +25,8 @@ No Firebase. No Cloud Functions. No Firestore. All backend is OrignaBase on the 
 ## Directory Structure
 
 ```
-origna_gta/                        # repo root
-├── origna_gta/                    # Flutter app
+origna_gta/                        # repo root (monorepo: frontend + backend)
+├── origna_gta/                    # Flutter app (frontend)
 │   ├── lib/
 │   │   ├── main.dart
 │   │   ├── origna_app.dart
@@ -88,6 +88,25 @@ origna_gta/                        # repo root
 │   ├── specs/                     # Same 114 specs as e2e/
 │   ├── lib/config.ts
 │   └── run-tests.sh
+├── orignabase/                    # Rust backend (OrignaBase BaaS)
+│   ├── Cargo.toml                 # Workspace manifest (16 crates)
+│   ├── crates/
+│   │   ├── orignabase/            # Binary entry point, CLI, server assembly
+│   │   ├── ob-core/               # Config, AppState, error types
+│   │   ├── ob-database/           # SurrealDB client, CRUD, query translator
+│   │   ├── ob-auth/               # JWT, Argon2id, OAuth, MFA/TOTP
+│   │   ├── ob-graphql/            # Dynamic GraphQL schema + resolvers
+│   │   ├── ob-security/           # Rules DSL parser (pest) + evaluator
+│   │   ├── ob-realtime/           # WebSocket subscriptions, presence
+│   │   ├── ob-storage/            # Local filesystem, S3/R2, signed URLs
+│   │   ├── ob-search/             # Meilisearch client + auto-sync
+│   │   ├── ob-functions/          # WASM runtime (wasmi), triggers
+│   │   ├── ob-analytics/          # Privacy-first event tracking
+│   │   ├── ob-admin/              # Schema mgmt, HTML dashboard
+│   │   ├── ob-notifications/      # FCM push proxy, device tokens
+│   │   ├── ob-handlers/           # Business logic (Stripe, orders, chat)
+│   │   └── ob-mcp/                # MCP server (JSON-RPC 2.0)
+│   └── sdks/flutter/orignabase/   # OrignaBase Flutter/Dart SDK
 ├── scripts/
 │   ├── deploy_web.sh              # VPS web deploy (staged releases)
 │   ├── run_quality_gate.sh        # 80% coverage threshold
