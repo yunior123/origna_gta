@@ -131,6 +131,26 @@ async fn handle_stripe_webhook(
                 .await
         }
 
+        // Checkout Session events (preferred for Checkout Sessions flow)
+        "checkout.session.completed" => {
+            handle_checkout_session_completed(&state, &event.data).await
+        }
+        "checkout.session.expired" => {
+            handle_checkout_session_expired(&state, &event.data).await
+        }
+        "checkout.session.async_payment_succeeded" => {
+            handle_checkout_session_async_payment_succeeded(&state, &event.data).await
+        }
+        "checkout.session.async_payment_failed" => {
+            handle_checkout_session_async_payment_failed(&state, &event.data).await
+        }
+
+        // Charge dispute events
+        "charge.dispute.created" => handle_charge_dispute_created(&state, &event.data).await,
+
+        // Stripe Connect events
+        "account.updated" => handle_account_updated(&state, &event.data).await,
+
         // Unhandled events: log and accept (to prevent Stripe retries)
         event_type => {
             warn!(event_type = %event_type, event_id = %event.id, "Unhandled Stripe webhook event");
@@ -836,6 +856,425 @@ async fn handle_charge_refunded(
         charge_id = %charge_id,
         refunded_amount_cents = refunded_amount_cents,
         "Charge refunded: stock restored, order updated"
+    );
+
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Checkout Session Handlers
+// ---------------------------------------------------------------------------
+
+/// Handle checkout.session.completed: confirm order, decrement stock, mark coupon.
+/// This is the PREFERRED event for Checkout Sessions (over payment_intent.succeeded).
+async fn handle_checkout_session_completed(
+    state: &HandlersState,
+    event_data: &Value,
+) -> Result<(), ob_core::Error> {
+    let session = event_data
+        .get("object")
+        .ok_or_else(|| ob_core::Error::Validation("No object in event data".into()))?;
+
+    let session_id = session
+        .get("id")
+        .and_then(|i| i.as_str())
+        .ok_or_else(|| ob_core::Error::Validation("No session ID".into()))?;
+
+    let payment_intent_id = session
+        .get("payment_intent")
+        .and_then(|i| i.as_str())
+        .unwrap_or("");
+
+    let metadata = session
+        .get("metadata")
+        .and_then(|m| m.as_object())
+        .ok_or_else(|| ob_core::Error::Validation("No metadata in checkout session".into()))?;
+
+    let order_id = metadata
+        .get("order_id")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| ob_core::Error::Validation("No order_id in metadata".into()))?;
+
+    let coupon_code = metadata
+        .get("coupon_code")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+
+    // Find the order
+    let order = find_order_by_metadata_id(state, order_id)
+        .await?
+        .ok_or_else(|| ob_core::Error::NotFound(format!("Order {} not found", order_id)))?;
+
+    // Verify order is still in pending state
+    let current_status = order
+        .get(fields::ORDER_STATUS)
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+
+    if current_status != OrderStatus::PendingPayment.as_str() {
+        warn!(
+            order_id = %order_id,
+            session_id = %session_id,
+            current_status = %current_status,
+            "Order not in pending state, skipping checkout.session.completed"
+        );
+        return Ok(());
+    }
+
+    // Decrement stock
+    decrement_stock_for_order(state, &order).await?;
+
+    // Update order status to confirmed
+    update_order_status(state, order_id, OrderStatus::PaymentAuthorized.as_str()).await?;
+
+    // Store session ID and payment intent ID on order
+    let now = chrono::Utc::now().to_rfc3339();
+    state
+        .db
+        .query_bind_value(
+            &format!(
+                "UPDATE {} SET {} = $pi_id, {} = $session_id, updatedAt = $now WHERE id = $order_id",
+                collections::ORDERS,
+                fields::PAYMENT_INTENT_ID,
+                fields::CHECKOUT_SESSION_ID
+            ),
+            serde_json::json!({
+                "order_id": order_id,
+                "pi_id": payment_intent_id,
+                "session_id": session_id,
+                "now": now,
+            }),
+        )
+        .await?;
+
+    // Mark coupon as redeemed if one was used
+    if !coupon_code.is_empty() {
+        mark_coupon_redeemed(state, order_id, coupon_code).await?;
+    }
+
+    if let Err(err) = send_payment_authorized_emails(state, &order).await {
+        warn!(order_id = %order_id, error = %err, "Failed to send checkout completion emails");
+    }
+
+    info!(
+        order_id = %order_id,
+        session_id = %session_id,
+        payment_intent_id = %payment_intent_id,
+        "Checkout session completed: order confirmed, stock decremented"
+    );
+
+    Ok(())
+}
+
+/// Handle checkout.session.expired: cancel pending order, release stock and coupons.
+async fn handle_checkout_session_expired(
+    state: &HandlersState,
+    event_data: &Value,
+) -> Result<(), ob_core::Error> {
+    let session = event_data
+        .get("object")
+        .ok_or_else(|| ob_core::Error::Validation("No object in event data".into()))?;
+
+    let session_id = session
+        .get("id")
+        .and_then(|i| i.as_str())
+        .ok_or_else(|| ob_core::Error::Validation("No session ID".into()))?;
+
+    let metadata = session
+        .get("metadata")
+        .and_then(|m| m.as_object())
+        .ok_or_else(|| ob_core::Error::Validation("No metadata in checkout session".into()))?;
+
+    let order_id = metadata
+        .get("order_id")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| ob_core::Error::Validation("No order_id in metadata".into()))?;
+
+    // Find the order
+    let order = find_order_by_metadata_id(state, order_id)
+        .await?
+        .ok_or_else(|| ob_core::Error::NotFound(format!("Order {} not found", order_id)))?;
+
+    // Only cancel if still pending
+    let current_status = order
+        .get(fields::ORDER_STATUS)
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+
+    if current_status == OrderStatus::PendingPayment.as_str() {
+        update_order_status(state, order_id, OrderStatus::Expired.as_str()).await?;
+
+        // Release any held stock (if stock was pre-reserved)
+        restore_stock_for_order(state, &order).await?;
+    }
+
+    // Release coupon reservation
+    release_coupon_reservation(state, order_id).await?;
+
+    warn!(
+        order_id = %order_id,
+        session_id = %session_id,
+        "Checkout session expired: order expired, reservations released"
+    );
+
+    Ok(())
+}
+
+/// Handle checkout.session.async_payment_succeeded: confirm order for async payment methods
+/// (bank debits, etc.) that settle after the initial checkout.
+async fn handle_checkout_session_async_payment_succeeded(
+    state: &HandlersState,
+    event_data: &Value,
+) -> Result<(), ob_core::Error> {
+    // Async payment succeeded follows same logic as checkout.session.completed
+    handle_checkout_session_completed(state, event_data).await
+}
+
+/// Handle checkout.session.async_payment_failed: cancel order for async payment methods
+/// that failed after the initial checkout.
+async fn handle_checkout_session_async_payment_failed(
+    state: &HandlersState,
+    event_data: &Value,
+) -> Result<(), ob_core::Error> {
+    let session = event_data
+        .get("object")
+        .ok_or_else(|| ob_core::Error::Validation("No object in event data".into()))?;
+
+    let session_id = session
+        .get("id")
+        .and_then(|i| i.as_str())
+        .ok_or_else(|| ob_core::Error::Validation("No session ID".into()))?;
+
+    let metadata = session
+        .get("metadata")
+        .and_then(|m| m.as_object())
+        .ok_or_else(|| ob_core::Error::Validation("No metadata in checkout session".into()))?;
+
+    let order_id = metadata
+        .get("order_id")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| ob_core::Error::Validation("No order_id in metadata".into()))?;
+
+    // Find the order
+    let order = find_order_by_metadata_id(state, order_id)
+        .await?
+        .ok_or_else(|| ob_core::Error::NotFound(format!("Order {} not found", order_id)))?;
+
+    let current_status = order
+        .get(fields::ORDER_STATUS)
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+
+    if current_status == OrderStatus::PendingPayment.as_str() {
+        update_order_status(state, order_id, OrderStatus::Failed.as_str()).await?;
+    }
+
+    // Release coupon reservation
+    release_coupon_reservation(state, order_id).await?;
+
+    warn!(
+        order_id = %order_id,
+        session_id = %session_id,
+        "Async payment failed: order marked failed, coupon released"
+    );
+
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Charge Dispute Handler
+// ---------------------------------------------------------------------------
+
+/// Handle charge.dispute.created: flag order as disputed, log dispute for admin.
+async fn handle_charge_dispute_created(
+    state: &HandlersState,
+    event_data: &Value,
+) -> Result<(), ob_core::Error> {
+    let dispute = event_data
+        .get("object")
+        .ok_or_else(|| ob_core::Error::Validation("No object in event data".into()))?;
+
+    let dispute_id = dispute
+        .get("id")
+        .and_then(|i| i.as_str())
+        .ok_or_else(|| ob_core::Error::Validation("No dispute ID".into()))?;
+
+    let charge_id = dispute
+        .get("charge")
+        .and_then(|i| i.as_str())
+        .unwrap_or("");
+
+    let payment_intent_id = dispute
+        .get("payment_intent")
+        .and_then(|i| i.as_str())
+        .ok_or_else(|| ob_core::Error::Validation("No payment_intent in dispute".into()))?;
+
+    let reason = dispute
+        .get("reason")
+        .and_then(|r| r.as_str())
+        .unwrap_or("unknown");
+
+    let amount = dispute
+        .get("amount")
+        .and_then(|a| a.as_i64())
+        .unwrap_or(0);
+
+    let currency = dispute
+        .get("currency")
+        .and_then(|c| c.as_str())
+        .unwrap_or("cad");
+
+    // Find the order by payment intent
+    let order = find_order_by_payment_intent(state, payment_intent_id).await?;
+
+    let order_id = order
+        .as_ref()
+        .and_then(|o| o.get("id"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+
+    // Flag order as disputed if found
+    if !order_id.is_empty() {
+        update_order_status(state, order_id, OrderStatus::Disputed.as_str()).await?;
+    }
+
+    // Log dispute record in disputes collection for admin review
+    let now = chrono::Utc::now();
+    state
+        .db
+        .create_document(
+            collections::DISPUTES,
+            serde_json::json!({
+                "disputeId": dispute_id,
+                "chargeId": charge_id,
+                "paymentIntentId": payment_intent_id,
+                "orderId": order_id,
+                "reason": reason,
+                "amountCents": amount,
+                "currency": currency,
+                "status": "needs_response",
+                "createdAt": now.timestamp(),
+                "createdAtIso": now.to_rfc3339(),
+            }),
+        )
+        .await?;
+
+    error!(
+        dispute_id = %dispute_id,
+        order_id = %order_id,
+        charge_id = %charge_id,
+        reason = %reason,
+        amount_cents = amount,
+        "DISPUTE CREATED: order flagged as disputed, admin action required"
+    );
+
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Stripe Connect Handler
+// ---------------------------------------------------------------------------
+
+/// Handle account.updated: sync seller Stripe Connect status back to our DB.
+async fn handle_account_updated(
+    state: &HandlersState,
+    event_data: &Value,
+) -> Result<(), ob_core::Error> {
+    let account = event_data
+        .get("object")
+        .ok_or_else(|| ob_core::Error::Validation("No object in event data".into()))?;
+
+    let account_id = account
+        .get("id")
+        .and_then(|i| i.as_str())
+        .ok_or_else(|| ob_core::Error::Validation("No account ID".into()))?;
+
+    let charges_enabled = account
+        .get("charges_enabled")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+
+    let payouts_enabled = account
+        .get("payouts_enabled")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+
+    let details_submitted = account
+        .get("details_submitted")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+
+    let onboarding_completed = charges_enabled && payouts_enabled && details_submitted;
+
+    // Find the seller profile with this Stripe account ID
+    let rows: Vec<Value> = state
+        .db
+        .query_bind_value(
+            &format!(
+                "SELECT * FROM {} WHERE {} = $account_id LIMIT 1",
+                collections::SELLER_PROFILES,
+                fields::STRIPE_ACCOUNT_ID
+            ),
+            serde_json::json!({"account_id": account_id}),
+        )
+        .await?;
+
+    if rows.is_empty() {
+        warn!(
+            account_id = %account_id,
+            "account.updated: no seller profile found for Stripe account"
+        );
+        return Ok(());
+    }
+
+    let seller_profile_id = rows[0]
+        .get("id")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+
+    if seller_profile_id.is_empty() {
+        return Ok(());
+    }
+
+    // Update seller profile with latest Connect status
+    let now = chrono::Utc::now().to_rfc3339();
+    state
+        .db
+        .query_bind_value(
+            &format!(
+                "UPDATE {} SET {} = $charges, {} = $payouts, {} = $onboarded, {} = $now WHERE id = $profile_id",
+                collections::SELLER_PROFILES,
+                fields::CHARGES_ENABLED,
+                fields::PAYOUTS_ENABLED,
+                fields::ONBOARDING_COMPLETED,
+                fields::UPDATED_AT
+            ),
+            serde_json::json!({
+                "profile_id": seller_profile_id,
+                "charges": charges_enabled,
+                "payouts": payouts_enabled,
+                "onboarded": onboarding_completed,
+                "now": now,
+            }),
+        )
+        .await?;
+
+    // If charges were disabled, log a warning for admin
+    if !charges_enabled {
+        warn!(
+            account_id = %account_id,
+            seller_profile_id = %seller_profile_id,
+            "Stripe Connect charges DISABLED for seller — payouts blocked"
+        );
+    }
+
+    info!(
+        account_id = %account_id,
+        seller_profile_id = %seller_profile_id,
+        charges_enabled = charges_enabled,
+        payouts_enabled = payouts_enabled,
+        onboarding_completed = onboarding_completed,
+        "Stripe Connect account updated"
     );
 
     Ok(())
@@ -1868,5 +2307,194 @@ mod tests {
     async fn test_router_creates() {
         let state = setup_state().await;
         let _router = router(state);
+    }
+
+    // -----------------------------------------------------------------------
+    // handle_checkout_session_completed tests
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn test_handle_checkout_session_completed_no_object() {
+        let state = setup_state().await;
+        let result = handle_checkout_session_completed(&state, &json!({})).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_handle_checkout_session_completed_no_session_id() {
+        let state = setup_state().await;
+        let result = handle_checkout_session_completed(&state, &json!({"object": {}})).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_handle_checkout_session_completed_no_metadata() {
+        let state = setup_state().await;
+        let data = json!({"object": {"id": "cs_test"}});
+        let result = handle_checkout_session_completed(&state, &data).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_handle_checkout_session_completed_no_order_id() {
+        let state = setup_state().await;
+        let data = json!({"object": {"id": "cs_test", "metadata": {}}});
+        let result = handle_checkout_session_completed(&state, &data).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_handle_checkout_session_completed_order_not_found() {
+        let state = setup_state().await;
+        let data = json!({
+            "object": {
+                "id": "cs_test",
+                "payment_intent": "pi_test",
+                "metadata": {"order_id": "orders:nonexistent"}
+            }
+        });
+        let result = handle_checkout_session_completed(&state, &data).await;
+        assert!(result.is_err());
+    }
+
+    // -----------------------------------------------------------------------
+    // handle_checkout_session_expired tests
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn test_handle_checkout_session_expired_no_object() {
+        let state = setup_state().await;
+        let result = handle_checkout_session_expired(&state, &json!({})).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_handle_checkout_session_expired_no_session_id() {
+        let state = setup_state().await;
+        let result = handle_checkout_session_expired(&state, &json!({"object": {}})).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_handle_checkout_session_expired_no_metadata() {
+        let state = setup_state().await;
+        let data = json!({"object": {"id": "cs_expired"}});
+        let result = handle_checkout_session_expired(&state, &data).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_handle_checkout_session_expired_order_not_found() {
+        let state = setup_state().await;
+        let data = json!({
+            "object": {
+                "id": "cs_expired",
+                "metadata": {"order_id": "orders:nonexistent"}
+            }
+        });
+        let result = handle_checkout_session_expired(&state, &data).await;
+        assert!(result.is_err());
+    }
+
+    // -----------------------------------------------------------------------
+    // handle_checkout_session_async_payment_failed tests
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn test_handle_checkout_session_async_payment_failed_no_object() {
+        let state = setup_state().await;
+        let result = handle_checkout_session_async_payment_failed(&state, &json!({})).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_handle_checkout_session_async_payment_failed_order_not_found() {
+        let state = setup_state().await;
+        let data = json!({
+            "object": {
+                "id": "cs_async_fail",
+                "metadata": {"order_id": "orders:nonexistent"}
+            }
+        });
+        let result = handle_checkout_session_async_payment_failed(&state, &data).await;
+        assert!(result.is_err());
+    }
+
+    // -----------------------------------------------------------------------
+    // handle_charge_dispute_created tests
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn test_handle_charge_dispute_created_no_object() {
+        let state = setup_state().await;
+        let result = handle_charge_dispute_created(&state, &json!({})).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_handle_charge_dispute_created_no_dispute_id() {
+        let state = setup_state().await;
+        let result = handle_charge_dispute_created(&state, &json!({"object": {}})).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_handle_charge_dispute_created_no_payment_intent() {
+        let state = setup_state().await;
+        let data = json!({"object": {"id": "dp_test", "charge": "ch_test"}});
+        let result = handle_charge_dispute_created(&state, &data).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_handle_charge_dispute_created_order_not_found_still_logs() {
+        let state = setup_state().await;
+        let data = json!({
+            "object": {
+                "id": "dp_test",
+                "charge": "ch_test",
+                "payment_intent": "pi_nonexistent",
+                "reason": "fraudulent",
+                "amount": 5000,
+                "currency": "cad"
+            }
+        });
+        // Should succeed (logs dispute even if order not found)
+        let result = handle_charge_dispute_created(&state, &data).await;
+        assert!(result.is_ok());
+    }
+
+    // -----------------------------------------------------------------------
+    // handle_account_updated tests
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn test_handle_account_updated_no_object() {
+        let state = setup_state().await;
+        let result = handle_account_updated(&state, &json!({})).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_handle_account_updated_no_account_id() {
+        let state = setup_state().await;
+        let result = handle_account_updated(&state, &json!({"object": {}})).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_handle_account_updated_no_seller_found() {
+        let state = setup_state().await;
+        let data = json!({
+            "object": {
+                "id": "acct_test",
+                "charges_enabled": true,
+                "payouts_enabled": true,
+                "details_submitted": true
+            }
+        });
+        // Should succeed gracefully (warns and returns Ok)
+        let result = handle_account_updated(&state, &data).await;
+        assert!(result.is_ok());
     }
 }
