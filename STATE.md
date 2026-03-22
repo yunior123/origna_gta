@@ -100,11 +100,12 @@
 - [ ] `screens/parts/checkout_summary_section.dart:248-255` — tax in widget
 - [ ] `screens/parts/checkout_items_section.dart:16,198-202` — fee/subtotal inline
 
-## Test Coverage (2026-03-22) — ALL GREEN
-- Rust: **3,208 pass, 0 fail, 0 skip**
-- Flutter (all): **4,953 pass, 0 fail, 0 skip**
-- Live integration: **175 pass, 0 fail** (included in Flutter count)
-- **Total: 8,161 tests, 0 failures, 0 skips**
+## Test Coverage (2026-03-22) — ALL GREEN, ZERO SKIPS
+- [x] Rust: **3,208 pass, 0 fail, 0 skip**
+- [x] Flutter app: **4,953 pass, 0 fail, 0 skip**
+- [x] OrignaBase SDK: **538 pass, 0 fail, 0 skip**
+- [x] **Total: 8,699 tests, 0 failures, 0 skips**
+- [x] Stress tests: k6 auth storm (983 reqs, 0% fail) + large payloads (520 reqs, avg 217ms, 0% fail)
 - Test command: `flutter test --dart-define=RUN_ORIGNABASE_LIVE_TESTS=true --dart-define=ENVIRONMENT=dev --exclude-tags golden`
 
 ## Infrastructure
