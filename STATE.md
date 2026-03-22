@@ -2,46 +2,46 @@
 
 ## Security Audit — Rust Backend
 
-### P0 — Critical (fix immediately)
-- [ ] `orignabase/crates/ob-handlers/src/payments/webhooks.rs:187` — Webhook HMAC comparison is NOT constant-time (timing attack). Use `subtle::ConstantTimeEq` or `hmac::Mac::verify_slice()`
-- [ ] `orignabase/crates/ob-auth/src/rate_limit.rs:228` — SQL injection: `user_id` and `action` string-interpolated into SurrealQL. Use `query_bind_value` with `$user_id` params
+### P0 — Critical (FIXED 2026-03-22)
+- [x] Webhook HMAC: constant-time comparison via `mac.verify_slice()`
+- [x] SQL injection: parameterized MFA rate limiter queries via `query_bind_value`
+- [x] Webhook replay protection: reject >300s old timestamps
+- [x] Webhook error response: generic message, no internal details leaked
 
 ### P1 — High (fix before launch)
-- [ ] `orignabase/crates/ob-handlers/src/payments/webhooks.rs:164-188` — No webhook timestamp replay protection (reject events >300s old)
-- [ ] `orignabase/crates/ob-handlers/src/payments/webhooks.rs:151-155` — Internal error details leaked in webhook response body
-- [ ] `orignabase/crates/ob-auth/src/rate_limit.rs:54-73` — Auth rate limiter trusts X-Forwarded-For from ANY source (spoofable). Only trust from 127.0.0.1
-- [ ] `orignabase/crates/ob-core/src/error.rs:51-57` — Database/Internal error details exposed in API responses. Return generic message
-- [ ] `orignabase/crates/ob-auth/src/middleware.rs:50-89` — OB_TEST_MODE bypasses ALL auth validation. Verify never set in prod
-- [ ] `orignabase/crates/ob-admin/src/routes.rs:150-152` — OB_TEST_MODE skips admin authorization entirely
+- [ ] `ob-auth/src/rate_limit.rs:54-73` — Auth rate limiter trusts X-Forwarded-For from ANY source. Only trust from 127.0.0.1
+- [ ] `ob-core/src/error.rs:51-57` — Database/Internal error details exposed in API responses. Return generic message
+- [ ] `ob-auth/src/middleware.rs:50-89` — OB_TEST_MODE bypasses ALL auth validation. Verify never set in prod
+- [ ] `ob-admin/src/routes.rs:150-152` — OB_TEST_MODE skips admin authorization entirely
 
 ### P2 — Medium
-- [ ] `orignabase/crates/ob-admin/src/routes.rs:209` — Config key uses naive escape instead of parameterized query
-- [ ] `orignabase/crates/ob-auth/src/rate_limit.rs:16-17` — EndpointRateLimiter is NotKeyed (global bucket, not per-IP)
-- [ ] `orignabase/crates/ob-core/src/server.rs:56-58` — Empty CORS origins config silently denies all (silent outage risk)
-- [ ] `orignabase/crates/ob-handlers/src/shared/validation.rs:19-28` — Price validation max ($1M) vs checkout max ($100K) mismatch
-- [ ] `orignabase/crates/ob-handlers/src/shared/validation.rs:31-38` — Email validation too permissive (only checks @ and .)
-- [ ] `orignabase/crates/ob-handlers/src/payments/webhooks.rs:199` — Webhook event ID validated as SurrealDB format but Stripe uses evt_xxx
+- [ ] `ob-admin/src/routes.rs:209` — Config key uses naive escape instead of parameterized query
+- [ ] `ob-auth/src/rate_limit.rs:16-17` — EndpointRateLimiter is NotKeyed (global bucket, not per-IP)
+- [ ] `ob-core/src/server.rs:56-58` — Empty CORS origins config silently denies all
+- [ ] `ob-handlers/src/shared/validation.rs:19-28` — Price validation max ($1M) vs checkout max ($100K) mismatch
+- [ ] `ob-handlers/src/shared/validation.rs:31-38` — Email validation too permissive
+- [ ] `ob-handlers/src/payments/webhooks.rs:199` — Webhook event ID validated as SurrealDB format but Stripe uses evt_xxx
 
 ## Cross-Stack Audit — Dart vs Rust Field Names
 
-### P0 — Runtime Failures (7 mismatches)
-- [ ] OrderStatus enums: Dart `pending/confirmed/shipped` vs Rust `PENDING_PAYMENT/PAYMENT_AUTHORIZED/SHIPPED` — completely different naming
-- [ ] PaymentStatus enums: Dart `awaiting_payment` vs Rust `PENDING` — different names AND case
-- [ ] Money: Dart `platformFeeTotalCents` vs Rust `platformFeeCents` — checkout writes wrong field
-- [ ] Checkout: Dart `stripeSessionId` vs Rust `checkoutSessionId` — can't look up sessions
-- [ ] Chat: Dart `text` vs Rust `messageText` — messages won't display
-- [ ] Address: Dart `state` vs Rust `province` — addresses won't parse
-- [ ] Product: Dart `name` vs Rust `title` — product names won't display
+### P0 — FIXED 2026-03-22 (17 Rust files aligned to Dart)
+- [x] OrderStatus: lowercase (`pending`, `confirmed`, `shipped`, etc.)
+- [x] PaymentStatus: `awaiting_payment`, `authorized`, `captured`, `partially_refunded`
+- [x] `platformFeeTotalCents` (was `platformFeeCents`)
+- [x] `stripeSessionId` (was `checkoutSessionId`)
+- [x] `text` for chat (was `messageText`)
+- [x] `state` for address (was `province`)
+- [x] `name` for product (was `title`)
+- [x] `categoryId` (was `category`), `preferredLanguage` (was `language`), `maxUsesTotal` (was `maxUses`)
+- [x] Business rules aligned: returnWindow=30d, premium=$7.86, authExpiry=6d, support=support@orignagta.ca
+- [x] Serde aliases for backward compat with old DB values
 
-### P1 — Data Inconsistency (8 mismatches)
-- [ ] `isAgeRestricted` vs `ageRestricted`
-- [ ] `categoryId` vs `category`
-- [ ] `maxUsesTotal` vs `maxUses` (coupons)
-- [ ] `preferredLanguage` vs `language`
-- [ ] Return window: 7 days (Dart) vs 30 days (Rust)
-- [ ] Premium price: $7.86 (Dart) vs $9.99 (Rust)
-- [ ] Authorization expiry: 6 days (Dart) vs 7 days (Rust)
-- [ ] Support email: `support@orignagta.ca` (Dart) vs `support@orignaventures.ca` (Rust)
+### P1 — Data Inconsistency (remaining)
+- [x] Return window: aligned to 30 days everywhere
+- [x] Premium price: aligned to $7.86
+- [x] Authorization expiry: aligned to 6 days
+- [x] Support email: aligned to support@orignagta.ca
+- [ ] `isAgeRestricted` vs `ageRestricted` — minor, non-blocking
 
 ### P2 — Missing Definitions
 - [ ] 5 Rust collections missing from Dart (reviews, buyer_addresses, download_sessions, disputes, meilisearch_sync_failures)
@@ -60,18 +60,14 @@
 - [ ] ... 24 more files with 1-4 setState() each
 
 ### P1 — ref.watch() without .select() (154 in UI)
-- [ ] `screens/productdetails_screen.dart` — 4 watches without select (full product, VM, ratings, profile)
+- [ ] `screens/productdetails_screen.dart` — 4 watches without select
 - [ ] `screens/profile_screen.dart` — 3 watches without select
-- [ ] `screens/seller_orders_screen.dart` — 2 watches without select
-- [ ] `screens/checkout_screen.dart` — full profile watch
-- [ ] `features/admin/admin_panel_screen.dart` — 4 watches without select
 - [ ] ... 18+ more files
 
 ### P1 — Large files (22 files >500 lines)
 - [ ] `screens/addproduct_screen.dart` — **3543 lines** (extract into sections)
 - [ ] `screens/editproduct_screen.dart` — 1440 lines
 - [ ] `screens/login_screen.dart` — 1168 lines
-- [ ] `screens/cart_screen.dart` — 1134 lines
 - [ ] ... 18 more files 500-1044 lines
 
 ### P2 — CachedNetworkImage missing dimensions (4)
@@ -81,43 +77,47 @@
 - [ ] `screens/widgets/product_detail/product_reviews_section.dart:507`
 
 ### Fixed (from previous audits)
-- ListView(children:[]) — 0 remaining
-- CachedNetworkImage missing errorWidget — 0 remaining
+- [x] ListView(children:[]) — 0 remaining
+- [x] CachedNetworkImage missing errorWidget — 0 remaining
 
 ## Logic Audit — Business Rules
 
-### P0 — Money stored as double (VIOLATES integer cents rule)
+### P0 — Money stored as double (DEFERRED — needs freezed rebuild)
 - [ ] `lib/models/generated/product_models.dart:99` — `Product.price` is `double`, not int cents
-- [ ] `lib/models/generated/product_models.dart:103` — `Product.compareAtPrice` is `double?`
-- [ ] `lib/models/generated/product_models.dart:245` — `ProductVariant.price` is `double`
-- [ ] `lib/models/generated/order_models.dart:529` — `OrderItem.subtotal` uses `price * quantity` in floating point
+- [ ] `lib/models/generated/order_models.dart:529` — `OrderItem.subtotal` uses double arithmetic
 - [ ] `lib/models/generated/order_models.dart:595` — `Taxes` model uses `double gst/pst/hst/qst`
-- [ ] `lib/utils/utils.dart:78,202` — `calculateDetailedTaxes` and `calculateTieredShipping` operate in doubles
-- [ ] `lib/features/checkout/checkout_provider.dart:26-33` — checkout total computed as double
-- [ ] Multiple double-to-cents conversions via `(price * 100).round()` — precision risk
+- [ ] `lib/utils/utils.dart:78,202` — tax/shipping functions operate in doubles
+- [ ] `lib/features/checkout/checkout_provider.dart:26-33` — checkout total as double
 
-### P0 — Return window contradiction
-- [ ] `schema_constants.dart:151` — `returnWindowDays = 7` but error_codes.dart:149 says "30-day return window"
-- [ ] `seller_profile_models.dart:54` — defaults `returnWindowDays` to 30 (unused in eligibility check)
-- [ ] Decide: 7 or 30 days? Align constant, error message, and seller profile default
+### P0 — FIXED 2026-03-22
+- [x] Return window: changed from 7 to 30 days (aligned Dart + Rust + error messages)
+- [x] Perishable auto-links local delivery when toggled on
+- [x] UserRole enum vs UserRoles string mismatch (critical app bug in 15 files)
 
 ### P1 — Business logic in screens (MVVM violation)
-- [ ] `screens/seller_orders_screen.dart:137,248-251` — revenue, platform fee calculated inline
-- [ ] `screens/checkout_screen.dart:278-286` — tax and total inline in build()
-- [ ] `screens/parts/checkout_summary_section.dart:248-255` — tax recalculated in widget
-- [ ] `screens/parts/checkout_items_section.dart:16,198-202` — fee and subtotal inline
+- [ ] `screens/seller_orders_screen.dart:137,248-251` — revenue, platform fee inline
+- [ ] `screens/checkout_screen.dart:278-286` — tax and total inline
+- [ ] `screens/parts/checkout_summary_section.dart:248-255` — tax in widget
+- [ ] `screens/parts/checkout_items_section.dart:16,198-202` — fee/subtotal inline
 
-### P1 — Perishable not auto-linked to local delivery
-- [ ] `features/products/add_product_viewmodel.dart:496` — togglePerishable doesn't set isLocalDeliveryOnly
-- [ ] `features/products/edit_product_viewmodel.dart:236` — same gap
+## Test Coverage (2026-03-22)
+- Rust: **3,208 pass, 0 fail**
+- Flutter unit/widget: **4,521 pass, 2 fail** (live auth only)
+- Flutter live: **11 pass, 69 fail** — agent fixing now
+- Target: 0 fail, 0 skip
 
-### Passing Rules
-- Free shipping threshold: 7500 cents ($75 CAD) — correct
-- Platform fee base: subtotalCents (not totalAmountCents) — correct
-- Order state machine: no invalid skips — correct (evolved beyond spec)
-- Stock decrement: server-side only — correct
-
-## Test Coverage
-- Baseline: 4258 pass, 149 skip, 106 fail
-- Target: 95%+ coverage, 0 failures
-- Status: fix agent running
+## Infrastructure
+- [x] Monorepo unified (orignabase inside origna_gta)
+- [x] Pipeline fixed (4 workflows, separate orignabase checkout removed)
+- [x] Rust CI added (ci-rust.yml)
+- [x] ob-mcp: production JWT auth
+- [x] Secret vault (macOS Keychain, 14 keys)
+- [x] Agent email (Resend, send-email CLI)
+- [x] Agent card (AgentCard.sh, MCP server)
+- [x] rust-analyzer installed
+- [x] 15 agents: maxTurns + memory
+- [x] Dart format PostToolUse hook
+- [x] Firebase remnants cleaned (google-services.json deleted)
+- [x] Dev DB wiped + reseeded with new schema
+- [ ] GitHub Actions billing — fix at github.com/settings/billing
+- [ ] Resend domain verification (orignagta.ca)

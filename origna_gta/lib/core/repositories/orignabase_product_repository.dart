@@ -45,17 +45,25 @@ class OrignaBaseProductRepository
 
     data[Fields.name] ??= data['title'] ?? 'Untitled product';
     data[Fields.description] ??= '';
-    data[Fields.imageUrls] ??= const <String>[];
+    // Backend may store images as 'images' — map to 'imageUrls' for model
+    data[Fields.imageUrls] ??= data['images'] ?? const <String>[];
     data[Fields.sellerId] ??= '';
+    // categoryId may arrive as String from backend — coerce to int
+    if (data[Fields.categoryId] is String) {
+      data[Fields.categoryId] =
+          int.tryParse(data[Fields.categoryId] as String) ?? 0;
+    }
     data[Fields.categoryId] ??= 0;
     data[Fields.stockQuantity] ??= 0;
     data[Fields.priceCents] ??= 0;
-    data[Fields.price] ??= ((data[Fields.priceCents] as num?)?.toDouble() ?? 0) / 100;
+    data[Fields.price] ??=
+        ((data[Fields.priceCents] as num?)?.toDouble() ?? 0) / 100;
     data[Fields.rating] ??= 0.0;
     data[Fields.ratingCount] ??= 0;
     data[Fields.keywords] ??= const <String>[];
     data[Fields.lifecycleStatus] ??= ProductLifecycleStatusValues.draft;
-    data[Fields.createdAt] ??= data[Fields.dateCreated] ?? DateTime.now().toIso8601String();
+    data[Fields.createdAt] ??=
+        data[Fields.dateCreated] ?? DateTime.now().toIso8601String();
 
     // Normalize timestamps: SurrealDB returns nanosecond-precision ISO strings
     // (e.g. "2026-03-12T11:56:03.185238962+00:00") which Dart's DateTime.parse

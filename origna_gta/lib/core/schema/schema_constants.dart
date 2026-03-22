@@ -1402,6 +1402,7 @@ abstract final class OrderItemIdValues {
 /// Valid values for orderStatus field
 abstract final class OrderStatusValues {
   static const pending = 'pending';
+  static const pendingPayment = 'pending_payment';
   static const confirmed = 'confirmed';
   static const processing = 'processing';
   static const shipped = 'shipped';
@@ -1414,6 +1415,7 @@ abstract final class OrderStatusValues {
 
   static const all = {
     pending,
+    pendingPayment,
     confirmed,
     processing,
     shipped,

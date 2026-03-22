@@ -160,12 +160,36 @@ async fn apply_coupon(
         ));
     }
 
-    // Fetch coupon
-    let coupon = state
-        .db
-        .get_document(collections::COUPONS, &code)
-        .await
-        .map_err(|_| ob_core::Error::NotFound("Coupon invalid or unavailable".into()))?;
+    // Fetch coupon — try by ID first, then fall back to querying by code field
+    let coupon = match state.db.get_document(collections::COUPONS, &code).await {
+        Ok(doc) if !doc.is_null() => doc,
+        _ => {
+            // Fall back: query by code field (handles case where code != document ID)
+            let query = format!(
+                "SELECT * FROM {} WHERE {} = $code LIMIT 1",
+                collections::COUPONS,
+                fields::CODE
+            );
+            let results = state
+                .db
+                .inner()
+                .query(&query)
+                .bind(("code", code.clone()))
+                .await
+                .map_err(|e| {
+                    error!("Coupon lookup query failed: {e}");
+                    ob_core::Error::NotFound("Coupon invalid or unavailable".into())
+                })?;
+            let mut results = results;
+            let docs: Vec<serde_json::Value> = results.take(0).map_err(|e| {
+                error!("Coupon lookup extraction failed: {e}");
+                ob_core::Error::NotFound("Coupon invalid or unavailable".into())
+            })?;
+            docs.into_iter().next().ok_or_else(|| {
+                ob_core::Error::NotFound("Coupon invalid or unavailable".into())
+            })?
+        }
+    };
 
     if coupon.is_null() {
         return Err(ob_core::Error::NotFound(
