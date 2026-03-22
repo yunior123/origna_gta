@@ -100,11 +100,12 @@
 - [ ] `screens/parts/checkout_summary_section.dart:248-255` — tax in widget
 - [ ] `screens/parts/checkout_items_section.dart:16,198-202` — fee/subtotal inline
 
-## Test Coverage (2026-03-22)
-- Rust: **3,208 pass, 0 fail**
-- Flutter unit/widget: **4,521 pass, 2 fail** (live auth only)
-- Flutter live: **11 pass, 69 fail** — agent fixing now
-- Target: 0 fail, 0 skip
+## Test Coverage (2026-03-22) — ALL GREEN
+- Rust: **3,208 pass, 0 fail, 0 skip**
+- Flutter (all): **4,953 pass, 0 fail, 0 skip**
+- Live integration: **175 pass, 0 fail** (included in Flutter count)
+- **Total: 8,161 tests, 0 failures, 0 skips**
+- Test command: `flutter test --dart-define=RUN_ORIGNABASE_LIVE_TESTS=true --dart-define=ENVIRONMENT=dev --exclude-tags golden`
 
 ## Infrastructure
 - [x] Monorepo unified (orignabase inside origna_gta)
