@@ -110,13 +110,13 @@
 
 ## Stripe Webhook Audit (2026-03-22)
 
-### Gaps — Events registered but NOT handled by OrignaBase
-- [ ] **P0** `checkout.session.completed` — primary Checkout flow event, needed for async payments
-- [ ] **P0** `charge.dispute.created` — disputes silently ignored, should flag order + notify admin
-- [ ] **P1** `checkout.session.expired` — should cancel order + release stock/coupons
-- [ ] **P1** `checkout.session.async_payment_succeeded` / `async_payment_failed`
-- [ ] **P2** `account.updated` — Stripe Connect seller status changes ignored
-- [ ] **P2** Prod endpoint uses `*` (all events) — noisy logs, switch to explicit list
+### Gaps — FIXED 2026-03-22 (6 handlers + 20 tests added)
+- [x] `checkout.session.completed` — confirms order, decrements stock, marks coupon
+- [x] `charge.dispute.created` — flags order as disputed, creates disputes record
+- [x] `checkout.session.expired` — expires order, releases stock/coupons
+- [x] `checkout.session.async_payment_succeeded` / `async_payment_failed`
+- [x] `account.updated` — syncs Stripe Connect seller status
+- [ ] Prod endpoint: update from `*` to explicit list via Stripe Dashboard (live key required)
 
 ### Verified OK
 - [x] Webhook secrets match across vault, VPS .env, and MEMORY.md (all 3 envs)
