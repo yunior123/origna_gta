@@ -324,7 +324,7 @@ extension _AddProductFormWidgets on _AddProductScreenState {
         boxShadow: DesignTokens.shadowSm,
       ),
       child: Theme(
-        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        data: Theme.of(context).copyWith(dividerColor: DesignTokens.transparent),
         child: ExpansionTile(
           tilePadding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
           childrenPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
@@ -505,7 +505,7 @@ extension _AddProductFormWidgets on _AddProductScreenState {
   void showInfoSheet(String title, String body) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.transparent,
+      backgroundColor: DesignTokens.transparent,
       isScrollControlled: true,
       builder: (ctx) => SafeArea(
         minimum: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(ctx).bottom),

@@ -616,7 +616,7 @@ class ProfileScreenLayout extends StatelessWidget {
                   height: 140,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: RadialGradient(colors: [DesignTokens.accent.withValues(alpha: 0.28), Colors.transparent]),
+                    gradient: RadialGradient(colors: [DesignTokens.accent.withValues(alpha: 0.28), DesignTokens.transparent]),
                   ),
                 ),
               ),
@@ -629,7 +629,7 @@ class ProfileScreenLayout extends StatelessWidget {
                   height: 110,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: RadialGradient(colors: [DesignTokens.tertiary.withValues(alpha: 0.22), Colors.transparent]),
+                    gradient: RadialGradient(colors: [DesignTokens.tertiary.withValues(alpha: 0.22), DesignTokens.transparent]),
                   ),
                 ),
               ),

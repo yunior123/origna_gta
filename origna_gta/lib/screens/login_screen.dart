@@ -850,7 +850,7 @@ class _GoogleSignInButtonState extends State<_GoogleSignInButton>
               ],
             ),
             child: Material(
-              color: Colors.transparent,
+              color: DesignTokens.transparent,
               child: InkWell(
                 onTap: isDisabled ? null : widget.onPressed,
                 borderRadius: BorderRadius.circular(DesignTokens.radius16),
