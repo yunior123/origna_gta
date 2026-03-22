@@ -41,7 +41,7 @@ void main() {
     productId: 'prod_123',
     name: 'Test Product',
     description: 'Description',
-    price: 9999 / 100.0,
+    priceCents: 9999,
     sellerId: 'seller_123',
     imageUrls: ['images/33.png'],
     stockQuantity: 10,

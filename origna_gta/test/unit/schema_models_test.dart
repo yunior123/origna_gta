@@ -53,7 +53,7 @@ void main() {
       final product = Product(
         productId: 'prod_123',
         name: 'Organic Apples',
-        price: 499 / 100.0,
+        priceCents: 499,
         description: 'Fresh organic apples from local farm',
         imageUrls: ['https://example.com/image1.jpg'],
         sellerId: 'seller_123',
@@ -75,7 +75,7 @@ void main() {
       final product = Product(
         productId: 'prod_123',
         name: 'Organic Apples',
-        price: 499 / 100.0,
+        priceCents: 499,
         description: 'Fresh apples',
         imageUrls: ['url'],
         sellerId: 'seller_123',
@@ -85,7 +85,7 @@ void main() {
         createdAt: DateTime.now(),
       );
 
-      final updated = product.copyWith(name: 'Updated Apples', price: 5.99);
+      final updated = product.copyWith(name: 'Updated Apples', priceCents: 599);
       expect(updated.name, 'Updated Apples');
       expect(updated.price, 5.99);
       expect(updated.productId, product.productId);
@@ -95,18 +95,18 @@ void main() {
 
   group('Taxes Model Tests', () {
     test('Taxes total calculation', () {
-      final taxes1 = Taxes(gst: 2.5, pst: 3.5);
+      final taxes1 = Taxes(gstCents: 250, pstCents: 350);
       expect(taxes1.total, 6.0);
 
-      final taxes2 = Taxes(hst: 13.0);
+      final taxes2 = Taxes(hstCents: 1300);
       expect(taxes2.total, 13.0);
 
-      final taxes3 = Taxes(gst: 2.5, hst: 13.0);
+      final taxes3 = Taxes(gstCents: 250, hstCents: 1300);
       expect(taxes3.total, 15.5);
     });
 
     test('Taxes toMap/fromMap consistency', () {
-      final taxes = Taxes(gst: 2.5, pst: 3.5);
+      final taxes = Taxes(gstCents: 250, pstCents: 350);
 
       final map = taxes.toMap();
       expect(map['GST'], 2.5);
@@ -126,7 +126,7 @@ void main() {
         productId: 'prod_123',
         name: 'Organic Apples',
         description: 'Fresh apples',
-        price: 499 / 100.0,
+        priceCents: 499,
         quantity: 3,
         imageUrls: ['url'],
         sellerId: 'seller_123',
@@ -143,7 +143,7 @@ void main() {
         productId: 'prod_123',
         name: 'Organic Apples',
         description: 'Fresh apples',
-        price: 499 / 100.0,
+        priceCents: 499,
         quantity: 2,
         imageUrls: ['url'],
         sellerId: 'seller_123',
@@ -187,7 +187,7 @@ void main() {
         productId: 'prod_1',
         name: 'Product 1',
         description: 'Description',
-        price: 1000 / 100.0,
+        priceCents: 1000,
         quantity: 2,
         imageUrls: ['url'],
         sellerId: 'seller_1',
@@ -198,7 +198,7 @@ void main() {
         productId: 'prod_2',
         name: 'Product 2',
         description: 'Description',
-        price: 1500 / 100.0,
+        priceCents: 1500,
         quantity: 1,
         imageUrls: ['url'],
         sellerId: 'seller_2',
@@ -215,7 +215,7 @@ void main() {
         subtotalCents: 3500, // $35.00
         shippingCostCents: 500, // $5.00
         taxAmountCents: 500, // $5.00
-        taxes: Taxes(gst: 2.0, pst: 3.0),
+        taxes: Taxes(gstCents: 200, pstCents: 300),
         shippingAddress: address,
         createdAt: DateTime.now(),
         stripeSessionId: 'session_123',
@@ -234,7 +234,7 @@ void main() {
         productId: 'prod_1',
         name: 'Product 1',
         description: 'Description',
-        price: 1000 / 100.0,
+        priceCents: 1000,
         quantity: 1,
         imageUrls: ['url'],
         sellerId: 'seller_1',
@@ -250,7 +250,7 @@ void main() {
         totalAmountCents: 1500,
         subtotalCents: 1000,
         shippingCostCents: 500,
-        taxes: Taxes(gst: 0.5),
+        taxes: Taxes(gstCents: 50),
         shippingAddress: address,
         createdAt: DateTime(2026, 2, 1),
         stripeSessionId: 'session_123',

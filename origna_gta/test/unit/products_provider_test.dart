@@ -44,8 +44,8 @@ void main() {
       final chunk1 = List.generate(30, (i) => 'id_$i');
       final chunk2 = List.generate(5, (i) => 'id_${i + 30}');
       
-      when(mockRepo.fetchProductsByIds(chunk1)).thenAnswer((_) async => List.generate(30, (i) => Product(productId: 'id_$i', name: 'P$i', price: 10, description: '', imageUrls: [], sellerId: 's', categoryId: 1, stockQuantity: 1, createdAt: DateTime.now())));
-      when(mockRepo.fetchProductsByIds(chunk2)).thenAnswer((_) async => List.generate(5, (i) => Product(productId: 'id_${i + 30}', name: 'P${i + 30}', price: 10, description: '', imageUrls: [], sellerId: 's', categoryId: 1, stockQuantity: 1, createdAt: DateTime.now())));
+      when(mockRepo.fetchProductsByIds(chunk1)).thenAnswer((_) async => List.generate(30, (i) => Product(productId: 'id_$i', name: 'P$i', priceCents: 1000, description: '', imageUrls: [], sellerId: 's', categoryId: 1, stockQuantity: 1, createdAt: DateTime.now())));
+      when(mockRepo.fetchProductsByIds(chunk2)).thenAnswer((_) async => List.generate(5, (i) => Product(productId: 'id_${i + 30}', name: 'P${i + 30}', priceCents: 1000, description: '', imageUrls: [], sellerId: 's', categoryId: 1, stockQuantity: 1, createdAt: DateTime.now())));
 
       final sub = container.listen(favoritedProductsProvider, (prev, next) {});
       final result = await container.read(favoritedProductsProvider.future);
@@ -118,8 +118,8 @@ void main() {
         maxPriceCents: anyNamed('maxPriceCents'),
       )).thenAnswer((_) async => ProductQueryResult(
         products: [
-          Product(productId: 'p1', name: 'P1', price: 10, description: '', imageUrls: [], sellerId: 's', categoryId: 1, stockQuantity: 1, createdAt: DateTime.now()),
-          Product(productId: 'p2', name: 'P2', price: 10, description: '', imageUrls: [], sellerId: 's', categoryId: 1, stockQuantity: 1, createdAt: DateTime.now()),
+          Product(productId: 'p1', name: 'P1', priceCents: 1000, description: '', imageUrls: [], sellerId: 's', categoryId: 1, stockQuantity: 1, createdAt: DateTime.now()),
+          Product(productId: 'p2', name: 'P2', priceCents: 1000, description: '', imageUrls: [], sellerId: 's', categoryId: 1, stockQuantity: 1, createdAt: DateTime.now()),
         ],
         lastDocumentId: null,
         hasMore: false,

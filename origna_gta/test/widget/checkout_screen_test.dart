@@ -40,7 +40,7 @@ void main() {
     productId: 'prod_1',
     name: 'Test Product',
     description: 'Test description',
-    price: 5000 / 100.0,
+    price: 50.00, priceCents: 5000,
     quantity: 1,
     sellerId: 'seller_1',
     sellerName: 'Seller 1',

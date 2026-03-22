@@ -88,7 +88,7 @@ void main() {
       (_) async => Product(
         productId: 'p1',
         name: 'Test Product',
-        price: 10.0,
+        priceCents: 1000,
         imageUrls: const [],
         description: 'Desc',
         stockQuantity: 10,

@@ -281,7 +281,7 @@ void main() {
       final map = {
         'isEnabled': true,
         'speed': 'same_day',
-        'price': 15.99,
+        'priceCents': 1599,
         'estimatedDays': 0,
       };
 

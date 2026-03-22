@@ -1042,7 +1042,7 @@ CartItemDetailModel _makeCartItem({
     productId: 'p1',
     name: 'Test Product',
     description: 'desc',
-    price: 1000 / 100.0,
+    price: 10.00, priceCents: 1000,
     imageUrls: [],
     quantity: quantity,
     createdAt: DateTime.now(),

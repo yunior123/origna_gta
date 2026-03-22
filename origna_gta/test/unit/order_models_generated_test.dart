@@ -15,7 +15,7 @@ void main() {
         'productId': 'prod_1',
         'name': 'Widget',
         'description': 'A fine widget',
-        'price': 25.50,
+        'priceCents': 2550,
         'quantity': 2,
         'imageUrls': ['https://img.example.com/a.jpg'],
         'sellerId': 'seller_1',
@@ -426,7 +426,7 @@ void main() {
     });
 
     test('toMap returns double values', () {
-      final model = Taxes(gst: 1.0, pst: 2.0, hst: 3.0, qst: 4.0);
+      final model = Taxes(gstCents: 100, pstCents: 200, hstCents: 300, qstCents: 400);
       final m = model.toMap();
       expect(m[Fields.GST], isA<double>());
       expect(m, hasLength(4));
@@ -484,7 +484,7 @@ void main() {
       // Computed getters
       expect(model.total, 51.0);
       expect(model.subtotal, 51.0);
-      expect(model.shippingCost, 0.0);
+      expect(model.shippingCostCents, 0);
       expect(model.taxAmount, 0.0);
 
       final out = model.toJson();
@@ -714,7 +714,7 @@ void main() {
             ..._minimalOrderItemJson(),
             'productId': 'prod_2',
             'name': 'Gadget',
-            'price': 99.99,
+            'priceCents': 9999,
             'quantity': 1,
             'sellerId': 'seller_2',
           },
@@ -891,7 +891,7 @@ void main() {
           'country': 'Canada',
           'isDefault': false,
         },
-        'shippingCost': 12.99,
+        'shippingCostCents': 1299,
         'currency': 'CAD',
         'shippingApprovalRequired': true,
       };
@@ -902,13 +902,13 @@ void main() {
       expect(model.customerEmail, 'test@example.com');
       expect(model.items, hasLength(1));
       expect(model.shippingAddress.street, '100 Queen St W');
-      expect(model.shippingCost, 12.99);
+      expect(model.shippingCostCents, 1299);
       expect(model.currency, 'CAD');
       expect(model.shippingApprovalRequired, true);
 
       final out = model.toJson();
       expect(out['userId'], 'user_1');
-      expect(out['shippingCost'], 12.99);
+      expect(out['shippingCostCents'], 1299);
       expect(out['shippingApprovalRequired'], true);
     });
 
@@ -927,7 +927,7 @@ void main() {
         },
       };
       final model = OrderCreate.fromJson(json);
-      expect(model.shippingCost, 0.0);
+      expect(model.shippingCostCents, 0);
       expect(model.currency, BusinessRules.defaultCurrency);
       expect(model.shippingApprovalRequired, false);
     });
@@ -972,7 +972,7 @@ void main() {
     test('OrderItem with zero price', () {
       final json = {
         ..._minimalOrderItemJson(),
-        'price': 0.0,
+        'priceCents': 0,
       };
       final model = OrderItem.fromJson(json);
       expect(model.price, 0.0);

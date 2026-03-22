@@ -26,7 +26,7 @@ void main() {
         productId: 'prod_123',
         name: 'Test Product',
         description: 'Test Description',
-        price: 1000 / 100.0,
+        price: 10.00, priceCents: 1000,
         imageUrls: [],
         quantity: quantity,
         createdAt: DateTime.now(),

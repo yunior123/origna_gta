@@ -27,8 +27,8 @@ void main() {
     test('Le total du panier calcule correctement avec plusieurs articles', () {
       // Test calcul du total panier
       final items = [
-        {'price': 25.00, 'quantity': 2}, // 2 × $25 = $50
-        {'price': 35.50, 'quantity': 3}, // 3 × $35.50 = $106.50
+        {'priceCents': 2500, 'quantity': 2}, // 2 × $25 = $50
+        {'priceCents': 3550, 'quantity': 3}, // 3 × $35.50 = $106.50
       ];
       
       double total = 0;
@@ -97,7 +97,7 @@ void main() {
       
       final clientOrder = {
         'items': [
-          {'productId': 'prod_1', 'quantity': 2, 'price': 5.00}, // MANIPULÉ: Prix réel $50
+          {'productId': 'prod_1', 'quantity': 2, 'priceCents': 500}, // MANIPULÉ: Prix réel $50
         ],
         'total': 10.00, // Devrait être $100
       };
@@ -125,9 +125,9 @@ void main() {
     test('La commande divise un panier multi-vendeur correctement', () {
       // Simulation de division de panier par vendeur
       final cartItems = [
-        {'productId': 'prod_1', 'quantity': 2, 'price': 50.00, 'sellerId': 'seller_A'},
-        {'productId': 'prod_2', 'quantity': 3, 'price': 35.50, 'sellerId': 'seller_B'},
-        {'productId': 'prod_3', 'quantity': 1, 'price': 20.00, 'sellerId': 'seller_A'},
+        {'productId': 'prod_1', 'quantity': 2, 'priceCents': 5000, 'sellerId': 'seller_A'},
+        {'productId': 'prod_2', 'quantity': 3, 'priceCents': 3550, 'sellerId': 'seller_B'},
+        {'productId': 'prod_3', 'quantity': 1, 'priceCents': 2000, 'sellerId': 'seller_A'},
       ];
       
       // Grouper par vendeur
@@ -166,7 +166,7 @@ void main() {
       final validProduct = {
         'id': 'prod_123',
         'name': 'Produit Valide',
-        'price': 29.99,
+        'priceCents': 2999,
         'sellerId': 'seller_456',
         'stockQuantity': 100,
       };

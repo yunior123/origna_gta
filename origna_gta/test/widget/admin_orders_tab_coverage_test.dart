@@ -195,7 +195,7 @@ void main() {
               productId: 'p1',
               name: 'Widget',
               description: 'desc',
-              price: 2500 / 100.0,
+              price: 25.00, priceCents: 2500,
               imageUrls: [],
               quantity: 2,
               createdAt: DateTime.now(),

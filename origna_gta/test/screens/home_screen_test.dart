@@ -25,7 +25,6 @@ import 'home_screen_test.mocks.dart';
 Product _makeProduct({
   String productId = 'prod_1',
   String name = 'Test Product',
-  double price = 29.99,
   int priceCents = 2999,
   String sellerId = 'seller_1',
   int categoryId = 1,
@@ -38,7 +37,6 @@ Product _makeProduct({
   return Product(
     productId: productId,
     name: name,
-    price: price,
     priceCents: priceCents,
     description: 'A test product',
     imageUrls: const ['images/33.png'],
@@ -418,8 +416,8 @@ void main() {
       setMobileViewport(tester);
 
       final products = [
-        _makeProduct(productId: 'p1', name: 'Widget A', price: 10.0),
-        _makeProduct(productId: 'p2', name: 'Widget B', price: 20.0),
+        _makeProduct(productId: 'p1', name: 'Widget A', priceCents: 1000),
+        _makeProduct(productId: 'p2', name: 'Widget B', priceCents: 2000),
       ];
 
       await tester.pumpWidget(

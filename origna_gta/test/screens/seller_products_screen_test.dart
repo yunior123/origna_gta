@@ -18,7 +18,7 @@ import 'package:origna_gta/models/generated/base_models.dart';
 Product _makeProduct({
   String id = 'prod_1',
   String name = 'Test Product',
-  double price = 29.99,
+  int priceCents = 2999,
   int stockQuantity = 10,
   String lifecycleStatus = ProductLifecycleStatusValues.active,
   String? approvalRejectionReason,
@@ -27,7 +27,7 @@ Product _makeProduct({
   return Product(
     productId: id,
     name: name,
-    price: price,
+    priceCents: priceCents,
     description: 'A test product',
     imageUrls: imageUrls,
     sellerId: 'test_user_123',
@@ -164,8 +164,8 @@ void main() {
     group('product list', () {
       testWidgets('displays products with name and price', (tester) async {
         final products = [
-          _makeProduct(id: 'p1', name: 'Widget A', price: 19.99),
-          _makeProduct(id: 'p2', name: 'Widget B', price: 49.99),
+          _makeProduct(id: 'p1', name: 'Widget A', priceCents: 1999),
+          _makeProduct(id: 'p2', name: 'Widget B', priceCents: 4999),
         ];
 
         await tester.pumpWidget(

@@ -285,7 +285,7 @@ void main() {
         'speed': 'express',
         'isEnabled': true,
         'estimatedDays': 2,
-        'price': 9.99,
+        'priceCents': 999,
       });
       expect(option, isNotNull);
       expect(option!.type, 'express');

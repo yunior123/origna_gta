@@ -100,7 +100,7 @@ void main() {
   final mockProduct = gen.Product(
     productId: 'p1',
     name: 'Coverage Product',
-    price: 99.99,
+    priceCents: 9999,
     categoryId: 1,
     sellerId: 's1',
     createdAt: DateTime.now(),

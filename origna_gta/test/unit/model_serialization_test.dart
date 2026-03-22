@@ -10,9 +10,9 @@ void main() {
       'productId': 'p1',
       'name': 'Test Product',
       'nameF': 'Produit Test',
-      'price': 29.99,
       'priceCents': 2999,
-      'compareAtPrice': 39.99,
+      'priceCents': 2999,
+      'compareAtPriceCents': 3999,
       'description': 'A test product',
       'descriptionF': 'Un produit test',
       'imageUrls': ['img1.jpg', 'img2.jpg'],
@@ -109,7 +109,7 @@ void main() {
       final minimal = {
         'productId': 'p2',
         'name': 'Minimal',
-        'price': 9.99,
+        'priceCents': 999,
         'description': 'Desc',
         'imageUrls': <String>[],
         'sellerId': 's2',
@@ -328,7 +328,7 @@ void main() {
       final json = {
         'productId': 'p3',
         'name': 'Dropship Product',
-        'price': 49.99,
+        'priceCents': 4999,
         'description': 'From AliExpress',
         'imageUrls': ['img.jpg'],
         'sellerId': 's3',
@@ -384,7 +384,7 @@ void main() {
       final product = Product.fromJson({
         'productId': 'p4',
         'name': 'Nested',
-        'price': 19.99,
+        'priceCents': 1999,
         'description': 'Test',
         'imageUrls': <String>[],
         'sellerId': 's4',
@@ -416,7 +416,7 @@ void main() {
             'productId': 'p1',
             'name': 'Product 1',
             'description': 'Desc',
-            'price': 20.0,
+            'priceCents': 2000,
             'quantity': 2,
             'imageUrls': ['img.jpg'],
             'sellerId': 's1',
@@ -532,7 +532,7 @@ void main() {
         'productId': 'p1',
         'name': 'Test Item',
         'description': 'A desc',
-        'price': 15.0,
+        'priceCents': 1500,
         'quantity': 3,
         'imageUrls': ['item.jpg'],
         'sellerId': 's1',
@@ -565,7 +565,7 @@ void main() {
         'productId': 'p2',
         'name': 'Minimal',
         'description': 'D',
-        'price': 5.0,
+        'priceCents': 500,
         'quantity': 1,
         'imageUrls': <String>[],
         'sellerId': 's2',
@@ -609,7 +609,7 @@ void main() {
     test('fromJson with all fields', () {
       final json = {
         'name': 'New Product',
-        'price': 25.0,
+        'priceCents': 2500,
         'description': 'Fresh product',
         'imageUrls': ['img1.jpg'],
         'sellerId': 's1',
@@ -623,7 +623,7 @@ void main() {
       };
       final create = ProductCreate.fromJson(json);
       expect(create.name, 'New Product');
-      expect(create.price, 25.0);
+      expect(create.priceCents, 2500);
       expect(create.sellerId, 's1');
       expect(create.stockQuantity, 100);
     });
@@ -631,7 +631,7 @@ void main() {
     test('toJson roundtrip', () {
       final create = ProductCreate.fromJson({
         'name': 'Roundtrip',
-        'price': 15.0,
+        'priceCents': 1500,
         'description': 'Test',
         'imageUrls': <String>[],
         'sellerId': 's2',
@@ -640,7 +640,7 @@ void main() {
       });
       final json = create.toJson();
       expect(json['name'], 'Roundtrip');
-      expect(json['price'], 15.0);
+      expect(json['priceCents'], 1500);
     });
   });
 
@@ -649,7 +649,7 @@ void main() {
       final product = Product.fromJson({
         'productId': 'p11',
         'name': 'Ebook',
-        'price': 5.0,
+        'priceCents': 500,
         'description': 'Digital book',
         'imageUrls': <String>[],
         'sellerId': 's1',
@@ -850,7 +850,7 @@ void main() {
           'productId': 'prod_1',
           'name': 'Test Product',
           'description': 'A test product',
-          'price': 29.99,
+          'priceCents': 2999,
           'quantity': 2,
           'imageUrls': ['img1.jpg', 'img2.jpg'],
           'sellerId': 'seller_1',
@@ -1054,7 +1054,7 @@ void main() {
       'cartItemId': 'cart_item_123',
       'name': 'Premium Widget',
       'description': 'High-quality widget with extra features',
-      'price': 49.99,
+      'priceCents': 4999,
       'quantity': 3,
       'imageUrls': ['widget1.jpg', 'widget2.jpg'],
       'sellerId': 'seller_xyz',
@@ -1125,7 +1125,7 @@ void main() {
         'productId': 'prod_minimal',
         'name': 'Minimal Product',
         'description': 'Basic item',
-        'price': 9.99,
+        'priceCents': 999,
         'quantity': 1,
         'imageUrls': <String>[],
         'sellerId': 'seller_min',
@@ -1180,7 +1180,7 @@ void main() {
         'productId': 'prod_eq',
         'name': 'Test',
         'description': 'Desc',
-        'price': 10.0,
+        'priceCents': 1000,
         'quantity': 1,
         'imageUrls': <String>[],
         'sellerId': 'seller_1',
@@ -1189,7 +1189,7 @@ void main() {
         'productId': 'prod_eq',
         'name': 'Test',
         'description': 'Desc',
-        'price': 10.0,
+        'priceCents': 1000,
         'quantity': 1,
         'imageUrls': <String>[],
         'sellerId': 'seller_1',
@@ -1198,7 +1198,7 @@ void main() {
         'productId': 'prod_diff',
         'name': 'Test',
         'description': 'Desc',
-        'price': 10.0,
+        'priceCents': 1000,
         'quantity': 1,
         'imageUrls': <String>[],
         'sellerId': 'seller_1',
@@ -1212,7 +1212,7 @@ void main() {
         'productId': 'prod_subtotal',
         'name': 'Test',
         'description': 'Desc',
-        'price': 19.99,
+        'priceCents': 1999,
         'quantity': 3,
         'imageUrls': <String>[],
         'sellerId': 'seller_1',
@@ -1469,12 +1469,12 @@ void main() {
     });
 
     test('total getter sums correctly', () {
-      final taxes = Taxes(gst: 5.0, pst: 7.0, hst: 13.0, qst: 9.975);
+      final taxes = Taxes(gstCents: 500, pstCents: 700, hstCents: 1300, qstCents: 998);
       expect(taxes.total, closeTo(34.975, 0.001));
     });
 
     test('toJson and toMap work correctly', () {
-      final taxes = Taxes(gst: 5.0, pst: 7.0, hst: 0.0, qst: 0.0);
+      final taxes = Taxes(gstCents: 500, pstCents: 700, hstCents: 0, qstCents: 0);
       final json = taxes.toJson();
       final map = taxes.toMap();
       expect(json['GST'], 5.0);

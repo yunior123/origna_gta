@@ -21,7 +21,7 @@ void main() {
     return Product(
       productId: id,
       name: name,
-      price: 1000 / 100.0,
+      priceCents: 1000,
       description: 'Test description',
       imageUrls: const [],
       sellerId: 'seller1',

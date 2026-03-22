@@ -57,7 +57,7 @@ void main() {
       final json = {
         'productId': 'p1',
         'name': 'Test Product',
-        'price': 99.99,
+        'priceCents': 9999,
         'description': 'A great product',
         'imageUrls': ['img1.jpg'],
         'sellerId': 's1',
@@ -102,7 +102,7 @@ void main() {
             'productId': 'p1',
             'name': 'Item 1',
             'description': 'Desc',
-            'price': 50.0,
+            'priceCents': 5000,
             'quantity': 2,
             'imageUrls': [],
             'sellerId': 's1',

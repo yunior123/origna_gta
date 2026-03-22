@@ -37,7 +37,7 @@ void main() {
         TestWrapper(
           child: ModernProductCard(
             productName: 'Tap Test',
-            price: 10.0,
+            price: 10.00,
             imageUrl: '',
             sellerName: 'Seller',
             onTap: () => tapped = true,
@@ -56,7 +56,7 @@ void main() {
         TestWrapper(
           child: ModernProductCard(
             productName: 'Out of Stock Item',
-            price: 50.0,
+            price: 50.00,
             imageUrl: '',
             sellerName: 'Seller',
             onTap: () {},
@@ -80,7 +80,7 @@ void main() {
         TestWrapper(
           child: ModernProductCard(
             productName: 'Sale Item',
-            price: 80.0,
+            price: 80.00,
             compareAtPrice: 100.0,
             imageUrl: '',
             sellerName: 'Seller',
@@ -101,7 +101,7 @@ void main() {
         TestWrapper(
           child: ModernProductCard(
             productName: 'Hot Item',
-            price: 10.0,
+            price: 10.00,
             imageUrl: '',
             sellerName: 'Seller',
             onTap: () {},
@@ -118,7 +118,7 @@ void main() {
         TestWrapper(
           child: ModernProductCard(
             productName: 'Rising Item',
-            price: 10.0,
+            price: 10.00,
             imageUrl: '',
             sellerName: 'Seller',
             onTap: () {},
@@ -137,7 +137,7 @@ void main() {
         TestWrapper(
           child: ModernProductCard(
             productName: 'Multi Ship',
-            price: 10.0,
+            price: 10.00,
             imageUrl: '',
             sellerName: 'Seller',
             onTap: () {},
@@ -154,7 +154,7 @@ void main() {
         TestWrapper(
           child: ModernProductCard(
             productName: 'Global Ship',
-            price: 10.0,
+            price: 10.00,
             imageUrl: '',
             sellerName: 'Seller',
             onTap: () {},
@@ -172,7 +172,7 @@ void main() {
         TestWrapper(
           child: ModernProductCard(
             productName: 'Cart Item',
-            price: 10.0,
+            price: 10.00,
             imageUrl: '',
             sellerName: 'Seller',
             onTap: () {},

@@ -37,7 +37,7 @@ void main() {
         productId: 'prod_123',
         name: 'Test Product',
         description: 'This is a test product description.',
-        price: 9999 / 100.0,
+        priceCents: 9999,
         sellerId: 'seller_123',
         categoryId: 1,
         imageUrls: const ['images/33.png'],

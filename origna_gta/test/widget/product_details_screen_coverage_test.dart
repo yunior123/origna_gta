@@ -58,7 +58,7 @@ void main() {
   final baseProduct = Product(
     productId: 'p1',
     name: 'Honey',
-    price: 10.0,
+    priceCents: 1000,
     imageUrls: const ['images/33.png'],
     description: 'Sweet honey from Canada.',
     sellerId: 's1',

@@ -39,7 +39,7 @@ void main() {
       await tester.pumpWidget(TestWrapper(
         child: ModernProductCard(
           productName: 'Sale Item',
-          price: 50.0,
+          price: 50.00,
           compareAtPrice: 100.0,
           imageUrl: '',
           sellerName: 'S1',
@@ -56,7 +56,7 @@ void main() {
       await tester.pumpWidget(TestWrapper(
         child: ModernProductCard(
           productName: 'Out Item',
-          price: 10.0,
+          price: 10.00,
           imageUrl: '',
           sellerName: 'S1',
           isOutOfStock: true,
@@ -72,7 +72,7 @@ void main() {
       await tester.pumpWidget(TestWrapper(
         child: ModernProductCard(
           productName: 'Hot Item',
-          price: 10.0,
+          price: 10.00,
           imageUrl: '',
           sellerName: 'S1',
           isTrending: true,
@@ -89,7 +89,7 @@ void main() {
       await tester.pumpWidget(TestWrapper(
         child: ModernProductCard(
           productName: 'Rising Item',
-          price: 10.0,
+          price: 10.00,
           imageUrl: '',
           sellerName: 'S1',
           isTrending: true,

@@ -46,7 +46,7 @@ void main() {
       Product(
         productId: 'p1',
         name: 'Test Product 1',
-        price: 29.99,
+        priceCents: 2999,
         imageUrls: const ['https://example.com/image1.jpg'],
         description: 'Description 1',
         sellerId: 's1',
@@ -57,7 +57,7 @@ void main() {
       Product(
         productId: 'p2',
         name: 'Test Product 2',
-        price: 49.99,
+        priceCents: 4999,
         imageUrls: const ['https://example.com/image2.jpg'],
         description: 'Description 2',
         sellerId: 's2',
@@ -68,7 +68,7 @@ void main() {
       Product(
         productId: 'p3',
         name: 'Test Product 3',
-        price: 99.99,
+        priceCents: 9999,
         imageUrls: const ['https://example.com/image3.jpg'],
         description: 'Description 3',
         sellerId: 's3',
@@ -270,7 +270,7 @@ void main() {
         (i) => Product(
           productId: 'p${i + 1}',
           name: 'Product ${i + 1}',
-          price: 10.0,
+          priceCents: 1000,
           imageUrls: const ['https://example.com/img.jpg'],
           description: 'Desc',
           sellerId: 's1',
@@ -393,7 +393,7 @@ void main() {
       final testProduct = Product(
         productId: 'test_prod_123',
         name: 'Test',
-        price: 10.0,
+        priceCents: 1000,
         imageUrls: const [],
         description: 'Test',
         sellerId: 's1',

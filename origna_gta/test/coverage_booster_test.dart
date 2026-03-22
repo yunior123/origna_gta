@@ -197,7 +197,6 @@ void main() {
       final p = gen.Product(
         productId: 'p1',
         name: 'N',
-        price: 10.0,
         priceCents: 1000,
         categoryId: 1,
         sellerId: 's1',

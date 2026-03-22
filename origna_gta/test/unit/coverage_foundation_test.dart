@@ -90,44 +90,47 @@ void main() {
       );
     });
 
-    test('Timestamp supports conversion, equality, parsing, and truncation', () {
-      final date = DateTime.utc(2026, 3, 19, 12, 34, 56, 789, 123);
-      final timestamp = Timestamp.fromDate(date);
-      final sameTimestamp = Timestamp.fromDate(date);
-      final laterTimestamp = Timestamp.fromDate(
-        date.add(const Duration(seconds: 1)),
-      );
+    test(
+      'Timestamp supports conversion, equality, parsing, and truncation',
+      () {
+        final date = DateTime.utc(2026, 3, 19, 12, 34, 56, 789, 123);
+        final timestamp = Timestamp.fromDate(date);
+        final sameTimestamp = Timestamp.fromDate(date);
+        final laterTimestamp = Timestamp.fromDate(
+          date.add(const Duration(seconds: 1)),
+        );
 
-      expect(timestamp.toDate(), date);
-      expect(timestamp.millisecondsSinceEpoch, date.millisecondsSinceEpoch);
-      expect(timestamp.seconds, date.millisecondsSinceEpoch ~/ 1000);
-      expect(timestamp.compareTo(sameTimestamp), 0);
-      expect(timestamp.compareTo(laterTimestamp), lessThan(0));
-      expect(timestamp, sameTimestamp);
-      expect(timestamp.hashCode, sameTimestamp.hashCode);
-      expect(timestamp.toString(), contains('Timestamp('));
-      expect(Timestamp.now().toDate(), isA<DateTime>());
+        expect(timestamp.toDate(), date);
+        expect(timestamp.millisecondsSinceEpoch, date.millisecondsSinceEpoch);
+        expect(timestamp.seconds, date.millisecondsSinceEpoch ~/ 1000);
+        expect(timestamp.compareTo(sameTimestamp), 0);
+        expect(timestamp.compareTo(laterTimestamp), lessThan(0));
+        expect(timestamp, sameTimestamp);
+        expect(timestamp.hashCode, sameTimestamp.hashCode);
+        expect(timestamp.toString(), contains('Timestamp('));
+        expect(Timestamp.now().toDate(), isA<DateTime>());
 
-      expect(
-        truncateNanoseconds('2026-03-12T11:56:03.185238962+00:00'),
-        '2026-03-12T11:56:03.185238+00:00',
-      );
-      expect(
-        truncateNanoseconds('2026-03-12T11:56:03.185238+00:00'),
-        '2026-03-12T11:56:03.185238+00:00',
-      );
-      expect(parseTimestamp(null), isNull);
-      expect(parseTimestamp(date), date);
-      expect(
-        parseTimestamp('2026-03-12T11:56:03.185238962+00:00'),
-        DateTime.parse('2026-03-12T11:56:03.185238+00:00'),
-      );
-      expect(
-        parseTimestamp(date.millisecondsSinceEpoch),
-        DateTime.fromMillisecondsSinceEpoch(date.millisecondsSinceEpoch),
-      );
-      expect(parseTimestamp(const Object()), isNull);
-    });
+        expect(
+          truncateNanoseconds('2026-03-12T11:56:03.185238962+00:00'),
+          '2026-03-12T11:56:03.185238+00:00',
+        );
+        expect(
+          truncateNanoseconds('2026-03-12T11:56:03.185238+00:00'),
+          '2026-03-12T11:56:03.185238+00:00',
+        );
+        expect(parseTimestamp(null), isNull);
+        expect(parseTimestamp(date), date);
+        expect(
+          parseTimestamp('2026-03-12T11:56:03.185238962+00:00'),
+          DateTime.parse('2026-03-12T11:56:03.185238+00:00'),
+        );
+        expect(
+          parseTimestamp(date.millisecondsSinceEpoch),
+          DateTime.fromMillisecondsSinceEpoch(date.millisecondsSinceEpoch),
+        );
+        expect(parseTimestamp(const Object()), isNull);
+      },
+    );
 
     test('push transport no-op client returns denied defaults', () async {
       const client = NoopPushMessagingClient();
@@ -168,7 +171,7 @@ void main() {
       final product = Product(
         productId: 'p1',
         name: 'Honey',
-        price: 1000 / 100.0,
+        priceCents: 1000,
         imageUrls: const ['images/33.png'],
         description: 'Sweet honey',
         sellerId: 'seller-1',
@@ -180,7 +183,8 @@ void main() {
         productId: 'p1',
         name: 'Honey',
         description: 'Sweet honey',
-        price: 1000 / 100.0,
+        price: 10.0,
+        priceCents: 1000,
         imageUrls: const ['images/33.png'],
         quantity: 2,
         createdAt: DateTime.utc(2026, 3, 19),
@@ -272,9 +276,9 @@ void main() {
         email: 'user@example.com',
         emailVerified: true,
       );
-      final authUser = AppAuthUser.fromAuthState(authState).copyWith(
-        providerData: const [providerInfo],
-      );
+      final authUser = AppAuthUser.fromAuthState(
+        authState,
+      ).copyWith(providerData: const [providerInfo]);
       final parsedAvailability = PublicAuthProviderAvailability.fromJson({
         'enabled': true,
         'client_id_configured': true,
@@ -307,87 +311,116 @@ void main() {
       );
     });
 
-    test('repository providers and authStateProvider emit OrignaBase-backed values', () async {
-      final mockOb = mfa_mocks.MockOrignaBase();
-      final mockAuth = mfa_mocks.MockOrignaBaseAuth();
-      final authController = StreamController<AuthState>();
+    test(
+      'repository providers and authStateProvider emit OrignaBase-backed values',
+      () async {
+        final mockOb = mfa_mocks.MockOrignaBase();
+        final mockAuth = mfa_mocks.MockOrignaBaseAuth();
+        final authController = StreamController<AuthState>();
 
-      when(mockOb.auth).thenReturn(mockAuth);
-      when(mockAuth.currentState).thenReturn(
-        const AuthState(status: AuthStatus.unauthenticated),
-      );
-      when(mockAuth.authStateChanges).thenAnswer((_) => authController.stream);
+        when(mockOb.auth).thenReturn(mockAuth);
+        when(
+          mockAuth.currentState,
+        ).thenReturn(const AuthState(status: AuthStatus.unauthenticated));
+        when(
+          mockAuth.authStateChanges,
+        ).thenAnswer((_) => authController.stream);
 
-      final container = ProviderContainer(
-        overrides: [orignabaseProvider.overrideWithValue(mockOb)],
-      );
-      addTearDown(() async {
-        await authController.close();
-        container.dispose();
-      });
+        final container = ProviderContainer(
+          overrides: [orignabaseProvider.overrideWithValue(mockOb)],
+        );
+        addTearDown(() async {
+          await authController.close();
+          container.dispose();
+        });
 
-      expect(container.read(authRepositoryProvider), isA<OrignaBaseAuthRepository>());
-      expect(container.read(cartRepositoryProvider), isA<OrignaBaseCartRepository>());
-      expect(container.read(orderRepositoryProvider), isA<OrignaBaseOrderRepository>());
-      expect(container.read(productRepositoryProvider), isA<OrignaBaseProductRepository>());
-      expect(container.read(userRepositoryProvider), isA<OrignaBaseUserRepository>());
-      expect(container.read(locationRepositoryProvider), isA<OrignaBaseLocationRepository>());
+        expect(
+          container.read(authRepositoryProvider),
+          isA<OrignaBaseAuthRepository>(),
+        );
+        expect(
+          container.read(cartRepositoryProvider),
+          isA<OrignaBaseCartRepository>(),
+        );
+        expect(
+          container.read(orderRepositoryProvider),
+          isA<OrignaBaseOrderRepository>(),
+        );
+        expect(
+          container.read(productRepositoryProvider),
+          isA<OrignaBaseProductRepository>(),
+        );
+        expect(
+          container.read(userRepositoryProvider),
+          isA<OrignaBaseUserRepository>(),
+        );
+        expect(
+          container.read(locationRepositoryProvider),
+          isA<OrignaBaseLocationRepository>(),
+        );
 
-      expect(await container.read(authStateProvider.future), isNull);
+        expect(await container.read(authStateProvider.future), isNull);
 
-      authController.add(
-        const AuthState(
-          status: AuthStatus.authenticated,
-          userId: 'user-2',
-          email: 'user2@example.com',
-          emailVerified: true,
-        ),
-      );
-
-      AppAuthUser? authedUser;
-      final listener = container.listen<AsyncValue<AppAuthUser?>>(
-        authStateProvider,
-        (_, next) {
-          authedUser = next.valueOrNull;
-        },
-        fireImmediately: true,
-      );
-      addTearDown(listener.close);
-
-      await Future<void>.delayed(Duration.zero);
-      expect(authedUser?.email, 'user2@example.com');
-    });
-
-    test('userAddressesProvider returns empty list without a signed-in user', () async {
-      final container = ProviderContainer(
-        overrides: [currentUserProvider.overrideWithValue(null)],
-      );
-      addTearDown(container.dispose);
-
-      expect(await container.read(userAddressesProvider.future), isEmpty);
-    });
-
-    test('userAddressesProvider forwards repository addresses for signed-in users', () async {
-      final address = models.Address(
-        street: '99 Queen St',
-        city: 'Toronto',
-        state: 'ON',
-        postalCode: 'M5H2N2',
-        country: 'CA',
-      );
-      final container = ProviderContainer(
-        overrides: [
-          userIdProvider.overrideWith((ref) => 'user-9'),
-          userRepositoryProvider.overrideWithValue(
-            _FakeUserRepository(addresses: [address]),
+        authController.add(
+          const AuthState(
+            status: AuthStatus.authenticated,
+            userId: 'user-2',
+            email: 'user2@example.com',
+            emailVerified: true,
           ),
-        ],
-      );
-      addTearDown(container.dispose);
+        );
 
-      final addresses = await container.read(userAddressesProvider.future);
-      expect(addresses.single.street, '99 Queen St');
-    });
+        AppAuthUser? authedUser;
+        final listener = container.listen<AsyncValue<AppAuthUser?>>(
+          authStateProvider,
+          (_, next) {
+            authedUser = next.valueOrNull;
+          },
+          fireImmediately: true,
+        );
+        addTearDown(listener.close);
+
+        await Future<void>.delayed(Duration.zero);
+        expect(authedUser?.email, 'user2@example.com');
+      },
+    );
+
+    test(
+      'userAddressesProvider returns empty list without a signed-in user',
+      () async {
+        final container = ProviderContainer(
+          overrides: [currentUserProvider.overrideWithValue(null)],
+        );
+        addTearDown(container.dispose);
+
+        expect(await container.read(userAddressesProvider.future), isEmpty);
+      },
+    );
+
+    test(
+      'userAddressesProvider forwards repository addresses for signed-in users',
+      () async {
+        final address = models.Address(
+          street: '99 Queen St',
+          city: 'Toronto',
+          state: 'ON',
+          postalCode: 'M5H2N2',
+          country: 'CA',
+        );
+        final container = ProviderContainer(
+          overrides: [
+            userIdProvider.overrideWith((ref) => 'user-9'),
+            userRepositoryProvider.overrideWithValue(
+              _FakeUserRepository(addresses: [address]),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        final addresses = await container.read(userAddressesProvider.future);
+        expect(addresses.single.street, '99 Queen St');
+      },
+    );
 
     test('schema constants expose expected values', () {
       expect(AddressLabelValues.home, 'Home');

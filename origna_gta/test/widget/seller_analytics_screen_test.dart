@@ -31,7 +31,7 @@ Order _makeOrder({
             productId: 'product1',
             name: 'Test Product',
             description: 'A test product',
-            price: subtotalCents / 100.0,
+            priceCents: subtotalCents,
             quantity: 1,
             imageUrls: [],
             sellerId: 'seller1',
@@ -43,14 +43,14 @@ Order _makeOrder({
 OrderItem _makeOrderItem({
   String productId = 'product1',
   String name = 'Test Product',
-  double price = 50.0,
+  int priceCents = 5000,
   int quantity = 2,
 }) {
   return OrderItem(
     productId: productId,
     name: name,
     description: 'Test product description',
-    price: price,
+    priceCents: priceCents,
     quantity: quantity,
     imageUrls: [],
     sellerId: 'seller1',
@@ -429,7 +429,7 @@ void main() {
             _makeOrderItem(
               productId: 'p1',
               name: 'Product A',
-              price: 25.0,
+              priceCents: 2500,
               quantity: 3,
             ),
           ],
@@ -453,7 +453,7 @@ void main() {
             _makeOrderItem(
               productId: 'p1',
               name: 'Product A',
-              price: 25.0,
+              priceCents: 2500,
               quantity: 5,
             ),
           ],
@@ -477,7 +477,7 @@ void main() {
             _makeOrderItem(
               productId: 'p1',
               name: 'Product A',
-              price: 50.0,
+              priceCents: 5000,
               quantity: 2,
             ),
           ],
@@ -501,7 +501,7 @@ void main() {
             _makeOrderItem(
               productId: 'p1',
               name: 'Product A',
-              price: 25.0,
+              priceCents: 2500,
               quantity: 3,
             ),
           ],
@@ -527,13 +527,13 @@ void main() {
             _makeOrderItem(
               productId: 'p1',
               name: 'Product A',
-              price: 25.0,
+              priceCents: 2500,
               quantity: 3,
             ),
             _makeOrderItem(
               productId: 'p2',
               name: 'Product B',
-              price: 30.0,
+              priceCents: 3000,
               quantity: 5,
             ),
           ],

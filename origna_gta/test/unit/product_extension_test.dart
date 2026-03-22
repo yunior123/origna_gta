@@ -6,7 +6,7 @@ void main() {
     final baseProduct = Product(
       productId: 'p1',
       name: 'Test',
-      price: 10000 / 100.0,
+      priceCents: 10000,
       description: 'Desc',
       imageUrls: [],
       sellerId: 's1',

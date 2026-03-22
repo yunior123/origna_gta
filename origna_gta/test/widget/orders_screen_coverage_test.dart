@@ -29,7 +29,7 @@ Order _makeOrder({
         productId: 'p1',
         name: 'Widget',
         description: 'A widget',
-        price: 2500 / 100.0,
+        priceCents: 2500,
         quantity: 2,
         imageUrls: [],
         sellerId: 's1',

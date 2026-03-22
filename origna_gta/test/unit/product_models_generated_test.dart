@@ -389,7 +389,7 @@ void main() {
     Map<String, dynamic> _minimalProductJson() => {
           'productId': 'prod-001',
           'name': 'Maple Syrup',
-          'price': 24.99,
+          'priceCents': 2499,
           'description': 'Pure Canadian maple syrup',
           'imageUrls': ['https://img.example.com/maple.jpg'],
           'sellerId': 'seller-001',
@@ -436,7 +436,7 @@ void main() {
       // Nullable fields should be null
       expect(model.nameF, isNull);
       expect(model.priceCents, isNull);
-      expect(model.compareAtPrice, isNull);
+      expect(model.compareAtPriceCents, isNull);
       expect(model.descriptionF, isNull);
       expect(model.videoUrl, isNull);
       expect(model.videoDurationSeconds, isNull);
@@ -588,7 +588,7 @@ void main() {
       final model = Product.fromJson(json);
       expect(model.nameF, 'Sirop d\'erable');
       expect(model.priceCents, 2499);
-      expect(model.compareAtPrice, 34.99);
+      expect(model.compareAtPriceCents, 34.99);
       expect(model.sellerAddress?.city, 'Montreal');
       expect(model.rating, 4.5);
       expect(model.ratingCount, 120);
@@ -780,7 +780,7 @@ void main() {
   group('ProductCreate fromJson/toJson', () {
     Map<String, dynamic> _minimalCreateJson() => {
           'name': 'New Product',
-          'price': 19.99,
+          'priceCents': 1999,
           'description': 'A new product',
           'imageUrls': ['img.jpg'],
           'sellerId': 'seller-002',
@@ -793,7 +793,7 @@ void main() {
       final model = ProductCreate.fromJson(json);
 
       expect(model.name, 'New Product');
-      expect(model.price, 19.99);
+      expect(model.priceCents, 1999);
       expect(model.sellerId, 'seller-002');
       expect(model.categoryId, 3);
       expect(model.stockQuantity, 50);
@@ -815,7 +815,7 @@ void main() {
 
       // Nullable fields
       expect(model.nameF, isNull);
-      expect(model.compareAtPrice, isNull);
+      expect(model.compareAtPriceCents, isNull);
       expect(model.descriptionF, isNull);
       expect(model.videoUrl, isNull);
       expect(model.sellerAddress, isNull);
@@ -896,14 +896,14 @@ void main() {
     test('toJson includes all fields', () {
       final model = ProductCreate(
         name: 'Test',
-        price: 999 / 100.0,
+        priceCents: 999,
         description: 'Desc',
         imageUrls: ['a.jpg'],
         sellerId: 's1',
         categoryId: 1,
         stockQuantity: 10,
         nameF: 'TestFR',
-        compareAtPrice: 14.99,
+        compareAtPriceCents: 1499,
         digitalType: 'software',
         slug: 'test-product',
         digitalBuilds: {'web': 'v1'},
@@ -1127,12 +1127,12 @@ void main() {
       bool isDigital = false,
       bool isLocalDeliveryOnly = false,
       int stockQuantity = 100,
-      double price = 25.0,
+      int priceCents = 2500,
     }) =>
         Product(
           productId: 'p1',
           name: 'Test',
-          price: price,
+          priceCents: priceCents,
           description: 'Desc',
           imageUrls: ['img.jpg'],
           sellerId: 's1',
@@ -1216,12 +1216,12 @@ void main() {
     });
 
     test('profit and marginPercent', () {
-      expect(_makeProduct(price: 25.0, cost: 10.0).profit, 15.0);
-      expect(_makeProduct(price: 25.0, cost: 10.0).marginPercent, 60.0);
-      expect(_makeProduct(price: 25.0).profit, isNull);
-      expect(_makeProduct(price: 25.0).marginPercent, isNull);
+      expect(_makeProduct(priceCents: 2500, cost: 10.0).profit, 15.0);
+      expect(_makeProduct(priceCents: 2500, cost: 10.0).marginPercent, 60.0);
+      expect(_makeProduct(priceCents: 2500).profit, isNull);
+      expect(_makeProduct(priceCents: 2500).marginPercent, isNull);
       // cost=0 => marginPercent null (division guard)
-      expect(_makeProduct(price: 25.0, cost: 0.0).marginPercent, isNull);
+      expect(_makeProduct(priceCents: 2500, cost: 0.0).marginPercent, isNull);
     });
 
     test('isInternationalSupplier', () {

@@ -56,7 +56,7 @@ void main() {
     productId: 'prod_1',
     name: 'Test Product',
     description: 'Description',
-    price: 5000 / 100.0,
+    price: 50.0, priceCents: 5000,
     imageUrls: ['images/33.png'],
     quantity: 2,
     createdAt: DateTime.now(),

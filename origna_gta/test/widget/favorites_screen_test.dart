@@ -26,14 +26,14 @@ void main() {
   Product createProduct({
     required String productId,
     required String name,
-    double price = 29.99,
+    int priceCents = 2999,
     String lifecycleStatus = ProductLifecycleStatusValues.active,
     int stockQuantity = 10,
   }) {
     return Product(
       productId: productId,
       name: name,
-      price: price,
+      priceCents: priceCents,
       description: 'Test product description',
       imageUrls: ['https://example.com/image.jpg'],
       sellerId: 'seller1',

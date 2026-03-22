@@ -56,7 +56,7 @@ void main() {
     productId: doc.id,
     name: 'Product ${doc.id}',
     description: 'Desc',
-    price: 1000 / 100.0,
+    priceCents: 1000,
     sellerId: 's1',
     categoryId: 1,
     imageUrls: const [],

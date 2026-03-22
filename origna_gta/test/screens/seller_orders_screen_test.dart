@@ -44,7 +44,7 @@ void main() {
     productId: 'prod_1',
     name: 'Test Product',
     description: '',
-    price: 5000 / 100.0,
+    priceCents: 5000,
     quantity: 2,
     sellerId: 'seller_123',
     status: 'pending',
