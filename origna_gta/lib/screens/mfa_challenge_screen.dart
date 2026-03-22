@@ -1,6 +1,5 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/features/auth/mfa_viewmodel.dart';
@@ -52,10 +51,9 @@ class _MfaChallengeScreenState extends ConsumerState<MfaChallengeScreen> {
     if (!mounted) return;
 
     if (success) {
-      Navigator.of(context).pushNamedAndRemoveUntil(
-        AppRoutes.home,
-        (_) => false,
-      );
+      Navigator.of(
+        context,
+      ).pushNamedAndRemoveUntil(AppRoutes.home, (_) => false);
       return;
     }
 
@@ -72,10 +70,7 @@ class _MfaChallengeScreenState extends ConsumerState<MfaChallengeScreen> {
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: DesignTokens.error,
-      ),
+      SnackBar(content: Text(message), backgroundColor: DesignTokens.error),
     );
   }
 
@@ -88,10 +83,9 @@ class _MfaChallengeScreenState extends ConsumerState<MfaChallengeScreen> {
   }
 
   void _navigateToLogin() {
-    Navigator.of(context).pushNamedAndRemoveUntil(
-      AppRoutes.login,
-      (_) => false,
-    );
+    Navigator.of(
+      context,
+    ).pushNamedAndRemoveUntil(AppRoutes.login, (_) => false);
   }
 
   @override
@@ -99,9 +93,7 @@ class _MfaChallengeScreenState extends ConsumerState<MfaChallengeScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final attemptsExhausted = _attempts >= _maxAttempts;
 
-    return SensitiveContent(
-      sensitivity: ContentSensitivity.sensitive,
-      child: Scaffold(
+    return Scaffold(
       backgroundColor: isDark ? DesignTokens.darkBackground : null,
       body: Center(
         child: SingleChildScrollView(
@@ -168,18 +160,13 @@ class _MfaChallengeScreenState extends ConsumerState<MfaChallengeScreen> {
           ),
         ),
       ),
-    ),
     );
   }
 
   Widget _buildAttemptsExhausted() {
     return Column(
       children: [
-        Icon(
-          Icons.lock_outline_rounded,
-          size: 48,
-          color: DesignTokens.error,
-        ),
+        Icon(Icons.lock_outline_rounded, size: 48, color: DesignTokens.error),
         const SizedBox(height: 16),
         Text(
           'mfa.too_many_attempts'.tr(),
@@ -307,10 +294,7 @@ class _MfaChallengeScreenState extends ConsumerState<MfaChallengeScreen> {
             padding: const EdgeInsets.only(top: 8),
             child: Text(
               '${_maxAttempts - _attempts} ${'mfa.attempts_remaining'.tr()}',
-              style: TextStyle(
-                fontSize: 12,
-                color: DesignTokens.textSecondary,
-              ),
+              style: TextStyle(fontSize: 12, color: DesignTokens.textSecondary),
             ),
           ),
       ],

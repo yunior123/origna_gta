@@ -195,6 +195,7 @@ void main() {
           email: 'o@test.com',
           roles: [UserRole.seller],
           createdAt: DateTime.now(),
+          onboardingCompleted: true,
         ),
       ];
       when(

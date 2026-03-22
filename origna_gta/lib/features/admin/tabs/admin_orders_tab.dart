@@ -33,16 +33,16 @@ class _AdminOrderCard extends StatelessWidget {
 
     Color statusColor;
     switch (paymentStatus) {
-      case PaymentStatus.paid:
+      case PaymentStatusValues.paid:
         statusColor = DesignTokens.success;
         break;
-      case PaymentStatus.authorized:
+      case PaymentStatusValues.authorized:
         statusColor = DesignTokens.info;
         break;
-      case PaymentStatus.refunded:
+      case PaymentStatusValues.refunded:
         statusColor = DesignTokens.secondary;
         break;
-      case PaymentStatus.paymentFailed:
+      case PaymentStatusValues.paymentFailed:
         statusColor = DesignTokens.error;
         break;
       default:
@@ -178,7 +178,7 @@ class _AdminOrderCard extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      if (paymentStatus == PaymentStatus.paid)
+                      if (paymentStatus == PaymentStatusValues.paid)
                         Semantics(
                           button: true,
                           label: 'btn-refund-order',

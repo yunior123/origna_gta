@@ -10,10 +10,10 @@ import 'package:origna_gta/features/seller/seller_products_viewmodel.dart';
 import 'package:origna_gta/models/generated/product_models.dart';
 import 'package:origna_gta/models/models.dart' as models;
 import 'package:origna_gta/screens/seller_products_screen.dart';
+import 'package:origna_gta/widgets/modern_button.dart';
 
 import '../test_utils.dart';
 import 'package:origna_gta/models/generated/base_models.dart';
-
 
 Product _makeProduct({
   String id = 'prod_1',
@@ -63,7 +63,10 @@ void main() {
   });
 
   setUp(() {
-    mockUser = const AppAuthUser(uid: 'test_user_123', email: 'test@example.com');
+    mockUser = const AppAuthUser(
+      uid: 'test_user_123',
+      email: 'test@example.com',
+    );
   });
 
   Widget buildScreen({
@@ -81,8 +84,9 @@ void main() {
         sellerProductsProvider.overrideWith(
           (ref) => productsStream ?? Stream.value([]),
         ),
-        sellerUnansweredQaProvider('test_user_123')
-            .overrideWith((ref) => Stream.value(unansweredQaCount)),
+        sellerUnansweredQaProvider(
+          'test_user_123',
+        ).overrideWith((ref) => Stream.value(unansweredQaCount)),
       ],
       onGenerateRoute: (settings) {
         // Stub all routes to prevent navigation errors in tests
@@ -126,7 +130,8 @@ void main() {
         await pumpFrames(tester);
 
         expect(find.text('Something went wrong'), findsOneWidget);
-        expect(find.text('Retry'), findsOneWidget);
+        // ModernButton renders the label from 'common.retry'.tr()
+        expect(find.byType(ModernButton), findsOneWidget);
       });
 
       testWidgets('retry button is tappable', (tester) async {
@@ -135,7 +140,7 @@ void main() {
         );
         await pumpFrames(tester);
 
-        final retryButton = find.text('Retry');
+        final retryButton = find.byType(ModernButton);
         expect(retryButton, findsOneWidget);
         await tester.tap(retryButton);
         await tester.pump();
@@ -144,13 +149,14 @@ void main() {
 
     group('empty products state', () {
       testWidgets('shows empty state when no products', (tester) async {
-        await tester.pumpWidget(
-          buildScreen(productsStream: Stream.value([])),
-        );
+        await tester.pumpWidget(buildScreen(productsStream: Stream.value([])));
         await pumpFrames(tester);
 
         expect(find.text('No products yet'), findsOneWidget);
-        expect(find.text('Add your first product to start selling'), findsOneWidget);
+        expect(
+          find.text('Add your first product to start selling'),
+          findsOneWidget,
+        );
         expect(find.text('Add Product'), findsWidgets);
       });
     });
@@ -227,7 +233,9 @@ void main() {
 
       testWidgets('displays under review badge', (tester) async {
         final products = [
-          _makeProduct(lifecycleStatus: ProductLifecycleStatusValues.underReview),
+          _makeProduct(
+            lifecycleStatus: ProductLifecycleStatusValues.underReview,
+          ),
         ];
 
         await tester.pumpWidget(
@@ -238,7 +246,9 @@ void main() {
         expect(find.text('Under Review'), findsWidgets);
       });
 
-      testWidgets('displays rejected product with rejection banner', (tester) async {
+      testWidgets('displays rejected product with rejection banner', (
+        tester,
+      ) async {
         final products = [
           _makeProduct(
             lifecycleStatus: ProductLifecycleStatusValues.rejected,
@@ -264,10 +274,10 @@ void main() {
         expect(find.text('Fix & Resubmit'), findsOneWidget);
       });
 
-      testWidgets('shows placeholder image when product has no images', (tester) async {
-        final products = [
-          _makeProduct(imageUrls: []),
-        ];
+      testWidgets('shows placeholder image when product has no images', (
+        tester,
+      ) async {
+        final products = [_makeProduct(imageUrls: [])];
 
         await tester.pumpWidget(
           buildScreen(productsStream: Stream.value(products)),
@@ -278,9 +288,7 @@ void main() {
       });
 
       testWidgets('shows low stock warning color', (tester) async {
-        final products = [
-          _makeProduct(stockQuantity: 3),
-        ];
+        final products = [_makeProduct(stockQuantity: 3)];
 
         await tester.pumpWidget(
           buildScreen(productsStream: Stream.value(products)),
@@ -291,9 +299,7 @@ void main() {
       });
 
       testWidgets('shows out of stock error color', (tester) async {
-        final products = [
-          _makeProduct(stockQuantity: 0),
-        ];
+        final products = [_makeProduct(stockQuantity: 0)];
 
         await tester.pumpWidget(
           buildScreen(productsStream: Stream.value(products)),
@@ -305,7 +311,9 @@ void main() {
     });
 
     group('add product button', () {
-      testWidgets('app bar has add product button with products', (tester) async {
+      testWidgets('app bar has add product button with products', (
+        tester,
+      ) async {
         final products = [_makeProduct()];
         await tester.pumpWidget(
           buildScreen(productsStream: Stream.value(products)),
@@ -316,9 +324,7 @@ void main() {
       });
 
       testWidgets('empty state has add product button', (tester) async {
-        await tester.pumpWidget(
-          buildScreen(productsStream: Stream.value([])),
-        );
+        await tester.pumpWidget(buildScreen(productsStream: Stream.value([])));
         await pumpFrames(tester);
 
         expect(find.text('Add Product'), findsWidgets);
@@ -326,7 +332,9 @@ void main() {
     });
 
     group('Q&A badge', () {
-      testWidgets('shows Q&A badge with count when questions exist', (tester) async {
+      testWidgets('shows Q&A badge with count when questions exist', (
+        tester,
+      ) async {
         final products = [_makeProduct()];
 
         await tester.pumpWidget(
@@ -341,7 +349,9 @@ void main() {
         expect(find.text('5'), findsOneWidget);
       });
 
-      testWidgets('shows Q&A icon without count badge when zero', (tester) async {
+      testWidgets('shows Q&A icon without count badge when zero', (
+        tester,
+      ) async {
         final products = [_makeProduct()];
 
         await tester.pumpWidget(
@@ -384,7 +394,9 @@ void main() {
         expect(find.byKey(const Key('seller_products_screen')), findsOneWidget);
       });
 
-      testWidgets('shows product count in subtitle when products exist', (tester) async {
+      testWidgets('shows product count in subtitle when products exist', (
+        tester,
+      ) async {
         final products = [
           _makeProduct(id: 'p1'),
           _makeProduct(id: 'p2'),

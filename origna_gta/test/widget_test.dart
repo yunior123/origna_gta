@@ -9,17 +9,29 @@ import 'package:origna_gta/utils/utils.dart';
 void main() {
   group('App Smoke Tests', () {
     test('Address model can be instantiated', () {
-      final address = Address(street: '123 Test St', city: 'Toronto', state: 'ON', postalCode: 'M5V 1A1', country: 'Canada');
+      final address = Address(
+        street: '123 Test St',
+        city: 'Toronto',
+        state: 'ON',
+        postalCode: 'M5V 1A1',
+        country: 'Canada',
+      );
 
       expect(address.city, 'Toronto');
       expect(address.state, 'ON');
     });
 
     test('UserModel can be instantiated', () {
-      final user = UserModel(uid: 'test_user', email: 'test@example.com', name: 'Test User', roles: [UserRole.buyer], createdAt: DateTime.now());
+      final user = UserModel(
+        uid: 'test_user',
+        email: 'test@example.com',
+        name: 'Test User',
+        roles: [UserRole.buyer],
+        createdAt: DateTime.now(),
+      );
 
       expect(user.uid, 'test_user');
-      expect(user.roles.contains('buyer'), true);
+      expect(user.roles.contains(UserRole.buyer), true);
     });
 
     test('ProductModel can be instantiated', () {
@@ -28,7 +40,13 @@ void main() {
         name: 'Test Product',
         priceCents: 2999,
         imageUrls: [],
-        sellerAddress: Address(street: '123 Test St', city: 'Toronto', state: 'ON', postalCode: 'M5V 1A1', country: 'Canada'),
+        sellerAddress: Address(
+          street: '123 Test St',
+          city: 'Toronto',
+          state: 'ON',
+          postalCode: 'M5V 1A1',
+          country: 'Canada',
+        ),
         description: 'A test product',
         sellerId: 'seller_123',
         stockQuantity: 10,
@@ -42,11 +60,29 @@ void main() {
 
     test('Tax calculation works for all provinces', () {
       // Verify all provinces have tax rates
-      final provinces = ['ON', 'BC', 'AB', 'QC', 'MB', 'SK', 'NS', 'NB', 'NL', 'PE', 'NT', 'YT', 'NU'];
+      final provinces = [
+        'ON',
+        'BC',
+        'AB',
+        'QC',
+        'MB',
+        'SK',
+        'NS',
+        'NB',
+        'NL',
+        'PE',
+        'NT',
+        'YT',
+        'NU',
+      ];
 
       for (final province in provinces) {
         final rate = getTaxRate(province);
-        expect(rate, greaterThan(0), reason: '$province should have a positive tax rate');
+        expect(
+          rate,
+          greaterThan(0),
+          reason: '$province should have a positive tax rate',
+        );
       }
     });
   });

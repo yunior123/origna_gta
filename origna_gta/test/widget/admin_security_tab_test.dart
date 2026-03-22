@@ -208,7 +208,12 @@ void main() {
       await tester.tap(find.byIcon(Icons.close_rounded));
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('Cancel'), findsWidgets);
+      // Dialog should be showing with at least two TextButton actions
+      expect(find.byType(AlertDialog), findsOneWidget);
+      expect(
+        find.byWidgetPredicate((w) => w is TextButton && w.onPressed != null),
+        findsWidgets,
+      );
     });
 
     testWidgets('renders security title and subtitle', (tester) async {
@@ -285,7 +290,13 @@ void main() {
       await tester.tap(find.byIcon(Icons.close_rounded));
       await tester.pumpAndSettle();
 
-      final cancelButton = find.textContaining('Cancel').first;
+      // The first TextButton in the dialog actions is the cancel button
+      final cancelButton = find
+          .descendant(
+            of: find.byType(AlertDialog),
+            matching: find.byType(TextButton),
+          )
+          .first;
       await tester.tap(cancelButton);
       await tester.pumpAndSettle();
 

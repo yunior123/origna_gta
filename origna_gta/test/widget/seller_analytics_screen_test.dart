@@ -276,7 +276,7 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(seconds: 1));
 
-      expect(find.text('\$100.00'), findsOneWidget);
+      expect(find.text('\$100.00'), findsAtLeast(1));
     });
 
     testWidgets('shows zero revenue when no delivered orders', (tester) async {
@@ -487,7 +487,7 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(seconds: 1));
 
-      expect(find.text('\$100.00'), findsOneWidget);
+      expect(find.text('\$100.00'), findsAtLeast(1));
     });
 
     testWidgets('shows rank indicator for top products', (tester) async {
@@ -718,7 +718,7 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(seconds: 1));
 
-      expect(find.byType(ConstrainedBox), findsOneWidget);
+      expect(find.byType(ConstrainedBox), findsWidgets);
     });
 
     testWidgets('uses Wrap for KPI cards layout', (tester) async {

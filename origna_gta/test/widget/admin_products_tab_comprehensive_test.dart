@@ -12,9 +12,7 @@ import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import '../test_utils.dart';
 
-@GenerateNiceMocks([
-  MockSpec<AdminRepository>(),
-])
+@GenerateNiceMocks([MockSpec<AdminRepository>()])
 import 'admin_products_tab_comprehensive_test.mocks.dart';
 
 void main() {
@@ -74,9 +72,9 @@ void main() {
 
     if (isLoading) {
       overrides.add(
-        adminProductsProvider(null).overrideWith(
-          (ref) => Stream<List<ProductModel>>.multi((_) {}),
-        ),
+        adminProductsProvider(
+          null,
+        ).overrideWith((ref) => Stream<List<ProductModel>>.multi((_) {})),
       );
     } else if (isError) {
       overrides.add(
@@ -86,9 +84,9 @@ void main() {
       );
     } else {
       overrides.add(
-        adminProductsProvider(null).overrideWith(
-          (ref) => Stream.value(products ?? []),
-        ),
+        adminProductsProvider(
+          null,
+        ).overrideWith((ref) => Stream.value(products ?? [])),
       );
     }
 
@@ -147,7 +145,9 @@ void main() {
       expect(find.text('\$14.50'), findsOneWidget);
     });
 
-    testWidgets('renders out of stock badge for zero-stock products', (tester) async {
+    testWidgets('renders out of stock badge for zero-stock products', (
+      tester,
+    ) async {
       setLargeScreen(tester);
       final product = makeProduct(stockQuantity: 0);
       await tester.pumpWidget(createTestWidget(products: [product]));
@@ -166,7 +166,9 @@ void main() {
       await tester.pump(const Duration(milliseconds: 500));
 
       expect(
-        find.text('admin.sellers.low_stock_count'.tr(namedArgs: {'count': '3'})),
+        find.text(
+          'admin.sellers.low_stock_count'.tr(namedArgs: {'count': '3'}),
+        ),
         findsOneWidget,
       );
       expect(find.byIcon(Icons.warning_rounded), findsOneWidget);
@@ -180,7 +182,9 @@ void main() {
       await tester.pump(const Duration(milliseconds: 500));
 
       expect(
-        find.text('admin.sellers.in_stock_count'.tr(namedArgs: {'count': '50'})),
+        find.text(
+          'admin.sellers.in_stock_count'.tr(namedArgs: {'count': '50'}),
+        ),
         findsOneWidget,
       );
       expect(find.byIcon(Icons.check_circle_rounded), findsAtLeastNWidgets(1));
@@ -198,7 +202,9 @@ void main() {
       expect(find.text('Approved'), findsOneWidget);
     });
 
-    testWidgets('renders Rejected badge for rejected lifecycle', (tester) async {
+    testWidgets('renders Rejected badge for rejected lifecycle', (
+      tester,
+    ) async {
       setLargeScreen(tester);
       final product = makeProduct(
         lifecycleStatus: ProductLifecycleStatusValues.rejected,
@@ -210,7 +216,9 @@ void main() {
       expect(find.text('Rejected'), findsOneWidget);
     });
 
-    testWidgets('renders Under Review badge for underReview lifecycle', (tester) async {
+    testWidgets('renders Under Review badge for underReview lifecycle', (
+      tester,
+    ) async {
       setLargeScreen(tester);
       final product = makeProduct(
         lifecycleStatus: ProductLifecycleStatusValues.underReview,
@@ -222,7 +230,9 @@ void main() {
       expect(find.text('Under Review'), findsOneWidget);
     });
 
-    testWidgets('renders placeholder icon when imageUrls is empty', (tester) async {
+    testWidgets('renders placeholder icon when imageUrls is empty', (
+      tester,
+    ) async {
       setLargeScreen(tester);
       final product = makeProduct(imageUrls: []);
       await tester.pumpWidget(createTestWidget(products: [product]));
@@ -283,7 +293,9 @@ void main() {
       expect(find.text('Maple Syrup'), findsNothing);
     });
 
-    testWidgets('shows no match text when search has no results', (tester) async {
+    testWidgets('shows no match text when search has no results', (
+      tester,
+    ) async {
       setLargeScreen(tester);
       final products = [makeProduct(name: 'Honey')];
       await tester.pumpWidget(createTestWidget(products: products));
@@ -319,13 +331,21 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
 
-      expect(find.text('admin.sellers.filter_all_products'.tr()), findsOneWidget);
+      expect(
+        find.text('admin.sellers.filter_all_products'.tr()),
+        findsOneWidget,
+      );
       expect(find.text('admin.sellers.filter_in_stock'.tr()), findsOneWidget);
-      expect(find.text('admin.sellers.filter_out_of_stock'.tr()), findsOneWidget);
+      expect(
+        find.text('admin.sellers.filter_out_of_stock'.tr()),
+        findsOneWidget,
+      );
       expect(find.text('admin.sellers.filter_low_stock'.tr()), findsOneWidget);
     });
 
-    testWidgets('filter in_stock shows only products with stock > 0', (tester) async {
+    testWidgets('filter in_stock shows only products with stock > 0', (
+      tester,
+    ) async {
       setLargeScreen(tester);
       final products = [
         makeProduct(id: 'p1', name: 'Stocked Widget', stockQuantity: 10),
@@ -345,7 +365,9 @@ void main() {
       expect(find.text('Depleted Widget'), findsNothing);
     });
 
-    testWidgets('filter out_of_stock shows only products with stock == 0', (tester) async {
+    testWidgets('filter out_of_stock shows only products with stock == 0', (
+      tester,
+    ) async {
       setLargeScreen(tester);
       final products = [
         makeProduct(id: 'p1', name: 'Available Gadget', stockQuantity: 10),
@@ -355,7 +377,9 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
 
-      final outOfStockChip = find.text('admin.sellers.filter_out_of_stock'.tr());
+      final outOfStockChip = find.text(
+        'admin.sellers.filter_out_of_stock'.tr(),
+      );
       await tester.ensureVisible(outOfStockChip);
       await tester.tap(outOfStockChip);
       await tester.pump();
@@ -365,7 +389,9 @@ void main() {
       expect(find.text('Empty Gadget'), findsOneWidget);
     });
 
-    testWidgets('filter low_stock shows only products with 0 < stock < 5', (tester) async {
+    testWidgets('filter low_stock shows only products with 0 < stock < 5', (
+      tester,
+    ) async {
       setLargeScreen(tester);
       final products = [
         makeProduct(id: 'p1', name: 'Full Inventory', stockQuantity: 50),
@@ -388,7 +414,9 @@ void main() {
       expect(find.text('Zero Inventory'), findsNothing);
     });
 
-    testWidgets('filter all shows every product after narrowing', (tester) async {
+    testWidgets('filter all shows every product after narrowing', (
+      tester,
+    ) async {
       setLargeScreen(tester);
       final products = [
         makeProduct(id: 'p1', name: 'Alpha Item', stockQuantity: 50),
@@ -399,7 +427,9 @@ void main() {
       await tester.pump(const Duration(milliseconds: 500));
 
       // Narrow to out_of_stock
-      final outOfStockChip = find.text('admin.sellers.filter_out_of_stock'.tr());
+      final outOfStockChip = find.text(
+        'admin.sellers.filter_out_of_stock'.tr(),
+      );
       await tester.ensureVisible(outOfStockChip);
       await tester.tap(outOfStockChip);
       await tester.pump();
@@ -417,7 +447,9 @@ void main() {
       expect(find.text('Beta Item'), findsOneWidget);
     });
 
-    testWidgets('pending_review filter shows only underReview products', (tester) async {
+    testWidgets('pending_review filter shows only underReview products', (
+      tester,
+    ) async {
       setLargeScreen(tester);
       final products = [
         makeProduct(
@@ -474,7 +506,9 @@ void main() {
   });
 
   group('AdminProductsTab — Product Actions (PopupMenu)', () {
-    testWidgets('popup menu shows expected options for active product', (tester) async {
+    testWidgets('popup menu shows expected options for active product', (
+      tester,
+    ) async {
       setLargeScreen(tester);
       final product = makeProduct(
         lifecycleStatus: ProductLifecycleStatusValues.active,
@@ -496,7 +530,9 @@ void main() {
       expect(find.text('admin.sellers.delete_product'.tr()), findsOneWidget);
     });
 
-    testWidgets('popup menu shows approve for underReview product', (tester) async {
+    testWidgets('popup menu shows approve for underReview product', (
+      tester,
+    ) async {
       setLargeScreen(tester);
       final product = makeProduct(
         lifecycleStatus: ProductLifecycleStatusValues.underReview,
@@ -512,7 +548,9 @@ void main() {
       expect(find.text('Reject Product'), findsOneWidget);
     });
 
-    testWidgets('popup menu hides reject for already rejected product', (tester) async {
+    testWidgets('popup menu hides reject for already rejected product', (
+      tester,
+    ) async {
       setLargeScreen(tester);
       final product = makeProduct(
         lifecycleStatus: ProductLifecycleStatusValues.rejected,
@@ -528,7 +566,9 @@ void main() {
       expect(find.text('Reject Product'), findsNothing);
     });
 
-    testWidgets('popup shows View Download URLs for digital product', (tester) async {
+    testWidgets('popup shows View Download URLs for digital product', (
+      tester,
+    ) async {
       setLargeScreen(tester);
       // Ignore overflow from popup menu item width constraint (pre-existing UI issue)
       final origOnError = FlutterError.onError;
@@ -553,7 +593,9 @@ void main() {
       expect(find.text('View Download URLs'), findsOneWidget);
     });
 
-    testWidgets('popup hides View Download URLs for non-digital product', (tester) async {
+    testWidgets('popup hides View Download URLs for non-digital product', (
+      tester,
+    ) async {
       setLargeScreen(tester);
       final product = makeProduct(isDigital: false);
       await tester.pumpWidget(createTestWidget(products: [product]));
@@ -582,7 +624,9 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(
-        find.text('admin.sellers.delete_confirm'.tr(namedArgs: {'name': 'Honey Jar'})),
+        find.text(
+          'admin.sellers.delete_confirm'.tr(namedArgs: {'name': 'Honey Jar'}),
+        ),
         findsOneWidget,
       );
       expect(find.text('common.cancel'.tr()), findsOneWidget);
@@ -606,12 +650,16 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(
-        find.text('admin.sellers.delete_confirm'.tr(namedArgs: {'name': 'Honey Jar'})),
+        find.text(
+          'admin.sellers.delete_confirm'.tr(namedArgs: {'name': 'Honey Jar'}),
+        ),
         findsNothing,
       );
     });
 
-    testWidgets('confirm delete calls deleteProduct on repository', (tester) async {
+    testWidgets('confirm delete calls deleteProduct on repository', (
+      tester,
+    ) async {
       setLargeScreen(tester);
       when(mockRepo.deleteProduct(any)).thenAnswer((_) async {});
       final product = makeProduct(id: 'prod-123', name: 'Delete Me');
@@ -736,14 +784,23 @@ void main() {
       await tester.tap(find.text('Approve Product'));
       await tester.pumpAndSettle();
 
-      expect(find.text('admin.products.approve_confirm_title'.tr()), findsOneWidget);
       expect(
-        find.text('admin.products.approve_confirm_body'.tr(namedArgs: {'name': 'Approval Item'})),
+        find.text('admin.products.approve_confirm_title'.tr()),
+        findsOneWidget,
+      );
+      expect(
+        find.text(
+          'admin.products.approve_confirm_body'.tr(
+            namedArgs: {'name': 'Approval Item'},
+          ),
+        ),
         findsOneWidget,
       );
     });
 
-    testWidgets('confirm approve calls approveProduct on repository', (tester) async {
+    testWidgets('confirm approve calls approveProduct on repository', (
+      tester,
+    ) async {
       setLargeScreen(tester);
       when(mockRepo.approveProduct(any)).thenAnswer((_) async {});
       final product = makeProduct(
@@ -766,7 +823,9 @@ void main() {
       verify(mockRepo.approveProduct('approve-id')).called(1);
     });
 
-    testWidgets('cancel dismisses approve dialog without calling approve', (tester) async {
+    testWidgets('cancel dismisses approve dialog without calling approve', (
+      tester,
+    ) async {
       setLargeScreen(tester);
       final product = makeProduct(
         id: 'cancel-approve',
@@ -808,7 +867,11 @@ void main() {
 
       expect(find.text('admin.products.reject_title'.tr()), findsOneWidget);
       expect(
-        find.text('admin.products.reject_product_label'.tr(namedArgs: {'name': 'Reject Me'})),
+        find.text(
+          'admin.products.reject_product_label'.tr(
+            namedArgs: {'name': 'Reject Me'},
+          ),
+        ),
         findsOneWidget,
       );
       expect(find.text('common.cancel'.tr()), findsOneWidget);
@@ -872,7 +935,9 @@ void main() {
   });
 
   group('AdminProductsTab — View Digital URLs', () {
-    testWidgets('shows download URLs dialog for digital product', (tester) async {
+    testWidgets('shows download URLs dialog for digital product', (
+      tester,
+    ) async {
       setLargeScreen(tester);
       // Suppress popup menu overflow (pre-existing UI issue in _menuItem Row width)
       final origOnError = FlutterError.onError;
@@ -900,16 +965,25 @@ void main() {
       await tester.tap(find.text('View Download URLs'));
       await tester.pumpAndSettle();
 
-      expect(find.text('admin.products.download_urls_title'.tr()), findsOneWidget);
       expect(
-        find.text('admin.products.digital_type_label'.tr(namedArgs: {'type': 'software'})),
+        find.text('admin.products.download_urls_title'.tr()),
+        findsOneWidget,
+      );
+      expect(
+        find.text(
+          'admin.products.digital_type_label'.tr(
+            namedArgs: {'type': 'software'},
+          ),
+        ),
         findsOneWidget,
       );
       expect(find.text('macOS'), findsOneWidget);
       expect(find.text('Windows'), findsOneWidget);
     });
 
-    testWidgets('shows no URLs message when digitalBuilds is empty', (tester) async {
+    testWidgets('shows no URLs message when digitalBuilds is empty', (
+      tester,
+    ) async {
       setLargeScreen(tester);
       final origOnError = FlutterError.onError;
       FlutterError.onError = (details) {
@@ -963,7 +1037,10 @@ void main() {
       await tester.tap(find.text('common.close'.tr()));
       await tester.pumpAndSettle();
 
-      expect(find.text('admin.products.download_urls_title'.tr()), findsNothing);
+      expect(
+        find.text('admin.products.download_urls_title'.tr()),
+        findsNothing,
+      );
     });
   });
 
@@ -980,7 +1057,9 @@ void main() {
       await tester.pump(const Duration(milliseconds: 500));
 
       // Apply out of stock filter
-      final outOfStockChip = find.text('admin.sellers.filter_out_of_stock'.tr());
+      final outOfStockChip = find.text(
+        'admin.sellers.filter_out_of_stock'.tr(),
+      );
       await tester.ensureVisible(outOfStockChip);
       await tester.tap(outOfStockChip);
       await tester.pump();
@@ -1002,7 +1081,9 @@ void main() {
   });
 
   group('AdminProductsTab — View Seller', () {
-    testWidgets('shows seller not found snackbar when user does not exist', (tester) async {
+    testWidgets('shows seller not found snackbar when user does not exist', (
+      tester,
+    ) async {
       setLargeScreen(tester);
       when(mockRepo.fetchUserById(any)).thenAnswer((_) async => null);
       final product = makeProduct(sellerId: 'nonexistent');
@@ -1027,6 +1108,7 @@ void main() {
         name: 'John Seller',
         roles: [UserRole.seller],
         createdAt: DateTime(2025, 1, 1),
+        onboardingCompleted: true,
       );
       when(mockRepo.fetchUserById(any)).thenAnswer((_) async => sellerUser);
       final product = makeProduct(sellerId: 's1');

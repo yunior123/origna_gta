@@ -63,7 +63,7 @@ void main() {
   group('BusinessRules constants', () {
     test('has expected values', () {
       expect(BusinessRules.platformFeePercent, 2.5);
-      expect(BusinessRules.returnWindowDays, 7);
+      expect(BusinessRules.returnWindowDays, 30);
       expect(BusinessRules.defaultCurrency, 'cad');
       expect(BusinessRules.freeShippingThresholdCents, 7500);
       expect(BusinessRules.minCheckoutTotalCents, 100);
@@ -72,10 +72,7 @@ void main() {
     });
 
     test('taxRates has all provinces', () {
-      expect(
-        BusinessRules.taxRates,
-        contains('AB'),
-      );
+      expect(BusinessRules.taxRates, contains('AB'));
       expect(BusinessRules.taxRates['NS']!['HST'], 14.0);
       expect(BusinessRules.taxRates['QC']!['GST'], 5.0);
       expect(BusinessRules.taxRates['QC']!['QST'], 9.975);

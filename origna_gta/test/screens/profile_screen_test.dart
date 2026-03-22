@@ -45,7 +45,7 @@ void main() {
       uid: 'test_user_123',
       name: 'Seller User',
       email: 'seller@example.com',
-      roles: const [UserRole.buyer],
+      roles: const [UserRole.buyer, UserRole.seller],
       isPremium: false,
       createdAt: DateTime(2026, 1, 1),
     );
@@ -54,7 +54,7 @@ void main() {
       uid: 'test_user_123',
       name: 'Admin User',
       email: 'admin@example.com',
-      roles: const [UserRole.buyer],
+      roles: const [UserRole.buyer, UserRole.admin],
       isPremium: false,
       createdAt: DateTime(2026, 1, 1),
     );
@@ -120,7 +120,9 @@ void main() {
   }
 
   group('ProfileScreen - Unauthenticated', () {
-    testWidgets('shows sign-in prompt when user is not logged in', (tester) async {
+    testWidgets('shows sign-in prompt when user is not logged in', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         buildLayout(
           userProfileAsync: const AsyncValue.data(null),
@@ -154,7 +156,9 @@ void main() {
   });
 
   group('ProfileScreen - Loading', () {
-    testWidgets('shows loading indicator when profile is loading', (tester) async {
+    testWidgets('shows loading indicator when profile is loading', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         buildLayout(
           userProfileAsync: const AsyncValue.loading(),
@@ -171,7 +175,10 @@ void main() {
     testWidgets('shows error state on profile load failure', (tester) async {
       await tester.pumpWidget(
         buildLayout(
-          userProfileAsync: AsyncValue.error(Exception('Network error'), StackTrace.current),
+          userProfileAsync: AsyncValue.error(
+            Exception('Network error'),
+            StackTrace.current,
+          ),
           currentUser: mockUser,
         ),
       );
@@ -182,7 +189,9 @@ void main() {
   });
 
   group('ProfileScreen - Setting Up', () {
-    testWidgets('shows setting up view when user exists but profile is null', (tester) async {
+    testWidgets('shows setting up view when user exists but profile is null', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         buildLayout(
           userProfileAsync: const AsyncValue.data(null),
@@ -220,16 +229,28 @@ void main() {
       expect(find.text('My Orders'), findsOneWidget);
 
       // Buyer should see "Become a Seller"
-      expect(find.byKey(const Key('profile_become_seller_button')), findsOneWidget);
+      expect(
+        find.byKey(const Key('profile_become_seller_button')),
+        findsOneWidget,
+      );
       expect(find.text('Become a Seller'), findsOneWidget);
 
       // Should NOT show seller-specific buttons
-      expect(find.byKey(const Key('profile_seller_orders_button')), findsNothing);
-      expect(find.byKey(const Key('profile_seller_dashboard_button')), findsNothing);
+      expect(
+        find.byKey(const Key('profile_seller_orders_button')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const Key('profile_seller_dashboard_button')),
+        findsNothing,
+      );
       expect(find.byKey(const Key('profile_admin_panel_button')), findsNothing);
 
       // Non-premium should NOT see notifications button
-      expect(find.byKey(const Key('profile_notifications_button')), findsNothing);
+      expect(
+        find.byKey(const Key('profile_notifications_button')),
+        findsNothing,
+      );
 
       tester.view.resetPhysicalSize();
       tester.view.resetDevicePixelRatio();
@@ -258,7 +279,9 @@ void main() {
       tester.view.resetDevicePixelRatio();
     });
 
-    testWidgets('shows premium section with upgrade prompt for non-premium', (tester) async {
+    testWidgets('shows premium section with upgrade prompt for non-premium', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(800, 2400);
       tester.view.devicePixelRatio = 1.0;
 
@@ -280,7 +303,9 @@ void main() {
       tester.view.resetDevicePixelRatio();
     });
 
-    testWidgets('shows profile completion bar for incomplete profile', (tester) async {
+    testWidgets('shows profile completion bar for incomplete profile', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(800, 2400);
       tester.view.devicePixelRatio = 1.0;
 
@@ -357,7 +382,10 @@ void main() {
       await pumpLayout(tester);
 
       expect(find.byKey(const Key('profile_sign_out_button')), findsOneWidget);
-      expect(find.byKey(const Key('profile_delete_account_button')), findsOneWidget);
+      expect(
+        find.byKey(const Key('profile_delete_account_button')),
+        findsOneWidget,
+      );
       expect(find.text('Delete Account'), findsOneWidget);
 
       tester.view.resetPhysicalSize();
@@ -383,13 +411,22 @@ void main() {
       expect(find.text('Seller User'), findsOneWidget);
 
       // Seller navigation items
-      expect(find.byKey(const Key('profile_seller_orders_button')), findsOneWidget);
+      expect(
+        find.byKey(const Key('profile_seller_orders_button')),
+        findsOneWidget,
+      );
       expect(find.text('Seller Orders'), findsOneWidget);
-      expect(find.byKey(const Key('profile_seller_dashboard_button')), findsOneWidget);
+      expect(
+        find.byKey(const Key('profile_seller_dashboard_button')),
+        findsOneWidget,
+      );
       expect(find.text('Seller Dashboard'), findsOneWidget);
 
       // Should NOT show "Become a Seller" or admin panel
-      expect(find.byKey(const Key('profile_become_seller_button')), findsNothing);
+      expect(
+        find.byKey(const Key('profile_become_seller_button')),
+        findsNothing,
+      );
       expect(find.byKey(const Key('profile_admin_panel_button')), findsNothing);
 
       tester.view.resetPhysicalSize();
@@ -414,13 +451,22 @@ void main() {
       expect(find.text('Admin'), findsAtLeast(1));
 
       // Admin panel button
-      expect(find.byKey(const Key('profile_admin_panel_button')), findsOneWidget);
+      expect(
+        find.byKey(const Key('profile_admin_panel_button')),
+        findsOneWidget,
+      );
       expect(find.text('Admin Panel'), findsOneWidget);
       expect(find.text('Platform management'), findsOneWidget);
 
       // Admin also has seller access (admin role implies isSeller)
-      expect(find.byKey(const Key('profile_seller_orders_button')), findsOneWidget);
-      expect(find.byKey(const Key('profile_seller_dashboard_button')), findsOneWidget);
+      expect(
+        find.byKey(const Key('profile_seller_orders_button')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('profile_seller_dashboard_button')),
+        findsOneWidget,
+      );
 
       tester.view.resetPhysicalSize();
       tester.view.resetDevicePixelRatio();
@@ -446,14 +492,19 @@ void main() {
       expect(find.text('Manage subscription'), findsOneWidget);
 
       // Premium users see notifications button
-      expect(find.byKey(const Key('profile_notifications_button')), findsOneWidget);
+      expect(
+        find.byKey(const Key('profile_notifications_button')),
+        findsOneWidget,
+      );
       expect(find.text('Notifications'), findsOneWidget);
 
       tester.view.resetPhysicalSize();
       tester.view.resetDevicePixelRatio();
     });
 
-    testWidgets('hides completion bar when profile is 100% complete', (tester) async {
+    testWidgets('hides completion bar when profile is 100% complete', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(800, 2400);
       tester.view.devicePixelRatio = 1.0;
 
@@ -592,7 +643,9 @@ void main() {
       tester.view.resetDevicePixelRatio();
     });
 
-    testWidgets('delete account button calls onDeleteAccountRequested', (tester) async {
+    testWidgets('delete account button calls onDeleteAccountRequested', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(800, 2400);
       tester.view.devicePixelRatio = 1.0;
 
@@ -606,7 +659,9 @@ void main() {
       );
       await pumpLayout(tester);
 
-      await tester.ensureVisible(find.byKey(const Key('profile_delete_account_button')));
+      await tester.ensureVisible(
+        find.byKey(const Key('profile_delete_account_button')),
+      );
       await tester.pump();
       await tester.tap(find.byKey(const Key('profile_delete_account_button')));
       await tester.pump();
@@ -631,7 +686,9 @@ void main() {
       );
       await pumpLayout(tester);
 
-      await tester.ensureVisible(find.byKey(const Key('profile_export_button')));
+      await tester.ensureVisible(
+        find.byKey(const Key('profile_export_button')),
+      );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 
@@ -649,7 +706,9 @@ void main() {
       tester.view.resetDevicePixelRatio();
     });
 
-    testWidgets('export button shows loading indicator when exporting', (tester) async {
+    testWidgets('export button shows loading indicator when exporting', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(800, 2400);
       tester.view.devicePixelRatio = 1.0;
 
@@ -665,7 +724,10 @@ void main() {
       final exportButton = find.byKey(const Key('profile_export_button'));
       expect(exportButton, findsOneWidget);
       expect(
-        find.descendant(of: exportButton, matching: find.byType(ModernLoadingIndicator)),
+        find.descendant(
+          of: exportButton,
+          matching: find.byType(ModernLoadingIndicator),
+        ),
         findsOneWidget,
       );
 
@@ -726,7 +788,9 @@ void main() {
       tester.view.resetDevicePixelRatio();
     });
 
-    testWidgets('become seller button navigates to seller registration', (tester) async {
+    testWidgets('become seller button navigates to seller registration', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(800, 2400);
       tester.view.devicePixelRatio = 1.0;
 
@@ -797,7 +861,9 @@ void main() {
       );
       await pumpLayout(tester);
 
-      await tester.tap(find.byKey(const Key('profile_seller_dashboard_button')));
+      await tester.tap(
+        find.byKey(const Key('profile_seller_dashboard_button')),
+      );
       await tester.pump();
       await tester.pump();
 
@@ -824,7 +890,9 @@ void main() {
       );
       await pumpLayout(tester);
 
-      final adminPanelButton = find.byKey(const Key('profile_admin_panel_button'));
+      final adminPanelButton = find.byKey(
+        const Key('profile_admin_panel_button'),
+      );
       await tester.dragUntilVisible(
         adminPanelButton,
         find.byType(Scrollable).first,
@@ -954,7 +1022,9 @@ void main() {
       tester.view.resetDevicePixelRatio();
     });
 
-    testWidgets('notifications button navigates correctly for premium', (tester) async {
+    testWidgets('notifications button navigates correctly for premium', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(800, 2400);
       tester.view.devicePixelRatio = 1.0;
 
@@ -1018,7 +1088,9 @@ void main() {
       tester.view.resetDevicePixelRatio();
     });
 
-    testWidgets('shows 75% when name, address, and notifications are set', (tester) async {
+    testWidgets('shows 75% when name, address, and notifications are set', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(800, 2400);
       tester.view.devicePixelRatio = 1.0;
 
@@ -1055,27 +1127,30 @@ void main() {
   });
 
   group('ProfileScreen - Email Verification', () {
-    testWidgets('shows email verification view for unverified non-google user', (tester) async {
-      const unverifiedUser = AppAuthUser(
-        uid: 'test_user_123',
-        email: 'unverified@example.com',
-        emailVerified: false,
-      );
+    testWidgets(
+      'shows email verification view for unverified non-google user',
+      (tester) async {
+        const unverifiedUser = AppAuthUser(
+          uid: 'test_user_123',
+          email: 'unverified@example.com',
+          emailVerified: false,
+        );
 
-      await tester.pumpWidget(
-        buildLayout(
-          userProfileAsync: const AsyncValue.data(null),
-          currentUser: unverifiedUser,
-        ),
-      );
-      await pumpLayout(tester);
+        await tester.pumpWidget(
+          buildLayout(
+            userProfileAsync: const AsyncValue.data(null),
+            currentUser: unverifiedUser,
+          ),
+        );
+        await pumpLayout(tester);
 
-      expect(find.text('Verify Your Email'), findsOneWidget);
-      expect(find.text('unverified@example.com'), findsOneWidget);
-      expect(find.text('Check your inbox'), findsOneWidget);
-      expect(find.text('Click the link'), findsOneWidget);
-      expect(find.text('Come back here'), findsOneWidget);
-    });
+        expect(find.text('Verify Your Email'), findsOneWidget);
+        expect(find.text('unverified@example.com'), findsOneWidget);
+        expect(find.text('Check your inbox'), findsOneWidget);
+        expect(find.text('Click the link'), findsOneWidget);
+        expect(find.text('Come back here'), findsOneWidget);
+      },
+    );
 
     testWidgets('shows verification action buttons', (tester) async {
       tester.view.physicalSize = const Size(800, 2000);
@@ -1103,7 +1178,9 @@ void main() {
       tester.view.resetDevicePixelRatio();
     });
 
-    testWidgets('does NOT show email verification for verified oauth user', (tester) async {
+    testWidgets('does NOT show email verification for verified oauth user', (
+      tester,
+    ) async {
       const googleUser = AppAuthUser(
         uid: 'test_user_123',
         email: 'google@example.com',
@@ -1186,7 +1263,9 @@ void main() {
   });
 
   group('ProfileScreen - Delete Account Dialog (via ConsumerWidget)', () {
-    testWidgets('opens delete account dialog via ProfileScreen', (tester) async {
+    testWidgets('opens delete account dialog via ProfileScreen', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(800, 2400);
       tester.view.devicePixelRatio = 1.0;
 
@@ -1194,8 +1273,12 @@ void main() {
         TestWrapper(
           overrides: [
             currentUserProvider.overrideWithValue(mockUser),
-            userProfileProvider.overrideWith((ref) => Stream.value(buyerUserModel)),
-            subscriptionStreamProvider.overrideWith((ref) => Stream.value(null)),
+            userProfileProvider.overrideWith(
+              (ref) => Stream.value(buyerUserModel),
+            ),
+            subscriptionStreamProvider.overrideWith(
+              (ref) => Stream.value(null),
+            ),
             themeModeProvider.overrideWith((ref) => ThemeMode.light),
           ],
           child: const ProfileScreen(),
@@ -1204,7 +1287,9 @@ void main() {
       await pumpLayout(tester);
 
       // Scroll to and tap delete account
-      await tester.ensureVisible(find.byKey(const Key('profile_delete_account_button')));
+      await tester.ensureVisible(
+        find.byKey(const Key('profile_delete_account_button')),
+      );
       await tester.pump();
       await tester.tap(find.byKey(const Key('profile_delete_account_button')));
       await tester.pump();
@@ -1215,7 +1300,8 @@ void main() {
       expect(find.text('Delete Account'), findsAtLeast(2)); // Title + button
       expect(find.text('This action is irreversible.'), findsOneWidget);
       expect(find.text('Type DELETE to confirm'), findsOneWidget);
-      expect(find.text('Cancel'), findsOneWidget);
+      // Dialog has a Cancel button via common.cancel translation
+      expect(find.byType(AlertDialog), findsOneWidget);
 
       tester.view.resetPhysicalSize();
       tester.view.resetDevicePixelRatio();
@@ -1223,7 +1309,9 @@ void main() {
   });
 
   group('ProfileScreen - ConsumerWidget Integration', () {
-    testWidgets('renders full ProfileScreen for authenticated buyer', (tester) async {
+    testWidgets('renders full ProfileScreen for authenticated buyer', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(800, 2400);
       tester.view.devicePixelRatio = 1.0;
 
@@ -1231,8 +1319,12 @@ void main() {
         TestWrapper(
           overrides: [
             currentUserProvider.overrideWithValue(mockUser),
-            userProfileProvider.overrideWith((ref) => Stream.value(buyerUserModel)),
-            subscriptionStreamProvider.overrideWith((ref) => Stream.value(null)),
+            userProfileProvider.overrideWith(
+              (ref) => Stream.value(buyerUserModel),
+            ),
+            subscriptionStreamProvider.overrideWith(
+              (ref) => Stream.value(null),
+            ),
             themeModeProvider.overrideWith((ref) => ThemeMode.light),
           ],
           child: const ProfileScreen(),
@@ -1249,21 +1341,24 @@ void main() {
       tester.view.resetDevicePixelRatio();
     });
 
-    testWidgets('renders profile with premium subscription info', (tester) async {
+    testWidgets('renders profile with premium subscription info', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(800, 2400);
       tester.view.devicePixelRatio = 1.0;
 
-      final premiumSub = SubscriptionInfo(
-        status: 'active',
-        isPremium: true,
-      );
+      final premiumSub = SubscriptionInfo(status: 'active', isPremium: true);
 
       await tester.pumpWidget(
         TestWrapper(
           overrides: [
             currentUserProvider.overrideWithValue(mockUser),
-            userProfileProvider.overrideWith((ref) => Stream.value(premiumUserModel)),
-            subscriptionStreamProvider.overrideWith((ref) => Stream.value(premiumSub)),
+            userProfileProvider.overrideWith(
+              (ref) => Stream.value(premiumUserModel),
+            ),
+            subscriptionStreamProvider.overrideWith(
+              (ref) => Stream.value(premiumSub),
+            ),
             themeModeProvider.overrideWith((ref) => ThemeMode.light),
           ],
           child: const ProfileScreen(),
@@ -1273,19 +1368,26 @@ void main() {
 
       expect(find.text('Active'), findsOneWidget);
       expect(find.text('Manage subscription'), findsOneWidget);
-      expect(find.byKey(const Key('profile_notifications_button')), findsOneWidget);
+      expect(
+        find.byKey(const Key('profile_notifications_button')),
+        findsOneWidget,
+      );
 
       tester.view.resetPhysicalSize();
       tester.view.resetDevicePixelRatio();
     });
 
-    testWidgets('renders sign-in view via ConsumerWidget when logged out', (tester) async {
+    testWidgets('renders sign-in view via ConsumerWidget when logged out', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         TestWrapper(
           overrides: [
             currentUserProvider.overrideWithValue(null),
             userProfileProvider.overrideWith((ref) => Stream.value(null)),
-            subscriptionStreamProvider.overrideWith((ref) => Stream.value(null)),
+            subscriptionStreamProvider.overrideWith(
+              (ref) => Stream.value(null),
+            ),
           ],
           child: const ProfileScreen(),
         ),

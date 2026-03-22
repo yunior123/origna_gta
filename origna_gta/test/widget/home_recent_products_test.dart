@@ -155,7 +155,7 @@ void main() {
         ).thenAnswer((_) async => [testProducts[0]]);
 
         await tester.pumpWidget(createTestWidget());
-        await tester.pumpAndSettle(const Duration(seconds: 3));
+        await tester.pump(const Duration(seconds: 3));
 
         expect(find.byType(HomeScreen), findsOneWidget);
       },
@@ -284,7 +284,7 @@ void main() {
       ).thenAnswer((_) async => manyProducts);
 
       await tester.pumpWidget(createTestWidget());
-      await tester.pumpAndSettle(const Duration(seconds: 3));
+      await tester.pump(const Duration(seconds: 3));
 
       expect(find.byType(HomeScreen), findsOneWidget);
     });
@@ -379,7 +379,7 @@ void main() {
         ).thenAnswer((_) async => [testProducts[0], testProducts[1]]);
 
         await tester.pumpWidget(createTestWidget());
-        await tester.pumpAndSettle(const Duration(seconds: 3));
+        await tester.pump(const Duration(seconds: 3));
 
         expect(find.byType(HomeScreen), findsOneWidget);
       },

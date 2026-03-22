@@ -261,7 +261,7 @@ void main() {
       await tester.pumpWidget(buildWidget());
       await tester.pumpAndSettle();
 
-      expect(find.text('seller'), findsOneWidget);
+      expect(find.text('SELLER'), findsOneWidget);
     });
 
     testWidgets('displays joined date', (tester) async {
