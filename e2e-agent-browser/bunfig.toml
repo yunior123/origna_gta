@@ -1,3 +1,0 @@
-[test]
-timeout = 60000
-preload = ["./global-setup.ts"]

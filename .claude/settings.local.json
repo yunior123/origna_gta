@@ -47,6 +47,8 @@
   "enabledMcpjsonServers": [
     "dart-mcp",
     "flutter-pilot",
-    "github"
-  ]
+    "github",
+    "agent-cards"
+  ],
+  "enableAllProjectMcpServers": true
 }

@@ -72,6 +72,7 @@ cargo test -p ob-auth                                   # single crate
 - Read `docs/REPO_MAP.md` for context before starting work
 - no skipping tests, implement and run instead
 - avoid mocks for live integration tests
+- no backward compatibility
 
 ## MCP
 

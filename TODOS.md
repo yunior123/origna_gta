@@ -5,11 +5,10 @@
 5. always clean cargo garbage to avoid using too much space, the same for flutter.
 6. run all example apps tests and clean after done
 7. make sure there are no loose ends left. if u have blokers add them to state.md
-
-8. give local ai access to agent card. search the web latest, reliable options.
-9. agent email.search the web latest, reliable options like resend.
-
 10. when running tests always point the results to temp file to avoid losing test results
 11. fix warnings
 12. do these, no excuses: tests skipped (live tests - need backend), tests failed (expected - backend connection issues)
 13. no skipping, implement instead
+14. everything claude code github repo study how to apply to improve our repo
+15. run load tests, reliability tests, stress tests, benchmarks, example apps and tests
+16. audit webhook stripe endpoints: stripe vs orignabase. all webhooks:test and live using cli
