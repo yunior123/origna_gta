@@ -217,17 +217,27 @@ class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen> {
           ),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(tr('common.cancel')),
+          Semantics(
+            button: true,
+            label: 'btn-cancel-archive',
+            child: TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(tr('common.cancel')),
+            ),
           ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: DesignTokens.error),
-            onPressed: () {
-              Navigator.pop(ctx);
-              vm.bulkAction('archive');
-            },
-            child: Text(tr('seller.archive')),
+          Semantics(
+            button: true,
+            label: 'btn-confirm-archive',
+            child: FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: DesignTokens.error,
+              ),
+              onPressed: () {
+                Navigator.pop(ctx);
+                vm.bulkAction('archive');
+              },
+              child: Text(tr('seller.archive')),
+            ),
           ),
         ],
       ),
@@ -272,12 +282,14 @@ class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen> {
 
 class _ActionChip extends StatelessWidget {
   final String label;
+  final String semanticsLabel;
   final IconData icon;
   final Color color;
   final VoidCallback onTap;
 
   const _ActionChip({
     required this.label,
+    required this.semanticsLabel,
     required this.icon,
     required this.color,
     required this.onTap,
@@ -285,29 +297,33 @@ class _ActionChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color.withValues(alpha: 0.3)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 14, color: color),
-            const SizedBox(width: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: color,
+    return Semantics(
+      button: true,
+      label: semanticsLabel,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: color.withValues(alpha: 0.3)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 14, color: color),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: color,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -385,9 +401,13 @@ class _BulkActionBar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          GestureDetector(
-            onTap: onClearSelection,
-            child: const Icon(Icons.close_rounded, size: 20),
+          Semantics(
+            button: true,
+            label: 'btn-clear-bulk-selection',
+            child: GestureDetector(
+              onTap: onClearSelection,
+              child: const Icon(Icons.close_rounded, size: 20),
+            ),
           ),
           const SizedBox(width: 8),
           Text(
@@ -399,11 +419,15 @@ class _BulkActionBar extends StatelessWidget {
           ),
           if (selectedCount < totalCount) ...[
             const SizedBox(width: 8),
-            GestureDetector(
-              onTap: onSelectAll,
-              child: Text(
-                tr('seller.select_all'),
-                style: TextStyle(color: DesignTokens.primary, fontSize: 13),
+            Semantics(
+              button: true,
+              label: 'btn-select-all-products',
+              child: GestureDetector(
+                onTap: onSelectAll,
+                child: Text(
+                  tr('seller.select_all'),
+                  style: TextStyle(color: DesignTokens.primary, fontSize: 13),
+                ),
               ),
             ),
           ],
@@ -417,6 +441,7 @@ class _BulkActionBar extends StatelessWidget {
           else ...[
             _ActionChip(
               label: tr('seller.activate'),
+              semanticsLabel: 'btn-bulk-activate',
               icon: Icons.check_circle_outline,
               color: DesignTokens.success,
               onTap: onActivate,
@@ -424,6 +449,7 @@ class _BulkActionBar extends StatelessWidget {
             const SizedBox(width: 6),
             _ActionChip(
               label: tr('seller.pause'),
+              semanticsLabel: 'btn-bulk-pause',
               icon: Icons.pause_circle_outline,
               color: DesignTokens.warning,
               onTap: onPause,
@@ -431,6 +457,7 @@ class _BulkActionBar extends StatelessWidget {
             const SizedBox(width: 6),
             _ActionChip(
               label: tr('seller.archive'),
+              semanticsLabel: 'btn-bulk-archive',
               icon: Icons.archive_outlined,
               color: DesignTokens.error,
               onTap: onArchive,
@@ -494,28 +521,32 @@ class _RejectionBanner extends StatelessWidget {
           const SizedBox(height: 8),
           SizedBox(
             width: double.infinity,
-            child: TextButton.icon(
-              onPressed: onFixAndResubmit,
-              icon: Icon(
-                Icons.edit_outlined,
-                size: 14,
-                color: DesignTokens.primary,
-              ),
-              label: Text(
-                tr('seller.fix_and_resubmit'),
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
+            child: Semantics(
+              button: true,
+              label: 'btn-fix-and-resubmit',
+              child: TextButton.icon(
+                onPressed: onFixAndResubmit,
+                icon: Icon(
+                  Icons.edit_outlined,
+                  size: 14,
                   color: DesignTokens.primary,
                 ),
-              ),
-              style: TextButton.styleFrom(
-                backgroundColor: DesignTokens.primary.withValues(alpha: 0.08),
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(6),
+                label: Text(
+                  tr('seller.fix_and_resubmit'),
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: DesignTokens.primary,
+                  ),
                 ),
-                minimumSize: Size.zero,
+                style: TextButton.styleFrom(
+                  backgroundColor: DesignTokens.primary.withValues(alpha: 0.08),
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  minimumSize: Size.zero,
+                ),
               ),
             ),
           ),
@@ -546,139 +577,148 @@ class _SellerProductCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return GestureDetector(
-      onTap: isSelectionMode ? onToggle : onEdit,
-      onLongPress: onLongPress,
-      child: AnimatedContainer(
-        duration: DesignTokens.durationFast,
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? DesignTokens.primary.withValues(alpha: 0.08)
-              : isDark
-              ? DesignTokens.darkSurfaceVariant
-              : DesignTokens.white,
-          borderRadius: BorderRadius.circular(DesignTokens.radius12),
-          border: Border.all(
+    return Semantics(
+      button: true,
+      label: 'product-card-${product.productId}',
+      child: GestureDetector(
+        onTap: isSelectionMode ? onToggle : onEdit,
+        onLongPress: onLongPress,
+        child: AnimatedContainer(
+          duration: DesignTokens.durationFast,
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
             color: isSelected
-                ? DesignTokens.primary
-                : DesignTokens.outline.withValues(alpha: 0.15),
-            width: isSelected ? 1.5 : 1,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: DesignTokens.black.withValues(alpha: isDark ? 0.15 : 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+                ? DesignTokens.primary.withValues(alpha: 0.08)
+                : isDark
+                ? DesignTokens.darkSurfaceVariant
+                : DesignTokens.white,
+            borderRadius: BorderRadius.circular(DesignTokens.radius12),
+            border: Border.all(
+              color: isSelected
+                  ? DesignTokens.primary
+                  : DesignTokens.outline.withValues(alpha: 0.15),
+              width: isSelected ? 1.5 : 1,
             ),
-          ],
-        ),
-        child: Row(
-          children: [
-            // Selection checkbox
-            if (isSelectionMode)
-              Padding(
-                padding: const EdgeInsets.only(right: 10),
-                child: Icon(
-                  isSelected
-                      ? Icons.check_circle_rounded
-                      : Icons.circle_outlined,
-                  color: isSelected
-                      ? DesignTokens.primary
-                      : DesignTokens.textDisabled,
-                  size: 22,
+            boxShadow: [
+              BoxShadow(
+                color: DesignTokens.black.withValues(
+                  alpha: isDark ? 0.15 : 0.04,
                 ),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
               ),
-            // Product image
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: product.imageUrls.isNotEmpty
-                  ? CachedNetworkImage(
-                      imageUrl: product.imageUrls.first,
-                      width: 56,
-                      height: 56,
-                      fit: BoxFit.cover,
-                      errorWidget: (context, url, error) => _placeholderImage(),
-                      placeholder: (context, url) => _placeholderImage(),
-                    )
-                  : _placeholderImage(),
-            ),
-            const SizedBox(width: 12),
-            // Product info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    product.name,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+            ],
+          ),
+          child: Row(
+            children: [
+              // Selection checkbox
+              if (isSelectionMode)
+                Padding(
+                  padding: const EdgeInsets.only(right: 10),
+                  child: Icon(
+                    isSelected
+                        ? Icons.check_circle_rounded
+                        : Icons.circle_outlined,
+                    color: isSelected
+                        ? DesignTokens.primary
+                        : DesignTokens.textDisabled,
+                    size: 22,
                   ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      _StatusBadge(status: product.lifecycleStatus),
-                      if (product.lifecycleStatus !=
-                          ProductLifecycleStatusValues.active) ...[
-                        const SizedBox(width: 6),
-                        _ApprovalBadge(
-                          lifecycleStatus: product.lifecycleStatus,
+                ),
+              // Product image
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: product.imageUrls.isNotEmpty
+                    ? CachedNetworkImage(
+                        imageUrl: product.imageUrls.first,
+                        width: 56,
+                        height: 56,
+                        fit: BoxFit.cover,
+                        errorWidget: (context, url, error) =>
+                            _placeholderImage(),
+                        placeholder: (context, url) => _placeholderImage(),
+                      )
+                    : _placeholderImage(),
+              ),
+              const SizedBox(width: 12),
+              // Product info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      product.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        _StatusBadge(status: product.lifecycleStatus),
+                        if (product.lifecycleStatus !=
+                            ProductLifecycleStatusValues.active) ...[
+                          const SizedBox(width: 6),
+                          _ApprovalBadge(
+                            lifecycleStatus: product.lifecycleStatus,
+                          ),
+                        ],
+                        const Spacer(),
+                        Text(
+                          '\$${product.price.toStringAsFixed(2)}',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                            color: DesignTokens.primary,
+                          ),
                         ),
                       ],
-                      const Spacer(),
-                      Text(
-                        '\$${product.price.toStringAsFixed(2)}',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13,
-                          color: DesignTokens.primary,
-                        ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      tr(
+                        'seller.stock_count',
+                        namedArgs: {'count': product.stockQuantity.toString()},
+                      ),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: product.stockQuantity <= 0
+                            ? DesignTokens.error
+                            : product.stockQuantity <= 5
+                            ? DesignTokens.warning
+                            : DesignTokens.textSecondary,
+                      ),
+                    ),
+                    if (product.lifecycleStatus ==
+                            ProductLifecycleStatusValues.rejected &&
+                        product.approvalRejectionReason != null &&
+                        product.approvalRejectionReason!.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      _RejectionBanner(
+                        reason: product.approvalRejectionReason!,
+                        onFixAndResubmit: onEdit,
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    tr(
-                      'seller.stock_count',
-                      namedArgs: {'count': product.stockQuantity.toString()},
-                    ),
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: product.stockQuantity <= 0
-                          ? DesignTokens.error
-                          : product.stockQuantity <= 5
-                          ? DesignTokens.warning
-                          : DesignTokens.textSecondary,
-                    ),
-                  ),
-                  if (product.lifecycleStatus ==
-                          ProductLifecycleStatusValues.rejected &&
-                      product.approvalRejectionReason != null &&
-                      product.approvalRejectionReason!.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    _RejectionBanner(
-                      reason: product.approvalRejectionReason!,
-                      onFixAndResubmit: onEdit,
-                    ),
                   ],
-                ],
+                ),
               ),
-            ),
-            // Edit arrow — hide when rejection banner is shown (button replaces it)
-            if (!isSelectionMode &&
-                product.lifecycleStatus !=
-                    ProductLifecycleStatusValues.rejected)
-              Icon(
-                Icons.chevron_right_rounded,
-                color: DesignTokens.textDisabled,
-                size: 20,
-              ),
-          ],
+              // Edit arrow — hide when rejection banner is shown (button replaces it)
+              if (!isSelectionMode &&
+                  product.lifecycleStatus !=
+                      ProductLifecycleStatusValues.rejected)
+                ExcludeSemantics(
+                  child: Icon(
+                    Icons.chevron_right_rounded,
+                    color: DesignTokens.textDisabled,
+                    size: 20,
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );

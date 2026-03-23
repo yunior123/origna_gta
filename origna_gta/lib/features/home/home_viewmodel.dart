@@ -23,7 +23,7 @@ class HomeViewModel extends StateNotifier<HomeState> {
   Timer? _debounce;
   Timer? _suggestionDebounce;
 
-  HomeViewModel(this._ref) : super(HomeState()) {
+  HomeViewModel(this._ref) : super(const HomeState()) {
     _loadRecentSearches();
     loadProducts();
   }

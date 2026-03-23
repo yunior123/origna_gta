@@ -5,7 +5,8 @@ import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/repositories/cart_repository.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
-import 'package:origna_gta/services/analytics_service.dart';
+import 'package:origna_gta/services/analytics_service.dart'
+    show analyticsServiceProvider;
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
@@ -16,16 +17,28 @@ final cartControllerProvider = Provider.autoDispose<CartController>((ref) {
 
 final cartItemCountProvider = Provider.autoDispose<int>((ref) {
   final cartItems = ref.watch(cartItemsProvider);
-  return cartItems.maybeWhen(data: (items) => items.fold(0, (total, item) => total + item.quantity), orElse: () => 0);
+  return cartItems.maybeWhen(
+    data: (items) => items.fold(0, (total, item) => total + item.quantity),
+    orElse: () => 0,
+  );
 });
 
 /// Provider for cart item creation date (used to avoid rebuilding item UI on quantity changes)
 /// Keyed by cartItemDocId (format: productId or productId_variantId) to correctly
 /// distinguish items with the same product but different variants.
-final cartItemDateProvider = Provider.autoDispose.family<DateTime?, String>((ref, cartItemDocId) {
+final cartItemDateProvider = Provider.autoDispose.family<DateTime?, String>((
+  ref,
+  cartItemDocId,
+) {
   return ref.watch(
     cartItemsProvider.select((async) {
-      return async.maybeWhen(data: (items) => items.where((i) => i.cartItemId == cartItemDocId).firstOrNull?.createdAt, orElse: () => null);
+      return async.maybeWhen(
+        data: (items) => items
+            .where((i) => i.cartItemId == cartItemDocId)
+            .firstOrNull
+            ?.createdAt,
+        orElse: () => null,
+      );
     }),
   );
 });
@@ -35,59 +48,80 @@ final cartItemDateProvider = Provider.autoDispose.family<DateTime?, String>((ref
 /// database reads per item (N+1 query elimination).
 /// Keyed by cartItemDocId (format: productId or productId_variantId) to correctly
 /// distinguish items with the same product but different variants.
-final cartItemDetailProvider = FutureProvider.autoDispose.family<CartItemDetailModel?, String>((ref, cartItemDocId) async {
-  final createdAt = ref.watch(cartItemDateProvider(cartItemDocId));
-  if (createdAt == null) return null;
+final cartItemDetailProvider = FutureProvider.autoDispose
+    .family<CartItemDetailModel?, String>((ref, cartItemDocId) async {
+      final createdAt = ref.watch(cartItemDateProvider(cartItemDocId));
+      if (createdAt == null) return null;
 
-  // Extract productId: doc ID is "productId" or "productId_variantId"
-  // Database auto-IDs use Base62 (no underscores), so the first segment is always productId.
-  final productId = cartItemDocId.split('_').first;
+      // Extract productId: doc ID is "productId" or "productId_variantId"
+      // Database auto-IDs use Base62 (no underscores), so the first segment is always productId.
+      final productId = cartItemDocId.split('_').first;
 
-  // Pull from batch-fetched product cache (single whereIn query for all cart items)
-  final productCache = await ref.watch(_cartProductsBatchProvider.future);
-  final productData = productCache[productId];
-  if (productData == null) return null;
+      // Pull from batch-fetched product cache (single whereIn query for all cart items)
+      final productCache = await ref.watch(_cartProductsBatchProvider.future);
+      final productData = productCache[productId];
+      if (productData == null) return null;
 
-  // Find the exact cart item to get variant info — await to ensure state is fully resolved
-  final cartItems = await ref.watch(cartItemsProvider.future);
-  final cartItem = cartItems.where((i) => i.cartItemId == cartItemDocId).firstOrNull;
+      // Find the exact cart item to get variant info — await to ensure state is fully resolved
+      final cartItems = await ref.watch(cartItemsProvider.future);
+      final cartItem = cartItems
+          .where((i) => i.cartItemId == cartItemDocId)
+          .firstOrNull;
 
-  return CartItemDetailModel(
-    productId: productId,
-    name: (productData[Fields.name] as String?) ?? '',
-    description: (productData[Fields.description] as String?) ?? '',
-    price: ((productData[Fields.price] as num?) ?? 0).toDouble(),
-    priceCents: productData[Fields.priceCents] != null
-        ? (productData[Fields.priceCents] as num).toInt()
-        : ((productData[Fields.price] as num?) ?? 0).toDouble() * 100 ~/ 1,
-    imageUrls: List<String>.from(productData[Fields.imageUrls] as Iterable? ?? []),
-    quantity: cartItem?.quantity ?? 1,
-    createdAt: createdAt,
-    sellerAddress: Address.fromMap(productData[Fields.sellerAddress] as Map<String, dynamic>? ?? {}),
-    sellerId: (productData[Fields.sellerId] as String?) ?? '',
-    sellerName: (productData[Fields.sellerName] as String?) ?? '',
-    weightKg: productData[Fields.weightKg] != null ? (productData[Fields.weightKg] as num).toDouble() : null,
-    lengthCm: productData[Fields.lengthCm] != null ? (productData[Fields.lengthCm] as num).toDouble() : null,
-    widthCm: productData[Fields.widthCm] != null ? (productData[Fields.widthCm] as num).toDouble() : null,
-    heightCm: productData[Fields.heightCm] != null ? (productData[Fields.heightCm] as num).toDouble() : null,
-    isLocalDeliveryOnly: (productData[Fields.isLocalDeliveryOnly] as bool?) ?? false,
-    isPerishable: (productData[Fields.isPerishable] as bool?) ?? false,
-    estimatedShipDays: (productData[Fields.estimatedShipDays] as num?)?.toInt() ?? 3,
-    deliveryOptions: productData[Fields.deliveryOptions] != null
-        ? (productData[Fields.deliveryOptions] as List<dynamic>)
-              .whereType<Map<dynamic, dynamic>>()
-              .map((o) => SellerDeliveryOption.fromMap(o.cast<String, dynamic>()))
-              .whereType<SellerDeliveryOption>()
-              .toList()
-        : [],
-    minimumOrderQuantity: (productData[Fields.minimumOrderQuantity] as num?)?.toInt() ?? 1,
-    freeShipping: (productData[Fields.freeShipping] as bool?) ?? false,
-    isDigital: (productData[Fields.isDigital] as bool?) ?? false,
-    variantId: cartItem?.variantId,
-    variantTitle: cartItem?.variantTitle,
-    variantOptions: cartItem?.variantOptions,
-  );
-});
+      return CartItemDetailModel(
+        productId: productId,
+        name: (productData[Fields.name] as String?) ?? '',
+        description: (productData[Fields.description] as String?) ?? '',
+        price: ((productData[Fields.price] as num?) ?? 0).toDouble(),
+        priceCents: productData[Fields.priceCents] != null
+            ? (productData[Fields.priceCents] as num).toInt()
+            : ((productData[Fields.price] as num?) ?? 0).toDouble() * 100 ~/ 1,
+        imageUrls: List<String>.from(
+          productData[Fields.imageUrls] as Iterable? ?? [],
+        ),
+        quantity: cartItem?.quantity ?? 1,
+        createdAt: createdAt,
+        sellerAddress: Address.fromMap(
+          productData[Fields.sellerAddress] as Map<String, dynamic>? ?? {},
+        ),
+        sellerId: (productData[Fields.sellerId] as String?) ?? '',
+        sellerName: (productData[Fields.sellerName] as String?) ?? '',
+        weightKg: productData[Fields.weightKg] != null
+            ? (productData[Fields.weightKg] as num).toDouble()
+            : null,
+        lengthCm: productData[Fields.lengthCm] != null
+            ? (productData[Fields.lengthCm] as num).toDouble()
+            : null,
+        widthCm: productData[Fields.widthCm] != null
+            ? (productData[Fields.widthCm] as num).toDouble()
+            : null,
+        heightCm: productData[Fields.heightCm] != null
+            ? (productData[Fields.heightCm] as num).toDouble()
+            : null,
+        isLocalDeliveryOnly:
+            (productData[Fields.isLocalDeliveryOnly] as bool?) ?? false,
+        isPerishable: (productData[Fields.isPerishable] as bool?) ?? false,
+        estimatedShipDays:
+            (productData[Fields.estimatedShipDays] as num?)?.toInt() ?? 3,
+        deliveryOptions: productData[Fields.deliveryOptions] != null
+            ? (productData[Fields.deliveryOptions] as List<dynamic>)
+                  .whereType<Map<dynamic, dynamic>>()
+                  .map(
+                    (o) =>
+                        SellerDeliveryOption.fromMap(o.cast<String, dynamic>()),
+                  )
+                  .whereType<SellerDeliveryOption>()
+                  .toList()
+            : [],
+        minimumOrderQuantity:
+            (productData[Fields.minimumOrderQuantity] as num?)?.toInt() ?? 1,
+        freeShipping: (productData[Fields.freeShipping] as bool?) ?? false,
+        isDigital: (productData[Fields.isDigital] as bool?) ?? false,
+        variantId: cartItem?.variantId,
+        variantTitle: cartItem?.variantTitle,
+        variantOptions: cartItem?.variantOptions,
+      );
+    });
 
 // ============================================================================
 // BATCH PRODUCT CACHE — fetches all cart product docs in one whereIn query
@@ -96,13 +130,14 @@ final cartItemDetailProvider = FutureProvider.autoDispose.family<CartItemDetailM
 /// Provider that returns the current quantity for a specific cart item.
 /// Keyed by [cartItemId] (not productId) so duplicate-product entries are tracked independently.
 /// F-004 fix: using productId caused merged quantities when the same product appeared twice.
-final cartItemQuantityProvider = Provider.autoDispose.family<AsyncValue<int>, String>((ref, cartItemId) {
-  final itemsAsync = ref.watch(cartItemsProvider);
-  return itemsAsync.whenData((items) {
-    final matches = items.where((item) => item.cartItemId == cartItemId);
-    return matches.isEmpty ? 0 : matches.first.quantity;
-  });
-});
+final cartItemQuantityProvider = Provider.autoDispose
+    .family<AsyncValue<int>, String>((ref, cartItemId) {
+      final itemsAsync = ref.watch(cartItemsProvider);
+      return itemsAsync.whenData((items) {
+        final matches = items.where((item) => item.cartItemId == cartItemId);
+        return matches.isEmpty ? 0 : matches.first.quantity;
+      });
+    });
 
 // ============================================================================
 // AUDIT FIX (C4): Unavailable cart items provider
@@ -112,7 +147,9 @@ final cartItemQuantityProvider = Provider.autoDispose.family<AsyncValue<int>, St
 // CART PROVIDERS
 // ============================================================================
 
-final cartItemsProvider = StreamProvider.autoDispose<List<CartItemModel>>((ref) {
+final cartItemsProvider = StreamProvider.autoDispose<List<CartItemModel>>((
+  ref,
+) {
   final userId = ref.watch(userIdProvider);
   if (userId == null) return Stream.value([]);
 
@@ -125,7 +162,9 @@ final cartItemsProvider = StreamProvider.autoDispose<List<CartItemModel>>((ref) 
 
 /// Validates that all cart items can be shipped to the buyer's default address.
 /// Returns a list of product IDs that are UN-SHIPPABLE to the current destination.
-final cartShippingValidationProvider = FutureProvider.autoDispose<List<String>>((ref) async {
+final cartShippingValidationProvider = FutureProvider.autoDispose<List<String>>((
+  ref,
+) async {
   final cartItems = await ref.watch(cartWithDetailsProvider.future);
   if (cartItems.isEmpty) return [];
 
@@ -149,7 +188,10 @@ final cartShippingValidationProvider = FutureProvider.autoDispose<List<String>>(
       canShip = !isLocalOnly || (sellerState == destinationState);
     } else {
       canShip = item.deliveryOptions.any(
-        (opt) => opt.availableNationwide || (opt.type == DeliveryTypeValues.standard && !isLocalOnly) || (isLocalOnly && sellerState == destinationState),
+        (opt) =>
+            opt.availableNationwide ||
+            (opt.type == DeliveryTypeValues.standard && !isLocalOnly) ||
+            (isLocalOnly && sellerState == destinationState),
       );
     }
 
@@ -166,75 +208,117 @@ final cartShippingValidationProvider = FutureProvider.autoDispose<List<String>>(
 final cartSubtotalProvider = Provider.autoDispose<int>((ref) {
   final cartDetails = ref.watch(cartWithDetailsProvider);
   return cartDetails.maybeWhen(
-    data: (items) => items.fold(0, (total, item) => total + (item.priceCents * item.quantity)),
+    data: (items) => items.fold(
+      0,
+      (total, item) => total + (item.priceCents * item.quantity),
+    ),
     orElse: () => 0,
   );
 });
 
 /// Fetches cart items with full product details using the shared batch-fetch cache.
 /// Reuses [_cartProductsBatchProvider] to avoid a duplicate batch query.
-final cartWithDetailsProvider = FutureProvider.autoDispose<List<CartItemDetailModel>>((ref) async {
-  final cartItems = ref.watch(cartItemsProvider);
-  final productCache = await ref.watch(_cartProductsBatchProvider.future);
+final cartWithDetailsProvider =
+    FutureProvider.autoDispose<List<CartItemDetailModel>>((ref) async {
+      final cartItems = ref.watch(cartItemsProvider);
+      final productCache = await ref.watch(_cartProductsBatchProvider.future);
 
-  return cartItems.when(
-    data: (items) async {
-      if (items.isEmpty) return [];
+      return cartItems.when(
+        data: (items) async {
+          if (items.isEmpty) return [];
 
-      final List<CartItemDetailModel> results = [];
-      for (final cartItem in items) {
-        final productData = productCache[cartItem.productId];
-        if (productData != null && productData[Fields.lifecycleStatus] == ProductLifecycleStatusValues.active) {
-          results.add(
-            CartItemDetailModel(
-              productId: cartItem.productId,
-              name: (productData[Fields.name] as String?) ?? '',
-              description: (productData[Fields.description] as String?) ?? '',
-              price: ((productData[Fields.price] as num?) ?? 0).toDouble(),
-              priceCents: productData[Fields.priceCents] != null
-                  ? (productData[Fields.priceCents] as num).toInt()
-                  : ((productData[Fields.price] as num?) ?? 0).toDouble() * 100 ~/ 1,
-              imageUrls: List<String>.from(productData[Fields.imageUrls] as Iterable? ?? []),
-              quantity: cartItem.quantity,
-              createdAt: cartItem.createdAt,
-              sellerAddress: Address.fromMap(productData[Fields.sellerAddress] as Map<String, dynamic>? ?? {}),
-              sellerId: (productData[Fields.sellerId] as String?) ?? '',
-              sellerName: (productData[Fields.sellerName] as String?) ?? 'Unknown Seller',
-              weightKg: productData[Fields.weightKg] != null ? (productData[Fields.weightKg] as num).toDouble() : null,
-              lengthCm: productData[Fields.lengthCm] != null ? (productData[Fields.lengthCm] as num).toDouble() : null,
-              widthCm: productData[Fields.widthCm] != null ? (productData[Fields.widthCm] as num).toDouble() : null,
-              heightCm: productData[Fields.heightCm] != null ? (productData[Fields.heightCm] as num).toDouble() : null,
-              isLocalDeliveryOnly: (productData[Fields.isLocalDeliveryOnly] as bool?) ?? false,
-              isPerishable: (productData[Fields.isPerishable] as bool?) ?? false,
-              estimatedShipDays: (productData[Fields.estimatedShipDays] as num?)?.toInt() ?? 3,
-              deliveryOptions: productData[Fields.deliveryOptions] != null
-                  ? (productData[Fields.deliveryOptions] as List<dynamic>)
-                        .whereType<Map<dynamic, dynamic>>()
-                        .map((o) => SellerDeliveryOption.fromMap(o.cast<String, dynamic>()))
-                        .whereType<SellerDeliveryOption>()
-                        .toList()
-                  : [],
-              minimumOrderQuantity: (productData[Fields.minimumOrderQuantity] as num?)?.toInt() ?? 1,
-              freeShipping: (productData[Fields.freeShipping] as bool?) ?? false,
-              isDigital: (productData[Fields.isDigital] as bool?) ?? false,
-              buyerNote: cartItem.buyerNote,
-              variantId: cartItem.variantId,
-              variantTitle: cartItem.variantTitle,
-              variantOptions: cartItem.variantOptions,
-            ),
-          );
-        }
-      }
+          final List<CartItemDetailModel> results = [];
+          for (final cartItem in items) {
+            final productData = productCache[cartItem.productId];
+            if (productData != null &&
+                productData[Fields.lifecycleStatus] ==
+                    ProductLifecycleStatusValues.active) {
+              results.add(
+                CartItemDetailModel(
+                  productId: cartItem.productId,
+                  name: (productData[Fields.name] as String?) ?? '',
+                  description:
+                      (productData[Fields.description] as String?) ?? '',
+                  price: ((productData[Fields.price] as num?) ?? 0).toDouble(),
+                  priceCents: productData[Fields.priceCents] != null
+                      ? (productData[Fields.priceCents] as num).toInt()
+                      : ((productData[Fields.price] as num?) ?? 0).toDouble() *
+                            100 ~/
+                            1,
+                  imageUrls: List<String>.from(
+                    productData[Fields.imageUrls] as Iterable? ?? [],
+                  ),
+                  quantity: cartItem.quantity,
+                  createdAt: cartItem.createdAt,
+                  sellerAddress: Address.fromMap(
+                    productData[Fields.sellerAddress]
+                            as Map<String, dynamic>? ??
+                        {},
+                  ),
+                  sellerId: (productData[Fields.sellerId] as String?) ?? '',
+                  sellerName:
+                      (productData[Fields.sellerName] as String?) ??
+                      'Unknown Seller',
+                  weightKg: productData[Fields.weightKg] != null
+                      ? (productData[Fields.weightKg] as num).toDouble()
+                      : null,
+                  lengthCm: productData[Fields.lengthCm] != null
+                      ? (productData[Fields.lengthCm] as num).toDouble()
+                      : null,
+                  widthCm: productData[Fields.widthCm] != null
+                      ? (productData[Fields.widthCm] as num).toDouble()
+                      : null,
+                  heightCm: productData[Fields.heightCm] != null
+                      ? (productData[Fields.heightCm] as num).toDouble()
+                      : null,
+                  isLocalDeliveryOnly:
+                      (productData[Fields.isLocalDeliveryOnly] as bool?) ??
+                      false,
+                  isPerishable:
+                      (productData[Fields.isPerishable] as bool?) ?? false,
+                  estimatedShipDays:
+                      (productData[Fields.estimatedShipDays] as num?)
+                          ?.toInt() ??
+                      3,
+                  deliveryOptions: productData[Fields.deliveryOptions] != null
+                      ? (productData[Fields.deliveryOptions] as List<dynamic>)
+                            .whereType<Map<dynamic, dynamic>>()
+                            .map(
+                              (o) => SellerDeliveryOption.fromMap(
+                                o.cast<String, dynamic>(),
+                              ),
+                            )
+                            .whereType<SellerDeliveryOption>()
+                            .toList()
+                      : [],
+                  minimumOrderQuantity:
+                      (productData[Fields.minimumOrderQuantity] as num?)
+                          ?.toInt() ??
+                      1,
+                  freeShipping:
+                      (productData[Fields.freeShipping] as bool?) ?? false,
+                  isDigital: (productData[Fields.isDigital] as bool?) ?? false,
+                  buyerNote: cartItem.buyerNote,
+                  variantId: cartItem.variantId,
+                  variantTitle: cartItem.variantTitle,
+                  variantOptions: cartItem.variantOptions,
+                ),
+              );
+            }
+          }
 
-      return results;
-    },
-    loading: () => [],
-    error: (e, st) => throw e, // Rethrow so cart screen can show retry banner
-  );
-});
+          return results;
+        },
+        loading: () => [],
+        error: (e, st) =>
+            throw e, // Rethrow so cart screen can show retry banner
+      );
+    });
 
 // Provider for delivery instructions (stored during cart/checkout flow)
-final deliveryInstructionsProvider = StateProvider.autoDispose<String>((ref) => '');
+final deliveryInstructionsProvider = StateProvider.autoDispose<String>(
+  (ref) => '',
+);
 
 // ============================================================================
 // SINGLE CART ITEM DETAIL PROVIDER (Family)
@@ -242,13 +326,18 @@ final deliveryInstructionsProvider = StateProvider.autoDispose<String>((ref) => 
 
 /// Exposes product IDs that are in the cart but no longer available in the catalog.
 /// UI should use this to display "X items are no longer available" banners.
-final unavailableCartItemsProvider = FutureProvider.autoDispose<List<String>>((ref) async {
+final unavailableCartItemsProvider = FutureProvider.autoDispose<List<String>>((
+  ref,
+) async {
   final cartItems = ref.watch(cartItemsProvider);
   final productCache = await ref.watch(_cartProductsBatchProvider.future);
 
   return cartItems.maybeWhen(
     data: (items) {
-      return items.where((item) => !productCache.containsKey(item.productId)).map((item) => item.productId).toList();
+      return items
+          .where((item) => !productCache.containsKey(item.productId))
+          .map((item) => item.productId)
+          .toList();
     },
     orElse: () => <String>[],
   );
@@ -256,26 +345,30 @@ final unavailableCartItemsProvider = FutureProvider.autoDispose<List<String>>((r
 
 /// Internal provider that batch-fetches product documents for all cart items.
 /// Returns a `Map<productId, productData>` for O(1) lookup by [cartItemDetailProvider].
-final _cartProductsBatchProvider = FutureProvider.autoDispose<Map<String, Map<String, dynamic>>>((ref) async {
-  final productRepository = ref.watch(productRepositoryProvider);
-  final cartItems = ref.watch(cartItemsProvider);
+final _cartProductsBatchProvider =
+    FutureProvider.autoDispose<Map<String, Map<String, dynamic>>>((ref) async {
+      final productRepository = ref.watch(productRepositoryProvider);
+      final cartItems = ref.watch(cartItemsProvider);
 
-  final productIds = cartItems.maybeWhen(data: (items) => items.map((i) => i.productId).toList(), orElse: () => <String>[]);
+      final productIds = cartItems.maybeWhen(
+        data: (items) => items.map((i) => i.productId).toList(),
+        orElse: () => <String>[],
+      );
 
-  if (productIds.isEmpty) return {};
+      if (productIds.isEmpty) return {};
 
-  final Map<String, Map<String, dynamic>> cache = {};
-  try {
-    final products = await productRepository.fetchProductsByIds(productIds);
-    for (final product in products) {
-      cache[product.productId] = product.toJson();
-    }
-  } catch (e, st) {
-    Sentry.captureException(e, stackTrace: st);
-  }
+      final Map<String, Map<String, dynamic>> cache = {};
+      try {
+        final products = await productRepository.fetchProductsByIds(productIds);
+        for (final product in products) {
+          cache[product.productId] = product.toJson();
+        }
+      } catch (e, st) {
+        Sentry.captureException(e, stackTrace: st);
+      }
 
-  return cache;
-});
+      return cache;
+    });
 
 /// Documentation for CartController
 class CartController {
@@ -286,7 +379,13 @@ class CartController {
   CartRepository get _repository => _ref.read(cartRepositoryProvider);
   String? get _userId => _ref.read(userIdProvider);
 
-  Future<bool> addToCart(String productId, int quantity, {String? variantId, String? productName, double? priceCad}) async {
+  Future<bool> addToCart(
+    String productId,
+    int quantity, {
+    String? variantId,
+    String? productName,
+    double? priceCad,
+  }) async {
     final userId = _userId;
     if (userId == null) return false;
 
@@ -302,9 +401,23 @@ class CartController {
         if (!valid) return false;
       }
 
-      await _repository.addToCart(userId, productId, quantity, variantId: variantId);
+      await _repository.addToCart(
+        userId,
+        productId,
+        quantity,
+        variantId: variantId,
+      );
       if (productName != null && priceCad != null) {
-        unawaited(AnalyticsService.logAddToCart(productId: productId, productName: productName, priceCad: priceCad, quantity: quantity));
+        unawaited(
+          _ref
+              .read(analyticsServiceProvider)
+              .logAddToCart(
+                productId: productId,
+                productName: productName,
+                priceCad: priceCad,
+                quantity: quantity,
+              ),
+        );
       }
       return true;
     } catch (e, st) {
@@ -351,7 +464,9 @@ class CartController {
     if (userId == null) return false;
 
     try {
-      await _ref.read(productRepositoryProvider).toggleFavorite(userId, productId);
+      await _ref
+          .read(productRepositoryProvider)
+          .toggleFavorite(userId, productId);
       await removeFromCart(cartItemId);
       return true;
     } catch (e, st) {

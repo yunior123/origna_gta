@@ -5,6 +5,7 @@ import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/orders/orders_provider.dart';
 import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/screens/order_detail_screen.dart';
+import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:origna_gta/widgets/order_widgets.dart';
 
@@ -253,7 +254,8 @@ void main() {
       );
       await tester.pump();
 
-      expect(find.bySemanticsLabel('btn-back'), findsOneWidget);
+      // AppBar also has a btn-back semantics label, so expect at least one
+      expect(find.bySemanticsLabel('btn-back'), findsWidgets);
     });
 
     testWidgets('back button callback can be invoked', (tester) async {
@@ -270,7 +272,9 @@ void main() {
       );
       await tester.pump();
 
-      final backButton = find.bySemanticsLabel('btn-back');
+      // Tap the ModernButton (not the AppBar back button which also has btn-back label)
+      final backButton = find.byType(ModernButton);
+      expect(backButton, findsOneWidget);
       await tester.tap(backButton);
 
       expect(backCalled, isTrue);

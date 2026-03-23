@@ -73,6 +73,7 @@ cargo test -p ob-auth                                   # single crate
 - no skipping tests, implement and run instead
 - avoid mocks for live integration tests
 - no backward compatibility
+- solve warnings like a pro
 
 ## MCP
 

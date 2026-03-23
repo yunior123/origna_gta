@@ -186,14 +186,14 @@ void main() {
       );
     });
 
-    test('setSelectedVariantId preserves existing value when null passed', () {
+    test('setSelectedVariantId clears value when null passed', () {
       final notifier = container.read(productDetailViewModelProvider.notifier);
 
       notifier.setSelectedVariantId('variant_123');
       notifier.setSelectedVariantId(null);
       expect(
         container.read(productDetailViewModelProvider).selectedVariantId,
-        'variant_123',
+        isNull,
       );
     });
   });
@@ -350,21 +350,28 @@ void main() {
       );
     });
 
-    test('setSelectedOption without variantId updates options only', () {
-      final notifier = container.read(productDetailViewModelProvider.notifier);
+    test(
+      'setSelectedOption without variantId clears variant and updates options',
+      () {
+        final notifier = container.read(
+          productDetailViewModelProvider.notifier,
+        );
 
-      notifier.setSelectedVariantId('existing-variant');
-      notifier.setSelectedOption('Color', 'Blue');
+        notifier.setSelectedVariantId('existing-variant');
+        notifier.setSelectedOption('Color', 'Blue');
 
-      expect(
-        container.read(productDetailViewModelProvider).selectedOptions['Color'],
-        'Blue',
-      );
-      expect(
-        container.read(productDetailViewModelProvider).selectedVariantId,
-        'existing-variant',
-      );
-    });
+        expect(
+          container
+              .read(productDetailViewModelProvider)
+              .selectedOptions['Color'],
+          'Blue',
+        );
+        expect(
+          container.read(productDetailViewModelProvider).selectedVariantId,
+          isNull,
+        );
+      },
+    );
   });
 
   group('SellerMetrics Tests', () {
@@ -413,7 +420,7 @@ void main() {
       const metrics = SellerMetrics(avgResponseHours: 2.0);
       final state = ProductDetailState(sellerMetrics: metrics);
 
-      final copied = state.copyWith(clearSellerMetrics: true);
+      final copied = state.copyWith(sellerMetrics: null);
 
       expect(copied.sellerMetrics, isNull);
     });

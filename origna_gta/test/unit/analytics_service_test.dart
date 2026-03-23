@@ -7,15 +7,20 @@ void main() {
     // Therefore, AnalyticsService._isEnabled evaluates to false.
     // This allows us to safely call these methods in tests without triggering
     // real analytics SDK calls, avoiding bootstrap errors in tests.
-    
+    late AnalyticsService analytics;
+
+    setUp(() {
+      analytics = AnalyticsService();
+    });
+
     test('Auth events can be called without throwing', () async {
-      await expectLater(AnalyticsService.logSignUp(method: 'email'), completes);
-      await expectLater(AnalyticsService.logLogin(method: 'google'), completes);
+      await expectLater(analytics.logSignUp(method: 'email'), completes);
+      await expectLater(analytics.logLogin(method: 'google'), completes);
     });
 
     test('Browse / Discovery events can be called without throwing', () async {
       await expectLater(
-        AnalyticsService.logViewItemList(
+        analytics.logViewItemList(
           listName: 'Home Page',
           items: [AnalyticsEventItem(itemId: 'prod_1', itemName: 'Item 1')],
         ),
@@ -23,7 +28,7 @@ void main() {
       );
 
       await expectLater(
-        AnalyticsService.logSelectItem(
+        analytics.logSelectItem(
           productId: 'prod_1',
           productName: 'Item 1',
           priceCad: 25.99,
@@ -33,7 +38,7 @@ void main() {
       );
 
       await expectLater(
-        AnalyticsService.logViewItem(
+        analytics.logViewItem(
           productId: 'prod_1',
           productName: 'Item 1',
           priceCad: 25.99,
@@ -42,20 +47,32 @@ void main() {
       );
     });
 
-    test('logSearch parameter validation and transformation logic (redaction)', () async {
-      // Normal search
-      await expectLater(AnalyticsService.logSearch(searchTerm: 'sneakers'), completes);
-      
-      // Search with potential PII (email) - should be redacted internally
-      await expectLater(AnalyticsService.logSearch(searchTerm: 'test@example.com'), completes);
-      
-      // Search with potential PII (phone/credit card number) - should be redacted internally
-      await expectLater(AnalyticsService.logSearch(searchTerm: '1234567890'), completes);
-    });
+    test(
+      'logSearch parameter validation and transformation logic (redaction)',
+      () async {
+        // Normal search
+        await expectLater(
+          analytics.logSearch(searchTerm: 'sneakers'),
+          completes,
+        );
+
+        // Search with potential PII (email) - should be redacted internally
+        await expectLater(
+          analytics.logSearch(searchTerm: 'test@example.com'),
+          completes,
+        );
+
+        // Search with potential PII (phone/credit card number) - should be redacted internally
+        await expectLater(
+          analytics.logSearch(searchTerm: '1234567890'),
+          completes,
+        );
+      },
+    );
 
     test('Cart events can be called without throwing', () async {
       await expectLater(
-        AnalyticsService.logAddToCart(
+        analytics.logAddToCart(
           productId: 'prod_1',
           productName: 'Item 1',
           priceCad: 25.99,
@@ -65,7 +82,7 @@ void main() {
       );
 
       await expectLater(
-        AnalyticsService.logRemoveFromCart(
+        analytics.logRemoveFromCart(
           productId: 'prod_1',
           productName: 'Item 1',
           priceCad: 25.99,
@@ -76,7 +93,7 @@ void main() {
 
     test('Wishlist events can be called without throwing', () async {
       await expectLater(
-        AnalyticsService.logAddToWishlist(
+        analytics.logAddToWishlist(
           productId: 'prod_1',
           productName: 'Item 1',
           priceCad: 25.99,
@@ -85,7 +102,7 @@ void main() {
       );
 
       await expectLater(
-        AnalyticsService.logRemoveFromWishlist(
+        analytics.logRemoveFromWishlist(
           productId: 'prod_1',
           productName: 'Item 1',
         ),
@@ -95,12 +112,12 @@ void main() {
 
     test('Checkout funnel events can be called without throwing', () async {
       await expectLater(
-        AnalyticsService.logBeginCheckout(valueCad: 100.0, itemCount: 3),
+        analytics.logBeginCheckout(valueCad: 100.0, itemCount: 3),
         completes,
       );
 
       await expectLater(
-        AnalyticsService.logAddShippingInfo(
+        analytics.logAddShippingInfo(
           valueCad: 100.0,
           shippingCostCad: 10.0,
           shippingTier: 'Express',
@@ -109,7 +126,7 @@ void main() {
       );
 
       await expectLater(
-        AnalyticsService.logAddPaymentInfo(
+        analytics.logAddPaymentInfo(
           valueCad: 110.0,
           paymentType: 'Credit Card',
         ),
@@ -117,7 +134,7 @@ void main() {
       );
 
       await expectLater(
-        AnalyticsService.logPurchase(
+        analytics.logPurchase(
           orderId: 'order_123',
           valueCad: 110.0,
           itemCount: 3,
@@ -126,39 +143,33 @@ void main() {
       );
 
       await expectLater(
-        AnalyticsService.logRefund(
-          orderId: 'order_123',
-          valueCad: 110.0,
-        ),
+        analytics.logRefund(orderId: 'order_123', valueCad: 110.0),
         completes,
       );
     });
 
     test('Subscription events can be called without throwing', () async {
       await expectLater(
-        AnalyticsService.logSubscriptionStarted(priceCad: 15.99),
+        analytics.logSubscriptionStarted(priceCad: 15.99),
         completes,
       );
 
-      await expectLater(
-        AnalyticsService.logSubscriptionCancelled(),
-        completes,
-      );
+      await expectLater(analytics.logSubscriptionCancelled(), completes);
     });
 
-    test('Reviews and Navigation events can be called without throwing', () async {
-      await expectLater(
-        AnalyticsService.logReviewSubmitted(
-          productId: 'prod_1',
-          rating: 4.5,
-        ),
-        completes,
-      );
+    test(
+      'Reviews and Navigation events can be called without throwing',
+      () async {
+        await expectLater(
+          analytics.logReviewSubmitted(productId: 'prod_1', rating: 4.5),
+          completes,
+        );
 
-      await expectLater(
-        AnalyticsService.logScreenView(screenName: 'ProfileScreen'),
-        completes,
-      );
-    });
+        await expectLater(
+          analytics.logScreenView(screenName: 'ProfileScreen'),
+          completes,
+        );
+      },
+    );
   });
 }

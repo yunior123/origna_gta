@@ -35,7 +35,7 @@ void main() {
 
     test('copyWith clears error with clearError flag', () {
       const state = ChatState(errorMessage: 'error');
-      final updated = state.copyWith(clearError: true);
+      final updated = state.copyWith(errorMessage: null);
       expect(updated.errorMessage, isNull);
     });
 

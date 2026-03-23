@@ -1112,7 +1112,7 @@ mod tests {
                     fields::BUYER_ID: buyer_id,
                     fields::SELLER_ID: seller_id,
                     "messageCount": 0,
-                    "sellerUnreadCount": 0,
+                    fields::SELLER_UNREAD_COUNT: 0,
                     fields::UPDATED_AT: "2020-01-01T00:00:00Z"
                 }),
             )
@@ -1158,7 +1158,7 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(chat["messageCount"], 1);
-        assert_eq!(chat["sellerUnreadCount"], 1);
+        assert_eq!(chat[fields::SELLER_UNREAD_COUNT], 1);
         assert_eq!(chat["lastMessageText"], "Hello seller!");
 
         // Test Deduplication (within 5s)
@@ -1191,7 +1191,7 @@ mod tests {
                 json!({
                     fields::BUYER_ID: buyer_id,
                     fields::SELLER_ID: seller_id,
-                    "buyerUnreadCount": 2
+                    fields::BUYER_UNREAD_COUNT: 2
                 }),
             )
             .await
@@ -1242,7 +1242,7 @@ mod tests {
             .get_document(collections::CHATS, chat_id)
             .await
             .unwrap();
-        assert_eq!(chat["buyerUnreadCount"], 0);
+        assert_eq!(chat[fields::BUYER_UNREAD_COUNT], 0);
     }
 
     #[tokio::test]
@@ -1329,7 +1329,7 @@ mod tests {
                     fields::BUYER_ID: buyer_id,
                     fields::SELLER_ID: seller_id,
                     "messageCount": 0,
-                    "sellerUnreadCount": 0,
+                    fields::SELLER_UNREAD_COUNT: 0,
                     fields::UPDATED_AT: "2020-01-01T00:00:00Z"
                 }),
             )
@@ -1387,7 +1387,7 @@ mod tests {
                     fields::BUYER_ID: buyer_id,
                     fields::SELLER_ID: seller_id,
                     "messageCount": 0,
-                    "sellerUnreadCount": 0,
+                    fields::SELLER_UNREAD_COUNT: 0,
                     "lastMessageText": "Hello seller!",
                     fields::UPDATED_AT: now
                 }),
@@ -1437,7 +1437,7 @@ mod tests {
                     fields::BUYER_ID: buyer_id,
                     fields::SELLER_ID: seller_id,
                     "messageCount": 0,
-                    "sellerUnreadCount": 0,
+                    fields::SELLER_UNREAD_COUNT: 0,
                     "lastMessageText": "First message",
                     fields::UPDATED_AT: now
                 }),
@@ -1851,7 +1851,7 @@ mod tests {
                     fields::BUYER_ID: buyer_id,
                     fields::SELLER_ID: seller_id,
                     "messageCount": 0,
-                    "sellerUnreadCount": 0,
+                    fields::SELLER_UNREAD_COUNT: 0,
                     fields::UPDATED_AT: "2020-01-01T00:00:00Z",
                 }),
             )
@@ -1933,7 +1933,7 @@ mod tests {
                     fields::BUYER_ID: buyer_id,
                     fields::SELLER_ID: seller_id,
                     "messageCount": 10_000,
-                    "sellerUnreadCount": 0,
+                    fields::SELLER_UNREAD_COUNT: 0,
                     fields::UPDATED_AT: "2020-01-01T00:00:00Z",
                 }),
             )
@@ -1980,7 +1980,7 @@ mod tests {
                     fields::BUYER_ID: buyer_id,
                     fields::SELLER_ID: seller_id,
                     "messageCount": 0,
-                    "sellerUnreadCount": 0,
+                    fields::SELLER_UNREAD_COUNT: 0,
                     fields::UPDATED_AT: "2020-01-01T00:00:00Z",
                 }),
             )
@@ -2020,7 +2020,7 @@ mod tests {
                     fields::BUYER_ID: buyer_id,
                     fields::SELLER_ID: seller_id,
                     "messageCount": 0,
-                    "sellerUnreadCount": 0,
+                    fields::SELLER_UNREAD_COUNT: 0,
                     fields::UPDATED_AT: "2020-01-01T00:00:00Z",
                 }),
             )
@@ -2086,8 +2086,8 @@ mod tests {
                     fields::BUYER_ID: buyer_id,
                     fields::SELLER_ID: seller_id,
                     "messageCount": 1,
-                    "buyerUnreadCount": 0,
-                    "sellerUnreadCount": 0,
+                    fields::BUYER_UNREAD_COUNT: 0,
+                    fields::SELLER_UNREAD_COUNT: 0,
                     "firstBuyerMessageAt": earlier,
                     fields::UPDATED_AT: "2020-01-01T00:00:00Z",
                 }),

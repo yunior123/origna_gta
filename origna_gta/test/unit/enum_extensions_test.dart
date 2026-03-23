@@ -5,10 +5,11 @@ import 'package:origna_gta/models/enum_extensions.dart';
 void main() {
   group('DeliveryStatusExtension', () {
     test('displayText for all values', () {
-      expect(DeliveryStatus.pending.displayText, 'Pending');
-      expect(DeliveryStatus.shipped.displayText, 'Shipped');
-      expect(DeliveryStatus.delivered.displayText, 'Delivered');
-      expect(DeliveryStatus.refunded.displayText, 'Refunded');
+      // displayText uses .tr() — returns the key when EasyLocalization is not initialized
+      expect(DeliveryStatus.pending.displayText, 'delivery_status.pending');
+      expect(DeliveryStatus.shipped.displayText, 'delivery_status.shipped');
+      expect(DeliveryStatus.delivered.displayText, 'delivery_status.delivered');
+      expect(DeliveryStatus.refunded.displayText, 'delivery_status.refunded');
     });
 
     test('value for all values', () {
@@ -19,30 +20,52 @@ void main() {
     });
 
     test('fromValue parses all values', () {
-      expect(DeliveryStatusExtension.fromValue('pending'), DeliveryStatus.pending);
-      expect(DeliveryStatusExtension.fromValue('shipped'), DeliveryStatus.shipped);
-      expect(DeliveryStatusExtension.fromValue('delivered'), DeliveryStatus.delivered);
-      expect(DeliveryStatusExtension.fromValue('refunded'), DeliveryStatus.refunded);
-      expect(DeliveryStatusExtension.fromValue('SHIPPED'), DeliveryStatus.shipped);
+      expect(
+        DeliveryStatusExtension.fromValue('pending'),
+        DeliveryStatus.pending,
+      );
+      expect(
+        DeliveryStatusExtension.fromValue('shipped'),
+        DeliveryStatus.shipped,
+      );
+      expect(
+        DeliveryStatusExtension.fromValue('delivered'),
+        DeliveryStatus.delivered,
+      );
+      expect(
+        DeliveryStatusExtension.fromValue('refunded'),
+        DeliveryStatus.refunded,
+      );
+      expect(
+        DeliveryStatusExtension.fromValue('SHIPPED'),
+        DeliveryStatus.shipped,
+      );
       expect(DeliveryStatusExtension.fromValue(null), DeliveryStatus.pending);
-      expect(DeliveryStatusExtension.fromValue('unknown'), DeliveryStatus.pending);
+      expect(
+        DeliveryStatusExtension.fromValue('unknown'),
+        DeliveryStatus.pending,
+      );
     });
   });
 
   group('OrderStatusExtension', () {
     test('displayText for all values', () {
-      expect(OrderStatus.pending.displayText, 'Pending');
-      expect(OrderStatus.confirmed.displayText, 'Confirmed');
-      expect(OrderStatus.processing.displayText, 'Processing');
-      expect(OrderStatus.shipped.displayText, 'Shipped');
-      expect(OrderStatus.inTransit.displayText, 'In Transit');
-      expect(OrderStatus.delivered.displayText, 'Delivered');
-      expect(OrderStatus.cancelled.displayText, 'Cancelled');
-      expect(OrderStatus.failed.displayText, 'Failed');
-      expect(OrderStatus.expired.displayText, 'Expired');
-      expect(OrderStatus.disputed.displayText, 'Disputed');
-      expect(OrderStatus.refunded.displayText, 'Refunded');
-      expect(OrderStatus.partiallyRefunded.displayText, 'Partially Refunded');
+      // displayText uses .tr() — returns the key when EasyLocalization is not initialized
+      expect(OrderStatus.pending.displayText, 'orders.status.pending');
+      expect(OrderStatus.confirmed.displayText, 'orders.status.confirmed');
+      expect(OrderStatus.processing.displayText, 'orders.status.processing');
+      expect(OrderStatus.shipped.displayText, 'orders.status.shipped');
+      expect(OrderStatus.inTransit.displayText, 'orders.status.in_transit');
+      expect(OrderStatus.delivered.displayText, 'orders.status.delivered');
+      expect(OrderStatus.cancelled.displayText, 'orders.status.cancelled');
+      expect(OrderStatus.failed.displayText, 'orders.status.failed');
+      expect(OrderStatus.expired.displayText, 'orders.status.expired');
+      expect(OrderStatus.disputed.displayText, 'orders.status.disputed');
+      expect(OrderStatus.refunded.displayText, 'orders.status.refunded');
+      expect(
+        OrderStatus.partiallyRefunded.displayText,
+        'orders.status.partially_refunded',
+      );
     });
 
     test('value for all values', () {
@@ -62,16 +85,34 @@ void main() {
 
     test('fromValue parses all values', () {
       expect(OrderStatusExtension.fromValue('pending'), OrderStatus.pending);
-      expect(OrderStatusExtension.fromValue('confirmed'), OrderStatus.confirmed);
-      expect(OrderStatusExtension.fromValue('processing'), OrderStatus.processing);
+      expect(
+        OrderStatusExtension.fromValue('confirmed'),
+        OrderStatus.confirmed,
+      );
+      expect(
+        OrderStatusExtension.fromValue('processing'),
+        OrderStatus.processing,
+      );
       expect(OrderStatusExtension.fromValue('shipped'), OrderStatus.shipped);
-      expect(OrderStatusExtension.fromValue('in_transit'), OrderStatus.inTransit);
-      expect(OrderStatusExtension.fromValue('delivered'), OrderStatus.delivered);
-      expect(OrderStatusExtension.fromValue('cancelled'), OrderStatus.cancelled);
+      expect(
+        OrderStatusExtension.fromValue('in_transit'),
+        OrderStatus.inTransit,
+      );
+      expect(
+        OrderStatusExtension.fromValue('delivered'),
+        OrderStatus.delivered,
+      );
+      expect(
+        OrderStatusExtension.fromValue('cancelled'),
+        OrderStatus.cancelled,
+      );
       expect(OrderStatusExtension.fromValue('failed'), OrderStatus.failed);
       expect(OrderStatusExtension.fromValue('expired'), OrderStatus.expired);
       expect(OrderStatusExtension.fromValue('disputed'), OrderStatus.disputed);
-      expect(OrderStatusExtension.fromValue('IN_TRANSIT'), OrderStatus.inTransit);
+      expect(
+        OrderStatusExtension.fromValue('IN_TRANSIT'),
+        OrderStatus.inTransit,
+      );
       expect(OrderStatusExtension.fromValue(null), OrderStatus.pending);
       expect(OrderStatusExtension.fromValue('unknown'), OrderStatus.pending);
     });
@@ -79,23 +120,42 @@ void main() {
 
   group('PaymentStatusExtension', () {
     test('displayText for all values', () {
-      expect(PaymentStatus.awaitingPayment.displayText, 'Awaiting Payment');
-      expect(PaymentStatus.processing.displayText, 'Processing');
-      expect(PaymentStatus.paid.displayText, 'Paid');
-      expect(PaymentStatus.authorized.displayText, 'Authorized');
-      expect(PaymentStatus.captured.displayText, 'Captured');
-      expect(PaymentStatus.paymentFailed.displayText, 'Payment Failed');
-      expect(PaymentStatus.refunded.displayText, 'Refunded');
-      expect(PaymentStatus.partiallyRefunded.displayText, 'Partially Refunded');
-      expect(PaymentStatus.voided.displayText, 'Voided');
-      expect(PaymentStatus.sessionExpired.displayText, isNotEmpty);
-      expect(PaymentStatus.cancelled.displayText, 'Cancelled');
-      expect(PaymentStatus.authorizationExpired.displayText, 'Authorization Expired');
-      expect(PaymentStatus.disputed.displayText, 'Disputed');
-      expect(PaymentStatus.capturing.displayText, 'Capturing');
-      expect(PaymentStatus.cancelling.displayText, 'Cancelling');
-      expect(PaymentStatus.expiring.displayText, 'Expiring');
-      expect(PaymentStatus.cancelFailed.displayText, 'Cancel Failed');
+      // displayText uses .tr() — returns the key when EasyLocalization is not initialized
+      expect(
+        PaymentStatus.awaitingPayment.displayText,
+        'payment_status.awaiting_payment',
+      );
+      expect(PaymentStatus.processing.displayText, 'payment_status.processing');
+      expect(PaymentStatus.paid.displayText, 'payment_status.paid');
+      expect(PaymentStatus.authorized.displayText, 'payment_status.authorized');
+      expect(PaymentStatus.captured.displayText, 'payment_status.captured');
+      expect(
+        PaymentStatus.paymentFailed.displayText,
+        'payment_status.payment_failed',
+      );
+      expect(PaymentStatus.refunded.displayText, 'payment_status.refunded');
+      expect(
+        PaymentStatus.partiallyRefunded.displayText,
+        'payment_status.partially_refunded',
+      );
+      expect(PaymentStatus.voided.displayText, 'payment_status.voided');
+      expect(
+        PaymentStatus.sessionExpired.displayText,
+        'payment_status.session_expired',
+      );
+      expect(PaymentStatus.cancelled.displayText, 'payment_status.cancelled');
+      expect(
+        PaymentStatus.authorizationExpired.displayText,
+        'payment_status.authorization_expired',
+      );
+      expect(PaymentStatus.disputed.displayText, 'payment_status.disputed');
+      expect(PaymentStatus.capturing.displayText, 'payment_status.capturing');
+      expect(PaymentStatus.cancelling.displayText, 'payment_status.cancelling');
+      expect(PaymentStatus.expiring.displayText, 'payment_status.expiring');
+      expect(
+        PaymentStatus.cancelFailed.displayText,
+        'payment_status.cancel_failed',
+      );
     });
 
     test('value for all values', () {
@@ -119,32 +179,93 @@ void main() {
     });
 
     test('fromValue parses all values', () {
-      expect(PaymentStatusExtension.fromValue('awaiting_payment'), PaymentStatus.awaitingPayment);
-      expect(PaymentStatusExtension.fromValue('processing'), PaymentStatus.processing);
+      expect(
+        PaymentStatusExtension.fromValue('awaiting_payment'),
+        PaymentStatus.awaitingPayment,
+      );
+      expect(
+        PaymentStatusExtension.fromValue('processing'),
+        PaymentStatus.processing,
+      );
       expect(PaymentStatusExtension.fromValue('paid'), PaymentStatus.paid);
-      expect(PaymentStatusExtension.fromValue('authorized'), PaymentStatus.authorized);
-      expect(PaymentStatusExtension.fromValue('captured'), PaymentStatus.captured);
-      expect(PaymentStatusExtension.fromValue('payment_failed'), PaymentStatus.paymentFailed);
-      expect(PaymentStatusExtension.fromValue('refunded'), PaymentStatus.refunded);
-      expect(PaymentStatusExtension.fromValue('session_expired'), PaymentStatus.sessionExpired);
-      expect(PaymentStatusExtension.fromValue('cancelled'), PaymentStatus.cancelled);
-      expect(PaymentStatusExtension.fromValue('authorization_expired'), PaymentStatus.authorizationExpired);
-      expect(PaymentStatusExtension.fromValue('disputed'), PaymentStatus.disputed);
-      expect(PaymentStatusExtension.fromValue('capturing'), PaymentStatus.capturing);
-      expect(PaymentStatusExtension.fromValue('cancelling'), PaymentStatus.cancelling);
-      expect(PaymentStatusExtension.fromValue('expiring'), PaymentStatus.expiring);
-      expect(PaymentStatusExtension.fromValue('CAPTURED'), PaymentStatus.captured);
-      expect(PaymentStatusExtension.fromValue(null), PaymentStatus.awaitingPayment);
-      expect(PaymentStatusExtension.fromValue('invalid'), PaymentStatus.awaitingPayment);
+      expect(
+        PaymentStatusExtension.fromValue('authorized'),
+        PaymentStatus.authorized,
+      );
+      expect(
+        PaymentStatusExtension.fromValue('captured'),
+        PaymentStatus.captured,
+      );
+      expect(
+        PaymentStatusExtension.fromValue('payment_failed'),
+        PaymentStatus.paymentFailed,
+      );
+      expect(
+        PaymentStatusExtension.fromValue('refunded'),
+        PaymentStatus.refunded,
+      );
+      expect(
+        PaymentStatusExtension.fromValue('session_expired'),
+        PaymentStatus.sessionExpired,
+      );
+      expect(
+        PaymentStatusExtension.fromValue('cancelled'),
+        PaymentStatus.cancelled,
+      );
+      expect(
+        PaymentStatusExtension.fromValue('authorization_expired'),
+        PaymentStatus.authorizationExpired,
+      );
+      expect(
+        PaymentStatusExtension.fromValue('disputed'),
+        PaymentStatus.disputed,
+      );
+      expect(
+        PaymentStatusExtension.fromValue('capturing'),
+        PaymentStatus.capturing,
+      );
+      expect(
+        PaymentStatusExtension.fromValue('cancelling'),
+        PaymentStatus.cancelling,
+      );
+      expect(
+        PaymentStatusExtension.fromValue('expiring'),
+        PaymentStatus.expiring,
+      );
+      expect(
+        PaymentStatusExtension.fromValue('CAPTURED'),
+        PaymentStatus.captured,
+      );
+      expect(
+        PaymentStatusExtension.fromValue(null),
+        PaymentStatus.awaitingPayment,
+      );
+      expect(
+        PaymentStatusExtension.fromValue('invalid'),
+        PaymentStatus.awaitingPayment,
+      );
     });
   });
 
   group('ShippingApprovalStatusExtension', () {
     test('displayText for all values', () {
-      expect(ShippingApprovalStatus.notRequired.displayText, 'Not Required');
-      expect(ShippingApprovalStatus.pending.displayText, 'Pending Approval');
-      expect(ShippingApprovalStatus.approved.displayText, 'Approved');
-      expect(ShippingApprovalStatus.rejected.displayText, 'Rejected');
+      // displayText uses .tr() — returns the key when EasyLocalization is not initialized
+      expect(
+        ShippingApprovalStatus.notRequired.displayText,
+        'shipping_approval_status.not_required',
+      );
+      expect(
+        ShippingApprovalStatus.pending.displayText,
+        'shipping_approval_status.pending',
+      );
+      expect(
+        ShippingApprovalStatus.approved.displayText,
+        'shipping_approval_status.approved',
+      );
+      expect(
+        ShippingApprovalStatus.rejected.displayText,
+        'shipping_approval_status.rejected',
+      );
     });
 
     test('value for all values', () {
@@ -155,13 +276,34 @@ void main() {
     });
 
     test('fromValue parses all values', () {
-      expect(ShippingApprovalStatusExtension.fromValue('not_required'), ShippingApprovalStatus.notRequired);
-      expect(ShippingApprovalStatusExtension.fromValue('pending'), ShippingApprovalStatus.pending);
-      expect(ShippingApprovalStatusExtension.fromValue('approved'), ShippingApprovalStatus.approved);
-      expect(ShippingApprovalStatusExtension.fromValue('rejected'), ShippingApprovalStatus.rejected);
-      expect(ShippingApprovalStatusExtension.fromValue('REJECTED'), ShippingApprovalStatus.rejected);
-      expect(ShippingApprovalStatusExtension.fromValue(null), ShippingApprovalStatus.notRequired);
-      expect(ShippingApprovalStatusExtension.fromValue('bad'), ShippingApprovalStatus.notRequired);
+      expect(
+        ShippingApprovalStatusExtension.fromValue('not_required'),
+        ShippingApprovalStatus.notRequired,
+      );
+      expect(
+        ShippingApprovalStatusExtension.fromValue('pending'),
+        ShippingApprovalStatus.pending,
+      );
+      expect(
+        ShippingApprovalStatusExtension.fromValue('approved'),
+        ShippingApprovalStatus.approved,
+      );
+      expect(
+        ShippingApprovalStatusExtension.fromValue('rejected'),
+        ShippingApprovalStatus.rejected,
+      );
+      expect(
+        ShippingApprovalStatusExtension.fromValue('REJECTED'),
+        ShippingApprovalStatus.rejected,
+      );
+      expect(
+        ShippingApprovalStatusExtension.fromValue(null),
+        ShippingApprovalStatus.notRequired,
+      );
+      expect(
+        ShippingApprovalStatusExtension.fromValue('bad'),
+        ShippingApprovalStatus.notRequired,
+      );
     });
   });
 }

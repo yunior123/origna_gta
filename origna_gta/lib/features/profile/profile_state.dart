@@ -1,29 +1,13 @@
+import 'package:freezed_annotation/freezed_annotation.dart';
 
-/// Documentation for ProfileState
-class ProfileState {
-  final bool isLoading;
-  final String? errorMessage;
-  final String? successMessage;
-  final bool isDeleted;
+part 'profile_state.freezed.dart';
 
-  ProfileState({
-    this.isLoading = false,
-    this.errorMessage,
-    this.successMessage,
-    this.isDeleted = false,
-  });
-
-  ProfileState copyWith({
-    bool? isLoading,
+@freezed
+abstract class ProfileState with _$ProfileState {
+  const factory ProfileState({
+    @Default(false) bool isLoading,
     String? errorMessage,
     String? successMessage,
-    bool? isDeleted,
-  }) {
-    return ProfileState(
-      isLoading: isLoading ?? this.isLoading,
-      errorMessage: errorMessage,
-      successMessage: successMessage,
-      isDeleted: isDeleted ?? this.isDeleted,
-    );
-  }
+    @Default(false) bool isDeleted,
+  }) = _ProfileState;
 }

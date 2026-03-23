@@ -28,8 +28,9 @@ void main() {
     mockDocumentRef = MockDocumentRef();
     mockDocument = MockDocument();
 
-    when(mockOrignaBase.collection(Collections.sellerMetrics))
-        .thenReturn(mockCollectionRef);
+    when(
+      mockOrignaBase.collection(Collections.sellerMetrics),
+    ).thenReturn(mockCollectionRef);
     when(mockCollectionRef.doc('s1')).thenReturn(mockDocumentRef);
     when(mockDocumentRef.get()).thenAnswer((_) async => mockDocument);
     when(mockDocument.exists).thenReturn(true);
@@ -41,9 +42,7 @@ void main() {
     });
 
     container = ProviderContainer(
-      overrides: [
-        orignabaseProvider.overrideWithValue(mockOrignaBase),
-      ],
+      overrides: [orignabaseProvider.overrideWithValue(mockOrignaBase)],
     );
   });
 
@@ -56,13 +55,13 @@ void main() {
 
     test('increment/decrement quantity', () {
       final notifier = container.read(productDetailViewModelProvider.notifier);
-      
+
       notifier.incrementQuantity();
       expect(container.read(productDetailViewModelProvider).quantity, 2);
-      
+
       notifier.decrementQuantity();
       expect(container.read(productDetailViewModelProvider).quantity, 1);
-      
+
       notifier.decrementQuantity(); // Should not go below 1
       expect(container.read(productDetailViewModelProvider).quantity, 1);
     });
@@ -70,17 +69,20 @@ void main() {
     test('setImageIndex', () {
       final notifier = container.read(productDetailViewModelProvider.notifier);
       notifier.setImageIndex(2);
-      expect(container.read(productDetailViewModelProvider).currentImageIndex, 2);
+      expect(
+        container.read(productDetailViewModelProvider).currentImageIndex,
+        2,
+      );
     });
 
     test('quantity cannot exceed product stock', () {
       final notifier = container.read(productDetailViewModelProvider.notifier);
-      
+
       // Increment multiple times
       for (int i = 0; i < 50; i++) {
         notifier.incrementQuantity();
       }
-      
+
       // Should be capped by stock or reasonable limit
       final state = container.read(productDetailViewModelProvider);
       expect(state.quantity, greaterThanOrEqualTo(1));
@@ -122,7 +124,7 @@ void main() {
       final notifier = container.read(productDetailViewModelProvider.notifier);
       notifier.incrementQuantity();
       notifier.incrementQuantity();
-      
+
       final before = container.read(productDetailViewModelProvider).quantity;
       notifier.decrementQuantity();
       final after = container.read(productDetailViewModelProvider).quantity;
@@ -131,35 +133,44 @@ void main() {
 
     test('multiple incrementQuantity calls accumulate', () {
       final notifier = container.read(productDetailViewModelProvider.notifier);
-      
+
       notifier.incrementQuantity();
       notifier.incrementQuantity();
       notifier.incrementQuantity();
-      
+
       final state = container.read(productDetailViewModelProvider);
       expect(state.quantity, 4); // 1 + 3
     });
 
     test('setImageIndex can be set multiple times', () {
       final notifier = container.read(productDetailViewModelProvider.notifier);
-      
+
       notifier.setImageIndex(1);
-      expect(container.read(productDetailViewModelProvider).currentImageIndex, 1);
-      
+      expect(
+        container.read(productDetailViewModelProvider).currentImageIndex,
+        1,
+      );
+
       notifier.setImageIndex(5);
-      expect(container.read(productDetailViewModelProvider).currentImageIndex, 5);
-      
+      expect(
+        container.read(productDetailViewModelProvider).currentImageIndex,
+        5,
+      );
+
       notifier.setImageIndex(0);
-      expect(container.read(productDetailViewModelProvider).currentImageIndex, 0);
+      expect(
+        container.read(productDetailViewModelProvider).currentImageIndex,
+        0,
+      );
     });
 
     test('decrementQuantity with quantity 1 stays at 1', () {
       final notifier = container.read(productDetailViewModelProvider.notifier);
-      
+
       // Already at 1
       notifier.decrementQuantity();
       expect(container.read(productDetailViewModelProvider).quantity, 1);
-      
+
       notifier.decrementQuantity();
       expect(container.read(productDetailViewModelProvider).quantity, 1);
     });
@@ -176,11 +187,11 @@ void main() {
 
     test('incrementQuantity multiple times in sequence', () {
       final notifier = container.read(productDetailViewModelProvider.notifier);
-      
+
       for (int i = 0; i < 10; i++) {
         notifier.incrementQuantity();
       }
-      
+
       final state = container.read(productDetailViewModelProvider);
       expect(state.quantity, 11); // 1 + 10
     });
@@ -188,13 +199,19 @@ void main() {
     test('setImageIndex with 0', () {
       final notifier = container.read(productDetailViewModelProvider.notifier);
       notifier.setImageIndex(0);
-      expect(container.read(productDetailViewModelProvider).currentImageIndex, 0);
+      expect(
+        container.read(productDetailViewModelProvider).currentImageIndex,
+        0,
+      );
     });
 
     test('setImageIndex with 1', () {
       final notifier = container.read(productDetailViewModelProvider.notifier);
       notifier.setImageIndex(1);
-      expect(container.read(productDetailViewModelProvider).currentImageIndex, 1);
+      expect(
+        container.read(productDetailViewModelProvider).currentImageIndex,
+        1,
+      );
     });
 
     test('setQuantity ignores values below one', () {
@@ -216,7 +233,7 @@ void main() {
       expect(state.selectedVariantId, 'v-large');
     });
 
-    test('setSelectedVariantId keeps prior selection when null is passed', () {
+    test('setSelectedVariantId clears selection when null is passed', () {
       final notifier = container.read(productDetailViewModelProvider.notifier);
 
       notifier.setSelectedVariantId('v-small');
@@ -228,7 +245,7 @@ void main() {
       notifier.setSelectedVariantId(null);
       expect(
         container.read(productDetailViewModelProvider).selectedVariantId,
-        'v-small',
+        isNull,
       );
     });
 
@@ -236,7 +253,7 @@ void main() {
       const metrics = SellerMetrics(avgResponseHours: 2.0);
       const state = ProductDetailState(sellerMetrics: metrics);
 
-      final cleared = state.copyWith(clearSellerMetrics: true);
+      final cleared = state.copyWith(sellerMetrics: null);
 
       expect(cleared.sellerMetrics, isNull);
     });
@@ -275,10 +292,7 @@ void main() {
         mockOrignaBase.request(
           'POST',
           ApiEndpoints.productsReviewVote,
-          body: {
-            Fields.reviewId: 'rating-1',
-            'vote': 'helpful',
-          },
+          body: {Fields.reviewId: 'rating-1', 'vote': 'helpful'},
         ),
       ).called(1);
     });

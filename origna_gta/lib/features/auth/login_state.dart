@@ -1,55 +1,20 @@
-// Sentinel object: distinguishes "not provided" from explicit null in copyWith calls.
-const _omit = Object();
+import 'package:freezed_annotation/freezed_annotation.dart';
 
-/// Documentation for LoginState
-class LoginState {
-  final bool isLoading;
-  final bool isLogin;
-  final bool obscurePassword;
-  final bool acceptedTerms;
-  final bool marketingOptIn; // CASL/Loi 25: separate marketing consent
-  final String? errorMessage;
-  final String? successMessage;
-  final bool isSuccess;
-  final bool mfaRequired;
-  final String? challengeToken;
+part 'login_state.freezed.dart';
 
-  LoginState({
-    this.isLoading = false,
-    this.isLogin = true,
-    this.obscurePassword = true,
-    this.acceptedTerms = false,
-    this.marketingOptIn = false,
-    this.errorMessage,
-    this.successMessage,
-    this.isSuccess = false,
-    this.mfaRequired = false,
-    this.challengeToken,
-  });
-
-  LoginState copyWith({
-    bool? isLoading,
-    bool? isLogin,
-    bool? obscurePassword,
-    bool? acceptedTerms,
-    bool? marketingOptIn,
-    Object? errorMessage = _omit,
-    Object? successMessage = _omit,
-    bool? isSuccess,
-    bool? mfaRequired,
-    Object? challengeToken = _omit,
-  }) {
-    return LoginState(
-      isLoading: isLoading ?? this.isLoading,
-      isLogin: isLogin ?? this.isLogin,
-      obscurePassword: obscurePassword ?? this.obscurePassword,
-      acceptedTerms: acceptedTerms ?? this.acceptedTerms,
-      marketingOptIn: marketingOptIn ?? this.marketingOptIn,
-      errorMessage: identical(errorMessage, _omit) ? this.errorMessage : errorMessage as String?,
-      successMessage: identical(successMessage, _omit) ? this.successMessage : successMessage as String?,
-      isSuccess: isSuccess ?? this.isSuccess,
-      mfaRequired: mfaRequired ?? this.mfaRequired,
-      challengeToken: identical(challengeToken, _omit) ? this.challengeToken : challengeToken as String?,
-    );
-  }
+@freezed
+abstract class LoginState with _$LoginState {
+  const factory LoginState({
+    @Default(false) bool isLoading,
+    @Default(true) bool isLogin,
+    @Default(true) bool obscurePassword,
+    @Default(false) bool acceptedTerms,
+    @Default(false)
+    bool marketingOptIn, // CASL/Loi 25: separate marketing consent
+    String? errorMessage,
+    String? successMessage,
+    @Default(false) bool isSuccess,
+    @Default(false) bool mfaRequired,
+    String? challengeToken,
+  }) = _LoginState;
 }

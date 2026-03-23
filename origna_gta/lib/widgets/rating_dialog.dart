@@ -106,18 +106,21 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
             ),
             const SizedBox(height: 16),
             // Review text field
-            TextField(
-              controller: _reviewTextController,
-              maxLines: 3,
-              maxLength: 500,
-              textCapitalization: TextCapitalization.sentences,
-              decoration: InputDecoration(
-                labelText: 'rating.review_body'.tr(),
-                hintText: 'rating.review_body_hint'.tr(),
-                alignLabelWithHint: true,
-                counterText: '',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+            Semantics(
+              label: 'input-review-text',
+              child: TextField(
+                controller: _reviewTextController,
+                maxLines: 3,
+                maxLength: 500,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: InputDecoration(
+                  labelText: 'rating.review_body'.tr(),
+                  hintText: 'rating.review_body_hint'.tr(),
+                  alignLabelWithHint: true,
+                  counterText: '',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
             ),

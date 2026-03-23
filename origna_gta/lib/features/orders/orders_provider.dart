@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart'
+    show BusinessRules;
 import 'package:origna_gta/models/generated/models.dart' as models;
 
 // ============================================================================
@@ -170,5 +172,69 @@ final sellerEarningsSummaryProvider =
           );
         },
         orElse: () => const SellerEarningsSummary(),
+      );
+    });
+
+// ============================================================================
+// SELLER ORDER NET AMOUNTS (per-card fee computation — not in build())
+// ============================================================================
+
+/// Pre-computed net amounts for a single seller order card.
+/// Moves fee arithmetic out of _SellerOrderCard.build().
+@immutable
+class SellerOrderNetAmounts {
+  final double sellerTotal;
+  final double platformFee;
+  final double sellerNet;
+
+  const SellerOrderNetAmounts({
+    required this.sellerTotal,
+    required this.platformFee,
+    required this.sellerNet,
+  });
+}
+
+/// Computes gross, fee, and net for the seller's items in one order.
+/// Family key: (orderId, sellerId)
+final sellerOrderNetProvider = Provider.autoDispose
+    .family<SellerOrderNetAmounts, ({String orderId, String sellerId})>((
+      ref,
+      params,
+    ) {
+      final ordersAsync = ref.watch(sellerOrdersProvider);
+      return ordersAsync.maybeWhen(
+        data: (orders) {
+          final order = orders.cast<models.Order?>().firstWhere(
+            (o) => o?.orderId == params.orderId,
+            orElse: () => null,
+          );
+          if (order == null) {
+            return const SellerOrderNetAmounts(
+              sellerTotal: 0,
+              platformFee: 0,
+              sellerNet: 0,
+            );
+          }
+          final sellerItems = order.items.where(
+            (item) => item.sellerId == params.sellerId,
+          );
+          final sellerTotal = sellerItems.fold<double>(
+            0.0,
+            (acc, item) => acc + (item.price * item.quantity),
+          );
+          // Per-seller fee = seller's own subtotal × platform fee rate
+          final platformFee =
+              sellerTotal * (BusinessRules.platformFeePercent / 100.0);
+          return SellerOrderNetAmounts(
+            sellerTotal: sellerTotal,
+            platformFee: platformFee,
+            sellerNet: sellerTotal - platformFee,
+          );
+        },
+        orElse: () => const SellerOrderNetAmounts(
+          sellerTotal: 0,
+          platformFee: 0,
+          sellerNet: 0,
+        ),
       );
     });

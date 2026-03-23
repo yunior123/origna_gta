@@ -7,7 +7,8 @@ import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/repositories/product_repository.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/models/generated/models.dart';
-import 'package:origna_gta/services/analytics_service.dart';
+import 'package:origna_gta/services/analytics_service.dart'
+    show analyticsServiceProvider;
 import 'package:origna_gta/utils/utils.dart';
 
 // ============================================================================
@@ -169,18 +170,22 @@ class FavoritesController {
     await _repository.toggleFavorite(userId, productId);
     if (productName != null && priceCad != null && !wasFavorited) {
       unawaited(
-        AnalyticsService.logAddToWishlist(
-          productId: productId,
-          productName: productName,
-          priceCad: priceCad,
-        ),
+        _ref
+            .read(analyticsServiceProvider)
+            .logAddToWishlist(
+              productId: productId,
+              productName: productName,
+              priceCad: priceCad,
+            ),
       );
     } else if (productName != null && wasFavorited) {
       unawaited(
-        AnalyticsService.logRemoveFromWishlist(
-          productId: productId,
-          productName: productName,
-        ),
+        _ref
+            .read(analyticsServiceProvider)
+            .logRemoveFromWishlist(
+              productId: productId,
+              productName: productName,
+            ),
       );
     }
   }

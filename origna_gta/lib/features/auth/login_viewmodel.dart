@@ -6,7 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/constants/validation_constants.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/repositories/orignabase_auth_repository.dart';
-import 'package:origna_gta/services/analytics_service.dart';
+import 'package:origna_gta/services/analytics_service.dart'
+    show analyticsServiceProvider;
 
 import 'login_state.dart';
 
@@ -53,7 +54,7 @@ String _friendlyAuthError(OrignaBaseAuthException e) {
 class LoginViewModel extends StateNotifier<LoginState> {
   final Ref _ref;
 
-  LoginViewModel(this._ref) : super(LoginState());
+  LoginViewModel(this._ref) : super(const LoginState());
 
   Future<void> handleAppleSignIn() async {
     if (state.isLoading) return;
@@ -70,7 +71,7 @@ class LoginViewModel extends StateNotifier<LoginState> {
 
     try {
       await repository.signInWithApple();
-      unawaited(AnalyticsService.logLogin(method: 'apple'));
+      unawaited(_ref.read(analyticsServiceProvider).logLogin(method: 'apple'));
       state = state.copyWith(isLoading: false, isSuccess: true);
     } on OrignaBaseAuthException catch (e) {
       state = state.copyWith(
@@ -127,7 +128,9 @@ class LoginViewModel extends StateNotifier<LoginState> {
         await repository.signInWithEmail(email, password);
         // [F-82] Allow sign-in even if not verified, but show a warning or hint in UI if needed.
         // The business logic elsewhere (checkout) will block actions requiring verification.
-        unawaited(AnalyticsService.logLogin(method: 'email'));
+        unawaited(
+          _ref.read(analyticsServiceProvider).logLogin(method: 'email'),
+        );
       } else {
         await repository.registerWithEmail(
           email,
@@ -135,7 +138,9 @@ class LoginViewModel extends StateNotifier<LoginState> {
           name ?? 'User',
           marketingOptIn: marketingOptIn,
         );
-        unawaited(AnalyticsService.logSignUp(method: 'email'));
+        unawaited(
+          _ref.read(analyticsServiceProvider).logSignUp(method: 'email'),
+        );
 
         // [F-80] Stay signed in after registration so profile is created immediately
         state = state.copyWith(
@@ -202,7 +207,7 @@ class LoginViewModel extends StateNotifier<LoginState> {
 
     try {
       await repository.signInWithGoogle();
-      unawaited(AnalyticsService.logLogin(method: 'google'));
+      unawaited(_ref.read(analyticsServiceProvider).logLogin(method: 'google'));
       state = state.copyWith(isLoading: false, isSuccess: true);
     } on OrignaBaseAuthException catch (e) {
       state = state.copyWith(

@@ -4,6 +4,7 @@
 export 'orignabase_seller_products_viewmodel.dart';
 
 import 'dart:async';
+import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/core/orignabase_provider.dart';
@@ -12,6 +13,8 @@ import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/utils/utils.dart';
 
 import 'orignabase_seller_products_viewmodel.dart';
+
+part 'seller_products_viewmodel.freezed.dart';
 
 /// Streams the current seller's products via OrignaBase.
 final sellerProductsProvider = StreamProvider.autoDispose<List<Product>>((ref) {
@@ -30,15 +33,22 @@ final sellerProductsProvider = StreamProvider.autoDispose<List<Product>>((ref) {
           .limit(BusinessRules.sellerProductsPageSize)
           .get();
 
-      final products = snap.docs.map((doc) {
-        try {
-          final data = Map<String, dynamic>.from(doc.data);
-          return Product.fromJson({...data, Fields.productId: doc.id});
-        } catch (e) {
-          AppError.log(e, context: 'sellerProductsProvider: skipping malformed doc ${doc.id}');
-          return null;
-        }
-      }).whereType<Product>().toList();
+      final products = snap.docs
+          .map((doc) {
+            try {
+              final data = Map<String, dynamic>.from(doc.data);
+              return Product.fromJson({...data, Fields.productId: doc.id});
+            } catch (e) {
+              AppError.log(
+                e,
+                context:
+                    'sellerProductsProvider: skipping malformed doc ${doc.id}',
+              );
+              return null;
+            }
+          })
+          .whereType<Product>()
+          .toList();
 
       if (!controller.isClosed) controller.add(products);
     } catch (e, st) {
@@ -53,15 +63,21 @@ final sellerProductsProvider = StreamProvider.autoDispose<List<Product>>((ref) {
   // Realtime updates
   final realtime = RealtimeClient(ob);
   realtime.connect();
-  final sub = realtime.subscribe(Collections.products).listen(
-    (change) {
-      final sellerId = change.document.data[Fields.sellerId] as String?;
-      if (sellerId == userId) fetch();
-    },
-    onError: (Object e, StackTrace st) {
-      AppError.log(e, stackTrace: st, context: 'sellerProductsProvider.realtime');
-    },
-  );
+  final sub = realtime
+      .subscribe(Collections.products)
+      .listen(
+        (change) {
+          final sellerId = change.document.data[Fields.sellerId] as String?;
+          if (sellerId == userId) fetch();
+        },
+        onError: (Object e, StackTrace st) {
+          AppError.log(
+            e,
+            stackTrace: st,
+            context: 'sellerProductsProvider.realtime',
+          );
+        },
+      );
 
   ref.onDispose(() {
     sub.cancel();
@@ -73,22 +89,14 @@ final sellerProductsProvider = StreamProvider.autoDispose<List<Product>>((ref) {
 });
 
 /// State for the seller products viewmodel.
-class SellerProductsState {
-  final Set<String> selectedIds;
-  final bool isLoading;
-  final String? errorMessage;
-  final String? successMessage;
-
-  const SellerProductsState({this.selectedIds = const {}, this.isLoading = false, this.errorMessage, this.successMessage});
-
-  SellerProductsState copyWith({Set<String>? selectedIds, bool? isLoading, String? errorMessage, String? successMessage}) {
-    return SellerProductsState(
-      selectedIds: selectedIds ?? this.selectedIds,
-      isLoading: isLoading ?? this.isLoading,
-      errorMessage: errorMessage,
-      successMessage: successMessage,
-    );
-  }
+@freezed
+abstract class SellerProductsState with _$SellerProductsState {
+  const factory SellerProductsState({
+    @Default({}) Set<String> selectedIds,
+    @Default(false) bool isLoading,
+    String? errorMessage,
+    String? successMessage,
+  }) = _SellerProductsState;
 }
 
 /// Backward-compatible alias — screens use this name.

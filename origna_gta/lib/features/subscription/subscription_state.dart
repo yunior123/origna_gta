@@ -1,35 +1,17 @@
+import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/utils.dart';
 
-/// Documentation for SubscriptionState
-class SubscriptionState {
-  final bool isLoading;
-  final String? errorMessage;
-  final String? checkoutUrl;
-  final SubscriptionInfo? subscription;
+part 'subscription_state.freezed.dart';
 
-  const SubscriptionState({
-    this.isLoading = false,
-    this.errorMessage,
-    this.checkoutUrl,
-    this.subscription,
-  });
-
-  SubscriptionState copyWith({
-    bool? isLoading,
+@freezed
+abstract class SubscriptionState with _$SubscriptionState {
+  const factory SubscriptionState({
+    @Default(false) bool isLoading,
     String? errorMessage,
     String? checkoutUrl,
     SubscriptionInfo? subscription,
-    bool clearError = false,
-    bool clearCheckoutUrl = false,
-  }) {
-    return SubscriptionState(
-      isLoading: isLoading ?? this.isLoading,
-      errorMessage: clearError ? null : errorMessage ?? this.errorMessage,
-      checkoutUrl: clearCheckoutUrl ? null : checkoutUrl ?? this.checkoutUrl,
-      subscription: subscription ?? this.subscription,
-    );
-  }
+  }) = _SubscriptionState;
 }
 
 /// Documentation for SubscriptionInfo
@@ -49,7 +31,8 @@ class SubscriptionInfo {
   factory SubscriptionInfo.fromMap(Map<String, dynamic> data) {
     final periodEnd = parseDateTime(data[Fields.currentPeriodEnd]);
 
-    final status = data[Fields.status] as String? ?? SubscriptionStatusValues.inactive;
+    final status =
+        data[Fields.status] as String? ?? SubscriptionStatusValues.inactive;
     final isPremium = SubscriptionStatusValues.premiumActive.contains(status);
 
     return SubscriptionInfo(

@@ -49,13 +49,16 @@ final subscriptionStreamProvider =
           .collection(Collections.subscriptions)
           .doc(uid)
           .snapshots()
-          .listen((change) {
-            if (controller.isClosed) return;
-            controller.add(SubscriptionInfo.fromMap(change.document.data));
-          }, onError: (Object error, StackTrace stackTrace) {
-            if (controller.isClosed) return;
-            controller.addError(error, stackTrace);
-          });
+          .listen(
+            (change) {
+              if (controller.isClosed) return;
+              controller.add(SubscriptionInfo.fromMap(change.document.data));
+            },
+            onError: (Object error, StackTrace stackTrace) {
+              if (controller.isClosed) return;
+              controller.addError(error, stackTrace);
+            },
+          );
 
       ref.onDispose(() {
         sub.cancel();
@@ -77,8 +80,8 @@ class OrignaBaseSubscriptionViewModel extends StateNotifier<SubscriptionState> {
   Future<void> createSubscription() async {
     state = state.copyWith(
       isLoading: true,
-      clearError: true,
-      clearCheckoutUrl: true,
+      errorMessage: null,
+      checkoutUrl: null,
     );
     try {
       final userId = _userId;
@@ -106,7 +109,7 @@ class OrignaBaseSubscriptionViewModel extends StateNotifier<SubscriptionState> {
   }
 
   Future<void> cancelSubscription() async {
-    state = state.copyWith(isLoading: true, clearError: true);
+    state = state.copyWith(isLoading: true, errorMessage: null);
     try {
       final userId = _userId;
       if (userId == null || userId.isEmpty) {
@@ -124,7 +127,7 @@ class OrignaBaseSubscriptionViewModel extends StateNotifier<SubscriptionState> {
   }
 
   Future<void> reactivateSubscription() async {
-    state = state.copyWith(isLoading: true, clearError: true);
+    state = state.copyWith(isLoading: true, errorMessage: null);
     try {
       final userId = _userId;
       if (userId == null || userId.isEmpty) {
@@ -160,7 +163,7 @@ class OrignaBaseSubscriptionViewModel extends StateNotifier<SubscriptionState> {
     }
   }
 
-  void clearCheckoutUrl() => state = state.copyWith(clearCheckoutUrl: true);
+  void clearCheckoutUrl() => state = state.copyWith(checkoutUrl: null);
 
   String _parseError(Object e) {
     final str = e.toString();

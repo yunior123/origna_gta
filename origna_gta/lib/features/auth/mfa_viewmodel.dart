@@ -12,7 +12,7 @@ final mfaViewModelProvider =
 class MfaViewModel extends StateNotifier<MfaState> {
   final Ref _ref;
 
-  MfaViewModel(this._ref) : super(MfaState());
+  MfaViewModel(this._ref) : super(const MfaState());
 
   /// Reads mfaEnabled from the current user profile.
   void checkStatus() {

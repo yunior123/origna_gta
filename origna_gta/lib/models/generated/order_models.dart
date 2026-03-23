@@ -4,8 +4,8 @@
 
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-import '../../core/compat/timestamp.dart' show truncateNanoseconds;
-import '../../core/schema/schema_constants.dart';
+import 'package:origna_gta/core/compat/timestamp.dart' show truncateNanoseconds;
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'base_models.dart';
 import 'product_models.dart';
 

@@ -5,7 +5,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 import 'base_models.dart';
-import '../../core/schema/schema_constants.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 
 part 'user_models.freezed.dart';
 part 'user_models.g.dart';
@@ -89,23 +89,34 @@ abstract class User with _$User {
   }) = _User;
 
   factory User.fromMap(Map<String, dynamic> data, String docId) {
-
     // Parse roles
-    final rolesData = data[Fields.roles] as List<dynamic>? ?? [UserRoleValues.buyer];
-    final roles = rolesData.map((r) => UserRole.values.firstWhere((e) => e.name == r.toString(), orElse: () => UserRole.buyer)).toList();
+    final rolesData =
+        data[Fields.roles] as List<dynamic>? ?? [UserRoleValues.buyer];
+    final roles = rolesData
+        .map(
+          (r) => UserRole.values.firstWhere(
+            (e) => e.name == r.toString(),
+            orElse: () => UserRole.buyer,
+          ),
+        )
+        .toList();
 
     return User(
       uid: (data[Fields.uid] as String?) ?? docId,
       email: (data[Fields.email] as String?) ?? '',
       name: (data[Fields.name] as String?) ?? '',
       roles: roles,
-      address: data[Fields.address] != null ? Address.fromJson(data[Fields.address] as Map<String, dynamic>) : null,
+      address: data[Fields.address] != null
+          ? Address.fromJson(data[Fields.address] as Map<String, dynamic>)
+          : null,
       createdAt: _parseDateTime(data[Fields.createdAt]) ?? DateTime.now(),
       customerId: data[Fields.customerId] as String?,
       lastCheckoutSession: data[Fields.lastCheckoutSession] as String?,
       lastOrderId: data[Fields.lastOrderId] as String?,
       lastCheckoutTimestamp: _parseDateTime(data[Fields.lastCheckoutTimestamp]),
-      isSeller: (data[Fields.roles] as List<dynamic>? ?? []).contains(UserRoleValues.seller),
+      isSeller: (data[Fields.roles] as List<dynamic>? ?? []).contains(
+        UserRoleValues.seller,
+      ),
       suspended: (data[Fields.suspended] as bool?) ?? false,
       suspendedAt: _parseDateTime(data[Fields.suspendedAt]),
       updatedAt: _parseDateTime(data[Fields.updatedAt]),
@@ -113,7 +124,9 @@ abstract class User with _$User {
       unsuspendedAt: _parseDateTime(data[Fields.unsuspendedAt]),
       suspendedBy: data[Fields.suspendedBy] as String?,
       suspensionReason: data[Fields.suspensionReason] as String?,
-      taxExemption: data[Fields.taxExemption] != null ? _safeMap(data[Fields.taxExemption]) : null,
+      taxExemption: data[Fields.taxExemption] != null
+          ? _safeMap(data[Fields.taxExemption])
+          : null,
       // MFA status (secrets live in user_security — backend only)
       mfaEnabled: (data[Fields.mfaEnabled] as bool?) ?? false,
       mfaEnrolledAt: _parseDateTime(data[Fields.mfaEnrolledAt]),
@@ -127,9 +140,11 @@ abstract class User with _$User {
       termsAcceptedAt: _parseDateTime(data[Fields.termsAcceptedAt]),
       privacyPolicyVersion: data[Fields.privacyPolicyVersion] as String?,
       termsVersion: data[Fields.termsVersion] as String?,
-      preferredLanguage: data[Fields.preferredLanguage] as String? ?? LanguageValues.english,
+      preferredLanguage:
+          data[Fields.preferredLanguage] as String? ?? LanguageValues.english,
       unsubscribedAt: _parseDateTime(data[Fields.unsubscribedAt]),
-      dataProcessingConsent: (data[Fields.dataProcessingConsent] as bool?) ?? false,
+      dataProcessingConsent:
+          (data[Fields.dataProcessingConsent] as bool?) ?? false,
       // === PREMIUM SUBSCRIPTION ===
       isPremium: (data[Fields.isPremium] as bool?) ?? false,
       premiumSince: _parseDateTime(data[Fields.premiumSince]),
@@ -160,7 +175,13 @@ abstract class User with _$User {
 
 @freezed
 abstract class UserCreate with _$UserCreate {
-  const factory UserCreate({required String email, required String name, @Default([UserRole.buyer]) List<UserRole> roles, Address? address}) = _UserCreate;
+  const factory UserCreate({
+    required String email,
+    required String name,
+    @Default([UserRole.buyer]) List<UserRole> roles,
+    Address? address,
+  }) = _UserCreate;
 
-  factory UserCreate.fromJson(Map<String, dynamic> json) => _$UserCreateFromJson(json);
+  factory UserCreate.fromJson(Map<String, dynamic> json) =>
+      _$UserCreateFromJson(json);
 }

@@ -10,10 +10,7 @@ import 'package:origna_gta/features/profile/address_state.dart';
 import 'package:origna_gta/features/profile/address_viewmodel.dart';
 import 'package:origna_gta/utils/utils.dart';
 
-@GenerateNiceMocks([
-  MockSpec<UserRepository>(),
-  MockSpec<LocationRepository>(),
-])
+@GenerateNiceMocks([MockSpec<UserRepository>(), MockSpec<LocationRepository>()])
 import 'address_viewmodel_test.mocks.dart';
 
 void main() {
@@ -56,7 +53,7 @@ void main() {
 
     test('copyWith clearCoordinates resets lat/lng', () {
       final state = AddressState(latitude: 45.5, longitude: -73.5);
-      final copy = state.copyWith(clearCoordinates: true);
+      final copy = state.copyWith(latitude: null, longitude: null);
       expect(copy.latitude, isNull);
       expect(copy.longitude, isNull);
     });
@@ -136,7 +133,10 @@ void main() {
     test('setLabel updates state', () {
       final vm = container.read(addressViewModelProvider.notifier);
       vm.setLabel(AddressLabelValues.work);
-      expect(container.read(addressViewModelProvider).selectedLabel, AddressLabelValues.work);
+      expect(
+        container.read(addressViewModelProvider).selectedLabel,
+        AddressLabelValues.work,
+      );
     });
 
     test('setDefault updates state', () {
@@ -212,7 +212,9 @@ void main() {
       // Set coordinates first
       vm.selectAddress({
         'properties': {'state_code': 'ON'},
-        'geometry': {'coordinates': [-79.0, 43.0]},
+        'geometry': {
+          'coordinates': [-79.0, 43.0],
+        },
       });
       expect(container.read(addressViewModelProvider).latitude, isNotNull);
 
@@ -242,7 +244,9 @@ void main() {
       // Set coordinates
       vm.selectAddress({
         'properties': {'state_code': 'ON'},
-        'geometry': {'coordinates': [-79.3, 43.6]},
+        'geometry': {
+          'coordinates': [-79.3, 43.6],
+        },
       });
 
       when(mockUserRepo.addBuyerAddress(any)).thenAnswer((_) async => 'newId');
@@ -263,10 +267,18 @@ void main() {
     test('saveAddress updates existing address', () async {
       final vm = container.read(addressViewModelProvider.notifier);
       // Set coordinates + addressId (editing mode)
-      vm.setInitialData(Address(
-        street: '123', city: 'T', state: 'ON', postalCode: 'M5V', country: 'CA',
-        latitude: 43.6, longitude: -79.3, addressId: 'existing123',
-      ));
+      vm.setInitialData(
+        Address(
+          street: '123',
+          city: 'T',
+          state: 'ON',
+          postalCode: 'M5V',
+          country: 'CA',
+          latitude: 43.6,
+          longitude: -79.3,
+          addressId: 'existing123',
+        ),
+      );
 
       when(mockUserRepo.updateBuyerAddress(any, any)).thenAnswer((_) async {});
 
@@ -286,10 +298,14 @@ void main() {
       final vm = container.read(addressViewModelProvider.notifier);
       vm.selectAddress({
         'properties': {'state_code': 'ON'},
-        'geometry': {'coordinates': [-79.3, 43.6]},
+        'geometry': {
+          'coordinates': [-79.3, 43.6],
+        },
       });
 
-      when(mockUserRepo.addBuyerAddress(any)).thenThrow(Exception('network error'));
+      when(
+        mockUserRepo.addBuyerAddress(any),
+      ).thenThrow(Exception('network error'));
 
       await vm.saveAddress(
         street: '123 Main',
@@ -316,7 +332,11 @@ void main() {
 
       final vm = nullContainer.read(addressViewModelProvider.notifier);
       await vm.saveAddress(
-        street: '123', apartment: '', city: 'T', postalCode: 'M5V', phoneNumber: '',
+        street: '123',
+        apartment: '',
+        city: 'T',
+        postalCode: 'M5V',
+        phoneNumber: '',
       );
       // Should not call any repo methods
       verifyNever(mockUserRepo.addBuyerAddress(any));

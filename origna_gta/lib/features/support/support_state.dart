@@ -3,6 +3,10 @@
 /// Holds the chat message list, loading flags, and escalation status.
 library;
 
+import 'package:freezed_annotation/freezed_annotation.dart';
+
+part 'support_state.freezed.dart';
+
 /// Category of support issue chosen by the user before the conversation starts.
 enum SupportCategory {
   orderStatus,
@@ -29,31 +33,12 @@ class SupportMessage {
 }
 
 /// Immutable state for [SupportViewModel].
-class SupportState {
-  final List<SupportMessage> messages;
-  final bool isLoading;
-  final bool isEscalated;
-  final String? errorMessage;
-
-  const SupportState({
-    this.messages = const [],
-    this.isLoading = false,
-    this.isEscalated = false,
-    this.errorMessage,
-  });
-
-  SupportState copyWith({
-    List<SupportMessage>? messages,
-    bool? isLoading,
-    bool? isEscalated,
+@freezed
+abstract class SupportState with _$SupportState {
+  const factory SupportState({
+    @Default([]) List<SupportMessage> messages,
+    @Default(false) bool isLoading,
+    @Default(false) bool isEscalated,
     String? errorMessage,
-    bool clearError = false,
-  }) {
-    return SupportState(
-      messages: messages ?? this.messages,
-      isLoading: isLoading ?? this.isLoading,
-      isEscalated: isEscalated ?? this.isEscalated,
-      errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
-    );
-  }
+  }) = _SupportState;
 }

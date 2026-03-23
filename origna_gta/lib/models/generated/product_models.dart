@@ -4,7 +4,7 @@
 
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-import '../../core/schema/schema_constants.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'base_models.dart';
 
 part 'product_models.freezed.dart';

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:origna_gta/widgets/shared/trending_badge.dart';
 
 /// Modern 2100 Product Card with glassmorphism
 class ModernProductCard extends StatefulWidget {
@@ -275,7 +276,7 @@ class _ModernProductCardState extends State<ModernProductCard>
                             Positioned(
                               top: 8,
                               left: 8,
-                              child: _TrendingBadge(
+                              child: TrendingBadge(
                                 score: widget.trendingScore,
                                 isCompact: false,
                               ),
@@ -472,55 +473,6 @@ class _ModernProductCardState extends State<ModernProductCard>
     );
     _scaleAnimation = Tween<double>(begin: 1.0, end: 1.05).animate(
       CurvedAnimation(parent: _controller, curve: DesignTokens.easeOutCubic),
-    );
-  }
-}
-
-/// HOT badge (score ≥ 50) uses fire gradient; RISING badge uses teal gradient.
-class _TrendingBadge extends StatelessWidget {
-  final int score;
-  final bool isCompact;
-
-  const _TrendingBadge({required this.score, required this.isCompact});
-
-  @override
-  Widget build(BuildContext context) {
-    final isHot = score >= 50;
-    final label = isHot
-        ? 'product.trending_hot'.tr()
-        : 'product.trending_rising'.tr();
-    final colors = isHot
-        ? [DesignTokens.hotStart, DesignTokens.hotEnd]
-        : [DesignTokens.trendingStart, DesignTokens.trendingEnd];
-    final glowColor = isHot
-        ? DesignTokens.hotStart
-        : DesignTokens.trendingStart;
-
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: isCompact ? 5 : 7,
-        vertical: isCompact ? 2 : 3,
-      ),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(colors: colors),
-        borderRadius: BorderRadius.circular(4),
-        boxShadow: [
-          BoxShadow(
-            color: glowColor.withValues(alpha: 0.45),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: isCompact ? 9 : 10,
-          fontWeight: FontWeight.w800,
-          color: DesignTokens.white,
-          letterSpacing: 0.3,
-        ),
-      ),
     );
   }
 }

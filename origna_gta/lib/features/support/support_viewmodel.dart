@@ -46,13 +46,17 @@ class SupportViewModel extends StateNotifier<SupportState> {
     state = state.copyWith(
       messages: [...state.messages, userMsg],
       isLoading: true,
-      clearError: true,
+      errorMessage: null,
     );
 
     try {
       await _runAgentTurn();
     } catch (e, stack) {
-      AppError.log(e, stackTrace: stack, context: 'SupportViewModel.sendMessage');
+      AppError.log(
+        e,
+        stackTrace: stack,
+        context: 'SupportViewModel.sendMessage',
+      );
       state = state.copyWith(
         isLoading: false,
         errorMessage: AppError.getMessage(e, 'support.error_generic'),
@@ -62,7 +66,7 @@ class SupportViewModel extends StateNotifier<SupportState> {
 
   /// Start the conversation with an initial greeting from the agent.
   Future<void> startConversation(SupportCategory category) async {
-    state = state.copyWith(isLoading: true, clearError: true);
+    state = state.copyWith(isLoading: true, errorMessage: null);
     try {
       final categoryLabel = _categoryToLabel(category);
       final openingUserMsg = 'I need help with: $categoryLabel';
@@ -82,7 +86,11 @@ class SupportViewModel extends StateNotifier<SupportState> {
         isLoading: false,
       );
     } catch (e, stack) {
-      AppError.log(e, stackTrace: stack, context: 'SupportViewModel.startConversation');
+      AppError.log(
+        e,
+        stackTrace: stack,
+        context: 'SupportViewModel.startConversation',
+      );
       state = state.copyWith(
         isLoading: false,
         errorMessage: AppError.getMessage(e, 'support.error_generic'),

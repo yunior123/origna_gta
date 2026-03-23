@@ -13,6 +13,7 @@ import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/responsive_layout.dart';
 import 'package:origna_gta/utils/utils.dart';
+import 'package:origna_gta/widgets/shared/trending_badge.dart';
 import 'package:shimmer/shimmer.dart';
 
 /// Documentation for ProductCard
@@ -333,9 +334,17 @@ class _ProductCardState extends ConsumerState<ProductCard>
                       Positioned(
                         top: isCompact ? 4 : 8,
                         left: isCompact ? 4 : 8,
-                        child: _TrendingBadge(
+                        child: TrendingBadge(
                           score: widget.product.trendingScore,
                           isCompact: isCompact,
+                          hotColors: const [
+                            DesignTokens.tertiary,
+                            DesignTokens.hotEnd,
+                          ],
+                          risingColors: const [
+                            DesignTokens.statusInTransit,
+                            DesignTokens.accent,
+                          ],
                         ),
                       ),
                     Positioned(
@@ -984,55 +993,6 @@ class _RankBadge extends StatelessWidget {
       ),
       child: Text(
         '$medal #$rank',
-        style: TextStyle(
-          fontSize: isCompact ? 9 : 10,
-          fontWeight: FontWeight.w800,
-          color: DesignTokens.white,
-          letterSpacing: 0.3,
-        ),
-      ),
-    );
-  }
-}
-
-/// HOT badge (score ≥ 50) uses fire gradient; RISING badge uses teal gradient.
-class _TrendingBadge extends StatelessWidget {
-  final int score;
-  final bool isCompact;
-
-  const _TrendingBadge({required this.score, required this.isCompact});
-
-  @override
-  Widget build(BuildContext context) {
-    final isHot = score >= 50;
-    final label = isHot
-        ? 'product.trending_hot'.tr()
-        : 'product.trending_rising'.tr();
-    final colors = isHot
-        ? [DesignTokens.tertiary, DesignTokens.hotEnd]
-        : [DesignTokens.statusInTransit, DesignTokens.accent];
-    final glowColor = isHot
-        ? DesignTokens.tertiary
-        : DesignTokens.statusInTransit;
-
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: isCompact ? 5 : 7,
-        vertical: isCompact ? 2 : 3,
-      ),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(colors: colors),
-        borderRadius: BorderRadius.circular(4),
-        boxShadow: [
-          BoxShadow(
-            color: glowColor.withValues(alpha: 0.45),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Text(
-        label,
         style: TextStyle(
           fontSize: isCompact ? 9 : 10,
           fontWeight: FontWeight.w800,

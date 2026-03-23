@@ -1673,12 +1673,38 @@
     "captured": "Capturé",
     "payment_failed": "Échec du paiement",
     "refunded": "Remboursé",
+    "partially_refunded": "Partiellement remboursé",
+    "voided": "Annulé",
     "session_expired": "Session expirée",
     "cancelled": "Annulé",
     "authorization_expired": "Autorisation expirée",
+    "disputed": "En litige",
     "capturing": "Capture en cours",
     "cancelling": "Annulation en cours",
-    "expiring": "Expiration en cours"
+    "expiring": "Expiration en cours",
+    "cancel_failed": "Échec de l'annulation"
+  },
+  "delivery_status": {
+    "pending": "En attente",
+    "shipped": "Expédié",
+    "delivered": "Livré",
+    "refunded": "Remboursé"
+  },
+  "shipping_approval_status": {
+    "not_required": "Non requis",
+    "pending": "En attente d'approbation",
+    "approved": "Approuvé",
+    "rejected": "Rejeté"
+  },
+  "return_status": {
+    "requested": "Demandé",
+    "approved": "Approuvé",
+    "label_issued": "Étiquette émise",
+    "received": "Reçu",
+    "refunded": "Remboursé",
+    "rejected": "Rejeté",
+    "escalated": "Escaladé",
+    "unknown": "Inconnu"
   },
   "subscription": {
     "premium_required": "Premium requis",

@@ -9,6 +9,9 @@ import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/subscription/subscription_provider.dart';
 
 import 'chat_repository.dart';
+import 'chat_state.dart';
+
+export 'chat_state.dart';
 
 // ─── Repository ────────────────────────────────────────────────────────────
 
@@ -18,14 +21,16 @@ final chatRepositoryProvider = Provider<OrignaBaseChatRepository>((ref) {
 
 // ─── Messages stream ───────────────────────────────────────────────────────
 
-final chatMessagesProvider =
-    StreamProvider.autoDispose.family<List<ChatMessage>, String>((ref, chatId) {
-  return ref.watch(chatRepositoryProvider).messagesStream(chatId);
-});
+final chatMessagesProvider = StreamProvider.autoDispose
+    .family<List<ChatMessage>, String>((ref, chatId) {
+      return ref.watch(chatRepositoryProvider).messagesStream(chatId);
+    });
 
 // ─── User's buyer chats stream ─────────────────────────────────────────────
 
-final myBuyerChatsProvider = StreamProvider.autoDispose<List<ChatThread>>((ref) {
+final myBuyerChatsProvider = StreamProvider.autoDispose<List<ChatThread>>((
+  ref,
+) {
   final uid = ref.watch(obUserIdProvider);
   if (uid == null) return const Stream.empty();
   return ref.watch(chatRepositoryProvider).userChatsStream(uid);
@@ -33,7 +38,9 @@ final myBuyerChatsProvider = StreamProvider.autoDispose<List<ChatThread>>((ref) 
 
 // ─── User's seller chats stream ────────────────────────────────────────────
 
-final mySellerChatsProvider = StreamProvider.autoDispose<List<ChatThread>>((ref) {
+final mySellerChatsProvider = StreamProvider.autoDispose<List<ChatThread>>((
+  ref,
+) {
   final uid = ref.watch(obUserIdProvider);
   if (uid == null) return const Stream.empty();
   return ref.watch(chatRepositoryProvider).sellerChatsStream(uid);
@@ -49,44 +56,10 @@ final myAllChatsProvider = StreamProvider.autoDispose<List<ChatThread>>((ref) {
 
 // ─── Chat ViewModel ────────────────────────────────────────────────────────
 
-/// Chat state used by the ChatViewModel.
-class ChatState {
-  final bool isLoading;
-  final String? errorMessage;
-  final String? chatId;
-  final bool isOwnProduct;
-  final bool isPremiumRequired;
-
-  const ChatState({
-    this.isLoading = false,
-    this.errorMessage,
-    this.chatId,
-    this.isOwnProduct = false,
-    this.isPremiumRequired = false,
-  });
-
-  ChatState copyWith({
-    bool? isLoading,
-    String? errorMessage,
-    String? chatId,
-    bool? isOwnProduct,
-    bool? isPremiumRequired,
-    bool clearError = false,
-  }) {
-    return ChatState(
-      isLoading: isLoading ?? this.isLoading,
-      errorMessage: clearError ? null : errorMessage ?? this.errorMessage,
-      chatId: chatId ?? this.chatId,
-      isOwnProduct: isOwnProduct ?? this.isOwnProduct,
-      isPremiumRequired: isPremiumRequired ?? this.isPremiumRequired,
-    );
-  }
-}
-
-final chatViewModelProvider =
-    StateNotifierProvider.autoDispose.family<ChatViewModel, ChatState, String>((ref, productId) {
-  return ChatViewModel(ref, productId);
-});
+final chatViewModelProvider = StateNotifierProvider.autoDispose
+    .family<ChatViewModel, ChatState, String>((ref, productId) {
+      return ChatViewModel(ref, productId);
+    });
 
 /// Chat viewmodel — uses OrignaBase chat repository.
 class ChatViewModel extends StateNotifier<ChatState> {
@@ -108,7 +81,7 @@ class ChatViewModel extends StateNotifier<ChatState> {
     // Proactive Premium Check
     SubscriptionInfo? subInfo;
     final subState = _ref.read(subscriptionStreamProvider);
-    
+
     if (subState is AsyncData<SubscriptionInfo?>) {
       subInfo = subState.value;
     } else {
@@ -125,9 +98,15 @@ class ChatViewModel extends StateNotifier<ChatState> {
       return;
     }
 
-    state = state.copyWith(isLoading: true, clearError: true, isPremiumRequired: false);
+    state = state.copyWith(
+      isLoading: true,
+      errorMessage: null,
+      isPremiumRequired: false,
+    );
     try {
-      final chatId = await _ref.read(chatRepositoryProvider).getOrCreateChat(_productId);
+      final chatId = await _ref
+          .read(chatRepositoryProvider)
+          .getOrCreateChat(_productId);
       state = state.copyWith(isLoading: false, chatId: chatId);
     } on OrignaBaseException catch (e) {
       final isSelfChat = e.message.contains('yourself');
@@ -150,11 +129,17 @@ class ChatViewModel extends StateNotifier<ChatState> {
     if (state.isLoading) return;
 
     if (trimmed.length < BusinessRules.minMessageLength) {
-      state = state.copyWith(errorMessage: 'Message is too short (minimum ${BusinessRules.minMessageLength} characters).');
+      state = state.copyWith(
+        errorMessage:
+            'Message is too short (minimum ${BusinessRules.minMessageLength} characters).',
+      );
       return;
     }
     if (trimmed.length > BusinessRules.maxMessageLength) {
-      state = state.copyWith(errorMessage: 'Message exceeds the maximum length of ${BusinessRules.maxMessageLength} characters.');
+      state = state.copyWith(
+        errorMessage:
+            'Message exceeds the maximum length of ${BusinessRules.maxMessageLength} characters.',
+      );
       return;
     }
 

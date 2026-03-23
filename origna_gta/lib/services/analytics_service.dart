@@ -1,6 +1,12 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/services/orignabase_analytics_service.dart';
 import 'package:origna_gta/utils/env_config.dart';
+
+/// Injectable provider for [AnalyticsService].
+final analyticsServiceProvider = Provider<AnalyticsService>((ref) {
+  return AnalyticsService();
+});
 
 /// Lightweight event item model preserved so existing app/test call sites do not
 /// depend on platform analytics SDK types.
@@ -27,12 +33,12 @@ class AnalyticsEventItem {
 
 /// Backward-compatible analytics facade now backed by OrignaBase.
 class AnalyticsService {
-  static OrignaBaseAnalyticsService? _analytics;
+  OrignaBaseAnalyticsService? _analytics;
 
-  static bool get _shouldInitializeClient =>
+  bool get _shouldInitializeClient =>
       envConfig.isProduction || envConfig.shouldUseEmulators;
 
-  static OrignaBaseAnalyticsService get _client {
+  OrignaBaseAnalyticsService get _client {
     return _analytics ??= OrignaBaseAnalyticsService(
       OrignaBase.initialize(
         url: _shouldInitializeClient
@@ -42,13 +48,13 @@ class AnalyticsService {
     );
   }
 
-  static Future<void> logSignUp({required String method}) =>
+  Future<void> logSignUp({required String method}) =>
       _client.logSignUp(method: method);
 
-  static Future<void> logLogin({required String method}) =>
+  Future<void> logLogin({required String method}) =>
       _client.logLogin(method: method);
 
-  static Future<void> logViewItemList({
+  Future<void> logViewItemList({
     required String listName,
     required List<AnalyticsEventItem> items,
   }) => _client.logViewItemList(
@@ -56,7 +62,7 @@ class AnalyticsService {
     items: items.map((item) => item.toJson()).toList(),
   );
 
-  static Future<void> logSelectItem({
+  Future<void> logSelectItem({
     required String productId,
     required String productName,
     required double priceCad,
@@ -68,7 +74,7 @@ class AnalyticsService {
     listName: listName,
   );
 
-  static Future<void> logViewItem({
+  Future<void> logViewItem({
     required String productId,
     required String productName,
     required double priceCad,
@@ -78,10 +84,10 @@ class AnalyticsService {
     priceCad: priceCad,
   );
 
-  static Future<void> logSearch({required String searchTerm}) =>
+  Future<void> logSearch({required String searchTerm}) =>
       _client.logSearch(searchTerm: searchTerm);
 
-  static Future<void> logAddToCart({
+  Future<void> logAddToCart({
     required String productId,
     required String productName,
     required double priceCad,
@@ -93,7 +99,7 @@ class AnalyticsService {
     quantity: quantity,
   );
 
-  static Future<void> logRemoveFromCart({
+  Future<void> logRemoveFromCart({
     required String productId,
     required String productName,
     required double priceCad,
@@ -105,7 +111,7 @@ class AnalyticsService {
     quantity: quantity,
   );
 
-  static Future<void> logAddToWishlist({
+  Future<void> logAddToWishlist({
     required String productId,
     required String productName,
     required double priceCad,
@@ -115,7 +121,7 @@ class AnalyticsService {
     priceCad: priceCad,
   );
 
-  static Future<void> logRemoveFromWishlist({
+  Future<void> logRemoveFromWishlist({
     required String productId,
     required String productName,
   }) => _client.logRemoveFromWishlist(
@@ -123,12 +129,12 @@ class AnalyticsService {
     productName: productName,
   );
 
-  static Future<void> logBeginCheckout({
+  Future<void> logBeginCheckout({
     required double valueCad,
     required int itemCount,
   }) => _client.logBeginCheckout(valueCad: valueCad, itemCount: itemCount);
 
-  static Future<void> logAddShippingInfo({
+  Future<void> logAddShippingInfo({
     required double valueCad,
     required double shippingCostCad,
     required String shippingTier,
@@ -138,12 +144,12 @@ class AnalyticsService {
     shippingTier: shippingTier,
   );
 
-  static Future<void> logAddPaymentInfo({
+  Future<void> logAddPaymentInfo({
     required double valueCad,
     required String paymentType,
   }) => _client.logAddPaymentInfo(valueCad: valueCad, paymentType: paymentType);
 
-  static Future<void> logPurchase({
+  Future<void> logPurchase({
     required String orderId,
     required double valueCad,
     required int itemCount,
@@ -153,22 +159,19 @@ class AnalyticsService {
     itemCount: itemCount,
   );
 
-  static Future<void> logRefund({
-    required String orderId,
-    required double valueCad,
-  }) => _client.logRefund(orderId: orderId, valueCad: valueCad);
+  Future<void> logRefund({required String orderId, required double valueCad}) =>
+      _client.logRefund(orderId: orderId, valueCad: valueCad);
 
-  static Future<void> logSubscriptionStarted({required double priceCad}) =>
+  Future<void> logSubscriptionStarted({required double priceCad}) =>
       _client.logSubscriptionStarted(priceCad: priceCad);
 
-  static Future<void> logSubscriptionCancelled() =>
-      _client.logSubscriptionCancelled();
+  Future<void> logSubscriptionCancelled() => _client.logSubscriptionCancelled();
 
-  static Future<void> logReviewSubmitted({
+  Future<void> logReviewSubmitted({
     required String productId,
     required double rating,
   }) => _client.logReviewSubmitted(productId: productId, rating: rating);
 
-  static Future<void> logScreenView({required String screenName}) =>
+  Future<void> logScreenView({required String screenName}) =>
       _client.logScreenView(screenName: screenName);
 }

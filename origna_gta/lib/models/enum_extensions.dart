@@ -1,4 +1,5 @@
 // Extensions for Freezed enums — provides displayText, value, fromValue
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
@@ -12,13 +13,13 @@ extension DeliveryStatusExtension on DeliveryStatus {
   String get displayText {
     switch (this) {
       case DeliveryStatus.pending:
-        return 'Pending';
+        return 'delivery_status.pending'.tr();
       case DeliveryStatus.shipped:
-        return 'Shipped';
+        return 'delivery_status.shipped'.tr();
       case DeliveryStatus.delivered:
-        return 'Delivered';
+        return 'delivery_status.delivered'.tr();
       case DeliveryStatus.refunded:
-        return 'Refunded';
+        return 'delivery_status.refunded'.tr();
     }
   }
 
@@ -59,29 +60,29 @@ extension OrderStatusExtension on OrderStatus {
   String get displayText {
     switch (this) {
       case OrderStatus.pending:
-        return 'Pending';
+        return 'orders.status.pending'.tr();
       case OrderStatus.confirmed:
-        return 'Confirmed';
+        return 'orders.status.confirmed'.tr();
       case OrderStatus.processing:
-        return 'Processing';
+        return 'orders.status.processing'.tr();
       case OrderStatus.shipped:
-        return 'Shipped';
+        return 'orders.status.shipped'.tr();
       case OrderStatus.inTransit:
-        return 'In Transit';
+        return 'orders.status.in_transit'.tr();
       case OrderStatus.delivered:
-        return 'Delivered';
+        return 'orders.status.delivered'.tr();
       case OrderStatus.cancelled:
-        return 'Cancelled';
+        return 'orders.status.cancelled'.tr();
       case OrderStatus.failed:
-        return 'Failed';
+        return 'orders.status.failed'.tr();
       case OrderStatus.expired:
-        return 'Expired';
+        return 'orders.status.expired'.tr();
       case OrderStatus.disputed:
-        return 'Disputed';
+        return 'orders.status.disputed'.tr();
       case OrderStatus.refunded:
-        return 'Refunded';
+        return 'orders.status.refunded'.tr();
       case OrderStatus.partiallyRefunded:
-        return 'Partially Refunded';
+        return 'orders.status.partially_refunded'.tr();
     }
   }
 
@@ -150,39 +151,39 @@ extension PaymentStatusExtension on PaymentStatus {
   String get displayText {
     switch (this) {
       case PaymentStatus.awaitingPayment:
-        return 'Awaiting Payment';
+        return 'payment_status.awaiting_payment'.tr();
       case PaymentStatus.processing:
-        return 'Processing';
+        return 'payment_status.processing'.tr();
       case PaymentStatus.paid:
-        return 'Paid';
+        return 'payment_status.paid'.tr();
       case PaymentStatus.authorized:
-        return 'Authorized';
+        return 'payment_status.authorized'.tr();
       case PaymentStatus.captured:
-        return 'Captured';
+        return 'payment_status.captured'.tr();
       case PaymentStatus.paymentFailed:
-        return 'Payment Failed';
+        return 'payment_status.payment_failed'.tr();
       case PaymentStatus.refunded:
-        return 'Refunded';
+        return 'payment_status.refunded'.tr();
       case PaymentStatus.partiallyRefunded:
-        return 'Partially Refunded';
+        return 'payment_status.partially_refunded'.tr();
       case PaymentStatus.voided:
-        return 'Voided';
+        return 'payment_status.voided'.tr();
       case PaymentStatus.sessionExpired:
-        return UIMessages.sessionExpiredTitle;
+        return 'payment_status.session_expired'.tr();
       case PaymentStatus.cancelled:
-        return 'Cancelled';
+        return 'payment_status.cancelled'.tr();
       case PaymentStatus.authorizationExpired:
-        return 'Authorization Expired';
+        return 'payment_status.authorization_expired'.tr();
       case PaymentStatus.disputed:
-        return 'Disputed';
+        return 'payment_status.disputed'.tr();
       case PaymentStatus.capturing:
-        return 'Capturing';
+        return 'payment_status.capturing'.tr();
       case PaymentStatus.cancelling:
-        return 'Cancelling';
+        return 'payment_status.cancelling'.tr();
       case PaymentStatus.expiring:
-        return 'Expiring';
+        return 'payment_status.expiring'.tr();
       case PaymentStatus.cancelFailed:
-        return 'Cancel Failed';
+        return 'payment_status.cancel_failed'.tr();
     }
   }
 
@@ -269,13 +270,13 @@ extension ShippingApprovalStatusExtension on ShippingApprovalStatus {
   String get displayText {
     switch (this) {
       case ShippingApprovalStatus.notRequired:
-        return 'Not Required';
+        return 'shipping_approval_status.not_required'.tr();
       case ShippingApprovalStatus.pending:
-        return 'Pending Approval';
+        return 'shipping_approval_status.pending'.tr();
       case ShippingApprovalStatus.approved:
-        return 'Approved';
+        return 'shipping_approval_status.approved'.tr();
       case ShippingApprovalStatus.rejected:
-        return 'Rejected';
+        return 'shipping_approval_status.rejected'.tr();
     }
   }
 
@@ -328,50 +329,50 @@ class ReturnStatusConfig {
   static ReturnStatusConfig fromValue(String status) {
     switch (status) {
       case ReturnStatusValues.requested:
-        return const ReturnStatusConfig(
-          label: 'Requested',
+        return ReturnStatusConfig(
+          label: 'return_status.requested'.tr(),
           color: DesignTokens.secondary,
           icon: Icons.hourglass_empty,
         );
       case ReturnStatusValues.approved:
-        return const ReturnStatusConfig(
-          label: 'Approved',
+        return ReturnStatusConfig(
+          label: 'return_status.approved'.tr(),
           color: DesignTokens.success,
           icon: Icons.check_circle_outline,
         );
       case ReturnStatusValues.labelIssued:
-        return const ReturnStatusConfig(
-          label: 'Label Issued',
+        return ReturnStatusConfig(
+          label: 'return_status.label_issued'.tr(),
           color: DesignTokens.info,
           icon: Icons.local_shipping_outlined,
         );
       case ReturnStatusValues.received:
-        return const ReturnStatusConfig(
-          label: 'Received',
+        return ReturnStatusConfig(
+          label: 'return_status.received'.tr(),
           color: DesignTokens.primary,
           icon: Icons.inventory_2_outlined,
         );
       case ReturnStatusValues.refunded:
-        return const ReturnStatusConfig(
-          label: 'Refunded',
+        return ReturnStatusConfig(
+          label: 'return_status.refunded'.tr(),
           color: DesignTokens.success,
           icon: Icons.paid_outlined,
         );
       case ReturnStatusValues.rejected:
-        return const ReturnStatusConfig(
-          label: 'Rejected',
+        return ReturnStatusConfig(
+          label: 'return_status.rejected'.tr(),
           color: DesignTokens.error,
           icon: Icons.cancel_outlined,
         );
       case ReturnStatusValues.escalated:
-        return const ReturnStatusConfig(
-          label: 'Escalated',
+        return ReturnStatusConfig(
+          label: 'return_status.escalated'.tr(),
           color: DesignTokens.warning,
           icon: Icons.priority_high,
         );
       default:
-        return const ReturnStatusConfig(
-          label: 'Unknown',
+        return ReturnStatusConfig(
+          label: 'return_status.unknown'.tr(),
           color: DesignTokens.textSecondary,
           icon: Icons.help_outline,
         );

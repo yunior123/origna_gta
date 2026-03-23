@@ -85,7 +85,10 @@ void main() {
       final grouped = getSuppliersByRegion();
       expect(grouped, isNotEmpty);
       // Check that at least Asia group exists
-      expect(grouped.values.any((list) => list.any((c) => c.id == 'aliexpress')), isTrue);
+      expect(
+        grouped.values.any((list) => list.any((c) => c.id == 'aliexpress')),
+        isTrue,
+      );
     });
 
     test('isInternationalSupplier for international', () {
@@ -106,14 +109,18 @@ void main() {
       expect(region, isNull);
     });
 
-    testWidgets('getSupplierDropdownItems returns dropdown items', (tester) async {
+    testWidgets('getSupplierDropdownItems returns dropdown items', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: Builder(builder: (context) {
-              final items = getSupplierDropdownItems();
-              return Text('Items: ${items.length}');
-            }),
+            body: Builder(
+              builder: (context) {
+                final items = getSupplierDropdownItems();
+                return Text('Items: ${items.length}');
+              },
+            ),
           ),
         ),
       );
@@ -142,13 +149,13 @@ void main() {
 
     test('copyWith clearError removes error', () {
       const state = SubscriptionState(errorMessage: 'oops');
-      final copy = state.copyWith(clearError: true);
+      final copy = state.copyWith(errorMessage: null);
       expect(copy.errorMessage, isNull);
     });
 
     test('copyWith clearCheckoutUrl removes url', () {
       const state = SubscriptionState(checkoutUrl: 'https://example.com');
-      final copy = state.copyWith(clearCheckoutUrl: true);
+      final copy = state.copyWith(checkoutUrl: null);
       expect(copy.checkoutUrl, isNull);
     });
 
@@ -201,9 +208,7 @@ void main() {
     });
 
     test('fromMap with canceled status', () {
-      final info = SubscriptionInfo.fromMap({
-        Fields.status: 'canceled',
-      });
+      final info = SubscriptionInfo.fromMap({Fields.status: 'canceled'});
       expect(info.isPremium, isFalse);
     });
   });
@@ -388,8 +393,10 @@ void main() {
 
     test('CircuitBreakerRegistry get and getAllMetrics', () {
       CircuitBreakerRegistry.clear();
-      final b = CircuitBreakerRegistry.get('payment',
-          config: CircuitBreakerConfig.paymentDefault);
+      final b = CircuitBreakerRegistry.get(
+        'payment',
+        config: CircuitBreakerConfig.paymentDefault,
+      );
       expect(b.name, 'payment');
       final metrics = CircuitBreakerRegistry.getAllMetrics();
       expect(metrics.containsKey('payment'), isTrue);
@@ -397,8 +404,10 @@ void main() {
 
     test('CircuitBreakerRegistry resetAll', () async {
       CircuitBreakerRegistry.clear();
-      final b = CircuitBreakerRegistry.get('test2',
-          config: const CircuitBreakerConfig(failureThreshold: 1));
+      final b = CircuitBreakerRegistry.get(
+        'test2',
+        config: const CircuitBreakerConfig(failureThreshold: 1),
+      );
       try {
         await b.execute(() async => throw Exception('fail'));
       } catch (_) {}

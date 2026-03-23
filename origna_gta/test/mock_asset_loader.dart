@@ -39,6 +39,8 @@ class MockAssetLoader extends AssetLoader {
         "name": "Name",
         "email": "Email",
         "unknown": "Unknown",
+        "refresh": "Refresh",
+        "back_to_home": "Back to Home",
       },
       "auth": {
         "welcome_back_subtitle": "Welcome back",

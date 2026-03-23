@@ -7,16 +7,17 @@ import 'package:origna_gta/utils/utils.dart';
 
 import 'address_state.dart';
 
-final addressViewModelProvider = StateNotifierProvider.autoDispose<AddressViewModel, AddressState>((ref) {
-  return AddressViewModel(ref);
-});
+final addressViewModelProvider =
+    StateNotifierProvider.autoDispose<AddressViewModel, AddressState>((ref) {
+      return AddressViewModel(ref);
+    });
 
 /// Documentation for AddressViewModel
 class AddressViewModel extends StateNotifier<AddressState> {
   final Ref _ref;
   Timer? _debounce;
 
-  AddressViewModel(this._ref) : super(AddressState());
+  AddressViewModel(this._ref) : super(const AddressState());
 
   @override
   void dispose() {
@@ -26,7 +27,7 @@ class AddressViewModel extends StateNotifier<AddressState> {
 
   void onStreetChanged(String value) {
     // Reset coordinates when user types manually
-    state = state.copyWith(clearCoordinates: true);
+    state = state.copyWith(latitude: null, longitude: null);
 
     if (value.length < 3) {
       state = state.copyWith(showSuggestions: false, addressSuggestions: []);
@@ -36,8 +37,14 @@ class AddressViewModel extends StateNotifier<AddressState> {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 300), () async {
       if (!mounted) return;
-      final suggestions = await _ref.read(locationRepositoryProvider).getAddressSuggestions(value);
-      if (mounted) state = state.copyWith(addressSuggestions: suggestions, showSuggestions: suggestions.isNotEmpty);
+      final suggestions = await _ref
+          .read(locationRepositoryProvider)
+          .getAddressSuggestions(value);
+      if (mounted)
+        state = state.copyWith(
+          addressSuggestions: suggestions,
+          showSuggestions: suggestions.isNotEmpty,
+        );
     });
   }
 
@@ -52,7 +59,9 @@ class AddressViewModel extends StateNotifier<AddressState> {
     if (userId == null) return;
 
     if (state.latitude == null || state.longitude == null) {
-      state = state.copyWith(errorMessage: 'Please select a valid address from the suggestions');
+      state = state.copyWith(
+        errorMessage: 'Please select a valid address from the suggestions',
+      );
       return;
     }
 
@@ -75,14 +84,19 @@ class AddressViewModel extends StateNotifier<AddressState> {
       );
 
       if (state.addressId != null) {
-        await _ref.read(userRepositoryProvider).updateBuyerAddress(state.addressId!, address);
+        await _ref
+            .read(userRepositoryProvider)
+            .updateBuyerAddress(state.addressId!, address);
       } else {
         await _ref.read(userRepositoryProvider).addBuyerAddress(address);
       }
 
       state = state.copyWith(isLoading: false, isSuccess: true);
     } catch (e) {
-      state = state.copyWith(isLoading: false, errorMessage: AppError.getMessage(e, 'Failed to save address'));
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: AppError.getMessage(e, 'Failed to save address'),
+      );
     }
   }
 
@@ -114,5 +128,6 @@ class AddressViewModel extends StateNotifier<AddressState> {
 
   void setLabel(String label) => state = state.copyWith(selectedLabel: label);
 
-  void setProvince(String province) => state = state.copyWith(selectedProvince: province);
+  void setProvince(String province) =>
+      state = state.copyWith(selectedProvince: province);
 }

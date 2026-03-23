@@ -285,20 +285,26 @@ void main() {
   // ==========================================================================
   group('AnalyticsService no-ops in debug/dev', () {
     // _isEnabled is false in debug mode, so all methods return immediately
+    late AnalyticsService analytics;
+
+    setUp(() {
+      analytics = AnalyticsService();
+    });
+
     test('logSignUp returns without error', () async {
-      await AnalyticsService.logSignUp(method: 'email');
+      await analytics.logSignUp(method: 'email');
     });
 
     test('logLogin returns without error', () async {
-      await AnalyticsService.logLogin(method: 'google');
+      await analytics.logLogin(method: 'google');
     });
 
     test('logViewItemList returns without error', () async {
-      await AnalyticsService.logViewItemList(listName: 'test', items: []);
+      await analytics.logViewItemList(listName: 'test', items: []);
     });
 
     test('logSelectItem returns without error', () async {
-      await AnalyticsService.logSelectItem(
+      await analytics.logSelectItem(
         productId: 'p1',
         productName: 'Test',
         priceCad: 9.99,
@@ -306,7 +312,7 @@ void main() {
     });
 
     test('logViewItem returns without error', () async {
-      await AnalyticsService.logViewItem(
+      await analytics.logViewItem(
         productId: 'p1',
         productName: 'Test',
         priceCad: 9.99,
@@ -314,11 +320,11 @@ void main() {
     });
 
     test('logSearch returns without error', () async {
-      await AnalyticsService.logSearch(searchTerm: 'test');
+      await analytics.logSearch(searchTerm: 'test');
     });
 
     test('logAddToCart returns without error', () async {
-      await AnalyticsService.logAddToCart(
+      await analytics.logAddToCart(
         productId: 'p1',
         productName: 'Test',
         priceCad: 9.99,
@@ -327,7 +333,7 @@ void main() {
     });
 
     test('logRemoveFromCart returns without error', () async {
-      await AnalyticsService.logRemoveFromCart(
+      await analytics.logRemoveFromCart(
         productId: 'p1',
         productName: 'Test',
         priceCad: 9.99,
@@ -335,7 +341,7 @@ void main() {
     });
 
     test('logAddToWishlist returns without error', () async {
-      await AnalyticsService.logAddToWishlist(
+      await analytics.logAddToWishlist(
         productId: 'p1',
         productName: 'Test',
         priceCad: 9.99,
@@ -343,18 +349,18 @@ void main() {
     });
 
     test('logRemoveFromWishlist returns without error', () async {
-      await AnalyticsService.logRemoveFromWishlist(
+      await analytics.logRemoveFromWishlist(
         productId: 'p1',
         productName: 'Test',
       );
     });
 
     test('logBeginCheckout returns without error', () async {
-      await AnalyticsService.logBeginCheckout(valueCad: 99.99, itemCount: 3);
+      await analytics.logBeginCheckout(valueCad: 99.99, itemCount: 3);
     });
 
     test('logAddShippingInfo returns without error', () async {
-      await AnalyticsService.logAddShippingInfo(
+      await analytics.logAddShippingInfo(
         valueCad: 99.99,
         shippingCostCad: 12.99,
         shippingTier: 'standard',
@@ -362,14 +368,11 @@ void main() {
     });
 
     test('logAddPaymentInfo returns without error', () async {
-      await AnalyticsService.logAddPaymentInfo(
-        valueCad: 99.99,
-        paymentType: 'card',
-      );
+      await analytics.logAddPaymentInfo(valueCad: 99.99, paymentType: 'card');
     });
 
     test('logPurchase returns without error', () async {
-      await AnalyticsService.logPurchase(
+      await analytics.logPurchase(
         orderId: 'ord_123',
         valueCad: 99.99,
         itemCount: 3,
@@ -377,23 +380,23 @@ void main() {
     });
 
     test('logRefund returns without error', () async {
-      await AnalyticsService.logRefund(orderId: 'ord_123', valueCad: 49.99);
+      await analytics.logRefund(orderId: 'ord_123', valueCad: 49.99);
     });
 
     test('logSubscriptionStarted returns without error', () async {
-      await AnalyticsService.logSubscriptionStarted(priceCad: 9.99);
+      await analytics.logSubscriptionStarted(priceCad: 9.99);
     });
 
     test('logSubscriptionCancelled returns without error', () async {
-      await AnalyticsService.logSubscriptionCancelled();
+      await analytics.logSubscriptionCancelled();
     });
 
     test('logReviewSubmitted returns without error', () async {
-      await AnalyticsService.logReviewSubmitted(productId: 'p1', rating: 4.5);
+      await analytics.logReviewSubmitted(productId: 'p1', rating: 4.5);
     });
 
     test('logScreenView returns without error', () async {
-      await AnalyticsService.logScreenView(screenName: 'home');
+      await analytics.logScreenView(screenName: 'home');
     });
   });
 

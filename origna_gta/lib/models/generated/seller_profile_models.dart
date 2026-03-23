@@ -4,7 +4,7 @@
 
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-import '../../core/schema/schema_constants.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'base_models.dart';
 
 part 'seller_profile_models.freezed.dart';
@@ -78,8 +78,10 @@ abstract class SellerProfile with _$SellerProfile {
       payoutsEnabled: (data[Fields.payoutsEnabled] as bool?) ?? false,
       chargesEnabled: (data[Fields.chargesEnabled] as bool?) ?? false,
       onboardingCompleted: (data[Fields.onboardingCompleted] as bool?) ?? false,
-      pendingRequirements: (data[Fields.pendingRequirements] as List?)?.cast<String>(),
-      commissionRateBps: (data[Fields.commissionRateBps] as num?)?.toInt() ?? 250,
+      pendingRequirements: (data[Fields.pendingRequirements] as List?)
+          ?.cast<String>(),
+      commissionRateBps:
+          (data[Fields.commissionRateBps] as num?)?.toInt() ?? 250,
       avgRating: (data[Fields.avgRating] as num?)?.toDouble() ?? 0.0,
       totalReviews: (data[Fields.totalReviews] as num?)?.toInt() ?? 0,
       totalSales: (data[Fields.totalSales] as num?)?.toInt() ?? 0,
@@ -87,7 +89,8 @@ abstract class SellerProfile with _$SellerProfile {
       businessName: data[Fields.businessName] as String?,
       businessAddress: businessAddr,
       acceptsReturns: (data[Fields.acceptsReturns] as bool?) ?? true,
-      returnWindowDays: (data[Fields.returnWindowDaysField] as num?)?.toInt() ?? 30,
+      returnWindowDays:
+          (data[Fields.returnWindowDaysField] as num?)?.toInt() ?? 30,
       verified: (data[Fields.verified] as bool?) ?? false,
       verificationStatus: data[Fields.verificationStatus] as String?,
       platform: data[Fields.platform] as String?,

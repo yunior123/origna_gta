@@ -346,7 +346,6 @@ void main() {
       });
 
       test('rejects common password even if meets complexity', () {
-        final password = 'password1!';
         if (ValidationConstants.commonPasswords.contains('password1')) {
           expect(
             ValidationConstants.commonPasswords.contains('password1'),

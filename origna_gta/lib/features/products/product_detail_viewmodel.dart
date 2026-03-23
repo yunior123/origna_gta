@@ -4,60 +4,9 @@ import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/env_config.dart';
 import 'package:origna_gta/utils/utils.dart';
 
-/// Documentation for SellerMetrics
-class SellerMetrics {
-  final double? avgResponseHours;
-  final double? avgShipDays;
-  final double? positiveRatePct;
-  final int? totalReviews;
+import 'product_detail_state.dart';
 
-  const SellerMetrics({
-    this.avgResponseHours,
-    this.avgShipDays,
-    this.positiveRatePct,
-    this.totalReviews,
-  });
-}
-
-/// Documentation for ProductDetailState
-class ProductDetailState {
-  final int quantity;
-  final int currentImageIndex;
-  final Map<String, String> selectedOptions;
-  final String? selectedVariantId;
-  final SellerMetrics? sellerMetrics;
-  final bool sellerMetricsLoading;
-
-  const ProductDetailState({
-    this.quantity = 1,
-    this.currentImageIndex = 0,
-    this.selectedOptions = const {},
-    this.selectedVariantId,
-    this.sellerMetrics,
-    this.sellerMetricsLoading = false,
-  });
-
-  ProductDetailState copyWith({
-    int? quantity,
-    int? currentImageIndex,
-    Map<String, String>? selectedOptions,
-    String? selectedVariantId,
-    SellerMetrics? sellerMetrics,
-    bool? sellerMetricsLoading,
-    bool clearSellerMetrics = false,
-  }) {
-    return ProductDetailState(
-      quantity: quantity ?? this.quantity,
-      currentImageIndex: currentImageIndex ?? this.currentImageIndex,
-      selectedOptions: selectedOptions ?? this.selectedOptions,
-      selectedVariantId: selectedVariantId ?? this.selectedVariantId,
-      sellerMetrics: clearSellerMetrics
-          ? null
-          : sellerMetrics ?? this.sellerMetrics,
-      sellerMetricsLoading: sellerMetricsLoading ?? this.sellerMetricsLoading,
-    );
-  }
-}
+export 'product_detail_state.dart';
 
 final productDetailViewModelProvider =
     StateNotifierProvider.autoDispose<
@@ -103,7 +52,7 @@ final sellerMetricsProvider = StreamProvider.autoDispose
 class ProductDetailViewModel extends StateNotifier<ProductDetailState> {
   final Ref _ref;
 
-  ProductDetailViewModel(this._ref) : super(ProductDetailState());
+  ProductDetailViewModel(this._ref) : super(const ProductDetailState());
 
   void setQuantity(int quantity) {
     if (quantity < 1) return;
@@ -142,17 +91,13 @@ class ProductDetailViewModel extends StateNotifier<ProductDetailState> {
   void fetchSellerMetrics(String sellerId) {
     final trimmedSellerId = sellerId.trim();
     if (trimmedSellerId.isEmpty) {
-      state = state.copyWith(
-        sellerMetricsLoading: false,
-        clearSellerMetrics: true,
-      );
+      state = state.copyWith(sellerMetricsLoading: false, sellerMetrics: null);
       return;
     }
     final metricsAsync = _ref.read(sellerMetricsProvider(trimmedSellerId));
     state = state.copyWith(
       sellerMetrics: metricsAsync.valueOrNull,
       sellerMetricsLoading: metricsAsync.isLoading,
-      clearSellerMetrics: !metricsAsync.hasValue,
     );
   }
 

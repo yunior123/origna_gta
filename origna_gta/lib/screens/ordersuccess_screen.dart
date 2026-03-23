@@ -3,8 +3,10 @@ import 'dart:math' as math;
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/routes.dart';
-import 'package:origna_gta/services/analytics_service.dart';
+import 'package:origna_gta/services/analytics_service.dart'
+    show analyticsServiceProvider;
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/mascot/shop_mascot.dart';
@@ -12,7 +14,7 @@ import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
 /// Documentation for OrderSuccessScreen
-class OrderSuccessScreen extends StatefulWidget {
+class OrderSuccessScreen extends ConsumerStatefulWidget {
   final String orderId;
   final double valueCad;
   final int itemCount;
@@ -33,7 +35,7 @@ class OrderSuccessScreen extends StatefulWidget {
   });
 
   @override
-  State<OrderSuccessScreen> createState() => _OrderSuccessScreenState();
+  ConsumerState<OrderSuccessScreen> createState() => _OrderSuccessScreenState();
 }
 
 // ── Confetti celebration ────────────────────────────────────────────────────
@@ -197,7 +199,7 @@ class _DeliveryWindowCard extends StatelessWidget {
   }
 }
 
-class _OrderSuccessScreenState extends State<OrderSuccessScreen> {
+class _OrderSuccessScreenState extends ConsumerState<OrderSuccessScreen> {
   late final MascotController _mascotController;
 
   @override
@@ -498,11 +500,13 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen> {
         timestamp: DateTime.now(),
       ),
     );
-    AnalyticsService.logPurchase(
-      orderId: widget.orderId,
-      valueCad: widget.valueCad,
-      itemCount: widget.itemCount,
-    );
+    ref
+        .read(analyticsServiceProvider)
+        .logPurchase(
+          orderId: widget.orderId,
+          valueCad: widget.valueCad,
+          itemCount: widget.itemCount,
+        );
   }
 }
 

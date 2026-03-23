@@ -19,7 +19,7 @@ final profileViewModelProvider =
 class OrignaBaseProfileViewModel extends StateNotifier<ProfileState> {
   final Ref _ref;
 
-  OrignaBaseProfileViewModel(this._ref) : super(ProfileState());
+  OrignaBaseProfileViewModel(this._ref) : super(const ProfileState());
 
   OrignaBase get _ob => _ref.read(orignabaseProvider);
 

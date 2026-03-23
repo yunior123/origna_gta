@@ -244,44 +244,50 @@ class _CouponSectionState extends ConsumerState<_CouponSection> {
         Row(
           children: [
             Expanded(
-              child: TextField(
-                key: const Key('checkout_coupon_field'),
-                controller: _controller,
-                enabled: !applied && !isLoading && !isProcessing,
-                textCapitalization: TextCapitalization.characters,
-                decoration: InputDecoration(
-                  hintText: 'checkout.coupon_hint'.tr(),
-                  filled: true,
-                  fillColor: Theme.of(context).brightness == Brightness.dark
-                      ? DesignTokens.darkCard
-                      : DesignTokens.white,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: DesignTokens.outline.withValues(alpha: 0.3),
+              child: Semantics(
+                label: 'input-coupon-code',
+                child: TextField(
+                  key: const Key('checkout_coupon_field'),
+                  controller: _controller,
+                  enabled: !applied && !isLoading && !isProcessing,
+                  textCapitalization: TextCapitalization.characters,
+                  decoration: InputDecoration(
+                    hintText: 'checkout.coupon_hint'.tr(),
+                    filled: true,
+                    fillColor: Theme.of(context).brightness == Brightness.dark
+                        ? DesignTokens.darkCard
+                        : DesignTokens.white,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
                     ),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: DesignTokens.outline.withValues(alpha: 0.3),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: DesignTokens.outline.withValues(alpha: 0.3),
+                      ),
                     ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: DesignTokens.outline.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    errorText: couponError,
+                    prefixIcon: const Icon(
+                      Icons.local_offer_outlined,
+                      size: 20,
+                    ),
+                    suffixIcon: applied
+                        ? Icon(
+                            Icons.check_circle,
+                            color: DesignTokens.success,
+                            size: 20,
+                          )
+                        : null,
                   ),
-                  errorText: couponError,
-                  prefixIcon: const Icon(Icons.local_offer_outlined, size: 20),
-                  suffixIcon: applied
-                      ? Icon(
-                          Icons.check_circle,
-                          color: DesignTokens.success,
-                          size: 20,
-                        )
-                      : null,
+                  onSubmitted: (_) => _apply(notifier),
                 ),
-                onSubmitted: (_) => _apply(notifier),
               ),
             ),
             const SizedBox(width: 10),
@@ -367,10 +373,13 @@ class _PaymentProviderSection extends StatelessWidget {
         const SizedBox(height: 12),
         Row(
           children: [
-            ChoiceChip(
-              label: Text('payment.stripe'.tr()),
-              selected: true,
-              onSelected: (_) {},
+            Semantics(
+              label: 'chip-payment-stripe',
+              child: ChoiceChip(
+                label: Text('payment.stripe'.tr()),
+                selected: true,
+                onSelected: (_) {},
+              ),
             ),
           ],
         ),

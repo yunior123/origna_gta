@@ -39,7 +39,7 @@ class OrignaBaseSellerRegistrationViewModel
   static const _minOperationInterval = Duration(seconds: 3);
 
   OrignaBaseSellerRegistrationViewModel(this._ref)
-    : super(SellerRegistrationState());
+    : super(const SellerRegistrationState());
 
   OrignaBase get _ob => _ref.read(orignabaseProvider);
   String? get _userId => _ref.read(obUserIdProvider);

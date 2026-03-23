@@ -77,10 +77,14 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen>
   @override
   Widget build(BuildContext context) {
     final isLoggedIn = ref.watch(currentUserProvider.select((u) => u != null));
-    final userProfile = ref.watch(userProfileProvider);
+    final isAdminAsync = ref.watch(
+      userProfileProvider.select(
+        (a) => a.whenData((p) => p?.roles.contains(UserRole.admin) ?? false),
+      ),
+    );
     final isWide = MediaQuery.sizeOf(context).width >= 900;
 
-    return userProfile.when(
+    return isAdminAsync.when(
       loading: () => Scaffold(
         body: Center(
           child: Column(
@@ -127,10 +131,8 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen>
           ),
         ),
       ),
-      data: (profile) {
-        if (!isLoggedIn ||
-            profile == null ||
-            !profile.roles.contains(UserRole.admin)) {
+      data: (isAdmin) {
+        if (!isLoggedIn || !isAdmin) {
           return Scaffold(
             body: Center(
               child: Column(

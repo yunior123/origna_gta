@@ -60,7 +60,7 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
   }) async {
     final trimmed = code.trim().toUpperCase();
     if (trimmed.isEmpty) return;
-    state = state.copyWith(isCouponLoading: true, clearCouponError: true);
+    state = state.copyWith(isCouponLoading: true, couponError: null);
     try {
       final result = await _ob.request(
         'POST',
@@ -135,7 +135,7 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
           availableDeliverySpeeds: const [],
           deliverySpeed: DeliverySpeed.standard,
           isCalculatingShipping: false,
-          clearShippingError: true,
+          shippingError: null,
         );
         return;
       }
@@ -149,15 +149,12 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
         availableDeliverySpeeds: const [],
         deliverySpeed: DeliverySpeed.standard,
         isCalculatingShipping: false,
-        clearShippingError: true,
+        shippingError: null,
       );
       return;
     }
 
-    state = state.copyWith(
-      isCalculatingShipping: true,
-      clearShippingError: true,
-    );
+    state = state.copyWith(isCalculatingShipping: true, shippingError: null);
 
     try {
       // cartSubtotalProvider returns INTEGER CENTS — divide by 100.0 to get dollars for analytics/tax/biometric.
@@ -288,7 +285,11 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
 
   void removeCoupon() {
     final subtotalCents = _ref.read(cartSubtotalProvider);
-    state = state.copyWith(clearCoupon: true, clearCouponError: true);
+    state = state.copyWith(
+      couponCode: null,
+      couponDiscountCents: 0,
+      couponError: null,
+    );
     _recalculateTotalsAfterCouponChange(subtotalCents);
   }
 
@@ -333,7 +334,7 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
       return CheckoutError(message: 'checkout.errors.already_processing'.tr());
     }
 
-    state = state.copyWith(isProcessing: true, clearCheckoutError: true);
+    state = state.copyWith(isProcessing: true, checkoutError: null);
     final analytics = OrignaBaseAnalyticsService(_ob);
     unawaited(
       analytics.logBeginCheckout(valueCad: subtotal, itemCount: items.length),
@@ -459,10 +460,7 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
         final checkoutUrl = result[ApiKeys.checkoutUrl] as String?;
         final orderId = result[Fields.orderId] as String;
         if (checkoutUrl != null && checkoutUrl.isNotEmpty) {
-          state = state.copyWith(
-            isProcessing: false,
-            clearIdempotencyKey: true,
-          );
+          state = state.copyWith(isProcessing: false, idempotencyKey: null);
           _ref.invalidate(cartItemsProvider);
           return CheckoutSuccess(
             checkoutUrl: checkoutUrl,
@@ -470,7 +468,7 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
             sessionId: result[ApiKeys.sessionId] as String? ?? '',
           );
         }
-        state = state.copyWith(isProcessing: false, clearIdempotencyKey: true);
+        state = state.copyWith(isProcessing: false, idempotencyKey: null);
         return CheckoutAlreadyProcessed(existingOrderId: orderId);
       }
 
@@ -486,7 +484,7 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
 
       state = state.copyWith(
         isProcessing: false,
-        clearIdempotencyKey: true,
+        idempotencyKey: null,
         serverTaxAmountCents: serverTaxAmountCents,
       );
       _ref.invalidate(cartItemsProvider);
@@ -524,7 +522,7 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
   }
 
   void updateAddress(Address address) {
-    state = state.copyWith(address: address, clearIdempotencyKey: true);
+    state = state.copyWith(address: address, idempotencyKey: null);
   }
 
   void _recalculateTotalsAfterCouponChange(int subtotalCents) {

@@ -471,7 +471,7 @@ void main() {
     test('copyWith clears shippingError', () {
       final state = CheckoutState(shippingError: 'Error');
 
-      final copied = state.copyWith(clearShippingError: true);
+      final copied = state.copyWith(shippingError: null);
 
       expect(copied.shippingError, isNull);
     });
@@ -479,7 +479,7 @@ void main() {
     test('copyWith clears checkoutError', () {
       final state = CheckoutState(checkoutError: 'Checkout failed');
 
-      final copied = state.copyWith(clearCheckoutError: true);
+      final copied = state.copyWith(checkoutError: null);
 
       expect(copied.checkoutError, isNull);
     });
@@ -490,7 +490,7 @@ void main() {
         couponDiscountCents: 500,
       );
 
-      final copied = state.copyWith(clearCoupon: true);
+      final copied = state.copyWith(couponCode: null, couponDiscountCents: 0);
 
       expect(copied.couponCode, isNull);
       expect(copied.couponDiscountCents, 0);

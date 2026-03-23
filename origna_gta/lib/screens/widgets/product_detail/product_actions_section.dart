@@ -11,6 +11,7 @@ import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
+import 'package:origna_gta/widgets/shared/quantity_button.dart';
 
 /// Variant selector + quantity + add-to-cart / buy-now section.
 class VariantAndCartSection extends ConsumerWidget {
@@ -239,7 +240,7 @@ class QuantitySelector extends ConsumerWidget {
         GlassContainer(
           child: Row(
             children: [
-              _QuantityButton(
+              QuantityButton(
                 key: const Key('product_qty_minus'),
                 icon: Icons.remove,
                 onPressed: quantity > 1 ? viewModel.decrementQuantity : null,
@@ -256,7 +257,7 @@ class QuantitySelector extends ConsumerWidget {
                   ),
                 ),
               ),
-              _QuantityButton(
+              QuantityButton(
                 key: const Key('product_qty_plus'),
                 icon: Icons.add,
                 onPressed: viewModel.incrementQuantity,
@@ -266,46 +267,6 @@ class QuantitySelector extends ConsumerWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _QuantityButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback? onPressed;
-  final String semanticLabel;
-
-  const _QuantityButton({
-    super.key,
-    required this.icon,
-    required this.onPressed,
-    required this.semanticLabel,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      label: semanticLabel,
-      button: true,
-      enabled: onPressed != null,
-      child: Material(
-        color: DesignTokens.transparent,
-        child: InkWell(
-          onTap: onPressed,
-          borderRadius: BorderRadius.circular(8),
-          splashColor: DesignTokens.primary.withValues(alpha: 0.3),
-          child: Padding(
-            padding: const EdgeInsets.all(8),
-            child: Icon(
-              icon,
-              color: onPressed != null
-                  ? DesignTokens.primary
-                  : DesignTokens.textDisabled,
-              size: 20,
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

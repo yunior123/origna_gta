@@ -1673,12 +1673,38 @@
     "captured": "Captured",
     "payment_failed": "Payment Failed",
     "refunded": "Refunded",
+    "partially_refunded": "Partially Refunded",
+    "voided": "Voided",
     "session_expired": "Session Expired",
     "cancelled": "Cancelled",
     "authorization_expired": "Authorization Expired",
+    "disputed": "Disputed",
     "capturing": "Capturing",
     "cancelling": "Cancelling",
-    "expiring": "Expiring"
+    "expiring": "Expiring",
+    "cancel_failed": "Cancel Failed"
+  },
+  "delivery_status": {
+    "pending": "Pending",
+    "shipped": "Shipped",
+    "delivered": "Delivered",
+    "refunded": "Refunded"
+  },
+  "shipping_approval_status": {
+    "not_required": "Not Required",
+    "pending": "Pending Approval",
+    "approved": "Approved",
+    "rejected": "Rejected"
+  },
+  "return_status": {
+    "requested": "Requested",
+    "approved": "Approved",
+    "label_issued": "Label Issued",
+    "received": "Received",
+    "refunded": "Refunded",
+    "rejected": "Rejected",
+    "escalated": "Escalated",
+    "unknown": "Unknown"
   },
   "subscription": {
     "premium_required": "Premium Required",

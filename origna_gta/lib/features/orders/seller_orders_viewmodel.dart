@@ -12,7 +12,7 @@ final sellerOrdersViewModelProvider = StateNotifierProvider.autoDispose<SellerOr
 class SellerOrdersViewModel extends StateNotifier<SellerOrdersState> {
   final Ref _ref;
 
-  SellerOrdersViewModel(this._ref) : super(SellerOrdersState());
+  SellerOrdersViewModel(this._ref) : super(const SellerOrdersState());
 
   Future<void> updateShippingAndCapture(
     String orderId,

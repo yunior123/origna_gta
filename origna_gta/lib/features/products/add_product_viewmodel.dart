@@ -40,7 +40,7 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
   final Ref _ref;
   String? _activeRequestId;
 
-  AddProductViewModel(this._ref) : super(AddProductState());
+  AddProductViewModel(this._ref) : super(const AddProductState());
 
   void addImage(ImageModel image) =>
       state = state.copyWith(imageModels: [...state.imageModels, image]);
@@ -449,7 +449,7 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
   /// Call from screen's initState if state.isSuccess == true.
   void resetIfSuccess() {
     if (state.isSuccess) {
-      state = AddProductState();
+      state = const AddProductState();
     }
   }
 

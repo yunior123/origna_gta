@@ -1,24 +1,12 @@
-/// Documentation for SellerOrdersState
-class SellerOrdersState {
-  final bool isLoading;
-  final String? errorMessage;
-  final bool isSuccess;
+import 'package:freezed_annotation/freezed_annotation.dart';
 
-  const SellerOrdersState({
-    this.isLoading = false,
-    this.errorMessage,
-    this.isSuccess = false,
-  });
+part 'seller_orders_state.freezed.dart';
 
-  SellerOrdersState copyWith({
-    bool? isLoading,
+@freezed
+abstract class SellerOrdersState with _$SellerOrdersState {
+  const factory SellerOrdersState({
+    @Default(false) bool isLoading,
     String? errorMessage,
-    bool? isSuccess,
-  }) {
-    return SellerOrdersState(
-      isLoading: isLoading ?? this.isLoading,
-      errorMessage: errorMessage,
-      isSuccess: isSuccess ?? this.isSuccess,
-    );
-  }
+    @Default(false) bool isSuccess,
+  }) = _SellerOrdersState;
 }

@@ -174,7 +174,7 @@ void main() {
 
     test('SupportState.copyWith with clearError removes errorMessage', () {
       const original = SupportState(errorMessage: 'oops');
-      final cleared = original.copyWith(clearError: true);
+      final cleared = original.copyWith(errorMessage: null);
       expect(cleared.errorMessage, isNull);
     });
 
@@ -369,7 +369,7 @@ void main() {
 
     test('SupportState copyWith clears errorMessage with flag', () {
       const state = SupportState(errorMessage: 'error');
-      final cleared = state.copyWith(clearError: true);
+      final cleared = state.copyWith(errorMessage: null);
       expect(cleared.errorMessage, isNull);
     });
 
@@ -553,7 +553,7 @@ void main() {
 
     test('SupportState copyWith with clearError true removes message', () {
       const state = SupportState(errorMessage: 'error');
-      final updated = state.copyWith(clearError: true);
+      final updated = state.copyWith(errorMessage: null);
       expect(updated.errorMessage, isNull);
     });
 
