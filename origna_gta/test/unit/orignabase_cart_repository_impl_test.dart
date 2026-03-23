@@ -76,9 +76,9 @@ class _FakeSubcollectionRef extends Fake implements SubcollectionRef {
   StreamController<DocumentChange>? _snapshotController;
 
   @override
-  final String collectionPath;
+  final String collectionPath = 'users__cart';
 
-  _FakeSubcollectionRef({this.collectionPath = 'users__cart'});
+  _FakeSubcollectionRef();
 
   void setDoc(String id, _FakeDocumentRef ref) {
     docsMap[id] = ref;

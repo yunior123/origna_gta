@@ -23,7 +23,9 @@ void main() {
   late MockCollectionRef mockChatsCollection;
   late MockCollectionRef mockProductsCollection;
   late MockDocumentRef mockProductDoc;
+  // ignore: unused_local_variable
   late MockSubcollectionRef mockMessagesSubcollection;
+  // ignore: unused_local_variable
   late MockQuery mockQuery;
   late OrignaBaseChatRepository repository;
 

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/features/chat/chat_provider.dart';
@@ -7,7 +6,6 @@ import 'package:origna_gta/features/chat/chat_repository.dart';
 import 'package:origna_gta/features/subscription/orignabase_subscription_provider.dart';
 import 'package:origna_gta/features/subscription/subscription_state.dart';
 import 'package:origna_gta/screens/chat_conversations_screen.dart';
-import 'package:origna_gta/utils/utils.dart';
 
 import '../test_utils.dart';
 

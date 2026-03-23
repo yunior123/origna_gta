@@ -326,7 +326,7 @@ void main() {
     });
 
     testWidgets('dialog can be dismissed by popping', (tester) async {
-      bool dialogShown = false;
+      var dialogShown = false;
 
       await tester.pumpWidget(
         TestWrapper(
@@ -355,7 +355,10 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
+      expect(dialogShown, isTrue);
+
       expect(find.byType(VideoPlayerDialog), findsOneWidget);
+      expect(dialogShown, isTrue);
 
       Navigator.of(tester.element(find.byType(VideoPlayerDialog))).pop();
       await tester.pumpAndSettle();

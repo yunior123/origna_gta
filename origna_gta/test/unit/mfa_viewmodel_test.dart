@@ -9,7 +9,6 @@ import 'package:origna_gta/features/auth/login_state.dart';
 import 'package:origna_gta/features/auth/mfa_state.dart';
 import 'package:origna_gta/features/auth/mfa_viewmodel.dart';
 import 'package:origna_gta/core/repositories/orignabase_auth_repository.dart';
-import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:orignabase/orignabase.dart';
 

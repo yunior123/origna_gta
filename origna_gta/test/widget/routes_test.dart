@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:origna_gta/core/routes.dart';
-import 'package:origna_gta/models/models.dart';
 
 void main() {
   group('AppRoutes', () {

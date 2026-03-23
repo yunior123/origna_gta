@@ -95,7 +95,7 @@ class _MfaChallengeScreenState extends ConsumerState<MfaChallengeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final _isLoading = ref.watch(_mfaChallengeLoadingProvider);
+    ref.watch(_mfaChallengeLoadingProvider);
     final _isRecoveryMode = ref.watch(_mfaChallengeRecoveryModeProvider);
     final _attempts = ref.watch(_mfaChallengeAttemptsProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;

@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/repositories/order_repository.dart';
 import 'package:origna_gta/features/orders/orders_provider.dart';
-import 'package:origna_gta/features/orders/shipping_approval_viewmodel.dart';
 import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/screens/shipping_approval_screen.dart';
 import 'package:origna_gta/utils/utils.dart';

@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:origna_gta/features/admin/tabs/admin_products_tab.dart';
 import 'package:origna_gta/features/admin/admin_providers.dart';
-import 'package:origna_gta/features/admin/admin_actions_viewmodel.dart';
 import 'package:origna_gta/features/admin/admin_repository.dart';
 import 'package:origna_gta/models/models.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';

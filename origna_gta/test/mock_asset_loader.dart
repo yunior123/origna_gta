@@ -92,6 +92,8 @@ class MockAssetLoader extends AssetLoader {
         "reset_password_title": "Reset",
         "create_new_password": "New Password",
         "go_to_login": "Go to Login",
+        "refresh": "Refresh",
+        "back_to_home": "Back to Home",
       },
       "app": {"tagline": "Test Tagline"},
       "product": {
@@ -730,7 +732,6 @@ class MockAssetLoader extends AssetLoader {
         "activation_delayed_desc":
             "We're processing your subscription. Please try again in a moment.",
       },
-      "common": {"refresh": "Refresh", "back_to_home": "Back to Home"},
       "categories": {
         "electronics": "Electronics",
         "computers": "Computers",
@@ -1134,18 +1135,6 @@ class MockAssetLoader extends AssetLoader {
           "no_download_urls": "No download URLs available",
         },
         "users": {"error_fetching": "Error fetching data"},
-      },
-      "seller_integration": {
-        "title": "Seller Integration",
-        "intro_title": "Getting Started",
-        "intro_step1": "Step 1: Create your seller profile",
-        "intro_step2": "Step 2: Connect your Stripe account",
-        "intro_p1": "Start selling on Origna GTA today.",
-        "how_it_works_title": "How It Works",
-        "book_title": "Documentation",
-        "error_title": "Common Error Codes",
-        "security_title": "Security Best Practices",
-        "security_step1": "Always use HTTPS for API calls",
       },
       "mfa": {
         "challenge_title": "Two-Factor Authentication",

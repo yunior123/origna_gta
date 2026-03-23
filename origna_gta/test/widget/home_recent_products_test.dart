@@ -7,7 +7,6 @@ import 'package:mockito/mockito.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/repositories/product_repository.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
-import 'package:origna_gta/features/home/home_state.dart';
 import 'package:origna_gta/features/home/home_viewmodel.dart';
 import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/screens/home_screen.dart';

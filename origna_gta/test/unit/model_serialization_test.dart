@@ -11,7 +11,6 @@ void main() {
       'name': 'Test Product',
       'nameF': 'Produit Test',
       'priceCents': 2999,
-      'priceCents': 2999,
       'compareAtPriceCents': 3999,
       'description': 'A test product',
       'descriptionF': 'Un produit test',

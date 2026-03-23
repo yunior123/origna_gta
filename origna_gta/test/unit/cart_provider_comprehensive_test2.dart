@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
@@ -444,7 +442,10 @@ void main() {
 
       controller.refreshCart();
 
-      expect(container.read(cartItemsProvider), isA<AsyncValue>());
+      expect(
+        container.read(cartItemsProvider),
+        isA<AsyncValue<List<dynamic>>>(),
+      );
     });
   });
 

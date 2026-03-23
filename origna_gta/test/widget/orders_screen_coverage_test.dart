@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/features/orders/orders_provider.dart';
@@ -85,7 +84,8 @@ void main() {
       addTearDown(() => tester.view.resetPhysicalSize());
 
       await tester.pumpWidget(buildWidget(isLoggedIn: false));
-      await tester.pump(); await tester.pump(const Duration(seconds: 1));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
 
       expect(find.byType(OrdersScreen), findsOneWidget);
     });
@@ -97,7 +97,8 @@ void main() {
 
       final orders = [_makeOrder()];
       await tester.pumpWidget(buildWidget(orders: orders));
-      await tester.pump(); await tester.pump(const Duration(seconds: 1));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
 
       expect(find.byType(OrdersScreen), findsOneWidget);
     });
@@ -130,7 +131,8 @@ void main() {
       addTearDown(() => tester.view.resetPhysicalSize());
 
       await tester.pumpWidget(buildWidget(ordersError: true));
-      await tester.pump(); await tester.pump(const Duration(seconds: 1));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
 
       expect(find.byType(OrdersScreen), findsOneWidget);
     });
@@ -144,7 +146,8 @@ void main() {
       await tester.pumpWidget(buildWidget(orders: orders));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
-      await tester.pump(); await tester.pump(const Duration(seconds: 1));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
 
       expect(find.byType(OrdersScreen), findsOneWidget);
     });
@@ -159,7 +162,8 @@ void main() {
         _makeOrder(orderId: 'ord_pending', status: OrderStatus.pending),
       ];
       await tester.pumpWidget(buildWidget(orders: orders));
-      await tester.pump(); await tester.pump(const Duration(seconds: 1));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
 
       expect(find.byType(OrdersScreen), findsOneWidget);
     });
@@ -175,7 +179,8 @@ void main() {
         _makeOrder(orderId: 'ord33333333'),
       ];
       await tester.pumpWidget(buildWidget(orders: orders));
-      await tester.pump(); await tester.pump(const Duration(seconds: 1));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
 
       expect(find.byType(OrdersScreen), findsOneWidget);
     });
@@ -187,7 +192,8 @@ void main() {
 
       final orders = [_makeOrder()];
       await tester.pumpWidget(buildWidget(orders: orders));
-      await tester.pump(); await tester.pump(const Duration(seconds: 1));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
 
       expect(find.byType(RefreshIndicator), findsOneWidget);
     });
@@ -201,7 +207,8 @@ void main() {
         _makeOrder(shippingApproval: ShippingApprovalStatus.pending),
       ];
       await tester.pumpWidget(buildWidget(orders: orders));
-      await tester.pump(); await tester.pump(const Duration(seconds: 1));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
 
       expect(find.byType(OrdersScreen), findsOneWidget);
     });

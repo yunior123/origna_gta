@@ -6,7 +6,7 @@ import 'package:origna_gta/core/repositories/orignabase_user_repository.dart';
 import 'package:origna_gta/core/repositories/user_repository.dart'
     show SellerAccountStatus;
 import 'package:origna_gta/core/schema/schema_constants.dart'
-    show ApiEndpoints, Collections, Fields, PolicyVersionValues, UserRoleValues;
+    show ApiEndpoints, Collections, Fields, PolicyVersionValues;
 import 'package:origna_gta/utils/utils.dart';
 
 // =============================================================================
@@ -47,18 +47,15 @@ class _FakeDocumentRef extends Fake implements DocumentRef {
   final String id;
 
   @override
-  final String collection;
+  final String collection = 'test';
 
   _FakeDocument? documentValue;
   Map<String, dynamic>? lastSetData;
   Map<String, dynamic>? lastUpdateData;
   bool deleted = false;
 
-  _FakeDocumentRef({
-    this.id = 'doc_id',
-    this.collection = 'test',
-    _FakeDocument? doc,
-  }) : documentValue = doc;
+  _FakeDocumentRef({this.id = 'doc_id', _FakeDocument? doc})
+    : documentValue = doc;
 
   @override
   Future<Document?> get() async => documentValue;

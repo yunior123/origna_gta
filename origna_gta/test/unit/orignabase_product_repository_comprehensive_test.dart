@@ -25,9 +25,9 @@ class _FakeDocument extends Fake implements Document {
   final Map<String, dynamic> data;
 
   @override
-  final bool exists;
+  final bool exists = true;
 
-  _FakeDocument(this.id, this.data, {this.exists = true});
+  _FakeDocument(this.id, this.data);
 
   @override
   T? get<T>(String field) => data[field] as T?;
@@ -332,7 +332,10 @@ void main() {
 
       expect(fakeOb.lastRequestPath, ApiEndpoints.productsUpdate);
       expect(fakeOb.lastRequestBody?[Fields.productId], 'prod_123');
-      expect(fakeOb.lastRequestBody?['productData'], isA<Map>());
+      expect(
+        fakeOb.lastRequestBody?['productData'],
+        isA<Map<String, dynamic>>(),
+      );
     });
 
     test('throws when not authenticated', () {

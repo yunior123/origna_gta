@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
@@ -63,7 +62,9 @@ void main() {
             uid: 'admin1',
             email: 'admin@test.com',
             name: 'Admin User',
-            roles: isAdmin ? [UserRole.admin, UserRole.buyer] : [UserRole.buyer],
+            roles: isAdmin
+                ? [UserRole.admin, UserRole.buyer]
+                : [UserRole.buyer],
             createdAt: DateTime.now(),
           )
         : null;

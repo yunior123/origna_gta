@@ -224,7 +224,7 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                     color: DesignTokens.white,
                     child: _qrCodeUri != null
                         ? QrImageView(
-                            data: _qrCodeUri!,
+                            data: _qrCodeUri,
                             version: QrVersions.auto,
                             size: 250,
                             errorCorrectionLevel: QrErrorCorrectLevel.M,
@@ -258,7 +258,7 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                     children: [
                       Expanded(
                         child: Text(
-                          _secret!,
+                          _secret,
                           style: const TextStyle(
                             fontFamily: 'monospace',
                             fontSize: 14,
@@ -271,9 +271,7 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                         icon: const Icon(Icons.copy),
                         onPressed: () async {
                           final messenger = ScaffoldMessenger.of(context);
-                          await Clipboard.setData(
-                            ClipboardData(text: _secret!),
-                          );
+                          await Clipboard.setData(ClipboardData(text: _secret));
                           // Auto-clear clipboard after 30 seconds for security
                           Future.delayed(
                             const Duration(seconds: 30),

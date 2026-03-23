@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
@@ -195,7 +194,8 @@ void main() {
               productId: 'p1',
               name: 'Widget',
               description: 'desc',
-              price: 25.00, priceCents: 2500,
+              price: 25.00,
+              priceCents: 2500,
               imageUrls: [],
               quantity: 2,
               createdAt: DateTime.now(),

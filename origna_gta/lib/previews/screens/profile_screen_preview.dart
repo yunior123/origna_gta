@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/models/models.dart';
 import 'package:origna_gta/models/generated/base_models.dart' show UserRole;
 import 'package:origna_gta/screens/profile_screen.dart';
-import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/previews/_preview_theme.dart';
 
 Widget _profileDarkContent() => previewScope(

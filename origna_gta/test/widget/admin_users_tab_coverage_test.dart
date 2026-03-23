@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
-import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/features/admin/admin_providers.dart';
 import 'package:origna_gta/features/admin/admin_repository.dart';
 import 'package:origna_gta/features/admin/tabs/admin_users_tab.dart';

@@ -11,7 +11,7 @@ import 'package:origna_gta/utils/utils.dart';
 
 // Re-export enums for backward compatibility
 export 'package:origna_gta/models/generated/base_models.dart'
-    show UserRole, PaymentStatus, PayoutStatus, ShippingApprovalStatus;
+    show UserRole, PaymentStatus, ShippingApprovalStatus;
 
 /// Lightweight document snapshot used by manual model factories.
 class DocumentSnapshot {

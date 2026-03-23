@@ -516,7 +516,8 @@ void main() {
       viewModel.onToggleCanadaOnly();
 
       final state = container.read(homeViewModelProvider);
-      final displayed = state.displayedProducts;
+      // Access displayedProducts to verify it doesn't throw
+      state.displayedProducts;
     });
 
     test('hasPriceFilter returns correct value', () {

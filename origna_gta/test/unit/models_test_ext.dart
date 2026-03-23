@@ -132,7 +132,8 @@ void main() {
         productId: 'p1',
         name: 'Product',
         description: 'Description',
-        price: 25.99, priceCents: 2599,
+        price: 25.99,
+        priceCents: 2599,
         imageUrls: ['img1.jpg', 'img2.jpg'],
         quantity: 3,
         createdAt: DateTime(2024, 6, 15),
@@ -194,7 +195,8 @@ void main() {
         productId: 'p1',
         name: 'Test',
         description: '',
-        price: 12.34, priceCents: 1234,
+        price: 12.34,
+        priceCents: 1234,
         imageUrls: [],
         quantity: 1,
         createdAt: DateTime(2024, 1, 1),
@@ -211,7 +213,8 @@ void main() {
         productId: 'p1',
         name: 'Test',
         description: '',
-        price: 9.99, priceCents: 999,
+        price: 9.99,
+        priceCents: 999,
         imageUrls: [],
         quantity: 1,
         createdAt: DateTime(2024, 1, 1),
@@ -608,8 +611,8 @@ void main() {
       );
 
       final map = product.toMap();
-      expect(map[Fields.deliveryOptions], isA<List>());
-      expect((map[Fields.deliveryOptions] as List).length, 1);
+      expect(map[Fields.deliveryOptions], isA<List<dynamic>>());
+      expect((map[Fields.deliveryOptions] as List<dynamic>).length, 1);
     });
 
     test('enabledDeliveryOptions returns all options', () {

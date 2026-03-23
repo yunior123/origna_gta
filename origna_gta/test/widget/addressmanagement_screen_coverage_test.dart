@@ -1,16 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mockito/annotations.dart';
 import 'package:origna_gta/core/providers.dart';
-import 'package:origna_gta/core/repositories/user_repository.dart';
 import 'package:origna_gta/features/profile/address_management_viewmodel.dart';
 import 'package:origna_gta/models/models.dart';
 import 'package:origna_gta/screens/addressmanagement_screen.dart';
 
 import '../test_utils.dart';
-@GenerateNiceMocks([MockSpec<UserRepository>()])
-import 'addressmanagement_screen_coverage_test.mocks.dart';
+// MockUserRepository removed — not needed after cleanup
 
 Address _makeAddress({
   String? addressId,
@@ -36,15 +32,11 @@ Address _makeAddress({
 }
 
 void main() {
-  late MockUserRepository mockUserRepo;
-
   setUpAll(() {
     initTestMocks();
   });
 
-  setUp(() {
-    mockUserRepo = MockUserRepository();
-  });
+  setUp(() {});
 
   Widget buildWidget({List<Address>? addresses, bool hasError = false}) {
     return TestWrapper(
