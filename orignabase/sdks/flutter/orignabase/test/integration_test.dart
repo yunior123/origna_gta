@@ -198,7 +198,6 @@ void main() {
 
   group('Collection CRUD integration', () {
     test('add document and get it back', () async {
-      var requestIndex = 0;
       final client = _mockHttp((req) {
         if (req.url.path.contains('/auth/register')) {
           return _authOk();
@@ -206,7 +205,6 @@ void main() {
         if (req.url.path.contains('/graphql')) {
           final body = jsonDecode(req.body) as Map<String, dynamic>;
           final query = body['query'] as String? ?? '';
-          requestIndex++;
           if (query.contains('create')) {
             return _graphqlOk({
               'create': {

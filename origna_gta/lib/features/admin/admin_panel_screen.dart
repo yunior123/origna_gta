@@ -16,6 +16,9 @@ import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
+/// Provider for the currently selected admin tab index
+final _adminSelectedTabProvider = StateProvider<int>((_) => 0);
+
 /// Documentation for AdminPanelScreen
 class AdminPanelScreen extends ConsumerStatefulWidget {
   const AdminPanelScreen({super.key});
@@ -27,7 +30,6 @@ class AdminPanelScreen extends ConsumerStatefulWidget {
 class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  int _selectedIndex = 0;
 
   static List<_AdminTab> get _tabs => [
     _AdminTab(
@@ -197,7 +199,8 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen>
     _tabController = TabController(length: 7, vsync: this);
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging) {
-        setState(() => _selectedIndex = _tabController.index);
+        ref.read(_adminSelectedTabProvider.notifier).state =
+            _tabController.index;
       }
     });
   }
@@ -280,6 +283,7 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen>
   }
 
   Widget _buildWideLayout() {
+    final selectedIndex = ref.watch(_adminSelectedTabProvider);
     final tabContent = [
       const AdminSellersTab(),
       const AdminUsersTab(),
@@ -357,7 +361,7 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen>
                   // Nav Items
                   ...List.generate(_tabs.length, (index) {
                     final tab = _tabs[index];
-                    final isSelected = _selectedIndex == index;
+                    final isSelected = selectedIndex == index;
                     return Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,
@@ -374,7 +378,10 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen>
                           child: InkWell(
                             key: tab.key,
                             onTap: () {
-                              setState(() => _selectedIndex = index);
+                              ref
+                                      .read(_adminSelectedTabProvider.notifier)
+                                      .state =
+                                  index;
                               _tabController.animateTo(index);
                             },
                             borderRadius: BorderRadius.circular(
@@ -466,13 +473,13 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen>
                       ),
                       const SizedBox(width: 8),
                       Icon(
-                        _tabs[_selectedIndex].icon,
+                        _tabs[selectedIndex].icon,
                         color: DesignTokens.primary,
                         size: 24,
                       ),
                       const SizedBox(width: 12),
                       Text(
-                        _tabs[_selectedIndex].label,
+                        _tabs[selectedIndex].label,
                         style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w700,
@@ -491,7 +498,7 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen>
                   ),
                 ),
                 // Content
-                Expanded(child: tabContent[_selectedIndex]),
+                Expanded(child: tabContent[selectedIndex]),
               ],
             ),
           ),

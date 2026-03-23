@@ -59,7 +59,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     final productId = widget.productId;
     final productAsync = ref.watch(productByIdProvider(productId));
     final viewModel = ref.read(productDetailViewModelProvider.notifier);
-    final state = ref.watch(productDetailViewModelProvider);
+    final selectedVariantId = ref.watch(
+      productDetailViewModelProvider.select((s) => s.selectedVariantId),
+    );
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final ratingsAsync = ref.watch(productRatingsProvider(productId));
 
@@ -80,7 +82,6 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
       _ => null,
     };
 
-    final selectedVariantId = state.selectedVariantId;
     final matchedVariant =
         product?.hasVariants == true && selectedVariantId != null
         ? product!.variants

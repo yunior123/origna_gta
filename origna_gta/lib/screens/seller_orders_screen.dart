@@ -24,6 +24,14 @@ part 'parts/seller_orders_earnings_card.dart';
 part 'parts/seller_orders_order_card.dart';
 part 'parts/seller_orders_badges.dart';
 
+final _shippedDialogCarrierProvider = StateProvider.autoDispose<String?>(
+  (_) => null,
+);
+
+final _updateShippingDialogCarrierProvider = StateProvider.autoDispose<String?>(
+  (_) => null,
+);
+
 /// Seller orders screen — composes parts from parts/ sub-files:
 /// - parts/seller_orders_earnings_card.dart (_EarningsSummaryCard, _StatPill)
 /// - parts/seller_orders_order_card.dart (_SellerOrderCard)
@@ -199,7 +207,7 @@ class SellerOrdersScreen extends ConsumerWidget {
                             bottom: DesignTokens.spacing16,
                           ),
                           child: _EarningsSummaryCard(
-                            totalRevenue: earnings.totalRevenue,
+                            totalRevenueCents: earnings.totalRevenueCents,
                             pendingCount: earnings.pendingCount,
                             completedCount: earnings.completedCount,
                             isDark: isDark,

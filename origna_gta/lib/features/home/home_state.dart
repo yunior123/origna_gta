@@ -4,6 +4,8 @@ import 'package:origna_gta/models/generated/models.dart';
 
 part 'home_state.freezed.dart';
 
+// ignore_for_file: unused_element
+
 @freezed
 abstract class HomeState with _$HomeState {
   const HomeState._();

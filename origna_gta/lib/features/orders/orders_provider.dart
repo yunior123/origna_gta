@@ -110,12 +110,12 @@ class OrderSuccess extends OrderResult {
 /// Immutable summary of seller earnings derived from orders.
 @immutable
 class SellerEarningsSummary {
-  final double totalRevenue;
+  final int totalRevenueCents;
   final int pendingCount;
   final int completedCount;
 
   const SellerEarningsSummary({
-    this.totalRevenue = 0.0,
+    this.totalRevenueCents = 0,
     this.pendingCount = 0,
     this.completedCount = 0,
   });
@@ -131,7 +131,7 @@ final sellerEarningsSummaryProvider =
 
       return ordersAsync.maybeWhen(
         data: (orders) {
-          var totalRevenue = 0.0;
+          var totalRevenueCents = 0;
           var pendingCount = 0;
           var completedCount = 0;
 
@@ -146,17 +146,18 @@ final sellerEarningsSummaryProvider =
 
           for (final order in orders) {
             final sellerItems = order.items.where((i) => i.sellerId == userId);
-            final subtotal = sellerItems.fold<double>(
-              0.0,
-              (acc, i) => acc + i.price * i.quantity,
+            final subtotalCents = sellerItems.fold<int>(
+              0,
+              (acc, i) => acc + i.priceCents * i.quantity,
             );
-            final orderSubtotal = order.subtotal > 0
-                ? order.subtotal
-                : subtotal;
-            final feeShare = orderSubtotal > 0
-                ? (order.platformFeeTotal / orderSubtotal) * subtotal
-                : 0.0;
-            totalRevenue += subtotal - feeShare;
+            final orderSubtotalCents = order.subtotalCents > 0
+                ? order.subtotalCents
+                : subtotalCents;
+            final feeShareCents = orderSubtotalCents > 0
+                ? (order.platformFeeTotalCents * subtotalCents) ~/
+                      orderSubtotalCents
+                : 0;
+            totalRevenueCents += subtotalCents - feeShareCents;
 
             if (order.orderStatus == models.OrderStatus.delivered) {
               completedCount++;
@@ -166,7 +167,7 @@ final sellerEarningsSummaryProvider =
           }
 
           return SellerEarningsSummary(
-            totalRevenue: totalRevenue,
+            totalRevenueCents: totalRevenueCents,
             pendingCount: pendingCount,
             completedCount: completedCount,
           );

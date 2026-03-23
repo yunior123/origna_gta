@@ -12,6 +12,10 @@ abstract class ShippingApprovalState with _$ShippingApprovalState {
     @Default(false) bool isLoading,
     @Default(false) bool isSuccess,
     String? errorMessage,
+
+    /// Whether the last approval was an "approve" (true) or "reject" (false).
+    /// Only meaningful when [isSuccess] is true.
+    @Default(true) bool wasApproved,
   }) = _ShippingApprovalState;
 }
 
@@ -43,6 +47,7 @@ class ShippingApprovalViewModel extends StateNotifier<ShippingApprovalState> {
       state = state.copyWith(
         isLoading: false,
         isSuccess: true,
+        wasApproved: approved,
         errorMessage: null,
       );
       return true;
@@ -56,5 +61,10 @@ class ShippingApprovalViewModel extends StateNotifier<ShippingApprovalState> {
       );
       return false;
     }
+  }
+
+  /// Clear transient status flags after the screen has shown feedback.
+  void clearStatus() {
+    state = state.copyWith(errorMessage: null, isSuccess: false);
   }
 }

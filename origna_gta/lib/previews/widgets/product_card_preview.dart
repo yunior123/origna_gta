@@ -15,8 +15,8 @@ import 'package:origna_gta/previews/_preview_theme.dart';
 // ─── Shared dummy data ────────────────────────────────────────────────────────
 
 const _kProductName = 'Vintage Leather Jacket';
-const _kPrice = 89.99;
-const _kCompareAtPrice = 129.99;
+const _kPriceCents = 8999;
+const _kCompareAtPriceCents = 12999;
 const _kImageUrl = 'https://picsum.photos/seed/jacket/200/300';
 const _kSellerName = 'Toronto Vintage';
 const _kRating = 4.5;
@@ -28,7 +28,8 @@ const _kShipFromProvince = 'ON';
 /// the card has a bounded constraint during preview rendering.
 /// [Align] escapes tight width constraints from [previewGrid]'s Column so the
 /// card stays at 220 px instead of stretching to the full panel width.
-Widget _cardBox(Widget card) => Align(child: SizedBox(width: 220, height: 460, child: card));
+Widget _cardBox(Widget card) =>
+    Align(child: SizedBox(width: 220, height: 460, child: card));
 
 // ─── Standard card ────────────────────────────────────────────────────────────
 
@@ -37,7 +38,7 @@ Widget previewProductCardStandard() => previewWrapper(
   child: _cardBox(
     ModernProductCard(
       productName: _kProductName,
-      price: _kPrice,
+      priceCents: _kPriceCents,
       imageUrl: _kImageUrl,
       sellerName: _kSellerName,
       rating: _kRating,
@@ -50,14 +51,18 @@ Widget previewProductCardStandard() => previewWrapper(
   ),
 );
 
-@Preview(name: 'Standard — light', group: 'ProductCard', brightness: Brightness.light)
+@Preview(
+  name: 'Standard — light',
+  group: 'ProductCard',
+  brightness: Brightness.light,
+)
 Widget previewProductCardStandardLight() => previewWrapper(
   theme: previewLightTheme,
   background: DesignTokens.surface,
   child: _cardBox(
     ModernProductCard(
       productName: _kProductName,
-      price: _kPrice,
+      priceCents: _kPriceCents,
       imageUrl: _kImageUrl,
       sellerName: _kSellerName,
       rating: _kRating,
@@ -77,7 +82,7 @@ Widget previewProductCardTrendingHot() => previewWrapper(
   child: _cardBox(
     ModernProductCard(
       productName: _kProductName,
-      price: _kPrice,
+      priceCents: _kPriceCents,
       imageUrl: _kImageUrl,
       sellerName: _kSellerName,
       rating: _kRating,
@@ -99,7 +104,7 @@ Widget previewProductCardTrendingRising() => previewWrapper(
   child: _cardBox(
     ModernProductCard(
       productName: _kProductName,
-      price: _kPrice,
+      priceCents: _kPriceCents,
       imageUrl: _kImageUrl,
       sellerName: _kSellerName,
       rating: _kRating,
@@ -121,8 +126,8 @@ Widget previewProductCardOnSale() => previewWrapper(
   child: _cardBox(
     ModernProductCard(
       productName: _kProductName,
-      price: _kPrice,
-      compareAtPrice: _kCompareAtPrice,
+      priceCents: _kPriceCents,
+      compareAtPriceCents: _kCompareAtPriceCents,
       imageUrl: _kImageUrl,
       sellerName: _kSellerName,
       rating: _kRating,
@@ -142,7 +147,7 @@ Widget previewProductCardOutOfStock() => previewWrapper(
   child: _cardBox(
     ModernProductCard(
       productName: _kProductName,
-      price: _kPrice,
+      priceCents: _kPriceCents,
       imageUrl: _kImageUrl,
       sellerName: _kSellerName,
       rating: _kRating,
@@ -163,7 +168,7 @@ Widget previewProductCardNoReviews() => previewWrapper(
   child: _cardBox(
     ModernProductCard(
       productName: 'New Arrival Jacket',
-      price: _kPrice,
+      priceCents: _kPriceCents,
       imageUrl: _kImageUrl,
       sellerName: _kSellerName,
       shipFromCity: _kShipFromCity,
@@ -181,7 +186,7 @@ Widget previewProductCardMultiCountry() => previewWrapper(
   child: _cardBox(
     ModernProductCard(
       productName: _kProductName,
-      price: _kPrice,
+      priceCents: _kPriceCents,
       imageUrl: _kImageUrl,
       sellerName: _kSellerName,
       rating: _kRating,
@@ -201,7 +206,7 @@ Widget previewProductCardAllVariants() => previewGrid(
     _cardBox(
       ModernProductCard(
         productName: _kProductName,
-        price: _kPrice,
+        priceCents: _kPriceCents,
         imageUrl: _kImageUrl,
         sellerName: _kSellerName,
         rating: _kRating,
@@ -215,7 +220,7 @@ Widget previewProductCardAllVariants() => previewGrid(
     _cardBox(
       ModernProductCard(
         productName: _kProductName,
-        price: _kPrice,
+        priceCents: _kPriceCents,
         imageUrl: _kImageUrl,
         sellerName: _kSellerName,
         rating: _kRating,
@@ -231,8 +236,8 @@ Widget previewProductCardAllVariants() => previewGrid(
     _cardBox(
       ModernProductCard(
         productName: _kProductName,
-        price: _kPrice,
-        compareAtPrice: _kCompareAtPrice,
+        priceCents: _kPriceCents,
+        compareAtPriceCents: _kCompareAtPriceCents,
         imageUrl: _kImageUrl,
         sellerName: _kSellerName,
         rating: _kRating,
@@ -246,7 +251,7 @@ Widget previewProductCardAllVariants() => previewGrid(
     _cardBox(
       ModernProductCard(
         productName: _kProductName,
-        price: _kPrice,
+        priceCents: _kPriceCents,
         imageUrl: _kImageUrl,
         sellerName: _kSellerName,
         rating: _kRating,
@@ -261,7 +266,7 @@ Widget previewProductCardAllVariants() => previewGrid(
     _cardBox(
       ModernProductCard(
         productName: 'New Arrival Jacket',
-        price: _kPrice,
+        priceCents: _kPriceCents,
         imageUrl: _kImageUrl,
         sellerName: _kSellerName,
         shipFromCity: _kShipFromCity,
@@ -273,7 +278,7 @@ Widget previewProductCardAllVariants() => previewGrid(
     _cardBox(
       ModernProductCard(
         productName: _kProductName,
-        price: _kPrice,
+        priceCents: _kPriceCents,
         imageUrl: _kImageUrl,
         sellerName: _kSellerName,
         rating: _kRating,

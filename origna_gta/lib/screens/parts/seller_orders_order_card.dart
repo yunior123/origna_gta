@@ -600,87 +600,60 @@ class _SellerOrderCard extends ConsumerWidget {
     final carrierNoteController = TextEditingController(
       text: prefillCarrierNote ?? '',
     );
-    String? selectedCarrier = prefillCarrier;
+    // Initialize the provider with prefill value before showing dialog
+    ref.read(_shippedDialogCarrierProvider.notifier).state = prefillCarrier;
 
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(DesignTokens.radius20),
-          ),
-          title: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      DesignTokens.primary.withValues(alpha: 0.15),
-                      DesignTokens.secondary.withValues(alpha: 0.15),
-                    ],
+      builder: (context) => Consumer(
+        builder: (context, dialogRef, _) {
+          final carrierValue = dialogRef.watch(_shippedDialogCarrierProvider);
+          return AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(DesignTokens.radius20),
+            ),
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        DesignTokens.primary.withValues(alpha: 0.15),
+                        DesignTokens.secondary.withValues(alpha: 0.15),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(DesignTokens.radius8),
                   ),
-                  borderRadius: BorderRadius.circular(DesignTokens.radius8),
-                ),
-                child: Icon(
-                  Icons.local_shipping_rounded,
-                  size: 18,
-                  color: DesignTokens.primary,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                'seller.mark_shipped'.tr(),
-                style: const TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Carrier dropdown
-              DropdownButtonFormField<String>(
-                menuMaxHeight: ResponsiveBreakpoints.dropdownMaxHeight(context),
-                initialValue: selectedCarrier,
-                decoration: InputDecoration(
-                  labelText: 'seller.carrier_label'.tr(),
-                  prefixIcon: Icon(
-                    Icons.local_shipping_outlined,
+                  child: Icon(
+                    Icons.local_shipping_rounded,
+                    size: 18,
                     color: DesignTokens.primary,
                   ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                    borderSide: BorderSide(
-                      color: DesignTokens.primary,
-                      width: 2,
-                    ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'seller.mark_shipped'.tr(),
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-                items: CarrierValues.all
-                    .map(
-                      (c) => DropdownMenuItem(
-                        value: c,
-                        child: Text(_carrierLabel(c)),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (value) => setState(() => selectedCarrier = value),
-              ),
-              // Carrier note (only when 'other' is selected)
-              if (selectedCarrier == CarrierValues.other) ...[
-                const SizedBox(height: 14),
-                TextField(
-                  controller: carrierNoteController,
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Carrier dropdown
+                DropdownButtonFormField<String>(
+                  menuMaxHeight: ResponsiveBreakpoints.dropdownMaxHeight(
+                    context,
+                  ),
+                  initialValue: carrierValue,
                   decoration: InputDecoration(
-                    labelText: 'seller.carrier_note_label'.tr(),
+                    labelText: 'seller.carrier_label'.tr(),
                     prefixIcon: Icon(
-                      Icons.edit_outlined,
+                      Icons.local_shipping_outlined,
                       color: DesignTokens.primary,
                     ),
                     border: OutlineInputBorder(
@@ -695,79 +668,120 @@ class _SellerOrderCard extends ConsumerWidget {
                       borderSide: BorderSide(
                         color: DesignTokens.primary,
                         width: 2,
+                      ),
+                    ),
+                  ),
+                  items: CarrierValues.all
+                      .map(
+                        (c) => DropdownMenuItem(
+                          value: c,
+                          child: Text(_carrierLabel(c)),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) =>
+                      dialogRef
+                              .read(_shippedDialogCarrierProvider.notifier)
+                              .state =
+                          value,
+                ),
+                // Carrier note (only when 'other' is selected)
+                if (carrierValue == CarrierValues.other) ...[
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: carrierNoteController,
+                    decoration: InputDecoration(
+                      labelText: 'seller.carrier_note_label'.tr(),
+                      prefixIcon: Icon(
+                        Icons.edit_outlined,
+                        color: DesignTokens.primary,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(
+                          DesignTokens.radius12,
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(
+                          DesignTokens.radius12,
+                        ),
+                        borderSide: BorderSide(
+                          color: DesignTokens.primary,
+                          width: 2,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 14),
+                // Tracking number
+                Semantics(
+                  textField: true,
+                  label: 'input-tracking-number',
+                  child: TextField(
+                    controller: trackingController,
+                    decoration: InputDecoration(
+                      labelText: 'seller.tracking_number'.tr(),
+                      prefixIcon: Icon(
+                        Icons.qr_code_rounded,
+                        color: DesignTokens.primary,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(
+                          DesignTokens.radius12,
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(
+                          DesignTokens.radius12,
+                        ),
+                        borderSide: BorderSide(
+                          color: DesignTokens.primary,
+                          width: 2,
+                        ),
                       ),
                     ),
                   ),
                 ),
               ],
-              const SizedBox(height: 14),
-              // Tracking number
-              Semantics(
-                textField: true,
-                label: 'input-tracking-number',
-                child: TextField(
-                  controller: trackingController,
-                  decoration: InputDecoration(
-                    labelText: 'seller.tracking_number'.tr(),
-                    prefixIcon: Icon(
-                      Icons.qr_code_rounded,
-                      color: DesignTokens.primary,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(
-                        DesignTokens.radius12,
-                      ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(
-                        DesignTokens.radius12,
-                      ),
-                      borderSide: BorderSide(
-                        color: DesignTokens.primary,
-                        width: 2,
-                      ),
-                    ),
-                  ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(
+                  'common.cancel'.tr(),
+                  style: TextStyle(color: DesignTokens.textSecondary),
+                ),
+              ),
+              SizedBox(
+                width: 120,
+                child: ModernButton(
+                  label: 'common.confirm'.tr(),
+                  onPressed: () {
+                    final tracking = trackingController.text.trim();
+                    if (tracking.isNotEmpty) {
+                      final note = carrierValue == CarrierValues.other
+                          ? carrierNoteController.text.trim()
+                          : null;
+                      Navigator.pop(context);
+                      ref
+                          .read(sellerOrdersViewModelProvider.notifier)
+                          .updateItemStatus(
+                            order.orderId,
+                            item.productId,
+                            DeliveryStatusValues.shipped,
+                            trackingNumber: tracking,
+                            carrier: carrierValue,
+                            carrierNote: note,
+                          );
+                    }
+                  },
+                  height: 42,
                 ),
               ),
             ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(
-                'common.cancel'.tr(),
-                style: TextStyle(color: DesignTokens.textSecondary),
-              ),
-            ),
-            SizedBox(
-              width: 120,
-              child: ModernButton(
-                label: 'common.confirm'.tr(),
-                onPressed: () {
-                  final tracking = trackingController.text.trim();
-                  if (tracking.isNotEmpty) {
-                    final note = selectedCarrier == CarrierValues.other
-                        ? carrierNoteController.text.trim()
-                        : null;
-                    Navigator.pop(context);
-                    ref
-                        .read(sellerOrdersViewModelProvider.notifier)
-                        .updateItemStatus(
-                          order.orderId,
-                          item.productId,
-                          DeliveryStatusValues.shipped,
-                          trackingNumber: tracking,
-                          carrier: selectedCarrier,
-                          carrierNote: note,
-                        );
-                  }
-                },
-                height: 42,
-              ),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -779,117 +793,92 @@ class _SellerOrderCard extends ConsumerWidget {
     );
     final trackingController = TextEditingController();
     final carrierNoteController = TextEditingController();
-    String? selectedCarrier;
+    // Initialize the provider before showing dialog
+    ref.read(_updateShippingDialogCarrierProvider.notifier).state = null;
 
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(DesignTokens.radius20),
-          ),
-          title: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      DesignTokens.primary.withValues(alpha: 0.15),
-                      DesignTokens.secondary.withValues(alpha: 0.15),
-                    ],
+      builder: (context) => Consumer(
+        builder: (context, dialogRef, _) {
+          final carrierValue = dialogRef.watch(
+            _updateShippingDialogCarrierProvider,
+          );
+          return AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(DesignTokens.radius20),
+            ),
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        DesignTokens.primary.withValues(alpha: 0.15),
+                        DesignTokens.secondary.withValues(alpha: 0.15),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(DesignTokens.radius8),
                   ),
-                  borderRadius: BorderRadius.circular(DesignTokens.radius8),
-                ),
-                child: Icon(
-                  Icons.payment_rounded,
-                  size: 18,
-                  color: DesignTokens.primary,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                'seller.confirm_shipping'.tr(),
-                style: const TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Semantics(
-                textField: true,
-                label: 'input-actual-cost',
-                child: TextField(
-                  controller: shippingController,
-                  decoration: InputDecoration(
-                    labelText: 'seller.actual_cost'.tr(),
-                    prefixIcon: Icon(
-                      Icons.attach_money_rounded,
-                      color: DesignTokens.primary,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(
-                        DesignTokens.radius12,
-                      ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(
-                        DesignTokens.radius12,
-                      ),
-                      borderSide: BorderSide(
-                        color: DesignTokens.primary,
-                        width: 2,
-                      ),
-                    ),
-                  ),
-                  keyboardType: TextInputType.number,
-                ),
-              ),
-              const SizedBox(height: 14),
-              // Carrier dropdown
-              DropdownButtonFormField<String>(
-                menuMaxHeight: ResponsiveBreakpoints.dropdownMaxHeight(context),
-                initialValue: selectedCarrier,
-                decoration: InputDecoration(
-                  labelText: 'seller.carrier_label'.tr(),
-                  prefixIcon: Icon(
-                    Icons.local_shipping_outlined,
+                  child: Icon(
+                    Icons.payment_rounded,
+                    size: 18,
                     color: DesignTokens.primary,
                   ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                    borderSide: BorderSide(
-                      color: DesignTokens.primary,
-                      width: 2,
-                    ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'seller.confirm_shipping'.tr(),
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-                items: CarrierValues.all
-                    .map(
-                      (c) => DropdownMenuItem(
-                        value: c,
-                        child: Text(_carrierLabel(c)),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Semantics(
+                  textField: true,
+                  label: 'input-actual-cost',
+                  child: TextField(
+                    controller: shippingController,
+                    decoration: InputDecoration(
+                      labelText: 'seller.actual_cost'.tr(),
+                      prefixIcon: Icon(
+                        Icons.attach_money_rounded,
+                        color: DesignTokens.primary,
                       ),
-                    )
-                    .toList(),
-                onChanged: (value) => setState(() => selectedCarrier = value),
-              ),
-              // Carrier note (only when 'other' is selected)
-              if (selectedCarrier == CarrierValues.other) ...[
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(
+                          DesignTokens.radius12,
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(
+                          DesignTokens.radius12,
+                        ),
+                        borderSide: BorderSide(
+                          color: DesignTokens.primary,
+                          width: 2,
+                        ),
+                      ),
+                    ),
+                    keyboardType: TextInputType.number,
+                  ),
+                ),
                 const SizedBox(height: 14),
-                TextField(
-                  controller: carrierNoteController,
+                // Carrier dropdown
+                DropdownButtonFormField<String>(
+                  menuMaxHeight: ResponsiveBreakpoints.dropdownMaxHeight(
+                    context,
+                  ),
+                  initialValue: carrierValue,
                   decoration: InputDecoration(
-                    labelText: 'seller.carrier_note_label'.tr(),
+                    labelText: 'seller.carrier_label'.tr(),
                     prefixIcon: Icon(
-                      Icons.edit_outlined,
+                      Icons.local_shipping_outlined,
                       color: DesignTokens.primary,
                     ),
                     border: OutlineInputBorder(
@@ -904,79 +893,124 @@ class _SellerOrderCard extends ConsumerWidget {
                       borderSide: BorderSide(
                         color: DesignTokens.primary,
                         width: 2,
+                      ),
+                    ),
+                  ),
+                  items: CarrierValues.all
+                      .map(
+                        (c) => DropdownMenuItem(
+                          value: c,
+                          child: Text(_carrierLabel(c)),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) =>
+                      dialogRef
+                              .read(
+                                _updateShippingDialogCarrierProvider.notifier,
+                              )
+                              .state =
+                          value,
+                ),
+                // Carrier note (only when 'other' is selected)
+                if (carrierValue == CarrierValues.other) ...[
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: carrierNoteController,
+                    decoration: InputDecoration(
+                      labelText: 'seller.carrier_note_label'.tr(),
+                      prefixIcon: Icon(
+                        Icons.edit_outlined,
+                        color: DesignTokens.primary,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(
+                          DesignTokens.radius12,
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(
+                          DesignTokens.radius12,
+                        ),
+                        borderSide: BorderSide(
+                          color: DesignTokens.primary,
+                          width: 2,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 14),
+                Semantics(
+                  textField: true,
+                  label: 'input-tracking-number-update',
+                  child: TextField(
+                    controller: trackingController,
+                    decoration: InputDecoration(
+                      labelText: 'seller.tracking_number'.tr(),
+                      prefixIcon: Icon(
+                        Icons.qr_code_rounded,
+                        color: DesignTokens.primary,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(
+                          DesignTokens.radius12,
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(
+                          DesignTokens.radius12,
+                        ),
+                        borderSide: BorderSide(
+                          color: DesignTokens.primary,
+                          width: 2,
+                        ),
                       ),
                     ),
                   ),
                 ),
               ],
-              const SizedBox(height: 14),
-              Semantics(
-                textField: true,
-                label: 'input-tracking-number-update',
-                child: TextField(
-                  controller: trackingController,
-                  decoration: InputDecoration(
-                    labelText: 'seller.tracking_number'.tr(),
-                    prefixIcon: Icon(
-                      Icons.qr_code_rounded,
-                      color: DesignTokens.primary,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(
-                        DesignTokens.radius12,
-                      ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(
-                        DesignTokens.radius12,
-                      ),
-                      borderSide: BorderSide(
-                        color: DesignTokens.primary,
-                        width: 2,
-                      ),
-                    ),
-                  ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(
+                  'common.cancel'.tr(),
+                  style: TextStyle(color: DesignTokens.textSecondary),
+                ),
+              ),
+              SizedBox(
+                width: 120,
+                child: ModernButton(
+                  label: 'common.confirm'.tr(),
+                  onPressed: () {
+                    final costDollars = double.tryParse(
+                      shippingController.text,
+                    );
+                    final tracking = trackingController.text.trim();
+                    if (costDollars != null && tracking.isNotEmpty) {
+                      final costCents = (costDollars * 100).round();
+                      final note = carrierValue == CarrierValues.other
+                          ? carrierNoteController.text.trim()
+                          : null;
+                      Navigator.pop(context);
+                      ref
+                          .read(sellerOrdersViewModelProvider.notifier)
+                          .updateShippingAndCapture(
+                            order.orderId,
+                            costCents,
+                            tracking,
+                            carrier: carrierValue,
+                            carrierNote: note,
+                          );
+                    }
+                  },
+                  height: 42,
                 ),
               ),
             ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(
-                'common.cancel'.tr(),
-                style: TextStyle(color: DesignTokens.textSecondary),
-              ),
-            ),
-            SizedBox(
-              width: 120,
-              child: ModernButton(
-                label: 'common.confirm'.tr(),
-                onPressed: () {
-                  final costDollars = double.tryParse(shippingController.text);
-                  final tracking = trackingController.text.trim();
-                  if (costDollars != null && tracking.isNotEmpty) {
-                    final costCents = (costDollars * 100).round();
-                    final note = selectedCarrier == CarrierValues.other
-                        ? carrierNoteController.text.trim()
-                        : null;
-                    Navigator.pop(context);
-                    ref
-                        .read(sellerOrdersViewModelProvider.notifier)
-                        .updateShippingAndCapture(
-                          order.orderId,
-                          costCents,
-                          tracking,
-                          carrier: selectedCarrier,
-                          carrierNote: note,
-                        );
-                  }
-                },
-                height: 42,
-              ),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }

@@ -20,6 +20,10 @@ import 'mfa_challenge_screen.dart';
 part 'parts/login_form_panel.dart';
 part 'parts/login_google_button.dart';
 
+final _forgotPasswordSendingProvider = StateProvider.autoDispose<bool>(
+  (_) => false,
+);
+
 /// Login/register screen — composes parts from parts/ sub-files:
 /// - parts/login_form_panel.dart (LoginScreenLayout)
 /// - parts/login_google_button.dart (_GoogleGLogo, _GoogleGPainter, _GoogleSignInButton)
@@ -177,13 +181,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       text: _emailController.text.trim(),
     );
     final formKey = GlobalKey<FormState>();
-    bool isSending = false;
 
     showDialog(
       context: context,
       builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setState) {
+        return Consumer(
+          builder: (context, dialogRef, _) {
+            final isSending = dialogRef.watch(_forgotPasswordSendingProvider);
             return AlertDialog(
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
@@ -251,7 +255,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                             final messenger = ScaffoldMessenger.of(
                               dialogContext,
                             );
-                            setState(() => isSending = true);
+                            dialogRef
+                                    .read(
+                                      _forgotPasswordSendingProvider.notifier,
+                                    )
+                                    .state =
+                                true;
                             try {
                               await ref
                                   .read(loginViewModelProvider.notifier)
@@ -278,7 +287,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                               }
                             } finally {
                               if (dialogContext.mounted) {
-                                setState(() => isSending = false);
+                                dialogRef
+                                        .read(
+                                          _forgotPasswordSendingProvider
+                                              .notifier,
+                                        )
+                                        .state =
+                                    false;
                               }
                             }
                           },

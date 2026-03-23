@@ -1205,7 +1205,7 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
               ],
             ),
             child: Text(
-              '\$${order.total.toStringAsFixed(2)}',
+              '\$${(order.totalAmountCents / 100).toStringAsFixed(2)}',
               style: const TextStyle(
                 fontWeight: FontWeight.w800,
                 fontSize: 18,
@@ -1286,7 +1286,10 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
                           ),
                           isDark,
                         ),
-                        _infoPill('\$${item.price.toStringAsFixed(2)}', isDark),
+                        _infoPill(
+                          '\$${(item.priceCents / 100).toStringAsFixed(2)}',
+                          isDark,
+                        ),
                       ],
                     ),
                     if (item.variantTitle != null &&
@@ -1545,7 +1548,10 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
       enableHoverScale: false,
       child: Column(
         children: [
-          row('orders.subtotal'.tr(), '\$${order.subtotal.toStringAsFixed(2)}'),
+          row(
+            'orders.subtotal'.tr(),
+            '\$${(order.subtotalCents / 100).toStringAsFixed(2)}',
+          ),
           if (order.discountAmountCents > 0)
             row(
               'orders.discount'.tr(),
@@ -1555,10 +1561,13 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
           if (order.shippingCostCents > 0)
             row(
               'orders.shipping'.tr(),
-              '\$${order.shippingCost.toStringAsFixed(2)}',
+              '\$${(order.shippingCostCents / 100).toStringAsFixed(2)}',
             ),
           if (order.taxAmountCents > 0) ...[
-            row('orders.tax'.tr(), '\$${order.taxAmount.toStringAsFixed(2)}'),
+            row(
+              'orders.tax'.tr(),
+              '\$${(order.taxAmountCents / 100).toStringAsFixed(2)}',
+            ),
             Padding(
               padding: const EdgeInsets.only(bottom: 2),
               child: Align(
@@ -1576,7 +1585,7 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
           const SizedBox(height: 4),
           row(
             'orders.total'.tr(),
-            '\$${order.total.toStringAsFixed(2)}',
+            '\$${(order.totalAmountCents / 100).toStringAsFixed(2)}',
             bold: true,
           ),
         ],

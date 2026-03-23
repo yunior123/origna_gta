@@ -20,6 +20,11 @@ part 'parts/editproduct_shipping_section.dart';
 part 'parts/editproduct_location_section.dart';
 part 'parts/editproduct_media_section.dart';
 
+/// Whether the low-stock alert toggle is on in the edit-product form.
+final _editProductLowStockAlertProvider = StateProvider.autoDispose<bool>(
+  (_) => false,
+);
+
 /// Edit product screen — composes parts from parts/ sub-files:
 /// - parts/editproduct_form_widgets.dart (_EditDigitalTypeChip)
 /// - parts/editproduct_basic_info_section.dart (buildBasicInfoSection)
@@ -56,7 +61,6 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
   late final TextEditingController _taxCodeController;
 
   // Inventory config
-  bool _lowStockAlertEnabled = false;
   late final TextEditingController _lowStockThresholdController;
 
   // Bill 96: French translation controllers
@@ -241,7 +245,8 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     );
     _taxCodeController = TextEditingController(text: p.taxCode ?? '');
     final existingThreshold = p.inventory?.lowStockThreshold ?? 0;
-    _lowStockAlertEnabled = existingThreshold > 0;
+    ref.read(_editProductLowStockAlertProvider.notifier).state =
+        existingThreshold > 0;
     _lowStockThresholdController = TextEditingController(
       text: existingThreshold > 0 ? existingThreshold.toString() : '5',
     );
@@ -800,7 +805,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     final existingInventory =
         widget.product.inventory ?? const InventoryConfig();
     final updatedInventory = existingInventory.copyWith(
-      lowStockThreshold: _lowStockAlertEnabled
+      lowStockThreshold: ref.read(_editProductLowStockAlertProvider)
           ? (int.tryParse(_lowStockThresholdController.text) ?? 5)
           : 0,
     );

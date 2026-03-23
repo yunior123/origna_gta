@@ -431,7 +431,7 @@ void main() {
         ),
       );
       when(mockAuth.verifyMfaSetup(any)).thenAnswer((_) async => ['RC1']);
-      when(mockAuth.disableMfa(any)).thenAnswer((_) async {});
+      when(mockAuth.disableMfa(any)).thenAnswer((_) async { return null; });
 
       final container = _createContainer(mockOb: mockOb);
       addTearDown(container.dispose);

@@ -6,6 +6,8 @@ import 'package:origna_gta/utils/utils.dart';
 
 part 'checkout_state.freezed.dart';
 
+// ignore_for_file: unused_element
+
 // ============================================================================
 // CHECKOUT RESULT
 // ============================================================================

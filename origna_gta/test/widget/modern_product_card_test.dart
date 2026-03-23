@@ -9,12 +9,14 @@ void main() {
   });
 
   group('ModernProductCard Widget Tests', () {
-    testWidgets('renders basic product information correctly', (WidgetTester tester) async {
+    testWidgets('renders basic product information correctly', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(
         TestWrapper(
           child: ModernProductCard(
             productName: 'Modern Chair',
-            price: 199.99,
+            priceCents: 19999,
             imageUrl: '', // Empty to test fallback
             sellerName: 'Design Studio',
             onTap: () {},
@@ -31,13 +33,15 @@ void main() {
       expect(find.byIcon(Icons.camera_alt_outlined), findsOneWidget);
     });
 
-    testWidgets('triggers onTap when card is pressed', (WidgetTester tester) async {
+    testWidgets('triggers onTap when card is pressed', (
+      WidgetTester tester,
+    ) async {
       bool tapped = false;
       await tester.pumpWidget(
         TestWrapper(
           child: ModernProductCard(
             productName: 'Tap Test',
-            price: 10.00,
+            priceCents: 1000,
             imageUrl: '',
             sellerName: 'Seller',
             onTap: () => tapped = true,
@@ -51,12 +55,14 @@ void main() {
       expect(tapped, isTrue);
     });
 
-    testWidgets('shows out of stock overlay and disables add to cart', (WidgetTester tester) async {
+    testWidgets('shows out of stock overlay and disables add to cart', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(
         TestWrapper(
           child: ModernProductCard(
             productName: 'Out of Stock Item',
-            price: 50.00,
+            priceCents: 5000,
             imageUrl: '',
             sellerName: 'Seller',
             onTap: () {},
@@ -70,18 +76,20 @@ void main() {
 
       // Verify "Out of Stock" label
       expect(find.text('OUT OF STOCK'), findsOneWidget);
-      
+
       // Add to cart button should NOT be rendered
       expect(find.byIcon(Icons.add), findsNothing);
     });
 
-    testWidgets('renders sale price and compare at price', (WidgetTester tester) async {
+    testWidgets('renders sale price and compare at price', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(
         TestWrapper(
           child: ModernProductCard(
             productName: 'Sale Item',
-            price: 80.00,
-            compareAtPrice: 100.0,
+            priceCents: 8000,
+            compareAtPriceCents: 10000,
             imageUrl: '',
             sellerName: 'Seller',
             onTap: () {},
@@ -95,13 +103,15 @@ void main() {
       expect(find.text('\$100.00'), findsOneWidget);
     });
 
-    testWidgets('renders trending badges (HOT and RISING)', (WidgetTester tester) async {
+    testWidgets('renders trending badges (HOT and RISING)', (
+      WidgetTester tester,
+    ) async {
       // Test HOT
       await tester.pumpWidget(
         TestWrapper(
           child: ModernProductCard(
             productName: 'Hot Item',
-            price: 10.00,
+            priceCents: 1000,
             imageUrl: '',
             sellerName: 'Seller',
             onTap: () {},
@@ -118,7 +128,7 @@ void main() {
         TestWrapper(
           child: ModernProductCard(
             productName: 'Rising Item',
-            price: 10.00,
+            priceCents: 1000,
             imageUrl: '',
             sellerName: 'Seller',
             onTap: () {},
@@ -131,13 +141,15 @@ void main() {
       expect(find.text('RISING'), findsOneWidget);
     });
 
-    testWidgets('calculates ship from label correctly for multiple locations', (WidgetTester tester) async {
+    testWidgets('calculates ship from label correctly for multiple locations', (
+      WidgetTester tester,
+    ) async {
       // 2 locations
       await tester.pumpWidget(
         TestWrapper(
           child: ModernProductCard(
             productName: 'Multi Ship',
-            price: 10.00,
+            priceCents: 1000,
             imageUrl: '',
             sellerName: 'Seller',
             onTap: () {},
@@ -154,7 +166,7 @@ void main() {
         TestWrapper(
           child: ModernProductCard(
             productName: 'Global Ship',
-            price: 10.00,
+            priceCents: 1000,
             imageUrl: '',
             sellerName: 'Seller',
             onTap: () {},
@@ -172,7 +184,7 @@ void main() {
         TestWrapper(
           child: ModernProductCard(
             productName: 'Cart Item',
-            price: 10.00,
+            priceCents: 1000,
             imageUrl: '',
             sellerName: 'Seller',
             onTap: () {},

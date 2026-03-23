@@ -87,7 +87,7 @@ void main() {
     });
 
     test('deleteProduct succeeds', () async {
-      when(mockRepo.deleteProduct('p123')).thenAnswer((_) async {});
+      when(mockRepo.deleteProduct('p123')).thenAnswer((_) async { return null; });
 
       final viewModel = container.read(adminActionsViewModelProvider.notifier);
       final result = await viewModel.deleteProduct('p123');
@@ -145,7 +145,7 @@ void main() {
           remove: [],
           reason: anyNamed('reason'),
         ),
-      ).thenAnswer((_) async {});
+      ).thenAnswer((_) async { return null; });
 
       final viewModel = container.read(adminActionsViewModelProvider.notifier);
       final result = await viewModel.updateUserRoles('u123', add: ['admin']);
@@ -154,7 +154,7 @@ void main() {
     });
 
     test('disableAdminMfa succeeds', () async {
-      when(mockRepo.disableAdminMfa('123456')).thenAnswer((_) async {});
+      when(mockRepo.disableAdminMfa('123456')).thenAnswer((_) async { return null; });
 
       final viewModel = container.read(adminActionsViewModelProvider.notifier);
       final result = await viewModel.disableAdminMfa('123456');
@@ -217,7 +217,7 @@ void main() {
     });
 
     test('updateProductStock succeeds', () async {
-      when(mockRepo.updateProductStock('p123', 50)).thenAnswer((_) async {});
+      when(mockRepo.updateProductStock('p123', 50)).thenAnswer((_) async { return null; });
 
       final viewModel = container.read(adminActionsViewModelProvider.notifier);
       final result = await viewModel.updateProductStock('p123', 50);
@@ -260,7 +260,7 @@ void main() {
 
   group('AdminActionsViewModel - state transitions', () {
     test('action sets isLoading to true during execution', () async {
-      when(mockRepo.approveProduct('p123')).thenAnswer((_) async {});
+      when(mockRepo.approveProduct('p123')).thenAnswer((_) async { return null; });
 
       final viewModel = container.read(adminActionsViewModelProvider.notifier);
 
@@ -276,7 +276,7 @@ void main() {
 
     test('error clears isSuccess flag', () async {
       // First succeed
-      when(mockRepo.approveProduct('p1')).thenAnswer((_) async {});
+      when(mockRepo.approveProduct('p1')).thenAnswer((_) async { return null; });
       final viewModel = container.read(adminActionsViewModelProvider.notifier);
       await viewModel.approveProduct('p1');
       expect(container.read(adminActionsViewModelProvider).isSuccess, isTrue);

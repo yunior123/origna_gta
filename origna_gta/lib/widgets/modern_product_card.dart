@@ -9,7 +9,7 @@ import 'package:origna_gta/widgets/shared/trending_badge.dart';
 /// Modern 2100 Product Card with glassmorphism
 class ModernProductCard extends StatefulWidget {
   final String productName;
-  final double price;
+  final int priceCents;
   final String imageUrl;
   final String sellerName;
   final double rating;
@@ -21,8 +21,8 @@ class ModernProductCard extends StatefulWidget {
   final String? shipFromCountry;
   final List<String>? shipFromCountries;
 
-  /// Original/crossed-out price shown next to the sale price (null = no active sale)
-  final double? compareAtPrice;
+  /// Original/crossed-out price shown next to the sale price in cents (null = no active sale)
+  final int? compareAtPriceCents;
 
   /// When true, show a Trending badge on the image corner
   final bool isTrending;
@@ -36,7 +36,7 @@ class ModernProductCard extends StatefulWidget {
   const ModernProductCard({
     super.key,
     required this.productName,
-    required this.price,
+    required this.priceCents,
     required this.imageUrl,
     required this.sellerName,
     this.rating = 0.0,
@@ -47,7 +47,7 @@ class ModernProductCard extends StatefulWidget {
     this.shipFromProvince,
     this.shipFromCountry,
     this.shipFromCountries,
-    this.compareAtPrice,
+    this.compareAtPriceCents,
     this.isTrending = false,
     this.trendingScore = 0,
     this.isOutOfStock = false,
@@ -108,20 +108,22 @@ class _ModernProductCardState extends State<ModernProductCard>
       child: ScaleTransition(
         scale: _scaleAnimation,
         child: Semantics(
-          label: widget.compareAtPrice != null
+          label: widget.compareAtPriceCents != null
               ? 'product.a11y_on_sale'.tr(
                   namedArgs: {
                     'name': widget.productName,
-                    'price': '\$${widget.price.toStringAsFixed(2)}',
+                    'price':
+                        '\$${(widget.priceCents / 100).toStringAsFixed(2)}',
                     'originalPrice':
-                        '\$${(widget.compareAtPrice ?? 0).toStringAsFixed(2)}',
+                        '\$${((widget.compareAtPriceCents ?? 0) / 100).toStringAsFixed(2)}',
                     'rating': widget.rating.toStringAsFixed(1),
                   },
                 )
               : 'product.a11y_regular'.tr(
                   namedArgs: {
                     'name': widget.productName,
-                    'price': '\$${widget.price.toStringAsFixed(2)}',
+                    'price':
+                        '\$${(widget.priceCents / 100).toStringAsFixed(2)}',
                     'rating': widget.rating.toStringAsFixed(1),
                   },
                 ),
@@ -387,7 +389,7 @@ class _ModernProductCardState extends State<ModernProductCard>
                                         CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        '\$${widget.price.toStringAsFixed(2)}',
+                                        '\$${(widget.priceCents / 100).toStringAsFixed(2)}',
                                         style: const TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.w700,
@@ -395,10 +397,10 @@ class _ModernProductCardState extends State<ModernProductCard>
                                         ),
                                         overflow: TextOverflow.ellipsis,
                                       ),
-                                      if (widget.compareAtPrice
-                                          case final compareAt?)
+                                      if (widget.compareAtPriceCents
+                                          case final compareAtCents?)
                                         Text(
-                                          '\$${compareAt.toStringAsFixed(2)}',
+                                          '\$${(compareAtCents / 100).toStringAsFixed(2)}',
                                           style: const TextStyle(
                                             fontSize: 12,
                                             fontWeight: FontWeight.w500,

@@ -140,26 +140,48 @@ class ShippingApprovalScreen extends ConsumerWidget {
   }
 }
 
-class _ApprovalCard extends ConsumerStatefulWidget {
+class _ApprovalCard extends ConsumerWidget {
   final Order order;
 
   const _ApprovalCard({required this.order});
 
   @override
-  ConsumerState<_ApprovalCard> createState() => _ApprovalCardState();
-}
-
-/// Private provider for ApprovalCard processing state
-final _approvalProcessingProvider = StateProvider.autoDispose<bool>(
-  (_) => false,
-);
-
-class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
-  @override
-  Widget build(BuildContext context) {
-    final _isProcessing = ref.watch(_approvalProcessingProvider);
+  Widget build(BuildContext context, WidgetRef ref) {
+    final vmState = ref.watch(shippingApprovalViewModelProvider);
+    final isProcessing = vmState.isLoading;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final order = widget.order;
+    final order = this.order;
+
+    // Listen for success/error and show snackbar feedback
+    ref.listen<ShippingApprovalState>(shippingApprovalViewModelProvider, (
+      prev,
+      next,
+    ) {
+      if (next.isSuccess) {
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              next.wasApproved
+                  ? 'seller.shipping_approved'.tr()
+                  : 'seller.order_cancelled'.tr(),
+            ),
+            backgroundColor: next.wasApproved
+                ? DesignTokens.success
+                : DesignTokens.warning,
+          ),
+        );
+        ref.read(shippingApprovalViewModelProvider.notifier).clearStatus();
+      } else if (next.errorMessage != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(next.errorMessage!),
+            backgroundColor: DesignTokens.error,
+          ),
+        );
+        ref.read(shippingApprovalViewModelProvider.notifier).clearStatus();
+      }
+    });
     final items = order.items;
     final estimatedShipping = order.shippingCost;
     final actualShipping = order.actualShipping;
@@ -539,7 +561,7 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
             const SizedBox(height: 24),
 
             // Action buttons
-            if (_isProcessing)
+            if (isProcessing)
               Center(
                 child: ShaderMask(
                   shaderCallback: (bounds) => LinearGradient(
@@ -582,7 +604,8 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                         child: Material(
                           color: DesignTokens.transparent,
                           child: InkWell(
-                            onTap: () => _showRejectConfirmation(context),
+                            onTap: () =>
+                                _showRejectConfirmation(context, ref, order),
                             borderRadius: BorderRadius.circular(
                               DesignTokens.radius12,
                             ),
@@ -610,7 +633,9 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                       button: true,
                       label: 'btn-approve-shipping',
                       child: ModernButton(
-                        onPressed: () => _handleApproval(true),
+                        onPressed: () => ref
+                            .read(shippingApprovalViewModelProvider.notifier)
+                            .approveShippingCost(order.orderId, true),
                         label: 'seller.approve'.tr(),
                         icon: Icons.check_circle,
                       ),
@@ -624,43 +649,11 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
     );
   }
 
-  Future<void> _handleApproval(bool approved) async {
-    ref.read(_approvalProcessingProvider.notifier).state = true;
-    final messenger = ScaffoldMessenger.of(context);
-    final viewModel = ref.read(shippingApprovalViewModelProvider.notifier);
-
-    final success = await viewModel.approveShippingCost(
-      widget.order.orderId,
-      approved,
-    );
-    if (!mounted) return;
-
-    if (success) {
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            approved
-                ? 'seller.shipping_approved'.tr()
-                : 'seller.order_cancelled'.tr(),
-          ),
-          backgroundColor: approved
-              ? DesignTokens.success
-              : DesignTokens.warning,
-        ),
-      );
-    } else {
-      final error =
-          ref.read(shippingApprovalViewModelProvider).errorMessage ??
-          'seller.failed_update_approval'.tr();
-      messenger.showSnackBar(
-        SnackBar(content: Text(error), backgroundColor: DesignTokens.error),
-      );
-    }
-
-    ref.read(_approvalProcessingProvider.notifier).state = false;
-  }
-
-  void _showRejectConfirmation(BuildContext context) {
+  void _showRejectConfirmation(
+    BuildContext context,
+    WidgetRef ref,
+    Order order,
+  ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     showDialog(
       context: context,
@@ -717,7 +710,9 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                 child: InkWell(
                   onTap: () {
                     Navigator.pop(dialogContext);
-                    _handleApproval(false);
+                    ref
+                        .read(shippingApprovalViewModelProvider.notifier)
+                        .approveShippingCost(order.orderId, false);
                   },
                   borderRadius: BorderRadius.circular(DesignTokens.radius12),
                   child: Padding(

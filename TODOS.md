@@ -12,3 +12,5 @@
 14. everything claude code github repo study how to apply to improve our repo
 15. run load tests, reliability tests, stress tests, benchmarks, example apps and tests
 16. audit webhook stripe endpoints: stripe vs orignabase. all webhooks:test and live using cli
+17. use delegation to document codebase like pro, search web for best practices.
+18. audit full codebase with 30+ agents, use delegation. findings should be added to state.md. findings should be validated in depth to avoid false positives.

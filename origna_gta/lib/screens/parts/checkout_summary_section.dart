@@ -393,18 +393,16 @@ class _OrderReviewSheet extends ConsumerWidget {
     );
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Business logic computed in providers — screen only renders.
+    // All business logic computed in providers — screen only renders.
     final province = addressState ?? ProvinceCodeValues.ontario;
-    final taxRate = getTaxRate(province);
-    final couponDiscount = couponDiscountCents / 100.0;
+    final taxRate = ref.watch(checkoutProvinceTaxRateProvider(province));
+    final couponDiscount = ref.watch(checkoutCouponDiscountDollarsProvider);
     final total = ref.watch(
       checkoutBuyerTotalProvider((subtotal: subtotal, province: province)),
     );
-    // Tax is still needed for the line-item display
-    final effectiveSubtotal = ref.watch(
-      checkoutEffectiveSubtotalProvider(subtotal),
+    final tax = ref.watch(
+      checkoutTaxAmountProvider((subtotal: subtotal, province: province)),
     );
-    final tax = (effectiveSubtotal + shippingCost) * taxRate;
 
     final bgColor = isDark ? DesignTokens.darkCard : DesignTokens.white;
 

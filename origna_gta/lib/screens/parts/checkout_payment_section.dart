@@ -572,7 +572,7 @@ class _FreeShippingBanner extends ConsumerWidget {
     if (isCalculating || shippingCost == 0) return const SizedBox.shrink();
 
     const thresholdCents = BusinessRules.freeShippingThresholdCents;
-    final subtotalCents = (subtotal * 100).round();
+    final subtotalCents = ref.watch(checkoutSubtotalCentsProvider(subtotal));
     final remainingCents = thresholdCents - subtotalCents;
     if (remainingCents <= 0) return const SizedBox.shrink();
 

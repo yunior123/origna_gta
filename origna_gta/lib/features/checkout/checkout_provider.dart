@@ -6,7 +6,7 @@ export 'orignabase_checkout_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
-import 'package:origna_gta/utils/utils.dart' show getTaxRate;
+import 'package:origna_gta/utils/utils.dart' show getTaxRate, provinceTaxRates;
 
 import 'orignabase_checkout_provider.dart';
 
@@ -70,6 +70,73 @@ final checkoutBuyerTotalProvider = Provider.autoDispose
       final taxRate = getTaxRate(params.province);
       return effective + (taxRate * (effective + shippingCost)) + shippingCost;
     });
+
+/// Computed single tax amount (in dollars) for a given subtotal + province.
+/// Used by _OrderReviewSheet to display the tax line item without inline math.
+final checkoutTaxAmountProvider = Provider.autoDispose
+    .family<double, ({double subtotal, String province})>((ref, params) {
+      final effective = ref.watch(
+        checkoutEffectiveSubtotalProvider(params.subtotal),
+      );
+      final shippingCost = ref.watch(
+        checkoutStateProvider.select((s) => s.shippingCost),
+      );
+      final taxRate = getTaxRate(params.province);
+      return (effective + shippingCost) * taxRate;
+    });
+
+/// Computed detailed tax breakdown (name → amount in dollars) for a given
+/// province + subtotal. Used by _OrderSummary to render per-tax-type lines
+/// without inline business logic.
+final checkoutTaxBreakdownProvider = Provider.autoDispose
+    .family<Map<String, double>, ({double subtotal, String province})>((
+      ref,
+      params,
+    ) {
+      final effective = ref.watch(
+        checkoutEffectiveSubtotalProvider(params.subtotal),
+      );
+      final shippingCost = ref.watch(
+        checkoutStateProvider.select((s) => s.shippingCost),
+      );
+      final taxableBase = effective + shippingCost;
+      final rates = provinceTaxRates[params.province] ?? {'HST': 0.13};
+      return {
+        for (final entry in rates.entries) entry.key: taxableBase * entry.value,
+      };
+    });
+
+/// Per-tax-type rate map (name → rate 0.0–1.0) for a province.
+/// Used by _OrderSummary._buildTaxBreakdownRows for display labels like "GST (5.00%)".
+final checkoutProvinceRatesMapProvider = Provider.autoDispose
+    .family<Map<String, double>, String>(
+      (ref, province) => provinceTaxRates[province] ?? {'HST': 0.13},
+    );
+
+/// Tax rate for a given province (0.0–1.0). Used for display labels like "HST (13.00%)".
+/// Pure lookup — no side effects.
+final checkoutProvinceTaxRateProvider = Provider.autoDispose
+    .family<double, String>((ref, province) => getTaxRate(province));
+
+/// Coupon discount converted to dollars for display. Avoids inline cents→dollars
+/// math in widget build() methods.
+final checkoutCouponDiscountDollarsProvider = Provider.autoDispose<double>((
+  ref,
+) {
+  final cents = ref.watch(
+    checkoutStateProvider.select((s) => s.couponDiscountCents),
+  );
+  return cents / 100.0;
+});
+
+/// Subtotal converted to integer cents. Avoids inline `(subtotal * 100).round()`
+/// in widget build() methods.
+final checkoutSubtotalCentsProvider = Provider.autoDispose.family<int, double>((
+  ref,
+  subtotalDollars,
+) {
+  return (subtotalDollars * 100).round();
+});
 
 /// Backward-compatible typedef so screens can reference CheckoutNotifier.
 typedef CheckoutNotifier = OrignaBaseCheckoutNotifier;

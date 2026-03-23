@@ -27,10 +27,11 @@ class _OrderSummary extends ConsumerWidget {
           subscriptionStreamProvider.select((a) => a.valueOrNull?.isPremium),
         ) ??
         false;
-    // Effective subtotal computed in provider — no business logic in build()
-    final effectiveSubtotalForTax = ref.watch(
-      checkoutEffectiveSubtotalProvider(subtotal),
+    // Tax breakdown and rates computed in providers — no business logic in build()
+    final taxBreakdown = ref.watch(
+      checkoutTaxBreakdownProvider((subtotal: subtotal, province: state)),
     );
+    final taxRatesMap = ref.watch(checkoutProvinceRatesMapProvider(state));
 
     return Column(
       key: const Key('checkout_summary_section'),
@@ -100,10 +101,7 @@ class _OrderSummary extends ConsumerWidget {
               const SizedBox(height: 8),
               _buildCouponDiscountRow(ref),
               _buildPlatformFeeRow(ref, isPremium),
-              ..._buildTaxBreakdown(
-                state,
-                effectiveSubtotalForTax + shippingCost,
-              ),
+              ..._buildTaxBreakdownRows(taxBreakdown, taxRatesMap),
               const SizedBox(height: 8),
               Row(
                 key: const Key('checkout_shipping_section'),
@@ -439,12 +437,17 @@ class _OrderSummary extends ConsumerWidget {
     );
   }
 
-  List<Widget> _buildTaxBreakdown(String province, double total) {
-    final taxes = taxConfig[province] ?? {'HST': 0.13};
+  /// Renders pre-computed tax breakdown rows.
+  /// Tax amounts are computed in [checkoutTaxBreakdownProvider] — this method
+  /// only handles presentation.
+  List<Widget> _buildTaxBreakdownRows(
+    Map<String, double> taxBreakdown,
+    Map<String, double> rates,
+  ) {
     List<Widget> widgets = [];
 
-    taxes.forEach((taxName, rate) {
-      final taxAmount = total * rate;
+    taxBreakdown.forEach((taxName, taxAmount) {
+      final rate = rates[taxName] ?? 0.0;
       widgets.add(
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,

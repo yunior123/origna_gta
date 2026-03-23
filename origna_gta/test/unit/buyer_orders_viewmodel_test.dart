@@ -41,7 +41,7 @@ void main() {
     test('confirmReceipt passes null productId when item key is malformed', () async {
       const orderId = 'o123';
       const itemKey = 'unexpected-format';
-      when(mockRepo.confirmReceipt(orderId, productId: null)).thenAnswer((_) async {});
+      when(mockRepo.confirmReceipt(orderId, productId: null)).thenAnswer((_) async { return null; });
 
       final viewModel = container.read(buyerOrdersViewModelProvider.notifier);
       final result = await viewModel.confirmReceipt(orderId, itemKey);

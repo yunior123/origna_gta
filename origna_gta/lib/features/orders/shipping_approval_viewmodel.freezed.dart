@@ -14,7 +14,9 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$ShippingApprovalState {
 
- bool get isLoading; bool get isSuccess; String? get errorMessage;
+ bool get isLoading; bool get isSuccess; String? get errorMessage;/// Whether the last approval was an "approve" (true) or "reject" (false).
+/// Only meaningful when [isSuccess] is true.
+ bool get wasApproved;
 /// Create a copy of ShippingApprovalState
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +27,16 @@ $ShippingApprovalStateCopyWith<ShippingApprovalState> get copyWith => _$Shipping
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ShippingApprovalState&&(identical(other.isLoading, isLoading) || other.isLoading == isLoading)&&(identical(other.isSuccess, isSuccess) || other.isSuccess == isSuccess)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ShippingApprovalState&&(identical(other.isLoading, isLoading) || other.isLoading == isLoading)&&(identical(other.isSuccess, isSuccess) || other.isSuccess == isSuccess)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage)&&(identical(other.wasApproved, wasApproved) || other.wasApproved == wasApproved));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,isLoading,isSuccess,errorMessage);
+int get hashCode => Object.hash(runtimeType,isLoading,isSuccess,errorMessage,wasApproved);
 
 @override
 String toString() {
-  return 'ShippingApprovalState(isLoading: $isLoading, isSuccess: $isSuccess, errorMessage: $errorMessage)';
+  return 'ShippingApprovalState(isLoading: $isLoading, isSuccess: $isSuccess, errorMessage: $errorMessage, wasApproved: $wasApproved)';
 }
 
 
@@ -45,7 +47,7 @@ abstract mixin class $ShippingApprovalStateCopyWith<$Res>  {
   factory $ShippingApprovalStateCopyWith(ShippingApprovalState value, $Res Function(ShippingApprovalState) _then) = _$ShippingApprovalStateCopyWithImpl;
 @useResult
 $Res call({
- bool isLoading, bool isSuccess, String? errorMessage
+ bool isLoading, bool isSuccess, String? errorMessage, bool wasApproved
 });
 
 
@@ -62,12 +64,13 @@ class _$ShippingApprovalStateCopyWithImpl<$Res>
 
 /// Create a copy of ShippingApprovalState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? isLoading = null,Object? isSuccess = null,Object? errorMessage = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? isLoading = null,Object? isSuccess = null,Object? errorMessage = freezed,Object? wasApproved = null,}) {
   return _then(_self.copyWith(
 isLoading: null == isLoading ? _self.isLoading : isLoading // ignore: cast_nullable_to_non_nullable
 as bool,isSuccess: null == isSuccess ? _self.isSuccess : isSuccess // ignore: cast_nullable_to_non_nullable
 as bool,errorMessage: freezed == errorMessage ? _self.errorMessage : errorMessage // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,wasApproved: null == wasApproved ? _self.wasApproved : wasApproved // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
@@ -152,10 +155,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( bool isLoading,  bool isSuccess,  String? errorMessage)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( bool isLoading,  bool isSuccess,  String? errorMessage,  bool wasApproved)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ShippingApprovalState() when $default != null:
-return $default(_that.isLoading,_that.isSuccess,_that.errorMessage);case _:
+return $default(_that.isLoading,_that.isSuccess,_that.errorMessage,_that.wasApproved);case _:
   return orElse();
 
 }
@@ -173,10 +176,10 @@ return $default(_that.isLoading,_that.isSuccess,_that.errorMessage);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( bool isLoading,  bool isSuccess,  String? errorMessage)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( bool isLoading,  bool isSuccess,  String? errorMessage,  bool wasApproved)  $default,) {final _that = this;
 switch (_that) {
 case _ShippingApprovalState():
-return $default(_that.isLoading,_that.isSuccess,_that.errorMessage);case _:
+return $default(_that.isLoading,_that.isSuccess,_that.errorMessage,_that.wasApproved);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -193,10 +196,10 @@ return $default(_that.isLoading,_that.isSuccess,_that.errorMessage);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( bool isLoading,  bool isSuccess,  String? errorMessage)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( bool isLoading,  bool isSuccess,  String? errorMessage,  bool wasApproved)?  $default,) {final _that = this;
 switch (_that) {
 case _ShippingApprovalState() when $default != null:
-return $default(_that.isLoading,_that.isSuccess,_that.errorMessage);case _:
+return $default(_that.isLoading,_that.isSuccess,_that.errorMessage,_that.wasApproved);case _:
   return null;
 
 }
@@ -208,12 +211,15 @@ return $default(_that.isLoading,_that.isSuccess,_that.errorMessage);case _:
 
 
 class _ShippingApprovalState implements ShippingApprovalState {
-  const _ShippingApprovalState({this.isLoading = false, this.isSuccess = false, this.errorMessage});
+  const _ShippingApprovalState({this.isLoading = false, this.isSuccess = false, this.errorMessage, this.wasApproved = true});
   
 
 @override@JsonKey() final  bool isLoading;
 @override@JsonKey() final  bool isSuccess;
 @override final  String? errorMessage;
+/// Whether the last approval was an "approve" (true) or "reject" (false).
+/// Only meaningful when [isSuccess] is true.
+@override@JsonKey() final  bool wasApproved;
 
 /// Create a copy of ShippingApprovalState
 /// with the given fields replaced by the non-null parameter values.
@@ -225,16 +231,16 @@ _$ShippingApprovalStateCopyWith<_ShippingApprovalState> get copyWith => __$Shipp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ShippingApprovalState&&(identical(other.isLoading, isLoading) || other.isLoading == isLoading)&&(identical(other.isSuccess, isSuccess) || other.isSuccess == isSuccess)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ShippingApprovalState&&(identical(other.isLoading, isLoading) || other.isLoading == isLoading)&&(identical(other.isSuccess, isSuccess) || other.isSuccess == isSuccess)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage)&&(identical(other.wasApproved, wasApproved) || other.wasApproved == wasApproved));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,isLoading,isSuccess,errorMessage);
+int get hashCode => Object.hash(runtimeType,isLoading,isSuccess,errorMessage,wasApproved);
 
 @override
 String toString() {
-  return 'ShippingApprovalState(isLoading: $isLoading, isSuccess: $isSuccess, errorMessage: $errorMessage)';
+  return 'ShippingApprovalState(isLoading: $isLoading, isSuccess: $isSuccess, errorMessage: $errorMessage, wasApproved: $wasApproved)';
 }
 
 
@@ -245,7 +251,7 @@ abstract mixin class _$ShippingApprovalStateCopyWith<$Res> implements $ShippingA
   factory _$ShippingApprovalStateCopyWith(_ShippingApprovalState value, $Res Function(_ShippingApprovalState) _then) = __$ShippingApprovalStateCopyWithImpl;
 @override @useResult
 $Res call({
- bool isLoading, bool isSuccess, String? errorMessage
+ bool isLoading, bool isSuccess, String? errorMessage, bool wasApproved
 });
 
 
@@ -262,12 +268,13 @@ class __$ShippingApprovalStateCopyWithImpl<$Res>
 
 /// Create a copy of ShippingApprovalState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? isLoading = null,Object? isSuccess = null,Object? errorMessage = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? isLoading = null,Object? isSuccess = null,Object? errorMessage = freezed,Object? wasApproved = null,}) {
   return _then(_ShippingApprovalState(
 isLoading: null == isLoading ? _self.isLoading : isLoading // ignore: cast_nullable_to_non_nullable
 as bool,isSuccess: null == isSuccess ? _self.isSuccess : isSuccess // ignore: cast_nullable_to_non_nullable
 as bool,errorMessage: freezed == errorMessage ? _self.errorMessage : errorMessage // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,wasApproved: null == wasApproved ? _self.wasApproved : wasApproved // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 

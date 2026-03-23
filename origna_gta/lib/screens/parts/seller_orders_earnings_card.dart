@@ -2,13 +2,13 @@ part of '../seller_orders_screen.dart';
 
 /// Revenue summary card shown at the top of the seller orders list.
 class _EarningsSummaryCard extends StatelessWidget {
-  final double totalRevenue;
+  final int totalRevenueCents;
   final int pendingCount;
   final int completedCount;
   final bool isDark;
 
   const _EarningsSummaryCard({
-    required this.totalRevenue,
+    required this.totalRevenueCents,
     required this.pendingCount,
     required this.completedCount,
     required this.isDark,
@@ -49,7 +49,7 @@ class _EarningsSummaryCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '\$${totalRevenue.toStringAsFixed(2)}',
+                  '\$${(totalRevenueCents / 100).toStringAsFixed(2)}',
                   style: const TextStyle(
                     color: DesignTokens.white,
                     fontSize: 28,

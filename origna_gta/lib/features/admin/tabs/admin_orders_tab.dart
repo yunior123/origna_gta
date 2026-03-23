@@ -9,12 +9,111 @@ import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/shared/filter_chip_widget.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
+/// Private provider for AdminOrdersTab filter state
+final _ordersStatusFilterProvider = StateProvider.autoDispose<String>(
+  (_) => 'all',
+);
+
 /// Documentation for AdminOrdersTab
-class AdminOrdersTab extends ConsumerStatefulWidget {
+class AdminOrdersTab extends ConsumerWidget {
   const AdminOrdersTab({super.key});
 
   @override
-  ConsumerState<AdminOrdersTab> createState() => _AdminOrdersTabState();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final statusFilter = ref.watch(_ordersStatusFilterProvider);
+    return Column(
+      children: [
+        // Filter Bar
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                FilterChipWidget(
+                  label: 'orders.filter_all'.tr(),
+                  isSelected: statusFilter == 'all',
+                  onTap: () =>
+                      ref.read(_ordersStatusFilterProvider.notifier).state =
+                          'all',
+                  semanticLabel:
+                      'tab-admin-order-filter-${'orders.filter_all'.tr()}',
+                ),
+                FilterChipWidget(
+                  label: PaymentStatus.authorized.displayText,
+                  isSelected: statusFilter == PaymentStatus.authorized.value,
+                  onTap: () =>
+                      ref.read(_ordersStatusFilterProvider.notifier).state =
+                          PaymentStatus.authorized.value,
+                  semanticLabel:
+                      'tab-admin-order-filter-${PaymentStatus.authorized.displayText}',
+                ),
+                FilterChipWidget(
+                  label: PaymentStatus.paid.displayText,
+                  isSelected: statusFilter == PaymentStatus.paid.value,
+                  onTap: () =>
+                      ref.read(_ordersStatusFilterProvider.notifier).state =
+                          PaymentStatus.paid.value,
+                  semanticLabel:
+                      'tab-admin-order-filter-${PaymentStatus.paid.displayText}',
+                ),
+                FilterChipWidget(
+                  label: PaymentStatus.refunded.displayText,
+                  isSelected: statusFilter == PaymentStatus.refunded.value,
+                  onTap: () =>
+                      ref.read(_ordersStatusFilterProvider.notifier).state =
+                          PaymentStatus.refunded.value,
+                  semanticLabel:
+                      'tab-admin-order-filter-${PaymentStatus.refunded.displayText}',
+                ),
+                FilterChipWidget(
+                  label: PaymentStatus.paymentFailed.displayText,
+                  isSelected: statusFilter == PaymentStatus.paymentFailed.value,
+                  onTap: () =>
+                      ref.read(_ordersStatusFilterProvider.notifier).state =
+                          PaymentStatus.paymentFailed.value,
+                  semanticLabel:
+                      'tab-admin-order-filter-${PaymentStatus.paymentFailed.displayText}',
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        // Orders List
+        Expanded(
+          child: ref
+              .watch(adminOrdersProvider(statusFilter))
+              .when(
+                loading: () => const ModernLoadingIndicator.fullScreen(),
+                error: (error, _) =>
+                    Center(child: Text('admin.users.error_fetching'.tr())),
+                data: (orders) {
+                  if (orders.isEmpty) {
+                    return AnimatedEmptyState(
+                      icon: Icons.receipt_long_outlined,
+                      title: 'orders.no_orders_found'.tr(),
+                      subtitle: 'orders.no_orders_match'.tr(),
+                    );
+                  }
+
+                  return ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: orders.length,
+                    itemBuilder: (context, index) {
+                      final data = orders[index];
+                      return FadeSlideIn(
+                        delay: Duration(milliseconds: 30 * index.clamp(0, 10)),
+                        child: _AdminOrderCard(order: data),
+                      );
+                    },
+                  );
+                },
+              ),
+        ),
+      ],
+    );
+  }
 }
 
 class _AdminOrderCard extends StatelessWidget {
@@ -236,6 +335,24 @@ class _AdminOrderCard extends StatelessWidget {
     );
   }
 
+  String _formatDate(DateTime date) {
+    final months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return '${months[date.month - 1]} ${date.day}, ${date.year}';
+  }
+
   String _formatDeliveryAddress(Map<String, dynamic> deliveryInfo) {
     final formatted = deliveryInfo[Fields.formattedAddress]?.toString();
     if (formatted != null && formatted.trim().isNotEmpty) return formatted;
@@ -343,24 +460,6 @@ class _AdminOrderCard extends StatelessWidget {
     );
   }
 
-  String _formatDate(DateTime date) {
-    final months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    return '${months[date.month - 1]} ${date.day}, ${date.year}';
-  }
-
   void _viewOrderDetails(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -431,111 +530,6 @@ class _AdminOrderCard extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-/// Private provider for AdminOrdersTab filter state
-final _ordersStatusFilterProvider = StateProvider.autoDispose<String>(
-  (_) => 'all',
-);
-
-class _AdminOrdersTabState extends ConsumerState<AdminOrdersTab> {
-  @override
-  Widget build(BuildContext context) {
-    final _statusFilter = ref.watch(_ordersStatusFilterProvider);
-    return Column(
-      children: [
-        // Filter Bar
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                FilterChipWidget(
-                  label: 'orders.filter_all'.tr(),
-                  isSelected: _statusFilter == 'all',
-                  onTap: () =>
-                      ref.read(_ordersStatusFilterProvider.notifier).state =
-                          'all',
-                  semanticLabel:
-                      'tab-admin-order-filter-${'orders.filter_all'.tr()}',
-                ),
-                FilterChipWidget(
-                  label: PaymentStatus.authorized.displayText,
-                  isSelected: _statusFilter == PaymentStatus.authorized.value,
-                  onTap: () =>
-                      ref.read(_ordersStatusFilterProvider.notifier).state =
-                          PaymentStatus.authorized.value,
-                  semanticLabel:
-                      'tab-admin-order-filter-${PaymentStatus.authorized.displayText}',
-                ),
-                FilterChipWidget(
-                  label: PaymentStatus.paid.displayText,
-                  isSelected: _statusFilter == PaymentStatus.paid.value,
-                  onTap: () =>
-                      ref.read(_ordersStatusFilterProvider.notifier).state =
-                          PaymentStatus.paid.value,
-                  semanticLabel:
-                      'tab-admin-order-filter-${PaymentStatus.paid.displayText}',
-                ),
-                FilterChipWidget(
-                  label: PaymentStatus.refunded.displayText,
-                  isSelected: _statusFilter == PaymentStatus.refunded.value,
-                  onTap: () =>
-                      ref.read(_ordersStatusFilterProvider.notifier).state =
-                          PaymentStatus.refunded.value,
-                  semanticLabel:
-                      'tab-admin-order-filter-${PaymentStatus.refunded.displayText}',
-                ),
-                FilterChipWidget(
-                  label: PaymentStatus.paymentFailed.displayText,
-                  isSelected:
-                      _statusFilter == PaymentStatus.paymentFailed.value,
-                  onTap: () =>
-                      ref.read(_ordersStatusFilterProvider.notifier).state =
-                          PaymentStatus.paymentFailed.value,
-                  semanticLabel:
-                      'tab-admin-order-filter-${PaymentStatus.paymentFailed.displayText}',
-                ),
-              ],
-            ),
-          ),
-        ),
-
-        // Orders List
-        Expanded(
-          child: ref
-              .watch(adminOrdersProvider(_statusFilter))
-              .when(
-                loading: () => const ModernLoadingIndicator.fullScreen(),
-                error: (error, _) =>
-                    Center(child: Text('admin.users.error_fetching'.tr())),
-                data: (orders) {
-                  if (orders.isEmpty) {
-                    return AnimatedEmptyState(
-                      icon: Icons.receipt_long_outlined,
-                      title: 'orders.no_orders_found'.tr(),
-                      subtitle: 'orders.no_orders_match'.tr(),
-                    );
-                  }
-
-                  return ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: orders.length,
-                    itemBuilder: (context, index) {
-                      final data = orders[index];
-                      return FadeSlideIn(
-                        delay: Duration(milliseconds: 30 * index.clamp(0, 10)),
-                        child: _AdminOrderCard(order: data),
-                      );
-                    },
-                  );
-                },
-              ),
-        ),
-      ],
     );
   }
 }

@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/seller/warehouses_viewmodel.dart';
-import 'package:origna_gta/models/generated/base_models.dart';
 import 'package:origna_gta/models/generated/product_models.dart';
 import 'package:origna_gta/utils/utils.dart' show AppError;
 import 'package:origna_gta/utils/design_tokens.dart';
@@ -138,40 +137,19 @@ class _SellerWarehousesScreenState
               required Map<String, dynamic> addressMap,
               required bool isDefault,
             }) async {
-              final vm = ref.read(warehousesViewModelProvider.notifier);
-              if (existing == null) {
-                await vm.createWarehouse(
-                  label: label,
-                  type: type,
-                  address: _mapToAddress(addressMap),
-                  isDefault: isDefault,
-                );
-              } else {
-                await vm.updateWarehouse(
-                  warehouseId: existing.warehouseId,
-                  label: label,
-                  type: type,
-                  address: _mapToAddress(addressMap),
-                  isDefault: isDefault,
-                );
-              }
+              await ref
+                  .read(warehousesViewModelProvider.notifier)
+                  .submitWarehouseForm(
+                    warehouseId: existing?.warehouseId,
+                    label: label,
+                    type: type,
+                    addressMap: addressMap,
+                    isDefault: isDefault,
+                  );
             },
       ),
     );
   }
-
-  /// Convert raw form map back to an Address object
-  Address _mapToAddress(Map<String, dynamic> m) => Address(
-    street: m[Fields.street] as String? ?? '',
-    apartment: m[Fields.apartment] as String? ?? '',
-    city: m[Fields.city] as String? ?? '',
-    state: m[Fields.state] as String? ?? '',
-    postalCode: m[Fields.postalCode] as String? ?? '',
-    country: m[Fields.country] as String? ?? '',
-    latitude: m[Fields.latitude] as double?,
-    longitude: m[Fields.longitude] as double?,
-    label: m[Fields.label] as String?,
-  );
 }
 
 // ---------------------------------------------------------------------------
@@ -470,10 +448,6 @@ final _warehouseFormTypeProvider = StateProvider.autoDispose<String>(
 final _warehouseFormDefaultProvider = StateProvider.autoDispose<bool>(
   (ref) => false,
 );
-final _warehouseFormSavingProvider = StateProvider.autoDispose<bool>(
-  (ref) => false,
-);
-
 typedef _SaveFullCallback =
     Future<void> Function({
       required String label,
@@ -533,7 +507,6 @@ class _WarehouseFormSheetState extends ConsumerState<_WarehouseFormSheet> {
           e?.type ?? WarehouseTypeValues.warehouse;
       ref.read(_warehouseFormDefaultProvider.notifier).state =
           e?.isDefault ?? false;
-      ref.read(_warehouseFormSavingProvider.notifier).state = false;
     });
   }
 
@@ -550,7 +523,6 @@ class _WarehouseFormSheetState extends ConsumerState<_WarehouseFormSheet> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    ref.read(_warehouseFormSavingProvider.notifier).state = true;
 
     final selectedType = ref.read(_warehouseFormTypeProvider);
     final isDefault = ref.read(_warehouseFormDefaultProvider);
@@ -563,17 +535,12 @@ class _WarehouseFormSheetState extends ConsumerState<_WarehouseFormSheet> {
       Fields.country: _countryCtrl.text.trim(),
     };
 
-    try {
-      await widget.onSaveFull(
-        label: _labelCtrl.text,
-        type: selectedType,
-        addressMap: addressMap,
-        isDefault: isDefault,
-      );
-    } finally {
-      if (mounted)
-        ref.read(_warehouseFormSavingProvider.notifier).state = false;
-    }
+    await widget.onSaveFull(
+      label: _labelCtrl.text,
+      type: selectedType,
+      addressMap: addressMap,
+      isDefault: isDefault,
+    );
   }
 
   @override
@@ -583,7 +550,9 @@ class _WarehouseFormSheetState extends ConsumerState<_WarehouseFormSheet> {
     final bottom = MediaQuery.of(context).viewInsets.bottom;
     final selectedType = ref.watch(_warehouseFormTypeProvider);
     final isDefault = ref.watch(_warehouseFormDefaultProvider);
-    final saving = ref.watch(_warehouseFormSavingProvider);
+    final saving = ref.watch(
+      warehousesViewModelProvider.select((s) => s.isLoading),
+    );
 
     return Padding(
       padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + bottom),

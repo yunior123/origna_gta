@@ -36,7 +36,7 @@ void main() {
     ).thenAnswer((_) async => <String, dynamic>{});
     when(
       mockUserRepo.updatePreferredLanguage(any, any),
-    ).thenAnswer((_) async {});
+    ).thenAnswer((_) async { return null; });
   });
 
   tearDown(() {

@@ -27,8 +27,8 @@ void main() {
     ).thenAnswer((_) => Stream.value([]));
     when(
       mockAdminRepo.flagReview(any, flagged: anyNamed('flagged')),
-    ).thenAnswer((_) async {});
-    when(mockAdminRepo.deleteReview(any)).thenAnswer((_) async {});
+    ).thenAnswer((_) async { return null; });
+    when(mockAdminRepo.deleteReview(any)).thenAnswer((_) async { return null; });
   });
 
   Widget buildWidget() {

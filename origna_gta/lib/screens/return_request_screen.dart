@@ -2,9 +2,9 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/orders/orders_provider.dart';
+import 'package:origna_gta/features/orders/return_request_viewmodel.dart';
 import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/responsive_layout.dart';
@@ -19,12 +19,6 @@ final _returnSelectedItemsProvider = StateProvider.autoDispose<Set<String>>(
 );
 final _returnSelectedReasonProvider = StateProvider.autoDispose<String?>(
   (ref) => null,
-);
-final _returnIsSubmittingProvider = StateProvider.autoDispose<bool>(
-  (ref) => false,
-);
-final _returnSubmittedProvider = StateProvider.autoDispose<bool>(
-  (ref) => false,
 );
 
 /// Return reason options for the buyer.
@@ -60,7 +54,23 @@ class _ReturnRequestScreenState extends ConsumerState<ReturnRequestScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final orderAsync = ref.watch(orderByIdProvider(widget.orderId));
-    final submitted = ref.watch(_returnSubmittedProvider);
+    final vmState = ref.watch(returnRequestViewModelProvider);
+
+    // Listen for error feedback from the ViewModel
+    ref.listen<ReturnRequestState>(returnRequestViewModelProvider, (
+      prev,
+      next,
+    ) {
+      if (next.errorMessage != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(next.errorMessage!),
+            backgroundColor: DesignTokens.error,
+          ),
+        );
+        ref.read(returnRequestViewModelProvider.notifier).clearStatus();
+      }
+    });
 
     return Container(
       decoration: BoxDecoration(
@@ -69,7 +79,7 @@ class _ReturnRequestScreenState extends ConsumerState<ReturnRequestScreen> {
       child: Scaffold(
         appBar: AppBarFactory.simple(title: 'returns.request_return'.tr()),
         backgroundColor: DesignTokens.transparent,
-        body: submitted
+        body: vmState.isSuccess
             ? _buildConfirmation(isDark)
             : orderAsync.when(
                 loading: () => const Center(child: ModernLoadingIndicator()),
@@ -98,7 +108,9 @@ class _ReturnRequestScreenState extends ConsumerState<ReturnRequestScreen> {
   Widget _buildForm(Order order, bool isDark) {
     final selectedItems = ref.watch(_returnSelectedItemsProvider);
     final selectedReason = ref.watch(_returnSelectedReasonProvider);
-    final isSubmitting = ref.watch(_returnIsSubmittingProvider);
+    final isSubmitting = ref.watch(
+      returnRequestViewModelProvider.select((s) => s.isLoading),
+    );
     // Only delivered items are eligible for return
     final eligibleItems = order.items.where((item) {
       return item.status == DeliveryStatusValues.delivered;
@@ -447,42 +459,19 @@ class _ReturnRequestScreenState extends ConsumerState<ReturnRequestScreen> {
   Future<void> _submitReturn() async {
     final selectedItems = ref.read(_returnSelectedItemsProvider);
     final selectedReason = ref.read(_returnSelectedReasonProvider);
-    final isSubmitting = ref.read(_returnIsSubmittingProvider);
+    final isSubmitting = ref.read(returnRequestViewModelProvider).isLoading;
     if (!_canSubmit(selectedItems, selectedReason, isSubmitting)) return;
 
-    if (!mounted) return;
-    ref.read(_returnIsSubmittingProvider.notifier).state = true;
-
-    try {
-      await ref
-          .read(orderRepositoryProvider)
-          .createReturnRequest(
-            orderId: widget.orderId,
-            cartItemIds: selectedItems.toList(),
-            reason: selectedReason!,
-            description: _descriptionController.text.trim().isEmpty
-                ? null
-                : _descriptionController.text.trim(),
-          );
-
-      if (!mounted) return;
-      ref.read(_returnIsSubmittingProvider.notifier).state = false;
-      ref.read(_returnSubmittedProvider.notifier).state = true;
-
-      // Invalidate order + return requests caches
-      ref.invalidate(orderByIdProvider(widget.orderId));
-      ref.invalidate(returnRequestsProvider(widget.orderId));
-    } catch (e) {
-      if (!mounted) return;
-      ref.read(_returnIsSubmittingProvider.notifier).state = false;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppError.getMessage(e)),
-          backgroundColor: DesignTokens.error,
-        ),
-      );
-    }
+    await ref
+        .read(returnRequestViewModelProvider.notifier)
+        .submitReturn(
+          orderId: widget.orderId,
+          cartItemIds: selectedItems.toList(),
+          reason: selectedReason!,
+          description: _descriptionController.text.trim().isEmpty
+              ? null
+              : _descriptionController.text.trim(),
+        );
   }
 
   Widget _buildConfirmation(bool isDark) {

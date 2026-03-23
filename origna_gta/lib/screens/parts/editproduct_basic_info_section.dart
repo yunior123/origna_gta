@@ -184,13 +184,13 @@ extension _EditProductBasicInfo on _EditProductScreenState {
           title: Text('product.low_stock_alert'.tr()),
           subtitle: Text('product.low_stock_alert_subtitle'.tr()),
           secondary: const Icon(Icons.notifications_active_rounded),
-          value: _lowStockAlertEnabled,
+          value: ref.watch(_editProductLowStockAlertProvider),
           activeTrackColor: DesignTokens.primary,
           contentPadding: EdgeInsets.zero,
-          // ignore: invalid_use_of_protected_member
-          onChanged: (v) => setState(() => _lowStockAlertEnabled = v),
+          onChanged: (v) =>
+              ref.read(_editProductLowStockAlertProvider.notifier).state = v,
         ),
-        if (_lowStockAlertEnabled) ...[
+        if (ref.watch(_editProductLowStockAlertProvider)) ...[
           const SizedBox(height: 4),
           TextFormField(
             key: const Key('editproduct_low_stock_threshold_field'),
@@ -233,8 +233,7 @@ extension _EditProductBasicInfo on _EditProductScreenState {
                 ),
               )
               .toList(),
-          // ignore: invalid_use_of_protected_member
-          onChanged: (v) => setState(() => _categoryController.text = v ?? ''),
+          onChanged: (v) => _categoryController.text = v ?? '',
           validator: (v) => v == null ? 'product.select_category'.tr() : null,
         ),
         const SizedBox(height: 24),

@@ -498,7 +498,7 @@ void main() {
     testWidgets('checkEmailVerifiedOrPrompt with unverified user shows dialog', (tester) async {
       final mockAuthRepository = MockAuthRepository();
       when(mockAuthRepository.isEmailVerified()).thenAnswer((_) async => false);
-      when(mockAuthRepository.sendEmailVerification()).thenAnswer((_) async {});
+      when(mockAuthRepository.sendEmailVerification()).thenAnswer((_) async { return null; });
 
       await tester.pumpWidget(TestWrapper(
         overrides: [

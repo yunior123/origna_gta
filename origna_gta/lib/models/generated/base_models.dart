@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // Generated from Pydantic models - Single source of truth
-// ignore_for_file: non_abstract_class_inherits_abstract_member
+// ignore_for_file: non_abstract_class_inherits_abstract_member, unused_element
 
 import 'package:freezed_annotation/freezed_annotation.dart';
 
@@ -28,19 +28,32 @@ abstract class Address with _$Address {
     double? longitude,
   }) = _Address;
 
-  factory Address.fromJson(Map<String, dynamic> json) => _$AddressFromJson(json);
+  factory Address.fromJson(Map<String, dynamic> json) =>
+      _$AddressFromJson(json);
 
   const Address._();
 
   /// Get formatted address with line breaks
   String get formattedAddress {
-    final lines = [street, if (apartment.isNotEmpty) apartment, '$city, $state $postalCode', country];
+    final lines = [
+      street,
+      if (apartment.isNotEmpty) apartment,
+      '$city, $state $postalCode',
+      country,
+    ];
     return lines.join('\n');
   }
 
   /// Get single-line address
   String get fullAddress {
-    final parts = [street, if (apartment.isNotEmpty) apartment, city, state, postalCode, country];
+    final parts = [
+      street,
+      if (apartment.isNotEmpty) apartment,
+      city,
+      state,
+      postalCode,
+      country,
+    ];
     return parts.join(', ');
   }
 }
@@ -56,7 +69,8 @@ abstract class AddressDetails with _$AddressDetails {
     required double longitude,
   }) = _AddressDetails;
 
-  factory AddressDetails.fromJson(Map<String, dynamic> json) => _$AddressDetailsFromJson(json);
+  factory AddressDetails.fromJson(Map<String, dynamic> json) =>
+      _$AddressDetailsFromJson(json);
 }
 
 enum DeliveryStatus {

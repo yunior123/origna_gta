@@ -167,6 +167,7 @@ class _CheckoutContent extends ConsumerWidget {
     );
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final hasPhysicalItems = items.any((item) => !item.isDigital);
+    final subtotalCents = ref.watch(checkoutSubtotalCentsProvider(subtotal));
     final paymentProvider = ref.watch(
       checkoutStateProvider.select((state) => state.paymentProvider),
     );
@@ -227,7 +228,7 @@ class _CheckoutContent extends ConsumerWidget {
                       ),
                       const SizedBox(height: 28),
                       _CouponSection(
-                        subtotalCents: (subtotal * 100).round(),
+                        subtotalCents: subtotalCents,
                         sellerIds: items
                             .map((i) => i.sellerId)
                             .where((id) => id.isNotEmpty)
@@ -315,7 +316,7 @@ class _CheckoutContent extends ConsumerWidget {
       ),
       const SizedBox(height: 28),
       _CouponSection(
-        subtotalCents: (subtotal * 100).round(),
+        subtotalCents: subtotalCents,
         sellerIds: items
             .map((i) => i.sellerId)
             .where((id) => id.isNotEmpty)

@@ -8,10 +8,10 @@ import 'package:origna_gta/models/generated/base_models.dart';
 import 'warehouses_viewmodel.dart' show WarehousesState;
 
 final obWarehousesViewModelProvider =
-    StateNotifierProvider.autoDispose<OrignaBaseWarehousesViewModel,
-        WarehousesState>(
-  (ref) => OrignaBaseWarehousesViewModel(ref),
-);
+    StateNotifierProvider.autoDispose<
+      OrignaBaseWarehousesViewModel,
+      WarehousesState
+    >((ref) => OrignaBaseWarehousesViewModel(ref));
 
 /// OrignaBase warehouses viewmodel.
 class OrignaBaseWarehousesViewModel extends StateNotifier<WarehousesState> {
@@ -33,31 +33,40 @@ class OrignaBaseWarehousesViewModel extends StateNotifier<WarehousesState> {
     final trimmedLabel = label.trim();
     if (trimmedLabel.isEmpty || trimmedLabel.length > 100) {
       state = state.copyWith(
-          isLoading: false,
-          errorMessage: 'Warehouse label must be 1-100 characters');
+        isLoading: false,
+        errorMessage: 'Warehouse label must be 1-100 characters',
+      );
       return;
     }
     if (address.city.trim().isEmpty) {
       state = state.copyWith(
-          isLoading: false,
-          errorMessage: 'City is required for a warehouse address');
+        isLoading: false,
+        errorMessage: 'City is required for a warehouse address',
+      );
       return;
     }
 
-    state =
-        state.copyWith(isLoading: true, errorMessage: null, isSuccess: false);
+    state = state.copyWith(
+      isLoading: true,
+      errorMessage: null,
+      isSuccess: false,
+    );
 
     try {
       final userId = _userId;
       if (userId == null) {
         throw StateError('unauthenticated');
       }
-      await _ob.request('POST', ApiEndpoints.warehousesCreate, body: {
-        'label': trimmedLabel,
-        Fields.type: type,
-        'address': _addressToMap(address),
-        'isDefault': isDefault,
-      });
+      await _ob.request(
+        'POST',
+        ApiEndpoints.warehousesCreate,
+        body: {
+          'label': trimmedLabel,
+          Fields.type: type,
+          'address': _addressToMap(address),
+          'isDefault': isDefault,
+        },
+      );
       state = state.copyWith(isLoading: false, isSuccess: true);
     } catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: _parseError(e));
@@ -72,17 +81,18 @@ class OrignaBaseWarehousesViewModel extends StateNotifier<WarehousesState> {
     bool? isDefault,
   }) async {
     if (state.isLoading) return;
-    state =
-        state.copyWith(isLoading: true, errorMessage: null, isSuccess: false);
+    state = state.copyWith(
+      isLoading: true,
+      errorMessage: null,
+      isSuccess: false,
+    );
 
     try {
       final userId = _userId;
       if (userId == null) {
         throw StateError('unauthenticated');
       }
-      final payload = <String, dynamic>{
-        'warehouseId': warehouseId,
-      };
+      final payload = <String, dynamic>{'warehouseId': warehouseId};
       if (label != null) payload['label'] = label.trim();
       if (type != null) payload[Fields.type] = type;
       if (address != null) payload['address'] = _addressToMap(address);
@@ -96,40 +106,87 @@ class OrignaBaseWarehousesViewModel extends StateNotifier<WarehousesState> {
 
   Future<void> deleteWarehouse(String warehouseId) async {
     if (state.isLoading) return;
-    state =
-        state.copyWith(isLoading: true, errorMessage: null, isSuccess: false);
+    state = state.copyWith(
+      isLoading: true,
+      errorMessage: null,
+      isSuccess: false,
+    );
 
     try {
       final userId = _userId;
       if (userId == null) {
         throw StateError('unauthenticated');
       }
-      await _ob.request('POST', ApiEndpoints.warehousesDelete, body: {
-        'warehouseId': warehouseId,
-      });
+      await _ob.request(
+        'POST',
+        ApiEndpoints.warehousesDelete,
+        body: {'warehouseId': warehouseId},
+      );
       state = state.copyWith(isLoading: false, isSuccess: true);
     } catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: _parseError(e));
     }
   }
 
+  /// Submit a warehouse form (create or update).
+  ///
+  /// If [warehouseId] is null, creates a new warehouse; otherwise updates.
+  /// Accepts raw form field values so screens don't perform data transformation.
+  Future<void> submitWarehouseForm({
+    String? warehouseId,
+    required String label,
+    required String type,
+    required Map<String, dynamic> addressMap,
+    required bool isDefault,
+  }) async {
+    final address = _mapToAddress(addressMap);
+    if (warehouseId == null) {
+      await createWarehouse(
+        label: label,
+        type: type,
+        address: address,
+        isDefault: isDefault,
+      );
+    } else {
+      await updateWarehouse(
+        warehouseId: warehouseId,
+        label: label,
+        type: type,
+        address: address,
+        isDefault: isDefault,
+      );
+    }
+  }
+
+  /// Convert a raw form map to an [Address] object.
+  Address _mapToAddress(Map<String, dynamic> m) => Address(
+    street: m[Fields.street] as String? ?? '',
+    apartment: m[Fields.apartment] as String? ?? '',
+    city: m[Fields.city] as String? ?? '',
+    state: m[Fields.state] as String? ?? '',
+    postalCode: m[Fields.postalCode] as String? ?? '',
+    country: m[Fields.country] as String? ?? '',
+    latitude: m[Fields.latitude] as double?,
+    longitude: m[Fields.longitude] as double?,
+    label: m[Fields.label] as String?,
+  );
+
   void clearStatus() {
     state = state.copyWith(errorMessage: null, isSuccess: false);
   }
 
   Map<String, dynamic> _addressToMap(Address address) => {
-        Fields.street: address.street,
-        if (address.apartment.isNotEmpty) Fields.apartment: address.apartment,
-        Fields.city: address.city,
-        Fields.state: address.state,
-        Fields.postalCode: address.postalCode,
-        Fields.country: address.country,
-        if (address.phoneNumber != null)
-          Fields.phoneNumber: address.phoneNumber,
-        if (address.latitude != null) Fields.latitude: address.latitude,
-        if (address.longitude != null) Fields.longitude: address.longitude,
-        if (address.label != null) Fields.label: address.label,
-      };
+    Fields.street: address.street,
+    if (address.apartment.isNotEmpty) Fields.apartment: address.apartment,
+    Fields.city: address.city,
+    Fields.state: address.state,
+    Fields.postalCode: address.postalCode,
+    Fields.country: address.country,
+    if (address.phoneNumber != null) Fields.phoneNumber: address.phoneNumber,
+    if (address.latitude != null) Fields.latitude: address.latitude,
+    if (address.longitude != null) Fields.longitude: address.longitude,
+    if (address.label != null) Fields.label: address.label,
+  };
 
   String _parseError(Object e) {
     final msg = e.toString();
