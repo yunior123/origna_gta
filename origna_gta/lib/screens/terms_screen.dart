@@ -27,14 +27,20 @@ class _TermsSection {
 IconData _iconForSection(String title) {
   final t = title.toLowerCase();
   if (t.contains('acceptance')) return Icons.handshake_outlined;
-  if (t.contains('account') || t.contains('registration')) return Icons.person_add_outlined;
-  if (t.contains('purchase') || t.contains('payment')) return Icons.payment_outlined;
-  if (t.contains('shipping') || t.contains('delivery')) return Icons.local_shipping_outlined;
-  if (t.contains('return') || t.contains('refund')) return Icons.assignment_return_outlined;
+  if (t.contains('account') || t.contains('registration'))
+    return Icons.person_add_outlined;
+  if (t.contains('purchase') || t.contains('payment'))
+    return Icons.payment_outlined;
+  if (t.contains('shipping') || t.contains('delivery'))
+    return Icons.local_shipping_outlined;
+  if (t.contains('return') || t.contains('refund'))
+    return Icons.assignment_return_outlined;
   if (t.contains(UserRoleValues.seller)) return Icons.storefront_outlined;
   if (t.contains('prohibited')) return Icons.block_outlined;
-  if (t.contains('intellectual') || t.contains('property')) return Icons.copyright_outlined;
-  if (t.contains('liability') || t.contains('limitation')) return Icons.shield_outlined;
+  if (t.contains('intellectual') || t.contains('property'))
+    return Icons.copyright_outlined;
+  if (t.contains('liability') || t.contains('limitation'))
+    return Icons.shield_outlined;
   if (t.contains('privacy')) return Icons.lock_outlined;
   if (t.contains('change')) return Icons.edit_note_outlined;
   if (t.contains('termination')) return Icons.cancel_outlined;
@@ -56,12 +62,14 @@ List<_TermsSection> _parseSections(String raw) {
     final bodyStart = match.end;
     final bodyEnd = i + 1 < matches.length ? matches[i + 1].start : raw.length;
     final body = raw.substring(bodyStart, bodyEnd).trim();
-    sections.add(_TermsSection(
-      number: number,
-      title: title,
-      body: body,
-      icon: _iconForSection(title),
-    ));
+    sections.add(
+      _TermsSection(
+        number: number,
+        title: title,
+        body: body,
+        icon: _iconForSection(title),
+      ),
+    );
   }
 
   return sections;
@@ -141,23 +149,41 @@ class TermsScreen extends ConsumerWidget {
                 color: DesignTokens.error.withValues(alpha: 0.15),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.error_outline, size: 48, color: DesignTokens.error),
+              child: const Icon(
+                Icons.error_outline,
+                size: 48,
+                color: DesignTokens.error,
+              ),
             ),
             const SizedBox(height: 20),
             Text(
               'legal.unable_to_load'.tr(),
-              style: const TextStyle(color: DesignTokens.white, fontSize: 18, fontWeight: FontWeight.w600),
+              style: const TextStyle(
+                color: DesignTokens.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
               'legal.check_connection'.tr(),
-              style: TextStyle(color: DesignTokens.white.withValues(alpha: 0.6), fontSize: 14),
+              style: TextStyle(
+                color: DesignTokens.white.withValues(alpha: 0.6),
+                fontSize: 14,
+              ),
             ),
             const SizedBox(height: 28),
             TextButton.icon(
               onPressed: () => Navigator.pop(context),
-              icon: const Icon(Icons.arrow_back, color: DesignTokens.white, size: 18),
-              label: Text('seller.go_back'.tr(), style: const TextStyle(color: DesignTokens.white)),
+              icon: const Icon(
+                Icons.arrow_back,
+                color: DesignTokens.white,
+                size: 18,
+              ),
+              label: Text(
+                'seller.go_back'.tr(),
+                style: const TextStyle(color: DesignTokens.white),
+              ),
             ),
           ],
         ),
@@ -228,16 +254,13 @@ class _TermsBodyState extends State<_TermsBody> {
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
             sliver: SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, index) {
-                  final section = _sections[index];
-                  return FadeSlideIn(
-                    delay: Duration(milliseconds: 60 * index.clamp(0, 8)),
-                    child: _buildSectionCard(section, isDark),
-                  );
-                },
-                childCount: _sections.length,
-              ),
+              delegate: SliverChildBuilderDelegate((context, index) {
+                final section = _sections[index];
+                return FadeSlideIn(
+                  delay: Duration(milliseconds: 60 * index.clamp(0, 8)),
+                  child: _buildSectionCard(section, isDark),
+                );
+              }, childCount: _sections.length),
             ),
           ),
         ],
@@ -259,7 +282,11 @@ class _TermsBodyState extends State<_TermsBody> {
             color: DesignTokens.white.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(10),
           ),
-          child: const Icon(Icons.arrow_back, color: DesignTokens.white, size: 20),
+          child: const Icon(
+            Icons.arrow_back,
+            color: DesignTokens.white,
+            size: 20,
+          ),
         ),
         onPressed: () => Navigator.pop(context),
       ),
@@ -313,7 +340,10 @@ class _TermsBodyState extends State<_TermsBody> {
                   children: [
                     FadeSlideIn(
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
                           color: DesignTokens.accent.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(20),
@@ -333,7 +363,9 @@ class _TermsBodyState extends State<_TermsBody> {
                             Text(
                               'legal.legal_agreement'.tr(),
                               style: TextStyle(
-                                color: DesignTokens.accent.withValues(alpha: 0.9),
+                                color: DesignTokens.accent.withValues(
+                                  alpha: 0.9,
+                                ),
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
                                 letterSpacing: 0.8,
@@ -404,33 +436,44 @@ class _TermsBodyState extends State<_TermsBody> {
             separatorBuilder: (_, _) => const SizedBox(width: 8),
             itemBuilder: (context, index) {
               final section = _sections[index];
-              return GestureDetector(
-                onTap: () => _scrollToSection(section.number),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? DesignTokens.primary.withValues(alpha: 0.12)
-                        : DesignTokens.primary.withValues(alpha: 0.07),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: DesignTokens.primary.withValues(alpha: 0.15),
+              return Semantics(
+                button: true,
+                label: 'btn-terms-section-${section.number}',
+                child: GestureDetector(
+                  onTap: () => _scrollToSection(section.number),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 8,
                     ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(section.icon, size: 14, color: DesignTokens.primary),
-                      const SizedBox(width: 6),
-                      Text(
-                        '${section.number}',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? DesignTokens.primary.withValues(alpha: 0.12)
+                          : DesignTokens.primary.withValues(alpha: 0.07),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: DesignTokens.primary.withValues(alpha: 0.15),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          section.icon,
+                          size: 14,
                           color: DesignTokens.primary,
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 6),
+                        Text(
+                          '${section.number}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: DesignTokens.primary,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               );
@@ -466,12 +509,16 @@ class _TermsBodyState extends State<_TermsBody> {
             curve: Curves.easeOutCubic,
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              color: isDark ? DesignTokens.darkSurfaceVariant : DesignTokens.white,
+              color: isDark
+                  ? DesignTokens.darkSurfaceVariant
+                  : DesignTokens.white,
               borderRadius: BorderRadius.circular(DesignTokens.radius16),
               border: Border.all(
                 color: isExpanded
                     ? DesignTokens.primary.withValues(alpha: 0.3)
-                    : (isDark ? DesignTokens.darkOutline : DesignTokens.outlineVariant),
+                    : (isDark
+                          ? DesignTokens.darkOutline
+                          : DesignTokens.outlineVariant),
                 width: isExpanded ? 1.5 : 1,
               ),
               boxShadow: isExpanded
@@ -501,8 +548,10 @@ class _TermsBodyState extends State<_TermsBody> {
                         color: isExpanded
                             ? null
                             : (isDark
-                                ? DesignTokens.primary.withValues(alpha: 0.12)
-                                : DesignTokens.primary.withValues(alpha: 0.08)),
+                                  ? DesignTokens.primary.withValues(alpha: 0.12)
+                                  : DesignTokens.primary.withValues(
+                                      alpha: 0.08,
+                                    )),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Center(
@@ -511,7 +560,9 @@ class _TermsBodyState extends State<_TermsBody> {
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w800,
-                            color: isExpanded ? DesignTokens.white : DesignTokens.primary,
+                            color: isExpanded
+                                ? DesignTokens.white
+                                : DesignTokens.primary,
                           ),
                         ),
                       ),
@@ -524,7 +575,9 @@ class _TermsBodyState extends State<_TermsBody> {
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
-                          color: isDark ? DesignTokens.white : DesignTokens.textPrimary,
+                          color: isDark
+                              ? DesignTokens.white
+                              : DesignTokens.textPrimary,
                           letterSpacing: -0.2,
                         ),
                       ),
@@ -622,7 +675,9 @@ class _TermsBodyState extends State<_TermsBody> {
                     style: TextStyle(
                       fontSize: 13.5,
                       height: 1.6,
-                      color: isDark ? DesignTokens.textSecondary : DesignTokens.textPrimary,
+                      color: isDark
+                          ? DesignTokens.textSecondary
+                          : DesignTokens.textPrimary,
                     ),
                   ),
                 ),
@@ -655,7 +710,9 @@ class _TermsBodyState extends State<_TermsBody> {
                     style: TextStyle(
                       fontSize: 13,
                       height: 1.55,
-                      color: isDark ? DesignTokens.textSecondary : DesignTokens.textSecondary,
+                      color: isDark
+                          ? DesignTokens.textSecondary
+                          : DesignTokens.textSecondary,
                     ),
                   ),
                 ),
@@ -672,7 +729,9 @@ class _TermsBodyState extends State<_TermsBody> {
               style: TextStyle(
                 fontSize: 13.5,
                 height: 1.65,
-                color: isDark ? DesignTokens.textSecondary : DesignTokens.textPrimary,
+                color: isDark
+                    ? DesignTokens.textSecondary
+                    : DesignTokens.textPrimary,
               ),
             ),
           ),
@@ -689,14 +748,17 @@ class _TermsBodyState extends State<_TermsBody> {
   String _titleCase(String input) {
     final lower = input.toLowerCase().split(' ');
     final skip = {'and', 'or', 'of', 'to', 'the', 'in', 'for', '&'};
-    return lower.asMap().entries.map((e) {
-      if (e.key == 0 || !skip.contains(e.value)) {
-        return e.value[0].toUpperCase() + e.value.substring(1);
-      }
-      return e.value;
-    }).join(' ');
+    return lower
+        .asMap()
+        .entries
+        .map((e) {
+          if (e.key == 0 || !skip.contains(e.value)) {
+            return e.value[0].toUpperCase() + e.value.substring(1);
+          }
+          return e.value;
+        })
+        .join(' ');
   }
 }
 
 // ─── Flutter Previews ────────────────────────────────────────────────────────
-

@@ -91,6 +91,11 @@ class _FakeQuery extends Fake implements Query {
   }
 
   @override
+  Query offset(int count) {
+    return this;
+  }
+
+  @override
   Future<QuerySnapshot> get() async => _FakeQuerySnapshot(queryDocs);
 }
 
@@ -128,6 +133,11 @@ class _FakeCollectionRef extends Fake implements CollectionRef {
   @override
   Query limit(int limit) {
     queryInstance.limit(limit);
+    return queryInstance;
+  }
+
+  @override
+  Query offset(int count) {
     return queryInstance;
   }
 }
@@ -472,7 +482,7 @@ void main() {
       expect(result[0].answeredBy, 'seller-1');
     });
 
-    test('limits query to 10 results', () async {
+    test('limits query to 20 results', () async {
       final now = DateTime.now();
       final questions = List.generate(
         15,
@@ -497,7 +507,7 @@ void main() {
       await Future.delayed(const Duration(milliseconds: 50));
 
       final query = client.collectionRefInstance!.queryInstance;
-      expect(query.limitValue, 10);
+      expect(query.limitValue, 20);
     });
 
     test('filters by productId', () async {

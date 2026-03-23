@@ -251,14 +251,22 @@ class _WarehousesList extends ConsumerWidget {
           'seller.warehouse_delete_confirm'.tr(namedArgs: {'name': label}),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text('common.cancel'.tr()),
+          Semantics(
+            button: true,
+            label: 'btn-dialog-cancel',
+            child: TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text('common.cancel'.tr()),
+            ),
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: TextButton.styleFrom(foregroundColor: DesignTokens.error),
-            child: Text('common.delete'.tr()),
+          Semantics(
+            button: true,
+            label: 'btn-dialog-confirm-delete',
+            child: TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: TextButton.styleFrom(foregroundColor: DesignTokens.error),
+              child: Text('common.delete'.tr()),
+            ),
           ),
         ],
       ),

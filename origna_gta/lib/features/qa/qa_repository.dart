@@ -10,5 +10,9 @@ final qaRepositoryProvider = Provider<QARepository>((ref) {
 abstract class QARepository {
   Future<void> submitAnswer(String qaId, String answer);
   Future<void> submitQuestion(String productId, String question);
-  Stream<List<QAModel>> watchQA(String productId);
+  Stream<List<QAModel>> watchQA(
+    String productId, {
+    int limit = 20,
+    int offset = 0,
+  });
 }

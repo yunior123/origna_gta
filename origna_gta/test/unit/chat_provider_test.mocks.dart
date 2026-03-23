@@ -48,9 +48,17 @@ class MockChatRepository extends _i1.Mock implements _i2.ChatRepository {
           as _i3.Future<String>);
 
   @override
-  _i3.Stream<List<_i2.ChatMessage>> messagesStream(String? chatId) =>
+  _i3.Stream<List<_i2.ChatMessage>> messagesStream(
+    String? chatId, {
+    int? limit = 100,
+    int? offset = 0,
+  }) =>
       (super.noSuchMethod(
-            Invocation.method(#messagesStream, [chatId]),
+            Invocation.method(
+              #messagesStream,
+              [chatId],
+              {#limit: limit, #offset: offset},
+            ),
             returnValue: _i3.Stream<List<_i2.ChatMessage>>.empty(),
             returnValueForMissingStub:
                 _i3.Stream<List<_i2.ChatMessage>>.empty(),
@@ -58,27 +66,51 @@ class MockChatRepository extends _i1.Mock implements _i2.ChatRepository {
           as _i3.Stream<List<_i2.ChatMessage>>);
 
   @override
-  _i3.Stream<List<_i2.ChatThread>> userChatsStream(String? userId) =>
+  _i3.Stream<List<_i2.ChatThread>> userChatsStream(
+    String? userId, {
+    int? limit = 50,
+    int? offset = 0,
+  }) =>
       (super.noSuchMethod(
-            Invocation.method(#userChatsStream, [userId]),
+            Invocation.method(
+              #userChatsStream,
+              [userId],
+              {#limit: limit, #offset: offset},
+            ),
             returnValue: _i3.Stream<List<_i2.ChatThread>>.empty(),
             returnValueForMissingStub: _i3.Stream<List<_i2.ChatThread>>.empty(),
           )
           as _i3.Stream<List<_i2.ChatThread>>);
 
   @override
-  _i3.Stream<List<_i2.ChatThread>> sellerChatsStream(String? sellerId) =>
+  _i3.Stream<List<_i2.ChatThread>> sellerChatsStream(
+    String? sellerId, {
+    int? limit = 50,
+    int? offset = 0,
+  }) =>
       (super.noSuchMethod(
-            Invocation.method(#sellerChatsStream, [sellerId]),
+            Invocation.method(
+              #sellerChatsStream,
+              [sellerId],
+              {#limit: limit, #offset: offset},
+            ),
             returnValue: _i3.Stream<List<_i2.ChatThread>>.empty(),
             returnValueForMissingStub: _i3.Stream<List<_i2.ChatThread>>.empty(),
           )
           as _i3.Stream<List<_i2.ChatThread>>);
 
   @override
-  _i3.Stream<List<_i2.ChatThread>> allChatsStream(String? userId) =>
+  _i3.Stream<List<_i2.ChatThread>> allChatsStream(
+    String? userId, {
+    int? limit = 50,
+    int? offset = 0,
+  }) =>
       (super.noSuchMethod(
-            Invocation.method(#allChatsStream, [userId]),
+            Invocation.method(
+              #allChatsStream,
+              [userId],
+              {#limit: limit, #offset: offset},
+            ),
             returnValue: _i3.Stream<List<_i2.ChatThread>>.empty(),
             returnValueForMissingStub: _i3.Stream<List<_i2.ChatThread>>.empty(),
           )

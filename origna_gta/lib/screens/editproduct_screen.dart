@@ -659,33 +659,37 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
   }
 
   Widget _buildTappableInfoHint(String shortText, String title, String body) {
-    return GestureDetector(
-      onTap: () => _showInfoSheet(title, body),
-      child: Padding(
-        padding: const EdgeInsets.only(top: 6),
-        child: Row(
-          children: [
-            Icon(
-              Icons.info_outline_rounded,
-              size: 14,
-              color: DesignTokens.info.withValues(alpha: 0.6),
-            ),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(
-                shortText,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: DesignTokens.textSecondary,
+    return Semantics(
+      button: true,
+      label: 'btn-info-hint',
+      child: GestureDetector(
+        onTap: () => _showInfoSheet(title, body),
+        child: Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: Row(
+            children: [
+              Icon(
+                Icons.info_outline_rounded,
+                size: 14,
+                color: DesignTokens.info.withValues(alpha: 0.6),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  shortText,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: DesignTokens.textSecondary,
+                  ),
                 ),
               ),
-            ),
-            Icon(
-              Icons.chevron_right_rounded,
-              size: 14,
-              color: DesignTokens.textDisabled,
-            ),
-          ],
+              Icon(
+                Icons.chevron_right_rounded,
+                size: 14,
+                color: DesignTokens.textDisabled,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -891,18 +895,22 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                     ),
                   ),
                 ),
-                GestureDetector(
-                  onTap: () => Navigator.pop(ctx),
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: DesignTokens.surfaceVariant,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.close_rounded,
-                      size: 16,
-                      color: DesignTokens.textSecondary,
+                Semantics(
+                  button: true,
+                  label: 'btn-close-info-sheet',
+                  child: GestureDetector(
+                    onTap: () => Navigator.pop(ctx),
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: DesignTokens.surfaceVariant,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.close_rounded,
+                        size: 16,
+                        color: DesignTokens.textSecondary,
+                      ),
                     ),
                   ),
                 ),

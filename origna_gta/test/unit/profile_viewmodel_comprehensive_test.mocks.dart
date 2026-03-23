@@ -1081,9 +1081,17 @@ class MockUserRepository extends _i1.Mock implements _i15.UserRepository {
           as _i18.Future<void>);
 
   @override
-  _i18.Stream<List<_i19.Address>> watchAddresses(String? userId) =>
+  _i18.Stream<List<_i19.Address>> watchAddresses(
+    String? userId, {
+    int? limit = 50,
+    int? offset = 0,
+  }) =>
       (super.noSuchMethod(
-            Invocation.method(#watchAddresses, [userId]),
+            Invocation.method(
+              #watchAddresses,
+              [userId],
+              {#limit: limit, #offset: offset},
+            ),
             returnValue: _i18.Stream<List<_i19.Address>>.empty(),
             returnValueForMissingStub: _i18.Stream<List<_i19.Address>>.empty(),
           )

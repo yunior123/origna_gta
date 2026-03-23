@@ -292,33 +292,39 @@ class _CouponSectionState extends ConsumerState<_CouponSection> {
             ),
             const SizedBox(width: 10),
             applied
-                ? TextButton(
-                    onPressed: ref.watch(_couponRemovingProvider)
-                        ? null
-                        : () {
-                            ref.read(_couponRemovingProvider.notifier).state =
-                                true;
-                            _controller.clear();
-                            notifier.removeCoupon();
-                            // Reset after frame to allow state to propagate
-                            WidgetsBinding.instance.addPostFrameCallback((_) {
-                              if (mounted)
-                                ref
-                                        .read(_couponRemovingProvider.notifier)
-                                        .state =
-                                    false;
-                            });
-                          },
-                    child: ref.watch(_couponRemovingProvider)
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Text(
-                            'common.remove'.tr(),
-                            style: TextStyle(color: DesignTokens.error),
-                          ),
+                ? Semantics(
+                    button: true,
+                    label: 'btn-remove-coupon',
+                    child: TextButton(
+                      onPressed: ref.watch(_couponRemovingProvider)
+                          ? null
+                          : () {
+                              ref.read(_couponRemovingProvider.notifier).state =
+                                  true;
+                              _controller.clear();
+                              notifier.removeCoupon();
+                              // Reset after frame to allow state to propagate
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                if (mounted)
+                                  ref
+                                          .read(
+                                            _couponRemovingProvider.notifier,
+                                          )
+                                          .state =
+                                      false;
+                              });
+                            },
+                      child: ref.watch(_couponRemovingProvider)
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Text(
+                              'common.remove'.tr(),
+                              style: TextStyle(color: DesignTokens.error),
+                            ),
+                    ),
                   )
                 : SizedBox(
                     width: 100,

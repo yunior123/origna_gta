@@ -11,9 +11,12 @@ import 'package:origna_gta/models/generated/models.dart';
 
 class FakeProductRepository implements ProductRepository {
   @override
-  Future<String> createProductAtomic(Product product, List<Uint8List> imageBytes,
-          {List<String>? testImageUrls, String? bookSourceUrl}) =>
-      throw UnimplementedError();
+  Future<String> createProductAtomic(
+    Product product,
+    List<Uint8List> imageBytes, {
+    List<String>? testImageUrls,
+    String? bookSourceUrl,
+  }) => throw UnimplementedError();
 
   @override
   Future<void> deleteProduct(String productId) => throw UnimplementedError();
@@ -40,7 +43,9 @@ class FakeProductRepository implements ProductRepository {
   String generateProductId() => 'p1';
 
   @override
-  Future<List<Map<String, dynamic>>> getAutocompleteSuggestions(String query) async => [];
+  Future<List<Map<String, dynamic>>> getAutocompleteSuggestions(
+    String query,
+  ) async => [];
 
   @override
   Future<Product?> getProductBySlug(String slug) async => null;
@@ -52,17 +57,28 @@ class FakeProductRepository implements ProductRepository {
   Future<Map<String, String>?> getUploadUrlInfo(String fileName) async => null;
 
   @override
-  Future<Map<String, String>?> getUploadVideoUrlInfo(String fileName, String contentType) async => null;
+  Future<Map<String, String>?> getUploadVideoUrlInfo(
+    String fileName,
+    String contentType,
+  ) async => null;
 
   @override
-  Future<void> submitRating(String orderId, String productId, int rating,
-          {List<String>? reviewImageUrls, String? reviewText}) =>
-      throw UnimplementedError();
+  Future<void> submitRating(
+    String orderId,
+    String productId,
+    int rating, {
+    List<String>? reviewImageUrls,
+    String? reviewText,
+  }) => throw UnimplementedError();
 
   @override
-  Future<void> submitRatingAtomic(String orderId, String productId, int rating,
-          {List<List<int>>? reviewImages, String? reviewText}) =>
-      throw UnimplementedError();
+  Future<void> submitRatingAtomic(
+    String orderId,
+    String productId,
+    int rating, {
+    List<List<int>>? reviewImages,
+    String? reviewText,
+  }) => throw UnimplementedError();
 
   @override
   Future<void> toggleFavorite(String userId, String productId) =>
@@ -80,11 +96,17 @@ class FakeProductRepository implements ProductRepository {
   Future<String?> uploadProductVideo(videoFile, String sellerId) async => null;
 
   @override
-  Future<List<String>> uploadReviewImages(List<List<int>> images, String userId) =>
-      throw UnimplementedError();
+  Future<List<String>> uploadReviewImages(
+    List<List<int>> images,
+    String userId,
+  ) => throw UnimplementedError();
 
   @override
-  Stream<Set<String>> watchFavorites(String userId) => const Stream.empty();
+  Stream<Set<String>> watchFavorites(
+    String userId, {
+    int limit = 50,
+    int offset = 0,
+  }) => const Stream.empty();
 
   @override
   Stream<int> watchUnansweredQuestionsCount(String sellerId) =>
@@ -120,7 +142,9 @@ void main() {
       );
 
       await tester.pump();
-      await tester.pump(const Duration(seconds: 5)); // Wait for 3s timer in initState
+      await tester.pump(
+        const Duration(seconds: 5),
+      ); // Wait for 3s timer in initState
 
       expect(find.byType(MainScreen), findsOneWidget);
     });

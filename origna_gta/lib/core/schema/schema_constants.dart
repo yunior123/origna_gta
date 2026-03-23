@@ -162,6 +162,10 @@ abstract final class BusinessRules {
       50; // Initial load limit for order lists — cursor pagination planned
   static const favoritesPageSize =
       50; // Max favorites streamed per query — pagination planned
+  static const addressesPageSize =
+      50; // Max addresses per query — prevents unbounded fetch
+  static const returnRequestsPageSize =
+      20; // Max return requests per order query
   static const maxShippingCostCad =
       500; // $500 CAD absolute maximum shipping cost
   static const sellerDisputeRateThreshold =

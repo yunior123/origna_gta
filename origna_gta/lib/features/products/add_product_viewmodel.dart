@@ -2,10 +2,10 @@ import 'package:cross_file/cross_file.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image/image.dart' as img;
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/models/generated/models.dart' as models;
+import 'package:origna_gta/utils/image_compression_utils.dart';
 import 'package:origna_gta/utils/utils.dart';
 
 import 'add_product_state.dart';
@@ -18,22 +18,6 @@ final addProductViewModelProvider =
     ) {
       return AddProductViewModel(ref);
     });
-
-/// Top-level isolate function for image compression — runs in a separate thread.
-Uint8List? _compressImageAddIsolate(Uint8List bytes) {
-  const int maxDimension = 2048;
-  final image = img.decodeImage(bytes);
-  if (image == null) return null;
-  img.Image resized = image;
-  if (image.width > maxDimension || image.height > maxDimension) {
-    resized = img.copyResize(
-      image,
-      width: image.width > image.height ? maxDimension : null,
-      height: image.height > image.width ? maxDimension : null,
-    );
-  }
-  return Uint8List.fromList(img.encodeJpg(resized, quality: 85));
-}
 
 /// Documentation for AddProductViewModel
 class AddProductViewModel extends StateNotifier<AddProductState> {
@@ -684,10 +668,16 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
   }
 
   Future<List<Uint8List>> _compressImages(List<ImageModel> imageModels) async {
-    final results = await Future.wait(
-      imageModels.map((m) => _validateAndCompressImage(m.bytes)),
-    );
-    return results.whereType<Uint8List>().toList();
+    final processed = <Uint8List>[];
+    for (final m in imageModels) {
+      try {
+        final validated = await validateAndCompressImage(m.bytes);
+        if (validated != null) processed.add(validated);
+      } catch (_) {
+        // Skip images that fail validation/compression
+      }
+    }
+    return processed;
   }
 
   /// Auto-generates all variant combinations from variantOptions.
@@ -732,18 +722,5 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     }).toList();
 
     state = state.copyWith(variants: newVariants);
-  }
-
-  Future<Uint8List?> _validateAndCompressImage(Uint8List bytes) async {
-    const int maxImageSize = 10 * 1024 * 1024; // 10MB — matches backend limit
-    if (bytes.length > maxImageSize) {
-      throw Exception('product.image_too_large'.tr());
-    }
-    // Validate image format by attempting decode
-    final decoded = img.decodeImage(bytes);
-    if (decoded == null) {
-      throw Exception('product.image_invalid_format'.tr());
-    }
-    return compute(_compressImageAddIsolate, bytes);
   }
 }

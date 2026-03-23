@@ -48,9 +48,17 @@ class MockNotificationRepository extends _i1.Mock
           as _i3.Future<void>);
 
   @override
-  _i3.Stream<List<Map<String, dynamic>>> watchNotifications(String? uid) =>
+  _i3.Stream<List<Map<String, dynamic>>> watchNotifications(
+    String? uid, {
+    int? limit = 50,
+    int? offset = 0,
+  }) =>
       (super.noSuchMethod(
-            Invocation.method(#watchNotifications, [uid]),
+            Invocation.method(
+              #watchNotifications,
+              [uid],
+              {#limit: limit, #offset: offset},
+            ),
             returnValue: _i3.Stream<List<Map<String, dynamic>>>.empty(),
             returnValueForMissingStub:
                 _i3.Stream<List<Map<String, dynamic>>>.empty(),

@@ -646,15 +646,18 @@ class CartItemScreen extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-            TextField(
-              controller: controller,
-              autofocus: true,
-              maxLength: 200,
-              maxLines: 3,
-              decoration: InputDecoration(
-                hintText: 'cart.item_note_hint'.tr(),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+            Semantics(
+              label: 'input-cart-item-note',
+              child: TextField(
+                controller: controller,
+                autofocus: true,
+                maxLength: 200,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  hintText: 'cart.item_note_hint'.tr(),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
             ),

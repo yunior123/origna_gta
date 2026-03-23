@@ -1,5 +1,6 @@
 import 'package:origna_gta/core/compat/timestamp.dart';
-import 'package:orignabase/orignabase.dart' show OrignaBase, OrignaBaseException;
+import 'package:orignabase/orignabase.dart'
+    show OrignaBase, OrignaBaseException;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -45,27 +46,107 @@ const int _maxKeywords = 30;
 const int _maxWordLength = 20;
 
 final List<ProductCategories> productCategories = [
-  ProductCategories(categoryId: 1, name: "categories.electronics", icon: Icons.devices),
-  ProductCategories(categoryId: 2, name: "categories.computers", icon: Icons.computer),
-  ProductCategories(categoryId: 3, name: "categories.gaming", icon: Icons.sports_esports),
-  ProductCategories(categoryId: 4, name: "categories.home_kitchen", icon: Icons.kitchen),
-  ProductCategories(categoryId: 5, name: "categories.fashion", icon: Icons.shopping_bag),
-  ProductCategories(categoryId: 6, name: "categories.shoes_accessories", icon: Icons.backpack),
-  ProductCategories(categoryId: 7, name: "categories.jewelry_watches", icon: Icons.watch),
-  ProductCategories(categoryId: 8, name: "categories.beauty_personal_care", icon: Icons.spa),
-  ProductCategories(categoryId: 9, name: "categories.health_wellness", icon: Icons.favorite),
-  ProductCategories(categoryId: 10, name: "categories.sports_fitness", icon: Icons.fitness_center),
-  ProductCategories(categoryId: 11, name: "categories.automotive", icon: Icons.directions_car),
-  ProductCategories(categoryId: 12, name: "categories.tools_hardware", icon: Icons.handyman),
-  ProductCategories(categoryId: 13, name: "categories.office_supplies", icon: Icons.folder),
+  ProductCategories(
+    categoryId: 1,
+    name: "categories.electronics",
+    icon: Icons.devices,
+  ),
+  ProductCategories(
+    categoryId: 2,
+    name: "categories.computers",
+    icon: Icons.computer,
+  ),
+  ProductCategories(
+    categoryId: 3,
+    name: "categories.gaming",
+    icon: Icons.sports_esports,
+  ),
+  ProductCategories(
+    categoryId: 4,
+    name: "categories.home_kitchen",
+    icon: Icons.kitchen,
+  ),
+  ProductCategories(
+    categoryId: 5,
+    name: "categories.fashion",
+    icon: Icons.shopping_bag,
+  ),
+  ProductCategories(
+    categoryId: 6,
+    name: "categories.shoes_accessories",
+    icon: Icons.backpack,
+  ),
+  ProductCategories(
+    categoryId: 7,
+    name: "categories.jewelry_watches",
+    icon: Icons.watch,
+  ),
+  ProductCategories(
+    categoryId: 8,
+    name: "categories.beauty_personal_care",
+    icon: Icons.spa,
+  ),
+  ProductCategories(
+    categoryId: 9,
+    name: "categories.health_wellness",
+    icon: Icons.favorite,
+  ),
+  ProductCategories(
+    categoryId: 10,
+    name: "categories.sports_fitness",
+    icon: Icons.fitness_center,
+  ),
+  ProductCategories(
+    categoryId: 11,
+    name: "categories.automotive",
+    icon: Icons.directions_car,
+  ),
+  ProductCategories(
+    categoryId: 12,
+    name: "categories.tools_hardware",
+    icon: Icons.handyman,
+  ),
+  ProductCategories(
+    categoryId: 13,
+    name: "categories.office_supplies",
+    icon: Icons.folder,
+  ),
   ProductCategories(categoryId: 14, name: "categories.books", icon: Icons.book),
-  ProductCategories(categoryId: 15, name: "categories.music_instruments", icon: Icons.music_note),
-  ProductCategories(categoryId: 16, name: "categories.toys_games", icon: Icons.gamepad),
-  ProductCategories(categoryId: 17, name: "categories.baby_kids", icon: Icons.child_care),
-  ProductCategories(categoryId: 18, name: "categories.pet_supplies", icon: Icons.pets),
-  ProductCategories(categoryId: 19, name: "categories.groceries", icon: Icons.local_grocery_store),
-  ProductCategories(categoryId: 20, name: "categories.art_collectibles", icon: Icons.palette),
-  ProductCategories(categoryId: 21, name: "categories.digital_products", icon: Icons.cloud),
+  ProductCategories(
+    categoryId: 15,
+    name: "categories.music_instruments",
+    icon: Icons.music_note,
+  ),
+  ProductCategories(
+    categoryId: 16,
+    name: "categories.toys_games",
+    icon: Icons.gamepad,
+  ),
+  ProductCategories(
+    categoryId: 17,
+    name: "categories.baby_kids",
+    icon: Icons.child_care,
+  ),
+  ProductCategories(
+    categoryId: 18,
+    name: "categories.pet_supplies",
+    icon: Icons.pets,
+  ),
+  ProductCategories(
+    categoryId: 19,
+    name: "categories.groceries",
+    icon: Icons.local_grocery_store,
+  ),
+  ProductCategories(
+    categoryId: 20,
+    name: "categories.art_collectibles",
+    icon: Icons.palette,
+  ),
+  ProductCategories(
+    categoryId: 21,
+    name: "categories.digital_products",
+    icon: Icons.cloud,
+  ),
 ];
 
 // Provincial tax configuration — single source of truth
@@ -90,7 +171,11 @@ Map<String, double> calculateDetailedTaxes(Address? address, double total) {
 
 /// Fallback shipping calculation when coordinates are unavailable.
 /// Uses province-based flat rates.
-double calculateFallbackShipping(List<CartItemDetailModel> items, String sellerProvince, String buyerProvince) {
+double calculateFallbackShipping(
+  List<CartItemDetailModel> items,
+  String sellerProvince,
+  String buyerProvince,
+) {
   final totalItems = items.fold(0, (i, item) => i + item.quantity);
   double baseCost = 26.99;
 
@@ -102,7 +187,8 @@ double calculateFallbackShipping(List<CartItemDetailModel> items, String sellerP
     baseCost = 22.99;
   }
 
-  final additionalItemsCost = (totalItems - 1).clamp(0, 999) * (baseCost * 0.15);
+  final additionalItemsCost =
+      (totalItems - 1).clamp(0, 999) * (baseCost * 0.15);
 
   return baseCost + additionalItemsCost;
 }
@@ -116,7 +202,9 @@ Future<Map<String, double>> calculateShippingCost(
   DeliverySpeed chosenSpeed = DeliverySpeed.standard,
   OrignaBase? ob,
 }) async {
-  if (buyerAddress == null || buyerAddress.latitude == null || buyerAddress.longitude == null) {
+  if (buyerAddress == null ||
+      buyerAddress.latitude == null ||
+      buyerAddress.longitude == null) {
     return {};
   }
 
@@ -142,7 +230,9 @@ Future<Map<String, double>> calculateShippingCost(
       continue;
     }
 
-    final hasLocalRestriction = sellerItems.any((i) => i.isLocalDeliveryOnly || i.isPerishable);
+    final hasLocalRestriction = sellerItems.any(
+      (i) => i.isLocalDeliveryOnly || i.isPerishable,
+    );
     if (hasLocalRestriction && sellerState != buyerState) {
       sellerTotal += 50.0;
     }
@@ -162,10 +252,14 @@ Future<Map<String, double>> calculateShippingCost(
           ApiEndpoints.geocodeRouteMatrix,
           body: {
             'sources': [
-              {'location': [seller.longitude, seller.latitude]},
+              {
+                'location': [seller.longitude, seller.latitude],
+              },
             ],
             'targets': [
-              {'location': [buyerAddress.longitude, buyerAddress.latitude]},
+              {
+                'location': [buyerAddress.longitude, buyerAddress.latitude],
+              },
             ],
           },
         );
@@ -173,8 +267,11 @@ Future<Map<String, double>> calculateShippingCost(
         final sourcesToTargets = response['sources_to_targets'];
         if (sourcesToTargets is List && sourcesToTargets.isNotEmpty) {
           final firstRow = sourcesToTargets.first;
-          final firstCell = firstRow is List && firstRow.isNotEmpty ? firstRow.first : firstRow;
-          final distanceMeters = (firstCell is Map ? firstCell['distance'] as num? : null) ?? 0;
+          final firstCell = firstRow is List && firstRow.isNotEmpty
+              ? firstRow.first
+              : firstRow;
+          final distanceMeters =
+              (firstCell is Map ? firstCell['distance'] as num? : null) ?? 0;
           final distanceKm = distanceMeters / 1000.0;
 
           if (hasLocalRestriction && distanceKm > 100) {
@@ -183,7 +280,11 @@ Future<Map<String, double>> calculateShippingCost(
             continue;
           }
 
-          sellerTotal += _calculateTieredShipping(distanceKm, chargeableItems, chosenSpeed);
+          sellerTotal += _calculateTieredShipping(
+            distanceKm,
+            chargeableItems,
+            chosenSpeed,
+          );
           sellerCosts[sellerId] = sellerTotal;
           continue;
         }
@@ -192,20 +293,31 @@ Future<Map<String, double>> calculateShippingCost(
       }
     }
 
-    sellerTotal += calculateFallbackShipping(chargeableItems, sellerState, buyerState);
+    sellerTotal += calculateFallbackShipping(
+      chargeableItems,
+      sellerState,
+      buyerState,
+    );
     sellerCosts[sellerId] = sellerTotal;
   }
 
   return sellerCosts;
 }
 
-double calculateTieredShipping(double distanceKm, List<CartItemDetailModel> sellerItems, DeliverySpeed speed) {
+double calculateTieredShipping(
+  double distanceKm,
+  List<CartItemDetailModel> sellerItems,
+  DeliverySpeed speed,
+) {
   return _calculateTieredShipping(distanceKm, sellerItems, speed);
 }
 
 /// Check if current user's email is verified. Returns true if verified or in emulator mode.
 /// Shows dialog and returns false if not verified.
-Future<bool> checkEmailVerifiedOrPrompt(BuildContext context, WidgetRef ref) async {
+Future<bool> checkEmailVerifiedOrPrompt(
+  BuildContext context,
+  WidgetRef ref,
+) async {
   final user = ref.read(currentUserProvider);
   if (user == null) return false;
 
@@ -213,7 +325,10 @@ Future<bool> checkEmailVerifiedOrPrompt(BuildContext context, WidgetRef ref) asy
   // Restricted to kDebugMode to ensure it cannot fire in release builds.
   // Logs a warning so behavior divergence is visible during development.
   if (EnvConfig().isEmulator && kDebugMode) {
-    AppLogger.w('BOOT-H1: email verification bypassed in emulator mode', tag: 'auth');
+    AppLogger.w(
+      'BOOT-H1: email verification bypassed in emulator mode',
+      tag: 'auth',
+    );
     return true;
   }
 
@@ -221,7 +336,10 @@ Future<bool> checkEmailVerifiedOrPrompt(BuildContext context, WidgetRef ref) asy
     final verified = await ref.read(authRepositoryProvider).isEmailVerified();
     if (verified) return true;
   } catch (e) {
-    AppLogger.w('checkEmailVerifiedOrPrompt: verification check failed: $e', tag: 'auth');
+    AppLogger.w(
+      'checkEmailVerifiedOrPrompt: verification check failed: $e',
+      tag: 'auth',
+    );
     if (EnvConfig().isEmulator) return true;
   }
 
@@ -247,7 +365,7 @@ DateTime? parseDateTime(dynamic value) {
   if (value is Timestamp) return value.toDate();
   if (value is String) return DateTime.tryParse(value);
   if (value is int) {
-    // Heuristic: if the value is in a range that looks like seconds for 
+    // Heuristic: if the value is in a range that looks like seconds for
     // recent/near-future dates (2010-2100), treat it as seconds.
     // 1262304000 is 2010-01-01. 4102444800 is 2100-01-01.
     if (value >= 1262304000 && value <= 4102444800) {
@@ -306,7 +424,8 @@ List<String> generateSearchKeywords(String name) {
 }
 
 int getCrossAxisCount(BuildContext context) {
-  if (TargetPlatform.android == defaultTargetPlatform || TargetPlatform.iOS == defaultTargetPlatform) {
+  if (TargetPlatform.android == defaultTargetPlatform ||
+      TargetPlatform.iOS == defaultTargetPlatform) {
     return 2;
   }
   final width = MediaQuery.sizeOf(context).width;
@@ -360,7 +479,6 @@ void openTermsOfService(BuildContext context) {
   Navigator.pushNamed(context, AppRoutes.termsOfService);
 }
 
-
 AddressDetails parseAddressSuggestion(Map<String, dynamic> suggestion) {
   final props = suggestion['properties'] ?? {};
 
@@ -373,25 +491,41 @@ AddressDetails parseAddressSuggestion(Map<String, dynamic> suggestion) {
     city: (props['city'] as String?) ?? '',
     state: (props['state_code'] as String?) ?? 'ON',
     postalCode: (props['postcode'] as String?) ?? '',
-    latitude: ((suggestion['geometry']?['coordinates']?[1] as num?) ?? 0).toDouble(),
-    longitude: ((suggestion['geometry']?['coordinates']?[0] as num?) ?? 0).toDouble(),
+    latitude: ((suggestion['geometry']?['coordinates']?[1] as num?) ?? 0)
+        .toDouble(),
+    longitude: ((suggestion['geometry']?['coordinates']?[0] as num?) ?? 0)
+        .toDouble(),
   );
 }
 
 /// Show a dialog prompting the user to verify their email before proceeding.
 /// [onResend] optional callback to resend verification email.
 /// Returns true if user dismissed, false if they tapped resend.
-void showEmailVerificationDialog(BuildContext context, {String? email, VoidCallback? onResend}) {
+void showEmailVerificationDialog(
+  BuildContext context, {
+  String? email,
+  VoidCallback? onResend,
+}) {
   showDialog(
     context: context,
     builder: (ctx) => AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       icon: Container(
         padding: const EdgeInsets.all(16),
-        decoration: const BoxDecoration(color: DesignTokens.warningSubtle, shape: BoxShape.circle),
-        child: const Icon(Icons.mark_email_unread_outlined, color: DesignTokens.warningIcon, size: 36),
+        decoration: const BoxDecoration(
+          color: DesignTokens.warningSubtle,
+          shape: BoxShape.circle,
+        ),
+        child: const Icon(
+          Icons.mark_email_unread_outlined,
+          color: DesignTokens.warningIcon,
+          size: 36,
+        ),
       ),
-      title: Text('email_verification.title'.tr(), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 20)),
+      title: Text(
+        'email_verification.title'.tr(),
+        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 20),
+      ),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -399,16 +533,27 @@ void showEmailVerificationDialog(BuildContext context, {String? email, VoidCallb
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               margin: const EdgeInsets.only(bottom: 12),
-              decoration: BoxDecoration(color: DesignTokens.primary.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(16)),
+              decoration: BoxDecoration(
+                color: DesignTokens.primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(16),
+              ),
               child: Text(
                 email,
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: DesignTokens.primary),
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: DesignTokens.primary,
+                ),
               ),
             ),
           Text(
             'email_verification.instruction_title'.tr(),
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 14, color: DesignTokens.textSecondary, height: 1.5),
+            style: TextStyle(
+              fontSize: 14,
+              color: DesignTokens.textSecondary,
+              height: 1.5,
+            ),
           ),
           const SizedBox(height: 16),
           Align(
@@ -416,46 +561,89 @@ void showEmailVerificationDialog(BuildContext context, {String? email, VoidCallb
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('  1. ${'email_verification.step1'.tr()}', style: TextStyle(fontSize: 13, color: DesignTokens.textPrimary)),
+                Text(
+                  '  1. ${'email_verification.step1'.tr()}',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: DesignTokens.textPrimary,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text('  2. ${'email_verification.step2'.tr()}', style: TextStyle(fontSize: 13, color: DesignTokens.textPrimary)),
+                Text(
+                  '  2. ${'email_verification.step2'.tr()}',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: DesignTokens.textPrimary,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text('  3. ${'email_verification.step3'.tr()}', style: TextStyle(fontSize: 13, color: DesignTokens.textPrimary)),
+                Text(
+                  '  3. ${'email_verification.step3'.tr()}',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: DesignTokens.textPrimary,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text('  4. ${'email_verification.step4'.tr()}', style: TextStyle(fontSize: 13, color: DesignTokens.textPrimary)),
+                Text(
+                  '  4. ${'email_verification.step4'.tr()}',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: DesignTokens.textPrimary,
+                  ),
+                ),
               ],
             ),
           ),
           if (onResend != null) ...[
             const SizedBox(height: 16),
-            Text("email_verification.did_not_receive".tr(), style: TextStyle(fontSize: 13, color: DesignTokens.textSecondary)),
+            Text(
+              "email_verification.did_not_receive".tr(),
+              style: TextStyle(fontSize: 13, color: DesignTokens.textSecondary),
+            ),
           ],
         ],
       ),
       actionsAlignment: MainAxisAlignment.center,
       actions: [
         if (onResend != null)
-          TextButton.icon(
-            onPressed: () {
-              onResend();
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('email_verification.sent_success'.tr()), backgroundColor: DesignTokens.primary, behavior: SnackBarBehavior.floating),
-              );
-            },
-            icon: const Icon(Icons.send, size: 16),
-            label: Text('email_verification.resend_button'.tr()),
-            style: TextButton.styleFrom(foregroundColor: DesignTokens.primary),
+          Semantics(
+            button: true,
+            label: 'btn-dialog-resend-email',
+            child: TextButton.icon(
+              onPressed: () {
+                onResend();
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('email_verification.sent_success'.tr()),
+                    backgroundColor: DesignTokens.primary,
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+              icon: const Icon(Icons.send, size: 16),
+              label: Text('email_verification.resend_button'.tr()),
+              style: TextButton.styleFrom(
+                foregroundColor: DesignTokens.primary,
+              ),
+            ),
           ),
-        ElevatedButton(
-          onPressed: () => Navigator.pop(ctx),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: DesignTokens.primary,
-            foregroundColor: DesignTokens.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+        Semantics(
+          button: true,
+          label: 'btn-dialog-got-it',
+          child: ElevatedButton(
+            onPressed: () => Navigator.pop(ctx),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: DesignTokens.primary,
+              foregroundColor: DesignTokens.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+            ),
+            child: Text('common.got_it'.tr()),
           ),
-          child: Text('common.got_it'.tr()),
         ),
       ],
     ),
@@ -466,7 +654,10 @@ void showEmailVerificationDialog(BuildContext context, {String? email, VoidCallb
 ///
 /// [text] is a translation key for the dialog body (defaults to cart sign-in prompt).
 /// Tapping "Sign in" navigates to the login screen; tapping "Cancel" dismisses.
-void showLoginPrompt(BuildContext context, {String text = 'auth.sign_in_cart_required'}) {
+void showLoginPrompt(
+  BuildContext context, {
+  String text = 'auth.sign_in_cart_required',
+}) {
   // Capture the ROOT navigator from the CALLER's context before showing dialog.
   // rootNavigator: true is required in Flutter Web to update the browser URL.
   // Without it, a nested navigator (e.g., inside a tab) handles the push
@@ -478,15 +669,30 @@ void showLoginPrompt(BuildContext context, {String text = 'auth.sign_in_cart_req
       title: Text('auth.sign_in_required'.tr()),
       content: Text(text.tr()),
       actions: [
-        TextButton(key: const Key('login_dialog_cancel_button'), onPressed: () => Navigator.pop(dialogContext), child: Text('common.cancel'.tr())),
-        ElevatedButton(
-          key: const Key('login_dialog_sign_in_button'),
-          onPressed: () {
-            Navigator.pop(dialogContext);
-            navigator.pushNamed(AppRoutes.login);
-          },
-          style: ElevatedButton.styleFrom(backgroundColor: DesignTokens.primary, foregroundColor: DesignTokens.white),
-          child: Text('auth.sign_in'.tr()),
+        Semantics(
+          button: true,
+          label: 'btn-dialog-cancel',
+          child: TextButton(
+            key: const Key('login_dialog_cancel_button'),
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text('common.cancel'.tr()),
+          ),
+        ),
+        Semantics(
+          button: true,
+          label: 'btn-dialog-sign-in',
+          child: ElevatedButton(
+            key: const Key('login_dialog_sign_in_button'),
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              navigator.pushNamed(AppRoutes.login);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: DesignTokens.primary,
+              foregroundColor: DesignTokens.white,
+            ),
+            child: Text('auth.sign_in'.tr()),
+          ),
         ),
       ],
     ),
@@ -494,7 +700,10 @@ void showLoginPrompt(BuildContext context, {String text = 'auth.sign_in_cart_req
 }
 
 /// Validates a video file based on size and duration business rules.
-VideoValidationError validateVideoFile({required int sizeInBytes, required int durationInSeconds}) {
+VideoValidationError validateVideoFile({
+  required int sizeInBytes,
+  required int durationInSeconds,
+}) {
   if (sizeInBytes > BusinessRules.maxVideoBytes) {
     return VideoValidationError.tooLarge;
   }
@@ -543,7 +752,11 @@ bool _areSameRegion(String p1, String p2) {
   return false;
 }
 
-double _calculateTieredShipping(double distanceKm, List<CartItemDetailModel> sellerItems, DeliverySpeed speed) {
+double _calculateTieredShipping(
+  double distanceKm,
+  List<CartItemDetailModel> sellerItems,
+  DeliverySpeed speed,
+) {
   double baseCost = 26.99;
 
   if (distanceKm <= 15) {
@@ -578,7 +791,10 @@ double _calculateTieredShipping(double distanceKm, List<CartItemDetailModel> sel
     }
   }
 
-  final subtotal = baseCost + weightSurcharge + ((totalItems - 1).clamp(0, 999) * (baseCost * 0.15));
+  final subtotal =
+      baseCost +
+      weightSurcharge +
+      ((totalItems - 1).clamp(0, 999) * (baseCost * 0.15));
 
   double multiplier = 1.0;
   if (speed == DeliverySpeed.express) {
@@ -606,7 +822,10 @@ double _calculateTieredShipping(double distanceKm, List<CartItemDetailModel> sel
   return subtotal * multiplier;
 }
 
-_FixedPriceResult _hasFixedPriceForSpeed(List<CartItemDetailModel> items, DeliverySpeed speed) {
+_FixedPriceResult _hasFixedPriceForSpeed(
+  List<CartItemDetailModel> items,
+  DeliverySpeed speed,
+) {
   double total = 0;
   for (final item in items) {
     final matches = item.deliveryOptions.where((o) => o.type == speed.value);
@@ -627,7 +846,6 @@ _FixedPriceResult _hasFixedPriceForSpeed(List<CartItemDetailModel> items, Delive
 
   return _FixedPriceResult(isEnabled: true, total: total);
 }
-
 
 /// Centralized error handler - logs to console and Sentry
 /// Use this for all caught errors to ensure visibility
@@ -654,12 +872,14 @@ class AppError {
     if (error is OrignaBaseException) {
       final msg = error.message;
       // Filter out leaked backend errors
-      if (msg.contains('FailedPrecondition') || msg.contains('The query requires an index')) {
+      if (msg.contains('FailedPrecondition') ||
+          msg.contains('The query requires an index')) {
         rawMsg = 'errors.service_unavailable'.tr();
       } else {
         rawMsg = msg.isNotEmpty ? msg : actualFallback;
       }
-    } else if (error is OrignaBaseAuthException || error is OrignaBaseException) {
+    } else if (error is OrignaBaseAuthException ||
+        error is OrignaBaseException) {
       rawMsg = 'errors.service_unavailable'.tr();
     } else {
       // NEVER expose raw e.toString() — it can contain stack traces,
@@ -683,7 +903,12 @@ class AppError {
   /// Log error with optional user message
   /// - Logs to debugPrint in development
   /// - Sends to Sentry in production
-  static void log(dynamic error, {StackTrace? stackTrace, String? context, Map<String, dynamic>? extras}) {
+  static void log(
+    dynamic error, {
+    StackTrace? stackTrace,
+    String? context,
+    Map<String, dynamic>? extras,
+  }) {
     final contextPrefix = context != null ? '[$context] ' : '';
     AppLogger.e('$contextPrefix$error', error: error, stackTrace: stackTrace);
 
@@ -737,11 +962,21 @@ class AppError {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(mainText, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                  Text(
+                    mainText,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                   const SizedBox(height: 2),
                   Text(
                     '$displayCode · support@orignagta.ca',
-                    style: TextStyle(fontSize: 11, fontFamily: 'monospace', color: DesignTokens.white.withValues(alpha: 0.7)),
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontFamily: 'monospace',
+                      color: DesignTokens.white.withValues(alpha: 0.7),
+                    ),
                   ),
                 ],
               )
@@ -765,17 +1000,19 @@ class AppError {
     }
     if (error is OrignaBaseAuthException) {
       return switch (error.code) {
-        'email-already-in-use'                             => ErrorCodes.authEmailInUse,
-        'wrong-password'                                   => ErrorCodes.authWrongPassword,
-        'user-not-found'                                   => ErrorCodes.authUserNotFound,
-        'weak-password'                                    => ErrorCodes.authWeakPassword,
-        'too-many-requests'                                => ErrorCodes.authTooManyRequests,
-        'session-cookie-expired' || 'user-token-expired'   => ErrorCodes.authSessionExpired,
-        'invalid-credential' || 'invalid-email'            => ErrorCodes.authInvalidCredential,
-        'user-disabled'                                    => ErrorCodes.authAccountDisabled,
-        'mfa-required'                                     => ErrorCodes.authMfaRequired,
-        'network-request-failed'                           => ErrorCodes.sysNetworkError,
-        _                                                  => ErrorCodes.sysUnknown,
+        'email-already-in-use' => ErrorCodes.authEmailInUse,
+        'wrong-password' => ErrorCodes.authWrongPassword,
+        'user-not-found' => ErrorCodes.authUserNotFound,
+        'weak-password' => ErrorCodes.authWeakPassword,
+        'too-many-requests' => ErrorCodes.authTooManyRequests,
+        'session-cookie-expired' ||
+        'user-token-expired' => ErrorCodes.authSessionExpired,
+        'invalid-credential' ||
+        'invalid-email' => ErrorCodes.authInvalidCredential,
+        'user-disabled' => ErrorCodes.authAccountDisabled,
+        'mfa-required' => ErrorCodes.authMfaRequired,
+        'network-request-failed' => ErrorCodes.sysNetworkError,
+        _ => ErrorCodes.sysUnknown,
       };
     }
     // CircuitBreakerOpenException — service temporarily degraded

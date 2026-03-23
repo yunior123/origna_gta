@@ -286,9 +286,17 @@ class MockOrderRepository extends _i1.Mock implements _i16.OrderRepository {
           as _i17.Future<Map<String, dynamic>>);
 
   @override
-  _i17.Future<List<_i18.ReturnRequest>> fetchReturnRequests(String? orderId) =>
+  _i17.Future<List<_i18.ReturnRequest>> fetchReturnRequests(
+    String? orderId, {
+    int? limit = 50,
+    int? offset = 0,
+  }) =>
       (super.noSuchMethod(
-            Invocation.method(#fetchReturnRequests, [orderId]),
+            Invocation.method(
+              #fetchReturnRequests,
+              [orderId],
+              {#limit: limit, #offset: offset},
+            ),
             returnValue: _i17.Future<List<_i18.ReturnRequest>>.value(
               <_i18.ReturnRequest>[],
             ),
@@ -421,9 +429,17 @@ class MockUserRepository extends _i1.Mock implements _i2.UserRepository {
           as _i17.Future<void>);
 
   @override
-  _i17.Stream<List<_i19.Address>> watchAddresses(String? userId) =>
+  _i17.Stream<List<_i19.Address>> watchAddresses(
+    String? userId, {
+    int? limit = 50,
+    int? offset = 0,
+  }) =>
       (super.noSuchMethod(
-            Invocation.method(#watchAddresses, [userId]),
+            Invocation.method(
+              #watchAddresses,
+              [userId],
+              {#limit: limit, #offset: offset},
+            ),
             returnValue: _i17.Stream<List<_i19.Address>>.empty(),
             returnValueForMissingStub: _i17.Stream<List<_i19.Address>>.empty(),
           )

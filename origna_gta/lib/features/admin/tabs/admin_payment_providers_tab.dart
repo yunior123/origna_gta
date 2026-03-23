@@ -13,10 +13,12 @@ class AdminPaymentProvidersTab extends ConsumerStatefulWidget {
   const AdminPaymentProvidersTab({super.key});
 
   @override
-  ConsumerState<AdminPaymentProvidersTab> createState() => _AdminPaymentProvidersTabState();
+  ConsumerState<AdminPaymentProvidersTab> createState() =>
+      _AdminPaymentProvidersTabState();
 }
 
-class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProvidersTab> {
+class _AdminPaymentProvidersTabState
+    extends ConsumerState<AdminPaymentProvidersTab> {
   final TextEditingController _reasonController = TextEditingController();
 
   @override
@@ -33,14 +35,25 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
             children: [
               Container(
                 padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(color: DesignTokens.error.withValues(alpha: 0.1), shape: BoxShape.circle),
-                child: Icon(Icons.error_outline_rounded, size: 36, color: DesignTokens.error),
+                decoration: BoxDecoration(
+                  color: DesignTokens.error.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.error_outline_rounded,
+                  size: 36,
+                  color: DesignTokens.error,
+                ),
               ),
               const SizedBox(height: 16),
-              Text('admin.payments.error_loading'.tr(), style: TextStyle(color: DesignTokens.error)),
+              Text(
+                'admin.payments.error_loading'.tr(),
+                style: TextStyle(color: DesignTokens.error),
+              ),
               const SizedBox(height: 16),
               ElevatedButton.icon(
-                onPressed: () => ref.invalidate(adminPaymentProvidersDataProvider),
+                onPressed: () =>
+                    ref.invalidate(adminPaymentProvidersDataProvider),
                 icon: const Icon(Icons.refresh),
                 label: Text('common.retry'.tr()),
               ),
@@ -55,7 +68,9 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
             children: [
               // Header card
               Card(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius16)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(DesignTokens.radius16),
+                ),
                 child: Padding(
                   padding: const EdgeInsets.all(20),
                   child: Column(
@@ -67,16 +82,28 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
                               gradient: DesignTokens.primaryGradient,
-                              borderRadius: BorderRadius.circular(DesignTokens.radius12),
+                              borderRadius: BorderRadius.circular(
+                                DesignTokens.radius12,
+                              ),
                             ),
-                            child: const Icon(Icons.payment_rounded, color: DesignTokens.white, size: 22),
+                            child: const Icon(
+                              Icons.payment_rounded,
+                              color: DesignTokens.white,
+                              size: 22,
+                            ),
                           ),
                           const SizedBox(width: 14),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('admin.payments.title'.tr(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                                Text(
+                                  'admin.payments.title'.tr(),
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
                                 const SizedBox(height: 2),
                               ],
                             ),
@@ -86,19 +113,30 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
                       const SizedBox(height: 14),
                       Text(
                         'admin.payments.description'.tr(),
-                        style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13),
+                        style: TextStyle(
+                          color: DesignTokens.textSecondary,
+                          fontSize: 13,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           color: DesignTokens.warning.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                          border: Border.all(color: DesignTokens.warning.withValues(alpha: 0.2)),
+                          borderRadius: BorderRadius.circular(
+                            DesignTokens.radius12,
+                          ),
+                          border: Border.all(
+                            color: DesignTokens.warning.withValues(alpha: 0.2),
+                          ),
                         ),
                         child: Row(
                           children: [
-                            Icon(Icons.warning_amber_rounded, color: DesignTokens.warning, size: 20),
+                            Icon(
+                              Icons.warning_amber_rounded,
+                              color: DesignTokens.warning,
+                              size: 20,
+                            ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
@@ -134,7 +172,9 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
 
               // Enabled providers summary
               Card(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius16)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(DesignTokens.radius16),
+                ),
                 color: DesignTokens.success.withValues(alpha: 0.06),
                 child: Padding(
                   padding: const EdgeInsets.all(16),
@@ -146,16 +186,34 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
                           color: DesignTokens.success.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: Icon(Icons.check_circle_rounded, color: DesignTokens.success, size: 24),
+                        child: Icon(
+                          Icons.check_circle_rounded,
+                          color: DesignTokens.success,
+                          size: 24,
+                        ),
                       ),
                       const SizedBox(width: 16),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('admin.payments.enabled_providers'.tr(), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: DesignTokens.success)),
+                            Text(
+                              'admin.payments.enabled_providers'.tr(),
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: DesignTokens.success,
+                              ),
+                            ),
                             const SizedBox(height: 4),
-                            Text(_getEnabledProvidersList(providersData), style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: DesignTokens.success)),
+                            Text(
+                              _getEnabledProvidersList(providersData),
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: DesignTokens.success,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -184,14 +242,19 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
     required String description,
     required List<String> features,
   }) {
-    final providers = providersData[ApiKeys.providers] as Map<String, dynamic>? ?? {};
+    final providers =
+        providersData[ApiKeys.providers] as Map<String, dynamic>? ?? {};
     final providerData = providers[provider] as Map<String, dynamic>? ?? {};
     final isEnabled = providerData[ApiKeys.enabled] as bool? ?? false;
     final isConfigured = providerData[ApiKeys.configured] as bool? ?? false;
-    final missingKeys = (providerData[ApiKeys.missingKeys] as List<dynamic>?)?.cast<String>() ?? [];
+    final missingKeys =
+        (providerData[ApiKeys.missingKeys] as List<dynamic>?)?.cast<String>() ??
+        [];
 
     return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius16)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(DesignTokens.radius16),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -202,10 +265,18 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: isEnabled ? DesignTokens.primary.withValues(alpha: 0.1) : DesignTokens.surface,
+                    color: isEnabled
+                        ? DesignTokens.primary.withValues(alpha: 0.1)
+                        : DesignTokens.surface,
                     borderRadius: BorderRadius.circular(DesignTokens.radius12),
                   ),
-                  child: Icon(icon, size: 28, color: isEnabled ? DesignTokens.primary : DesignTokens.textSecondary),
+                  child: Icon(
+                    icon,
+                    size: 28,
+                    color: isEnabled
+                        ? DesignTokens.primary
+                        : DesignTokens.textSecondary,
+                  ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -228,14 +299,23 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
                           const SizedBox(width: 8),
                           if (!isConfigured)
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
                               decoration: BoxDecoration(
-                                color: DesignTokens.warning.withValues(alpha: 0.15),
+                                color: DesignTokens.warning.withValues(
+                                  alpha: 0.15,
+                                ),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(
                                 'admin.payments.not_configured'.tr(),
-                                style: const TextStyle(fontSize: 10, color: DesignTokens.warning, fontWeight: FontWeight.w600),
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  color: DesignTokens.warning,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
                         ],
@@ -254,7 +334,8 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
                 Switch(
                   value: isEnabled,
                   onChanged: isConfigured || isEnabled
-                      ? (value) => _toggleProvider(provider, name, value, isConfigured)
+                      ? (value) =>
+                            _toggleProvider(provider, name, value, isConfigured)
                       : null,
                   activeTrackColor: DesignTokens.primary,
                 ),
@@ -269,18 +350,31 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
                 decoration: BoxDecoration(
                   color: DesignTokens.warning.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: DesignTokens.warning.withValues(alpha: 0.3)),
+                  border: Border.all(
+                    color: DesignTokens.warning.withValues(alpha: 0.3),
+                  ),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.warning_amber_rounded, color: DesignTokens.warning, size: 20),
+                    Icon(
+                      Icons.warning_amber_rounded,
+                      color: DesignTokens.warning,
+                      size: 20,
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         missingKeys.isNotEmpty
-                            ? 'admin.payments.missing_keys'.tr(namedArgs: {'keys': missingKeys.join(", ")})
-                            : 'admin.payments.not_configured_desc'.tr(namedArgs: {'name': name}),
-                        style: TextStyle(fontSize: 12, color: DesignTokens.warning),
+                            ? 'admin.payments.missing_keys'.tr(
+                                namedArgs: {'keys': missingKeys.join(", ")},
+                              )
+                            : 'admin.payments.not_configured_desc'.tr(
+                                namedArgs: {'name': name},
+                              ),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: DesignTokens.warning,
+                        ),
                       ),
                     ),
                   ],
@@ -299,9 +393,16 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
                     (feature) => Chip(
                       label: Text(
                         feature,
-                        style: TextStyle(fontSize: 12, color: isEnabled ? DesignTokens.primary : DesignTokens.textSecondary),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isEnabled
+                              ? DesignTokens.primary
+                              : DesignTokens.textSecondary,
+                        ),
                       ),
-                      backgroundColor: isEnabled ? DesignTokens.primary.withValues(alpha: 0.08) : DesignTokens.surface,
+                      backgroundColor: isEnabled
+                          ? DesignTokens.primary.withValues(alpha: 0.08)
+                          : DesignTokens.surface,
                       side: BorderSide.none,
                       padding: const EdgeInsets.symmetric(horizontal: 4),
                     ),
@@ -318,10 +419,14 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  isEnabled ? 'admin.payments.accepting'.tr() : 'admin.payments.not_accepting'.tr(),
+                  isEnabled
+                      ? 'admin.payments.accepting'.tr()
+                      : 'admin.payments.not_accepting'.tr(),
                   style: TextStyle(
                     fontSize: 13,
-                    color: isEnabled ? DesignTokens.success : DesignTokens.error,
+                    color: isEnabled
+                        ? DesignTokens.success
+                        : DesignTokens.error,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -334,14 +439,20 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
   }
 
   String _getEnabledProvidersList(Map<String, dynamic> providersData) {
-    final enabledProviders = providersData[ApiKeys.enabledProviders] as List<dynamic>? ?? [];
+    final enabledProviders =
+        providersData[ApiKeys.enabledProviders] as List<dynamic>? ?? [];
     if (enabledProviders.isEmpty) {
       return 'common.none'.tr();
     }
     return enabledProviders.map((p) => p.toString().toUpperCase()).join(', ');
   }
 
-  Future<void> _toggleProvider(String provider, String name, bool enable, bool isConfigured) async {
+  Future<void> _toggleProvider(
+    String provider,
+    String name,
+    bool enable,
+    bool isConfigured,
+  ) async {
     // If trying to enable but not configured, show info dialog
     if (enable && !isConfigured) {
       if (!mounted) return;
@@ -352,7 +463,11 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
             children: [
               Icon(Icons.warning_amber_rounded, color: DesignTokens.warning),
               const SizedBox(width: 12),
-              Text('admin.payments.not_configured_title'.tr(namedArgs: {'name': name})),
+              Text(
+                'admin.payments.not_configured_title'.tr(
+                  namedArgs: {'name': name},
+                ),
+              ),
             ],
           ),
           content: Column(
@@ -360,7 +475,9 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'admin.payments.not_configured_dialog_desc'.tr(namedArgs: {'name': name}),
+                'admin.payments.not_configured_dialog_desc'.tr(
+                  namedArgs: {'name': name},
+                ),
                 style: TextStyle(color: DesignTokens.textPrimary),
               ),
               const SizedBox(height: 16),
@@ -374,18 +491,25 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
                 '${'admin.payments.step_2'.tr(namedArgs: {'name': name})}\n'
                 '${'admin.payments.step_3'.tr()}\n'
                 '${'admin.payments.step_4'.tr()}',
-                style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13),
+                style: TextStyle(
+                  color: DesignTokens.textSecondary,
+                  fontSize: 13,
+                ),
               ),
             ],
           ),
           actions: [
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: DesignTokens.primary,
-                foregroundColor: DesignTokens.white,
+            Semantics(
+              button: true,
+              label: 'btn-dialog-got-it',
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: DesignTokens.primary,
+                  foregroundColor: DesignTokens.white,
+                ),
+                child: Text('common.got_it'.tr()),
               ),
-              child: Text('common.got_it'.tr()),
             ),
           ],
         ),
@@ -397,7 +521,11 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
     final reason = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(enable ? 'admin.payments.enable_title'.tr(namedArgs: {'name': name}) : 'admin.payments.disable_title'.tr(namedArgs: {'name': name})),
+        title: Text(
+          enable
+              ? 'admin.payments.enable_title'.tr(namedArgs: {'name': name})
+              : 'admin.payments.disable_title'.tr(namedArgs: {'name': name}),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -409,36 +537,53 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
               style: TextStyle(color: DesignTokens.textPrimary),
             ),
             const SizedBox(height: 16),
-            TextField(
-              controller: _reasonController,
-              decoration: InputDecoration(
-                labelText: 'admin.payments.reason_label'.tr(),
-                hintText: 'admin.payments.reason_hint'.tr(),
-                border: const OutlineInputBorder(),
+            Semantics(
+              label: 'input-payment-provider-reason',
+              child: TextField(
+                controller: _reasonController,
+                decoration: InputDecoration(
+                  labelText: 'admin.payments.reason_label'.tr(),
+                  hintText: 'admin.payments.reason_hint'.tr(),
+                  border: const OutlineInputBorder(),
+                ),
+                maxLines: 2,
               ),
-              maxLines: 2,
             ),
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: () {
-              _reasonController.clear();
-              Navigator.pop(context);
-            },
-            child: Text('common.cancel'.tr()),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final reason = _reasonController.text;
-              _reasonController.clear();
-              Navigator.pop(context, reason);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: enable ? DesignTokens.primary : DesignTokens.error,
-              foregroundColor: DesignTokens.white,
+          Semantics(
+            button: true,
+            label: 'btn-dialog-cancel',
+            child: TextButton(
+              onPressed: () {
+                _reasonController.clear();
+                Navigator.pop(context);
+              },
+              child: Text('common.cancel'.tr()),
             ),
-            child: Text(enable ? 'admin.payments.enable_action'.tr() : 'admin.payments.disable_action'.tr()),
+          ),
+          Semantics(
+            button: true,
+            label: 'btn-dialog-confirm-payment-toggle',
+            child: ElevatedButton(
+              onPressed: () {
+                final reason = _reasonController.text;
+                _reasonController.clear();
+                Navigator.pop(context, reason);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: enable
+                    ? DesignTokens.primary
+                    : DesignTokens.error,
+                foregroundColor: DesignTokens.white,
+              ),
+              child: Text(
+                enable
+                    ? 'admin.payments.enable_action'.tr()
+                    : 'admin.payments.disable_action'.tr(),
+              ),
+            ),
           ),
         ],
       ),
@@ -469,7 +614,13 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(enable ? 'admin.payments.success_enabled'.tr(namedArgs: {'name': name}) : 'admin.payments.success_disabled'.tr(namedArgs: {'name': name})),
+          content: Text(
+            enable
+                ? 'admin.payments.success_enabled'.tr(namedArgs: {'name': name})
+                : 'admin.payments.success_disabled'.tr(
+                    namedArgs: {'name': name},
+                  ),
+          ),
           backgroundColor: DesignTokens.success,
         ),
       );
@@ -478,11 +629,18 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
       Navigator.pop(context); // Close loading dialog
 
       // Extract meaningful error message
-      String errorMessage = AppError.getMessage(e, 'admin.payments.error_failed_update'.tr(namedArgs: {'name': name}));
+      String errorMessage = AppError.getMessage(
+        e,
+        'admin.payments.error_failed_update'.tr(namedArgs: {'name': name}),
+      );
       if (errorMessage.contains('not configured')) {
-        errorMessage = 'admin.payments.error_not_configured'.tr(namedArgs: {'name': name});
+        errorMessage = 'admin.payments.error_not_configured'.tr(
+          namedArgs: {'name': name},
+        );
       } else if (errorMessage.contains('Missing API keys')) {
-        errorMessage = 'admin.payments.error_keys_missing'.tr(namedArgs: {'name': name});
+        errorMessage = 'admin.payments.error_keys_missing'.tr(
+          namedArgs: {'name': name},
+        );
       } else if (errorMessage.contains('Cannot disable all')) {
         errorMessage = 'admin.payments.error_cannot_disable_all'.tr();
       }

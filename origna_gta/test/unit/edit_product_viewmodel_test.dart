@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
@@ -801,8 +802,11 @@ void main() {
       ).thenAnswer((_) async => 'new_video_url.mp4');
       when(mockRepo.updateProduct(any, any)).thenAnswer((_) async {});
 
-      // Add a new image
-      final newImage = ImageModel(url: 'local_path', bytes: Uint8List(100));
+      // Add a new image with valid JPEG bytes
+      final validJpeg = Uint8List.fromList(
+        img.encodeJpg(img.Image(width: 1, height: 1)),
+      );
+      final newImage = ImageModel(url: 'local_path', bytes: validJpeg);
       viewModel.state = viewModel.state.copyWith(newImages: [newImage]);
 
       // Set a video

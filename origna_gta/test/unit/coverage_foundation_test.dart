@@ -67,8 +67,11 @@ class _FakeUserRepository implements UserRepository {
   Future<void> updatePreferredLanguage(String userId, String lang) async {}
 
   @override
-  Stream<List<models.Address>> watchAddresses(String userId) =>
-      Stream.value(addresses);
+  Stream<List<models.Address>> watchAddresses(
+    String userId, {
+    int limit = 50,
+    int offset = 0,
+  }) => Stream.value(addresses);
 
   @override
   Stream<SellerAccountStatus> watchSellerAccountStatus(String userId) =>

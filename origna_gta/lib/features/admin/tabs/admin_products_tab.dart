@@ -8,6 +8,7 @@ import 'package:origna_gta/features/admin/admin_providers.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/animations.dart';
+import 'package:origna_gta/widgets/shared/filter_chip_widget.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
 /// Private providers for AdminProductsTab local UI state
@@ -93,22 +94,66 @@ class _AdminProductsTabState extends ConsumerState<AdminProductsTab> {
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: [
-                    _buildFilterChip(
-                      'admin.sellers.filter_all_products'.tr(),
-                      'all',
+                    FilterChipWidget(
+                      label: 'admin.sellers.filter_all_products'.tr(),
+                      isSelected: stockFilter == 'all',
+                      onTap: () =>
+                          ref
+                                  .read(_productsStockFilterProvider.notifier)
+                                  .state =
+                              'all',
+                      semanticLabel: 'btn-filter-all',
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 7,
+                      ),
+                      fontSize: 12,
                     ),
                     _buildApprovalFilterChip(),
-                    _buildFilterChip(
-                      'admin.sellers.filter_in_stock'.tr(),
-                      'in_stock',
+                    FilterChipWidget(
+                      label: 'admin.sellers.filter_in_stock'.tr(),
+                      isSelected: stockFilter == 'in_stock',
+                      onTap: () =>
+                          ref
+                                  .read(_productsStockFilterProvider.notifier)
+                                  .state =
+                              'in_stock',
+                      semanticLabel: 'btn-filter-in_stock',
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 7,
+                      ),
+                      fontSize: 12,
                     ),
-                    _buildFilterChip(
-                      'admin.sellers.filter_out_of_stock'.tr(),
-                      'out_of_stock',
+                    FilterChipWidget(
+                      label: 'admin.sellers.filter_out_of_stock'.tr(),
+                      isSelected: stockFilter == 'out_of_stock',
+                      onTap: () =>
+                          ref
+                                  .read(_productsStockFilterProvider.notifier)
+                                  .state =
+                              'out_of_stock',
+                      semanticLabel: 'btn-filter-out_of_stock',
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 7,
+                      ),
+                      fontSize: 12,
                     ),
-                    _buildFilterChip(
-                      'admin.sellers.filter_low_stock'.tr(),
-                      'low_stock',
+                    FilterChipWidget(
+                      label: 'admin.sellers.filter_low_stock'.tr(),
+                      isSelected: stockFilter == 'low_stock',
+                      onTap: () =>
+                          ref
+                                  .read(_productsStockFilterProvider.notifier)
+                                  .state =
+                              'low_stock',
+                      semanticLabel: 'btn-filter-low_stock',
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 7,
+                      ),
+                      fontSize: 12,
                     ),
                   ],
                 ),
@@ -301,53 +346,6 @@ class _AdminProductsTabState extends ConsumerState<AdminProductsTab> {
           },
         );
   }
-
-  Widget _buildFilterChip(String label, String value) {
-    final isSelected = ref.watch(_productsStockFilterProvider) == value;
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: Semantics(
-        button: true,
-        label: 'btn-filter-$value',
-        child: GestureDetector(
-          onTap: () =>
-              ref.read(_productsStockFilterProvider.notifier).state = value,
-          child: AnimatedContainer(
-            duration: DesignTokens.durationFast,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-            decoration: BoxDecoration(
-              color: isSelected ? DesignTokens.primary : DesignTokens.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: isSelected
-                    ? DesignTokens.primary
-                    : DesignTokens.outlineVariant.withValues(alpha: 0.5),
-              ),
-              boxShadow: isSelected
-                  ? [
-                      BoxShadow(
-                        color: DesignTokens.primary.withValues(alpha: 0.25),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ]
-                  : [],
-            ),
-            child: Text(
-              label,
-              style: TextStyle(
-                color: isSelected
-                    ? DesignTokens.white
-                    : DesignTokens.textSecondary,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                fontSize: 12,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 class _ApprovalBadge extends StatelessWidget {
@@ -434,25 +432,56 @@ class _ProductCard extends ConsumerWidget {
       stockIcon = Icons.check_circle_rounded;
     }
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(DesignTokens.radius16),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          children: [
-            // Product Image
-            ClipRRect(
-              borderRadius: BorderRadius.circular(DesignTokens.radius12),
-              child: imageUrls.isNotEmpty
-                  ? CachedNetworkImage(
-                      imageUrl: imageUrls.first,
-                      width: 70,
-                      height: 70,
-                      fit: BoxFit.cover,
-                      placeholder: (context, url) => Container(
+    return Semantics(
+      label: 'product-card-${product.id}',
+      child: Card(
+        margin: const EdgeInsets.only(bottom: 12),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(DesignTokens.radius16),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              // Product Image
+              ClipRRect(
+                borderRadius: BorderRadius.circular(DesignTokens.radius12),
+                child: imageUrls.isNotEmpty
+                    ? CachedNetworkImage(
+                        imageUrl: imageUrls.first,
+                        width: 70,
+                        height: 70,
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) => Container(
+                          width: 70,
+                          height: 70,
+                          decoration: BoxDecoration(
+                            color: DesignTokens.surfaceVariant,
+                            borderRadius: BorderRadius.circular(
+                              DesignTokens.radius12,
+                            ),
+                          ),
+                          child: Icon(
+                            Icons.image_rounded,
+                            color: DesignTokens.textDisabled,
+                          ),
+                        ),
+                        errorWidget: (context, url, error) => Container(
+                          width: 70,
+                          height: 70,
+                          decoration: BoxDecoration(
+                            color: DesignTokens.surfaceVariant,
+                            borderRadius: BorderRadius.circular(
+                              DesignTokens.radius12,
+                            ),
+                          ),
+                          child: Icon(
+                            Icons.broken_image_rounded,
+                            color: DesignTokens.textDisabled,
+                          ),
+                        ),
+                      )
+                    : Container(
                         width: 70,
                         height: 70,
                         decoration: BoxDecoration(
@@ -466,155 +495,127 @@ class _ProductCard extends ConsumerWidget {
                           color: DesignTokens.textDisabled,
                         ),
                       ),
-                      errorWidget: (context, url, error) => Container(
-                        width: 70,
-                        height: 70,
-                        decoration: BoxDecoration(
-                          color: DesignTokens.surfaceVariant,
-                          borderRadius: BorderRadius.circular(
-                            DesignTokens.radius12,
-                          ),
-                        ),
-                        child: Icon(
-                          Icons.broken_image_rounded,
-                          color: DesignTokens.textDisabled,
-                        ),
+              ),
+              const SizedBox(width: 14),
+
+              // Product Info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
                       ),
-                    )
-                  : Container(
-                      width: 70,
-                      height: 70,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      '\$${price.toStringAsFixed(2)}',
+                      style: const TextStyle(
+                        color: DesignTokens.primary,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
-                        color: DesignTokens.surfaceVariant,
-                        borderRadius: BorderRadius.circular(
-                          DesignTokens.radius12,
-                        ),
+                        color: stockColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(20),
                       ),
-                      child: Icon(
-                        Icons.image_rounded,
-                        color: DesignTokens.textDisabled,
-                      ),
-                    ),
-            ),
-            const SizedBox(width: 14),
-
-            // Product Info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    name,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    '\$${price.toStringAsFixed(2)}',
-                    style: const TextStyle(
-                      color: DesignTokens.primary,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 15,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: stockColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(stockIcon, size: 13, color: stockColor),
-                        const SizedBox(width: 4),
-                        Text(
-                          stockText,
-                          style: TextStyle(
-                            color: stockColor,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(stockIcon, size: 13, color: stockColor),
+                          const SizedBox(width: 4),
+                          Text(
+                            stockText,
+                            style: TextStyle(
+                              color: stockColor,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 6),
-                  _ApprovalBadge(lifecycleStatus: product.lifecycleStatus),
-                ],
+                    const SizedBox(height: 6),
+                    _ApprovalBadge(lifecycleStatus: product.lifecycleStatus),
+                  ],
+                ),
               ),
-            ),
 
-            // Actions
-            PopupMenuButton<String>(
-              tooltip: 'admin.products.actions_tooltip'.tr(),
-              onSelected: (value) => _handleAction(context, ref, value),
-              icon: Icon(
-                Icons.more_vert_rounded,
-                color: DesignTokens.textDisabled,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(DesignTokens.radius12),
-              ),
-              itemBuilder: (context) => [
-                if (product.lifecycleStatus !=
-                    ProductLifecycleStatusValues.active)
+              // Actions
+              PopupMenuButton<String>(
+                tooltip: 'admin.products.actions_tooltip'.tr(),
+                onSelected: (value) => _handleAction(context, ref, value),
+                icon: Icon(
+                  Icons.more_vert_rounded,
+                  color: DesignTokens.textDisabled,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(DesignTokens.radius12),
+                ),
+                itemBuilder: (context) => [
+                  if (product.lifecycleStatus !=
+                      ProductLifecycleStatusValues.active)
+                    _menuItem(
+                      'approve',
+                      Icons.check_circle_rounded,
+                      'Approve Product',
+                      DesignTokens.success,
+                    ),
+                  if (product.lifecycleStatus !=
+                      ProductLifecycleStatusValues.rejected)
+                    _menuItem(
+                      'reject',
+                      Icons.cancel_rounded,
+                      'Reject Product',
+                      DesignTokens.error,
+                    ),
                   _menuItem(
-                    'approve',
-                    Icons.check_circle_rounded,
-                    'Approve Product',
-                    DesignTokens.success,
+                    'set_stock',
+                    Icons.edit_rounded,
+                    'admin.sellers.set_stock'.tr(),
+                    DesignTokens.primary,
                   ),
-                if (product.lifecycleStatus !=
-                    ProductLifecycleStatusValues.rejected)
                   _menuItem(
-                    'reject',
-                    Icons.cancel_rounded,
-                    'Reject Product',
-                    DesignTokens.error,
+                    'mark_out_of_stock',
+                    Icons.remove_circle_outline_rounded,
+                    'admin.sellers.mark_out_of_stock'.tr(),
+                    DesignTokens.warning,
                   ),
-                _menuItem(
-                  'set_stock',
-                  Icons.edit_rounded,
-                  'admin.sellers.set_stock'.tr(),
-                  DesignTokens.primary,
-                ),
-                _menuItem(
-                  'mark_out_of_stock',
-                  Icons.remove_circle_outline_rounded,
-                  'admin.sellers.mark_out_of_stock'.tr(),
-                  DesignTokens.warning,
-                ),
-                _menuItem(
-                  'view_seller',
-                  Icons.person_rounded,
-                  'admin.sellers.view_seller'.tr(),
-                  DesignTokens.info,
-                ),
-                if (product.isDigital)
                   _menuItem(
-                    'view_urls',
-                    Icons.link_rounded,
-                    'View Download URLs',
+                    'view_seller',
+                    Icons.person_rounded,
+                    'admin.sellers.view_seller'.tr(),
                     DesignTokens.info,
                   ),
-                _menuItem(
-                  'delete',
-                  Icons.delete_rounded,
-                  'admin.sellers.delete_product'.tr(),
-                  DesignTokens.error,
-                ),
-              ],
-            ),
-          ],
+                  if (product.isDigital)
+                    _menuItem(
+                      'view_urls',
+                      Icons.link_rounded,
+                      'View Download URLs',
+                      DesignTokens.info,
+                    ),
+                  _menuItem(
+                    'delete',
+                    Icons.delete_rounded,
+                    'admin.sellers.delete_product'.tr(),
+                    DesignTokens.error,
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -729,12 +730,15 @@ class _ProductCard extends ConsumerWidget {
   ) {
     return PopupMenuItem(
       value: value,
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: color),
-          const SizedBox(width: 10),
-          Text(label, style: TextStyle(fontSize: 13, color: color)),
-        ],
+      child: Semantics(
+        label: 'btn-menu-$value',
+        child: Row(
+          children: [
+            Icon(icon, size: 18, color: color),
+            const SizedBox(width: 10),
+            Text(label, style: TextStyle(fontSize: 13, color: color)),
+          ],
+        ),
       ),
     );
   }

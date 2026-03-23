@@ -64,8 +64,11 @@ class FakeUserRepository implements UserRepository {
   Future<void> updatePreferredLanguage(String userId, String lang) async {}
 
   @override
-  Stream<List<app_models.Address>> watchAddresses(String userId) =>
-      const Stream.empty();
+  Stream<List<app_models.Address>> watchAddresses(
+    String userId, {
+    int limit = 50,
+    int offset = 0,
+  }) => const Stream.empty();
 
   @override
   Stream<SellerAccountStatus> watchSellerAccountStatus(String userId) =>
@@ -171,7 +174,11 @@ class FakeProductRepository implements ProductRepository {
   ) async => [];
 
   @override
-  Stream<Set<String>> watchFavorites(String userId) => const Stream.empty();
+  Stream<Set<String>> watchFavorites(
+    String userId, {
+    int limit = 50,
+    int offset = 0,
+  }) => const Stream.empty();
 
   @override
   Stream<int> watchUnansweredQuestionsCount(String sellerId) =>

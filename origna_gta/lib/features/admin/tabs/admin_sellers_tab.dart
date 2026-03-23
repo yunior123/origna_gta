@@ -453,41 +453,51 @@ class _SellerCard extends ConsumerWidget {
           'admin.sellers.suspend_seller_confirm'.tr(namedArgs: {'name': name}),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('common.cancel'.tr()),
+          Semantics(
+            button: true,
+            label: 'btn-dialog-cancel',
+            child: TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('common.cancel'.tr()),
+            ),
           ),
-          FilledButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              final messenger = ScaffoldMessenger.of(context);
-              final success = await ref
-                  .read(adminActionsViewModelProvider.notifier)
-                  .setUserSuspended(userId, true);
-              if (!context.mounted) return;
-              if (context.mounted) {
-                if (success) {
-                  messenger.showSnackBar(
-                    SnackBar(
-                      content: Text('admin.sellers.seller_suspended'.tr()),
-                      backgroundColor: DesignTokens.error,
-                    ),
-                  );
-                } else {
-                  final error =
-                      ref.read(adminActionsViewModelProvider).errorMessage ??
-                      'admin.sellers.failed_suspend'.tr();
-                  messenger.showSnackBar(
-                    SnackBar(
-                      content: Text(error),
-                      backgroundColor: DesignTokens.error,
-                    ),
-                  );
+          Semantics(
+            button: true,
+            label: 'btn-dialog-confirm-suspend-seller',
+            child: FilledButton(
+              onPressed: () async {
+                Navigator.pop(ctx);
+                final messenger = ScaffoldMessenger.of(context);
+                final success = await ref
+                    .read(adminActionsViewModelProvider.notifier)
+                    .setUserSuspended(userId, true);
+                if (!context.mounted) return;
+                if (context.mounted) {
+                  if (success) {
+                    messenger.showSnackBar(
+                      SnackBar(
+                        content: Text('admin.sellers.seller_suspended'.tr()),
+                        backgroundColor: DesignTokens.error,
+                      ),
+                    );
+                  } else {
+                    final error =
+                        ref.read(adminActionsViewModelProvider).errorMessage ??
+                        'admin.sellers.failed_suspend'.tr();
+                    messenger.showSnackBar(
+                      SnackBar(
+                        content: Text(error),
+                        backgroundColor: DesignTokens.error,
+                      ),
+                    );
+                  }
                 }
-              }
-            },
-            style: FilledButton.styleFrom(backgroundColor: DesignTokens.error),
-            child: Text('admin.sellers.suspend_action'.tr()),
+              },
+              style: FilledButton.styleFrom(
+                backgroundColor: DesignTokens.error,
+              ),
+              child: Text('admin.sellers.suspend_action'.tr()),
+            ),
           ),
         ],
       ),

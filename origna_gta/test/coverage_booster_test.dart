@@ -61,8 +61,11 @@ class _FakeNotificationRepository extends NotificationRepository {
     : super(OrignaBase.initialize(url: 'http://localhost:9999'));
 
   @override
-  Stream<List<Map<String, dynamic>>> watchNotifications(String uid) =>
-      const Stream.empty();
+  Stream<List<Map<String, dynamic>>> watchNotifications(
+    String uid, {
+    int limit = 50,
+    int offset = 0,
+  }) => const Stream.empty();
 }
 
 void main() {

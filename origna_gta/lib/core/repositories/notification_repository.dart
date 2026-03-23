@@ -37,17 +37,24 @@ class NotificationRepository {
   }
 
   /// Stream of notifications for a user, newest first.
-  Stream<List<Map<String, dynamic>>> watchNotifications(String uid) {
+  Stream<List<Map<String, dynamic>>> watchNotifications(
+    String uid, {
+    int limit = 50,
+    int offset = 0,
+  }) {
     final subcollection = _ob
         .collection(Collections.users)
         .doc(uid)
         .subcollection(Collections.notifications);
 
     Future<List<Map<String, dynamic>>> fetchOrderedNotifications() async {
-      final snapshot = await subcollection
+      var query = subcollection
           .orderBy(Fields.createdAt, descending: true)
-          .limit(50)
-          .get();
+          .limit(limit);
+      if (offset > 0) {
+        query = query.offset(offset);
+      }
+      final snapshot = await query.get();
       return snapshot.docs
           .map((doc) => <String, dynamic>{'id': doc.id, ...doc.data})
           .toList();
@@ -60,12 +67,12 @@ class NotificationRepository {
         controller.addError(error, stackTrace);
       }
 
-      final subscription = subcollection.snapshots().asyncMap((_) {
-        return fetchOrderedNotifications();
-      }).listen(
-        controller.add,
-        onError: controller.addError,
-      );
+      final subscription = subcollection
+          .snapshots()
+          .asyncMap((_) {
+            return fetchOrderedNotifications();
+          })
+          .listen(controller.add, onError: controller.addError);
 
       controller.onCancel = () => subscription.cancel();
     });

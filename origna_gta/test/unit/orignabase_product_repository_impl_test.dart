@@ -96,6 +96,9 @@ class _FakeCollectionRef extends Fake implements CollectionRef {
   Query limit(int limit) => this;
 
   @override
+  Query offset(int count) => this;
+
+  @override
   Query startAfterId(String id) => this;
 }
 

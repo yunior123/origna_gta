@@ -335,14 +335,22 @@ class _ReviewCard extends ConsumerWidget {
         title: Text('admin.reviews.delete_confirm_title'.tr()),
         content: Text('admin.reviews.delete_confirm_body'.tr()),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text('common.cancel'.tr()),
+          Semantics(
+            button: true,
+            label: 'btn-dialog-cancel',
+            child: TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text('common.cancel'.tr()),
+            ),
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: TextButton.styleFrom(foregroundColor: DesignTokens.error),
-            child: Text('common.delete'.tr()),
+          Semantics(
+            button: true,
+            label: 'btn-dialog-confirm-delete-review',
+            child: TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: TextButton.styleFrom(foregroundColor: DesignTokens.error),
+              child: Text('common.delete'.tr()),
+            ),
           ),
         ],
       ),

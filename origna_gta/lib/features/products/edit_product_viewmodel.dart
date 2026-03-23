@@ -1,13 +1,13 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/repositories/product_repository.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/products/variant_models.dart';
 import 'package:origna_gta/models/generated/models.dart' as models;
+import 'package:origna_gta/utils/image_compression_utils.dart';
 import 'package:origna_gta/utils/utils.dart';
 
 import 'edit_product_state.dart';
@@ -19,23 +19,6 @@ final editProductViewModelProvider = StateNotifierProvider.autoDispose
     ) {
       return EditProductViewModel(ref, product);
     });
-
-/// Top-level isolate function for image compression — runs in a separate thread.
-Uint8List? _compressImageEditIsolate(Uint8List bytes) {
-  if (bytes.isEmpty) return null;
-  const int maxDimension = 2048;
-  final image = img.decodeImage(bytes);
-  if (image == null) return null;
-  img.Image resized = image;
-  if (image.width > maxDimension || image.height > maxDimension) {
-    resized = img.copyResize(
-      image,
-      width: image.width > image.height ? maxDimension : null,
-      height: image.height > image.width ? maxDimension : null,
-    );
-  }
-  return Uint8List.fromList(img.encodeJpg(resized, quality: 85));
-}
 
 /// Documentation for EditProductViewModel
 class EditProductViewModel extends StateNotifier<EditProductState> {
@@ -545,17 +528,13 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
   Future<List<Uint8List>> _processImages(List<ImageModel> imageModels) async {
     final processed = <Uint8List>[];
     for (var model in imageModels) {
-      final validated = await _validateAndCompressImage(model.bytes);
-      if (validated != null) processed.add(validated);
+      try {
+        final validated = await validateAndCompressImage(model.bytes);
+        if (validated != null) processed.add(validated);
+      } catch (_) {
+        // Skip images that fail validation/compression
+      }
     }
     return processed;
-  }
-
-  Future<Uint8List?> _validateAndCompressImage(Uint8List bytes) async {
-    const int maxImageSize = 10 * 1024 * 1024; // 10MB — matches backend limit
-    if (bytes.length > maxImageSize) {
-      throw Exception('product.image_too_large'.tr());
-    }
-    return compute(_compressImageEditIsolate, bytes);
   }
 }

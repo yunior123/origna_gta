@@ -369,12 +369,19 @@ class OrignaBaseProductRepository
   ) => uploadReviewImagesImpl(images, userId);
 
   @override
-  Stream<Set<String>> watchFavorites(String userId) {
-    final favoritesQuery = _ob
+  Stream<Set<String>> watchFavorites(
+    String userId, {
+    int limit = 50,
+    int offset = 0,
+  }) {
+    var favoritesQuery = _ob
         .collection(Collections.favorites)
         .where(Fields.userId, isEqualTo: userId)
         .orderBy(Fields.createdAt, descending: true)
-        .limit(BusinessRules.favoritesPageSize);
+        .limit(limit);
+    if (offset > 0) {
+      favoritesQuery = favoritesQuery.offset(offset);
+    }
     final Set<String> favorites = {};
     final controller = StreamController<Set<String>>();
 

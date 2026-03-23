@@ -20,14 +20,23 @@ class SellerAccountStatus {
   bool get isComplete => isSeller && chargesEnabled;
 
   /// User has started but there are still requirements to complete
-  bool get isIncomplete => isSeller && (!detailsSubmitted || hasPendingRequirements);
+  bool get isIncomplete =>
+      isSeller && (!detailsSubmitted || hasPendingRequirements);
 
   /// User has submitted all info and documents, waiting for Stripe review
-  bool get isPendingVerification => isSeller && detailsSubmitted && !chargesEnabled && !hasPendingRequirements;
+  bool get isPendingVerification =>
+      isSeller &&
+      detailsSubmitted &&
+      !chargesEnabled &&
+      !hasPendingRequirements;
 
   /// Check if identity documents are required
   bool get needsIdentityDocuments => pendingRequirements.any(
-    (r) => r.contains('verification') || r.contains('document') || r.contains('individual.id_number') || r.contains('individual.verification'),
+    (r) =>
+        r.contains('verification') ||
+        r.contains('document') ||
+        r.contains('individual.id_number') ||
+        r.contains('individual.verification'),
   );
 
   /// Get a human-readable description of what's missing
@@ -37,7 +46,9 @@ class SellerAccountStatus {
     final descriptions = <String>[];
     for (final req in pendingRequirements) {
       if (req.contains('verification.document')) {
-        descriptions.add('Identity document (ID, passport, or driver\'s license)');
+        descriptions.add(
+          'Identity document (ID, passport, or driver\'s license)',
+        );
       } else if (req.contains('individual.id_number')) {
         descriptions.add('Social Insurance Number (SIN)');
       } else if (req.contains('external_account')) {
@@ -63,9 +74,17 @@ abstract class UserRepository {
   Future<void> recordTermsAcceptance();
   Future<void> setDefaultBuyerAddress(String addressId);
   Future<void> updateBuyerAddress(String addressId, Address address);
-  Future<void> updateNotificationPreferences(String userId, {bool? notifyNewProducts, bool? notifyTrending});
+  Future<void> updateNotificationPreferences(
+    String userId, {
+    bool? notifyNewProducts,
+    bool? notifyTrending,
+  });
   Future<void> updatePreferredLanguage(String userId, String lang);
   // Address Book
-  Stream<List<Address>> watchAddresses(String userId);
+  Stream<List<Address>> watchAddresses(
+    String userId, {
+    int limit = 50,
+    int offset = 0,
+  });
   Stream<SellerAccountStatus> watchSellerAccountStatus(String userId);
 }

@@ -6,6 +6,7 @@ import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/animations.dart';
+import 'package:origna_gta/widgets/shared/filter_chip_widget.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
 /// Documentation for AdminOrdersTab
@@ -279,52 +280,60 @@ class _AdminOrderCard extends StatelessWidget {
               ),
               content: Text('orders.refund_warning'.tr()),
               actions: [
-                TextButton(
-                  onPressed: isLoading ? null : () => Navigator.pop(ctx),
-                  child: Text('common.cancel'.tr()),
-                ),
-                FilledButton(
-                  onPressed: isLoading
-                      ? null
-                      : () async {
-                          setState(() => isLoading = true);
-                          try {
-                            await ref
-                                .read(adminRepositoryProvider)
-                                .refundOrder(order.orderId);
-                            if (ctx.mounted) Navigator.pop(ctx);
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('orders.refund_success'.tr()),
-                                  backgroundColor: DesignTokens.success,
-                                ),
-                              );
-                            }
-                          } catch (e) {
-                            setState(() => isLoading = false);
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('orders.refund_error'.tr()),
-                                  backgroundColor: DesignTokens.error,
-                                ),
-                              );
-                            }
-                          }
-                        },
-                  style: FilledButton.styleFrom(
-                    backgroundColor: DesignTokens.error,
+                Semantics(
+                  button: true,
+                  label: 'btn-cancel-refund',
+                  child: TextButton(
+                    onPressed: isLoading ? null : () => Navigator.pop(ctx),
+                    child: Text('common.cancel'.tr()),
                   ),
-                  child: isLoading
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: ModernLoadingIndicator.small(
-                            color: DesignTokens.white,
-                          ),
-                        )
-                      : Text('orders.issue_refund'.tr()),
+                ),
+                Semantics(
+                  button: true,
+                  label: 'btn-confirm-refund',
+                  child: FilledButton(
+                    onPressed: isLoading
+                        ? null
+                        : () async {
+                            setState(() => isLoading = true);
+                            try {
+                              await ref
+                                  .read(adminRepositoryProvider)
+                                  .refundOrder(order.orderId);
+                              if (ctx.mounted) Navigator.pop(ctx);
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('orders.refund_success'.tr()),
+                                    backgroundColor: DesignTokens.success,
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              setState(() => isLoading = false);
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('orders.refund_error'.tr()),
+                                    backgroundColor: DesignTokens.error,
+                                  ),
+                                );
+                              }
+                            }
+                          },
+                    style: FilledButton.styleFrom(
+                      backgroundColor: DesignTokens.error,
+                    ),
+                    child: isLoading
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: ModernLoadingIndicator.small(
+                              color: DesignTokens.white,
+                            ),
+                          )
+                        : Text('orders.issue_refund'.tr()),
+                  ),
                 ),
               ],
             ),
@@ -444,22 +453,51 @@ class _AdminOrdersTabState extends ConsumerState<AdminOrdersTab> {
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
-                _buildFilterChip('orders.filter_all'.tr(), 'all'),
-                _buildFilterChip(
-                  PaymentStatus.authorized.displayText,
-                  PaymentStatus.authorized.value,
+                FilterChipWidget(
+                  label: 'orders.filter_all'.tr(),
+                  isSelected: _statusFilter == 'all',
+                  onTap: () =>
+                      ref.read(_ordersStatusFilterProvider.notifier).state =
+                          'all',
+                  semanticLabel:
+                      'tab-admin-order-filter-${'orders.filter_all'.tr()}',
                 ),
-                _buildFilterChip(
-                  PaymentStatus.paid.displayText,
-                  PaymentStatus.paid.value,
+                FilterChipWidget(
+                  label: PaymentStatus.authorized.displayText,
+                  isSelected: _statusFilter == PaymentStatus.authorized.value,
+                  onTap: () =>
+                      ref.read(_ordersStatusFilterProvider.notifier).state =
+                          PaymentStatus.authorized.value,
+                  semanticLabel:
+                      'tab-admin-order-filter-${PaymentStatus.authorized.displayText}',
                 ),
-                _buildFilterChip(
-                  PaymentStatus.refunded.displayText,
-                  PaymentStatus.refunded.value,
+                FilterChipWidget(
+                  label: PaymentStatus.paid.displayText,
+                  isSelected: _statusFilter == PaymentStatus.paid.value,
+                  onTap: () =>
+                      ref.read(_ordersStatusFilterProvider.notifier).state =
+                          PaymentStatus.paid.value,
+                  semanticLabel:
+                      'tab-admin-order-filter-${PaymentStatus.paid.displayText}',
                 ),
-                _buildFilterChip(
-                  PaymentStatus.paymentFailed.displayText,
-                  PaymentStatus.paymentFailed.value,
+                FilterChipWidget(
+                  label: PaymentStatus.refunded.displayText,
+                  isSelected: _statusFilter == PaymentStatus.refunded.value,
+                  onTap: () =>
+                      ref.read(_ordersStatusFilterProvider.notifier).state =
+                          PaymentStatus.refunded.value,
+                  semanticLabel:
+                      'tab-admin-order-filter-${PaymentStatus.refunded.displayText}',
+                ),
+                FilterChipWidget(
+                  label: PaymentStatus.paymentFailed.displayText,
+                  isSelected:
+                      _statusFilter == PaymentStatus.paymentFailed.value,
+                  onTap: () =>
+                      ref.read(_ordersStatusFilterProvider.notifier).state =
+                          PaymentStatus.paymentFailed.value,
+                  semanticLabel:
+                      'tab-admin-order-filter-${PaymentStatus.paymentFailed.displayText}',
                 ),
               ],
             ),
@@ -498,54 +536,6 @@ class _AdminOrdersTabState extends ConsumerState<AdminOrdersTab> {
               ),
         ),
       ],
-    );
-  }
-
-  Widget _buildFilterChip(String label, String value) {
-    final isSelected = ref.watch(_ordersStatusFilterProvider) == value;
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: Semantics(
-        label: 'tab-admin-order-filter-$label',
-        button: true,
-        selected: isSelected,
-        child: GestureDetector(
-          onTap: () =>
-              ref.read(_ordersStatusFilterProvider.notifier).state = value,
-          child: AnimatedContainer(
-            duration: DesignTokens.durationFast,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: isSelected ? DesignTokens.primary : DesignTokens.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: isSelected
-                    ? DesignTokens.primary
-                    : DesignTokens.outlineVariant.withValues(alpha: 0.5),
-              ),
-              boxShadow: isSelected
-                  ? [
-                      BoxShadow(
-                        color: DesignTokens.primary.withValues(alpha: 0.25),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ]
-                  : [],
-            ),
-            child: Text(
-              label,
-              style: TextStyle(
-                color: isSelected
-                    ? DesignTokens.white
-                    : DesignTokens.textSecondary,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                fontSize: 13,
-              ),
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

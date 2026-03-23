@@ -770,32 +770,40 @@ class _SecuritySettingsScreenState
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: Text('common.cancel'.tr()),
+          Semantics(
+            button: true,
+            label: 'btn-dialog-cancel',
+            child: TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text('common.cancel'.tr()),
+            ),
           ),
-          TextButton(
-            onPressed: () async {
-              final code = codeController.text.trim();
-              if (code.length != 6) return;
-              Navigator.pop(dialogContext);
-              final viewModel = ref.read(mfaViewModelProvider.notifier);
-              await viewModel.disable(code);
-              if (mounted) {
-                final newState = ref.read(mfaViewModelProvider);
-                if (!newState.mfaEnabled && newState.errorMessage == null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('security.mfa_disabled_success'.tr()),
-                      backgroundColor: DesignTokens.success,
-                    ),
-                  );
+          Semantics(
+            button: true,
+            label: 'btn-dialog-confirm-disable-mfa',
+            child: TextButton(
+              onPressed: () async {
+                final code = codeController.text.trim();
+                if (code.length != 6) return;
+                Navigator.pop(dialogContext);
+                final viewModel = ref.read(mfaViewModelProvider.notifier);
+                await viewModel.disable(code);
+                if (mounted) {
+                  final newState = ref.read(mfaViewModelProvider);
+                  if (!newState.mfaEnabled && newState.errorMessage == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('security.mfa_disabled_success'.tr()),
+                        backgroundColor: DesignTokens.success,
+                      ),
+                    );
+                  }
                 }
-              }
-            },
-            child: Text(
-              'security.disable_mfa'.tr(),
-              style: const TextStyle(color: DesignTokens.error),
+              },
+              child: Text(
+                'security.disable_mfa'.tr(),
+                style: const TextStyle(color: DesignTokens.error),
+              ),
             ),
           ),
         ],

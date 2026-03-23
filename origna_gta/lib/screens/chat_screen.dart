@@ -581,39 +581,42 @@ class _MessageInput extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: TextField(
-              controller: controller,
-              focusNode: focusNode,
-              minLines: 1,
-              maxLines: 4,
-              maxLength: BusinessRules.maxMessageLength,
-              maxLengthEnforcement: MaxLengthEnforcement.enforced,
-              // Hide the default counter label — VM error message handles user feedback.
-              buildCounter:
-                  (
-                    context, {
-                    required currentLength,
-                    required isFocused,
-                    maxLength,
-                  }) => null,
-              textCapitalization: TextCapitalization.sentences,
-              decoration: InputDecoration(
-                hintText: 'chat.type_a_message'.tr(),
-                hintStyle: TextStyle(color: DesignTokens.textSecondary),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(24),
-                  borderSide: BorderSide.none,
+            child: Semantics(
+              label: 'input-chat-message',
+              child: TextField(
+                controller: controller,
+                focusNode: focusNode,
+                minLines: 1,
+                maxLines: 4,
+                maxLength: BusinessRules.maxMessageLength,
+                maxLengthEnforcement: MaxLengthEnforcement.enforced,
+                // Hide the default counter label — VM error message handles user feedback.
+                buildCounter:
+                    (
+                      context, {
+                      required currentLength,
+                      required isFocused,
+                      maxLength,
+                    }) => null,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: InputDecoration(
+                  hintText: 'chat.type_a_message'.tr(),
+                  hintStyle: TextStyle(color: DesignTokens.textSecondary),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(24),
+                    borderSide: BorderSide.none,
+                  ),
+                  filled: true,
+                  fillColor: isDark
+                      ? DesignTokens.darkSurfaceVariant
+                      : DesignTokens.surfaceVariant,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
                 ),
-                filled: true,
-                fillColor: isDark
-                    ? DesignTokens.darkSurfaceVariant
-                    : DesignTokens.surfaceVariant,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
-                ),
+                onSubmitted: isSending ? null : (_) => onSend(),
               ),
-              onSubmitted: isSending ? null : (_) => onSend(),
             ),
           ),
           const SizedBox(width: 8),

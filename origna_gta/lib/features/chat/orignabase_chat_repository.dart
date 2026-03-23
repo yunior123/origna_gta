@@ -48,12 +48,16 @@ class OrignaBaseChatRepository {
   }
 
   /// Stream messages for a given chat thread (real-time via WebSocket).
-  Stream<List<ChatMessage>> messagesStream(String chatId) {
+  Stream<List<ChatMessage>> messagesStream(
+    String chatId, {
+    int limit = 100,
+    int offset = 0,
+  }) {
     final controller = StreamController<List<ChatMessage>>();
     final messages = <String, ChatMessage>{};
 
     // Initial fetch
-    _fetchMessages(chatId)
+    _fetchMessages(chatId, limit: limit, offset: offset)
         .then((initial) {
           for (final msg in initial) {
             messages[msg.id] = msg;
@@ -111,17 +115,34 @@ class OrignaBaseChatRepository {
   }
 
   /// Stream all chat threads where user is buyer.
-  Stream<List<ChatThread>> userChatsStream(String userId) {
-    return _watchThreads(Fields.buyerId, userId);
+  Stream<List<ChatThread>> userChatsStream(
+    String userId, {
+    int limit = 50,
+    int offset = 0,
+  }) {
+    return _watchThreads(Fields.buyerId, userId, limit: limit, offset: offset);
   }
 
   /// Stream chat threads where user is seller.
-  Stream<List<ChatThread>> sellerChatsStream(String sellerId) {
-    return _watchThreads(Fields.sellerId, sellerId);
+  Stream<List<ChatThread>> sellerChatsStream(
+    String sellerId, {
+    int limit = 50,
+    int offset = 0,
+  }) {
+    return _watchThreads(
+      Fields.sellerId,
+      sellerId,
+      limit: limit,
+      offset: offset,
+    );
   }
 
   /// Unified inbox merging buyer and seller threads.
-  Stream<List<ChatThread>> allChatsStream(String userId) {
+  Stream<List<ChatThread>> allChatsStream(
+    String userId, {
+    int limit = 50,
+    int offset = 0,
+  }) {
     final controller = StreamController<List<ChatThread>>();
     List<ChatThread> buyerThreads = [];
     List<ChatThread> sellerThreads = [];
@@ -143,14 +164,19 @@ class OrignaBaseChatRepository {
       controller.add(merged);
     }
 
-    final sub1 = userChatsStream(userId).listen((threads) {
+    final sub1 = userChatsStream(userId, limit: limit, offset: offset).listen((
+      threads,
+    ) {
       buyerThreads = threads;
       emit();
     }, onError: controller.addError);
-    final sub2 = sellerChatsStream(userId).listen((threads) {
-      sellerThreads = threads;
-      emit();
-    }, onError: controller.addError);
+    final sub2 = sellerChatsStream(userId, limit: limit, offset: offset).listen(
+      (threads) {
+        sellerThreads = threads;
+        emit();
+      },
+      onError: controller.addError,
+    );
 
     controller.onCancel = () {
       sub1.cancel();
@@ -204,12 +230,17 @@ class OrignaBaseChatRepository {
 
   // ── Private helpers ─────────────────────────────────────────────────────
 
-  Future<List<ChatMessage>> _fetchMessages(String chatId) async {
+  Future<List<ChatMessage>> _fetchMessages(
+    String chatId, {
+    int limit = 100,
+    int offset = 0,
+  }) async {
     final snapshot = await _ob
         .collection(Collections.chats)
         .subcollection(chatId, Collections.chatMessages)
         .orderBy(Fields.createdAt, descending: true)
-        .limit(100)
+        .limit(limit)
+        .offset(offset)
         .get();
 
     final messages = snapshot.docs.map(_docToMessage).toList()
@@ -240,7 +271,12 @@ class OrignaBaseChatRepository {
     );
   }
 
-  Stream<List<ChatThread>> _watchThreads(String field, String userId) {
+  Stream<List<ChatThread>> _watchThreads(
+    String field,
+    String userId, {
+    int limit = 50,
+    int offset = 0,
+  }) {
     final controller = StreamController<List<ChatThread>>();
     final threads = <String, ChatThread>{};
 
@@ -249,7 +285,8 @@ class OrignaBaseChatRepository {
         .collection(Collections.chats)
         .where(field, isEqualTo: userId)
         .orderBy(Fields.lastMessageAt, descending: true)
-        .limit(50)
+        .limit(limit)
+        .offset(offset)
         .get()
         .then((snapshot) {
           for (final doc in snapshot.docs) {

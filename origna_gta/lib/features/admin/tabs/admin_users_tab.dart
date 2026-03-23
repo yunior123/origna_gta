@@ -61,41 +61,46 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
           ),
           child: Column(
             children: [
-              TextField(
-                key: const Key('admin_users_search_field'),
-                controller: _searchController,
-                decoration: InputDecoration(
-                  hintText: 'admin.users.search_hint'.tr(),
-                  hintStyle: TextStyle(
-                    color: DesignTokens.textDisabled,
-                    fontSize: 14,
-                  ),
-                  prefixIcon: Icon(
-                    Icons.search_rounded,
-                    color: DesignTokens.primary,
-                  ),
-                  suffixIcon: _searchController.text.isNotEmpty
-                      ? IconButton(
-                          icon: Icon(
-                            Icons.close_rounded,
-                            color: DesignTokens.textSecondary,
-                            size: 20,
-                          ),
-                          tooltip: 'common.clear'.tr(),
-                          onPressed: () {
-                            _searchController.clear();
-                          },
-                        )
-                      : null,
-                  filled: true,
-                  fillColor: DesignTokens.surfaceVariant,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
+              Semantics(
+                label: 'input-admin-users-search',
+                child: TextField(
+                  key: const Key('admin_users_search_field'),
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: 'admin.users.search_hint'.tr(),
+                    hintStyle: TextStyle(
+                      color: DesignTokens.textDisabled,
+                      fontSize: 14,
+                    ),
+                    prefixIcon: Icon(
+                      Icons.search_rounded,
+                      color: DesignTokens.primary,
+                    ),
+                    suffixIcon: _searchController.text.isNotEmpty
+                        ? IconButton(
+                            icon: Icon(
+                              Icons.close_rounded,
+                              color: DesignTokens.textSecondary,
+                              size: 20,
+                            ),
+                            tooltip: 'common.clear'.tr(),
+                            onPressed: () {
+                              _searchController.clear();
+                            },
+                          )
+                        : null,
+                    filled: true,
+                    fillColor: DesignTokens.surfaceVariant,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(
+                        DesignTokens.radius12,
+                      ),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                   ),
                 ),
               ),
@@ -222,26 +227,31 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
   Widget _filterChip(String label, String value) {
     final isSelected = ref.watch(_usersRoleFilterProvider) == value;
     return Expanded(
-      child: GestureDetector(
-        onTap: () => ref.read(_usersRoleFilterProvider.notifier).state = value,
-        child: AnimatedContainer(
-          duration: DesignTokens.durationFast,
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? DesignTokens.primary
-                : DesignTokens.surfaceVariant,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Center(
-            child: Text(
-              label,
-              style: TextStyle(
-                color: isSelected
-                    ? DesignTokens.white
-                    : DesignTokens.textSecondary,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                fontSize: 12,
+      child: Semantics(
+        button: true,
+        label: 'btn-filter-$value',
+        child: GestureDetector(
+          onTap: () =>
+              ref.read(_usersRoleFilterProvider.notifier).state = value,
+          child: AnimatedContainer(
+            duration: DesignTokens.durationFast,
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? DesignTokens.primary
+                  : DesignTokens.surfaceVariant,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Center(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: isSelected
+                      ? DesignTokens.white
+                      : DesignTokens.textSecondary,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                  fontSize: 12,
+                ),
               ),
             ),
           ),
@@ -478,16 +488,24 @@ class _UserCard extends ConsumerWidget {
               ),
             ),
             actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: Text('common.cancel'.tr()),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                style: FilledButton.styleFrom(
-                  backgroundColor: DesignTokens.warning,
+              Semantics(
+                button: true,
+                label: 'btn-dialog-cancel',
+                child: TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: Text('common.cancel'.tr()),
                 ),
-                child: Text('admin.users.remove_seller'.tr()),
+              ),
+              Semantics(
+                button: true,
+                label: 'btn-dialog-confirm-remove-seller',
+                child: FilledButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: DesignTokens.warning,
+                  ),
+                  child: Text('admin.users.remove_seller'.tr()),
+                ),
               ),
             ],
           ),
@@ -519,16 +537,24 @@ class _UserCard extends ConsumerWidget {
               'admin.users.make_admin_confirm'.tr(args: [user.email]),
             ),
             actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: Text('common.cancel'.tr()),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                style: FilledButton.styleFrom(
-                  backgroundColor: DesignTokens.secondary,
+              Semantics(
+                button: true,
+                label: 'btn-dialog-cancel',
+                child: TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: Text('common.cancel'.tr()),
                 ),
-                child: Text('admin.users.confirm_grant_admin'.tr()),
+              ),
+              Semantics(
+                button: true,
+                label: 'btn-dialog-confirm-make-admin',
+                child: FilledButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: DesignTokens.secondary,
+                  ),
+                  child: Text('admin.users.confirm_grant_admin'.tr()),
+                ),
               ),
             ],
           ),
@@ -561,16 +587,24 @@ class _UserCard extends ConsumerWidget {
               ),
             ),
             actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: Text('common.cancel'.tr()),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                style: FilledButton.styleFrom(
-                  backgroundColor: DesignTokens.error,
+              Semantics(
+                button: true,
+                label: 'btn-dialog-cancel',
+                child: TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: Text('common.cancel'.tr()),
                 ),
-                child: Text('admin.users.suspend_user'.tr()),
+              ),
+              Semantics(
+                button: true,
+                label: 'btn-dialog-confirm-suspend',
+                child: FilledButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: DesignTokens.error,
+                  ),
+                  child: Text('admin.users.suspend_user'.tr()),
+                ),
               ),
             ],
           ),

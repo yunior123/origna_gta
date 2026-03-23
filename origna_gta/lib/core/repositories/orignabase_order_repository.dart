@@ -231,10 +231,16 @@ class OrignaBaseOrderRepository
   }
 
   @override
-  Future<List<models.ReturnRequest>> fetchReturnRequests(String orderId) async {
+  Future<List<models.ReturnRequest>> fetchReturnRequests(
+    String orderId, {
+    int limit = 50,
+    int offset = 0,
+  }) async {
     final snapshot = await _ob
         .collection(Collections.returnRequests)
         .where(Fields.orderId, isEqualTo: orderId)
+        .limit(limit)
+        .offset(offset)
         .get();
     return snapshot.docs
         .map((doc) => models.ReturnRequest.fromMap(doc.data, doc.id))

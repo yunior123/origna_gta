@@ -13,7 +13,9 @@ abstract class OrderRepository {
 
   /// Creates a Stripe Checkout session for the given [orderData] payload.
   /// Returns a map containing at least `{sessionId, checkoutUrl}`.
-  Future<Map<String, dynamic>> createCheckoutSession(Map<String, dynamic> orderData);
+  Future<Map<String, dynamic>> createCheckoutSession(
+    Map<String, dynamic> orderData,
+  );
 
   /// Fetches a single order by document ID.
   /// Returns null if the document does not exist.
@@ -23,14 +25,29 @@ abstract class OrderRepository {
   ///
   /// [itemId] is the product ID of the item to update.
   /// [trackingNumber], [carrier], and [carrierNote] are optional and only relevant for the `shipped` status.
-  Future<void> updateItemStatus(String orderId, String itemId, String status, {String? trackingNumber, String? carrier, String? carrierNote});
+  Future<void> updateItemStatus(
+    String orderId,
+    String itemId,
+    String status, {
+    String? trackingNumber,
+    String? carrier,
+    String? carrierNote,
+  });
 
   /// Persists the last Stripe session and order IDs on the user document for
   /// post-payment recovery (e.g., polling the success screen).
-  Future<void> updateLastSession(String userId, String sessionId, String orderId);
+  Future<void> updateLastSession(
+    String userId,
+    String sessionId,
+    String orderId,
+  );
 
   /// Submits a revised shipping cost for [orderId] with an audit [reason].
-  Future<void> updateShippingCost(String orderId, int newShippingCostCents, String reason);
+  Future<void> updateShippingCost(
+    String orderId,
+    int newShippingCostCents,
+    String reason,
+  );
 
   /// Real-time stream of all orders placed by [userId] in terminal or active payment states.
   Stream<List<models.Order>> watchBuyerOrders(String userId);
@@ -53,5 +70,9 @@ abstract class OrderRepository {
   });
 
   /// Fetches return requests for a specific order.
-  Future<List<models.ReturnRequest>> fetchReturnRequests(String orderId);
+  Future<List<models.ReturnRequest>> fetchReturnRequests(
+    String orderId, {
+    int limit = 50,
+    int offset = 0,
+  });
 }

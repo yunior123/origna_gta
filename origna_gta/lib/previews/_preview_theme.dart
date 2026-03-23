@@ -16,7 +16,12 @@ import 'package:origna_gta/utils/design_tokens.dart';
 
 /// Dark theme used across all previews.
 final ThemeData previewDarkTheme = ThemeData.dark().copyWith(
-  colorScheme: ColorScheme.dark(primary: DesignTokens.primary, secondary: DesignTokens.secondary, error: DesignTokens.error, surface: DesignTokens.darkSurface),
+  colorScheme: ColorScheme.dark(
+    primary: DesignTokens.primary,
+    secondary: DesignTokens.secondary,
+    error: DesignTokens.error,
+    surface: DesignTokens.darkSurface,
+  ),
   scaffoldBackgroundColor: DesignTokens.darkBackground,
   cardColor: DesignTokens.darkCard,
   dividerColor: DesignTokens.darkOutline,
@@ -28,7 +33,11 @@ final ThemeData previewDarkTheme = ThemeData.dark().copyWith(
 
 /// Light theme (used sparingly — app is primarily dark).
 final ThemeData previewLightTheme = ThemeData.light().copyWith(
-  colorScheme: ColorScheme.light(primary: DesignTokens.primary, secondary: DesignTokens.secondary, surface: DesignTokens.surface),
+  colorScheme: ColorScheme.light(
+    primary: DesignTokens.primary,
+    secondary: DesignTokens.secondary,
+    surface: DesignTokens.surface,
+  ),
   scaffoldBackgroundColor: DesignTokens.surface,
 );
 
@@ -39,7 +48,10 @@ final ThemeData previewLightTheme = ThemeData.light().copyWith(
 /// Central ProviderScope for previews — overrides backend-dependent
 /// providers so the widget previewer never performs live initialization.
 /// Pass extra [overrides] for screen-specific mocks (e.g. a logged-in user).
-Widget previewScope({required Widget child, List<Override> extraOverrides = const []}) {
+Widget previewScope({
+  required Widget child,
+  List<Override> extraOverrides = const [],
+}) {
   return ProviderScope(
     overrides: [
       authStateProvider.overrideWith((ref) => Stream.value(null)),
@@ -52,7 +64,11 @@ Widget previewScope({required Widget child, List<Override> extraOverrides = cons
 }
 
 /// Like [previewScope] but with a fake logged-in user id.
-Widget previewScopeLoggedIn({required Widget child, String uid = 'preview-uid', List<Override> extraOverrides = const []}) {
+Widget previewScopeLoggedIn({
+  required Widget child,
+  String uid = 'preview-uid',
+  List<Override> extraOverrides = const [],
+}) {
   return previewScope(
     child: child,
     extraOverrides: [
@@ -79,7 +95,11 @@ enum PreviewBreakpoint {
   final double height;
   final String name;
 
-  const PreviewBreakpoint({required this.width, required this.height, required this.name});
+  const PreviewBreakpoint({
+    required this.width,
+    required this.height,
+    required this.name,
+  });
 }
 
 _FrameType _frameTypeOf(PreviewBreakpoint bp) => switch (bp) {
@@ -94,7 +114,11 @@ _FrameType _frameTypeOf(PreviewBreakpoint bp) => switch (bp) {
 
 /// Overlays device chrome on top of content within the viewport bounds.
 class _DeviceFrameOverlay extends StatelessWidget {
-  const _DeviceFrameOverlay({required this.breakpoint, required this.child, this.isDark = true});
+  const _DeviceFrameOverlay({
+    required this.breakpoint,
+    required this.child,
+    this.isDark = true,
+  });
 
   final PreviewBreakpoint breakpoint;
   final Widget child;
@@ -103,16 +127,36 @@ class _DeviceFrameOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return switch (_frameTypeOf(breakpoint)) {
-      _FrameType.phone => _PhoneOverlay(width: breakpoint.width, height: breakpoint.height, isDark: isDark, child: child),
-      _FrameType.tablet => _TabletOverlay(width: breakpoint.width, height: breakpoint.height, isDark: isDark, child: child),
-      _FrameType.browser => _BrowserOverlay(width: breakpoint.width, height: breakpoint.height, isDark: isDark, child: child),
+      _FrameType.phone => _PhoneOverlay(
+        width: breakpoint.width,
+        height: breakpoint.height,
+        isDark: isDark,
+        child: child,
+      ),
+      _FrameType.tablet => _TabletOverlay(
+        width: breakpoint.width,
+        height: breakpoint.height,
+        isDark: isDark,
+        child: child,
+      ),
+      _FrameType.browser => _BrowserOverlay(
+        width: breakpoint.width,
+        height: breakpoint.height,
+        isDark: isDark,
+        child: child,
+      ),
     };
   }
 }
 
 /// Phone chrome overlay: notch pill at top, home indicator at bottom, rounded corners.
 class _PhoneOverlay extends StatelessWidget {
-  const _PhoneOverlay({required this.width, required this.height, required this.child, this.isDark = true});
+  const _PhoneOverlay({
+    required this.width,
+    required this.height,
+    required this.child,
+    this.isDark = true,
+  });
   final double width;
   final double height;
   final Widget child;
@@ -133,7 +177,11 @@ class _PhoneOverlay extends StatelessWidget {
           // Phone chrome overlays
           CustomPaint(
             size: Size(width, height),
-            painter: _PhoneChromePainter(width: width, height: height, isDark: isDark),
+            painter: _PhoneChromePainter(
+              width: width,
+              height: height,
+              isDark: isDark,
+            ),
           ),
         ],
       ),
@@ -142,7 +190,11 @@ class _PhoneOverlay extends StatelessWidget {
 }
 
 class _PhoneChromePainter extends CustomPainter {
-  _PhoneChromePainter({required this.width, required this.height, this.isDark = true});
+  _PhoneChromePainter({
+    required this.width,
+    required this.height,
+    this.isDark = true,
+  });
   final double width;
   final double height;
   final bool isDark;
@@ -153,13 +205,18 @@ class _PhoneChromePainter extends CustomPainter {
       ..color = isDark ? const Color(0xFF3A3A5C) : const Color(0xFFCCCCDD)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2;
-    final notchPaint = Paint()..color = isDark ? const Color(0xFF0A0A1A) : const Color(0xFFDDDDE8);
+    final notchPaint = Paint()
+      ..color = isDark ? const Color(0xFF0A0A1A) : const Color(0xFFDDDDE8);
     final homeBarPaint = Paint()
-      ..color = isDark ? DesignTokens.white.withAlpha(100) : DesignTokens.black.withAlpha(40)
+      ..color = isDark
+          ? DesignTokens.white.withAlpha(100)
+          : DesignTokens.black.withAlpha(40)
       ..style = PaintingStyle.fill
       ..strokeCap = StrokeCap.round;
     final shadowPaint = Paint()
-      ..color = isDark ? DesignTokens.black.withAlpha(60) : DesignTokens.black.withAlpha(18)
+      ..color = isDark
+          ? DesignTokens.black.withAlpha(60)
+          : DesignTokens.black.withAlpha(18)
       ..style = PaintingStyle.fill;
 
     // Rounded corner clip border
@@ -173,7 +230,10 @@ class _PhoneChromePainter extends CustomPainter {
     const notchW = 110.0;
     const notchH = 6.0;
     const notchTop = 10.0;
-    canvas.drawRect(Rect.fromLTWH(0, 0, width, notchTop + notchH + 6), shadowPaint);
+    canvas.drawRect(
+      Rect.fromLTWH(0, 0, width, notchTop + notchH + 6),
+      shadowPaint,
+    );
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         Rect.fromLTWH((width - notchW) / 2, notchTop, notchW, notchH * 2),
@@ -206,7 +266,12 @@ class _PhoneChromePainter extends CustomPainter {
 
 /// Tablet chrome overlay: camera dot at top, rounded corners, thin border.
 class _TabletOverlay extends StatelessWidget {
-  const _TabletOverlay({required this.width, required this.height, required this.child, this.isDark = true});
+  const _TabletOverlay({
+    required this.width,
+    required this.height,
+    required this.child,
+    this.isDark = true,
+  });
   final double width;
   final double height;
   final Widget child;
@@ -225,7 +290,11 @@ class _TabletOverlay extends StatelessWidget {
           ),
           CustomPaint(
             size: Size(width, height),
-            painter: _TabletChromePainter(width: width, height: height, isDark: isDark),
+            painter: _TabletChromePainter(
+              width: width,
+              height: height,
+              isDark: isDark,
+            ),
           ),
         ],
       ),
@@ -234,7 +303,11 @@ class _TabletOverlay extends StatelessWidget {
 }
 
 class _TabletChromePainter extends CustomPainter {
-  _TabletChromePainter({required this.width, required this.height, this.isDark = true});
+  _TabletChromePainter({
+    required this.width,
+    required this.height,
+    this.isDark = true,
+  });
   final double width;
   final double height;
   final bool isDark;
@@ -245,10 +318,14 @@ class _TabletChromePainter extends CustomPainter {
       ..color = isDark ? const Color(0xFF3A3A5C) : const Color(0xFFCCCCDD)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5;
-    final cameraPaint = Paint()..color = isDark ? const Color(0xFF2A2A4A) : const Color(0xFF707080);
+    final cameraPaint = Paint()
+      ..color = isDark ? const Color(0xFF2A2A4A) : const Color(0xFF707080);
 
     canvas.drawRRect(
-      RRect.fromRectAndRadius(Rect.fromLTWH(0, 0, width, height), const Radius.circular(16)),
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(0, 0, width, height),
+        const Radius.circular(16),
+      ),
       borderPaint,
     );
     // Camera dot
@@ -262,7 +339,12 @@ class _TabletChromePainter extends CustomPainter {
 /// Browser chrome overlay: opaque top bar with dots + URL, content area is below.
 /// Content is rendered at height - chromeH to leave room for the chrome bar.
 class _BrowserOverlay extends StatelessWidget {
-  const _BrowserOverlay({required this.width, required this.height, required this.child, this.isDark = true});
+  const _BrowserOverlay({
+    required this.width,
+    required this.height,
+    required this.child,
+    this.isDark = true,
+  });
   final double width;
   final double height;
   final Widget child;
@@ -291,7 +373,11 @@ class _BrowserOverlay extends StatelessWidget {
 }
 
 class _BrowserChromeBar extends StatelessWidget {
-  const _BrowserChromeBar({required this.width, required this.height, this.isDark = true});
+  const _BrowserChromeBar({
+    required this.width,
+    required this.height,
+    this.isDark = true,
+  });
   final double width;
   final double height;
   final bool isDark;
@@ -315,11 +401,21 @@ class _BrowserChromeBar extends StatelessWidget {
             child: Container(
               height: 22,
               decoration: BoxDecoration(
-                color: isDark ? DesignTokens.black.withValues(alpha: 0.26) : DesignTokens.black.withAlpha(15),
+                color: isDark
+                    ? DesignTokens.black.withValues(alpha: 0.26)
+                    : DesignTokens.black.withAlpha(15),
                 borderRadius: BorderRadius.circular(4),
               ),
               alignment: Alignment.center,
-              child: Text('orignagta.ca', style: TextStyle(color: isDark ? DesignTokens.white.withValues(alpha: 0.54) : DesignTokens.black.withValues(alpha: 0.45), fontSize: 10)),
+              child: Text(
+                'orignagta.ca',
+                style: TextStyle(
+                  color: isDark
+                      ? DesignTokens.white.withValues(alpha: 0.54)
+                      : DesignTokens.black.withValues(alpha: 0.45),
+                  fontSize: 10,
+                ),
+              ),
             ),
           ),
         ],
@@ -351,7 +447,15 @@ class _CheckerboardPainter extends CustomPainter {
     for (int r = 0; r < rows; r++) {
       for (int c = 0; c < cols; c++) {
         final paint = (r + c).isEven ? paint1 : paint2;
-        canvas.drawRect(Rect.fromLTWH(c * cellSize.toDouble(), r * cellSize.toDouble(), cellSize, cellSize), paint);
+        canvas.drawRect(
+          Rect.fromLTWH(
+            c * cellSize.toDouble(),
+            r * cellSize.toDouble(),
+            cellSize,
+            cellSize,
+          ),
+          paint,
+        );
       }
     }
   }
@@ -366,26 +470,62 @@ class _CheckerboardPainter extends CustomPainter {
 
 /// Wraps [child] in a mobile phone frame (390×844).
 /// Use with `@Preview(size: Size(390, 844))`.
-Widget previewMobile({required Widget child, ThemeData? theme, Locale locale = const Locale('en')}) {
-  return _singleViewport(bp: PreviewBreakpoint.mobile, child: child, theme: theme, locale: locale);
+Widget previewMobile({
+  required Widget child,
+  ThemeData? theme,
+  Locale locale = const Locale('en'),
+}) {
+  return _singleViewport(
+    bp: PreviewBreakpoint.mobile,
+    child: child,
+    theme: theme,
+    locale: locale,
+  );
 }
 
 /// Wraps [child] in a tablet frame (768×1024).
 /// Use with `@Preview(size: Size(768, 1024))`.
-Widget previewTablet({required Widget child, ThemeData? theme, Locale locale = const Locale('en')}) {
-  return _singleViewport(bp: PreviewBreakpoint.tablet, child: child, theme: theme, locale: locale);
+Widget previewTablet({
+  required Widget child,
+  ThemeData? theme,
+  Locale locale = const Locale('en'),
+}) {
+  return _singleViewport(
+    bp: PreviewBreakpoint.tablet,
+    child: child,
+    theme: theme,
+    locale: locale,
+  );
 }
 
 /// Wraps [child] in a browser frame at desktop size (1280×800).
 /// Use with `@Preview(size: Size(1280, 800))`.
-Widget previewDesktop({required Widget child, ThemeData? theme, Locale locale = const Locale('en')}) {
-  return _singleViewport(bp: PreviewBreakpoint.desktop, child: child, theme: theme, locale: locale);
+Widget previewDesktop({
+  required Widget child,
+  ThemeData? theme,
+  Locale locale = const Locale('en'),
+}) {
+  return _singleViewport(
+    bp: PreviewBreakpoint.desktop,
+    child: child,
+    theme: theme,
+    locale: locale,
+  );
 }
 
 /// Wraps [child] in a browser frame at web size (1440×900).
 /// Use with `@Preview(size: Size(1440, 900))`.
-Widget previewWeb({required Widget child, ThemeData? theme, Locale locale = const Locale('en')}) {
-  return _singleViewport(bp: PreviewBreakpoint.web, child: child, theme: theme, locale: locale);
+Widget previewWeb({
+  required Widget child,
+  ThemeData? theme,
+  Locale locale = const Locale('en'),
+}) {
+  return _singleViewport(
+    bp: PreviewBreakpoint.web,
+    child: child,
+    theme: theme,
+    locale: locale,
+  );
 }
 
 Widget _singleViewport({
@@ -403,7 +543,10 @@ Widget _singleViewport({
     data: effectiveTheme,
     child: MediaQuery(
       data: MediaQueryData(size: Size(bp.width, contentH)),
-      child: Scaffold(backgroundColor: effectiveTheme.scaffoldBackgroundColor, body: child),
+      child: Scaffold(
+        backgroundColor: effectiveTheme.scaffoldBackgroundColor,
+        body: child,
+      ),
     ),
   );
 
@@ -411,7 +554,11 @@ Widget _singleViewport({
     locale: locale,
     theme: effectiveTheme,
     size: Size(bp.width, bp.height),
-    child: _DeviceFrameOverlay(breakpoint: bp, isDark: effectiveTheme.brightness == Brightness.dark, child: content),
+    child: _DeviceFrameOverlay(
+      breakpoint: bp,
+      isDark: effectiveTheme.brightness == Brightness.dark,
+      child: content,
+    ),
   );
 }
 
@@ -452,7 +599,9 @@ Widget previewAllViewports({
                 children: [
                   _buildFrame(bp, effectiveTheme, builder(bp)),
                   const SizedBox(height: 8),
-                  _label('${bp.name}  •  ${bp.width.toInt()}×${bp.height.toInt()}'),
+                  _label(
+                    '${bp.name}  •  ${bp.width.toInt()}×${bp.height.toInt()}',
+                  ),
                 ],
               ),
               const SizedBox(width: 32),
@@ -473,11 +622,18 @@ Widget _buildFrame(PreviewBreakpoint bp, ThemeData theme, Widget content) {
     data: theme,
     child: MediaQuery(
       data: MediaQueryData(size: Size(bp.width, contentH)),
-      child: Scaffold(backgroundColor: theme.scaffoldBackgroundColor, body: content),
+      child: Scaffold(
+        backgroundColor: theme.scaffoldBackgroundColor,
+        body: content,
+      ),
     ),
   );
 
-  return _DeviceFrameOverlay(breakpoint: bp, isDark: theme.brightness == Brightness.dark, child: contentWidget);
+  return _DeviceFrameOverlay(
+    breakpoint: bp,
+    isDark: theme.brightness == Brightness.dark,
+    child: contentWidget,
+  );
 }
 
 // ============================================================================
@@ -501,26 +657,46 @@ Widget previewWrapper({
         width: breakpoint.width,
         height: breakpoint.height,
         decoration: BoxDecoration(
-          border: Border.all(color: DesignTokens.textSecondary.withValues(alpha: 0.3)),
-          boxShadow: [BoxShadow(blurRadius: 20, color: DesignTokens.black.withValues(alpha: 0.26))],
+          border: Border.all(
+            color: DesignTokens.textSecondary.withValues(alpha: 0.3),
+          ),
+          boxShadow: [
+            BoxShadow(
+              blurRadius: 20,
+              color: DesignTokens.black.withValues(alpha: 0.26),
+            ),
+          ],
         ),
         child: ClipRect(
           child: MediaQuery(
-            data: MediaQueryData(size: Size(breakpoint.width, breakpoint.height)),
-            child: Scaffold(backgroundColor: background ?? DesignTokens.darkBackground, body: content),
+            data: MediaQueryData(
+              size: Size(breakpoint.width, breakpoint.height),
+            ),
+            child: Scaffold(
+              backgroundColor: background ?? DesignTokens.darkBackground,
+              body: content,
+            ),
           ),
         ),
       ),
     );
   } else {
-    content = Scaffold(backgroundColor: background ?? DesignTokens.darkBackground, body: Center(child: content));
+    content = Scaffold(
+      backgroundColor: background ?? DesignTokens.darkBackground,
+      body: Center(child: content),
+    );
   }
 
   return _localizationShell(locale: locale, theme: theme, child: content);
 }
 
 /// Preview wrapper for a row/grid of widget variants (no breakpoint sizing).
-Widget previewGrid({required List<Widget> children, ThemeData? theme, Color? background, Locale locale = const Locale('en')}) {
+Widget previewGrid({
+  required List<Widget> children,
+  ThemeData? theme,
+  Color? background,
+  Locale locale = const Locale('en'),
+}) {
   return previewWrapper(
     locale: locale,
     theme: theme,
@@ -572,10 +748,16 @@ Widget previewAllBreakpoints({
 // INTERNALS
 // ============================================================================
 
-
 Widget _label(String text) => Padding(
   padding: const EdgeInsets.only(bottom: 8),
-  child: Text(text, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: DesignTokens.white.withValues(alpha: 0.54))),
+  child: Text(
+    text,
+    style: TextStyle(
+      fontSize: 12,
+      fontWeight: FontWeight.w500,
+      color: DesignTokens.white.withValues(alpha: 0.54),
+    ),
+  ),
 );
 
 Widget _localizationShell({
@@ -643,9 +825,15 @@ class _PreviewUserRepository implements UserRepository {
   Future<void> updatePreferredLanguage(String userId, String lang) async {}
 
   @override
-  Stream<List<Address>> watchAddresses(String userId) => Stream.value([]);
+  Stream<List<Address>> watchAddresses(
+    String userId, {
+    int limit = 50,
+    int offset = 0,
+  }) => Stream.value([]);
 
   @override
   Stream<SellerAccountStatus> watchSellerAccountStatus(String userId) =>
-      Stream.value(const SellerAccountStatus(isSeller: false, chargesEnabled: false));
+      Stream.value(
+        const SellerAccountStatus(isSeller: false, chargesEnabled: false),
+      );
 }

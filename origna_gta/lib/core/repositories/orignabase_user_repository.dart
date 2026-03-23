@@ -4,7 +4,7 @@ import 'dart:math';
 import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/core/repositories/user_repository.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart'
-    show ApiEndpoints, Collections, Fields, PolicyVersionValues;
+    show ApiEndpoints, BusinessRules, Collections, Fields, PolicyVersionValues;
 import 'package:origna_gta/models/generated/base_models.dart' show UserRole;
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/app_logger.dart';
@@ -166,6 +166,7 @@ class OrignaBaseUserRepository implements UserRepository {
           .collection(Collections.addresses)
           .where(Fields.userId, isEqualTo: userId)
           .where(Fields.isDefault, isEqualTo: true)
+          .limit(BusinessRules.addressesPageSize)
           .get();
 
       // doc.id may include collection prefix (e.g., "addresses:abc123").
@@ -277,7 +278,11 @@ class OrignaBaseUserRepository implements UserRepository {
   }
 
   @override
-  Stream<List<Address>> watchAddresses(String userId) {
+  Stream<List<Address>> watchAddresses(
+    String userId, {
+    int limit = 50,
+    int offset = 0,
+  }) {
     late StreamController<List<Address>> controller;
     Timer? timer;
     var delay = const Duration(seconds: 5);
@@ -289,6 +294,8 @@ class OrignaBaseUserRepository implements UserRepository {
           final snapshot = await _ob
               .collection(Collections.addresses)
               .where(Fields.userId, isEqualTo: userId)
+              .limit(limit)
+              .offset(offset)
               .get();
           final values = snapshot.docs
               .map((doc) => _parseAddressDocument(doc.data, docId: doc.id))
@@ -309,6 +316,8 @@ class OrignaBaseUserRepository implements UserRepository {
         final snapshot = await _ob
             .collection(Collections.addresses)
             .where(Fields.userId, isEqualTo: userId)
+            .limit(limit)
+            .offset(offset)
             .get();
         final values = snapshot.docs
             .map((doc) => _parseAddressDocument(doc.data, docId: doc.id))

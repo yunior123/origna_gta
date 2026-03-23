@@ -72,11 +72,9 @@
 - [ ] `screens/login_screen.dart` — 1168 lines
 - [ ] ... 18 more files 500-1044 lines
 
-### P2 — CachedNetworkImage missing dimensions (4)
-- [ ] `widgets/modern_product_card.dart:142`
-- [ ] `screens/product_card_screen.dart:157`
-- [ ] `screens/productdetails_screen.dart:426`
-- [ ] `screens/widgets/product_detail/product_reviews_section.dart:507`
+### P2 — CachedNetworkImage missing dimensions — FIXED ✅
+- [x] All 4 `CachedNetworkImage` widgets have `width: double.infinity, height: double.infinity`
+- [x] Constrained by parent Expanded/Stack/PageView widgets
 
 ### Fixed (from previous audits)
 - [x] ListView(children:[]) — 0 remaining
@@ -102,12 +100,13 @@
 - [ ] `screens/parts/checkout_summary_section.dart:248-255` — tax in widget
 - [ ] `screens/parts/checkout_items_section.dart:16,198-202` — fee/subtotal inline
 
-## Test Coverage (2026-03-22) — ALL GREEN, ZERO SKIPS
-- [x] Rust: **3,208 pass, 0 fail, 0 skip**
-- [x] Flutter app: **4,953 pass, 0 fail, 0 skip**
+## Test Coverage (2026-03-22, updated 2026-03-23)
+- [x] Rust: **3,228 pass, 0 fail, 0 skip** (updated 2026-03-22)
+- [x] Flutter app: **3,986 pass, 2 live fail (expected), 146 skip** (without live flag)
+- [x] Flutter app (with live flag): **4,953 pass, 0 fail** (verified 2026-03-22)
 - [x] OrignaBase SDK: **538 pass, 0 fail, 0 skip**
-- [x] **Total: 8,699 tests, 0 failures, 0 skips**
 - [x] Stress tests: k6 auth storm (983 reqs, 0% fail) + large payloads (520 reqs, avg 217ms, 0% fail)
+- Note: 6 `edit_product_viewmodel_test` failures are from parallel session's WIP changes
 - Test command: `flutter test --dart-define=RUN_ORIGNABASE_LIVE_TESTS=true --dart-define=ENVIRONMENT=dev --exclude-tags golden`
 
 ## Stripe Webhook Audit (2026-03-22)
@@ -166,31 +165,28 @@
 
 ### 🔴 ARCHITECTURE VIOLATIONS
 
-#### P0 — MVVM Violations (setState in screens)
+#### P1 — MVVM Violations (setState reduced 81→32, 15 files)
 
-| File | setState Count | Lines |
-|------|----------------|-------|
-| [ ] `screens/seller_setup_screen.dart` | 8 | 467-513 |
-| [ ] `screens/return_request_screen.dart` | 6 | 401-437 |
-| [ ] `widgets/rating_dialog.dart` | 5 | 137-298 |
-| [ ] `screens/parts/profile_settings_section.dart` | 5 | 345-414 |
-| [ ] `screens/productaddimages_screen.dart` | 5 | - |
-| [ ] `screens/mfa_challenge_screen.dart` | 3 | 44-78 |
-| [ ] `screens/common_screens.dart` | 4 | 684-760 |
-| [ ] `widgets/order_widgets.dart` | 4 | 724-2522 |
-| [ ] `screens/shipping_approval_screen.dart` | 2 | 434-450 |
-| [ ] `screens/parts/home_recent_products.dart` | 6 | 77-110 |
-| [ ] `screens/parts/checkout_payment_section.dart` | 2 | 200-205 |
-| [ ] Total across 30+ files | **81** | - |
+| File | setState Count | Status |
+|------|----------------|--------|
+| [x] `screens/mfa_challenge_screen.dart` | 0 | Migrated to Riverpod ✅ |
+| [x] `screens/seller_setup_screen.dart` | 0 | Migrated to Riverpod ✅ |
+| [x] `screens/return_request_screen.dart` | 0 | Migrated to Riverpod ✅ |
+| [x] `screens/productaddimages_screen.dart` | 0 | Migrated to Riverpod ✅ |
+| [x] `screens/parts/profile_settings_section.dart` | 0 | Migrated to Riverpod ✅ |
+| [x] `screens/parts/home_recent_products.dart` | 0 | Migrated to Riverpod ✅ |
+| [ ] `features/admin/admin_panel_screen.dart` | 2 | Remaining |
+| [ ] `features/admin/tabs/admin_orders_tab.dart` | 2 | Remaining |
+| [ ] `screens/login_screen.dart` | 2 | Remaining |
+| [ ] `screens/parts/seller_orders_order_card.dart` | 2 | Remaining |
+| Acceptable | 22 | Animations, mascots, glassmorphism, video |
 
-#### P0 — Business Logic in Screens (async methods)
+#### P1 — Business Logic in Screens (partially resolved)
 
-30+ async `Future<void>` methods with business logic in screens:
-- [ ] `mfa_challenge_screen.dart` — `_submit()`
-- [ ] `shipping_approval_screen.dart` — `_handleApproval()`
-- [ ] `return_request_screen.dart` — `_submitReturn()`
-- [ ] `seller_warehouses_screen.dart` — `_submit()`
-- [ ] Direct repository calls in screens (should be ViewModels)
+- [x] `mfa_challenge_screen.dart` — `_submit()` moved to ViewModel ✅
+- [ ] `shipping_approval_screen.dart` — `_handleApproval()` (still in screen)
+- [ ] `return_request_screen.dart` — `_submitReturn()` (still in screen)
+- [ ] `seller_warehouses_screen.dart` — `_submit()` (still in screen)
 
 #### P0 — God Files (>1000 lines)
 
@@ -279,40 +275,35 @@
 
 ### 🟠 SEMANTICS & ACCESSIBILITY
 
-#### P1 — Missing Semantics for E2E Tests
+#### P1 — Missing Semantics for E2E Tests (MOSTLY FIXED)
 
-| Category | Issue | Files |
-|----------|-------|-------|
-| [ ] `btn-*` labels | Missing on PopupMenuButtons, TextButtons in dialogs | 10+ files |
-| [ ] `input-*` labels | Missing on TextFields | 15+ files |
-| [ ] `product-card-*` | Missing on product cards | 5+ files |
-| [ ] Dialog buttons | Missing semantics in confirmation dialogs | 8+ files |
-| [ ] GestureDetectors | Missing `button: true` semantics | 10+ files |
-
-**Specific violations:**
-- `checkout_payment_section.dart:173,252` — TextField, ChoiceChip
-- `seller_products_screen.dart:172,232,311,420` — Multiple missing
-- `admin_products_tab.dart:41,206,285,526,600,744,876,939` — Admin panel
-- `return_request_screen.dart:188` — TextField
-- `mfa_challenge_screen.dart:205,225` — MFA code fields
-- `rating_dialog.dart:77` — Review field
+| File | Status |
+|------|--------|
+| [x] `checkout_payment_section.dart` | Semantics added ✅ |
+| [x] `admin_products_tab.dart` | Semantics added ✅ |
+| [x] `admin_orders_tab.dart` | Semantics added ✅ |
+| [x] `rating_dialog.dart` | Semantics added ✅ |
+| [x] `mfa_challenge_screen.dart` | Already had semantics ✅ |
+| [x] `return_request_screen.dart` | Already had full coverage ✅ |
+| [x] `seller_products_screen.dart` | Already had full coverage ✅ |
+| [ ] Remaining: some dialog buttons, GestureDetectors in minor files | Low priority |
 
 ---
 
 ### 🟠 PAGINATION
 
-#### P1 — Unpaginated Queries (15+ issues)
+#### P1 — Unpaginated Queries (PARTIALLY FIXED)
 
-| Repository | Method | Issue |
-|------------|--------|-------|
-| [ ] `orignabase_user_repository.dart` | `watchAddresses()` | NO LIMIT — fetches ALL |
-| [ ] `orignabase_order_repository.dart` | `fetchReturnRequests()` | NO LIMIT — fetches ALL |
+| Repository | Method | Status |
+|------------|--------|--------|
+| [x] `orignabase_user_repository.dart` | `watchAddresses()` | `.limit(BusinessRules.addressesPageSize)` ✅ |
+| [x] `orignabase_order_repository.dart` | `fetchReturnRequests()` | `.limit(BusinessRules.returnRequestsPageSize)` ✅ |
 | [ ] `orignabase_product_repository.dart` | `watchFavorites()` | Fixed 50 limit, no cursor |
 | [ ] `orignabase_chat_repository.dart` | `_fetchMessages()` | Fixed 100 limit, no cursor |
 | [ ] `orignabase_chat_repository.dart` | `_watchThreads()` | Fixed 50 limit |
 | [ ] `notification_repository.dart` | `watchNotifications()` | Fixed 50 limit |
 | [ ] `orignabase_qa_repository.dart` | `watchQA()` | Fixed 10 limit |
-| [ ] Admin: all `watch*()` methods | - | No cursor pagination |
+| [ ] Admin: all `watch*()` methods | — | No cursor pagination |
 
 **Good pagination:** `product_search_helpers.dart` has proper cursor-based pagination.
 

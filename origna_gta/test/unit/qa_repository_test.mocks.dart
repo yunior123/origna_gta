@@ -47,9 +47,17 @@ class MockQARepository extends _i1.Mock implements _i2.QARepository {
           as _i3.Future<void>);
 
   @override
-  _i3.Stream<List<_i4.QAModel>> watchQA(String? productId) =>
+  _i3.Stream<List<_i4.QAModel>> watchQA(
+    String? productId, {
+    int? limit = 20,
+    int? offset = 0,
+  }) =>
       (super.noSuchMethod(
-            Invocation.method(#watchQA, [productId]),
+            Invocation.method(
+              #watchQA,
+              [productId],
+              {#limit: limit, #offset: offset},
+            ),
             returnValue: _i3.Stream<List<_i4.QAModel>>.empty(),
             returnValueForMissingStub: _i3.Stream<List<_i4.QAModel>>.empty(),
           )

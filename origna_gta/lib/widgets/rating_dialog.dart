@@ -183,22 +183,26 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
         Positioned(
           top: -2,
           right: 2,
-          child: GestureDetector(
-            onTap: () {
-              final current = ref.read(_ratingImagesProvider);
-              ref.read(_ratingImagesProvider.notifier).state = [...current]
-                ..removeAt(index);
-            },
-            child: Container(
-              padding: const EdgeInsets.all(2),
-              decoration: BoxDecoration(
-                color: DesignTokens.black.withValues(alpha: 0.54),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.close,
-                color: DesignTokens.white,
-                size: 12,
+          child: Semantics(
+            button: true,
+            label: 'btn-remove-review-image-$index',
+            child: GestureDetector(
+              onTap: () {
+                final current = ref.read(_ratingImagesProvider);
+                ref.read(_ratingImagesProvider.notifier).state = [...current]
+                  ..removeAt(index);
+              },
+              child: Container(
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  color: DesignTokens.black.withValues(alpha: 0.54),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.close,
+                  color: DesignTokens.white,
+                  size: 12,
+                ),
               ),
             ),
           ),
@@ -250,47 +254,51 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
         ),
         const SizedBox(height: 8),
         if (!isPremium)
-          Tooltip(
-            message: 'rating.upgrade_photos_tooltip'.tr(),
-            child: GestureDetector(
-              onTap: () {
-                Navigator.of(context).pop();
-                Navigator.of(context).pushNamed(AppRoutes.subscription);
-              },
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  vertical: 12,
-                  horizontal: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: DesignTokens.surface,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: DesignTokens.outlineVariant),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.lock_rounded,
-                      color: DesignTokens.textDisabled,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'rating.photos_premium_only'.tr(),
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: DesignTokens.textSecondary,
+          Semantics(
+            button: true,
+            label: 'btn-upgrade-photo-reviews',
+            child: Tooltip(
+              message: 'rating.upgrade_photos_tooltip'.tr(),
+              child: GestureDetector(
+                onTap: () {
+                  Navigator.of(context).pop();
+                  Navigator.of(context).pushNamed(AppRoutes.subscription);
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 12,
+                    horizontal: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: DesignTokens.surface,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: DesignTokens.outlineVariant),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.lock_rounded,
+                        color: DesignTokens.textDisabled,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'rating.photos_premium_only'.tr(),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: DesignTokens.textSecondary,
+                          ),
                         ),
                       ),
-                    ),
-                    const Icon(
-                      Icons.chevron_right_rounded,
-                      color: DesignTokens.textDisabled,
-                      size: 18,
-                    ),
-                  ],
+                      const Icon(
+                        Icons.chevron_right_rounded,
+                        color: DesignTokens.textDisabled,
+                        size: 18,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -302,24 +310,28 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
                 (entry) => _buildImageThumb(entry.key, entry.value),
               ),
               if (reviewImages.length < 3)
-                GestureDetector(
-                  onTap: _pickImage,
-                  child: Container(
-                    width: 60,
-                    height: 60,
-                    margin: const EdgeInsets.only(right: 8),
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                        color: DesignTokens.outlineVariant,
-                        style: BorderStyle.solid,
+                Semantics(
+                  button: true,
+                  label: 'btn-add-review-photo',
+                  child: GestureDetector(
+                    onTap: _pickImage,
+                    child: Container(
+                      width: 60,
+                      height: 60,
+                      margin: const EdgeInsets.only(right: 8),
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: DesignTokens.outlineVariant,
+                          style: BorderStyle.solid,
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                        color: DesignTokens.surface,
                       ),
-                      borderRadius: BorderRadius.circular(8),
-                      color: DesignTokens.surface,
-                    ),
-                    child: const Icon(
-                      Icons.add_photo_alternate_outlined,
-                      color: DesignTokens.textSecondary,
-                      size: 28,
+                      child: const Icon(
+                        Icons.add_photo_alternate_outlined,
+                        color: DesignTokens.textSecondary,
+                        size: 28,
+                      ),
                     ),
                   ),
                 ),

@@ -342,9 +342,17 @@ class MockProductRepository extends _i1.Mock implements _i2.ProductRepository {
           as _i3.Future<List<String>>);
 
   @override
-  _i3.Stream<Set<String>> watchFavorites(String? userId) =>
+  _i3.Stream<Set<String>> watchFavorites(
+    String? userId, {
+    int? limit = 50,
+    int? offset = 0,
+  }) =>
       (super.noSuchMethod(
-            Invocation.method(#watchFavorites, [userId]),
+            Invocation.method(
+              #watchFavorites,
+              [userId],
+              {#limit: limit, #offset: offset},
+            ),
             returnValue: _i3.Stream<Set<String>>.empty(),
             returnValueForMissingStub: _i3.Stream<Set<String>>.empty(),
           )

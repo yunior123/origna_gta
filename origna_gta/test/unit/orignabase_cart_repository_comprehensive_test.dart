@@ -112,6 +112,9 @@ class _FakeSubcollectionRef extends Fake implements SubcollectionRef {
   Query limit(int limit) => this;
 
   @override
+  Query offset(int count) => this;
+
+  @override
   Query startAfterId(String id) => this;
 
   @override
@@ -176,6 +179,9 @@ class _FakeCollectionRef extends Fake implements CollectionRef {
 
   @override
   Query limit(int limit) => this;
+
+  @override
+  Query offset(int count) => this;
 }
 
 class _FakeBatch extends Fake implements WriteBatch {

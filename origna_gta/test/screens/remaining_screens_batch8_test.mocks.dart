@@ -335,9 +335,17 @@ class MockProductRepository extends _i1.Mock implements _i2.ProductRepository {
           as _i3.Future<List<String>>);
 
   @override
-  _i3.Stream<Set<String>> watchFavorites(String? userId) =>
+  _i3.Stream<Set<String>> watchFavorites(
+    String? userId, {
+    int? limit = 50,
+    int? offset = 0,
+  }) =>
       (super.noSuchMethod(
-            Invocation.method(#watchFavorites, [userId]),
+            Invocation.method(
+              #watchFavorites,
+              [userId],
+              {#limit: limit, #offset: offset},
+            ),
             returnValue: _i3.Stream<Set<String>>.empty(),
             returnValueForMissingStub: _i3.Stream<Set<String>>.empty(),
           )
@@ -517,9 +525,17 @@ class MockOrderRepository extends _i1.Mock implements _i9.OrderRepository {
           as _i3.Future<Map<String, dynamic>>);
 
   @override
-  _i3.Future<List<_i4.ReturnRequest>> fetchReturnRequests(String? orderId) =>
+  _i3.Future<List<_i4.ReturnRequest>> fetchReturnRequests(
+    String? orderId, {
+    int? limit = 50,
+    int? offset = 0,
+  }) =>
       (super.noSuchMethod(
-            Invocation.method(#fetchReturnRequests, [orderId]),
+            Invocation.method(
+              #fetchReturnRequests,
+              [orderId],
+              {#limit: limit, #offset: offset},
+            ),
             returnValue: _i3.Future<List<_i4.ReturnRequest>>.value(
               <_i4.ReturnRequest>[],
             ),

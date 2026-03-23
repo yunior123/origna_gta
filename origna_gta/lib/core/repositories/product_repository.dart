@@ -7,7 +7,10 @@ import 'package:origna_gta/models/generated/models.dart';
 
 /// Shared sanitization for product data before writing to database.
 /// Used by both concrete repository implementations.
-Map<String, dynamic> sanitizeProductData(Map<String, dynamic> rawData, {bool ensureDateCreated = false}) {
+Map<String, dynamic> sanitizeProductData(
+  Map<String, dynamic> rawData, {
+  bool ensureDateCreated = false,
+}) {
   final data = Map<String, dynamic>.from(rawData);
 
   // productId is derived from document id; avoid storing a client-controlled field.
@@ -23,7 +26,9 @@ Map<String, dynamic> sanitizeProductData(Map<String, dynamic> rawData, {bool ens
   // Address model defaults apartment to '', so normalize empty values to null.
   final sellerAddress = data[Fields.sellerAddress];
   if (sellerAddress is Map) {
-    final address = Map<String, dynamic>.from(sellerAddress.cast<String, dynamic>());
+    final address = Map<String, dynamic>.from(
+      sellerAddress.cast<String, dynamic>(),
+    );
     final apartment = address['apartment'];
     if (apartment is String && apartment.trim().isEmpty) {
       address['apartment'] = null;
@@ -41,7 +46,9 @@ Map<String, dynamic> sanitizeProductData(Map<String, dynamic> rawData, {bool ens
     if (createdAt is String) {
       try {
         // SurrealDB may return nanosecond-precision strings; truncate first.
-        data[Fields.createdAt] = DateTime.parse(truncateNanoseconds(createdAt)).toIso8601String();
+        data[Fields.createdAt] = DateTime.parse(
+          truncateNanoseconds(createdAt),
+        ).toIso8601String();
       } catch (_) {
         data[Fields.createdAt] = FieldValue.serverTimestamp();
       }
@@ -59,11 +66,20 @@ class ProductQueryResult {
   final String? lastDocumentId;
   final bool hasMore;
 
-  ProductQueryResult({required this.products, this.lastDocumentId, required this.hasMore});
+  ProductQueryResult({
+    required this.products,
+    this.lastDocumentId,
+    required this.hasMore,
+  });
 }
 
 abstract class ProductRepository {
-  Future<String> createProductAtomic(Product product, List<Uint8List> imageBytes, {List<String>? testImageUrls, String? bookSourceUrl});
+  Future<String> createProductAtomic(
+    Product product,
+    List<Uint8List> imageBytes, {
+    List<String>? testImageUrls,
+    String? bookSourceUrl,
+  });
   Future<void> deleteProduct(String productId);
   Future<Product?> fetchProductById(String productId);
   Future<ProductQueryResult> fetchProducts({
@@ -82,14 +98,36 @@ abstract class ProductRepository {
   Future<Product?> getProductBySlug(String slug);
   Future<String?> getUploadUrl(String fileName);
   Future<Map<String, String>?> getUploadUrlInfo(String fileName);
-  Future<Map<String, String>?> getUploadVideoUrlInfo(String fileName, String contentType);
-  Future<void> submitRating(String orderId, String productId, int rating, {List<String>? reviewImageUrls, String? reviewText});
-  Future<void> submitRatingAtomic(String orderId, String productId, int rating, {List<Uint8List>? reviewImages, String? reviewText});
+  Future<Map<String, String>?> getUploadVideoUrlInfo(
+    String fileName,
+    String contentType,
+  );
+  Future<void> submitRating(
+    String orderId,
+    String productId,
+    int rating, {
+    List<String>? reviewImageUrls,
+    String? reviewText,
+  });
+  Future<void> submitRatingAtomic(
+    String orderId,
+    String productId,
+    int rating, {
+    List<Uint8List>? reviewImages,
+    String? reviewText,
+  });
   Future<void> toggleFavorite(String userId, String productId);
   Future<void> updateProduct(String productId, Map<String, dynamic> data);
   Future<List<String>> uploadImages(List<Uint8List> images, String productId);
   Future<String?> uploadProductVideo(XFile videoFile, String sellerId);
-  Future<List<String>> uploadReviewImages(List<Uint8List> images, String userId);
-  Stream<Set<String>> watchFavorites(String userId);
+  Future<List<String>> uploadReviewImages(
+    List<Uint8List> images,
+    String userId,
+  );
+  Stream<Set<String>> watchFavorites(
+    String userId, {
+    int limit = 50,
+    int offset = 0,
+  });
   Stream<int> watchUnansweredQuestionsCount(String sellerId);
 }

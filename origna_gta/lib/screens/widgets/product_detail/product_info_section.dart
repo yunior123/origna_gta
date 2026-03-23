@@ -249,9 +249,9 @@ class TrustBadges extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final metrics = ref
-        .watch(sellerMetricsProvider(product.sellerId))
-        .valueOrNull;
+    final metrics = ref.watch(
+      sellerMetricsProvider(product.sellerId).select((a) => a.valueOrNull),
+    );
 
     final isVerifiedSeller = (metrics?.positiveRatePct ?? 0) >= 90;
     final isFastShipper = (metrics?.avgShipDays ?? double.infinity) <= 2;

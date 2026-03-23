@@ -678,89 +678,98 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
               ),
             ),
           ),
-          GestureDetector(
-            onTap: () =>
-                vm.updateNotificationPreferences(notifyNewProducts: !notifyNew),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'subscription.new_products'.tr(),
-                          style: const TextStyle(fontSize: 14),
-                        ),
-                        Text(
-                          'subscription.new_products_desc'.tr(),
-                          style: const TextStyle(
-                            fontSize: 12,
-                            height: 1.5,
-                            color: DesignTokens.textSecondary,
+          Semantics(
+            button: true,
+            label: 'btn-toggle-notify-new-products',
+            child: GestureDetector(
+              onTap: () => vm.updateNotificationPreferences(
+                notifyNewProducts: !notifyNew,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'subscription.new_products'.tr(),
+                            style: const TextStyle(fontSize: 14),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Semantics(
-                    label: 'switch-notify-new-products',
-                    child: SizedBox(
-                      height: 28,
-                      child: Switch.adaptive(
-                        value: notifyNew,
-                        onChanged: (val) => vm.updateNotificationPreferences(
-                          notifyNewProducts: val,
-                        ),
-                        activeThumbColor: DesignTokens.primary,
+                          Text(
+                            'subscription.new_products_desc'.tr(),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              height: 1.5,
+                              color: DesignTokens.textSecondary,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-                ],
+                    Semantics(
+                      label: 'switch-notify-new-products',
+                      child: SizedBox(
+                        height: 28,
+                        child: Switch.adaptive(
+                          value: notifyNew,
+                          onChanged: (val) => vm.updateNotificationPreferences(
+                            notifyNewProducts: val,
+                          ),
+                          activeThumbColor: DesignTokens.primary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-          GestureDetector(
-            onTap: () => vm.updateNotificationPreferences(
-              notifyTrending: !notifyTrending,
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'subscription.trending_products'.tr(),
-                          style: const TextStyle(fontSize: 14),
-                        ),
-                        Text(
-                          'subscription.trending_products_desc'.tr(),
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: DesignTokens.textSecondary,
+          Semantics(
+            button: true,
+            label: 'btn-toggle-notify-trending',
+            child: GestureDetector(
+              onTap: () => vm.updateNotificationPreferences(
+                notifyTrending: !notifyTrending,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'subscription.trending_products'.tr(),
+                            style: const TextStyle(fontSize: 14),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Semantics(
-                    label: 'switch-notify-trending',
-                    child: SizedBox(
-                      height: 28,
-                      child: Switch.adaptive(
-                        value: notifyTrending,
-                        onChanged: (val) => vm.updateNotificationPreferences(
-                          notifyTrending: val,
-                        ),
-                        activeThumbColor: DesignTokens.primary,
+                          Text(
+                            'subscription.trending_products_desc'.tr(),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: DesignTokens.textSecondary,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-                ],
+                    Semantics(
+                      label: 'switch-notify-trending',
+                      child: SizedBox(
+                        height: 28,
+                        child: Switch.adaptive(
+                          value: notifyTrending,
+                          onChanged: (val) => vm.updateNotificationPreferences(
+                            notifyTrending: val,
+                          ),
+                          activeThumbColor: DesignTokens.primary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

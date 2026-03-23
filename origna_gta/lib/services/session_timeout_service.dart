@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
@@ -9,19 +10,39 @@ import 'package:origna_gta/core/schema/schema_constants.dart';
 /// SECURITY: Phase 3 - Session timeout implementation
 /// Tracks user interactions and signs out after 15 minutes of inactivity.
 class SessionTimeoutService {
-  // BOOT-L1: sourced from BusinessRules constant instead of hardcoded
-  static final Duration _inactivityTimeout = Duration(minutes: BusinessRules.sessionTimeoutMinutes);
+  static final Duration _defaultInactivityTimeout = Duration(
+    minutes: BusinessRules.sessionTimeoutMinutes,
+  );
+
+  Duration _inactivityTimeout = _defaultInactivityTimeout;
+
+  @visibleForTesting
+  set inactivityTimeout(Duration value) => _inactivityTimeout = value;
+
+  @visibleForTesting
+  static void resetInstance() {
+    _instance.stopMonitoring();
+    _instance._inactivityTimeout = _defaultInactivityTimeout;
+    _instance._currentUserIdProvider = null;
+    _instance._signOutCallback = null;
+  }
 
   /// Singleton instance
-  static final SessionTimeoutService _instance = SessionTimeoutService._internal();
+  static final SessionTimeoutService _instance =
+      SessionTimeoutService._internal();
   Timer? _timeoutTimer;
   DateTime _lastActivityTime = DateTime.now();
   GlobalKey<NavigatorState>? _navigatorKey;
-  // BOOT-H2: Track which user started the timer to prevent signing out a different user
   String? _watchedUserId;
   String? Function()? _currentUserIdProvider;
   Future<void> Function()? _signOutCallback;
-  
+
+  @visibleForTesting
+  set lastActivityTime(DateTime value) => _lastActivityTime = value;
+
+  @visibleForTesting
+  Future<void> handleTimeoutForTesting() => _handleTimeout();
+
   factory SessionTimeoutService() => _instance;
   SessionTimeoutService._internal();
 

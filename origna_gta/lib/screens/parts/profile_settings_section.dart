@@ -524,19 +524,23 @@ class _ThemePill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: DesignTokens.durationFast,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          gradient: selected ? DesignTokens.primaryGradient : null,
-          borderRadius: BorderRadius.circular(DesignTokens.radius20),
-        ),
-        child: Icon(
-          icon,
-          size: 16,
-          color: selected ? DesignTokens.white : DesignTokens.textSecondary,
+    return Semantics(
+      button: true,
+      label: 'btn-theme-$label',
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: DesignTokens.durationFast,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            gradient: selected ? DesignTokens.primaryGradient : null,
+            borderRadius: BorderRadius.circular(DesignTokens.radius20),
+          ),
+          child: Icon(
+            icon,
+            size: 16,
+            color: selected ? DesignTokens.white : DesignTokens.textSecondary,
+          ),
         ),
       ),
     );

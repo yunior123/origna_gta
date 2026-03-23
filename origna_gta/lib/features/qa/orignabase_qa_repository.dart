@@ -21,11 +21,15 @@ class OrignaBaseQARepository implements QARepository {
       throw OrignaBaseException('User not authenticated');
     }
 
-    await _ob.request('POST', ApiEndpoints.productsQuestionsAnswer, body: {
-      Fields.questionId: qaId,
-      Fields.answerText: answer.trim(),
-      Fields.userId: sellerId,
-    });
+    await _ob.request(
+      'POST',
+      ApiEndpoints.productsQuestionsAnswer,
+      body: {
+        Fields.questionId: qaId,
+        Fields.answerText: answer.trim(),
+        Fields.userId: sellerId,
+      },
+    );
   }
 
   @override
@@ -35,65 +39,76 @@ class OrignaBaseQARepository implements QARepository {
       throw OrignaBaseException('User not authenticated');
     }
 
-    await _ob.request('POST', ApiEndpoints.productsQuestionsAsk, body: {
-      Fields.productId: productId,
-      Fields.questionText: question.trim(),
-      Fields.userId: userId,
-    });
+    await _ob.request(
+      'POST',
+      ApiEndpoints.productsQuestionsAsk,
+      body: {
+        Fields.productId: productId,
+        Fields.questionText: question.trim(),
+        Fields.userId: userId,
+      },
+    );
   }
 
   @override
-  Stream<List<QAModel>> watchQA(String productId) {
+  Stream<List<QAModel>> watchQA(
+    String productId, {
+    int limit = 20,
+    int offset = 0,
+  }) {
     final controller = StreamController<List<QAModel>>();
     final questions = <String, QAModel>{};
 
-    // Initial fetch
-    _ob
+    var query = _ob
         .collection(Collections.productQuestions)
         .where(Fields.productId, isEqualTo: productId)
         .orderBy(Fields.createdAt, descending: true)
-        .limit(10)
+        .limit(limit);
+    if (offset > 0) {
+      query = query.offset(offset);
+    }
+    query
         .get()
         .then((snapshot) {
-      if (snapshot.isEmpty) {
-        controller.add([]);
-        return;
-      }
-      for (final doc in snapshot.docs) {
-        questions[doc.id] = QAModel.fromMap(doc.id, doc.data);
-      }
-      controller.add(_sortedQuestions(questions));
-    }).catchError((Object e, StackTrace st) {
-      AppError.log(e,
-          stackTrace: st, context: 'ob_qa.watchQA.init');
-      controller.addError(e);
-    });
+          if (snapshot.isEmpty) {
+            controller.add([]);
+            return;
+          }
+          for (final doc in snapshot.docs) {
+            questions[doc.id] = QAModel.fromMap(doc.id, doc.data);
+          }
+          controller.add(_sortedQuestions(questions));
+        })
+        .catchError((Object e, StackTrace st) {
+          AppError.log(e, stackTrace: st, context: 'ob_qa.watchQA.init');
+          controller.addError(e);
+        });
 
     // Realtime updates
     final realtime = RealtimeClient(_ob);
     realtime.connect();
-    final sub =
-        realtime.subscribe(Collections.productQuestions).listen(
-      (change) {
-        final doc = change.document;
-        final docProductId = doc.data[Fields.productId] as String?;
-        if (docProductId != productId) return;
+    final sub = realtime
+        .subscribe(Collections.productQuestions)
+        .listen(
+          (change) {
+            final doc = change.document;
+            final docProductId = doc.data[Fields.productId] as String?;
+            if (docProductId != productId) return;
 
-        switch (change.type) {
-          case ChangeType.create:
-          case ChangeType.update:
-            questions[doc.id] = QAModel.fromMap(doc.id, doc.data);
-            controller.add(_sortedQuestions(questions));
-          case ChangeType.delete:
-            questions.remove(doc.id);
-            controller.add(_sortedQuestions(questions));
-        }
-      },
-      onError: (Object e, StackTrace st) {
-        AppError.log(e,
-            stackTrace: st, context: 'ob_qa.watchQA.realtime');
-      },
-    );
+            switch (change.type) {
+              case ChangeType.create:
+              case ChangeType.update:
+                questions[doc.id] = QAModel.fromMap(doc.id, doc.data);
+                controller.add(_sortedQuestions(questions));
+              case ChangeType.delete:
+                questions.remove(doc.id);
+                controller.add(_sortedQuestions(questions));
+            }
+          },
+          onError: (Object e, StackTrace st) {
+            AppError.log(e, stackTrace: st, context: 'ob_qa.watchQA.realtime');
+          },
+        );
 
     controller.onCancel = () {
       sub.cancel();
