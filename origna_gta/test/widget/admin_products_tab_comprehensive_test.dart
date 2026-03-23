@@ -661,7 +661,7 @@ void main() {
       tester,
     ) async {
       setLargeScreen(tester);
-      when(mockRepo.deleteProduct(any)).thenAnswer((_) async { return null; });
+      when(mockRepo.deleteProduct(any)).thenAnswer((_) async {});
       final product = makeProduct(id: 'prod-123', name: 'Delete Me');
       await tester.pumpWidget(createTestWidget(products: [product]));
       await tester.pump();
@@ -702,7 +702,7 @@ void main() {
 
     testWidgets('updates stock when update button tapped', (tester) async {
       setLargeScreen(tester);
-      when(mockRepo.updateProductStock(any, any)).thenAnswer((_) async { return null; });
+      when(mockRepo.updateProductStock(any, any)).thenAnswer((_) async {});
       final product = makeProduct(id: 'stock-prod', stockQuantity: 10);
       await tester.pumpWidget(createTestWidget(products: [product]));
       await tester.pump();
@@ -751,7 +751,7 @@ void main() {
   group('AdminProductsTab — Mark Out of Stock', () {
     testWidgets('calls updateProductStock with 0', (tester) async {
       setLargeScreen(tester);
-      when(mockRepo.updateProductStock(any, any)).thenAnswer((_) async { return null; });
+      when(mockRepo.updateProductStock(any, any)).thenAnswer((_) async {});
       final product = makeProduct(id: 'oos-prod', stockQuantity: 10);
       await tester.pumpWidget(createTestWidget(products: [product]));
       await tester.pump();
@@ -802,7 +802,7 @@ void main() {
       tester,
     ) async {
       setLargeScreen(tester);
-      when(mockRepo.approveProduct(any)).thenAnswer((_) async { return null; });
+      when(mockRepo.approveProduct(any)).thenAnswer((_) async {});
       final product = makeProduct(
         id: 'approve-id',
         lifecycleStatus: ProductLifecycleStatusValues.underReview,
@@ -880,7 +880,7 @@ void main() {
 
     testWidgets('reject does nothing with empty reason', (tester) async {
       setLargeScreen(tester);
-      when(mockRepo.rejectProduct(any, any)).thenAnswer((_) async { return null; });
+      when(mockRepo.rejectProduct(any, any)).thenAnswer((_) async {});
       final product = makeProduct(
         id: 'rej-id',
         lifecycleStatus: ProductLifecycleStatusValues.underReview,
@@ -904,7 +904,7 @@ void main() {
 
     testWidgets('reject calls rejectProduct with reason', (tester) async {
       setLargeScreen(tester);
-      when(mockRepo.rejectProduct(any, any)).thenAnswer((_) async { return null; });
+      when(mockRepo.rejectProduct(any, any)).thenAnswer((_) async {});
       final product = makeProduct(
         id: 'rej-id',
         lifecycleStatus: ProductLifecycleStatusValues.underReview,

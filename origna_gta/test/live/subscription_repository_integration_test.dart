@@ -11,6 +11,11 @@ void main() {
     defaultValue: false,
   );
 
+  if (!runLive) {
+    test('Skip live tests', () {}, skip: 'live tests disabled');
+    return;
+  }
+
   group('Subscription features live', () {
     late ProviderContainer container;
     late OrignaBase ob;
@@ -20,10 +25,7 @@ void main() {
       ob = container.read(orignabaseProvider);
 
       // Sign in as buyer
-      await ob.auth.signInWithEmail(
-        'e2e-buyer@test.origna.ca',
-        'REDACTED_TEST_PASSWORD',
-      );
+      await ob.auth.signInWithEmail('e2e-buyer@test.origna.ca', 'REDACTED_TEST_PASSWORD');
     });
 
     tearDownAll(() async {
@@ -52,7 +54,11 @@ void main() {
           // 403: no doc → isOwner fails on null resource.
           // null status (Internal server error): SurrealDB query on nonexistent record.
           // Both mean "no subscription" — not an error from the caller's view.
-          if (e.statusCode == 403 || e.statusCode == 404 || e.statusCode == null) return;
+          if (e.statusCode == 403 ||
+              e.statusCode == 404 ||
+              e.statusCode == null) {
+            return;
+          }
           rethrow;
         }
       },
@@ -84,11 +90,7 @@ void main() {
       'cancelSubscription endpoint is reachable',
       () async {
         try {
-          await ob.request(
-            'POST',
-            ApiEndpoints.subscriptionsCancel,
-            body: {},
-          );
+          await ob.request('POST', ApiEndpoints.subscriptionsCancel, body: {});
           expect(true, isTrue);
         } catch (e) {
           // May fail if no active subscription, which is expected
@@ -166,17 +168,13 @@ void main() {
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
-    test(
-      'premiumSubscriptionPriceCad constant is defined',
-      () async {
-        expect(
-          BusinessRules.premiumSubscriptionPriceCad,
-          isA<double>(),
-          reason: 'Premium subscription price should be defined',
-        );
-        expect(BusinessRules.premiumSubscriptionPriceCad, greaterThan(0));
-      },
-      skip: !runLive,
-    );
+    test('premiumSubscriptionPriceCad constant is defined', () async {
+      expect(
+        BusinessRules.premiumSubscriptionPriceCad,
+        isA<double>(),
+        reason: 'Premium subscription price should be defined',
+      );
+      expect(BusinessRules.premiumSubscriptionPriceCad, greaterThan(0));
+    }, skip: !runLive);
   });
 }

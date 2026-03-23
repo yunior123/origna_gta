@@ -54,7 +54,7 @@ pub async fn create_review(
         .and_then(|v| v.as_u64())
         .ok_or_else(|| McpError::InvalidParams("Missing 'rating'".to_string()))?;
 
-    if rating < 1 || rating > 5 {
+    if !(1..=5).contains(&rating) {
         return Err(McpError::ValidationError("Rating must be 1-5".to_string()));
     }
 

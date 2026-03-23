@@ -41,6 +41,11 @@ const NOTIFICATION_COUNT = 36;
 const ADDRESS_COUNT = 8;
 const FAVORITE_COUNT = 48;
 const BUYER_CART_COUNT = 8;
+const DISPUTE_COUNT = 12;
+const COUPON_COUNT = 18;
+const PROMOTION_COUNT = 8;
+const DOWNLOAD_SESSION_COUNT = 6;
+const STOCK_NOTIFICATION_COUNT = 12;
 
 const CATEGORY_LABELS = [
   'Electronics',
@@ -880,6 +885,196 @@ async function seedMoreChats(admin: AuthBundle, buyerIds: string[], sellerIds: s
   }
 }
 
+async function seedDisputes(admin: AuthBundle, buyerId: string, sellerId: string, productIds: string[]) {
+  const disputeStatuses = ['open', 'under_review', 'resolved_buyer', 'resolved_seller', 'closed', 'escalated'] as const;
+  const disputeReasons = ['not_received', 'not_as_described', 'counterfeit', 'unauthorized_charge', 'duplicate_charge', 'defective'];
+  const disputes = Array.from({ length: DISPUTE_COUNT }, (_, index) => {
+    const status = disputeStatuses[index % disputeStatuses.length];
+    const reason = disputeReasons[index % disputeReasons.length];
+    const orderId = `seed_order_${String((index % 30) + 1).padStart(3, '0')}`;
+    return {
+      id: `dispute_${String(index + 1).padStart(3, '0')}`,
+      orderId,
+      buyerId,
+      sellerId,
+      productId: productIds[index % productIds.length],
+      reason,
+      description: `Seed dispute ${index + 1}: ${reason.replace(/_/g, ' ')}. Evidence provided for testing.`,
+      status,
+      amountCents: 1999 + (index * 800),
+      evidencePhotos: index % 3 === 0 ? sampleImageUrls(`dispute-${index + 1}`, 2) : [],
+      buyerMessage: `I dispute this order because: ${reason.replace(/_/g, ' ')}.`,
+      sellerResponse: status !== 'open' ? 'We take this seriously and have reviewed the evidence.' : null,
+      adminNotes: ['resolved_buyer', 'resolved_seller', 'closed'].includes(status) ? 'Reviewed and resolved per policy.' : null,
+      stripeDisputeId: index % 2 === 0 ? `dp_test_${index + 1}` : null,
+      openedAt: isoDaysAgo(index % 15),
+      resolvedAt: ['resolved_buyer', 'resolved_seller', 'closed'].includes(status) ? isoDaysAgo(index % 5) : null,
+    };
+  });
+
+  await writeMany(disputes, async dispute => {
+    await writeDoc(`disputes/${dispute.id}`, dispute, admin.idToken, true);
+  }, 10);
+}
+
+async function seedCoupons(admin: AuthBundle, sellerIds: string[]) {
+  const couponTypes = ['percentage', 'fixed_amount', 'free_shipping'] as const;
+  const coupons = Array.from({ length: COUPON_COUNT }, (_, index) => {
+    const type = couponTypes[index % couponTypes.length];
+    const isExpired = index % 6 === 0;
+    const isMaxedOut = index % 7 === 0;
+    const sellerId = sellerIds[index % sellerIds.length];
+    return {
+      id: `coupon_seed_${String(index + 1).padStart(3, '0')}`,
+      code: `SEED${String(index + 1).padStart(3, '0')}${type === 'percentage' ? 'PCT' : type === 'fixed_amount' ? 'FIX' : 'SHIP'}`,
+      type,
+      value: type === 'percentage' ? 10 + (index % 40) : type === 'fixed_amount' ? 500 + (index * 100) : 0,
+      minOrderCents: index % 2 === 0 ? 2000 : 0,
+      maxDiscountCents: type === 'percentage' ? 5000 : null,
+      sellerId: index % 3 === 0 ? null : sellerId,
+      isGlobal: index % 3 === 0,
+      isActive: !isExpired && !isMaxedOut,
+      maxUsesTotal: isMaxedOut ? 5 : 100 + (index * 50),
+      maxUsesPerUser: 2 + (index % 3),
+      currentUses: isMaxedOut ? 5 : index * 3,
+      startsAt: isoDaysAgo(30),
+      expiresAt: isExpired ? isoDaysAgo(1) : isoDaysAgo(-30),
+      description: `Seed coupon ${index + 1} — ${type.replace(/_/g, ' ')} discount for demos.`,
+      createdAt: isoDaysAgo(30),
+      updatedAt: new Date().toISOString(),
+    };
+  });
+
+  await writeMany(coupons, async coupon => {
+    await writeDoc(`coupons/${coupon.id}`, coupon, admin.idToken, true);
+  }, 12);
+}
+
+async function seedPromotions(admin: AuthBundle, sellerIds: string[], productIds: string[]) {
+  const promoTypes = ['banner', 'featured', 'flash_sale', 'bundle'] as const;
+  const promotions = Array.from({ length: PROMOTION_COUNT }, (_, index) => {
+    const type = promoTypes[index % promoTypes.length];
+    const isActive = index % 3 !== 0;
+    return {
+      id: `promo_seed_${String(index + 1).padStart(3, '0')}`,
+      type,
+      title: `Seed Promotion ${index + 1}: ${type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}`,
+      description: `Seeded ${type.replace(/_/g, ' ')} promotion for testing promotion UI.`,
+      sellerId: index % 2 === 0 ? null : sellerIds[index % sellerIds.length],
+      productIds: productIds.slice(index * 3, index * 3 + 5),
+      discountPercentage: type === 'flash_sale' ? 15 + (index % 35) : 0,
+      bannerImageUrl: type === 'banner' ? sampleImageUrls(`promo-banner-${index + 1}`, 1)[0] : null,
+      isActive,
+      displayOrder: index + 1,
+      startsAt: isActive ? isoDaysAgo(5) : isoDaysAgo(-5),
+      endsAt: isActive ? isoDaysAgo(-10) : isoDaysAgo(-2),
+      clickCount: 50 + (index * 23),
+      impressions: 500 + (index * 100),
+      createdAt: isoDaysAgo(10),
+      updatedAt: new Date().toISOString(),
+    };
+  });
+
+  await writeMany(promotions, async promo => {
+    await writeDoc(`promotions/${promo.id}`, promo, admin.idToken, true);
+  }, 8);
+}
+
+async function seedDownloadSessions(admin: AuthBundle, buyerId: string, productIds: string[]) {
+  const digitalProducts = productIds.filter(id => id === 'e2e_product_test_seller' || id.includes('mega_seed'));
+  const sessions = Array.from({ length: DOWNLOAD_SESSION_COUNT }, (_, index) => {
+    const productId = digitalProducts[index % Math.max(1, digitalProducts.length)] || productIds[0];
+    const isExpired = index % 4 === 0;
+    return {
+      id: `dl_session_${String(index + 1).padStart(3, '0')}`,
+      userId: buyerId,
+      productId,
+      orderId: `seed_order_${String((index % 30) + 1).padStart(3, '0')}`,
+      downloadUrl: `https://example.com/download/${productId}/${index + 1}`,
+      maxDownloads: 5,
+      downloadCount: isExpired ? 5 : index % 3,
+      isActive: !isExpired,
+      expiresAt: isExpired ? isoDaysAgo(1) : isoDaysAgo(-30),
+      createdAt: isoDaysAgo(index + 1),
+    };
+  });
+
+  await writeMany(sessions, async session => {
+    await writeDoc(`download_sessions/${session.id}`, session, admin.idToken, true);
+  }, 6);
+}
+
+async function seedMfaSettings(admin: AuthBundle, userIds: string[]) {
+  const mfaUsers = userIds.slice(0, 5);
+  for (let i = 0; i < mfaUsers.length; i++) {
+    const userId = mfaUsers[i];
+    await writeDoc(`mfa_settings/${userId}`, {
+      userId,
+      isEnabled: true,
+      method: i % 2 === 0 ? 'totp' : 'sms',
+      phoneNumber: i % 2 === 1 ? `+1416555010${i}` : null,
+      totpSecret: i % 2 === 0 ? `JBSWY3DPEHPK3PXP${i}` : null,
+      recoveryCodes: Array.from({ length: 8 }, (_, j) => `RECOVERY-${userId.slice(-4)}-${String(j + 1).padStart(4, '0')}`),
+      lastUsedAt: isoDaysAgo(i % 7),
+      createdAt: isoDaysAgo(30 + i),
+      updatedAt: new Date().toISOString(),
+    }, admin.idToken, true);
+  }
+}
+
+async function seedReviewAnswers(admin: AuthBundle, sellerId: string) {
+  const answerStatuses = ['published', 'pending_moderation', 'rejected'];
+  const answers = Array.from({ length: 20 }, (_, index) => ({
+    id: `review_answer_${String(index + 1).padStart(3, '0')}`,
+    reviewId: `review_${String((index % 120) + 1).padStart(3, '0')}`,
+    sellerId,
+    answer: `Thank you for your feedback. We ${index % 2 === 0 ? 'appreciate' : 'value'} your review and have addressed your concerns.`,
+    status: answerStatuses[index % answerStatuses.length],
+    createdAt: isoDaysAgo(index % 10),
+    updatedAt: new Date().toISOString(),
+  }));
+
+  await writeMany(answers, async answer => {
+    await writeDoc(`review_answers/${answer.id}`, answer, admin.idToken, true);
+  }, 12);
+}
+
+async function seedMoreStockNotifications(admin: AuthBundle, buyerIds: string[], productIds: string[]) {
+  const oosProducts = productIds.filter((_, i) => i % 23 === 0);
+  const items = Array.from({ length: STOCK_NOTIFICATION_COUNT }, (_, index) => ({
+    id: `stock_notif_${String(index + 1).padStart(3, '0')}`,
+    userId: buyerIds[index % buyerIds.length],
+    productId: oosProducts[index % Math.max(1, oosProducts.length)] || productIds[0],
+    createdAt: isoDaysAgo(index % 10),
+    isActive: index % 3 !== 0,
+  }));
+
+  await writeMany(items, async item => {
+    await writeDoc(`stock_notifications/${item.id}`, item, admin.idToken, true);
+  }, 10);
+}
+
+async function seedUserPreferences(admin: AuthBundle, userIds: string[]) {
+  const timezones = ['America/Toronto', 'America/Vancouver', 'America/Montreal', 'America/Halifax', 'America/Edmonton'];
+  const themes = ['system', 'light', 'dark'];
+  await writeMany(userIds.slice(0, 10), async (userId, index) => {
+    await writeDoc(`user_preferences/${userId}`, {
+      userId,
+      preferredLanguage: index % 4 === 0 ? 'fr' : 'en',
+      preferredCurrency: 'CAD',
+      timezone: timezones[index % timezones.length],
+      theme: themes[index % themes.length],
+      emailNotifications: true,
+      pushNotifications: index % 3 !== 0,
+      smsNotifications: index % 5 === 0,
+      marketingEmails: index % 2 === 0,
+      dateFormat: index % 3 === 0 ? 'DD/MM/YYYY' : 'MM/DD/YYYY',
+      createdAt: isoDaysAgo(30),
+      updatedAt: new Date().toISOString(),
+    }, admin.idToken, true);
+  }, 10);
+}
+
 async function main() {
   console.log(`🌱 Mega seeding ${process.env.ORIGNABASE_URL || 'default'} with ${PRODUCT_COUNT}+ products...`);
 
@@ -897,20 +1092,38 @@ async function main() {
   console.log(`  ✓ products seeded (${productIds.length})`);
 
   await seedFavorites(admin, ids.buyerId, productIds.filter(id => id !== 'e2e_product_oos'));
-  console.log(`  ✓ favorites seeded (${FAVORITE_COUNT})`);
+  // Multi-user favorites
+  const extraBuyerFavIds = ids.buyerPool.slice(0, 5);
+  for (const extraBuyerId of extraBuyerFavIds) {
+    const favStart = extraBuyerFavIds.indexOf(extraBuyerId) * 10;
+    await seedFavorites(admin, extraBuyerId, productIds.filter(id => id !== 'e2e_product_oos').slice(favStart, favStart + 15));
+  }
+  console.log(`  ✓ favorites seeded (${FAVORITE_COUNT} main + ${extraBuyerFavIds.length * 15} multi-user)`);
 
   await seedAddresses(admin, ids.buyerId, 'buyer');
   await seedAddresses(admin, ids.adminId, 'admin');
-  console.log(`  ✓ addresses seeded (${ADDRESS_COUNT * 2})`);
+  await seedAddresses(admin, ids.sellerId, 'seller');
+  // Multi-user addresses
+  for (let i = 0; i < 4; i++) {
+    await seedAddresses(admin, ids.buyerPool[i], `buyer_${i + 1}`);
+  }
+  console.log(`  ✓ addresses seeded (${ADDRESS_COUNT * 7})`);
 
   await seedCart(admin, ids.buyerId, productIds);
-  console.log(`  ✓ cart seeded (${BUYER_CART_COUNT})`);
+  // Multi-user cart
+  for (let i = 0; i < 3; i++) {
+    const extraBuyerId = ids.buyerPool[i];
+    const cartStart = i * 5;
+    await seedCart(admin, extraBuyerId, productIds.slice(cartStart, cartStart + 5));
+  }
+  console.log(`  ✓ cart seeded (${BUYER_CART_COUNT} main + 3 multi-user)`);
 
   await seedOrders(admin, ids.buyerId, ids.sellerId, productIds);
   console.log('  ✓ orders seeded (30)');
 
-  await seedNotifications(admin, [ids.buyerId, ids.sellerId, ids.adminId]);
-  console.log(`  ✓ notifications seeded (${NOTIFICATION_COUNT})`);
+  const notifUserIds = [ids.buyerId, ids.sellerId, ids.adminId, ...ids.buyerPool.slice(0, 4), ...ids.sellerPool.slice(0, 2)];
+  await seedNotifications(admin, notifUserIds);
+  console.log(`  ✓ notifications seeded (${NOTIFICATION_COUNT} across ${notifUserIds.length} users)`);
 
   await seedReviews(admin, [ids.buyerId, 'seed_buyer_01', 'seed_buyer_02', 'seed_buyer_03'], ids.sellerId, productIds);
   console.log(`  ✓ reviews seeded (${REVIEW_COUNT})`);
@@ -920,6 +1133,8 @@ async function main() {
 
   await seedChats(admin, ids.buyerId, ids.sellerId);
   await seedStockNotifications(admin, ids.buyerId);
+  // More stock notifications for multiple users
+  await seedMoreStockNotifications(admin, [ids.buyerId, ...ids.buyerPool.slice(0, 5)], productIds);
   console.log('  ✓ chats and stock notifications seeded');
 
   const allUserIds = [ids.adminId, ids.sellerId, ids.buyerId, ...ids.sellerPool, ...ids.buyerPool];
@@ -937,6 +1152,27 @@ async function main() {
   await seedReturnRequests(admin, ids.buyerId, ids.sellerId, productIds);
   console.log('  ✓ return requests seeded (15)');
 
+  await seedDisputes(admin, ids.buyerId, ids.sellerId, productIds);
+  console.log(`  ✓ disputes seeded (${DISPUTE_COUNT})`);
+
+  await seedCoupons(admin, allSellerIds);
+  console.log(`  ✓ coupons seeded (${COUPON_COUNT})`);
+
+  await seedPromotions(admin, allSellerIds, productIds);
+  console.log(`  ✓ promotions seeded (${PROMOTION_COUNT})`);
+
+  await seedDownloadSessions(admin, ids.buyerId, productIds);
+  console.log(`  ✓ download sessions seeded (${DOWNLOAD_SESSION_COUNT})`);
+
+  await seedMfaSettings(admin, [ids.adminId, ids.sellerId, 'seed_seller_01', 'seed_buyer_01', 'seed_buyer_02']);
+  console.log('  ✓ MFA settings seeded (5 users)');
+
+  await seedReviewAnswers(admin, ids.sellerId);
+  console.log('  ✓ review answers seeded (20)');
+
+  await seedUserPreferences(admin, allUserIds);
+  console.log('  ✓ user preferences seeded (10 users)');
+
   await seedCategories(admin);
   console.log('  ✓ categories seeded (21)');
 
@@ -949,7 +1185,10 @@ async function main() {
   console.log(`   Products: ${productIds.length}`);
   console.log(`   Collections seeded: users, products, favorites, addresses, warehouses, cart, orders,`);
   console.log(`     notifications, reviews, Q&A, chats, stock_notifications, subscriptions,`);
-  console.log(`     seller_profiles, seller_metrics, return_requests, categories`);
+  console.log(`     seller_profiles, seller_metrics, return_requests, categories,`);
+  console.log(`     disputes, coupons, promotions, download_sessions, mfa_settings,`);
+  console.log(`     review_answers, user_preferences`);
+  console.log(`   Multi-user: favorites(6), addresses(7), cart(4), notifications(9), stock_notifications(6)`);
   console.log(`   All views and widgets now have populated non-empty state for demos.`);
 }
 

@@ -5,7 +5,6 @@ import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/core/repositories/user_repository.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart'
     show ApiEndpoints, BusinessRules, Collections, Fields, PolicyVersionValues;
-import 'package:origna_gta/models/generated/base_models.dart' show UserRole;
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/app_logger.dart';
 import 'package:origna_gta/utils/utils.dart';
@@ -212,8 +211,9 @@ class OrignaBaseUserRepository implements UserRepository {
     if (rawAddress is Map<String, dynamic>) {
       final merged = <String, dynamic>{...rawAddress};
       if (doc.containsKey('label')) merged['label'] = doc['label'];
-      if (doc.containsKey('isDefault'))
+      if (doc.containsKey('isDefault')) {
         merged[Fields.isDefault] = doc['isDefault'];
+      }
       return Address.fromMap(merged, docId: bareDocId);
     }
     return Address.fromMap(doc, docId: bareDocId);

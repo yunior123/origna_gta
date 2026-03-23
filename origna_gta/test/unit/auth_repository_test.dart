@@ -18,18 +18,18 @@ void main() {
     repository = MockAuthRepository();
 
     // Default stubs
-    when(repository.deleteAccount()).thenAnswer((_) async { return null; });
-    when(repository.signInWithEmail(any, any)).thenAnswer((_) async { return null; });
+    when(repository.deleteAccount()).thenAnswer((_) async {});
+    when(repository.signInWithEmail(any, any)).thenAnswer((_) async {});
     when(repository.isEmailVerified()).thenAnswer((_) async => true);
-    when(repository.registerWithEmail(any, any, any, marketingOptIn: anyNamed('marketingOptIn'))).thenAnswer((_) async { return null; });
-    when(repository.sendPasswordResetEmail(any)).thenAnswer((_) async { return null; });
-    when(repository.signOut()).thenAnswer((_) async { return null; });
+    when(repository.registerWithEmail(any, any, any, marketingOptIn: anyNamed('marketingOptIn'))).thenAnswer((_) async {});
+    when(repository.sendPasswordResetEmail(any)).thenAnswer((_) async {});
+    when(repository.signOut()).thenAnswer((_) async {});
     when(repository.validateCurrentUser()).thenAnswer((_) async => true);
-    when(repository.signInWithGoogle()).thenAnswer((_) async { return null; });
-    when(repository.signInWithApple()).thenAnswer((_) async { return null; });
-    when(repository.ensureUserDocumentExists()).thenAnswer((_) async { return null; });
-    when(repository.sendEmailVerification()).thenAnswer((_) async { return null; });
-    when(repository.confirmPasswordReset(any, any)).thenAnswer((_) async { return null; });
+    when(repository.signInWithGoogle()).thenAnswer((_) async {});
+    when(repository.signInWithApple()).thenAnswer((_) async {});
+    when(repository.ensureUserDocumentExists()).thenAnswer((_) async {});
+    when(repository.sendEmailVerification()).thenAnswer((_) async {});
+    when(repository.confirmPasswordReset(any, any)).thenAnswer((_) async {});
   });
 
   group('AuthRepository Unit Tests', () {

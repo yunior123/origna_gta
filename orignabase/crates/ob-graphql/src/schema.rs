@@ -80,6 +80,9 @@ pub fn build_schema_with_limits(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Mutex;
+    // Serialize env-var tests to avoid races when cargo runs tests in parallel.
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
 
     #[test]
     fn test_app_schema_type_is_valid() {
@@ -88,6 +91,7 @@ mod tests {
 
     #[test]
     fn test_build_schema_disables_introspection_by_default() {
+        let _lock = ENV_LOCK.lock().unwrap();
         unsafe { std::env::remove_var("OB_ENABLE_INTROSPECTION") };
         let limits = GraphQlLimits::default();
         assert!(!limits.enable_introspection);
@@ -95,6 +99,7 @@ mod tests {
 
     #[test]
     fn test_build_schema_enables_introspection_when_env_set() {
+        let _lock = ENV_LOCK.lock().unwrap();
         unsafe { std::env::set_var("OB_ENABLE_INTROSPECTION", "true") };
         let limits = GraphQlLimits::default();
         assert!(limits.enable_introspection);
@@ -103,6 +108,7 @@ mod tests {
 
     #[test]
     fn test_build_schema_default_limits() {
+        let _lock = ENV_LOCK.lock().unwrap();
         unsafe { std::env::remove_var("OB_ENABLE_INTROSPECTION") };
         unsafe { std::env::remove_var("OB_GRAPHQL_MAX_DEPTH") };
         unsafe { std::env::remove_var("OB_GRAPHQL_MAX_COMPLEXITY") };
@@ -114,6 +120,7 @@ mod tests {
 
     #[test]
     fn test_build_schema_custom_limits_from_env() {
+        let _lock = ENV_LOCK.lock().unwrap();
         unsafe { std::env::set_var("OB_GRAPHQL_MAX_DEPTH", "8") };
         unsafe { std::env::set_var("OB_GRAPHQL_MAX_COMPLEXITY", "50") };
         let limits = GraphQlLimits::default();

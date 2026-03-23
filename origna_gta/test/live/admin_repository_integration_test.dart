@@ -20,6 +20,11 @@ void main() {
     defaultValue: false,
   );
 
+  if (!runLive) {
+    test('Skip live tests', () {}, skip: 'live tests disabled');
+    return;
+  }
+
   group('OrignaBaseAdminRepository live', () {
     late ProviderContainer container;
     late OrignaBase ob;

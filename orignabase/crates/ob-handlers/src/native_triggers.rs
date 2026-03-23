@@ -600,6 +600,7 @@ impl NativeTriggerExecutor {
             .await;
     }
 
+    #[allow(clippy::too_many_arguments)]
     async fn create_notification_once(
         &self,
         claim_id: &str,

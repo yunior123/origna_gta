@@ -394,7 +394,7 @@ fn cleanup_old_backups(keys_dir: &Path, keep_count: usize) -> Result<()> {
         .filter_map(|entry| {
             entry.ok().and_then(|e| {
                 let path = e.path();
-                if path.extension().map_or(false, |ext| ext == "bak") {
+                if path.extension().is_some_and(|ext| ext == "bak") {
                     e.metadata()
                         .ok()
                         .and_then(|meta| meta.modified().ok().map(|modified| (path, modified)))

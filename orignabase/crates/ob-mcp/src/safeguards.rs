@@ -77,7 +77,7 @@ impl SpendLimit {
         let current = spend.get(user_id).copied().unwrap_or(0);
         if current + amount_cents > self.max_per_24h_cents {
             return Err(McpError::ValidationError(
-                format!("Amount exceeds 24h spend limit"),
+                "Amount exceeds 24h spend limit".to_string(),
             ));
         }
 

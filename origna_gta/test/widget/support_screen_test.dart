@@ -15,7 +15,7 @@ void main() {
     initTestMocks();
   });
 
-  SupportMessage _makeMessage({
+  SupportMessage makeMessage({
     required MessageRole role,
     required String text,
     DateTime? timestamp,
@@ -245,9 +245,9 @@ void main() {
       tester,
     ) async {
       final messages = [
-        _makeMessage(role: MessageRole.agent, text: 'Hello!'),
-        _makeMessage(role: MessageRole.user, text: 'Hi there'),
-        _makeMessage(role: MessageRole.agent, text: 'How can I help?'),
+        makeMessage(role: MessageRole.agent, text: 'Hello!'),
+        makeMessage(role: MessageRole.user, text: 'Hi there'),
+        makeMessage(role: MessageRole.agent, text: 'How can I help?'),
       ];
 
       await tester.pumpWidget(
@@ -278,8 +278,8 @@ void main() {
       tester,
     ) async {
       final messages = [
-        _makeMessage(role: MessageRole.agent, text: 'Agent message'),
-        _makeMessage(role: MessageRole.user, text: 'User message'),
+        makeMessage(role: MessageRole.agent, text: 'Agent message'),
+        makeMessage(role: MessageRole.user, text: 'User message'),
       ];
 
       await tester.pumpWidget(
@@ -364,7 +364,7 @@ void main() {
               return _PresetStateViewModel(
                 SupportState(
                   messages: [
-                    _makeMessage(role: MessageRole.agent, text: 'Hello'),
+                    makeMessage(role: MessageRole.agent, text: 'Hello'),
                   ],
                 ),
               );
@@ -452,7 +452,7 @@ void main() {
 
     testWidgets('chat bubbles display timestamps', (tester) async {
       final messages = [
-        _makeMessage(
+        makeMessage(
           role: MessageRole.agent,
           text: 'Hello!',
           timestamp: DateTime(2026, 1, 1, 14, 30),
@@ -483,7 +483,7 @@ void main() {
 
     testWidgets('agent avatar shown next to agent messages', (tester) async {
       final messages = [
-        _makeMessage(role: MessageRole.agent, text: 'Agent reply'),
+        makeMessage(role: MessageRole.agent, text: 'Agent reply'),
       ];
 
       await tester.pumpWidget(
@@ -511,7 +511,7 @@ void main() {
 
     testWidgets('user messages do not show agent avatar', (tester) async {
       final messages = [
-        _makeMessage(role: MessageRole.user, text: 'User message'),
+        makeMessage(role: MessageRole.user, text: 'User message'),
       ];
 
       await tester.pumpWidget(
@@ -580,7 +580,7 @@ void main() {
     });
 
     testWidgets('send button has gradient when not loading', (tester) async {
-      final messages = [_makeMessage(role: MessageRole.agent, text: 'Hello')];
+      final messages = [makeMessage(role: MessageRole.agent, text: 'Hello')];
 
       await tester.pumpWidget(
         TestWrapper(
@@ -684,7 +684,7 @@ void main() {
     testWidgets('message input field is present after conversation starts', (
       tester,
     ) async {
-      final messages = [_makeMessage(role: MessageRole.agent, text: 'Hello')];
+      final messages = [makeMessage(role: MessageRole.agent, text: 'Hello')];
 
       await tester.pumpWidget(
         TestWrapper(
@@ -712,7 +712,7 @@ void main() {
     testWidgets('send button shows loading during loading state', (
       tester,
     ) async {
-      final messages = [_makeMessage(role: MessageRole.agent, text: 'Hello')];
+      final messages = [makeMessage(role: MessageRole.agent, text: 'Hello')];
 
       await tester.pumpWidget(
         TestWrapper(

@@ -5,11 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/models/generated/models.dart' as models;
-import 'package:origna_gta/utils/image_compression_utils.dart';
 import 'package:origna_gta/utils/utils.dart';
 
 import 'add_product_state.dart';
 import 'add_product_validation.dart';
+import 'product_image_helpers.dart';
 import 'variant_models.dart';
 
 final addProductViewModelProvider =
@@ -143,7 +143,7 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
         final stamp = DateTime.now().millisecondsSinceEpoch;
         testImageUrls = ['https://picsum.photos/seed/origna-$stamp/800/800'];
       } else {
-        compressedImages = await _compressImages(state.imageModels);
+        compressedImages = await compressProductImages(state.imageModels);
         if (_activeRequestId != requestId) return;
         if (compressedImages.isEmpty) {
           throw Exception(
@@ -665,19 +665,6 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     final variants = List<ProductVariantEntry>.from(state.variants);
     variants[index] = variants[index].copyWith(stockQuantity: stockQuantity);
     state = state.copyWith(variants: variants);
-  }
-
-  Future<List<Uint8List>> _compressImages(List<ImageModel> imageModels) async {
-    final processed = <Uint8List>[];
-    for (final m in imageModels) {
-      try {
-        final validated = await validateAndCompressImage(m.bytes);
-        if (validated != null) processed.add(validated);
-      } catch (_) {
-        // Skip images that fail validation/compression
-      }
-    }
-    return processed;
   }
 
   /// Auto-generates all variant combinations from variantOptions.

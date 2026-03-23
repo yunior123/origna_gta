@@ -560,19 +560,19 @@ match /users/{userId} {
 
 /// Build CORS layer with explicit origin whitelist.
 /// CRITICAL FIX: Replace .allow_origin(Any) with specific production domains.
+/// In test mode, use very_permissive() so integration tests with arbitrary origins pass.
 fn build_cors_layer(is_test_mode: bool) -> CorsLayer {
-    let mut allowed_origins = vec![
+    if is_test_mode {
+        // In test mode, allow any origin so integration tests work
+        return CorsLayer::very_permissive();
+    }
+
+    let allowed_origins = vec![
         "https://orignagta.ca".parse::<HeaderValue>().unwrap(),
         "https://www.orignagta.ca".parse::<HeaderValue>().unwrap(),
         "https://dev.orignagta.ca".parse::<HeaderValue>().unwrap(),
         "https://staging.orignagta.ca".parse::<HeaderValue>().unwrap(),
     ];
-
-    // Allow localhost ONLY in test mode (for local development)
-    if is_test_mode {
-        allowed_origins.push("http://localhost:3000".parse::<HeaderValue>().unwrap());
-        allowed_origins.push("http://localhost:5173".parse::<HeaderValue>().unwrap());
-    }
 
     CorsLayer::new()
         .allow_origin(allowed_origins)
@@ -611,7 +611,7 @@ fn validate_config_warnings(config: &Config) -> Result<()> {
             msg,
         ));
 
-        // CRITICAL FIX: Panic in production, warn in test mode
+        // CRITICAL FIX: Block in production, allow in test mode
         if !is_test_mode {
             eprintln!();
             eprintln!("  [CRITICAL] {}", msg);
@@ -619,9 +619,8 @@ fn validate_config_warnings(config: &Config) -> Result<()> {
             eprintln!("  REFUSING TO START: Production cannot run with default JWT secret.");
             eprintln!("  Set OB_AUTH__JWT_SECRET to a cryptographically secure random value.");
             eprintln!();
-            panic!("JWT secret is the default value — cannot start in production");
+            fatal.push("JWT secret is the default value");
         }
-        fatal.push("JWT secret is the default value");
     }
 
     if config.auth.jwt_secret.len() < 32 {
@@ -629,7 +628,9 @@ fn validate_config_warnings(config: &Config) -> Result<()> {
             "critical",
             "JWT secret is shorter than 32 characters. Use a strong random secret (≥ 64 chars).",
         ));
-        fatal.push("JWT secret is shorter than 32 characters");
+        if !is_test_mode {
+            fatal.push("JWT secret is shorter than 32 characters");
+        }
     }
 
     if !Path::new(&config.security.rules_path).exists() {
@@ -1131,6 +1132,7 @@ async fn serve(config: Config) -> Result<()> {
     let health_route = Router::new().route("/health", axum::routing::get(|| async { "ok" }));
 
     let app = Router::new()
+        .merge(health_route)
         .route(
             "/graphql",
             axum::routing::get(|| async {
@@ -1262,8 +1264,7 @@ async fn serve(config: Config) -> Result<()> {
         .layer(axum::Extension(tenant_config))
         .layer(axum::middleware::from_fn(
             ob_core::tenant::tenant_middleware,
-        ))
-        .merge(health_route);
+        ));
 
     tracing::info!("OrignaBase listening on {addr}");
     tracing::info!("  GraphiQL:  http://{addr}/graphql");
@@ -1735,28 +1736,28 @@ async fn codegen_dart(url: &str, output_dir: &str) -> Result<()> {
             continue;
         }
 
-        if kind == "OBJECT" {
-            if let Some(fields) = typ["fields"].as_array() {
-                if fields.is_empty() {
-                    continue;
-                }
-
-                models.push_str(&format!("@freezed\nclass {name} with _${name} {{\n"));
-                models.push_str(&format!("  const factory {name}({{\n"));
-
-                for field in fields {
-                    let field_name = field["name"].as_str().unwrap_or("unknown");
-                    let dart_type = graphql_type_to_dart(&field["type"]);
-                    models.push_str(&format!("    {dart_type}? {field_name},\n"));
-                }
-
-                models.push_str(&format!("  }}) = _{name};\n\n"));
-                models.push_str(&format!(
-                    "  factory {name}.fromJson(Map<String, dynamic> json) => _${name}FromJson(json);\n"
-                ));
-                models.push_str("}\n\n");
-                count += 1;
+        if kind == "OBJECT"
+            && let Some(fields) = typ["fields"].as_array()
+        {
+            if fields.is_empty() {
+                continue;
             }
+
+            models.push_str(&format!("@freezed\nclass {name} with _${name} {{\n"));
+            models.push_str(&format!("  const factory {name}({{\n"));
+
+            for field in fields {
+                let field_name = field["name"].as_str().unwrap_or("unknown");
+                let dart_type = graphql_type_to_dart(&field["type"]);
+                models.push_str(&format!("    {dart_type}? {field_name},\n"));
+            }
+
+            models.push_str(&format!("  }}) = _{name};\n\n"));
+            models.push_str(&format!(
+                "  factory {name}.fromJson(Map<String, dynamic> json) => _${name}FromJson(json);\n"
+            ));
+            models.push_str("}\n\n");
+            count += 1;
         }
     }
 

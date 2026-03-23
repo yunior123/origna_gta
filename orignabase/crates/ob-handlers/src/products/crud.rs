@@ -99,12 +99,12 @@ fn validate_price_and_stock(
         }
     }
 
-    if let Some(stock) = stock_quantity {
-        if stock < 0 {
-            return Err(ob_core::Error::Validation(
-                "Stock quantity cannot be negative".into(),
-            ));
-        }
+    if let Some(stock) = stock_quantity
+        && stock < 0
+    {
+        return Err(ob_core::Error::Validation(
+            "Stock quantity cannot be negative".into(),
+        ));
     }
 
     Ok(())

@@ -4,7 +4,6 @@ import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/features/orders/orders_provider.dart';
 import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/screens/orders_screen.dart';
-import 'package:origna_gta/utils/utils.dart';
 
 import '../test_utils.dart';
 

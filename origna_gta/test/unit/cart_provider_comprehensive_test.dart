@@ -188,7 +188,7 @@ void main() {
       ).thenAnswer((_) async => true);
       when(
         mockRepo.addToCart(any, any, any, variantId: anyNamed('variantId')),
-      ).thenAnswer((_) async { return null; });
+      ).thenAnswer((_) async {});
 
       final controller = container.read(cartControllerProvider);
       final result = await controller.addToCart('prod1', 1, variantId: 'var1');
@@ -260,7 +260,7 @@ void main() {
         ).thenAnswer((_) async => 'seller1');
         when(
           mockRepo.addToCart(any, any, any, variantId: anyNamed('variantId')),
-        ).thenAnswer((_) async { return null; });
+        ).thenAnswer((_) async {});
 
         final controller = container.read(cartControllerProvider);
         // Call without productName/priceCad — should succeed without analytics
@@ -284,7 +284,7 @@ void main() {
       ).thenAnswer((_) async => 'seller1');
       when(
         mockRepo.addToCart(any, any, any, variantId: anyNamed('variantId')),
-      ).thenAnswer((_) async { return null; });
+      ).thenAnswer((_) async {});
 
       final controller = container.read(cartControllerProvider);
       final result = await controller.addToCart(
@@ -547,7 +547,7 @@ void main() {
     test('returns true and creates favorite + removes from cart', () async {
       when(
         mockProductRepository.toggleFavorite(any, any),
-      ).thenAnswer((_) async { return null; });
+      ).thenAnswer((_) async {});
 
       final container = ProviderContainer(
         overrides: [

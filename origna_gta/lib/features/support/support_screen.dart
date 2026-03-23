@@ -26,7 +26,7 @@ class SupportScreen extends ConsumerStatefulWidget {
 }
 
 /// Private provider for SupportScreen conversation state
-final _conversationStartedProvider = StateProvider.autoDispose<bool>(
+final conversationStartedProvider = StateProvider.autoDispose<bool>(
   (_) => false,
 );
 
@@ -54,7 +54,7 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
   }
 
   Future<void> _onCategorySelected(SupportCategory category) async {
-    ref.read(_conversationStartedProvider.notifier).state = true;
+    ref.read(conversationStartedProvider.notifier).state = true;
 
     await ref
         .read(supportViewModelProvider.notifier)
@@ -84,7 +84,7 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
     }
 
     final supportState = ref.watch(supportViewModelProvider);
-    final _conversationStarted = ref.watch(_conversationStartedProvider);
+    final conversationStarted = ref.watch(conversationStartedProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final maxWidth = ResponsiveBreakpoints.getValue<double>(
       context: context,
@@ -109,7 +109,7 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
 
               // Main content
               Expanded(
-                child: _conversationStarted
+                child: conversationStarted
                     ? _ChatBody(
                         messages: supportState.messages,
                         scrollController: _scrollController,
@@ -129,7 +129,7 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
                 ),
 
               // Input area — only shown once conversation is started
-              if (_conversationStarted && !supportState.isEscalated)
+              if (conversationStarted && !supportState.isEscalated)
                 _MessageInput(
                   controller: _messageController,
                   isLoading: supportState.isLoading,

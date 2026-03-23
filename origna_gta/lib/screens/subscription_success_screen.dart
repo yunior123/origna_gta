@@ -119,7 +119,7 @@ class _SubscriptionSuccessScreenState
 
   @override
   Widget build(BuildContext context) {
-    final _timedOut = ref.watch(_subscriptionTimedOutProvider);
+    final timedOut = ref.watch(_subscriptionTimedOutProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     // Gate the success UI on actual isPremium=true from database
     final isPremium =
@@ -151,7 +151,7 @@ class _SubscriptionSuccessScreenState
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (!_timedOut) ...[
+                      if (!timedOut) ...[
                         const ModernLoadingIndicator(),
                         const SizedBox(height: 24),
                         Text(
@@ -434,8 +434,9 @@ class _SubscriptionSuccessScreenState
     _activationTimeout?.cancel();
     // 30s timeout fallback — if webhook is delayed, show a manual refresh prompt
     _activationTimeout = Timer(const Duration(seconds: 30), () {
-      if (mounted)
+      if (mounted) {
         ref.read(_subscriptionTimedOutProvider.notifier).state = true;
+      }
     });
   }
 }

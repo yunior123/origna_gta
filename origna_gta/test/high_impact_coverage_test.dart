@@ -39,7 +39,7 @@ void main() {
     mockUserRepo = MockUserRepository();
 
     when(mockAdminVM.state).thenReturn(const AdminActionsState());
-    when(mockUserRepo.updatePreferredLanguage(any, any)).thenAnswer((_) async { return null; });
+    when(mockUserRepo.updatePreferredLanguage(any, any)).thenAnswer((_) async {});
   });
 
   Widget testWrapper(Widget child, {List<Override> overrides = const []}) {

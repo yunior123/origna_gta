@@ -74,7 +74,12 @@ cargo test -p ob-auth                                   # single crate
 - avoid mocks for live integration tests
 - no backward compatibility
 - solve warnings like a pro
+- avoid ignoring live tests
 
 ## MCP
 
 Project `.mcp.json`: dart-mcp, flutter-pilot, github. Cloudflare MCP available via user-level config.
+
+## AI Skills Catalog
+
+See `docs/AI_SKILLS_CATALOG.md` for the complete inventory of all skills, commands, agents, rules, and workflows available to all AI agents.

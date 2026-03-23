@@ -72,7 +72,7 @@ async fn handle_stripe_webhook(
         ));
     }
 
-    if !verify_stripe_signature(&body_bytes, signature, &webhook_secret) {
+    if !verify_stripe_signature(&body_bytes, signature, webhook_secret) {
         error!("Stripe webhook signature verification failed");
         return Err(ob_core::Error::Auth(
             "Invalid webhook signature".into(),

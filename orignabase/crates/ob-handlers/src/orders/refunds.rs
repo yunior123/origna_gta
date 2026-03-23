@@ -446,7 +446,7 @@ async fn refund_order_item(
         state
             .db
             .query_bind(
-                &format!("UPDATE type::thing($table, $product_id) SET stockQuantity += $quantity, updatedAt = $updatedAt"),
+                "UPDATE type::thing($table, $product_id) SET stockQuantity += $quantity, updatedAt = $updatedAt",
                 json!({
                     "table": collections::PRODUCTS,
                     "product_id": product_id,
@@ -675,7 +675,7 @@ async fn cancel_order(
                 state
                     .db
                     .query_bind(
-                        &format!("UPDATE type::thing($table, $product_id) SET stockQuantity += $quantity, updatedAt = $updatedAt"),
+                        "UPDATE type::thing($table, $product_id) SET stockQuantity += $quantity, updatedAt = $updatedAt",
                         json!({
                             "table": collections::PRODUCTS,
                             "product_id": pid,

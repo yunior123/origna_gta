@@ -567,6 +567,7 @@ pub fn storage_router(state: StorageState) -> axum::Router {
 #[cfg(test)]
 mod tests {
     use super::*;
+    static ENV_MUTEX: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
     #[test]
     fn test_signed_params_deserialize() {
@@ -774,6 +775,7 @@ mod tests {
 
     #[test]
     fn test_can_write_user_own_path() {
+        let _lock = ENV_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
         unsafe { std::env::set_var("OB_TEST_MODE", "1"); }
         let auth = AuthContext {
             user_id: "user_123".to_string(),
@@ -787,6 +789,7 @@ mod tests {
 
     #[test]
     fn test_can_write_products_path() {
+        let _lock = ENV_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
         unsafe { std::env::set_var("OB_TEST_MODE", "1"); }
         let auth = AuthContext {
             user_id: "user_123".to_string(),
@@ -800,6 +803,7 @@ mod tests {
 
     #[test]
     fn test_can_write_rejects_other_user_path() {
+        let _lock = ENV_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
         // Without test mode, unauthenticated should fail
         unsafe { std::env::remove_var("OB_TEST_MODE"); }
         let auth = AuthContext {
@@ -812,6 +816,7 @@ mod tests {
 
     #[test]
     fn test_can_write_rejects_unauthenticated() {
+        let _lock = ENV_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
         unsafe { std::env::remove_var("OB_TEST_MODE"); }
         let auth = AuthContext::anonymous();
         assert!(!can_user_write_path(&auth, "users/user_123/avatar.jpg"));
@@ -819,6 +824,7 @@ mod tests {
 
     #[test]
     fn test_can_write_rejects_empty_user_id() {
+        let _lock = ENV_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
         unsafe { std::env::remove_var("OB_TEST_MODE"); }
         let auth = AuthContext {
             user_id: "".to_string(),
@@ -832,6 +838,7 @@ mod tests {
 
     #[test]
     fn test_require_auth_in_test_mode() {
+        let _lock = ENV_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
         unsafe { std::env::set_var("OB_TEST_MODE", "1"); }
         let auth = AuthContext {
             user_id: "user_123".to_string(),
@@ -844,6 +851,7 @@ mod tests {
 
     #[test]
     fn test_require_auth_test_mode_empty_user_id() {
+        let _lock = ENV_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
         unsafe { std::env::set_var("OB_TEST_MODE", "1"); }
         let auth = AuthContext::anonymous();
         let result = require_authenticated_user(&auth);
@@ -853,6 +861,7 @@ mod tests {
 
     #[test]
     fn test_require_auth_fails_unauthenticated() {
+        let _lock = ENV_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
         unsafe { std::env::remove_var("OB_TEST_MODE"); }
         let auth = AuthContext::anonymous();
         let result = require_authenticated_user(&auth);
@@ -1058,6 +1067,7 @@ mod tests {
 
     #[test]
     fn test_can_write_empty_path() {
+        let _lock = ENV_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
         unsafe { std::env::remove_var("OB_TEST_MODE"); }
         let auth = AuthContext {
             user_id: "user_123".to_string(),
@@ -1069,6 +1079,7 @@ mod tests {
 
     #[test]
     fn test_can_write_user_exact_prefix() {
+        let _lock = ENV_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
         unsafe { std::env::set_var("OB_TEST_MODE", "1"); }
         let auth = AuthContext {
             user_id: "u1".to_string(),
@@ -1082,6 +1093,7 @@ mod tests {
 
     #[test]
     fn test_can_write_rejects_similar_user_prefix() {
+        let _lock = ENV_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
         unsafe { std::env::remove_var("OB_TEST_MODE"); }
         let auth = AuthContext {
             user_id: "u1".to_string(),
@@ -1095,6 +1107,7 @@ mod tests {
 
     #[test]
     fn test_require_auth_fails_empty_user_id_not_authenticated() {
+        let _lock = ENV_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
         unsafe { std::env::remove_var("OB_TEST_MODE"); }
         let auth = AuthContext {
             user_id: "".to_string(),

@@ -489,22 +489,19 @@ async fn calculate_shipping(
 
         // Try Geoapify for express/same-day or perishable
         let should_call_geo = speed == "express" || speed == "same_day" || has_perishable;
-        let geo_key = state.config.secret("geoapify_api_key");
 
         if should_call_geo
-            && seller_lat.is_some()
-            && seller_lon.is_some()
-            && buyer_lat.is_some()
-            && buyer_lon.is_some()
-            && geo_key.is_some()
+            && let (Some(seller_lat), Some(seller_lon), Some(buyer_lat), Some(buyer_lon)) =
+                (seller_lat, seller_lon, buyer_lat, buyer_lon)
+            && let Some(geo_key) = state.config.secret("geoapify_api_key")
         {
             match geoapify_distance(
                 &state.http_client,
-                geo_key.unwrap(),
-                seller_lon.unwrap(),
-                seller_lat.unwrap(),
-                buyer_lon.unwrap(),
-                buyer_lat.unwrap(),
+                geo_key,
+                seller_lon,
+                seller_lat,
+                buyer_lon,
+                buyer_lat,
             )
             .await
             {

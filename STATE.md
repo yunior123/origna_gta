@@ -400,19 +400,20 @@ All generated models now use `package:origna_gta/` imports. No relative imports 
 
 ---
 
-### 📋 REMEDIATION PRIORITY ORDER (updated 2026-03-22)
+### 📋 REMEDIATION PRIORITY ORDER (updated 2026-03-23)
 
 1. ~~P0 — secrets-prod.json~~ **NOT IN GIT** — gitignored ✅
-2. ~~P0 — google-services.json + translations~~ **RESOLVED** — gitignored + Firebase refs removed ✅
+2. ~~P0 — google-services.json + translations~~ **RESOLVED** ✅
 3. ~~P0 — Money double→int~~ **DONE** ✅
-4. **P1 — HIGH:** Add Semantics labels for E2E test compatibility
-5. **P1 — HIGH:** Add pagination to unbounded queries (in progress)
-6. **P1 — HIGH:** Migrate state classes to freezed (22 classes)
-7. **P1 — MEDIUM:** Remaining setState→Riverpod (32 calls, 15 files)
-8. ~~P2 — AnalyticsService~~ **DONE** ✅ (already provider-based)
-9. ~~P2 — Enum displayText localization~~ **DONE** ✅ (45 .tr() calls)
-10. **P2 — MEDIUM:** Extract remaining duplicate widgets (_CartBadge, skeletons)
+4. ~~P1 — Semantics labels~~ **DONE** ✅
+5. ~~P1 — Pagination~~ **DONE** ✅
+6. ~~P1 — Freezed migration~~ **DONE** ✅ (all 22 already @freezed)
+7. ~~P1 — setState→Riverpod~~ **DONE** ✅ (remaining are acceptable animation/rendering)
+8. ~~P2 — AnalyticsService~~ **DONE** ✅
+9. ~~P2 — Enum localization~~ **DONE** ✅
+10. ~~P2 — Duplicate widgets~~ **DONE** ✅ (CartBadge, FilterChip, Skeletons extracted)
 11. ~~P3 — Relative imports~~ **DONE** ✅
-12. **P3 — LOW:** Consolidate EnvConfig providers
+12. ~~P3 — EnvConfig~~ **DONE** ✅ (intentional duplicate, comment added)
+13. **IN PROGRESS:** Extract duplicate ViewModel logic (image compression, address handling)
 
 (End of file)

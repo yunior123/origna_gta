@@ -6,9 +6,12 @@
 - Both must pass with zero failures before any commit or PR.
 - Run analysis before tests to catch compile errors fast.
 
-## No Emulators (8GB RAM constraint — Firebase is also GONE)
-- NEVER run any local emulators — Firebase Emulator Suite is gone AND would OOM the machine
-- All tests run against dev OrignaBase (`api.dev.orignagta.ca`) and dev web (`dev.orignagta.ca`)
+## Local vs Remote Testing (8GB RAM constraint)
+- Unit/widget tests run locally with mocked SDK — no services needed
+- Live integration tests run against dev OrignaBase (`api.dev.orignagta.ca`)
+- E2E tests run against dev web (`dev.orignagta.ca`)
+- Local OrignaBase (`ENVIRONMENT=emulator`, localhost:8080) is supported but use cautiously — 8GB RAM means run one service at a time, never parallel builds
+- No local Docker/colima required — all heavy services live on the VPS
 - Dev test accounts: Admin `yr62813@gmail.com`, Seller `yuniorrodriguezo4601@yahoo.com`, Buyer `yuniorrodriguezo460@gmail.com` (password: `REDACTED_TEST_PASSWORD`)
 
 ## Unit Tests
@@ -64,6 +67,6 @@
 ## Forbidden in Tests
 - `print()` or `debugPrint()` in test files.
 - Real Stripe live-mode API calls.
-- local Docker services.
+- Running parallel heavy services locally (8GB RAM — one at a time).
 - `sleep()` / `Future.delayed()` in tests — use `pumpAndSettle()` or proper async patterns.
 - Hardcoded UIDs or tokens — use test account constants from a shared test helpers file.

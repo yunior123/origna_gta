@@ -20,7 +20,10 @@ import 'checkout_state.dart';
 
 export 'checkout_state.dart';
 
-/// Checkout state provider.
+/// Riverpod provider for [OrignaBaseCheckoutNotifier].
+///
+/// Auto-disposed on navigation away from checkout — fresh state prevents
+/// stale address/coupon/shipping data from leaking between checkout sessions.
 final checkoutStateProvider =
     StateNotifierProvider.autoDispose<
       OrignaBaseCheckoutNotifier,
@@ -38,7 +41,33 @@ final _stripeCircuitBreaker = CircuitBreakerRegistry.get(
   config: CircuitBreakerConfig.paymentDefault,
 );
 
-/// OrignaBase checkout notifier.
+/// Manages the entire checkout flow: address selection, shipping calculation,
+/// tax computation, coupon application, and Stripe session creation.
+///
+/// ## State Flow
+/// ```
+/// Initialized (address loaded) → Shipping calculated → Taxes computed
+///   → Coupon applied (optional) → Checkout started → Stripe redirect
+/// ```
+///
+/// ## Key Decisions
+/// - Circuit breakers wrap shipping ([_shippingCircuitBreaker]) and Stripe
+///   ([_stripeCircuitBreaker]) calls — degraded services return user-friendly
+///   errors instead of hanging.
+/// - Idempotency keys prevent duplicate orders on retry — the server returns
+///   the existing session if the key matches.
+/// - Biometric auth required for transactions >= $100 CAD — security guard
+///   via [LocalAuthentication].
+/// - Cart price verification runs before checkout — catches price drift between
+///   add-to-cart and checkout time. Fails open (continues on verification error).
+/// - Free shipping threshold checked against post-coupon subtotal — coupons can
+///   trigger free shipping.
+/// - All monetary values use integer cents internally; dollars only for display.
+///
+/// See also:
+/// - [CheckoutState] for the state shape
+/// - [OrderRepository] for persistence layer
+/// - [cartSubtotalProvider] for subtotal computation
 class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
   static const double _localDeliveryRadiusKm =
       BusinessRules.localDeliveryRadiusKm;
@@ -52,7 +81,14 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
   String? get _userId => _ref.read(obUserIdProvider);
   UserRepository get _userRepository => _ref.read(userRepositoryProvider);
 
-  /// Apply a coupon code — validates server-side and stores discount in state.
+  /// Validates and applies a coupon code server-side, storing the discount in state.
+  ///
+  /// [code] — the coupon code (trimmed and uppercased before sending).
+  /// [subtotalCents] — current cart subtotal in integer cents for validation.
+  /// [sellerIds] — optional seller IDs to scope the coupon (multi-seller orders).
+  ///
+  /// After successful application, triggers shipping recalculation and tax update
+  /// via [_recalculateTotalsAfterCouponChange].
   Future<void> applyCoupon(
     String code,
     int subtotalCents, {
@@ -119,7 +155,18 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
     }
   }
 
-  /// Calculate shipping cost for cart items.
+  /// Calculates shipping cost for cart items based on seller locations, item
+  /// dimensions, delivery speed, and buyer address.
+  ///
+  /// Key behaviors:
+  /// - Digital-only carts: shipping cost = 0, no address required.
+  /// - Free shipping threshold: checked against post-coupon subtotal in integer cents.
+  /// - Local delivery: determined by Haversine distance between buyer and seller
+  ///   addresses (radius defined in [BusinessRules.localDeliveryRadiusKm]).
+  /// - Available delivery speeds: computed per-item based on shipping metadata
+  ///   (perishable, local-only, international).
+  ///
+  /// Wrapped by [_shippingCircuitBreaker] — returns user-friendly error on open circuit.
   Future<void> calculateShipping(List<CartItemDetailModel> items) async {
     if (items.isEmpty) {
       state = state.copyWith(shippingError: 'checkout.errors.no_items'.tr());
@@ -310,6 +357,20 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
     }
   }
 
+  /// Creates a Stripe Checkout Session and returns the redirect URL.
+  ///
+  /// Pre-flight validation: cart non-empty, address valid (for physical items),
+  /// subtotal > 0, email present, not already processing.
+  ///
+  /// Security: biometric auth required for transactions >= $100 CAD.
+  ///
+  /// Flow:
+  /// 1. Verify cart prices haven't changed (fail-open on error)
+  /// 2. Create Stripe session via [OrderRepository.createCheckoutSession]
+  /// 3. Handle duplicate session (idempotency) — returns existing URL
+  /// 4. Store session ID and invalidates cart on success
+  ///
+  /// Returns [CheckoutSuccess] with redirect URL, or [CheckoutError] on failure.
   Future<CheckoutResult> startCheckout({
     required List<CartItemDetailModel> items,
     required UserModel user,

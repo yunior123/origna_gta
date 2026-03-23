@@ -29,9 +29,9 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
 
   @override
   Widget build(BuildContext context) {
-    final _secret = ref.watch(_mfaSecretProvider);
-    final _qrCodeUri = ref.watch(_mfaQrCodeUriProvider);
-    final _backupCodes = ref.watch(_mfaBackupCodesProvider);
+    final secret = ref.watch(_mfaSecretProvider);
+    final qrCodeUri = ref.watch(_mfaQrCodeUriProvider);
+    final backupCodes = ref.watch(_mfaBackupCodesProvider);
     final isActionsLoading = ref.watch(
       adminActionsViewModelProvider.select((s) => s.isLoading),
     );
@@ -196,7 +196,7 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
       const SizedBox(height: 16),
 
       // MFA Setup Instructions (if enabling)
-      if (_secret != null && !mfaEnabled)
+      if (secret != null && !mfaEnabled)
         Card(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(DesignTokens.radius16),
@@ -227,9 +227,9 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                   child: Container(
                     padding: const EdgeInsets.all(16),
                     color: DesignTokens.white,
-                    child: _qrCodeUri != null
+                    child: qrCodeUri != null
                         ? QrImageView(
-                            data: _qrCodeUri,
+                            data: qrCodeUri,
                             version: QrVersions.auto,
                             size: 250,
                             errorCorrectionLevel: QrErrorCorrectLevel.M,
@@ -244,7 +244,7 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'admin.security.enter_secret_manual'.tr(),
+                  'admin.security.entersecret_manual'.tr(),
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
@@ -263,7 +263,7 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                     children: [
                       Expanded(
                         child: Text(
-                          _secret,
+                          secret,
                           style: const TextStyle(
                             fontFamily: 'monospace',
                             fontSize: 14,
@@ -272,11 +272,11 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                         ),
                       ),
                       IconButton(
-                        tooltip: 'admin.security.copy_secret'.tr(),
+                        tooltip: 'admin.security.copysecret'.tr(),
                         icon: const Icon(Icons.copy),
                         onPressed: () async {
                           final messenger = ScaffoldMessenger.of(context);
-                          await Clipboard.setData(ClipboardData(text: _secret));
+                          await Clipboard.setData(ClipboardData(text: secret));
                           // Auto-clear clipboard after 30 seconds for security
                           Future.delayed(
                             const Duration(seconds: 30),
@@ -363,7 +363,7 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                if (_backupCodes.isNotEmpty)
+                if (backupCodes.isNotEmpty)
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
@@ -375,7 +375,7 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                       children: [
                         ListView.builder(
                           shrinkWrap: true,
-                          itemCount: _backupCodes.length,
+                          itemCount: backupCodes.length,
                           itemBuilder: (context, index) {
                             return Padding(
                               padding: const EdgeInsets.symmetric(vertical: 4),
@@ -390,7 +390,7 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
-                                      _backupCodes[index],
+                                      backupCodes[index],
                                       style: const TextStyle(
                                         fontFamily: 'monospace',
                                         fontSize: 12,
@@ -409,7 +409,7 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                             onPressed: () async {
                               final messenger = ScaffoldMessenger.of(context);
                               await Clipboard.setData(
-                                ClipboardData(text: _backupCodes.join('\n')),
+                                ClipboardData(text: backupCodes.join('\n')),
                               );
                               // Auto-clear clipboard after 30 seconds for security
                               Future.delayed(
@@ -462,7 +462,7 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  actionsErrorMessage!,
+                  actionsErrorMessage,
                   style: TextStyle(color: DesignTokens.error),
                 ),
               ),

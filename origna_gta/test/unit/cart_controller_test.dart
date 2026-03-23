@@ -80,7 +80,7 @@ void main() {
     test('saveForLater toggles favorite and removes from cart', () async {
       final controller = container.read(cartControllerProvider);
       when(mockProductRepository.toggleFavorite(any, any))
-          .thenAnswer((_) async { return null; });
+          .thenAnswer((_) async {});
       
       final result = await controller.saveForLater('prod_123', 'cart_item_456');
       

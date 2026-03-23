@@ -178,7 +178,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final _selectedFilter = ref.watch(_ordersFilterProvider);
+    final selectedFilter = ref.watch(_ordersFilterProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isLoggedIn = ref.watch(currentUserProvider.select((u) => u != null));
 
@@ -224,7 +224,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                       ShippingApprovalStatus.pending,
                 )
                 .length;
-            final visibleOrders = _applyFilter(orders, _selectedFilter);
+            final visibleOrders = _applyFilter(orders, selectedFilter);
 
             // On desktop, cap order list to readable width (840px) — cards shouldn't stretch to 1200px
             final ordersMaxWidth = ResponsiveBreakpoints.isDesktop(context)
@@ -240,7 +240,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                   child: ConstrainedBox(
                     constraints: BoxConstraints(maxWidth: ordersMaxWidth),
                     child: _FilterRow(
-                      selectedFilter: _selectedFilter,
+                      selectedFilter: selectedFilter,
                       onFilterSelected: (filter) =>
                           ref.read(_ordersFilterProvider.notifier).state =
                               filter,

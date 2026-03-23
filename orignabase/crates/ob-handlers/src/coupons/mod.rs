@@ -390,12 +390,12 @@ async fn create_coupon(
     // F-103: Fixed discount minimum order enforcement
     if req.discount_type == "fixed_amount" || req.discount_type == "fixed_cents" {
         let min_required = req.discount_value as i64 + (5 * MIN_CHECKOUT_TOTAL_CENTS);
-        if let Some(min_order) = req.min_order_cents {
-            if min_order < min_required {
-                return Err(ob_core::Error::Validation(format!(
-                    "Fixed coupon requires minOrderCents >= {min_required}"
-                )));
-            }
+        if let Some(min_order) = req.min_order_cents
+            && min_order < min_required
+        {
+            return Err(ob_core::Error::Validation(format!(
+                "Fixed coupon requires minOrderCents >= {min_required}"
+            )));
         }
     }
 

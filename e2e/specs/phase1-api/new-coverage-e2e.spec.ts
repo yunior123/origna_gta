@@ -17,6 +17,7 @@ import {
   getDoc,
   getTestProduct,
   ensureTwoSellerProducts,
+  ensureOosProduct,
   buildCheckoutPayload,
 } from '../../lib/api-client.js';
 import { TEST_ACCOUNTS } from '../../lib/config.js';
@@ -30,6 +31,7 @@ describe('1. Stock Notification Subscribe/Unsubscribe', () => {
   let productId: string;
 
   beforeAll(async () => {
+    await ensureOosProduct();
     const auth = await signIn(TEST_ACCOUNTS.BUYER_EMAIL);
     buyerToken = auth.idToken;
     productId = 'e2e_product_oos';

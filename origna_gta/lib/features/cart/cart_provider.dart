@@ -11,10 +11,18 @@ import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
+/// Riverpod provider for [CartController].
+///
+/// Auto-disposed when no widgets watch cart state — fresh controller
+/// on next access ensures correct userId binding after login/logout.
 final cartControllerProvider = Provider.autoDispose<CartController>((ref) {
   return CartController(ref);
 });
 
+/// Total number of items in the cart (sum of all item quantities).
+///
+/// Returns 0 while loading or when cart is empty. Used by the cart badge
+/// icon in the bottom navigation bar.
 final cartItemCountProvider = Provider.autoDispose<int>((ref) {
   final cartItems = ref.watch(cartItemsProvider);
   return cartItems.maybeWhen(
@@ -370,7 +378,27 @@ final _cartProductsBatchProvider =
       return cache;
     });
 
-/// Documentation for CartController
+/// Stateless controller for cart mutations: add, remove, update quantity,
+/// buyer notes, and save-for-later.
+///
+/// All operations require an authenticated user — methods return early with
+/// `false` or `void` when [_userId] is null. Errors are captured via Sentry
+/// and the caller receives a failure indicator.
+///
+/// ## Key Decisions
+/// - Self-purchase prevention: [addToCart] checks if the product seller
+///   matches the current user and returns false if so.
+/// - Variant validation: [addToCart] validates that the variant ID exists
+///   and is active in the product's variants array before adding.
+/// - Client-side stock check removed — server-side validation at checkout
+///   is transactional and authoritative.
+/// - Analytics are fire-and-forget (`unawaited`) — cart operations never
+///   block on analytics.
+///
+/// See also:
+/// - [CartRepository] for persistence layer
+/// - [cartItemsProvider] for the reactive cart stream
+/// - [CartItemDetailModel] for the enriched cart item shape
 class CartController {
   final Ref _ref;
 
@@ -379,6 +407,18 @@ class CartController {
   CartRepository get _repository => _ref.read(cartRepositoryProvider);
   String? get _userId => _ref.read(userIdProvider);
 
+  /// Adds a product to the user's cart.
+  ///
+  /// [productId] — the product document ID.
+  /// [quantity] — units to add (server enforces stock limit).
+  /// [variantId] — optional variant ID; validated against product's variants array.
+  /// [productName], [priceCad] — optional, used for analytics logging only.
+  ///
+  /// Returns `true` on success, `false` if:
+  /// - No user is logged in
+  /// - Product seller matches current user (self-purchase prevention)
+  /// - Variant ID is invalid or inactive
+  /// - Network error occurs
   Future<bool> addToCart(
     String productId,
     int quantity, {
@@ -441,16 +481,26 @@ class CartController {
     }
   }
 
+  /// Removes all items from the user's cart.
+  ///
+  /// No-ops silently if no user is logged in.
   Future<void> clearCart() async {
     final userId = _userId;
     if (userId == null) return;
     await _repository.clearCart(userId);
   }
 
+  /// Invalidates the [cartItemsProvider] to force a fresh fetch from the database.
+  ///
+  /// Use after external mutations (e.g., admin stock update) that bypass this controller.
   void refreshCart() {
     _ref.invalidate(cartItemsProvider);
   }
 
+  /// Removes a specific item from the user's cart.
+  ///
+  /// [cartItemId] — the cart item document ID (format: `productId` or `productId_variantId`).
+  /// No-ops silently if no user is logged in.
   Future<void> removeFromCart(String cartItemId) async {
     final userId = _userId;
     if (userId == null) return;
@@ -475,6 +525,11 @@ class CartController {
     }
   }
 
+  /// Updates the buyer's note for a specific cart item.
+  ///
+  /// [cartItemId] — the cart item document ID.
+  /// [note] — the note text, or null to clear it.
+  /// No-ops silently if no user is logged in.
   Future<void> updateBuyerNote(String cartItemId, String? note) async {
     final userId = _userId;
     if (userId == null) return;

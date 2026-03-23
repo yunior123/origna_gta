@@ -1,0 +1,384 @@
+# VPS Deployment & Operations Guide
+
+## 1. VPS Architecture
+
+| Property | Value |
+|----------|-------|
+| Provider | Hetzner CAX21 (ARM64) |
+| IP | 204.168.137.16 |
+| SSH | `ssh -i ~/.ssh/id_ed25519 root@204.168.137.16` |
+| Docker root | `/opt/orignabase/` |
+| Web root | `/var/www/orignagta/` |
+| OS | Ubuntu (Docker Compose) |
+
+All services run as Docker containers managed by `docker compose` in `/opt/orignabase/`.
+
+---
+
+## 2. Multi-Environment Setup
+
+| Service | Port | Env File | Database | Memory Limit |
+|---------|------|----------|----------|-------------|
+| orignabase-prod | 8080 | .env.prod | main | 512M |
+| orignabase-dev | 8081 | .env.dev | dev | 256M |
+| orignabase-staging | 8082 | .env.staging | staging | 256M |
+| surrealdb | 8000 | — | all (namespaced) | — |
+| meilisearch | 7700 | — | — | — |
+| caddy | 80/443 | Caddyfile | — | — |
+
+- Dev has `OB_TEST_MODE=1` (disables rate limits for testing).
+- Prod does NOT have test mode enabled.
+
+---
+
+## 3. Domain Routing (Caddy)
+
+Caddy handles TLS termination (auto Let's Encrypt) and reverse proxying.
+
+### API Routes
+
+| Domain | Target |
+|--------|--------|
+| `api.orignagta.ca` | `orignabase-prod:8080` |
+| `api.dev.orignagta.ca` | `orignabase-dev:8081` |
+| `api.staging.orignagta.ca` | `orignabase-staging:8082` |
+
+### Static Web Routes
+
+| Domain | Document Root |
+|--------|--------------|
+| `orignagta.ca` | `/var/www/orignagta/production/current` |
+| `dev.orignagta.ca` | `/var/www/orignagta/dev/current` |
+| `staging.orignagta.ca` | `/var/www/orignagta/staging/current` |
+
+---
+
+## 4. Flutter Web Deployment
+
+### Build
+
+```bash
+# Dev
+flutter build web --debug \
+  --dart-define=ENVIRONMENT=dev \
+  --dart-define=ORIGNABASE_URL=https://api.dev.orignagta.ca \
+  --dart-define=FORCE_SEMANTICS=true
+
+# Staging
+flutter build web --profile \
+  --dart-define=ENVIRONMENT=staging \
+  --dart-define=ORIGNABASE_URL=https://api.staging.orignagta.ca \
+  --dart-define=FORCE_SEMANTICS=true
+
+# Production
+flutter build web --release \
+  --dart-define=ENVIRONMENT=production \
+  --dart-define=ORIGNABASE_URL=https://api.orignagta.ca
+```
+
+### Deploy via rsync
+
+```bash
+# Dev
+rsync -az --delete build/web/ root@204.168.137.16:/var/www/orignagta/dev/current/
+
+# Staging
+rsync -az --delete build/web/ root@204.168.137.16:/var/www/orignagta/staging/current/
+
+# Production
+rsync -az --delete build/web/ root@204.168.137.16:/var/www/orignagta/production/current/
+```
+
+The `current/` directory is the live symlink target. Caddy serves directly from it.
+
+---
+
+## 5. Stripe Webhooks
+
+| Environment | Endpoint ID | URL | Signing Secret |
+|-------------|-------------|-----|----------------|
+| Dev | `we_1TBt7uPPD6r8xGIz9VzZXiXP` | `https://api.dev.orignagta.ca/stripe/webhook` | Stored in `.env.dev` on VPS |
+| Staging | `we_1TBt8BPPD6r8xGIzSpeuwv4P` | `https://api.staging.orignagta.ca/stripe/webhook` | Stored in `.env.staging` on VPS |
+| Production | Live mode endpoint | `https://api.orignagta.ca/stripe/webhook` | Stored in `.env.prod` on VPS |
+
+- All webhook secrets are stored in VPS `.env` files (never in git).
+- Webhook signature (HMAC) is verified on every incoming request.
+- Replay protection rejects events older than 300 seconds.
+- Events are deduplicated via the `webhook_events` collection.
+
+---
+
+## 6. Database Access
+
+### SurrealDB Credentials
+
+| Property | Value |
+|----------|-------|
+| Username | `root` |
+| Password | `orignabase_root_2026` |
+| Namespace | `orignabase` |
+| DB (prod) | `main` |
+| DB (dev) | `dev` |
+| DB (staging) | `staging` |
+
+### Access via Docker
+
+```bash
+# Interactive SurrealDB shell
+docker exec -it surrealdb /surreal sql \
+  --endpoint http://localhost:8000 \
+  --username root \
+  --password orignabase_root_2026 \
+  --namespace orignabase \
+  --database dev
+
+# Quick query
+docker exec surrealdb /surreal sql \
+  --endpoint http://localhost:8000 \
+  --username root \
+  --password orignabase_root_2026 \
+  --namespace orignabase \
+  --database dev \
+  --json \
+  "SELECT count() FROM users GROUP ALL;"
+```
+
+### Meilisearch
+
+```bash
+# Check health
+curl http://localhost:7700/health
+
+# Query (from VPS)
+  http://localhost:7700/indexes/products/search \
+  -d '{"q": "test"}'
+```
+
+---
+
+## 7. Operations Commands
+
+### Rebuild & Restart a Service
+
+```bash
+cd /opt/orignabase
+
+# Single service
+docker compose build orignabase-dev && docker compose up -d orignabase-dev
+
+# All services
+docker compose up -d --build
+
+# Restart without rebuild
+docker compose restart orignabase-prod
+```
+
+### Health Checks
+
+```bash
+curl https://api.orignagta.ca/health
+curl https://api.dev.orignagta.ca/health
+curl https://api.staging.orignagta.ca/health
+```
+
+### Tail Logs
+
+```bash
+# Follow specific service
+docker logs -f orignabase-dev --tail 100
+
+# All services
+docker compose logs -f --tail 50
+```
+
+### Clear Rate Limits (Dev)
+
+Dev has `OB_TEST_MODE=1` so rate limits are already disabled. For staging/prod, restart the service to clear in-memory rate limit state:
+
+```bash
+docker compose restart orignabase-staging
+```
+
+### Wipe Dev Database
+
+```bash
+docker exec surrealdb /surreal sql \
+  --endpoint http://localhost:8000 \
+  --username root \
+  --password orignabase_root_2026 \
+  --namespace orignabase \
+  --database dev \
+  "REMOVE DATABASE dev;"
+
+# Then restart dev to re-initialize schema
+docker compose restart orignabase-dev
+```
+
+---
+
+## 8. Backup & Recovery
+
+### Backup
+
+```bash
+# Backup script location
+/opt/orignabase/scripts/backup.sh
+
+# Manual SurrealDB export
+docker exec surrealdb /surreal export \
+  --endpoint http://localhost:8000 \
+  --username root \
+  --password orignabase_root_2026 \
+  --namespace orignabase \
+  --database main \
+  > /opt/orignabase/backups/main-$(date +%Y%m%d).surql
+```
+
+### Cron Schedule
+
+```
+0 3 * * * /opt/orignabase/scripts/backup.sh >> /var/log/orignabase-backup.log 2>&1
+```
+
+### Restore
+
+```bash
+docker exec -i surrealdb /surreal import \
+  --endpoint http://localhost:8000 \
+  --username root \
+  --password orignabase_root_2026 \
+  --namespace orignabase \
+  --database main \
+  < /opt/orignabase/backups/main-20260323.surql
+```
+
+---
+
+## 9. CI/CD Workflows
+
+### ci-flutter-web.yml
+
+- **Triggers**: Push to `main`, PRs
+- **Jobs**: `flutter analyze --no-fatal-infos` + `flutter test --exclude-tags golden`
+- **Secrets**: `STRIPE_TEST_KEY`, `MAIL_USERNAME`, `MAIL_PASSWORD`
+
+### cd-e2e.yml
+
+- **Triggers**: Merge to `main`
+- **Jobs**: Flutter web build (dev) -> rsync to VPS -> Bun E2E tests
+- **Secrets**: SSH key, `STRIPE_TEST_KEY`
+
+### ci-rust.yml
+
+- **Triggers**: Changes to `orignabase/` directory
+- **Jobs**: `cargo clippy -D warnings` + `cargo test`
+
+---
+
+## 10. Secrets Management
+
+### VPS .env Files
+
+Located at `/opt/orignabase/.env.{prod,dev,staging}` with `chmod 600` (root-only read).
+
+Contents include:
+- `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET`
+- `SURREALDB_URL` / `SURREALDB_USER` / `SURREALDB_PASS`
+- `MEILISEARCH_URL` / `MEILISEARCH_KEY`
+- `MAILJET_API_KEY` / `MAILJET_SECRET_KEY`
+- `JWT_PRIVATE_KEY_PATH` / `JWT_PUBLIC_KEY_PATH`
+- `OB_TEST_MODE` (dev only)
+
+### GitHub Actions Secrets
+
+| Secret | Purpose |
+|--------|---------|
+| `STRIPE_TEST_KEY` | Stripe test mode key for CI |
+| `MAIL_USERNAME` | CI failure notification email |
+| `MAIL_PASSWORD` | CI failure notification email |
+
+### macOS Keychain (Local Dev)
+
+```bash
+get-secret KEY_NAME    # Read from vault
+set-secret KEY_NAME VALUE  # Write to vault
+list-secrets           # List available keys
+```
+
+Keychain file: `~/.secrets/vault.keychain-db` (never access directly).
+
+### Rules
+
+- Secrets are NEVER committed to git.
+- No API keys in `dart-define` (use for non-secret config only).
+- No credentials in Flutter source code.
+
+---
+
+## 11. Security
+
+### Firewall (UFW)
+
+```
+22/tcp    LIMIT    # SSH with brute-force protection
+80/tcp    ALLOW    # HTTP (Caddy redirects to HTTPS)
+443/tcp   ALLOW    # HTTPS
+```
+
+All other ports are blocked. SurrealDB (8000) and Meilisearch (7700) are internal only.
+
+### TLS
+
+- Managed automatically by Caddy via Let's Encrypt.
+- Certificates auto-renew before expiration.
+- All HTTP traffic redirected to HTTPS.
+
+### Rate Limiting
+
+| Endpoint | Limit |
+|----------|-------|
+| Auth (login/register) | 5 req/min |
+| Checkout | 10 req/min |
+| Search | 30 req/min |
+| General API | 60 req/min |
+
+Enforced by `tower_governor` in OrignaBase. Dev environment has rate limits disabled (`OB_TEST_MODE=1`).
+
+### SSH Hardening
+
+- Key-only authentication (password auth disabled).
+- Root login via key only.
+- Fail2ban active for SSH brute-force protection.
+
+---
+
+## 12. Monitoring
+
+### Health Endpoints
+
+| Service | Endpoint |
+|---------|----------|
+| OrignaBase Prod | `https://api.orignagta.ca/health` |
+| OrignaBase Dev | `https://api.dev.orignagta.ca/health` |
+| OrignaBase Staging | `https://api.staging.orignagta.ca/health` |
+| SurrealDB | `http://localhost:8000/health` (internal) |
+| Meilisearch | `http://localhost:7700/health` (internal) |
+
+### Docker Healthchecks
+
+Each service in `docker-compose.yml` has a `healthcheck` directive:
+- OrignaBase: `curl -f http://localhost:{port}/health`
+- SurrealDB: `curl -f http://localhost:8000/health`
+- Meilisearch: `curl -f http://localhost:7700/health`
+
+Unhealthy containers are automatically restarted by Docker.
+
+### Error Tracking
+
+- **Sentry**: Integrated in both Flutter frontend and OrignaBase backend.
+- Errors are tagged with environment (dev/staging/production).
+- Critical errors trigger alerts.
+
+### Contact
+
+- `support@orignagta.ca` via Cloudflare Email Routing forwards to `yuniorrodriguezo460@gmail.com`.

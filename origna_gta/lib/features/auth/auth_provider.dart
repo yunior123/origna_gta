@@ -8,7 +8,15 @@ import 'package:origna_gta/utils/utils.dart';
 // USER PROFILE PROVIDER
 // ============================================================================
 
-/// Stream of current user's profile data from repository
+/// Reactive stream of the current user's profile document.
+///
+/// Returns `null` when no user is signed in. Watches [userIdProvider] so the
+/// stream automatically switches on login/logout. Auto-disposed when no
+/// widgets are watching — re-fetched on next access.
+///
+/// See also:
+/// - [userIdProvider] for the raw user ID
+/// - [AuthRepository.watchProfile] for the underlying stream
 final userProfileProvider = StreamProvider.autoDispose<UserModel?>((ref) {
   final userId = ref.watch(userIdProvider);
   if (userId == null) return Stream.value(null);
@@ -22,11 +30,15 @@ final userProfileProvider = StreamProvider.autoDispose<UserModel?>((ref) {
 // ============================================================================
 
 /// True when the signed-in user has not accepted the current required Terms version.
-/// Returns false while the profile is still loading (avoid flash of gate).
-/// Gate logic:
-///  - null termsVersion → user registered before versioning; do NOT re-prompt for v1.0
-///    (they already accepted the original terms at sign-up via CASL checkboxes)
-///  - termsVersion present but differs from current → must re-accept
+///
+/// Returns `false` while the profile is still loading (avoids flash of terms gate).
+///
+/// ## Gate Logic
+/// - `null` termsVersion → user registered before versioning was introduced;
+///   do NOT re-prompt (they already accepted original terms at sign-up via CASL checkboxes).
+/// - termsVersion present but differs from [PolicyVersionValues.defaultVersion] → must re-accept.
+///
+/// This implements CASL + PIPEDA + Quebec Law 25 compliance requirements.
 final needsTermsUpdateProvider = Provider.autoDispose<bool>((ref) {
   final profileAsync = ref.watch(userProfileProvider);
   return profileAsync.whenOrNull(
@@ -46,6 +58,11 @@ final needsTermsUpdateProvider = Provider.autoDispose<bool>((ref) {
 // AUTH ACTIONS — wraps repository calls so screens never read repositories directly
 // ============================================================================
 
+/// Thin wrapper around [AuthRepository] that screens can use without
+/// importing the repository directly.
+///
+/// Enforces MVVM: screens call [AuthActions] methods, never repositories.
+/// All methods delegate 1:1 to [AuthRepository].
 class AuthActions {
   final AuthRepository _repo;
   const AuthActions(this._repo);

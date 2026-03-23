@@ -15,20 +15,20 @@ void main() {
     repository = MockAdminRepository();
 
     // Default stubs
-    when(repository.approveProduct(any)).thenAnswer((_) async { return null; });
-    when(repository.deleteProduct(any)).thenAnswer((_) async { return null; });
-    when(repository.disableAdminMfa(any)).thenAnswer((_) async { return null; });
+    when(repository.approveProduct(any)).thenAnswer((_) async {});
+    when(repository.deleteProduct(any)).thenAnswer((_) async {});
+    when(repository.disableAdminMfa(any)).thenAnswer((_) async {});
     when(repository.enableAdminMfa()).thenAnswer((_) async => {'secret': 'secret123'});
     when(repository.getPaymentProviders()).thenAnswer((_) async => {'stripe': true});
-    when(repository.setUserSuspended(any, any)).thenAnswer((_) async { return null; });
-    when(repository.updatePaymentProvider(any, any, reason: anyNamed('reason'))).thenAnswer((_) async { return null; });
-    when(repository.updateProductStock(any, any)).thenAnswer((_) async { return null; });
-    when(repository.rejectProduct(any, any)).thenAnswer((_) async { return null; });
-    when(repository.updateUserRoles(any, add: anyNamed('add'), remove: anyNamed('remove'), reason: anyNamed('reason'))).thenAnswer((_) async { return null; });
+    when(repository.setUserSuspended(any, any)).thenAnswer((_) async {});
+    when(repository.updatePaymentProvider(any, any, reason: anyNamed('reason'))).thenAnswer((_) async {});
+    when(repository.updateProductStock(any, any)).thenAnswer((_) async {});
+    when(repository.rejectProduct(any, any)).thenAnswer((_) async {});
+    when(repository.updateUserRoles(any, add: anyNamed('add'), remove: anyNamed('remove'), reason: anyNamed('reason'))).thenAnswer((_) async {});
     when(repository.verifyAdminMfa(any)).thenAnswer((_) async => {'success': true});
-    when(repository.deleteReview(any)).thenAnswer((_) async { return null; });
-    when(repository.flagReview(any, flagged: anyNamed('flagged'))).thenAnswer((_) async { return null; });
-    when(repository.refundOrder(any, reason: anyNamed('reason'))).thenAnswer((_) async { return null; });
+    when(repository.deleteReview(any)).thenAnswer((_) async {});
+    when(repository.flagReview(any, flagged: anyNamed('flagged'))).thenAnswer((_) async {});
+    when(repository.refundOrder(any, reason: anyNamed('reason'))).thenAnswer((_) async {});
   });
 
   group('AdminRepository', () {

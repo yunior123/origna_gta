@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
@@ -36,7 +34,7 @@ void main() {
     ).thenAnswer((_) async => <String, dynamic>{});
     when(
       mockUserRepo.updatePreferredLanguage(any, any),
-    ).thenAnswer((_) async { return null; });
+    ).thenAnswer((_) async {});
   });
 
   tearDown(() {

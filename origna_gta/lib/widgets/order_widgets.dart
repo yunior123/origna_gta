@@ -749,8 +749,9 @@ class _BookDownloadButtonState extends ConsumerState<BookDownloadButton> {
         ).showSnackBar(SnackBar(content: Text('orders.download_failed'.tr())));
       }
     } finally {
-      if (mounted)
+      if (mounted) {
         ref.read(_bookDownloadLoadingProvider.notifier).state = false;
+      }
     }
   }
 }

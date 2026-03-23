@@ -176,7 +176,7 @@ class _CartBadgeState extends ConsumerState<CartBadge>
 
     Widget stack = Stack(
       clipBehavior: Clip.none,
-      children: [iconButton, if (badge != null) badge],
+      children: [iconButton, ?badge],
     );
 
     if (widget.animated) {

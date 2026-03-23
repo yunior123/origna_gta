@@ -52,7 +52,7 @@ void main() {
           token: anyNamed('token'),
           platform: anyNamed('platform'),
         ),
-      ).thenAnswer((_) async { return null; });
+      ).thenAnswer((_) async {});
 
       final container = ProviderContainer(
         overrides: [
@@ -78,7 +78,7 @@ void main() {
       const testToken = 'fake_fcm_token_xyz';
 
       when(mockMessaging.getToken()).thenAnswer((_) async => testToken);
-      when(mockPush.unregisterToken(testToken)).thenAnswer((_) async { return null; });
+      when(mockPush.unregisterToken(testToken)).thenAnswer((_) async {});
 
       final container = ProviderContainer(
         overrides: [
@@ -225,7 +225,7 @@ void main() {
           token: anyNamed('token'),
           platform: anyNamed('platform'),
         ),
-      ).thenAnswer((_) async { return null; });
+      ).thenAnswer((_) async {});
 
       final container = ProviderContainer(
         overrides: [

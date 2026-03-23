@@ -271,10 +271,10 @@ fn validate_address_payload(addr: &AddressPayload) -> Result<()> {
     }
     validate_postal_code(&addr.postal_code)?;
 
-    if let Some(apt) = &addr.apartment {
-        if apt.len() > 50 {
-            return Err(Error::Validation("apartment too long".into()));
-        }
+    if let Some(apt) = &addr.apartment
+        && apt.len() > 50
+    {
+        return Err(Error::Validation("apartment too long".into()));
     }
 
     Ok(())

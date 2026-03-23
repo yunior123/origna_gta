@@ -581,8 +581,8 @@ impl MutationRoot {
         })?;
 
         // Emit realtime change event
-        if let Ok(tx) = ctx.data::<mpsc::Sender<ChangeEvent>>() {
-            if let Err(e) = tx
+        if let Ok(tx) = ctx.data::<mpsc::Sender<ChangeEvent>>()
+            && let Err(e) = tx
                 .send(ChangeEvent {
                     action: ChangeAction::Delete,
                     collection: collection.clone(),
@@ -593,9 +593,8 @@ impl MutationRoot {
                     timestamp: chrono::Utc::now().to_rfc3339(),
                 })
                 .await
-            {
-                tracing::warn!("Realtime event dropped: {e}");
-            }
+        {
+            tracing::warn!("Realtime event dropped: {e}");
         }
 
         Ok(doc)
@@ -827,8 +826,8 @@ impl MutationRoot {
                 })?;
 
             // Emit change event
-            if let Ok(tx) = ctx.data::<mpsc::Sender<ChangeEvent>>() {
-                if let Err(e) = tx
+            if let Ok(tx) = ctx.data::<mpsc::Sender<ChangeEvent>>()
+                && let Err(e) = tx
                     .send(ChangeEvent {
                         action: ChangeAction::Update,
                         collection: collection.clone(),
@@ -839,9 +838,8 @@ impl MutationRoot {
                         timestamp: chrono::Utc::now().to_rfc3339(),
                     })
                     .await
-                {
-                    tracing::warn!("Realtime event dropped: {e}");
-                }
+            {
+                tracing::warn!("Realtime event dropped: {e}");
             }
 
             results.push(doc);
@@ -907,8 +905,8 @@ impl MutationRoot {
                 async_graphql::Error::new("Internal server error")
             })?;
 
-        if let Ok(tx) = ctx.data::<mpsc::Sender<ChangeEvent>>() {
-            if let Err(e) = tx
+        if let Ok(tx) = ctx.data::<mpsc::Sender<ChangeEvent>>()
+            && let Err(e) = tx
                 .send(ChangeEvent {
                     action: ChangeAction::Update,
                     collection: collection.clone(),
@@ -919,9 +917,8 @@ impl MutationRoot {
                     timestamp: chrono::Utc::now().to_rfc3339(),
                 })
                 .await
-            {
-                tracing::warn!("Realtime event dropped: {e}");
-            }
+        {
+            tracing::warn!("Realtime event dropped: {e}");
         }
 
         Ok(doc)

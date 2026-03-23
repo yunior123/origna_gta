@@ -96,10 +96,10 @@ class _MfaChallengeScreenState extends ConsumerState<MfaChallengeScreen> {
   @override
   Widget build(BuildContext context) {
     ref.watch(_mfaChallengeLoadingProvider);
-    final _isRecoveryMode = ref.watch(_mfaChallengeRecoveryModeProvider);
-    final _attempts = ref.watch(_mfaChallengeAttemptsProvider);
+    final isRecoveryMode = ref.watch(_mfaChallengeRecoveryModeProvider);
+    final attempts = ref.watch(_mfaChallengeAttemptsProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final attemptsExhausted = _attempts >= _maxAttempts;
+    final attemptsExhausted = attempts >= _maxAttempts;
 
     return Scaffold(
       backgroundColor: isDark ? DesignTokens.darkBackground : null,
@@ -139,7 +139,7 @@ class _MfaChallengeScreenState extends ConsumerState<MfaChallengeScreen> {
 
                 // Subtitle
                 Text(
-                  _isRecoveryMode
+                  isRecoveryMode
                       ? 'mfa.enter_recovery_code'.tr()
                       : 'mfa.enter_code'.tr(),
                   style: TextStyle(
@@ -177,7 +177,7 @@ class _MfaChallengeScreenState extends ConsumerState<MfaChallengeScreen> {
         Icon(Icons.lock_outline_rounded, size: 48, color: DesignTokens.error),
         const SizedBox(height: 16),
         Text(
-          'mfa.too_many_attempts'.tr(),
+          'mfa.too_manyattempts'.tr(),
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,

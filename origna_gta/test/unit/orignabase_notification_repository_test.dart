@@ -73,7 +73,7 @@ void main() {
         when(mockSnapshot.docs).thenReturn([doc1, doc2]);
         when(
           mockBatch.update(Collections.notifications, any, any),
-        ).thenReturn(mockBatch);
+        ).thenAnswer((_) {});
         when(
           mockBatch.commit(),
         ).thenAnswer((_) async => <Map<String, dynamic>>[]);
@@ -140,7 +140,7 @@ void main() {
         when(mockSnapshot.docs).thenReturn([doc]);
         when(
           mockBatch.update(Collections.notifications, any, any),
-        ).thenReturn(mockBatch);
+        ).thenAnswer((_) {});
         when(
           mockBatch.commit(),
         ).thenAnswer((_) async => <Map<String, dynamic>>[]);

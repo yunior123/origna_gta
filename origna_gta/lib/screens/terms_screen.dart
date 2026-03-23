@@ -27,20 +27,26 @@ class _TermsSection {
 IconData _iconForSection(String title) {
   final t = title.toLowerCase();
   if (t.contains('acceptance')) return Icons.handshake_outlined;
-  if (t.contains('account') || t.contains('registration'))
+  if (t.contains('account') || t.contains('registration')) {
     return Icons.person_add_outlined;
-  if (t.contains('purchase') || t.contains('payment'))
+  }
+  if (t.contains('purchase') || t.contains('payment')) {
     return Icons.payment_outlined;
-  if (t.contains('shipping') || t.contains('delivery'))
+  }
+  if (t.contains('shipping') || t.contains('delivery')) {
     return Icons.local_shipping_outlined;
-  if (t.contains('return') || t.contains('refund'))
+  }
+  if (t.contains('return') || t.contains('refund')) {
     return Icons.assignment_return_outlined;
+  }
   if (t.contains(UserRoleValues.seller)) return Icons.storefront_outlined;
   if (t.contains('prohibited')) return Icons.block_outlined;
-  if (t.contains('intellectual') || t.contains('property'))
+  if (t.contains('intellectual') || t.contains('property')) {
     return Icons.copyright_outlined;
-  if (t.contains('liability') || t.contains('limitation'))
+  }
+  if (t.contains('liability') || t.contains('limitation')) {
     return Icons.shield_outlined;
+  }
   if (t.contains('privacy')) return Icons.lock_outlined;
   if (t.contains('change')) return Icons.edit_note_outlined;
   if (t.contains('termination')) return Icons.cancel_outlined;

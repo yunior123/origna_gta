@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'dart:typed_data';
 import 'package:test/test.dart';
 import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:orignabase/orignabase.dart';
 
 void main() {
@@ -1992,7 +1994,11 @@ void main() {
     });
 
     test('search method exists and throws on network error', () {
-      final ob = OrignaBase.initialize(url: 'http://localhost:8080');
+      final mockClient = MockClient((req) async {
+        throw http.ClientException('Connection refused');
+      });
+      final ob = OrignaBase.initialize(
+          url: 'http://localhost:8080', httpClient: mockClient);
       expect(
         () => ob.vectorSearch.search(
           collection: 'products',
@@ -2005,18 +2011,24 @@ void main() {
       ob.dispose();
     });
 
-    test('search method accepts optional threshold', () {
-      final ob = OrignaBase.initialize(url: 'http://localhost:8080');
-      expect(
-        () => ob.vectorSearch.search(
-          collection: 'products',
-          vectorField: 'embedding',
-          embedding: [0.1, 0.2, 0.3],
-          topK: 10,
-          threshold: 0.7,
-        ),
-        throwsA(anything),
+    test('search method accepts optional threshold', () async {
+      final mockClient = MockClient((req) async {
+        return http.Response(
+            jsonEncode({
+              'data': {'vectorSearch': []}
+            }),
+            200);
+      });
+      final ob = OrignaBase.initialize(
+          url: 'http://localhost:8080', httpClient: mockClient);
+      final results = await ob.vectorSearch.search(
+        collection: 'products',
+        vectorField: 'embedding',
+        embedding: [0.1, 0.2, 0.3],
+        topK: 10,
+        threshold: 0.7,
       );
+      expect(results, isEmpty);
       ob.dispose();
     });
   });

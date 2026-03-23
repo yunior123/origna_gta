@@ -46,8 +46,8 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final _searchQuery = ref.watch(_usersSearchQueryProvider);
-    final _roleFilter = ref.watch(_usersRoleFilterProvider);
+    final searchQuery = ref.watch(_usersSearchQueryProvider);
+    final roleFilter = ref.watch(_usersRoleFilterProvider);
     return Column(
       children: [
         // Modern Search and Filter Bar
@@ -173,15 +173,15 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
                     final roles = data.roles;
 
                     final matchesSearch =
-                        _searchQuery.isEmpty ||
-                        name.contains(_searchQuery) ||
-                        email.contains(_searchQuery);
-                    final matchesRole = _roleFilter == 'all'
+                        searchQuery.isEmpty ||
+                        name.contains(searchQuery) ||
+                        email.contains(searchQuery);
+                    final matchesRole = roleFilter == 'all'
                         ? true
-                        : _roleFilter == 'buyer'
+                        : roleFilter == 'buyer'
                         ? !roles.contains(UserRole.seller) &&
                               !roles.contains(UserRole.admin)
-                        : roles.any((r) => r.name == _roleFilter);
+                        : roles.any((r) => r.name == roleFilter);
 
                     return matchesSearch && matchesRole;
                   }).toList();

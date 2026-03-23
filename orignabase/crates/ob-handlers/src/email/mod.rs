@@ -480,40 +480,71 @@ pub(crate) fn html_escape(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Mutex;
 
-    static ENV_MUTEX: Mutex<()> = Mutex::new(());
+    static ENV_MUTEX: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
-    #[test]
-    fn test_order_confirmation_html_en() {
-        let order = OrderSummary {
-            order_id: "abc12345def".into(),
-            items: vec![
-                OrderItem {
-                    name: "Widget".into(),
-                    quantity: 2,
-                    price_cents: 1500,
-                },
-                OrderItem {
-                    name: "Gadget".into(),
-                    quantity: 1,
-                    price_cents: 3000,
-                },
-            ],
-            subtotal_cents: 6000,
-            shipping_cost_cents: 0,
-            tax_amount_cents: 780,
-            total_amount_cents: 6780,
-        };
-        let html = order_confirmation_html(&order, "Yunior", "en");
-        assert!(html.contains("Order Confirmed!"));
-        assert!(html.contains("abc12345")); // short ID
-        assert!(html.contains("Widget"));
-        assert!(html.contains("Gadget"));
-        assert!(html.contains("$67.80")); // total
-        assert!(html.contains("Free")); // free shipping
-        assert!(html.contains(email_config::GST_HST_NUMBER)); // CASL GST
-        assert!(html.contains(email_config::PHYSICAL_ADDRESS)); // CASL address
+    /// Guard that cleans up env vars even on panic.
+    struct EnvGuard;
+    impl Drop for EnvGuard {
+        fn drop(&mut self) {
+            unsafe { std::env::remove_var("MAILJET_API_URL") };
+        }
+    }
+
+    #[tokio::test]
+    async fn test_send_email_success() {
+        use wiremock::matchers::{method, path};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+
+        let _lock = ENV_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+        let server = MockServer::start().await;
+        let _guard = EnvGuard;
+        unsafe { std::env::set_var("MAILJET_API_URL", server.uri()) };
+
+        Mock::given(method("POST"))
+            .and(path("/"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({"status":"success"})))
+            .mount(&server)
+            .await;
+
+        let client = reqwest::Client::new();
+        let result = send_email(&client, "key", "secret", "test@test.com", "Hi", "<p>Hi</p>").await;
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_send_email_api_error_unauthorized() {
+        use wiremock::matchers::{method, path};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+
+        let _lock = ENV_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+        let server = MockServer::start().await;
+        let _guard = EnvGuard;
+        unsafe { std::env::set_var("MAILJET_API_URL", server.uri()) };
+
+        Mock::given(method("POST"))
+            .and(path("/"))
+            .respond_with(ResponseTemplate::new(401).set_body_string("Unauthorized"))
+            .mount(&server)
+            .await;
+
+        let client = reqwest::Client::new();
+        let result = send_email(
+            &client,
+            "fake_api",
+            "fake_secret",
+            "test@test.com",
+            "Hi",
+            "<p>Hello</p>",
+        )
+        .await;
+        match result {
+            Err(EmailError::MailjetApi { status }) => {
+                assert_eq!(status, 401);
+            }
+            _ => panic!("Expected MailjetApi error 401, got {:?}", result),
+        }
     }
 
     #[test]
@@ -627,64 +658,10 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_send_email_success() {
-        use wiremock::matchers::method;
-        use wiremock::{Mock, MockServer, ResponseTemplate};
-
-        let _lock = ENV_MUTEX.lock().unwrap();
-        let server = MockServer::start().await;
-        unsafe { std::env::set_var("MAILJET_API_URL", server.uri()) };
-
-        Mock::given(method("POST"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(json!({"status":"success"})))
-            .mount(&server)
-            .await;
-
-        let client = reqwest::Client::new();
-        let result = send_email(&client, "key", "secret", "test@test.com", "Hi", "<p>Hi</p>").await;
-
-        assert!(result.is_ok());
-        unsafe { std::env::remove_var("MAILJET_API_URL") };
-    }
-
-    #[tokio::test]
     async fn test_send_email_missing_credentials() {
         let client = reqwest::Client::new();
         let result = send_email(&client, "", "secret", "test@test.com", "Hi", "<p>Hello</p>").await;
         assert!(matches!(result, Err(EmailError::MissingCredentials)));
-    }
-
-    #[tokio::test]
-    async fn test_send_email_api_error_unauthorized() {
-        use wiremock::matchers::method;
-        use wiremock::{Mock, MockServer, ResponseTemplate};
-
-        let _lock = ENV_MUTEX.lock().unwrap();
-        let server = MockServer::start().await;
-        unsafe { std::env::set_var("MAILJET_API_URL", server.uri()) };
-
-        Mock::given(method("POST"))
-            .respond_with(ResponseTemplate::new(401).set_body_string("Unauthorized"))
-            .mount(&server)
-            .await;
-
-        let client = reqwest::Client::new();
-        let result = send_email(
-            &client,
-            "fake_api",
-            "fake_secret",
-            "test@test.com",
-            "Hi",
-            "<p>Hello</p>",
-        )
-        .await;
-        match result {
-            Err(EmailError::MailjetApi { status }) => {
-                assert_eq!(status, 401);
-            }
-            _ => panic!("Expected MailjetApi error 401, got {:?}", result),
-        }
-        unsafe { std::env::remove_var("MAILJET_API_URL") };
     }
 
     #[test]

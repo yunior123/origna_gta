@@ -40,11 +40,12 @@ class AddressViewModel extends StateNotifier<AddressState> {
       final suggestions = await _ref
           .read(locationRepositoryProvider)
           .getAddressSuggestions(value);
-      if (mounted)
+      if (mounted) {
         state = state.copyWith(
           addressSuggestions: suggestions,
           showSuggestions: suggestions.isNotEmpty,
         );
+      }
     });
   }
 

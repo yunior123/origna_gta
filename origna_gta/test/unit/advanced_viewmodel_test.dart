@@ -46,8 +46,9 @@ void main() {
     test('SÉCURITÉ: Quantité négative rejetée', () {
       // Validation de quantité positive
       int validateQuantity(int quantity) {
-        if (quantity <= 0)
+        if (quantity <= 0) {
           throw ArgumentError('La quantité doit être positive');
+        }
         if (quantity > 10000) throw ArgumentError('Quantité trop grande');
         return quantity;
       }

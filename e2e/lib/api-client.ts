@@ -1364,16 +1364,17 @@ export async function buildMultiSellerPayload(
     const prodDoc = await readDoc(`products/${productId}`, token);
     const product = parseDoc(prodDoc);
     if (!product) throw new Error(`Product ${productId} not found in SurrealDB.`);
+    const price = product.price ?? (product.priceCents ? product.priceCents / 100 : 0);
     cartItems.push({
       productId,
       name: product.name || product.title || `Product ${productId}`,
-      price: product.price,
+      price,
       quantity,
       sellerId: product.sellerId,
       imageUrls: product.imageUrls || [`https://picsum.photos/seed/${product.id ?? 'default'}/400/400`],
       isDigital: product.isDigital || false,
     });
-    subtotal += product.price * quantity;
+    subtotal += price * quantity;
   }
 
   return {

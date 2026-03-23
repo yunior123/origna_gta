@@ -101,8 +101,9 @@ class _ProviderSelector extends ConsumerWidget {
                     onSelected: isDisabled
                         ? null
                         : (selected) {
-                            if (selected)
+                            if (selected) {
                               viewModel.setPaymentProvider(config.id);
+                            }
                           },
                     selectedColor: config.primaryColor,
                     backgroundColor: isDisabled

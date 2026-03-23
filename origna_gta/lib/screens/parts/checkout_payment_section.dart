@@ -305,13 +305,14 @@ class _CouponSectionState extends ConsumerState<_CouponSection> {
                               notifier.removeCoupon();
                               // Reset after frame to allow state to propagate
                               WidgetsBinding.instance.addPostFrameCallback((_) {
-                                if (mounted)
+                                if (mounted) {
                                   ref
                                           .read(
                                             _couponRemovingProvider.notifier,
                                           )
                                           .state =
                                       false;
+                                }
                               });
                             },
                       child: ref.watch(_couponRemovingProvider)

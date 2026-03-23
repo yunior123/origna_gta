@@ -297,8 +297,9 @@ class _OrderSummary extends ConsumerWidget {
     final couponCode = ref.watch(
       checkoutStateProvider.select((s) => s.couponCode),
     );
-    if (discountCents <= 0 || couponCode == null)
+    if (discountCents <= 0 || couponCode == null) {
       return const SizedBox.shrink();
+    }
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
@@ -491,35 +492,5 @@ class _OrderSummary extends ConsumerWidget {
     );
 
     return widgets;
-  }
-}
-
-class _ItemImagePlaceholder extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 56,
-      height: 56,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        gradient: LinearGradient(
-          colors: [
-            DesignTokens.primary.withValues(alpha: 0.1),
-            DesignTokens.secondary.withValues(alpha: 0.07),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        border: Border.all(
-          color: DesignTokens.primary.withValues(alpha: 0.12),
-          width: 1,
-        ),
-      ),
-      child: Icon(
-        Icons.camera_alt_outlined,
-        size: 22,
-        color: DesignTokens.primary.withValues(alpha: 0.5),
-      ),
-    );
   }
 }

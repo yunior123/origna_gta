@@ -257,12 +257,12 @@ class _OrderSuccessGateState extends ConsumerState<OrderSuccessGate> {
 
   @override
   Widget build(BuildContext context) {
-    final _timedOut = ref.watch(_paymentTimedOutProvider);
+    final timedOut = ref.watch(_paymentTimedOutProvider);
     final orderAsync = ref.watch(paidOrderBySessionProvider(widget.sessionId));
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return orderAsync.when(
-      loading: () => _timedOut
+      loading: () => timedOut
           ? _buildTimeoutFallback(isDark)
           : _ConfirmingPaymentView(
               message: 'payment.confirming'.tr(),
@@ -275,7 +275,7 @@ class _OrderSuccessGateState extends ConsumerState<OrderSuccessGate> {
       ),
       data: (order) {
         if (order == null) {
-          return _timedOut
+          return timedOut
               ? _buildTimeoutFallback(isDark)
               : _ConfirmingPaymentView(
                   message: 'payment.processing'.tr(),

@@ -12,16 +12,19 @@ use ob_auth::middleware::AuthContext;
 use crate::HandlersState;
 use crate::shared::schema::collections;
 
+
 pub fn router(state: HandlersState) -> Router {
     Router::new()
         // Products
-        .route("/products", get(get_products))
+        .route("/products", get(get_products).post(create_product))
         .route("/products/{id}", get(get_product))
         // Cart
         .route("/cart", get(get_cart))
         // Orders
         .route("/orders", get(list_orders))
         .route("/orders/{id}", get(get_order))
+        // User profile
+        .route("/user/profile", get(get_user_profile))
         .with_state(state)
 }
 
@@ -95,6 +98,89 @@ async fn get_product(
         .get_document(collections::PRODUCTS, &id)
         .await
         .map_err(|_| ob_core::Error::NotFound("Product not found".into()))?;
+
+    Ok(Json(doc))
+}
+
+/// POST /products — Create a product with validation.
+async fn create_product(
+    State(state): State<HandlersState>,
+    Extension(auth): Extension<AuthContext>,
+    Json(body): Json<serde_json::Value>,
+) -> Result<Json<serde_json::Value>, ob_core::Error> {
+    // Require authentication
+    let user_id = require_authenticated(&auth)?;
+
+    let obj = body
+        .as_object()
+        .ok_or_else(|| ob_core::Error::Validation("Request body must be a JSON object".into()))?;
+
+    // Validate priceCents: must be > 0 and <= 10,000,000
+    if let Some(price) = obj.get("priceCents").and_then(|v| v.as_i64()) {
+        if price <= 0 {
+            return Err(ob_core::Error::Validation(
+                "Product price must be greater than 0 cents".into(),
+            ));
+        }
+        if price > 10_000_000 {
+            return Err(ob_core::Error::Validation(
+                "Product price cannot exceed $100,000 CAD".into(),
+            ));
+        }
+    }
+
+    // Validate stockQuantity: must be >= 0
+    if let Some(stock) = obj.get("stockQuantity").and_then(|v| v.as_i64())
+        && stock < 0
+    {
+        return Err(ob_core::Error::Validation(
+            "Stock quantity cannot be negative".into(),
+        ));
+    }
+
+    // Validate lifecycleStatus if present
+    if let Some(status) = obj.get("lifecycleStatus").and_then(|v| v.as_str()) {
+        let valid_states = ["draft", "active", "inactive", "archived"];
+        if !valid_states.contains(&status) {
+            return Err(ob_core::Error::Validation(format!(
+                "Invalid lifecycle status: {status}"
+            )));
+        }
+    }
+
+    // Build product document
+    let mut product = body.clone();
+    let product_obj = product
+        .as_object_mut()
+        .expect("already validated as object");
+    product_obj.insert("sellerId".into(), json!(user_id));
+    product_obj.insert("createdAt".into(), json!(chrono::Utc::now().to_rfc3339()));
+    product_obj.insert("updatedAt".into(), json!(chrono::Utc::now().to_rfc3339()));
+
+    let created = state
+        .db
+        .create_document(collections::PRODUCTS, product)
+        .await
+        .map_err(|e| ob_core::Error::Database(format!("Failed to create product: {e}")))?;
+
+    Ok(Json(json!({
+        "success": true,
+        "product": created
+    })))
+}
+
+/// GET /user/profile — Get authenticated user's profile.
+async fn get_user_profile(
+    State(state): State<HandlersState>,
+    Extension(auth): Extension<AuthContext>,
+) -> Result<Json<serde_json::Value>, ob_core::Error> {
+    let user_id = require_authenticated(&auth)?;
+
+    let doc = state
+        .db
+        .get_document(collections::USERS, &user_id)
+        .await
+        .map_err(|_| ob_core::Error::NotFound("User not found".into()))?;
 
     Ok(Json(doc))
 }

@@ -20,3 +20,6 @@ coverage/
 # Test font symlinks (for PDF coverage tests)
 Helvetica-*.ttf
 fuzz/target/
+
+# Local embedded SurrealDB data (regenerated on cargo run)
+local_test_data/

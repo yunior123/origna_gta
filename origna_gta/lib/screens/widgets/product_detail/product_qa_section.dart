@@ -28,7 +28,7 @@ final _qaShowAllProvider = StateProvider.autoDispose<bool>((_) => false);
 class _QASectionState extends ConsumerState<QASection> {
   @override
   Widget build(BuildContext context) {
-    final _showAll = ref.watch(_qaShowAllProvider);
+    final showAll = ref.watch(_qaShowAllProvider);
     final qaAsync = ref.watch(qaListProvider(widget.productId));
     final currentUserId = ref.watch(userIdProvider);
     final isSeller = currentUserId == widget.sellerId;
@@ -57,7 +57,7 @@ class _QASectionState extends ConsumerState<QASection> {
               return _emptyState(context, currentUserId, isSeller, isPremium);
             }
 
-            final displayList = _showAll ? qaList : qaList.take(3).toList();
+            final displayList = showAll ? qaList : qaList.take(3).toList();
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -70,7 +70,7 @@ class _QASectionState extends ConsumerState<QASection> {
                     currentUserId: currentUserId,
                   ),
                 ),
-                if (qaList.length > 3 && !_showAll)
+                if (qaList.length > 3 && !showAll)
                   TextButton(
                     onPressed: () =>
                         ref.read(_qaShowAllProvider.notifier).state = true,

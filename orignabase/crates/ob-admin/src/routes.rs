@@ -187,8 +187,9 @@ async fn config_get_all(
 ) -> Result<([(header::HeaderName, &'static str); 1], Json<Value>)> {
     let configs = state
         .db
-        .query_raw("SELECT * FROM type::table('_config') ORDER BY key ASC")
-        .await?;
+        .query_raw("SELECT * FROM _config ORDER BY key ASC")
+        .await
+        .unwrap_or_default();
 
     let map: serde_json::Map<String, Value> = configs
         .iter()
@@ -216,10 +217,11 @@ async fn config_get(
     let rows = state
         .db
         .query_bind_value(
-            "SELECT * FROM type::table('_config') WHERE key = $key LIMIT 1",
+            "SELECT * FROM _config WHERE key = $key LIMIT 1",
             serde_json::json!({"key": key}),
         )
-        .await?;
+        .await
+        .unwrap_or_default();
 
     let value = rows
         .first()
@@ -243,8 +245,9 @@ async fn config_get(
 async fn admin_config_get_all(State(state): State<AdminState>) -> Result<Json<Value>> {
     let configs = state
         .db
-        .query_raw("SELECT * FROM type::table('_config') ORDER BY key ASC")
-        .await?;
+        .query_raw("SELECT * FROM _config ORDER BY key ASC")
+        .await
+        .unwrap_or_default();
 
     Ok(Json(json!({ "configs": configs })))
 }
@@ -293,13 +296,17 @@ async fn config_delete(
     State(state): State<AdminState>,
     axum::extract::Path(key): axum::extract::Path<String>,
 ) -> Result<Json<Value>> {
-    state
+    let results = state
         .db
         .query_bind(
-            "DELETE FROM _config WHERE key = $key",
+            "DELETE FROM _config WHERE key = $key RETURN BEFORE",
             json!({ "key": key }),
         )
         .await?;
+
+    if results.is_empty() {
+        return Err(Error::NotFound(format!("config key '{key}'")));
+    }
 
     Ok(Json(json!({ "deleted": key })))
 }
@@ -711,7 +718,7 @@ async fn system_alerts(State(state): State<AdminState>) -> Result<Json<Value>> {
 }
 
 /// Build the admin router. All routes require admin authentication.
-
+///
 /// POST /_admin/jwt/rotate — Rotate JWT signing keys (admin-only).
 /// Generates new RS256 key pair, moves current to previous, saves metadata.
 async fn rotate_jwt_keys(State(_state): State<AdminState>) -> Result<Json<Value>> {

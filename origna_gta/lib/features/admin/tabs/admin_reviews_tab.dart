@@ -26,9 +26,9 @@ class AdminReviewsTab extends ConsumerStatefulWidget {
 class _AdminReviewsTabState extends ConsumerState<AdminReviewsTab> {
   @override
   Widget build(BuildContext context) {
-    final _flaggedOnly = ref.watch(_reviewsFlaggedOnlyProvider);
-    final _hasPhotosOnly = ref.watch(_reviewsHasPhotosOnlyProvider);
-    final filters = (flaggedOnly: _flaggedOnly, hasPhotosOnly: _hasPhotosOnly);
+    final flaggedOnly = ref.watch(_reviewsFlaggedOnlyProvider);
+    final hasPhotosOnly = ref.watch(_reviewsHasPhotosOnlyProvider);
+    final filters = (flaggedOnly: flaggedOnly, hasPhotosOnly: hasPhotosOnly);
     final reviewsAsync = ref.watch(adminReviewsProvider(filters));
 
     return Column(
@@ -51,7 +51,7 @@ class _AdminReviewsTabState extends ConsumerState<AdminReviewsTab> {
                     'admin.reviews.flagged'.tr(),
                     overflow: TextOverflow.ellipsis,
                   ),
-                  selected: _flaggedOnly,
+                  selected: flaggedOnly,
                   onSelected: (v) =>
                       ref.read(_reviewsFlaggedOnlyProvider.notifier).state = v,
                   selectedColor: DesignTokens.error.withValues(alpha: 0.15),
@@ -66,7 +66,7 @@ class _AdminReviewsTabState extends ConsumerState<AdminReviewsTab> {
                     'admin.reviews.has_photos'.tr(),
                     overflow: TextOverflow.ellipsis,
                   ),
-                  selected: _hasPhotosOnly,
+                  selected: hasPhotosOnly,
                   onSelected: (v) =>
                       ref.read(_reviewsHasPhotosOnlyProvider.notifier).state =
                           v,

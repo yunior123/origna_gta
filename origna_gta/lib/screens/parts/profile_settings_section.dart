@@ -393,8 +393,9 @@ class _EmailVerificationRequiredViewState
         );
       }
     } finally {
-      if (mounted)
+      if (mounted) {
         ref.read(_emailVerifyCheckingProvider.notifier).state = false;
+      }
     }
   }
 
@@ -426,8 +427,9 @@ class _EmailVerificationRequiredViewState
         );
       }
     } finally {
-      if (mounted)
+      if (mounted) {
         ref.read(_emailVerifyResendingProvider.notifier).state = false;
+      }
     }
   }
 }

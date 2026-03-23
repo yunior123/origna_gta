@@ -119,7 +119,7 @@ void main() {
       ).thenAnswer((_) async => testSellerId);
       when(
         mockCartRepository.addToCart(any, any, any),
-      ).thenAnswer((_) async { return null; });
+      ).thenAnswer((_) async {});
 
       final result = await controller.addToCart(testProductId, 2);
 
@@ -147,7 +147,7 @@ void main() {
           any,
           variantId: anyNamed('variantId'),
         ),
-      ).thenAnswer((_) async { return null; });
+      ).thenAnswer((_) async {});
 
       final result = await controller.addToCart(
         testProductId,
@@ -259,7 +259,7 @@ void main() {
 
       when(
         mockCartRepository.removeFromCart(any, any),
-      ).thenAnswer((_) async { return null; });
+      ).thenAnswer((_) async {});
 
       await controller.removeFromCart(testCartItemId);
 
@@ -286,7 +286,7 @@ void main() {
 
       when(
         mockCartRepository.updateQuantity(any, any, any),
-      ).thenAnswer((_) async { return null; });
+      ).thenAnswer((_) async {});
 
       final result = await controller.updateQuantity(testCartItemId, 5);
 
@@ -302,7 +302,7 @@ void main() {
 
       when(
         mockCartRepository.updateQuantity(any, any, any),
-      ).thenAnswer((_) async { return null; });
+      ).thenAnswer((_) async {});
 
       final result = await controller.updateQuantity(testCartItemId, 1);
 
@@ -327,7 +327,7 @@ void main() {
       container = createContainer(userId: testUserId);
       final controller = container.read(cartControllerProvider);
 
-      when(mockCartRepository.clearCart(any)).thenAnswer((_) async { return null; });
+      when(mockCartRepository.clearCart(any)).thenAnswer((_) async {});
 
       await controller.clearCart();
 
@@ -351,7 +351,7 @@ void main() {
 
       when(
         mockCartRepository.updateBuyerNote(any, any, any),
-      ).thenAnswer((_) async { return null; });
+      ).thenAnswer((_) async {});
 
       await controller.updateBuyerNote(testCartItemId, 'Please gift wrap');
 
@@ -370,7 +370,7 @@ void main() {
 
       when(
         mockCartRepository.updateBuyerNote(any, any, any),
-      ).thenAnswer((_) async { return null; });
+      ).thenAnswer((_) async {});
 
       await controller.updateBuyerNote(testCartItemId, null);
 
@@ -399,10 +399,10 @@ void main() {
 
       when(
         mockProductRepository.toggleFavorite(any, any),
-      ).thenAnswer((_) async { return null; });
+      ).thenAnswer((_) async {});
       when(
         mockCartRepository.removeFromCart(any, any),
-      ).thenAnswer((_) async { return null; });
+      ).thenAnswer((_) async {});
 
       final result = await controller.saveForLater(
         testProductId,

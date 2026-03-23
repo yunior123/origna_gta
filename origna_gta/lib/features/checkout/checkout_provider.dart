@@ -10,7 +10,10 @@ import 'package:origna_gta/utils/utils.dart' show getTaxRate, provinceTaxRates;
 
 import 'orignabase_checkout_provider.dart';
 
-/// Computed provider for tax rate based on address.
+/// Computed provider for tax rate based on the buyer's shipping address.
+///
+/// Falls back to Ontario's HST rate (13%) when no address is set.
+/// Used by checkout summary to display the tax percentage label.
 final checkoutTaxRateProvider = Provider.autoDispose<double>((ref) {
   final checkoutState = ref.watch(checkoutStateProvider);
   if (checkoutState.address == null) {
@@ -19,10 +22,15 @@ final checkoutTaxRateProvider = Provider.autoDispose<double>((ref) {
   return getTaxRate(checkoutState.address!.state);
 });
 
-/// Computed provider for checkout total.
-/// Formula: (subtotal - coupon) + tax + shipping.
-/// NOTE: The platform fee is deducted from the SELLER's payout — it is NOT added to the buyer's
-/// charge. Stripe PaymentIntent amount = discounted_subtotal + shipping + tax only.
+/// Computed provider for checkout total in dollars.
+///
+/// Formula: `(subtotal - coupon) + tax + shipping`
+///
+/// ## Key Decisions
+/// - Platform fee is deducted from the **seller's** payout — NOT added to buyer's charge.
+///   Stripe PaymentIntent amount = discounted_subtotal + shipping + tax only.
+/// - [cartSubtotalProvider] returns integer cents — divided by 100.0 for dollar conversion.
+/// - Coupon discount clamped to 0 minimum — negative totals are impossible.
 final checkoutTotalProvider = Provider.autoDispose<double>((ref) {
   final checkoutState = ref.watch(checkoutStateProvider);
   // cartSubtotalProvider returns INTEGER CENTS — divide by 100.0 to get dollars.

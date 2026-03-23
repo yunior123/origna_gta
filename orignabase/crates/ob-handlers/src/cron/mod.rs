@@ -30,22 +30,16 @@ async fn acquire_cron_lock(state: &HandlersState, job_name: &str, ttl_minutes: i
     let cutoff = now - Duration::minutes(ttl_minutes);
 
     // Check existing lock
-    match state
+    if let Ok(doc) = state
         .db
         .get_document(collections::CRON_LOCKS, job_name)
         .await
+        && let Some(locked_at) = doc.get("lockedAt").and_then(|v| v.as_str())
+        && let Ok(ts) = chrono::DateTime::parse_from_rfc3339(locked_at)
+        && ts.with_timezone(&Utc) > cutoff
+        && doc.get("status").and_then(|v| v.as_str()) == Some("running")
     {
-        Ok(doc) => {
-            if let Some(locked_at) = doc.get("lockedAt").and_then(|v| v.as_str())
-                && let Ok(ts) = chrono::DateTime::parse_from_rfc3339(locked_at)
-                && ts.with_timezone(&Utc) > cutoff
-            {
-                if doc.get("status").and_then(|v| v.as_str()) == Some("running") {
-                    return false; // Lock still held and running
-                }
-            }
-        }
-        Err(_) => {} // No lock doc exists — proceed
+        return false; // Lock still held and running
     }
 
     // Create/update lock
@@ -150,7 +144,7 @@ async fn stripe_create_transfer(
     let resp = state
         .http_client
         .post(format!("{}/transfers", state.stripe_base_url))
-        .basic_auth(&stripe_key, None::<&str>)
+        .basic_auth(stripe_key, None::<&str>)
         .header("Idempotency-Key", format!("{}-{}", order_id, seller_id))
         .form(&form)
         .send()
@@ -462,11 +456,11 @@ pub async fn check_expired_authorizations(state: &HandlersState) {
                         if !is_digital {
                             let pid = item.get("productId").and_then(|v| v.as_str()).unwrap_or("");
                             let qty = item.get("quantity").and_then(|v| v.as_i64()).unwrap_or(1);
-                            if !pid.is_empty() && qty > 0 {
-                                if let Err(e) = state
+                            if !pid.is_empty() && qty > 0
+                                && let Err(e) = state
                                     .db
                                     .query_bind(
-                                        &format!("UPDATE type::thing($table, $product_id) SET stockQuantity += $quantity, updatedAt = $updatedAt"),
+                                        "UPDATE type::thing($table, $product_id) SET stockQuantity += $quantity, updatedAt = $updatedAt",
                                         json!({
                                             "table": collections::PRODUCTS,
                                             "product_id": pid,
@@ -478,7 +472,6 @@ pub async fn check_expired_authorizations(state: &HandlersState) {
                                 {
                                     error!(product_id = %pid, error = %e, "Failed to restore expired-order stock");
                                 }
-                            }
                         }
                     }
                 }

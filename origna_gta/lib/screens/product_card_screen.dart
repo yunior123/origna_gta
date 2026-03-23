@@ -47,7 +47,7 @@ class ProductCard extends ConsumerStatefulWidget {
 
 /// Private provider for ProductCard image index
 final _productCardImageIndexProvider = StateProvider.autoDispose
-    .family<int, String>((_, __) => 0);
+    .family<int, String>((_, _) => 0);
 
 class _ProductCardState extends ConsumerState<ProductCard>
     with SingleTickerProviderStateMixin {

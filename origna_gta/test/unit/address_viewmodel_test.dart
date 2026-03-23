@@ -280,7 +280,7 @@ void main() {
         ),
       );
 
-      when(mockUserRepo.updateBuyerAddress(any, any)).thenAnswer((_) async { return null; });
+      when(mockUserRepo.updateBuyerAddress(any, any)).thenAnswer((_) async {});
 
       await vm.saveAddress(
         street: '456 New St',

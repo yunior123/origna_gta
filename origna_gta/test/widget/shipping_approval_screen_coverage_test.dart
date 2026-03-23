@@ -6,7 +6,6 @@ import 'package:origna_gta/core/repositories/order_repository.dart';
 import 'package:origna_gta/features/orders/orders_provider.dart';
 import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/screens/shipping_approval_screen.dart';
-import 'package:origna_gta/utils/utils.dart';
 
 import '../test_utils.dart';
 @GenerateNiceMocks([MockSpec<OrderRepository>()])

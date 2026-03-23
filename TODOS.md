@@ -14,3 +14,6 @@
 16. audit webhook stripe endpoints: stripe vs orignabase. all webhooks:test and live using cli
 17. use delegation to document codebase like pro, search web for best practices. document so well that it will avoid going back and forth many times: ex: we were using for loop for images compression then future.wait then for loop again
 18. audit full codebase with 30+ agents, use delegation. findings should be added to state.md. findings should be validated in depth to avoid false positives.
+19. audit auth system
+20. improve local host test configuration and test system for stripe cli webhook forwarding, orignabase, meilisearch,flutter
+21. use delegation to document codebase like pro, search web for best practices. document so well that it will avoid going back and forth many times: ex: we were using for loop for images compression then future.wait then for loop again. document functions, clases, etc

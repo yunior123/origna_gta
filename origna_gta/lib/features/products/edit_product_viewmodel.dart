@@ -1,5 +1,4 @@
 import 'package:easy_localization/easy_localization.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:origna_gta/core/providers.dart';
@@ -7,10 +6,10 @@ import 'package:origna_gta/core/repositories/product_repository.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/products/variant_models.dart';
 import 'package:origna_gta/models/generated/models.dart' as models;
-import 'package:origna_gta/utils/image_compression_utils.dart';
 import 'package:origna_gta/utils/utils.dart';
 
 import 'edit_product_state.dart';
+import 'product_image_helpers.dart';
 
 final editProductViewModelProvider = StateNotifierProvider.autoDispose
     .family<EditProductViewModel, EditProductState, models.Product>((
@@ -420,7 +419,7 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
       List<String> allImageUrls = List.from(state.existingImageUrls);
 
       if (state.newImages.isNotEmpty) {
-        final processedImages = await _processImages(state.newImages);
+        final processedImages = await compressProductImages(state.newImages);
         final successfulUrls = await _repository.uploadImages(
           processedImages,
           _product.productId,
@@ -523,18 +522,5 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
         errorMessage: AppError.getMessage(e),
       );
     }
-  }
-
-  Future<List<Uint8List>> _processImages(List<ImageModel> imageModels) async {
-    final processed = <Uint8List>[];
-    for (var model in imageModels) {
-      try {
-        final validated = await validateAndCompressImage(model.bytes);
-        if (validated != null) processed.add(validated);
-      } catch (_) {
-        // Skip images that fail validation/compression
-      }
-    }
-    return processed;
   }
 }

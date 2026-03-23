@@ -6,6 +6,7 @@ import {
   callCallable,
   readDoc,
   writeDoc,
+  ensureOosProduct,
 } from '../../lib/api-client.js';
 import { TEST_ACCOUNTS } from '../../lib/config.js';
 
@@ -16,6 +17,7 @@ describe('Notifications E2E Tests', () => {
   let productId: string;
 
   beforeAll(async () => {
+    await ensureOosProduct();
     const auth = await signIn(TEST_ACCOUNTS.BUYER_EMAIL);
     buyerToken = auth.idToken;
     // e2e_product_oos has no variants — use product-level subscriptions
