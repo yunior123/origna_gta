@@ -11,35 +11,37 @@ class SlidePageRoute<T> extends PageRouteBuilder<T> {
     this.direction = SlideDirection.right,
     super.settings,
   }) : super(
-          pageBuilder: (context, animation, secondaryAnimation) => page,
-          transitionDuration: const Duration(milliseconds: 300),
-          reverseTransitionDuration: const Duration(milliseconds: 250),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            final begin = direction == SlideDirection.right
-                ? const Offset(1.0, 0.0)
-                : direction == SlideDirection.left
-                    ? const Offset(-1.0, 0.0)
-                    : direction == SlideDirection.up
-                        ? const Offset(0.0, 1.0)
-                        : const Offset(0.0, -1.0);
+         pageBuilder: (context, animation, secondaryAnimation) => page,
+         transitionDuration: const Duration(milliseconds: 300),
+         reverseTransitionDuration: const Duration(milliseconds: 250),
+         transitionsBuilder: (context, animation, secondaryAnimation, child) {
+           final begin = direction == SlideDirection.right
+               ? const Offset(1.0, 0.0)
+               : direction == SlideDirection.left
+               ? const Offset(-1.0, 0.0)
+               : direction == SlideDirection.up
+               ? const Offset(0.0, 1.0)
+               : const Offset(0.0, -1.0);
 
-            final tween = Tween(begin: begin, end: Offset.zero).chain(
-              CurveTween(curve: Curves.easeOutCubic),
-            );
+           final tween = Tween(
+             begin: begin,
+             end: Offset.zero,
+           ).chain(CurveTween(curve: Curves.easeOutCubic));
 
-            final fadeTween = Tween(begin: 0.0, end: 1.0).chain(
-              CurveTween(curve: Curves.easeOut),
-            );
+           final fadeTween = Tween(
+             begin: 0.0,
+             end: 1.0,
+           ).chain(CurveTween(curve: Curves.easeOut));
 
-            return SlideTransition(
-              position: animation.drive(tween),
-              child: FadeTransition(
-                opacity: animation.drive(fadeTween),
-                child: child,
-              ),
-            );
-          },
-        );
+           return SlideTransition(
+             position: animation.drive(tween),
+             child: FadeTransition(
+               opacity: animation.drive(fadeTween),
+               child: child,
+             ),
+           );
+         },
+       );
 }
 
 enum SlideDirection { right, left, up, down }
@@ -72,14 +74,12 @@ class _AnimatedListItemState extends State<AnimatedListItem>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      duration: widget.duration,
-      vsync: this,
-    );
+    _controller = AnimationController(duration: widget.duration, vsync: this);
 
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-    );
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
 
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0.0, 0.1),
@@ -102,10 +102,7 @@ class _AnimatedListItemState extends State<AnimatedListItem>
   Widget build(BuildContext context) {
     return FadeTransition(
       opacity: _fadeAnimation,
-      child: SlideTransition(
-        position: _slideAnimation,
-        child: widget.child,
-      ),
+      child: SlideTransition(position: _slideAnimation, child: widget.child),
     );
   }
 }
@@ -137,14 +134,12 @@ class _TapScaleAnimationState extends State<TapScaleAnimation>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      duration: widget.duration,
-      vsync: this,
-    );
+    _controller = AnimationController(duration: widget.duration, vsync: this);
 
-    _scaleAnimation = Tween<double>(begin: 1.0, end: widget.scaleDown).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: widget.scaleDown,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override
@@ -155,16 +150,16 @@ class _TapScaleAnimationState extends State<TapScaleAnimation>
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => _controller.forward(),
-      onTapUp: (_) {
-        _controller.reverse();
-        widget.onTap?.call();
-      },
-      onTapCancel: () => _controller.reverse(),
-      child: ScaleTransition(
-        scale: _scaleAnimation,
-        child: widget.child,
+    return Semantics(
+      button: widget.onTap != null,
+      child: GestureDetector(
+        onTapDown: (_) => _controller.forward(),
+        onTapUp: (_) {
+          _controller.reverse();
+          widget.onTap?.call();
+        },
+        onTapCancel: () => _controller.reverse(),
+        child: ScaleTransition(scale: _scaleAnimation, child: widget.child),
       ),
     );
   }
@@ -175,11 +170,7 @@ class ShimmerLoading extends StatefulWidget {
   final Widget child;
   final bool isLoading;
 
-  const ShimmerLoading({
-    super.key,
-    required this.child,
-    this.isLoading = true,
-  });
+  const ShimmerLoading({super.key, required this.child, this.isLoading = true});
 
   @override
   State<ShimmerLoading> createState() => _ShimmerLoadingState();
@@ -266,10 +257,7 @@ class _FadeInWidgetState extends State<FadeInWidget>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      duration: widget.duration,
-      vsync: this,
-    );
+    _controller = AnimationController(duration: widget.duration, vsync: this);
 
     _animation = CurvedAnimation(parent: _controller, curve: widget.curve);
 
@@ -290,10 +278,7 @@ class _FadeInWidgetState extends State<FadeInWidget>
 
   @override
   Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: _animation,
-      child: widget.child,
-    );
+    return FadeTransition(opacity: _animation, child: widget.child);
   }
 }
 
@@ -316,10 +301,7 @@ class AnimatedCounter extends StatelessWidget {
       tween: IntTween(begin: 0, end: value),
       duration: duration,
       builder: (context, value, child) {
-        return Text(
-          value.toString(),
-          style: style,
-        );
+        return Text(value.toString(), style: style);
       },
     );
   }
@@ -351,10 +333,7 @@ class _AnimatedCheckmarkState extends State<AnimatedCheckmark>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      duration: widget.duration,
-      vsync: this,
-    );
+    _controller = AnimationController(duration: widget.duration, vsync: this);
 
     _scaleAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
@@ -472,11 +451,7 @@ class BounceAnimation extends StatefulWidget {
   final Widget child;
   final bool animate;
 
-  const BounceAnimation({
-    super.key,
-    required this.child,
-    this.animate = true,
-  });
+  const BounceAnimation({super.key, required this.child, this.animate = true});
 
   @override
   State<BounceAnimation> createState() => _BounceAnimationState();
@@ -528,20 +503,27 @@ class _BounceAnimationState extends State<BounceAnimation>
 
   @override
   Widget build(BuildContext context) {
-    return ScaleTransition(
-      scale: _animation,
-      child: widget.child,
-    );
+    return ScaleTransition(scale: _animation, child: widget.child);
   }
 }
 
 /// Extension for easy navigation with animation
 extension NavigatorExtension on BuildContext {
-  Future<T?> pushAnimated<T>(Widget page, {SlideDirection direction = SlideDirection.right}) {
-    return Navigator.of(this).push<T>(SlidePageRoute(page: page, direction: direction));
+  Future<T?> pushAnimated<T>(
+    Widget page, {
+    SlideDirection direction = SlideDirection.right,
+  }) {
+    return Navigator.of(
+      this,
+    ).push<T>(SlidePageRoute(page: page, direction: direction));
   }
 
-  Future<T?> pushReplacementAnimated<T, TO>(Widget page, {SlideDirection direction = SlideDirection.right}) {
-    return Navigator.of(this).pushReplacement<T, TO>(SlidePageRoute(page: page, direction: direction));
+  Future<T?> pushReplacementAnimated<T, TO>(
+    Widget page, {
+    SlideDirection direction = SlideDirection.right,
+  }) {
+    return Navigator.of(
+      this,
+    ).pushReplacement<T, TO>(SlidePageRoute(page: page, direction: direction));
   }
 }

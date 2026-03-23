@@ -80,82 +80,93 @@ extension _AddProductFormWidgets on _AddProductScreenState {
     String? infoTitle,
     String? infoBody,
   }) {
-    return GestureDetector(
-      key: key,
-      onTap: () => onChanged(!value),
-      child: AnimatedContainer(
-        duration: DesignTokens.durationFast,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: value
-              ? DesignTokens.primary.withValues(alpha: 0.06)
-              : DesignTokens.surfaceVariant.withValues(alpha: 0.5),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
+    return Semantics(
+      button: true,
+      label: 'btn-toggle-${label.toLowerCase().replaceAll(' ', '-')}',
+      toggled: value,
+      child: GestureDetector(
+        key: key,
+        onTap: () => onChanged(!value),
+        child: AnimatedContainer(
+          duration: DesignTokens.durationFast,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
             color: value
-                ? DesignTokens.primary.withValues(alpha: 0.3)
-                : DesignTokens.outline.withValues(alpha: 0.3),
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              icon,
-              size: 20,
-              color: value ? DesignTokens.primary : DesignTokens.textSecondary,
+                ? DesignTokens.primary.withValues(alpha: 0.06)
+                : DesignTokens.surfaceVariant.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: value
+                  ? DesignTokens.primary.withValues(alpha: 0.3)
+                  : DesignTokens.outline.withValues(alpha: 0.3),
             ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: value
-                          ? DesignTokens.primary
-                          : DesignTokens.textPrimary,
-                    ),
-                  ),
-                  if (subtitle != null)
+          ),
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                size: 20,
+                color: value
+                    ? DesignTokens.primary
+                    : DesignTokens.textSecondary,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Text(
-                      subtitle,
+                      label,
                       style: TextStyle(
-                        fontSize: 11,
-                        color: DesignTokens.textSecondary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: value
+                            ? DesignTokens.primary
+                            : DesignTokens.textPrimary,
                       ),
                     ),
-                ],
+                    if (subtitle != null)
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: DesignTokens.textSecondary,
+                        ),
+                      ),
+                  ],
+                ),
               ),
-            ),
-            if (infoTitle != null && infoBody != null)
-              GestureDetector(
-                onTap: () => showInfoSheet(infoTitle, infoBody),
-                behavior: HitTestBehavior.opaque,
-                child: Padding(
-                  padding: const EdgeInsets.only(right: 6),
-                  child: Icon(
-                    Icons.info_outline_rounded,
-                    size: 16,
-                    color: DesignTokens.info.withValues(alpha: 0.5),
+              if (infoTitle != null && infoBody != null)
+                Semantics(
+                  button: true,
+                  label: 'btn-info-${label.toLowerCase().replaceAll(' ', '-')}',
+                  child: GestureDetector(
+                    onTap: () => showInfoSheet(infoTitle, infoBody),
+                    behavior: HitTestBehavior.opaque,
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: Icon(
+                        Icons.info_outline_rounded,
+                        size: 16,
+                        color: DesignTokens.info.withValues(alpha: 0.5),
+                      ),
+                    ),
+                  ),
+                ),
+              Semantics(
+                label: label,
+                child: SizedBox(
+                  height: 28,
+                  child: Switch.adaptive(
+                    value: value,
+                    onChanged: onChanged,
+                    activeThumbColor: DesignTokens.primary,
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                 ),
               ),
-            Semantics(
-              label: label,
-              child: SizedBox(
-                height: 28,
-                child: Switch.adaptive(
-                  value: value,
-                  onChanged: onChanged,
-                  activeThumbColor: DesignTokens.primary,
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -324,7 +335,9 @@ extension _AddProductFormWidgets on _AddProductScreenState {
         boxShadow: DesignTokens.shadowSm,
       ),
       child: Theme(
-        data: Theme.of(context).copyWith(dividerColor: DesignTokens.transparent),
+        data: Theme.of(
+          context,
+        ).copyWith(dividerColor: DesignTokens.transparent),
         child: ExpansionTile(
           tilePadding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
           childrenPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
@@ -392,33 +405,37 @@ extension _AddProductFormWidgets on _AddProductScreenState {
   }
 
   Widget buildTappableInfoHint(String shortText, String title, String body) {
-    return GestureDetector(
-      onTap: () => showInfoSheet(title, body),
-      child: Padding(
-        padding: const EdgeInsets.only(top: 6),
-        child: Row(
-          children: [
-            Icon(
-              Icons.info_outline_rounded,
-              size: 14,
-              color: DesignTokens.info.withValues(alpha: 0.6),
-            ),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(
-                shortText,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: DesignTokens.textSecondary,
+    return Semantics(
+      button: true,
+      label: 'btn-info-hint-${title.toLowerCase().replaceAll(' ', '-')}',
+      child: GestureDetector(
+        onTap: () => showInfoSheet(title, body),
+        child: Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: Row(
+            children: [
+              Icon(
+                Icons.info_outline_rounded,
+                size: 14,
+                color: DesignTokens.info.withValues(alpha: 0.6),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  shortText,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: DesignTokens.textSecondary,
+                  ),
                 ),
               ),
-            ),
-            Icon(
-              Icons.chevron_right_rounded,
-              size: 14,
-              color: DesignTokens.textDisabled,
-            ),
-          ],
+              Icon(
+                Icons.chevron_right_rounded,
+                size: 14,
+                color: DesignTokens.textDisabled,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -552,18 +569,22 @@ extension _AddProductFormWidgets on _AddProductScreenState {
                       ),
                     ),
                   ),
-                  GestureDetector(
-                    onTap: () => Navigator.pop(ctx),
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: DesignTokens.surfaceVariant,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.close_rounded,
-                        size: 16,
-                        color: DesignTokens.textSecondary,
+                  Semantics(
+                    button: true,
+                    label: 'btn-close-info-sheet',
+                    child: GestureDetector(
+                      onTap: () => Navigator.pop(ctx),
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: DesignTokens.surfaceVariant,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.close_rounded,
+                          size: 16,
+                          color: DesignTokens.textSecondary,
+                        ),
                       ),
                     ),
                   ),

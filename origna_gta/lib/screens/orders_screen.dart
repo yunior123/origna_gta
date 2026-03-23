@@ -11,7 +11,7 @@ import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/order_widgets.dart';
-import 'package:shimmer/shimmer.dart';
+import 'package:origna_gta/widgets/modern_skeleton_loader.dart';
 
 /// Documentation for OrdersScreen
 class OrdersScreen extends ConsumerStatefulWidget {
@@ -135,11 +135,8 @@ class _OrdersLoadingSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Shimmer.fromColors(
-      baseColor: isDark ? DesignTokens.darkCard : DesignTokens.outlineVariant,
-      highlightColor: isDark
-          ? DesignTokens.darkSurfaceVariant
-          : DesignTokens.surface,
+    return ModernSkeletonLoader.wrap(
+      isDark: isDark,
       child: ListView.builder(
         physics: const NeverScrollableScrollPhysics(),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

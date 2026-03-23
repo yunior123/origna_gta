@@ -312,15 +312,25 @@ class AddressManagementScreen extends ConsumerWidget {
                         title: Text('common.confirm_delete'.tr()),
                         content: Text('address.delete_confirmation'.tr()),
                         actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context, false),
-                            child: Text('common.cancel'.tr()),
+                          Semantics(
+                            button: true,
+                            label: 'btn-cancel-delete-address',
+                            child: TextButton(
+                              onPressed: () => Navigator.pop(context, false),
+                              child: Text('common.cancel'.tr()),
+                            ),
                           ),
-                          TextButton(
-                            onPressed: () => Navigator.pop(context, true),
-                            child: Text(
-                              'common.delete'.tr(),
-                              style: const TextStyle(color: DesignTokens.error),
+                          Semantics(
+                            button: true,
+                            label: 'btn-confirm-delete-address',
+                            child: TextButton(
+                              onPressed: () => Navigator.pop(context, true),
+                              child: Text(
+                                'common.delete'.tr(),
+                                style: const TextStyle(
+                                  color: DesignTokens.error,
+                                ),
+                              ),
                             ),
                           ),
                         ],

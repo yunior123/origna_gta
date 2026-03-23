@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
-import 'package:shimmer/shimmer.dart';
+import 'package:origna_gta/widgets/modern_skeleton_loader.dart';
 
 /// Shimmer skeleton displayed while product data is loading.
 class ProductDetailSkeleton extends StatelessWidget {
@@ -9,21 +9,19 @@ class ProductDetailSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final baseColor =
-        isDark ? DesignTokens.darkCard : DesignTokens.outlineVariant;
-    final highlightColor =
-        isDark ? DesignTokens.darkSurfaceVariant : DesignTokens.surface;
 
-    return Shimmer.fromColors(
-      baseColor: baseColor,
-      highlightColor: highlightColor,
+    return ModernSkeletonLoader.wrap(
+      isDark: isDark,
       child: SingleChildScrollView(
         physics: const NeverScrollableScrollPhysics(),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-                height: 340, width: double.infinity, color: DesignTokens.white),
+              height: 340,
+              width: double.infinity,
+              color: DesignTokens.white,
+            ),
             Padding(
               padding: const EdgeInsets.all(DesignTokens.spacing20),
               child: Column(
@@ -74,8 +72,9 @@ class ProductDetailSkeleton extends StatelessWidget {
                     height: 80,
                     decoration: BoxDecoration(
                       color: DesignTokens.white,
-                      borderRadius:
-                          BorderRadius.circular(DesignTokens.radius16),
+                      borderRadius: BorderRadius.circular(
+                        DesignTokens.radius16,
+                      ),
                     ),
                   ),
                   const SizedBox(height: DesignTokens.spacing20),
@@ -93,8 +92,9 @@ class ProductDetailSkeleton extends StatelessWidget {
                     height: 96,
                     decoration: BoxDecoration(
                       color: DesignTokens.white,
-                      borderRadius:
-                          BorderRadius.circular(DesignTokens.radius16),
+                      borderRadius: BorderRadius.circular(
+                        DesignTokens.radius16,
+                      ),
                     ),
                   ),
                   const SizedBox(height: DesignTokens.spacing20),
@@ -112,8 +112,9 @@ class ProductDetailSkeleton extends StatelessWidget {
                     height: 60,
                     decoration: BoxDecoration(
                       color: DesignTokens.white,
-                      borderRadius:
-                          BorderRadius.circular(DesignTokens.radius16),
+                      borderRadius: BorderRadius.circular(
+                        DesignTokens.radius16,
+                      ),
                     ),
                   ),
                 ],

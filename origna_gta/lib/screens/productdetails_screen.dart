@@ -15,7 +15,7 @@ import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:shimmer/shimmer.dart';
+import 'package:origna_gta/widgets/modern_skeleton_loader.dart';
 
 import 'widgets/product_detail/product_actions_section.dart';
 import 'widgets/product_detail/product_detail_skeleton.dart';
@@ -431,11 +431,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                     width: double.infinity,
                     height: double.infinity,
                     fit: BoxFit.contain,
-                    placeholder: (c, u) => Shimmer.fromColors(
-                      baseColor: DesignTokens.outlineVariant,
-                      highlightColor: DesignTokens.surface,
-                      child: Container(color: DesignTokens.white),
-                    ),
+                    placeholder: (c, u) =>
+                        ModernSkeletonLoader.imagePlaceholder(),
                     errorWidget: (c, u, e) => const Icon(
                       Icons.image_not_supported,
                       size: 100,

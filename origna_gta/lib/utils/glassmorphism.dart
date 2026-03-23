@@ -32,7 +32,10 @@ class GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
       child: BackdropFilter(
-        filter: ui.ImageFilter.blur(sigmaX: blurIntensity.value, sigmaY: blurIntensity.value),
+        filter: ui.ImageFilter.blur(
+          sigmaX: blurIntensity.value,
+          sigmaY: blurIntensity.value,
+        ),
         child: AppBar(
           title: Text(title),
           actions: actions,
@@ -40,7 +43,9 @@ class GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
           elevation: elevation,
           surfaceTintColor: DesignTokens.transparent,
           scrolledUnderElevation: 0,
-          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(bottom: Radius.circular(12))),
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(bottom: Radius.circular(12)),
+          ),
         ),
       ),
     );
@@ -55,24 +60,46 @@ class GlassBadge extends StatelessWidget {
   final GlassBlurIntensity blurIntensity;
   final double padding;
 
-  const GlassBadge({super.key, required this.label, this.backgroundColor, this.textColor, this.blurIntensity = GlassBlurIntensity.subtle, this.padding = 6});
+  const GlassBadge({
+    super.key,
+    required this.label,
+    this.backgroundColor,
+    this.textColor,
+    this.blurIntensity = GlassBlurIntensity.subtle,
+    this.padding = 6,
+  });
 
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),
       child: BackdropFilter(
-        filter: ui.ImageFilter.blur(sigmaX: blurIntensity.value, sigmaY: blurIntensity.value),
+        filter: ui.ImageFilter.blur(
+          sigmaX: blurIntensity.value,
+          sigmaY: blurIntensity.value,
+        ),
         child: Container(
-          padding: EdgeInsets.symmetric(horizontal: padding * 1.5, vertical: padding),
+          padding: EdgeInsets.symmetric(
+            horizontal: padding * 1.5,
+            vertical: padding,
+          ),
           decoration: BoxDecoration(
-            color: (backgroundColor ?? DesignTokens.info).withValues(alpha: 0.7),
+            color: (backgroundColor ?? DesignTokens.info).withValues(
+              alpha: 0.7,
+            ),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: DesignTokens.white.withValues(alpha: 0.3), width: 0.5),
+            border: Border.all(
+              color: DesignTokens.white.withValues(alpha: 0.3),
+              width: 0.5,
+            ),
           ),
           child: Text(
             label,
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: textColor ?? DesignTokens.white),
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: textColor ?? DesignTokens.white,
+            ),
           ),
         ),
       ),
@@ -138,24 +165,40 @@ class GlassCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: SizedBox(
-        width: width,
-        height: height,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: BackdropFilter(
-            filter: ui.ImageFilter.blur(sigmaX: blurIntensity.value, sigmaY: blurIntensity.value),
-            child: Container(
-              decoration: BoxDecoration(
-                color: backgroundColor.withValues(alpha: 0.7),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: DesignTokens.white.withValues(alpha: 0.2), width: 1.0),
-                boxShadow: [BoxShadow(color: DesignTokens.black.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 4))],
+    return Semantics(
+      button: onTap != null,
+      label: onTap != null ? 'btn-glass-panel' : null,
+      child: GestureDetector(
+        onTap: onTap,
+        child: SizedBox(
+          width: width,
+          height: height,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: BackdropFilter(
+              filter: ui.ImageFilter.blur(
+                sigmaX: blurIntensity.value,
+                sigmaY: blurIntensity.value,
               ),
-              padding: padding,
-              child: child,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: backgroundColor.withValues(alpha: 0.7),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: DesignTokens.white.withValues(alpha: 0.2),
+                    width: 1.0,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: DesignTokens.black.withValues(alpha: 0.06),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                padding: padding,
+                child: child,
+              ),
             ),
           ),
         ),
@@ -184,7 +227,8 @@ class GlassFloatingActionButton extends StatefulWidget {
   });
 
   @override
-  State<GlassFloatingActionButton> createState() => _GlassFloatingActionButtonState();
+  State<GlassFloatingActionButton> createState() =>
+      _GlassFloatingActionButtonState();
 }
 
 /// Glassmorphic modal/dialog background
@@ -204,15 +248,24 @@ class GlassModal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onDismiss,
-      child: Container(
-        color: backgroundColor.withValues(alpha: 0.4),
-        child: BackdropFilter(
-          filter: ui.ImageFilter.blur(sigmaX: blurIntensity.value, sigmaY: blurIntensity.value),
-          child: GestureDetector(
-            onTap: () {}, // Prevent dismissal when tapping modal content
-            child: Center(child: child),
+    return Semantics(
+      label: 'btn-dismiss-modal',
+      button: onDismiss != null,
+      child: GestureDetector(
+        onTap: onDismiss,
+        child: Container(
+          color: backgroundColor.withValues(alpha: 0.4),
+          child: BackdropFilter(
+            filter: ui.ImageFilter.blur(
+              sigmaX: blurIntensity.value,
+              sigmaY: blurIntensity.value,
+            ),
+            child: ExcludeSemantics(
+              child: GestureDetector(
+                onTap: () {}, // Prevent dismissal when tapping modal content
+                child: Center(child: child),
+              ),
+            ),
           ),
         ),
       ),
@@ -225,32 +278,60 @@ class _GlassButtonState extends State<GlassButton> {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _isPressed = true),
-      onTapUp: (_) {
-        setState(() => _isPressed = false);
-        widget.onPressed();
-      },
-      onTapCancel: () => setState(() => _isPressed = false),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(widget.borderRadius),
-        child: BackdropFilter(
-          filter: ui.ImageFilter.blur(sigmaX: widget.blurIntensity.value, sigmaY: widget.blurIntensity.value),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            decoration: BoxDecoration(
-              color: (widget.backgroundColor ?? DesignTokens.white).withValues(alpha: _isPressed ? 0.5 : 0.7),
-              borderRadius: BorderRadius.circular(widget.borderRadius),
-              border: Border.all(color: DesignTokens.white.withValues(alpha: 0.3), width: 1.0),
-              boxShadow: [BoxShadow(color: DesignTokens.black.withValues(alpha: _isPressed ? 0.12 : 0.08), blurRadius: 8, offset: const Offset(0, 4))],
+    return Semantics(
+      button: true,
+      label: 'btn-glass-${widget.label.toLowerCase().replaceAll(' ', '-')}',
+      child: GestureDetector(
+        onTapDown: (_) => setState(() => _isPressed = true),
+        onTapUp: (_) {
+          setState(() => _isPressed = false);
+          widget.onPressed();
+        },
+        onTapCancel: () => setState(() => _isPressed = false),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(widget.borderRadius),
+          child: BackdropFilter(
+            filter: ui.ImageFilter.blur(
+              sigmaX: widget.blurIntensity.value,
+              sigmaY: widget.blurIntensity.value,
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (widget.icon != null) ...[Icon(widget.icon, size: 18), const SizedBox(width: 8)],
-                Text(widget.label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-              ],
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              decoration: BoxDecoration(
+                color: (widget.backgroundColor ?? DesignTokens.white)
+                    .withValues(alpha: _isPressed ? 0.5 : 0.7),
+                borderRadius: BorderRadius.circular(widget.borderRadius),
+                border: Border.all(
+                  color: DesignTokens.white.withValues(alpha: 0.3),
+                  width: 1.0,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: DesignTokens.black.withValues(
+                      alpha: _isPressed ? 0.12 : 0.08,
+                    ),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (widget.icon != null) ...[
+                    Icon(widget.icon, size: 18),
+                    const SizedBox(width: 8),
+                  ],
+                  Text(
+                    widget.label,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -259,36 +340,53 @@ class _GlassButtonState extends State<GlassButton> {
   }
 }
 
-class _GlassFloatingActionButtonState extends State<GlassFloatingActionButton> with SingleTickerProviderStateMixin {
+class _GlassFloatingActionButtonState extends State<GlassFloatingActionButton>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
 
   @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTapDown: (_) => _onTapDown(),
-        onTapUp: (_) => _onTapUp(),
-        onTapCancel: _onTapCancel,
-        child: ScaleTransition(
-          scale: _scaleAnimation,
-          child: Tooltip(
-            message: widget.tooltip ?? '',
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(widget.size / 2),
-              child: BackdropFilter(
-                filter: ui.ImageFilter.blur(sigmaX: widget.blurIntensity.value, sigmaY: widget.blurIntensity.value),
-                child: Container(
-                  width: widget.size,
-                  height: widget.size,
-                  decoration: BoxDecoration(
-                    color: widget.backgroundColor.withValues(alpha: 0.8),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: DesignTokens.white.withValues(alpha: 0.3), width: 1.0),
-                    boxShadow: [BoxShadow(color: DesignTokens.black.withValues(alpha: 0.1), blurRadius: 12, offset: const Offset(0, 4))],
+    return Semantics(
+      button: true,
+      label: 'btn-glass-fab',
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTapDown: (_) => _onTapDown(),
+          onTapUp: (_) => _onTapUp(),
+          onTapCancel: _onTapCancel,
+          child: ScaleTransition(
+            scale: _scaleAnimation,
+            child: Tooltip(
+              message: widget.tooltip ?? '',
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(widget.size / 2),
+                child: BackdropFilter(
+                  filter: ui.ImageFilter.blur(
+                    sigmaX: widget.blurIntensity.value,
+                    sigmaY: widget.blurIntensity.value,
                   ),
-                  child: Icon(widget.icon),
+                  child: Container(
+                    width: widget.size,
+                    height: widget.size,
+                    decoration: BoxDecoration(
+                      color: widget.backgroundColor.withValues(alpha: 0.8),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: DesignTokens.white.withValues(alpha: 0.3),
+                        width: 1.0,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: DesignTokens.black.withValues(alpha: 0.1),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Icon(widget.icon),
+                  ),
                 ),
               ),
             ),
@@ -307,8 +405,14 @@ class _GlassFloatingActionButtonState extends State<GlassFloatingActionButton> w
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(duration: const Duration(milliseconds: 150), vsync: this);
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 150),
+      vsync: this,
+    );
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.95,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
   }
 
   void _onTapCancel() => _controller.reverse();

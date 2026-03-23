@@ -135,7 +135,7 @@ class _SettingsButtonState extends ConsumerState<_SettingsButton>
 
   @override
   Widget build(BuildContext context) {
-    final user = ref.watch(currentUserProvider);
+    final isLoggedIn = ref.watch(currentUserProvider.select((u) => u != null));
 
     return MouseRegion(
       onEnter: (_) => _triggerAnimation(),
@@ -151,10 +151,13 @@ class _SettingsButtonState extends ConsumerState<_SettingsButton>
               child: IconButton(
                 key: const Key('home_settings_button'),
                 tooltip: 'home.settings'.tr(),
-                icon: const Icon(Icons.settings_outlined, color: DesignTokens.textOnPrimary),
+                icon: const Icon(
+                  Icons.settings_outlined,
+                  color: DesignTokens.textOnPrimary,
+                ),
                 onPressed: () {
                   _triggerAnimation();
-                  if (user == null) {
+                  if (!isLoggedIn) {
                     showLoginPrompt(
                       context,
                       text: "auth.sign_in_settings_required",

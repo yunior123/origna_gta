@@ -15,6 +15,8 @@ import 'package:origna_gta/utils/responsive_layout.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
+import 'package:origna_gta/widgets/checkout/delivery_options_section.dart';
+import 'package:origna_gta/widgets/checkout/order_review_sheet.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:origna_gta/utils/safe_url_launcher.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -286,7 +288,7 @@ class _CheckoutContent extends ConsumerWidget {
       if (hasPhysicalItems) ...[
         _FreeShippingBanner(subtotal: subtotal),
         const SizedBox(height: 12),
-        const _DeliveryOptionsSection(),
+        const DeliveryOptionsSection(),
         const SizedBox(height: 28),
       ] else ...[
         GlassContainer(

@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/features/products/product_detail_viewmodel.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
-import 'package:shimmer/shimmer.dart';
+import 'package:origna_gta/widgets/modern_skeleton_loader.dart';
 
 /// Image gallery with PageView for product images and optional video thumbnail.
 /// Used in both mobile (SliverAppBar) and desktop (side-by-side) layouts.
@@ -198,11 +198,7 @@ class _GalleryImage extends StatelessWidget {
       fit: fit,
       width: width,
       height: height,
-      placeholder: (context, url) => Shimmer.fromColors(
-        baseColor: DesignTokens.outlineVariant,
-        highlightColor: DesignTokens.surface,
-        child: Container(color: DesignTokens.white),
-      ),
+      placeholder: (context, url) => ModernSkeletonLoader.imagePlaceholder(),
       errorWidget: (context, url, error) => const _ImageErrorPlaceholder(),
     );
   }

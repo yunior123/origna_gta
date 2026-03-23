@@ -105,7 +105,7 @@ class _CheckoutButton extends ConsumerWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: DesignTokens.transparent,
-      builder: (_) => _OrderReviewSheet(
+      builder: (_) => OrderReviewSheet(
         items: items,
         subtotal: subtotal,
         onConfirm: () {

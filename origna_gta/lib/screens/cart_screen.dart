@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
-import 'package:shimmer/shimmer.dart';
 import 'package:origna_gta/core/routes.dart';
-import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:origna_gta/screens/cartitem_screen.dart';
 import 'package:origna_gta/utils/constants.dart';
@@ -13,8 +11,10 @@ import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
+import 'package:origna_gta/widgets/modern_skeleton_loader.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
-import 'package:origna_gta/widgets/modern_textfield.dart';
+import 'package:origna_gta/widgets/cart/cart_total_display.dart';
+import 'package:origna_gta/widgets/cart/free_shipping_bar.dart';
 
 part 'parts/cart_item_widget.dart';
 part 'parts/cart_summary_widgets.dart';

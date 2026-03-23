@@ -180,42 +180,51 @@ class _QASectionState extends ConsumerState<QASection> {
           isMultiline: true,
           maxLines: 3,
           minLines: 2,
+          semanticsLabel: 'input-qa-question',
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            style: TextButton.styleFrom(
-              foregroundColor: DesignTokens.textSecondary,
+          Semantics(
+            button: true,
+            label: 'btn-cancel-qa-question',
+            child: TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              style: TextButton.styleFrom(
+                foregroundColor: DesignTokens.textSecondary,
+              ),
+              child: Text('common.cancel'.tr()),
             ),
-            child: Text('common.cancel'.tr()),
           ),
-          ModernButton(
-            label: 'qa.ask_question'.tr(),
-            fullWidth: false,
-            height: 40,
-            onPressed: () async {
-              final text = controller.text.trim();
-              if (text.isEmpty) return;
-              Navigator.pop(ctx);
-              final messenger = ScaffoldMessenger.of(context);
-              await ref
-                  .read(qaControllerProvider.notifier)
-                  .askQuestion(widget.productId, text);
-              if (!mounted) return;
-              final state = ref.read(qaControllerProvider);
-              if (state.hasError) {
-                messenger.showSnackBar(
-                  SnackBar(
-                    content: Text(state.error.toString()),
-                    backgroundColor: DesignTokens.error,
-                  ),
-                );
-              } else {
-                messenger.showSnackBar(
-                  SnackBar(content: Text('qa.question_submitted'.tr())),
-                );
-              }
-            },
+          Semantics(
+            button: true,
+            label: 'btn-submit-qa-question',
+            child: ModernButton(
+              label: 'qa.ask_question'.tr(),
+              fullWidth: false,
+              height: 40,
+              onPressed: () async {
+                final text = controller.text.trim();
+                if (text.isEmpty) return;
+                Navigator.pop(ctx);
+                final messenger = ScaffoldMessenger.of(context);
+                await ref
+                    .read(qaControllerProvider.notifier)
+                    .askQuestion(widget.productId, text);
+                if (!mounted) return;
+                final state = ref.read(qaControllerProvider);
+                if (state.hasError) {
+                  messenger.showSnackBar(
+                    SnackBar(
+                      content: Text(state.error.toString()),
+                      backgroundColor: DesignTokens.error,
+                    ),
+                  );
+                } else {
+                  messenger.showSnackBar(
+                    SnackBar(content: Text('qa.question_submitted'.tr())),
+                  );
+                }
+              },
+            ),
           ),
         ],
       ),
@@ -383,30 +392,39 @@ class _QACard extends ConsumerWidget {
           isMultiline: true,
           maxLines: 3,
           minLines: 2,
+          semanticsLabel: 'input-qa-answer',
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            style: TextButton.styleFrom(
-              foregroundColor: DesignTokens.textSecondary,
+          Semantics(
+            button: true,
+            label: 'btn-cancel-qa-answer',
+            child: TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              style: TextButton.styleFrom(
+                foregroundColor: DesignTokens.textSecondary,
+              ),
+              child: Text('common.cancel'.tr()),
             ),
-            child: Text('common.cancel'.tr()),
           ),
-          ModernButton(
-            label: 'qa.submit_answer'.tr(),
-            fullWidth: false,
-            height: 40,
-            onPressed: () {
-              if (controller.text.trim().isNotEmpty) {
-                ref
-                    .read(qaControllerProvider.notifier)
-                    .answerQuestion(qaId: qa.id, answer: controller.text);
-                Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('qa.answer_submitted'.tr())),
-                );
-              }
-            },
+          Semantics(
+            button: true,
+            label: 'btn-submit-qa-answer',
+            child: ModernButton(
+              label: 'qa.submit_answer'.tr(),
+              fullWidth: false,
+              height: 40,
+              onPressed: () {
+                if (controller.text.trim().isNotEmpty) {
+                  ref
+                      .read(qaControllerProvider.notifier)
+                      .answerQuestion(qaId: qa.id, answer: controller.text);
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('qa.answer_submitted'.tr())),
+                  );
+                }
+              },
+            ),
           ),
         ],
       ),

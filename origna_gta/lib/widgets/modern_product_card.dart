@@ -1,9 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:shimmer/shimmer.dart';
-
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:origna_gta/widgets/modern_skeleton_loader.dart';
 import 'package:origna_gta/widgets/shared/trending_badge.dart';
 
 /// Modern 2100 Product Card with glassmorphism
@@ -180,15 +179,7 @@ class _ModernProductCardState extends State<ModernProductCard>
                                       height: double.infinity,
                                       fit: BoxFit.cover,
                                       placeholder: (context, url) =>
-                                          Shimmer.fromColors(
-                                            baseColor:
-                                                DesignTokens.outlineVariant,
-                                            highlightColor:
-                                                DesignTokens.surface,
-                                            child: Container(
-                                              color: DesignTokens.white,
-                                            ),
-                                          ),
+                                          ModernSkeletonLoader.imagePlaceholder(),
                                       errorWidget: (context, url, error) =>
                                           Center(
                                             child: Container(

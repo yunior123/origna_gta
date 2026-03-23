@@ -19,6 +19,10 @@ import 'package:origna_gta/core/theme_provider.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/features/profile/profile_viewmodel.dart';
 import 'package:origna_gta/features/subscription/subscription_provider.dart';
+import 'package:origna_gta/widgets/profile/premium_menu_item.dart';
+import 'package:origna_gta/widgets/profile/profile_header_card.dart';
+import 'package:origna_gta/widgets/profile/profile_menu_item.dart';
+import 'package:origna_gta/widgets/profile/profile_theme_toggle.dart';
 
 part 'parts/profile_header.dart';
 part 'parts/profile_settings_section.dart';

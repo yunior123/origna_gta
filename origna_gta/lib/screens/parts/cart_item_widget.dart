@@ -13,11 +13,8 @@ class _CartItemWidget extends ConsumerWidget {
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return itemAsync.when(
-      loading: () => Shimmer.fromColors(
-        baseColor: isDark ? DesignTokens.darkCard : DesignTokens.outlineVariant,
-        highlightColor: isDark
-            ? DesignTokens.darkSurfaceVariant
-            : DesignTokens.surface,
+      loading: () => ModernSkeletonLoader.wrap(
+        isDark: isDark,
         child: Container(
           margin: const EdgeInsets.only(bottom: DesignTokens.spacing12),
           padding: const EdgeInsets.all(DesignTokens.spacing12),

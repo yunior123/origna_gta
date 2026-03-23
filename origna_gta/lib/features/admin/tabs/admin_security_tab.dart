@@ -32,7 +32,12 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
     final _secret = ref.watch(_mfaSecretProvider);
     final _qrCodeUri = ref.watch(_mfaQrCodeUriProvider);
     final _backupCodes = ref.watch(_mfaBackupCodesProvider);
-    final adminActionsState = ref.watch(adminActionsViewModelProvider);
+    final isActionsLoading = ref.watch(
+      adminActionsViewModelProvider.select((s) => s.isLoading),
+    );
+    final actionsErrorMessage = ref.watch(
+      adminActionsViewModelProvider.select((s) => s.errorMessage),
+    );
     // Read MFA status reactively from user profile provider
     final mfaEnabled =
         ref.watch(
@@ -150,7 +155,7 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
               const SizedBox(height: 20),
               if (!mfaEnabled)
                 FilledButton.icon(
-                  onPressed: adminActionsState.isLoading ? null : _enableMfa,
+                  onPressed: isActionsLoading ? null : _enableMfa,
                   icon: const Icon(Icons.security_rounded),
                   label: Text('admin.security.enable_mfa'.tr()),
                   style: FilledButton.styleFrom(
@@ -168,7 +173,7 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                 )
               else
                 FilledButton.icon(
-                  onPressed: adminActionsState.isLoading ? null : _disableMfa,
+                  onPressed: isActionsLoading ? null : _disableMfa,
                   icon: const Icon(Icons.close_rounded),
                   label: Text('admin.security.disable_mfa'.tr()),
                   style: FilledButton.styleFrom(
@@ -328,9 +333,7 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton(
-                    onPressed: adminActionsState.isLoading
-                        ? null
-                        : _verifyAndCompleteMfa,
+                    onPressed: isActionsLoading ? null : _verifyAndCompleteMfa,
                     style: FilledButton.styleFrom(
                       backgroundColor: DesignTokens.success,
                       padding: const EdgeInsets.symmetric(vertical: 14),
@@ -438,7 +441,7 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
         ),
 
       // Error Message
-      if (adminActionsState.errorMessage != null)
+      if (actionsErrorMessage != null)
         Container(
           margin: const EdgeInsets.only(top: 16),
           padding: const EdgeInsets.all(14),
@@ -459,7 +462,7 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  adminActionsState.errorMessage!,
+                  actionsErrorMessage!,
                   style: TextStyle(color: DesignTokens.error),
                 ),
               ),
@@ -468,7 +471,7 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
         ),
 
       // Loading Indicator
-      if (adminActionsState.isLoading)
+      if (isActionsLoading)
         Container(
           margin: const EdgeInsets.only(top: 16),
           padding: const EdgeInsets.all(16),

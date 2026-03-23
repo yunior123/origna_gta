@@ -14,7 +14,7 @@ import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:origna_gta/widgets/rating_dialog.dart';
 import 'package:origna_gta/widgets/rating_histogram.dart';
-import 'package:shimmer/shimmer.dart';
+import 'package:origna_gta/widgets/modern_skeleton_loader.dart';
 
 /// Reviews section with histogram, review cards, write-a-review button,
 /// and helpfulness voting.
@@ -330,15 +330,11 @@ class _ReviewCardState extends ConsumerState<ReviewCard> {
                           width: 80,
                           height: 80,
                           fit: BoxFit.cover,
-                          placeholder: (ctx, url) => Shimmer.fromColors(
-                            baseColor: DesignTokens.outlineVariant,
-                            highlightColor: DesignTokens.surface,
-                            child: Container(
-                              width: 80,
-                              height: 80,
-                              color: DesignTokens.white,
-                            ),
-                          ),
+                          placeholder: (ctx, url) =>
+                              ModernSkeletonLoader.imagePlaceholder(
+                                width: 80,
+                                height: 80,
+                              ),
                           errorWidget: (ctx, url, err) => Container(
                             width: 80,
                             height: 80,
@@ -510,11 +506,8 @@ class _ReviewCardState extends ConsumerState<ReviewCard> {
                     width: double.infinity,
                     height: double.infinity,
                     fit: BoxFit.contain,
-                    placeholder: (ctx, url) => Shimmer.fromColors(
-                      baseColor: DesignTokens.outlineVariant,
-                      highlightColor: DesignTokens.surface,
-                      child: Container(color: DesignTokens.white),
-                    ),
+                    placeholder: (ctx, url) =>
+                        ModernSkeletonLoader.imagePlaceholder(),
                     errorWidget: (ctx, url, err) => const Icon(
                       Icons.image_not_supported,
                       size: 100,

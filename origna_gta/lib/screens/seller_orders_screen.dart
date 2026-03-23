@@ -1,11 +1,7 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/routes.dart';
-import 'package:origna_gta/core/schema/schema_constants.dart'
-    show CarrierValues;
 import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/features/orders/orders_provider.dart';
 import 'package:origna_gta/features/orders/seller_orders_viewmodel.dart';
@@ -19,6 +15,9 @@ import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
+import 'package:origna_gta/widgets/orders/mark_shipped_dialog.dart';
+import 'package:origna_gta/widgets/orders/seller_order_item_tile.dart';
+import 'package:origna_gta/widgets/orders/update_shipping_dialog.dart';
 
 part 'parts/seller_orders_earnings_card.dart';
 part 'parts/seller_orders_order_card.dart';

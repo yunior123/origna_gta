@@ -159,7 +159,8 @@ class _ShimmerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Shimmer.fromColors(
+    return ModernSkeletonLoader.wrap(
+      isDark: isDark,
       baseColor: isDark ? DesignTokens.darkOutline : DesignTokens.outline,
       highlightColor: isDark
           ? DesignTokens.darkSurfaceVariant

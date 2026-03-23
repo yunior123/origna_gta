@@ -147,8 +147,9 @@ class _ApprovalCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final vmState = ref.watch(shippingApprovalViewModelProvider);
-    final isProcessing = vmState.isLoading;
+    final isProcessing = ref.watch(
+      shippingApprovalViewModelProvider.select((s) => s.isLoading),
+    );
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final order = this.order;
 
@@ -685,11 +686,15 @@ class _ApprovalCard extends ConsumerWidget {
           ),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: Text(
-              'seller.go_back'.tr(),
-              style: TextStyle(color: DesignTokens.textSecondary),
+          Semantics(
+            button: true,
+            label: 'btn-go-back-cancel-order',
+            child: TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text(
+                'seller.go_back'.tr(),
+                style: TextStyle(color: DesignTokens.textSecondary),
+              ),
             ),
           ),
           Container(

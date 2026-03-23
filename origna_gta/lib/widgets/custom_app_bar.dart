@@ -1,11 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:origna_gta/core/providers.dart';
-import 'package:origna_gta/core/routes.dart';
-import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
-import 'package:origna_gta/utils/utils.dart';
+import 'package:origna_gta/widgets/shared/cart_badge.dart';
 
 /// Factory methods for common AppBar configurations
 class AppBarFactory {
@@ -47,7 +43,11 @@ class AppBarFactory {
     String? subtitle,
     VoidCallback? onBackPressed,
   }) {
-    return CustomAppBar(title: title, subtitle: subtitle, onBackPressed: onBackPressed);
+    return CustomAppBar(
+      title: title,
+      subtitle: subtitle,
+      onBackPressed: onBackPressed,
+    );
   }
 
   /// AppBar with cart badge
@@ -125,7 +125,11 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
     return Container(
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [DesignTokens.gradientStart, DesignTokens.gradientMiddle, DesignTokens.gradientEnd],
+          colors: [
+            DesignTokens.gradientStart,
+            DesignTokens.gradientMiddle,
+            DesignTokens.gradientEnd,
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -179,7 +183,9 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                               subtitle!,
                               style: TextStyle(
                                 fontWeight: FontWeight.w400,
-                                color: DesignTokens.white.withValues(alpha: 0.7),
+                                color: DesignTokens.white.withValues(
+                                  alpha: 0.7,
+                                ),
                                 fontSize: 12,
                                 letterSpacing: 0.2,
                               ),
@@ -204,7 +210,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
               if (actions != null) ...actions!,
 
               // Cart badge (optional)
-              if (showCartBadge) const _CartBadge(),
+              if (showCartBadge) const CartBadge.appBar(),
             ],
           ),
         ),
@@ -225,56 +231,6 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
         onPressed: onPressed,
         tooltip: tooltip,
       ),
-    );
-  }
-}
-
-class _CartBadge extends ConsumerWidget {
-  const _CartBadge();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final cartCount = ref.watch(cartItemCountProvider);
-
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        CustomAppBar._buildIconButton(
-          icon: Icons.shopping_cart_outlined,
-          tooltip: 'common.cart'.tr(),
-          onPressed: () {
-            final user = ref.read(currentUserProvider);
-            if (!context.mounted) return;
-            if (user == null) {
-              showLoginPrompt(context);
-              return;
-            }
-            Navigator.pushNamed(context, AppRoutes.cart);
-          },
-        ),
-        if (cartCount > 0)
-          Positioned(
-            right: 4,
-            top: 4,
-            child: Container(
-              padding: const EdgeInsets.all(4),
-              decoration: const BoxDecoration(
-                color: DesignTokens.white,
-                shape: BoxShape.circle,
-              ),
-              constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
-              child: Text(
-                cartCount > 99 ? '99+' : cartCount.toString(),
-                style: TextStyle(
-                  color: DesignTokens.primary,
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ),
-      ],
     );
   }
 }

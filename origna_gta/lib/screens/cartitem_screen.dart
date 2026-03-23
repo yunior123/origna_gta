@@ -7,7 +7,7 @@ import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/shared/quantity_button.dart';
-import 'package:shimmer/shimmer.dart';
+import 'package:origna_gta/widgets/modern_skeleton_loader.dart';
 
 /// Documentation for CartItemScreen
 class CartItemScreen extends StatelessWidget {
@@ -386,16 +386,9 @@ class CartItemScreen extends StatelessWidget {
       return CachedNetworkImage(
         imageUrl: imageUrlsList[0],
         fit: BoxFit.cover,
-        placeholder: (context, url) => Shimmer.fromColors(
-          baseColor: isDark
-              ? DesignTokens.darkOutline
-              : DesignTokens.outlineVariant,
-          highlightColor: isDark
-              ? DesignTokens.darkSurfaceVariant
-              : DesignTokens.surface,
-          child: Container(
-            color: isDark ? DesignTokens.darkSurface : DesignTokens.white,
-          ),
+        placeholder: (context, url) => ModernSkeletonLoader.imagePlaceholder(
+          isDark: isDark,
+          baseColor: isDark ? DesignTokens.darkOutline : null,
         ),
         errorWidget: (context, url, error) => Container(
           decoration: BoxDecoration(
@@ -440,17 +433,11 @@ class CartItemScreen extends StatelessWidget {
             return CachedNetworkImage(
               imageUrl: imageUrlsList[index],
               fit: BoxFit.cover,
-              placeholder: (context, url) => Shimmer.fromColors(
-                baseColor: isDark
-                    ? DesignTokens.darkSurface
-                    : DesignTokens.outlineVariant,
-                highlightColor: isDark
-                    ? DesignTokens.darkSurfaceVariant
-                    : DesignTokens.surface,
-                child: Container(
-                  color: isDark ? DesignTokens.darkSurface : DesignTokens.white,
-                ),
-              ),
+              placeholder: (context, url) =>
+                  ModernSkeletonLoader.imagePlaceholder(
+                    isDark: isDark,
+                    baseColor: isDark ? DesignTokens.darkSurface : null,
+                  ),
               errorWidget: (context, url, error) => Container(
                 color: isDark ? DesignTokens.darkCard : DesignTokens.surface,
                 child: Icon(

@@ -280,7 +280,7 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
 
-      expect(find.byKey(const Key('home_cart_button')), findsOneWidget);
+      expect(find.byKey(const Key('cart_badge_button')), findsOneWidget);
       resetViewport(tester);
     });
 

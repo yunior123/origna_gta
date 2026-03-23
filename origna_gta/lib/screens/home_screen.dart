@@ -7,7 +7,6 @@ import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
-import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:origna_gta/features/home/home_viewmodel.dart';
 import 'package:origna_gta/features/seller/seller_account_status_viewmodel.dart';
 import 'package:origna_gta/models/generated/models.dart';
@@ -24,9 +23,9 @@ import 'package:origna_gta/widgets/mascot/moose_provider.dart';
 import 'package:origna_gta/widgets/mascot/shop_mascot.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
+import 'package:origna_gta/widgets/shared/cart_badge.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:shimmer/shimmer.dart';
-
+import 'package:origna_gta/widgets/modern_skeleton_loader.dart';
 
 part 'parts/home_hero_section.dart';
 part 'parts/home_featured_products.dart';
@@ -57,7 +56,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     // Determine whether the management action row will be shown on product cards
     // so the grid aspect ratio can accommodate the extra row height.
-    final profileRoles = ref.watch(userProfileProvider.select((a) => a.valueOrNull?.roles));
+    final profileRoles = ref.watch(
+      userProfileProvider.select((a) => a.valueOrNull?.roles),
+    );
     final canManageProducts =
         (profileRoles?.contains(UserRole.admin) ?? false) ||
         (profileRoles?.contains(UserRole.seller) ?? false);
@@ -194,7 +195,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                       },
                                       style: TextButton.styleFrom(
                                         foregroundColor: DesignTokens.primary,
-                                        textStyle: const TextStyle(fontSize: 13),
+                                        textStyle: const TextStyle(
+                                          fontSize: 13,
+                                        ),
                                       ),
                                       child: Text('home.privacy_policy'.tr()),
                                     ),
@@ -219,7 +222,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                       },
                                       style: TextButton.styleFrom(
                                         foregroundColor: DesignTokens.primary,
-                                        textStyle: const TextStyle(fontSize: 13),
+                                        textStyle: const TextStyle(
+                                          fontSize: 13,
+                                        ),
                                       ),
                                       child: Text('home.terms_of_service'.tr()),
                                     ),
@@ -339,12 +344,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               child: Container(
                                 padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
-                                  color: DesignTokens.white.withValues(alpha: 0.2),
+                                  color: DesignTokens.white.withValues(
+                                    alpha: 0.2,
+                                  ),
                                   borderRadius: BorderRadius.circular(
                                     DesignTokens.radius16,
                                   ),
                                   border: Border.all(
-                                    color: DesignTokens.white.withValues(alpha: 0.3),
+                                    color: DesignTokens.white.withValues(
+                                      alpha: 0.3,
+                                    ),
                                     width: 1,
                                   ),
                                 ),
@@ -387,7 +396,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       children: [
                         _SettingsButton(),
                         _AddProductButton(),
-                        _CartBadge(),
+                        CartBadge.animated(),
                       ],
                     ),
                   ],
@@ -449,7 +458,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     }
                   },
                   style: TextStyle(
-                    color: isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary,
+                    color: isDark
+                        ? DesignTokens.textOnDark
+                        : DesignTokens.textPrimary,
                   ),
                   cursorColor: DesignTokens.primary,
                   decoration: InputDecoration(
