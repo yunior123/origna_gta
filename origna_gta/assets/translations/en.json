@@ -2046,5 +2046,8 @@
   "upload_all": "Upload {0} Products",
   "upload_complete": "✓ Successfully created {0} products!",
   "upload_errors": "Upload Errors",
-  "view_products": "View My Products"
+  "view_products": "View My Products",
+  "promotions": {
+    "shop_now": "Shop Now"
+  }
 }

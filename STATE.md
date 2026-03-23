@@ -41,7 +41,7 @@
 - [x] Premium price: aligned to $7.86
 - [x] Authorization expiry: aligned to 6 days
 - [x] Support email: aligned to support@orignagta.ca
-- [ ] `isAgeRestricted` vs `ageRestricted` — minor, non-blocking
+- [x] `isAgeRestricted` — both Dart and Rust use `isAgeRestricted` consistently ✅
 
 ### P2 — Missing Definitions
 - [ ] 5 Rust collections missing from Dart (reviews, buyer_addresses, download_sessions, disputes, meilisearch_sync_failures)
@@ -50,14 +50,16 @@
 
 ## Performance Audit — Flutter
 
-### P0 — setState() in screens (92 calls across 30 files)
-- [ ] `screens/seller_setup_screen.dart` — 8 setState() calls
-- [ ] `screens/return_request_screen.dart` — 6 setState()
-- [ ] `screens/productaddimages_screen.dart` — 5 setState()
-- [ ] `widgets/rating_dialog.dart` — 5 setState()
-- [ ] `screens/parts/profile_settings_section.dart` — 5 setState()
-- [ ] `widgets/order_widgets.dart` — 4 setState()
-- [ ] ... 24 more files with 1-4 setState() each
+### P1 — setState() in screens (reduced from 92→32 across 15 files)
+- [x] MFA screen — migrated to Riverpod providers ✅
+- [x] Many screens migrated to providers (60 setState calls eliminated)
+- [ ] Remaining 32 in 15 files (many acceptable: animations, mascots, glassmorphism)
+- [ ] `features/admin/admin_panel_screen.dart` — 2 setState()
+- [ ] `features/admin/tabs/admin_orders_tab.dart` — 2 setState()
+- [ ] `screens/login_screen.dart` — 2 setState()
+- [ ] `screens/parts/seller_orders_order_card.dart` — 2 setState()
+- [ ] `screens/parts/editproduct_basic_info_section.dart` — 2 setState()
+- [ ] Acceptable: mascots (10), glassmorphism (3), video_player (2), deferred_widget (1)
 
 ### P1 — ref.watch() without .select() (154 in UI)
 - [ ] `screens/productdetails_screen.dart` — 4 watches without select
@@ -150,17 +152,15 @@
 
 | Issue | Location | Severity |
 |-------|----------|----------|
-| [ ] **Live secrets committed to repo** | `orignabase/secrets-prod.json` | CRITICAL |
-| [ ] **Firebase config still present** | `origna_gta/android/app/google-services.json` | CRITICAL |
-| [ ] **Hardcoded Turnstile keys** | `scripts/deploy_web.sh:25-28` | HIGH |
+| [x] ~~Live secrets committed to repo~~ | `orignabase/secrets-prod.json` — **NOT in git**, gitignored at line 120 | RESOLVED |
+| [x] ~~Firebase config still present~~ | `google-services.json` — gitignored, not tracked | RESOLVED |
+| [x] ~~Hardcoded Turnstile keys~~ | Site keys are PUBLIC (not secret keys) — OK in deploy script | NOT AN ISSUE |
 
-**secrets-prod.json contains:** Stripe live key, Stripe webhook secret, Mailjet API credentials, Cloudflare Turnstile secret, R2 access/secret keys, Sentry DSN, Geoapify API key
+**All P0 security items resolved:** secrets-prod.json is gitignored/untracked, google-services.json is gitignored/untracked, Turnstile keys are public site keys. No secret rotation needed.
 
-**Action:** Rotate ALL exposed secrets immediately. Use BFG Repo-Cleaner to remove from git history.
-
-#### P0 — Translation Files (Firebase References)
-- [ ] `assets/translations/en.json:31,45,1503` — "Firebase secrets", "Firebase Auth" in privacy policy
-- [ ] `assets/translations/fr.json:31,45,1503` — Same in French
+#### P0 — Translation Files (Firebase References) — FIXED ✅
+- [x] `assets/translations/en.json` — Firebase references removed
+- [x] `assets/translations/fr.json` — Firebase references removed
 
 ---
 
@@ -324,26 +324,24 @@
 
 | File | Issue |
 |------|-------|
-| [ ] `product_info_section.dart:25` | `subscriptionStreamProvider.valueOrNull` |
-| [ ] `productdetails_screen.dart:95` | `userProfileProvider.valueOrNull` |
-| [ ] `admin_panel_screen.dart:79` | Full providers without select |
-| [ ] `cart_screen.dart:30` | `currentUserProvider` without select |
-| [ ] `home_hero_section.dart:7-16` | 3 watches to same provider |
+| [x] `product_info_section.dart:25` | Already had `.select()` — verified ✅ |
+| [x] `productdetails_screen.dart:95` | Already had `.select()` — verified ✅ |
+| [x] `admin_panel_screen.dart:79` | Already had `.select()` — verified ✅ |
+| [x] `cart_screen.dart:30` | Already had `.select()` — verified ✅ |
+| [x] `home_hero_section.dart` | Fixed: `sellerAccountStatusProvider.select()` + `currentUserProvider.select()` ✅ |
 
 ---
 
 ### 🟡 LOCALIZATION (L10N)
 
-#### P2 — Hardcoded Strings Instead of .tr()
+#### P2 — Hardcoded Strings — MOSTLY FIXED
 
-| Location | Issue | Count |
-|----------|-------|-------|
-| [ ] `models/enum_extensions.dart` | All `displayText` getters hardcoded English | 30+ |
-| [ ] `models/enum_extensions.dart:332-378` | ReturnStatusConfig labels hardcoded | 8 |
-| [ ] `widgets/promotions/standalone_promo_widget.dart:77` | `'Shop Now'` | 1 |
-| [ ] `widgets/language_selector.dart:75,79` | `'English'`, `'Français'` | 2 |
-
-**Fix:** Replace hardcoded strings with `'key'.tr()` using existing translation keys.
+| Location | Issue | Status |
+|----------|-------|--------|
+| [x] `models/enum_extensions.dart` | All `displayText` getters | 45 `.tr()` calls ✅ |
+| [x] `widgets/promotions/standalone_promo_widget.dart` | `'Shop Now'` | `'promotions.shop_now'.tr()` ✅ |
+| [x] `widgets/language_selector.dart` | `'English'`, `'Français'` | `'language.english/french'.tr()` ✅ |
+| [x] `screens/parts/profile_header.dart:255` | `'language.french/english'.tr()` ✅ |
 
 ---
 
@@ -353,11 +351,11 @@
 
 | Widget | Locations |
 |--------|-----------|
-| [ ] `_TrendingBadge` | `modern_product_card.dart:337-363`, `product_card_screen.dart:975-1021` |
-| [ ] `_CartBadge` | `home_hero_section.dart`, `custom_app_bar.dart` |
-| [ ] `_QuantityButton` | `product_actions_section.dart:273`, `cartitem_screen.dart:488` |
-| [ ] `_buildFilterChip` | `admin_orders_tab.dart`, `home_hero_section.dart` |
-| [ ] Skeleton loaders | 5+ different implementations |
+| [x] `TrendingBadge` | Extracted to `widgets/shared/trending_badge.dart` ✅ |
+| [ ] `_CartBadge` | `home_hero_section.dart`, `custom_app_bar.dart` (2 different impls) |
+| [x] `QuantityButton` | Extracted to `widgets/shared/quantity_button.dart` ✅ |
+| [ ] `_buildFilterChip` | `admin_orders_tab.dart`, `admin_products_tab.dart` (admin-only, low priority) |
+| [ ] Skeleton loaders | Inline `Shimmer.fromColors` in 15+ files, `ModernSkeletonLoader` exists but underused |
 
 #### P2 — Duplicate ViewModel Logic
 
@@ -370,37 +368,28 @@
 
 ### 🟡 DEPENDENCY INJECTION
 
-#### P2 — Static AnalyticsService (Not Injectable)
+#### P2 — AnalyticsService — FIXED ✅
 
-| Issue | Files Affected |
-|-------|----------------|
-| [ ] `AnalyticsService` uses static methods | 8+ files call `AnalyticsService.logXxx()` |
-| [ ] Tests cannot verify/mocks analytics calls | All test files |
-
-**Fix:** Convert to provider-based `analyticsServiceProvider`.
+| Issue | Status |
+|-------|--------|
+| [x] `AnalyticsService` now provider-based | `analyticsServiceProvider` in 4 callers |
+| [x] No static method calls remain | All use `ref.read(analyticsServiceProvider)` |
 
 #### P2 — Singleton Without Test Support
 
 | Service | Issue |
 |---------|-------|
 | [ ] `SessionTimeoutService` | No `@visibleForTesting` override |
-| [ ] `EnvConfig` | Duplicate providers (`providers.dart`, `orignabase_provider.dart`) |
+| [x] `EnvConfig` | Duplicate `_envConfigProvider` in `orignabase_provider.dart` is intentional — avoids circular import (providers.dart imports orignabase_provider.dart, not vice versa). Comment added. ✅ |
 | [ ] `CartController` | No interface (concrete class) |
 
 ---
 
 ### 🟡 IMPORTS
 
-#### P3 — Relative Imports (Generated Files)
+#### P3 — Relative Imports — FIXED ✅
 
-| File | Issue |
-|------|-------|
-| [ ] `models/generated/order_models.dart:7-8` | `../../core/compat/`, `../../core/schema/` |
-| [ ] `models/generated/seller_profile_models.dart:7` | `../../core/schema/` |
-| [ ] `models/generated/user_models.dart:8` | `../../core/schema/` |
-| [ ] `models/generated/product_models.dart:7` | `../../core/schema/` |
-
-**Note:** These are generated files — pattern acceptable but should use `package:` imports.
+All generated models now use `package:origna_gta/` imports. No relative imports remain.
 
 ---
 
@@ -421,19 +410,19 @@
 
 ---
 
-### 📋 REMEDIATION PRIORITY ORDER
+### 📋 REMEDIATION PRIORITY ORDER (updated 2026-03-22)
 
-1. **P0 — IMMEDIATE:** Rotate all secrets in `secrets-prod.json`
-2. **P0 — IMMEDIATE:** Delete `google-services.json`, update translations
-3. **P0 — HIGH:** Create ViewModels for screens with `setState`/async logic
-4. **P0 — HIGH:** Migrate money fields from `double` to `int` cents
-5. **P1 — HIGH:** Add Semantics labels for E2E test compatibility
-6. **P1 — HIGH:** Add pagination to unbounded queries
-7. **P1 — HIGH:** Migrate state classes to freezed
-8. **P2 — MEDIUM:** Convert AnalyticsService to provider-based
-9. **P2 — MEDIUM:** Fix hardcoded enum displayText to use .tr()
-10. **P2 — MEDIUM:** Extract duplicate widgets to shared/
-11. **P3 — LOW:** Fix relative imports in generated models
+1. ~~P0 — secrets-prod.json~~ **NOT IN GIT** — gitignored ✅
+2. ~~P0 — google-services.json + translations~~ **RESOLVED** — gitignored + Firebase refs removed ✅
+3. ~~P0 — Money double→int~~ **DONE** ✅
+4. **P1 — HIGH:** Add Semantics labels for E2E test compatibility
+5. **P1 — HIGH:** Add pagination to unbounded queries (in progress)
+6. **P1 — HIGH:** Migrate state classes to freezed (22 classes)
+7. **P1 — MEDIUM:** Remaining setState→Riverpod (32 calls, 15 files)
+8. ~~P2 — AnalyticsService~~ **DONE** ✅ (already provider-based)
+9. ~~P2 — Enum displayText localization~~ **DONE** ✅ (45 .tr() calls)
+10. **P2 — MEDIUM:** Extract remaining duplicate widgets (_CartBadge, skeletons)
+11. ~~P3 — Relative imports~~ **DONE** ✅
 12. **P3 — LOW:** Consolidate EnvConfig providers
 
 (End of file)

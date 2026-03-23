@@ -69,14 +69,14 @@ class _LanguageDropdown extends ConsumerWidget {
         value: currentLocale,
         underline: const SizedBox.shrink(),
         icon: const Icon(Icons.language, color: DesignTokens.primary),
-        items: const [
+        items: [
           DropdownMenuItem(
-            value: Locale(LanguageValues.english),
-            child: Text('English'),
+            value: const Locale(LanguageValues.english),
+            child: Text('language.english'.tr()),
           ),
           DropdownMenuItem(
-            value: Locale(LanguageValues.french),
-            child: Text('Français'),
+            value: const Locale(LanguageValues.french),
+            child: Text('language.french'.tr()),
           ),
         ],
         onChanged: (locale) {

@@ -3,8 +3,9 @@ import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/core/providers.dart' show userIdProvider;
 import 'package:origna_gta/utils/env_config.dart';
 
-/// EnvConfig Riverpod provider (used by orignabaseProvider).
-/// Also available via providers.dart — duplicated here to avoid circular imports.
+/// EnvConfig provider local to this file.
+/// Cannot use the one from providers.dart — that would create a circular import
+/// (providers.dart imports orignabase_provider.dart, not the other way around).
 final _envConfigProvider = Provider<EnvConfig>((ref) => EnvConfig());
 
 /// Global OrignaBase client provider.

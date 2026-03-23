@@ -2046,5 +2046,8 @@
   "upload_all": "Télécharger {0} produits",
   "upload_complete": "✓ {0} produits créés avec succès !",
   "upload_errors": "Erreurs de téléchargement",
-  "view_products": "Voir mes produits"
+  "view_products": "Voir mes produits",
+  "promotions": {
+    "shop_now": "Magasiner maintenant"
+  }
 }

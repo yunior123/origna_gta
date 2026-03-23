@@ -799,8 +799,11 @@ class MockAssetLoader extends AssetLoader {
       "language": {
         "en": "English",
         "fr": "Français",
+        "english": "English",
+        "french": "Français",
         "select_language": "Select Language",
       },
+      "promotions": {"shop_now": "Shop Now"},
       "accessibility": {
         "close_dialog": "Close dialog",
         "back_button": "Go back",

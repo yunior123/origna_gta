@@ -1,4 +1,5 @@
 part of '../profile_screen.dart';
+
 class ProfileScreenLayout extends StatelessWidget {
   final AsyncValue<UserModel?> userProfileAsync;
   final AppAuthUser? currentUser;
@@ -38,7 +39,10 @@ class ProfileScreenLayout extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [isDark ? DesignTokens.darkSurface : DesignTokens.surface, isDark ? DesignTokens.darkSurfaceVariant : DesignTokens.white],
+            colors: [
+              isDark ? DesignTokens.darkSurface : DesignTokens.surface,
+              isDark ? DesignTokens.darkSurfaceVariant : DesignTokens.white,
+            ],
           ),
         ),
         child: userProfileAsync.when(
@@ -49,15 +53,23 @@ class ProfileScreenLayout extends StatelessWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ).createShader(bounds),
-              child: const ModernLoadingIndicator(color: DesignTokens.white, strokeWidth: 3, centered: false),
+              child: const ModernLoadingIndicator(
+                color: DesignTokens.white,
+                strokeWidth: 3,
+                centered: false,
+              ),
             ),
           ),
-          error: (err, stack) =>
-              AnimatedEmptyState(icon: Icons.error_outline_rounded, title: 'profile.error_loading'.tr(), subtitle: 'common.retry_later'.tr()),
+          error: (err, stack) => AnimatedEmptyState(
+            icon: Icons.error_outline_rounded,
+            title: 'profile.error_loading'.tr(),
+            subtitle: 'common.retry_later'.tr(),
+          ),
           data: (userModel) {
             if (userModel == null) {
               if (currentUser != null) {
-                final needsVerification = !currentUser!.emailVerified && !EnvConfig().isEmulator;
+                final needsVerification =
+                    !currentUser!.emailVerified && !EnvConfig().isEmulator;
                 if (needsVerification) {
                   return _EmailVerificationRequiredView(user: currentUser!);
                 }
@@ -66,11 +78,26 @@ class ProfileScreenLayout extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       ShaderMask(
-                        shaderCallback: (bounds) => LinearGradient(colors: [DesignTokens.primary, DesignTokens.secondary]).createShader(bounds),
-                        child: const ModernLoadingIndicator(color: DesignTokens.white, strokeWidth: 3, centered: false),
+                        shaderCallback: (bounds) => LinearGradient(
+                          colors: [
+                            DesignTokens.primary,
+                            DesignTokens.secondary,
+                          ],
+                        ).createShader(bounds),
+                        child: const ModernLoadingIndicator(
+                          color: DesignTokens.white,
+                          strokeWidth: 3,
+                          centered: false,
+                        ),
                       ),
                       const SizedBox(height: 16),
-                      Text('profile.setting_up'.tr(), style: TextStyle(fontSize: 16, color: DesignTokens.textSecondary)),
+                      Text(
+                        'profile.setting_up'.tr(),
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: DesignTokens.textSecondary,
+                        ),
+                      ),
                     ],
                   ),
                 );
@@ -79,9 +106,19 @@ class ProfileScreenLayout extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.lock_outline, size: 80, color: DesignTokens.textDisabled),
+                    Icon(
+                      Icons.lock_outline,
+                      size: 80,
+                      color: DesignTokens.textDisabled,
+                    ),
                     const SizedBox(height: 16),
-                    Text('profile.sign_in_prompt'.tr(), style: TextStyle(fontSize: 18, color: DesignTokens.textPrimary)),
+                    Text(
+                      'profile.sign_in_prompt'.tr(),
+                      style: TextStyle(
+                        fontSize: 18,
+                        color: DesignTokens.textPrimary,
+                      ),
+                    ),
                     const SizedBox(height: 16),
                     SizedBox(
                       width: 220,
@@ -98,11 +135,22 @@ class ProfileScreenLayout extends StatelessWidget {
               );
             }
 
-            final isSeller = userModel.roles.contains(UserRole.seller) || userModel.roles.contains(UserRole.admin);
+            final isSeller =
+                userModel.roles.contains(UserRole.seller) ||
+                userModel.roles.contains(UserRole.admin);
             final isAdmin = userModel.roles.contains(UserRole.admin);
 
-            final maxWidth = ResponsiveBreakpoints.getValue<double>(context: context, mobile: double.infinity, mobilePlus: 500, tablet: 600, desktop: 700);
-            final padding = ResponsiveBreakpoints.getSpacing(context, SpacingSize.lg);
+            final maxWidth = ResponsiveBreakpoints.getValue<double>(
+              context: context,
+              mobile: double.infinity,
+              mobilePlus: 500,
+              tablet: 600,
+              desktop: 700,
+            );
+            final padding = ResponsiveBreakpoints.getSpacing(
+              context,
+              SpacingSize.lg,
+            );
 
             return Center(
               child: ConstrainedBox(
@@ -111,15 +159,29 @@ class ProfileScreenLayout extends StatelessWidget {
                   padding: EdgeInsets.all(padding),
                   child: Column(
                     children: [
-                      FadeSlideIn(child: _buildProfileHeader(userModel, isDark, isPremium: isPremium)),
-                      SizedBox(height: ResponsiveBreakpoints.getSpacing(context, SpacingSize.xl)),
+                      FadeSlideIn(
+                        child: _buildProfileHeader(
+                          userModel,
+                          isDark,
+                          isPremium: isPremium,
+                        ),
+                      ),
+                      SizedBox(
+                        height: ResponsiveBreakpoints.getSpacing(
+                          context,
+                          SpacingSize.xl,
+                        ),
+                      ),
 
                       FadeSlideIn(
                         delay: const Duration(milliseconds: 50),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _buildSectionHeader(context, 'profile.section_navigation'.tr()),
+                            _buildSectionHeader(
+                              context,
+                              'profile.section_navigation'.tr(),
+                            ),
                             _buildMenuItem(
                               context,
                               key: const Key('profile_my_orders_button'),
@@ -127,7 +189,10 @@ class ProfileScreenLayout extends StatelessWidget {
                               semanticLabel: 'menu-my-orders',
                               title: 'profile.my_orders'.tr(),
                               subtitle: 'profile.view_purchases'.tr(),
-                              onTap: () => Navigator.pushNamed(context, AppRoutes.orders),
+                              onTap: () => Navigator.pushNamed(
+                                context,
+                                AppRoutes.orders,
+                              ),
                             ),
                             if (isSeller) ...[
                               _buildMenuItem(
@@ -137,25 +202,39 @@ class ProfileScreenLayout extends StatelessWidget {
                                 semanticLabel: 'menu-seller-orders',
                                 title: 'profile.seller_orders'.tr(),
                                 subtitle: 'profile.manage_sales'.tr(),
-                                onTap: () => Navigator.pushNamed(context, AppRoutes.sellerOrders),
+                                onTap: () => Navigator.pushNamed(
+                                  context,
+                                  AppRoutes.sellerOrders,
+                                ),
                               ),
                               _buildMenuItem(
                                 context,
-                                key: const Key('profile_seller_dashboard_button'),
+                                key: const Key(
+                                  'profile_seller_dashboard_button',
+                                ),
                                 icon: Icons.dashboard_outlined,
                                 semanticLabel: 'menu-seller-dashboard',
                                 title: 'profile.seller_dashboard'.tr(),
-                                subtitle: 'profile.manage_products_account'.tr(),
-                                onTap: () => Navigator.pushNamed(context, AppRoutes.sellerProducts),
+                                subtitle: 'profile.manage_products_account'
+                                    .tr(),
+                                onTap: () => Navigator.pushNamed(
+                                  context,
+                                  AppRoutes.sellerProducts,
+                                ),
                               ),
                               _buildMenuItem(
                                 context,
-                                key: const Key('profile_seller_analytics_button'),
+                                key: const Key(
+                                  'profile_seller_analytics_button',
+                                ),
                                 icon: Icons.analytics_outlined,
                                 semanticLabel: 'menu-seller-analytics',
                                 title: 'profile.seller_analytics'.tr(),
                                 subtitle: 'profile.view_sales_insights'.tr(),
-                                onTap: () => Navigator.pushNamed(context, AppRoutes.sellerAnalytics),
+                                onTap: () => Navigator.pushNamed(
+                                  context,
+                                  AppRoutes.sellerAnalytics,
+                                ),
                               ),
                             ] else
                               _buildMenuItem(
@@ -165,7 +244,10 @@ class ProfileScreenLayout extends StatelessWidget {
                                 semanticLabel: 'menu-become-seller',
                                 title: 'profile.become_seller'.tr(),
                                 subtitle: 'profile.start_selling'.tr(),
-                                onTap: () => Navigator.pushNamed(context, AppRoutes.sellerRegistration),
+                                onTap: () => Navigator.pushNamed(
+                                  context,
+                                  AppRoutes.sellerRegistration,
+                                ),
                               ),
                             if (isAdmin)
                               _buildMenuItem(
@@ -175,14 +257,20 @@ class ProfileScreenLayout extends StatelessWidget {
                                 semanticLabel: 'menu-admin-panel',
                                 title: 'profile.admin_panel'.tr(),
                                 subtitle: 'profile.platform_management'.tr(),
-                                onTap: () => Navigator.pushNamed(context, AppRoutes.adminPanel),
+                                onTap: () => Navigator.pushNamed(
+                                  context,
+                                  AppRoutes.adminPanel,
+                                ),
                               ),
                           ],
                         ),
                       ),
                       const SizedBox(height: 24),
 
-                      FadeSlideIn(delay: const Duration(milliseconds: 75), child: _buildPremiumMenuItem(context, isPremium)),
+                      FadeSlideIn(
+                        delay: const Duration(milliseconds: 75),
+                        child: _buildPremiumMenuItem(context, isPremium),
+                      ),
                       const SizedBox(height: 24),
 
                       FadeSlideIn(
@@ -190,7 +278,10 @@ class ProfileScreenLayout extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _buildSectionHeader(context, 'profile.section_settings'.tr()),
+                            _buildSectionHeader(
+                              context,
+                              'profile.section_settings'.tr(),
+                            ),
                             if (isPremium)
                               _buildMenuItem(
                                 context,
@@ -199,7 +290,10 @@ class ProfileScreenLayout extends StatelessWidget {
                                 semanticLabel: 'menu-notifications',
                                 title: 'profile.notifications'.tr(),
                                 subtitle: 'profile.manage_notifications'.tr(),
-                                onTap: () => Navigator.pushNamed(context, AppRoutes.notifications),
+                                onTap: () => Navigator.pushNamed(
+                                  context,
+                                  AppRoutes.notifications,
+                                ),
                               ),
                             _buildMenuItem(
                               context,
@@ -208,7 +302,10 @@ class ProfileScreenLayout extends StatelessWidget {
                               semanticLabel: 'menu-my-messages',
                               title: 'chat.inbox_title'.tr(),
                               subtitle: 'chat.inbox_subtitle'.tr(),
-                              onTap: () => Navigator.pushNamed(context, AppRoutes.chatInbox),
+                              onTap: () => Navigator.pushNamed(
+                                context,
+                                AppRoutes.chatInbox,
+                              ),
                             ),
                             _buildMenuItem(
                               context,
@@ -217,7 +314,10 @@ class ProfileScreenLayout extends StatelessWidget {
                               semanticLabel: 'menu-favorites',
                               title: 'favorites.my_favorites'.tr(),
                               subtitle: 'profile.your_saved_products'.tr(),
-                              onTap: () => Navigator.pushNamed(context, AppRoutes.favorites),
+                              onTap: () => Navigator.pushNamed(
+                                context,
+                                AppRoutes.favorites,
+                              ),
                             ),
                             _buildMenuItem(
                               context,
@@ -226,7 +326,10 @@ class ProfileScreenLayout extends StatelessWidget {
                               semanticLabel: 'menu-address',
                               title: 'profile.address'.tr(),
                               subtitle: 'profile.manage_delivery_address'.tr(),
-                              onTap: () => Navigator.pushNamed(context, AppRoutes.addressManagement),
+                              onTap: () => Navigator.pushNamed(
+                                context,
+                                AppRoutes.addressManagement,
+                              ),
                             ),
                             _buildMenuItem(
                               context,
@@ -252,9 +355,14 @@ class ProfileScreenLayout extends StatelessWidget {
                               icon: Icons.language,
                               semanticLabel: 'menu-language',
                               title: 'profile.language'.tr(),
-                              subtitle: context.locale.languageCode == 'fr' ? 'Français' : 'English',
+                              subtitle: context.locale.languageCode == 'fr'
+                                  ? 'language.french'.tr()
+                                  : 'language.english'.tr(),
                               onTap: () {
-                                final newLocale = context.locale.languageCode == 'fr' ? 'en' : 'fr';
+                                final newLocale =
+                                    context.locale.languageCode == 'fr'
+                                    ? 'en'
+                                    : 'fr';
                                 onLanguageChange(newLocale);
                               },
                             ),
@@ -279,7 +387,10 @@ class ProfileScreenLayout extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _buildSectionHeader(context, 'profile.section_support'.tr()),
+                            _buildSectionHeader(
+                              context,
+                              'profile.section_support'.tr(),
+                            ),
                             _buildMenuItem(
                               context,
                               key: const Key('profile_get_help_button'),
@@ -287,7 +398,10 @@ class ProfileScreenLayout extends StatelessWidget {
                               semanticLabel: 'menu-get-help',
                               title: 'support.get_help_title'.tr(),
                               subtitle: 'support.get_help_subtitle'.tr(),
-                              onTap: () => Navigator.pushNamed(context, AppRoutes.support),
+                              onTap: () => Navigator.pushNamed(
+                                context,
+                                AppRoutes.support,
+                              ),
                             ),
                             _buildAppInfoSection(context, isDark),
                           ],
@@ -322,11 +436,17 @@ class ProfileScreenLayout extends StatelessWidget {
                                 child: Semantics(
                                   container: true,
                                   child: Padding(
-                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 12,
+                                    ),
                                     child: Center(
                                       child: Text(
                                         'profile.delete_account'.tr(),
-                                        style: TextStyle(color: DesignTokens.error, fontSize: 15, fontWeight: FontWeight.w600),
+                                        style: TextStyle(
+                                          color: DesignTokens.error,
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -358,7 +478,12 @@ class ProfileScreenLayout extends StatelessWidget {
           padding: const EdgeInsets.only(left: 4, bottom: 8),
           child: Text(
             'profile.app_info'.tr(),
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: DesignTokens.textSecondary, letterSpacing: 0.8),
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: DesignTokens.textSecondary,
+              letterSpacing: 0.8,
+            ),
           ),
         ),
         _buildMenuItem(
@@ -377,15 +502,24 @@ class ProfileScreenLayout extends StatelessWidget {
           semanticLabel: 'menu-share-app',
           title: 'profile.share_app'.tr(),
           subtitle: 'profile.share_app_desc'.tr(),
-          onTap: () => SharePlus.instance.share(ShareParams(text: 'profile.share_text'.tr())),
+          onTap: () => SharePlus.instance.share(
+            ShareParams(text: 'profile.share_text'.tr()),
+          ),
         ),
         Container(
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
-            color: isDark ? DesignTokens.darkSurfaceVariant.withValues(alpha: 0.5) : DesignTokens.white,
+            color: isDark
+                ? DesignTokens.darkSurfaceVariant.withValues(alpha: 0.5)
+                : DesignTokens.white,
             borderRadius: BorderRadius.circular(DesignTokens.radius12),
-            border: Border.all(color: isDark ? DesignTokens.darkOutline : DesignTokens.outlineVariant, width: 1),
+            border: Border.all(
+              color: isDark
+                  ? DesignTokens.darkOutline
+                  : DesignTokens.outlineVariant,
+              width: 1,
+            ),
           ),
           child: Row(
             children: [
@@ -393,22 +527,41 @@ class ProfileScreenLayout extends StatelessWidget {
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [DesignTokens.primary.withValues(alpha: 0.15), DesignTokens.secondary.withValues(alpha: 0.15)],
+                    colors: [
+                      DesignTokens.primary.withValues(alpha: 0.15),
+                      DesignTokens.secondary.withValues(alpha: 0.15),
+                    ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   borderRadius: BorderRadius.circular(DesignTokens.radius8),
                 ),
-                child: const Icon(Icons.info_outline_rounded, color: DesignTokens.primary, size: 20),
+                child: const Icon(
+                  Icons.info_outline_rounded,
+                  color: DesignTokens.primary,
+                  size: 20,
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
                 child: Text(
                   'profile.app_version'.tr(namedArgs: {'version': appVersion}),
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                    color: isDark
+                        ? DesignTokens.textOnDark
+                        : DesignTokens.textPrimary,
+                  ),
                 ),
               ),
-              Text('OrignaGTA', style: TextStyle(fontSize: 13, color: DesignTokens.textSecondary)),
+              Text(
+                'OrignaGTA',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: DesignTokens.textSecondary,
+                ),
+              ),
             ],
           ),
         ),
@@ -432,9 +585,16 @@ class ProfileScreenLayout extends StatelessWidget {
       key: key,
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: isDark ? DesignTokens.darkSurfaceVariant.withValues(alpha: 0.5) : DesignTokens.white,
+        color: isDark
+            ? DesignTokens.darkSurfaceVariant.withValues(alpha: 0.5)
+            : DesignTokens.white,
         borderRadius: BorderRadius.circular(DesignTokens.radius12),
-        border: Border.all(color: isDark ? DesignTokens.darkOutline : DesignTokens.outlineVariant, width: 1),
+        border: Border.all(
+          color: isDark
+              ? DesignTokens.darkOutline
+              : DesignTokens.outlineVariant,
+          width: 1,
+        ),
         boxShadow: [
           BoxShadow(
             color: DesignTokens.black.withValues(alpha: isDark ? 0.3 : 0.05),
@@ -445,7 +605,8 @@ class ProfileScreenLayout extends StatelessWidget {
       ),
       child: Semantics(
         button: true,
-        label: semanticLabel ?? 'menu-${title.toLowerCase().replaceAll(' ', '-')}',
+        label:
+            semanticLabel ?? 'menu-${title.toLowerCase().replaceAll(' ', '-')}',
         excludeSemantics: true,
         child: GestureDetector(
           onTap: () {
@@ -463,7 +624,10 @@ class ProfileScreenLayout extends StatelessWidget {
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [DesignTokens.primary.withValues(alpha: 0.15), DesignTokens.secondary.withValues(alpha: 0.15)],
+                        colors: [
+                          DesignTokens.primary.withValues(alpha: 0.15),
+                          DesignTokens.secondary.withValues(alpha: 0.15),
+                        ],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
@@ -478,13 +642,35 @@ class ProfileScreenLayout extends StatelessWidget {
                       children: [
                         Text(
                           title,
-                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary),
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: isDark
+                                ? DesignTokens.textOnDark
+                                : DesignTokens.textPrimary,
+                          ),
                         ),
-                        if (subtitle != null) ...[const SizedBox(height: 4), Text(subtitle, style: TextStyle(fontSize: 12, color: DesignTokens.textSecondary))],
+                        if (subtitle != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            subtitle,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: DesignTokens.textSecondary,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
-                  if (isLoading) const ModernLoadingIndicator.small() else Icon(Icons.chevron_right, color: DesignTokens.textDisabled, size: 20),
+                  if (isLoading)
+                    const ModernLoadingIndicator.small()
+                  else
+                    Icon(
+                      Icons.chevron_right,
+                      color: DesignTokens.textDisabled,
+                      size: 20,
+                    ),
                 ],
               ),
             ),
@@ -532,10 +718,18 @@ class ProfileScreenLayout extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(colors: [DesignTokens.primary, DesignTokens.secondary], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                      gradient: LinearGradient(
+                        colors: [DesignTokens.primary, DesignTokens.secondary],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
                       borderRadius: BorderRadius.circular(DesignTokens.radius8),
                     ),
-                    child: const Icon(Icons.workspace_premium, color: DesignTokens.white, size: 20),
+                    child: const Icon(
+                      Icons.workspace_premium,
+                      color: DesignTokens.white,
+                      size: 20,
+                    ),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -546,16 +740,34 @@ class ProfileScreenLayout extends StatelessWidget {
                           children: [
                             Text(
                               'subscription.premium_label'.tr(),
-                              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary),
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: isDark
+                                    ? DesignTokens.textOnDark
+                                    : DesignTokens.textPrimary,
+                              ),
                             ),
                             if (isPremium) ...[
                               const SizedBox(width: 8),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                decoration: BoxDecoration(color: DesignTokens.success.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: DesignTokens.success.withValues(
+                                    alpha: 0.15,
+                                  ),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
                                 child: Text(
                                   'subscription.status_active'.tr(),
-                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: DesignTokens.success),
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: DesignTokens.success,
+                                  ),
                                 ),
                               ),
                             ],
@@ -563,13 +775,22 @@ class ProfileScreenLayout extends StatelessWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          isPremium ? 'subscription.menu_manage_desc'.tr() : 'subscription.menu_upgrade_desc'.tr(),
-                          style: TextStyle(fontSize: 12, color: DesignTokens.textSecondary),
+                          isPremium
+                              ? 'subscription.menu_manage_desc'.tr()
+                              : 'subscription.menu_upgrade_desc'.tr(),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: DesignTokens.textSecondary,
+                          ),
                         ),
                       ],
                     ),
                   ),
-                  Icon(Icons.chevron_right, color: DesignTokens.textDisabled, size: 20),
+                  Icon(
+                    Icons.chevron_right,
+                    color: DesignTokens.textDisabled,
+                    size: 20,
+                  ),
                 ],
               ),
             ),
@@ -579,29 +800,64 @@ class ProfileScreenLayout extends StatelessWidget {
     );
   }
 
-  Widget _buildProfileHeader(UserModel userModel, bool isDark, {required bool isPremium}) {
-    final initials = userModel.name.isNotEmpty ? userModel.name[0].toUpperCase() : 'U';
-    final isSeller = userModel.roles.contains(UserRole.seller) || userModel.roles.contains(UserRole.admin);
+  Widget _buildProfileHeader(
+    UserModel userModel,
+    bool isDark, {
+    required bool isPremium,
+  }) {
+    final initials = userModel.name.isNotEmpty
+        ? userModel.name[0].toUpperCase()
+        : 'U';
+    final isSeller =
+        userModel.roles.contains(UserRole.seller) ||
+        userModel.roles.contains(UserRole.admin);
     final isAdmin = userModel.roles.contains(UserRole.admin);
 
     return Builder(
       builder: (context) {
-        final headerPadding = ResponsiveBreakpoints.getSpacing(context, SpacingSize.xl);
-        final avatarSize = ResponsiveBreakpoints.getValue<double>(context: context, mobile: 76.0, mobilePlus: 86.0, tablet: 96.0, desktop: 106.0);
-        final fontSize = ResponsiveBreakpoints.getValue<double>(context: context, mobile: 32.0, mobilePlus: 36.0, tablet: 40.0, desktop: 44.0);
+        final headerPadding = ResponsiveBreakpoints.getSpacing(
+          context,
+          SpacingSize.xl,
+        );
+        final avatarSize = ResponsiveBreakpoints.getValue<double>(
+          context: context,
+          mobile: 76.0,
+          mobilePlus: 86.0,
+          tablet: 96.0,
+          desktop: 106.0,
+        );
+        final fontSize = ResponsiveBreakpoints.getValue<double>(
+          context: context,
+          mobile: 32.0,
+          mobilePlus: 36.0,
+          tablet: 40.0,
+          desktop: 44.0,
+        );
 
         return Container(
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [DesignTokens.gradientStart, DesignTokens.gradientMiddle, DesignTokens.gradientEnd],
+              colors: [
+                DesignTokens.gradientStart,
+                DesignTokens.gradientMiddle,
+                DesignTokens.gradientEnd,
+              ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
             borderRadius: BorderRadius.circular(DesignTokens.radius20),
             boxShadow: [
-              BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.45), blurRadius: 28, offset: const Offset(0, 10)),
-              BoxShadow(color: DesignTokens.secondary.withValues(alpha: 0.2), blurRadius: 44, offset: const Offset(0, 18)),
+              BoxShadow(
+                color: DesignTokens.primary.withValues(alpha: 0.45),
+                blurRadius: 28,
+                offset: const Offset(0, 10),
+              ),
+              BoxShadow(
+                color: DesignTokens.secondary.withValues(alpha: 0.2),
+                blurRadius: 44,
+                offset: const Offset(0, 18),
+              ),
             ],
           ),
           child: Stack(
@@ -616,7 +872,12 @@ class ProfileScreenLayout extends StatelessWidget {
                   height: 140,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: RadialGradient(colors: [DesignTokens.accent.withValues(alpha: 0.28), DesignTokens.transparent]),
+                    gradient: RadialGradient(
+                      colors: [
+                        DesignTokens.accent.withValues(alpha: 0.28),
+                        DesignTokens.transparent,
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -629,7 +890,12 @@ class ProfileScreenLayout extends StatelessWidget {
                   height: 110,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: RadialGradient(colors: [DesignTokens.tertiary.withValues(alpha: 0.22), DesignTokens.transparent]),
+                    gradient: RadialGradient(
+                      colors: [
+                        DesignTokens.tertiary.withValues(alpha: 0.22),
+                        DesignTokens.transparent,
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -650,7 +916,9 @@ class ProfileScreenLayout extends StatelessWidget {
                           height: avatarSize + 32,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: isPremium ? DesignTokens.warning.withValues(alpha: 0.1) : DesignTokens.white.withValues(alpha: 0.06),
+                            color: isPremium
+                                ? DesignTokens.warning.withValues(alpha: 0.1)
+                                : DesignTokens.white.withValues(alpha: 0.06),
                           ),
                         ),
                         // Middle ring
@@ -661,7 +929,9 @@ class ProfileScreenLayout extends StatelessWidget {
                             shape: BoxShape.circle,
                             color: DesignTokens.white.withValues(alpha: 0.1),
                             border: Border.all(
-                              color: isPremium ? DesignTokens.warning.withValues(alpha: 0.5) : DesignTokens.white.withValues(alpha: 0.18),
+                              color: isPremium
+                                  ? DesignTokens.warning.withValues(alpha: 0.5)
+                                  : DesignTokens.white.withValues(alpha: 0.18),
                               width: isPremium ? 1.5 : 1,
                             ),
                           ),
@@ -673,20 +943,44 @@ class ProfileScreenLayout extends StatelessWidget {
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             gradient: LinearGradient(
-                              colors: [DesignTokens.white.withValues(alpha: 0.3), DesignTokens.white.withValues(alpha: 0.14)],
+                              colors: [
+                                DesignTokens.white.withValues(alpha: 0.3),
+                                DesignTokens.white.withValues(alpha: 0.14),
+                              ],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             ),
-                            border: Border.all(color: DesignTokens.white.withValues(alpha: 0.5), width: 2.5),
+                            border: Border.all(
+                              color: DesignTokens.white.withValues(alpha: 0.5),
+                              width: 2.5,
+                            ),
                             boxShadow: [
-                              BoxShadow(color: DesignTokens.black.withValues(alpha: 0.3), blurRadius: 22, offset: const Offset(0, 8)),
-                              if (isPremium) BoxShadow(color: DesignTokens.warning.withValues(alpha: 0.35), blurRadius: 24, spreadRadius: 2),
+                              BoxShadow(
+                                color: DesignTokens.black.withValues(
+                                  alpha: 0.3,
+                                ),
+                                blurRadius: 22,
+                                offset: const Offset(0, 8),
+                              ),
+                              if (isPremium)
+                                BoxShadow(
+                                  color: DesignTokens.warning.withValues(
+                                    alpha: 0.35,
+                                  ),
+                                  blurRadius: 24,
+                                  spreadRadius: 2,
+                                ),
                             ],
                           ),
                           child: Center(
                             child: Text(
                               initials,
-                              style: TextStyle(fontSize: fontSize, color: DesignTokens.white, fontWeight: FontWeight.w900, letterSpacing: -2),
+                              style: TextStyle(
+                                fontSize: fontSize,
+                                color: DesignTokens.white,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: -2,
+                              ),
                             ),
                           ),
                         ),
@@ -701,14 +995,34 @@ class ProfileScreenLayout extends StatelessWidget {
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 gradient: const LinearGradient(
-                                  colors: [DesignTokens.warning, DesignTokens.tertiary],
+                                  colors: [
+                                    DesignTokens.warning,
+                                    DesignTokens.tertiary,
+                                  ],
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
                                 ),
-                                boxShadow: [BoxShadow(color: DesignTokens.warning.withValues(alpha: 0.6), blurRadius: 8, spreadRadius: 1)],
-                                border: Border.all(color: DesignTokens.white, width: 2),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: DesignTokens.warning.withValues(
+                                      alpha: 0.6,
+                                    ),
+                                    blurRadius: 8,
+                                    spreadRadius: 1,
+                                  ),
+                                ],
+                                border: Border.all(
+                                  color: DesignTokens.white,
+                                  width: 2,
+                                ),
                               ),
-                              child: const Center(child: Icon(Icons.workspace_premium, size: 14, color: DesignTokens.white)),
+                              child: const Center(
+                                child: Icon(
+                                  Icons.workspace_premium,
+                                  size: 14,
+                                  color: DesignTokens.white,
+                                ),
+                              ),
                             ),
                           ),
                       ],
@@ -716,40 +1030,69 @@ class ProfileScreenLayout extends StatelessWidget {
                     const SizedBox(height: 18),
                     Text(
                       userModel.name,
-                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: DesignTokens.white, letterSpacing: -0.5),
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        color: DesignTokens.white,
+                        letterSpacing: -0.5,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 6),
                     Text(
                       userModel.email,
-                      style: TextStyle(fontSize: 13, color: DesignTokens.white.withValues(alpha: 0.72), letterSpacing: 0.1),
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: DesignTokens.white.withValues(alpha: 0.72),
+                        letterSpacing: 0.1,
+                      ),
                       textAlign: TextAlign.center,
                       overflow: TextOverflow.ellipsis,
                     ),
                     if (isAdmin || isSeller) ...[
                       const SizedBox(height: 14),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 5,
+                        ),
                         decoration: BoxDecoration(
                           color: DesignTokens.white.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: DesignTokens.white.withValues(alpha: 0.3), width: 1),
+                          border: Border.all(
+                            color: DesignTokens.white.withValues(alpha: 0.3),
+                            width: 1,
+                          ),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(isAdmin ? Icons.admin_panel_settings_rounded : Icons.storefront_rounded, color: DesignTokens.white, size: 14),
+                            Icon(
+                              isAdmin
+                                  ? Icons.admin_panel_settings_rounded
+                                  : Icons.storefront_rounded,
+                              color: DesignTokens.white,
+                              size: 14,
+                            ),
                             const SizedBox(width: 6),
                             Text(
                               isAdmin ? 'Admin' : 'Seller',
-                              style: const TextStyle(color: DesignTokens.white, fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.8),
+                              style: const TextStyle(
+                                color: DesignTokens.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.8,
+                              ),
                             ),
                           ],
                         ),
                       ),
                     ],
                     const SizedBox(height: 18),
-                    _ProfileCompletionBar(userModel: userModel, isPremium: isPremium),
+                    _ProfileCompletionBar(
+                      userModel: userModel,
+                      isPremium: isPremium,
+                    ),
                   ],
                 ),
               ),
@@ -765,7 +1108,12 @@ class ProfileScreenLayout extends StatelessWidget {
       padding: const EdgeInsets.only(left: 4, bottom: 8, top: 4),
       child: Text(
         title,
-        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: DesignTokens.textSecondary, letterSpacing: 0.8),
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: DesignTokens.textSecondary,
+          letterSpacing: 0.8,
+        ),
       ),
     );
   }
@@ -777,9 +1125,16 @@ class ProfileScreenLayout extends StatelessWidget {
       key: const Key('profile_theme_button'),
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: isDark ? DesignTokens.darkSurfaceVariant.withValues(alpha: 0.5) : DesignTokens.white,
+        color: isDark
+            ? DesignTokens.darkSurfaceVariant.withValues(alpha: 0.5)
+            : DesignTokens.white,
         borderRadius: BorderRadius.circular(DesignTokens.radius12),
-        border: Border.all(color: isDark ? DesignTokens.darkOutline : DesignTokens.outlineVariant, width: 1),
+        border: Border.all(
+          color: isDark
+              ? DesignTokens.darkOutline
+              : DesignTokens.outlineVariant,
+          width: 1,
+        ),
         boxShadow: [
           BoxShadow(
             color: DesignTokens.black.withValues(alpha: isDark ? 0.3 : 0.05),
@@ -798,7 +1153,10 @@ class ProfileScreenLayout extends StatelessWidget {
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [DesignTokens.primary.withValues(alpha: 0.15), DesignTokens.secondary.withValues(alpha: 0.15)],
+                    colors: [
+                      DesignTokens.primary.withValues(alpha: 0.15),
+                      DesignTokens.secondary.withValues(alpha: 0.15),
+                    ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -821,10 +1179,22 @@ class ProfileScreenLayout extends StatelessWidget {
                   children: [
                     Text(
                       'profile.theme'.tr(),
-                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                        color: isDark
+                            ? DesignTokens.textOnDark
+                            : DesignTokens.textPrimary,
+                      ),
                     ),
                     const SizedBox(height: 2),
-                    Text('profile.theme_desc'.tr(), style: TextStyle(fontSize: 13, color: DesignTokens.textSecondary)),
+                    Text(
+                      'profile.theme_desc'.tr(),
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: DesignTokens.textSecondary,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -832,7 +1202,9 @@ class ProfileScreenLayout extends StatelessWidget {
               // 3-segment pill toggle: Light | System | Dark
               Container(
                 decoration: BoxDecoration(
-                  color: isDark ? DesignTokens.darkSurface : DesignTokens.surfaceVariant,
+                  color: isDark
+                      ? DesignTokens.darkSurface
+                      : DesignTokens.surfaceVariant,
                   borderRadius: BorderRadius.circular(DesignTokens.radius20),
                 ),
                 child: Row(
@@ -869,4 +1241,3 @@ class ProfileScreenLayout extends StatelessWidget {
     );
   }
 }
-

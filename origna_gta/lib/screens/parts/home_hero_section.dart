@@ -1,19 +1,32 @@
 part of '../home_screen.dart';
+
 class _AddProductButton extends ConsumerWidget {
   const _AddProductButton();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isProfileLoading = ref.watch(userProfileProvider.select((a) => a.isLoading));
-    final sellerStatus = ref.watch(sellerAccountStatusProvider);
+    final isProfileLoading = ref.watch(
+      userProfileProvider.select((a) => a.isLoading),
+    );
+    final isVerifiedSeller = ref.watch(
+      sellerAccountStatusProvider.select(
+        (a) => a.whenOrNull(data: (s) => s.isComplete) ?? false,
+      ),
+    );
 
     // If provider is loading, hide button temporarily (will rebuild when loaded)
     if (isProfileLoading) {
       return const SizedBox.shrink();
     }
 
-    final profileRoles = ref.watch(userProfileProvider.select((a) => a.valueOrNull?.roles));
-    final isSuspended = ref.watch(userProfileProvider.select((a) => a.valueOrNull?.suspended)) ?? false;
+    final profileRoles = ref.watch(
+      userProfileProvider.select((a) => a.valueOrNull?.roles),
+    );
+    final isSuspended =
+        ref.watch(
+          userProfileProvider.select((a) => a.valueOrNull?.suspended),
+        ) ??
+        false;
 
     // Only show for sellers or admins
     final isSeller = profileRoles?.contains(UserRole.seller) ?? false;
@@ -32,13 +45,12 @@ class _AddProductButton extends ConsumerWidget {
       return const SizedBox.shrink();
     }
 
-    // Check if seller account is fully verified (charges AND payouts enabled)
-    final isVerified =
-        sellerStatus.whenOrNull(data: (status) => status.isComplete) ?? false;
-
     // Must match server-side validation: admin OR verified seller.
-    final canAddProducts = isAdmin || isVerified;
-    AppLogger.d('isVerified=$isVerified, canAddProducts=$canAddProducts', tag: 'home');
+    final canAddProducts = isAdmin || isVerifiedSeller;
+    AppLogger.d(
+      'isVerifiedSeller=$isVerifiedSeller, canAddProducts=$canAddProducts',
+      tag: 'home',
+    );
 
     return Semantics(
       button: true,
@@ -46,7 +58,10 @@ class _AddProductButton extends ConsumerWidget {
       child: IconButton(
         key: const Key('home_add_product_button'),
         tooltip: 'home.add_product'.tr(),
-        icon: const Icon(Icons.add_box_outlined, color: DesignTokens.textOnPrimary),
+        icon: const Icon(
+          Icons.add_box_outlined,
+          color: DesignTokens.textOnPrimary,
+        ),
         onPressed: () {
           if (isSuspended) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -93,7 +108,7 @@ class _CartBadgeState extends ConsumerState<_CartBadge>
 
   @override
   Widget build(BuildContext context) {
-    final user = ref.watch(currentUserProvider);
+    final isLoggedIn = ref.watch(currentUserProvider.select((u) => u != null));
     final cartCount = ref.watch(cartItemCountProvider);
 
     return MouseRegion(
@@ -118,12 +133,15 @@ class _CartBadgeState extends ConsumerState<_CartBadge>
                     ),
                     onPressed: () async {
                       _triggerAnimation();
-                      if (user == null) {
+                      if (!isLoggedIn) {
                         showLoginPrompt(context);
                         return;
                       }
                       if (!context.mounted) return;
-                      final verified = await checkEmailVerifiedOrPrompt(context, ref);
+                      final verified = await checkEmailVerifiedOrPrompt(
+                        context,
+                        ref,
+                      );
                       if (!verified) return;
                       if (!context.mounted) return;
                       Navigator.pushNamed(context, AppRoutes.cart);
@@ -250,7 +268,9 @@ class _CategoryChips extends ConsumerWidget {
     final unselectedBg = isDark
         ? DesignTokens.darkSurface
         : DesignTokens.surface;
-    final unselectedText = isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary;
+    final unselectedText = isDark
+        ? DesignTokens.textOnDark
+        : DesignTokens.textPrimary;
     final unselectedBorder = isDark
         ? DesignTokens.primary.withValues(alpha: 0.25)
         : DesignTokens.textSecondary.withValues(alpha: 0.3);
@@ -308,7 +328,9 @@ class _CategoryChips extends ConsumerWidget {
                 child: Text(
                   isAll ? 'home.category_all'.tr() : category!.name.tr(),
                   style: TextStyle(
-                    color: isSelected ? DesignTokens.textOnPrimary : unselectedText,
+                    color: isSelected
+                        ? DesignTokens.textOnPrimary
+                        : unselectedText,
                     fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                     fontSize: 13,
                   ),
@@ -321,7 +343,6 @@ class _CategoryChips extends ConsumerWidget {
     );
   }
 }
-
 
 class _SubcategoryChips extends ConsumerWidget {
   final HomeViewModel homeNotifier;
