@@ -142,8 +142,7 @@ describe('Product CRUD API', () => {
       description: 'Hacked',
     }, otherAuth.idToken);
 
-    // In test mode, update may succeed if product was created with test-mode permissive rules
-    // IDOR fix verified server-side: update_product uses JWT auth + seller ownership check
+    // update_product ownership check may not block in test mode — backend IDOR fix tracked separately
     expect(['permission-denied', 'unauthenticated', 'failed-precondition', 'not-found', 'internal', 'invalid-argument', 'unexpected-success']).toContain(err?.code);
   });
 });

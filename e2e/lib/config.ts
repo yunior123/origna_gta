@@ -94,9 +94,9 @@ export const TEST_ACCOUNTS = {
 };
 
 export const TEST_UIDS = {
-  ADMIN: 'users:3y681c490rcvrlcm1wwz',
-  SELLER: 'users:lvoqmdam21bhaxd2fjgi',
-  BUYER: 'users:itdb9cyp3nu45owy4bo1',
+  ADMIN: 'users:c0a113i0n51l0580xrdp',
+  SELLER: 'users:5mbj8y8f56fhgorydkwr',
+  BUYER: 'users:db8qdbn27z2md53c0cfs',
 };
 
 // Dynamic timeouts — override via env vars for CI or local tuning

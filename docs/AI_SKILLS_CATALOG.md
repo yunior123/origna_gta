@@ -175,7 +175,7 @@
 
 ---
 
-## Project Skills (30) — Auto-Invoked
+## Project Skills (31) — Auto-Invoked
 
 | Skill | Description | When It Activates |
 |-------|-------------|-------------------|
@@ -186,6 +186,7 @@
 | `deep-research` | Multi-source research (web, docs, codebase, memory) with confidence levels | Technical decisions, investigations |
 | `e2e-testing` | E2E testing patterns for OrignaGTA (Bun, agent-browser, phased execution) | E2E test creation/debugging |
 | `feature-dev` | 7-phase structured feature development (requirements through documentation) | Building new features |
+| `flow-audit` | Deep audit of 12 critical app flows — traces full data path, finds bugs, race conditions, security gaps | Audit a flow, deep logic review, "find bugs in checkout/orders" |
 | `flutter-code-review` | Reviews Dart code for MVVM, Riverpod, DesignTokens, Semantics, performance | After Dart code changes |
 | `flutter-riverpod-patterns` | Riverpod state management: MVVM, provider patterns, AsyncNotifier, reactive state | State management tasks |
 | `flutter-widget-previews` | Flutter Widget Previews: @Preview annotations, coverage, Riverpod/localization | Widget preview setup |

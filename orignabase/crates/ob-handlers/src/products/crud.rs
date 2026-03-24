@@ -759,18 +759,17 @@ async fn delete_product(
         ));
     }
 
-    // Check for pending orders containing this product (parameterized query)
+    // Check for pending orders containing this product
+    // Uses validated user_id from JWT (not client-supplied req.user_id)
     let pending_query = format!(
-        "SELECT * FROM {} WHERE {} = $seller_id AND {} IN ['pending', 'processing', 'shipped'] LIMIT 5",
+        "SELECT * FROM {} WHERE {} CONTAINS '{}' AND {} IN ['pending', 'processing', 'shipped'] LIMIT 5",
         collections::ORDERS,
         fields::SELLER_ID,
+        ob_core::escape_surreal_string(&user_id),
         fields::STATUS,
     );
 
-    let pending_orders: Vec<Value> = state.db.query_bind_value(
-        &pending_query,
-        serde_json::json!({ "seller_id": user_id }),
-    ).await.unwrap_or_default();
+    let pending_orders: Vec<Value> = state.db.query_raw(&pending_query).await.unwrap_or_default();
 
     // Check if any pending order contains this product
     for order in &pending_orders {
@@ -1632,7 +1631,7 @@ mod tests {
                 collections::ORDERS,
                 "order_1",
                 serde_json::json!({
-                    fields::SELLER_ID: ["seller_1"],
+                    fields::SELLER_ID: "seller_1",
                     fields::STATUS: "processing",
                     fields::ITEMS: [{ fields::PRODUCT_ID: "prod_1" }],
                 }),

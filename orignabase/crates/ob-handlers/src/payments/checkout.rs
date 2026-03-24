@@ -108,7 +108,7 @@ fn calculate_shipping_cost_cents(
     subtotal_cents: i64,
     buyer_province: &str,
     items: &[Value],
-) -> i64 {
+) -> Result<i64, ob_core::Error> {
     // All-digital order: no shipping
     let all_digital = items.iter().all(|item| {
         item.get("isDigital")
@@ -116,12 +116,42 @@ fn calculate_shipping_cost_cents(
             .unwrap_or(false)
     });
     if all_digital {
-        return 0;
+        return Ok(0);
+    }
+
+    // Perishable / local-delivery-only enforcement
+    for item in items {
+        let is_perishable = item
+            .get("isPerishable")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+        let is_local_delivery_only = item
+            .get("isLocalDeliveryOnly")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+
+        if is_perishable || is_local_delivery_only {
+            let seller_prov = item
+                .get("shipFromProvince")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+            if !seller_prov.is_empty() && seller_prov != buyer_province {
+                let label = if is_perishable {
+                    "Perishable items"
+                } else {
+                    "Local-delivery-only items"
+                };
+                return Err(ob_core::Error::Validation(format!(
+                    "{label} can only be shipped within the same province (50km local delivery). \
+                     Seller province: {seller_prov}, buyer province: {buyer_province}"
+                )));
+            }
+        }
     }
 
     // Free shipping threshold
     if subtotal_cents >= crate::shared::schema::business_rules::FREE_SHIPPING_THRESHOLD_CENTS {
-        return 0;
+        return Ok(0);
     }
 
     // Check if any item ships from a different province or a non-Canadian country
@@ -145,9 +175,9 @@ fn calculate_shipping_cost_cents(
     });
 
     if has_cross_province {
-        INTL_SHIPPING_BASE_CENTS
+        Ok(INTL_SHIPPING_BASE_CENTS)
     } else {
-        STANDARD_SHIPPING_CENTS
+        Ok(STANDARD_SHIPPING_CENTS)
     }
 }
 
@@ -475,6 +505,19 @@ async fn create_checkout_session(
         .into_iter()
         .collect();
 
+    // --- Multi-seller checkout guard (P0) ---
+    // Stripe Connect only supports a single destination per PaymentIntent.
+    // Force the frontend to split carts with multiple sellers into separate sessions.
+    if unique_seller_ids.len() > 1 {
+        return Err(ob_core::Error::Validation(
+            "Multi-seller carts require separate checkout sessions per seller.".into(),
+        ));
+    }
+
+    // Cache seller profiles to avoid N+1 queries (used again for Connect lookup below)
+    let mut seller_profiles_cache: std::collections::HashMap<String, Value> =
+        std::collections::HashMap::new();
+
     for seller_id in &unique_seller_ids {
         if let Ok(seller) = state.db.get_document(collections::USERS, seller_id).await {
             let suspended = seller
@@ -486,11 +529,7 @@ async fn create_checkout_session(
                     "Seller {seller_id} is suspended"
                 )));
             }
-        }
 
-    // --- Seller Stripe Connect onboarding check (CRITICAL FIX: P0) ---
-    for seller_id in &unique_seller_ids {
-        if let Ok(seller) = state.db.get_document(collections::USERS, seller_id).await {
             // Verify seller has completed Stripe Connect onboarding
             let onboarding_completed = seller
                 .get(fields::ONBOARDING_COMPLETED)
@@ -502,7 +541,7 @@ async fn create_checkout_session(
                     seller_id
                 )));
             }
-            
+
             // Verify both charges and payouts are enabled
             let charges_enabled = seller
                 .get(fields::CHARGES_ENABLED)
@@ -519,8 +558,11 @@ async fn create_checkout_session(
                 )));
             }
         }
-    }
 
+        // Cache seller_profiles for Connect account lookup later
+        if let Ok(profile) = state.db.get_document("seller_profiles", seller_id).await {
+            seller_profiles_cache.insert(seller_id.clone(), profile);
+        }
     }
 
     // --- Duplicate order detection (5-minute window) ---
@@ -574,24 +616,26 @@ async fn create_checkout_session(
 
     // Platform fee via Stripe Connect — only include when seller has a real Connect account
     // Without Connect, Stripe rejects application_fee_amount with "parameter_unknown"
+    // Uses cached seller_profiles from the validation loop above (avoids N+1 queries)
     if platform_fee_cents > 0 {
         let mut has_connect_account = false;
         for sid in &unique_seller_ids {
-            if let Ok(profile) = state.db.get_document("seller_profiles", sid).await
-                && let Some(acct_id) = profile.get("stripeAccountId").and_then(|v| v.as_str())
-                && acct_id.starts_with("acct_")
-            {
-                has_connect_account = true;
-                // Add the connected account header for Stripe Connect
-                form_data.push((
-                    "payment_intent_data[on_behalf_of]".to_string(),
-                    acct_id.to_string(),
-                ));
-                form_data.push((
-                    "payment_intent_data[transfer_data][destination]".to_string(),
-                    acct_id.to_string(),
-                ));
-                break;
+            if let Some(profile) = seller_profiles_cache.get(sid) {
+                if let Some(acct_id) = profile.get("stripeAccountId").and_then(|v| v.as_str()) {
+                    if acct_id.starts_with("acct_") {
+                        has_connect_account = true;
+                        // Add the connected account header for Stripe Connect
+                        form_data.push((
+                            "payment_intent_data[on_behalf_of]".to_string(),
+                            acct_id.to_string(),
+                        ));
+                        form_data.push((
+                            "payment_intent_data[transfer_data][destination]".to_string(),
+                            acct_id.to_string(),
+                        ));
+                        break;
+                    }
+                }
             }
         }
         if has_connect_account {
@@ -656,7 +700,7 @@ async fn create_checkout_session(
         actual_subtotal_cents,
         &province,
         &validated_items,
-    );
+    )?;
     let taxable_base_cents = actual_subtotal_cents + shipping_cost_cents;
     let tax_amount_cents = calculate_tax_cents(taxable_base_cents, &province);
     let total_amount_cents = actual_subtotal_cents + shipping_cost_cents + tax_amount_cents;
@@ -2269,30 +2313,30 @@ mod tests {
     fn test_shipping_free_above_threshold() {
         let items = vec![json!({"isDigital": false, "shipFromProvince": "ON"})];
         // $75.00 subtotal → free shipping
-        assert_eq!(calculate_shipping_cost_cents(7500, "ON", &items), 0);
+        assert_eq!(calculate_shipping_cost_cents(7500, "ON", &items).unwrap(), 0);
         // $100.00 subtotal → free shipping
-        assert_eq!(calculate_shipping_cost_cents(10000, "ON", &items), 0);
+        assert_eq!(calculate_shipping_cost_cents(10000, "ON", &items).unwrap(), 0);
     }
 
     #[test]
     fn test_shipping_standard_below_threshold() {
         let items = vec![json!({"isDigital": false, "shipFromProvince": "ON"})];
         // $50.00 subtotal, same province → standard rate
-        assert_eq!(calculate_shipping_cost_cents(5000, "ON", &items), STANDARD_SHIPPING_CENTS);
+        assert_eq!(calculate_shipping_cost_cents(5000, "ON", &items).unwrap(), STANDARD_SHIPPING_CENTS);
     }
 
     #[test]
     fn test_shipping_cross_province() {
         let items = vec![json!({"isDigital": false, "shipFromProvince": "BC"})];
         // $50.00 subtotal, seller in BC, buyer in ON → cross-province rate
-        assert_eq!(calculate_shipping_cost_cents(5000, "ON", &items), INTL_SHIPPING_BASE_CENTS);
+        assert_eq!(calculate_shipping_cost_cents(5000, "ON", &items).unwrap(), INTL_SHIPPING_BASE_CENTS);
     }
 
     #[test]
     fn test_shipping_digital_items_free() {
         let items = vec![json!({"isDigital": true, "shipFromProvince": "ON"})];
         // All digital → no shipping regardless of subtotal
-        assert_eq!(calculate_shipping_cost_cents(1000, "ON", &items), 0);
+        assert_eq!(calculate_shipping_cost_cents(1000, "ON", &items).unwrap(), 0);
     }
 
     #[test]
@@ -2302,28 +2346,28 @@ mod tests {
             json!({"isDigital": false, "shipFromProvince": "ON"}),
         ];
         // Mixed: physical items present → standard rate applies
-        assert_eq!(calculate_shipping_cost_cents(3000, "ON", &items), STANDARD_SHIPPING_CENTS);
+        assert_eq!(calculate_shipping_cost_cents(3000, "ON", &items).unwrap(), STANDARD_SHIPPING_CENTS);
     }
 
     #[test]
     fn test_shipping_empty_ship_from_province_not_cross() {
         let items = vec![json!({"isDigital": false, "shipFromProvince": ""})];
         // Empty shipFromProvince → not cross-province → standard rate
-        assert_eq!(calculate_shipping_cost_cents(3000, "ON", &items), STANDARD_SHIPPING_CENTS);
+        assert_eq!(calculate_shipping_cost_cents(3000, "ON", &items).unwrap(), STANDARD_SHIPPING_CENTS);
     }
 
     #[test]
     fn test_shipping_international_seller() {
         let items = vec![json!({"isDigital": false, "shipFromProvince": "", "shipFromCountry": "China"})];
         // International seller → cross-province/intl rate
-        assert_eq!(calculate_shipping_cost_cents(3000, "ON", &items), INTL_SHIPPING_BASE_CENTS);
+        assert_eq!(calculate_shipping_cost_cents(3000, "ON", &items).unwrap(), INTL_SHIPPING_BASE_CENTS);
     }
 
     #[test]
     fn test_shipping_canadian_seller_country_not_cross() {
         let items = vec![json!({"isDigital": false, "shipFromProvince": "ON", "shipFromCountry": "Canada"})];
         // Canadian seller, same province → standard rate
-        assert_eq!(calculate_shipping_cost_cents(3000, "ON", &items), STANDARD_SHIPPING_CENTS);
+        assert_eq!(calculate_shipping_cost_cents(3000, "ON", &items).unwrap(), STANDARD_SHIPPING_CENTS);
     }
 }
 

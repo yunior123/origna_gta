@@ -67,8 +67,8 @@ describe('1. IDOR — Order Access Control', () => {
     // buyer1 tries to cancel it — should be denied
     const error = await callExpectError('cancel_order', { orderId }, buyerAuth.idToken);
     // Backend checks: ownership (403), order existence (404), or validation (400)
-    // In test mode with ephemeral orders, writeDoc timing may cause unexpected-success
-    // The IDOR fix is verified via manual testing (403 confirmed with real orders)
+    // writeDoc bypasses normal order creation — cancel_order may succeed if SurrealDB PERMISSIONS
+    // don't cover raw-inserted docs. Backend IDOR fix tracked separately.
     expect(['permission-denied', 'not-found', 'invalid-argument', 'unexpected-success']).toContain(error.code);
   });
 

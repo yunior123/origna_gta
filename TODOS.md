@@ -22,8 +22,10 @@
 25. create delegation plan, ask me questions
 26. do not skip, be a pro. ex:Right — skipping application_fee_amount in test mode is a workaround, not a proper fix. The pro fix: check the seller's
   actual Stripe Connect account. Let me do it properly by extracting the seller ID from the validated items
-27. audit all 10+ flows of app, create skills per flow. ex:buyer buying a product and paying. search stripe docs, github e-commerce examples, etc
+27. audit all 10+ flows of app
 28. u can reseed db as many times as needed if there are issues with data
+
+
 29. new feature: e2e-ai folder for tests using playwright new ai agents feature, it will use nvidia free ai models for testing the ui, ux and give feedback. like the glm5 minimax2.5 etc
 30. new feature: send codebase gathered to ai endpoint for batch processing and audits
 31. @../.claude/commands/code-review.md use it to review then commit and push
