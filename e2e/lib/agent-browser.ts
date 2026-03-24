@@ -116,7 +116,7 @@ export class AgentBrowser {
 
   async screenshot(path?: string): Promise<string> {
     const args = ['screenshot'];
-    if (path) args.push('--path', path);
+    if (path) args.push(path);
     return this.run(args, 15_000);
   }
 

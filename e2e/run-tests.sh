@@ -67,6 +67,7 @@ case "$PHASE" in
   prod)  run_phase "Phase 4: Products" specs/phase4-product-flows/ --max-concurrency 1 ;;
   flow)  run_phase "Phase 5: Flows" specs/phase5-complex-flows/ --max-concurrency 1 ;;
   pay)   run_phase "Phase 6: Stripe" specs/phase6-stripe/ --max-concurrency 1 ;;
+  ai)    run_phase "Phase 7: AI Analysis" ai/specs/ --max-concurrency 1 ;;
   all)
     TOTAL_START=$(date +%s)
     SUITE_STATUS=0
@@ -154,5 +155,5 @@ REPORT
     fi
     exit $SUITE_STATUS
     ;;
-  *) echo "Usage: ./run-tests.sh [all|api|smoke|auth|prod|flow|pay]"; exit 1 ;;
+  *) echo "Usage: ./run-tests.sh [all|api|smoke|auth|prod|flow|pay|ai]"; exit 1 ;;
 esac

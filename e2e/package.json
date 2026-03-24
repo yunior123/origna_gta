@@ -14,6 +14,8 @@
     "test:products": "./run-tests.sh prod",
     "test:flows": "./run-tests.sh flow",
     "test:stripe": "./run-tests.sh pay",
+    "test:ai": "bun test ai/specs/ --timeout 120000",
+    "test:ai:update-baselines": "UPDATE_BASELINES=true bun test ai/specs/visual-regression.spec.ts --timeout 120000",
     "typecheck": "bun x tsc --noEmit"
   },
   "type": "module"

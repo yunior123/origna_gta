@@ -17,6 +17,6 @@
       "~/*": ["./lib/*"]
     }
   },
-  "include": ["bun-test.d.ts", "lib/**/*.ts", "specs/**/*.ts", "global-setup.ts"],
+  "include": ["bun-test.d.ts", "lib/**/*.ts", "specs/**/*.ts", "ai/**/*.ts", "global-setup.ts"],
   "exclude": ["node_modules", "dist"]
 }
