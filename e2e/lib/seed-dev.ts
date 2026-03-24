@@ -286,6 +286,10 @@ async function seedProducts(
       hasVariants: true,
       subcategory: 'Monitors',
       shipFromCountry: 'Canada',
+      isTrending: true,
+      isLocalDeliveryOnly: false,
+      reviewCount: 8,
+      rating: 4.6,
     },
     {
       id: 'e2e_product_test_seller',
@@ -303,6 +307,10 @@ async function seedProducts(
       hasVariants: false,
       subcategory: 'Software',
       shipFromCountry: 'Canada',
+      isTrending: false,
+      isLocalDeliveryOnly: false,
+      reviewCount: 12,
+      rating: 4.2,
     },
     {
       id: 'e2e_product_intl_seller',
@@ -320,6 +328,10 @@ async function seedProducts(
       hasVariants: true,
       subcategory: 'Exterior',
       shipFromCountry: 'China',
+      isTrending: false,
+      isLocalDeliveryOnly: false,
+      reviewCount: 5,
+      rating: 3.8,
     },
     {
       id: 'e2e_product_oos',
@@ -337,6 +349,10 @@ async function seedProducts(
       hasVariants: false,
       subcategory: 'Cameras',
       shipFromCountry: 'Canada',
+      isTrending: false,
+      isLocalDeliveryOnly: false,
+      reviewCount: 3,
+      rating: 4.9,
     },
     {
       id: 'e2e_product_perishable',
@@ -354,6 +370,10 @@ async function seedProducts(
       hasVariants: false,
       subcategory: 'Produce',
       shipFromCountry: 'Canada',
+      isTrending: true,
+      isLocalDeliveryOnly: true,
+      reviewCount: 15,
+      rating: 4.5,
     },
   ];
 
