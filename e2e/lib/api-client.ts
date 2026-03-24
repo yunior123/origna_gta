@@ -370,6 +370,10 @@ export async function callCallable(fn: string, data: any, token: string, timeout
         };
       case 'create_checkout_session': {
         const { userId: _uid, ...checkoutRest } = payload ?? {};
+        // Auto-accept EULA for digital products in E2E tests
+        if (checkoutRest.eulaAccepted === undefined) {
+          checkoutRest.eulaAccepted = true;
+        }
         return { path: '/api/checkout/session', body: checkoutRest };
       }
       case 'get_user_profile':
@@ -719,7 +723,7 @@ export async function callCallable(fn: string, data: any, token: string, timeout
       case 'answer_review':
         return { path: '/api/products/answer-review', body: { userId, reviewId: payload?.reviewId, answer: payload?.answer } };
       case 'apply_coupon':
-        return { path: '/api/checkout/apply-coupon', body: { userId, couponCode: payload?.couponCode } };
+        return { path: '/api/coupons/apply', body: { userId, couponCode: payload?.couponCode } };
       case 'approve_shipping_cost':
         return { path: '/api/shipping/approve', body: { userId, orderId: payload?.orderId, shippingCost: payload?.shippingCost } };
       case 'ask_product_question':
@@ -1303,12 +1307,10 @@ export async function buildCheckoutPayload(
         userId: buyerUid,
         items: [{ productId: resolvedProductId, quantity }],
         shippingAddress: {
-          ...fallbackAddress,
           street: address.street || fallbackAddress.street,
           apartment: address.apartment || fallbackAddress.apartment,
           city: address.city || fallbackAddress.city,
-          state: address.state || fallbackAddress.state,
-          province: address.province || address.state || fallbackAddress.province,
+          state: address.province || address.state || fallbackAddress.state,
           postalCode: address.postalCode || fallbackAddress.postalCode,
           country: address.country || fallbackAddress.country,
           phoneNumber: address.phoneNumber || fallbackAddress.phoneNumber,
@@ -1335,12 +1337,12 @@ export async function buildCheckoutPayload(
       isDigital: product.isDigital || false,
     }],
     subtotalCents: productPriceCents * quantity,
+    eulaAccepted: product.isDigital || false,
     shippingAddress: {
       street: address.street || fallbackAddress.street,
       apartment: address.apartment || '',
       city: address.city || fallbackAddress.city,
-      state: address.state || fallbackAddress.state,
-      province: address.province || address.state || fallbackAddress.province,
+      state: address.province || address.state || fallbackAddress.state,
       postalCode: address.postalCode || fallbackAddress.postalCode,
       country: address.country || fallbackAddress.country,
       phoneNumber: address.phoneNumber || fallbackAddress.phoneNumber,

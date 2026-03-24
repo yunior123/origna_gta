@@ -43,7 +43,10 @@ String? _getSupplierRegion(String? supplierType) {
   };
 }
 
-/// Delivery information for product detail display
+/// Structured delivery information for display on product detail and cart screens.
+///
+/// Computed from [Product.deliveryInfo] — not stored directly.
+/// Contains human-readable estimate text and supplier region for buyer confidence.
 class DeliveryInfo {
   final int minDays;
   final int maxDays;
@@ -66,6 +69,17 @@ class DeliveryInfo {
 // INVENTORY CONFIG MODEL - For flexible inventory management
 // ============================================================================
 
+/// Configuration for product inventory management.
+///
+/// Controls whether stock is tracked, backorders are allowed, and low-stock
+/// alert thresholds. Dropship products typically set [managed] = false.
+///
+/// ## Key Fields
+/// - [managed]: whether inventory is actively tracked (false for dropship)
+/// - [trackQuantity]: whether to display exact stock count (false = "In Stock" only)
+/// - [allowBackorder]: whether orders are accepted when stock = 0
+/// - [lowStockThreshold]: alert when stock drops to this level
+/// - [reservationHoldMinutes]: how long inventory is held during checkout
 @freezed
 abstract class InventoryConfig with _$InventoryConfig {
   const factory InventoryConfig({
@@ -96,6 +110,36 @@ abstract class InventoryConfig with _$InventoryConfig {
 // PRODUCT MODEL
 // ============================================================================
 
+/// Core product model representing a marketplace listing.
+///
+/// ## Money Fields
+/// All monetary values use **integer cents** — never `double`/`float` for money.
+/// Display: `'\$${(priceCents / 100).toStringAsFixed(2)}'`
+/// - [priceCents]: selling price in cents
+/// - [compareAtPriceCents]: original/crossed-out price for discount display (null = no sale)
+///
+/// ## Lifecycle
+/// Products flow through [lifecycleStatus]: draft → under_review → active → paused/archived.
+/// The single [lifecycleStatus] field replaces the old `isActive` + `status` + `approvalStatus`.
+///
+/// ## Variants
+/// Products can have variants (size, color, etc.) via [hasVariants] = true.
+/// - [variantOptions]: defines option dimensions (e.g., [{name: "Size", values: ["S","M","L"]}])
+/// - [variants]: individual variant objects with their own price/stock/SKU
+///
+/// ## Supplier & Delivery
+/// - [supplier]: structured supplier info for dropshipping/marketplace products
+/// - [deliveryOptions]: seller-defined shipping methods with quantity-based discounts
+/// - [estimatedDeliveryDays]: computed from supplier type or explicit shipping days
+///
+/// ## Serialization
+/// Generated from Pydantic models — single source of truth across Python backend and Flutter.
+/// [fromMap] handles backward compatibility (price → priceCents conversion, date parsing).
+///
+/// See also:
+/// - [ProductExtension] for computed getters (price, margin, delivery info)
+/// - [ProductCreate] for the creation DTO
+/// - [ProductVariant] for variant sub-models
 @Freezed(toJson: true, fromJson: true)
 abstract class Product with _$Product {
   const factory Product({
@@ -392,6 +436,20 @@ abstract class ProductQuestion with _$ProductQuestion {
 // SELLER DELIVERY OPTION
 // ============================================================================
 
+/// Seller-defined delivery option with quantity-based pricing.
+///
+/// ## Money Fields
+/// - [costCents]: base shipping cost in integer cents
+/// - [additionalItemCostCents]: per-item surcharge after [maxItemsPerShipment]
+///
+/// ## Volume Discounts
+/// [quantityDiscounts] defines tiered discounts based on item count:
+/// - `percent`: percentage off (e.g., 10% off for 5+ items)
+/// - `fixed`: flat amount off (e.g., $2 off for 3+ items)
+/// - `flat_rate`: fixed price regardless of quantity
+///
+/// See also:
+/// - [SellerDeliveryOptionExtension] for [calculateCostForQuantity]
 @freezed
 abstract class SellerDeliveryOption with _$SellerDeliveryOption {
   const factory SellerDeliveryOption({
@@ -532,6 +590,10 @@ abstract class SupplierInfo with _$SupplierInfo {
 // PRODUCT EXTENSION - Helper getters
 // ============================================================================
 
+/// Computed getters for [Product] — avoids polluting the model with derived fields.
+///
+/// Provides dollar conversions, delivery estimates, profit calculations, and
+/// inventory helpers. All monetary computations use integer cents internally.
 extension ProductExtension on Product {
   /// Check if product allows backorders
   bool get allowsBackorder => inventory?.allowBackorder ?? false;

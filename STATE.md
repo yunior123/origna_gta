@@ -414,6 +414,5 @@ All generated models now use `package:origna_gta/` imports. No relative imports 
 10. ~~P2 — Duplicate widgets~~ **DONE** ✅ (CartBadge, FilterChip, Skeletons extracted)
 11. ~~P3 — Relative imports~~ **DONE** ✅
 12. ~~P3 — EnvConfig~~ **DONE** ✅ (intentional duplicate, comment added)
-13. **IN PROGRESS:** Extract duplicate ViewModel logic (image compression, address handling)
 
 (End of file)

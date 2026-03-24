@@ -11,6 +11,23 @@ part 'base_models.g.dart';
 // ADDRESS MODELS
 // ============================================================================
 
+/// Physical address used for shipping, billing, and seller locations.
+///
+/// ## Key Fields
+/// - [street], [apartment], [city], [state], [postalCode], [country]: standard address
+/// - [latitude], [longitude]: optional coordinates for local delivery distance calculation
+/// - [isDefault]: whether this is the user's primary address
+/// - [label]: optional display name (e.g., "Home", "Office")
+///
+/// ## Usage
+/// - Buyer shipping address on orders
+/// - User profile default address
+/// - Seller warehouse addresses
+/// - Local delivery distance calculation via Haversine formula
+///
+/// See also:
+/// - [Address.formattedAddress] for multi-line display
+/// - [Address.fullAddress] for single-line display
 @freezed
 abstract class Address with _$Address {
   const factory Address({

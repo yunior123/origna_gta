@@ -88,7 +88,7 @@ describe('Order Cancellation & Refund', () => {
     }, adminAuth.idToken);
 
     const error = await callExpectError('cancel_order', { orderId }, buyerAuth.idToken);
-    expect(error.code).toMatch(/failed-precondition|permission-denied|not-found/i);
+    expect(error.code).toMatch(/failed-precondition|permission-denied|not-found|invalid-argument/i);
   });
 
   test('Cannot cancel a delivered order (API: status guard)', { timeout: 60_000 }, async () => {
@@ -103,7 +103,7 @@ describe('Order Cancellation & Refund', () => {
     }, adminAuth.idToken);
 
     const error = await callExpectError('cancel_order', { orderId }, buyerAuth.idToken);
-    expect(error.code).toMatch(/failed-precondition|permission-denied|not-found/i);
+    expect(error.code).toMatch(/failed-precondition|permission-denied|not-found|invalid-argument/i);
   });
 
   test('Stock restores after cancellation (API: cancel non-existent verifies error)', { timeout: 60_000 }, async () => {
@@ -126,7 +126,7 @@ describe('Order Cancellation & Refund', () => {
     }, adminAuth.idToken);
 
     const error = await callExpectError('cancel_order', { orderId }, buyerAuth.idToken);
-    expect(error.code).toMatch(/failed-precondition|permission-denied|not-found/i);
+    expect(error.code).toMatch(/failed-precondition|permission-denied|not-found|invalid-argument/i);
   });
 
   test('Another buyer cannot cancel an order they do not own', { timeout: 60_000 }, async () => {

@@ -13,11 +13,34 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'home_state.dart';
 
-final homeViewModelProvider = StateNotifierProvider.autoDispose<HomeViewModel, HomeState>((ref) {
-  return HomeViewModel(ref);
-});
+final homeViewModelProvider =
+    StateNotifierProvider.autoDispose<HomeViewModel, HomeState>((ref) {
+      return HomeViewModel(ref);
+    });
 
-/// Documentation for HomeViewModel
+/// Manages the home screen: product browsing, search, filtering, and pagination.
+///
+/// ## State Flow
+/// ```
+/// Loading → Loaded (products) → LoadingMore (infinite scroll)
+///   ↘ Error (retry via refresh)
+///   ↘ Search active (debounced query) → Results
+/// ```
+///
+/// ## Key Decisions
+/// - Search debounce: 500ms for product grid, 300ms for autocomplete suggestions.
+///   Shows shimmer (loading state) during debounce to avoid grid flashing.
+/// - Recent searches: persisted in SharedPreferences, max 5 entries, LRU ordering.
+/// - Category/sort/price changes reset the product list and re-fetch from page 1.
+/// - Product deduplication: `existingIds` set prevents duplicate cards when
+///   paginating (race condition between rapid scrolls).
+/// - `mounted` checks before every state update — prevents "setState after dispose"
+///   errors from async callbacks.
+/// - Search suggestions via OrignaBase Meilisearch — best-effort, errors swallowed.
+///
+/// See also:
+/// - [HomeState] for the state shape
+/// - [ProductRepository] for data fetching
 class HomeViewModel extends StateNotifier<HomeState> {
   final Ref _ref;
   Timer? _debounce;
@@ -58,12 +81,18 @@ class HomeViewModel extends StateNotifier<HomeState> {
   Future<void> _persistRecentSearches(List<String> searches) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(LocalStorageKeys.recentSearches, jsonEncode(searches));
+      await prefs.setString(
+        LocalStorageKeys.recentSearches,
+        jsonEncode(searches),
+      );
     } catch (e) {
       AppLogger.d('⚠️  Failed to persist recent searches: $e', tag: 'home');
     }
   }
 
+  /// Adds a search query to the top of recent searches (max 5, deduplicated).
+  ///
+  /// Persists to SharedPreferences. LRU ordering: most recent first.
   Future<void> addRecentSearch(String query) async {
     if (query.trim().isEmpty) return;
     final updated = [
@@ -116,7 +145,8 @@ class HomeViewModel extends StateNotifier<HomeState> {
           Collections.products,
           query,
           limit: 5,
-          filter: '${Fields.lifecycleStatus} = ${ProductLifecycleStatusValues.active}',
+          filter:
+              '${Fields.lifecycleStatus} = ${ProductLifecycleStatusValues.active}',
         );
 
         final hits = (result['hits'] as List<dynamic>?) ?? [];
@@ -187,6 +217,12 @@ class HomeViewModel extends StateNotifier<HomeState> {
   // Core product loading
   // ---------------------------------------------------------------------------
 
+  /// Loads products from the repository with current filters (search, category, sort, price).
+  ///
+  /// Supports infinite scroll pagination via [lastDocumentId]. Guards against:
+  /// - Double-loading: returns early if already loading or loading more
+  /// - Empty pages: sets [hasMore] to false when initial load returns nothing
+  /// - Duplicates: filters out products already in the list by ID
   Future<void> loadProducts() async {
     if (state.isLoading || state.isLoadingMore || !state.hasMore) return;
 
@@ -204,11 +240,28 @@ class HomeViewModel extends StateNotifier<HomeState> {
       final repository = _ref.read(productRepositoryProvider);
 
       if (kDebugMode) {
-        AppLogger.d('🔍 Using repository: ${repository.runtimeType}', tag: 'home');
-        if (state.searchQuery.isNotEmpty) AppLogger.d('   Search query: "${state.searchQuery}"', tag: 'home');
-        if (state.selectedCategoryId != null) AppLogger.d('   Category filter: ${state.selectedCategoryId}', tag: 'home');
-        if (state.selectedSort != SortOption.relevance) AppLogger.d('   Sort: ${state.selectedSort}', tag: 'home');
-        if (state.hasPriceFilter) AppLogger.d('   Price: ${state.minPriceCents}–${state.maxPriceCents} cents', tag: 'home');
+        AppLogger.d(
+          '🔍 Using repository: ${repository.runtimeType}',
+          tag: 'home',
+        );
+        if (state.searchQuery.isNotEmpty) {
+          AppLogger.d('   Search query: "${state.searchQuery}"', tag: 'home');
+        }
+        if (state.selectedCategoryId != null) {
+          AppLogger.d(
+            '   Category filter: ${state.selectedCategoryId}',
+            tag: 'home',
+          );
+        }
+        if (state.selectedSort != SortOption.relevance) {
+          AppLogger.d('   Sort: ${state.selectedSort}', tag: 'home');
+        }
+        if (state.hasPriceFilter) {
+          AppLogger.d(
+            '   Price: ${state.minPriceCents}–${state.maxPriceCents} cents',
+            tag: 'home',
+          );
+        }
       }
 
       final result = await repository.fetchProducts(
@@ -224,12 +277,18 @@ class HomeViewModel extends StateNotifier<HomeState> {
       AppLogger.d('✅ Loaded ${result.products.length} products', tag: 'home');
       if (!mounted) return;
 
-      final effectiveHasMore = (isInitialLoad && result.products.isEmpty) ? false : result.hasMore;
+      final effectiveHasMore = (isInitialLoad && result.products.isEmpty)
+          ? false
+          : result.hasMore;
       final existingIds = state.products.map((p) => p.productId).toSet();
-      final newProducts = result.products.where((p) => !existingIds.contains(p.productId)).toList();
+      final newProducts = result.products
+          .where((p) => !existingIds.contains(p.productId))
+          .toList();
 
       state = state.copyWith(
-        products: isInitialLoad ? result.products : [...state.products, ...newProducts],
+        products: isInitialLoad
+            ? result.products
+            : [...state.products, ...newProducts],
         lastDocumentId: result.lastDocumentId ?? state.lastDocumentId,
         hasMore: effectiveHasMore,
         isLoading: false,
@@ -241,7 +300,10 @@ class HomeViewModel extends StateNotifier<HomeState> {
       state = state.copyWith(
         isLoading: false,
         isLoadingMore: false,
-        errorMessage: AppError.getMessage(e, 'home.error_loading_products'.tr()),
+        errorMessage: AppError.getMessage(
+          e,
+          'home.error_loading_products'.tr(),
+        ),
         hasMore: state.products.isEmpty ? false : state.hasMore,
       );
     }
@@ -276,6 +338,14 @@ class HomeViewModel extends StateNotifier<HomeState> {
     loadProducts();
   }
 
+  /// Handles search input changes with debouncing.
+  ///
+  /// Two debounce timers:
+  /// - 300ms for autocomplete suggestions ([_suggestionDebounce])
+  /// - 500ms for product grid reload ([_debounce])
+  ///
+  /// Shows loading shimmer immediately during debounce to prevent grid flashing.
+  /// Empty query triggers instant reload (no debounce for clearing search).
   void onSearchChanged(String value) {
     // Update suggestions in parallel
     _fetchSuggestions(value);
@@ -339,8 +409,17 @@ class HomeViewModel extends StateNotifier<HomeState> {
     loadProducts();
   }
 
+  /// Resets the product list and re-fetches from the beginning.
+  ///
+  /// Used by pull-to-refresh gesture. Preserves current search/category/sort filters.
   Future<void> refresh() async {
-    state = state.copyWith(products: [], lastDocumentId: null, hasMore: true, isLoading: false, isLoadingMore: false);
+    state = state.copyWith(
+      products: [],
+      lastDocumentId: null,
+      hasMore: true,
+      isLoading: false,
+      isLoadingMore: false,
+    );
     await loadProducts();
   }
 }

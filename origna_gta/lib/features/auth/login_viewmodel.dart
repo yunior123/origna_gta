@@ -16,7 +16,11 @@ final loginViewModelProvider =
       return LoginViewModel(ref);
     });
 
-/// Maps OrignaBase auth error codes to translation keys.
+/// Maps OrignaBase auth exception codes to user-friendly translated error messages.
+///
+/// Handles all known error codes from the OrignaBase auth API. Unknown codes
+/// fall back to a generic authentication failure message and are logged for
+/// future handling.
 String _friendlyAuthError(OrignaBaseAuthException e) {
   switch (e.code) {
     case 'user-not-found':
@@ -50,12 +54,37 @@ String _friendlyAuthError(OrignaBaseAuthException e) {
   }
 }
 
-/// Documentation for LoginViewModel
+/// Manages the login/registration screen: form validation, auth provider selection,
+/// MFA flow, and error handling.
+///
+/// ## Supported Auth Methods
+/// - Email/password (login + registration)
+/// - Apple Sign-In
+/// - Google Sign-In
+///
+/// ## Key Decisions
+/// - Password strength validation mirrors backend policy (min 8 chars, uppercase,
+///   lowercase, digit, special char, not in common password list).
+/// - MFA handled inline: when OrignaBase returns `mfa-required`, state transitions
+///   to MFA verification mode with [challengeToken].
+/// - Email verification is NOT enforced at sign-in — it's a checkout gate instead.
+///   This avoids blocking returning users who haven't verified yet.
+/// - Analytics logging is fire-and-forget (`unawaited`) — never blocks auth flow.
+/// - Auth mode toggle (login ↔ register) resets all form state.
+///
+/// See also:
+/// - [LoginState] for the state shape
+/// - [AuthRepository] for persistence layer
+/// - [ValidationConstants] for input validation rules
 class LoginViewModel extends StateNotifier<LoginState> {
   final Ref _ref;
 
   LoginViewModel(this._ref) : super(const LoginState());
 
+  /// Handles Apple Sign-In flow.
+  ///
+  /// Guards against double-tap via [state.isLoading]. Silently ignores
+  /// user cancellation (no error message shown). Logs analytics on success.
   Future<void> handleAppleSignIn() async {
     if (state.isLoading) return;
 
@@ -89,6 +118,18 @@ class LoginViewModel extends StateNotifier<LoginState> {
     }
   }
 
+  /// Handles email/password authentication (login or registration based on [state.isLogin]).
+  ///
+  /// [email] — user's email address.
+  /// [password] — user's password.
+  /// [name] — required for registration, ignored for login.
+  /// [marketingOptIn] — whether user consents to marketing emails (registration only).
+  ///
+  /// Registration enforces strong password policy ([_validatePasswordStrength]).
+  /// Login does NOT enforce email verification — it's a checkout gate instead.
+  ///
+  /// On MFA-required: transitions state to MFA mode with [challengeToken].
+  /// On success: sets [isSuccess] = true, clears MFA state.
   Future<void> handleAuth({
     required String email,
     required String password,
@@ -199,6 +240,10 @@ class LoginViewModel extends StateNotifier<LoginState> {
     }
   }
 
+  /// Handles Google Sign-In flow.
+  ///
+  /// Guards against double-tap via [state.isLoading]. Silently ignores
+  /// popup-closed/user cancellation. Logs analytics on success.
   Future<void> handleGoogleSignIn() async {
     if (state.isLoading) return;
 

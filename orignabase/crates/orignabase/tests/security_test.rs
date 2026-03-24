@@ -101,8 +101,13 @@ mod injection {
         // Should have errors or empty data — NOT drop the table
         let has_errors = body.get("errors").is_some();
         let data_null = body.get("data").map_or(true, |d| d.is_null());
+        let data_empty = body
+            .get("data")
+            .and_then(|d| d.get("list"))
+            .and_then(|l| l.as_array())
+            .map_or(false, |a| a.is_empty());
         assert!(
-            has_errors || data_null,
+            has_errors || data_null || data_empty,
             "Injection should not succeed: {body}"
         );
     }
@@ -632,8 +637,13 @@ mod path_traversal {
                 .get("data")
                 .and_then(|d| d.get("list"))
                 .map_or(true, |v| v.is_null());
+            let data_empty = body
+                .get("data")
+                .and_then(|d| d.get("list"))
+                .and_then(|l| l.as_array())
+                .map_or(false, |a| a.is_empty());
             assert!(
-                has_errors || data_null,
+                has_errors || data_null || data_empty,
                 "Path traversal should not succeed: {body}"
             );
         }

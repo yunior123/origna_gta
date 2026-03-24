@@ -58,11 +58,11 @@ async fn handle_stripe_webhook(
         .await
         .map_err(|e| ob_core::Error::Internal(format!("Failed to read body: {e}")))?;
 
-    // --- Verify webhook signature — REQUIRED in production ---
+    // --- Verify webhook signature — REQUIRED in all environments ---
     let webhook_secret = state.config.require_secret("stripe_webhook_secret")
         .map_err(|_| {
             error!("stripe_webhook_secret not configured — refusing webhook");
-            ob_core::Error::Internal("Webhook secret not configured".into())
+            ob_core::Error::Forbidden("Webhook processing unavailable".into())
         })?;
 
     if signature.is_empty() {

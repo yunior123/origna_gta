@@ -1075,6 +1075,32 @@ async function seedUserPreferences(admin: AuthBundle, userIds: string[]) {
   }, 10);
 }
 
+async function seedPayouts(admin: AuthBundle, sellerIds: string[]) {
+  const statuses = ['pending', 'completed', 'completed', 'completed', 'failed', 'processing', 'completed', 'pending'] as const;
+  for (let i = 0; i < statuses.length; i++) {
+    const sellerId = sellerIds[i % sellerIds.length];
+    const status = statuses[i];
+    const amountCents = 15000 + (i * 7500);
+    const platformFeeCents = Math.round(amountCents * 0.10);
+    await writeDoc(`payouts/payout_seed_${i}`, {
+      sellerId,
+      orderId: `orders:seed_order_${i}`,
+      status,
+      amountCents,
+      platformFeeCents,
+      netAmountCents: amountCents - platformFeeCents,
+      currency: 'CAD',
+      stripePayoutId: status === 'completed' ? `po_seed_${i}` : null,
+      stripeTransferId: `tr_seed_${i}`,
+      failureReason: status === 'failed' ? 'insufficient_funds' : null,
+      scheduledAt: isoDaysAgo(15 - i),
+      completedAt: status === 'completed' ? isoDaysAgo(10 - i) : null,
+      createdAt: isoDaysAgo(20 - i),
+      updatedAt: new Date().toISOString(),
+    }, admin.idToken, true);
+  }
+}
+
 async function main() {
   console.log(`🌱 Mega seeding ${process.env.ORIGNABASE_URL || 'default'} with ${PRODUCT_COUNT}+ products...`);
 
@@ -1173,6 +1199,9 @@ async function main() {
   await seedUserPreferences(admin, allUserIds);
   console.log('  ✓ user preferences seeded (10 users)');
 
+  await seedPayouts(admin, allSellerIds);
+  console.log('  ✓ seller payouts seeded (8)');
+
   await seedCategories(admin);
   console.log('  ✓ categories seeded (21)');
 
@@ -1187,7 +1216,7 @@ async function main() {
   console.log(`     notifications, reviews, Q&A, chats, stock_notifications, subscriptions,`);
   console.log(`     seller_profiles, seller_metrics, return_requests, categories,`);
   console.log(`     disputes, coupons, promotions, download_sessions, mfa_settings,`);
-  console.log(`     review_answers, user_preferences`);
+  console.log(`     review_answers, user_preferences, payouts`);
   console.log(`   Multi-user: favorites(6), addresses(7), cart(4), notifications(9), stock_notifications(6)`);
   console.log(`   All views and widgets now have populated non-empty state for demos.`);
 }

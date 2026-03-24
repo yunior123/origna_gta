@@ -480,4 +480,88 @@ mod tests {
         assert_eq!(config.region, "eu-central-1");
         assert!(config.endpoint.as_ref().unwrap().contains("cloudflare"));
     }
+
+    /// Helper to create S3Storage pointing at a non-existent endpoint for error path testing
+    async fn test_s3_storage() -> S3Storage {
+        S3Storage::new(S3Config {
+            bucket: "test-bucket".into(),
+            region: "us-east-1".into(),
+            endpoint: Some("http://127.0.0.1:19999".into()), // no server here
+            access_key: "test-access".into(),
+            secret_key: "test-secret".into(),
+        })
+        .await
+        .unwrap()
+    }
+
+    #[tokio::test]
+    async fn test_s3_storage_new_creates_client() {
+        let storage = test_s3_storage().await;
+        assert_eq!(storage.bucket, "test-bucket");
+    }
+
+    #[tokio::test]
+    async fn test_s3_storage_upload_error_on_unreachable() {
+        let storage = test_s3_storage().await;
+        let result = storage.upload("test/file.txt", b"hello", "text/plain").await;
+        assert!(result.is_err(), "Upload to unreachable S3 should fail");
+    }
+
+    #[tokio::test]
+    async fn test_s3_storage_download_error_on_unreachable() {
+        let storage = test_s3_storage().await;
+        let result = storage.download("test/file.txt").await;
+        assert!(result.is_err(), "Download from unreachable S3 should fail");
+    }
+
+    #[tokio::test]
+    async fn test_s3_storage_delete_error_on_unreachable() {
+        let storage = test_s3_storage().await;
+        let result = storage.delete("test/file.txt").await;
+        assert!(result.is_err(), "Delete on unreachable S3 should fail");
+    }
+
+    #[tokio::test]
+    async fn test_s3_storage_exists_returns_false_on_unreachable() {
+        let storage = test_s3_storage().await;
+        let result = storage.exists("test/file.txt").await;
+        // exists() returns Ok(false) on error, not Err
+        assert!(result.is_ok());
+        assert!(!result.unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_s3_storage_metadata_error_on_unreachable() {
+        let storage = test_s3_storage().await;
+        let result = storage.metadata("test/file.txt").await;
+        assert!(result.is_err(), "Metadata on unreachable S3 should fail");
+    }
+
+    #[tokio::test]
+    async fn test_s3_storage_list_error_on_unreachable() {
+        let storage = test_s3_storage().await;
+        let result = storage.list("test/").await;
+        assert!(result.is_err(), "List on unreachable S3 should fail");
+    }
+
+    #[tokio::test]
+    async fn test_s3_storage_presign_download_generates_url() {
+        let storage = test_s3_storage().await;
+        let result = storage.presign_download("test/file.txt", 3600).await;
+        // Presigning doesn't need network — it's computed locally
+        assert!(result.is_ok(), "Presign download should succeed without network");
+        let url = result.unwrap();
+        assert!(url.contains("test-bucket"), "URL should contain bucket name");
+        assert!(url.contains("test/file.txt"), "URL should contain object key");
+    }
+
+    #[tokio::test]
+    async fn test_s3_storage_presign_upload_generates_url() {
+        let storage = test_s3_storage().await;
+        let result = storage.presign_upload("uploads/img.jpg", "image/jpeg", 3600).await;
+        assert!(result.is_ok(), "Presign upload should succeed without network");
+        let url = result.unwrap();
+        assert!(url.contains("test-bucket"), "URL should contain bucket name");
+        assert!(url.contains("uploads/img.jpg"), "URL should contain object key");
+    }
 }

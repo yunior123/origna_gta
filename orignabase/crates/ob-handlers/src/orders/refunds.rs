@@ -1,7 +1,8 @@
 //! Order refund and cancellation handlers.
 //! Ported from: functions/handlers/orders.py::refund_order_item, cancel_order
 
-use axum::{Json, Router, extract::State, routing::post};
+use axum::{Extension, Json, Router, extract::State, routing::post};
+use ob_auth::middleware::AuthContext;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -145,11 +146,10 @@ pub(crate) fn calculate_refund_amount_cents(
 }
 
 async fn is_user_admin(state: &HandlersState, user_id: &str) -> Result<bool, ob_core::Error> {
-    let user = state
-        .db
-        .get_document(collections::USERS, user_id)
-        .await
-        .map_err(|_| ob_core::Error::NotFound("User not found".into()))?;
+    let user = match state.db.get_document(collections::USERS, user_id).await {
+        Ok(u) => u,
+        Err(_) => return Ok(false), // user not in DB → not admin
+    };
     let roles = user
         .get(fields::ROLES)
         .and_then(|v| v.as_array())
@@ -498,14 +498,16 @@ async fn refund_order_item(
 
 async fn cancel_order(
     State(state): State<HandlersState>,
+    Extension(auth): Extension<AuthContext>,
     Json(req): Json<CancelOrderRequest>,
 ) -> Result<Json<CancelOrderResponse>, ob_core::Error> {
+    // SECURITY: derive user_id from JWT, never trust client-supplied value
+    let user_id = crate::shared::auth::resolve_self_user_id(&auth, Some(req.user_id.as_str()), "userId")?;
     validate_uid("orderId", &req.order_id)?;
-    validate_uid("userId", &req.user_id)?;
 
     crate::shared::rate_limiter::check_user_rate_limit(
         &state.db,
-        &req.user_id,
+        &user_id,
         "cancel_order",
         5,
         1,
@@ -531,13 +533,13 @@ async fn cancel_order(
         ));
     }
 
-    // Permission check
-    let is_admin = is_user_admin(&state, &req.user_id).await?;
-    let is_buyer = str_field(&order, "userId") == req.user_id;
+    // Permission check — using JWT-authenticated user_id
+    let is_admin = auth.roles.iter().any(|r| r == "admin");
+    let is_buyer = str_field(&order, "userId") == user_id;
     let items = items_array(&order);
     let seller_items: Vec<&Value> = items
         .iter()
-        .filter(|it| str_field(it, fields::SELLER_ID) == req.user_id)
+        .filter(|it| str_field(it, fields::SELLER_ID) == user_id)
         .collect();
     let is_seller = !seller_items.is_empty();
 
@@ -759,6 +761,16 @@ mod tests {
             )
             .await
             .unwrap();
+    }
+
+    fn auth(user_id: &str, roles: &[&str]) -> AuthContext {
+        AuthContext {
+            user_id: user_id.to_string(),
+            roles: roles.iter().map(|s| s.to_string()).collect(),
+            authenticated: true,
+            email_verified: false,
+            custom_claims: serde_json::Value::Null,
+        }
     }
 
     async fn stripe_state(server: &MockServer) -> HandlersState {
@@ -1462,6 +1474,7 @@ mod tests {
 
         let Json(resp) = cancel_order(
             State(state.clone()),
+            Extension(auth("buyer_1", &["buyer"])),
             Json(CancelOrderRequest {
                 order_id: "order_1".into(),
                 user_id: "buyer_1".into(),
@@ -1772,6 +1785,7 @@ mod tests {
 
         let Json(resp) = cancel_order(
             State(state.clone()),
+            Extension(auth("buyer_1", &["buyer"])),
             Json(CancelOrderRequest {
                 order_id: "order_cancel".into(),
                 user_id: "buyer_1".into(),
@@ -1837,6 +1851,7 @@ mod tests {
 
         let err = cancel_order(
             State(state.clone()),
+            Extension(auth("buyer_1", &["buyer"])),
             Json(CancelOrderRequest {
                 order_id: "order_quarantine".into(),
                 user_id: "buyer_1".into(),
@@ -2177,6 +2192,7 @@ mod tests {
 
         let err = cancel_order(
             State(state),
+            Extension(auth("buyer_1", &["buyer"])),
             Json(CancelOrderRequest {
                 order_id: "order_arch".into(),
                 user_id: "buyer_1".into(),
@@ -2215,6 +2231,7 @@ mod tests {
 
         let err = cancel_order(
             State(state),
+            Extension(auth("random_user", &["viewer"])),
             Json(CancelOrderRequest {
                 order_id: "order_noauth".into(),
                 user_id: "random_user".into(),
@@ -2254,6 +2271,7 @@ mod tests {
 
         let err = cancel_order(
             State(state),
+            Extension(auth("seller_1", &["seller"])),
             Json(CancelOrderRequest {
                 order_id: "order_multi".into(),
                 user_id: "seller_1".into(),
@@ -2293,6 +2311,7 @@ mod tests {
 
         let err = cancel_order(
             State(state),
+            Extension(auth("buyer_1", &["buyer"])),
             Json(CancelOrderRequest {
                 order_id: "order_shipped".into(),
                 user_id: "buyer_1".into(),
@@ -2329,6 +2348,7 @@ mod tests {
 
         let err = cancel_order(
             State(state),
+            Extension(auth("buyer_1", &["buyer"])),
             Json(CancelOrderRequest {
                 order_id: "order_proc".into(),
                 user_id: "buyer_1".into(),
@@ -2376,6 +2396,7 @@ mod tests {
 
         let err = cancel_order(
             State(state.clone()),
+            Extension(auth("buyer_1", &["buyer"])),
             Json(CancelOrderRequest {
                 order_id: "order_pi_fail".into(),
                 user_id: "buyer_1".into(),
@@ -2431,6 +2452,7 @@ mod tests {
 
         let Json(resp) = cancel_order(
             State(state.clone()),
+            Extension(auth("buyer_1", &["buyer"])),
             Json(CancelOrderRequest {
                 order_id: "order_nopay".into(),
                 user_id: "buyer_1".into(),
@@ -2489,6 +2511,7 @@ mod tests {
 
         let Json(resp) = cancel_order(
             State(state.clone()),
+            Extension(auth("buyer_1", &["buyer"])),
             Json(CancelOrderRequest {
                 order_id: "order_dig_cancel".into(),
                 user_id: "buyer_1".into(),

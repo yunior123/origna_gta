@@ -57,6 +57,11 @@ fn validate_lifecycle_transition(
     from_state: &str,
     to_state: &str,
 ) -> Result<(), ob_core::Error> {
+    // No-op: same state is always valid
+    if from_state == to_state {
+        return Ok(());
+    }
+
     let valid_transitions = match from_state {
         "draft" => vec!["active", "archived"],
         "active" => vec!["inactive", "archived"],
@@ -721,10 +726,12 @@ async fn create_product_atomic(
 
 async fn delete_product(
     State(state): State<HandlersState>,
+    Extension(auth): Extension<AuthContext>,
     Json(req): Json<DeleteProductRequest>,
 ) -> Result<Json<DeleteProductResponse>, ob_core::Error> {
+    // SECURITY: derive user_id from JWT, never trust client-supplied value
+    let user_id = resolve_self_user_id(&auth, Some(req.user_id.as_str()), "userId")?;
     validate_uid("productId", &req.product_id)?;
-    validate_uid("userId", &req.user_id)?;
 
     // Fetch product
     let product = state
@@ -737,26 +744,14 @@ async fn delete_product(
         return Err(ob_core::Error::NotFound("Product not found".into()));
     }
 
-    // Permission check: seller or admin
+    // Permission check: seller or admin (using JWT-authenticated identity)
     let seller_id = product
         .get(fields::SELLER_ID)
         .and_then(|v| v.as_str())
         .unwrap_or("");
 
-    let user = state
-        .db
-        .get_document(collections::USERS, &req.user_id)
-        .await
-        .map_err(|_| ob_core::Error::NotFound("User not found".into()))?;
-
-    let roles = user
-        .get(fields::ROLES)
-        .and_then(|v| v.as_array())
-        .map(|arr| arr.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>())
-        .unwrap_or_default();
-
-    let is_admin = roles.contains(&"admin");
-    let is_owner = seller_id == req.user_id;
+    let is_admin = auth.roles.iter().any(|r| r == "admin");
+    let is_owner = seller_id == user_id;
 
     if !is_admin && !is_owner {
         return Err(ob_core::Error::Forbidden(
@@ -764,16 +759,18 @@ async fn delete_product(
         ));
     }
 
-    // Check for pending orders containing this product
+    // Check for pending orders containing this product (parameterized query)
     let pending_query = format!(
-        "SELECT * FROM {} WHERE {} CONTAINS '{}' AND {} IN ['pending', 'processing', 'shipped'] LIMIT 5",
+        "SELECT * FROM {} WHERE {} = $seller_id AND {} IN ['pending', 'processing', 'shipped'] LIMIT 5",
         collections::ORDERS,
         fields::SELLER_ID,
-        ob_core::escape_surreal_string(&req.user_id),
         fields::STATUS,
     );
 
-    let pending_orders: Vec<Value> = state.db.query_raw(&pending_query).await.unwrap_or_default();
+    let pending_orders: Vec<Value> = state.db.query_bind_value(
+        &pending_query,
+        serde_json::json!({ "seller_id": user_id }),
+    ).await.unwrap_or_default();
 
     // Check if any pending order contains this product
     for order in &pending_orders {
@@ -793,7 +790,7 @@ async fn delete_product(
     let update = serde_json::json!({
         fields::LIFECYCLE_STATUS: "archived",
         fields::DELETED_AT: now,
-        fields::DELETED_BY: req.user_id,
+        fields::DELETED_BY: user_id,
     });
 
     state
@@ -1043,14 +1040,16 @@ async fn bulk_update_products(
 
 async fn update_product(
     State(state): State<HandlersState>,
+    Extension(auth): Extension<AuthContext>,
     Json(req): Json<UpdateProductRequest>,
 ) -> Result<Json<serde_json::Value>, ob_core::Error> {
+    // SECURITY: derive user_id from JWT, never trust client-supplied value
+    let user_id = resolve_self_user_id(&auth, Some(req.user_id.as_str()), "userId")?;
     validate_uid("productId", &req.product_id)?;
-    validate_uid("userId", &req.user_id)?;
 
     crate::shared::rate_limiter::check_user_rate_limit(
         &state.db,
-        &req.user_id,
+        &user_id,
         "update_product",
         60, // 60 updates
         60, // per hour
@@ -1065,16 +1064,8 @@ async fn update_product(
         .get(fields::SELLER_ID)
         .and_then(|v| v.as_str())
         .unwrap_or("");
-    let user = state
-        .db
-        .get_document(collections::USERS, &req.user_id)
-        .await?;
-    let is_admin = user
-        .get(fields::ROLES)
-        .and_then(|v| v.as_array())
-        .map(|roles| roles.iter().any(|r| r.as_str() == Some("admin")))
-        .unwrap_or(false);
-    if seller_id != req.user_id && !is_admin {
+    let is_admin = auth.roles.iter().any(|r| r == "admin");
+    if seller_id != user_id && !is_admin {
         return Err(ob_core::Error::Forbidden(
             "Only product owner or admin can update".into(),
         ));
@@ -1603,6 +1594,7 @@ mod tests {
 
         let err = delete_product(
             State(state),
+            Extension(auth("buyer_1", &["buyer"])),
             Json(DeleteProductRequest {
                 product_id: "prod_1".into(),
                 user_id: "buyer_1".into(),
@@ -1650,6 +1642,7 @@ mod tests {
 
         let err = delete_product(
             State(state),
+            Extension(auth("seller_1", &["seller"])),
             Json(DeleteProductRequest {
                 product_id: "prod_1".into(),
                 user_id: "seller_1".into(),
@@ -1688,6 +1681,7 @@ mod tests {
 
         let Json(resp) = delete_product(
             State(state.clone()),
+            Extension(auth("seller_1", &["seller"])),
             Json(DeleteProductRequest {
                 product_id: "prod_1".into(),
                 user_id: "seller_1".into(),
@@ -1948,6 +1942,7 @@ mod tests {
 
         let err = update_product(
             State(state),
+            Extension(auth("buyer_1", &["buyer"])),
             Json(UpdateProductRequest {
                 product_id: "prod_1".into(),
                 user_id: "buyer_1".into(),
@@ -1983,6 +1978,7 @@ mod tests {
 
         let Json(resp) = update_product(
             State(state.clone()),
+            Extension(auth("seller_1", &["seller"])),
             Json(UpdateProductRequest {
                 product_id: "prod_1".into(),
                 user_id: "seller_1".into(),
@@ -2284,6 +2280,7 @@ mod tests {
         let state = setup_state().await;
         let err = delete_product(
             State(state),
+            Extension(auth("user_1", &["seller"])),
             Json(DeleteProductRequest {
                 product_id: "nonexistent".into(),
                 user_id: "user_1".into(),
@@ -2478,6 +2475,7 @@ mod tests {
 
         let err = update_product(
             State(state),
+            Extension(auth("seller_1", &["seller"])),
             Json(UpdateProductRequest {
                 product_id: "prod_1".into(),
                 user_id: "seller_1".into(),

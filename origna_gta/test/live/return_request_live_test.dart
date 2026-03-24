@@ -81,9 +81,9 @@ void main() {
       'fetchOrderById returns order details',
       () async {
         if (!runLive) return;
-        final order = await repo.fetchOrderById('e2e_test_order');
+        final order = await repo.fetchOrderById('orders:seed_order_001');
         expect(order, isNotNull);
-        expect(order!.orderId, contains('e2e_test_order'));
+        expect(order!.orderId, contains('seed_order_001'));
       },
       skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),

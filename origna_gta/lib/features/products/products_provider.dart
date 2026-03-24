@@ -15,8 +15,15 @@ import 'package:origna_gta/utils/utils.dart';
 // FILTER STATE PROVIDERS
 // ============================================================================
 
-/// Full product details for all favorites — chunked into 30-ID batches and
-/// fetched in parallel to avoid the batch query limit.
+/// Full product details for all favorited products.
+///
+/// Chunks favorite IDs into batches of 30 (OrignaBase batch query limit) and
+/// fetches all chunks in parallel via [Future.wait]. Reassembles results into
+/// a single flat list.
+///
+/// See also:
+/// - [favoritesProvider] for the reactive set of favorite IDs
+/// - [FavoritesController] for toggle operations
 final favoritedProductsProvider = FutureProvider.autoDispose<List<Product>>((
   ref,
 ) async {
@@ -49,11 +56,14 @@ final favoritesControllerProvider = Provider.autoDispose<FavoritesController>((
 // PRODUCTS PROVIDER
 // ============================================================================
 
-/// Stream of favorite product IDs for current user.
-/// Uses [keepAlive] when a user is logged in to prevent the stream from being
-/// disposed during transient rebuilds (e.g. category switches clear the product
-/// grid which briefly removes all ProductCard watchers). Without this, the
-/// stream restarts in AsyncLoading and the heart icon blinks.
+/// Stream of favorite product IDs for the current user.
+///
+/// ## Key Decisions
+/// - Uses [keepAlive] when a user is logged in to prevent the stream from being
+///   disposed during transient rebuilds (e.g., category switches clear the product
+///   grid which briefly removes all ProductCard watchers). Without this, the
+///   stream restarts in AsyncLoading and the heart icon blinks.
+/// - The [keepAlive] link is closed on dispose to prevent leaks after logout.
 final favoritesProvider = StreamProvider.autoDispose<Set<String>>((ref) {
   final userId = ref.watch(userIdProvider);
   if (userId == null) return Stream.value({});
@@ -80,7 +90,10 @@ final filteredProductsProvider = FutureProvider.autoDispose<List<Product>>((
   return ref.watch(productsProvider(query).future);
 });
 
-/// Fetches a single product by ID
+/// Fetches a single product by its document ID.
+///
+/// Returns `null` if the product doesn't exist. Used by product detail screen
+/// deep links and admin product preview.
 final productByIdProvider = FutureProvider.autoDispose.family<Product?, String>(
   (ref, productId) async {
     final repository = ref.watch(productRepositoryProvider);
@@ -143,7 +156,19 @@ final searchQueryProvider = StateProvider.autoDispose<String>((ref) => '');
 /// Currently selected category ID (null = all categories)
 final selectedCategoryProvider = StateProvider.autoDispose<int?>((ref) => null);
 
-/// Documentation for FavoritesController
+/// Stateless controller for toggling product favorites and checking favorite status.
+///
+/// Reads from [favoritesProvider] for reactive state — callers watch that provider
+/// for UI updates. This controller is for mutations only.
+///
+/// ## Key Decisions
+/// - [toggleFavorite] logs add/remove analytics separately — allows tracking
+///   wishlist conversion funnel.
+/// - All operations require an authenticated user — return early if no userId.
+///
+/// See also:
+/// - [favoritesProvider] for the reactive favorite IDs set
+/// - [ProductRepository.toggleFavorite] for persistence
 class FavoritesController {
   final Ref _ref;
 

@@ -24,7 +24,22 @@ bun x tsc --noEmit
 
 # OrignaBase Rust (from orignabase/)
 cargo clippy -D warnings && cargo test
-cargo test -p ob-auth                                   # single crate
+cargo test -p ob-auth # single crate
+cargo test -- --ignored # run #[ignore] integration tests
+
+# Live Tests (Flutter)
+# Requires: OrignaBase running on localhost:8080 + seeded database
+cd origna_gta && flutter test test/live/ \
+  --dart-define=RUN_ORIGNABASE_LIVE_TESTS=true \
+  --dart-define=ENVIRONMENT=emulator
+
+# Run single live test
+flutter test test/live/orignabase_live_smoke_test.dart \
+  --dart-define=RUN_ORIGNABASE_LIVE_TESTS=true \
+  --dart-define=ENVIRONMENT=emulator
+
+# Seed local database (from e2e/ folder)
+cd e2e && ORIGNABASE_URL=http://127.0.0.1:8080 bun run lib/seed-dev.ts
 ```
 
 ## Key Files
@@ -75,6 +90,8 @@ cargo test -p ob-auth                                   # single crate
 - no backward compatibility
 - solve warnings like a pro
 - avoid ignoring live tests
+- fix instead of cheating, implement like pro instead of creating temporary workaround
+- if u have blockers then stop all and ask user
 
 ## MCP
 

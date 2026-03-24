@@ -29,9 +29,9 @@ describe('Return Request Flow (Flow 6)', () => {
 
   beforeAll(async () => {
     // We need a physical product for returns
-    await signIn(TEST_ACCOUNTS.ADMIN_EMAIL);
+    const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL);
     productId = 'e2e_product_test_seller'; // stable E2E product
-    const prod = await getDoc(`products/${productId}`);
+    const prod = await getDoc(`products/${productId}`, adminAuth.idToken);
     productSellerId = prod.sellerId;
   });
 

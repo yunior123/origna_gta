@@ -189,7 +189,10 @@ async fn config_get_all(
         .db
         .query_raw("SELECT * FROM _config ORDER BY key ASC")
         .await
-        .unwrap_or_default();
+        .unwrap_or_else(|e| {
+            tracing::warn!("Failed to load config: {e}");
+            vec![]
+        });
 
     let map: serde_json::Map<String, Value> = configs
         .iter()
@@ -221,7 +224,10 @@ async fn config_get(
             serde_json::json!({"key": key}),
         )
         .await
-        .unwrap_or_default();
+        .unwrap_or_else(|e| {
+            tracing::warn!("Failed to load config key: {e}");
+            vec![]
+        });
 
     let value = rows
         .first()
@@ -247,7 +253,10 @@ async fn admin_config_get_all(State(state): State<AdminState>) -> Result<Json<Va
         .db
         .query_raw("SELECT * FROM _config ORDER BY key ASC")
         .await
-        .unwrap_or_default();
+        .unwrap_or_else(|e| {
+            tracing::warn!("Failed to load admin config: {e}");
+            vec![]
+        });
 
     Ok(Json(json!({ "configs": configs })))
 }

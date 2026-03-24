@@ -224,6 +224,92 @@ pub async fn on_login_failure(
     let _ = record_login(db, user_id, &ip, &ua, "failed").await;
 }
 
+/// Record a failed login attempt by email for lockout tracking.
+/// Called from the login handler for both "user not found" and "wrong password" cases.
+pub async fn record_failed_login_for_lockout(
+    db: &ob_database::DatabaseClient,
+    email: &str,
+) {
+    let _ = record_failed_login_attempt(db, email).await;
+}
+
+// ── Account Lockout ──────────────────────────────────────────────────
+
+/// Maximum failed login attempts before lockout.
+const LOCKOUT_MAX_ATTEMPTS: i64 = 5;
+/// Lockout window in seconds (15 minutes).
+const LOCKOUT_WINDOW_SECS: i64 = 15 * 60;
+
+/// Record a failed login attempt for lockout tracking.
+/// Uses the `login_lockout` collection with Unix timestamps.
+async fn record_failed_login_attempt(
+    db: &ob_database::DatabaseClient,
+    email: &str,
+) -> Result<()> {
+    let now_secs = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs() as i64;
+
+    let _ = db
+        .create_document(
+            "login_lockout",
+            json!({
+                "email": email,
+                "timestamp": now_secs,
+            }),
+        )
+        .await;
+    Ok(())
+}
+
+/// Check if an email is currently locked out due to too many failed login attempts.
+/// Returns `Ok(())` if the account is NOT locked out, or an `Error::Auth` if it is.
+///
+/// Skipped when `OB_TEST_MODE=1` to allow tests to run freely.
+pub async fn check_account_lockout(
+    db: &ob_database::DatabaseClient,
+    email: &str,
+) -> Result<()> {
+    // Skip lockout in test mode
+    if std::env::var("OB_TEST_MODE").unwrap_or_default() == "1" {
+        return Ok(());
+    }
+
+    let now_secs = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs() as i64;
+    let window_start = now_secs - LOCKOUT_WINDOW_SECS;
+
+    let query = "SELECT count() FROM login_lockout WHERE email = $email AND timestamp >= $window_start GROUP ALL";
+
+    let results = db
+        .query_bind_value(
+            query,
+            json!({
+                "email": email,
+                "window_start": window_start,
+            }),
+        )
+        .await
+        .unwrap_or_default();
+
+    let count = if let Some(first) = results.first() {
+        first.get("count").and_then(|v| v.as_i64()).unwrap_or(0)
+    } else {
+        0
+    };
+
+    if count >= LOCKOUT_MAX_ATTEMPTS {
+        return Err(Error::Auth(
+            "Account temporarily locked. Try again in 15 minutes.".into(),
+        ));
+    }
+
+    Ok(())
+}
+
 // ── API Endpoint Handlers ────────────────────────────────────────────
 
 #[derive(Deserialize)]
@@ -662,5 +748,128 @@ mod tests {
         let db = ob_database::DatabaseClient::new_mem().await;
         let headers = HeaderMap::new();
         on_login_failure(&db, "user1", &headers).await;
+    }
+
+    // ── Account Lockout Tests ────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_lockout_not_triggered_below_threshold() {
+        // Ensure OB_TEST_MODE is NOT set for this test
+        unsafe { std::env::remove_var("OB_TEST_MODE") };
+
+        let db = ob_database::DatabaseClient::new_mem().await;
+        let email = "lockout-test@example.com";
+
+        // 4 failures should NOT trigger lockout
+        for _ in 0..4 {
+            record_failed_login_for_lockout(&db, email).await;
+        }
+
+        let result = check_account_lockout(&db, email).await;
+        assert!(result.is_ok(), "Account should NOT be locked after 4 failures");
+    }
+
+    #[tokio::test]
+    async fn test_lockout_triggered_after_5_failures() {
+        unsafe { std::env::remove_var("OB_TEST_MODE") };
+
+        let db = ob_database::DatabaseClient::new_mem().await;
+        let email = "lockout-5@example.com";
+
+        // 5 failures should trigger lockout
+        for _ in 0..5 {
+            record_failed_login_for_lockout(&db, email).await;
+        }
+
+        let result = check_account_lockout(&db, email).await;
+        assert!(result.is_err(), "Account SHOULD be locked after 5 failures");
+        let err_msg = result.unwrap_err().to_string();
+        assert!(
+            err_msg.contains("Account temporarily locked"),
+            "Error message should mention lockout, got: {err_msg}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_lockout_different_emails_independent() {
+        unsafe { std::env::remove_var("OB_TEST_MODE") };
+
+        let db = ob_database::DatabaseClient::new_mem().await;
+
+        // Lock out email_a
+        for _ in 0..5 {
+            record_failed_login_for_lockout(&db, "locked@example.com").await;
+        }
+
+        // email_b should still be fine
+        let result = check_account_lockout(&db, "unlocked@example.com").await;
+        assert!(result.is_ok(), "Different email should NOT be locked");
+    }
+
+    #[tokio::test]
+    async fn test_lockout_expires_after_window() {
+        unsafe { std::env::remove_var("OB_TEST_MODE") };
+
+        let db = ob_database::DatabaseClient::new_mem().await;
+        let email = "lockout-expire@example.com";
+
+        // Insert 5 failures with timestamps older than 15 minutes
+        let old_timestamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs() as i64
+            - (16 * 60); // 16 minutes ago
+
+        for _ in 0..5 {
+            let _ = db
+                .create_document(
+                    "login_lockout",
+                    json!({
+                        "email": email,
+                        "timestamp": old_timestamp,
+                    }),
+                )
+                .await;
+        }
+
+        // Should NOT be locked — all failures are outside the 15-min window
+        let result = check_account_lockout(&db, email).await;
+        assert!(result.is_ok(), "Lockout should expire after 15 minutes");
+    }
+
+    #[tokio::test]
+    async fn test_lockout_exactly_at_threshold() {
+        unsafe { std::env::remove_var("OB_TEST_MODE") };
+
+        let db = ob_database::DatabaseClient::new_mem().await;
+        let email = "lockout-exact@example.com";
+
+        // Exactly 5 failures should trigger lockout (threshold is >= 5)
+        for _ in 0..5 {
+            record_failed_login_for_lockout(&db, email).await;
+        }
+        let result = check_account_lockout(&db, email).await;
+        assert!(result.is_err(), "Exactly 5 failures should trigger lockout");
+
+        // 6 failures should also be locked
+        record_failed_login_for_lockout(&db, email).await;
+        let result = check_account_lockout(&db, email).await;
+        assert!(result.is_err(), "6 failures should still be locked");
+    }
+
+    #[tokio::test]
+    async fn test_record_failed_login_for_lockout_creates_document() {
+        let db = ob_database::DatabaseClient::new_mem().await;
+        record_failed_login_for_lockout(&db, "record-test@example.com").await;
+
+        // Verify the document was created
+        let results = db
+            .query_bind(
+                "SELECT * FROM login_lockout WHERE email = $email",
+                json!({ "email": "record-test@example.com" }),
+            )
+            .await
+            .unwrap();
+        assert_eq!(results.len(), 1, "Should have created exactly one lockout record");
     }
 }

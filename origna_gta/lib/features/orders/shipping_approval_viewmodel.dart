@@ -5,7 +5,16 @@ import 'package:origna_gta/utils/utils.dart';
 
 part 'shipping_approval_viewmodel.freezed.dart';
 
-/// Documentation for ShippingApprovalState
+/// Immutable state for the shipping cost approval action.
+///
+/// Tracks the async state of approve/reject operations:
+/// - [isLoading]: true while API call is in flight
+/// - [isSuccess]: true after successful approval/rejection
+/// - [errorMessage]: localized error message on failure
+/// - [wasApproved]: whether the last action was approve (true) or reject (false)
+///
+/// See also:
+/// - [ShippingApprovalViewModel] for state mutations
 @freezed
 abstract class ShippingApprovalState with _$ShippingApprovalState {
   const factory ShippingApprovalState({
@@ -27,12 +36,33 @@ final shippingApprovalViewModelProvider =
       return ShippingApprovalViewModel(ref);
     });
 
-/// Documentation for ShippingApprovalViewModel
+/// Manages buyer approval of actual shipping costs for orders with
+/// estimated shipping.
+///
+/// ## Flow
+/// 1. Seller ships and updates actual shipping cost
+/// 2. Buyer receives notification with the real cost
+/// 3. Buyer approves (accepts cost) or rejects (disputes)
+///
+/// ## Key Decisions
+/// - Guarded against double-tap: returns `false` if already loading.
+/// - [clearStatus] should be called after showing success/error feedback
+///   to prevent stale snackbars on rebuild.
+///
+/// See also:
+/// - [ShippingApprovalState] for the state shape
+/// - [OrderRepository.approveShippingCost] for the API call
 class ShippingApprovalViewModel extends StateNotifier<ShippingApprovalState> {
   final Ref _ref;
 
   ShippingApprovalViewModel(this._ref) : super(const ShippingApprovalState());
 
+  /// Approves or rejects the actual shipping cost for an order.
+  ///
+  /// [orderId] — the order document ID.
+  /// [approved] — true to accept the cost, false to reject/dispute.
+  ///
+  /// Returns `true` on success, `false` on failure or if already loading.
   Future<bool> approveShippingCost(String orderId, bool approved) async {
     if (state.isLoading) return false;
     state = state.copyWith(

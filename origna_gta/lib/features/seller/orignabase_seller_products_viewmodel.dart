@@ -99,6 +99,9 @@ class OrignaBaseSellerProductsViewModel
     state = state.copyWith(selectedIds: productIds.toSet());
   }
 
+  /// Toggles selection state for a single product.
+  ///
+  /// [productId] — the product document ID to toggle.
   void toggleSelection(String productId) {
     final ids = Set<String>.from(state.selectedIds);
     if (ids.contains(productId)) {

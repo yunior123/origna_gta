@@ -458,12 +458,18 @@ describe('Shipping Calculation', () => {
     }
     const order = parseDoc(await readDoc(`orders/${result.orderId}`, buyerAuth.idToken));
 
-    // International shipping uses get_international_shipping_estimate (supplier-based cost)
-    // "other" supplier standard = $5.99 base — verify it's computed and non-zero
+    // International shipping: $5.99 base for cross-border sellers
+    // BUT free shipping applies when subtotal >= $75 CAD (7500 cents)
     if (order.shippingCostCents == null) {
       console.log('Skipped: shippingCostCents undefined (not yet populated by backend)');
       return;
     }
-    expect(order.shippingCostCents).toBeGreaterThan(0);
+    const subtotal = order.subtotalCents ?? data.subtotalCents ?? 0;
+    if (subtotal >= 7500) {
+      // Free shipping threshold met — shipping is $0 even for international
+      expect(order.shippingCostCents).toBe(0);
+    } else {
+      expect(order.shippingCostCents).toBeGreaterThan(0);
+    }
   });
 });

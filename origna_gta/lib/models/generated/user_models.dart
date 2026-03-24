@@ -31,6 +31,35 @@ Map<String, dynamic> _safeMap(dynamic value) {
 // USER MODEL
 // ============================================================================
 
+/// User profile model representing a marketplace account.
+///
+/// ## Roles & Permissions
+/// - [roles]: list of [UserRole] (buyer, seller, admin)
+/// - [isSeller]: derived from roles — true if `seller` is present
+/// - [canSell]: true if seller/admin AND not suspended
+/// - [isAdmin]: true if `admin` role is present
+///
+/// ## Account Status
+/// - [suspended]: account suspended flag
+/// - [suspendedAt], [suspendedBy], [suspensionReason]: suspension audit trail
+///
+/// ## Payment & Stripe
+/// - [customerId]: Stripe customer ID for buyer checkout
+/// - [stripeSubscriptionId]: Stripe subscription ID for premium
+///
+/// ## Consent & Compliance (CASL + PIPEDA + Quebec Law 25)
+/// - [emailConsent]: opt-in for transactional emails
+/// - [marketingOptIn]: opt-in for marketing communications
+/// - [termsVersion], [privacyPolicyVersion]: accepted policy versions
+/// - [dataProcessingConsent]: explicit consent for data processing
+///
+/// ## Premium Subscription
+/// - [isPremium]: active premium subscription flag
+/// - [premiumSince], [premiumExpiresAt]: subscription window
+///
+/// See also:
+/// - [UserCreate] for the creation DTO
+/// - [UserRole] enum for role values
 @freezed
 abstract class User with _$User {
   const factory User({

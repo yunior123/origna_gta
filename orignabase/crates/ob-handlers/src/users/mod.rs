@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 use crate::HandlersState;
-use crate::shared::auth::resolve_self_user_id;
+use crate::shared::auth::{require_admin, resolve_self_user_id};
 use crate::shared::schema::{COUNTRY_CANADA, UserRole, collections, fields};
 use crate::shared::validation::{sanitize_html, validate_email, validate_string, validate_uid};
 
@@ -825,6 +825,106 @@ async fn set_default_buyer_address(
 }
 
 // =============================================================================
+// ADMIN: SELLER SUSPENSION
+// =============================================================================
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SuspendSellerRequest {
+    #[serde(default)]
+    pub admin_id: Option<String>,
+    pub seller_id: String,
+    #[serde(default)]
+    pub reason: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UnsuspendSellerRequest {
+    #[serde(default)]
+    pub admin_id: Option<String>,
+    pub seller_id: String,
+}
+
+/// POST /api/admin/suspend-seller — Admin suspends a seller account.
+async fn suspend_seller(
+    State(state): State<HandlersState>,
+    Extension(auth): Extension<AuthContext>,
+    Json(req): Json<SuspendSellerRequest>,
+) -> ob_core::Result<Json<SuccessResponse>> {
+    let admin_id = require_admin(&auth)?;
+    validate_uid("sellerId", &req.seller_id)?;
+
+    let reason = req
+        .reason
+        .as_deref()
+        .map(|s| sanitize_html(s).chars().take(500).collect::<String>())
+        .unwrap_or_else(|| "Suspended by admin".to_string());
+
+    let now = Utc::now().to_rfc3339();
+
+    state
+        .db
+        .update_document(
+            collections::USERS,
+            &req.seller_id,
+            json!({
+                fields::SUSPENDED: true,
+                fields::SUSPENDED_AT: now,
+                fields::SUSPENDED_BY: admin_id,
+                "suspendReason": reason,
+                fields::UPDATED_AT: now,
+            }),
+        )
+        .await
+        .map_err(|_| ob_core::Error::NotFound("Seller not found".into()))?;
+
+    tracing::info!(
+        admin_id = %admin_id,
+        seller_id = %req.seller_id,
+        "Seller suspended"
+    );
+
+    Ok(success(json!({ "suspended": true })))
+}
+
+/// POST /api/admin/unsuspend-seller — Admin reinstates a seller account.
+async fn unsuspend_seller(
+    State(state): State<HandlersState>,
+    Extension(auth): Extension<AuthContext>,
+    Json(req): Json<UnsuspendSellerRequest>,
+) -> ob_core::Result<Json<SuccessResponse>> {
+    let admin_id = require_admin(&auth)?;
+    validate_uid("sellerId", &req.seller_id)?;
+
+    let now = Utc::now().to_rfc3339();
+
+    state
+        .db
+        .update_document(
+            collections::USERS,
+            &req.seller_id,
+            json!({
+                fields::SUSPENDED: false,
+                fields::SUSPENDED_AT: serde_json::Value::Null,
+                fields::SUSPENDED_BY: serde_json::Value::Null,
+                "suspendReason": serde_json::Value::Null,
+                fields::UPDATED_AT: now,
+            }),
+        )
+        .await
+        .map_err(|_| ob_core::Error::NotFound("Seller not found".into()))?;
+
+    tracing::info!(
+        admin_id = %admin_id,
+        seller_id = %req.seller_id,
+        "Seller unsuspended"
+    );
+
+    Ok(success(json!({ "suspended": false })))
+}
+
+// =============================================================================
 // ROUTER
 // =============================================================================
 
@@ -846,6 +946,9 @@ pub fn router(state: HandlersState) -> Router {
             "/api/users/address/set-default",
             post(set_default_buyer_address),
         )
+        // Admin: seller suspension
+        .route("/api/admin/suspend-seller", post(suspend_seller))
+        .route("/api/admin/unsuspend-seller", post(unsuspend_seller))
         .with_state(state)
 }
 

@@ -12,11 +12,13 @@ import 'product_models.dart';
 part 'order_models.freezed.dart';
 part 'order_models.g.dart';
 
-/// Safely parse a dynamic value (String, DateTime, int) to DateTime?
+/// Safely parses a dynamic database value (String, DateTime, int) to [DateTime?].
 ///
 /// Handles SurrealDB nanosecond-precision ISO strings by truncating to
 /// microsecond precision before parsing. See [truncateNanoseconds] in
 /// `lib/core/compat/timestamp.dart` for the full explanation.
+///
+/// Returns `null` for unrecognized types — never throws.
 DateTime? _parseDateTime(dynamic value) {
   if (value == null) return null;
   if (value is DateTime) return value;
@@ -216,6 +218,44 @@ List<String> _safeStringList(dynamic value) {
 // ORDER
 // ============================================================================
 
+/// Core order model representing a completed or in-progress purchase.
+///
+/// ## Money Fields
+/// All monetary values use **integer cents** — never `double`/`float` for money.
+/// Dollar getters (e.g., [total], [subtotal]) are provided for display only.
+/// - [totalAmountCents]: final charge to buyer
+/// - [subtotalCents]: sum of item prices × quantities
+/// - [shippingCostCents]: shipping cost (0 if free shipping threshold met)
+/// - [taxAmountCents]: total tax (GST + PST + HST + QST)
+/// - [platformFeeTotalCents]: platform commission (deducted from seller payout)
+/// - [discountAmountCents]: coupon/promo discount applied
+///
+/// ## Order Lifecycle
+/// ```
+/// pending → confirmed → processing → shipped → in_transit → delivered
+///   ↘ cancelled, expired, failed, disputed, refunded, partially_refunded
+/// ```
+///
+/// ## Payment Lifecycle
+/// ```
+/// awaiting_payment → authorized → capturing → captured
+///   ↘ payment_failed, session_expired, cancelled, disputed
+/// ```
+///
+/// ## Multi-Seller Support
+/// - [sellerIds]: all unique seller IDs across order items
+/// - [sellerPayouts]: per-seller payout breakdown (amount, fee, net)
+/// - Items tracked individually with [OrderItem.status] for per-seller fulfillment
+///
+/// ## Serialization
+/// [fromMap] uses safe parsers (_safeString, _safeInt, etc.) to handle
+/// database internal types (MiniFieldValue, nanosecond timestamps).
+/// [fromMap] also handles backward compatibility (price → priceCents).
+///
+/// See also:
+/// - [OrderItem] for per-item details
+/// - [SellerPayout] for payout breakdown
+/// - [Taxes] for tax component breakdown
 @Freezed(toJson: true, fromJson: true)
 abstract class Order with _$Order {
   const factory Order({
@@ -575,6 +615,26 @@ abstract class OrderCreate with _$OrderCreate {
 // ORDER ITEM
 // ============================================================================
 
+/// Individual item within an [Order].
+///
+/// Captures an immutable snapshot of the product at purchase time — name, price,
+/// images, and variant details do NOT change if the seller edits the product later.
+///
+/// ## Money Fields
+/// - [priceCents]: unit price in integer cents (snapshot at purchase)
+/// - Use [subtotalCents] (`priceCents * quantity`) for line-item totals
+///
+/// ## Per-Item Tracking
+/// Each item has its own [status] for multi-seller fulfillment:
+/// `pending` → `shipped` → `delivered` / `refunded`
+///
+/// ## Variant Snapshot
+/// [variantId], [variantTitle], [variantOptions], [variantSku] are immutable
+/// snapshots — the product's variants may change after purchase.
+///
+/// See also:
+/// - [Order] for the parent order
+/// - [SellerDeliveryOption] for shipping metadata
 @Freezed(toJson: true, fromJson: true)
 abstract class OrderItem with _$OrderItem {
   const factory OrderItem({
@@ -666,6 +726,20 @@ abstract class Ratings with _$Ratings {
 // SELLER PAYOUT
 // ============================================================================
 
+/// Per-seller payout breakdown for multi-seller orders.
+///
+/// ## Money Fields (all integer cents)
+/// - [amountCents]: gross amount owed to this seller
+/// - [platformFeeCents]: platform commission deducted
+/// - [netAmountCents]: final amount transferred to seller (`amountCents - platformFeeCents`)
+///
+/// Dollar getters ([amount], [netAmount], [platformFee]) are for display only.
+///
+/// ## Payout Lifecycle
+/// `pending` → `processing` → `paid` / `failed`
+///
+/// See also:
+/// - [Order.sellerPayouts] for the parent list
 @freezed
 abstract class SellerPayout with _$SellerPayout {
   const factory SellerPayout({
@@ -719,6 +793,18 @@ abstract class SellerPayout with _$SellerPayout {
 // TAXES
 // ============================================================================
 
+/// Canadian tax breakdown by type (GST, PST, HST, QST).
+///
+/// All fields are in **integer cents**. Dollar getters provided for display.
+/// The appropriate tax types depend on the buyer's province:
+/// - Ontario: HST (13%)
+/// - Quebec: GST (5%) + QST (9.975%)
+/// - BC: GST (5%) + PST (7%)
+/// - etc.
+///
+/// See also:
+/// - [Taxes.totalCents] for the combined tax amount
+/// - `calculateDetailedTaxes()` utility for computation
 @freezed
 abstract class Taxes with _$Taxes {
   const factory Taxes({

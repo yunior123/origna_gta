@@ -51,27 +51,28 @@ async fn get_products(
     State(state): State<HandlersState>,
     Query(qs): Query<SearchProductsQuery>,
 ) -> Result<Json<serde_json::Value>, ob_core::Error> {
-    // Query products from SurrealDB with filters
+    // Build parameterized query to prevent SQL injection
     let mut query = format!(
         "SELECT * FROM {} WHERE lifecycleStatus = 'active'",
         collections::PRODUCTS
     );
+    let mut bind_params = serde_json::Map::new();
 
-    if let Some(search) = &qs.q {
-        let escaped = escape_surreal_string(search);
-        query.push_str(&format!(
-            " AND (name ~ '{}' OR description ~ '{}')",
-            escaped, escaped
-        ));
+    if qs.q.is_some() {
+        query.push_str(" AND (name ~ $search OR description ~ $search)");
+        bind_params.insert("search".into(), json!(qs.q));
     }
-    if let Some(cat) = &qs.category {
-        query.push_str(&format!(" AND category = '{}'", escape_surreal_string(cat)));
+    if qs.category.is_some() {
+        query.push_str(" AND categoryId = $category");
+        bind_params.insert("category".into(), json!(qs.category));
     }
     if let Some(min) = qs.min_price {
-        query.push_str(&format!(" AND priceCents >= {}", min));
+        query.push_str(" AND priceCents >= $min_price");
+        bind_params.insert("min_price".into(), json!(min));
     }
     if let Some(max) = qs.max_price {
-        query.push_str(&format!(" AND priceCents <= {}", max));
+        query.push_str(" AND priceCents <= $max_price");
+        bind_params.insert("max_price".into(), json!(max));
     }
 
     match qs.sort.as_deref() {
@@ -82,9 +83,17 @@ async fn get_products(
         _ => query.push_str(" ORDER BY dateCreated DESC"),
     }
 
-    query.push_str(&format!(" LIMIT {} OFFSET {}", qs.limit, qs.offset));
+    // Clamp limit to prevent abuse
+    let limit = qs.limit.clamp(1, 100);
+    let offset = qs.offset.max(0);
+    query.push_str(" LIMIT $limit OFFSET $offset");
+    bind_params.insert("limit".into(), json!(limit));
+    bind_params.insert("offset".into(), json!(offset));
 
-    let results = state.db.query_raw(&query).await?;
+    let results = state.db.query_bind_value(
+        &query,
+        serde_json::Value::Object(bind_params),
+    ).await?;
 
     Ok(Json(serde_json::Value::Array(results)))
 }
@@ -103,6 +112,7 @@ async fn get_product(
 }
 
 /// POST /products — Create a product with validation.
+/// Requires authentication and seller role.
 async fn create_product(
     State(state): State<HandlersState>,
     Extension(auth): Extension<AuthContext>,
@@ -111,22 +121,46 @@ async fn create_product(
     // Require authentication
     let user_id = require_authenticated(&auth)?;
 
+    // Require seller role
+    if !auth.roles.iter().any(|r| r == "seller" || r == "admin") {
+        return Err(ob_core::Error::Forbidden(
+            "Only sellers can create products".into(),
+        ));
+    }
+
     let obj = body
         .as_object()
         .ok_or_else(|| ob_core::Error::Validation("Request body must be a JSON object".into()))?;
 
-    // Validate priceCents: must be > 0 and <= 10,000,000
-    if let Some(price) = obj.get("priceCents").and_then(|v| v.as_i64()) {
-        if price <= 0 {
+    // Require name
+    match obj.get("name").and_then(|v| v.as_str()) {
+        Some(name) if name.trim().is_empty() => {
+            return Err(ob_core::Error::Validation("Product name cannot be empty".into()));
+        }
+        None => {
+            return Err(ob_core::Error::Validation("Product name is required".into()));
+        }
+        _ => {}
+    }
+
+    // Require priceCents: must be > 0 and <= 10,000,000
+    match obj.get("priceCents").and_then(|v| v.as_i64()) {
+        Some(price) if price <= 0 => {
             return Err(ob_core::Error::Validation(
                 "Product price must be greater than 0 cents".into(),
             ));
         }
-        if price > 10_000_000 {
+        Some(price) if price > 10_000_000 => {
             return Err(ob_core::Error::Validation(
                 "Product price cannot exceed $100,000 CAD".into(),
             ));
         }
+        None => {
+            return Err(ob_core::Error::Validation(
+                "Product priceCents is required".into(),
+            ));
+        }
+        _ => {}
     }
 
     // Validate stockQuantity: must be >= 0
@@ -138,12 +172,12 @@ async fn create_product(
         ));
     }
 
-    // Validate lifecycleStatus if present
+    // Validate lifecycleStatus if present (draft -> active -> inactive -> deleted)
     if let Some(status) = obj.get("lifecycleStatus").and_then(|v| v.as_str()) {
-        let valid_states = ["draft", "active", "inactive", "archived"];
+        let valid_states = ["draft", "active", "inactive", "deleted"];
         if !valid_states.contains(&status) {
             return Err(ob_core::Error::Validation(format!(
-                "Invalid lifecycle status: {status}"
+                "Invalid lifecycle status: {status}. Valid values: draft, active, inactive, deleted"
             )));
         }
     }
@@ -154,7 +188,8 @@ async fn create_product(
         .as_object_mut()
         .expect("already validated as object");
     product_obj.insert("sellerId".into(), json!(user_id));
-    product_obj.insert("createdAt".into(), json!(chrono::Utc::now().to_rfc3339()));
+    // Products use dateCreated (not createdAt) per schema
+    product_obj.insert("dateCreated".into(), json!(chrono::Utc::now().to_rfc3339()));
     product_obj.insert("updatedAt".into(), json!(chrono::Utc::now().to_rfc3339()));
 
     let created = state
@@ -170,6 +205,7 @@ async fn create_product(
 }
 
 /// GET /user/profile — Get authenticated user's profile.
+/// Strips sensitive fields before returning.
 async fn get_user_profile(
     State(state): State<HandlersState>,
     Extension(auth): Extension<AuthContext>,
@@ -182,7 +218,22 @@ async fn get_user_profile(
         .await
         .map_err(|_| ob_core::Error::NotFound("User not found".into()))?;
 
-    Ok(Json(doc))
+    // Strip sensitive fields
+    let mut profile = doc;
+    if let Some(obj) = profile.as_object_mut() {
+        obj.remove("passwordHash");
+        obj.remove("password_hash");
+        obj.remove("mfaSecret");
+        obj.remove("mfa_secret");
+        obj.remove("backupCodes");
+        obj.remove("backup_codes");
+        obj.remove("refreshTokens");
+        obj.remove("refresh_tokens");
+        obj.remove("totpSecret");
+        obj.remove("totp_secret");
+    }
+
+    Ok(Json(profile))
 }
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -229,19 +280,29 @@ async fn list_orders(
 ) -> Result<Json<serde_json::Value>, ob_core::Error> {
     let user_id = require_authenticated(&auth)?;
 
+    // Use parameterized query to prevent injection
     let mut query = format!(
-        "SELECT * FROM {} WHERE buyerId = '{}'",
+        "SELECT * FROM {} WHERE buyerId = $user_id",
         collections::ORDERS,
-        escape_surreal_string(&user_id)
     );
+    let mut bind_params = serde_json::Map::new();
+    bind_params.insert("user_id".into(), json!(user_id));
 
-    if let Some(status) = &qs.status {
-        query.push_str(&format!(" AND status = '{}'", escape_surreal_string(status)));
+    if qs.status.is_some() {
+        query.push_str(" AND status = $status");
+        bind_params.insert("status".into(), json!(qs.status));
     }
 
-    query.push_str(&format!(" ORDER BY createdAt DESC LIMIT {} OFFSET {}", qs.limit, qs.offset));
+    let limit = qs.limit.clamp(1, 100);
+    let offset = qs.offset.max(0);
+    query.push_str(" ORDER BY createdAt DESC LIMIT $limit OFFSET $offset");
+    bind_params.insert("limit".into(), json!(limit));
+    bind_params.insert("offset".into(), json!(offset));
 
-    let results = state.db.query_raw(&query).await?;
+    let results = state.db.query_bind_value(
+        &query,
+        serde_json::Value::Object(bind_params),
+    ).await?;
 
     Ok(Json(serde_json::Value::Array(results)))
 }
@@ -259,13 +320,17 @@ async fn get_order(
         .await
         .map_err(|_| ob_core::Error::NotFound("Order not found".into()))?;
 
-    // Verify user owns this order
+    // Verify user owns this order (buyer or seller)
     let buyer_id = order
         .get("buyerId")
         .and_then(|b| b.as_str())
         .unwrap_or("");
+    let seller_id = order
+        .get("sellerId")
+        .and_then(|s| s.as_str())
+        .unwrap_or("");
 
-    if buyer_id != user_id {
+    if buyer_id != user_id && seller_id != user_id {
         return Err(ob_core::Error::Forbidden("You do not own this order".into()));
     }
 
@@ -280,16 +345,11 @@ fn require_authenticated(auth: &AuthContext) -> Result<String, ob_core::Error> {
     if auth.authenticated { Ok(auth.user_id.clone()) } else { Err(ob_core::Error::Auth("Authentication required".into())) }
 }
 
-fn escape_surreal_string(s: &str) -> String {
-    s.replace('\'', "''")
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use ob_core::Config;
     use ob_database::DatabaseClient;
-    use ob_auth::middleware::AuthContext;
     use std::sync::Arc;
 
     #[tokio::test]
@@ -362,26 +422,6 @@ mod tests {
     #[test]
     fn test_default_limit() {
         assert_eq!(super::default_limit(), 20);
-    }
-
-    #[test]
-    fn test_escape_surreal_string_no_special_chars() {
-        assert_eq!(escape_surreal_string("hello"), "hello");
-    }
-
-    #[test]
-    fn test_escape_surreal_string_single_quote() {
-        assert_eq!(escape_surreal_string("it's"), "it''s");
-    }
-
-    #[test]
-    fn test_escape_surreal_string_multiple_quotes() {
-        assert_eq!(escape_surreal_string("a'b'c"), "a''b''c");
-    }
-
-    #[test]
-    fn test_escape_surreal_string_empty() {
-        assert_eq!(escape_surreal_string(""), "");
     }
 
     #[test]

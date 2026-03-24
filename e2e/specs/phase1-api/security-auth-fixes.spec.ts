@@ -129,14 +129,17 @@ describe('Security — Auth Fixes (JWT, CORS, Admin, Rate Limit)', () => {
     expect(error.code).not.toBe('unexpected-success');
   });
 
-  test('T13: Repeated invalid logins never return a successful auth payload', async () => {
+  test('T13: Repeated invalid logins never return a successful auth payload', { timeout: 30_000 }, async () => {
+    // 8 attempts is enough to verify — bcrypt is slow (~16ms/attempt) and account
+    // lockout kicks in after 5 failures (15min lock), so keeping count moderate
+    // avoids test timeouts while still proving no success leaks through.
     const attempts: number[] = [];
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 8; i++) {
       const res = await fetch(`${ORIGNABASE_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email: 'rate_limit_test@test.origna.ca',
+          email: `rate_limit_test_${Date.now()}@test.origna.ca`,
           password: 'wrong_password',
         }),
       });

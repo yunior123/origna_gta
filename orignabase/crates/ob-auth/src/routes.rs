@@ -166,7 +166,9 @@ fn frontend_fallback_redirect(state: &AuthState) -> String {
     let fallback = match host {
         "api.orignagta.ca" => "https://orignagta.ca",
         "api-staging.orignagta.ca" => "https://orignagta-staging.web.app",
-        "localhost" | "127.0.0.1" => "http://localhost:5001",
+        "localhost" | "127.0.0.1" if std::env::var("OB_TEST_MODE").unwrap_or_default() == "1" => {
+            "http://localhost:5001"
+        }
         _ if host.starts_with("api.") => {
             return format!(
                 "{}://{}",
@@ -390,6 +392,10 @@ pub async fn login(
         return Err(Error::Validation("Turnstile token is required".into()));
     }
 
+    // Check account lockout BEFORE any password verification (DoS protection —
+    // prevents bcrypt computation on locked accounts)
+    login_tracking::check_account_lockout(&state.db, &body.email).await?;
+
     // Find user by email (parameterized query — safe from injection)
     let users = state
         .db
@@ -402,6 +408,8 @@ pub async fn login(
     let user = match users.first() {
         Some(u) => u,
         None => {
+            // Record failed attempt for lockout tracking (best-effort)
+            login_tracking::record_failed_login_for_lockout(&state.db, &body.email).await;
             // Timing attack prevention: run a dummy argon2id hash so the response
             // time is indistinguishable from a real password verification.
             // This prevents email enumeration via timing side-channel.
@@ -423,7 +431,9 @@ pub async fn login(
         .unwrap_or_else(|| user["id"].to_string());
 
     if !password::verify_password(&body.password, hash)? {
-        // Record failed login attempt (best-effort)
+        // Record failed login attempt for lockout tracking (best-effort)
+        login_tracking::record_failed_login_for_lockout(&state.db, &body.email).await;
+        // Record failed login attempt for device tracking (best-effort)
         login_tracking::on_login_failure(&state.db, &user_id, &headers).await;
         return Err(Error::Auth("Invalid email or password".into()));
     }
@@ -1229,8 +1239,8 @@ pub async fn mfa_setup(
     let encrypted = match state.totp_encryption_key.as_ref() {
         Some(key) => totp::encrypt_secret(&secret, key)?,
         None => {
-            return Err(ob_core::Error::Internal(
-                "TOTP encryption key not configured — set OB_AUTH__TOTP_ENCRYPTION_KEY".into(),
+            return Err(ob_core::Error::Validation(
+                "MFA is not available: TOTP encryption key not configured".into(),
             ));
         }
     };

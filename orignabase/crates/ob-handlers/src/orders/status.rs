@@ -272,12 +272,14 @@ async fn send_payout_scheduled_notifications(state: &HandlersState, order: &Valu
 }
 
 /// Check if user has admin role.
+/// Returns `false` (not an error) when the user record is missing — the caller
+/// should treat a missing user as "not admin" and fall through to ownership /
+/// seller checks which will produce the correct permission-denied or not-found.
 async fn is_user_admin(state: &HandlersState, user_id: &str) -> Result<bool, ob_core::Error> {
-    let user = state
-        .db
-        .get_document(collections::USERS, user_id)
-        .await
-        .map_err(|_| ob_core::Error::NotFound("User not found".into()))?;
+    let user = match state.db.get_document(collections::USERS, user_id).await {
+        Ok(u) => u,
+        Err(_) => return Ok(false), // user not in DB → not admin
+    };
     let roles = user
         .get(fields::ROLES)
         .and_then(|v| v.as_array())
@@ -1610,7 +1612,9 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_update_order_status_requires_existing_user_doc() {
+    async fn test_update_order_status_missing_user_not_seller_denied() {
+        // A user not in the DB and not matching any order item seller →
+        // is_user_admin returns false, is_seller is false → permission denied.
         let state = setup_state().await;
         state
             .db
@@ -1633,14 +1637,18 @@ mod tests {
             Json(UpdateOrderStatusRequest {
                 order_id: "ord_1".into(),
                 new_status: OrderStatus::Shipped.as_str().into(),
-                user_id: "seller_1".into(),
+                user_id: "unknown_user".into(),
                 tracking_number: Some("TN123".into()),
                 carrier: Some("Carrier".into()),
             }),
         )
         .await
         .unwrap_err();
-        assert!(err.to_string().contains("User not found"));
+        assert!(
+            err.to_string().contains("Only seller or admin"),
+            "Expected permission denied, got: {}",
+            err
+        );
     }
 
     #[tokio::test]

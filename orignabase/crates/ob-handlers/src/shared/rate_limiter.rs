@@ -70,6 +70,11 @@ pub async fn check_user_rate_limit(
     max_requests: u64,
     window_minutes: i64,
 ) -> Result<(), ob_core::Error> {
+    // In test mode, skip rate limiting to allow E2E/integration tests to run freely
+    if std::env::var("OB_TEST_MODE").unwrap_or_default() == "1" {
+        return Ok(());
+    }
+
     // Use Unix timestamps (i64) instead of RFC3339 strings for reliable comparisons
     let now_secs = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -196,6 +201,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_database_rate_limiter() {
+        // Ensure OB_TEST_MODE doesn't bypass rate limiting in unit tests
+        unsafe { std::env::remove_var("OB_TEST_MODE"); }
         let db = DatabaseClient::new_mem().await;
         let user_id = "user_123";
         let action = "test_action";
@@ -275,6 +282,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_rate_limit_error_message_content() {
+        unsafe { std::env::remove_var("OB_TEST_MODE"); }
         let db = DatabaseClient::new_mem().await;
         // Exhaust the limit
         let _ = check_user_rate_limit(&db, "user_msg", "webhook", 1, 1).await;
@@ -287,6 +295,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_rate_limit_zero_max_requests_blocks_immediately() {
+        unsafe { std::env::remove_var("OB_TEST_MODE"); }
         let db = DatabaseClient::new_mem().await;
         // max_requests=0 means no requests allowed
         let result = check_user_rate_limit(&db, "user_zero", "action", 0, 1).await;

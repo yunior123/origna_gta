@@ -244,7 +244,7 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'admin.security.entersecret_manual'.tr(),
+                  'admin.security.enter_secret_manual'.tr(),
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
@@ -272,7 +272,7 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                         ),
                       ),
                       IconButton(
-                        tooltip: 'admin.security.copysecret'.tr(),
+                        tooltip: 'admin.security.copy_secret'.tr(),
                         icon: const Icon(Icons.copy),
                         onPressed: () async {
                           final messenger = ScaffoldMessenger.of(context);

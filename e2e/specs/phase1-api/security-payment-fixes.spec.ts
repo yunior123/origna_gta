@@ -100,37 +100,37 @@ describe('Security — Payment & Checkout Fixes', () => {
     expect(stock).toBeGreaterThanOrEqual(0);
   });
 
-  test('T06: Negative stock product creation follows the current contract', async () => {
-    const result = await callOk('create_product', {
+  test('T06: Negative stock product creation is rejected by validation', async () => {
+    const error = await callExpectError('create_product', {
       name: 'Bad Product',
       priceCents: 1000,
       stockQuantity: -5,
       description: 'Test',
       categoryId: 'electronics',
     }, sellerToken);
-    expect(result.productId || result.id).toBeTruthy();
+    expect(error.code).not.toBe('unexpected-success');
   });
 
-  test('T07: Zero-price product creation follows the current contract', async () => {
-    const result = await callOk('create_product', {
+  test('T07: Zero-price product creation is rejected by validation', async () => {
+    const error = await callExpectError('create_product', {
       name: 'Zero Price Product',
       priceCents: 0,
       stockQuantity: 10,
       description: 'Test',
       categoryId: 'electronics',
     }, sellerToken);
-    expect(result.productId || result.id).toBeTruthy();
+    expect(error.code).not.toBe('unexpected-success');
   });
 
-  test('T08: Very high-price product creation follows the current contract', async () => {
-    const result = await callOk('create_product', {
+  test('T08: Very high-price product creation is rejected by validation', async () => {
+    const error = await callExpectError('create_product', {
       name: 'High Price Product',
       priceCents: 10000001,
       stockQuantity: 1,
       description: 'Test',
       categoryId: 'electronics',
     }, sellerToken);
-    expect(result.productId || result.id).toBeTruthy();
+    expect(error.code).not.toBe('unexpected-success');
   });
 
   test('T09: Lifecycle updates remain writable through update_product', async () => {
@@ -202,8 +202,8 @@ describe('Security — Payment & Checkout Fixes', () => {
     expect(two.sessionId || two.checkoutUrl).toBeTruthy();
   });
 
-  test('T13: Product creation with testImageUrls follows the current contract', async () => {
-    const result = await callOk('create_product', {
+  test('T13: Product creation with disallowed testImageUrls is rejected', async () => {
+    const error = await callExpectError('create_product', {
       name: 'Bad Image Product',
       priceCents: 5000,
       stockQuantity: 10,
@@ -211,6 +211,6 @@ describe('Security — Payment & Checkout Fixes', () => {
       categoryId: 'electronics',
       testImageUrls: ['https://evil.com/malicious-image.jpg'],
     }, sellerToken);
-    expect(result.productId || result.id).toBeTruthy();
+    expect(error.code).not.toBe('unexpected-success');
   });
 });

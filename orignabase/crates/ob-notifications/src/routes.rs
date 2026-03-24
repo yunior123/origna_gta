@@ -805,4 +805,425 @@ mod tests {
         let req: SendNotificationRequest = serde_json::from_value(json).unwrap();
         assert!(req.data.is_object());
     }
+
+    // ─────────────────────────────────────────────────────────────────
+    // HANDLER-LEVEL TESTS (async, with in-memory database)
+    // ─────────────────────────────────────────────────────────────────
+
+    async fn test_state() -> NotificationsState {
+        let db = DatabaseClient::new_mem().await;
+        NotificationsState::new(
+            db,
+            Some("test-project-id".into()),
+            None, // No FCM service account — will store as pending
+            reqwest::Client::new(),
+        )
+    }
+
+    #[tokio::test]
+    async fn test_handler_register_token_success() {
+        use axum::body::Body;
+        use axum::http::{Request, StatusCode};
+        use tower::util::ServiceExt;
+
+        let state = test_state().await;
+        let app = notifications_router(state);
+
+        let req = Request::builder()
+            .method("POST")
+            .uri("/push/register")
+            .header("Content-Type", "application/json")
+            .body(Body::from(
+                json!({
+                    "user_id": "user_handler_test",
+                    "token": "fcm_token_handler_test",
+                    "platform": "android"
+                })
+                .to_string(),
+            ))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn test_handler_register_token_empty_token_rejected() {
+        use axum::body::Body;
+        use axum::http::{Request, StatusCode};
+        use tower::util::ServiceExt;
+
+        let state = test_state().await;
+        let app = notifications_router(state);
+
+        let req = Request::builder()
+            .method("POST")
+            .uri("/push/register")
+            .header("Content-Type", "application/json")
+            .body(Body::from(
+                json!({
+                    "user_id": "user_1",
+                    "token": "",
+                    "platform": "ios"
+                })
+                .to_string(),
+            ))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        // Empty token should be rejected with 400/422
+        assert!(
+            resp.status() == StatusCode::BAD_REQUEST
+                || resp.status() == StatusCode::UNPROCESSABLE_ENTITY,
+            "Empty token should be rejected, got {}",
+            resp.status()
+        );
+    }
+
+    #[tokio::test]
+    async fn test_handler_register_token_too_long_rejected() {
+        use axum::body::Body;
+        use axum::http::{Request, StatusCode};
+        use tower::util::ServiceExt;
+
+        let state = test_state().await;
+        let app = notifications_router(state);
+
+        let long_token = "x".repeat(1025);
+        let req = Request::builder()
+            .method("POST")
+            .uri("/push/register")
+            .header("Content-Type", "application/json")
+            .body(Body::from(
+                json!({
+                    "user_id": "user_1",
+                    "token": long_token,
+                    "platform": "web"
+                })
+                .to_string(),
+            ))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert!(
+            resp.status() == StatusCode::BAD_REQUEST
+                || resp.status() == StatusCode::UNPROCESSABLE_ENTITY,
+            "Too-long token should be rejected, got {}",
+            resp.status()
+        );
+    }
+
+    #[tokio::test]
+    async fn test_handler_unregister_token_success() {
+        use axum::body::Body;
+        use axum::http::{Request, StatusCode};
+        use tower::util::ServiceExt;
+
+        let state = test_state().await;
+        let app = notifications_router(state);
+
+        let req = Request::builder()
+            .method("DELETE")
+            .uri("/push/register")
+            .header("Content-Type", "application/json")
+            .body(Body::from(
+                json!({ "token": "some_device_token" }).to_string(),
+            ))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn test_handler_unregister_token_missing_field() {
+        use axum::body::Body;
+        use axum::http::{Request, StatusCode};
+        use tower::util::ServiceExt;
+
+        let state = test_state().await;
+        let app = notifications_router(state);
+
+        let req = Request::builder()
+            .method("DELETE")
+            .uri("/push/register")
+            .header("Content-Type", "application/json")
+            .body(Body::from(json!({}).to_string()))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert!(
+            resp.status() == StatusCode::BAD_REQUEST
+                || resp.status() == StatusCode::UNPROCESSABLE_ENTITY,
+            "Missing token should be rejected, got {}",
+            resp.status()
+        );
+    }
+
+    #[tokio::test]
+    async fn test_handler_send_notification_no_devices() {
+        use axum::body::Body;
+        use axum::http::{Request, StatusCode};
+        use tower::util::ServiceExt;
+
+        let state = test_state().await;
+        let app = notifications_router(state);
+
+        let req = Request::builder()
+            .method("POST")
+            .uri("/push/send")
+            .header("Content-Type", "application/json")
+            .body(Body::from(
+                json!({
+                    "to": "nonexistent_user",
+                    "title": "Test",
+                    "body": "Test body"
+                })
+                .to_string(),
+            ))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(resp.into_body(), 10_000).await.unwrap();
+        let body: Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(body["sent"], 0);
+    }
+
+    #[tokio::test]
+    async fn test_handler_send_notification_invalid_target_type() {
+        use axum::body::Body;
+        use axum::http::{Request, StatusCode};
+        use tower::util::ServiceExt;
+
+        let state = test_state().await;
+        let app = notifications_router(state);
+
+        let req = Request::builder()
+            .method("POST")
+            .uri("/push/send")
+            .header("Content-Type", "application/json")
+            .body(Body::from(
+                json!({
+                    "to": "someone",
+                    "target_type": "invalid",
+                    "title": "Test",
+                    "body": "Test"
+                })
+                .to_string(),
+            ))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert!(
+            resp.status() == StatusCode::BAD_REQUEST
+                || resp.status() == StatusCode::UNPROCESSABLE_ENTITY,
+            "Invalid target_type should be rejected, got {}",
+            resp.status()
+        );
+    }
+
+    #[tokio::test]
+    async fn test_handler_subscribe_topic_success() {
+        use axum::body::Body;
+        use axum::http::{Request, StatusCode};
+        use tower::util::ServiceExt;
+
+        let state = test_state().await;
+        let app = notifications_router(state);
+
+        let req = Request::builder()
+            .method("POST")
+            .uri("/push/subscribe")
+            .header("Content-Type", "application/json")
+            .body(Body::from(
+                json!({
+                    "token": "device_tok_123",
+                    "topic": "promotions"
+                })
+                .to_string(),
+            ))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn test_handler_subscribe_topic_empty_rejected() {
+        use axum::body::Body;
+        use axum::http::{Request, StatusCode};
+        use tower::util::ServiceExt;
+
+        let state = test_state().await;
+        let app = notifications_router(state);
+
+        let req = Request::builder()
+            .method("POST")
+            .uri("/push/subscribe")
+            .header("Content-Type", "application/json")
+            .body(Body::from(
+                json!({
+                    "token": "",
+                    "topic": ""
+                })
+                .to_string(),
+            ))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert!(
+            resp.status() == StatusCode::BAD_REQUEST
+                || resp.status() == StatusCode::UNPROCESSABLE_ENTITY,
+            "Empty token/topic should be rejected, got {}",
+            resp.status()
+        );
+    }
+
+    #[tokio::test]
+    async fn test_handler_subscribe_topic_too_long_rejected() {
+        use axum::body::Body;
+        use axum::http::{Request, StatusCode};
+        use tower::util::ServiceExt;
+
+        let state = test_state().await;
+        let app = notifications_router(state);
+
+        let long_topic = "t".repeat(257);
+        let req = Request::builder()
+            .method("POST")
+            .uri("/push/subscribe")
+            .header("Content-Type", "application/json")
+            .body(Body::from(
+                json!({
+                    "token": "device_tok",
+                    "topic": long_topic
+                })
+                .to_string(),
+            ))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert!(
+            resp.status() == StatusCode::BAD_REQUEST
+                || resp.status() == StatusCode::UNPROCESSABLE_ENTITY,
+            "Too-long topic should be rejected, got {}",
+            resp.status()
+        );
+    }
+
+    #[tokio::test]
+    async fn test_handler_unsubscribe_topic_success() {
+        use axum::body::Body;
+        use axum::http::{Request, StatusCode};
+        use tower::util::ServiceExt;
+
+        let state = test_state().await;
+        let app = notifications_router(state);
+
+        let req = Request::builder()
+            .method("DELETE")
+            .uri("/push/subscribe")
+            .header("Content-Type", "application/json")
+            .body(Body::from(
+                json!({
+                    "token": "device_tok_123",
+                    "topic": "promotions"
+                })
+                .to_string(),
+            ))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn test_handler_send_to_token_stores_pending() {
+        use axum::body::Body;
+        use axum::http::{Request, StatusCode};
+        use tower::util::ServiceExt;
+
+        let state = test_state().await;
+        let app = notifications_router(state);
+
+        // Send directly to a device token (no FCM configured → stores as pending)
+        let req = Request::builder()
+            .method("POST")
+            .uri("/push/send")
+            .header("Content-Type", "application/json")
+            .body(Body::from(
+                json!({
+                    "to": "fcm_device_token_xyz",
+                    "target_type": "token",
+                    "title": "Direct Push",
+                    "body": "Hello device"
+                })
+                .to_string(),
+            ))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(resp.into_body(), 10_000).await.unwrap();
+        let body: Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(body["sent"], 1);
+        assert_eq!(body["total_devices"], 1);
+    }
+
+    #[tokio::test]
+    async fn test_notifications_state_get_fcm_token_no_REDACTED_SECRET() {
+        let state = test_state().await;
+        let result = state.get_fcm_access_token().await;
+        assert!(result.is_err(), "Should fail without service account");
+        assert!(result.unwrap_err().contains("not configured"));
+    }
+
+    #[tokio::test]
+    async fn test_notifications_state_get_fcm_token_invalid_json() {
+        let db = DatabaseClient::new_mem().await;
+        let state = NotificationsState::new(
+            db,
+            Some("project-id".into()),
+            Some("not valid json".into()),
+            reqwest::Client::new(),
+        );
+        let result = state.get_fcm_access_token().await;
+        assert!(result.is_err(), "Should fail with invalid JSON");
+        assert!(result.unwrap_err().contains("Invalid service account JSON"));
+    }
+
+    #[tokio::test]
+    async fn test_notifications_state_get_fcm_token_missing_client_email() {
+        let db = DatabaseClient::new_mem().await;
+        let state = NotificationsState::new(
+            db,
+            Some("project-id".into()),
+            Some(json!({"private_key": "key"}).to_string()),
+            reqwest::Client::new(),
+        );
+        let result = state.get_fcm_access_token().await;
+        assert!(result.is_err(), "Should fail without client_email");
+        assert!(result.unwrap_err().contains("client_email"));
+    }
+
+    #[tokio::test]
+    async fn test_notifications_state_get_fcm_token_missing_private_key() {
+        let db = DatabaseClient::new_mem().await;
+        let state = NotificationsState::new(
+            db,
+            Some("project-id".into()),
+            Some(json!({"client_email": "test@test.iam.gserviceaccount.com"}).to_string()),
+            reqwest::Client::new(),
+        );
+        let result = state.get_fcm_access_token().await;
+        assert!(result.is_err(), "Should fail without private_key");
+        assert!(result.unwrap_err().contains("private_key"));
+    }
+
+    #[tokio::test]
+    async fn test_notifications_router_builds() {
+        let state = test_state().await;
+        let _router = notifications_router(state);
+    }
 }
