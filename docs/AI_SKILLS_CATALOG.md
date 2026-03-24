@@ -15,7 +15,7 @@
 
 | Category | Count |
 |----------|-------|
-| Project Skills | 30 |
+| Project Skills | 34 |
 | Global Skills | 34+ |
 | gstack Skills | 28 |
 | Project Commands | 37 |
@@ -175,7 +175,7 @@
 
 ---
 
-## Project Skills (31) — Auto-Invoked
+## Project Skills (34) — Auto-Invoked
 
 | Skill | Description | When It Activates |
 |-------|-------------|-------------------|
@@ -187,6 +187,8 @@
 | `e2e-testing` | E2E testing patterns for OrignaGTA (Bun, agent-browser, phased execution) | E2E test creation/debugging |
 | `feature-dev` | 7-phase structured feature development (requirements through documentation) | Building new features |
 | `flow-audit` | Deep audit of 12 critical app flows — traces full data path, finds bugs, race conditions, security gaps | Audit a flow, deep logic review, "find bugs in checkout/orders" |
+| `stripe-audit` | Stripe integration audit — Checkout Sessions, webhooks, Connect, refunds, idempotency, amount integrity | Payment audit, "check Stripe", "review checkout", "payment security" |
+| `app-flow-manager` | Multi-pass audit orchestrator — design, CEO, engineering, security, code quality in parallel | "Full audit", "ship readiness", "audit everything", pre-release quality gate |
 | `flutter-code-review` | Reviews Dart code for MVVM, Riverpod, DesignTokens, Semantics, performance | After Dart code changes |
 | `flutter-riverpod-patterns` | Riverpod state management: MVVM, provider patterns, AsyncNotifier, reactive state | State management tasks |
 | `flutter-widget-previews` | Flutter Widget Previews: @Preview annotations, coverage, Riverpod/localization | Widget preview setup |
@@ -209,6 +211,7 @@
 | `team-builder` | Interactive agent team composer — discover, pick up to 5, dispatch in parallel | Multi-perspective analysis |
 | `token-optimizer` | Token and cost optimization — model routing, caching, context budgeting | API cost optimization |
 | `verification-loop` | 6-phase verification (analyze, clippy, tests, security, diff review) for Flutter + Rust | After features, before commits |
+| `ai-e2e-testing` | AI-powered E2E testing — you are the tester using agent-browser CLI, screenshots, accessibility tree analysis | "Run AI tests", "ai ux review", "ai accessibility audit", "test the app visually" |
 
 ---
 
