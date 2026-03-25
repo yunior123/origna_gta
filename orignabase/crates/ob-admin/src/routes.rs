@@ -73,16 +73,28 @@ async fn drop_collection(
 async fn list_users(State(state): State<AdminState>) -> Result<Json<Value>> {
     let users = state
         .db
-        .query_raw("SELECT id, email, display_name, roles, created_at FROM users LIMIT 100")
+        .query_raw("SELECT id, display_name, roles, created_at FROM users LIMIT 100")
         .await?;
     Ok(Json(json!({ "users": users })))
 }
 
 /// DELETE /_admin/users/:id — Delete a user.
 async fn delete_user(
+    axum::extract::Extension(auth): axum::extract::Extension<AuthContext>,
     State(state): State<AdminState>,
     axum::extract::Path(id): axum::extract::Path<String>,
 ) -> Result<Json<Value>> {
+    // Audit log for user deletion
+    tracing::warn!(
+        admin_id = %auth.user_id,
+        target_user = %id,
+        "admin_delete_user"
+    );
+    let _ = state.db.query_bind(
+        "CREATE _admin_audit_log CONTENT { action: 'delete_user', adminId: $admin_id, targetId: $target_id, timestamp: time::now() }",
+        json!({ "admin_id": auth.user_id, "target_id": id }),
+    ).await;
+
     state.db.delete_document("users", &id).await?;
     Ok(Json(json!({ "deleted": id })))
 }
@@ -375,23 +387,18 @@ async fn redirect_link(
 ) -> std::result::Result<axum::response::Redirect, axum::response::Response> {
     let results = state
         .db
-        .query_raw_value(&format!(
-            "SELECT target_url FROM type::table('_dynamic_links') WHERE slug = '{}' LIMIT 1",
-            slug.replace('\'', "\\'")
-        ))
+        .query_bind_value(
+            "SELECT target_url FROM _dynamic_links WHERE slug = $slug LIMIT 1",
+            json!({ "slug": slug }),
+        )
         .await
         .map_err(|e| {
             (axum::http::StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response()
         })?;
 
     let target = results
-        .get("target_url")
-        .or_else(|| {
-            results
-                .as_array()
-                .and_then(|items| items.first())
-                .and_then(|item| item.get("target_url"))
-        })
+        .first()
+        .and_then(|item| item.get("target_url"))
         .and_then(|v| v.as_str())
         .ok_or_else(|| (axum::http::StatusCode::NOT_FOUND, "Link not found").into_response())?;
 
@@ -730,11 +737,24 @@ async fn system_alerts(State(state): State<AdminState>) -> Result<Json<Value>> {
 ///
 /// POST /_admin/jwt/rotate — Rotate JWT signing keys (admin-only).
 /// Generates new RS256 key pair, moves current to previous, saves metadata.
-async fn rotate_jwt_keys(State(_state): State<AdminState>) -> Result<Json<Value>> {
+async fn rotate_jwt_keys(
+    axum::extract::Extension(auth): axum::extract::Extension<AuthContext>,
+    State(state): State<AdminState>,
+) -> Result<Json<Value>> {
     use std::path::Path;
 
     // Keys directory (same as used in main.rs)
     let keys_dir = Path::new("./data/keys");
+
+    // Audit log for JWT key rotation
+    tracing::warn!(
+        admin_id = %auth.user_id,
+        "admin_rotate_jwt_keys"
+    );
+    let _ = state.db.query_bind(
+        "CREATE _admin_audit_log CONTENT { action: 'rotate_jwt_keys', adminId: $admin_id, timestamp: time::now() }",
+        json!({ "admin_id": auth.user_id }),
+    ).await;
 
     match ob_auth::rotate_keys(keys_dir) {
         Ok(new_fingerprint) => {
