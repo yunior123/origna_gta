@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
-import 'package:origna_gta/features/chat/orignabase_chat_repository.dart';
+
 import 'package:origna_gta/features/chat/chat_repository.dart';
 
 // =============================================================================
@@ -26,9 +26,9 @@ class _FakeDocument extends Fake implements Document {
   @override
   final Map<String, dynamic> data;
   @override
-  final bool exists;
+  final bool exists = true;
 
-  _FakeDocument(this.id, this.data, {this.exists = true});
+  _FakeDocument(this.id, this.data);
 
   @override
   T? get<T>(String field) => data[field] as T?;

@@ -29,6 +29,133 @@ Map<String, dynamic> _$InventoryConfigToJson(_InventoryConfig instance) =>
       'reservationHoldMinutes': instance.reservationHoldMinutes,
     };
 
+_NutritionFacts _$NutritionFactsFromJson(Map<String, dynamic> json) =>
+    _NutritionFacts(
+      servingSizeAmount: (json['servingSizeAmount'] as num).toInt(),
+      servingSizeUnit: json['servingSizeUnit'] as String,
+      servingsPerContainer: (json['servingsPerContainer'] as num?)?.toInt(),
+      caloriesKcal: (json['caloriesKcal'] as num).toInt(),
+      totalFatMg: (json['totalFatMg'] as num).toInt(),
+      saturatedFatMg: (json['saturatedFatMg'] as num).toInt(),
+      transFatMg: (json['transFatMg'] as num).toInt(),
+      cholesterolMg: (json['cholesterolMg'] as num).toInt(),
+      sodiumMg: (json['sodiumMg'] as num).toInt(),
+      totalCarbohydrateMg: (json['totalCarbohydrateMg'] as num).toInt(),
+      fibreMg: (json['fibreMg'] as num).toInt(),
+      sugarsMg: (json['sugarsMg'] as num).toInt(),
+      proteinMg: (json['proteinMg'] as num).toInt(),
+      vitaminAMcg: (json['vitaminAMcg'] as num).toInt(),
+      vitaminCMg: (json['vitaminCMg'] as num).toInt(),
+      calciumMg: (json['calciumMg'] as num).toInt(),
+      ironMg: (json['ironMg'] as num).toInt(),
+      addedSugarsMg: (json['addedSugarsMg'] as num?)?.toInt(),
+      potassiumMg: (json['potassiumMg'] as num?)?.toInt(),
+      vitaminDMcg: (json['vitaminDMcg'] as num?)?.toInt(),
+    );
+
+Map<String, dynamic> _$NutritionFactsToJson(_NutritionFacts instance) =>
+    <String, dynamic>{
+      'servingSizeAmount': instance.servingSizeAmount,
+      'servingSizeUnit': instance.servingSizeUnit,
+      'servingsPerContainer': instance.servingsPerContainer,
+      'caloriesKcal': instance.caloriesKcal,
+      'totalFatMg': instance.totalFatMg,
+      'saturatedFatMg': instance.saturatedFatMg,
+      'transFatMg': instance.transFatMg,
+      'cholesterolMg': instance.cholesterolMg,
+      'sodiumMg': instance.sodiumMg,
+      'totalCarbohydrateMg': instance.totalCarbohydrateMg,
+      'fibreMg': instance.fibreMg,
+      'sugarsMg': instance.sugarsMg,
+      'proteinMg': instance.proteinMg,
+      'vitaminAMcg': instance.vitaminAMcg,
+      'vitaminCMg': instance.vitaminCMg,
+      'calciumMg': instance.calciumMg,
+      'ironMg': instance.ironMg,
+      'addedSugarsMg': instance.addedSugarsMg,
+      'potassiumMg': instance.potassiumMg,
+      'vitaminDMcg': instance.vitaminDMcg,
+    };
+
+_FoodMetadata _$FoodMetadataFromJson(Map<String, dynamic> json) =>
+    _FoodMetadata(
+      ingredientsEn: json['ingredientsEn'] as String?,
+      ingredientsFr: json['ingredientsFr'] as String?,
+      allergens:
+          (json['allergens'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          const [],
+      mayContainAllergens:
+          (json['mayContainAllergens'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          const [],
+      storageInstructionsEn: json['storageInstructionsEn'] as String?,
+      storageInstructionsFr: json['storageInstructionsFr'] as String?,
+      bestBeforeDays: (json['bestBeforeDays'] as num?)?.toInt(),
+      dietaryBadges:
+          (json['dietaryBadges'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          const [],
+      fopHighSodium: json['fopHighSodium'] as bool? ?? false,
+      fopHighSugars: json['fopHighSugars'] as bool? ?? false,
+      fopHighSaturatedFat: json['fopHighSaturatedFat'] as bool? ?? false,
+    );
+
+Map<String, dynamic> _$FoodMetadataToJson(_FoodMetadata instance) =>
+    <String, dynamic>{
+      'ingredientsEn': instance.ingredientsEn,
+      'ingredientsFr': instance.ingredientsFr,
+      'allergens': instance.allergens,
+      'mayContainAllergens': instance.mayContainAllergens,
+      'storageInstructionsEn': instance.storageInstructionsEn,
+      'storageInstructionsFr': instance.storageInstructionsFr,
+      'bestBeforeDays': instance.bestBeforeDays,
+      'dietaryBadges': instance.dietaryBadges,
+      'fopHighSodium': instance.fopHighSodium,
+      'fopHighSugars': instance.fopHighSugars,
+      'fopHighSaturatedFat': instance.fopHighSaturatedFat,
+    };
+
+_ProductSpec _$ProductSpecFromJson(Map<String, dynamic> json) => _ProductSpec(
+  key: json['key'] as String,
+  value: json['value'] as String,
+  valueType: json['valueType'] as String? ?? 'text',
+  unit: json['unit'] as String?,
+  group: json['group'] as String?,
+);
+
+Map<String, dynamic> _$ProductSpecToJson(_ProductSpec instance) =>
+    <String, dynamic>{
+      'key': instance.key,
+      'value': instance.value,
+      'valueType': instance.valueType,
+      'unit': instance.unit,
+      'group': instance.group,
+    };
+
+_ProductSpecs _$ProductSpecsFromJson(Map<String, dynamic> json) =>
+    _ProductSpecs(
+      specs:
+          (json['specs'] as List<dynamic>?)
+              ?.map((e) => ProductSpec.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          const [],
+      brand: json['brand'] as String?,
+      color: json['color'] as String?,
+      material: json['material'] as String?,
+    );
+
+Map<String, dynamic> _$ProductSpecsToJson(_ProductSpecs instance) =>
+    <String, dynamic>{
+      'specs': instance.specs,
+      'brand': instance.brand,
+      'color': instance.color,
+      'material': instance.material,
+    };
+
 _Product _$ProductFromJson(Map<String, dynamic> json) => _Product(
   productId: json['productId'] as String,
   name: json['name'] as String,
@@ -83,7 +210,7 @@ _Product _$ProductFromJson(Map<String, dynamic> json) => _Product(
       (json['keywords'] as List<dynamic>?)?.map((e) => e as String).toList() ??
       const [],
   approvalRejectionReason: json['approvalRejectionReason'] as String?,
-  cost: (json['cost'] as num?)?.toDouble(),
+  costCents: (json['costCents'] as num?)?.toInt(),
   supplierSku: json['supplierSku'] as String?,
   supplierUrl: json['supplierUrl'] as String?,
   supplier: json['supplier'] == null
@@ -128,6 +255,20 @@ _Product _$ProductFromJson(Map<String, dynamic> json) => _Product(
   updatedAt: json['updatedAt'] == null
       ? null
       : DateTime.parse(json['updatedAt'] as String),
+  nutritionFacts: json['nutritionFacts'] == null
+      ? null
+      : NutritionFacts.fromJson(json['nutritionFacts'] as Map<String, dynamic>),
+  foodMetadata: json['foodMetadata'] == null
+      ? null
+      : FoodMetadata.fromJson(json['foodMetadata'] as Map<String, dynamic>),
+  specs: json['specs'] == null
+      ? null
+      : ProductSpecs.fromJson(json['specs'] as Map<String, dynamic>),
+  bundledProductIds:
+      (json['bundledProductIds'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList() ??
+      const [],
 );
 
 Map<String, dynamic> _$ProductToJson(_Product instance) => <String, dynamic>{
@@ -171,7 +312,7 @@ Map<String, dynamic> _$ProductToJson(_Product instance) => <String, dynamic>{
   'taxCode': instance.taxCode,
   'keywords': instance.keywords,
   'approvalRejectionReason': instance.approvalRejectionReason,
-  'cost': instance.cost,
+  'costCents': instance.costCents,
   'supplierSku': instance.supplierSku,
   'supplierUrl': instance.supplierUrl,
   'supplier': instance.supplier,
@@ -194,6 +335,10 @@ Map<String, dynamic> _$ProductToJson(_Product instance) => <String, dynamic>{
   'condition': instance.condition,
   'warehouseStockMap': instance.warehouseStockMap,
   'updatedAt': instance.updatedAt?.toIso8601String(),
+  'nutritionFacts': instance.nutritionFacts,
+  'foodMetadata': instance.foodMetadata,
+  'specs': instance.specs,
+  'bundledProductIds': instance.bundledProductIds,
 };
 
 _ProductCreate _$ProductCreateFromJson(
@@ -243,7 +388,7 @@ _ProductCreate _$ProductCreateFromJson(
   keywords:
       (json['keywords'] as List<dynamic>?)?.map((e) => e as String).toList() ??
       const [],
-  cost: (json['cost'] as num?)?.toDouble(),
+  costCents: (json['costCents'] as num?)?.toInt(),
   supplierSku: json['supplierSku'] as String?,
   supplierUrl: json['supplierUrl'] as String?,
   supplier: json['supplier'] == null
@@ -274,6 +419,20 @@ _ProductCreate _$ProductCreateFromJson(
           .toList() ??
       const [],
   subcategory: json['subcategory'] as String?,
+  nutritionFacts: json['nutritionFacts'] == null
+      ? null
+      : NutritionFacts.fromJson(json['nutritionFacts'] as Map<String, dynamic>),
+  foodMetadata: json['foodMetadata'] == null
+      ? null
+      : FoodMetadata.fromJson(json['foodMetadata'] as Map<String, dynamic>),
+  specs: json['specs'] == null
+      ? null
+      : ProductSpecs.fromJson(json['specs'] as Map<String, dynamic>),
+  bundledProductIds:
+      (json['bundledProductIds'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList() ??
+      const [],
 );
 
 Map<String, dynamic> _$ProductCreateToJson(_ProductCreate instance) =>
@@ -309,7 +468,7 @@ Map<String, dynamic> _$ProductCreateToJson(_ProductCreate instance) =>
       'deviceLimit': instance.deviceLimit,
       'taxCode': instance.taxCode,
       'keywords': instance.keywords,
-      'cost': instance.cost,
+      'costCents': instance.costCents,
       'supplierSku': instance.supplierSku,
       'supplierUrl': instance.supplierUrl,
       'supplier': instance.supplier,
@@ -324,6 +483,10 @@ Map<String, dynamic> _$ProductCreateToJson(_ProductCreate instance) =>
       'variants': instance.variants,
       'variantOptions': instance.variantOptions,
       'subcategory': instance.subcategory,
+      'nutritionFacts': instance.nutritionFacts,
+      'foodMetadata': instance.foodMetadata,
+      'specs': instance.specs,
+      'bundledProductIds': instance.bundledProductIds,
     };
 
 _VariantOption _$VariantOptionFromJson(Map<String, dynamic> json) =>
@@ -467,7 +630,7 @@ _SupplierInfo _$SupplierInfoFromJson(Map<String, dynamic> json) =>
       type: json['type'] as String,
       supplierSku: json['supplierSku'] as String?,
       supplierUrl: json['supplierUrl'] as String?,
-      cost: (json['cost'] as num?)?.toDouble(),
+      costCents: (json['costCents'] as num?)?.toInt(),
       currency: json['currency'] as String? ?? 'USD',
       shippingDays: json['shippingDays'] as String?,
       hasTracking: json['hasTracking'] as bool? ?? false,
@@ -479,7 +642,7 @@ Map<String, dynamic> _$SupplierInfoToJson(_SupplierInfo instance) =>
       'type': instance.type,
       'supplierSku': instance.supplierSku,
       'supplierUrl': instance.supplierUrl,
-      'cost': instance.cost,
+      'costCents': instance.costCents,
       'currency': instance.currency,
       'shippingDays': instance.shippingDays,
       'hasTracking': instance.hasTracking,

@@ -1,12 +1,9 @@
-import 'dart:async';
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/chat/chat_repository.dart';
-import 'package:origna_gta/features/chat/orignabase_chat_repository.dart';
 
 @GenerateNiceMocks([MockSpec<OrignaBase>(), MockSpec<OrignaBaseAuth>()])
 import 'chat_repository_coverage_boost_test.mocks.dart';

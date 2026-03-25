@@ -139,6 +139,27 @@ final similarProductsProvider = FutureProvider.autoDispose
           .toList();
     });
 
+/// Products from the same seller (excluding current product).
+/// Used for "More from this seller" section on product detail page.
+final moreFromSellerProvider = FutureProvider.autoDispose
+    .family<List<Product>, ({String sellerId, String excludeProductId})>((
+      ref,
+      params,
+    ) async {
+      final repository = ref.watch(productRepositoryProvider);
+      final result = await repository.fetchProducts(
+        sellerId: params.sellerId,
+        pageSize: 12,
+      );
+      return result.products
+          .where((p) => p.productId != params.excludeProductId)
+          .where(
+            (p) => p.lifecycleStatus == ProductLifecycleStatusValues.active,
+          )
+          .take(8)
+          .toList();
+    });
+
 /// Streams the count of unanswered product questions for a seller
 final sellerUnansweredQaProvider = StreamProvider.autoDispose
     .family<int, String>((ref, sellerId) {

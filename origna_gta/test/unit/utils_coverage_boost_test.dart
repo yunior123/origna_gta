@@ -1,7 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:origna_gta/core/compat/timestamp.dart';
-import 'package:origna_gta/core/schema/schema_constants.dart';
-import 'package:origna_gta/models/models.dart';
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/utils.dart';
 

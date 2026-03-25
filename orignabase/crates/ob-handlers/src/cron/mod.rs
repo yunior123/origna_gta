@@ -17,6 +17,13 @@ use crate::HandlersState;
 use crate::shared::schema::{business_rules, collections, documents, email_config, fields};
 
 // ---------------------------------------------------------------------------
+// Field extraction helpers (local to cron module)
+
+fn i64_field(v: &Value, field: &str) -> i64 {
+    v.get(field).and_then(|x| x.as_i64()).unwrap_or(0)
+}
+
+// ---------------------------------------------------------------------------
 // Cron lock helpers
 // ---------------------------------------------------------------------------
 
@@ -37,7 +44,7 @@ async fn acquire_cron_lock(state: &HandlersState, job_name: &str, ttl_minutes: i
         && let Some(locked_at) = doc.get("lockedAt").and_then(|v| v.as_str())
         && let Ok(ts) = chrono::DateTime::parse_from_rfc3339(locked_at)
         && ts.with_timezone(&Utc) > cutoff
-        && doc.get("status").and_then(|v| v.as_str()) == Some("running")
+        && doc.get(fields::STATUS).and_then(|v| v.as_str()) == Some("running")
     {
         return false; // Lock still held and running
     }
@@ -102,7 +109,7 @@ async fn stripe_provider_enabled(state: &HandlersState) -> bool {
         .and_then(|providers| {
             providers
                 .iter()
-                .find(|provider| provider.get("name").and_then(|v| v.as_str()) == Some("stripe"))
+                .find(|provider| provider.get(fields::NAME).and_then(|v| v.as_str()) == Some("stripe"))
         })
         .and_then(|provider| provider.get("enabled").and_then(|v| v.as_bool()))
         .unwrap_or(true)
@@ -129,7 +136,7 @@ async fn stripe_create_transfer(
         .map_err(|e| format!("Seller not found: {}", e))?;
 
     let stripe_account_id = seller
-        .get("stripeConnectAccountId")
+        .get(fields::STRIPE_ACCOUNT_ID)
         .and_then(|v| v.as_str())
         .ok_or_else(|| "Seller has no Stripe Connect account".to_string())?;
 
@@ -293,23 +300,22 @@ async fn run_auto_capture(state: &HandlersState) -> std::result::Result<(), Stri
                     .get(fields::PRICE_CENTS)
                     .and_then(|v| v.as_i64())
                     .unwrap_or(0);
-                let qty = item.get("quantity").and_then(|v| v.as_i64()).unwrap_or(1);
+                let qty = item.get(fields::QUANTITY).and_then(|v| v.as_i64()).unwrap_or(1);
                 *sellers_total_cents
                     .entry(seller_id.to_string())
                     .or_insert(0) += price * qty;
             }
         }
 
-        let platform_fee_ratio = order
-            .get("platformFeeRatio")
-            .and_then(|v| v.as_f64())
-            .unwrap_or(business_rules::DEFAULT_COMMISSION_RATE_BPS as f64 / 10000.0);
+        let platform_fee_total = i64_field(order, fields::PLATFORM_FEE_CENTS);
 
         let expected = sellers_total_cents.len();
         let mut success_count = 0usize;
+        let order_subtotal = i64_field(order, fields::SUBTOTAL_CENTS).max(1);
 
         for (seller_id, amount_cents) in &sellers_total_cents {
-            let fee_cents = (*amount_cents as f64 * platform_fee_ratio).round() as i64;
+            // Proportional fee per seller: (seller_amount / order_subtotal) * total_platform_fee
+            let fee_cents = (*amount_cents * platform_fee_total + order_subtotal / 2) / order_subtotal;
             let net_cents = amount_cents - fee_cents;
 
             // Create payout record
@@ -423,21 +429,20 @@ pub async fn check_expired_authorizations(state: &HandlersState) {
 
     let cutoff = Utc::now() - Duration::days(business_rules::AUTHORIZATION_EXPIRY_DAYS as i64);
     let sql = format!(
-        "SELECT * FROM {} WHERE paymentStatus IN ['authorized','awaiting_payment'] AND orderStatus IN ['pending','confirmed'] AND createdAt <= '{}' LIMIT 100",
-        collections::ORDERS,
-        cutoff.to_rfc3339(),
+        "SELECT * FROM {} WHERE paymentStatus IN ['authorized','awaiting_payment'] AND orderStatus IN ['pending','confirmed'] AND createdAt <= $cutoff LIMIT 100",
+        collections::ORDERS
     );
 
-    match state.db.query_raw(&sql).await {
+    match state.db.query_bind_value(&sql, json!({ "cutoff": cutoff.to_rfc3339() })).await {
         Ok(orders) => {
             let mut cancelled = 0u32;
             let now_str = Utc::now().to_rfc3339();
 
             for order in &orders {
-                let id = order.get("id").and_then(|v| v.as_str()).unwrap_or("");
-                let buyer_id = order.get("userId").and_then(|v| v.as_str()).unwrap_or("");
+                let id = order.get(fields::ID).and_then(|v| v.as_str()).unwrap_or("");
+                let buyer_id = order.get(fields::USER_ID).and_then(|v| v.as_str()).unwrap_or("");
                 let payment_intent_id = order
-                    .get("paymentIntentId")
+                    .get(fields::PAYMENT_INTENT_ID)
                     .and_then(|v| v.as_str())
                     .unwrap_or("");
 
@@ -447,15 +452,15 @@ pub async fn check_expired_authorizations(state: &HandlersState) {
                 }
 
                 // Restore stock for all physical items
-                if let Some(items) = order.get("items").and_then(|v| v.as_array()) {
+                if let Some(items) = order.get(fields::ITEMS).and_then(|v| v.as_array()) {
                     for item in items {
                         let is_digital = item
-                            .get("isDigital")
+                            .get(fields::IS_DIGITAL)
                             .and_then(|v| v.as_bool())
                             .unwrap_or(false);
                         if !is_digital {
-                            let pid = item.get("productId").and_then(|v| v.as_str()).unwrap_or("");
-                            let qty = item.get("quantity").and_then(|v| v.as_i64()).unwrap_or(1);
+                            let pid = item.get(fields::PRODUCT_ID).and_then(|v| v.as_str()).unwrap_or("");
+                            let qty = item.get(fields::QUANTITY).and_then(|v| v.as_i64()).unwrap_or(1);
                             if !pid.is_empty() && qty > 0
                                 && let Err(e) = state
                                     .db
@@ -482,9 +487,9 @@ pub async fn check_expired_authorizations(state: &HandlersState) {
                         collections::ORDERS,
                         normalize_record_id(id),
                         json!({
-                            "orderStatus": "expired",
-                            "paymentStatus": "cancelled",
-                            "cancellationReason": "authorization_expired",
+                            fields::ORDER_STATUS: "expired",
+                            fields::PAYMENT_STATUS: "cancelled",
+                            fields::CANCELLATION_REASON: "authorization_expired",
                             "stockRestored": true,
                             fields::UPDATED_AT: now_str,
                         }),
@@ -496,8 +501,8 @@ pub async fn check_expired_authorizations(state: &HandlersState) {
                     .create_document(
                         collections::ORDER_EVENTS,
                         json!({
-                            "orderId": id,
-                            "userId": buyer_id,
+                            fields::ORDER_ID: id,
+                            fields::USER_ID: buyer_id,
                             "eventType": "authorization_expired",
                             "message": "Payment authorization expired after 7 days. Order cancelled and stock restored.",
                             "createdAt": now_str,
@@ -539,12 +544,11 @@ pub async fn auto_archive_old_orders(state: &HandlersState) {
     let result = async {
         let cutoff = Utc::now() - Duration::days(business_rules::AUTO_ARCHIVE_DAYS as i64);
         let sql = format!(
-            "SELECT * FROM {} WHERE orderStatus IN ['delivered','cancelled','expired','failed','disputed'] AND updatedAt <= '{}' AND (archived = false OR archived = NONE) LIMIT 200",
-            collections::ORDERS,
-            cutoff.to_rfc3339(),
+            "SELECT * FROM {} WHERE orderStatus IN ['delivered','cancelled','expired','failed','disputed'] AND updatedAt <= $cutoff AND (archived = false OR archived = NONE) LIMIT 200",
+            collections::ORDERS
         );
 
-        let orders = state.db.query_raw(&sql).await.map_err(|e| e.to_string())?;
+        let orders = state.db.query_bind_value(&sql, json!({ "cutoff": cutoff.to_rfc3339() })).await.map_err(|e| e.to_string())?;
         let mut archived = 0u32;
 
         for order in &orders {
@@ -587,7 +591,7 @@ pub async fn monitor_meilisearch_sync(state: &HandlersState) {
         // Count active products in DB
         let sql = format!(
             "SELECT count() AS total FROM {} WHERE lifecycleStatus = 'active' GROUP ALL",
-            collections::PRODUCTS,
+            collections::PRODUCTS
         );
         let counts = state.db.query_raw(&sql).await.map_err(|e| e.to_string())?;
         let db_count = counts
@@ -629,12 +633,11 @@ pub async fn cleanup_stale_rate_limits(state: &HandlersState) {
     let result = async {
         let cutoff = Utc::now() - Duration::hours(business_rules::RATE_LIMIT_STALE_HOURS as i64);
         let sql = format!(
-            "SELECT * FROM {} WHERE lastRequest <= '{}' LIMIT 500",
-            collections::RATE_LIMITS,
-            cutoff.to_rfc3339(),
+            "SELECT * FROM {} WHERE lastRequest <= $cutoff LIMIT 500",
+            collections::RATE_LIMITS
         );
 
-        let docs = state.db.query_raw(&sql).await.map_err(|e| e.to_string())?;
+        let docs = state.db.query_bind_value(&sql, json!({ "cutoff": cutoff.to_rfc3339() })).await.map_err(|e| e.to_string())?;
         let mut deleted = 0u32;
 
         for doc in &docs {
@@ -720,15 +723,13 @@ pub async fn cleanup_stale_webhook_events(state: &HandlersState) {
     }
 
     let result = async {
-        let cutoff =
-            Utc::now() - Duration::days(business_rules::WEBHOOK_EVENT_RETENTION_DAYS as i64);
+        let cutoff = Utc::now() - Duration::days(business_rules::WEBHOOK_EVENT_RETENTION_DAYS as i64);
         let sql = format!(
-            "SELECT * FROM {} WHERE timestamp <= '{}' LIMIT 500",
-            collections::WEBHOOK_EVENTS,
-            cutoff.to_rfc3339(),
+            "SELECT * FROM {} WHERE timestamp <= $cutoff LIMIT 500",
+            collections::WEBHOOK_EVENTS
         );
 
-        let docs = state.db.query_raw(&sql).await.map_err(|e| e.to_string())?;
+        let docs = state.db.query_bind_value(&sql, json!({ "cutoff": cutoff.to_rfc3339() })).await.map_err(|e| e.to_string())?;
         let mut deleted = 0u32;
 
         for doc in &docs {
@@ -769,12 +770,11 @@ pub async fn cleanup_stale_security_alerts(state: &HandlersState) {
         let cutoff =
             Utc::now() - Duration::days(business_rules::SECURITY_ALERT_ARCHIVE_DAYS as i64);
         let sql = format!(
-            "SELECT * FROM {} WHERE resolved = true AND timestamp <= '{}' LIMIT 500",
-            collections::SECURITY_ALERTS,
-            cutoff.to_rfc3339(),
+            "SELECT * FROM {} WHERE resolved = true AND timestamp <= $cutoff LIMIT 500",
+            collections::SECURITY_ALERTS
         );
 
-        let docs = state.db.query_raw(&sql).await.map_err(|e| e.to_string())?;
+        let docs = state.db.query_bind_value(&sql, json!({ "cutoff": cutoff.to_rfc3339() })).await.map_err(|e| e.to_string())?;
         let mut deleted = 0u32;
 
         for doc in &docs {
@@ -817,7 +817,7 @@ pub async fn retry_failed_meilisearch_syncs(state: &HandlersState) {
     let result = async {
         let sql = format!(
             "SELECT * FROM {} WHERE resolved = false LIMIT 50",
-            collections::MEILISEARCH_SYNC_FAILURES,
+            collections::MEILISEARCH_SYNC_FAILURES
         );
 
         let failures = state.db.query_raw(&sql).await.map_err(|e| e.to_string())?;
@@ -1253,13 +1253,12 @@ pub async fn compute_seller_metrics(state: &HandlersState) {
 
         // Bulk fetch orders from window
         let orders_sql = format!(
-            "SELECT * FROM {} WHERE createdAt >= '{}' LIMIT 2000",
-            collections::ORDERS,
-            window_start.to_rfc3339(),
+            "SELECT * FROM {} WHERE createdAt >= $window_start LIMIT 2000",
+            collections::ORDERS
         );
         let orders = state
             .db
-            .query_raw(&orders_sql)
+            .query_bind_value(&orders_sql, json!({ "window_start": window_start.to_rfc3339() }))
             .await
             .map_err(|e| e.to_string())?;
 
@@ -1273,7 +1272,7 @@ pub async fn compute_seller_metrics(state: &HandlersState) {
                 .and_then(|v| v.as_bool())
                 .unwrap_or(false);
             let order_status = order
-                .get("orderStatus")
+                .get(fields::ORDER_STATUS)
                 .and_then(|v| v.as_str())
                 .unwrap_or("");
 
@@ -1417,12 +1416,11 @@ pub async fn compute_trending_products(state: &HandlersState) {
         let window_start = now - Duration::hours(business_rules::TRENDING_WINDOW_HOURS as i64);
 
         let sql = format!(
-            "SELECT * FROM {} WHERE lifecycleStatus = 'active' AND updatedAt >= '{}' LIMIT 5000",
-            collections::PRODUCTS,
-            window_start.to_rfc3339(),
+            "SELECT * FROM {} WHERE lifecycleStatus = 'active' AND updatedAt >= $window_start LIMIT 5000",
+            collections::PRODUCTS
         );
 
-        let products = state.db.query_raw(&sql).await.map_err(|e| e.to_string())?;
+        let products = state.db.query_bind_value(&sql, json!({ "window_start": window_start.to_rfc3339() })).await.map_err(|e| e.to_string())?;
 
         let mut scored: Vec<(f64, String, String)> = Vec::new(); // (score, id, name)
         let mut old_trending: std::collections::HashSet<String> = std::collections::HashSet::new();
@@ -1533,12 +1531,11 @@ pub async fn sync_expired_subscriptions(state: &HandlersState) {
 
         // Find subscriptions past their period end that are still active
         let sql = format!(
-            "SELECT * FROM {} WHERE currentPeriodEnd < '{}' AND status IN ['active','past_due'] LIMIT 50",
-            collections::SUBSCRIPTIONS,
-            now.to_rfc3339(),
+            "SELECT * FROM {} WHERE currentPeriodEnd < $now AND status IN ['active','past_due'] LIMIT 50",
+            collections::SUBSCRIPTIONS
         );
 
-        let subs = state.db.query_raw(&sql).await.map_err(|e| e.to_string())?;
+        let subs = state.db.query_bind_value(&sql, json!({ "now": now.to_rfc3339() })).await.map_err(|e| e.to_string())?;
         let mut synced = 0u32;
 
         for sub in &subs {
@@ -1607,12 +1604,11 @@ pub async fn escalate_stale_return_requests(state: &HandlersState) {
         let cutoff = now - Duration::days(business_rules::RETURN_ESCALATION_DAYS as i64);
 
         let sql = format!(
-            "SELECT * FROM {} WHERE returnStatus = 'requested' AND requestedAt < '{}' LIMIT 200",
-            collections::RETURN_REQUESTS,
-            cutoff.to_rfc3339(),
+            "SELECT * FROM {} WHERE returnStatus = 'requested' AND requestedAt < $cutoff LIMIT 200",
+            collections::RETURN_REQUESTS
         );
 
-        let returns = state.db.query_raw(&sql).await.map_err(|e| e.to_string())?;
+        let returns = state.db.query_bind_value(&sql, json!({ "cutoff": cutoff.to_rfc3339() })).await.map_err(|e| e.to_string())?;
         let mut escalated = 0u32;
 
         for ret in &returns {
@@ -1668,13 +1664,11 @@ pub async fn send_premium_renewal_reminders(state: &HandlersState) {
             let dedup_field = format!("renewalReminderSentDays{days_ahead}");
 
             let sql = format!(
-                "SELECT * FROM {} WHERE currentPeriodEnd >= '{}' AND currentPeriodEnd <= '{}' AND status IN ['active','past_due'] LIMIT 200",
-                collections::SUBSCRIPTIONS,
-                window_start.to_rfc3339(),
-                window_end.to_rfc3339(),
+                "SELECT * FROM {} WHERE currentPeriodEnd >= $window_start AND currentPeriodEnd <= $window_end AND status IN ['active','past_due'] LIMIT 200",
+                collections::SUBSCRIPTIONS
             );
 
-            let subs = state.db.query_raw(&sql).await.map_err(|e| e.to_string())?;
+            let subs = state.db.query_bind_value(&sql, json!({ "window_start": window_start.to_rfc3339(), "window_end": window_end.to_rfc3339() })).await.map_err(|e| e.to_string())?;
             let mut sent = 0u32;
 
             for sub in &subs {
@@ -1935,6 +1929,126 @@ pub async fn drain_pending_notifications(state: &HandlersState) {
 }
 
 // ---------------------------------------------------------------------------
+// Cron job: compute_co_purchase_recommendations
+// ---------------------------------------------------------------------------
+
+/// Daily (3 AM): Computes co-purchase product recommendations from delivered orders.
+/// Analyzes orders from last 90 days, builds a co-occurrence matrix, and stores
+/// the top 10 most frequently co-purchased products per product.
+pub async fn compute_co_purchase_recommendations(state: &HandlersState) {
+    info!("Running compute_co_purchase_recommendations");
+
+    if !acquire_cron_lock(state, "compute_co_purchase_recommendations", 60).await {
+        return;
+    }
+
+    let result: Result<String, String> = async {
+        use std::collections::HashMap;
+
+        // 1. Query delivered orders from last 90 days
+        let cutoff = Utc::now() - Duration::days(90);
+        let orders: Vec<Value> = state
+            .db
+            .query_bind_value(
+                &format!(
+                    "SELECT items FROM {} WHERE {} = $status AND {} > $cutoff",
+                    collections::ORDERS,
+                    fields::STATUS,
+                    fields::CREATED_AT,
+                ),
+                json!({
+                    "status": "delivered",
+                    "cutoff": cutoff.to_rfc3339(),
+                }),
+            )
+            .await
+            .map_err(|e| format!("Failed to query orders: {e}"))?;
+
+        // 2. Build co-occurrence matrix
+        let mut co_occurrence: HashMap<String, HashMap<String, u32>> = HashMap::new();
+
+        for order in &orders {
+            let empty_vec = vec![];
+            let items = order
+                .get("items")
+                .and_then(|v| v.as_array())
+                .unwrap_or(&empty_vec);
+
+            let product_ids: Vec<String> = items
+                .iter()
+                .filter_map(|item| {
+                    item.get("productId")
+                        .and_then(|v| v.as_str())
+                        .map(String::from)
+                })
+                .collect();
+
+            // Count co-occurrences for each pair
+            for i in 0..product_ids.len() {
+                for j in (i + 1)..product_ids.len() {
+                    let a = &product_ids[i];
+                    let b = &product_ids[j];
+                    *co_occurrence
+                        .entry(a.clone())
+                        .or_default()
+                        .entry(b.clone())
+                        .or_default() += 1;
+                    *co_occurrence
+                        .entry(b.clone())
+                        .or_default()
+                        .entry(a.clone())
+                        .or_default() += 1;
+                }
+            }
+        }
+
+        // 3. Store top 10 recommendations per product
+        let now = Utc::now().to_rfc3339();
+        for (product_id, pairs) in &co_occurrence {
+            let mut sorted: Vec<_> = pairs.iter().collect();
+            sorted.sort_by(|a, b| b.1.cmp(a.1));
+            let top10: Vec<Value> = sorted
+                .iter()
+                .take(10)
+                .map(|(pid, score)| {
+                    json!({
+                        "productId": pid,
+                        "score": score,
+                        "type": "co_purchase"
+                    })
+                })
+                .collect();
+
+            state
+                .db
+                .upsert_document(
+                    collections::PRODUCT_RECOMMENDATIONS,
+                    &product_id.replace(':', "_"),
+                    json!({
+                        "productId": product_id,
+                        "recommendations": top10,
+                        "computedAt": &now,
+                    }),
+                )
+                .await
+                .map_err(|e| format!("Failed to upsert recommendations: {e}"))?;
+        }
+
+        info!(
+            "Computed co-purchase recommendations for {} products",
+            co_occurrence.len()
+        );
+        Ok(format!("Processed {} products", co_occurrence.len()))
+    }
+    .await;
+
+    if let Err(e) = result {
+        alert_cron_failure(state, "compute_co_purchase_recommendations", &e).await;
+    }
+    release_cron_lock(state, "compute_co_purchase_recommendations").await;
+}
+
+// ---------------------------------------------------------------------------
 // Cron job registration
 // ---------------------------------------------------------------------------
 
@@ -2034,6 +2148,11 @@ pub fn register_cron_jobs() -> Vec<CronJob> {
             schedule: "*/2 * * * *", // every 2 min
             handler: |s| Box::pin(drain_pending_notifications(s)),
         },
+        CronJob {
+            name: "compute_co_purchase_recommendations",
+            schedule: "0 3 * * *", // daily at 3 AM
+            handler: |s| Box::pin(compute_co_purchase_recommendations(s)),
+        },
     ]
 }
 
@@ -2091,7 +2210,7 @@ mod tests {
     #[test]
     fn test_register_cron_jobs_count() {
         let jobs = register_cron_jobs();
-        assert_eq!(jobs.len(), 17, "Should register exactly 17 cron jobs");
+        assert_eq!(jobs.len(), 18, "Should register exactly 18 cron jobs");
     }
 
     #[test]
@@ -2195,7 +2314,7 @@ mod tests {
                 "seller_1",
                 json!({
                     fields::UID: "seller_1",
-                    "stripeConnectAccountId": "acct_seller1",
+                    fields::STRIPE_ACCOUNT_ID: "acct_seller1",
                 }),
             )
             .await
@@ -2213,6 +2332,8 @@ mod tests {
                     fields::PAYMENT_STATUS: "captured",
                     "deliveredAt": delivered_at,
                     fields::PAYMENT_INTENT_ID: "pi_123",
+                    fields::SUBTOTAL_CENTS: 1000,
+                    fields::PLATFORM_FEE_CENTS: 25,
                     fields::ITEMS: [
                         {
                             fields::STATUS: "delivered",
@@ -3228,7 +3349,7 @@ mod tests {
                 "seller_a",
                 json!({
                     fields::UID: "seller_a",
-                    "stripeConnectAccountId": "acct_sellerA",
+                    fields::STRIPE_ACCOUNT_ID: "acct_sellerA",
                 }),
             )
             .await
@@ -3240,7 +3361,7 @@ mod tests {
                 "seller_b",
                 json!({
                     fields::UID: "seller_b",
-                    "stripeConnectAccountId": "acct_sellerB",
+                    fields::STRIPE_ACCOUNT_ID: "acct_sellerB",
                 }),
             )
             .await
@@ -3257,6 +3378,8 @@ mod tests {
                     fields::PAYMENT_STATUS: "captured",
                     "deliveredAt": delivered_at,
                     fields::PAYMENT_INTENT_ID: "pi_partial",
+                    fields::SUBTOTAL_CENTS: 2500,
+                    fields::PLATFORM_FEE_CENTS: 63,
                     fields::ITEMS: [
                         {
                             fields::STATUS: "delivered",
@@ -5646,7 +5769,7 @@ mod tests {
                 "seller_mix",
                 json!({
                     fields::UID: "seller_mix",
-                    "stripeConnectAccountId": "acct_sellerMix",
+                    fields::STRIPE_ACCOUNT_ID: "acct_sellerMix",
                 }),
             )
             .await
@@ -5663,6 +5786,8 @@ mod tests {
                     fields::PAYMENT_STATUS: "authorized",
                     "deliveredAt": delivered_at,
                     fields::PAYMENT_INTENT_ID: "pi_mixed",
+                    fields::SUBTOTAL_CENTS: 1500,
+                    fields::PLATFORM_FEE_CENTS: 38,
                     fields::ITEMS: [
                         {
                             fields::STATUS: "delivered",
@@ -6252,5 +6377,124 @@ mod tests {
         assert_eq!(high["isTrending"], true);
         assert_eq!(mid["isTrending"], true);
         assert_eq!(low["isTrending"], true);
+    }
+
+    // -----------------------------------------------------------------------
+    // Coverage: compute_co_purchase_recommendations
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn test_co_purchase_recommendations_basic() {
+        let state = setup_state().await;
+        let now = Utc::now().to_rfc3339();
+
+        // Create 3 delivered orders with overlapping items
+        // Order 1: [A, B]  Order 2: [A, C]  Order 3: [A, B, C]
+        // Expected: A-B: 2, A-C: 2, B-C: 1
+        for (i, items) in [
+            vec!["prodA", "prodB"],
+            vec!["prodA", "prodC"],
+            vec!["prodA", "prodB", "prodC"],
+        ]
+        .iter()
+        .enumerate()
+        {
+            let order_items: Vec<Value> = items
+                .iter()
+                .map(|pid| json!({"productId": pid, "name": "Test", "quantity": 1}))
+                .collect();
+            state
+                .db
+                .create_document(
+                    collections::ORDERS,
+                    json!({
+                        "id": format!("orders:order_{i}"),
+                        "status": "delivered",
+                        "createdAt": &now,
+                        "items": order_items,
+                        "buyerId": "buyer_1",
+                        "sellerId": "seller_1",
+                    }),
+                )
+                .await
+                .unwrap();
+        }
+
+        compute_co_purchase_recommendations(&state).await;
+
+        // Verify recommendations were created for prodA
+        let rec_a = state
+            .db
+            .get_document(collections::PRODUCT_RECOMMENDATIONS, "prodA")
+            .await;
+        assert!(rec_a.is_ok(), "prodA should have recommendations");
+        if let Ok(doc) = rec_a {
+            let recs = doc
+                .get("recommendations")
+                .and_then(|v| v.as_array())
+                .expect("recommendations should be an array");
+            assert!(!recs.is_empty(), "prodA should have at least one recommendation");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_co_purchase_recommendations_empty_orders() {
+        let state = setup_state().await;
+        // No orders in DB — should complete without error
+        compute_co_purchase_recommendations(&state).await;
+    }
+
+    #[tokio::test]
+    async fn test_co_purchase_recommendations_lock_held() {
+        let state = setup_state().await;
+        state
+            .db
+            .upsert_document(
+                collections::CRON_LOCKS,
+                "compute_co_purchase_recommendations",
+                json!({
+                    "lockedAt": Utc::now().to_rfc3339(),
+                    "lockedBy": "other",
+                    "status": "running",
+                }),
+            )
+            .await
+            .unwrap();
+
+        // Should skip due to held lock
+        compute_co_purchase_recommendations(&state).await;
+    }
+
+    #[test]
+    fn test_co_purchase_pairs_logic() {
+        // Test the co-occurrence counting logic in isolation
+        // Given orders: [{A, B}, {A, C}, {A, B, C}]
+        // Expected: A-B: 2, A-C: 2, B-C: 1
+        use std::collections::HashMap;
+
+        let orders = vec![
+            vec!["A", "B"],
+            vec!["A", "C"],
+            vec!["A", "B", "C"],
+        ];
+
+        let mut co_occurrence: HashMap<&str, HashMap<&str, u32>> = HashMap::new();
+        for product_ids in &orders {
+            for i in 0..product_ids.len() {
+                for j in (i + 1)..product_ids.len() {
+                    let a = product_ids[i];
+                    let b = product_ids[j];
+                    *co_occurrence.entry(a).or_default().entry(b).or_default() += 1;
+                    *co_occurrence.entry(b).or_default().entry(a).or_default() += 1;
+                }
+            }
+        }
+
+        assert_eq!(co_occurrence["A"]["B"], 2);
+        assert_eq!(co_occurrence["B"]["A"], 2);
+        assert_eq!(co_occurrence["A"]["C"], 2);
+        assert_eq!(co_occurrence["C"]["A"], 2);
+        assert_eq!(co_occurrence["B"]["C"], 1);
+        assert_eq!(co_occurrence["C"]["B"], 1);
     }
 }

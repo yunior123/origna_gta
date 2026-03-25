@@ -1,13 +1,16 @@
 //! Shipping approval workflow handlers.
 //! Ported from: functions/handlers/orders.py::approve_shipping_cost, update_shipping_cost
 
-use axum::{Json, Router, extract::State, routing::post};
+use axum::{Json, Router, extract::State, extract::Extension, routing::post};
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use tracing::{error, info, warn};
 
+use ob_auth::middleware::AuthContext;
+
 use crate::HandlersState;
+use crate::shared::auth::resolve_self_user_id;
 use crate::shared::schema::{collections, fields};
 use crate::shared::validation::{sanitize_html, validate_uid};
 
@@ -174,14 +177,15 @@ async fn stripe_modify_pi(
 
 async fn approve_shipping_cost(
     State(state): State<HandlersState>,
+    Extension(auth): Extension<AuthContext>,
     Json(req): Json<ApproveShippingRequest>,
 ) -> Result<Json<ApproveShippingResponse>, ob_core::Error> {
     validate_uid("orderId", &req.order_id)?;
-    validate_uid("userId", &req.user_id)?;
+    let user_id = resolve_self_user_id(&auth, Some(req.user_id.as_str()), "userId")?;
 
     crate::shared::rate_limiter::check_user_rate_limit(
         &state.db,
-        &req.user_id,
+        &user_id,
         "approve_shipping_cost",
         10,
         1,
@@ -205,7 +209,7 @@ async fn approve_shipping_cost(
     }
 
     // Only buyer can approve/reject
-    if str_field(&order, "userId") != req.user_id {
+    if str_field(&order, fields::USER_ID) != user_id {
         return Err(ob_core::Error::Forbidden("Not your order".into()));
     }
 
@@ -215,7 +219,7 @@ async fn approve_shipping_cost(
         .ok_or_else(|| ob_core::Error::Validation("No shipping approval data".into()))?;
 
     let approval_status = approval
-        .get("status")
+        .get(fields::STATUS)
         .and_then(|v| v.as_str())
         .unwrap_or("");
 
@@ -295,13 +299,13 @@ async fn approve_shipping_cost(
             tax_difference_cents = shipping_tax_difference_cents(difference_cents, state_code);
         }
 
-        let old_tax = i64_field(&order, "taxAmountCents");
+        let old_tax = i64_field(&order, fields::TAX_AMOUNT_CENTS);
         let new_tax = old_tax + tax_difference_cents;
         let new_total =
-            i64_field(&order, "totalAmountCents") + difference_cents + tax_difference_cents;
+            i64_field(&order, fields::TOTAL_AMOUNT_CENTS) + difference_cents + tax_difference_cents;
 
         let payment_status = str_field(&order, fields::PAYMENT_STATUS);
-        let payment_intent_id = str_field(&order, "paymentIntentId");
+        let payment_intent_id = str_field(&order, fields::PAYMENT_INTENT_ID);
         let pi_modify_blocked = payment_status == "captured" || payment_status == "authorized";
 
         let mut requires_manual_review = false;
@@ -400,18 +404,17 @@ async fn approve_shipping_cost(
         let mut tx = ob_database::Transaction::new();
         tx.add(
             &format!(
-                "UPDATE {}:{} MERGE $data",
+                "UPDATE {}:$order_id MERGE $data",
                 collections::ORDERS,
-                req.order_id
             ),
-            Some(json!({"data": update_data})),
+            Some(json!({"order_id": req.order_id, "data": update_data})),
         );
 
         // Restore stock for all physical items
         let items = items_array(&order);
-        for item in &items {
+        for (idx, item) in items.iter().enumerate() {
             if item
-                .get("isDigital")
+                .get(fields::IS_DIGITAL)
                 .and_then(|v| v.as_bool())
                 .unwrap_or(false)
             {
@@ -420,15 +423,19 @@ async fn approve_shipping_cost(
             let pid = str_field(item, fields::PRODUCT_ID);
             let qty = item.get("quantity").and_then(|v| v.as_i64()).unwrap_or(1);
             if !pid.is_empty() && qty > 0 {
+                let pid_key = format!("pid_{idx}");
+                let qty_key = format!("qty_{idx}");
+                let ts_key = format!("ts_{idx}");
                 tx.add(
                     &format!(
-                        "UPDATE {}:{} SET stockQuantity += {}, updatedAt = '{}'",
+                        "UPDATE {}:${pid_key} SET stockQuantity += ${qty_key}, updatedAt = ${ts_key}",
                         collections::PRODUCTS,
-                        pid,
-                        qty,
-                        now
                     ),
-                    None,
+                    Some(json!({
+                        pid_key: pid,
+                        qty_key: qty,
+                        ts_key: now,
+                    })),
                 );
             }
         }
@@ -456,14 +463,15 @@ async fn approve_shipping_cost(
 
 async fn update_shipping_cost(
     State(state): State<HandlersState>,
+    Extension(auth): Extension<AuthContext>,
     Json(req): Json<UpdateShippingCostRequest>,
 ) -> Result<Json<UpdateShippingCostResponse>, ob_core::Error> {
     validate_uid("orderId", &req.order_id)?;
-    validate_uid("userId", &req.user_id)?;
+    let user_id = resolve_self_user_id(&auth, Some(req.user_id.as_str()), "userId")?;
 
     crate::shared::rate_limiter::check_user_rate_limit(
         &state.db,
-        &req.user_id,
+        &user_id,
         "update_shipping_cost",
         10,
         1,
@@ -492,7 +500,7 @@ async fn update_shipping_cost(
     let items = items_array(&order);
     let seller_items: Vec<&Value> = items
         .iter()
-        .filter(|it| str_field(it, fields::SELLER_ID) == req.user_id)
+        .filter(|it| str_field(it, fields::SELLER_ID) == user_id)
         .collect();
 
     if seller_items.is_empty() {
@@ -502,7 +510,7 @@ async fn update_shipping_cost(
     }
 
     // Only confirmed/processing orders
-    let order_status = str_field(&order, "orderStatus");
+    let order_status = str_field(&order, fields::ORDER_STATUS);
     let allowed_statuses = ["confirmed", "processing"];
     if !allowed_statuses.contains(&order_status) {
         return Err(ob_core::Error::Validation(
@@ -529,9 +537,9 @@ async fn update_shipping_cost(
         })
         .unwrap_or_default();
 
-    let original_seller_cents = *seller_shipping_map.get(&req.user_id).unwrap_or(&0);
+    let original_seller_cents = *seller_shipping_map.get(&user_id).unwrap_or(&0);
     let new_shipping_cents = (req.new_shipping_cost * 100.0).round() as i64;
-    seller_shipping_map.insert(req.user_id.clone(), new_shipping_cents);
+    seller_shipping_map.insert(user_id.clone(), new_shipping_cents);
     let new_total_shipping: i64 = seller_shipping_map.values().sum();
     let original_shipping = i64_field(&order, fields::SHIPPING_COST_CENTS);
 
@@ -549,7 +557,7 @@ async fn update_shipping_cost(
                 "originalCostCents": original_seller_cents,
                 "newCostCents": new_shipping_cents,
                 "reason": reason,
-                "requestedBy": req.user_id,
+                "requestedBy": user_id,
                 "requestedAt": now,
             },
             "shippingApprovalStatus": "pending",
@@ -577,7 +585,7 @@ async fn update_shipping_cost(
             tax_difference_cents = shipping_tax_difference_cents(difference_cents, state_code);
         }
 
-        let old_tax = i64_field(&order, "taxAmountCents");
+        let old_tax = i64_field(&order, fields::TAX_AMOUNT_CENTS);
         let new_tax = old_tax + tax_difference_cents;
         let new_total =
             i64_field(&order, "totalAmountCents") + difference_cents + tax_difference_cents;
@@ -646,10 +654,21 @@ async fn update_shipping_cost(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::extract::State;
+    use axum::extract::{Extension, State};
+    use ob_auth::middleware::AuthContext;
     use ob_core::Config;
     use ob_database::DatabaseClient;
     use std::sync::Arc;
+
+    fn auth(user_id: &str) -> Extension<AuthContext> {
+        Extension(AuthContext {
+            user_id: user_id.to_string(),
+            roles: vec![],
+            authenticated: true,
+            email_verified: false,
+            custom_claims: serde_json::Value::Null,
+        })
+    }
 
     async fn setup_state() -> HandlersState {
         let db = DatabaseClient::new_mem().await;
@@ -817,6 +836,7 @@ mod tests {
 
         let forbidden = approve_shipping_cost(
             State(state.clone()),
+            auth("seller_1"),
             Json(ApproveShippingRequest {
                 order_id: "ord_1".into(),
                 user_id: "seller_1".into(),
@@ -830,6 +850,7 @@ mod tests {
 
         let mismatch = approve_shipping_cost(
             State(state),
+            auth("buyer_1"),
             Json(ApproveShippingRequest {
                 order_id: "ord_1".into(),
                 user_id: "buyer_1".into(),
@@ -872,6 +893,7 @@ mod tests {
 
         let Json(resp) = approve_shipping_cost(
             State(state.clone()),
+            auth("buyer_2"),
             Json(ApproveShippingRequest {
                 order_id: "ord_2".into(),
                 user_id: "buyer_2".into(),
@@ -932,6 +954,7 @@ mod tests {
 
         let forbidden = update_shipping_cost(
             State(state.clone()),
+            auth("seller_b"),
             Json(UpdateShippingCostRequest {
                 order_id: "ord_3".into(),
                 user_id: "seller_b".into(),
@@ -945,6 +968,7 @@ mod tests {
 
         let Json(resp) = update_shipping_cost(
             State(state.clone()),
+            auth("seller_a"),
             Json(UpdateShippingCostRequest {
                 order_id: "ord_3".into(),
                 user_id: "seller_a".into(),
@@ -999,6 +1023,7 @@ mod tests {
 
         let Json(resp) = update_shipping_cost(
             State(state.clone()),
+            auth("seller_c"),
             Json(UpdateShippingCostRequest {
                 order_id: "ord_4".into(),
                 user_id: "seller_c".into(),
@@ -1370,6 +1395,7 @@ mod tests {
 
         let err = approve_shipping_cost(
             State(state),
+            auth("buyer_1"),
             Json(ApproveShippingRequest {
                 order_id: "ord_exp".into(),
                 user_id: "buyer_1".into(),
@@ -1401,6 +1427,7 @@ mod tests {
 
         let err = approve_shipping_cost(
             State(state),
+            auth("buyer_1"),
             Json(ApproveShippingRequest {
                 order_id: "ord_np".into(),
                 user_id: "buyer_1".into(),
@@ -1441,6 +1468,7 @@ mod tests {
 
         let err = approve_shipping_cost(
             State(state),
+            auth("buyer_1"),
             Json(ApproveShippingRequest {
                 order_id: "ord_max".into(),
                 user_id: "buyer_1".into(),
@@ -1497,6 +1525,7 @@ mod tests {
 
         let Json(resp) = approve_shipping_cost(
             State(state.clone()),
+            auth("buyer_1"),
             Json(ApproveShippingRequest {
                 order_id: "ord_pi".into(),
                 user_id: "buyer_1".into(),
@@ -1557,6 +1586,7 @@ mod tests {
 
         let Json(resp) = approve_shipping_cost(
             State(state.clone()),
+            auth("buyer_1"),
             Json(ApproveShippingRequest {
                 order_id: "ord_pif".into(),
                 user_id: "buyer_1".into(),
@@ -1609,6 +1639,7 @@ mod tests {
 
         let Json(resp) = approve_shipping_cost(
             State(state.clone()),
+            auth("buyer_1"),
             Json(ApproveShippingRequest {
                 order_id: "ord_cap".into(),
                 user_id: "buyer_1".into(),
@@ -1676,6 +1707,7 @@ mod tests {
 
         let result = approve_shipping_cost(
             State(state.clone()),
+            auth("buyer_1"),
             Json(ApproveShippingRequest {
                 order_id: "ord_rej".into(),
                 user_id: "buyer_1".into(),
@@ -1748,6 +1780,7 @@ mod tests {
 
         let result = approve_shipping_cost(
             State(state.clone()),
+            auth("buyer_1"),
             Json(ApproveShippingRequest {
                 order_id: "ord_rejcap".into(),
                 user_id: "buyer_1".into(),
@@ -1814,6 +1847,7 @@ mod tests {
 
         let result = approve_shipping_cost(
             State(state.clone()),
+            auth("buyer_1"),
             Json(ApproveShippingRequest {
                 order_id: "ord_rejfail".into(),
                 user_id: "buyer_1".into(),
@@ -1865,6 +1899,7 @@ mod tests {
 
         let result = approve_shipping_cost(
             State(state.clone()),
+            auth("buyer_1"),
             Json(ApproveShippingRequest {
                 order_id: "ord_dig".into(),
                 user_id: "buyer_1".into(),
@@ -1892,6 +1927,7 @@ mod tests {
         let state = setup_state().await;
         let err = update_shipping_cost(
             State(state),
+            auth("seller_1"),
             Json(UpdateShippingCostRequest {
                 order_id: "ord_1".into(),
                 user_id: "seller_1".into(),
@@ -1925,6 +1961,7 @@ mod tests {
 
         let err = update_shipping_cost(
             State(state),
+            auth("seller_1"),
             Json(UpdateShippingCostRequest {
                 order_id: "ord_bad".into(),
                 user_id: "seller_1".into(),
@@ -1958,6 +1995,7 @@ mod tests {
 
         let err = update_shipping_cost(
             State(state),
+            auth("seller_1"),
             Json(UpdateShippingCostRequest {
                 order_id: "ord_pay".into(),
                 user_id: "seller_1".into(),
@@ -2013,6 +2051,7 @@ mod tests {
 
         let Json(resp) = update_shipping_cost(
             State(state.clone()),
+            auth("seller_1"),
             Json(UpdateShippingCostRequest {
                 order_id: "ord_auto".into(),
                 user_id: "seller_1".into(),
@@ -2065,6 +2104,7 @@ mod tests {
 
         let Json(resp) = update_shipping_cost(
             State(state.clone()),
+            auth("seller_1"),
             Json(UpdateShippingCostRequest {
                 order_id: "ord_aub".into(),
                 user_id: "seller_1".into(),

@@ -76,5 +76,38 @@ abstract class AddProductState with _$AddProductState {
     // Bill 96: French translation fields (optional, recommended for Quebec market)
     String? nameF,
     String? descriptionF,
+    // === Food & Nutrition ===
+    String? ingredientsEn,
+    String? ingredientsFr,
+    @Default([]) List<String> selectedAllergens,
+    @Default([]) List<String> selectedMayContainAllergens,
+    @Default([]) List<String> selectedDietaryBadges,
+    String? storageInstructionsEn,
+    String? storageInstructionsFr,
+    int? bestBeforeDays,
+    // Nutrition facts fields (individual, assembled into NutritionFacts on submit)
+    int? servingSizeAmount,
+    @Default('g') String servingSizeUnit,
+    int? servingsPerContainer,
+    int? caloriesKcal,
+    int? totalFatMg,
+    int? saturatedFatMg,
+    int? transFatMg,
+    int? cholesterolMg,
+    int? sodiumMg,
+    int? totalCarbohydrateMg,
+    int? fibreMg,
+    int? sugarsMg,
+    int? proteinMg,
+    int? vitaminAMcg,
+    int? vitaminCMg,
+    int? calciumMg,
+    int? ironMg,
+
+    // === Product Specs ===
+    @Default([]) List<Map<String, String>> specEntries,
+    String? specBrand,
+    String? specColor,
+    String? specMaterial,
   }) = _AddProductState;
 }

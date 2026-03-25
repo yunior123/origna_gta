@@ -1,10 +1,7 @@
-import 'dart:async';
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/admin/orignabase_admin_repository.dart';
-import 'package:origna_gta/utils/utils.dart';
 
 // =============================================================================
 // FAKES — reuse the fake pattern from orignabase_admin_repository_impl_test
@@ -23,9 +20,9 @@ class _FakeDocument extends Fake implements Document {
   @override
   final Map<String, dynamic> data;
   @override
-  final bool exists;
+  final bool exists = true;
 
-  _FakeDocument(this.id, this.data, {this.exists = true});
+  _FakeDocument(this.id, this.data);
 
   @override
   T? get<T>(String field) => data[field] as T?;
@@ -45,10 +42,10 @@ class _FakeQuerySnapshot extends Fake implements QuerySnapshot {
 }
 
 class _FakeCollectionRef extends Fake implements CollectionRef {
-  List<Document> queryDocs;
-  bool shouldThrow;
+  List<Document> queryDocs = const [];
+  bool shouldThrow = false;
 
-  _FakeCollectionRef({this.queryDocs = const [], this.shouldThrow = false});
+  _FakeCollectionRef();
 
   @override
   DocumentRef doc(String id) => _FakeDocumentRef();

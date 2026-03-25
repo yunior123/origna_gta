@@ -11,6 +11,7 @@ import 'package:origna_gta/screens/productaddimages_screen.dart';
 import 'package:origna_gta/screens/productaddvideo_screen.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/responsive_layout.dart';
+import 'package:origna_gta/utils/spec_templates.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
@@ -29,6 +30,8 @@ part 'parts/addproduct_form_content_section.dart';
 part 'parts/addproduct_delivery_children_section.dart';
 part 'parts/addproduct_supplier_children_section.dart';
 part 'parts/addproduct_chrome_section.dart';
+part 'parts/addproduct_food_info_section.dart';
+part 'parts/addproduct_specs_section.dart';
 
 /// Multi-step product creation form: details, pricing, images, shipping options.
 class AddProductScreen extends ConsumerStatefulWidget {
@@ -70,6 +73,34 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen>
   final _supplierShippingDaysController = TextEditingController(text: '7-15');
   final _supplierNotesController = TextEditingController();
   final _customSupplierNameController = TextEditingController();
+
+  // Food & Nutrition Controllers
+  final _ingredientsEnController = TextEditingController();
+  final _ingredientsFrController = TextEditingController();
+  final _storageEnController = TextEditingController();
+  final _storageFrController = TextEditingController();
+  final _bestBeforeDaysController = TextEditingController();
+  final _servingSizeAmountController = TextEditingController();
+  final _servingsPerContainerController = TextEditingController();
+  final _caloriesController = TextEditingController();
+  final _totalFatController = TextEditingController();
+  final _saturatedFatController = TextEditingController();
+  final _transFatController = TextEditingController();
+  final _cholesterolController = TextEditingController();
+  final _sodiumController = TextEditingController();
+  final _totalCarbController = TextEditingController();
+  final _fibreController = TextEditingController();
+  final _sugarsController = TextEditingController();
+  final _proteinController = TextEditingController();
+  final _vitaminAController = TextEditingController();
+  final _vitaminCController = TextEditingController();
+  final _calciumController = TextEditingController();
+  final _ironController = TextEditingController();
+
+  // Product Specs Controllers
+  final _specBrandController = TextEditingController();
+  final _specColorController = TextEditingController();
+  final _specMaterialController = TextEditingController();
 
   // Inventory Config
   final _lowStockThresholdController = TextEditingController(text: '5');
@@ -179,6 +210,30 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen>
     _supplierNotesController.dispose();
     _customSupplierNameController.dispose();
     _lowStockThresholdController.dispose();
+    _ingredientsEnController.dispose();
+    _ingredientsFrController.dispose();
+    _storageEnController.dispose();
+    _storageFrController.dispose();
+    _bestBeforeDaysController.dispose();
+    _servingSizeAmountController.dispose();
+    _servingsPerContainerController.dispose();
+    _caloriesController.dispose();
+    _totalFatController.dispose();
+    _saturatedFatController.dispose();
+    _transFatController.dispose();
+    _cholesterolController.dispose();
+    _sodiumController.dispose();
+    _totalCarbController.dispose();
+    _fibreController.dispose();
+    _sugarsController.dispose();
+    _proteinController.dispose();
+    _vitaminAController.dispose();
+    _vitaminCController.dispose();
+    _calciumController.dispose();
+    _ironController.dispose();
+    _specBrandController.dispose();
+    _specColorController.dispose();
+    _specMaterialController.dispose();
     _shippingDiscount3Controller.dispose();
     _shippingDiscount5Controller.dispose();
     _additionalItemCostController.dispose();

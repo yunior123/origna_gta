@@ -482,6 +482,8 @@ abstract final class Collections {
   static const downloadSessions = 'download_sessions';
   static const disputes = 'disputes';
   static const meilisearchSyncFailures = 'meilisearch_sync_failures';
+  static const productRecommendations = 'product_recommendations';
+  static const userRecommendations = 'user_recommendations';
 
   // Financial audit (backend-only)
   static const platformDebt =
@@ -759,6 +761,7 @@ abstract final class Fields {
 
   /// Original/crossed-out price for sale display (null = no active sale)
   static const compareAtPrice = 'compareAtPrice';
+  static const compareAtPriceCents = 'compareAtPriceCents';
   static const compareAtPriceHistory = 'compareAtPriceHistory';
   static const description = 'description';
   static const nameF = 'nameF';
@@ -1300,11 +1303,338 @@ abstract final class Fields {
   static const condition =
       'condition'; // Product condition: new|like_new|good|fair|for_parts
   static const isSmallSupplier = 'isSmallSupplier';
+
+  // === FOOD & NUTRITION FIELDS ===
+  static const nutritionFacts = 'nutritionFacts';
+  static const foodMetadata = 'foodMetadata';
+  static const ingredientsEn = 'ingredientsEn';
+  static const ingredientsFr = 'ingredientsFr';
+  static const allergens = 'allergens';
+  static const mayContainAllergens = 'mayContainAllergens';
+  static const storageInstructionsEn = 'storageInstructionsEn';
+  static const storageInstructionsFr = 'storageInstructionsFr';
+  static const bestBeforeDays = 'bestBeforeDays';
+  static const dietaryBadges = 'dietaryBadges';
+  // Nutrition Facts sub-fields
+  static const servingSizeAmount = 'servingSizeAmount';
+  static const servingSizeUnit = 'servingSizeUnit';
+  static const servingsPerContainer = 'servingsPerContainer';
+  static const caloriesKcal = 'caloriesKcal';
+  static const totalFatMg = 'totalFatMg';
+  static const saturatedFatMg = 'saturatedFatMg';
+  static const transFatMg = 'transFatMg';
+  static const cholesterolMg = 'cholesterolMg';
+  static const sodiumMg = 'sodiumMg';
+  static const totalCarbohydrateMg = 'totalCarbohydrateMg';
+  static const fibreMg = 'fibreMg';
+  static const sugarsMg = 'sugarsMg';
+  static const addedSugarsMg = 'addedSugarsMg';
+  static const proteinMg = 'proteinMg';
+  static const vitaminAMcg = 'vitaminAMcg';
+  static const vitaminCMg = 'vitaminCMg';
+  static const calciumMg = 'calciumMg';
+  static const ironMg = 'ironMg';
+  static const potassiumMg = 'potassiumMg';
+  static const vitaminDMcg = 'vitaminDMcg';
+  // Front-of-Package warnings (computed server-side)
+  static const fopHighSodium = 'fopHighSodium';
+  static const fopHighSugars = 'fopHighSugars';
+  static const fopHighSaturatedFat = 'fopHighSaturatedFat';
+
+  // === PRODUCT SPECIFICATIONS FIELDS ===
+  static const specs = 'specs';
+  static const specKey = 'key';
+  static const specValue = 'value';
+  static const specValueType = 'valueType';
+  static const specUnit = 'unit';
+  static const specGroup = 'group';
+  static const specBrand = 'brand';
+  static const specColor = 'color';
+  static const specMaterial = 'material';
+
+  // === PRODUCT RECOMMENDATIONS FIELDS ===
+  static const bundledProductIds = 'bundledProductIds';
+  static const recommendations = 'recommendations';
+  static const recommendationType = 'recommendationType';
+  static const score = 'score';
 }
 
 // =============================================================================
 // CATEGORY IDS
 // =============================================================================
+
+// =============================================================================
+// FOOD & NUTRITION — Allergens, Dietary Badges, FOP Thresholds, Daily Values
+// =============================================================================
+
+/// Canada's 11 priority allergen categories (Health Canada / CFIA).
+/// Must be declared on all food product labels.
+abstract final class AllergenValues {
+  static const eggs = 'eggs';
+  static const milk = 'milk';
+  static const mustard = 'mustard';
+  static const peanuts = 'peanuts';
+  static const crustaceans = 'crustaceans';
+  static const fish = 'fish';
+  static const sesame = 'sesame';
+  static const soy = 'soy';
+  static const sulphites = 'sulphites';
+  static const treeNuts = 'tree_nuts';
+  static const wheat = 'wheat';
+
+  static const all = [
+    eggs,
+    milk,
+    mustard,
+    peanuts,
+    crustaceans,
+    fish,
+    sesame,
+    soy,
+    sulphites,
+    treeNuts,
+    wheat,
+  ];
+}
+
+/// Dietary badge values for food product labeling.
+abstract final class DietaryBadgeValues {
+  static const organic = 'organic';
+  static const vegan = 'vegan';
+  static const vegetarian = 'vegetarian';
+  static const halal = 'halal';
+  static const kosher = 'kosher';
+  static const glutenFree = 'gluten_free';
+  static const nonGmo = 'non_gmo';
+  static const dairyFree = 'dairy_free';
+  static const nutFree = 'nut_free';
+  static const sugarFree = 'sugar_free';
+
+  static const all = [
+    organic,
+    vegan,
+    vegetarian,
+    halal,
+    kosher,
+    glutenFree,
+    nonGmo,
+    dairyFree,
+    nutFree,
+    sugarFree,
+  ];
+}
+
+/// Health Canada Front-of-Package "High In" thresholds (15% DV per serving).
+/// Enforcement began January 1, 2026.
+abstract final class FopThresholds {
+  /// >= 3.0 g saturated fat per serving (3000 mg)
+  static const saturatedFatMgPerServing = 3000;
+
+  /// >= 15.0 g sugars per serving (15000 mg)
+  static const sugarsMgPerServing = 15000;
+
+  /// >= 345 mg sodium per serving
+  static const sodiumMgPerServing = 345;
+}
+
+/// Health Canada Daily Values for %DV calculation (adults + children >= 4).
+/// Source: Health Canada Table of Daily Values.
+/// Values in the same unit as the corresponding nutrient field (mg or mcg).
+abstract final class HealthCanadaDailyValues {
+  /// Fat: 75 g → 75000 mg
+  static const totalFatMg = 75000;
+
+  /// Saturated + Trans fat (combined): 20 g → 20000 mg
+  static const saturatedPlusTransFatMg = 20000;
+
+  /// Cholesterol: 300 mg (no %DV in standard NFT, but used for FOP)
+  static const cholesterolMg = 300;
+
+  /// Sodium: 2300 mg
+  static const sodiumMg = 2300;
+
+  /// Fibre: 28 g → 28000 mg
+  static const fibreMg = 28000;
+
+  /// Sugars: 100 g → 100000 mg
+  static const sugarsMg = 100000;
+
+  /// Vitamin A: 900 mcg RAE
+  static const vitaminAMcg = 900;
+
+  /// Vitamin C: 90 mg
+  static const vitaminCMg = 90;
+
+  /// Calcium: 1300 mg
+  static const calciumMg = 1300;
+
+  /// Iron: 18 mg
+  static const ironMg = 18;
+
+  /// Potassium: 3400 mg
+  static const potassiumMg = 3400;
+
+  /// Vitamin D: 20 mcg
+  static const vitaminDMcg = 20;
+}
+
+/// Serving size unit values for nutrition facts.
+abstract final class ServingSizeUnitValues {
+  static const g = 'g';
+  static const mL = 'mL';
+}
+
+// =============================================================================
+// PRODUCT SPECIFICATIONS — Value types and predefined spec keys
+// =============================================================================
+
+/// Spec value types for typed validation and rendering.
+abstract final class SpecValueTypeValues {
+  static const text = 'text';
+  static const number = 'number';
+  static const boolean = 'boolean';
+}
+
+/// Predefined spec keys across all 20 non-food categories.
+/// Keys are camelCase machine identifiers — display names come from translations.
+abstract final class SpecKeyValues {
+  // === UNIVERSAL (all categories) ===
+  static const brand = 'brand';
+  static const color = 'color';
+  static const material = 'material';
+  static const madeIn = 'madeIn';
+  static const warranty = 'warranty';
+  static const model = 'model';
+
+  // === ELECTRONICS (1) ===
+  static const screenSize = 'screenSize';
+  static const resolution = 'resolution';
+  static const batteryLife = 'batteryLife';
+  static const connectivity = 'connectivity';
+  static const certificationMark = 'certificationMark';
+
+  // === COMPUTERS (2) ===
+  static const processor = 'processor';
+  static const ram = 'ram';
+  static const storage = 'storage';
+  static const storageType = 'storageType';
+  static const gpu = 'gpu';
+  static const os = 'os';
+  static const ports = 'ports';
+
+  // === GAMING (3) ===
+  static const platform = 'platform';
+  static const genre = 'genre';
+  static const players = 'players';
+  static const controllerType = 'controllerType';
+  static const ageRating = 'ageRating';
+
+  // === HOME & KITCHEN (4) ===
+  static const dimensions = 'dimensions';
+  static const wattage = 'wattage';
+  static const capacity = 'capacity';
+  static const careInstructions = 'careInstructions';
+  static const energuideRating = 'energuideRating';
+
+  // === FASHION (5) ===
+  static const fibreContent = 'fibreContent';
+  static const size = 'size';
+  static const fit = 'fit';
+  static const season = 'season';
+  static const gender = 'gender';
+
+  // === SHOES & ACCESSORIES (6) ===
+  static const soleMaterial = 'soleMaterial';
+  static const heelHeight = 'heelHeight';
+  static const width = 'width';
+  static const closure = 'closure';
+
+  // === JEWELRY & WATCHES (7) ===
+  static const gemstone = 'gemstone';
+  static const carat = 'carat';
+  static const bandMaterial = 'bandMaterial';
+  static const waterResistance = 'waterResistance';
+  static const movement = 'movement';
+  static const hallmark = 'hallmark';
+
+  // === BEAUTY & PERSONAL CARE (8) ===
+  static const skinType = 'skinType';
+  static const volume = 'volume';
+  static const activeIngredients = 'activeIngredients';
+  static const scent = 'scent';
+  static const spf = 'spf';
+  static const crueltyFree = 'crueltyFree';
+  static const veganProduct = 'veganProduct';
+
+  // === HEALTH & WELLNESS (9) ===
+  static const dosageForm = 'dosageForm';
+  static const quantity = 'quantity';
+  static const flavor = 'flavor';
+  static const npnNumber = 'npnNumber';
+  static const warnings = 'warnings';
+
+  // === SPORTS & FITNESS (10) ===
+  static const sport = 'sport';
+  static const weightCapacity = 'weightCapacity';
+
+  // === AUTOMOTIVE (11) ===
+  static const yearRange = 'yearRange';
+  static const make = 'make';
+  static const partType = 'partType';
+  static const oemNumber = 'oemNumber';
+  static const fitment = 'fitment';
+
+  // === TOOLS & HARDWARE (12) ===
+  static const powerSource = 'powerSource';
+  static const voltage = 'voltage';
+  static const toolWeight = 'toolWeight';
+  static const includes = 'includes';
+
+  // === OFFICE SUPPLIES (13) ===
+  static const compatibility = 'compatibility';
+
+  // === BOOKS (14) ===
+  static const author = 'author';
+  static const isbn = 'isbn';
+  static const pages = 'pages';
+  static const publisher = 'publisher';
+  static const language = 'language';
+  static const format = 'format';
+  static const edition = 'edition';
+  static const publicationYear = 'publicationYear';
+
+  // === MUSIC & INSTRUMENTS (15) ===
+  static const instrumentType = 'instrumentType';
+  static const stringsOrKeys = 'stringsOrKeys';
+  static const skillLevel = 'skillLevel';
+
+  // === TOYS & GAMES (16) ===
+  static const ageRange = 'ageRange';
+  static const batteryRequired = 'batteryRequired';
+  static const educational = 'educational';
+  static const safetyCert = 'safetyCert';
+
+  // === BABY & KIDS (17) ===
+  static const washable = 'washable';
+
+  // === PET SUPPLIES (18) ===
+  static const petType = 'petType';
+  static const petWeight = 'petWeight';
+
+  // === ART & COLLECTIBLES (20) ===
+  static const medium = 'medium';
+  static const artDimensions = 'artDimensions';
+  static const year = 'year';
+  static const artist = 'artist';
+  static const framed = 'framed';
+  static const certificateOfAuth = 'certificateOfAuth';
+
+  // === DIGITAL PRODUCTS (21) ===
+  static const fileFormat = 'fileFormat';
+  static const fileSize = 'fileSize';
+  static const licenseType = 'licenseType';
+  static const version = 'version';
+}
 
 /// Filter sentinel values — special values used in query filters to mean "no filter"
 abstract final class FilterValues {

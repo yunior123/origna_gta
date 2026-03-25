@@ -88,17 +88,55 @@ fn sanitize_document_id(document_id: &str) -> String {
         .collect()
 }
 
+/// Only these fields are safe to index in Meilisearch.
+/// PII and sensitive fields (email, phone, address, passwordHash, etc.) are excluded.
+const SAFE_SEARCH_FIELDS: &[&str] = &[
+    "name",
+    "description",
+    "keywords",
+    "priceCents",
+    "categoryId",
+    "subcategory",
+    "sellerId",
+    "lifecycleStatus",
+    "isPerishable",
+    "imageUrls",
+    "stockQuantity",
+    "avgRating",
+    "totalReviews",
+    "isDigital",
+    "slug",
+    "compareAtPriceCents",
+    "isLocalDeliveryOnly",
+    // Food & Nutrition fields (filterable for dietary/allergen queries)
+    "dietaryBadges",
+    "allergens",
+    "mayContainAllergens",
+    "fopHighSodium",
+    "fopHighSugars",
+    "fopHighSaturatedFat",
+    // Product specifications (denormalized from specs for filtering)
+    "brand",
+    "color",
+    "material",
+];
+
 fn normalize_document_for_indexing(document_id: &str, data: &Value) -> Value {
     let search_id = sanitize_document_id(document_id);
     match data {
-        Value::Object(map) => {
-            let mut normalized = map.clone();
-            normalized.insert("id".to_string(), Value::String(search_id));
-            normalized.insert(
+        Value::Object(obj) => {
+            let mut safe_doc = serde_json::Map::new();
+            for &field in SAFE_SEARCH_FIELDS {
+                if let Some(val) = obj.get(field) {
+                    safe_doc.insert(field.to_string(), val.clone());
+                }
+            }
+            safe_doc.insert("id".to_string(), Value::String(search_id));
+            safe_doc.insert(
                 "record_id".to_string(),
                 Value::String(document_id.to_string()),
             );
-            Value::Object(normalized)
+            Value::Object(safe_doc)
         }
         _ => json!({
             "id": search_id,
@@ -132,13 +170,13 @@ mod tests {
             action: SearchAction::Upsert,
             index: "products".to_string(),
             document_id: "prod_123".to_string(),
-            data: serde_json::json!({"id": "prod_123", "title": "Widget"}),
+            data: serde_json::json!({"id": "prod_123", "name": "Widget"}),
         };
 
         assert!(matches!(event.action, SearchAction::Upsert));
         assert_eq!(event.index, "products");
         assert_eq!(event.document_id, "prod_123");
-        assert_eq!(event.data["title"], "Widget");
+        assert_eq!(event.data["name"], "Widget");
     }
 
     #[test]
@@ -174,11 +212,11 @@ mod tests {
     fn test_normalize_document_for_indexing_preserves_record_id() {
         let normalized = normalize_document_for_indexing(
             "products:abc123",
-            &serde_json::json!({"id": "products:abc123", "title": "Widget"}),
+            &serde_json::json!({"id": "products:abc123", "name": "Widget"}),
         );
         assert_eq!(normalized["id"], "products_abc123");
         assert_eq!(normalized["record_id"], "products:abc123");
-        assert_eq!(normalized["title"], "Widget");
+        assert_eq!(normalized["name"], "Widget");
     }
 
     // ── sanitize_document_id additional tests ──
@@ -266,23 +304,30 @@ mod tests {
     }
 
     #[test]
-    fn test_normalize_document_object_preserves_existing_fields() {
+    fn test_normalize_document_object_only_safe_fields_indexed() {
         let data = serde_json::json!({
-            "title": "Widget",
-            "price": 999,
-            "tags": ["sale", "new"]
+            "name": "Widget",
+            "priceCents": 999,
+            "keywords": ["sale", "new"],
+            "email": "seller@example.com",
+            "passwordHash": "secret",
+            "phone": "+15145551234"
         });
         let normalized = normalize_document_for_indexing("prod:1", &data);
         assert_eq!(normalized["id"], "prod_1");
         assert_eq!(normalized["record_id"], "prod:1");
-        assert_eq!(normalized["title"], "Widget");
-        assert_eq!(normalized["price"], 999);
-        assert_eq!(normalized["tags"].as_array().unwrap().len(), 2);
+        assert_eq!(normalized["name"], "Widget");
+        assert_eq!(normalized["priceCents"], 999);
+        assert_eq!(normalized["keywords"].as_array().unwrap().len(), 2);
+        // PII fields must NOT be present
+        assert!(normalized.get("email").is_none());
+        assert!(normalized.get("passwordHash").is_none());
+        assert!(normalized.get("phone").is_none());
     }
 
     #[test]
     fn test_normalize_document_overwrites_existing_id() {
-        let data = serde_json::json!({"id": "old_id", "title": "Test"});
+        let data = serde_json::json!({"id": "old_id", "name": "Test"});
         let normalized = normalize_document_for_indexing("new:id", &data);
         assert_eq!(normalized["id"], "new_id");
         assert_eq!(normalized["record_id"], "new:id");

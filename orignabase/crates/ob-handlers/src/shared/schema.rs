@@ -56,6 +56,8 @@ pub mod collections {
     pub const PLATFORM_DEBT: &str = "platform_debt";
     pub const MESSAGE_REPORTS: &str = "message_reports";
     pub const DISPUTES: &str = "disputes";
+    pub const PRODUCT_RECOMMENDATIONS: &str = "product_recommendations";
+    pub const USER_RECOMMENDATIONS: &str = "user_recommendations";
 }
 
 pub mod documents {
@@ -294,6 +296,19 @@ pub enum ProvinceCode {
 }
 
 // =============================================================================
+// LIFECYCLE STATUS VALUES
+// =============================================================================
+
+pub mod lifecycle_status {
+    pub const DRAFT: &str = "draft";
+    pub const ACTIVE: &str = "active";
+    pub const INACTIVE: &str = "inactive";
+    pub const DELETED: &str = "deleted";
+
+    pub const ALL: &[&str] = &[DRAFT, ACTIVE, INACTIVE, DELETED];
+}
+
+// =============================================================================
 // FIELD NAMES - Database document field names
 // =============================================================================
 
@@ -307,7 +322,11 @@ pub mod fields {
     pub const DELETED_BY: &str = "deletedBy";
     pub const DELETED: &str = "deleted";
 
+    // Common record fields
+    pub const ID: &str = "id";
+
     // User fields
+    pub const USER_ID: &str = "userId";
     pub const UID: &str = "uid";
     pub const EMAIL: &str = "email";
     pub const NAME: &str = "name";
@@ -397,6 +416,7 @@ pub mod fields {
     pub const HELPFUL_COUNT: &str = "helpfulCount";
 
     // Coupon fields
+    pub const COUPON_ID: &str = "couponId";
     pub const CODE: &str = "code";
     pub const COUPON_TYPE: &str = "couponType";
     pub const DISCOUNT_VALUE: &str = "discountValue";
@@ -404,6 +424,20 @@ pub mod fields {
     pub const MAX_USES: &str = "maxUsesTotal";
     pub const USED_COUNT: &str = "usedCount";
     pub const EXPIRES_AT: &str = "expiresAt";
+
+    // Item / product detail fields
+    pub const IS_DIGITAL: &str = "isDigital";
+    pub const PRODUCT_TYPE: &str = "productType";
+    pub const DELIVERY_SPEED: &str = "deliverySpeed";
+    pub const QUANTITY: &str = "quantity";
+    pub const DELIVERED_AT: &str = "deliveredAt";
+    pub const REFUNDED_AT: &str = "refundedAt";
+    pub const REFUND_REASON: &str = "refundReason";
+    pub const REFUND_AMOUNT_CENTS: &str = "refundAmountCents";
+    pub const REFUND_ID: &str = "refundId";
+    pub const DISCOUNT_AMOUNT_CENTS: &str = "discountAmountCents";
+    pub const FULFILLMENT_WAREHOUSE_ID: &str = "fulfillmentWarehouseId";
+    pub const REQUESTED_AT: &str = "requestedAt";
 
     // License fields
     pub const LICENSE_KEY: &str = "licenseKey";
@@ -428,6 +462,159 @@ pub mod fields {
     pub const TOKEN: &str = "token";
     pub const PLATFORM: &str = "platform";
     pub const NOTIFICATION_TYPE: &str = "notificationType";
+
+    // Food & Nutrition fields
+    pub const NUTRITION_FACTS: &str = "nutritionFacts";
+    pub const FOOD_METADATA: &str = "foodMetadata";
+    pub const INGREDIENTS_EN: &str = "ingredientsEn";
+    pub const INGREDIENTS_FR: &str = "ingredientsFr";
+    pub const ALLERGENS: &str = "allergens";
+    pub const MAY_CONTAIN_ALLERGENS: &str = "mayContainAllergens";
+    pub const STORAGE_INSTRUCTIONS_EN: &str = "storageInstructionsEn";
+    pub const STORAGE_INSTRUCTIONS_FR: &str = "storageInstructionsFr";
+    pub const BEST_BEFORE_DAYS: &str = "bestBeforeDays";
+    pub const DIETARY_BADGES: &str = "dietaryBadges";
+    pub const SERVING_SIZE_AMOUNT: &str = "servingSizeAmount";
+    pub const SERVING_SIZE_UNIT: &str = "servingSizeUnit";
+    pub const SERVINGS_PER_CONTAINER: &str = "servingsPerContainer";
+    pub const CALORIES_KCAL: &str = "caloriesKcal";
+    pub const TOTAL_FAT_MG: &str = "totalFatMg";
+    pub const SATURATED_FAT_MG: &str = "saturatedFatMg";
+    pub const TRANS_FAT_MG: &str = "transFatMg";
+    pub const CHOLESTEROL_MG: &str = "cholesterolMg";
+    pub const SODIUM_MG: &str = "sodiumMg";
+    pub const TOTAL_CARBOHYDRATE_MG: &str = "totalCarbohydrateMg";
+    pub const FIBRE_MG: &str = "fibreMg";
+    pub const SUGARS_MG: &str = "sugarsMg";
+    pub const ADDED_SUGARS_MG: &str = "addedSugarsMg";
+    pub const PROTEIN_MG: &str = "proteinMg";
+    pub const VITAMIN_A_MCG: &str = "vitaminAMcg";
+    pub const VITAMIN_C_MG: &str = "vitaminCMg";
+    pub const CALCIUM_MG: &str = "calciumMg";
+    pub const IRON_MG: &str = "ironMg";
+    pub const POTASSIUM_MG: &str = "potassiumMg";
+    pub const VITAMIN_D_MCG: &str = "vitaminDMcg";
+    pub const FOP_HIGH_SODIUM: &str = "fopHighSodium";
+    pub const FOP_HIGH_SUGARS: &str = "fopHighSugars";
+    pub const FOP_HIGH_SATURATED_FAT: &str = "fopHighSaturatedFat";
+
+    // Product Specifications fields
+    pub const SPECS: &str = "specs";
+    pub const SPEC_KEY: &str = "key";
+    pub const SPEC_VALUE: &str = "value";
+    pub const SPEC_VALUE_TYPE: &str = "valueType";
+    pub const SPEC_UNIT: &str = "unit";
+    pub const SPEC_GROUP: &str = "group";
+    pub const SPEC_BRAND: &str = "brand";
+    pub const SPEC_COLOR: &str = "color";
+    pub const SPEC_MATERIAL: &str = "material";
+
+    // Product Recommendations fields
+    pub const BUNDLED_PRODUCT_IDS: &str = "bundledProductIds";
+    pub const RECOMMENDATIONS: &str = "recommendations";
+    pub const RECOMMENDATION_TYPE: &str = "recommendationType";
+    pub const SCORE: &str = "score";
+}
+
+// =============================================================================
+// FOOD & NUTRITION — Allergens, Dietary Badges, FOP Thresholds, Daily Values
+// =============================================================================
+
+/// Canada's 11 priority allergen categories (Health Canada / CFIA).
+pub mod allergen_values {
+    pub const EGGS: &str = "eggs";
+    pub const MILK: &str = "milk";
+    pub const MUSTARD: &str = "mustard";
+    pub const PEANUTS: &str = "peanuts";
+    pub const CRUSTACEANS: &str = "crustaceans";
+    pub const FISH: &str = "fish";
+    pub const SESAME: &str = "sesame";
+    pub const SOY: &str = "soy";
+    pub const SULPHITES: &str = "sulphites";
+    pub const TREE_NUTS: &str = "tree_nuts";
+    pub const WHEAT: &str = "wheat";
+
+    pub const ALL: &[&str] = &[
+        EGGS, MILK, MUSTARD, PEANUTS, CRUSTACEANS,
+        FISH, SESAME, SOY, SULPHITES, TREE_NUTS, WHEAT,
+    ];
+}
+
+/// Dietary badge values for food product labeling.
+pub mod dietary_badge_values {
+    pub const ORGANIC: &str = "organic";
+    pub const VEGAN: &str = "vegan";
+    pub const VEGETARIAN: &str = "vegetarian";
+    pub const HALAL: &str = "halal";
+    pub const KOSHER: &str = "kosher";
+    pub const GLUTEN_FREE: &str = "gluten_free";
+    pub const NON_GMO: &str = "non_gmo";
+    pub const DAIRY_FREE: &str = "dairy_free";
+    pub const NUT_FREE: &str = "nut_free";
+    pub const SUGAR_FREE: &str = "sugar_free";
+
+    pub const ALL: &[&str] = &[
+        ORGANIC, VEGAN, VEGETARIAN, HALAL, KOSHER,
+        GLUTEN_FREE, NON_GMO, DAIRY_FREE, NUT_FREE, SUGAR_FREE,
+    ];
+}
+
+/// Health Canada Front-of-Package "High In" thresholds (15% DV per serving).
+/// Enforcement began January 1, 2026.
+pub mod fop_thresholds {
+    /// >= 3.0 g saturated fat per serving (3000 mg)
+    pub const SATURATED_FAT_MG_PER_SERVING: i64 = 3000;
+    /// >= 15.0 g sugars per serving (15000 mg)
+    pub const SUGARS_MG_PER_SERVING: i64 = 15000;
+    /// >= 345 mg sodium per serving
+    pub const SODIUM_MG_PER_SERVING: i64 = 345;
+}
+
+/// Health Canada Daily Values for %DV calculation (adults + children >= 4).
+pub mod health_canada_daily_values {
+    /// Fat: 75 g → 75000 mg
+    pub const TOTAL_FAT_MG: i64 = 75000;
+    /// Saturated + Trans fat (combined): 20 g → 20000 mg
+    pub const SATURATED_PLUS_TRANS_FAT_MG: i64 = 20000;
+    /// Cholesterol: 300 mg
+    pub const CHOLESTEROL_MG: i64 = 300;
+    /// Sodium: 2300 mg
+    pub const SODIUM_MG: i64 = 2300;
+    /// Fibre: 28 g → 28000 mg
+    pub const FIBRE_MG: i64 = 28000;
+    /// Sugars: 100 g → 100000 mg
+    pub const SUGARS_MG: i64 = 100000;
+    /// Vitamin A: 900 mcg RAE
+    pub const VITAMIN_A_MCG: i64 = 900;
+    /// Vitamin C: 90 mg
+    pub const VITAMIN_C_MG: i64 = 90;
+    /// Calcium: 1300 mg
+    pub const CALCIUM_MG: i64 = 1300;
+    /// Iron: 18 mg
+    pub const IRON_MG: i64 = 18;
+    /// Potassium: 3400 mg
+    pub const POTASSIUM_MG: i64 = 3400;
+    /// Vitamin D: 20 mcg
+    pub const VITAMIN_D_MCG: i64 = 20;
+}
+
+/// Serving size unit values.
+pub mod serving_size_unit_values {
+    pub const G: &str = "g";
+    pub const ML: &str = "mL";
+}
+
+// =============================================================================
+// PRODUCT SPECIFICATIONS — Value types
+// =============================================================================
+
+/// Spec value types for typed validation and rendering.
+pub mod spec_value_types {
+    pub const TEXT: &str = "text";
+    pub const NUMBER: &str = "number";
+    pub const BOOLEAN: &str = "boolean";
+
+    pub const ALL: &[&str] = &[TEXT, NUMBER, BOOLEAN];
 }
 
 // =============================================================================
@@ -946,5 +1133,50 @@ mod tests {
         let _ = notification_types::SUBSCRIPTION_RENEWAL;
         let _ = notification_types::SELLER_SUSPENDED;
         let _ = notification_types::ABANDONED_CART;
+    }
+
+    #[test]
+    fn test_lifecycle_status_values() {
+        assert_eq!(lifecycle_status::DRAFT, "draft");
+        assert_eq!(lifecycle_status::ACTIVE, "active");
+        assert_eq!(lifecycle_status::INACTIVE, "inactive");
+        assert_eq!(lifecycle_status::DELETED, "deleted");
+        assert_eq!(lifecycle_status::ALL.len(), 4);
+        assert!(lifecycle_status::ALL.contains(&lifecycle_status::ACTIVE));
+        assert!(!lifecycle_status::ALL.contains(&"nonexistent"));
+    }
+
+    #[test]
+    fn test_field_constants_match_expected_values() {
+        // New constants added for magic string audit
+        assert_eq!(fields::ID, "id");
+        assert_eq!(fields::USER_ID, "userId");
+        assert_eq!(fields::COUPON_ID, "couponId");
+
+        // Core field constants
+        assert_eq!(fields::PRODUCT_ID, "productId");
+        assert_eq!(fields::SELLER_ID, "sellerId");
+        assert_eq!(fields::BUYER_ID, "buyerId");
+        assert_eq!(fields::ORDER_ID, "orderId");
+        assert_eq!(fields::ORDER_STATUS, "orderStatus");
+        assert_eq!(fields::PRICE_CENTS, "priceCents");
+        assert_eq!(fields::SUBTOTAL_CENTS, "subtotalCents");
+        assert_eq!(fields::TOTAL_AMOUNT_CENTS, "totalAmountCents");
+        assert_eq!(fields::TAX_AMOUNT_CENTS, "taxAmountCents");
+        assert_eq!(fields::STATUS, "status");
+        assert_eq!(fields::IS_DIGITAL, "isDigital");
+        assert_eq!(fields::QUANTITY, "quantity");
+        assert_eq!(fields::NAME, "name");
+        assert_eq!(fields::IS_DEFAULT, "isDefault");
+        assert_eq!(fields::PAYMENT_INTENT_ID, "paymentIntentId");
+        assert_eq!(fields::PAYMENT_STATUS, "paymentStatus");
+        assert_eq!(fields::ITEMS, "items");
+        assert_eq!(fields::RETURN_STATUS, "returnStatus");
+        assert_eq!(fields::NOTIFICATION_TYPE, "notificationType");
+        assert_eq!(fields::DELIVERY_SPEED, "deliverySpeed");
+        assert_eq!(fields::FULFILLMENT_WAREHOUSE_ID, "fulfillmentWarehouseId");
+        assert_eq!(fields::DISCOUNT_AMOUNT_CENTS, "discountAmountCents");
+        assert_eq!(fields::SHIPPING_COST_CENTS, "shippingCostCents");
+        assert_eq!(fields::PLATFORM_FEE_CENTS, "platformFeeTotalCents");
     }
 }

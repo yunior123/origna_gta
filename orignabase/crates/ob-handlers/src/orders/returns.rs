@@ -2,14 +2,17 @@
 //! Ported from: functions/handlers/orders.py::create_return_request,
 //!   approve_return_request, reject_return_request
 
-use axum::{Json, Router, extract::State, routing::post};
+use axum::{Json, Router, extract::State, extract::Extension, routing::post};
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use tracing::info;
 
+use ob_auth::middleware::AuthContext;
+
 use crate::HandlersState;
 use crate::push;
+use crate::shared::auth::resolve_self_user_id;
 use crate::shared::schema::{business_rules, collections, fields};
 use crate::shared::validation::{sanitize_html, validate_uid};
 
@@ -372,15 +375,16 @@ fn valid_return_transitions(from: &str) -> Vec<&'static str> {
 
 async fn create_return_request(
     State(state): State<HandlersState>,
+    Extension(auth): Extension<AuthContext>,
     Json(req): Json<CreateReturnRequest>,
 ) -> Result<Json<CreateReturnResponse>, ob_core::Error> {
     validate_uid("orderId", &req.order_id)?;
     validate_uid("productId", &req.product_id)?;
-    validate_uid("userId", &req.user_id)?;
+    let user_id = resolve_self_user_id(&auth, Some(req.user_id.as_str()), "userId")?;
 
     crate::shared::rate_limiter::check_user_rate_limit(
         &state.db,
-        &req.user_id,
+        &user_id,
         "create_return_request",
         3,  // max requests
         60, // window minutes
@@ -405,7 +409,7 @@ async fn create_return_request(
         .map_err(|_| ob_core::Error::NotFound("Order not found".into()))?;
 
     // Only buyer can create returns
-    if str_field(&order, "userId") != req.user_id {
+    if str_field(&order, "userId") != user_id {
         return Err(ob_core::Error::Forbidden(
             "You can only return items from your own orders".into(),
         ));
@@ -419,14 +423,14 @@ async fn create_return_request(
         .ok_or_else(|| ob_core::Error::NotFound("Item not found in this order".into()))?;
 
     // Digital products cannot be returned
-    if bool_field(item, "isDigital") {
+    if bool_field(item, fields::IS_DIGITAL) {
         return Err(ob_core::Error::Validation(
             "Digital products cannot be returned".into(),
         ));
     }
 
     // Must be delivered
-    let item_status = str_field(item, "status");
+    let item_status = str_field(item, fields::STATUS);
     if item_status != "delivered" {
         return Err(ob_core::Error::Validation(
             "Item must be marked as delivered before requesting a return".into(),
@@ -438,15 +442,23 @@ async fn create_return_request(
 
     // Check for existing active return request
     let query = format!(
-        "SELECT * FROM {} WHERE orderId = '{}' AND productId = '{}' AND buyerId = '{}' LIMIT 1",
+        "SELECT * FROM {} WHERE orderId = $order_id AND productId = $product_id AND buyerId = $user_id LIMIT 1",
         collections::RETURN_REQUESTS,
-        req.order_id,
-        req.product_id,
-        req.user_id
     );
-    let existing = state.db.query_raw(&query).await.unwrap_or_default();
+    let existing = state
+        .db
+        .query_bind(
+            &query,
+            json!({
+                "order_id": req.order_id,
+                "product_id": req.product_id,
+                "user_id": user_id,
+            }),
+        )
+        .await
+        .unwrap_or_default();
     for doc in &existing {
-        let status = str_field(doc, "returnStatus");
+        let status = str_field(doc, fields::RETURN_STATUS);
         if status != "rejected" && status != "refunded" {
             return Err(ob_core::Error::Validation(
                 "A return request already exists for this item".into(),
@@ -461,12 +473,12 @@ async fn create_return_request(
     let return_doc = json!({
         "returnId": return_id,
         "orderId": req.order_id,
-        "buyerId": req.user_id,
+        "buyerId": user_id,
         "sellerId": str_field(item, fields::SELLER_ID),
         "productId": req.product_id,
-        "productName": str_field(item, "name"),
+        "productName": str_field(item, fields::NAME),
         "quantity": item.get("quantity").and_then(|v| v.as_i64()).unwrap_or(1),
-        "fulfillmentWarehouseId": str_field(item, "fulfillmentWarehouseId"),
+        "fulfillmentWarehouseId": str_field(item, fields::FULFILLMENT_WAREHOUSE_ID),
         "returnStatus": "requested",
         "returnReason": return_reason,
         "requestedAt": now,
@@ -498,21 +510,22 @@ async fn create_return_request(
 
 async fn approve_return_request(
     State(state): State<HandlersState>,
+    Extension(auth): Extension<AuthContext>,
     Json(req): Json<ApproveReturnReq>,
 ) -> Result<Json<ApproveReturnResponse>, ob_core::Error> {
     validate_uid("returnId", &req.return_id)?;
-    validate_uid("userId", &req.user_id)?;
+    let user_id = resolve_self_user_id(&auth, Some(req.user_id.as_str()), "userId")?;
 
     crate::shared::rate_limiter::check_user_rate_limit(
         &state.db,
-        &req.user_id,
+        &user_id,
         "approve_return_request",
         10,
         1,
     )
     .await?;
 
-    let is_admin = is_user_admin(&state, &req.user_id).await?;
+    let is_admin = is_user_admin(&state, &user_id).await?;
 
     // Fetch return request
     let return_doc = state
@@ -521,12 +534,12 @@ async fn approve_return_request(
         .await
         .map_err(|_| ob_core::Error::NotFound("Return request not found".into()))?;
 
-    let seller_id = str_field(&return_doc, "sellerId");
-    let current_status = str_field(&return_doc, "returnStatus");
-    let product_id = str_field(&return_doc, "productId");
+    let seller_id = str_field(&return_doc, fields::SELLER_ID);
+    let current_status = str_field(&return_doc, fields::RETURN_STATUS);
+    let product_id = str_field(&return_doc, fields::PRODUCT_ID);
 
     // Permission: must be seller or admin
-    if !is_admin && req.user_id != seller_id {
+    if !is_admin && user_id != seller_id {
         return Err(ob_core::Error::Forbidden(
             "Only the seller or admin can approve return requests".into(),
         ));
@@ -706,7 +719,7 @@ async fn approve_return_request(
                     collections::ORDER_EVENTS,
                     json!({
                         "orderId": order_id,
-                        "userId": req.user_id,
+                        "userId": user_id,
                         "eventType": "return_received_and_refunded",
                         "message": format!("Return {} received and item {} refunded", req.return_id, product_id),
                         "metadata": { "productId": product_id, "returnId": req.return_id, "refundAmountCents": refund_amount_cents },
@@ -748,21 +761,22 @@ async fn approve_return_request(
 
 async fn reject_return_request(
     State(state): State<HandlersState>,
+    Extension(auth): Extension<AuthContext>,
     Json(req): Json<RejectReturnReq>,
 ) -> Result<Json<RejectReturnResponse>, ob_core::Error> {
     validate_uid("returnId", &req.return_id)?;
-    validate_uid("userId", &req.user_id)?;
+    let user_id = resolve_self_user_id(&auth, Some(req.user_id.as_str()), "userId")?;
 
     crate::shared::rate_limiter::check_user_rate_limit(
         &state.db,
-        &req.user_id,
+        &user_id,
         "reject_return_request",
         10,
         1,
     )
     .await?;
 
-    let is_admin = is_user_admin(&state, &req.user_id).await?;
+    let is_admin = is_user_admin(&state, &user_id).await?;
 
     let return_doc = state
         .db
@@ -770,10 +784,10 @@ async fn reject_return_request(
         .await
         .map_err(|_| ob_core::Error::NotFound("Return request not found".into()))?;
 
-    let seller_id = str_field(&return_doc, "sellerId");
-    let current_status = str_field(&return_doc, "returnStatus");
+    let seller_id = str_field(&return_doc, fields::SELLER_ID);
+    let current_status = str_field(&return_doc, fields::RETURN_STATUS);
 
-    if !is_admin && req.user_id != seller_id {
+    if !is_admin && user_id != seller_id {
         return Err(ob_core::Error::Forbidden(
             "Only the seller or admin can reject return requests".into(),
         ));
@@ -821,14 +835,15 @@ async fn reject_return_request(
 
 async fn escalate_return_request(
     State(state): State<HandlersState>,
+    Extension(auth): Extension<AuthContext>,
     Json(req): Json<EscalateReturnReq>,
 ) -> Result<Json<EscalateReturnResponse>, ob_core::Error> {
     validate_uid("returnId", &req.return_id)?;
-    validate_uid("userId", &req.user_id)?;
+    let user_id = resolve_self_user_id(&auth, Some(req.user_id.as_str()), "userId")?;
 
     crate::shared::rate_limiter::check_user_rate_limit(
         &state.db,
-        &req.user_id,
+        &user_id,
         "escalate_return_request",
         3,
         60,
@@ -851,14 +866,14 @@ async fn escalate_return_request(
         .await
         .map_err(|_| ob_core::Error::NotFound("Return request not found".into()))?;
 
-    let buyer_id = str_field(&return_doc, "buyerId");
-    if buyer_id != req.user_id {
+    let buyer_id = str_field(&return_doc, fields::BUYER_ID);
+    if buyer_id != user_id {
         return Err(ob_core::Error::Forbidden(
             "Only the buyer can escalate this return".into(),
         ));
     }
 
-    let status = str_field(&return_doc, "returnStatus");
+    let status = str_field(&return_doc, fields::RETURN_STATUS);
     if status != "requested" && status != "approved" {
         return Err(ob_core::Error::Validation(
             "Return can only be escalated from requested or approved state".into(),
@@ -898,12 +913,23 @@ async fn escalate_return_request(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::extract::State;
+    use axum::extract::{Extension, State};
+    use ob_auth::middleware::AuthContext;
     use ob_core::Config;
     use ob_database::DatabaseClient;
     use std::sync::Arc;
     use wiremock::matchers::{method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    fn auth(user_id: &str, role: &str) -> Extension<AuthContext> {
+        Extension(AuthContext {
+            user_id: user_id.to_string(),
+            roles: vec![role.to_string()],
+            authenticated: true,
+            email_verified: true,
+            custom_claims: serde_json::Value::Null,
+        })
+    }
 
     async fn setup_state() -> HandlersState {
         HandlersState {
@@ -1366,6 +1392,7 @@ mod tests {
 
         let err = create_return_request(
             State(state),
+            auth("buyer_1", "user"),
             Json(CreateReturnRequest {
                 order_id: "ord_1".into(),
                 product_id: "prod_1".into(),
@@ -1400,6 +1427,7 @@ mod tests {
 
         let err = create_return_request(
             State(state),
+            auth("buyer_1", "user"),
             Json(CreateReturnRequest {
                 order_id: "ord_1".into(),
                 product_id: "prod_1".into(),
@@ -1440,6 +1468,7 @@ mod tests {
 
         let Json(resp) = create_return_request(
             State(state.clone()),
+            auth("buyer_1", "user"),
             Json(CreateReturnRequest {
                 order_id: "ord_1".into(),
                 product_id: "prod_1".into(),
@@ -1481,6 +1510,7 @@ mod tests {
 
         let err = reject_return_request(
             State(state),
+            auth("seller_2", "user"),
             Json(RejectReturnReq {
                 return_id: "ret_1".into(),
                 user_id: "seller_2".into(),
@@ -1511,6 +1541,7 @@ mod tests {
 
         let err = escalate_return_request(
             State(state),
+            auth("buyer_2", "user"),
             Json(EscalateReturnReq {
                 return_id: "ret_1".into(),
                 user_id: "buyer_2".into(),
@@ -1549,6 +1580,7 @@ mod tests {
 
         let Json(resp) = approve_return_request(
             State(state.clone()),
+            auth("seller_1", "user"),
             Json(ApproveReturnReq {
                 return_id: "ret_1".into(),
                 user_id: "seller_1".into(),
@@ -1574,6 +1606,7 @@ mod tests {
 
         let Json(resp2) = approve_return_request(
             State(state.clone()),
+            auth("seller_1", "user"),
             Json(ApproveReturnReq {
                 return_id: "ret_1".into(),
                 user_id: "seller_1".into(),
@@ -1673,6 +1706,7 @@ mod tests {
 
         let Json(resp) = approve_return_request(
             State(state.clone()),
+            auth("seller_1", "user"),
             Json(ApproveReturnReq {
                 return_id: "ret_1".into(),
                 user_id: "seller_1".into(),
@@ -1735,6 +1769,7 @@ mod tests {
 
         let Json(resp) = reject_return_request(
             State(state.clone()),
+            auth("seller_1", "user"),
             Json(RejectReturnReq {
                 return_id: "ret_1".into(),
                 user_id: "seller_1".into(),
@@ -1809,6 +1844,7 @@ mod tests {
 
         let Json(resp) = escalate_return_request(
             State(state.clone()),
+            auth("buyer_1", "user"),
             Json(EscalateReturnReq {
                 return_id: "ret_1".into(),
                 user_id: "buyer_1".into(),
@@ -1867,6 +1903,7 @@ mod tests {
 
         let err = create_return_request(
             State(state),
+            auth("buyer_1", "user"),
             Json(CreateReturnRequest {
                 order_id: "ord_1".into(),
                 product_id: "prod_1".into(),
@@ -1900,6 +1937,7 @@ mod tests {
 
         let err = create_return_request(
             State(state),
+            auth("other_user", "user"),
             Json(CreateReturnRequest {
                 order_id: "ord_1".into(),
                 product_id: "prod_1".into(),
@@ -1933,6 +1971,7 @@ mod tests {
 
         let err = create_return_request(
             State(state),
+            auth("buyer_1", "user"),
             Json(CreateReturnRequest {
                 order_id: "ord_1".into(),
                 product_id: "prod_1".into(),
@@ -1981,6 +2020,7 @@ mod tests {
 
         let err = create_return_request(
             State(state),
+            auth("buyer_1", "user"),
             Json(CreateReturnRequest {
                 order_id: "ord_1".into(),
                 product_id: "prod_1".into(),
@@ -2024,6 +2064,7 @@ mod tests {
 
         let err = approve_return_request(
             State(state),
+            auth("rando", "user"),
             Json(ApproveReturnReq {
                 return_id: "ret_1".into(),
                 user_id: "rando".into(),
@@ -2064,6 +2105,7 @@ mod tests {
 
         let err = approve_return_request(
             State(state),
+            auth("seller_1", "user"),
             Json(ApproveReturnReq {
                 return_id: "ret_1".into(),
                 user_id: "seller_1".into(),
@@ -2104,6 +2146,7 @@ mod tests {
 
         let err = approve_return_request(
             State(state),
+            auth("seller_1", "user"),
             Json(ApproveReturnReq {
                 return_id: "ret_1".into(),
                 user_id: "seller_1".into(),
@@ -2144,6 +2187,7 @@ mod tests {
 
         let err = approve_return_request(
             State(state),
+            auth("seller_1", "user"),
             Json(ApproveReturnReq {
                 return_id: "ret_1".into(),
                 user_id: "seller_1".into(),
@@ -2184,6 +2228,7 @@ mod tests {
 
         let err = approve_return_request(
             State(state),
+            auth("seller_1", "user"),
             Json(ApproveReturnReq {
                 return_id: "ret_1".into(),
                 user_id: "seller_1".into(),
@@ -2261,6 +2306,7 @@ mod tests {
 
         let Json(resp) = approve_return_request(
             State(state.clone()),
+            auth("seller_1", "user"),
             Json(ApproveReturnReq {
                 return_id: "ret_1".into(),
                 user_id: "seller_1".into(),
@@ -2338,6 +2384,7 @@ mod tests {
 
         let err = reject_return_request(
             State(state),
+            auth("seller_1", "user"),
             Json(RejectReturnReq {
                 return_id: "ret_1".into(),
                 user_id: "seller_1".into(),
@@ -2372,6 +2419,7 @@ mod tests {
 
         let err = escalate_return_request(
             State(state),
+            auth("buyer_1", "user"),
             Json(EscalateReturnReq {
                 return_id: "ret_1".into(),
                 user_id: "buyer_1".into(),
@@ -2402,6 +2450,7 @@ mod tests {
 
         let err = escalate_return_request(
             State(state),
+            auth("buyer_1", "user"),
             Json(EscalateReturnReq {
                 return_id: "ret_1".into(),
                 user_id: "buyer_1".into(),
@@ -2461,6 +2510,7 @@ mod tests {
         // Escalate from "approved" state (valid)
         let Json(resp) = escalate_return_request(
             State(state.clone()),
+            auth("buyer_1", "user"),
             Json(EscalateReturnReq {
                 return_id: "ret_e1".into(),
                 user_id: "buyer_1".into(),
@@ -2528,6 +2578,7 @@ mod tests {
         // Should succeed because existing return is rejected
         let Json(resp) = create_return_request(
             State(state.clone()),
+            auth("buyer_1", "user"),
             Json(CreateReturnRequest {
                 order_id: "ord_1".into(),
                 product_id: "prod_1".into(),
@@ -2581,6 +2632,7 @@ mod tests {
 
         let Json(resp) = create_return_request(
             State(state.clone()),
+            auth("buyer_1", "user"),
             Json(CreateReturnRequest {
                 order_id: "ord_1".into(),
                 product_id: "prod_1".into(),
@@ -2643,6 +2695,7 @@ mod tests {
 
         let result = escalate_return_request(
             State(state.clone()),
+            auth("buyer_fcm1", "user"),
             Json(EscalateReturnReq {
                 return_id: "ret_fcm1".into(),
                 user_id: "buyer_fcm1".into(),
@@ -2726,6 +2779,7 @@ mod tests {
         // Without FCM env vars, Phase 2 skips send_push (lines 317-318: sent=false)
         let Json(resp) = escalate_return_request(
             State(state.clone()),
+            auth("buyer_multi", "user"),
             Json(EscalateReturnReq {
                 return_id: "ret_multi".into(),
                 user_id: "buyer_multi".into(),
@@ -2849,6 +2903,7 @@ mod tests {
 
         let Json(resp) = approve_return_request(
             State(state.clone()),
+            auth("seller_mr", "user"),
             Json(ApproveReturnReq {
                 return_id: "ret_mr".into(),
                 user_id: "seller_mr".into(),

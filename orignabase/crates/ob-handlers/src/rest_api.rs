@@ -10,7 +10,7 @@ use serde::Deserialize;
 use serde_json::json;
 use ob_auth::middleware::AuthContext;
 use crate::HandlersState;
-use crate::shared::schema::collections;
+use crate::shared::schema::{collections, fields, lifecycle_status};
 
 
 pub fn router(state: HandlersState) -> Router {
@@ -18,6 +18,7 @@ pub fn router(state: HandlersState) -> Router {
         // Products
         .route("/products", get(get_products).post(create_product))
         .route("/products/{id}", get(get_product))
+        .route("/products/{id}/recommendations", get(get_product_recommendations))
         // Cart
         .route("/cart", get(get_cart))
         // Orders
@@ -111,6 +112,70 @@ async fn get_product(
     Ok(Json(doc))
 }
 
+/// GET /products/{id}/recommendations — Get product recommendations.
+/// Tries co-purchase data first, then seller-curated bundles, then same-category fallback.
+async fn get_product_recommendations(
+    State(state): State<HandlersState>,
+    Path(id): Path<String>,
+) -> Result<Json<serde_json::Value>, ob_core::Error> {
+    // 1. Try co-purchase recommendations from precomputed table
+    let sanitized_id = id.replace(':', "_");
+    let rec_result = state
+        .db
+        .get_document(collections::PRODUCT_RECOMMENDATIONS, &sanitized_id)
+        .await;
+
+    if let Ok(rec_doc) = &rec_result
+        && let Some(recs) = rec_doc.get("recommendations")
+        && recs.as_array().is_some_and(|a| !a.is_empty())
+    {
+        return Ok(Json(json!({ "recommendations": recs, "source": "co_purchase" })));
+    }
+
+    // 2. Fallback: bundledProductIds from product itself
+    let product = state
+        .db
+        .get_document(collections::PRODUCTS, &id)
+        .await
+        .map_err(|_| ob_core::Error::NotFound("Product not found".into()))?;
+
+    if let Some(bundled) = product.get("bundledProductIds")
+        && bundled.as_array().is_some_and(|a| !a.is_empty())
+    {
+        return Ok(Json(json!({ "recommendations": bundled, "source": "seller_curated" })));
+    }
+
+    // 3. Fallback: same category products
+    let category_id = product
+        .get(fields::CATEGORY)
+        .and_then(|v| v.as_i64())
+        .unwrap_or(0);
+
+    let similar: Vec<serde_json::Value> = state
+        .db
+        .query_bind_value(
+            &format!(
+                "SELECT productId FROM {} WHERE categoryId = $cid AND productId != $pid AND {} = $status ORDER BY purchaseCount DESC LIMIT 5",
+                collections::PRODUCTS,
+                fields::LIFECYCLE_STATUS,
+            ),
+            json!({
+                "cid": category_id,
+                "pid": &id,
+                "status": lifecycle_status::ACTIVE,
+            }),
+        )
+        .await
+        .unwrap_or_default();
+
+    let ids: Vec<serde_json::Value> = similar
+        .iter()
+        .filter_map(|v| v.get("productId").cloned())
+        .collect();
+
+    Ok(Json(json!({ "recommendations": ids, "source": "category" })))
+}
+
 /// POST /products — Create a product with validation.
 /// Requires authentication and seller role.
 async fn create_product(
@@ -133,7 +198,7 @@ async fn create_product(
         .ok_or_else(|| ob_core::Error::Validation("Request body must be a JSON object".into()))?;
 
     // Require name
-    match obj.get("name").and_then(|v| v.as_str()) {
+    match obj.get(fields::NAME).and_then(|v| v.as_str()) {
         Some(name) if name.trim().is_empty() => {
             return Err(ob_core::Error::Validation("Product name cannot be empty".into()));
         }
@@ -144,7 +209,7 @@ async fn create_product(
     }
 
     // Require priceCents: must be > 0 and <= 10,000,000
-    match obj.get("priceCents").and_then(|v| v.as_i64()) {
+    match obj.get(fields::PRICE_CENTS).and_then(|v| v.as_i64()) {
         Some(price) if price <= 0 => {
             return Err(ob_core::Error::Validation(
                 "Product price must be greater than 0 cents".into(),
@@ -164,7 +229,7 @@ async fn create_product(
     }
 
     // Validate stockQuantity: must be >= 0
-    if let Some(stock) = obj.get("stockQuantity").and_then(|v| v.as_i64())
+    if let Some(stock) = obj.get(fields::STOCK_QUANTITY).and_then(|v| v.as_i64())
         && stock < 0
     {
         return Err(ob_core::Error::Validation(
@@ -173,13 +238,13 @@ async fn create_product(
     }
 
     // Validate lifecycleStatus if present (draft -> active -> inactive -> deleted)
-    if let Some(status) = obj.get("lifecycleStatus").and_then(|v| v.as_str()) {
-        let valid_states = ["draft", "active", "inactive", "deleted"];
-        if !valid_states.contains(&status) {
-            return Err(ob_core::Error::Validation(format!(
-                "Invalid lifecycle status: {status}. Valid values: draft, active, inactive, deleted"
-            )));
-        }
+    if let Some(status) = obj.get(fields::LIFECYCLE_STATUS).and_then(|v| v.as_str())
+        && !lifecycle_status::ALL.contains(&status)
+    {
+        return Err(ob_core::Error::Validation(format!(
+            "Invalid lifecycle status: {status}. Valid values: {}",
+            lifecycle_status::ALL.join(", ")
+        )));
     }
 
     // Build product document
@@ -187,10 +252,10 @@ async fn create_product(
     let product_obj = product
         .as_object_mut()
         .expect("already validated as object");
-    product_obj.insert("sellerId".into(), json!(user_id));
+    product_obj.insert(fields::SELLER_ID.into(), json!(user_id));
     // Products use dateCreated (not createdAt) per schema
     product_obj.insert("dateCreated".into(), json!(chrono::Utc::now().to_rfc3339()));
-    product_obj.insert("updatedAt".into(), json!(chrono::Utc::now().to_rfc3339()));
+    product_obj.insert(fields::UPDATED_AT.into(), json!(chrono::Utc::now().to_rfc3339()));
 
     let created = state
         .db
@@ -322,11 +387,11 @@ async fn get_order(
 
     // Verify user owns this order (buyer or seller)
     let buyer_id = order
-        .get("buyerId")
+        .get(fields::BUYER_ID)
         .and_then(|b| b.as_str())
         .unwrap_or("");
     let seller_id = order
-        .get("sellerId")
+        .get(fields::SELLER_ID)
         .and_then(|s| s.as_str())
         .unwrap_or("");
 
@@ -442,5 +507,134 @@ mod tests {
         let auth = AuthContext::anonymous();
         let result = require_authenticated(&auth);
         assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_get_product_recommendations_category_fallback() {
+        let state = HandlersState {
+            config: Arc::new(Config::load(None).unwrap()),
+            db: DatabaseClient::new_mem().await,
+            http_client: reqwest::Client::new(),
+            stripe_client: None,
+            stripe_base_url: "https://api.stripe.com/v1".into(),
+            turnstile_secret_key: None,
+        };
+
+        // Create target product
+        state
+            .db
+            .upsert_document(
+                "products",
+                "target_prod",
+                json!({
+                    "productId": "target_prod",
+                    "name": "Target",
+                    "categoryId": 42,
+                    "lifecycleStatus": "active",
+                    "priceCents": 1000,
+                }),
+            )
+            .await
+            .unwrap();
+
+        let Json(resp) = get_product_recommendations(
+            State(state),
+            Path("target_prod".into()),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(resp["source"], "category");
+    }
+
+    #[tokio::test]
+    async fn test_get_product_recommendations_co_purchase() {
+        let state = HandlersState {
+            config: Arc::new(Config::load(None).unwrap()),
+            db: DatabaseClient::new_mem().await,
+            http_client: reqwest::Client::new(),
+            stripe_client: None,
+            stripe_base_url: "https://api.stripe.com/v1".into(),
+            turnstile_secret_key: None,
+        };
+
+        // Create product
+        state
+            .db
+            .upsert_document(
+                "products",
+                "prod1",
+                json!({
+                    "productId": "prod1",
+                    "name": "Product 1",
+                    "categoryId": 1,
+                    "lifecycleStatus": "active",
+                }),
+            )
+            .await
+            .unwrap();
+
+        // Create precomputed recommendations
+        state
+            .db
+            .upsert_document(
+                "product_recommendations",
+                "prod1",
+                json!({
+                    "productId": "prod1",
+                    "recommendations": [{"productId": "prod2", "score": 5, "type": "co_purchase"}],
+                    "computedAt": "2026-01-01T00:00:00Z",
+                }),
+            )
+            .await
+            .unwrap();
+
+        let Json(resp) = get_product_recommendations(
+            State(state),
+            Path("prod1".into()),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(resp["source"], "co_purchase");
+        assert!(!resp["recommendations"].as_array().unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_get_product_recommendations_seller_curated() {
+        let state = HandlersState {
+            config: Arc::new(Config::load(None).unwrap()),
+            db: DatabaseClient::new_mem().await,
+            http_client: reqwest::Client::new(),
+            stripe_client: None,
+            stripe_base_url: "https://api.stripe.com/v1".into(),
+            turnstile_secret_key: None,
+        };
+
+        // Create product with bundledProductIds
+        state
+            .db
+            .upsert_document(
+                "products",
+                "prod_bundle",
+                json!({
+                    "productId": "prod_bundle",
+                    "name": "Bundled Product",
+                    "categoryId": 1,
+                    "lifecycleStatus": "active",
+                    "bundledProductIds": ["prod_a", "prod_b"],
+                }),
+            )
+            .await
+            .unwrap();
+
+        let Json(resp) = get_product_recommendations(
+            State(state),
+            Path("prod_bundle".into()),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(resp["source"], "seller_curated");
     }
 }

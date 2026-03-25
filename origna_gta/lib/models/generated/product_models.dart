@@ -107,6 +107,155 @@ abstract class InventoryConfig with _$InventoryConfig {
 }
 
 // ============================================================================
+// NUTRITION FACTS MODEL — Health Canada compliant (13 mandatory nutrients)
+// ============================================================================
+
+/// Nutrition facts per serving, following Health Canada Nutrition Facts Table format.
+///
+/// All nutrient amounts stored as **integers** for precision (like cents for money):
+/// - Macros/minerals in **milligrams** (mg): divide by 1000 for grams display
+/// - Vitamins A/D in **micrograms** (mcg)
+/// - Calories in **kcal** (as-is)
+///
+/// `%DV` is computed at display time via [NutritionHelper.percentDailyValue],
+/// NOT stored — Health Canada may update daily values.
+///
+/// See also: [FoodMetadata] for ingredients, allergens, and storage info.
+@freezed
+abstract class NutritionFacts with _$NutritionFacts {
+  const factory NutritionFacts({
+    /// Serving size numeric amount (e.g., 250 for "250 mL")
+    required int servingSizeAmount,
+
+    /// Serving size unit: "g" or "mL"
+    required String servingSizeUnit,
+
+    /// Number of servings per container (null if not specified)
+    int? servingsPerContainer,
+
+    // === Mandatory Health Canada nutrients ===
+    required int caloriesKcal,
+    required int totalFatMg,
+    required int saturatedFatMg,
+    required int transFatMg,
+    required int cholesterolMg,
+    required int sodiumMg,
+    required int totalCarbohydrateMg,
+    required int fibreMg,
+    required int sugarsMg,
+    required int proteinMg,
+    required int vitaminAMcg,
+    required int vitaminCMg,
+    required int calciumMg,
+    required int ironMg,
+
+    // === Optional additional nutrients ===
+    /// Added sugars (newer Health Canada recommendation)
+    int? addedSugarsMg,
+
+    /// Potassium (optional in standard NFT)
+    int? potassiumMg,
+
+    /// Vitamin D (optional in standard NFT)
+    int? vitaminDMcg,
+  }) = _NutritionFacts;
+
+  factory NutritionFacts.fromJson(Map<String, dynamic> json) =>
+      _$NutritionFactsFromJson(json);
+}
+
+// ============================================================================
+// FOOD METADATA MODEL — Ingredients, allergens, storage, dietary badges
+// ============================================================================
+
+/// Food product metadata: ingredients, allergens, storage, and dietary info.
+///
+/// Separate from [NutritionFacts] because a product can have ingredients/allergens
+/// without full nutrition data (e.g., fresh produce with no Nutrition Facts label).
+///
+/// ## Canadian Law Compliance
+/// - [ingredientsEn] + [ingredientsFr]: CFIA bilingual requirement
+/// - [allergens]: 11 Canadian priority allergen categories ([AllergenValues])
+/// - FOP warnings computed server-side from [NutritionFacts] values
+///
+/// See also: [NutritionFacts] for the quantitative nutrition table.
+@freezed
+abstract class FoodMetadata with _$FoodMetadata {
+  const factory FoodMetadata({
+    /// Ingredients in English (descending order of weight — CFIA requirement)
+    String? ingredientsEn,
+
+    /// Ingredients in French (bilingual — CFIA / Bill 96 requirement)
+    String? ingredientsFr,
+
+    /// Confirmed allergens from [AllergenValues] (11 Canadian priority categories)
+    @Default([]) List<String> allergens,
+
+    /// "May contain" / trace allergens
+    @Default([]) List<String> mayContainAllergens,
+
+    /// Storage instructions in English
+    String? storageInstructionsEn,
+
+    /// Storage instructions in French
+    String? storageInstructionsFr,
+
+    /// Shelf life in days from production date
+    int? bestBeforeDays,
+
+    /// Dietary badges from [DietaryBadgeValues] (organic, vegan, etc.)
+    @Default([]) List<String> dietaryBadges,
+
+    /// Health Canada FOP: product is high in sodium (>= 345mg/serving)
+    @Default(false) bool fopHighSodium,
+
+    /// Health Canada FOP: product is high in sugars (>= 15g/serving)
+    @Default(false) bool fopHighSugars,
+
+    /// Health Canada FOP: product is high in saturated fat (>= 3g/serving)
+    @Default(false) bool fopHighSaturatedFat,
+  }) = _FoodMetadata;
+
+  factory FoodMetadata.fromJson(Map<String, dynamic> json) =>
+      _$FoodMetadataFromJson(json);
+}
+
+// ============================================================================
+// PRODUCT SPEC MODEL — Single specification entry
+// ============================================================================
+
+@freezed
+abstract class ProductSpec with _$ProductSpec {
+  const factory ProductSpec({
+    required String key,
+    required String value,
+    @Default('text') String valueType,
+    String? unit,
+    String? group,
+  }) = _ProductSpec;
+
+  factory ProductSpec.fromJson(Map<String, dynamic> json) =>
+      _$ProductSpecFromJson(json);
+}
+
+// ============================================================================
+// PRODUCT SPECS MODEL — Container for all specs
+// ============================================================================
+
+@freezed
+abstract class ProductSpecs with _$ProductSpecs {
+  const factory ProductSpecs({
+    @Default([]) List<ProductSpec> specs,
+    String? brand,
+    String? color,
+    String? material,
+  }) = _ProductSpecs;
+
+  factory ProductSpecs.fromJson(Map<String, dynamic> json) =>
+      _$ProductSpecsFromJson(json);
+}
+
+// ============================================================================
 // PRODUCT MODEL
 // ============================================================================
 
@@ -195,7 +344,7 @@ abstract class Product with _$Product {
     // Admin rejection reason
     String? approvalRejectionReason,
     // Flat supplier fields (used when supplier object is not provided)
-    double? cost,
+    int? costCents,
     String? supplierSku,
     String? supplierUrl,
     // Structured objects for scalability
@@ -253,6 +402,19 @@ abstract class Product with _$Product {
 
     /// Server-controlled last-updated timestamp
     DateTime? updatedAt,
+
+    // === FOOD & NUTRITION ===
+    /// Nutrition facts per serving (Health Canada NFT format)
+    NutritionFacts? nutritionFacts,
+
+    /// Food metadata: ingredients, allergens, storage, dietary badges
+    FoodMetadata? foodMetadata,
+
+    /// Structured product specifications (non-food categories)
+    ProductSpecs? specs,
+
+    /// Seller-curated bundle: IDs of complementary products (max 5)
+    @Default([]) List<String> bundledProductIds,
   }) = _Product;
 
   factory Product.fromMap(Map<String, dynamic> data, String docId) {
@@ -271,13 +433,13 @@ abstract class Product with _$Product {
     };
 
     // Backward compat: if priceCents is missing but price (double) exists, convert
-    int? priceCents = data['priceCents'] as int?;
+    int? priceCents = data[Fields.priceCents] as int?;
     if (priceCents == null && data['price'] != null) {
       priceCents = ((data['price'] as num).toDouble() * 100).round();
     }
 
     // Same for compareAtPriceCents
-    int? compareAtPriceCents = data['compareAtPriceCents'] as int?;
+    int? compareAtPriceCents = data[Fields.compareAtPriceCents] as int?;
     if (compareAtPriceCents == null && data['compareAtPrice'] != null) {
       compareAtPriceCents = ((data['compareAtPrice'] as num).toDouble() * 100)
           .round();
@@ -285,13 +447,16 @@ abstract class Product with _$Product {
 
     final jsonMap = <String, dynamic>{
       ...data,
-      'productId': docId,
-      'createdAt': parsedCreatedAt.toIso8601String(),
+      Fields.productId: docId,
+      Fields.createdAt: parsedCreatedAt.toIso8601String(),
+      // ignore: use_null_aware_elements — null-aware map elements require newer Dart SDK
       if (parsedUpdatedAt != null)
-        'updatedAt': parsedUpdatedAt.toIso8601String(),
-      if (priceCents != null) 'priceCents': priceCents,
+        Fields.updatedAt: parsedUpdatedAt.toIso8601String(),
+      // ignore: use_null_aware_elements
+      if (priceCents != null) Fields.priceCents: priceCents,
+      // ignore: use_null_aware_elements
       if (compareAtPriceCents != null)
-        'compareAtPriceCents': compareAtPriceCents,
+        Fields.compareAtPriceCents: compareAtPriceCents,
     };
     return Product.fromJson(jsonMap);
   }
@@ -344,7 +509,7 @@ abstract class ProductCreate with _$ProductCreate {
     @Default([]) List<String> keywords,
     // lifecycleStatus intentionally defaults to draft — backend sets under_review on creation
     // Flat supplier fields (used when supplier object is not provided)
-    double? cost,
+    int? costCents,
     String? supplierSku,
     String? supplierUrl,
     // Structured objects
@@ -364,6 +529,12 @@ abstract class ProductCreate with _$ProductCreate {
     @Default([]) List<VariantOption> variantOptions,
     // === N-11: Subcategories ===
     String? subcategory,
+
+    // === FOOD & NUTRITION ===
+    NutritionFacts? nutritionFacts,
+    FoodMetadata? foodMetadata,
+    ProductSpecs? specs,
+    @Default([]) List<String> bundledProductIds,
   }) = _ProductCreate;
 
   factory ProductCreate.fromJson(Map<String, dynamic> json) =>
@@ -507,7 +678,7 @@ abstract class SellerWarehouse with _$SellerWarehouse {
   }) = _SellerWarehouse;
 
   factory SellerWarehouse.fromMap(Map<String, dynamic> data, String docId) {
-    final rawCreatedAt = data['createdAt'];
+    final rawCreatedAt = data[Fields.createdAt];
     final String? parsedCreatedAt = switch (rawCreatedAt) {
       DateTime d => d.toIso8601String(),
       String s => s,
@@ -517,7 +688,7 @@ abstract class SellerWarehouse with _$SellerWarehouse {
       ...data,
       'warehouseId': docId,
       // ignore: use_null_aware_elements — key is a string literal so ?key: value is invalid
-      if (parsedCreatedAt != null) 'createdAt': parsedCreatedAt,
+      if (parsedCreatedAt != null) Fields.createdAt: parsedCreatedAt,
     });
   }
 
@@ -566,7 +737,7 @@ abstract class SupplierInfo with _$SupplierInfo {
     String? supplierUrl,
 
     /// Cost price from supplier
-    double? cost,
+    int? costCents,
 
     /// Currency of supplier cost price (supplier's currency, NOT selling currency).
     /// Selling price is always CAD. This tracks the supplier's original currency.
@@ -620,8 +791,8 @@ extension ProductExtension on Product {
     );
   }
 
-  /// Get effective cost (from supplier object or flat field)
-  double? get effectiveCost => supplier?.cost ?? cost;
+  /// Get effective cost in cents (from supplier object or flat field)
+  int? get effectiveCostCents => supplier?.costCents ?? costCents;
 
   /// Get effective supplier SKU (from supplier object or flat field)
   String? get effectiveSupplierSku => supplier?.supplierSku ?? supplierSku;
@@ -673,16 +844,16 @@ extension ProductExtension on Product {
 
   /// Calculate profit margin percentage
   double? get marginPercent {
-    final c = effectiveCost;
+    final c = effectiveCostCents;
     if (c == null || c <= 0) return null;
-    return ((price - c) / price) * 100;
+    return ((priceCents - c) / priceCents) * 100;
   }
 
-  /// Calculate profit amount
-  double? get profit {
-    final c = effectiveCost;
+  /// Calculate profit in cents
+  int? get profitCents {
+    final c = effectiveCostCents;
     if (c == null) return null;
-    return price - c;
+    return priceCents - c;
   }
 }
 

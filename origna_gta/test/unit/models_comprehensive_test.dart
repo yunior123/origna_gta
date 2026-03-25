@@ -184,10 +184,10 @@ void main() {
     });
 
     test('SupplierInfo fromJson', () {
-      final json = {'type': 'aliexpress', 'cost': 5.5, 'currency': 'USD'};
+      final json = {'type': 'aliexpress', 'costCents': 550, 'currency': 'USD'};
       final model = SupplierInfo.fromJson(json);
       expect(model.type, 'aliexpress');
-      expect(model.cost, 5.5);
+      expect(model.costCents, 550);
     });
   });
 }

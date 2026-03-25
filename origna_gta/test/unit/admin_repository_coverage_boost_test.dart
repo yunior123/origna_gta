@@ -4,7 +4,6 @@ import 'package:mockito/mockito.dart';
 import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/admin/orignabase_admin_repository.dart';
-import 'package:origna_gta/models/models.dart';
 
 @GenerateNiceMocks([MockSpec<OrignaBase>(), MockSpec<OrignaBaseAuth>()])
 import 'admin_repository_coverage_boost_test.mocks.dart';

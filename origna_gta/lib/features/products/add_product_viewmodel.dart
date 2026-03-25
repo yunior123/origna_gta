@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/models/generated/models.dart' as models;
+import 'package:origna_gta/utils/nutrition_helper.dart';
 import 'package:origna_gta/utils/utils.dart';
 
 import 'add_product_state.dart';
@@ -28,6 +29,132 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
 
   void addImage(ImageModel image) =>
       state = state.copyWith(imageModels: [...state.imageModels, image]);
+
+  void toggleAllergen(String allergen) {
+    final current = List<String>.from(state.selectedAllergens);
+    if (current.contains(allergen)) {
+      current.remove(allergen);
+    } else {
+      current.add(allergen);
+    }
+    state = state.copyWith(selectedAllergens: current);
+  }
+
+  void toggleMayContainAllergen(String allergen) {
+    final current = List<String>.from(state.selectedMayContainAllergens);
+    if (current.contains(allergen)) {
+      current.remove(allergen);
+    } else {
+      current.add(allergen);
+    }
+    state = state.copyWith(selectedMayContainAllergens: current);
+  }
+
+  void toggleDietaryBadge(String badge) {
+    final current = List<String>.from(state.selectedDietaryBadges);
+    if (current.contains(badge)) {
+      current.remove(badge);
+    } else {
+      current.add(badge);
+    }
+    state = state.copyWith(selectedDietaryBadges: current);
+  }
+
+  void setIngredients({String? en, String? fr}) {
+    state = state.copyWith(ingredientsEn: en, ingredientsFr: fr);
+  }
+
+  void setStorageInstructions({String? en, String? fr}) {
+    state = state.copyWith(
+      storageInstructionsEn: en,
+      storageInstructionsFr: fr,
+    );
+  }
+
+  void setBestBeforeDays(int? days) {
+    state = state.copyWith(bestBeforeDays: days);
+  }
+
+  void updateNutritionField(String field, int? value) {
+    state = switch (field) {
+      'servingSizeAmount' => state.copyWith(servingSizeAmount: value),
+      'servingsPerContainer' => state.copyWith(servingsPerContainer: value),
+      'caloriesKcal' => state.copyWith(caloriesKcal: value),
+      'totalFatMg' => state.copyWith(totalFatMg: value),
+      'saturatedFatMg' => state.copyWith(saturatedFatMg: value),
+      'transFatMg' => state.copyWith(transFatMg: value),
+      'cholesterolMg' => state.copyWith(cholesterolMg: value),
+      'sodiumMg' => state.copyWith(sodiumMg: value),
+      'totalCarbohydrateMg' => state.copyWith(totalCarbohydrateMg: value),
+      'fibreMg' => state.copyWith(fibreMg: value),
+      'sugarsMg' => state.copyWith(sugarsMg: value),
+      'proteinMg' => state.copyWith(proteinMg: value),
+      'vitaminAMcg' => state.copyWith(vitaminAMcg: value),
+      'vitaminCMg' => state.copyWith(vitaminCMg: value),
+      'calciumMg' => state.copyWith(calciumMg: value),
+      'ironMg' => state.copyWith(ironMg: value),
+      _ => state,
+    };
+  }
+
+  void setServingSizeUnit(String unit) {
+    state = state.copyWith(servingSizeUnit: unit);
+  }
+
+  // === PRODUCT SPECS METHODS ===
+
+  void setSpecBrand(String? brand) {
+    state = state.copyWith(specBrand: brand);
+  }
+
+  void setSpecColor(String? color) {
+    state = state.copyWith(specColor: color);
+  }
+
+  void setSpecMaterial(String? material) {
+    state = state.copyWith(specMaterial: material);
+  }
+
+  void addSpec() {
+    final entries = List<Map<String, String>>.from(state.specEntries);
+    entries.add({'key': '', 'value': ''});
+    state = state.copyWith(specEntries: entries);
+  }
+
+  void addSpecWithValues(
+    String key,
+    String value, {
+    String? group,
+    String valueType = 'text',
+    String? unit,
+  }) {
+    final entries = List<Map<String, String>>.from(state.specEntries);
+    final entry = <String, String>{
+      'key': key,
+      'value': value,
+      'valueType': valueType,
+    };
+    if (group != null) entry['group'] = group;
+    if (unit != null) entry['unit'] = unit;
+    entries.add(entry);
+    state = state.copyWith(specEntries: entries);
+  }
+
+  void removeSpec(int index) {
+    final entries = List<Map<String, String>>.from(state.specEntries);
+    if (index >= 0 && index < entries.length) {
+      entries.removeAt(index);
+      state = state.copyWith(specEntries: entries);
+    }
+  }
+
+  void updateSpec(int index, String key, String value) {
+    final entries = List<Map<String, String>>.from(state.specEntries);
+    if (index >= 0 && index < entries.length) {
+      entries[index] = {...entries[index], 'key': key, 'value': value};
+      state = state.copyWith(specEntries: entries);
+    }
+  }
 
   /// Validates all inputs, compresses images, and creates the product via [createProductAtomic].
   ///
@@ -56,7 +183,7 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     int? minimumOrderQuantity,
     bool? freeShipping,
     // Flat supplier fields (when supplier object is not used)
-    double? cost,
+    int? costCents,
     String? supplierSku,
     String? supplierUrl,
     // Structured supplier info
@@ -208,6 +335,53 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
         return;
       }
 
+      // Assemble nutrition data if any food fields are filled
+      models.NutritionFacts? nutritionFacts;
+      if (state.servingSizeAmount != null && state.caloriesKcal != null) {
+        nutritionFacts = models.NutritionFacts(
+          servingSizeAmount: state.servingSizeAmount!,
+          servingSizeUnit: state.servingSizeUnit,
+          servingsPerContainer: state.servingsPerContainer,
+          caloriesKcal: state.caloriesKcal!,
+          totalFatMg: state.totalFatMg ?? 0,
+          saturatedFatMg: state.saturatedFatMg ?? 0,
+          transFatMg: state.transFatMg ?? 0,
+          cholesterolMg: state.cholesterolMg ?? 0,
+          sodiumMg: state.sodiumMg ?? 0,
+          totalCarbohydrateMg: state.totalCarbohydrateMg ?? 0,
+          fibreMg: state.fibreMg ?? 0,
+          sugarsMg: state.sugarsMg ?? 0,
+          proteinMg: state.proteinMg ?? 0,
+          vitaminAMcg: state.vitaminAMcg ?? 0,
+          vitaminCMg: state.vitaminCMg ?? 0,
+          calciumMg: state.calciumMg ?? 0,
+          ironMg: state.ironMg ?? 0,
+        );
+      }
+
+      models.FoodMetadata? foodMetadata;
+      if (state.ingredientsEn != null ||
+          state.selectedAllergens.isNotEmpty ||
+          state.selectedDietaryBadges.isNotEmpty ||
+          state.storageInstructionsEn != null) {
+        final fopWarnings = nutritionFacts != null
+            ? NutritionHelper.computeFopWarnings(nutritionFacts)
+            : (sodium: false, sugars: false, saturatedFat: false);
+        foodMetadata = models.FoodMetadata(
+          ingredientsEn: state.ingredientsEn,
+          ingredientsFr: state.ingredientsFr,
+          allergens: state.selectedAllergens,
+          mayContainAllergens: state.selectedMayContainAllergens,
+          storageInstructionsEn: state.storageInstructionsEn,
+          storageInstructionsFr: state.storageInstructionsFr,
+          bestBeforeDays: state.bestBeforeDays,
+          dietaryBadges: state.selectedDietaryBadges,
+          fopHighSodium: fopWarnings.sodium,
+          fopHighSugars: fopWarnings.sugars,
+          fopHighSaturatedFat: fopWarnings.saturatedFat,
+        );
+      }
+
       // Build the product model — imageUrls and productId are set server-side
       var product = models.Product(
         productId: '',
@@ -280,7 +454,7 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
         deviceLimit: state.isDigital ? state.deviceLimit : null,
         minimumOrderQuantity: minOrderQty,
         freeShipping: freeShipping ?? state.freeShipping,
-        cost: cost,
+        costCents: costCents,
         supplierSku: supplierSku,
         supplierUrl: supplierUrl,
         supplier: supplier,
@@ -301,6 +475,8 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
                   .toList()
             : const [],
         condition: state.isDigital ? null : state.condition,
+        nutritionFacts: nutritionFacts,
+        foodMetadata: foodMetadata,
         videoUrl: null, // Will be set after upload
       );
 

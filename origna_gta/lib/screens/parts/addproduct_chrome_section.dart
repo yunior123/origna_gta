@@ -200,6 +200,27 @@ extension _AddProductChromeSection on _AddProductScreenState {
     _shippingDiscount5Controller.clear();
     _additionalItemCostController.text = '0.00';
     _maxItemsPerShipmentController.text = '0';
+    _ingredientsEnController.clear();
+    _ingredientsFrController.clear();
+    _storageEnController.clear();
+    _storageFrController.clear();
+    _bestBeforeDaysController.clear();
+    _servingSizeAmountController.clear();
+    _servingsPerContainerController.clear();
+    _caloriesController.clear();
+    _totalFatController.clear();
+    _saturatedFatController.clear();
+    _transFatController.clear();
+    _cholesterolController.clear();
+    _sodiumController.clear();
+    _totalCarbController.clear();
+    _fibreController.clear();
+    _sugarsController.clear();
+    _proteinController.clear();
+    _vitaminAController.clear();
+    _vitaminCController.clear();
+    _calciumController.clear();
+    _ironController.clear();
   }
 
   String? _validateCity(String? v) {

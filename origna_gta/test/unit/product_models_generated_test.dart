@@ -62,7 +62,7 @@ void main() {
         'type': SupplierTypeValues.aliexpress,
         'supplierSku': 'SKU-123',
         'supplierUrl': 'https://aliexpress.com/item/123',
-        'cost': 12.50,
+        'costCents': 1250,
         'currency': 'CNY',
         'shippingDays': '7-15',
         'hasTracking': true,
@@ -72,7 +72,7 @@ void main() {
       expect(model.type, SupplierTypeValues.aliexpress);
       expect(model.supplierSku, 'SKU-123');
       expect(model.supplierUrl, 'https://aliexpress.com/item/123');
-      expect(model.cost, 12.50);
+      expect(model.costCents, 1250);
       expect(model.currency, 'CNY');
       expect(model.shippingDays, '7-15');
       expect(model.hasTracking, true);
@@ -81,7 +81,7 @@ void main() {
       final out = model.toJson();
       expect(out['type'], SupplierTypeValues.aliexpress);
       expect(out['supplierSku'], 'SKU-123');
-      expect(out['cost'], 12.50);
+      expect(out['costCents'], 1250);
       expect(out['currency'], 'CNY');
       expect(out['hasTracking'], true);
     });
@@ -91,7 +91,7 @@ void main() {
       final model = SupplierInfo.fromJson(json);
       expect(model.supplierSku, isNull);
       expect(model.supplierUrl, isNull);
-      expect(model.cost, isNull);
+      expect(model.costCents, isNull);
       expect(model.currency, 'USD');
       expect(model.shippingDays, isNull);
       expect(model.hasTracking, false);
@@ -448,7 +448,7 @@ void main() {
       expect(model.deviceLimit, isNull);
       expect(model.taxCode, isNull);
       expect(model.approvalRejectionReason, isNull);
-      expect(model.cost, isNull);
+      expect(model.costCents, isNull);
       expect(model.supplierSku, isNull);
       expect(model.supplierUrl, isNull);
       expect(model.supplier, isNull);
@@ -521,12 +521,12 @@ void main() {
         'taxCode': 'food_basic',
         'keywords': ['maple', 'syrup', 'canadian'],
         'approvalRejectionReason': null,
-        'cost': 8.50,
+        'costCents': 850,
         'supplierSku': 'SUPP-MAPLE-001',
         'supplierUrl': 'https://supplier.example.com/maple',
         'supplier': {
           'type': SupplierTypeValues.local,
-          'cost': 8.50,
+          'costCents': 850,
           'currency': 'CAD',
           'hasTracking': true,
         },
@@ -704,7 +704,7 @@ void main() {
         'supplier': {
           'type': SupplierTypeValues.temu,
           'supplierSku': 'TEMU-999',
-          'cost': 3.99,
+          'costCents': 399,
           'currency': 'USD',
           'shippingDays': '7-15',
           'hasTracking': false,
@@ -714,7 +714,7 @@ void main() {
       expect(model.supplier, isNotNull);
       expect(model.supplier!.type, SupplierTypeValues.temu);
       expect(model.supplier!.supplierSku, 'TEMU-999');
-      expect(model.supplier!.cost, 3.99);
+      expect(model.supplier!.costCents, 399);
       expect(model.supplier!.shippingDays, '7-15');
     });
 
@@ -867,7 +867,10 @@ void main() {
     test('with supplier and inventory nested objects', () {
       final json = <String, dynamic>{
         ..._minimalCreateJson(),
-        'supplier': {'type': SupplierTypeValues.cjdropshipping, 'cost': 5.0},
+        'supplier': {
+          'type': SupplierTypeValues.cjdropshipping,
+          'costCents': 500,
+        },
         'inventory': {'managed': false, 'allowBackorder': true},
         'warehouseIds': ['wh-x'],
         'shipFromCity': 'Shenzhen',
@@ -877,7 +880,7 @@ void main() {
 
       final model = ProductCreate.fromJson(json);
       expect(model.supplier?.type, SupplierTypeValues.cjdropshipping);
-      expect(model.supplier?.cost, 5.0);
+      expect(model.supplier?.costCents, 500);
       expect(model.inventory?.managed, false);
       expect(model.inventory?.allowBackorder, true);
       expect(model.warehouseIds, ['wh-x']);
@@ -901,7 +904,7 @@ void main() {
         digitalBuilds: {'web': 'v1'},
         deviceLimit: 5,
         taxCode: 'digital_standard',
-        cost: 3.0,
+        costCents: 300,
         supplierSku: 'S-001',
         supplierUrl: 'https://example.com',
         sellerSku: 'MY-001',
@@ -915,7 +918,7 @@ void main() {
       expect(out['digitalBuilds'], {'web': 'v1'});
       expect(out['deviceLimit'], 5);
       expect(out['taxCode'], 'digital_standard');
-      expect(out['cost'], 3.0);
+      expect(out['costCents'], 300);
       expect(out['supplierSku'], 'S-001');
       expect(out['supplierUrl'], 'https://example.com');
       expect(out['sellerSku'], 'MY-001');
@@ -1113,7 +1116,7 @@ void main() {
     Product _makeProduct({
       SupplierInfo? supplier,
       InventoryConfig? inventory,
-      double? cost,
+      int? costCents,
       String? supplierSku,
       String? supplierUrl,
       bool isDigital = false,
@@ -1132,7 +1135,7 @@ void main() {
       createdAt: now,
       supplier: supplier,
       inventory: inventory,
-      cost: cost,
+      costCents: costCents,
       supplierSku: supplierSku,
       supplierUrl: supplierUrl,
       isDigital: isDigital,
@@ -1176,17 +1179,20 @@ void main() {
       );
     });
 
-    test('effectiveCost prefers supplier.cost over flat cost', () {
-      expect(_makeProduct(cost: 5.0).effectiveCost, 5.0);
-      expect(
-        _makeProduct(
-          cost: 5.0,
-          supplier: const SupplierInfo(type: 'local', cost: 3.0),
-        ).effectiveCost,
-        3.0,
-      );
-      expect(_makeProduct().effectiveCost, isNull);
-    });
+    test(
+      'effectiveCostCents prefers supplier.costCents over flat costCents',
+      () {
+        expect(_makeProduct(costCents: 500).effectiveCostCents, 500);
+        expect(
+          _makeProduct(
+            costCents: 500,
+            supplier: const SupplierInfo(type: 'local', costCents: 300),
+          ).effectiveCostCents,
+          300,
+        );
+        expect(_makeProduct().effectiveCostCents, isNull);
+      },
+    );
 
     test('effectiveSupplierSku prefers supplier object', () {
       expect(_makeProduct(supplierSku: 'FLAT').effectiveSupplierSku, 'FLAT');
@@ -1216,13 +1222,19 @@ void main() {
       );
     });
 
-    test('profit and marginPercent', () {
-      expect(_makeProduct(priceCents: 2500, cost: 10.0).profit, 15.0);
-      expect(_makeProduct(priceCents: 2500, cost: 10.0).marginPercent, 60.0);
-      expect(_makeProduct(priceCents: 2500).profit, isNull);
+    test('profitCents and marginPercent', () {
+      expect(_makeProduct(priceCents: 2500, costCents: 1000).profitCents, 1500);
+      expect(
+        _makeProduct(priceCents: 2500, costCents: 1000).marginPercent,
+        60.0,
+      );
+      expect(_makeProduct(priceCents: 2500).profitCents, isNull);
       expect(_makeProduct(priceCents: 2500).marginPercent, isNull);
-      // cost=0 => marginPercent null (division guard)
-      expect(_makeProduct(priceCents: 2500, cost: 0.0).marginPercent, isNull);
+      // costCents=0 => marginPercent null (division guard)
+      expect(
+        _makeProduct(priceCents: 2500, costCents: 0).marginPercent,
+        isNull,
+      );
     });
 
     test('isInternationalSupplier', () {

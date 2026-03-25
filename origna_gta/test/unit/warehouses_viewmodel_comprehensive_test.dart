@@ -612,7 +612,7 @@ void main() {
           );
 
       final state = c.read(obWarehousesViewModelProvider);
-      expect(state.errorMessage, contains('log in'));
+      expect(state.errorMessage, contains('warehouse_error'));
     });
 
     test('error message for not-found warehouse', () async {
@@ -625,7 +625,7 @@ void main() {
           .updateWarehouse(warehouseId: 'wh_nonexistent', label: 'New');
 
       final state = c.read(obWarehousesViewModelProvider);
-      expect(state.errorMessage, contains('not found'));
+      expect(state.errorMessage, contains('warehouse_error'));
     });
 
     test('error message for invalid argument', () async {

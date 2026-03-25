@@ -4,7 +4,6 @@ import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
-import 'package:origna_gta/features/seller/orignabase_warehouses_viewmodel.dart';
 import 'package:origna_gta/features/seller/warehouses_viewmodel.dart';
 import 'package:origna_gta/models/generated/base_models.dart';
 
@@ -173,7 +172,7 @@ void main() {
           .deleteWarehouse('wh_1');
 
       final state = c.read(obWarehousesViewModelProvider);
-      expect(state.errorMessage, contains('not found'));
+      expect(state.errorMessage, contains('warehouse_error'));
       expect(state.isSuccess, isFalse);
     });
 
@@ -263,7 +262,7 @@ void main() {
           .deleteWarehouse('wh_1');
 
       final state = c.read(obWarehousesViewModelProvider);
-      expect(state.errorMessage, contains('log in'));
+      expect(state.errorMessage, contains('warehouse_error'));
     });
 
     test('maps invalid-argument error', () async {

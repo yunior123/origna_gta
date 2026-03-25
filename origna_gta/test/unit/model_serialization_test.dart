@@ -41,7 +41,7 @@ void main() {
       'taxCode': 'TAX001',
       'keywords': ['test', 'product'],
       'approvalRejectionReason': 'Missing info',
-      'cost': 15.0,
+      'costCents': 1500,
       'supplierSku': 'SUP-001',
       'supplierUrl': 'https://supplier.com/product',
       'sellerSku': 'SKU-001',
@@ -276,7 +276,7 @@ void main() {
         'type': 'aliexpress',
         'supplierUrl': 'https://aliexpress.com/item/123',
         'supplierSku': 'ALI-123',
-        'cost': 5.99,
+        'costCents': 599,
         'currency': 'USD',
         'shippingDays': '7-15',
         'hasTracking': true,
@@ -285,7 +285,7 @@ void main() {
       final info = SupplierInfo.fromJson(json);
       expect(info.type, 'aliexpress');
       expect(info.supplierUrl, 'https://aliexpress.com/item/123');
-      expect(info.cost, 5.99);
+      expect(info.costCents, 599);
       expect(info.currency, 'USD');
       expect(info.hasTracking, true);
 
@@ -338,7 +338,7 @@ void main() {
           'type': 'aliexpress',
           'supplierUrl': 'https://ali.com/item',
           'supplierSku': 'ALI-456',
-          'cost': 10.0,
+          'costCents': 1000,
           'currency': 'USD',
         },
         'inventory': {

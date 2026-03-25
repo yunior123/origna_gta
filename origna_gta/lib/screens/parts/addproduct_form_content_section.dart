@@ -222,7 +222,23 @@ extension _AddProductFormContentSection on _AddProductScreenState {
           ),
         if (!state.isDigital) const SizedBox(height: 16),
 
-        // SECTION 5: Supplier & Inventory (collapsible)
+        // SECTION 5: Food Information (conditional: Groceries or perishable)
+        if (state.selectedCategoryId == '19' || state.isPerishable)
+          buildFoodInfoSection(state, viewModel),
+        if (state.selectedCategoryId == '19' || state.isPerishable)
+          const SizedBox(height: 16),
+
+        // SECTION 5.5: Product Specifications (all non-food categories)
+        if (state.selectedCategoryId != null &&
+            state.selectedCategoryId != '19' &&
+            !state.isPerishable)
+          buildSpecsSection(state, viewModel),
+        if (state.selectedCategoryId != null &&
+            state.selectedCategoryId != '19' &&
+            !state.isPerishable)
+          const SizedBox(height: 16),
+
+        // SECTION 6: Supplier & Inventory (collapsible)
         buildCollapsibleSection(
           key: const Key('addproduct_section_supplier'),
           index: 4,

@@ -1,7 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/features/chat/chat_repository.dart';
-import 'package:origna_gta/features/chat/orignabase_chat_repository.dart';
 
 // ---------------------------------------------------------------------------
 // Fakes

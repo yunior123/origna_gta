@@ -50,8 +50,7 @@ extension _AddProductSubmitSection on _AddProductScreenState {
     }
 
     final additionalItemCostCents =
-        ((double.tryParse(_additionalItemCostController.text) ?? 0.0) * 100)
-            .round();
+        parseMoneyToCents(_additionalItemCostController.text) ?? 0;
     final maxItems = int.tryParse(_maxItemsPerShipmentController.text) ?? 0;
 
     return [
@@ -60,9 +59,7 @@ extension _AddProductSubmitSection on _AddProductScreenState {
           type: DeliveryTypeValues.standard,
           description: 'product.standard_delivery'.tr(),
           estimatedDays: int.tryParse(_standardDaysController.text) ?? 5,
-          costCents:
-              ((double.tryParse(_standardPriceController.text) ?? 0.0) * 100)
-                  .round(),
+          costCents: parseMoneyToCents(_standardPriceController.text) ?? 0,
           quantityDiscounts: quantityDiscounts,
           additionalItemCostCents: additionalItemCostCents,
           maxItemsPerShipment: maxItems,
@@ -72,9 +69,7 @@ extension _AddProductSubmitSection on _AddProductScreenState {
           type: DeliveryTypeValues.express,
           description: 'product.express_delivery'.tr(),
           estimatedDays: int.tryParse(_expressDaysController.text) ?? 2,
-          costCents:
-              ((double.tryParse(_expressPriceController.text) ?? 9.99) * 100)
-                  .round(),
+          costCents: parseMoneyToCents(_expressPriceController.text) ?? 999,
           quantityDiscounts: quantityDiscounts,
           additionalItemCostCents: additionalItemCostCents,
           maxItemsPerShipment: maxItems,
@@ -84,9 +79,7 @@ extension _AddProductSubmitSection on _AddProductScreenState {
           type: DeliveryTypeValues.sameDay,
           description: 'product.same_day_delivery'.tr(),
           estimatedDays: 0,
-          costCents:
-              ((double.tryParse(_sameDayPriceController.text) ?? 14.99) * 100)
-                  .round(),
+          costCents: parseMoneyToCents(_sameDayPriceController.text) ?? 1499,
           quantityDiscounts: quantityDiscounts,
           additionalItemCostCents: additionalItemCostCents,
           maxItemsPerShipment: maxItems,
@@ -203,7 +196,7 @@ extension _AddProductSubmitSection on _AddProductScreenState {
     if (hasCost || hasSku || hasUrl) {
       supplierInfo = SupplierInfo(
         type: state.selectedSupplierType,
-        cost: double.tryParse(_costController.text),
+        costCents: parseMoneyToCents(_costController.text),
         currency: state.selectedSupplierCurrency,
         supplierSku: hasSku ? _supplierSkuController.text.trim() : null,
         supplierUrl: hasUrl ? _supplierUrlController.text.trim() : null,
@@ -256,7 +249,7 @@ extension _AddProductSubmitSection on _AddProductScreenState {
       deliveryOptions: buildDeliveryOptions(state),
       minimumOrderQuantity: int.tryParse(_minOrderController.text) ?? 1,
       freeShipping: state.freeShipping,
-      cost: double.tryParse(_costController.text),
+      costCents: parseMoneyToCents(_costController.text),
       supplierSku: _supplierSkuController.text.trim().isEmpty
           ? null
           : _supplierSkuController.text.trim(),

@@ -20,11 +20,15 @@ import 'package:origna_gta/widgets/modern_skeleton_loader.dart';
 import 'widgets/product_detail/product_actions_section.dart';
 import 'widgets/product_detail/product_detail_skeleton.dart';
 import 'widgets/product_detail/product_image_gallery.dart';
+import 'widgets/product_detail/nutrition_facts_section.dart';
+import 'widgets/product_detail/product_specs_section.dart';
 import 'widgets/product_detail/product_info_section.dart';
 import 'widgets/product_detail/product_price_section.dart';
 import 'widgets/product_detail/product_qa_section.dart';
 import 'widgets/product_detail/product_reviews_section.dart';
 import 'widgets/product_detail/related_products_section.dart';
+import 'widgets/product_detail/seller_products_section.dart';
+import 'widgets/product_detail/fbt_section.dart';
 import 'widgets/product_detail/video_player_dialog.dart';
 
 /// ProductDetailScreen — coordinator composing extracted widget sections.
@@ -140,6 +144,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
           Widget buildBottomSections() => Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              FBTSection(product: product),
+              const SizedBox(height: 32),
               ReviewsSection(
                 productId: productId,
                 productName: product.name,
@@ -151,6 +157,11 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
               ),
               const SizedBox(height: 32),
               QASection(productId: productId, sellerId: product.sellerId),
+              const SizedBox(height: 32),
+              SellerProductsSection(
+                sellerId: product.sellerId,
+                excludeProductId: productId,
+              ),
               const SizedBox(height: 32),
               SimilarProductsSection(
                 productId: productId,
@@ -587,6 +598,14 @@ class _ProductInfoColumn extends StatelessWidget {
         if (product.isDigital) ...[
           const SizedBox(height: 12),
           DigitalProductInfo(product: product),
+        ],
+        if (product.specs != null && product.specs!.specs.isNotEmpty) ...[
+          const SizedBox(height: 28),
+          ProductSpecsSection(product: product),
+        ],
+        if (product.nutritionFacts != null || product.foodMetadata != null) ...[
+          const SizedBox(height: 28),
+          NutritionFactsSection(product: product),
         ],
         const SizedBox(height: 28),
         VariantAndCartSection(product: product, viewModel: viewModel),

@@ -12,7 +12,6 @@ import 'package:origna_gta/core/repositories/user_repository.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:origna_gta/features/checkout/checkout_provider.dart';
-import 'package:origna_gta/features/checkout/checkout_state.dart';
 import 'package:origna_gta/models/models.dart';
 import 'package:origna_gta/utils/constants.dart';
 

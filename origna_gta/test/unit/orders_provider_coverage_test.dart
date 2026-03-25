@@ -1,15 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mockito/mockito.dart';
-import 'package:mockito/annotations.dart';
 import 'package:origna_gta/core/providers.dart';
-import 'package:origna_gta/core/repositories/order_repository.dart';
 import 'package:origna_gta/features/orders/orders_provider.dart';
 import 'package:origna_gta/models/generated/models.dart' as models;
-import 'package:origna_gta/core/schema/schema_constants.dart';
-
-@GenerateNiceMocks([MockSpec<OrderRepository>()])
-import 'orders_provider_coverage_test.mocks.dart';
 
 // Helper to create minimal Order for testing
 models.Order _makeOrder({
@@ -167,7 +160,7 @@ void main() {
       addTearDown(container.dispose);
 
       // Listen and wait for the stream to emit data
-      final sub = container.listen(sellerOrdersProvider, (_, __) {});
+      container.listen(sellerOrdersProvider, (_, _) {});
       await container.read(sellerOrdersProvider.future);
 
       final summary = container.read(sellerEarningsSummaryProvider);
@@ -264,7 +257,7 @@ void main() {
       addTearDown(container.dispose);
 
       // Listen and wait for the stream to emit data
-      final sub = container.listen(sellerOrdersProvider, (_, __) {});
+      container.listen(sellerOrdersProvider, (_, _) {});
       await container.read(sellerOrdersProvider.future);
 
       final amounts = container.read(
@@ -278,8 +271,6 @@ void main() {
   });
 
   group('pendingApprovalsCountProvider', () {
-    late MockOrderRepository mockOrderRepo;
-
     test('returns 0 when no pending approvals', () {
       final orders = [
         _makeOrder(
@@ -326,7 +317,7 @@ void main() {
       addTearDown(container.dispose);
 
       // Listen and wait for the stream to emit data
-      final sub = container.listen(buyerOrdersProvider, (_, __) {});
+      container.listen(buyerOrdersProvider, (_, _) {});
       await container.read(buyerOrdersProvider.future);
 
       final count = container.read(pendingApprovalsCountProvider);
@@ -335,8 +326,6 @@ void main() {
   });
 
   group('buyerOrdersProvider', () {
-    late MockOrderRepository mockOrderRepo;
-
     test('returns empty list when userId is null', () async {
       final container = ProviderContainer(
         overrides: [userIdProvider.overrideWithValue(null)],

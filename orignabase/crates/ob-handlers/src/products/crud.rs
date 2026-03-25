@@ -10,6 +10,10 @@ use tracing::{info, warn};
 
 use crate::HandlersState;
 use crate::shared::auth::{require_authenticated, resolve_self_user_id};
+use crate::shared::nutrition::{
+    compute_fop_warnings, validate_food_metadata, validate_nutrition_facts, FoodMetadata,
+    NutritionFacts,
+};
 use crate::shared::schema::{collections, fields};
 use crate::shared::validation::{sanitize_html, validate_string, validate_uid};
 
@@ -114,6 +118,83 @@ fn validate_price_and_stock(
 
     Ok(())
 }
+/// Validate and process nutrition data on a product object.
+///
+/// If `nutritionFacts` is present, validates it and auto-computes FOP warnings.
+/// If `foodMetadata` is present, validates allergens and dietary badges.
+/// FOP flags are set on `foodMetadata` based on `nutritionFacts` values.
+fn validate_and_process_nutrition(obj: &mut serde_json::Map<String, Value>) -> Result<(), ob_core::Error> {
+    // Validate nutritionFacts if present
+    let nutrition_facts: Option<NutritionFacts> = obj
+        .get(fields::NUTRITION_FACTS)
+        .filter(|v| !v.is_null())
+        .map(|v| serde_json::from_value(v.clone()))
+        .transpose()
+        .map_err(|e| ob_core::Error::Validation(format!("Invalid nutritionFacts: {e}")))?;
+
+    if let Some(ref nf) = nutrition_facts {
+        validate_nutrition_facts(nf)?;
+    }
+
+    // Validate foodMetadata if present
+    let food_metadata: Option<FoodMetadata> = obj
+        .get(fields::FOOD_METADATA)
+        .filter(|v| !v.is_null())
+        .map(|v| serde_json::from_value(v.clone()))
+        .transpose()
+        .map_err(|e| ob_core::Error::Validation(format!("Invalid foodMetadata: {e}")))?;
+
+    if let Some(ref fm) = food_metadata {
+        validate_food_metadata(fm)?;
+    }
+
+    // Auto-compute FOP warnings when nutritionFacts is present
+    if let Some(ref nf) = nutrition_facts {
+        let (high_sodium, high_sugars, high_sat_fat) = compute_fop_warnings(nf);
+
+        // Merge FOP flags into foodMetadata (create if absent)
+        let mut fm = food_metadata.unwrap_or_default();
+        fm.fop_high_sodium = high_sodium;
+        fm.fop_high_sugars = high_sugars;
+        fm.fop_high_saturated_fat = high_sat_fat;
+
+        let fm_value = serde_json::to_value(&fm)
+            .map_err(|e| ob_core::Error::Internal(format!("Failed to serialize foodMetadata: {e}")))?;
+        obj.insert(fields::FOOD_METADATA.to_string(), fm_value);
+
+        tracing::debug!(
+            high_sodium = high_sodium,
+            high_sugars = high_sugars,
+            high_sat_fat = high_sat_fat,
+            "FOP warnings computed from nutritionFacts"
+        );
+    }
+
+    Ok(())
+}
+
+/// Validate product specs if present and denormalize brand/color/material to top-level
+/// for Meilisearch filtering.
+fn validate_and_denormalize_specs(obj: &mut serde_json::Map<String, Value>) -> Result<(), ob_core::Error> {
+    if let Some(specs_val) = obj.get("specs").cloned()
+        && !specs_val.is_null() {
+            let specs: crate::shared::specs::ProductSpecs = serde_json::from_value(specs_val)
+                .map_err(|e| ob_core::Error::Validation(format!("Invalid specs: {e}")))?;
+            crate::shared::specs::validate_product_specs(&specs)?;
+            // Denormalize brand/color/material to top-level for Meilisearch
+            if let Some(ref brand) = specs.brand {
+                obj.insert("brand".to_string(), serde_json::Value::String(brand.clone()));
+            }
+            if let Some(ref color) = specs.color {
+                obj.insert("color".to_string(), serde_json::Value::String(color.clone()));
+            }
+            if let Some(ref material) = specs.material {
+                obj.insert("material".to_string(), serde_json::Value::String(material.clone()));
+            }
+        }
+    Ok(())
+}
+
 // ─── Request/Response types ─────────────────────────────────────────────────
 
 #[derive(Debug, Deserialize)]
@@ -689,6 +770,22 @@ async fn create_product_atomic(
     let stock_quantity = obj.get(fields::STOCK_QUANTITY).and_then(|v| v.as_i64());
     validate_price_and_stock(price_cents, stock_quantity)?;
 
+    // Validate nutrition data and auto-compute FOP warnings
+    validate_and_process_nutrition(obj)?;
+
+    // Validate product specs if present and denormalize filterable fields
+    validate_and_denormalize_specs(obj)?;
+
+    // Validate bundledProductIds if present
+    if let Some(bundled_val) = obj.get("bundledProductIds").cloned()
+        && let Some(arr) = bundled_val.as_array()
+        && arr.len() > 5
+    {
+        return Err(ob_core::Error::Validation(
+            "bundledProductIds cannot exceed 5 items".into(),
+        ));
+    }
+
     let now = chrono::Utc::now().to_rfc3339();
     obj.insert(fields::SELLER_ID.to_string(), serde_json::json!(user_id));
     obj.insert(
@@ -1101,6 +1198,22 @@ async fn update_product(
         }
     }
 
+    // Validate nutrition data and auto-compute FOP warnings
+    validate_and_process_nutrition(obj)?;
+
+    // Validate product specs if present and denormalize filterable fields
+    validate_and_denormalize_specs(obj)?;
+
+    // Validate bundledProductIds if present
+    if let Some(bundled_val) = obj.get("bundledProductIds").cloned()
+        && let Some(arr) = bundled_val.as_array()
+        && arr.len() > 5
+    {
+        return Err(ob_core::Error::Validation(
+            "bundledProductIds cannot exceed 5 items".into(),
+        ));
+    }
+
     obj.insert(
         fields::UPDATED_AT.to_string(),
         serde_json::json!(chrono::Utc::now().to_rfc3339()),
@@ -1110,7 +1223,6 @@ async fn update_product(
         .db
         .update_document(collections::PRODUCTS, &req.product_id, update)
         .await?;
-
 
     Ok(Json(
         serde_json::json!({ "success": true, "updated": true }),
@@ -1139,9 +1251,11 @@ async fn toggle_favorite(
         .unwrap_or(0);
 
     let query = format!(
-        "SELECT * FROM {} WHERE userId = '{}' AND productId = '{}' LIMIT 1",
+        "SELECT * FROM {} WHERE {} = '{}' AND {} = '{}' LIMIT 1",
         collections::FAVORITES,
+        fields::USER_ID,
         ob_core::escape_surreal_string(&req.user_id),
+        fields::PRODUCT_ID,
         ob_core::escape_surreal_string(&req.product_id),
     );
     let existing = state.db.query_raw(&query).await.unwrap_or_default();
@@ -1180,8 +1294,8 @@ async fn toggle_favorite(
         .create_document(
             collections::FAVORITES,
             serde_json::json!({
-                "userId": req.user_id,
-                "productId": req.product_id,
+                fields::USER_ID: req.user_id,
+                fields::PRODUCT_ID: req.product_id,
                 fields::CREATED_AT: now,
             }),
         )

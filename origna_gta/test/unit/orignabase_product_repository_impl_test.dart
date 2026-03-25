@@ -28,9 +28,9 @@ class _FakeDocument extends Fake implements Document {
   final Map<String, dynamic> data;
 
   @override
-  final bool exists;
+  final bool exists = true;
 
-  _FakeDocument(this.id, this.data, {bool exists = true}) : exists = exists;
+  _FakeDocument(this.id, this.data);
 
   @override
   T? get<T>(String field) => data[field] as T?;

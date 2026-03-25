@@ -29,6 +29,7 @@ class FakeProductRepository implements ProductRepository {
     String? searchQuery,
     int? categoryId,
     String? subcategory,
+    String? sellerId,
     String? lastDocumentId,
     int pageSize = 20,
     SortOption sortOption = SortOption.relevance,

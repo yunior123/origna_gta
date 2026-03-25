@@ -18,6 +18,7 @@ mixin ProductSearchHelpers {
     String? searchQuery,
     int? categoryId,
     String? subcategory,
+    String? sellerId,
     String? lastDocumentId,
     int pageSize = 20,
     SortOption sortOption = SortOption.relevance,
@@ -45,6 +46,9 @@ mixin ProductSearchHelpers {
     }
     if (subcategory != null && subcategory.isNotEmpty) {
       query = query.where(Fields.subcategory, isEqualTo: subcategory);
+    }
+    if (sellerId != null && sellerId.isNotEmpty) {
+      query = query.where(Fields.sellerId, isEqualTo: sellerId);
     }
     if (minPriceCents != null) {
       query = query.where(Fields.priceCents, isGreaterThan: minPriceCents - 1);
@@ -78,8 +82,9 @@ mixin ProductSearchHelpers {
     final snapshot = await query.get();
 
     final hasMore = snapshot.docs.length > pageSize;
-    final docsToMap =
-        hasMore ? snapshot.docs.take(pageSize).toList() : snapshot.docs;
+    final docsToMap = hasMore
+        ? snapshot.docs.take(pageSize).toList()
+        : snapshot.docs;
 
     final products = docsToMap.expand((doc) {
       try {
@@ -144,8 +149,7 @@ mixin ProductSearchHelpers {
 
   /// Fetches a single active product by ID.
   Future<Product?> fetchProductByIdImpl(String productId) async {
-    final doc =
-        await ob.collection(Collections.products).doc(productId).get();
+    final doc = await ob.collection(Collections.products).doc(productId).get();
     if (doc == null || !doc.exists) return null;
     if (doc.data[Fields.lifecycleStatus] !=
         ProductLifecycleStatusValues.active) {

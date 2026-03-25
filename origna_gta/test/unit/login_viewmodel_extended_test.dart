@@ -197,7 +197,7 @@ void main() {
       final vm = container.read(loginViewModelProvider.notifier);
       vm.toggleAuthMode();
 
-      fakeAuth.onRegisterWithEmail = (_, __, ___, ____) async {
+      fakeAuth.onRegisterWithEmail = (_, _, _, _) async {
         throw Exception('email-already-in-use');
       };
 
@@ -219,7 +219,7 @@ void main() {
       final vm = container.read(loginViewModelProvider.notifier);
       vm.toggleAuthMode();
 
-      fakeAuth.onRegisterWithEmail = (_, __, ___, ____) async {};
+      fakeAuth.onRegisterWithEmail = (_, _, _, _) async {};
 
       await vm.handleAuth(
         email: 'new@example.com',
@@ -267,7 +267,7 @@ void main() {
       final vm = container.read(loginViewModelProvider.notifier);
 
       // Set up MFA state
-      fakeAuth.onSignInWithEmail = (_, __) async {
+      fakeAuth.onSignInWithEmail = (_, _) async {
         throw _authException('mfa-required', challengeToken: 'tok123');
       };
       await vm.handleAuth(email: 'mfa@example.com', password: 'Password123!');
@@ -289,7 +289,7 @@ void main() {
     test('login with permission_denied error maps correctly', () async {
       final vm = container.read(loginViewModelProvider.notifier);
 
-      fakeAuth.onSignInWithEmail = (_, __) async {
+      fakeAuth.onSignInWithEmail = (_, _) async {
         throw Exception('permission_denied');
       };
 
@@ -308,7 +308,7 @@ void main() {
         final vm = container.read(loginViewModelProvider.notifier);
         vm.toggleAuthMode();
 
-        fakeAuth.onRegisterWithEmail = (_, __, ___, ____) async {
+        fakeAuth.onRegisterWithEmail = (_, _, _, _) async {
           throw Exception('permission-denied');
         };
 
