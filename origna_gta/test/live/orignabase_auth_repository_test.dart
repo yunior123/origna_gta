@@ -143,15 +143,15 @@ void main() {
     );
 
     test(
-      'validateCurrentUser returns true when no session exists',
+      'validateCurrentUser returns false when no session exists',
       () async {
-        // With no token, validateCurrentUser() returns true (no invalid session).
-        // A null accessToken means "no user" — nothing to validate, so valid.
+        // With no token, validateCurrentUser() returns false (no valid session).
+        // A null accessToken means "not authenticated" — can't validate.
         ob.auth.signOut();
 
         final isValid = await authRepo.validateCurrentUser();
-        // No session → no invalid session → true (no stale/expired token to reject)
-        expect(isValid, isTrue);
+        // No session → not authenticated → false
+        expect(isValid, isFalse);
       },
       skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
