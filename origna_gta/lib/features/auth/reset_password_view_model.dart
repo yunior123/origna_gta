@@ -8,7 +8,7 @@ final resetPasswordViewModelProvider = StateNotifierProvider.autoDispose.family<
   return ResetPasswordViewModel(ref, oobCode);
 });
 
-/// Documentation for ResetPasswordViewModel
+/// Manages the password reset flow: email validation, sending reset link, and code confirmation.
 class ResetPasswordViewModel extends StateNotifier<ResetPasswordState> {
   final Ref _ref;
   final String _oobCode;

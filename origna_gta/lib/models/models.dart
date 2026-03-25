@@ -34,7 +34,12 @@ DateTime _parseDateTimeRequired(dynamic value) {
   return parseDateTimeRequired(value);
 }
 
-/// Documentation for Address
+/// Physical address model used for shipping, billing, and seller warehouse locations.
+///
+/// [state] is the Canadian province code (e.g., 'ON', 'QC', 'BC').
+/// [postalCode] follows Canadian format: `A1A 1A1`.
+/// [latitude]/[longitude] are optional geocoded coordinates used for
+/// shipping distance calculations and local delivery checks.
 class Address {
   final String street;
   final String apartment; // Unit, Suite, Apt #
@@ -166,7 +171,9 @@ class Address {
   }
 }
 
-/// Documentation for AddressDetails
+/// Geocoded address details returned from the autocomplete/geocode API.
+///
+/// Always includes [latitude] and [longitude] (unlike [Address] which has them optional).
 class AddressDetails {
   final String street;
   final String city;
@@ -185,7 +192,11 @@ class AddressDetails {
   });
 }
 
-/// Documentation for CartItemDetailModel
+/// Enriched cart item with full product details, seller info, and shipping metadata.
+///
+/// Created by joining a [CartItemModel] (quantity, productId) with the product document.
+/// [priceCents] is the authoritative price in integer cents — never use [price] for arithmetic.
+/// [isDigital] items skip shipping; [isPerishable] items are limited to local delivery.
 class CartItemDetailModel {
   final String productId;
   final String name;
@@ -370,7 +381,11 @@ class CartItemDetailModel {
   }
 }
 
-/// Documentation for CartItemModel
+/// Lightweight cart item from the `users/{uid}/cart` subcollection.
+///
+/// Contains only the product reference and quantity — enriched with product
+/// details by [cartItemDetailProvider] to create [CartItemDetailModel].
+/// [cartItemId] format: `productId` or `productId_variantId`.
 class CartItemModel {
   final String cartItemId; // Auto-generated document ID
   final int quantity;
@@ -423,7 +438,10 @@ class CartItemModel {
   }
 }
 
-/// Documentation for CartModel
+/// Cart item data model for writes to the `cart` subcollection.
+///
+/// [priceSnapshot] captures the product price in cents at time of addition,
+/// enabling price-drift detection at checkout.
 class CartModel {
   final String cartItemId; // Auto-generated document ID
   final String productId;
@@ -480,7 +498,7 @@ class CartModel {
   }
 }
 
-/// Documentation for FavoriteItem
+/// Record of a user's favorited product with timestamp for sort ordering.
 class FavoriteItem {
   final String productId;
   final DateTime dateFavorited;
@@ -501,7 +519,7 @@ class FavoriteItem {
   }
 }
 
-/// Documentation for ImageModel
+/// Pair of image URL and raw bytes, used during product image upload flow.
 class ImageModel {
   final String url;
   final Uint8List bytes;
@@ -509,7 +527,12 @@ class ImageModel {
   ImageModel({required this.url, required this.bytes});
 }
 
-/// Documentation for OrderModel
+/// Full order record with items, monetary totals, and lifecycle state.
+///
+/// All monetary fields use integer cents: [totalAmountCents], [subtotalCents],
+/// [shippingCostCents], [taxAmountCents], [platformFeeTotalCents].
+/// [sellerIds] supports multi-seller orders (one checkout, multiple sellers).
+/// [items] is a snapshot at creation time — never modified after payment.
 class OrderModel {
   final String orderId;
   final String userId;
@@ -799,7 +822,7 @@ class OrderModel {
   }
 }
 
-/// Documentation for ProductCategories
+/// Product category definition with display name (localization key) and icon.
 class ProductCategories {
   final int categoryId;
   final String name;
@@ -812,7 +835,11 @@ class ProductCategories {
   });
 }
 
-/// Documentation for ProductModel
+/// Lightweight product model used for form-to-API conversions in add/edit flows.
+///
+/// [priceCents] is the authoritative price in integer cents.
+/// [lifecycleStatus] follows: draft -> active -> inactive -> deleted.
+/// [isDigital] products skip shipping; [isPerishable] enforces local delivery only.
 class ProductModel {
   final String id;
   final String name;
@@ -1092,7 +1119,13 @@ class SellerPayout {
   }
 }
 
-/// Documentation for UserModel
+/// Authenticated user's profile combining OrignaBase auth state and `users` document.
+///
+/// [roles] determines access: buyer (default), seller (after Stripe onboarding), admin.
+/// [isPremium] and [premiumExpiresAt] track subscription status.
+/// [termsVersion] tracks the last Terms of Service version accepted (CASL/PIPEDA compliance).
+/// Stripe Connect fields ([stripeAccountId], [payoutsEnabled], [chargesEnabled]) are
+/// mastered in `seller_profiles` — UserModel only stores cached values.
 class UserModel {
   final String uid;
   final String email;

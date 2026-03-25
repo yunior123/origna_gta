@@ -20,7 +20,7 @@ void main() {
   );
 }
 
-/// Documentation for MascotPreviewScreen
+/// Debug screen for previewing mascot animations and states.
 class MascotPreviewScreen extends ConsumerStatefulWidget {
   const MascotPreviewScreen({super.key});
 
@@ -203,7 +203,7 @@ class _MascotPreviewScreenState extends ConsumerState<MascotPreviewScreen> {
   }
 }
 
-/// Documentation for GridPainter
+/// Grid overlay painter for mascot alignment debugging.
 class GridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {

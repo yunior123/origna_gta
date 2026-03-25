@@ -22,7 +22,7 @@ final _userNotificationsProvider =
           .map((items) => items.map(AppNotification.fromMap).toList());
     });
 
-/// Documentation for NotificationsScreen
+/// Lists push notifications with read/unread state and mark-all-read action.
 class NotificationsScreen extends ConsumerWidget {
   const NotificationsScreen({super.key});
 
@@ -88,7 +88,7 @@ class NotificationsScreen extends ConsumerWidget {
   }
 }
 
-/// Documentation for NotificationsScreenLayout
+/// Lists push notifications with read/unread state and mark-all-read action.Layout
 class NotificationsScreenLayout extends StatelessWidget {
   final AsyncValue<List<AppNotification>> notificationsAsync;
   final String? uid;

@@ -5,7 +5,7 @@ import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/models/models.dart';
 import 'package:origna_gta/screens/home_screen.dart';
 
-/// Documentation for MainScreen
+/// Root scaffold with bottom navigation: Home, Orders, Cart, Profile tabs.
 class MainScreen extends ConsumerStatefulWidget {
   const MainScreen({super.key});
 

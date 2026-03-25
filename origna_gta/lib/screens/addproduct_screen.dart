@@ -30,7 +30,7 @@ part 'parts/addproduct_delivery_children_section.dart';
 part 'parts/addproduct_supplier_children_section.dart';
 part 'parts/addproduct_chrome_section.dart';
 
-/// Documentation for AddProductScreen
+/// Multi-step product creation form: details, pricing, images, shipping options.
 class AddProductScreen extends ConsumerStatefulWidget {
   const AddProductScreen({super.key});
 

@@ -13,7 +13,7 @@ import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
-/// Documentation for AddressManagementScreen
+/// Address book manager: add, edit, delete, set default shipping address.
 class AddressManagementScreen extends ConsumerWidget {
   const AddressManagementScreen({super.key});
 

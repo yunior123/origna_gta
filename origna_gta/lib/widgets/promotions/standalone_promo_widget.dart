@@ -2,7 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 
-/// Documentation for StandalonePromoWidget
+/// Promotional banner widget for homepage featured deals and campaigns.
 class StandalonePromoWidget extends StatelessWidget {
   final String title;
   final String subtitle;

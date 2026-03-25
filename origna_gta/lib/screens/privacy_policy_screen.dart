@@ -2,7 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:origna_gta/widgets/legal_screen_body.dart';
 
-/// Documentation for PrivacyPolicyScreen
+/// Displays the current Privacy Policy (PIPEDA/Quebec Law 25 compliant).
 class PrivacyPolicyScreen extends StatelessWidget {
   const PrivacyPolicyScreen({super.key});
 

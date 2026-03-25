@@ -9,7 +9,7 @@ import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/shared/quantity_button.dart';
 import 'package:origna_gta/widgets/modern_skeleton_loader.dart';
 
-/// Documentation for CartItemScreen
+/// Single cart item card: quantity selector, remove button, variant display.
 class CartItemScreen extends StatelessWidget {
   final String productId;
   final String cartItemId;

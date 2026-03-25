@@ -131,7 +131,11 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
     }
   }
 
-  /// Verify cart prices before checkout.
+  /// Verifies cart prices against current product prices server-side.
+  ///
+  /// Detects price drift, stock changes, and removed products between
+  /// add-to-cart and checkout. Returns a map with `hasChanges`, `priceChanges`,
+  /// `stockChanges`, and `removedProducts` arrays.
   Future<Map<String, dynamic>> verifyCartPrices(
     List<CartItemDetailModel> items,
   ) async {
@@ -304,6 +308,10 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
     }
   }
 
+  /// Computes province-specific tax breakdown (GST/HST/PST/QST) for display.
+  ///
+  /// These are client-side estimates only — the server uses Stripe Tax API
+  /// for the authoritative calculation. [subtotal] and [shippingCost] in dollars.
   void calculateTaxes(double subtotal, {double shippingCost = 0.0}) {
     if (state.address == null) return;
     final taxableAmount = subtotal + shippingCost;
@@ -311,6 +319,9 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
     state = state.copyWith(taxBreakdown: taxes);
   }
 
+  /// Loads the user's default shipping address into state on checkout entry.
+  ///
+  /// Tries the address book first, falls back to the user profile address.
   Future<void> initialize() async {
     final userId = _userId;
     if (userId == null) return;
@@ -333,6 +344,7 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
     }
   }
 
+  /// Removes the applied coupon and recalculates shipping/taxes without discount.
   void removeCoupon() {
     final subtotalCents = _ref.read(cartSubtotalProvider);
     state = state.copyWith(
@@ -343,6 +355,7 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
     _recalculateTotalsAfterCouponChange(subtotalCents);
   }
 
+  /// Resets checkout state to initial values (used on navigation away).
   void reset() => state = const CheckoutState();
 
   void setDeliverySpeed(DeliverySpeed speed) {

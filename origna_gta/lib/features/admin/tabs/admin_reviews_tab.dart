@@ -15,7 +15,7 @@ final _reviewsHasPhotosOnlyProvider = StateProvider.autoDispose<bool>(
   (_) => false,
 );
 
-/// Documentation for AdminReviewsTab
+/// Admin reviews tab: moderate flagged reviews, remove inappropriate content.
 class AdminReviewsTab extends ConsumerStatefulWidget {
   const AdminReviewsTab({super.key});
 

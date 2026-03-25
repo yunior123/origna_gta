@@ -14,7 +14,7 @@ abstract class SubscriptionState with _$SubscriptionState {
   }) = _SubscriptionState;
 }
 
-/// Documentation for SubscriptionInfo
+/// Premium subscription details: plan name, price, billing period, expiration.
 class SubscriptionInfo {
   final String status;
   final bool isPremium;

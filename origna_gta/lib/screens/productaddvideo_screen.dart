@@ -20,7 +20,7 @@ final _videoInitErrorProvider = StateProvider.autoDispose<String?>(
   (ref) => null,
 );
 
-/// Documentation for ProductAddVideo
+/// Video picker/uploader for product creation: preview, upload to R2.
 class ProductAddVideo extends ConsumerStatefulWidget {
   final XFile? videoFile;
   final String? existingVideoUrl; // For edit screen

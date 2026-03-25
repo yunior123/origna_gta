@@ -13,7 +13,7 @@ import 'package:origna_gta/features/profile/address_viewmodel.dart';
 
 // ─── Flutter Previews ────────────────────────────────────────────────────────
 
-/// Documentation for AddEditAddressScreen
+/// Form for adding or editing a shipping address with geocode autocomplete.
 class AddEditAddressScreen extends ConsumerStatefulWidget {
   final Address? address;
   const AddEditAddressScreen({super.key, this.address});

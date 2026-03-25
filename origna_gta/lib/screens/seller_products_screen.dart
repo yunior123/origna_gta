@@ -21,7 +21,7 @@ import 'package:origna_gta/widgets/modern_skeleton_loader.dart';
 part 'parts/seller_products_card_section.dart';
 part 'parts/seller_products_bulk_section.dart';
 
-/// Documentation for SellerProductsScreen
+/// Seller's product inventory with lifecycle status filters and bulk actions.
 class SellerProductsScreen extends ConsumerStatefulWidget {
   const SellerProductsScreen({super.key});
 

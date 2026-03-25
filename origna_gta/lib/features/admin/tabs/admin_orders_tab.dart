@@ -14,7 +14,7 @@ final _ordersStatusFilterProvider = StateProvider.autoDispose<String>(
   (_) => 'all',
 );
 
-/// Documentation for AdminOrdersTab
+/// Admin orders tab: search, filter by status, view details, force status changes.
 class AdminOrdersTab extends ConsumerWidget {
   const AdminOrdersTab({super.key});
 

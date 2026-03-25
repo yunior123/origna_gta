@@ -41,6 +41,15 @@ class OrignaBaseAuthException implements Exception {
 
 /// OrignaBase implementation of [AuthRepository].
 ///
+/// Handles all authentication flows: email/password, Google OAuth, Apple Sign-In,
+/// email verification, password reset, and account deletion.
+///
+/// Google Sign-In on web uses server-side OAuth redirect via `/auth/google/start`
+/// because `google_sign_in_web` does not support `authenticate()`.
+///
+/// Error codes from OrignaBase SDK typed exceptions are mapped to Firebase-style
+/// codes (`user-not-found`, `wrong-password`, etc.) for backward compatibility
+/// with the existing error handling in login_viewmodel.dart.
 class OrignaBaseAuthRepository implements AuthRepository {
   final OrignaBase _ob;
   bool _googleSignInInitialized = false;
@@ -54,6 +63,12 @@ class OrignaBaseAuthRepository implements AuthRepository {
   // Auth methods
   // ---------------------------------------------------------------------------
 
+  /// Registers a new user with email/password, creates the profile document,
+  /// and sends a verification email.
+  ///
+  /// Profile document includes: roles=[buyer], preferredLanguage (from device),
+  /// CASL consent fields (marketingOptIn, consentMethod, timestamps),
+  /// and terms/privacy acceptance.
   @override
   Future<void> registerWithEmail(
     String email,
@@ -99,6 +114,10 @@ class OrignaBaseAuthRepository implements AuthRepository {
     }
   }
 
+  /// Signs in with email/password. Retries up to 3 times on network errors.
+  ///
+  /// SECURITY: Never retries on 429 (rate limit) to avoid amplifying brute-force.
+  /// Throws `mfa-required` with [challengeToken] if MFA is enabled on the account.
   @override
   Future<void> signInWithEmail(String email, String password) async {
     final trimmedEmail = email.trim().toLowerCase();
@@ -148,6 +167,12 @@ class OrignaBaseAuthRepository implements AuthRepository {
     }
   }
 
+  /// Initiates Google Sign-In.
+  ///
+  /// - **Web**: Redirects to OrignaBase `/auth/google/start` OAuth flow.
+  ///   google_sign_in_web GIS SDK does NOT support `authenticate()`.
+  /// - **Mobile**: Uses native Google Sign-In SDK to get ID token,
+  ///   then exchanges it via `_ob.auth.signInWithGoogle()`.
   @override
   Future<void> signInWithGoogle() async {
     try {
@@ -229,6 +254,10 @@ class OrignaBaseAuthRepository implements AuthRepository {
     }
   }
 
+  /// Initiates Apple Sign-In via the native Sign In with Apple SDK.
+  ///
+  /// Apple provides the user's name only on the FIRST sign-in. The name is
+  /// persisted to `pending_profiles` for recovery during profile creation.
   @override
   Future<void> signInWithApple() async {
     try {
@@ -286,6 +315,10 @@ class OrignaBaseAuthRepository implements AuthRepository {
     }
   }
 
+  /// Signs out of OrignaBase, clears FCM notification token, and disconnects Google.
+  ///
+  /// Waits up to 5 seconds for the auth state change event to propagate
+  /// before returning. Best-effort: does not block navigation on timeout.
   @override
   Future<void> signOut() async {
     try {
@@ -423,6 +456,10 @@ class OrignaBaseAuthRepository implements AuthRepository {
     }
   }
 
+  /// Permanently deletes the user's account and signs out.
+  ///
+  /// Requires [reAuthenticate] to have been called within the last 60 seconds.
+  /// Sends DELETE_MY_ACCOUNT confirmation to the server-side handler.
   @override
   Future<void> deleteAccount() async {
     final userId = _currentUserId;

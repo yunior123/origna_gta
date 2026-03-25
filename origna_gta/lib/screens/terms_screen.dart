@@ -81,7 +81,7 @@ List<_TermsSection> _parseSections(String raw) {
   return sections;
 }
 
-/// Documentation for TermsScreen
+/// Terms acceptance gate shown when the user's termsVersion is outdated.
 class TermsScreen extends ConsumerWidget {
   const TermsScreen({super.key});
 

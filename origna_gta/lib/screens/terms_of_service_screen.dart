@@ -2,7 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:origna_gta/widgets/legal_screen_body.dart';
 
-/// Documentation for TermsOfServiceScreen
+/// Displays the current Terms of Service and records user acceptance.
 class TermsOfServiceScreen extends StatelessWidget {
   const TermsOfServiceScreen({super.key});
 

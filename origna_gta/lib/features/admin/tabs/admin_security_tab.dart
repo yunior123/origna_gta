@@ -16,7 +16,7 @@ final _mfaBackupCodesProvider = StateProvider.autoDispose<List<String>>(
   (_) => [],
 );
 
-/// Documentation for AdminSecurityTab
+/// Admin security tab: MFA enforcement, rate limit config, audit log.
 class AdminSecurityTab extends ConsumerStatefulWidget {
   const AdminSecurityTab({super.key});
 

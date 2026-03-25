@@ -16,6 +16,10 @@ use crate::shared::validation::validate_uid;
 // Request / Response types
 // ---------------------------------------------------------------------------
 
+/// Request body for POST /api/payments/capture — captures a pre-authorized Stripe payment.
+///
+/// Requires JWT auth. Buyer of the order or admin only.
+/// Transitions order from confirmed -> delivered and payment from authorized -> captured.
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CapturePaymentRequest {

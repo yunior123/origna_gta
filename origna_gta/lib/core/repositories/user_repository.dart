@@ -1,6 +1,9 @@
 import 'package:origna_gta/utils/utils.dart';
 
-/// Documentation for SellerAccountStatus
+/// Stripe Connect seller account verification status.
+///
+/// Combines Stripe account state with OrignaBase seller profile to determine
+/// whether a user can list and sell products on the marketplace.
 class SellerAccountStatus {
   final bool isSeller;
   final bool chargesEnabled;
@@ -66,25 +69,54 @@ class SellerAccountStatus {
   }
 }
 
+/// Contract for user profile and address management.
+///
+/// Implementations: [OrignaBaseUserRepository] (production).
+///
+/// Manages user profiles, address book (multi-address with default selection),
+/// notification preferences, language settings, and seller account status.
 abstract class UserRepository {
+  /// Adds an address to the user's address book. Returns the new address ID.
+  /// If [Address.isDefault] is true, clears the default flag on other addresses.
   Future<String> addBuyerAddress(Address address);
+
+  /// Deletes an address from the user's address book by ID.
   Future<void> deleteBuyerAddress(String addressId);
+
+  /// Fetches the seller's Stripe Connect account status (one-time read).
   Future<SellerAccountStatus> getSellerAccountStatus(String userId);
+
+  /// Fetches the user profile from the `users` collection. Returns null if not found.
   Future<UserModel?> getUserProfile(String userId);
+
+  /// Records the user's acceptance of the current Terms of Service version.
+  /// Updates `termsAcceptedAt` and `termsVersion` on the user document.
   Future<void> recordTermsAcceptance();
+
+  /// Sets [addressId] as the default address, clearing the flag on all others.
   Future<void> setDefaultBuyerAddress(String addressId);
+
+  /// Updates an existing address in the user's address book.
   Future<void> updateBuyerAddress(String addressId, Address address);
+
+  /// Updates notification preferences (new products, trending alerts).
   Future<void> updateNotificationPreferences(
     String userId, {
     bool? notifyNewProducts,
     bool? notifyTrending,
   });
+
+  /// Updates the user's preferred language ('en' or 'fr').
   Future<void> updatePreferredLanguage(String userId, String lang);
-  // Address Book
+
+  /// Real-time stream of the user's address book, sorted by creation date.
   Stream<List<Address>> watchAddresses(
     String userId, {
     int limit = 50,
     int offset = 0,
   });
+
+  /// Polls the seller account status every 5 seconds. Combines OrignaBase
+  /// seller profile with Stripe Connect status.
   Stream<SellerAccountStatus> watchSellerAccountStatus(String userId);
 }

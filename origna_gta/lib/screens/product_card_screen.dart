@@ -20,7 +20,7 @@ part 'parts/product_card_image_section.dart';
 part 'parts/product_card_info_section.dart';
 part 'parts/product_card_helper_widgets.dart';
 
-/// Documentation for ProductCard
+/// Product grid card: image, title, price, rating, favorite toggle. Navigates to detail on tap.
 class ProductCard extends ConsumerStatefulWidget {
   final String productId;
   final Product product;

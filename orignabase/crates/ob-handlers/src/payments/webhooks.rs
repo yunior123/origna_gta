@@ -19,6 +19,11 @@ type HmacSha256 = Hmac<Sha256>;
 // Webhook Event Structure
 // ---------------------------------------------------------------------------
 
+/// Deserialized Stripe webhook event payload.
+///
+/// Signature verified via HMAC-SHA256 before deserialization.
+/// Events are processed idempotently — duplicate event IDs are silently ignored.
+/// Replay protection rejects events older than 300 seconds.
 #[derive(Debug, serde::Deserialize)]
 pub struct StripeWebhookEvent {
     pub id: String,

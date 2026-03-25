@@ -19,7 +19,7 @@ final addProductViewModelProvider =
       return AddProductViewModel(ref);
     });
 
-/// Documentation for AddProductViewModel
+/// Manages multi-step product creation: form validation, image upload, server submission.
 class AddProductViewModel extends StateNotifier<AddProductState> {
   final Ref _ref;
   String? _activeRequestId;

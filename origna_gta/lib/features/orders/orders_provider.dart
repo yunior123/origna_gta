@@ -9,6 +9,10 @@ import 'package:origna_gta/models/generated/models.dart' as models;
 // BUYER ORDERS PROVIDER
 // ============================================================================
 
+/// Real-time stream of orders placed by the current buyer.
+///
+/// Filters to active payment statuses only (excludes awaiting_payment).
+/// Sorted by createdAt descending. Returns empty list when no user is signed in.
 final buyerOrdersProvider = StreamProvider.autoDispose<List<models.Order>>((
   ref,
 ) {
@@ -22,6 +26,7 @@ final buyerOrdersProvider = StreamProvider.autoDispose<List<models.Order>>((
 // SINGLE ORDER PROVIDER
 // ============================================================================
 
+/// Fetches a single order by document ID. Returns null if not found.
 final orderByIdProvider = FutureProvider.autoDispose
     .family<models.Order?, String>((ref, orderId) async {
       return await ref.watch(orderRepositoryProvider).fetchOrderById(orderId);
@@ -35,6 +40,7 @@ final paidOrderBySessionProvider = StreamProvider.autoDispose
           .watchPaidOrderBySession(sessionId);
     });
 
+/// Count of orders with pending shipping cost approval from the buyer.
 final pendingApprovalsCountProvider = Provider.autoDispose<int>((ref) {
   final ordersAsync = ref.watch(buyerOrdersProvider);
   return ordersAsync.maybeWhen(
@@ -48,6 +54,7 @@ final pendingApprovalsCountProvider = Provider.autoDispose<int>((ref) {
   );
 });
 
+/// Filtered list of buyer orders that require shipping cost approval.
 final pendingShippingApprovalsProvider =
     Provider.autoDispose<AsyncValue<List<models.Order>>>((ref) {
       return ref.watch(buyerOrdersProvider).whenData((orders) {
@@ -65,6 +72,9 @@ final pendingShippingApprovalsProvider =
 // SELLER ORDERS PROVIDER
 // ============================================================================
 
+/// Real-time stream of orders containing items sold by the current user.
+///
+/// Uses `sellerIds contains userId` filter. Sorted client-side by createdAt descending.
 final sellerOrdersProvider = StreamProvider.autoDispose<List<models.Order>>((
   ref,
 ) {
@@ -84,7 +94,7 @@ final returnRequestsProvider = FutureProvider.autoDispose
       return ref.watch(orderRepositoryProvider).fetchReturnRequests(orderId);
     });
 
-/// Documentation for OrderError
+/// Order operation failed. [code] for programmatic handling (e.g., 'not-found').
 class OrderError extends OrderResult {
   final String message;
   final String? code;
@@ -95,9 +105,10 @@ class OrderError extends OrderResult {
 // ORDER RESULT TYPES
 // ============================================================================
 
+/// Result type for order mutation operations (cancel, refund, status update).
 sealed class OrderResult {}
 
-/// Documentation for OrderSuccess
+/// Order operation succeeded with a user-facing [message].
 class OrderSuccess extends OrderResult {
   final String message;
   OrderSuccess({required this.message});

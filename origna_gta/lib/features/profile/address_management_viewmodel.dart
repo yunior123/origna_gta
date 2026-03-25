@@ -6,7 +6,7 @@ final addressManagementViewModelProvider =
   return AddressManagementViewModel(ref);
 });
 
-/// Documentation for AddressManagementViewModel
+/// Manages the address book: add, edit, delete, set default address.
 class AddressManagementViewModel extends StateNotifier<AsyncValue<void>> {
   final Ref ref;
   AddressManagementViewModel(this.ref) : super(const AsyncValue.data(null));

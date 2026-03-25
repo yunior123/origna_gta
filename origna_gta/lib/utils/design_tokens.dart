@@ -7,7 +7,14 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
-/// Documentation for DesignTokens
+/// Single source of truth for all visual design constants.
+///
+/// All colors, spacing, radii, typography, and animations are defined here.
+/// NEVER use `Colors.blue`, hex literals, or `Theme.of(context).colorScheme`
+/// directly in widgets — always reference `DesignTokens.*`.
+///
+/// WCAG 2.1 AA compliance: all text colors meet >= 4.5:1 contrast ratio
+/// against their intended backgrounds. Dark mode uses [darkBackground] (#0F0F1E).
 class DesignTokens {
   // Primary Palette (Matched to Ecommerce Splash)
   static const Color primary = Color(

@@ -19,7 +19,7 @@ final _productsStockFilterProvider = StateProvider.autoDispose<String>(
   (_) => 'all',
 );
 
-/// Documentation for AdminProductsTab
+/// Admin products tab: approve/reject drafts, manage lifecycle status, view analytics.
 class AdminProductsTab extends ConsumerStatefulWidget {
   const AdminProductsTab({super.key});
 

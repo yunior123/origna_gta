@@ -9,7 +9,7 @@ import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/safe_url_launcher.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-/// Documentation for MascotController
+/// Animation controller for the shop mascot idle and interaction states.
 class MascotController extends ChangeNotifier {
   Offset _lookTarget = Offset.zero;
   bool _isJumping = false;
@@ -39,7 +39,7 @@ class MascotController extends ChangeNotifier {
   }
 }
 
-/// Documentation for MascotPainter
+/// Custom painter that renders the shop mascot character.
 class MascotPainter extends CustomPainter {
   final double idleValue;
   final double jumpValue;
@@ -255,7 +255,7 @@ class MascotPainter extends CustomPainter {
   }
 }
 
-/// Documentation for MascotTips
+/// Tooltip messages displayed by the shop mascot (localized).
 class MascotTips {
   static const List<String> _emojis = ['🛍️', '💳', '🚚', '⭐', '🔍', '🏷️', '💬', '🍁'];
   static const List<String> _keys = [
@@ -275,7 +275,7 @@ class MascotTips {
   }
 }
 
-/// Documentation for ShopMascot
+/// Animated shop mascot widget displayed during empty states and loading.
 class ShopMascot extends StatefulWidget {
   final MascotController controller;
   final double size;

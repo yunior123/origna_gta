@@ -725,7 +725,7 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
   );
 }
 
-/// Documentation for OrignaApp
+/// Root widget: configures themes, localization, GoRouter, Riverpod, and Sentry.
 class OrignaApp extends ConsumerStatefulWidget {
   const OrignaApp({super.key});
 

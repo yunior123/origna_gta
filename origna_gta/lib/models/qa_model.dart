@@ -16,7 +16,7 @@ DateTime? _parseDt(dynamic value) {
   return null;
 }
 
-/// Documentation for QAModel
+/// Product Q&A model: buyer question with optional seller answer and timestamps.
 class QAModel {
   final String id;
   final String question;

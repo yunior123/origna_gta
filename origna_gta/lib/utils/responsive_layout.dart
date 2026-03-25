@@ -5,7 +5,7 @@ library;
 
 import 'package:flutter/material.dart';
 
-/// Documentation for ResponsiveBreakpoints
+/// Breakpoint constants for responsive layout: mobile < 768, tablet < 1024, desktop >= 1024.
 class ResponsiveBreakpoints {
   // Standard breakpoints (matching common device sizes)
   static const double mobile = 320; // 320px (small phones)

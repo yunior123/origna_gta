@@ -97,7 +97,7 @@ class PaymentProviderConfig {
 // PAYMENT PROVIDER CONFIGURATION - Extensible for future providers
 // ============================================================================
 
-/// Documentation for SellerRegistrationScreen
+/// Stripe Connect onboarding: creates account link and redirects to Stripe.
 class SellerRegistrationScreen extends ConsumerStatefulWidget {
   const SellerRegistrationScreen({super.key});
 

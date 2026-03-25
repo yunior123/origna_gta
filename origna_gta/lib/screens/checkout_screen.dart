@@ -138,7 +138,11 @@ class _CheckoutStepper extends StatelessWidget {
   }
 }
 
-/// Documentation for CheckoutScreen
+/// Multi-step checkout screen: address selection, delivery options, order review, and payment.
+///
+/// Watches [checkoutStateProvider] for shipping/tax/coupon state and
+/// [cartWithDetailsProvider] for the enriched cart items. Redirects to
+/// Stripe Checkout on successful session creation.
 class CheckoutScreen extends ConsumerStatefulWidget {
   final List<CartItemDetailModel> items;
   final double total;

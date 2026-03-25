@@ -9,7 +9,7 @@ import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/safe_url_launcher.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-/// Documentation for CanadianMoose
+/// Animated Canadian moose mascot widget for the home screen.
 class CanadianMoose extends StatefulWidget {
   final MooseController controller;
   final double size;
@@ -21,7 +21,7 @@ class CanadianMoose extends StatefulWidget {
   State<CanadianMoose> createState() => _CanadianMooseState();
 }
 
-/// Documentation for MooseController
+/// Animation controller for moose idle, wave, and walk states.
 class MooseController extends ChangeNotifier {
   Offset _lookTarget = Offset.zero;
   bool _isJumping = false;
@@ -53,7 +53,7 @@ class MooseController extends ChangeNotifier {
   }
 }
 
-/// Documentation for MoosePainter
+/// Custom painter that renders the moose mascot using Canvas API.
 class MoosePainter extends CustomPainter {
   final double idleValue;
   final double jumpValue;
@@ -279,7 +279,7 @@ class MoosePainter extends CustomPainter {
   }
 }
 
-/// Documentation for MooseTips
+/// Tooltip messages displayed by the moose mascot (localized).
 class MooseTips {
   static List<String> get _tips => [
     'mascot.moose_tip_local_support'.tr(),

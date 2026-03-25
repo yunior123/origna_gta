@@ -9,7 +9,7 @@ import 'package:origna_gta/widgets/modern_textfield.dart';
 
 import 'package:origna_gta/features/auth/reset_password_view_model.dart';
 
-/// Documentation for ResetPasswordScreen
+/// Password reset flow: enter email, receive reset link, set new password.
 class ResetPasswordScreen extends ConsumerStatefulWidget {
   final String oobCode;
 

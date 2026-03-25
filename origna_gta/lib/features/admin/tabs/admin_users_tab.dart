@@ -16,7 +16,7 @@ final _usersRoleFilterProvider = StateProvider.autoDispose<String>(
   (_) => 'all',
 );
 
-/// Documentation for AdminUsersTab
+/// Admin users tab: search, suspend/unsuspend, view roles and activity.
 class AdminUsersTab extends ConsumerStatefulWidget {
   const AdminUsersTab({super.key});
 

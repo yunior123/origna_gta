@@ -26,7 +26,7 @@ import 'package:origna_gta/widgets/profile/profile_theme_toggle.dart';
 part 'parts/profile_header.dart';
 part 'parts/profile_settings_section.dart';
 
-/// Documentation for ProfileScreen
+/// User profile: name, email, avatar, preferences, seller status, logout.
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
@@ -118,4 +118,4 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 }
 
-/// Documentation for ProfileScreenLayout
+/// User profile: name, email, avatar, preferences, seller status, logout.Layout

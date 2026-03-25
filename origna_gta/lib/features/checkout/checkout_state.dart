@@ -12,9 +12,10 @@ part 'checkout_state.freezed.dart';
 // CHECKOUT RESULT
 // ============================================================================
 
+/// Result type for [OrignaBaseCheckoutNotifier.startCheckout].
 sealed class CheckoutResult {}
 
-/// Documentation for CheckoutSuccess
+/// Checkout succeeded — redirect the user to [checkoutUrl] (Stripe hosted page).
 class CheckoutSuccess extends CheckoutResult {
   final String checkoutUrl;
   final String orderId;
@@ -27,7 +28,7 @@ class CheckoutSuccess extends CheckoutResult {
   });
 }
 
-/// Documentation for CheckoutError
+/// Checkout failed — display [message] to the user. [code] for programmatic handling.
 class CheckoutError extends CheckoutResult {
   final String message;
   final String? code;
@@ -35,7 +36,7 @@ class CheckoutError extends CheckoutResult {
   CheckoutError({required this.message, this.code});
 }
 
-/// Documentation for CheckoutAlreadyProcessed
+/// Idempotency match — the order was already created. Show success with [existingOrderId].
 class CheckoutAlreadyProcessed extends CheckoutResult {
   final String existingOrderId;
 

@@ -13,7 +13,7 @@ import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/order_widgets.dart';
 import 'package:origna_gta/widgets/modern_skeleton_loader.dart';
 
-/// Documentation for OrdersScreen
+/// Buyer orders list with status badges, sorted by creation date descending.
 class OrdersScreen extends ConsumerStatefulWidget {
   const OrdersScreen({super.key});
 

@@ -16,7 +16,7 @@ part 'parts/subscription_hero_section.dart';
 part 'parts/subscription_benefit_card.dart';
 part 'parts/subscription_status_section.dart';
 
-/// Documentation for SubscriptionScreen
+/// Premium subscription management: view plan, upgrade, cancel via Stripe.
 class SubscriptionScreen extends ConsumerStatefulWidget {
   const SubscriptionScreen({super.key});
 

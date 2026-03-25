@@ -22,6 +22,10 @@ use crate::shared::validation::{sanitize_html, validate_string, validate_uid};
 // Delivery-item status (per-item within an order)
 // ---------------------------------------------------------------------------
 
+/// Per-item delivery status within a multi-item order.
+///
+/// Valid transitions (non-admin): Pending -> Shipped -> Delivered.
+/// Admin can force any transition. Refunded is set by the refund handler.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DeliveryStatus {
     Pending,

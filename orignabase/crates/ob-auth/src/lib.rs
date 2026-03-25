@@ -1,3 +1,9 @@
+//! Authentication and authorization for OrignaBase.
+//!
+//! Handles JWT issuance/validation (RS256), email/password auth, Google/Apple OAuth,
+//! MFA via TOTP, Cloudflare Turnstile bot protection, email verification/password reset,
+//! and rate limiting. Keys are auto-rotated via [`KeyRotationManager`].
+
 pub mod email;
 pub mod jwt;
 pub mod key_rotation;

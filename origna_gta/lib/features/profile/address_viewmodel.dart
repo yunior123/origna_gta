@@ -12,7 +12,7 @@ final addressViewModelProvider =
       return AddressViewModel(ref);
     });
 
-/// Documentation for AddressViewModel
+/// Manages single address form: validation, geocoding, save/update.
 class AddressViewModel extends StateNotifier<AddressState> {
   final Ref _ref;
   Timer? _debounce;

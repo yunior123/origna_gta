@@ -4,6 +4,10 @@ import 'package:origna_gta/core/schema/schema_constants.dart';
 
 part 'seller_registration_state.freezed.dart';
 
+/// State for the Stripe Connect seller onboarding flow.
+///
+/// Tracks loading, error/success messages, and payment provider selection.
+/// The actual onboarding is handled server-side via Stripe Connect Account Links.
 @freezed
 abstract class SellerRegistrationState with _$SellerRegistrationState {
   const factory SellerRegistrationState({

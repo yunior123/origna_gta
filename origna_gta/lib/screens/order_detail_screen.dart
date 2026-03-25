@@ -12,7 +12,7 @@ import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:origna_gta/widgets/order_widgets.dart';
 
-/// Documentation for OrderDetailScreen
+/// Full order details: items, status timeline, tracking, shipping cost approval.
 class OrderDetailScreen extends ConsumerWidget {
   final String orderId;
 
@@ -30,7 +30,7 @@ class OrderDetailScreen extends ConsumerWidget {
   }
 }
 
-/// Documentation for OrderDetailScreenLayout
+/// Full order details: items, status timeline, tracking, shipping cost approval.Layout
 class OrderDetailScreenLayout extends StatelessWidget {
   final AsyncValue<Order?> orderAsync;
   final VoidCallback onRefresh;

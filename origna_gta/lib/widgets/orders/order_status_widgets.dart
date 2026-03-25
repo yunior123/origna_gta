@@ -3,7 +3,7 @@ import 'package:origna_gta/models/generated/base_models.dart' show OrderStatus;
 export 'package:origna_gta/models/generated/base_models.dart' show OrderStatus;
 import 'package:origna_gta/utils/design_tokens.dart';
 
-/// Documentation for EmptyOrdersCard
+/// Empty state card shown when the buyer has no orders yet.
 class EmptyOrdersCard extends StatelessWidget {
   final String? filterLabel;
   const EmptyOrdersCard({super.key, this.filterLabel});
@@ -43,7 +43,7 @@ class EmptyOrdersCard extends StatelessWidget {
   }
 }
 
-/// Documentation for InfoChip
+/// Small labeled chip for displaying order metadata (e.g., payment method, delivery speed).
 class InfoChip extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -71,7 +71,7 @@ class InfoChip extends StatelessWidget {
 
 // OrderStatus is imported from base_models.dart — single source of truth.
 
-/// Documentation for OrderSummaryCard
+/// Compact order summary showing items, total, and status for order lists.
 class OrderSummaryCard extends StatelessWidget {
   final String orderId;
 
@@ -153,7 +153,7 @@ class OrderSummaryCard extends StatelessWidget {
   }
 }
 
-/// Documentation for StatusBadge
+/// Colored badge displaying the current order status (pending, shipped, delivered, etc.).
 class StatusBadge extends StatelessWidget {
   final OrderStatus status;
 
@@ -189,7 +189,7 @@ class StatusBadge extends StatelessWidget {
   }
 }
 
-/// Documentation for TimelineStep
+/// Single step in the order status timeline with icon, label, and completion state.
 class TimelineStep extends StatelessWidget {
   final OrderStatus status;
 

@@ -23,6 +23,11 @@ export 'package:origna_gta/models/models.dart';
 // ERROR HANDLING UTILITIES
 // ============================================================================
 
+/// Canadian provincial/territorial tax rates for client-side estimation.
+///
+/// Keys are 2-letter province codes. Values map tax type to rate.
+/// HST provinces have a single combined rate; others split GST + PST/QST.
+/// NOTE: These are frontend estimates only — the backend uses Stripe Tax API.
 const Map<String, Map<String, double>> provinceTaxRates = {
   'AB': {'GST': 0.05},
   'BC': {'GST': 0.05, 'PST': 0.07},
@@ -155,7 +160,10 @@ final List<ProductCategories> productCategories = [
 // for the authoritative calculation (which includes shipping in the tax base).
 final taxConfig = provinceTaxRates;
 
-// Calculate detailed taxes based on selected province
+/// Calculates per-tax-type breakdown for display (e.g., GST: $2.50, QST: $4.99).
+///
+/// [total] is in dollars. Returns empty map if address is null.
+/// Uses the province from [address.state] to look up applicable rates.
 Map<String, double> calculateDetailedTaxes(Address? address, double total) {
   if (address == null) return {};
 
@@ -400,6 +408,10 @@ DateTime dynamicToTimestamp(dynamic value) {
   return parseDateTimeRequired(value);
 }
 
+/// Generates prefix search keywords for a product name.
+///
+/// Example: "Blue Shoes" -> ["b", "bl", "blu", "blue", "s", "sh", ..., "blue shoes"].
+/// Limited to [_maxKeywords] entries and [_maxWordLength] chars per word.
 List<String> generateSearchKeywords(String name) {
   final cleanName = name.toLowerCase().trim();
   if (cleanName.isEmpty) return [''];
@@ -423,6 +435,9 @@ List<String> generateSearchKeywords(String name) {
   return keywords.take(_maxKeywords).toList();
 }
 
+/// Returns the product grid column count based on platform and screen width.
+///
+/// Mobile: 2, Tablet: 3, Desktop: 4. Native Android/iOS always returns 2.
 int getCrossAxisCount(BuildContext context) {
   if (TargetPlatform.android == defaultTargetPlatform ||
       TargetPlatform.iOS == defaultTargetPlatform) {
@@ -443,6 +458,9 @@ int getCrossAxisCount(BuildContext context) {
   }
 }
 
+/// Returns the combined tax rate for a Canadian province. Defaults to 13% (Ontario HST).
+///
+/// Example: getTaxRate('QC') -> 0.14975 (5% GST + 9.975% QST).
 double getTaxRate(String province) {
   // Derive combined rate from the canonical provinceTaxRates map
   final rates = provinceTaxRates[province];

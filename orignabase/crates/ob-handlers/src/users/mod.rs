@@ -15,6 +15,10 @@ use crate::shared::validation::{sanitize_html, validate_email, validate_string, 
 // REQUEST / RESPONSE TYPES
 // =============================================================================
 
+/// Request body for POST /api/users/profile/update.
+///
+/// Requires JWT auth. Updates the user's own profile (or admin can update any user).
+/// Supports partial updates — only provided fields are modified.
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateProfileRequest {
@@ -58,6 +62,9 @@ pub struct TaxExemptionInput {
     pub gst_number: String,
 }
 
+/// Request body for POST /api/users/profile/get.
+///
+/// Requires JWT auth. Returns the user's full profile document.
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GetProfileRequest {
@@ -65,6 +72,9 @@ pub struct GetProfileRequest {
     pub user_id: Option<String>,
 }
 
+/// Request body for POST /api/users/email-consent — CASL marketing consent toggle.
+///
+/// Records consent method, timestamp, and opt-in/out state for Canadian Anti-Spam Law compliance.
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EmailConsentRequest {
@@ -73,6 +83,7 @@ pub struct EmailConsentRequest {
     pub consent: bool,
 }
 
+/// Request body for POST /api/users/notification-prefs — push notification preferences.
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NotificationPrefsRequest {

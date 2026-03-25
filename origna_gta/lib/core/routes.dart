@@ -8,7 +8,7 @@ library;
 import 'package:origna_gta/models/generated/models.dart' show Product;
 import 'package:origna_gta/models/models.dart' show CartItemDetailModel;
 
-/// Documentation for AppRoutes
+/// Centralized route path constants. Never hardcode route strings in screens.
 class AppRoutes {
   static const String home = '/';
 

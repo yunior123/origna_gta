@@ -38,7 +38,7 @@ final _ratingImagesProvider = StateProvider.autoDispose<List<Uint8List>>(
   (ref) => [],
 );
 
-/// Documentation for RatingDialog
+/// Modal dialog for submitting a product rating (1-5 stars) with optional review text and images.
 class RatingDialog extends ConsumerStatefulWidget {
   final String orderId;
   final String productId;

@@ -14,7 +14,7 @@ import 'package:origna_gta/widgets/premium_paywall_widget.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/chat/chat_provider.dart';
 
-/// Documentation for ChatScreenArgs
+/// Navigation arguments for [ChatScreen]: conversation ID and participant info.
 class ChatScreenArgs {
   final String productId;
   final String productTitle;
@@ -22,7 +22,7 @@ class ChatScreenArgs {
   const ChatScreenArgs({required this.productId, required this.productTitle});
 }
 
-/// Documentation for ChatScreen
+/// Real-time buyer-seller chat with message history and typing indicators.
 class ChatScreen extends ConsumerStatefulWidget {
   final String productId;
   final String productTitle;

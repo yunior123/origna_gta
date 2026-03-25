@@ -237,7 +237,7 @@ int getTimelineStep(OrderStatus status) {
 
 // ─── Flutter Widget Previews ─────────────────────────────────────────────────
 
-/// Documentation for BookDownloadButton
+/// Download button for digital book products in delivered orders.
 class BookDownloadButton extends ConsumerStatefulWidget {
   final OrderItem item;
   const BookDownloadButton({super.key, required this.item});
@@ -250,7 +250,7 @@ class BookDownloadButton extends ConsumerStatefulWidget {
 // WIDGETS
 // ============================================================================
 
-/// Documentation for BuyerOrderCard
+/// Order card for the buyer's order list with status, items preview, and total.
 class BuyerOrderCard extends ConsumerStatefulWidget {
   final Order order;
   final bool isDetailView;
@@ -268,7 +268,7 @@ class BuyerOrderCard extends ConsumerStatefulWidget {
 // DIGITAL ITEM ACTIONS
 // ============================================================================
 
-/// Documentation for DigitalItemActions
+/// Action buttons for digital items: download, license key display.
 class DigitalItemActions extends ConsumerWidget {
   final OrderItem item;
   const DigitalItemActions({super.key, required this.item});
@@ -334,7 +334,7 @@ class DigitalItemActions extends ConsumerWidget {
   }
 }
 
-/// Documentation for OrderStatusTimeline
+/// Visual timeline showing order progression through status states.
 class OrderStatusTimeline extends StatelessWidget {
   static const _steps = [
     Icons.verified_outlined,
@@ -460,7 +460,7 @@ class OrderStatusTimeline extends StatelessWidget {
   }
 }
 
-/// Documentation for PendingApprovalsBanner
+/// Banner alerting the buyer about orders pending shipping cost approval.
 class PendingApprovalsBanner extends StatelessWidget {
   final int count;
   const PendingApprovalsBanner({super.key, required this.count});
@@ -680,7 +680,7 @@ class SellerPackageTimeline extends StatelessWidget {
   }
 }
 
-/// Documentation for SoftwareDownloadLinks
+/// Platform-specific download links for software products (Windows, macOS, Linux).
 class SoftwareDownloadLinks extends ConsumerStatefulWidget {
   final OrderItem item;
   const SoftwareDownloadLinks({super.key, required this.item});
@@ -694,7 +694,7 @@ class SoftwareDownloadLinks extends ConsumerStatefulWidget {
 // STATUS MODELS & HELPERS
 // ============================================================================
 
-/// Documentation for StatusConfig
+/// Maps order status to display properties: color, icon, label.
 class StatusConfig {
   final Color color;
   final IconData icon;

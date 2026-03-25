@@ -14,7 +14,7 @@ final adminActionsViewModelProvider =
       },
     );
 
-/// Documentation for AdminActionsState
+/// State for admin bulk actions (suspend user, approve product, etc.).
 @freezed
 abstract class AdminActionsState with _$AdminActionsState {
   const factory AdminActionsState({
@@ -24,7 +24,7 @@ abstract class AdminActionsState with _$AdminActionsState {
   }) = _AdminActionsState;
 }
 
-/// Documentation for AdminActionsViewModel
+/// ViewModel for admin actions: user management, product approval, order override.
 class AdminActionsViewModel extends StateNotifier<AdminActionsState> {
   final Ref _ref;
 

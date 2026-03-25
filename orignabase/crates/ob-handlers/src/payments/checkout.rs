@@ -13,7 +13,11 @@ use crate::shared::auth::resolve_self_user_id;
 use crate::shared::schema::{OrderStatus, collections, fields};
 use crate::shared::validation::{validate_string, validate_uid};
 
-/// Request body for creating a checkout session.
+/// Request body for POST /api/payments/checkout — creates a Stripe Checkout Session.
+///
+/// Requires JWT auth. Validates: cart non-empty, items <= 30, quantity <= 100 per item,
+/// subtotal <= $100,000 CAD, valid Canadian province. Creates order records in SurrealDB
+/// and returns the Stripe session URL for redirect. Supports idempotency via [idempotency_key].
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateCheckoutRequest {

@@ -261,7 +261,7 @@ class ShippingQuantityDiscount {
   };
 }
 
-/// Documentation for SellerDeliveryOption
+/// Seller-defined shipping option with speed, price in cents, and enabled state.
 class SellerDeliveryOption {
   final String type; // pickup | standard | express | same_day | custom
   final String description;

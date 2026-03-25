@@ -8,7 +8,7 @@ import 'package:origna_gta/utils/utils.dart';
 
 part 'product_rating_viewmodel.freezed.dart';
 
-/// Documentation for ProductRatingState
+/// State for the rating submission flow: star count, review text, images.
 @freezed
 abstract class ProductRatingState with _$ProductRatingState {
   const factory ProductRatingState({
@@ -27,7 +27,7 @@ final productRatingViewModelProvider =
       return ProductRatingViewModel(ref);
     });
 
-/// Documentation for ProductRatingViewModel
+/// Manages product rating/review submission with optional image upload.
 class ProductRatingViewModel extends StateNotifier<ProductRatingState> {
   final Ref _ref;
   KeepAliveLink? _keepAliveLink;

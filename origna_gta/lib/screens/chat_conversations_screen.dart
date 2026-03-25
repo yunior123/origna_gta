@@ -14,7 +14,7 @@ import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:origna_gta/widgets/premium_paywall_widget.dart';
 
-/// Documentation for ChatConversationsScreen
+/// Lists all chat conversations for the current user (buyer-seller messaging).
 class ChatConversationsScreen extends ConsumerWidget {
   const ChatConversationsScreen({super.key});
 

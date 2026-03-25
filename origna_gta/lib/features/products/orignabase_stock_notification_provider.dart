@@ -18,7 +18,7 @@ final stockNotificationNotifierProvider = StateNotifierProvider.autoDispose
       ),
     );
 
-/// Documentation for OrignaBaseStockNotificationNotifier
+/// Manages stock-back-in-stock notification subscriptions for out-of-stock products.
 class OrignaBaseStockNotificationNotifier
     extends StateNotifier<AsyncValue<bool>> {
   final Ref _ref;

@@ -13,7 +13,7 @@ import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
-/// Documentation for FavoritesScreen
+/// Grid of favorited products with remove/toggle and empty state.
 class FavoritesScreen extends ConsumerWidget {
   const FavoritesScreen({super.key});
 

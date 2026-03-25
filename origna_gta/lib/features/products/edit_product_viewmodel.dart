@@ -19,7 +19,7 @@ final editProductViewModelProvider = StateNotifierProvider.autoDispose
       return EditProductViewModel(ref, product);
     });
 
-/// Documentation for EditProductViewModel
+/// Manages product editing: loads existing data, validates changes, submits update.
 class EditProductViewModel extends StateNotifier<EditProductState> {
   final Ref _ref;
   final models.Product _product;

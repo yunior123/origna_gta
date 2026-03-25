@@ -32,7 +32,11 @@ part 'parts/home_featured_products.dart';
 part 'parts/home_recent_products.dart';
 part 'parts/home_categories_section.dart';
 
-/// Documentation for HomeScreen
+/// Main marketplace screen with product grid, search, category filters, and hero section.
+///
+/// Watches [homeViewModelProvider] for product data and search state.
+/// Supports infinite scroll pagination, debounced search with autocomplete,
+/// and category/sort/price filtering.
 class HomeScreen extends ConsumerStatefulWidget {
   final UserModel? userModel;
   const HomeScreen({super.key, this.userModel});

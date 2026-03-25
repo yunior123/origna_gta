@@ -5,7 +5,7 @@ import 'package:origna_gta/utils/utils.dart';
 
 part 'product_actions_viewmodel.freezed.dart';
 
-/// Documentation for ProductActionsState
+/// State for product actions (delete, toggle status, archive).
 @freezed
 abstract class ProductActionsState with _$ProductActionsState {
   const factory ProductActionsState({
@@ -23,7 +23,7 @@ final productActionsViewModelProvider =
       return ProductActionsViewModel(ref);
     });
 
-/// Documentation for ProductActionsViewModel
+/// ViewModel for product lifecycle actions: activate, deactivate, delete.
 class ProductActionsViewModel extends StateNotifier<ProductActionsState> {
   final Ref _ref;
 

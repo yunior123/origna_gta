@@ -11,7 +11,7 @@ final _productImagesProvider = StateProvider.autoDispose<List<ImageModel>>(
   (ref) => [],
 );
 
-/// Documentation for ProductAddImages
+/// Image picker/uploader for product creation: drag-drop, reorder, compress.
 class ProductAddImages extends ConsumerStatefulWidget {
   final List<ImageModel> imageModels;
   final ValueChanged<List<ImageModel>>? onImagesChanged;

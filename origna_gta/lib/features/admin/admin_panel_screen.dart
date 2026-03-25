@@ -19,7 +19,7 @@ import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 /// Provider for the currently selected admin tab index
 final _adminSelectedTabProvider = StateProvider<int>((_) => 0);
 
-/// Documentation for AdminPanelScreen
+/// Admin dashboard with tabbed panels: Users, Sellers, Products, Orders, Reviews, Security.
 class AdminPanelScreen extends ConsumerStatefulWidget {
   const AdminPanelScreen({super.key});
 

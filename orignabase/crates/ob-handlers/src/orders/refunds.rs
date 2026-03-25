@@ -16,6 +16,10 @@ use crate::shared::validation::{sanitize_html, validate_uid};
 // Request / Response types
 // ---------------------------------------------------------------------------
 
+/// Request body for POST /api/orders/refund-item.
+///
+/// Requires JWT auth. Seller of the item or admin only.
+/// Validates cumulative refund <= totalAmountCents before Stripe call.
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RefundItemRequest {
@@ -37,6 +41,10 @@ pub struct RefundItemResponse {
     pub already_refunded: Option<bool>,
 }
 
+/// Request body for POST /api/orders/cancel.
+///
+/// Buyer can cancel in `pending` only. Seller/admin can cancel in `pending` or `confirmed`.
+/// Triggers Stripe refund if payment was captured. Requires a reason from sellers.
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CancelOrderRequest {

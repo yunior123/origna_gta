@@ -14,7 +14,7 @@ import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
 // Splash removal is handled entirely by index.html JS (flutter-first-frame + 5s fallback).
 
-/// Documentation for AuthWrapper
+/// Auth gate: redirects to login if unauthenticated, shows main screen otherwise.
 class AuthWrapper extends ConsumerWidget {
   const AuthWrapper({super.key});
 
