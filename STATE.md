@@ -476,6 +476,23 @@ All generated models now use `package:origna_gta/` imports. No relative imports 
 - [x] **S9. f64 in refund proportional calc** — **FIXED:** Integer-only scaled arithmetic `(n * m + d/2) / d`.
 - [x] **S10. f64 in shipping calculator** — **FIXED:** All multipliers/rates converted to basis points (i64).
 
+## Live Test Results (2026-03-24)
+
+| Suite | Pass | Fail | Notes |
+|-------|------|------|-------|
+| Flutter live (32 files) | 191 | 0 | All green after fixes |
+| Rust integration (12 tests) | 10 | 2 | 2 infra issues (see below) |
+| Rust unit (workspace) | 3,268 | 0 | All green |
+| Flutter unit+widget | 5,078 | 0 | All green |
+| SDK | 531 | 0 | All green |
+| **TOTAL** | **9,078** | **2** | 2 known infra blockers |
+
+### Rust Integration Blockers (cross_service_test.rs)
+- [ ] `create_then_read_matches` — GraphQL `create` on products returns "Permission denied" even for seller. Security rules on dev may require seller_profiles record.
+- [ ] `token_refresh_continues_crud` — Same root cause (seller can't create via GraphQL without seller_profiles setup).
+
+Both are dev server permission/config issues. Fix: seed seller_profiles for test seller, or use REST API instead of GraphQL for these tests.
+
 ---
 
 ## Full Codebase Audit — 2026-03-24 (OrignaBase + OrignaGTA + MCP)

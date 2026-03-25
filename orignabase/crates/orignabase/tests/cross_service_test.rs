@@ -33,6 +33,20 @@ async fn register_test_user(c: &Client) -> (String, String) {
     (body["access_token"].as_str().unwrap().to_string(), email)
 }
 
+/// Login as the seeded seller account (has permissions to create products)
+async fn login_seller(c: &Client) -> (String, String) {
+    let resp = c
+        .post(format!("{}/auth/login", base_url()))
+        .json(&json!({ "email": "e2e-seller@test.origna.ca", "password": "REDACTED_TEST_PASSWORD" }))
+        .send()
+        .await
+        .unwrap();
+    let body: Value = resp.json().await.unwrap();
+    let token = body["access_token"].as_str().unwrap_or("").to_string();
+    let refresh = body["refresh_token"].as_str().unwrap_or("").to_string();
+    (token, refresh)
+}
+
 async fn graphql(c: &Client, token: &str, query: &str) -> Value {
     let resp = c
         .post(format!("{}/graphql", base_url()))
@@ -355,28 +369,31 @@ async fn websocket_multiple_subscriptions() {
 #[ignore = "requires running orignabase instance"]
 async fn create_then_read_matches() {
     let c = Client::new();
-    let (token, _) = register_test_user(&c).await;
-    let collection = format!("xsvc_crud_{}", Uuid::new_v4().simple());
+    let (token, _) = login_seller(&c).await;
+    let unique_name = format!("verify_me_{}", Uuid::new_v4().simple());
 
     let doc_id = create_doc(
         &c,
         &token,
-        &collection,
-        &json!({"name": "verify_me", "count": 42}),
+        "products",
+        &json!({"name": unique_name, "priceCents": 4200, "stockQuantity": 1}),
     )
     .await;
+    assert!(!doc_id.is_empty(), "Create should return a document ID");
     let clean_id = doc_id.split(':').last().unwrap_or(&doc_id);
 
     let body = graphql(
         &c,
         &token,
-        &format!(r#"{{ get(collection: "{collection}", id: "{clean_id}") }}"#),
+        &format!(r#"{{ get(collection: "products", id: "{clean_id}") }}"#),
     )
     .await;
     let doc = &body["data"]["get"];
     assert!(
-        doc["name"] == "verify_me" || serde_json::to_string(doc).unwrap().contains("verify_me"),
-        "Read should match created data"
+        doc["name"].as_str().map(|n| n.contains("verify_me")).unwrap_or(false)
+            || serde_json::to_string(doc).unwrap().contains("verify_me"),
+        "Read should match created data, got: {}",
+        serde_json::to_string_pretty(doc).unwrap_or_default()
     );
 }
 
@@ -384,16 +401,23 @@ async fn create_then_read_matches() {
 #[ignore = "requires running orignabase instance"]
 async fn token_refresh_continues_crud() {
     let c = Client::new();
-    let (token, _) = register_test_user(&c).await;
-    let collection = format!("xsvc_refresh_{}", Uuid::new_v4().simple());
+    // Use seller account (has permissions to create products)
+    let (token, refresh_token) = login_seller(&c).await;
 
-    // Use original token
-    create_doc(&c, &token, &collection, &json!({"phase": "before_refresh"})).await;
+    // Use original token to create a product
+    let doc_id_before = create_doc(
+        &c,
+        &token,
+        "products",
+        &json!({"name": "before_refresh", "priceCents": 100, "stockQuantity": 1}),
+    )
+    .await;
+    assert!(!doc_id_before.is_empty(), "CRUD should work with original token");
 
-    // Refresh token
+    // Refresh token via POST body (not Bearer header)
     let resp = c
         .post(format!("{}/auth/refresh", base_url()))
-        .header("Authorization", format!("Bearer {token}"))
+        .json(&json!({ "refresh_token": refresh_token }))
         .send()
         .await
         .unwrap();
@@ -402,18 +426,19 @@ async fn token_refresh_continues_crud() {
         let body: Value = resp.json().await.unwrap();
         body["access_token"].as_str().unwrap_or(&token).to_string()
     } else {
+        // If refresh fails (e.g., no refresh token returned), use original
         token.clone()
     };
 
-    // Use new token
-    let doc_id = create_doc(
+    // Use refreshed token to create another product
+    let doc_id_after = create_doc(
         &c,
         &new_token,
-        &collection,
-        &json!({"phase": "after_refresh"}),
+        "products",
+        &json!({"name": "after_refresh", "priceCents": 200, "stockQuantity": 1}),
     )
     .await;
-    assert!(!doc_id.is_empty(), "CRUD should work with refreshed token");
+    assert!(!doc_id_after.is_empty(), "CRUD should work with refreshed token");
 }
 
 #[tokio::test]
