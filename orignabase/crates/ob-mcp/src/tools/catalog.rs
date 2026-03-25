@@ -14,22 +14,17 @@ pub async fn search_products(state: McpState, params: &Value) -> McpResult<Value
     let category = params.get("category").and_then(|v| v.as_str());
     let min_price = params.get("min_price").and_then(|v| v.as_u64());
     let max_price = params.get("max_price").and_then(|v| v.as_u64());
-    let limit = params.get("limit").and_then(|v| v.as_u64()).unwrap_or(20);
+    let raw_limit = params.get("limit").and_then(|v| v.as_u64()).unwrap_or(20);
+    let limit = raw_limit.clamp(1, 100);
     let offset = params.get("offset").and_then(|v| v.as_u64()).unwrap_or(0);
-
-    // Validate limits
-    if limit > 100 {
-        return Err(McpError::ValidationError(
-            "Limit must be <= 100".to_string(),
-        ));
-    }
 
     // If Meilisearch is available, use it; otherwise fall back to SurrealDB
     if let Some(_search) = &state.search {
         // Build Meilisearch filter query
         let mut filters = Vec::new();
         if let Some(cat) = category {
-            filters.push(format!("categoryId = '{}'", cat));
+            let safe_cat = cat.replace('\'', "\\'");
+            filters.push(format!("categoryId = '{}'", safe_cat));
         }
         if let Some(min) = min_price {
             filters.push(format!("priceCents >= {}", min));
@@ -167,11 +162,12 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_search_products_limit_exceeds_max() {
+    async fn test_search_products_limit_clamped_to_100() {
         let state = make_state().await;
+        // limit > 100 is clamped to 100
         let result = search_products(state, &json!({"query": "x", "limit": 101})).await;
-        assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), McpError::ValidationError(_)));
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap()["limit"], 100);
     }
 
     #[tokio::test]
@@ -191,11 +187,12 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_search_products_zero_limit() {
+    async fn test_search_products_zero_limit_clamped_to_1() {
         let state = make_state().await;
+        // limit=0 is clamped to 1
         let result = search_products(state, &json!({"query": "x", "limit": 0})).await;
         assert!(result.is_ok());
-        assert_eq!(result.unwrap()["limit"], 0);
+        assert_eq!(result.unwrap()["limit"], 1);
     }
 
     #[tokio::test]

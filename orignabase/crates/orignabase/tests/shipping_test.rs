@@ -113,7 +113,7 @@ async fn test_shipping_free_threshold() {
             "totalAmountCents": 3500,
         });
         let query = create_doc_query("orders", &order_data);
-        let (status, body) = graphql(&client, Some(&buyer_token), &query).await;
+        let (status, _body) = graphql(&client, Some(&buyer_token), &query).await;
         assert_eq!(status, 200);
 
         // Order above threshold — free shipping

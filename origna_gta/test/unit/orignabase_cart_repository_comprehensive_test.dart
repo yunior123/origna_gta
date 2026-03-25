@@ -262,6 +262,13 @@ void main() {
 
   group('OrignaBaseCartRepository - addToCart edge cases', () {
     test('handles quantity at maximum boundary', () async {
+      fakeOb.productsCollection.setDoc(
+        'prod_1',
+        _FakeDocumentRef(
+          id: 'prod_1',
+          doc: _FakeDocument('prod_1', {Fields.stockQuantity: 200}),
+        ),
+      );
       await repository.addToCart('user_1', 'prod_1', 99);
       final cartRef = fakeOb.usersCollection.cartSubcollection;
       final docRef = cartRef.docsMap['prod_1']!;
@@ -269,6 +276,13 @@ void main() {
     });
 
     test('clamps quantity above maximum', () async {
+      fakeOb.productsCollection.setDoc(
+        'prod_1',
+        _FakeDocumentRef(
+          id: 'prod_1',
+          doc: _FakeDocument('prod_1', {Fields.stockQuantity: 200}),
+        ),
+      );
       await repository.addToCart('user_1', 'prod_1', 150);
       final cartRef = fakeOb.usersCollection.cartSubcollection;
       final docRef = cartRef.docsMap['prod_1']!;
@@ -276,6 +290,13 @@ void main() {
     });
 
     test('handles userId with users: prefix', () async {
+      fakeOb.productsCollection.setDoc(
+        'prod_1',
+        _FakeDocumentRef(
+          id: 'prod_1',
+          doc: _FakeDocument('prod_1', {Fields.stockQuantity: 100}),
+        ),
+      );
       await repository.addToCart('users:user_1', 'prod_1', 1);
       final cartRef = fakeOb.usersCollection.cartSubcollection;
       final docRef = cartRef.docsMap['prod_1']!;
@@ -284,12 +305,26 @@ void main() {
     });
 
     test('handles productId with special characters', () async {
+      fakeOb.productsCollection.setDoc(
+        'prod-special_123',
+        _FakeDocumentRef(
+          id: 'prod-special_123',
+          doc: _FakeDocument('prod-special_123', {Fields.stockQuantity: 100}),
+        ),
+      );
       await repository.addToCart('user_1', 'prod-special_123', 1);
       final cartRef = fakeOb.usersCollection.cartSubcollection;
       expect(cartRef.docsMap.containsKey('prod-special_123'), true);
     });
 
     test('preserves createdAt for existing items', () async {
+      fakeOb.productsCollection.setDoc(
+        'prod_1',
+        _FakeDocumentRef(
+          id: 'prod_1',
+          doc: _FakeDocument('prod_1', {Fields.stockQuantity: 100}),
+        ),
+      );
       final existingTime = DateTime(2025, 1, 1);
       final existingTimeStr = existingTime.toIso8601String();
       final cartRef = fakeOb.usersCollection.cartSubcollection;
@@ -309,6 +344,13 @@ void main() {
     });
 
     test('sets new createdAt for new items', () async {
+      fakeOb.productsCollection.setDoc(
+        'prod_1',
+        _FakeDocumentRef(
+          id: 'prod_1',
+          doc: _FakeDocument('prod_1', {Fields.stockQuantity: 100}),
+        ),
+      );
       await repository.addToCart('user_1', 'prod_1', 1);
       final cartRef = fakeOb.usersCollection.cartSubcollection;
       final docRef = cartRef.docsMap['prod_1']!;

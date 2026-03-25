@@ -5,7 +5,9 @@
 //! - update_item_status (seller/admin updates per-item status)
 
 use axum::{Json, Router, extract::State, routing::post};
+use axum::extract::Extension;
 use chrono::Utc;
+use ob_auth::middleware::AuthContext;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::collections::HashSet;
@@ -95,7 +97,6 @@ fn is_valid_order_transition(from: OrderStatus, to: OrderStatus) -> bool {
 pub struct ConfirmItemReceiptRequest {
     pub order_id: String,
     pub product_id: String,
-    pub user_id: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -112,7 +113,6 @@ pub struct ConfirmItemReceiptResponse {
 pub struct UpdateOrderStatusRequest {
     pub order_id: String,
     pub new_status: String,
-    pub user_id: String,
     #[serde(default)]
     pub tracking_number: Option<String>,
     #[serde(default)]
@@ -134,7 +134,6 @@ pub struct UpdateItemStatusRequest {
     pub order_id: String,
     pub product_id: String,
     pub new_status: String,
-    pub user_id: String,
     #[serde(default)]
     pub tracking_number: Option<String>,
     #[serde(default)]
@@ -327,15 +326,17 @@ async fn log_order_event(
 
 async fn confirm_item_receipt(
     State(state): State<HandlersState>,
+    Extension(auth): Extension<AuthContext>,
     Json(req): Json<ConfirmItemReceiptRequest>,
 ) -> Result<Json<ConfirmItemReceiptResponse>, ob_core::Error> {
+    let user_id = &auth.user_id;
     validate_uid("orderId", &req.order_id)?;
     validate_uid("productId", &req.product_id)?;
-    validate_uid("userId", &req.user_id)?;
+    validate_uid("userId", user_id)?;
 
     crate::shared::rate_limiter::check_user_rate_limit(
         &state.db,
-        &req.user_id,
+        user_id,
         "confirm_item_receipt",
         10,
         1,
@@ -350,7 +351,7 @@ async fn confirm_item_receipt(
 
     // Ownership check
     let order_owner = str_field(&order, "userId");
-    if order_owner != req.user_id {
+    if order_owner != user_id.as_str() {
         return Err(ob_core::Error::Forbidden(
             "Only the order owner can confirm receipt".into(),
         ));
@@ -366,7 +367,7 @@ async fn confirm_item_receipt(
 
     // Self-purchase check: sellers cannot confirm their own items
     let item_seller = str_field(&items[idx], fields::SELLER_ID);
-    if item_seller == req.user_id {
+    if item_seller == user_id.as_str() {
         return Err(ob_core::Error::Forbidden(
             "Sellers cannot confirm receipt of their own items".into(),
         ));
@@ -430,7 +431,7 @@ async fn confirm_item_receipt(
     log_order_event(
         &state,
         &req.order_id,
-        &req.user_id,
+        user_id,
         "item_receipt_confirmed",
         &format!("Item {} receipt confirmed by buyer", req.product_id),
         json!({ "productId": req.product_id, "allDelivered": all_delivered }),
@@ -450,15 +451,17 @@ async fn confirm_item_receipt(
 
 async fn update_order_status(
     State(state): State<HandlersState>,
+    Extension(auth): Extension<AuthContext>,
     Json(req): Json<UpdateOrderStatusRequest>,
 ) -> Result<Json<UpdateOrderStatusResponse>, ob_core::Error> {
+    let user_id = &auth.user_id;
     validate_uid("orderId", &req.order_id)?;
-    validate_uid("userId", &req.user_id)?;
+    validate_uid("userId", user_id)?;
     validate_string("newStatus", &req.new_status, 50)?;
 
     crate::shared::rate_limiter::check_user_rate_limit(
         &state.db,
-        &req.user_id,
+        user_id,
         "update_order_status",
         20,
         1,
@@ -503,11 +506,11 @@ async fn update_order_status(
     }
 
     // Permission check
-    let is_admin = is_user_admin(&state, &req.user_id).await?;
+    let is_admin = is_user_admin(&state, user_id).await?;
     let items = items_array(&order);
     let seller_items: Vec<&Value> = items
         .iter()
-        .filter(|it| str_field(it, fields::SELLER_ID) == req.user_id)
+        .filter(|it| str_field(it, fields::SELLER_ID) == user_id.as_str())
         .collect();
     let is_seller = !seller_items.is_empty();
 
@@ -581,7 +584,7 @@ async fn update_order_status(
         let mut any_updated = false;
 
         for item in updated_items.iter_mut() {
-            if str_field(item, fields::SELLER_ID) == req.user_id {
+            if str_field(item, fields::SELLER_ID) == user_id.as_str() {
                 item["status"] = json!("shipped");
                 item["shippedAt"] = json!(now);
                 if let Some(ref tn) = tracking_number {
@@ -606,7 +609,7 @@ async fn update_order_status(
         let mut update_data = json!({
             fields::ITEMS: updated_items.clone(),
             fields::UPDATED_AT: now.clone(),
-            "lastActorId": req.user_id,
+            "lastActorId": user_id.as_str(),
         });
 
         if all_shipped {
@@ -710,7 +713,7 @@ async fn update_order_status(
     log_order_event(
         &state,
         &req.order_id,
-        &req.user_id,
+        user_id,
         &format!("order_status_updated_to_{}", new_status.as_str()),
         &format!(
             "Order status updated from {} to {}",
@@ -767,16 +770,18 @@ async fn update_order_status(
 
 async fn update_item_status(
     State(state): State<HandlersState>,
+    Extension(auth): Extension<AuthContext>,
     Json(req): Json<UpdateItemStatusRequest>,
 ) -> Result<Json<UpdateItemStatusResponse>, ob_core::Error> {
+    let user_id = &auth.user_id;
     validate_uid("orderId", &req.order_id)?;
     validate_uid("productId", &req.product_id)?;
-    validate_uid("userId", &req.user_id)?;
+    validate_uid("userId", user_id)?;
     validate_string("newStatus", &req.new_status, 20)?;
 
     crate::shared::rate_limiter::check_user_rate_limit(
         &state.db,
-        &req.user_id,
+        user_id,
         "update_item_status",
         20,
         1,
@@ -813,7 +818,7 @@ async fn update_item_status(
     }
 
     let mut items = items_array(&order);
-    let is_admin = is_user_admin(&state, &req.user_id).await?;
+    let is_admin = is_user_admin(&state, user_id).await?;
 
     // Find item by product_id
     let item_index = items
@@ -831,7 +836,7 @@ async fn update_item_status(
     };
 
     let item_seller = str_field(&items[idx], fields::SELLER_ID).to_string();
-    let is_item_seller = item_seller == req.user_id;
+    let is_item_seller = item_seller == user_id.as_str();
 
     if !is_admin && !is_item_seller {
         return Err(ob_core::Error::Forbidden(
@@ -933,7 +938,7 @@ async fn update_item_status(
     log_order_event(
         &state,
         &req.order_id,
-        &req.user_id,
+        user_id,
         &format!("item_status_updated_to_{}", new_delivery.as_str()),
         &format!(
             "Item {} status updated to {}",
@@ -959,7 +964,8 @@ async fn update_item_status(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::extract::State;
+    use axum::extract::{Extension, State};
+    use ob_auth::middleware::AuthContext;
     use ob_core::Config;
     use ob_database::DatabaseClient;
     use std::sync::Arc;
@@ -988,6 +994,27 @@ mod tests {
             )
             .await
             .unwrap();
+    }
+
+    fn auth(user_id: &str) -> AuthContext {
+        AuthContext {
+            user_id: user_id.to_string(),
+            roles: vec![],
+            authenticated: true,
+            email_verified: false,
+            custom_claims: serde_json::Value::Null,
+        }
+    }
+
+    #[allow(dead_code)]
+    fn auth_with_roles(user_id: &str, roles: &[&str]) -> AuthContext {
+        AuthContext {
+            user_id: user_id.to_string(),
+            roles: roles.iter().map(|s| s.to_string()).collect(),
+            authenticated: true,
+            email_verified: false,
+            custom_claims: serde_json::Value::Null,
+        }
     }
 
     #[test]
@@ -1109,7 +1136,7 @@ mod tests {
 
     #[test]
     fn test_confirm_receipt_request_deserialize() {
-        let json_str = r#"{"orderId":"ord1","productId":"prod1","userId":"user1"}"#;
+        let json_str = r#"{"orderId":"ord1","productId":"prod1"}"#;
         let req: ConfirmItemReceiptRequest = serde_json::from_str(json_str).unwrap();
         assert_eq!(req.order_id, "ord1");
         assert_eq!(req.product_id, "prod1");
@@ -1118,7 +1145,7 @@ mod tests {
     #[test]
     fn test_update_order_status_request_deserialize() {
         let json_str =
-            r#"{"orderId":"o1","newStatus":"shipped","userId":"u1","trackingNumber":"TN123"}"#;
+            r#"{"orderId":"o1","newStatus":"shipped","trackingNumber":"TN123"}"#;
         let req: UpdateOrderStatusRequest = serde_json::from_str(json_str).unwrap();
         assert_eq!(req.order_id, "o1");
         assert_eq!(req.new_status, "shipped");
@@ -1139,7 +1166,7 @@ mod tests {
 
     #[test]
     fn test_update_item_status_request_deserialize() {
-        let json_str = r#"{"orderId":"o1","productId":"p1","newStatus":"shipped","userId":"u1"}"#;
+        let json_str = r#"{"orderId":"o1","productId":"p1","newStatus":"shipped"}"#;
         let req: UpdateItemStatusRequest = serde_json::from_str(json_str).unwrap();
         assert_eq!(req.new_status, "shipped");
         assert!(req.tracking_number.is_none());
@@ -1600,10 +1627,10 @@ mod tests {
 
         let err = confirm_item_receipt(
             State(state),
+            Extension(auth("buyer_2")),
             Json(ConfirmItemReceiptRequest {
                 order_id: "ord_1".into(),
                 product_id: "prod_1".into(),
-                user_id: "buyer_2".into(),
             }),
         )
         .await
@@ -1634,10 +1661,10 @@ mod tests {
 
         let err = update_order_status(
             State(state),
+            Extension(auth("unknown_user")),
             Json(UpdateOrderStatusRequest {
                 order_id: "ord_1".into(),
                 new_status: OrderStatus::Shipped.as_str().into(),
-                user_id: "unknown_user".into(),
                 tracking_number: Some("TN123".into()),
                 carrier: Some("Carrier".into()),
             }),
@@ -1679,10 +1706,10 @@ mod tests {
 
         let err = update_order_status(
             State(state),
+            Extension(auth("seller_1")),
             Json(UpdateOrderStatusRequest {
                 order_id: "ord_1".into(),
                 new_status: OrderStatus::Shipped.as_str().into(),
-                user_id: "seller_1".into(),
                 tracking_number: Some("TN123".into()),
                 carrier: None,
             }),
@@ -1723,10 +1750,10 @@ mod tests {
 
         let err = update_order_status(
             State(state),
+            Extension(auth("seller_1")),
             Json(UpdateOrderStatusRequest {
                 order_id: "ord_1".into(),
                 new_status: OrderStatus::Shipped.as_str().into(),
-                user_id: "seller_1".into(),
                 tracking_number: Some("TN123".into()),
                 carrier: None,
             }),
@@ -1766,10 +1793,10 @@ mod tests {
 
         let err = update_order_status(
             State(state),
+            Extension(auth("seller_1")),
             Json(UpdateOrderStatusRequest {
                 order_id: "ord_1".into(),
                 new_status: OrderStatus::Shipped.as_str().into(),
-                user_id: "seller_1".into(),
                 tracking_number: Some("TN123".into()),
                 carrier: None,
             }),
@@ -1809,10 +1836,10 @@ mod tests {
 
         let Json(resp) = update_order_status(
             State(state.clone()),
+            Extension(auth("seller_1")),
             Json(UpdateOrderStatusRequest {
                 order_id: "ord_1".into(),
                 new_status: OrderStatus::Shipped.as_str().into(),
-                user_id: "seller_1".into(),
                 tracking_number: Some("TN123".into()),
                 carrier: Some("Carrier".into()),
             }),
@@ -1862,10 +1889,10 @@ mod tests {
 
         let Json(resp) = confirm_item_receipt(
             State(state.clone()),
+            Extension(auth("buyer_1")),
             Json(ConfirmItemReceiptRequest {
                 order_id: "ord_1".into(),
                 product_id: "prod_2".into(),
-                user_id: "buyer_1".into(),
             }),
         )
         .await
@@ -1911,10 +1938,10 @@ mod tests {
 
         let Json(resp) = confirm_item_receipt(
             State(state.clone()),
+            Extension(auth("buyer_1")),
             Json(ConfirmItemReceiptRequest {
                 order_id: "ord_2".into(),
                 product_id: "prod_1".into(),
-                user_id: "buyer_1".into(),
             }),
         )
         .await
@@ -1956,10 +1983,10 @@ mod tests {
 
         let missing = confirm_item_receipt(
             State(state.clone()),
+            Extension(auth("buyer_1")),
             Json(ConfirmItemReceiptRequest {
                 order_id: "ord_3".into(),
                 product_id: "prod_missing".into(),
-                user_id: "buyer_1".into(),
             }),
         )
         .await
@@ -1968,10 +1995,10 @@ mod tests {
 
         let wrong_status = confirm_item_receipt(
             State(state),
+            Extension(auth("buyer_1")),
             Json(ConfirmItemReceiptRequest {
                 order_id: "ord_3".into(),
                 product_id: "prod_1".into(),
-                user_id: "buyer_1".into(),
             }),
         )
         .await
@@ -2009,10 +2036,10 @@ mod tests {
 
         let Json(resp) = update_order_status(
             State(state.clone()),
+            Extension(auth("admin_1")),
             Json(UpdateOrderStatusRequest {
                 order_id: "ord_admin".into(),
                 new_status: OrderStatus::Delivered.as_str().into(),
-                user_id: "admin_1".into(),
                 tracking_number: None,
                 carrier: None,
             }),
@@ -2060,11 +2087,11 @@ mod tests {
 
         let missing = update_item_status(
             State(state.clone()),
+            Extension(auth("seller_1")),
             Json(UpdateItemStatusRequest {
                 order_id: "ord_item_reject".into(),
                 product_id: "prod_missing".into(),
                 new_status: "shipped".into(),
-                user_id: "seller_1".into(),
                 tracking_number: Some("TN".into()),
                 carrier: None,
             }),
@@ -2075,11 +2102,11 @@ mod tests {
 
         let tracking_err = update_item_status(
             State(state.clone()),
+            Extension(auth("seller_1")),
             Json(UpdateItemStatusRequest {
                 order_id: "ord_item_reject".into(),
                 product_id: "prod_1".into(),
                 new_status: "shipped".into(),
-                user_id: "seller_1".into(),
                 tracking_number: None,
                 carrier: None,
             }),
@@ -2094,11 +2121,11 @@ mod tests {
 
         let invalid = update_item_status(
             State(state),
+            Extension(auth("seller_1")),
             Json(UpdateItemStatusRequest {
                 order_id: "ord_item_reject".into(),
                 product_id: "prod_1".into(),
                 new_status: "delivered".into(),
-                user_id: "seller_1".into(),
                 tracking_number: Some("TN".into()),
                 carrier: None,
             }),
@@ -2143,11 +2170,11 @@ mod tests {
 
         let Json(resp) = update_item_status(
             State(state.clone()),
+            Extension(auth("admin_1")),
             Json(UpdateItemStatusRequest {
                 order_id: "ord_item_admin".into(),
                 product_id: "prod_2".into(),
                 new_status: "delivered".into(),
-                user_id: "admin_1".into(),
                 tracking_number: None,
                 carrier: None,
             }),
@@ -2190,10 +2217,10 @@ mod tests {
 
         let err = confirm_item_receipt(
             State(state),
+            Extension(auth("seller_1")),
             Json(ConfirmItemReceiptRequest {
                 order_id: "ord_self".into(),
                 product_id: "prod_1".into(),
-                user_id: "seller_1".into(),
             }),
         )
         .await
@@ -2227,10 +2254,10 @@ mod tests {
 
         let Json(resp) = confirm_item_receipt(
             State(state),
+            Extension(auth("buyer_1")),
             Json(ConfirmItemReceiptRequest {
                 order_id: "ord_idem".into(),
                 product_id: "prod_1".into(),
-                user_id: "buyer_1".into(),
             }),
         )
         .await
@@ -2266,10 +2293,10 @@ mod tests {
 
         let err = update_order_status(
             State(state),
+            Extension(auth("seller_1")),
             Json(UpdateOrderStatusRequest {
                 order_id: "ord_inv".into(),
                 new_status: "INVALID_STATUS".into(),
-                user_id: "seller_1".into(),
                 tracking_number: None,
                 carrier: None,
             }),
@@ -2302,10 +2329,10 @@ mod tests {
 
         let err = update_order_status(
             State(state),
+            Extension(auth("admin_1")),
             Json(UpdateOrderStatusRequest {
                 order_id: "ord_bad_stored".into(),
                 new_status: OrderStatus::Shipped.as_str().into(),
-                user_id: "admin_1".into(),
                 tracking_number: None,
                 carrier: None,
             }),
@@ -2338,10 +2365,10 @@ mod tests {
 
         let err = update_order_status(
             State(state),
+            Extension(auth("random_user")),
             Json(UpdateOrderStatusRequest {
                 order_id: "ord_perm".into(),
                 new_status: OrderStatus::Shipped.as_str().into(),
-                user_id: "random_user".into(),
                 tracking_number: Some("TN".into()),
                 carrier: None,
             }),
@@ -2374,10 +2401,10 @@ mod tests {
 
         let err = update_order_status(
             State(state),
+            Extension(auth("seller_1")),
             Json(UpdateOrderStatusRequest {
                 order_id: "ord_del".into(),
                 new_status: OrderStatus::Delivered.as_str().into(),
-                user_id: "seller_1".into(),
                 tracking_number: None,
                 carrier: None,
             }),
@@ -2417,10 +2444,10 @@ mod tests {
 
         let err = update_order_status(
             State(state),
+            Extension(auth("seller_1")),
             Json(UpdateOrderStatusRequest {
                 order_id: "ord_dig".into(),
                 new_status: OrderStatus::Shipped.as_str().into(),
-                user_id: "seller_1".into(),
                 tracking_number: Some("TN".into()),
                 carrier: None,
             }),
@@ -2460,10 +2487,10 @@ mod tests {
 
         let err = update_order_status(
             State(state),
+            Extension(auth("seller_1")),
             Json(UpdateOrderStatusRequest {
                 order_id: "ord_rej".into(),
                 new_status: OrderStatus::Shipped.as_str().into(),
-                user_id: "seller_1".into(),
                 tracking_number: Some("TN".into()),
                 carrier: None,
             }),
@@ -2496,10 +2523,10 @@ mod tests {
 
         let err = update_order_status(
             State(state),
+            Extension(auth("admin_1")),
             Json(UpdateOrderStatusRequest {
                 order_id: "ord_trans".into(),
                 new_status: OrderStatus::Shipped.as_str().into(),
-                user_id: "admin_1".into(),
                 tracking_number: None,
                 carrier: None,
             }),
@@ -2544,10 +2571,10 @@ mod tests {
         // seller_1 has items but there are also seller_2 items, so multi-seller check triggers
         let err = update_order_status(
             State(state),
+            Extension(auth("seller_1")),
             Json(UpdateOrderStatusRequest {
                 order_id: "ord_partial".into(),
                 new_status: OrderStatus::Shipped.as_str().into(),
-                user_id: "seller_1".into(),
                 tracking_number: Some("TN".into()),
                 carrier: None,
             }),
@@ -2595,10 +2622,10 @@ mod tests {
 
         let Json(resp) = update_order_status(
             State(state.clone()),
+            Extension(auth("seller_1")),
             Json(UpdateOrderStatusRequest {
                 order_id: "ord_track".into(),
                 new_status: OrderStatus::Shipped.as_str().into(),
-                user_id: "seller_1".into(),
                 tracking_number: Some("TN999".into()),
                 carrier: Some("FedEx".into()),
             }),
@@ -2681,10 +2708,10 @@ mod tests {
 
         let Json(resp) = update_order_status(
             State(state.clone()),
+            Extension(auth("admin_1")),
             Json(UpdateOrderStatusRequest {
                 order_id: "ord_adm_ship".into(),
                 new_status: OrderStatus::Shipped.as_str().into(),
-                user_id: "admin_1".into(),
                 tracking_number: Some("TRACK_ADM".into()),
                 carrier: Some("DHL".into()),
             }),
@@ -2738,10 +2765,10 @@ mod tests {
 
         let Json(resp) = update_order_status(
             State(state.clone()),
+            Extension(auth("admin_1")),
             Json(UpdateOrderStatusRequest {
                 order_id: "ord_adm_notrack".into(),
                 new_status: OrderStatus::Shipped.as_str().into(),
-                user_id: "admin_1".into(),
                 tracking_number: None,
                 carrier: None,
             }),
@@ -2785,11 +2812,11 @@ mod tests {
 
         let err = update_item_status(
             State(state),
+            Extension(auth("seller_1")),
             Json(UpdateItemStatusRequest {
                 order_id: "ord_bad_del".into(),
                 product_id: "p1".into(),
                 new_status: "INVALID".into(),
-                user_id: "seller_1".into(),
                 tracking_number: None,
                 carrier: None,
             }),
@@ -2827,11 +2854,11 @@ mod tests {
 
         let err = update_item_status(
             State(state),
+            Extension(auth("seller_1")),
             Json(UpdateItemStatusRequest {
                 order_id: "ord_arch_item".into(),
                 product_id: "p1".into(),
                 new_status: "shipped".into(),
-                user_id: "seller_1".into(),
                 tracking_number: Some("TN".into()),
                 carrier: None,
             }),
@@ -2868,11 +2895,11 @@ mod tests {
 
         let err = update_item_status(
             State(state),
+            Extension(auth("random_user")),
             Json(UpdateItemStatusRequest {
                 order_id: "ord_perm_item".into(),
                 product_id: "p1".into(),
                 new_status: "shipped".into(),
-                user_id: "random_user".into(),
                 tracking_number: Some("TN".into()),
                 carrier: None,
             }),
@@ -2910,11 +2937,11 @@ mod tests {
         // pending -> refunded is invalid for non-admin
         let err = update_item_status(
             State(state),
+            Extension(auth("seller_1")),
             Json(UpdateItemStatusRequest {
                 order_id: "ord_trans_item".into(),
                 product_id: "p1".into(),
                 new_status: "refunded".into(),
-                user_id: "seller_1".into(),
                 tracking_number: None,
                 carrier: None,
             }),
@@ -2952,11 +2979,11 @@ mod tests {
 
         let Json(resp) = update_item_status(
             State(state),
+            Extension(auth("seller_1")),
             Json(UpdateItemStatusRequest {
                 order_id: "ord_pickup".into(),
                 product_id: "p1".into(),
                 new_status: "shipped".into(),
-                user_id: "seller_1".into(),
                 tracking_number: None,
                 carrier: None,
             }),
@@ -2993,11 +3020,11 @@ mod tests {
 
         let Json(resp) = update_item_status(
             State(state.clone()),
+            Extension(auth("seller_1")),
             Json(UpdateItemStatusRequest {
                 order_id: "ord_ship_track".into(),
                 product_id: "p1".into(),
                 new_status: "shipped".into(),
-                user_id: "seller_1".into(),
                 tracking_number: Some("TRACK1".into()),
                 carrier: Some("UPS".into()),
             }),
@@ -3050,11 +3077,11 @@ mod tests {
 
         let Json(resp) = update_item_status(
             State(state.clone()),
+            Extension(auth("admin_1")),
             Json(UpdateItemStatusRequest {
                 order_id: "ord_all_ship".into(),
                 product_id: "p2".into(),
                 new_status: "shipped".into(),
-                user_id: "admin_1".into(),
                 tracking_number: Some("TN".into()),
                 carrier: None,
             }),
@@ -3097,11 +3124,11 @@ mod tests {
 
         let Json(resp) = update_item_status(
             State(state.clone()),
+            Extension(auth("admin_1")),
             Json(UpdateItemStatusRequest {
                 order_id: "ord_auth_ship".into(),
                 product_id: "p1".into(),
                 new_status: "shipped".into(),
-                user_id: "admin_1".into(),
                 tracking_number: Some("TN".into()),
                 carrier: None,
             }),
@@ -3147,11 +3174,11 @@ mod tests {
 
         let Json(resp) = update_item_status(
             State(state.clone()),
+            Extension(auth("admin_1")),
             Json(UpdateItemStatusRequest {
                 order_id: "ord_refund_arm".into(),
                 product_id: "p1".into(),
                 new_status: "refunded".into(),
-                user_id: "admin_1".into(),
                 tracking_number: None,
                 carrier: None,
             }),
@@ -3196,11 +3223,11 @@ mod tests {
 
         let Json(resp) = update_item_status(
             State(state.clone()),
+            Extension(auth("admin_1")),
             Json(UpdateItemStatusRequest {
                 order_id: "ord_proc_ship".into(),
                 product_id: "p1".into(),
                 new_status: "shipped".into(),
-                user_id: "admin_1".into(),
                 tracking_number: Some("TN_PROC".into()),
                 carrier: Some("UPS".into()),
             }),
@@ -3248,10 +3275,10 @@ mod tests {
 
         let err = update_order_status(
             State(state),
+            Extension(auth("seller_x")),
             Json(UpdateOrderStatusRequest {
                 order_id: "ord_no_items".into(),
                 new_status: OrderStatus::Shipped.as_str().into(),
-                user_id: "seller_x".into(),
                 tracking_number: Some("TN".into()),
                 carrier: None,
             }),

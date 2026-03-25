@@ -4,9 +4,12 @@ import 'dart:math' as math;
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/routes.dart';
+import 'package:origna_gta/models/generated/models.dart' show PaymentStatus;
 import 'package:origna_gta/services/analytics_service.dart'
     show analyticsServiceProvider;
+import 'package:origna_gta/utils/app_logger.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/mascot/shop_mascot.dart';
@@ -201,6 +204,35 @@ class _DeliveryWindowCard extends StatelessWidget {
 
 class _OrderSuccessScreenState extends ConsumerState<OrderSuccessScreen> {
   late final MascotController _mascotController;
+
+  Future<void> _logPurchaseIfPaymentConfirmed() async {
+    try {
+      final orderRepo = ref.read(orderRepositoryProvider);
+      final order = await orderRepo.fetchOrderById(widget.orderId);
+      if (order == null) return;
+      final status = order.paymentStatus;
+      if (status == PaymentStatus.captured || status == PaymentStatus.paid) {
+        ref
+            .read(analyticsServiceProvider)
+            .logPurchase(
+              orderId: widget.orderId,
+              valueCad: widget.valueCad,
+              itemCount: widget.itemCount,
+            );
+      } else {
+        AppLogger.d(
+          'Skipping analytics: payment status is $status',
+          tag: 'order_success',
+        );
+      }
+    } catch (e) {
+      AppLogger.w(
+        'Failed to verify payment status for analytics',
+        tag: 'order_success',
+        error: e,
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -496,17 +528,12 @@ class _OrderSuccessScreenState extends ConsumerState<OrderSuccessScreen> {
     Sentry.addBreadcrumb(
       Breadcrumb(
         message: 'order_success',
-        data: {'orderId': widget.orderId},
+        data: {'itemCount': widget.itemCount},
         timestamp: DateTime.now(),
       ),
     );
-    ref
-        .read(analyticsServiceProvider)
-        .logPurchase(
-          orderId: widget.orderId,
-          valueCad: widget.valueCad,
-          itemCount: widget.itemCount,
-        );
+    // Only log analytics purchase event after confirming payment was captured/paid
+    _logPurchaseIfPaymentConfirmed();
   }
 }
 

@@ -162,7 +162,7 @@ impl OrignaGtaMcp {
 
     async fn create_checkout(&self, params: &Value, ctx: &McpContext) -> McpResult<Value> {
         let user_id = ctx.user_id()?;
-        tools::orders::create_checkout(self.state.clone(), &user_id, params).await
+        tools::orders::create_checkout(self.state.clone(), &user_id, params, Some(&self.spend_limit)).await
     }
 
     // Admin tools
@@ -627,7 +627,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_handle_request_create_review_authenticated() {
+    async fn test_handle_request_create_review_authenticated_no_purchase() {
+        // Authenticated but no delivered order — should return Forbidden (403)
         let server = make_server().await;
         let ctx = McpContext::with_claims(make_claims(Some("buyer")));
         let req = JsonRpcRequest {
@@ -637,7 +638,8 @@ mod tests {
             id: Some(json!(1)),
         };
         let resp = server.handle_request(req, ctx).await;
-        assert!(resp.error.is_none());
+        assert!(resp.error.is_some());
+        assert_eq!(resp.error.unwrap().code, 403);
     }
 
     #[tokio::test]

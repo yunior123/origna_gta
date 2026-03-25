@@ -622,6 +622,23 @@ async fn add_buyer_address(
     validate_uid("userId", &user_id)?;
     let _ = state.db.get_document(collections::USERS, &user_id).await?;
 
+    let count_query = format!(
+        "SELECT count() FROM {} WHERE userId = $user_id GROUP ALL",
+        collections::ADDRESSES,
+    );
+    let count_rows = state.db.query_bind_value(
+        &count_query,
+        serde_json::json!({"user_id": user_id}),
+    ).await.unwrap_or_default();
+    if let Some(first) = count_rows.first() {
+        let count = first.get("count").and_then(|v| v.as_i64()).unwrap_or(0);
+        if count >= 10 {
+            return Err(ob_core::Error::Validation(
+                "Maximum number of addresses (10) reached. Please delete an address before adding a new one.".into()
+            ));
+        }
+    }
+
     let address = sanitize_address_fields(
         &req.street,
         &req.city,

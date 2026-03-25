@@ -310,7 +310,11 @@ void main() {
     test('startCheckout returns error when items empty', () async {
       final result = await container
           .read(checkoutStateProvider.notifier)
-          .startCheckout(items: [], user: createTestUser(), subtotal: 100.0);
+          .startCheckout(
+            items: [],
+            user: createTestUser(),
+            subtotalCents: 10000,
+          );
 
       expect(result, isA<CheckoutError>());
       expect((result as CheckoutError).message, contains('cart_empty'));
@@ -323,7 +327,7 @@ void main() {
           .startCheckout(
             items: [createTestItem(isDigital: true)],
             user: createTestUser(email: ''),
-            subtotal: 10.0,
+            subtotalCents: 1000,
           );
 
       expect(result, isA<CheckoutError>());
@@ -337,7 +341,7 @@ void main() {
           .startCheckout(
             items: [createTestItem(isDigital: true)],
             user: createTestUser(),
-            subtotal: 0.0,
+            subtotalCents: 0,
           );
 
       expect(result, isA<CheckoutError>());
@@ -368,11 +372,11 @@ void main() {
 
       final future1 = container
           .read(checkoutStateProvider.notifier)
-          .startCheckout(items: items, user: user, subtotal: 10.0);
+          .startCheckout(items: items, user: user, subtotalCents: 1000);
 
       final result2 = await container
           .read(checkoutStateProvider.notifier)
-          .startCheckout(items: items, user: user, subtotal: 10.0);
+          .startCheckout(items: items, user: user, subtotalCents: 1000);
 
       expect(result2, isA<CheckoutError>());
       expect(

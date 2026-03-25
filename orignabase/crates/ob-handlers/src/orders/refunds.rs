@@ -109,8 +109,7 @@ pub(crate) fn calculate_refund_amount_cents(
     order: &Value,
     item: &Value,
 ) -> Result<i64, ob_core::Error> {
-    let item_price_cents =
-        (item.get("price").and_then(|v| v.as_f64()).unwrap_or(0.0) * 100.0).round() as i64;
+    let item_price_cents = i64_field(item, "priceCents");
     let item_quantity = item.get("quantity").and_then(|v| v.as_i64()).unwrap_or(1);
     let mut item_subtotal_cents = item_price_cents * item_quantity;
 
@@ -118,8 +117,9 @@ pub(crate) fn calculate_refund_amount_cents(
     let order_discount = i64_field(order, "discountAmountCents");
     if order_subtotal_pre > 0 && order_discount > 0 {
         let discounted_subtotal = (order_subtotal_pre - order_discount).max(0);
-        let ratio = discounted_subtotal as f64 / order_subtotal_pre as f64;
-        item_subtotal_cents = (item_subtotal_cents as f64 * ratio).round() as i64;
+        // Integer-only scaled arithmetic with banker's rounding
+        item_subtotal_cents =
+            (item_subtotal_cents * discounted_subtotal + order_subtotal_pre / 2) / order_subtotal_pre;
     }
 
     let order_subtotal_cents = i64_field(order, "subtotalCents");
@@ -134,13 +134,14 @@ pub(crate) fn calculate_refund_amount_cents(
         snap
     } else {
         let order_shipping = i64_field(order, fields::SHIPPING_COST_CENTS);
-        let proportion = item_subtotal_cents as f64 / order_subtotal_cents as f64;
-        (order_shipping as f64 * proportion).round() as i64
+        // Integer-only proportional shipping with banker's rounding
+        (order_shipping * item_subtotal_cents + order_subtotal_cents / 2) / order_subtotal_cents
     };
 
     let order_tax = i64_field(order, "taxAmountCents");
-    let proportion = item_subtotal_cents as f64 / order_subtotal_cents as f64;
-    let proportional_tax = (order_tax as f64 * proportion).round() as i64;
+    // Integer-only proportional tax with banker's rounding
+    let proportional_tax =
+        (order_tax * item_subtotal_cents + order_subtotal_cents / 2) / order_subtotal_cents;
 
     Ok(item_subtotal_cents + proportional_tax + shipping_refund_cents)
 }
@@ -272,15 +273,18 @@ pub(crate) async fn stripe_cancel_pi(
 
 async fn refund_order_item(
     State(state): State<HandlersState>,
+    Extension(auth): Extension<AuthContext>,
     Json(req): Json<RefundItemRequest>,
 ) -> Result<Json<RefundItemResponse>, ob_core::Error> {
     validate_uid("orderId", &req.order_id)?;
     validate_uid("productId", &req.product_id)?;
-    validate_uid("userId", &req.user_id)?;
+
+    // SECURITY: Derive user_id from JWT, never from request body
+    let user_id = auth.user_id.clone();
 
     crate::shared::rate_limiter::check_user_rate_limit(
         &state.db,
-        &req.user_id,
+        &user_id,
         "refund_order_item",
         5,
         1,
@@ -301,7 +305,7 @@ async fn refund_order_item(
         .map_err(|_| ob_core::Error::NotFound("Order not found".into()))?;
 
     // Permission check: seller of item or admin
-    let is_admin = is_user_admin(&state, &req.user_id).await?;
+    let is_admin = is_user_admin(&state, &user_id).await?;
     let items = items_array(&order);
 
     let item_data = items
@@ -319,7 +323,7 @@ async fn refund_order_item(
     };
 
     let item_seller = str_field(item, fields::SELLER_ID);
-    let is_item_seller = item_seller == req.user_id;
+    let is_item_seller = item_seller == user_id;
 
     if !is_admin && !is_item_seller {
         return Err(ob_core::Error::Forbidden(
@@ -369,6 +373,16 @@ async fn refund_order_item(
     let item_quantity = item.get("quantity").and_then(|v| v.as_i64()).unwrap_or(1);
     let refund_amount_cents = calculate_refund_amount_cents(&order, item)?;
 
+    // SECURITY: Verify cumulative refund won't exceed order total BEFORE calling Stripe
+    let cumulative_refunded = i64_field(&order, "cumulativeRefundedCents") + refund_amount_cents;
+    let total_amount = i64_field(&order, "totalAmountCents");
+    if cumulative_refunded > total_amount {
+        return Err(ob_core::Error::Validation(format!(
+            "Cumulative refund ({} cents) would exceed order total ({} cents)",
+            cumulative_refunded, total_amount
+        )));
+    }
+
     // Stripe refund
     let payment_intent_id = str_field(&order, "paymentIntentId");
     if payment_intent_id.is_empty() {
@@ -402,7 +416,7 @@ async fn refund_order_item(
         }
     }
 
-    let cumulative_refunded = i64_field(&order, "cumulativeRefundedCents") + refund_amount_cents;
+    // cumulative_refunded already validated before Stripe call
     state
         .db
         .update_document(
@@ -467,7 +481,7 @@ async fn refund_order_item(
             collections::ORDER_EVENTS,
             json!({
                 "orderId": req.order_id,
-                "userId": req.user_id,
+                "userId": user_id,
                 "eventType": "item_refunded",
                 "message": format!("Item {} refunded for {} cents", req.product_id, refund_amount_cents),
                 "metadata": { "productId": req.product_id, "refundAmountCents": refund_amount_cents },
@@ -889,7 +903,7 @@ mod tests {
             "taxAmountCents": 390,
         });
         let item = json!({
-            "price": 20.0,
+            "priceCents": 2000,
             "quantity": 1,
             "itemShippingCents": 250,
         });
@@ -909,7 +923,7 @@ mod tests {
             "taxAmountCents": 100,
         });
         let item = json!({
-            "price": 10.0,
+            "priceCents": 1000,
             "quantity": 1,
             "itemShippingCents": 50,
         });
@@ -926,7 +940,7 @@ mod tests {
             "taxAmountCents": 1300,
         });
         let item = json!({
-            "price": 50.0,
+            "priceCents": 5000,
             "quantity": 1,
         });
 
@@ -946,8 +960,8 @@ mod tests {
             "taxAmountCents": 1300,
         });
         let item = json!({
-            "price": 25.0,  // $25 each
-            "quantity": 2,   // 2 items = $50 subtotal = 50% of order
+            "priceCents": 2500,  // $25 each
+            "quantity": 2,       // 2 items = $50 subtotal = 50% of order
         });
 
         let refund = calculate_refund_amount_cents(&order, &item).unwrap();
@@ -965,7 +979,7 @@ mod tests {
             "taxAmountCents": 650,
         });
         let item = json!({
-            "price": 50.0,
+            "priceCents": 5000,
             "quantity": 1,
         });
 
@@ -983,7 +997,7 @@ mod tests {
             "taxAmountCents": 0,
         });
         let item = json!({
-            "price": 50.0,
+            "priceCents": 5000,
             "quantity": 1,
         });
 
@@ -1002,7 +1016,7 @@ mod tests {
             "taxAmountCents": 390,
         });
         let item = json!({
-            "price": 30.0,
+            "priceCents": 3000,
             "quantity": 1,
         });
 
@@ -1019,7 +1033,7 @@ mod tests {
             "taxAmountCents": 0,
         });
         let item = json!({
-            "price": 25.0,
+            "priceCents": 2500,
             "quantity": 1,
         });
 
@@ -1037,7 +1051,7 @@ mod tests {
             "taxAmountCents": 433,
         });
         let item = json!({
-            "price": 11.11,
+            "priceCents": 1111,
             "quantity": 1,
         });
 
@@ -1054,7 +1068,7 @@ mod tests {
             "taxAmountCents": 650,
         });
         let item = json!({
-            "price": 0.0,
+            "priceCents": 0,
             "quantity": 1,
         });
 
@@ -1539,13 +1553,14 @@ mod tests {
                     "subtotalCents": 2000,
                     "shippingCostCents": 300,
                     "taxAmountCents": 200,
+                    "totalAmountCents": 2600,
                     "cumulativeRefundedCents": 50,
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: "prod_1",
                         fields::SELLER_ID: "seller_1",
                         "status": "delivered",
                         "deliveredAt": Utc::now().to_rfc3339(),
-                        "price": 10.0,
+                        "priceCents": 1000,
                         "quantity": 2,
                         "isDigital": false
                     }]
@@ -1556,6 +1571,7 @@ mod tests {
 
         let Json(resp) = refund_order_item(
             State(state.clone()),
+            Extension(auth("seller_1", &[])),
             Json(RefundItemRequest {
                 order_id: "order_1".into(),
                 product_id: "prod_1".into(),
@@ -1647,12 +1663,13 @@ mod tests {
                     "subtotalCents": 1500,
                     "shippingCostCents": 0,
                     "taxAmountCents": 0,
+                    "totalAmountCents": 1500,
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: "ebook_1",
                         fields::SELLER_ID: "seller_1",
                         "status": "delivered",
                         "deliveredAt": Utc::now().to_rfc3339(),
-                        "price": 15.0,
+                        "priceCents": 1500,
                         "quantity": 1,
                         "isDigital": true,
                         "productType": "digital"
@@ -1664,6 +1681,7 @@ mod tests {
 
         let Json(resp) = refund_order_item(
             State(state.clone()),
+            Extension(auth("seller_1", &[])),
             Json(RefundItemRequest {
                 order_id: "order_digital".into(),
                 product_id: "ebook_1".into(),
@@ -1706,11 +1724,12 @@ mod tests {
                     fields::PAYMENT_STATUS: "captured",
                     "paymentIntentId": "pi_existing",
                     "subtotalCents": 1000,
+                    "totalAmountCents": 1000,
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: "prod_1",
                         fields::SELLER_ID: "seller_1",
                         "status": "refunded",
-                        "price": 10.0,
+                        "priceCents": 1000,
                         "quantity": 1
                     }]
                 }),
@@ -1720,6 +1739,7 @@ mod tests {
 
         let Json(resp) = refund_order_item(
             State(state),
+            Extension(auth("seller_1", &[])),
             Json(RefundItemRequest {
                 order_id: "order_already".into(),
                 product_id: "prod_1".into(),
@@ -1920,7 +1940,7 @@ mod tests {
                         fields::PRODUCT_ID: "other_prod",
                         fields::SELLER_ID: "seller_1",
                         "status": "delivered",
-                        "price": 10.0,
+                        "priceCents": 1000,
                         "quantity": 1
                     }]
                 }),
@@ -1930,6 +1950,7 @@ mod tests {
 
         let err = refund_order_item(
             State(state),
+            Extension(auth("seller_1", &[])),
             Json(RefundItemRequest {
                 order_id: "order_nf".into(),
                 product_id: "missing_prod".into(),
@@ -1964,7 +1985,7 @@ mod tests {
                         fields::PRODUCT_ID: "prod_1",
                         fields::SELLER_ID: "seller_1",
                         "status": "delivered",
-                        "price": 10.0,
+                        "priceCents": 1000,
                         "quantity": 1
                     }]
                 }),
@@ -1974,6 +1995,7 @@ mod tests {
 
         let err = refund_order_item(
             State(state),
+            Extension(auth("random_user", &[])),
             Json(RefundItemRequest {
                 order_id: "order_perm".into(),
                 product_id: "prod_1".into(),
@@ -2008,7 +2030,7 @@ mod tests {
                         fields::PRODUCT_ID: "prod_1",
                         fields::SELLER_ID: "seller_1",
                         "status": "delivered",
-                        "price": 10.0,
+                        "priceCents": 1000,
                         "quantity": 1
                     }]
                 }),
@@ -2018,6 +2040,7 @@ mod tests {
 
         let err = refund_order_item(
             State(state),
+            Extension(auth("seller_1", &[])),
             Json(RefundItemRequest {
                 order_id: "order_uncap".into(),
                 product_id: "prod_1".into(),
@@ -2053,7 +2076,7 @@ mod tests {
                         fields::PRODUCT_ID: "prod_1",
                         fields::SELLER_ID: "seller_1",
                         "status": "delivered",
-                        "price": 10.0,
+                        "priceCents": 1000,
                         "quantity": 1
                     }]
                 }),
@@ -2063,6 +2086,7 @@ mod tests {
 
         let err = refund_order_item(
             State(state),
+            Extension(auth("seller_1", &[])),
             Json(RefundItemRequest {
                 order_id: "order_payout".into(),
                 product_id: "prod_1".into(),
@@ -2101,7 +2125,7 @@ mod tests {
                         fields::SELLER_ID: "seller_1",
                         "status": "delivered",
                         "deliveredAt": old_date,
-                        "price": 10.0,
+                        "priceCents": 1000,
                         "quantity": 1
                     }]
                 }),
@@ -2111,6 +2135,7 @@ mod tests {
 
         let err = refund_order_item(
             State(state),
+            Extension(auth("seller_1", &[])),
             Json(RefundItemRequest {
                 order_id: "order_expired".into(),
                 product_id: "prod_1".into(),
@@ -2140,11 +2165,12 @@ mod tests {
                 json!({
                     fields::PAYMENT_STATUS: "captured",
                     "subtotalCents": 1000,
+                    "totalAmountCents": 1000,
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: "prod_1",
                         fields::SELLER_ID: "seller_1",
                         "status": "shipped",
-                        "price": 10.0,
+                        "priceCents": 1000,
                         "quantity": 1
                     }]
                 }),
@@ -2154,6 +2180,7 @@ mod tests {
 
         let err = refund_order_item(
             State(state),
+            Extension(auth("seller_1", &[])),
             Json(RefundItemRequest {
                 order_id: "order_nopi".into(),
                 product_id: "prod_1".into(),

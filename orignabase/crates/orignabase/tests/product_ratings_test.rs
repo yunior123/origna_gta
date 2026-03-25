@@ -173,7 +173,7 @@ async fn test_get_ratings_list() {
 async fn test_get_ratings_pagination() {
     let client = Client::new();
     let (seller_token, seller_id) = register_test_user(&client).await;
-    let (buyer_token, buyer_id) = register_test_user(&client).await;
+    let (buyer_token, _buyer_id) = register_test_user(&client).await;
 
     let product_data = json!({
         "title": "Popular Product",

@@ -233,13 +233,17 @@ async fn create_checkout_session(
     Extension(auth): Extension<AuthContext>,
     Json(req): Json<CreateCheckoutRequest>,
 ) -> Result<Json<CheckoutResponse>, ob_core::Error> {
-    // SECURITY FIX: Validate Turnstile token (prevents bot checkout attacks)
+    // SECURITY: Validate Turnstile token (prevents bot checkout attacks)
+    let is_test_mode = std::env::var("OB_TEST_MODE").unwrap_or_default() == "1";
     if let Some(ref token) = req.turnstile_token {
         if let Some(ref secret) = state.turnstile_secret_key {
             ob_auth::validate_turnstile_token(token, secret).await?;
+        } else if !is_test_mode {
+            return Err(ob_core::Error::Forbidden(
+                "Turnstile secret not configured — cannot validate token".into(),
+            ));
         }
-    } else if std::env::var("OB_TEST_MODE").unwrap_or_default() != "1" {
-        // Require Turnstile token in production
+    } else if !is_test_mode {
         return Err(ob_core::Error::Validation("Turnstile token is required".into()));
     }
 
@@ -319,32 +323,22 @@ async fn create_checkout_session(
         ));
     }
 
-    // --- Server-side product validation ---
+    // --- Server-side product validation (parameterized) ---
     let product_ids: Vec<&str> = req.items.iter().map(|i| i.product_id.as_str()).collect();
-    let record_ids = product_ids
+    let record_ids: Vec<String> = product_ids
         .iter()
-        .map(|id| {
-            format!(
-                "{}:{}",
-                collections::PRODUCTS,
-                ob_core::escape_surreal_string(id)
-            )
-        })
-        .collect::<Vec<_>>()
-        .join(", ");
+        .map(|id| format!("{}:{}", collections::PRODUCTS, id))
+        .collect();
     let products_query = format!(
-        "SELECT * FROM {} WHERE id IN [{}] OR {} IN [{}]",
+        "SELECT * FROM {} WHERE id IN $record_ids OR {} IN $product_ids",
         collections::PRODUCTS,
-        record_ids,
         fields::PRODUCT_ID,
-        product_ids
-            .iter()
-            .map(|id| format!("'{}'", ob_core::escape_surreal_string(id)))
-            .collect::<Vec<_>>()
-            .join(", "),
     );
 
-    let product_rows: Vec<Value> = state.db.query_raw(&products_query).await?;
+    let product_rows: Vec<Value> = state.db.query_bind_value(
+        &products_query,
+        serde_json::json!({"record_ids": record_ids, "product_ids": product_ids}),
+    ).await?;
 
     if product_rows.len() != req.items.len() {
         return Err(ob_core::Error::NotFound(
@@ -570,14 +564,21 @@ async fn create_checkout_session(
     if std::env::var("OB_TEST_MODE").unwrap_or_default() != "1" {
         let five_min_ago = (chrono::Utc::now() - chrono::Duration::minutes(5)).to_rfc3339();
         let dedup_query = format!(
-            "SELECT * FROM {} WHERE {} = '{}' AND {} > '{}' LIMIT 1",
+            "SELECT * FROM {} WHERE {} = $buyer_id AND {} > $cutoff LIMIT 1",
             collections::ORDERS,
             fields::BUYER_ID,
-            ob_core::escape_surreal_string(&user_id),
             fields::CREATED_AT,
-            five_min_ago
         );
-        let existing: Vec<Value> = state.db.query_raw(&dedup_query).await.unwrap_or_default();
+        let existing: Vec<Value> = match state.db.query_bind_value(
+            &dedup_query,
+            serde_json::json!({"buyer_id": user_id, "cutoff": five_min_ago}),
+        ).await {
+            Ok(rows) => rows,
+            Err(err) => {
+                warn!(user_id = %user_id, error = %err, "Dedup check failed, allowing checkout to proceed");
+                vec![]
+            }
+        };
         if !existing.is_empty() {
             return Err(ob_core::Error::Validation(
                 "Duplicate order detected. Please wait before retrying.".into(),
@@ -620,9 +621,10 @@ async fn create_checkout_session(
     if platform_fee_cents > 0 {
         let mut has_connect_account = false;
         for sid in &unique_seller_ids {
-            if let Some(profile) = seller_profiles_cache.get(sid) {
-                if let Some(acct_id) = profile.get("stripeAccountId").and_then(|v| v.as_str()) {
-                    if acct_id.starts_with("acct_") {
+            if let Some(profile) = seller_profiles_cache.get(sid)
+                && let Some(acct_id) = profile.get("stripeAccountId").and_then(|v| v.as_str())
+                && acct_id.starts_with("acct_")
+            {
                         has_connect_account = true;
                         // Add the connected account header for Stripe Connect
                         form_data.push((
@@ -634,8 +636,6 @@ async fn create_checkout_session(
                             acct_id.to_string(),
                         ));
                         break;
-                    }
-                }
             }
         }
         if has_connect_account {
@@ -666,7 +666,9 @@ async fn create_checkout_session(
         form_data.push((format!("line_items[{}][quantity]", i), qty.to_string()));
     }
 
-    let idempotency_key = format!("checkout_{}_{}", order_id, chrono::Utc::now().timestamp_millis());
+    let idempotency_key = req
+        .idempotency_key
+        .unwrap_or_else(|| format!("checkout_{}_{}", order_id, chrono::Utc::now().timestamp_millis()));
     
     let stripe_response = state
         .http_client
@@ -710,7 +712,7 @@ async fn create_checkout_session(
     let order_doc = serde_json::json!({
         fields::ORDER_ID: order_id,
         fields::BUYER_ID: user_id,
-        fields::STATUS: OrderStatus::PendingPayment.as_str(),
+        fields::ORDER_STATUS: OrderStatus::PendingPayment.as_str(),
         fields::PAYMENT_STATUS: "awaiting_payment",
         fields::ITEMS: validated_items,
         fields::SUBTOTAL_CENTS: actual_subtotal_cents,
@@ -747,6 +749,7 @@ async fn create_checkout_session(
     
     // Operations 2+: Decrement stock for each non-digital item
     // This is atomic with order creation — if stock goes negative, entire transaction rolls back
+    let mut stock_op_indices: Vec<(usize, String)> = Vec::new();
     for item in &validated_items {
         if !item
             .get("isDigital")
@@ -756,32 +759,45 @@ async fn create_checkout_session(
             let pid = item.get("productId").and_then(|v| v.as_str()).unwrap_or("");
             let qty = item.get("quantity").and_then(|v| v.as_u64()).unwrap_or(1);
             if ob_core::validate_document_id(pid).is_ok() && qty > 0 {
-                // CRITICAL: This check + decrement is now atomic within the transaction
-                // If stock < qty, SurrealDB will create negative stock but transaction
-                // commitment will still succeed (limitation of SurrealDB v2 numeric checks).
-                // For strict stock enforcement, add a pre-transaction query to verify all stock.
+                let idx = tx.len();
+                // CRITICAL: Atomic check + decrement using WHERE guard.
+                // UPDATE only succeeds if stockQuantity >= qty. If 0 rows affected, out of stock.
                 tx.add(
                     &format!(
-                        "UPDATE {}:{} SET stockQuantity -= {}, updatedAt = '{}'",
-                        collections::PRODUCTS,
-                        pid,
-                        qty,
-                        now
+                        "UPDATE {}:{} SET stockQuantity -= {}, updatedAt = '{}' WHERE stockQuantity >= {}",
+                        collections::PRODUCTS, pid, qty, now, qty
                     ),
                     None,
                 );
+                stock_op_indices.push((idx, pid.to_string()));
             }
         }
     }
 
     // Execute transaction atomically
-    tx.commit(&state.db)
+    let tx_results = tx.commit(&state.db)
         .await
         .map_err(|e| {
             ob_core::Error::Database(format!(
                 "Failed to create order and reserve stock (atomic transaction): {e}"
             ))
         })?;
+
+    // Verify all stock decrements actually affected a row (WHERE guard matched)
+    for (idx, pid) in &stock_op_indices {
+        let result = tx_results.get(*idx);
+        let is_empty = match result {
+            Some(Value::Array(arr)) => arr.is_empty(),
+            Some(Value::Null) | None => true,
+            _ => false,
+        };
+        if is_empty {
+            warn!(product_id = %pid, order_id = %order_id, "Insufficient stock — UPDATE matched 0 rows");
+            return Err(ob_core::Error::Validation(
+                format!("Insufficient stock for product {pid}. Please reduce quantity or remove from cart.")
+            ));
+        }
+    }
 
     info!(
         order_id = %order_id,
@@ -1567,7 +1583,7 @@ mod tests {
             .get_document(collections::ORDERS, &resp.order_id)
             .await
             .unwrap();
-        assert_eq!(order[fields::STATUS], OrderStatus::PendingPayment.as_str());
+        assert_eq!(order[fields::ORDER_STATUS], OrderStatus::PendingPayment.as_str());
         assert_eq!(order[fields::PAYMENT_STATUS], "awaiting_payment");
         assert_eq!(order[fields::CHECKOUT_SESSION_ID], "cs_test_123");
         assert_eq!(order[fields::SUBTOTAL_CENTS], 3000);

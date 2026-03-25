@@ -131,7 +131,7 @@ mod payment_fixes {
         if response.status() == StatusCode::OK || response.status() == StatusCode::CREATED {
             let body: Value = response.json().await.unwrap_or(json!({}));
 
-            if let (Some(subtotal), Some(tax), Some(shipping), Some(total), Some(fee)) = (
+            if let (Some(subtotal), Some(tax), Some(shipping), Some(total), Some(_fee)) = (
                 body["subtotalCents"].as_i64(),
                 body["taxAmountCents"].as_i64(),
                 body["shippingCostCents"].as_i64(),
@@ -322,7 +322,7 @@ mod payment_fixes {
         let client = client();
 
         // Create checkout with coupon
-        let response = client
+        let _response = client
             .post(format!("{}/payments/checkout", base_url()))
             .header("Authorization", format!("Bearer {}", token))
             .json(&json!({

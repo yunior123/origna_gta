@@ -20,7 +20,9 @@ class OrignaBaseCartRepository implements CartRepository {
   /// SurrealDB parent_id filter format: `users:<bareId>`.
   SubcollectionRef _cartRef(String userId) {
     final bareId = userId.contains(':') ? userId.split(':').last : userId;
-    return _ob.collection(Collections.users).subcollection(bareId, Collections.cart);
+    return _ob
+        .collection(Collections.users)
+        .subcollection(bareId, Collections.cart);
   }
 
   @override
@@ -34,6 +36,26 @@ class OrignaBaseCartRepository implements CartRepository {
     String? variantSku,
   }) async {
     if (quantity < minCartItemQuantity) return;
+
+    // Verify product stock before mutating cart
+    final productDoc = await _ob
+        .collection(Collections.products)
+        .doc(productId)
+        .get();
+    if (productDoc == null || !productDoc.exists) {
+      throw NotFoundException('Product not found', statusCode: 404);
+    }
+    final stockQuantity =
+        (productDoc.get<num>(Fields.stockQuantity))?.toInt() ?? 0;
+    if (stockQuantity < quantity) {
+      throw ConflictException(
+        stockQuantity == 0
+            ? 'This product is out of stock'
+            : 'Only $stockQuantity items available in stock',
+        statusCode: 409,
+      );
+    }
+
     final cartRef = _cartRef(userId);
     final docId = variantId != null ? '${productId}_$variantId' : productId;
 
@@ -43,17 +65,23 @@ class OrignaBaseCartRepository implements CartRepository {
     final bareUserId = userId.contains(':') ? userId.split(':').last : userId;
     // Reconstruct full userId for rule check: auth.uid == incoming.userId.
     // auth.uid = JWT sub = 'users:bareId'. incoming.userId must match.
-    final fullUserId = userId.contains(':') ? userId : '${Collections.users}:$userId';
+    final fullUserId = userId.contains(':')
+        ? userId
+        : '${Collections.users}:$userId';
     final parentId = '${Collections.users}:$bareUserId';
 
     // Compute quantity: accumulate if valid existing doc (has parent_id from this user).
-    final bool hasValidExisting = existing != null &&
+    final bool hasValidExisting =
+        existing != null &&
         existing.exists &&
         existing.data['parent_id'] == parentId;
     final currentQty = hasValidExisting
         ? (existing.get<num>(Fields.quantity))?.toInt() ?? 0
         : 0;
-    final newQty = (currentQty + quantity).clamp(minCartItemQuantity, maxCartItemQuantity);
+    final newQty = (currentQty + quantity).clamp(
+      minCartItemQuantity,
+      maxCartItemQuantity,
+    );
 
     // Always use set (upsert) to ensure parent_id and userId are written.
     // update() would 403 on stale docs that lack userId/parent_id.
@@ -122,7 +150,11 @@ class OrignaBaseCartRepository implements CartRepository {
   }
 
   @override
-  Future<void> updateBuyerNote(String userId, String cartItemId, String? note) async {
+  Future<void> updateBuyerNote(
+    String userId,
+    String cartItemId,
+    String? note,
+  ) async {
     final cartItemRef = _cartRef(userId).doc(cartItemId);
     if (note == null) {
       await cartItemRef.update({Fields.buyerNote: FieldValue.delete()});
@@ -133,13 +165,20 @@ class OrignaBaseCartRepository implements CartRepository {
   }
 
   @override
-  Future<void> updateQuantity(String userId, String cartItemId, int quantity) async {
+  Future<void> updateQuantity(
+    String userId,
+    String cartItemId,
+    int quantity,
+  ) async {
     final cartItemRef = _cartRef(userId).doc(cartItemId);
     if (quantity < minCartItemQuantity) {
       await cartItemRef.delete();
     } else {
       await cartItemRef.update({
-        Fields.quantity: quantity.clamp(minCartItemQuantity, maxCartItemQuantity),
+        Fields.quantity: quantity.clamp(
+          minCartItemQuantity,
+          maxCartItemQuantity,
+        ),
       });
     }
   }

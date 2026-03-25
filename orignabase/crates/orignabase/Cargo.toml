@@ -11,6 +11,7 @@ path = "src/main.rs"
 
 [features]
 default = []
+integration = []
 cluster = ["ob-realtime/cluster"]
 
 [dependencies]

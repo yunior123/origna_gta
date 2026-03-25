@@ -426,18 +426,35 @@ impl DatabaseClient {
         query: &str,
         binds: impl serde::Serialize + 'static,
     ) -> Result<Vec<Value>> {
+        // Serialize binds to Value so we can re-use them if needed for fallback
+        let binds_value = serde_json::to_value(&binds)
+            .map_err(|e| Error::Database(format!("Bind serialization failed: {e}")))?;
+
         let mut response = self
             .inner()
             .query(query)
-            .bind(binds)
+            .bind(binds_value.clone())
             .await
             .map_err(|e| Error::Database(format!("Query failed: {e}")))?;
 
-        let results: Vec<Value> = response
-            .take(0)
-            .map_err(|e| Error::Database(format!("Result extraction failed: {e}")))?;
-
-        Ok(results)
+        // Try Record-based extraction first (handles RecordId fields properly).
+        // Fall back to direct Value extraction for aggregate queries (COUNT, GROUP ALL)
+        // that don't return an `id` column.
+        match take_records(&mut response, 0) {
+            Ok(records) => Ok(records),
+            Err(_) => {
+                let mut response2 = self
+                    .inner()
+                    .query(query)
+                    .bind(binds_value)
+                    .await
+                    .map_err(|e| Error::Database(format!("Query failed: {e}")))?;
+                let results: Vec<Value> = response2
+                    .take(0)
+                    .map_err(|e| Error::Database(format!("Result extraction failed: {e}")))?;
+                Ok(results)
+            }
+        }
     }
 
     /// Execute a parameterized SurrealQL query (safe from injection).

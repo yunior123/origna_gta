@@ -1121,12 +1121,292 @@ async function seedPayouts(admin: AuthBundle, sellerIds: string[]) {
   }
 }
 
+// === ADDITIONAL SEED DATA FOR FULL VIEW COVERAGE ===
+
+async function seedAdminAuditLogs(admin: AuthBundle, adminId: string, sellerIds: string[], buyerIds: string[]) {
+  const actions = [
+    'user_banned', 'user_unbanned', 'product_removed', 'order_refunded',
+    'seller_verified', 'coupon_created', 'settings_changed',
+  ] as const;
+  const detailsMap: Record<string, string[]> = {
+    user_banned: ['Spam', 'Fraudulent activity', 'Terms violation', 'Repeated abuse', 'Fake reviews'],
+    user_unbanned: ['Appeal approved', 'Wrongful ban reversed', 'Account verified'],
+    product_removed: ['Counterfeit item', 'Prohibited product', 'IP infringement', 'Misleading listing'],
+    order_refunded: ['Buyer complaint', 'Seller failed to ship', 'Damaged in transit', 'Duplicate charge'],
+    seller_verified: ['Documents approved', 'Business verification complete', 'Identity confirmed'],
+    coupon_created: ['Holiday promo', 'New user discount', 'Loyalty reward', 'Flash sale'],
+    settings_changed: ['Updated fee rate', 'Changed shipping policy', 'Modified return window', 'Updated TOS'],
+  };
+  const ipAddresses = ['192.168.1.1', '10.0.0.5', '172.16.0.12', '192.168.2.100', '10.10.1.50'];
+  const allTargets = [...sellerIds, ...buyerIds];
+
+  const logs = Array.from({ length: 55 }, (_, index) => {
+    const action = actions[index % actions.length];
+    const details = detailsMap[action][index % detailsMap[action].length];
+    const targetId = allTargets[index % allTargets.length];
+    return {
+      id: `audit_log_${String(index + 1).padStart(3, '0')}`,
+      adminId,
+      action,
+      targetId: `users:${targetId}`,
+      details,
+      timestamp: Math.floor(Date.now() / 1000) - index * 3600,
+      ipAddress: ipAddresses[index % ipAddresses.length],
+      createdAt: isoDaysAgo(index % 30),
+    };
+  });
+
+  await writeMany(logs, async log => {
+    await writeDoc(`admin_audit_logs/${log.id}`, log, admin.idToken, true);
+  }, 20);
+}
+
+async function seedFlaggedReviews(admin: AuthBundle, buyerIds: string[], sellerId: string, productIds: string[]) {
+  const flagReasons = ['spam', 'inappropriate', 'fake'] as const;
+  const flaggedReviews = Array.from({ length: 10 }, (_, index) => {
+    const productId = productIds[(index * 7) % productIds.length];
+    const buyerId = buyerIds[index % buyerIds.length];
+    return {
+      id: `flagged_review_${String(index + 1).padStart(3, '0')}`,
+      productId,
+      userId: buyerId,
+      sellerId,
+      rating: 1 + (index % 3),
+      review: `Flagged review ${index + 1} — content under moderation review.`,
+      createdAt: isoDaysAgo((index % 15) + 1),
+      hasPhotos: index % 3 === 0,
+      photoUrls: index % 3 === 0 ? sampleImageUrls(`flagged-review-${index + 1}`, 1) : [],
+      isFlagged: true,
+      flagged: true,
+      flagReason: flagReasons[index % flagReasons.length],
+      reportCount: 3 + (index % 5),
+      orderId: `seed_order_${String((index % 30) + 1).padStart(3, '0')}`,
+    };
+  });
+
+  await writeMany(flaggedReviews, async review => {
+    await writeDoc(`product_ratings/${review.id}`, review, admin.idToken, true);
+  }, 10);
+}
+
+async function seedSuspendedSellers(admin: AuthBundle) {
+  const suspendedSellers = [
+    {
+      id: 'seed_seller_suspended_01',
+      status: 'suspended',
+      businessName: 'Suspended Imports Ltd',
+      suspensionReason: 'Multiple counterfeit product reports',
+    },
+    {
+      id: 'seed_seller_suspended_02',
+      status: 'suspended',
+      businessName: 'Banned Electronics Co',
+      suspensionReason: 'Fraudulent shipping claims',
+    },
+    {
+      id: 'seed_seller_warned_01',
+      status: 'warned',
+      businessName: 'Warning Zone Goods',
+      suspensionReason: 'Late shipping violations — 3 strikes',
+    },
+  ];
+
+  for (const seller of suspendedSellers) {
+    // Create user record
+    await writeDoc(`users/${seller.id}`, {
+      email: `${seller.id}@test.origna.ca`,
+      displayName: seller.businessName,
+      roles: ['buyer', 'seller'],
+      isPremium: false,
+      emailVerified: true,
+      suspended: seller.status === 'suspended',
+      stripeOnboarded: true,
+      preferredLanguage: 'en',
+      createdAt: isoDaysAgo(60),
+      updatedAt: new Date().toISOString(),
+    }, admin.idToken, true);
+
+    // Create seller profile with status
+    await writeDoc(`seller_profiles/${seller.id}`, {
+      sellerId: seller.id,
+      businessName: seller.businessName,
+      description: `Seeded ${seller.status} seller for admin moderation views.`,
+      status: seller.status,
+      suspensionReason: seller.suspensionReason,
+      chargesEnabled: seller.status !== 'suspended',
+      payoutsEnabled: seller.status !== 'suspended',
+      detailsSubmitted: true,
+      onboardingCompleted: true,
+      pendingRequirements: [],
+      defaultCurrency: 'CAD',
+      defaultCountry: 'CA',
+      stripeAccountId: `acct_seed_${seller.id}`,
+      suspendedAt: seller.status === 'suspended' ? isoDaysAgo(5) : null,
+      warnedAt: seller.status === 'warned' ? isoDaysAgo(3) : null,
+      createdAt: isoDaysAgo(60),
+      updatedAt: new Date().toISOString(),
+    }, admin.idToken, true);
+  }
+}
+
+async function seedShippingTracking(admin: AuthBundle) {
+  const carriers = [
+    { name: 'UPS', prefix: '1Z999AA1', urlBase: 'https://www.ups.com/track?tracknum=' },
+    { name: 'FedEx', prefix: '7489', urlBase: 'https://www.fedex.com/fedextrack/?trknbr=' },
+    { name: 'Canada Post', prefix: 'CPC', urlBase: 'https://www.canadapost-postescanada.ca/track-reperer/en#/details/' },
+    { name: 'Purolator', prefix: 'PUR', urlBase: 'https://www.purolator.com/en/shipping/tracker?pin=' },
+  ];
+
+  for (let i = 0; i < 15; i++) {
+    const carrier = carriers[i % carriers.length];
+    const trackingNumber = `${carrier.prefix}${String(10000000 + i * 1234567).slice(0, 8)}`;
+    const orderId = `seed_order_${String(i + 1).padStart(3, '0')}`;
+
+    await writeDoc(`orders/${orderId}`, {
+      trackingNumber,
+      carrier: carrier.name,
+      trackingUrl: `${carrier.urlBase}${trackingNumber}`,
+      shippedAt: isoDaysAgo(3 + (i % 5)),
+    }, admin.idToken, false); // merge, not overwrite
+  }
+}
+
+async function seedReturnShippingLabels(admin: AuthBundle) {
+  const carriers = ['Canada Post', 'UPS', 'FedEx', 'Purolator', 'Canada Post'];
+
+  for (let i = 0; i < 5; i++) {
+    const returnId = `return_${String(i + 1).padStart(3, '0')}`;
+    const carrier = carriers[i];
+    const trackingNumber = `RTN${carrier.replace(/\s/g, '').toUpperCase()}${String(20000000 + i * 987654).slice(0, 8)}`;
+
+    await writeDoc(`return_requests/${returnId}`, {
+      returnTrackingNumber: trackingNumber,
+      returnCarrier: carrier,
+      returnLabelUrl: `https://example.com/return-labels/${returnId}/${trackingNumber}.pdf`,
+      returnShippedAt: isoDaysAgo(2 + i),
+    }, admin.idToken, false); // merge
+  }
+}
+
+async function seedSellerRatings(admin: AuthBundle, buyerIds: string[], sellerIds: string[]) {
+  const comments = [
+    'Great seller, fast shipping!',
+    'Excellent communication throughout.',
+    'Product exactly as described.',
+    'Would buy again, very reliable.',
+    'Good value, arrived on time.',
+    'Packaging was superb, item perfect.',
+    'Seller resolved my issue quickly.',
+    'Friendly and professional service.',
+    'Slightly delayed but great product.',
+    'Amazing quality, highly recommend!',
+  ];
+
+  const ratings = Array.from({ length: 20 }, (_, index) => ({
+    id: `seller_rating_${String(index + 1).padStart(3, '0')}`,
+    buyerId: buyerIds[index % buyerIds.length],
+    sellerId: sellerIds[index % sellerIds.length],
+    orderId: `orders:seed_order_${String((index % 30) + 1).padStart(3, '0')}`,
+    rating: 3 + (index % 3),
+    comment: comments[index % comments.length],
+    createdAt: Math.floor(Date.now() / 1000) - index * 86400,
+  }));
+
+  await writeMany(ratings, async rating => {
+    await writeDoc(`seller_ratings/${rating.id}`, rating, admin.idToken, true);
+  }, 10);
+}
+
+async function seedAbandonedCarts(admin: AuthBundle, buyerIds: string[], productIds: string[]) {
+  for (let i = 0; i < 5; i++) {
+    const buyerId = buyerIds[i % buyerIds.length];
+    const productId = productIds[(i * 11) % productIds.length];
+    const staleTimestamp = isoDaysAgo(2 + i); // 2-6 days old (well past 24h)
+
+    await writeDoc(`users/${buyerId}/cart/abandoned_cart_${i + 1}`, {
+      userId: buyerId,
+      productId,
+      quantity: 1 + (i % 2),
+      priceCents: 2999 + (i * 500),
+      createdAt: staleTimestamp,
+      buyerNote: null,
+      variantId: null,
+      variantTitle: null,
+      isAbandoned: true,
+    }, admin.idToken, true);
+  }
+}
+
+async function seedDashboardMetrics(admin: AuthBundle) {
+  const metrics = Array.from({ length: 30 }, (_, index) => {
+    const date = new Date(Date.now() - index * 86_400_000);
+    const dateStr = date.toISOString().split('T')[0];
+    const dayOfWeek = date.getDay();
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+    const baseOrders = isWeekend ? 25 : 47;
+    const baseRevenue = isWeekend ? 750000 : 1250000;
+
+    return {
+      id: `metrics_${dateStr}`,
+      date: dateStr,
+      totalRevenueCents: baseRevenue + Math.floor(Math.random() * 500000),
+      orderCount: baseOrders + Math.floor(Math.random() * 20),
+      newUsers: 8 + Math.floor(Math.random() * 12),
+      activeUsers: 120 + Math.floor(Math.random() * 80),
+      conversionRate: Number((2.5 + Math.random() * 2.0).toFixed(1)),
+      averageOrderValueCents: 4500 + Math.floor(Math.random() * 3000),
+      returnsCount: Math.floor(Math.random() * 5),
+      topCategory: CATEGORY_LABELS[index % CATEGORY_LABELS.length],
+    };
+  });
+
+  await writeMany(metrics, async metric => {
+    await writeDoc(`dashboard_metrics/${metric.id}`, metric, admin.idToken, true);
+  }, 10);
+}
+
+async function seedImportJobs(admin: AuthBundle, sellerIds: string[]) {
+  const jobs = [
+    { id: 'import_job_001', sellerId: sellerIds[0], status: 'completed', totalRows: 150, processedRows: 150, failedRows: 2, filename: 'products_batch_jan.csv' },
+    { id: 'import_job_002', sellerId: sellerIds[1], status: 'completed', totalRows: 80, processedRows: 80, failedRows: 0, filename: 'inventory_update.csv' },
+    { id: 'import_job_003', sellerId: sellerIds[0], status: 'completed', totalRows: 200, processedRows: 200, failedRows: 5, filename: 'spring_collection.csv' },
+    { id: 'import_job_004', sellerId: sellerIds[1], status: 'failed', totalRows: 50, processedRows: 12, failedRows: 12, filename: 'bad_format_import.xlsx', errorMessage: 'Invalid CSV format: unexpected column headers at row 13' },
+    { id: 'import_job_005', sellerId: sellerIds[0], status: 'in_progress', totalRows: 300, processedRows: 187, failedRows: 0, filename: 'mega_catalog_update.csv' },
+  ];
+
+  for (const job of jobs) {
+    await writeDoc(`import_jobs/${job.id}`, {
+      ...job,
+      startedAt: isoDaysAgo(job.status === 'in_progress' ? 0 : 5),
+      completedAt: job.status === 'completed' ? isoDaysAgo(4) : job.status === 'failed' ? isoDaysAgo(3) : null,
+      createdAt: isoDaysAgo(6),
+      updatedAt: new Date().toISOString(),
+    }, admin.idToken, true);
+  }
+}
+
+async function seedComparisonLists(admin: AuthBundle, buyerIds: string[], productIds: string[]) {
+  const lists = [
+    { id: 'comparison_list_001', userId: buyerIds[0], name: 'Gaming Laptops', productIds: productIds.slice(0, 4) },
+    { id: 'comparison_list_002', userId: buyerIds[1 % buyerIds.length], name: 'Kitchen Essentials', productIds: productIds.slice(10, 15) },
+    { id: 'comparison_list_003', userId: buyerIds[2 % buyerIds.length], name: 'Gift Ideas', productIds: productIds.slice(20, 26) },
+  ];
+
+  for (const list of lists) {
+    await writeDoc(`comparison_lists/${list.id}`, {
+      ...list,
+      createdAt: isoDaysAgo(3),
+      updatedAt: new Date().toISOString(),
+    }, admin.idToken, true);
+  }
+}
+
 async function main() {
   console.log(`🌱 Mega seeding ${process.env.ORIGNABASE_URL || 'default'} with ${PRODUCT_COUNT}+ products...`);
 
   const admin = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
-  const seller = await signIn(TEST_ACCOUNTS.SELLER_EMAIL, TEST_ACCOUNTS.SELLER_PASS);
-  const buyer = await signIn(TEST_ACCOUNTS.BUYER_EMAIL, TEST_ACCOUNTS.BUYER_PASS);
+  const _seller = await signIn(TEST_ACCOUNTS.SELLER_EMAIL, TEST_ACCOUNTS.SELLER_PASS);
+  const _buyer = await signIn(TEST_ACCOUNTS.BUYER_EMAIL, TEST_ACCOUNTS.BUYER_PASS);
 
   const ids = await upsertUsers(admin);
   console.log(`  ✓ users seeded (admin=${ids.adminId}, seller=${ids.sellerId}, buyer=${ids.buyerId})`);
@@ -1229,6 +1509,38 @@ async function main() {
   await seedMoreChats(admin, allBuyerIds, allSellerIds, productIds);
   console.log('  ✓ additional chat threads seeded (10)');
 
+  // === ADDITIONAL SEED DATA FOR FULL VIEW COVERAGE ===
+
+  await seedAdminAuditLogs(admin, ids.adminId, allSellerIds, ids.buyerPool.slice(0, 8));
+  console.log('  ✓ admin audit logs seeded (55)');
+
+  await seedFlaggedReviews(admin, [ids.buyerId, 'seed_buyer_01', 'seed_buyer_02', 'seed_buyer_03'], ids.sellerId, productIds);
+  console.log('  ✓ flagged/reported reviews seeded (10)');
+
+  await seedSuspendedSellers(admin);
+  console.log('  ✓ suspended/warned seller profiles seeded (3)');
+
+  await seedShippingTracking(admin);
+  console.log('  ✓ shipping tracking data seeded (15 orders)');
+
+  await seedReturnShippingLabels(admin);
+  console.log('  ✓ return shipping labels seeded (5)');
+
+  await seedSellerRatings(admin, [ids.buyerId, ...ids.buyerPool.slice(0, 5)], allSellerIds);
+  console.log('  ✓ buyer-seller ratings seeded (20)');
+
+  await seedAbandonedCarts(admin, ids.buyerPool.slice(0, 5), productIds);
+  console.log('  ✓ abandoned carts seeded (5)');
+
+  await seedDashboardMetrics(admin);
+  console.log('  ✓ dashboard metrics seeded (30 days)');
+
+  await seedImportJobs(admin, allSellerIds);
+  console.log('  ✓ seller import jobs seeded (5)');
+
+  await seedComparisonLists(admin, [ids.buyerId, ...ids.buyerPool.slice(0, 3)], productIds);
+  console.log('  ✓ product comparison lists seeded (3)');
+
   await delay(1500);
   console.log('🌱 Mega seed complete.');
   console.log(`   Products: ${productIds.length}`);
@@ -1236,8 +1548,11 @@ async function main() {
   console.log(`     notifications, reviews, Q&A, chats, stock_notifications, subscriptions,`);
   console.log(`     seller_profiles, seller_metrics, return_requests, categories,`);
   console.log(`     disputes, coupons, promotions, download_sessions, mfa_settings,`);
-  console.log(`     review_answers, user_preferences, payouts`);
+  console.log(`     review_answers, user_preferences, payouts, admin_audit_logs,`);
+  console.log(`     seller_ratings, dashboard_metrics, import_jobs, comparison_lists`);
   console.log(`   Multi-user: favorites(6), addresses(7), cart(4), notifications(9), stock_notifications(6)`);
+  console.log(`   Additional: flagged reviews(10), suspended sellers(3), tracking(15), return labels(5),`);
+  console.log(`     abandoned carts(5), audit logs(55), seller ratings(20), metrics(30d), imports(5), comparisons(3)`);
   console.log(`   All views and widgets now have populated non-empty state for demos.`);
 }
 

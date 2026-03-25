@@ -5,6 +5,7 @@ import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
+import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:origna_gta/features/checkout/checkout_provider.dart';
 import 'package:origna_gta/features/subscription/subscription_provider.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';

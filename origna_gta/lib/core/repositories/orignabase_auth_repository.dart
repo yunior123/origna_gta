@@ -47,6 +47,9 @@ class OrignaBaseAuthRepository implements AuthRepository {
 
   OrignaBaseAuthRepository(this._ob);
 
+  /// Timestamp of last successful re-authentication (epoch milliseconds).
+  int? _lastReAuthenticatedAt;
+
   // ---------------------------------------------------------------------------
   // Auth methods
   // ---------------------------------------------------------------------------
@@ -114,10 +117,9 @@ class OrignaBaseAuthRepository implements AuthRepository {
         try {
           authState = await _ob.auth.signInWithEmail(trimmedEmail, password);
           break;
-        } on RateLimitException catch (_) {
-          attempt += 1;
-          if (attempt >= 3) rethrow;
-          await Future<void>.delayed(Duration(seconds: attempt));
+        } on RateLimitException {
+          // SECURITY: Never retry on 429 — amplifies brute-force attacks.
+          rethrow;
         } on NetworkException catch (_) {
           attempt += 1;
           if (attempt >= 3) rethrow;
@@ -125,20 +127,20 @@ class OrignaBaseAuthRepository implements AuthRepository {
         }
       }
 
-      if (authState.isAuthenticated && authState.userId != null) {
-        await _createUserDocumentIfNeeded(
-          userId: authState.userId!,
-          email: trimmedEmail,
-          consentMethod: ConsentMethodValues.signupForm,
-        );
-      }
-
-      // Handle MFA challenge
+      // Handle MFA challenge BEFORE creating profile
       if (authState.mfaRequired && authState.challengeToken != null) {
         throw OrignaBaseAuthException(
           code: 'mfa-required',
           message: 'Multi-factor authentication required',
           challengeToken: authState.challengeToken,
+        );
+      }
+
+      if (authState.isAuthenticated && authState.userId != null) {
+        await _createUserDocumentIfNeeded(
+          userId: authState.userId!,
+          email: trimmedEmail,
+          consentMethod: ConsentMethodValues.signupForm,
         );
       }
     } catch (e) {
@@ -295,12 +297,14 @@ class OrignaBaseAuthRepository implements AuthRepository {
       );
     }
 
-    _ob.auth.signOut();
+    await _ob.auth.signOut();
 
     // Also sign out of Google if signed in
     try {
       await GoogleSignIn.instance.disconnect();
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.w('Google disconnect failed', tag: 'auth', error: e);
+    }
 
     // Wait for auth state to propagate
     try {
@@ -399,17 +403,48 @@ class OrignaBaseAuthRepository implements AuthRepository {
   // Account management
   // ---------------------------------------------------------------------------
 
+  /// Re-authenticates the user by verifying their password against OrignaBase.
+  ///
+  /// Must be called before sensitive operations like [deleteAccount].
+  /// Records the timestamp so callers can enforce a freshness window.
+  Future<void> reAuthenticate(String password) async {
+    final email = _ob.auth.currentState.email;
+    if (email == null || email.isEmpty) {
+      throw OrignaBaseAuthException(
+        code: 'no-current-user',
+        message: 'No authenticated user to re-authenticate',
+      );
+    }
+    try {
+      await _ob.auth.signInWithEmail(email, password);
+      _lastReAuthenticatedAt = DateTime.now().millisecondsSinceEpoch;
+    } catch (e) {
+      _rethrowAsAuthException(e);
+    }
+  }
+
   @override
   Future<void> deleteAccount() async {
     final userId = _currentUserId;
     if (userId == null || userId.isEmpty) return;
+
+    // Require re-authentication within the last 60 seconds
+    const reAuthWindowMs = 60 * 1000;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (_lastReAuthenticatedAt == null ||
+        (now - _lastReAuthenticatedAt!) > reAuthWindowMs) {
+      throw OrignaBaseAuthException(
+        code: 'requires-recent-login',
+        message: 'Please re-authenticate before deleting your account',
+      );
+    }
 
     await _ob.request(
       'POST',
       ApiEndpoints.authDeleteAccount,
       body: {'confirmation': 'DELETE_MY_ACCOUNT'},
     );
-    _ob.auth.signOut();
+    await _ob.auth.signOut();
   }
 
   @override
@@ -436,7 +471,7 @@ class OrignaBaseAuthRepository implements AuthRepository {
   @override
   Future<bool> validateCurrentUser() async {
     final accessToken = _ob.auth.accessToken;
-    if (accessToken == null) return true; // No user, nothing to validate
+    if (accessToken == null) return false;
 
     try {
       final authState = await _ob.auth.refreshToken();

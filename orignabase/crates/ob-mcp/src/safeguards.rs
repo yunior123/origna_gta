@@ -9,31 +9,85 @@ use tokio::sync::RwLock;
 /// Idempotency key tracking — prevents duplicate operations
 #[derive(Clone)]
 pub struct IdempotencyTracker {
-    // Map of idempotency_key -> last_response
-    cache: Arc<RwLock<HashMap<String, serde_json::Value>>>,
+    // Map of idempotency_key -> (response, timestamp)
+    cache: Arc<RwLock<HashMap<String, (serde_json::Value, i64)>>>,
+    /// Number of check() calls between automatic cleanup runs
+    cleanup_interval: u64,
+    /// Counter for check() calls since last cleanup
+    check_count: Arc<RwLock<u64>>,
 }
+
+/// TTL for idempotency entries: 24 hours in seconds
+const IDEMPOTENCY_TTL_SECS: i64 = 24 * 60 * 60;
+/// Maximum number of entries before forced eviction
+const MAX_ENTRIES: usize = 10_000;
 
 impl IdempotencyTracker {
     pub fn new() -> Self {
         Self {
             cache: Arc::new(RwLock::new(HashMap::new())),
+            cleanup_interval: 100,
+            check_count: Arc::new(RwLock::new(0)),
         }
     }
 
-    /// Check if operation was already processed
+    /// Check if operation was already processed.
+    /// Runs periodic cleanup to evict expired entries.
     pub async fn check(&self, key: &str) -> Option<serde_json::Value> {
-        self.cache.read().await.get(key).cloned()
+        // Periodic cleanup every N calls
+        {
+            let mut count = self.check_count.write().await;
+            *count += 1;
+            if *count >= self.cleanup_interval {
+                *count = 0;
+                drop(count);
+                self.cleanup().await;
+            }
+        }
+
+        let cache = self.cache.read().await;
+        cache.get(key).and_then(|(value, ts)| {
+            let now = chrono::Utc::now().timestamp();
+            if now - ts < IDEMPOTENCY_TTL_SECS {
+                Some(value.clone())
+            } else {
+                None // Expired — treat as not found
+            }
+        })
     }
 
     /// Mark operation as processed with result
     pub async fn mark(&self, key: String, result: serde_json::Value) {
-        self.cache.write().await.insert(key, result);
+        let now = chrono::Utc::now().timestamp();
+        let mut cache = self.cache.write().await;
+
+        // If exceeding max entries, evict oldest 50%
+        if cache.len() >= MAX_ENTRIES {
+            let mut entries: Vec<(String, i64)> = cache
+                .iter()
+                .map(|(k, (_, ts))| (k.clone(), *ts))
+                .collect();
+            entries.sort_by_key(|(_, ts)| *ts);
+            let evict_count = entries.len() / 2;
+            for (k, _) in entries.into_iter().take(evict_count) {
+                cache.remove(&k);
+            }
+            tracing::debug!("IdempotencyTracker: evicted {} entries (capacity limit)", evict_count);
+        }
+
+        cache.insert(key, (result, now));
     }
 
-    /// Clear stale entries (in production, use TTL-based eviction)
-    pub async fn clear_old(&self) {
-        // Placeholder: actual implementation would check entry timestamps
-        // and evict entries older than 24 hours
+    /// Remove entries older than 24 hours
+    pub async fn cleanup(&self) {
+        let now = chrono::Utc::now().timestamp();
+        let mut cache = self.cache.write().await;
+        let before = cache.len();
+        cache.retain(|_, (_, ts)| now - *ts < IDEMPOTENCY_TTL_SECS);
+        let removed = before - cache.len();
+        if removed > 0 {
+            tracing::debug!("IdempotencyTracker: cleaned up {} expired entries", removed);
+        }
     }
 }
 
@@ -141,6 +195,37 @@ mod tests {
 
         // Second call should return same result
         assert_eq!(tracker.check(key).await, Some(result));
+    }
+
+    #[tokio::test]
+    async fn test_idempotency_cleanup_removes_expired() {
+        let tracker = IdempotencyTracker::new();
+
+        // Insert an entry with a fake old timestamp
+        {
+            let mut cache = tracker.cache.write().await;
+            let old_ts = chrono::Utc::now().timestamp() - IDEMPOTENCY_TTL_SECS - 1;
+            cache.insert("old-key".to_string(), (serde_json::json!({"old": true}), old_ts));
+        }
+
+        // Cleanup should remove expired entry
+        tracker.cleanup().await;
+        assert!(tracker.check("old-key").await.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_idempotency_expired_entry_returns_none() {
+        let tracker = IdempotencyTracker::new();
+
+        // Insert an entry with expired timestamp
+        {
+            let mut cache = tracker.cache.write().await;
+            let old_ts = chrono::Utc::now().timestamp() - IDEMPOTENCY_TTL_SECS - 1;
+            cache.insert("expired".to_string(), (serde_json::json!({"expired": true}), old_ts));
+        }
+
+        // Should return None for expired entry
+        assert!(tracker.check("expired").await.is_none());
     }
 
     #[tokio::test]

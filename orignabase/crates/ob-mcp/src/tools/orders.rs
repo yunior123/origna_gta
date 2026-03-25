@@ -1,6 +1,7 @@
 //! Order tools — list, get, return requests, checkout
 
 use crate::errors::{McpError, McpResult};
+use crate::safeguards::SpendLimit;
 use crate::McpState;
 use serde_json::{json, Value};
 
@@ -49,7 +50,13 @@ pub async fn get_order(
 
     // Fetch order
     // NOTE: state.db.get_document("orders", order_id)
+    // For now, simulate order fetch - in production this comes from DB
+    let order_buyer_id = user_id; // Stub: assume order belongs to requesting user
+
     // Verify buyerId matches user_id (ownership check)
+    if order_buyer_id != user_id {
+        return Err(McpError::Forbidden("Access denied".to_string()));
+    }
 
     Ok(json!({
         "id": order_id,
@@ -101,6 +108,7 @@ pub async fn create_checkout(
     _state: McpState,
     user_id: &str,
     params: &Value,
+    spend_limit: Option<&SpendLimit>,
 ) -> McpResult<Value> {
     let items = params
         .get("items")
@@ -117,17 +125,30 @@ pub async fn create_checkout(
 
     let _idempotency_key = params.get("idempotency_key").and_then(|v| v.as_str());
 
-    // Validate each item: { product_id, quantity }
+    // Validate each item and calculate total for spend limit check
+    let mut total_cents: u64 = 0;
     for item in items {
         let _product_id = item
             .get("product_id")
             .and_then(|v| v.as_str())
             .ok_or_else(|| McpError::InvalidParams("Item missing 'product_id'".to_string()))?;
 
-        let _quantity = item
+        let quantity = item
             .get("quantity")
             .and_then(|v| v.as_u64())
             .ok_or_else(|| McpError::InvalidParams("Item missing 'quantity'".to_string()))?;
+
+        // In production, fetch product price from DB; here use price_cents from item if provided
+        let price_cents = item
+            .get("price_cents")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0);
+        total_cents = total_cents.saturating_add(price_cents.saturating_mul(quantity));
+    }
+
+    // Check spend limit before proceeding with checkout
+    if let Some(safeguards) = spend_limit {
+        safeguards.check(user_id, total_cents).await?;
     }
 
     // Check idempotency if key provided
@@ -138,6 +159,11 @@ pub async fn create_checkout(
     // Call Stripe to create checkout session
     // NOTE: ob-handlers::payments::create_checkout_session()
     // Return session_url
+
+    // Record the spend after successful checkout initiation
+    if let Some(safeguards) = spend_limit {
+        safeguards.record(user_id.to_string(), total_cents).await;
+    }
 
     Ok(json!({
         "checkout_id": uuid::Uuid::new_v4().to_string(),
@@ -302,6 +328,7 @@ mod tests {
             state,
             "users:u1",
             &json!({"shipping_address": {"line1": "123 Main"}}),
+            None,
         ).await;
         assert!(result.is_err());
         assert!(matches!(result.unwrap_err(), McpError::InvalidParams(_)));
@@ -314,6 +341,7 @@ mod tests {
             state,
             "users:u1",
             &json!({"items": [{"product_id": "p1", "quantity": 1}]}),
+            None,
         ).await;
         assert!(result.is_err());
         assert!(matches!(result.unwrap_err(), McpError::InvalidParams(_)));
@@ -326,6 +354,7 @@ mod tests {
             state,
             "users:u1",
             &json!({"items": [], "shipping_address": {}}),
+            None,
         ).await;
         assert!(result.is_err());
         assert!(matches!(result.unwrap_err(), McpError::ValidationError(_)));
@@ -338,7 +367,7 @@ mod tests {
             "items": [{"quantity": 1}],
             "shipping_address": {"line1": "123 Main"}
         });
-        let result = create_checkout(state, "users:u1", &params).await;
+        let result = create_checkout(state, "users:u1", &params, None).await;
         assert!(result.is_err());
         assert!(matches!(result.unwrap_err(), McpError::InvalidParams(_)));
     }
@@ -350,7 +379,7 @@ mod tests {
             "items": [{"product_id": "products:p1"}],
             "shipping_address": {"line1": "123 Main"}
         });
-        let result = create_checkout(state, "users:u1", &params).await;
+        let result = create_checkout(state, "users:u1", &params, None).await;
         assert!(result.is_err());
         assert!(matches!(result.unwrap_err(), McpError::InvalidParams(_)));
     }
@@ -362,7 +391,7 @@ mod tests {
             "items": [{"product_id": "products:p1", "quantity": 2}],
             "shipping_address": {"line1": "123 Main St"}
         });
-        let result = create_checkout(state, "users:u1", &params).await.unwrap();
+        let result = create_checkout(state, "users:u1", &params, None).await.unwrap();
         assert!(result["checkout_id"].is_string());
         assert_eq!(result["user_id"], "users:u1");
         assert!(result["session_url"].as_str().unwrap().starts_with("https://"));
@@ -377,7 +406,7 @@ mod tests {
             "shipping_address": {"line1": "123 Main"},
             "idempotency_key": "abc-123"
         });
-        let result = create_checkout(state, "users:u1", &params).await;
+        let result = create_checkout(state, "users:u1", &params, None).await;
         assert!(result.is_ok());
     }
 
@@ -391,7 +420,7 @@ mod tests {
             ],
             "shipping_address": {"line1": "123 Main"}
         });
-        let result = create_checkout(state, "users:u1", &params).await;
+        let result = create_checkout(state, "users:u1", &params, None).await;
         assert!(result.is_ok());
     }
 
@@ -402,8 +431,8 @@ mod tests {
             "items": [{"product_id": "products:p1", "quantity": 1}],
             "shipping_address": {"line1": "123 Main"}
         });
-        let r1 = create_checkout(state.clone(), "users:u1", &params).await.unwrap();
-        let r2 = create_checkout(state, "users:u1", &params).await.unwrap();
+        let r1 = create_checkout(state.clone(), "users:u1", &params, None).await.unwrap();
+        let r2 = create_checkout(state, "users:u1", &params, None).await.unwrap();
         assert_ne!(r1["checkout_id"], r2["checkout_id"]);
     }
 
@@ -414,8 +443,33 @@ mod tests {
             "items": [{"product_id": "products:p1", "quantity": 1}],
             "shipping_address": {"line1": "123 Main"}
         });
-        let result = create_checkout(state, "users:u1", &params).await.unwrap();
+        let result = create_checkout(state, "users:u1", &params, None).await.unwrap();
         let expires = result["expires_at"].as_i64().unwrap();
         assert!(expires > chrono::Utc::now().timestamp());
+    }
+
+    #[tokio::test]
+    async fn test_create_checkout_spend_limit_exceeded() {
+        let state = make_state().await;
+        let spend_limit = SpendLimit::new(5000, 100_000); // $50 max per request
+        let params = json!({
+            "items": [{"product_id": "products:p1", "quantity": 1, "price_cents": 10000}],
+            "shipping_address": {"line1": "123 Main"}
+        });
+        let result = create_checkout(state, "users:u1", &params, Some(&spend_limit)).await;
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), McpError::ValidationError(_)));
+    }
+
+    #[tokio::test]
+    async fn test_create_checkout_spend_limit_ok() {
+        let state = make_state().await;
+        let spend_limit = SpendLimit::new(100_000, 1_000_000); // $1000 max
+        let params = json!({
+            "items": [{"product_id": "products:p1", "quantity": 1, "price_cents": 5000}],
+            "shipping_address": {"line1": "123 Main"}
+        });
+        let result = create_checkout(state, "users:u1", &params, Some(&spend_limit)).await;
+        assert!(result.is_ok());
     }
 }

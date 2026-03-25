@@ -118,7 +118,7 @@ mod injection {
         let c = client();
         let token = register_and_login(&c).await;
         // Attempt OR injection in filter
-        let (status, body) = graphql_request(
+        let (status, _body) = graphql_request(
             &c,
             r#"{ list(collection: "products", limit: 10, filters: {name: {_eq: "x\" OR 1==1 --"}}) }"#,
             Some(&token),

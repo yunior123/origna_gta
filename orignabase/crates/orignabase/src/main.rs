@@ -563,8 +563,27 @@ match /users/{userId} {
 /// In test mode, use very_permissive() so integration tests with arbitrary origins pass.
 fn build_cors_layer(is_test_mode: bool) -> CorsLayer {
     if is_test_mode {
-        // In test mode, allow any origin so integration tests work
-        return CorsLayer::very_permissive();
+        // In test mode, allow localhost + dev domains (not fully permissive)
+        let test_origins = vec![
+            "http://localhost:3000".parse::<HeaderValue>().unwrap(),
+            "http://localhost:8080".parse::<HeaderValue>().unwrap(),
+            "http://127.0.0.1:3000".parse::<HeaderValue>().unwrap(),
+            "http://127.0.0.1:8080".parse::<HeaderValue>().unwrap(),
+            "https://dev.orignagta.ca".parse::<HeaderValue>().unwrap(),
+            "https://staging.orignagta.ca".parse::<HeaderValue>().unwrap(),
+        ];
+        return CorsLayer::new()
+            .allow_origin(test_origins)
+            .allow_credentials(true)
+            .allow_methods([
+                axum::http::Method::GET,
+                axum::http::Method::POST,
+                axum::http::Method::PUT,
+                axum::http::Method::DELETE,
+                axum::http::Method::PATCH,
+                axum::http::Method::OPTIONS,
+            ])
+            .allow_headers(tower_http::cors::Any);
     }
 
     let allowed_origins = vec![
@@ -655,6 +674,13 @@ fn validate_config_warnings(config: &Config) -> Result<()> {
             "info" => eprintln!("  [INFO]     {msg}"),
             _ => eprintln!("  {msg}"),
         }
+    }
+
+    // Block startup on critical security misconfigurations
+    ob_auth::assert_test_mode_not_in_production();
+    ob_auth::assert_jwt_secret_configured(&config.auth.jwt_secret);
+    if let Ok(stripe_key) = config.require_secret("stripe_secret_key") {
+        ob_auth::assert_no_live_stripe_in_dev(stripe_key);
     }
 
     // Block startup on critical issues

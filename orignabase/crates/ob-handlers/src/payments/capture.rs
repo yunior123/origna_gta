@@ -114,7 +114,7 @@ async fn capture_payment(
         .and_then(|v| v.as_str())
         .unwrap_or("");
 
-    if current_payment != "authorized" && current_payment != "awaiting_payment" {
+    if current_payment != "authorized" {
         return Err(ob_core::Error::Validation(format!(
             "Cannot capture payment with payment status '{current_payment}'"
         )));
@@ -614,7 +614,7 @@ mod tests {
                 json!({
                     fields::ORDER_ID: "order_1",
                     fields::STATUS: OrderStatus::AwaitingShippingApproval.as_str(),
-                    fields::PAYMENT_STATUS: PaymentStatus::Pending.as_str(),
+                    fields::PAYMENT_STATUS: PaymentStatus::Authorized.as_str(),
                     fields::CHECKOUT_SESSION_ID: "cs_123",
                     fields::ITEMS: [{
                         fields::SELLER_ID: "seller_1"

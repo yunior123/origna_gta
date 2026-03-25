@@ -3410,7 +3410,7 @@ async fn test_259_addresses_update_buyer_success() {
         .unwrap_or("addr_1")
         .to_string();
 
-    let (status, body) = make_request(
+    let (status, _body) = make_request(
         &client,
         "POST",
         "/api/users/address/update",
@@ -3487,7 +3487,7 @@ async fn test_261_addresses_delete_buyer_success() {
         .unwrap_or("addr_del")
         .to_string();
 
-    let (status, body) = make_request(
+    let (status, _body) = make_request(
         &client,
         "POST",
         "/api/users/address/delete",
@@ -3553,7 +3553,7 @@ async fn test_263_addresses_set_default_success() {
         .unwrap_or("addr_1")
         .to_string();
 
-    let (status, body) = make_request(
+    let (status, _body) = make_request(
         &client,
         "POST",
         "/api/users/address/set-default",

@@ -115,7 +115,10 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
         couponDiscountCents: discountCents,
         isCouponLoading: false,
       );
-      final int postDiscountSubtotalCents = subtotalCents - discountCents;
+      final int postDiscountSubtotalCents = max(
+        0,
+        subtotalCents - discountCents,
+      );
       _recalculateTotalsAfterCouponChange(postDiscountSubtotalCents);
     } on OrignaBaseException catch (e) {
       state = state.copyWith(isCouponLoading: false, couponError: e.message);
@@ -129,7 +132,7 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
   }
 
   /// Verify cart prices before checkout.
-  Future<Map<String, dynamic>?> verifyCartPrices(
+  Future<Map<String, dynamic>> verifyCartPrices(
     List<CartItemDetailModel> items,
   ) async {
     try {
@@ -151,7 +154,7 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
       return Map<String, dynamic>.from(result as Map);
     } catch (e, st) {
       AppError.log(e, stackTrace: st, context: 'ob_checkout_verifyCartPrices');
-      return null;
+      rethrow;
     }
   }
 
@@ -374,7 +377,7 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
   Future<CheckoutResult> startCheckout({
     required List<CartItemDetailModel> items,
     required UserModel user,
-    required double subtotal,
+    required int subtotalCents,
     bool eulaAccepted = false,
     bool ageVerificationAccepted = false,
   }) async {
@@ -385,7 +388,7 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
     if (hasPhysicalItems && !hasValidAddress(state.address)) {
       return CheckoutError(message: 'checkout.errors.address_required'.tr());
     }
-    if (subtotal <= 0) {
+    if (subtotalCents <= 0) {
       return CheckoutError(message: 'checkout.errors.invalid_total'.tr());
     }
     if (user.email.trim().isEmpty) {
@@ -396,14 +399,18 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
     }
 
     state = state.copyWith(isProcessing: true, checkoutError: null);
+    final subtotalDollars = subtotalCents / 100.0;
     final analytics = OrignaBaseAnalyticsService(_ob);
     unawaited(
-      analytics.logBeginCheckout(valueCad: subtotal, itemCount: items.length),
+      analytics.logBeginCheckout(
+        valueCad: subtotalDollars,
+        itemCount: items.length,
+      ),
     );
 
     try {
-      // Biometric guard for high-value transactions
-      if (subtotal >= 100.0) {
+      // Biometric guard for high-value transactions ($100 CAD)
+      if (subtotalCents >= 10000) {
         final localAuth = LocalAuthentication();
         final canAuthenticateWithBiometrics =
             await localAuth.canCheckBiometrics;
@@ -429,6 +436,12 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
               message: 'checkout.errors.biometric_error'.tr(),
             );
           }
+        } else {
+          state = state.copyWith(isProcessing: false);
+          return CheckoutError(
+            message:
+                'This transaction requires biometric authentication, but it\'s not available on this device.',
+          );
         }
       }
 
@@ -462,7 +475,7 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
               },
             )
             .toList(),
-        ApiKeys.subtotalCents: (subtotal * 100).round(),
+        ApiKeys.subtotalCents: subtotalCents,
         Fields.shippingAddress: state.address?.toMap() ?? {},
         Fields.deliverySpeed: state.deliverySpeed.value,
         Fields.deliveryInstructions: deliveryInstructions,
@@ -473,10 +486,10 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
           ApiKeys.ageVerificationAccepted: ageVerificationAccepted,
       };
 
-      // Verify cart prices — fail open
+      // Verify cart prices — fail closed
       try {
         final verifyData = await verifyCartPrices(items);
-        if (verifyData != null && verifyData[ApiKeys.hasChanges] == true) {
+        if (verifyData[ApiKeys.hasChanges] == true) {
           state = state.copyWith(isProcessing: false);
           final priceChanges = verifyData[ApiKeys.priceChanges] as List? ?? [];
           final stockChanges = verifyData[ApiKeys.stockChanges] as List? ?? [];
@@ -508,6 +521,11 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
           e,
           stackTrace: st,
           context: 'ob_checkout_verifyCartPrices',
+        );
+        state = state.copyWith(isProcessing: false);
+        return CheckoutError(
+          message: 'checkout.errors.unable_to_verify_prices'.tr(),
+          code: 'price-verification-failed',
         );
       }
 
@@ -548,6 +566,9 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
         idempotencyKey: null,
         serverTaxAmountCents: serverTaxAmountCents,
       );
+
+      // Invalidate local cart state after successful checkout session creation.
+      // Server-side cart cleanup is handled by the webhook.
       _ref.invalidate(cartItemsProvider);
 
       return CheckoutSuccess(
@@ -634,8 +655,7 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
   }
 
   String _generateIdempotencyKey(String userId) {
-    final ts = DateTime.now().millisecondsSinceEpoch;
-    return 'chk_${userId}_${ts}_${const Uuid().v4()}';
+    return 'chk_${userId}_${const Uuid().v4()}';
   }
 
   double _toRadians(double deg) => deg * pi / 180;

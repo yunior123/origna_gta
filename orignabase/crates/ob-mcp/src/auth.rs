@@ -118,7 +118,7 @@ impl McpContext {
     pub fn require_role(&self, role: &str) -> McpResult<()> {
         let claims = self.claims.as_ref().ok_or(McpError::Unauthorized)?;
         if !claims.has_role(role) {
-            return Err(McpError::Forbidden);
+            return Err(McpError::Forbidden(format!("Required role: {}", role)));
         }
         Ok(())
     }
@@ -469,7 +469,7 @@ mod tests {
         let ctx = McpContext::with_claims(make_claims(Some("buyer")));
         let result = ctx.require_role("admin");
         assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), McpError::Forbidden));
+        assert!(matches!(result.unwrap_err(), McpError::Forbidden(_)));
     }
 
     #[test]
@@ -491,7 +491,7 @@ mod tests {
     #[test]
     fn test_require_admin_forbidden() {
         let ctx = McpContext::with_claims(make_claims(Some("seller")));
-        assert!(matches!(ctx.require_admin(), Err(McpError::Forbidden)));
+        assert!(matches!(ctx.require_admin(), Err(McpError::Forbidden(_))));
     }
 
     #[test]
@@ -509,7 +509,7 @@ mod tests {
     #[test]
     fn test_require_seller_forbidden() {
         let ctx = McpContext::with_claims(make_claims(Some("buyer")));
-        assert!(matches!(ctx.require_seller(), Err(McpError::Forbidden)));
+        assert!(matches!(ctx.require_seller(), Err(McpError::Forbidden(_))));
     }
 
     #[test]

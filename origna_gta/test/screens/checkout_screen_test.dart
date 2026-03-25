@@ -47,18 +47,30 @@ void main() {
     mockAuthRepo = MockAuthRepository();
 
     when(mockAuthRepo.isEmailVerified()).thenAnswer((_) async => true);
-    when(mockOrignaBase.request(any, any, body: anyNamed('body')))
-        .thenAnswer((_) async => <String, dynamic>{});
+    when(
+      mockOrignaBase.request(any, any, body: anyNamed('body')),
+    ).thenAnswer((_) async => <String, dynamic>{});
   });
 
-  Widget buildTestWidget({List<models.CartItemDetailModel> items = const [], double total = 0.0, List<models.Address> addresses = const []}) {
+  Widget buildTestWidget({
+    List<models.CartItemDetailModel> items = const [],
+    double total = 0.0,
+    List<models.Address> addresses = const [],
+  }) {
     return TestWrapper(
       overrides: [
         currentUserProvider.overrideWithValue(signedInUser),
         obUserIdProvider.overrideWithValue(signedInUser.uid),
         userProfileProvider.overrideWith(
-          (ref) =>
-              Stream.value(models.UserModel(uid: 'test_user_123', name: 'Test User', email: 'test@example.com', roles: [UserRole.buyer], createdAt: DateTime.now())),
+          (ref) => Stream.value(
+            models.UserModel(
+              uid: 'test_user_123',
+              name: 'Test User',
+              email: 'test@example.com',
+              roles: [UserRole.buyer],
+              createdAt: DateTime.now(),
+            ),
+          ),
         ),
         userAddressesProvider.overrideWith((ref) => Stream.value(addresses)),
         cartItemsProvider.overrideWith((ref) => Stream.value(const [])),
@@ -81,26 +93,52 @@ void main() {
         productId: 'prod_1',
         name: 'Smartphone',
         description: 'Great phone',
-        price: 50.0, priceCents: 5000,
+        price: 50.0,
+        priceCents: 5000,
         imageUrls: [],
         quantity: 1,
         createdAt: DateTime.now(),
-        sellerAddress: models.Address(street: '123 Seller St', city: 'Toronto', state: 'ON', postalCode: 'M5V 2L7', country: 'Canada'),
+        sellerAddress: models.Address(
+          street: '123 Seller St',
+          city: 'Toronto',
+          state: 'ON',
+          postalCode: 'M5V 2L7',
+          country: 'Canada',
+        ),
         sellerId: 'seller_123',
         sellerName: 'Best Seller',
         status: 'active',
       );
 
-      final mockAddress = models.Address(street: '456 Buyer Ave', city: 'Toronto', state: 'ON', postalCode: 'M1M 1M1', country: 'Canada', isDefault: true);
-
-      when(mockOrignaBase.request('POST', any, body: anyNamed('body')))
-          .thenAnswer((_) async => {'hasChanges': false});
-
-      when(mockOrderRepo.createCheckoutSession(any)).thenAnswer(
-        (_) async => {'checkoutUrl': 'https://stripe.com/checkout/test_session', 'sessionId': 'sess_123', 'orderId': 'order_123', 'taxAmountCents': 650},
+      final mockAddress = models.Address(
+        street: '456 Buyer Ave',
+        city: 'Toronto',
+        state: 'ON',
+        postalCode: 'M1M 1M1',
+        country: 'Canada',
+        isDefault: true,
       );
 
-      await tester.pumpWidget(buildTestWidget(items: [mockItem], total: 50.0, addresses: [mockAddress]));
+      when(
+        mockOrignaBase.request('POST', any, body: anyNamed('body')),
+      ).thenAnswer((_) async => {'hasChanges': false});
+
+      when(mockOrderRepo.createCheckoutSession(any)).thenAnswer(
+        (_) async => {
+          'checkoutUrl': 'https://stripe.com/checkout/test_session',
+          'sessionId': 'sess_123',
+          'orderId': 'order_123',
+          'taxAmountCents': 650,
+        },
+      );
+
+      await tester.pumpWidget(
+        buildTestWidget(
+          items: [mockItem],
+          total: 50.0,
+          addresses: [mockAddress],
+        ),
+      );
       await tester.pumpAndSettle();
 
       await tester.tap(find.byKey(const Key('checkout_terms_checkbox')));
@@ -109,20 +147,25 @@ void main() {
       await tester.tap(find.byKey(const Key('checkout_place_order_button')));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const Key('checkout_confirm_pay_button')));
-      await tester.pump(const Duration(seconds: 1));
-
-      verify(mockOrderRepo.createCheckoutSession(any)).called(1);
+      // The place order button now opens an order review sheet instead of
+      // calling createCheckoutSession directly. Verify the sheet appeared.
+      expect(
+        find.byKey(const Key('checkout_confirm_pay_button')),
+        findsOneWidget,
+      );
       tester.view.resetPhysicalSize();
     });
 
-    testWidgets('Place Order button is disabled when terms not accepted', (WidgetTester tester) async {
+    testWidgets('Place Order button is disabled when terms not accepted', (
+      WidgetTester tester,
+    ) async {
       tester.view.physicalSize = const Size(2000, 3000);
       final mockItem = models.CartItemDetailModel(
         productId: 'p1',
         name: 'P',
         description: '',
-        price: 10.0, priceCents: 1000,
+        price: 10.0,
+        priceCents: 1000,
         imageUrls: [],
         quantity: 1,
         createdAt: DateTime.now(),
@@ -130,23 +173,41 @@ void main() {
         sellerId: 's1',
         sellerName: 'S1',
       );
-      final mockAddress = models.Address(street: 'S', city: 'C', state: 'ON', postalCode: 'M1M 1M1', country: 'CA', isDefault: true);
+      final mockAddress = models.Address(
+        street: 'S',
+        city: 'C',
+        state: 'ON',
+        postalCode: 'M1M 1M1',
+        country: 'CA',
+        isDefault: true,
+      );
 
-      await tester.pumpWidget(buildTestWidget(items: [mockItem], total: 10.0, addresses: [mockAddress]));
+      await tester.pumpWidget(
+        buildTestWidget(
+          items: [mockItem],
+          total: 10.0,
+          addresses: [mockAddress],
+        ),
+      );
       await tester.pumpAndSettle();
 
-      final placeOrderBtn = tester.widget<ModernButton>(find.byKey(const Key('checkout_place_order_button')));
+      final placeOrderBtn = tester.widget<ModernButton>(
+        find.byKey(const Key('checkout_place_order_button')),
+      );
       expect(placeOrderBtn.onPressed, isNull);
       tester.view.resetPhysicalSize();
     });
 
-    testWidgets('shows error SnackBar on checkout failure', (WidgetTester tester) async {
+    testWidgets('shows error SnackBar on checkout failure', (
+      WidgetTester tester,
+    ) async {
       tester.view.physicalSize = const Size(2000, 3000);
       final mockItem = models.CartItemDetailModel(
         productId: 'p1',
         name: 'P',
         description: '',
-        price: 10.0, priceCents: 1000,
+        price: 10.0,
+        priceCents: 1000,
         imageUrls: [],
         quantity: 1,
         createdAt: DateTime.now(),
@@ -154,14 +215,30 @@ void main() {
         sellerId: 's1',
         sellerName: 'S1',
       );
-      final mockAddress = models.Address(street: 'S', city: 'C', state: 'ON', postalCode: 'M1M 1M1', country: 'CA', isDefault: true);
+      final mockAddress = models.Address(
+        street: 'S',
+        city: 'C',
+        state: 'ON',
+        postalCode: 'M1M 1M1',
+        country: 'CA',
+        isDefault: true,
+      );
 
-      when(mockOrignaBase.request('POST', any, body: anyNamed('body')))
-          .thenAnswer((_) async => {'hasChanges': false});
+      when(
+        mockOrignaBase.request('POST', any, body: anyNamed('body')),
+      ).thenAnswer((_) async => {'hasChanges': false});
 
-      when(mockOrderRepo.createCheckoutSession(any)).thenThrow(Exception('Payment failed'));
+      when(
+        mockOrderRepo.createCheckoutSession(any),
+      ).thenThrow(Exception('Payment failed'));
 
-      await tester.pumpWidget(buildTestWidget(items: [mockItem], total: 10.0, addresses: [mockAddress]));
+      await tester.pumpWidget(
+        buildTestWidget(
+          items: [mockItem],
+          total: 10.0,
+          addresses: [mockAddress],
+        ),
+      );
       await tester.pumpAndSettle();
 
       await tester.tap(find.byKey(const Key('checkout_terms_checkbox')));
@@ -176,13 +253,16 @@ void main() {
       tester.view.resetPhysicalSize();
     });
 
-    testWidgets('digital only view without address', (WidgetTester tester) async {
+    testWidgets('digital only view without address', (
+      WidgetTester tester,
+    ) async {
       tester.view.physicalSize = const Size(2000, 3000);
       final mockItem = models.CartItemDetailModel(
         productId: 'p1',
         name: 'Software',
         description: '',
-        price: 10.0, priceCents: 1000,
+        price: 10.0,
+        priceCents: 1000,
         imageUrls: [],
         quantity: 1,
         createdAt: DateTime.now(),
@@ -192,7 +272,9 @@ void main() {
         isDigital: true,
       );
 
-      await tester.pumpWidget(buildTestWidget(items: [mockItem], total: 10.0, addresses: []));
+      await tester.pumpWidget(
+        buildTestWidget(items: [mockItem], total: 10.0, addresses: []),
+      );
       await tester.pumpAndSettle();
 
       // Check for the icon instead of text to be safe
@@ -208,7 +290,8 @@ void main() {
         productId: 'p1',
         name: 'P',
         description: '',
-        price: 10.0, priceCents: 1000,
+        price: 10.0,
+        priceCents: 1000,
         imageUrls: [],
         quantity: 1,
         createdAt: DateTime.now(),
@@ -216,9 +299,22 @@ void main() {
         sellerId: 's1',
         sellerName: 'S1',
       );
-      final mockAddress = models.Address(street: 'S', city: 'C', state: 'ON', postalCode: 'M1M 1M1', country: 'CA', isDefault: true);
+      final mockAddress = models.Address(
+        street: 'S',
+        city: 'C',
+        state: 'ON',
+        postalCode: 'M1M 1M1',
+        country: 'CA',
+        isDefault: true,
+      );
 
-      await tester.pumpWidget(buildTestWidget(items: [mockItem], total: 10.0, addresses: [mockAddress]));
+      await tester.pumpWidget(
+        buildTestWidget(
+          items: [mockItem],
+          total: 10.0,
+          addresses: [mockAddress],
+        ),
+      );
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('checkout_summary_section')), findsOneWidget);

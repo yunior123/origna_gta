@@ -38,8 +38,13 @@ pub async fn add_to_cart(
         .and_then(|v| v.as_u64())
         .ok_or_else(|| McpError::InvalidParams("Missing 'quantity'".to_string()))?;
 
-    if quantity == 0 {
-        return Err(McpError::ValidationError("Quantity must be > 0".to_string()));
+    if quantity < 1 {
+        return Err(McpError::ValidationError("Quantity must be >= 1".to_string()));
+    }
+    if quantity > 99 {
+        return Err(McpError::ValidationError(
+            "Quantity must be <= 99".to_string(),
+        ));
     }
 
     // Check idempotency key if provided
@@ -210,11 +215,20 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_add_to_cart_quantity_large() {
+    async fn test_add_to_cart_quantity_exceeds_max() {
         let state = make_state().await;
-        let params = json!({"product_id": "products:p1", "quantity": 999});
+        let params = json!({"product_id": "products:p1", "quantity": 100});
+        let result = add_to_cart(state, "users:u1", &params).await;
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), McpError::ValidationError(_)));
+    }
+
+    #[tokio::test]
+    async fn test_add_to_cart_quantity_boundary_99() {
+        let state = make_state().await;
+        let params = json!({"product_id": "products:p1", "quantity": 99});
         let result = add_to_cart(state, "users:u1", &params).await.unwrap();
-        assert_eq!(result["quantity"], 999);
+        assert_eq!(result["quantity"], 99);
     }
 
     // ── remove_from_cart ──

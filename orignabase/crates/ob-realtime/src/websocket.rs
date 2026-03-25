@@ -703,4 +703,235 @@ mod tests {
             _ => panic!("Expected Subscribe"),
         }
     }
+
+    // ── Presence handler HTTP tests ──
+
+    #[tokio::test]
+    async fn test_presence_handler_returns_empty() {
+        use axum::body::Body;
+        use axum::http::{Request, StatusCode};
+        use tower::util::ServiceExt;
+
+        let registry = SubscriptionRegistry::new();
+        let jwt_keys = JwtKeys::from_secret("test_secret");
+        let router = realtime_router(registry, jwt_keys);
+
+        let req = Request::builder()
+            .method("GET")
+            .uri("/presence")
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = router.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(resp.into_body(), 10_000).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(json["count"], 0);
+        assert!(json["online"].as_array().unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_presence_user_handler_offline() {
+        use axum::body::Body;
+        use axum::http::{Request, StatusCode};
+        use tower::util::ServiceExt;
+
+        let registry = SubscriptionRegistry::new();
+        let jwt_keys = JwtKeys::from_secret("test_secret");
+        let router = realtime_router(registry, jwt_keys);
+
+        let req = Request::builder()
+            .method("GET")
+            .uri("/presence/user_xyz")
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = router.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(resp.into_body(), 10_000).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(json["user_id"], "user_xyz");
+        assert_eq!(json["online"], false);
+        assert!(json["presence"].is_null());
+    }
+
+    #[tokio::test]
+    async fn test_presence_user_handler_online() {
+        use axum::body::Body;
+        use axum::http::{Request, StatusCode};
+        use tower::util::ServiceExt;
+
+        let registry = SubscriptionRegistry::new();
+        // Set presence for a user
+        registry.set_presence("alice", "conn_1", serde_json::json!({"device": "mobile"}));
+
+        let jwt_keys = JwtKeys::from_secret("test_secret");
+        let router = realtime_router(registry, jwt_keys);
+
+        let req = Request::builder()
+            .method("GET")
+            .uri("/presence/alice")
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = router.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(resp.into_body(), 10_000).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(json["user_id"], "alice");
+        assert_eq!(json["online"], true);
+    }
+
+    #[tokio::test]
+    async fn test_presence_handler_with_users() {
+        use axum::body::Body;
+        use axum::http::{Request, StatusCode};
+        use tower::util::ServiceExt;
+
+        let registry = SubscriptionRegistry::new();
+        registry.set_presence("user_1", "conn_1", serde_json::json!({}));
+        registry.set_presence("user_2", "conn_2", serde_json::json!({}));
+
+        let jwt_keys = JwtKeys::from_secret("test_secret");
+        let router = realtime_router(registry, jwt_keys);
+
+        let req = Request::builder()
+            .method("GET")
+            .uri("/presence")
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = router.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(resp.into_body(), 10_000).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(json["count"], 2);
+        assert_eq!(json["online"].as_array().unwrap().len(), 2);
+    }
+
+    #[tokio::test]
+    async fn test_ws_handler_rejects_missing_token() {
+        use axum::body::Body;
+        use axum::http::{Request, StatusCode};
+        use tower::util::ServiceExt;
+
+        let registry = SubscriptionRegistry::new();
+        let jwt_keys = JwtKeys::from_secret("test_secret");
+        let router = realtime_router(registry, jwt_keys);
+
+        // WebSocket upgrade without token should fail with 401
+        let req = Request::builder()
+            .method("GET")
+            .uri("/realtime")
+            .header("Connection", "Upgrade")
+            .header("Upgrade", "websocket")
+            .header("Sec-WebSocket-Key", "REDACTED_SECRET")
+            .header("Sec-WebSocket-Version", "13")
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = router.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
+    }
+
+    #[tokio::test]
+    async fn test_ws_handler_rejects_invalid_token() {
+        use axum::body::Body;
+        use axum::http::{Request, StatusCode};
+        use tower::util::ServiceExt;
+
+        let registry = SubscriptionRegistry::new();
+        let jwt_keys = JwtKeys::from_secret("test_secret");
+        let router = realtime_router(registry, jwt_keys);
+
+        let req = Request::builder()
+            .method("GET")
+            .uri("/realtime?token=invalid-jwt")
+            .header("Connection", "Upgrade")
+            .header("Upgrade", "websocket")
+            .header("Sec-WebSocket-Key", "REDACTED_SECRET")
+            .header("Sec-WebSocket-Version", "13")
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = router.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
+    }
+
+    // ── ServerMessage Debug tests ──
+
+    #[test]
+    fn test_client_message_debug() {
+        let msg = ClientMessage::Ping;
+        let debug = format!("{:?}", msg);
+        assert!(debug.contains("Ping"));
+    }
+
+    #[test]
+    fn test_server_message_debug() {
+        let msg = ServerMessage::Pong;
+        let debug = format!("{:?}", msg);
+        assert!(debug.contains("Pong"));
+    }
+
+    #[test]
+    fn test_server_message_change_debug() {
+        let event = crate::registry::ChangeEvent {
+            action: crate::registry::ChangeAction::Update,
+            collection: "orders".to_string(),
+            document_id: "ord_1".to_string(),
+            data: serde_json::json!({"status": "shipped"}),
+            before_data: Some(serde_json::json!({"status": "confirmed"})),
+            after_data: Some(serde_json::json!({"status": "shipped"})),
+            timestamp: "2024-06-01T00:00:00Z".to_string(),
+        };
+        let msg = ServerMessage::Change {
+            subscription_id: "sub1".to_string(),
+            event: Box::new(event),
+        };
+        let debug = format!("{:?}", msg);
+        assert!(debug.contains("Change"));
+    }
+
+    #[test]
+    fn test_serialize_change_with_before_after_data() {
+        let event = crate::registry::ChangeEvent {
+            action: crate::registry::ChangeAction::Update,
+            collection: "orders".to_string(),
+            document_id: "ord_1".to_string(),
+            data: serde_json::json!({"status": "shipped"}),
+            before_data: Some(serde_json::json!({"status": "confirmed"})),
+            after_data: Some(serde_json::json!({"status": "shipped"})),
+            timestamp: "2024-06-01T00:00:00Z".to_string(),
+        };
+        let msg = ServerMessage::Change {
+            subscription_id: "sub1".to_string(),
+            event: Box::new(event),
+        };
+        let json = serde_json::to_string(&msg).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed["event"]["action"], "update");
+        assert_eq!(parsed["event"]["before_data"]["status"], "confirmed");
+        assert_eq!(parsed["event"]["after_data"]["status"], "shipped");
+    }
+
+    #[test]
+    fn test_serialize_change_with_delete_action() {
+        let event = crate::registry::ChangeEvent {
+            action: crate::registry::ChangeAction::Delete,
+            collection: "products".to_string(),
+            document_id: "prod_1".to_string(),
+            data: serde_json::json!({}),
+            before_data: None,
+            after_data: None,
+            timestamp: "2024-06-01T00:00:00Z".to_string(),
+        };
+        let msg = ServerMessage::Change {
+            subscription_id: "sub_del".to_string(),
+            event: Box::new(event),
+        };
+        let json = serde_json::to_string(&msg).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed["event"]["action"], "delete");
+    }
 }

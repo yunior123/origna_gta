@@ -183,7 +183,7 @@ async fn test_order_state_transitions() {
     let update_query = format!(
         r#"mutation {{ update(collection: "orders", id: "{order_id}", data: {escaped}) }}"#
     );
-    let (status, _) = graphql(&client, Some(&seller_token), &update_query).await;
+    let (_status, _) = graphql(&client, Some(&seller_token), &update_query).await;
 
     // Verify order has all required fields
     let get_query = format!(r#"{{ get(collection: "orders", id: "{order_id}") }}"#);
@@ -247,7 +247,7 @@ async fn test_buyer_orders_pagination() {
     let query2 = format!(
         r#"{{ list(collection: "orders", filters: {escaped_f}, limit: 2, offset: 2) }}"#
     );
-    let (status, body2) = graphql(&client, Some(&buyer_token), &query2).await;
+    let (status, _body2) = graphql(&client, Some(&buyer_token), &query2).await;
     assert_eq!(status, 200);
 }
 

@@ -20,8 +20,8 @@ pub enum McpError {
     #[error("Unauthorized")]
     Unauthorized,
 
-    #[error("Forbidden")]
-    Forbidden,
+    #[error("Forbidden: {0}")]
+    Forbidden(String),
 
     #[error("Not found: {0}")]
     NotFound(String),
@@ -48,7 +48,7 @@ impl McpError {
             McpError::InvalidParams(_) => -32602,
             McpError::Internal(_) => -32603,
             McpError::Unauthorized => 401,
-            McpError::Forbidden => 403,
+            McpError::Forbidden(_) => 403,
             McpError::NotFound(_) => 404,
             McpError::RateLimited => 429,
             McpError::IdempotencyMismatch(_) => 409,
@@ -57,11 +57,16 @@ impl McpError {
         }
     }
 
-    /// Sanitize error message (no stack traces, no DB details)
+    /// Sanitize error message (no stack traces, no DB details, no resource IDs)
     pub fn message(&self) -> String {
         match self {
             McpError::Internal(_) => "Internal server error".to_string(),
             McpError::DatabaseError(_) => "Database operation failed".to_string(),
+            McpError::NotFound(id) => {
+                tracing::debug!("Resource not found: {}", id);
+                "Resource not found".to_string()
+            }
+            McpError::Forbidden(_) => "Forbidden".to_string(),
             _ => self.to_string(),
         }
     }
@@ -121,7 +126,7 @@ mod tests {
 
     #[test]
     fn test_error_code_forbidden() {
-        assert_eq!(McpError::Forbidden.code(), 403);
+        assert_eq!(McpError::Forbidden("test".into()).code(), 403);
     }
 
     #[test]
@@ -171,14 +176,15 @@ mod tests {
 
     #[test]
     fn test_message_forbidden() {
-        assert_eq!(McpError::Forbidden.message(), "Forbidden");
+        assert_eq!(McpError::Forbidden("secret reason".into()).message(), "Forbidden");
     }
 
     #[test]
     fn test_message_not_found() {
+        // NotFound message is sanitized — no resource ID leaked
         assert_eq!(
             McpError::NotFound("order:123".into()).message(),
-            "Not found: order:123"
+            "Resource not found"
         );
     }
 
@@ -218,7 +224,7 @@ mod tests {
         let mcp_err = McpError::NotFound("product:42".into());
         let rpc_err: JsonRpcError = mcp_err.into();
         assert_eq!(rpc_err.code, 404);
-        assert_eq!(rpc_err.message, "Not found: product:42");
+        assert_eq!(rpc_err.message, "Resource not found");
         assert!(rpc_err.data.is_none());
     }
 
@@ -244,6 +250,10 @@ mod tests {
     fn test_error_display() {
         assert_eq!(McpError::Unauthorized.to_string(), "Unauthorized");
         assert_eq!(
+            McpError::Forbidden("access denied".into()).to_string(),
+            "Forbidden: access denied"
+        );
+        assert_eq!(
             McpError::InvalidRequest("no jsonrpc field".into()).to_string(),
             "Invalid request: no jsonrpc field"
         );
@@ -257,7 +267,7 @@ mod tests {
             McpError::InvalidParams("".into()).code(),
             McpError::Internal("".into()).code(),
             McpError::Unauthorized.code(),
-            McpError::Forbidden.code(),
+            McpError::Forbidden("".into()).code(),
             McpError::NotFound("".into()).code(),
             McpError::RateLimited.code(),
             McpError::IdempotencyMismatch("".into()).code(),

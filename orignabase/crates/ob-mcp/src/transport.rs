@@ -519,4 +519,168 @@ mod tests {
         assert_eq!(req.params["filters"]["category"], "electronics");
         assert_eq!(req.params["limit"], 10);
     }
+
+    // ── HTTP transport tests via axum oneshot ──
+
+    #[tokio::test]
+    async fn test_handle_rpc_via_http_search() {
+        use axum::body::Body;
+        use axum::http::{Request, StatusCode};
+        use tower::util::ServiceExt;
+
+        let state = make_state().await;
+        let router = create_mcp_router(state);
+
+        let body = json!({
+            "jsonrpc": "2.0",
+            "method": "search_products",
+            "params": {"query": "test"},
+            "id": 1
+        });
+
+        let req = Request::builder()
+            .method("POST")
+            .uri("/mcp/rpc")
+            .header("Content-Type", "application/json")
+            .body(Body::from(body.to_string()))
+            .unwrap();
+
+        let resp = router.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        let body_bytes = axum::body::to_bytes(resp.into_body(), 100_000).await.unwrap();
+        let resp_json: serde_json::Value = serde_json::from_slice(&body_bytes).unwrap();
+        assert_eq!(resp_json["jsonrpc"], "2.0");
+        assert_eq!(resp_json["id"], 1);
+        assert!(resp_json.get("error").is_none() || resp_json["error"].is_null());
+    }
+
+    #[tokio::test]
+    async fn test_handle_rpc_via_http_unknown_method() {
+        use axum::body::Body;
+        use axum::http::{Request, StatusCode};
+        use tower::util::ServiceExt;
+
+        let state = make_state().await;
+        let router = create_mcp_router(state);
+
+        let body = json!({
+            "jsonrpc": "2.0",
+            "method": "nonexistent_method",
+            "params": {},
+            "id": 2
+        });
+
+        let req = Request::builder()
+            .method("POST")
+            .uri("/mcp/rpc")
+            .header("Content-Type", "application/json")
+            .body(Body::from(body.to_string()))
+            .unwrap();
+
+        let resp = router.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        let body_bytes = axum::body::to_bytes(resp.into_body(), 100_000).await.unwrap();
+        let resp_json: serde_json::Value = serde_json::from_slice(&body_bytes).unwrap();
+        assert!(resp_json["error"].is_object());
+        assert_eq!(resp_json["error"]["code"], -32601);
+    }
+
+    #[tokio::test]
+    async fn test_handle_rpc_with_invalid_auth_header() {
+        use axum::body::Body;
+        use axum::http::{Request, StatusCode};
+        use tower::util::ServiceExt;
+
+        let state = make_state().await;
+        let router = create_mcp_router(state);
+
+        let body = json!({
+            "jsonrpc": "2.0",
+            "method": "search_products",
+            "params": {"query": "phone"},
+            "id": 3
+        });
+
+        let req = Request::builder()
+            .method("POST")
+            .uri("/mcp/rpc")
+            .header("Content-Type", "application/json")
+            .header("Authorization", "Bearer invalid-jwt-token")
+            .body(Body::from(body.to_string()))
+            .unwrap();
+
+        // Should still succeed (falls back to anonymous)
+        let resp = router.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn test_handle_rpc_without_auth_header() {
+        use axum::body::Body;
+        use axum::http::{Request, StatusCode};
+        use tower::util::ServiceExt;
+
+        let state = make_state().await;
+        let router = create_mcp_router(state);
+
+        let body = json!({
+            "jsonrpc": "2.0",
+            "method": "search_products",
+            "params": {"query": "hat"},
+            "id": 4
+        });
+
+        let req = Request::builder()
+            .method("POST")
+            .uri("/mcp/rpc")
+            .header("Content-Type", "application/json")
+            .body(Body::from(body.to_string()))
+            .unwrap();
+
+        let resp = router.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn test_list_tools_via_http() {
+        use axum::body::Body;
+        use axum::http::{Request, StatusCode};
+        use tower::util::ServiceExt;
+
+        let state = make_state().await;
+        let router = create_mcp_router(state);
+
+        let req = Request::builder()
+            .method("GET")
+            .uri("/mcp/tools")
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = router.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        let body_bytes = axum::body::to_bytes(resp.into_body(), 100_000).await.unwrap();
+        let resp_json: serde_json::Value = serde_json::from_slice(&body_bytes).unwrap();
+        let tools = resp_json["tools"].as_array().unwrap();
+        assert_eq!(tools.len(), 13);
+    }
+
+    #[tokio::test]
+    async fn test_multiple_rpc_requests_sequentially() {
+        let server = make_server().await;
+
+        for i in 0..5 {
+            let request_json = serde_json::json!({
+                "jsonrpc": "2.0",
+                "method": "search_products",
+                "params": {"query": format!("item_{i}")},
+                "id": i
+            });
+            let req: crate::server::JsonRpcRequest =
+                serde_json::from_value(request_json).unwrap();
+            let ctx = crate::auth::McpContext::new();
+            let resp = server.handle_request(req, ctx).await;
+            assert_eq!(resp.jsonrpc, "2.0");
+            assert_eq!(resp.id, Some(json!(i)));
+        }
+    }
 }

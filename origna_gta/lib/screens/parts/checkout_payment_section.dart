@@ -139,10 +139,11 @@ class _CheckoutButton extends ConsumerWidget {
 
     final eulaAccepted = ref.read(checkoutEulaAcceptedProvider);
     final ageVerificationAccepted = ref.read(checkoutAgeVerifAcceptedProvider);
+    final subtotalCents = ref.read(cartSubtotalProvider);
     final result = await notifier.startCheckout(
       items: items,
       user: userModel,
-      subtotal: subtotal,
+      subtotalCents: subtotalCents,
       eulaAccepted: eulaAccepted,
       ageVerificationAccepted: ageVerificationAccepted,
     );

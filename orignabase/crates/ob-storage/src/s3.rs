@@ -564,4 +564,84 @@ mod tests {
         assert!(url.contains("test-bucket"), "URL should contain bucket name");
         assert!(url.contains("uploads/img.jpg"), "URL should contain object key");
     }
+
+    #[tokio::test]
+    async fn test_s3_storage_new_without_endpoint() {
+        // Tests the branch where config.endpoint is None (no custom endpoint)
+        let storage = S3Storage::new(S3Config {
+            bucket: "no-endpoint-bucket".into(),
+            region: "us-west-2".into(),
+            endpoint: None,
+            access_key: "access".into(),
+            secret_key: "secret".into(),
+        })
+        .await
+        .unwrap();
+        assert_eq!(storage.bucket, "no-endpoint-bucket");
+    }
+
+    #[tokio::test]
+    async fn test_s3_storage_presign_download_different_keys() {
+        let storage = test_s3_storage().await;
+        // Test with nested path
+        let result = storage.presign_download("a/b/c/d.txt", 600).await;
+        assert!(result.is_ok());
+        let url = result.unwrap();
+        assert!(url.contains("a/b/c/d.txt"));
+    }
+
+    #[tokio::test]
+    async fn test_s3_storage_presign_upload_different_content_types() {
+        let storage = test_s3_storage().await;
+        let result = storage
+            .presign_upload("docs/report.pdf", "application/pdf", 1800)
+            .await;
+        assert!(result.is_ok());
+        let url = result.unwrap();
+        assert!(url.contains("docs/report.pdf"));
+    }
+
+    #[tokio::test]
+    async fn test_s3_storage_upload_empty_data() {
+        let storage = test_s3_storage().await;
+        // Empty data upload to unreachable server should still fail
+        let result = storage.upload("empty.txt", b"", "text/plain").await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_s3_storage_download_nested_path() {
+        let storage = test_s3_storage().await;
+        let result = storage.download("deep/nested/path/file.bin").await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_s3_storage_delete_nested_path() {
+        let storage = test_s3_storage().await;
+        let result = storage.delete("some/path/to/delete.jpg").await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_s3_storage_list_with_prefix() {
+        let storage = test_s3_storage().await;
+        let result = storage.list("users/123/").await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_s3_storage_metadata_with_path() {
+        let storage = test_s3_storage().await;
+        let result = storage.metadata("path/to/check.txt").await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_s3_storage_exists_different_paths() {
+        let storage = test_s3_storage().await;
+        // exists() returns Ok(false) for unreachable server
+        assert_eq!(storage.exists("any/path").await.unwrap(), false);
+        assert_eq!(storage.exists("another/path.jpg").await.unwrap(), false);
+    }
 }

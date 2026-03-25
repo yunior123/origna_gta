@@ -271,6 +271,14 @@ void main() {
 
     test('creates new cart item with set', () async {
       final cartRef = fakeOb.usersCollection.cartSubcollection;
+      // Set up product with sufficient stock
+      fakeOb.productsCollection.setDoc(
+        'prod_1',
+        _FakeDocumentRef(
+          id: 'prod_1',
+          doc: _FakeDocument('prod_1', {Fields.stockQuantity: 100}),
+        ),
+      );
 
       await repository.addToCart('user_1', 'prod_1', 2);
 
@@ -285,6 +293,14 @@ void main() {
 
     test('accumulates quantity for existing item', () async {
       final cartRef = fakeOb.usersCollection.cartSubcollection;
+      // Set up product with sufficient stock
+      fakeOb.productsCollection.setDoc(
+        'prod_1',
+        _FakeDocumentRef(
+          id: 'prod_1',
+          doc: _FakeDocument('prod_1', {Fields.stockQuantity: 100}),
+        ),
+      );
       final existingDoc = _FakeDocument('prod_1', {
         Fields.productId: 'prod_1',
         Fields.quantity: 3,
@@ -300,6 +316,13 @@ void main() {
     });
 
     test('clamps quantity to maxCartItemQuantity', () async {
+      fakeOb.productsCollection.setDoc(
+        'prod_1',
+        _FakeDocumentRef(
+          id: 'prod_1',
+          doc: _FakeDocument('prod_1', {Fields.stockQuantity: 200}),
+        ),
+      );
       await repository.addToCart('user_1', 'prod_1', 100);
 
       final cartRef = fakeOb.usersCollection.cartSubcollection;
@@ -308,6 +331,13 @@ void main() {
     });
 
     test('handles userId with collection prefix', () async {
+      fakeOb.productsCollection.setDoc(
+        'prod_1',
+        _FakeDocumentRef(
+          id: 'prod_1',
+          doc: _FakeDocument('prod_1', {Fields.stockQuantity: 100}),
+        ),
+      );
       await repository.addToCart('users:user_1', 'prod_1', 1);
 
       final cartRef = fakeOb.usersCollection.cartSubcollection;
@@ -317,6 +347,13 @@ void main() {
     });
 
     test('creates variant doc ID when variantId is provided', () async {
+      fakeOb.productsCollection.setDoc(
+        'prod_1',
+        _FakeDocumentRef(
+          id: 'prod_1',
+          doc: _FakeDocument('prod_1', {Fields.stockQuantity: 100}),
+        ),
+      );
       await repository.addToCart('user_1', 'prod_1', 1, variantId: 'red');
 
       final cartRef = fakeOb.usersCollection.cartSubcollection;
@@ -324,6 +361,13 @@ void main() {
     });
 
     test('includes variant metadata', () async {
+      fakeOb.productsCollection.setDoc(
+        'prod_1',
+        _FakeDocumentRef(
+          id: 'prod_1',
+          doc: _FakeDocument('prod_1', {Fields.stockQuantity: 100}),
+        ),
+      );
       await repository.addToCart(
         'user_1',
         'prod_1',
@@ -343,6 +387,13 @@ void main() {
 
     test('ignores existing doc without matching parent_id', () async {
       final cartRef = fakeOb.usersCollection.cartSubcollection;
+      fakeOb.productsCollection.setDoc(
+        'prod_1',
+        _FakeDocumentRef(
+          id: 'prod_1',
+          doc: _FakeDocument('prod_1', {Fields.stockQuantity: 100}),
+        ),
+      );
       final existingDoc = _FakeDocument('prod_1', {
         Fields.productId: 'prod_1',
         Fields.quantity: 5,

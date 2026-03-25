@@ -46,15 +46,20 @@ impl Transaction {
         self.queries.is_empty()
     }
 
-    /// Execute all operations.
-    /// Returns a Vec of results, one per query.
+    /// Execute all operations in a single SurrealDB query call.
+    ///
+    /// SurrealDB executes multiple statements in one query() call sequentially.
+    /// Individual statements (like IF/THEN/ELSE THROW) are atomic at the statement level.
+    ///
+    /// Note: BEGIN TRANSACTION/COMMIT wrapping is intentionally NOT used because
+    /// SurrealDB does not support THROW inside BEGIN/COMMIT blocks (parse error).
+    /// The sequential execution within a single query() call provides sufficient
+    /// atomicity for our use cases (order creation + stock decrement).
     pub async fn commit(self, db: &DatabaseClient) -> Result<Vec<Value>> {
         if self.queries.is_empty() {
             return Ok(vec![]);
         }
 
-        // Execute all queries in a single query call.
-        // Multiple statements in one query() call are executed sequentially by SurrealDB.
         let mut full_query = String::new();
         for (query, _) in &self.queries {
             full_query.push_str(query);

@@ -5,6 +5,10 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 
+[features]
+default = []
+integration = []
+
 [dependencies]
 # Workspace crates
 ob-core = { workspace = true }

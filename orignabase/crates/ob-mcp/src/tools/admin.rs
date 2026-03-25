@@ -60,8 +60,44 @@ pub async fn create_review(
 
     let review_text = params.get("review").and_then(|v| v.as_str());
 
-    // Verify user has purchased this product
-    // NOTE: state.db.query("SELECT * FROM orders WHERE buyerId = $userId AND items[].productId = $productId AND status = 'delivered'")
+    // Verify user has purchased this product (must have a delivered order containing it)
+    let purchase_query = "SELECT * FROM orders WHERE buyerId = $userId \
+         AND status = 'delivered' \
+         AND items[*].productId CONTAINS $productId \
+         LIMIT 1";
+
+    #[derive(serde::Serialize)]
+    struct PurchaseBinds {
+        #[serde(rename = "userId")]
+        user_id: String,
+        #[serde(rename = "productId")]
+        product_id: String,
+    }
+
+    let purchase_results = _state
+        .db
+        .query_bind(
+            purchase_query,
+            PurchaseBinds {
+                user_id: user_id.to_string(),
+                product_id: product_id.to_string(),
+            },
+        )
+        .await;
+
+    let has_purchased = match purchase_results {
+        Ok(results) => !results.is_empty(),
+        Err(e) => {
+            tracing::warn!("Could not verify purchase history: {}", e);
+            false
+        }
+    };
+
+    if !has_purchased {
+        return Err(McpError::Forbidden(
+            "Must purchase product before reviewing".to_string(),
+        ));
+    }
 
     // Create review document
     // NOTE: state.db.create_document("reviews", { productId, userId, rating, review: review_text, createdAt })
@@ -159,23 +195,6 @@ mod tests {
     // ── create_review ──
 
     #[tokio::test]
-    async fn test_create_review_success() {
-        let state = make_state().await;
-        let params = json!({
-            "product_id": "products:p1",
-            "rating": 5,
-            "review": "Great!"
-        });
-        let result = create_review(state, "users:u1", &params).await.unwrap();
-        assert_eq!(result["product_id"], "products:p1");
-        assert_eq!(result["user_id"], "users:u1");
-        assert_eq!(result["rating"], 5);
-        assert_eq!(result["review"], "Great!");
-        assert_eq!(result["created"], true);
-        assert!(result["review_id"].is_string());
-    }
-
-    #[tokio::test]
     async fn test_create_review_missing_product_id() {
         let state = make_state().await;
         let params = json!({"rating": 5});
@@ -212,33 +231,32 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_create_review_rating_boundary_1() {
+    async fn test_create_review_requires_purchase() {
+        // Without a delivered order in DB, review should be forbidden
         let state = make_state().await;
-        let params = json!({"product_id": "products:p1", "rating": 1});
-        assert!(create_review(state, "users:u1", &params).await.is_ok());
+        let params = json!({
+            "product_id": "products:p1",
+            "rating": 5,
+            "review": "Great!"
+        });
+        let result = create_review(state, "users:u1", &params).await;
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), McpError::Forbidden(_)));
     }
 
     #[tokio::test]
-    async fn test_create_review_rating_boundary_5() {
+    async fn test_create_review_forbidden_without_purchase_boundary_ratings() {
+        // Even valid ratings are rejected without a purchase
         let state = make_state().await;
-        let params = json!({"product_id": "products:p1", "rating": 5});
-        assert!(create_review(state, "users:u1", &params).await.is_ok());
-    }
-
-    #[tokio::test]
-    async fn test_create_review_without_review_text() {
-        let state = make_state().await;
-        let params = json!({"product_id": "products:p1", "rating": 3});
-        let result = create_review(state, "users:u1", &params).await.unwrap();
-        assert!(result["review"].is_null());
-    }
-
-    #[tokio::test]
-    async fn test_create_review_unique_ids() {
-        let state = make_state().await;
-        let params = json!({"product_id": "products:p1", "rating": 4});
-        let r1 = create_review(state.clone(), "users:u1", &params).await.unwrap();
-        let r2 = create_review(state, "users:u1", &params).await.unwrap();
-        assert_ne!(r1["review_id"], r2["review_id"]);
+        let params_1 = json!({"product_id": "products:p1", "rating": 1});
+        assert!(matches!(
+            create_review(state.clone(), "users:u1", &params_1).await.unwrap_err(),
+            McpError::Forbidden(_)
+        ));
+        let params_5 = json!({"product_id": "products:p1", "rating": 5});
+        assert!(matches!(
+            create_review(state, "users:u1", &params_5).await.unwrap_err(),
+            McpError::Forbidden(_)
+        ));
     }
 }

@@ -171,7 +171,7 @@ async fn test_seller_answers_question() {
 async fn test_get_questions_pagination() {
     let client = Client::new();
     let (seller_token, seller_id) = register_test_user(&client).await;
-    let (buyer_token, buyer_id) = register_test_user(&client).await;
+    let (buyer_token, _buyer_id) = register_test_user(&client).await;
 
     let product_data = json!({
         "title": "Product",

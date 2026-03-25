@@ -371,7 +371,7 @@ mod new_features {
 
         if first.status() == StatusCode::OK || first.status() == StatusCode::CREATED {
             let first_body: Value = first.json().await.unwrap_or(json!({}));
-            let first_id = first_body["id"].as_str().unwrap_or("").to_string();
+            let _first_id = first_body["id"].as_str().unwrap_or("").to_string();
 
             // Attempt to create duplicate
             let second = client

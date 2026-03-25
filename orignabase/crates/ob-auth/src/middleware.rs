@@ -5,6 +5,22 @@ use tracing::warn;
 
 use crate::jwt::{Claims, JwtKeys, verify_token};
 
+/// Panics at startup if JWT secret is the default placeholder in production.
+pub fn assert_jwt_secret_configured(jwt_secret: &str) {
+    let environment = std::env::var("ENVIRONMENT").unwrap_or_default();
+    if environment == "production" && jwt_secret == "CHANGE_ME_IN_PRODUCTION" {
+        panic!("FATAL: JWT secret is still the default 'CHANGE_ME_IN_PRODUCTION' in production. Set OB_AUTH__JWT_SECRET to a strong random value.");
+    }
+}
+
+/// Panics at startup if a live Stripe key is used in non-production.
+pub fn assert_no_live_stripe_in_dev(stripe_key: &str) {
+    let environment = std::env::var("ENVIRONMENT").unwrap_or_default();
+    if environment != "production" && stripe_key.starts_with("sk_live_") {
+        panic!("FATAL: Live Stripe key (sk_live_) detected in {} environment. Use sk_test_ for non-production.", environment);
+    }
+}
+
 /// Panics at startup if OB_TEST_MODE=1 in production environment.
 /// Call this during server initialization to prevent accidental production bypass.
 pub fn assert_test_mode_not_in_production() {

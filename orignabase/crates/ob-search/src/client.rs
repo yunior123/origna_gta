@@ -641,4 +641,349 @@ mod tests {
         };
         assert_eq!(result.estimated_total_hits, Some(1_000_000));
     }
+
+    // ── Wiremock-based tests for enabled client paths ──
+
+    fn enabled_config(url: &str) -> SearchConfig {
+        SearchConfig {
+            enabled: true,
+            url: url.to_string(),
+            api_key: Some("test-api-key".to_string()),
+            indexes: Default::default(),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_search_enabled_success() {
+        use wiremock::{Mock, MockServer, ResponseTemplate, matchers};
+
+        let mock_server = MockServer::start().await;
+        let response_body = serde_json::json!({
+            "hits": [{"id": "1", "title": "Widget"}],
+            "query": "widget",
+            "processingTimeMs": 5,
+            "estimatedTotalHits": 1
+        });
+
+        Mock::given(matchers::method("POST"))
+            .and(matchers::path("/indexes/products/search"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(&response_body))
+            .expect(1)
+            .mount(&mock_server)
+            .await;
+
+        let client = SearchClient::new(enabled_config(&mock_server.uri()), reqwest::Client::new());
+        let result = client.search("products", "widget", Some(10), None, None).await.unwrap();
+        assert_eq!(result.hits.len(), 1);
+        assert_eq!(result.query, "widget");
+        assert_eq!(result.processing_time_ms, 5);
+    }
+
+    #[tokio::test]
+    async fn test_search_enabled_with_offset_and_filter() {
+        use wiremock::{Mock, MockServer, ResponseTemplate, matchers};
+
+        let mock_server = MockServer::start().await;
+        let response_body = serde_json::json!({
+            "hits": [],
+            "query": "phone",
+            "processingTimeMs": 2,
+            "estimatedTotalHits": 0
+        });
+
+        Mock::given(matchers::method("POST"))
+            .and(matchers::path("/indexes/products/search"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(&response_body))
+            .expect(1)
+            .mount(&mock_server)
+            .await;
+
+        let client = SearchClient::new(enabled_config(&mock_server.uri()), reqwest::Client::new());
+        let result = client
+            .search("products", "phone", Some(5), Some(10), Some("category = 'electronics'"))
+            .await
+            .unwrap();
+        assert!(result.hits.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_search_enabled_server_error() {
+        use wiremock::{Mock, MockServer, ResponseTemplate, matchers};
+
+        let mock_server = MockServer::start().await;
+
+        Mock::given(matchers::method("POST"))
+            .and(matchers::path("/indexes/products/search"))
+            .respond_with(ResponseTemplate::new(500).set_body_string("internal error"))
+            .expect(1)
+            .mount(&mock_server)
+            .await;
+
+        let client = SearchClient::new(enabled_config(&mock_server.uri()), reqwest::Client::new());
+        let result = client.search("products", "test", None, None, None).await;
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("Meilisearch error"));
+    }
+
+    #[tokio::test]
+    async fn test_search_enabled_record_id_restoration() {
+        use wiremock::{Mock, MockServer, ResponseTemplate, matchers};
+
+        let mock_server = MockServer::start().await;
+        let response_body = serde_json::json!({
+            "hits": [
+                {"id": "products_abc", "record_id": "products:abc", "title": "Widget"},
+                {"id": "products_xyz", "title": "No record_id"}
+            ],
+            "query": "w",
+            "processingTimeMs": 1,
+            "estimatedTotalHits": 2
+        });
+
+        Mock::given(matchers::method("POST"))
+            .and(matchers::path("/indexes/products/search"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(&response_body))
+            .expect(1)
+            .mount(&mock_server)
+            .await;
+
+        let client = SearchClient::new(enabled_config(&mock_server.uri()), reqwest::Client::new());
+        let result = client.search("products", "w", None, None, None).await.unwrap();
+        // First hit should have record_id restored
+        assert_eq!(result.hits[0]["id"], "products:abc");
+        // Second hit without record_id should keep original id
+        assert_eq!(result.hits[1]["id"], "products_xyz");
+    }
+
+    #[tokio::test]
+    async fn test_search_enabled_no_api_key() {
+        use wiremock::{Mock, MockServer, ResponseTemplate, matchers};
+
+        let mock_server = MockServer::start().await;
+        let response_body = serde_json::json!({
+            "hits": [],
+            "query": "test",
+            "processingTimeMs": 0,
+            "estimatedTotalHits": 0
+        });
+
+        Mock::given(matchers::method("POST"))
+            .and(matchers::path("/indexes/products/search"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(&response_body))
+            .expect(1)
+            .mount(&mock_server)
+            .await;
+
+        let config = SearchConfig {
+            enabled: true,
+            url: mock_server.uri(),
+            api_key: None,
+            indexes: Default::default(),
+        };
+        let client = SearchClient::new(config, reqwest::Client::new());
+        let result = client.search("products", "test", None, None, None).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_upsert_documents_enabled_success() {
+        use wiremock::{Mock, MockServer, ResponseTemplate, matchers};
+
+        let mock_server = MockServer::start().await;
+
+        Mock::given(matchers::method("POST"))
+            .and(matchers::path("/indexes/products/documents"))
+            .respond_with(ResponseTemplate::new(202).set_body_json(serde_json::json!({"taskUid": 1})))
+            .expect(1)
+            .mount(&mock_server)
+            .await;
+
+        let client = SearchClient::new(enabled_config(&mock_server.uri()), reqwest::Client::new());
+        let docs = vec![serde_json::json!({"id": "1", "title": "Widget"})];
+        let result = client.upsert_documents("products", &docs).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_upsert_documents_enabled_server_error() {
+        use wiremock::{Mock, MockServer, ResponseTemplate, matchers};
+
+        let mock_server = MockServer::start().await;
+
+        Mock::given(matchers::method("POST"))
+            .and(matchers::path("/indexes/products/documents"))
+            .respond_with(ResponseTemplate::new(500))
+            .expect(1)
+            .mount(&mock_server)
+            .await;
+
+        let client = SearchClient::new(enabled_config(&mock_server.uri()), reqwest::Client::new());
+        let docs = vec![serde_json::json!({"id": "1"})];
+        let result = client.upsert_documents("products", &docs).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_delete_document_enabled_success() {
+        use wiremock::{Mock, MockServer, ResponseTemplate, matchers};
+
+        let mock_server = MockServer::start().await;
+
+        Mock::given(matchers::method("DELETE"))
+            .and(matchers::path("/indexes/products/documents/doc_1"))
+            .respond_with(ResponseTemplate::new(202).set_body_json(serde_json::json!({"taskUid": 2})))
+            .expect(1)
+            .mount(&mock_server)
+            .await;
+
+        let client = SearchClient::new(enabled_config(&mock_server.uri()), reqwest::Client::new());
+        let result = client.delete_document("products", "doc_1").await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_delete_document_enabled_server_error() {
+        use wiremock::{Mock, MockServer, ResponseTemplate, matchers};
+
+        let mock_server = MockServer::start().await;
+
+        Mock::given(matchers::method("DELETE"))
+            .and(matchers::path("/indexes/products/documents/doc_1"))
+            .respond_with(ResponseTemplate::new(500))
+            .expect(1)
+            .mount(&mock_server)
+            .await;
+
+        let client = SearchClient::new(enabled_config(&mock_server.uri()), reqwest::Client::new());
+        let result = client.delete_document("products", "doc_1").await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_ensure_indexes_with_settings() {
+        use wiremock::{Mock, MockServer, ResponseTemplate, matchers};
+        use std::collections::HashMap;
+        use crate::config::IndexConfig;
+
+        let mock_server = MockServer::start().await;
+
+        // Mock all 3 settings endpoints
+        Mock::given(matchers::method("PUT"))
+            .respond_with(ResponseTemplate::new(202).set_body_json(serde_json::json!({"taskUid": 1})))
+            .expect(3) // searchable, filterable, sortable
+            .mount(&mock_server)
+            .await;
+
+        let mut indexes = HashMap::new();
+        indexes.insert("products".to_string(), IndexConfig {
+            searchable: vec!["title".into(), "description".into()],
+            filterable: vec!["category".into()],
+            sortable: vec!["price".into()],
+            primary_key: "id".into(),
+        });
+
+        let config = SearchConfig {
+            enabled: true,
+            url: mock_server.uri(),
+            api_key: Some("key".into()),
+            indexes,
+        };
+        let client = SearchClient::new(config, reqwest::Client::new());
+        let result = client.ensure_indexes().await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_ensure_indexes_settings_error() {
+        use wiremock::{Mock, MockServer, ResponseTemplate, matchers};
+        use std::collections::HashMap;
+        use crate::config::IndexConfig;
+
+        let mock_server = MockServer::start().await;
+
+        Mock::given(matchers::method("PUT"))
+            .respond_with(ResponseTemplate::new(500))
+            .expect(1..)
+            .mount(&mock_server)
+            .await;
+
+        let mut indexes = HashMap::new();
+        indexes.insert("products".to_string(), IndexConfig {
+            searchable: vec!["title".into()],
+            filterable: vec![],
+            sortable: vec![],
+            primary_key: "id".into(),
+        });
+
+        let config = SearchConfig {
+            enabled: true,
+            url: mock_server.uri(),
+            api_key: None,
+            indexes,
+        };
+        let client = SearchClient::new(config, reqwest::Client::new());
+        let result = client.ensure_indexes().await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_search_enabled_invalid_json_response() {
+        use wiremock::{Mock, MockServer, ResponseTemplate, matchers};
+
+        let mock_server = MockServer::start().await;
+
+        Mock::given(matchers::method("POST"))
+            .and(matchers::path("/indexes/products/search"))
+            .respond_with(ResponseTemplate::new(200).set_body_string("not json"))
+            .expect(1)
+            .mount(&mock_server)
+            .await;
+
+        let client = SearchClient::new(enabled_config(&mock_server.uri()), reqwest::Client::new());
+        let result = client.search("products", "test", None, None, None).await;
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("parse"));
+    }
+
+    #[tokio::test]
+    async fn test_search_enabled_connection_refused() {
+        let config = SearchConfig {
+            enabled: true,
+            url: "http://127.0.0.1:19999".to_string(),
+            api_key: None,
+            indexes: Default::default(),
+        };
+        let client = SearchClient::new(config, reqwest::Client::new());
+        let result = client.search("products", "test", None, None, None).await;
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("request failed"));
+    }
+
+    #[tokio::test]
+    async fn test_upsert_documents_connection_refused() {
+        let config = SearchConfig {
+            enabled: true,
+            url: "http://127.0.0.1:19999".to_string(),
+            api_key: None,
+            indexes: Default::default(),
+        };
+        let client = SearchClient::new(config, reqwest::Client::new());
+        let docs = vec![serde_json::json!({"id": "1"})];
+        let result = client.upsert_documents("products", &docs).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_delete_document_connection_refused() {
+        let config = SearchConfig {
+            enabled: true,
+            url: "http://127.0.0.1:19999".to_string(),
+            api_key: None,
+            indexes: Default::default(),
+        };
+        let client = SearchClient::new(config, reqwest::Client::new());
+        let result = client.delete_document("products", "doc_1").await;
+        assert!(result.is_err());
+    }
 }

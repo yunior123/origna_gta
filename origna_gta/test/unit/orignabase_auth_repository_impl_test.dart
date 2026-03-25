@@ -713,6 +713,10 @@ void main() {
       final auth = fakeOb.auth as _FakeAuth;
       auth.accessTokenValue = 'valid_token';
       auth.userIdValue = 'user_123';
+      auth.emailValue = 'test@example.com';
+
+      // Re-authenticate first (deleteAccount now requires recent re-auth)
+      await repository.reAuthenticate('password');
 
       await repository.deleteAccount();
 
@@ -733,13 +737,13 @@ void main() {
   });
 
   group('OrignaBaseAuthRepository - validateCurrentUser', () {
-    test('returns true when no user is logged in', () async {
+    test('returns false when no user is logged in', () async {
       final auth = fakeOb.auth as _FakeAuth;
       auth.accessTokenValue = null;
 
       final result = await repository.validateCurrentUser();
 
-      expect(result, true);
+      expect(result, false);
     });
 
     test('returns true when user token is still valid', () async {

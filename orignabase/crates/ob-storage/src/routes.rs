@@ -1164,4 +1164,113 @@ mod tests {
     fn test_allowed_upload_types_count() {
         assert_eq!(ALLOWED_UPLOAD_TYPES.len(), 5);
     }
+
+    #[test]
+    fn test_validate_file_signature_test_mode_bypass() {
+        let _lock = ENV_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+        unsafe { std::env::set_var("OB_TEST_MODE", "1"); }
+        // In test mode, application/octet-stream should be allowed
+        let result = validate_file_signature(b"random bytes", "application/octet-stream");
+        assert!(result.is_ok(), "Test mode should bypass validation for octet-stream");
+        unsafe { std::env::remove_var("OB_TEST_MODE"); }
+    }
+
+    #[test]
+    fn test_validate_file_signature_test_mode_still_validates_others() {
+        let _lock = ENV_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+        unsafe { std::env::set_var("OB_TEST_MODE", "1"); }
+        // In test mode, non-octet-stream types still go through normal validation
+        let result = validate_file_signature(b"not a jpeg", "image/jpeg");
+        // This should fail because magic bytes don't match
+        assert!(result.is_err());
+        unsafe { std::env::remove_var("OB_TEST_MODE"); }
+    }
+
+    #[test]
+    fn test_can_write_test_mode_allows_all() {
+        let _lock = ENV_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+        unsafe { std::env::set_var("OB_TEST_MODE", "1"); }
+        let auth = AuthContext::anonymous();
+        // Test mode allows all paths
+        assert!(can_user_write_path(&auth, "any/random/path.jpg"));
+        unsafe { std::env::remove_var("OB_TEST_MODE"); }
+    }
+
+    #[test]
+    fn test_can_write_authenticated_user_own_reviews_path() {
+        let _lock = ENV_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+        unsafe { std::env::remove_var("OB_TEST_MODE"); }
+        let auth = AuthContext {
+            user_id: "user_abc".to_string(),
+            authenticated: true,
+            ..AuthContext::anonymous()
+        };
+        assert!(can_user_write_path(&auth, "reviews/user_abc/photo.jpg"));
+        assert!(!can_user_write_path(&auth, "reviews/other_user/photo.jpg"));
+    }
+
+    #[test]
+    fn test_require_auth_authenticated_with_user_id() {
+        let _lock = ENV_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+        unsafe { std::env::remove_var("OB_TEST_MODE"); }
+        let auth = AuthContext {
+            user_id: "real_user_123".to_string(),
+            authenticated: true,
+            ..AuthContext::anonymous()
+        };
+        let result = require_authenticated_user(&auth);
+        assert_eq!(result.unwrap(), "real_user_123");
+    }
+
+    #[test]
+    fn test_require_auth_authenticated_but_empty_user_id() {
+        let _lock = ENV_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+        unsafe { std::env::remove_var("OB_TEST_MODE"); }
+        let auth = AuthContext {
+            user_id: "".to_string(),
+            authenticated: true,
+            ..AuthContext::anonymous()
+        };
+        let result = require_authenticated_user(&auth);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_is_public_read_path_products_videos() {
+        assert!(is_public_read_path("products/videos/clip.mp4"));
+        assert!(is_public_read_path("products/image.jpg"));
+    }
+
+    #[test]
+    fn test_is_public_read_path_case_sensitive() {
+        assert!(!is_public_read_path("Products/file.jpg"));
+        assert!(!is_public_read_path("PRODUCTS/file.jpg"));
+    }
+
+    #[test]
+    fn test_sanitize_triple_dots() {
+        // "..." contains ".." so it gets removed
+        let result = sanitize_storage_path("...file.txt");
+        // ".." removed → ".file.txt"
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_sanitize_path_single_file() {
+        let result = sanitize_storage_path("file.txt").unwrap();
+        assert_eq!(result, "file.txt");
+    }
+
+    #[test]
+    fn test_storage_router_builds() {
+        let storage = crate::LocalStorage::new("./test_storage_data").unwrap();
+        let url_gen = crate::SignedUrlGenerator::new("test-secret-key", "/api/storage");
+        let resumable = crate::resumable::ResumableUploadManager::new("./test_resumable").unwrap();
+        let state = StorageState {
+            storage,
+            url_generator: url_gen,
+            resumable,
+        };
+        let _router = storage_router(state);
+    }
 }
