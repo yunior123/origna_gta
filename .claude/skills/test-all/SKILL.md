@@ -141,124 +141,280 @@ Phase 13: Summary report
 
 ## Execution Script
 
+**ZERO SKIP POLICY: Every phase runs. Every failure is recorded. Nothing is silenced.**
+
 ```bash
 #!/bin/bash
-set -euo pipefail
+# ZERO SKIP — run ALL tests, record ALL failures, never || true
 FLUTTER=/Users/yuniorrodriguezosorio/flutter/bin/flutter
 PROJECT=/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta
 RESULTS=/tmp/test-all-$(date +%Y%m%d-%H%M%S)
 OB_URL=${OB_TEST_URL:-https://api.dev.orignagta.ca}
 mkdir -p $RESULTS
-PASS=0; FAIL=0; SKIP=0
+TOTAL_PASS=0; TOTAL_FAIL=0; PHASE_RESULTS=""
 
-echo "=== PHASE 0: Kill zombies + disk check ==="
-pkill -f flutter_tester 2>/dev/null || true
-pkill -f "dart.*test" 2>/dev/null || true
-sleep 1
-echo "Disk: $(df -h / | tail -1 | awk '{print $4}') free"
-echo "RAM: $(vm_stat | awk '/Pages free/ {print $3*4096/1048576 " MB free"}')"
-echo ""
-
-echo "=== PHASE 1: Flutter analyze ==="
-cd $PROJECT/origna_gta
-$FLUTTER analyze --no-fatal-infos 2>&1 | tee $RESULTS/01-flutter-analyze.txt
-echo ""
-
-echo "=== PHASE 2: Cargo clippy (all 14 crates) ==="
-cd $PROJECT/orignabase
-cargo clippy --workspace -- -D warnings 2>&1 | tee $RESULTS/02-cargo-clippy.txt
-echo ""
-
-echo "=== PHASE 3: Flutter unit+widget ==="
-cd $PROJECT/origna_gta
-$FLUTTER test --exclude-tags golden 2>&1 | tee $RESULTS/03-flutter-unit.txt
-echo ""
-
-echo "=== PHASE 4: Rust unit tests (all 14 crates) ==="
-cd $PROJECT/orignabase
-cargo test --workspace 2>&1 | tee $RESULTS/04-rust-unit.txt
-echo ""
-
-echo "=== PHASE 5: Rust crate integration tests (no server) ==="
-cd $PROJECT/orignabase
-cargo test -p ob-handlers --test snapshot_tests --test proptest_validation 2>&1 | tee $RESULTS/05a-handlers-integration.txt
-cargo test -p ob-auth --test comprehensive_auth_tests 2>&1 | tee -a $RESULTS/05b-auth-integration.txt
-cargo test -p ob-core --test validation_extended 2>&1 | tee -a $RESULTS/05c-core-integration.txt
-cargo test -p ob-database --test comprehensive_db_tests 2>&1 | tee -a $RESULTS/05d-db-integration.txt
-cargo test -p ob-security --test evaluator_comprehensive_tests 2>&1 | tee -a $RESULTS/05e-security-integration.txt
-echo ""
-
-echo "=== PHASE 6: SDK unit tests ==="
-cd $PROJECT/orignabase/sdks/flutter/orignabase
-$FLUTTER test 2>&1 | tee $RESULTS/06-sdk-unit.txt
-echo ""
-
-echo "=== PHASE 7: Flutter live tests ==="
-cd $PROJECT/origna_gta
-$FLUTTER test --dart-define=RUN_ORIGNABASE_LIVE_TESTS=true \
-  --dart-define=ENVIRONMENT=dev test/live/ 2>&1 | tee $RESULTS/07-flutter-live.txt
-echo ""
-
-echo "=== PHASE 8: Rust integration tests (needs server) ==="
-cd $PROJECT/orignabase
-OB_TEST_URL=$OB_URL cargo test -p orignabase -- --ignored 2>&1 | tee $RESULTS/08-rust-ignored.txt
-echo ""
-
-echo "=== PHASE 9: SDK live tests ==="
-cd $PROJECT/orignabase/sdks/flutter/orignabase
-$FLUTTER test --tags live --dart-define=ENVIRONMENT=dev 2>&1 | tee $RESULTS/09-sdk-live.txt || echo "SDK live: skipped or no tagged tests"
-echo ""
-
-echo "=== PHASE 10: E2E tests ==="
-cd $PROJECT/e2e
-bun test 2>&1 | tee $RESULTS/10-e2e.txt || echo "E2E skipped"
-echo ""
-
-echo "=== PHASE 11: Rust stress + reliability ==="
-cd $PROJECT/orignabase
-OB_TEST_URL=$OB_URL cargo test -p orignabase --test stress_test -- --ignored 2>&1 | tee $RESULTS/11a-stress.txt || true
-OB_TEST_URL=$OB_URL cargo test -p orignabase --test reliability_test -- --ignored 2>&1 | tee $RESULTS/11b-reliability.txt || true
-echo ""
-
-echo "=== PHASE 12: Rust benchmarks (optional) ==="
-cd $PROJECT/orignabase
-cargo bench --bench core_benchmarks 2>&1 | tee $RESULTS/12-bench.txt || echo "Benchmarks skipped"
-echo ""
-
-echo "=== PHASE 13: Summary ==="
-echo "Results saved to: $RESULTS/"
-echo ""
-echo "| Phase | Suite | Result |"
-echo "|-------|-------|--------|"
-for f in $RESULTS/*.txt; do
-  name=$(basename $f .txt)
-  if grep -q "All tests passed\|test result: ok" "$f" 2>/dev/null; then
-    echo "| $name | PASS |"
-  elif grep -q "FAILED\|Some tests failed" "$f" 2>/dev/null; then
-    fails=$(grep -c "FAILED" "$f" 2>/dev/null || echo "?")
-    echo "| $name | FAIL ($fails) |"
+run_phase() {
+  local phase="$1" cmd="$2" outfile="$3"
+  echo "=== $phase ==="
+  eval "$cmd" 2>&1 | tee "$RESULTS/$outfile"
+  local exit_code=${PIPESTATUS[0]}
+  if [ $exit_code -ne 0 ]; then
+    TOTAL_FAIL=$((TOTAL_FAIL + 1))
+    PHASE_RESULTS="$PHASE_RESULTS\n| $outfile | FAIL (exit $exit_code) |"
+    echo "!!! $phase FAILED (exit $exit_code) !!!"
   else
-    echo "| $name | CHECK |"
+    TOTAL_PASS=$((TOTAL_PASS + 1))
+    PHASE_RESULTS="$PHASE_RESULTS\n| $outfile | PASS |"
   fi
-done
+  echo ""
+}
+
+echo "=== PHASE 0: Kill zombies + system check ==="
+pkill -f flutter_tester 2>/dev/null; pkill -f "dart.*test" 2>/dev/null; sleep 1
+# Kill orphan Chrome processes from previous E2E runs
+pkill -f "chrome.*headless" 2>/dev/null; pkill -f chromium 2>/dev/null
+echo "Disk: $(df -h / | tail -1 | awk '{print $4}') free"
+echo "RAM: $(vm_stat 2>/dev/null | awk '/Pages free/ {printf "%.0f MB free\n", $3*4096/1048576}')"
 echo ""
-echo "Done. $(date)"
+
+# === LOCAL SERVICES MANAGEMENT ===
+# Start SurrealDB, Meilisearch, OrignaBase, Stripe CLI if not running
+# These are needed for live/integration/E2E tests (Phases 7-12)
+
+echo "=== PHASE 0b: Local services ==="
+USE_LOCALHOST=${USE_LOCALHOST:-0}
+
+if [ "$USE_LOCALHOST" = "1" ]; then
+  echo "Starting local services (localhost mode)..."
+
+  # Check colima/docker
+  if ! docker info &>/dev/null; then
+    echo "Starting colima..."
+    colima start --memory 4 --cpu 2 2>/dev/null
+    sleep 3
+  fi
+
+  # Start SurrealDB + Meilisearch via docker-compose
+  if ! curl -s http://localhost:8000/health &>/dev/null; then
+    echo "Starting SurrealDB + Meilisearch..."
+    cd $PROJECT/orignabase/docker
+    docker compose up -d surrealdb meilisearch 2>&1
+    echo "Waiting for SurrealDB..."
+    for i in $(seq 1 30); do
+      curl -s http://localhost:8000/health &>/dev/null && break
+      sleep 1
+    done
+  fi
+  echo "  SurrealDB: $(curl -s -o /dev/null -w '%{http_code}' http://localhost:8000/health)"
+  echo "  Meilisearch: $(curl -s -o /dev/null -w '%{http_code}' http://localhost:7700/health)"
+
+  # Start OrignaBase
+  if ! curl -s http://localhost:8080/health &>/dev/null; then
+    echo "Starting OrignaBase..."
+    cd $PROJECT/orignabase
+    OB_TEST_MODE=1 cargo run --release &>/dev/null &
+    ORIGNABASE_PID=$!
+    echo "  OrignaBase PID: $ORIGNABASE_PID"
+    for i in $(seq 1 60); do
+      curl -s http://localhost:8080/health &>/dev/null && break
+      sleep 1
+    done
+  fi
+  echo "  OrignaBase: $(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/health)"
+
+  # Start Stripe CLI webhook forwarding
+  if command -v stripe &>/dev/null; then
+    if ! pgrep -f "stripe listen" &>/dev/null; then
+      echo "Starting Stripe CLI webhook forwarding..."
+      stripe listen --forward-to localhost:8080/api/webhooks/stripe &>/dev/null &
+      STRIPE_PID=$!
+      echo "  Stripe CLI PID: $STRIPE_PID"
+      sleep 3
+    fi
+    echo "  Stripe CLI: running ($(pgrep -f 'stripe listen' | head -1))"
+  else
+    echo "  Stripe CLI: NOT INSTALLED (brew install stripe/stripe-cli/stripe)"
+  fi
+
+  # Seed DB if empty
+  USER_COUNT=$(curl -s http://localhost:8080/graphql \
+    -H "Content-Type: application/json" \
+    -d '{"query":"{ list(collection: \"users\", limit: 1) }"}' 2>/dev/null | grep -c "data" || echo "0")
+  if [ "$USER_COUNT" = "0" ]; then
+    echo "  Seeding database..."
+    cd $PROJECT/e2e && ORIGNABASE_URL=http://localhost:8080 bun run lib/seed-dev.ts 2>&1 | tail -3
+  fi
+
+  # Override URL for localhost
+  OB_URL=http://localhost:8080
+  echo ""
+  echo "  Local services ready. Using OB_URL=$OB_URL"
+
+  # RAM check after services start (8GB constraint)
+  FREE_MB=$(vm_stat 2>/dev/null | awk '/Pages free/ {printf "%.0f", $3*4096/1048576}')
+  echo "  RAM after services: ${FREE_MB}MB free"
+  if [ "${FREE_MB:-0}" -lt 500 ]; then
+    echo "  WARNING: <500MB free RAM. Tests may OOM. Consider stopping other apps."
+  fi
+else
+  echo "Using remote dev server: $OB_URL"
+  echo "(Set USE_LOCALHOST=1 to start local SurrealDB/Meilisearch/OrignaBase/Stripe)"
+fi
+echo ""
+
+# Phase 1: Static analysis (catches compile errors before wasting time on tests)
+run_phase "PHASE 1: Flutter analyze" \
+  "cd $PROJECT/origna_gta && $FLUTTER analyze --no-fatal-infos" \
+  "01-flutter-analyze.txt"
+
+# Phase 2: Rust lint (catches warnings treated as errors)
+run_phase "PHASE 2: Cargo clippy (14 crates)" \
+  "cd $PROJECT/orignabase && cargo clippy --workspace -- -D warnings" \
+  "02-cargo-clippy.txt"
+
+# Phase 3: Flutter unit + widget (no golden — renderer differs on CI)
+run_phase "PHASE 3: Flutter unit+widget" \
+  "cd $PROJECT/origna_gta && $FLUTTER test --exclude-tags golden" \
+  "03-flutter-unit.txt"
+
+# Phase 4: Rust unit tests — ALL 14 crates, every mod tests block
+run_phase "PHASE 4: Rust unit (14 crates)" \
+  "cd $PROJECT/orignabase && cargo test --workspace" \
+  "04-rust-unit.txt"
+
+# Phase 5: Rust crate-level integration tests (no server needed)
+run_phase "PHASE 5a: ob-handlers snapshots+proptest" \
+  "cd $PROJECT/orignabase && cargo test -p ob-handlers --test snapshot_tests --test proptest_validation" \
+  "05a-handlers-integration.txt"
+
+run_phase "PHASE 5b: ob-auth comprehensive" \
+  "cd $PROJECT/orignabase && cargo test -p ob-auth --test comprehensive_auth_tests" \
+  "05b-auth-integration.txt"
+
+run_phase "PHASE 5c: ob-core validation" \
+  "cd $PROJECT/orignabase && cargo test -p ob-core --test validation_extended" \
+  "05c-core-integration.txt"
+
+run_phase "PHASE 5d: ob-database comprehensive" \
+  "cd $PROJECT/orignabase && cargo test -p ob-database --test comprehensive_db_tests" \
+  "05d-db-integration.txt"
+
+run_phase "PHASE 5e: ob-security evaluator" \
+  "cd $PROJECT/orignabase && cargo test -p ob-security --test evaluator_comprehensive_tests" \
+  "05e-security-integration.txt"
+
+# Phase 6: SDK unit tests
+run_phase "PHASE 6: SDK unit" \
+  "cd $PROJECT/orignabase/sdks/flutter/orignabase && $FLUTTER test" \
+  "06-sdk-unit.txt"
+
+# Phase 7: Flutter live tests (needs dev server at api.dev.orignagta.ca)
+run_phase "PHASE 7: Flutter live" \
+  "cd $PROJECT/origna_gta && $FLUTTER test --dart-define=RUN_ORIGNABASE_LIVE_TESTS=true --dart-define=ENVIRONMENT=dev test/live/" \
+  "07-flutter-live.txt"
+
+# Phase 8: ALL Rust #[ignore] integration tests (needs dev server)
+# This runs ALL 31 files with #[ignore] tests — auth, orders, products, cart,
+# payments, shipping, search, realtime, MCP, security, cross-service, pentest
+run_phase "PHASE 8: Rust integration (31 ignored files)" \
+  "cd $PROJECT/orignabase && OB_TEST_URL=$OB_URL cargo test -p orignabase -- --ignored" \
+  "08-rust-ignored.txt"
+
+# Phase 9: SDK live tests
+run_phase "PHASE 9: SDK live" \
+  "cd $PROJECT/orignabase/sdks/flutter/orignabase && $FLUTTER test --tags live --dart-define=ENVIRONMENT=dev" \
+  "09-sdk-live.txt"
+
+# Phase 10: E2E tests (needs deployed web app at dev.orignagta.ca)
+run_phase "PHASE 10: E2E (bun)" \
+  "cd $PROJECT/e2e && bun test" \
+  "10-e2e.txt"
+
+# Phase 11: Rust stress + reliability (needs dev server)
+run_phase "PHASE 11a: Stress tests" \
+  "cd $PROJECT/orignabase && OB_TEST_URL=$OB_URL cargo test -p orignabase --test stress_test -- --ignored" \
+  "11a-stress.txt"
+
+run_phase "PHASE 11b: Reliability tests" \
+  "cd $PROJECT/orignabase && OB_TEST_URL=$OB_URL cargo test -p orignabase --test reliability_test -- --ignored" \
+  "11b-reliability.txt"
+
+run_phase "PHASE 11c: Concurrency tests" \
+  "cd $PROJECT/orignabase && OB_TEST_URL=$OB_URL cargo test -p orignabase --test concurrency_tests -- --ignored" \
+  "11c-concurrency.txt"
+
+run_phase "PHASE 11d: Pentest probes" \
+  "cd $PROJECT/orignabase && OB_TEST_URL=$OB_URL cargo test -p orignabase --test pentest -- --ignored" \
+  "11d-pentest.txt"
+
+# Phase 12: ALL Rust benchmarks (all 3 bench files)
+run_phase "PHASE 12a: Core benchmarks" \
+  "cd $PROJECT/orignabase && cargo bench --bench core_benchmarks" \
+  "12a-bench-core.txt"
+
+run_phase "PHASE 12b: Comprehensive benchmarks" \
+  "cd $PROJECT/orignabase && OB_TEST_URL=$OB_URL cargo bench --bench comprehensive_bench" \
+  "12b-bench-comprehensive.txt"
+
+run_phase "PHASE 12c: Throughput benchmarks" \
+  "cd $PROJECT/orignabase && OB_TEST_URL=$OB_URL cargo bench --bench throughput_bench" \
+  "12c-bench-throughput.txt"
+
+# Phase 13: Flutter golden tests (macOS only — skip on Linux CI)
+run_phase "PHASE 13: Flutter golden" \
+  "cd $PROJECT/origna_gta && $FLUTTER test --tags golden" \
+  "13-flutter-golden.txt"
+
+# === CLEANUP: Stop localhost services if we started them ===
+if [ "$USE_LOCALHOST" = "1" ]; then
+  echo "=== Stopping local services ==="
+  [ -n "${ORIGNABASE_PID:-}" ] && kill $ORIGNABASE_PID 2>/dev/null && echo "  Stopped OrignaBase ($ORIGNABASE_PID)"
+  [ -n "${STRIPE_PID:-}" ] && kill $STRIPE_PID 2>/dev/null && echo "  Stopped Stripe CLI ($STRIPE_PID)"
+  cd $PROJECT/orignabase/docker && docker compose down 2>/dev/null && echo "  Stopped SurrealDB + Meilisearch"
+fi
+
+# Clean Rust build artifacts to free disk
+echo "=== Cleanup ==="
+cd $PROJECT/orignabase && bash scripts/clean_rust_artifacts.sh 2>/dev/null
+echo ""
+
+# === SUMMARY ===
+echo ""
+echo "============================================="
+echo "  TEST-ALL SUMMARY — $(date)"
+echo "============================================="
+echo "Results: $RESULTS/"
+echo ""
+echo "| Phase | Result |"
+echo "|-------|--------|"
+echo -e "$PHASE_RESULTS"
+echo ""
+echo "Phases passed: $TOTAL_PASS"
+echo "Phases failed: $TOTAL_FAIL"
+echo ""
+if [ $TOTAL_FAIL -gt 0 ]; then
+  echo "!!! $TOTAL_FAIL PHASE(S) FAILED — CHECK OUTPUT FILES !!!"
+  exit 1
+else
+  echo "ALL PHASES PASSED"
+  exit 0
+fi
 ```
 
-## Quick Run Modes
+## Run Modes
+
+All modes run every phase — no skipping. The difference is which phases REQUIRE a server:
 
 ```bash
-# Pre-commit (fast, ~3 min): analyze + clippy + unit tests only
-Phases: 0-6
+# Offline (no server): Phases 0-6, 13
+# These always work without any external services
 
-# Pre-deploy (medium, ~10 min): everything except benchmarks
-Phases: 0-11
+# Online (needs dev server): Phases 7-12
+# Require api.dev.orignagta.ca to be running
+# Set OB_TEST_URL if using a different server
 
-# Full release (slow, ~20 min): everything including benchmarks
-Phases: 0-13
-
-# Security check (focused): analyze + clippy + unit + live + integration
-Phases: 0-2, 4-5, 7-8
+# Full run: ALL phases 0-13
+# Needs: dev server + deployed web app + macOS (for golden)
 ```
 
 ## RAM Safety
