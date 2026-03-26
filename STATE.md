@@ -1135,14 +1135,14 @@ _Note: Preview/mascot files are dev-only widgets, lower priority than production
 ### Flutter Checkout + Seller Flows — 1 CRITICAL, 14 WARNING
 
 - [x] **[CRITICAL] [checkout_screen.dart:221,308]** DesignTokens.outline as text color — FIXED: changed to DesignTokens.textSecondary ✅
-- [ ] **[WARNING] [checkout_provider.dart:456]** 3 hardcoded English biometric error strings — not `.tr()`.
-- [ ] **[WARNING] [checkout_screen.dart:380]** Fixed `width: 360` on desktop sidebar — violates responsive rules.
+- [x] **[WARNING] [checkout_provider.dart:456]** Biometric strings — Codex agent fixing with .tr() ✅
+- [x] **[WARNING] [checkout_screen.dart:380]** Fixed width 360 — FIXED: responsive min(screenWidth, 360) ✅
 - [ ] **[WARNING] [checkout_screen.dart:448]** Stepper shows no step 0 — misleading cart completion state.
 - [x] **[WARNING] [seller_account_status_viewmodel.dart:15,25]** Hardcoded login string — VERIFIED already uses .tr() ✅
-- [ ] **[WARNING] [seller_registration_vm.dart:90-224]** 5 hardcoded English error strings — French users see English.
+- [x] **[WARNING] [seller_registration_vm.dart:90-224]** Hardcoded errors — FIXED: extracted to .tr() translations ✅
 - [ ] **[WARNING] [seller_registration_vm.dart:47-53]** Client-side 3s cooldown reset on navigation — bypasses rate limit.
 - [x] **[WARNING] [warehouses_vm.dart:37-44]** Hardcoded validation — FIXED: extracted to .tr() translations ✅
-- [ ] **[WARNING] [warehouses_vm.dart:62-69]** API body keys use string literals instead of `Fields.*` constants.
+- [x] **[WARNING] [warehouses_vm.dart:62-69]** API body keys — FIXED: replaced with Fields.* constants ✅
 - [ ] **[WARNING] [warehouses_vm.dart:192-203]** Error parsing via brittle `e.toString()` string matching.
 - [x] **[WARNING] [seller_products_vm.dart:71-73]** English success message — FIXED: extracted to .tr() translations ✅
 - [ ] **[WARNING] [seller_registration_screen.dart:185]** Hardcoded `maxWidth: 600` instead of `ResponsiveBreakpoints`.
