@@ -430,7 +430,8 @@ pub async fn batch_presign_upload(
                 "Not allowed to upload to path '{safe}'"
             )));
         }
-        let upload_url = state.url_generator.sign_upload(&safe, req.ttl_secs)?;
+        let ttl_secs = req.ttl_secs.clamp(60, 86400); // 1min to 24h max
+        let upload_url = state.url_generator.sign_upload(&safe, ttl_secs)?;
         urls.push(PresignedUploadEntry {
             path: safe,
             upload_url,
@@ -465,7 +466,8 @@ pub async fn batch_presign_download(
                 "Not allowed to download path '{safe}'"
             )));
         }
-        let download_url = state.url_generator.sign_download(&safe, req.ttl_secs)?;
+        let ttl_secs = req.ttl_secs.clamp(60, 86400); // 1min to 24h max
+        let download_url = state.url_generator.sign_download(&safe, ttl_secs)?;
         urls.push(PresignedDownloadEntry {
             path: safe,
             download_url,
