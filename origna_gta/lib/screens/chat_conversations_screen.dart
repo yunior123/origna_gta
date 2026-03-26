@@ -13,6 +13,8 @@ import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:origna_gta/widgets/premium_paywall_widget.dart';
+import 'package:flutter/widget_previews.dart';
+import 'package:origna_gta/utils/preview_helpers.dart';
 
 /// Lists all chat conversations for the current user (buyer-seller messaging).
 class ChatConversationsScreen extends ConsumerWidget {
@@ -307,3 +309,6 @@ class _ProductAvatar extends StatelessWidget {
 
 // ─── Flutter Previews ────────────────────────────────────────────────────────
 
+
+
+// === Widget Previews ===

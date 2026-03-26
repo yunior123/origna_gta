@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/modern_skeleton_loader.dart';
 import 'package:origna_gta/widgets/shared/trending_badge.dart';
+import 'package:flutter/widget_previews.dart';
 
 /// Modern 2100 Product Card with glassmorphism
 class ModernProductCard extends StatefulWidget {
@@ -469,3 +470,6 @@ class _ModernProductCardState extends State<ModernProductCard>
     );
   }
 }
+
+
+// === Widget Previews ===

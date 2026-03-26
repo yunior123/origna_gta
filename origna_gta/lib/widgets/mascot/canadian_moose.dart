@@ -8,6 +8,7 @@ import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/safe_url_launcher.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter/widget_previews.dart';
 
 /// Animated Canadian moose mascot widget for the home screen.
 class CanadianMoose extends StatefulWidget {
@@ -549,3 +550,6 @@ class _ModernBubbleTail extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
+
+
+// === Widget Previews ===

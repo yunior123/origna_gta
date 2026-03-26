@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/models/models.dart';
 import 'package:origna_gta/screens/home_screen.dart';
+import 'package:flutter/widget_previews.dart';
+import 'package:origna_gta/utils/preview_helpers.dart';
 
 /// Root scaffold with bottom navigation: Home, Orders, Cart, Profile tabs.
 class MainScreen extends ConsumerStatefulWidget {
@@ -70,3 +72,6 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     });
   }
 }
+
+
+// === Widget Previews ===

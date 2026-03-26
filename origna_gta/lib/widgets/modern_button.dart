@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'modern_loading_indicator.dart';
+import 'package:flutter/widget_previews.dart';
 
 /// Modern 2100 Button with gradient and smooth interactions
 class ModernButton extends StatefulWidget {
@@ -145,3 +146,6 @@ class _ModernButtonState extends State<ModernButton> with SingleTickerProviderSt
     _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(CurvedAnimation(parent: _scaleController, curve: Curves.easeInOut));
   }
 }
+
+
+// === Widget Previews ===

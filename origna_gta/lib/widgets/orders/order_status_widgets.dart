@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:origna_gta/models/generated/base_models.dart' show OrderStatus;
 export 'package:origna_gta/models/generated/base_models.dart' show OrderStatus;
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:flutter/widget_previews.dart';
 
 /// Empty state card shown when the buyer has no orders yet.
 class EmptyOrdersCard extends StatelessWidget {
@@ -318,3 +319,6 @@ extension OrderStatusX on OrderStatus {
     OrderStatus.partiallyRefunded => 'Partially Refunded',
   };
 }
+
+
+// === Widget Previews ===

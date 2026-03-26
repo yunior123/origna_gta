@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:flutter/widget_previews.dart';
+import 'package:origna_gta/utils/preview_helpers.dart';
 
 /// Language selector widget for Quebec Bill 96 compliance.
 /// Allows users to switch between English and French.
@@ -103,3 +105,6 @@ void _persistLang(WidgetRef ref, String langCode) {
         // Fire-and-forget — UI locale is already set; database failure is non-critical
       });
 }
+
+
+// === Widget Previews ===

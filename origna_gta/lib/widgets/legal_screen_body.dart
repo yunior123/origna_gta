@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/animations.dart';
+import 'package:flutter/widget_previews.dart';
 
 IconData iconForSection(String title) {
   final t = title.toLowerCase();
@@ -453,3 +454,6 @@ class _LegalScreenBodyState extends State<LegalScreenBody> {
     }
   }
 }
+
+
+// === Widget Previews ===

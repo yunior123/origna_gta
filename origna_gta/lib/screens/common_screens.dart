@@ -12,6 +12,8 @@ import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
+import 'package:flutter/widget_previews.dart';
+import 'package:origna_gta/utils/preview_helpers.dart';
 
 // Re-export extracted screens for backward compatibility
 export 'package:origna_gta/screens/admin_required_gate.dart';
@@ -260,3 +262,6 @@ class AuthRequiredGate extends ConsumerWidget {
 }
 
 // ─── Flutter Previews ────────────────────────────────────────────────────────
+
+
+// === Widget Previews ===

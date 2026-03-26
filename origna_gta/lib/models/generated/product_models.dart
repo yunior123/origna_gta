@@ -927,3 +927,6 @@ extension SellerWarehouseExtension on SellerWarehouse {
   bool get isWarehouse => type == WarehouseTypeValues.warehouse;
   String get typeLabel => isWarehouse ? 'Warehouse' : 'Personal Address';
 }
+
+
+// === Widget Previews ===

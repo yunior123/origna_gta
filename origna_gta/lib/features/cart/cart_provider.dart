@@ -549,3 +549,6 @@ class CartController {
     return true;
   }
 }
+
+
+// === Widget Previews ===

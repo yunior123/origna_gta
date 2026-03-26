@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:flutter/widget_previews.dart';
 
 /// Configuration for a bottom navigation tab: icon, label, route.
 class BottomNavItem {
@@ -139,3 +140,6 @@ class _NavBarItem extends StatelessWidget {
     );
   }
 }
+
+
+// === Widget Previews ===

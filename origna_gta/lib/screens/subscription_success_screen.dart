@@ -9,6 +9,8 @@ import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
 import 'package:origna_gta/features/subscription/subscription_provider.dart';
+import 'package:flutter/widget_previews.dart';
+import 'package:origna_gta/utils/preview_helpers.dart';
 
 // ─── Flutter Previews ────────────────────────────────────────────────────────
 
@@ -440,3 +442,6 @@ class _SubscriptionSuccessScreenState
     });
   }
 }
+
+
+// === Widget Previews ===

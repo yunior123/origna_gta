@@ -11,6 +11,7 @@ import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:origna_gta/widgets/order_widgets.dart';
+import 'package:flutter/widget_previews.dart';
 
 /// Full order details: items, status timeline, tracking, shipping cost approval.
 class OrderDetailScreen extends ConsumerWidget {
@@ -137,3 +138,6 @@ class _OrderDetailView extends ConsumerWidget {
     );
   }
 }
+
+
+// === Widget Previews ===

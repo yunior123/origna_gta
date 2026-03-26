@@ -11,6 +11,8 @@ import 'package:origna_gta/utils/env_config.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
+import 'package:flutter/widget_previews.dart';
+import 'package:origna_gta/utils/preview_helpers.dart';
 
 // Splash removal is handled entirely by index.html JS (flutter-first-frame + 5s fallback).
 
@@ -239,3 +241,6 @@ class _TermsUpdateGateState extends ConsumerState<_TermsUpdateGate> {
     );
   }
 }
+
+
+// === Widget Previews ===

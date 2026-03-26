@@ -11,6 +11,7 @@ import 'package:origna_gta/utils/app_logger.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:video_player/video_player.dart';
+import 'package:flutter/widget_previews.dart';
 
 // ─── Riverpod state for ProductAddVideo ──────────────────────────────────────
 final _videoInitializingProvider = StateProvider.autoDispose<bool>(
@@ -395,3 +396,6 @@ class _VideoTile extends StatelessWidget {
     );
   }
 }
+
+
+// === Widget Previews ===

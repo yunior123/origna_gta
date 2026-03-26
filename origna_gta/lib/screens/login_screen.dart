@@ -16,6 +16,7 @@ import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:origna_gta/features/auth/login_state.dart';
 import 'package:origna_gta/features/auth/login_viewmodel.dart';
 import 'mfa_challenge_screen.dart';
+import 'package:flutter/widget_previews.dart';
 
 part 'parts/login_form_panel.dart';
 part 'parts/login_google_button.dart';
@@ -307,3 +308,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     );
   }
 }
+
+
+// === Widget Previews ===

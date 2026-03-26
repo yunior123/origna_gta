@@ -18,6 +18,8 @@ import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:origna_gta/widgets/orders/mark_shipped_dialog.dart';
 import 'package:origna_gta/widgets/orders/seller_order_item_tile.dart';
 import 'package:origna_gta/widgets/orders/update_shipping_dialog.dart';
+import 'package:flutter/widget_previews.dart';
+import 'package:origna_gta/utils/preview_helpers.dart';
 
 part 'parts/seller_orders_earnings_card.dart';
 part 'parts/seller_orders_order_card.dart';
@@ -234,3 +236,6 @@ class SellerOrdersScreen extends ConsumerWidget {
     );
   }
 }
+
+
+// === Widget Previews ===

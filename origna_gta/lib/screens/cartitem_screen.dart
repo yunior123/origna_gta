@@ -8,6 +8,7 @@ import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/shared/quantity_button.dart';
 import 'package:origna_gta/widgets/modern_skeleton_loader.dart';
+import 'package:flutter/widget_previews.dart';
 
 /// Single cart item card: quantity selector, remove button, variant display.
 class CartItemScreen extends StatelessWidget {
@@ -686,3 +687,6 @@ class CartItemScreen extends StatelessWidget {
     );
   }
 }
+
+
+// === Widget Previews ===

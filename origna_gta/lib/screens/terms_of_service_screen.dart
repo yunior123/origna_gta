@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:origna_gta/widgets/legal_screen_body.dart';
+import 'package:flutter/widget_previews.dart';
 
 /// Displays the current Terms of Service and records user acceptance.
 class TermsOfServiceScreen extends StatelessWidget {
@@ -21,3 +22,6 @@ class TermsOfServiceScreen extends StatelessWidget {
 
 // ─── Flutter Previews ────────────────────────────────────────────────────────
 
+
+
+// === Widget Previews ===

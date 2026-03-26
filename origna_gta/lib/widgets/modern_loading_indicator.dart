@@ -6,6 +6,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:flutter/widget_previews.dart';
 
 /// A styled loading indicator consistent with the OrignaGTA 2100 design system.
 ///
@@ -185,3 +186,6 @@ class _SpinnerArcPainter extends CustomPainter {
     return oldDelegate.color != color || oldDelegate.strokeWidth != strokeWidth;
   }
 }
+
+
+// === Widget Previews ===

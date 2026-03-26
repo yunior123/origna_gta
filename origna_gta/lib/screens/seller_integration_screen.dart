@@ -570,6 +570,8 @@ class _SwiftSnippetCard extends StatelessWidget {
       '''
 import Foundation
 import IOKit
+import 'package:flutter/widget_previews.dart';
+import 'package:origna_gta/utils/preview_helpers.dart';
 
 /// Returns the hardware UUID of this Mac — stable across reboots.
 func deviceID() -> String {
@@ -624,3 +626,6 @@ func activateLicense(key: String, platform: String = "macos") async throws -> Bo
     );
   }
 }
+
+
+// === Widget Previews ===

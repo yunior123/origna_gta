@@ -26,6 +26,7 @@ import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:origna_gta/widgets/shared/cart_badge.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:origna_gta/widgets/modern_skeleton_loader.dart';
+import 'package:flutter/widget_previews.dart';
 
 part 'parts/home_hero_section.dart';
 part 'parts/home_featured_products.dart';
@@ -618,3 +619,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 }
+
+
+// === Widget Previews ===

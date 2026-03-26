@@ -8,6 +8,7 @@ import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:origna_gta/widgets/modern_textfield.dart';
 
 import 'package:origna_gta/features/auth/reset_password_view_model.dart';
+import 'package:flutter/widget_previews.dart';
 
 /// Password reset flow: enter email, receive reset link, set new password.
 class ResetPasswordScreen extends ConsumerStatefulWidget {
@@ -215,3 +216,6 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
     super.dispose();
   }
 }
+
+
+// === Widget Previews ===

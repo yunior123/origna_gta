@@ -304,3 +304,6 @@ final productRatingsProvider = StreamProvider.autoDispose
         controller.onCancel = () => subscription.cancel();
       });
     });
+
+
+// === Widget Previews ===

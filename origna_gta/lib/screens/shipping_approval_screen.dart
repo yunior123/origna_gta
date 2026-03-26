@@ -10,6 +10,8 @@ import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
+import 'package:flutter/widget_previews.dart';
+import 'package:origna_gta/utils/preview_helpers.dart';
 
 /// Screen for buyers to approve or reject shipping cost changes
 /// This is shown when the seller's actual shipping cost exceeds the estimate by more than 20%
@@ -745,3 +747,6 @@ class _ApprovalCard extends ConsumerWidget {
 }
 
 // ─── Flutter Previews ────────────────────────────────────────────────────────
+
+
+// === Widget Previews ===

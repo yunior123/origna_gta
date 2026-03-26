@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:flutter/widget_previews.dart';
 
 /// Modern 2100 Text Input Field with glassmorphism
 class ModernTextField extends StatefulWidget {
@@ -158,3 +159,6 @@ class _ModernTextFieldState extends State<ModernTextField> {
     _obscureText = widget.isPassword;
   }
 }
+
+
+// === Widget Previews ===

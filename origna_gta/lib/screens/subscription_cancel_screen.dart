@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:flutter/widget_previews.dart';
 
 // ─── Flutter Previews ────────────────────────────────────────────────────────
 
@@ -168,3 +169,6 @@ class SubscriptionCancelScreen extends StatelessWidget {
     );
   }
 }
+
+
+// === Widget Previews ===

@@ -18,6 +18,7 @@ import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:origna_gta/widgets/rating_dialog.dart';
 import 'package:origna_gta/utils/safe_url_launcher.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter/widget_previews.dart';
 
 // ─── Riverpod state for download buttons ─────────────────────────────────────
 final _bookDownloadLoadingProvider = StateProvider.autoDispose<bool>(
@@ -2549,3 +2550,6 @@ class _SoftwareDownloadLinksState extends ConsumerState<SoftwareDownloadLinks> {
     }
   }
 }
+
+
+// === Widget Previews ===

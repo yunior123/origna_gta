@@ -11,6 +11,8 @@ import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
 import 'package:origna_gta/features/seller/seller_account_status_viewmodel.dart';
 import 'package:origna_gta/features/seller/seller_registration_view_model.dart';
+import 'package:flutter/widget_previews.dart';
+import 'package:origna_gta/utils/preview_helpers.dart';
 
 part 'parts/seller_registration_header_section.dart';
 part 'parts/seller_registration_provider_section.dart';
@@ -332,3 +334,6 @@ class _SellerRegistrationScreenState
 
   // Status row builder - reserved for future use if needed
 }
+
+
+// === Widget Previews ===

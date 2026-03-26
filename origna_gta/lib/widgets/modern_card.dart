@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:flutter/widget_previews.dart';
 
 /// Modern 2100 Card with glassmorphism and hover effects
 class ModernCard extends StatefulWidget {
@@ -113,3 +114,6 @@ class _ModernCardState extends State<ModernCard> with SingleTickerProviderStateM
     }
   }
 }
+
+
+// === Widget Previews ===

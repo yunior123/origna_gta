@@ -7,6 +7,8 @@ import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
 import 'package:origna_gta/features/terms/terms_provider.dart';
+import 'package:flutter/widget_previews.dart';
+import 'package:origna_gta/utils/preview_helpers.dart';
 
 /// Parsed section from raw terms text
 class _TermsSection {
@@ -768,3 +770,6 @@ class _TermsBodyState extends State<_TermsBody> {
 }
 
 // ─── Flutter Previews ────────────────────────────────────────────────────────
+
+
+// === Widget Previews ===

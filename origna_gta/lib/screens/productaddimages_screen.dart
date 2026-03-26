@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/utils.dart';
+import 'package:flutter/widget_previews.dart';
 
 // ─── Riverpod state for ProductAddImages ─────────────────────────────────────
 final _productImagesProvider = StateProvider.autoDispose<List<ImageModel>>(
@@ -365,3 +366,6 @@ class _ProductAddImagesState extends ConsumerState<ProductAddImages> {
     }
   }
 }
+
+
+// === Widget Previews ===

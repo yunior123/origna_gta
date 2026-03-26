@@ -12,6 +12,8 @@ import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:origna_gta/core/routes.dart';
+import 'package:flutter/widget_previews.dart';
+import 'package:origna_gta/utils/preview_helpers.dart';
 
 part 'parts/warehouses_card_section.dart';
 part 'parts/warehouses_form_section.dart';
@@ -255,3 +257,6 @@ class _WarehousesList extends ConsumerWidget {
     );
   }
 }
+
+
+// === Widget Previews ===

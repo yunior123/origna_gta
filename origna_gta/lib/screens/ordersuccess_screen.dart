@@ -15,6 +15,7 @@ import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/mascot/shop_mascot.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
+import 'package:flutter/widget_previews.dart';
 
 /// Post-payment success screen that polls for the confirmed order via Stripe session ID.
 class OrderSuccessScreen extends ConsumerStatefulWidget {
@@ -575,3 +576,6 @@ class _Particle {
     );
   }
 }
+
+
+// === Widget Previews ===

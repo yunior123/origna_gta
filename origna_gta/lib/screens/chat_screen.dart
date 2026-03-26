@@ -13,6 +13,7 @@ import 'package:origna_gta/widgets/premium_paywall_widget.dart';
 
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/chat/chat_provider.dart';
+import 'package:flutter/widget_previews.dart';
 
 /// Navigation arguments for [ChatScreen]: conversation ID and participant info.
 class ChatScreenArgs {
@@ -641,3 +642,6 @@ class _MessageInput extends StatelessWidget {
 }
 
 // ─── Flutter Previews ────────────────────────────────────────────────────────
+
+
+// === Widget Previews ===

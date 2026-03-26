@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:flutter/widget_previews.dart';
 
 /// Promotional banner widget for homepage featured deals and campaigns.
 class StandalonePromoWidget extends StatelessWidget {
@@ -134,3 +135,6 @@ class StandalonePromoWidget extends StatelessWidget {
     );
   }
 }
+
+
+// === Widget Previews ===

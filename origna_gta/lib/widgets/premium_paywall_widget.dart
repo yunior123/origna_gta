@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
+import 'package:flutter/widget_previews.dart';
 
 /// Shown when a premium-only feature is accessed by a non-premium user.
 class PremiumPaywallWidget extends StatelessWidget {
@@ -66,3 +67,6 @@ class PremiumPaywallWidget extends StatelessWidget {
     );
   }
 }
+
+
+// === Widget Previews ===

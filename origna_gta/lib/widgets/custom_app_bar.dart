@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/shared/cart_badge.dart';
+import 'package:flutter/widget_previews.dart';
 
 /// Factory methods for common AppBar configurations
 class AppBarFactory {
@@ -234,3 +235,6 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
     );
   }
 }
+
+
+// === Widget Previews ===
