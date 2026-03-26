@@ -141,7 +141,10 @@ The Generator is a **separate subagent** with write access. It implements featur
 - Never skip `flutter analyze` between changes
 - Never report "done" without running tests
 - Follow all project rules: DesignTokens, schema_constants, MVVM, Riverpod, integer cents
-- If blocked: write blocker to STATE.md and stop — don't hack around it
+- If blocked: SOLVE the blocker. Don't write "blocker" to STATE.md and stop — fix the infrastructure, update the config, modify the DB, whatever it takes
+- If you find an issue while fixing another: fix it inline or add to STATE.md with action plan — never ignore it
+- "Not a code issue" is not an excuse. If it affects the user experience, it IS your issue. Fix the CSP, fix the seed, fix the DB, fix the deployment config
+- Never present incomplete work as complete. If 3 screens aren't captured, say "3 screens remaining" not "screenshots complete"
 
 ## Phase 3: Evaluator (separate subagent)
 
@@ -212,6 +215,23 @@ PASS (avg >= 8) / ITERATE (avg < 8) / FAIL (quality gates failed)
 - If hardcoded colors/strings found, score DesignTokens as <= 5
 - Screenshots are evidence — take them before scoring Visual Coherence
 - Grade what IS, not what was intended
+
+### Anti-Excuse Rules (CRITICAL)
+**NEVER defer work with excuses like "not a code issue", "needs migration", "pre-existing", or "out of scope".**
+
+If something blocks you, SOLVE THE BLOCKER:
+- "Need a verified account" → verify the account via API/DB, don't skip the screenshots
+- "Needs full stack migration" → start the migration, or at minimum scope exactly what files change and create the plan
+- "Seed data has extra fields" → fix the seed data OR fix the model to handle them
+- "Pre-existing test failures" → investigate and fix them, don't label them pre-existing and move on
+- "CSP blocks images" → update the CSP, don't take screenshots without images
+- "Session lost between navigations" → maintain the session, don't capture auth gates instead
+
+The harness loop does NOT end until every issue is either:
+1. **Fixed** — code changed, tests pass, verified
+2. **Blocked with specifics** — "I need X from user because Y" (not vague deferral)
+
+"Deferred" is not a valid status. Either fix it now or explain exactly why you physically cannot.
 
 ## Loop Control
 
