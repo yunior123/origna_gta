@@ -315,7 +315,7 @@ impl NativeTriggerExecutor {
             json!({
                 fields::ORDER_ID: record_id(order_id),
                 fields::PAYMENT_STATUS: new_payment,
-                "refundAmountCents": refund_cents,
+                fields::REFUND_AMOUNT_CENTS: refund_cents,
             }),
         )
         .await
@@ -556,12 +556,12 @@ impl NativeTriggerExecutor {
                     "table": collections::NOTIFICATIONS,
                     "id": notification_id,
                     "data": {
-                        "userId": user_id,
+                        fields::USER_ID: user_id,
                         fields::NOTIFICATION_TYPE: notification_type,
                         "title": title,
                         "body": body,
                         "data": data,
-                        "read": false,
+                        fields::READ: false,
                         fields::CREATED_AT: now,
                         fields::UPDATED_AT: now,
                     }
@@ -685,11 +685,11 @@ impl NativeTriggerExecutor {
                         "subject": title,
                         "html": html,
                         "status": "pending",
-                        "notificationType": notification_type,
+                        fields::NOTIFICATION_TYPE: notification_type,
                         "data": data,
                         "error": Value::Null,
-                        "createdAt": now,
-                        "updatedAt": now,
+                        fields::CREATED_AT: now,
+                        fields::UPDATED_AT: now,
                     }
                 }),
             )
@@ -726,7 +726,7 @@ impl NativeTriggerExecutor {
                     "data": {
                         "status": status,
                         "error": error_message,
-                        "updatedAt": chrono::Utc::now().to_rfc3339(),
+                        fields::UPDATED_AT: chrono::Utc::now().to_rfc3339(),
                         "sentAt": if sent { json!(chrono::Utc::now().to_rfc3339()) } else { Value::Null },
                     }
                 }),
