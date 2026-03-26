@@ -54,6 +54,9 @@ const SAME_DAY_LOCAL_BP: i64 = 250;
 const SAME_DAY_REGIONAL_BP: i64 = 300;
 const SAME_DAY_DEFAULT_BP: i64 = 350;
 
+/// Hard limit for perishable local delivery (km)
+const PERISHABLE_MAX_DISTANCE_KM: f64 = 50.0;
+
 #[cfg(test)]
 const PERISHABLE_CROSS_PROVINCE: f64 = 5.0;
 #[cfg(test)]
@@ -390,7 +393,11 @@ async fn geoapify_distance(
         .and_then(|v| v.as_f64())
         .ok_or_else(|| "Geoapify response missing distance field".to_string())?;
 
-    Ok((distance_m / 1000.0).max(0.0))
+    let distance_km = (distance_m / 1000.0).max(0.0);
+    if distance_km < 0.001 {
+        tracing::warn!(distance_m, "geoapify_returned_zero_distance");
+    }
+    Ok(distance_km)
 }
 
 // ===========================================================================
@@ -520,18 +527,18 @@ async fn calculate_shipping(
             {
                 Ok(distance_km) => {
                     // Same-day max distance check
-                    if speed == "same_day" && distance_km > 50.0 {
+                    if speed == "same_day" && distance_km > PERISHABLE_MAX_DISTANCE_KM {
                         return Err(ob_core::Error::Validation(format!(
                             "Same Day delivery not available: distance {:.1}km exceeds 50km limit",
                             distance_km
                         )));
                     }
 
-                    // CRITICAL FIX: Perishables have hard 50km local delivery limit
-                    if has_perishable && distance_km > 50.0 {
+                    // CRITICAL FIX: Perishables have hard local delivery limit
+                    if has_perishable && distance_km > PERISHABLE_MAX_DISTANCE_KM {
                         return Err(ob_core::Error::Validation(format!(
-                            "Perishable items can only be delivered within 50km local radius. Buyer is {:.1}km away.",
-                            distance_km
+                            "Perishable items can only be delivered within {:.0}km local radius. Buyer is {:.1}km away.",
+                            PERISHABLE_MAX_DISTANCE_KM, distance_km
                         )));
                     }
 

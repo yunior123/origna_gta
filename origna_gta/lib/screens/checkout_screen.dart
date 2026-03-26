@@ -218,7 +218,7 @@ class _CheckoutContent extends ConsumerWidget {
                                 'checkout.digital_delivery_no_address'.tr(),
                                 style: TextStyle(
                                   color: isDark
-                                      ? DesignTokens.outline
+                                      ? DesignTokens.textSecondary
                                       : DesignTokens.textPrimary,
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -305,7 +305,7 @@ class _CheckoutContent extends ConsumerWidget {
                   'checkout.digital_delivery_no_shipping'.tr(),
                   style: TextStyle(
                     color: isDark
-                        ? DesignTokens.outline
+                        ? DesignTokens.textSecondary
                         : DesignTokens.textPrimary,
                     fontWeight: FontWeight.w600,
                   ),
