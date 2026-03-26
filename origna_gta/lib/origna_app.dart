@@ -87,12 +87,15 @@ List<Route<dynamic>> _onGenerateInitialRoutes(String initialRoute) {
 
   if (uri != null) {
     AppLogger.d(
-      'Parsed URI path: ${uri.path}, query: ${uri.queryParameters}', tag: 'router',
+      'Parsed URI path: ${uri.path}, query: ${uri.queryParameters}',
+      tag: 'router',
     );
   }
 
   // Handle auth action URLs (like password reset)
-  if (uri != null && uri.queryParameters[DeepLinkParams.mode] == DeepLinkParams.modeResetPassword) {
+  if (uri != null &&
+      uri.queryParameters[DeepLinkParams.mode] ==
+          DeepLinkParams.modeResetPassword) {
     final oobCode = uri.queryParameters[DeepLinkParams.oobCode];
     final validOobCode = RegExp(r'^[A-Za-z0-9\-_]{10,512}$');
     if (oobCode != null && validOobCode.hasMatch(oobCode)) {
@@ -264,7 +267,8 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
   if (uri == null) return null;
 
   // Handle auth action URLs (like password reset) dynamically via deep links
-  if (uri.queryParameters[DeepLinkParams.mode] == DeepLinkParams.modeResetPassword) {
+  if (uri.queryParameters[DeepLinkParams.mode] ==
+      DeepLinkParams.modeResetPassword) {
     final oobCode = uri.queryParameters[DeepLinkParams.oobCode];
     final validOobCode = RegExp(r'^[A-Za-z0-9\-_]{10,512}$');
     if (oobCode != null && validOobCode.hasMatch(oobCode)) {
@@ -392,7 +396,8 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
   if (uri.path == AppRoutes.orderDetail) {
     // Accept orderId from typed args or query params (for deep-links)
     final args = settings.arguments as OrderDetailArgs?;
-    final orderId = args?.orderId ?? uri.queryParameters[DeepLinkParams.orderId];
+    final orderId =
+        args?.orderId ?? uri.queryParameters[DeepLinkParams.orderId];
     if (orderId == null || orderId.isEmpty) {
       return SlidePageRoute(
         settings: settings,
@@ -408,7 +413,8 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
   // Return Request screen
   if (uri.path == AppRoutes.returnRequest) {
     final args = settings.arguments as ReturnRequestArgs?;
-    final orderId = args?.orderId ?? uri.queryParameters[DeepLinkParams.orderId];
+    final orderId =
+        args?.orderId ?? uri.queryParameters[DeepLinkParams.orderId];
     if (orderId == null || orderId.isEmpty) {
       return SlidePageRoute(
         settings: settings,
@@ -672,7 +678,8 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
         (uri.queryParameters.containsKey(DeepLinkParams.productId)
             ? ChatArgs(
                 productId: uri.queryParameters[DeepLinkParams.productId]!,
-                productTitle: uri.queryParameters[DeepLinkParams.productTitle] ?? '',
+                productTitle:
+                    uri.queryParameters[DeepLinkParams.productTitle] ?? '',
               )
             : null);
     if (resolvedArgs == null) {
@@ -720,7 +727,10 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
   }
 
   // Default fallback: redirect unknown routes to home
-  AppLogger.w('Unknown route: ${uri.path} — redirecting to home', tag: 'router');
+  AppLogger.w(
+    'Unknown route: ${uri.path} — redirecting to home',
+    tag: 'router',
+  );
   return SlidePageRoute(
     settings: const RouteSettings(name: '/'),
     page: const AuthWrapper(),
@@ -739,6 +749,7 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
   final _sessionTimeout = SessionTimeoutService();
   StreamSubscription<AuthState>? _authSubscription;
   StreamSubscription<Uri>? _deepLinkSubscription;
+  String? _ensuredUserId; // Guard: only call ensureUserDocument once per user
   // FIX-5 (HIGH): Use the shared navigatorKey from OrignaBaseNotificationService so
   // notification tap handlers can push routes headlessly (without BuildContext).
   // The private _navigatorKey is replaced by the static singleton key.
@@ -847,12 +858,8 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
                   width: 2,
                 ),
               ),
-              labelStyle: const TextStyle(
-                color: DesignTokens.textSecondary,
-              ),
-              hintStyle: const TextStyle(
-                color: DesignTokens.textSecondary,
-              ),
+              labelStyle: const TextStyle(color: DesignTokens.textSecondary),
+              hintStyle: const TextStyle(color: DesignTokens.textSecondary),
             ),
             textSelectionTheme: const TextSelectionThemeData(
               cursorColor: DesignTokens.primary,
@@ -1017,28 +1024,32 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
     }
 
     // Listen to auth state changes — store subscription for cleanup
-    _authSubscription = ref
-        .read(orignabaseProvider)
-        .auth
-        .authStateChanges
-        .listen((state) async {
-          final user = state.isAuthenticated && state.userId != null
-              ? AppAuthUser.fromAuthState(state)
-              : null;
-          if (user != null && mounted) {
-            _sessionTimeout.startMonitoring(_navigatorKey);
+    _authSubscription = ref.read(orignabaseProvider).auth.authStateChanges.listen((
+      state,
+    ) async {
+      final user = state.isAuthenticated && state.userId != null
+          ? AppAuthUser.fromAuthState(state)
+          : null;
+      if (user != null && mounted) {
+        _sessionTimeout.startMonitoring(_navigatorKey);
 
-            // Ensure user profile exists for authenticated users.
-            try {
-              await ref.read(authRepositoryProvider).ensureUserDocumentExists();
-              if (!mounted) return;
-            } catch (e) {
-              AppLogger.w('Could not ensure user document: $e', tag: 'auth');
-            }
-          } else {
-            _sessionTimeout.stopMonitoring();
+        // Ensure user profile exists — guarded to run only once per user
+        // to prevent infinite loop (ensureUserDoc can trigger auth state change).
+        if (_ensuredUserId != user.uid) {
+          _ensuredUserId = user.uid;
+          try {
+            await ref.read(authRepositoryProvider).ensureUserDocumentExists();
+            if (!mounted) return;
+          } catch (e) {
+            _ensuredUserId = null; // Allow retry on failure
+            AppLogger.w('Could not ensure user document: $e', tag: 'auth');
           }
-        });
+        }
+      } else {
+        _ensuredUserId = null; // Reset on logout
+        _sessionTimeout.stopMonitoring();
+      }
+    });
 
     _restoreWebOAuthCallbackSession();
   }
