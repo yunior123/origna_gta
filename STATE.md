@@ -1067,7 +1067,7 @@ _Note: Preview/mascot files are dev-only widgets, lower priority than production
 ### WebSocket Security (ob-realtime) — 2 CRITICAL, 7 WARNING, 3 INFO
 
 - [x] **[CRITICAL] [websocket.rs:249-255]** /presence unauthenticated — VERIFIED FALSE POSITIVE: requires JWT ✅
-- [ ] **[CRITICAL] [dispatcher.rs:32]** Change dispatcher broadcasts ALL document changes to ALL collection subscribers with zero per-user authorization — PCI/privacy violation.
+- [x] **[CRITICAL] [dispatcher.rs:32]** Dispatcher per-user auth — FIXED: `filter_by_ownership()` filters subscribers by document ownership (buyerId/sellerId/userId) per collection. 8 tests added ✅
 - [x] **[WARNING] [websocket.rs:177]** No collection allowlist — FIXED: ALLOWED_COLLECTIONS whitelist enforced ✅
 - [x] **[WARNING] [websocket.rs:175]** No message size limit — FIXED: 64KB MAX_WS_MESSAGE_SIZE enforced ✅
 - [ ] **[WARNING] [websocket.rs:144-154]** Slow-consumer bridge stalls indefinitely — no timeout.
@@ -1112,7 +1112,7 @@ _Note: Preview/mascot files are dev-only widgets, lower priority than production
 
 - [x] **[CRITICAL] [routes.rs:861]** /links unauth — VERIFIED FALSE POSITIVE: protected by route_layer middleware ✅
 - [x] **[CRITICAL] [routes.rs:872]** /metrics unauth — VERIFIED FALSE POSITIVE: protected by route_layer middleware ✅
-- [ ] **[CRITICAL] [routes.rs:150-162]** `OB_TEST_MODE` bypasses admin auth on ALL admin routes on dev/staging.
+- [x] **[CRITICAL] [routes.rs:150-162]** OB_TEST_MODE admin bypass — FIXED: requires localhost OR admin role in test mode. 5 tests added ✅
 - [x] **[WARNING] [routes.rs:377-385]** redirect_link SQL injection — FIXED: parameterized query_bind with $slug ✅
 - [x] **[WARNING] [routes.rs:73-78]** list_users PII leak — FIXED: removed email from SELECT ✅
 - [ ] **[WARNING] [routes.rs:608-629]** `usage_dashboard` interpolates DB-sourced table names — second-order injection.
