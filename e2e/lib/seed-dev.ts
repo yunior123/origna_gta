@@ -141,6 +141,10 @@ function sellerAddress(label: string, country = 'Canada') {
     city: country === 'Canada' ? 'Toronto' : 'Shanghai',
     state: country === 'Canada' ? 'ON' : 'SH',
     postalCode: country === 'Canada' ? 'M5V 3A8' : '200001',
+    country,
+  };
+}
+
 // ════════════════════════════════════════════════════════════════════
 // SYNTHETIC USER GENERATION — CANADIAN NAMES + ADDRESSES
 // ════════════════════════════════════════════════════════════════════
@@ -601,10 +605,6 @@ async function seedEnhancedReturnRequests(admin: AuthBundle, buyerIds: string[],
   await writeMany(returns, async ret => {
     await writeDoc(`return_requests/${ret.id}`, ret, admin.idToken, true);
   }, 10);
-}
-
-    country,
-  };
 }
 
 function delay(ms: number) {
