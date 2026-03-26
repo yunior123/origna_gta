@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/env_config.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
+import 'package:flutter/widget_previews.dart';
+import 'package:origna_gta/utils/preview_helpers.dart';
 
 /// Seller Integration Guide — shows the public API endpoints, seller's product IDs,
 /// and ready-to-use code snippets for activating licenses from their software.
@@ -570,8 +572,6 @@ class _SwiftSnippetCard extends StatelessWidget {
       '''
 import Foundation
 import IOKit
-import 'package:flutter/widget_previews.dart';
-import 'package:origna_gta/utils/preview_helpers.dart';
 
 /// Returns the hardware UUID of this Mac — stable across reboots.
 func deviceID() -> String {
@@ -629,3 +629,39 @@ func activateLicense(key: String, platform: String = "macos") async throws -> Bo
 
 
 // === Widget Previews ===
+
+
+// ═══ Widget Previews ═══
+
+@Preview(name: 'Seller Integration Dark — Mobile', group: 'SellerIntegrationScreen', size: Size(390, 844))
+Widget previewSellerIntegrationDarkMobile() =>
+    previewMobile(theme: previewDarkTheme, child: previewScope(child: const SellerIntegrationScreen()));
+
+@Preview(name: 'Seller Integration Dark — Tablet', group: 'SellerIntegrationScreen', size: Size(768, 1024))
+Widget previewSellerIntegrationDarkTablet() =>
+    previewTablet(theme: previewDarkTheme, child: previewScope(child: const SellerIntegrationScreen()));
+
+@Preview(name: 'Seller Integration Dark — Desktop', group: 'SellerIntegrationScreen', size: Size(1280, 800))
+Widget previewSellerIntegrationDarkDesktop() =>
+    previewDesktop(theme: previewDarkTheme, child: previewScope(child: const SellerIntegrationScreen()));
+
+@Preview(name: 'Seller Integration Dark — Web', group: 'SellerIntegrationScreen', size: Size(1440, 900))
+Widget previewSellerIntegrationDarkWeb() =>
+    previewWeb(theme: previewDarkTheme, child: previewScope(child: const SellerIntegrationScreen()));
+
+@Preview(name: 'Seller Integration Light — Mobile', group: 'SellerIntegrationScreen', size: Size(390, 844))
+Widget previewSellerIntegrationLightMobile() =>
+    previewMobile(theme: previewLightTheme, child: previewScope(child: const SellerIntegrationScreen()));
+
+@Preview(name: 'Seller Integration Light — Tablet', group: 'SellerIntegrationScreen', size: Size(768, 1024))
+Widget previewSellerIntegrationLightTablet() =>
+    previewTablet(theme: previewLightTheme, child: previewScope(child: const SellerIntegrationScreen()));
+
+@Preview(name: 'Seller Integration Light — Desktop', group: 'SellerIntegrationScreen', size: Size(1280, 800))
+Widget previewSellerIntegrationLightDesktop() =>
+    previewDesktop(theme: previewLightTheme, child: previewScope(child: const SellerIntegrationScreen()));
+
+@Preview(name: 'Seller Integration Light — Web', group: 'SellerIntegrationScreen', size: Size(1440, 900))
+Widget previewSellerIntegrationLightWeb() =>
+    previewWeb(theme: previewLightTheme, child: previewScope(child: const SellerIntegrationScreen()));
+

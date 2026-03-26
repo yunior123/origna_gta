@@ -1,3 +1,4 @@
+import 'package:origna_gta/utils/preview_helpers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -149,3 +150,141 @@ class _ModernButtonState extends State<ModernButton> with SingleTickerProviderSt
 
 
 // === Widget Previews ===
+
+
+// ═══ Widget Previews ═══
+
+// ─── Primary Button ──────────────────────────────────────────────────────────
+
+@Preview(name: 'Primary — dark', group: 'Buttons')
+Widget previewPrimaryButtonDark() => previewWrapper(
+  child: ModernButton(
+    label: 'Checkout',
+    onPressed: () {},
+  ),
+);
+
+@Preview(name: 'Primary — light', group: 'Buttons', brightness: Brightness.light)
+Widget previewPrimaryButtonLight() => previewWrapper(
+  theme: previewLightTheme,
+  background: DesignTokens.surface,
+  child: ModernButton(
+    label: 'Checkout',
+    onPressed: () {},
+  ),
+);
+
+// ─── Loading State ────────────────────────────────────────────────────────────
+
+@Preview(name: 'Loading', group: 'Buttons')
+Widget previewButtonLoading() => previewWrapper(
+  child: ModernButton(
+    label: 'Processing…',
+    isLoading: true,
+    onPressed: () {},
+  ),
+);
+
+// ─── Disabled State ───────────────────────────────────────────────────────────
+
+@Preview(name: 'Disabled', group: 'Buttons')
+Widget previewButtonDisabled() => previewWrapper(
+  child: const ModernButton(
+    label: 'Unavailable',
+    onPressed: null, // null = disabled
+  ),
+);
+
+// ─── Outlined Button ──────────────────────────────────────────────────────────
+
+@Preview(name: 'Outlined', group: 'Buttons')
+Widget previewButtonOutlined() => previewWrapper(
+  child: ModernButton(
+    label: 'Cancel Order',
+    isOutlined: true,
+    onPressed: () {},
+  ),
+);
+
+// ─── With Icon ────────────────────────────────────────────────────────────────
+
+@Preview(name: 'With Icon', group: 'Buttons')
+Widget previewButtonWithIcon() => previewWrapper(
+  child: ModernButton(
+    label: 'Add to Cart',
+    icon: Icons.shopping_cart_outlined,
+    onPressed: () {},
+  ),
+);
+
+// ─── Secondary (non-primary) ─────────────────────────────────────────────────
+
+@Preview(name: 'Secondary', group: 'Buttons')
+Widget previewButtonSecondary() => previewWrapper(
+  child: ModernButton(
+    label: 'View Details',
+    isPrimary: false,
+    onPressed: () {},
+  ),
+);
+
+// ─── All States ───────────────────────────────────────────────────────────────
+
+@Preview(name: 'All States', group: 'Buttons')
+Widget previewButtonAllStates() => previewGrid(
+  children: [
+    ModernButton(label: 'Primary', onPressed: () {}),
+    ModernButton(label: 'With Icon', icon: Icons.shopping_bag_outlined, onPressed: () {}),
+    ModernButton(label: 'Outlined', isOutlined: true, onPressed: () {}),
+    ModernButton(label: 'Secondary', isPrimary: false, onPressed: () {}),
+    ModernButton(label: 'Loading…', isLoading: true, onPressed: () {}),
+    const ModernButton(label: 'Disabled', onPressed: null),
+  ],
+);
+
+
+
+// ═══ Widget Previews ═══
+
+@Preview(name: 'Modern Button — States', group: 'ModernButton')
+Widget previewButtonStates() => previewGrid(
+  children: [
+    ModernButton(label: 'With Icon', icon: Icons.shopping_basket_rounded, onPressed: () {}),
+    ModernButton(label: 'Loading State', isLoading: true, onPressed: () {}),
+    ModernButton(label: 'Custom Height', height: 60, onPressed: () {}),
+    ModernButton(label: 'Fixed Width', fullWidth: false, width: 200, onPressed: () {}),
+  ],
+);
+
+@Preview(name: 'Modern Button — Types', group: 'ModernButton')
+Widget previewButtonTypes() => previewGrid(
+  children: [
+    ModernButton(label: 'Primary Button', onPressed: () {}),
+    ModernButton(label: 'Secondary Button', isPrimary: false, onPressed: () {}),
+    ModernButton(label: 'Outlined Button', isOutlined: true, onPressed: () {}),
+    const ModernButton(label: 'Disabled Button', onPressed: null),
+  ],
+);
+
+@Preview(name: 'Modern Button Light — States', group: 'ModernButton')
+Widget previewButtonStatesLight() => previewGrid(
+  theme: previewLightTheme,
+  children: [
+    ModernButton(label: 'With Icon', icon: Icons.shopping_basket_rounded, onPressed: () {}),
+    ModernButton(label: 'Loading State', isLoading: true, onPressed: () {}),
+    ModernButton(label: 'Custom Height', height: 60, onPressed: () {}),
+    ModernButton(label: 'Fixed Width', fullWidth: false, width: 200, onPressed: () {}),
+  ],
+);
+
+@Preview(name: 'Modern Button Light — Types', group: 'ModernButton')
+Widget previewButtonTypesLight() => previewGrid(
+  theme: previewLightTheme,
+  children: [
+    ModernButton(label: 'Primary Button', onPressed: () {}),
+    ModernButton(label: 'Secondary Button', isPrimary: false, onPressed: () {}),
+    ModernButton(label: 'Outlined Button', isOutlined: true, onPressed: () {}),
+    const ModernButton(label: 'Disabled Button', onPressed: null),
+  ],
+);
+

@@ -1,3 +1,4 @@
+import 'package:origna_gta/utils/preview_helpers.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
@@ -473,3 +474,446 @@ class _ModernProductCardState extends State<ModernProductCard>
 
 
 // === Widget Previews ===
+
+
+// ═══ Widget Previews ═══
+
+/// [Align] escapes tight width constraints from [previewGrid]'s Column so the
+/// card stays at 220 px instead of stretching to the full panel width.
+Widget _card(Widget w) =>
+    Align(child: SizedBox(width: 220, height: 460, child: w));
+
+@Preview(name: 'Modern Product Card — States', group: 'ModernProductCard')
+Widget previewProductCardStates() => previewGrid(
+  children: [
+    _card(
+      ModernProductCard(
+        productName: 'Limited Edition Winter Parka',
+        priceCents: 29900,
+        imageUrl:
+            'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?q=80&w=3087&auto=format&fit=crop',
+        sellerName: 'Northern Gear',
+        onTap: () {},
+        isOutOfStock: true,
+      ),
+    ),
+    _card(
+      ModernProductCard(
+        productName: 'Pacific Salmon Fillets (Fresh)',
+        priceCents: 1850,
+        imageUrl: '', // Empty URL to trigger placeholder
+        sellerName: 'Ocean Harvest',
+        rating: 4.5,
+        reviewCount: 22,
+        onTap: () {},
+        onAddToCart: () {},
+        shipFromCountries: const ['Canada', 'USA'],
+        isTrending: true,
+        trendingScore: 40,
+      ),
+    ),
+  ],
+);
+
+@Preview(name: 'Modern Product Card — Variants', group: 'ModernProductCard')
+Widget previewProductCardVariants() => previewGrid(
+  children: [
+    _card(
+      ModernProductCard(
+        productName: 'Handmade Canadian Maple Syrup',
+        priceCents: 2499,
+        imageUrl:
+            'https://images.unsplash.com/photo-1589182373726-e4f658ab50f0?q=80&w=3087&auto=format&fit=crop',
+        sellerName: 'Maple Artisans Co.',
+        rating: 4.8,
+        reviewCount: 154,
+        onTap: () {},
+        onAddToCart: () {},
+        shipFromCity: 'Toronto',
+        shipFromProvince: 'ON',
+        shipFromCountry: 'Canada',
+      ),
+    ),
+    _card(
+      ModernProductCard(
+        productName: 'Artisan Quebec Cheese Board',
+        priceCents: 4500,
+        compareAtPriceCents: 5500,
+        imageUrl:
+            'https://images.unsplash.com/photo-1631451095765-2c91616fc9e6?q=80&w=3087&auto=format&fit=crop',
+        sellerName: 'Fromagerie de Quebec',
+        rating: 4.9,
+        reviewCount: 89,
+        onTap: () {},
+        onAddToCart: () {},
+        shipFromCity: 'Quebec City',
+        shipFromProvince: 'QC',
+        shipFromCountry: 'Canada',
+        isTrending: true,
+        trendingScore: 85,
+      ),
+    ),
+  ],
+);
+
+@Preview(name: 'Modern Product Card Light — States', group: 'ModernProductCard')
+Widget previewProductCardStatesLight() => previewGrid(
+  theme: previewLightTheme,
+  children: [
+    _card(
+      ModernProductCard(
+        productName: 'Limited Edition Winter Parka',
+        priceCents: 29900,
+        imageUrl:
+            'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?q=80&w=3087&auto=format&fit=crop',
+        sellerName: 'Northern Gear',
+        onTap: () {},
+        isOutOfStock: true,
+      ),
+    ),
+    _card(
+      ModernProductCard(
+        productName: 'Pacific Salmon Fillets (Fresh)',
+        priceCents: 1850,
+        imageUrl: '',
+        sellerName: 'Ocean Harvest',
+        rating: 4.5,
+        reviewCount: 22,
+        onTap: () {},
+        onAddToCart: () {},
+        shipFromCountries: const ['Canada', 'USA'],
+        isTrending: true,
+        trendingScore: 40,
+      ),
+    ),
+  ],
+);
+
+@Preview(
+  name: 'Modern Product Card Light — Variants',
+  group: 'ModernProductCard',
+)
+Widget previewProductCardVariantsLight() => previewGrid(
+  theme: previewLightTheme,
+  children: [
+    _card(
+      ModernProductCard(
+        productName: 'Handmade Canadian Maple Syrup',
+        priceCents: 2499,
+        imageUrl:
+            'https://images.unsplash.com/photo-1589182373726-e4f658ab50f0?q=80&w=3087&auto=format&fit=crop',
+        sellerName: 'Maple Artisans Co.',
+        rating: 4.8,
+        reviewCount: 154,
+        onTap: () {},
+        onAddToCart: () {},
+        shipFromCity: 'Toronto',
+        shipFromProvince: 'ON',
+        shipFromCountry: 'Canada',
+      ),
+    ),
+    _card(
+      ModernProductCard(
+        productName: 'Artisan Quebec Cheese Board',
+        priceCents: 4500,
+        compareAtPriceCents: 5500,
+        imageUrl:
+            'https://images.unsplash.com/photo-1631451095765-2c91616fc9e6?q=80&w=3087&auto=format&fit=crop',
+        sellerName: 'Fromagerie de Quebec',
+        rating: 4.9,
+        reviewCount: 89,
+        onTap: () {},
+        onAddToCart: () {},
+        shipFromCity: 'Quebec City',
+        shipFromProvince: 'QC',
+        shipFromCountry: 'Canada',
+        isTrending: true,
+        trendingScore: 85,
+      ),
+    ),
+  ],
+);
+
+
+
+// ═══ Widget Previews ═══
+
+// ─── Shared dummy data ────────────────────────────────────────────────────────
+
+const _kProductName = 'Vintage Leather Jacket';
+const _kPriceCents = 8999;
+const _kCompareAtPriceCents = 12999;
+const _kImageUrl = 'https://picsum.photos/seed/jacket/200/300';
+const _kSellerName = 'Toronto Vintage';
+const _kRating = 4.5;
+const _kReviewCount = 42;
+const _kShipFromCity = 'Toronto';
+const _kShipFromProvince = 'ON';
+
+/// Wrap a [ModernProductCard] in a fixed-size box so the Expanded flex inside
+/// the card has a bounded constraint during preview rendering.
+/// [Align] escapes tight width constraints from [previewGrid]'s Column so the
+/// card stays at 220 px instead of stretching to the full panel width.
+Widget _cardBox(Widget card) =>
+    Align(child: SizedBox(width: 220, height: 460, child: card));
+
+// ─── Standard card ────────────────────────────────────────────────────────────
+
+@Preview(name: 'Standard — dark', group: 'ProductCard')
+Widget previewProductCardStandard() => previewWrapper(
+  child: _cardBox(
+    ModernProductCard(
+      productName: _kProductName,
+      priceCents: _kPriceCents,
+      imageUrl: _kImageUrl,
+      sellerName: _kSellerName,
+      rating: _kRating,
+      reviewCount: _kReviewCount,
+      shipFromCity: _kShipFromCity,
+      shipFromProvince: _kShipFromProvince,
+      onTap: () {},
+      onAddToCart: () {},
+    ),
+  ),
+);
+
+@Preview(
+  name: 'Standard — light',
+  group: 'ProductCard',
+  brightness: Brightness.light,
+)
+Widget previewProductCardStandardLight() => previewWrapper(
+  theme: previewLightTheme,
+  background: DesignTokens.surface,
+  child: _cardBox(
+    ModernProductCard(
+      productName: _kProductName,
+      priceCents: _kPriceCents,
+      imageUrl: _kImageUrl,
+      sellerName: _kSellerName,
+      rating: _kRating,
+      reviewCount: _kReviewCount,
+      shipFromCity: _kShipFromCity,
+      shipFromProvince: _kShipFromProvince,
+      onTap: () {},
+      onAddToCart: () {},
+    ),
+  ),
+);
+
+// ─── Trending HOT card ────────────────────────────────────────────────────────
+
+@Preview(name: 'Trending HOT (score 80)', group: 'ProductCard')
+Widget previewProductCardTrendingHot() => previewWrapper(
+  child: _cardBox(
+    ModernProductCard(
+      productName: _kProductName,
+      priceCents: _kPriceCents,
+      imageUrl: _kImageUrl,
+      sellerName: _kSellerName,
+      rating: _kRating,
+      reviewCount: _kReviewCount,
+      shipFromCity: _kShipFromCity,
+      shipFromProvince: _kShipFromProvince,
+      isTrending: true,
+      trendingScore: 80,
+      onTap: () {},
+      onAddToCart: () {},
+    ),
+  ),
+);
+
+// ─── Trending RISING card ─────────────────────────────────────────────────────
+
+@Preview(name: 'Trending RISING (score 30)', group: 'ProductCard')
+Widget previewProductCardTrendingRising() => previewWrapper(
+  child: _cardBox(
+    ModernProductCard(
+      productName: _kProductName,
+      priceCents: _kPriceCents,
+      imageUrl: _kImageUrl,
+      sellerName: _kSellerName,
+      rating: _kRating,
+      reviewCount: _kReviewCount,
+      shipFromCity: _kShipFromCity,
+      shipFromProvince: _kShipFromProvince,
+      isTrending: true,
+      trendingScore: 30,
+      onTap: () {},
+      onAddToCart: () {},
+    ),
+  ),
+);
+
+// ─── Sale / compare-at price card ─────────────────────────────────────────────
+
+@Preview(name: 'On Sale (compare-at price)', group: 'ProductCard')
+Widget previewProductCardOnSale() => previewWrapper(
+  child: _cardBox(
+    ModernProductCard(
+      productName: _kProductName,
+      priceCents: _kPriceCents,
+      compareAtPriceCents: _kCompareAtPriceCents,
+      imageUrl: _kImageUrl,
+      sellerName: _kSellerName,
+      rating: _kRating,
+      reviewCount: _kReviewCount,
+      shipFromCity: _kShipFromCity,
+      shipFromProvince: _kShipFromProvince,
+      onTap: () {},
+      onAddToCart: () {},
+    ),
+  ),
+);
+
+// ─── Out of stock card ────────────────────────────────────────────────────────
+
+@Preview(name: 'Out of Stock', group: 'ProductCard')
+Widget previewProductCardOutOfStock() => previewWrapper(
+  child: _cardBox(
+    ModernProductCard(
+      productName: _kProductName,
+      priceCents: _kPriceCents,
+      imageUrl: _kImageUrl,
+      sellerName: _kSellerName,
+      rating: _kRating,
+      reviewCount: _kReviewCount,
+      shipFromCity: _kShipFromCity,
+      shipFromProvince: _kShipFromProvince,
+      isOutOfStock: true,
+      onTap: () {},
+      onAddToCart: () {},
+    ),
+  ),
+);
+
+// ─── No reviews (new product) ─────────────────────────────────────────────────
+
+@Preview(name: 'No Reviews (new product)', group: 'ProductCard')
+Widget previewProductCardNoReviews() => previewWrapper(
+  child: _cardBox(
+    ModernProductCard(
+      productName: 'New Arrival Jacket',
+      priceCents: _kPriceCents,
+      imageUrl: _kImageUrl,
+      sellerName: _kSellerName,
+      shipFromCity: _kShipFromCity,
+      shipFromProvince: _kShipFromProvince,
+      onTap: () {},
+      onAddToCart: () {},
+    ),
+  ),
+);
+
+// ─── Multi-country shipping card ──────────────────────────────────────────────
+
+@Preview(name: 'Ships from Multiple Countries', group: 'ProductCard')
+Widget previewProductCardMultiCountry() => previewWrapper(
+  child: _cardBox(
+    ModernProductCard(
+      productName: _kProductName,
+      priceCents: _kPriceCents,
+      imageUrl: _kImageUrl,
+      sellerName: _kSellerName,
+      rating: _kRating,
+      reviewCount: _kReviewCount,
+      shipFromCountries: const ['Canada', 'Germany', 'Japan'],
+      onTap: () {},
+      onAddToCart: () {},
+    ),
+  ),
+);
+
+// ─── All variants grid ────────────────────────────────────────────────────────
+
+@Preview(name: 'All Variants', group: 'ProductCard')
+Widget previewProductCardAllVariants() => previewGrid(
+  children: [
+    _cardBox(
+      ModernProductCard(
+        productName: _kProductName,
+        priceCents: _kPriceCents,
+        imageUrl: _kImageUrl,
+        sellerName: _kSellerName,
+        rating: _kRating,
+        reviewCount: _kReviewCount,
+        shipFromCity: _kShipFromCity,
+        shipFromProvince: _kShipFromProvince,
+        onTap: () {},
+        onAddToCart: () {},
+      ),
+    ),
+    _cardBox(
+      ModernProductCard(
+        productName: _kProductName,
+        priceCents: _kPriceCents,
+        imageUrl: _kImageUrl,
+        sellerName: _kSellerName,
+        rating: _kRating,
+        reviewCount: _kReviewCount,
+        shipFromCity: _kShipFromCity,
+        shipFromProvince: _kShipFromProvince,
+        isTrending: true,
+        trendingScore: 80,
+        onTap: () {},
+        onAddToCart: () {},
+      ),
+    ),
+    _cardBox(
+      ModernProductCard(
+        productName: _kProductName,
+        priceCents: _kPriceCents,
+        compareAtPriceCents: _kCompareAtPriceCents,
+        imageUrl: _kImageUrl,
+        sellerName: _kSellerName,
+        rating: _kRating,
+        reviewCount: _kReviewCount,
+        shipFromCity: _kShipFromCity,
+        shipFromProvince: _kShipFromProvince,
+        onTap: () {},
+        onAddToCart: () {},
+      ),
+    ),
+    _cardBox(
+      ModernProductCard(
+        productName: _kProductName,
+        priceCents: _kPriceCents,
+        imageUrl: _kImageUrl,
+        sellerName: _kSellerName,
+        rating: _kRating,
+        reviewCount: _kReviewCount,
+        shipFromCity: _kShipFromCity,
+        shipFromProvince: _kShipFromProvince,
+        isOutOfStock: true,
+        onTap: () {},
+        onAddToCart: () {},
+      ),
+    ),
+    _cardBox(
+      ModernProductCard(
+        productName: 'New Arrival Jacket',
+        priceCents: _kPriceCents,
+        imageUrl: _kImageUrl,
+        sellerName: _kSellerName,
+        shipFromCity: _kShipFromCity,
+        shipFromProvince: _kShipFromProvince,
+        onTap: () {},
+        onAddToCart: () {},
+      ),
+    ),
+    _cardBox(
+      ModernProductCard(
+        productName: _kProductName,
+        priceCents: _kPriceCents,
+        imageUrl: _kImageUrl,
+        sellerName: _kSellerName,
+        rating: _kRating,
+        reviewCount: _kReviewCount,
+        shipFromCountries: const ['Canada', 'Germany', 'Japan'],
+        onTap: () {},
+        onAddToCart: () {},
+      ),
+    ),
+  ],
+);
+

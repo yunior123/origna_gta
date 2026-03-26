@@ -1,3 +1,6 @@
+import 'package:origna_gta/models/generated/base_models.dart' as base;
+import 'package:origna_gta/utils/preview_helpers.dart';
+import 'package:flutter/widget_previews.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -5,7 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/config/supplier_config.dart';
 import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
-import 'package:origna_gta/models/generated/models.dart';
+import 'package:origna_gta/models/generated/models.dart' hide Address;
 import 'package:origna_gta/models/generated/product_models.dart';
 import 'package:origna_gta/screens/productaddimages_screen.dart';
 import 'package:origna_gta/screens/productaddvideo_screen.dart';
@@ -286,3 +289,49 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen>
     });
   }
 }
+
+
+// ═══ Widget Previews ═══
+
+Widget _addProduct() => previewScope(
+  extraOverrides: [
+    sellerWarehousesStreamProvider.overrideWith(
+      (ref) => Stream.value([
+        SellerWarehouse(
+          warehouseId: 'wh-preview',
+          label: 'Toronto Warehouse',
+          address: base.Address(street: "123 King St", city: "Toronto", state: "ON", postalCode: "M5H1A1", country: "CA"),
+          isDefault: true,
+        ),
+      ]),
+    ),
+  ],
+  child: AddProductScreen(),
+);
+
+// ── Dark (default) ──────────────────────────────────────────────────────────
+@Preview(name: 'Add Product — Mobile', group: 'Product Screens', size: Size(390, 844))
+Widget previewAddProductScreenMobile() => previewMobile(child: _addProduct());
+
+@Preview(name: 'Add Product — Tablet', group: 'Product Screens', size: Size(768, 1024))
+Widget previewAddProductScreenTablet() => previewTablet(child: _addProduct());
+
+@Preview(name: 'Add Product — Desktop', group: 'Product Screens', size: Size(1280, 800))
+Widget previewAddProductScreenDesktop() => previewDesktop(child: _addProduct());
+
+@Preview(name: 'Add Product — Web', group: 'Product Screens', size: Size(1440, 900))
+Widget previewAddProductScreenWeb() => previewWeb(child: _addProduct());
+
+// ── Light ────────────────────────────────────────────────────────────────────
+@Preview(name: 'Add Product Light — Mobile', group: 'Product Screens', size: Size(390, 844))
+Widget previewAddProductLightMobile() => previewMobile(theme: previewLightTheme, child: _addProduct());
+
+@Preview(name: 'Add Product Light — Tablet', group: 'Product Screens', size: Size(768, 1024))
+Widget previewAddProductLightTablet() => previewTablet(theme: previewLightTheme, child: _addProduct());
+
+@Preview(name: 'Add Product Light — Desktop', group: 'Product Screens', size: Size(1280, 800))
+Widget previewAddProductLightDesktop() => previewDesktop(theme: previewLightTheme, child: _addProduct());
+
+@Preview(name: 'Add Product Light — Web', group: 'Product Screens', size: Size(1440, 900))
+Widget previewAddProductLightWeb() => previewWeb(theme: previewLightTheme, child: _addProduct());
+

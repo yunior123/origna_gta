@@ -108,3 +108,28 @@ void _persistLang(WidgetRef ref, String langCode) {
 
 
 // === Widget Previews ===
+
+
+// ═══ Widget Previews ═══
+
+@Preview(name: 'Language Selector — Variants', group: 'LanguageSelector')
+Widget previewLanguageVariants() => previewScope(
+  child: previewGrid(
+    children: const [
+      Padding(padding: EdgeInsets.all(16), child: LanguageSelector()),
+      Padding(padding: EdgeInsets.all(16), child: LanguageSelector(compact: true)),
+    ],
+  ),
+);
+
+@Preview(name: 'Language Selector Light — Variants', group: 'LanguageSelector')
+Widget previewLanguageVariantsLight() => previewScope(
+  child: previewGrid(
+    theme: previewLightTheme,
+    children: const [
+      Padding(padding: EdgeInsets.all(16), child: LanguageSelector()),
+      Padding(padding: EdgeInsets.all(16), child: LanguageSelector(compact: true)),
+    ],
+  ),
+);
+

@@ -138,3 +138,46 @@ class StandalonePromoWidget extends StatelessWidget {
 
 
 // === Widget Previews ===
+
+
+// ═══ Widget Previews ═══
+
+@Preview(name: 'PromoBanner - Dark', group: 'Promotions')
+Widget previewPromoBannerDark() => MaterialApp(
+  debugShowCheckedModeBanner: false,
+  theme: ThemeData.dark(),
+  home: const Scaffold(
+    backgroundColor: DesignTokens.black,
+    body: Center(
+      child: Padding(
+        padding: EdgeInsets.all(16.0),
+        child: StandalonePromoWidget(
+          title: 'Spring Clearance Event',
+          subtitle: 'Save up to 50% on select items this weekend only.',
+          discountText: '50% OFF',
+          isDark: true,
+        ),
+      ),
+    ),
+  ),
+);
+
+@Preview(name: 'PromoBanner - Light', group: 'Promotions')
+Widget previewPromoBannerLight() => MaterialApp(
+  debugShowCheckedModeBanner: false,
+  theme: ThemeData.light(),
+  home: const Scaffold(
+    body: Center(
+      child: Padding(
+        padding: EdgeInsets.all(16.0),
+        child: StandalonePromoWidget(
+          title: 'Spring Clearance Event',
+          subtitle: 'Save up to 50% on select items this weekend only.',
+          discountText: '50% OFF',
+          isDark: false,
+        ),
+      ),
+    ),
+  ),
+);
+
