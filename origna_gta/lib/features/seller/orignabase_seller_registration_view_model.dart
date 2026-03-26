@@ -5,6 +5,7 @@ import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/safe_url_launcher.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 import 'seller_registration_state.dart';
 
@@ -159,7 +160,7 @@ class OrignaBaseSellerRegistrationViewModel
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
-        error: 'An unexpected error occurred. Please try again.',
+        error: 'seller.unexpected_error'.tr(),
       );
       _isOperationInProgress = false;
     }

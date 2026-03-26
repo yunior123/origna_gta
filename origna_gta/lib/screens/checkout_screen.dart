@@ -1,3 +1,4 @@
+import 'dart:math' show min;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -378,7 +379,7 @@ class _CheckoutContent extends ConsumerWidget {
             ),
             // Order summary sidebar
             SizedBox(
-              width: 360,
+              width: min(MediaQuery.of(context).size.width, 360.0),
               child: Padding(
                 padding: EdgeInsets.fromLTRB(hPad / 2, hPad, hPad, hPad),
                 child: Container(

@@ -774,6 +774,7 @@ abstract final class Fields {
       'sellerName'; // Seller display name snapshotted at purchase time
   static const warehouseIds = 'warehouseIds';
   static const warehouseStock = 'warehouseStock';
+  static const warehouseId = 'warehouseId';
   static const warehouseStockMap =
       'warehouseStockMap'; // per-warehouse stock allocation: {warehouseId: qty}
   static const fulfillmentWarehouseId =

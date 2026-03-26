@@ -3,7 +3,10 @@
   "app": {
     "name": "Origna GTA",
     "title": "Origna GTA",
-    "tagline": "Le marché moderne du Canada"
+    "tagline": "Le marché moderne du Canada",
+    "update_required_title": "Mise à jour requise",
+    "update_required_message": "Une nouvelle version ({}) est requise. Veuillez mettre à jour pour continuer.",
+    "update_now": "Mettre à jour"
   },
   "admin": {
     "title": "Panneau d'administration",
@@ -1451,7 +1454,8 @@
     "warehouse_city_required": "La ville est requise pour l'adresse de l'entrepôt",
     "bulk_product_success": "{updated} produit{updated_plural} {action}s{skipped_msg}",
     "bulk_products_updated": "{} produit(s) {}s",
-    "bulk_products_updated_skipped": "{} produit(s) {}s ({} ignorés)"
+    "bulk_products_updated_skipped": "{} produit(s) {}s ({} ignorés)",
+    "unexpected_error": "Une erreur inattendue s'est produite. Veuillez réessayer."
   },
   "address": {
     "street": "Adresse",
