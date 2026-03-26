@@ -3,9 +3,19 @@ import 'package:flutter/widget_previews.dart';
 import 'package:origna_gta/previews/_preview_theme.dart';
 import 'package:origna_gta/widgets/premium_paywall_widget.dart';
 
-@Preview(name: 'Premium Paywall — Responsive', group: 'PremiumPaywall')
-Widget previewPaywallResponsive() => previewResponsiveBreakpoints(
-  builder: (bp) => const Center(child: PremiumPaywallWidget(featureName: 'Global Shipping Discounts')),
+@Preview(name: 'Paywall — Mobile Dark', group: 'Premium Paywall', size: Size(390, 844), brightness: Brightness.dark)
+Widget previewPaywallMobile() => previewMobile(
+  child: const Center(child: PremiumPaywallWidget(featureName: 'Global Shipping Discounts')),
+);
+
+@Preview(name: 'Paywall — Tablet Dark', group: 'Premium Paywall', size: Size(768, 1024), brightness: Brightness.dark)
+Widget previewPaywallTablet() => previewTablet(
+  child: const Center(child: PremiumPaywallWidget(featureName: 'Global Shipping Discounts')),
+);
+
+@Preview(name: 'Paywall — Desktop Dark', group: 'Premium Paywall', size: Size(1280, 800), brightness: Brightness.dark)
+Widget previewPaywallDesktop() => previewDesktop(
+  child: const Center(child: PremiumPaywallWidget(featureName: 'Global Shipping Discounts')),
 );
 
 @Preview(name: 'Premium Paywall — Variants', group: 'PremiumPaywall')
@@ -16,10 +26,22 @@ Widget previewPaywallVariants() => previewGrid(
   ],
 );
 
-@Preview(name: 'Premium Paywall Light — Responsive', group: 'PremiumPaywall')
-Widget previewPaywallResponsiveLight() => previewResponsiveBreakpoints(
+@Preview(name: 'Paywall Light — Mobile', group: 'Premium Paywall', size: Size(390, 844), brightness: Brightness.light)
+Widget previewPaywallLightMobile() => previewMobile(
   theme: previewLightTheme,
-  builder: (bp) => const Center(child: PremiumPaywallWidget(featureName: 'Global Shipping Discounts')),
+  child: const Center(child: PremiumPaywallWidget(featureName: 'Global Shipping Discounts')),
+);
+
+@Preview(name: 'Paywall Light — Tablet', group: 'Premium Paywall', size: Size(768, 1024), brightness: Brightness.light)
+Widget previewPaywallLightTablet() => previewTablet(
+  theme: previewLightTheme,
+  child: const Center(child: PremiumPaywallWidget(featureName: 'Global Shipping Discounts')),
+);
+
+@Preview(name: 'Paywall Light — Desktop', group: 'Premium Paywall', size: Size(1280, 800), brightness: Brightness.light)
+Widget previewPaywallLightDesktop() => previewDesktop(
+  theme: previewLightTheme,
+  child: const Center(child: PremiumPaywallWidget(featureName: 'Global Shipping Discounts')),
 );
 
 @Preview(name: 'Premium Paywall Light — Variants', group: 'PremiumPaywall')

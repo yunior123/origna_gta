@@ -9,6 +9,7 @@ import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/repositories/user_repository.dart';
 import 'package:origna_gta/models/models.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:flutter/widget_previews.dart';
 
 // ============================================================================
 // THEMES
@@ -434,36 +435,6 @@ class _BrowserChromeBar extends StatelessWidget {
 // CHECKERBOARD CANVAS BACKGROUND
 // ============================================================================
 
-class _CheckerboardPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    const cellSize = 12.0;
-    final paint1 = Paint()..color = const Color(0xFF1E1E2E);
-    final paint2 = Paint()..color = const Color(0xFF252535);
-
-    final cols = (size.width / cellSize).ceil() + 1;
-    final rows = (size.height / cellSize).ceil() + 1;
-
-    for (int r = 0; r < rows; r++) {
-      for (int c = 0; c < cols; c++) {
-        final paint = (r + c).isEven ? paint1 : paint2;
-        canvas.drawRect(
-          Rect.fromLTWH(
-            c * cellSize.toDouble(),
-            r * cellSize.toDouble(),
-            cellSize,
-            cellSize,
-          ),
-          paint,
-        );
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
-}
-
 // ============================================================================
 // SINGLE-VIEWPORT HELPERS
 // ============================================================================
@@ -567,75 +538,8 @@ Widget _singleViewport({
 // ============================================================================
 
 /// Shows a screen across all breakpoints side by side, each with device chrome.
-/// Checkerboard canvas background. Horizontal scroll.
-Widget previewAllViewports({
-  required Widget Function(PreviewBreakpoint bp) builder,
-  List<PreviewBreakpoint> breakpoints = const [
-    PreviewBreakpoint.mobile,
-    PreviewBreakpoint.tablet,
-    PreviewBreakpoint.desktop,
-    PreviewBreakpoint.web,
-  ],
-  ThemeData? theme,
-  Locale locale = const Locale('en'),
-}) {
-  final effectiveTheme = theme ?? previewDarkTheme;
-
-  return _localizationShell(
-    locale: locale,
-    theme: effectiveTheme,
-    child: CustomPaint(
-      painter: _CheckerboardPainter(),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.all(32),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            for (final bp in breakpoints) ...[
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildFrame(bp, effectiveTheme, builder(bp)),
-                  const SizedBox(height: 8),
-                  _label(
-                    '${bp.name}  •  ${bp.width.toInt()}×${bp.height.toInt()}',
-                  ),
-                ],
-              ),
-              const SizedBox(width: 32),
-            ],
-          ],
-        ),
-      ),
-    ),
-  );
-}
 
 /// Builds a device-framed widget for use in the horizontal row view.
-Widget _buildFrame(PreviewBreakpoint bp, ThemeData theme, Widget content) {
-  final isBrowser = _frameTypeOf(bp) == _FrameType.browser;
-  final contentH = isBrowser ? bp.height - _BrowserOverlay._chromeH : bp.height;
-
-  final contentWidget = Theme(
-    data: theme,
-    child: MediaQuery(
-      data: MediaQueryData(size: Size(bp.width, contentH)),
-      child: Scaffold(
-        backgroundColor: theme.scaffoldBackgroundColor,
-        body: content,
-      ),
-    ),
-  );
-
-  return _DeviceFrameOverlay(
-    breakpoint: bp,
-    isDark: theme.brightness == Brightness.dark,
-    child: contentWidget,
-  );
-}
-
 // ============================================================================
 // WRAPPERS (legacy + grid)
 // ============================================================================
@@ -649,7 +553,7 @@ Widget previewWrapper({
   PreviewBreakpoint? breakpoint,
   Locale locale = const Locale('en'),
 }) {
-  Widget content = SingleChildScrollView(padding: padding, child: child);
+  Widget content = Padding(padding: padding, child: child);
 
   if (breakpoint != null) {
     content = Center(
@@ -715,50 +619,8 @@ Widget previewGrid({
 }
 
 // ============================================================================
-// RESPONSIVE PREVIEWS (backward compat — delegates to previewAllViewports)
-// ============================================================================
-
-/// Shows a screen across Mobile, Tablet, Desktop, and Web breakpoints side by side.
-/// Backward-compat alias for [previewAllViewports].
-Widget previewResponsiveBreakpoints({
-  required Widget Function(PreviewBreakpoint breakpoint) builder,
-  ThemeData? theme,
-  Color? background,
-  Locale locale = const Locale('en'),
-}) {
-  return previewAllViewports(builder: builder, theme: theme, locale: locale);
-}
-
-/// Shows a screen across ALL breakpoints side by side.
-Widget previewAllBreakpoints({
-  required Widget Function(PreviewBreakpoint breakpoint) builder,
-  ThemeData? theme,
-  Color? background,
-  Locale locale = const Locale('en'),
-}) {
-  return previewAllViewports(
-    builder: builder,
-    breakpoints: PreviewBreakpoint.values,
-    theme: theme,
-    locale: locale,
-  );
-}
-
-// ============================================================================
 // INTERNALS
 // ============================================================================
-
-Widget _label(String text) => Padding(
-  padding: const EdgeInsets.only(bottom: 8),
-  child: Text(
-    text,
-    style: TextStyle(
-      fontSize: 12,
-      fontWeight: FontWeight.w500,
-      color: DesignTokens.white.withValues(alpha: 0.54),
-    ),
-  ),
-);
 
 Widget _localizationShell({
   required Widget child,
@@ -836,4 +698,41 @@ class _PreviewUserRepository implements UserRepository {
       Stream.value(
         const SellerAccountStatus(isSeller: false, chargesEnabled: false),
       );
+
+}
+
+// ============================================================================
+// RESPONSIVE PREVIEW MULTI-PREVIEW
+// ============================================================================
+
+/// Custom MultiPreview that generates Mobile, Tablet, and Desktop previews.
+/// Use this annotation on a Widget-returning function to automatically generate
+/// three preview sizes (Mobile Dark, Tablet Dark, Desktop Dark).
+///
+/// Example:
+/// ```dart
+/// @ResponsivePreview()
+/// Widget previewMyWidget() => const MyWidget();
+/// ```
+final class ResponsivePreview extends MultiPreview {
+  const ResponsivePreview();
+
+  @override
+  List<Preview> get previews => const [
+    Preview(
+      name: 'Mobile Dark',
+      size: Size(390, 844),
+      brightness: Brightness.dark,
+    ),
+    Preview(
+      name: 'Tablet Dark',
+      size: Size(768, 1024),
+      brightness: Brightness.dark,
+    ),
+    Preview(
+      name: 'Desktop Dark',
+      size: Size(1280, 800),
+      brightness: Brightness.dark,
+    ),
+  ];
 }

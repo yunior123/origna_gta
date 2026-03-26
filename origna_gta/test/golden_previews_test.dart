@@ -981,15 +981,6 @@ void main() {
         matchesGoldenFile('goldens/language_variants.png'),
       );
     });
-    testWidgets('previewLegalResponsive', (WidgetTester tester) async {
-      await tester.pumpWidget(previewLegalResponsive());
-      await tester.pump(const Duration(milliseconds: 300));
-      await tester.pump(const Duration(milliseconds: 300));
-      await expectLater(
-        find.byType(MaterialApp).first,
-        matchesGoldenFile('goldens/legal_responsive.png'),
-      );
-    });
     testWidgets('previewLegalVariants', (WidgetTester tester) async {
       await tester.pumpWidget(previewLegalVariants());
       await tester.pump(const Duration(milliseconds: 300));
@@ -1424,15 +1415,6 @@ void main() {
       await expectLater(
         find.byType(MaterialApp).first,
         matchesGoldenFile('goldens/payment_canceled_screen_web.png'),
-      );
-    });
-    testWidgets('previewPaywallResponsive', (WidgetTester tester) async {
-      await tester.pumpWidget(previewPaywallResponsive());
-      await tester.pump(const Duration(milliseconds: 300));
-      await tester.pump(const Duration(milliseconds: 300));
-      await expectLater(
-        find.byType(MaterialApp).first,
-        matchesGoldenFile('goldens/paywall_responsive.png'),
       );
     });
     testWidgets('previewPaywallVariants', (WidgetTester tester) async {

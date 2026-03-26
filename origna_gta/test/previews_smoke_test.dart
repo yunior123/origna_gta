@@ -2028,16 +2028,16 @@ void main() {
   });
 
   group('Previews in premium_paywall_preview.dart', () {
-    testWidgets('previewPaywallResponsive', (tester) async {
-      await tester.pumpWidget(p52.previewPaywallResponsive());
+    testWidgets('previewPaywallMobile', (tester) async {
+      await tester.pumpWidget(p52.previewPaywallMobile());
       await tester.pump();
     });
     testWidgets('previewPaywallVariants', (tester) async {
       await tester.pumpWidget(p52.previewPaywallVariants());
       await tester.pump();
     });
-    testWidgets('previewPaywallResponsiveLight', (tester) async {
-      await tester.pumpWidget(p52.previewPaywallResponsiveLight());
+    testWidgets('previewPaywallLightMobile', (tester) async {
+      await tester.pumpWidget(p52.previewPaywallLightMobile());
       await tester.pump();
     });
     testWidgets('previewPaywallVariantsLight', (tester) async {
@@ -2301,16 +2301,16 @@ void main() {
   });
 
   group('Previews in legal_screen_body_preview.dart', () {
-    testWidgets('previewLegalResponsive', (tester) async {
-      await tester.pumpWidget(p63.previewLegalResponsive());
+    testWidgets('previewLegalMobile', (tester) async {
+      await tester.pumpWidget(p63.previewLegalMobile());
       await tester.pump();
     });
     testWidgets('previewLegalVariants', (tester) async {
       await tester.pumpWidget(p63.previewLegalVariants());
       await tester.pump();
     });
-    testWidgets('previewLegalResponsiveLight', (tester) async {
-      await tester.pumpWidget(p63.previewLegalResponsiveLight());
+    testWidgets('previewLegalLightMobile', (tester) async {
+      await tester.pumpWidget(p63.previewLegalLightMobile());
       await tester.pump();
     });
     testWidgets('previewLegalVariantsLight', (tester) async {
