@@ -4,6 +4,7 @@ import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/models/generated/base_models.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 import 'warehouses_viewmodel.dart' show WarehousesState;
 
@@ -191,14 +192,16 @@ class OrignaBaseWarehousesViewModel extends StateNotifier<WarehousesState> {
   String _parseError(Object e) {
     final msg = e.toString();
     if (msg.contains('unauthenticated')) {
-      return 'Please log in to manage warehouses.';
+      return 'seller.warehouse_error_login'.tr();
     }
-    if (msg.contains('not-found')) return 'Warehouse not found.';
+    if (msg.contains('not-found')) {
+      return 'seller.warehouse_error_not_found'.tr();
+    }
     if (msg.contains('invalid-argument')) {
       final start = msg.indexOf('] ');
       return start >= 0
           ? msg.substring(start + 2)
-          : 'Invalid input. Please check the form.';
+          : 'seller.warehouse_error_invalid_input'.tr();
     }
     return 'Something went wrong. Please try again.';
   }

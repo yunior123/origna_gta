@@ -4,7 +4,7 @@ use std::hash::{Hash, Hasher};
 use tokio::sync::mpsc;
 use tracing::{error, info};
 
-use crate::shared::schema::{collections, fields, notification_types};
+use crate::shared::schema::{collections, fields, notification_types, OrderStatus};
 use crate::{HandlersState, products};
 use crate::{email, push};
 
@@ -119,7 +119,7 @@ impl NativeTriggerExecutor {
         let order_id = str_field(after, fields::ORDER_ID);
         let buyer_id = after
             .get(fields::BUYER_ID)
-            .or_else(|| after.get("userId"))
+            .or_else(|| after.get(fields::USER_ID))
             .and_then(|v| v.as_str())
             .unwrap_or("");
         let seller_id = str_field(after, fields::SELLER_ID);
@@ -226,7 +226,7 @@ impl NativeTriggerExecutor {
             if !order_seller_should_notify(&normalized_status) {
                 continue;
             }
-            if normalized_status == "shipped"
+            if normalized_status == OrderStatus::Shipped.as_str()
                 && seller_id == str_field(after, fields::LAST_ACTOR_ID)
             {
                 continue;
@@ -251,7 +251,7 @@ impl NativeTriggerExecutor {
             )
             .await?;
 
-            if normalized_status == "confirmed" {
+            if normalized_status == OrderStatus::PaymentAuthorized.as_str() {
                 let perishable_items = perishable_items_for_seller(after, &seller_id);
                 if !perishable_items.is_empty() {
                     let (urgent_title, urgent_body) =
@@ -347,11 +347,13 @@ impl NativeTriggerExecutor {
             return Ok(());
         }
 
-        let is_pickup = str_field(after, "deliverySpeed") == "pickup";
+        let is_pickup = str_field(after, fields::DELIVERY_SPEED) == "pickup";
         let before_order_status = normalize_status(order_status(before));
         let after_order_status = normalize_status(order_status(after));
         let skip_full_order_shipped =
-            before_order_status != "shipped" && after_order_status == "shipped" && !is_pickup;
+            before_order_status != OrderStatus::Shipped.as_str()
+                && after_order_status == OrderStatus::Shipped.as_str()
+                && !is_pickup;
 
         let mut shipped_items = Vec::new();
         let mut delivered_items = Vec::new();
@@ -409,7 +411,7 @@ impl NativeTriggerExecutor {
                 json!({
                     fields::ORDER_ID: record_id(order_id),
                     "itemIds": item_batch_ids(&shipped_items),
-                    fields::STATUS: "shipped",
+                    fields::STATUS: OrderStatus::Shipped.as_str(),
                 }),
             )
             .await?;
@@ -441,7 +443,7 @@ impl NativeTriggerExecutor {
                 json!({
                     fields::ORDER_ID: record_id(order_id),
                     "itemIds": item_batch_ids(&delivered_items),
-                    fields::STATUS: "delivered",
+                    fields::STATUS: OrderStatus::Delivered.as_str(),
                 }),
             )
             .await?;
@@ -853,7 +855,7 @@ fn order_status(value: &Value) -> &str {
 
 fn order_buyer_id(value: &Value) -> &str {
     value
-        .get("userId")
+        .get(fields::USER_ID)
         .or_else(|| value.get(fields::BUYER_ID))
         .or_else(|| value.get(fields::UID))
         .and_then(|v| v.as_str())
@@ -877,8 +879,8 @@ fn normalize_status(status: &str) -> String {
     let normalized = status.trim().replace('-', "_").to_ascii_lowercase();
     match normalized.as_str() {
         "partial_refund" => "partially_refunded".to_string(),
-        "pending_payment" => "pending".to_string(),
-        "payment_authorized" => "confirmed".to_string(),
+        "pending_payment" => OrderStatus::PendingPayment.as_str().to_string(),
+        "payment_authorized" => OrderStatus::PaymentAuthorized.as_str().to_string(),
         _ => normalized,
     }
 }
@@ -938,7 +940,7 @@ fn notification_item_key(item: &Value) -> String {
         let fallback = format!(
             "{}:{}:{}",
             str_field(item, fields::PRODUCT_ID),
-            str_field(item, "name"),
+            str_field(item, fields::NAME),
             str_field(item, fields::STATUS)
         );
         stable_hash(&fallback)
@@ -1034,7 +1036,7 @@ fn buyer_order_status_message(
     let oid = short_id(order_id);
     let tracking = str_field(order, fields::TRACKING_NUMBER);
     let carrier = str_field(order, fields::SHIPPING_CARRIER);
-    let is_pickup = str_field(order, "deliverySpeed") == "pickup";
+    let is_pickup = str_field(order, fields::DELIVERY_SPEED) == "pickup";
     match (normalize_status(status).as_str(), lang) {
         ("confirmed", "fr") => (
             format!("Commande #{oid} confirmée"),
@@ -1420,7 +1422,7 @@ fn aggregate_item_status_message(
 ) -> (String, String) {
     if items.len() == 1 {
         let item_name = items[0]
-            .get("name")
+            .get(fields::NAME)
             .and_then(|v| v.as_str())
             .unwrap_or("item");
         return item_status_message(status, order_id, item_name, lang, is_pickup);
@@ -1462,7 +1464,7 @@ fn urgent_perishable_message(order_id: &str, items: &[Value], lang: &str) -> (St
     let names = items
         .iter()
         .take(3)
-        .filter_map(|item| item.get("name").and_then(|v| v.as_str()))
+        .filter_map(|item| item.get(fields::NAME).and_then(|v| v.as_str()))
         .collect::<Vec<_>>()
         .join(", ");
 

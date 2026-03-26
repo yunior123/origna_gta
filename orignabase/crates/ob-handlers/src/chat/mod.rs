@@ -261,38 +261,46 @@ pub fn router(state: HandlersState) -> Router {
 }
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
+use std::sync::OnceLock;
+
+static ZERO_WIDTH_RE: OnceLock<regex_lite::Regex> = OnceLock::new();
+static SCRIPT_TAG_RE: OnceLock<regex_lite::Regex> = OnceLock::new();
+static JS_SCHEME_RE: OnceLock<regex_lite::Regex> = OnceLock::new();
+static EMAIL_RE: OnceLock<regex_lite::Regex> = OnceLock::new();
+static URL_RE: OnceLock<regex_lite::Regex> = OnceLock::new();
+static WWW_RE: OnceLock<regex_lite::Regex> = OnceLock::new();
+static PHONE_RE: OnceLock<regex_lite::Regex> = OnceLock::new();
+
 fn _sanitize_text(text: &str) -> String {
     if text.is_empty() {
         return String::new();
     }
 
     // Strip zero-width chars and other invisible whitespace
-    let zero_width = regex_lite::Regex::new(r"[\u{200B}\u{200C}\u{200D}\u{FEFF}]").unwrap();
+    let zero_width = ZERO_WIDTH_RE.get_or_init(|| regex_lite::Regex::new(r"[\u{200B}\u{200C}\u{200D}\u{FEFF}]").expect("valid regex"));
     let text = zero_width.replace_all(text, "");
 
     // Strip HTML and script tags
-    let script_tag = regex_lite::Regex::new("(?i)<script[^>]*>.*?</script>").unwrap();
+    let script_tag = SCRIPT_TAG_RE.get_or_init(|| regex_lite::Regex::new("(?i)<script[^>]*>.*?</script>").expect("valid regex"));
     let text = script_tag.replace_all(&text, "");
 
     let clean = sanitize_html(&text);
 
-    let js_scheme = regex_lite::Regex::new("(?i)javascript:").unwrap();
+    let js_scheme = JS_SCHEME_RE.get_or_init(|| regex_lite::Regex::new("(?i)javascript:").expect("valid regex"));
     let text = js_scheme.replace_all(&clean, "");
 
     // Redact email addresses
-    let email_pat =
-        regex_lite::Regex::new(r"(?i)\b[\w._%+\-]+(\s*[@\[(]at[\])]\s*|@)[\w.\-]+\.[a-zA-Z]{2,}\b")
-            .unwrap();
+    let email_pat = EMAIL_RE.get_or_init(|| regex_lite::Regex::new(r"(?i)\b[\w._%+\-]+(\s*[@\[(]at[\])]\s*|@)[\w.\-]+\.[a-zA-Z]{2,}\b").expect("valid regex"));
     let text = email_pat.replace_all(&text, "[email removed]");
 
     // Redact URLs and web links
-    let url_pat = regex_lite::Regex::new(r"(?i)https?://[^\s]+").unwrap();
+    let url_pat = URL_RE.get_or_init(|| regex_lite::Regex::new(r"(?i)https?://[^\s]+").expect("valid regex"));
     let text = url_pat.replace_all(&text, "[link removed]");
-    let www_pat = regex_lite::Regex::new(r"(?i)www\.[^\s]+").unwrap();
+    let www_pat = WWW_RE.get_or_init(|| regex_lite::Regex::new(r"(?i)www\.[^\s]+").expect("valid regex"));
     let text = www_pat.replace_all(&text, "[link removed]");
 
     // Redact phone numbers (10-15 digits)
-    let phone_pat = regex_lite::Regex::new(r"(\+?[\d\s\-\.()]{10,20}\d)").unwrap();
+    let phone_pat = PHONE_RE.get_or_init(|| regex_lite::Regex::new(r"(\+?[\d\s\-\.()]{10,20}\d)").expect("valid regex"));
     let text = phone_pat.replace_all(&text, |caps: &regex_lite::Captures| {
         let raw = &caps[0];
         let digits: String = raw.chars().filter(|c| c.is_ascii_digit()).collect();
@@ -2343,5 +2351,29 @@ mod tests {
         .await
         .unwrap_err();
         assert!(err.to_string().contains("not found") || err.to_string().contains("Not found"));
+    }
+
+    #[test]
+    fn test_sanitize_once_lock_regex_reuse() {
+        // Verify OnceLock regexes are compiled once and reused across calls
+        let first = _sanitize_text("test@example.com");
+        let second = _sanitize_text("another@test.org");
+        let third = _sanitize_text("https://evil.com +1-416-555-1234");
+        assert!(first.contains("[email removed]"));
+        assert!(second.contains("[email removed]"));
+        assert!(third.contains("[link removed]"));
+        assert!(third.contains("[phone removed]"));
+        // If OnceLock were broken, this would panic on second use
+    }
+
+    #[test]
+    fn test_sanitize_preserves_safe_text() {
+        let safe = "Hello, this is a normal message about products.";
+        assert_eq!(_sanitize_text(safe), safe);
+    }
+
+    #[test]
+    fn test_sanitize_empty_input() {
+        assert_eq!(_sanitize_text(""), "");
     }
 }

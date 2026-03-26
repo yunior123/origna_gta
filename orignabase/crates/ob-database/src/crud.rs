@@ -154,6 +154,8 @@ impl DatabaseClient {
     ) -> Result<Vec<Value>> {
         validate_identifier(collection)?;
         let n = limit.unwrap_or(1000).min(10_000);
+        // collection is safe after validate_identifier (alphanumeric only)
+        // limit is a usize, not user-supplied string — no injection risk
         let query = format!("SELECT * FROM {collection} LIMIT {n}");
 
         let mut response = self

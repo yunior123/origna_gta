@@ -141,20 +141,21 @@ async fn is_user_admin(state: &HandlersState, user_id: &str) -> Result<bool, ob_
 }
 
 async fn admin_user_ids(state: &HandlersState) -> Vec<String> {
-    state
+    // Use direct SurrealQL query instead of fetching all users + filtering in app
+    // This reduces N+1 issues when querying push tokens later
+    let results = state
         .db
-        .list_documents(collections::USERS, Some(1000))
+        .query_bind(
+            "SELECT id FROM users WHERE roles CONTAINS 'admin' LIMIT 100",
+            json!({}),
+        )
         .await
-        .unwrap_or_default()
-        .into_iter()
-        .filter(|user| {
-            user.get(fields::ROLES)
-                .and_then(|v| v.as_array())
-                .map(|roles| roles.iter().any(|r| r.as_str() == Some("admin")))
-                .unwrap_or(false)
-        })
-        .filter_map(|user| {
-            user.get("id")
+        .unwrap_or_default();
+
+    results
+        .iter()
+        .filter_map(|row| {
+            row.get("id")
                 .and_then(|v| v.as_str())
                 .map(|id| id.split(':').next_back().unwrap_or(id).to_string())
         })
@@ -190,27 +191,33 @@ async fn notify_admins_of_return_escalation(
         tokens: Vec<String>,
     }
 
+    // Batch-fetch all admin push tokens in a single query instead of N+1 queries
+    let all_tokens_result = state
+        .db
+        .query_bind(
+            "SELECT user_id, token FROM _push_tokens WHERE user_id IN $admin_ids",
+            json!({ "admin_ids": admin_ids }),
+        )
+        .await
+        .unwrap_or_default();
+
+    // Group tokens by admin_id
     let mut all_admin_tokens: Vec<AdminTokens> = Vec::with_capacity(admin_ids.len());
+    let mut token_map: std::collections::HashMap<String, Vec<String>> = std::collections::HashMap::new();
+
+    for row in all_tokens_result {
+        if let (Some(user_id), Some(token_val)) = (row.get("user_id"), row.get("token")) {
+            if let (Some(uid_str), Some(token_str)) = (user_id.as_str(), token_val.as_str()) {
+                token_map
+                    .entry(uid_str.to_string())
+                    .or_insert_with(Vec::new)
+                    .push(token_str.to_string());
+            }
+        }
+    }
 
     for admin_id in &admin_ids {
-        let rows = state
-            .db
-            .query_bind(
-                "SELECT token FROM _push_tokens WHERE user_id = $user_id",
-                json!({ "user_id": admin_id }),
-            )
-            .await
-            .unwrap_or_default();
-
-        let tokens: Vec<String> = rows
-            .iter()
-            .filter_map(|r| {
-                r.get("token")
-                    .and_then(|v| v.as_str())
-                    .map(|s| s.to_string())
-            })
-            .collect();
-
+        let tokens = token_map.get(admin_id).cloned().unwrap_or_default();
         all_admin_tokens.push(AdminTokens {
             admin_id: admin_id.clone(),
             tokens,

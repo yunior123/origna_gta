@@ -85,11 +85,11 @@ void main() {
         const buyerId = 'users:e8baqega99d6c1x8cf9n';
         final stream = repo.watchBuyerOrders(buyerId);
         final orders = await stream.first;
-        if (orders == null || (orders as List).isEmpty) {
+        if (orders.isEmpty) {
           // No orders for this buyer — skip gracefully
           return;
         }
-        final firstOrderId = (orders as List).first.orderId;
+        final String firstOrderId = orders.first.orderId;
         final order = await repo.fetchOrderById(firstOrderId);
         expect(order, isNotNull);
       },

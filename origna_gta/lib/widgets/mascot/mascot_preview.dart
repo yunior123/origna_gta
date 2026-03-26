@@ -11,13 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// Preview screen to test mascot designs
 /// Run with: flutter run -t lib/widgets/mascot/mascot_preview.dart
 void main() {
-  runApp(
-    const ProviderScope(
-      child: MaterialApp(
-        home: MascotPreviewScreen(),
-      ),
-    ),
-  );
+  runApp(const ProviderScope(child: MaterialApp(home: MascotPreviewScreen())));
 }
 
 /// Debug screen for previewing mascot animations and states.
@@ -25,7 +19,8 @@ class MascotPreviewScreen extends ConsumerStatefulWidget {
   const MascotPreviewScreen({super.key});
 
   @override
-  ConsumerState<MascotPreviewScreen> createState() => _MascotPreviewScreenState();
+  ConsumerState<MascotPreviewScreen> createState() =>
+      _MascotPreviewScreenState();
 }
 
 class _MascotPreviewScreenState extends ConsumerState<MascotPreviewScreen> {
@@ -39,7 +34,7 @@ class _MascotPreviewScreenState extends ConsumerState<MascotPreviewScreen> {
     final mooseController = ref.watch(mooseControllerProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: DesignTokens.surface,
       appBar: GlassAppBar(
         title: 'mascot.preview.title'.tr(),
         backgroundColor: DesignTokens.primary,
@@ -100,7 +95,7 @@ class _MascotPreviewScreenState extends ConsumerState<MascotPreviewScreen> {
               ],
             ),
           ),
-          
+
           // Preview Area
           Expanded(
             child: Container(
@@ -113,11 +108,8 @@ class _MascotPreviewScreenState extends ConsumerState<MascotPreviewScreen> {
               child: Stack(
                 children: [
                   // Grid background
-                  CustomPaint(
-                    size: Size.infinite,
-                    painter: GridPainter(),
-                  ),
-                  
+                  CustomPaint(size: Size.infinite, painter: GridPainter()),
+
                   // Center marker
                   Center(
                     child: Container(
@@ -125,18 +117,22 @@ class _MascotPreviewScreenState extends ConsumerState<MascotPreviewScreen> {
                       height: 20,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        border: Border.all(color: DesignTokens.error.withValues(alpha: 0.3)),
+                        border: Border.all(
+                          color: DesignTokens.error.withValues(alpha: 0.3),
+                        ),
                       ),
                     ),
                   ),
-                  
+
                   // Mascot positioned at bottom right (like in home screen)
                   Positioned(
                     bottom: 20,
                     right: 20,
                     child: Container(
                       decoration: BoxDecoration(
-                        border: Border.all(color: DesignTokens.error.withValues(alpha: 0.3)),
+                        border: Border.all(
+                          color: DesignTokens.error.withValues(alpha: 0.3),
+                        ),
                       ),
                       child: _showSparky
                           ? ShopMascot(
@@ -151,7 +147,7 @@ class _MascotPreviewScreenState extends ConsumerState<MascotPreviewScreen> {
                             ),
                     ),
                   ),
-                  
+
                   // Size indicator
                   Positioned(
                     top: 10,
@@ -164,7 +160,10 @@ class _MascotPreviewScreenState extends ConsumerState<MascotPreviewScreen> {
                       ),
                       child: Text(
                         'Size: ${_size.round()}px | ${_showSparky ? "Sparky" : "Moose"}',
-                        style: const TextStyle(color: DesignTokens.white, fontSize: 12),
+                        style: const TextStyle(
+                          color: DesignTokens.white,
+                          fontSize: 12,
+                        ),
                       ),
                     ),
                   ),
@@ -172,7 +171,7 @@ class _MascotPreviewScreenState extends ConsumerState<MascotPreviewScreen> {
               ),
             ),
           ),
-          
+
           // Instructions
           Container(
             padding: const EdgeInsets.all(16),
@@ -192,7 +191,10 @@ class _MascotPreviewScreenState extends ConsumerState<MascotPreviewScreen> {
                 SizedBox(height: 8),
                 Text(
                   'Command to run: flutter run -t lib/widgets/mascot/mascot_preview.dart',
-                  style: TextStyle(fontSize: 11, color: DesignTokens.textSecondary),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: DesignTokens.textSecondary,
+                  ),
                 ),
               ],
             ),

@@ -1305,7 +1305,7 @@ async fn handle_charge_dispute_closed(
         .ok_or_else(|| ob_core::Error::Validation("No payment_intent in dispute".into()))?;
 
     let status = dispute
-        .get("status")
+        .get(fields::STATUS)
         .and_then(|s| s.as_str())
         .unwrap_or("unknown");
 
@@ -1488,9 +1488,10 @@ async fn handle_payout_failed(
                     "type": "payout_failed",
                     "title": "Payout Failed",
                     "message": format!(
-                        "Your payout of {}{:.2} has failed. Reason: {}. Please update your bank details.",
+                        "Your payout of {}{}.{:02} has failed. Reason: {}. Please update your bank details.",
                         if currency == "cad" { "$" } else { "" },
-                        amount as f64 / 100.0,
+                        amount / 100,
+                        amount % 100,
                         failure_message
                     ),
                     "read": false,

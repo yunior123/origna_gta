@@ -3,7 +3,7 @@
 
 use axum::{
     Json, Router,
-    extract::{Query, State},
+    extract::{Query, State, Extension},
     response::Redirect,
     routing::{get, post},
 };
@@ -11,13 +11,19 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tracing::info;
 
+use ob_auth::middleware::AuthContext;
+use crate::shared::auth::resolve_self_user_id;
+
 use crate::HandlersState;
 use crate::shared::schema::{business_rules, collections, fields};
 use crate::shared::validation::validate_uid;
+use std::sync::OnceLock;
+
+static LICENSE_KEY_RE: OnceLock<regex_lite::Regex> = OnceLock::new();
 
 /// License key format: XXXX-XXXX-XXXX-XXXX (uppercase alphanumeric).
 fn is_valid_license_key(key: &str) -> bool {
-    let re = regex_lite::Regex::new(business_rules::LICENSE_KEY_PATTERN).unwrap();
+    let re = LICENSE_KEY_RE.get_or_init(|| regex_lite::Regex::new(business_rules::LICENSE_KEY_PATTERN).expect("valid regex"));
     re.is_match(key)
 }
 
@@ -113,12 +119,15 @@ pub fn router(state: HandlersState) -> Router {
 
 async fn activate_license(
     State(state): State<HandlersState>,
+    Extension(auth): Extension<AuthContext>,
     Json(req): Json<ActivateLicenseRequest>,
 ) -> Result<Json<ActivateLicenseResponse>, ob_core::Error> {
     validate_uid("userId", &req.user_id)?;
+    let user_id = resolve_self_user_id(&auth, Some(req.user_id.as_str()), "userId")?;
+
     crate::shared::rate_limiter::check_user_rate_limit(
         &state.db,
-        &req.user_id,
+        &user_id,
         "activate_license",
         20, // max 20 activations
         60, // per hour
@@ -138,8 +147,6 @@ async fn activate_license(
         return Err(ob_core::Error::Validation("deviceId is required".into()));
     }
 
-    validate_uid("userId", &req.user_id)?;
-
     // Fetch license
     let license = state
         .db
@@ -152,16 +159,16 @@ async fn activate_license(
     }
 
     // Verify status
-    let status = license.get("status").and_then(|v| v.as_str()).unwrap_or("");
+    let status = license.get(fields::STATUS).and_then(|v| v.as_str()).unwrap_or("");
 
     if status != "active" {
         return Err(ob_core::Error::Forbidden("License has been revoked".into()));
     }
 
     // Verify ownership
-    let owner_id = license.get("userId").and_then(|v| v.as_str()).unwrap_or("");
+    let owner_id = license.get(fields::USER_ID).and_then(|v| v.as_str()).unwrap_or("");
 
-    if owner_id != req.user_id {
+    if owner_id != user_id {
         return Err(ob_core::Error::Forbidden(
             "You do not own this license".into(),
         ));
@@ -269,12 +276,14 @@ async fn activate_license(
 
 async fn deactivate_license(
     State(state): State<HandlersState>,
+    Extension(auth): Extension<AuthContext>,
     Json(req): Json<DeactivateLicenseRequest>,
 ) -> Result<Json<DeactivateLicenseResponse>, ob_core::Error> {
     validate_uid("userId", &req.user_id)?;
+    let user_id = resolve_self_user_id(&auth, Some(req.user_id.as_str()), "userId")?;
     crate::shared::rate_limiter::check_user_rate_limit(
         &state.db,
-        &req.user_id,
+        &user_id,
         "deactivate_license",
         20, // max 20 deactivations
         60, // per hour
@@ -288,8 +297,6 @@ async fn deactivate_license(
             "Invalid license key format".into(),
         ));
     }
-
-    validate_uid("userId", &req.user_id)?;
 
     if req.device_id.is_empty() {
         return Err(ob_core::Error::Validation("deviceId is required".into()));
@@ -307,9 +314,9 @@ async fn deactivate_license(
     }
 
     // Verify ownership
-    let owner_id = license.get("userId").and_then(|v| v.as_str()).unwrap_or("");
+    let owner_id = license.get(fields::USER_ID).and_then(|v| v.as_str()).unwrap_or("");
 
-    if owner_id != req.user_id {
+    if owner_id != user_id {
         return Err(ob_core::Error::Forbidden("Not your license".into()));
     }
 
@@ -349,14 +356,16 @@ async fn deactivate_license(
 
 async fn download_book(
     State(state): State<HandlersState>,
+    Extension(auth): Extension<AuthContext>,
     Json(req): Json<DownloadRequest>,
 ) -> Result<Json<DownloadResponse>, ob_core::Error> {
     validate_uid("productId", &req.product_id)?;
     validate_uid("userId", &req.user_id)?;
+    let user_id = resolve_self_user_id(&auth, Some(req.user_id.as_str()), "userId")?;
 
     crate::shared::rate_limiter::check_user_rate_limit(
         &state.db,
-        &req.user_id,
+        &user_id,
         "download_book",
         10, // max 10 download token requests
         60, // per hour
@@ -386,12 +395,12 @@ async fn download_book(
         return Err(ob_core::Error::NotFound("License not found".into()));
     }
 
-    let owner = license.get("userId").and_then(|v| v.as_str()).unwrap_or("");
-    if owner != req.user_id {
+    let owner = license.get(fields::USER_ID).and_then(|v| v.as_str()).unwrap_or("");
+    if owner != user_id {
         return Err(ob_core::Error::Forbidden("Not your license".into()));
     }
 
-    let status = license.get("status").and_then(|v| v.as_str()).unwrap_or("");
+    let status = license.get(fields::STATUS).and_then(|v| v.as_str()).unwrap_or("");
     if status != "active" {
         return Err(ob_core::Error::Forbidden("License revoked".into()));
     }
@@ -418,7 +427,7 @@ async fn download_book(
     let token_doc = serde_json::json!({
         "accessToken": token,
         fields::LICENSE_KEY: license_key,
-        "userId": req.user_id,
+        "userId": user_id,
         fields::PRODUCT_ID: req.product_id,
         "bookSourceUrl": book_source_url,
         "expiresAt": expires_at.to_rfc3339(),
@@ -434,21 +443,23 @@ async fn download_book(
 
     let download_url = format!("/dl?t={}", token);
 
-    info!(product_id = %req.product_id, user_id = %req.user_id, "Book download token generated");
+    info!(product_id = %req.product_id, user_id = %user_id, "Book download token generated");
 
     Ok(Json(DownloadResponse { download_url }))
 }
 
 async fn download_software(
     State(state): State<HandlersState>,
+    Extension(auth): Extension<AuthContext>,
     Json(req): Json<DownloadRequest>,
 ) -> Result<Json<DownloadResponse>, ob_core::Error> {
     validate_uid("productId", &req.product_id)?;
     validate_uid("userId", &req.user_id)?;
+    let user_id = resolve_self_user_id(&auth, Some(req.user_id.as_str()), "userId")?;
 
     crate::shared::rate_limiter::check_user_rate_limit(
         &state.db,
-        &req.user_id,
+        &user_id,
         "download_software",
         10, // max 10 download token requests
         60, // per hour
@@ -478,12 +489,12 @@ async fn download_software(
         return Err(ob_core::Error::NotFound("License not found".into()));
     }
 
-    let owner = license.get("userId").and_then(|v| v.as_str()).unwrap_or("");
-    if owner != req.user_id {
+    let owner = license.get(fields::USER_ID).and_then(|v| v.as_str()).unwrap_or("");
+    if owner != user_id {
         return Err(ob_core::Error::Forbidden("Not your license".into()));
     }
 
-    let status = license.get("status").and_then(|v| v.as_str()).unwrap_or("");
+    let status = license.get(fields::STATUS).and_then(|v| v.as_str()).unwrap_or("");
     if status != "active" {
         return Err(ob_core::Error::Forbidden("License revoked".into()));
     }
@@ -504,7 +515,7 @@ async fn download_software(
     let token_doc = serde_json::json!({
         "accessToken": token,
         fields::LICENSE_KEY: license_key,
-        "userId": req.user_id,
+        "userId": user_id,
         fields::PRODUCT_ID: req.product_id,
         "softwareSourceUrl": license
             .get("softwareSourceUrl")
@@ -524,7 +535,7 @@ async fn download_software(
 
     let download_url = format!("/sdl?t={}", token);
 
-    info!(product_id = %req.product_id, user_id = %req.user_id, "Software download token generated");
+    info!(product_id = %req.product_id, user_id = %user_id, "Software download token generated");
 
     Ok(Json(DownloadResponse { download_url }))
 }
@@ -553,7 +564,7 @@ async fn verify_license(
     }
 
     let status = license
-        .get("status")
+        .get(fields::STATUS)
         .and_then(|v| v.as_str())
         .unwrap_or("unknown")
         .to_string();
@@ -717,9 +728,20 @@ async fn mark_download_token_used(state: &HandlersState, collection: &str, token
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::extract::Query;
+    use axum::extract::{Extension, Query};
     use axum::response::IntoResponse;
+    use ob_auth::middleware::AuthContext;
     use serde_json::json;
+
+    fn auth(user_id: &str, role: &str) -> Extension<AuthContext> {
+        Extension(AuthContext {
+            user_id: user_id.to_string(),
+            roles: vec![role.to_string()],
+            authenticated: true,
+            email_verified: true,
+            custom_claims: serde_json::Value::Null,
+        })
+    }
 
     #[test]
     fn test_license_key_validation() {
@@ -1135,7 +1157,7 @@ mod tests {
             platform: Some("macos".to_string()),
         };
 
-        let result = activate_license(State(state), Json(req)).await;
+        let result = activate_license(State(state), auth(user_id, "user"), Json(req)).await;
         assert!(result.is_ok());
         let Json(resp) = result.unwrap();
         assert!(resp.approved);
@@ -1194,7 +1216,7 @@ mod tests {
             platform: None,
         };
 
-        let result = activate_license(State(state), Json(req)).await;
+        let result = activate_license(State(state), auth(user_id, "user"), Json(req)).await;
         assert!(result.is_ok());
         let Json(resp) = result.unwrap();
         assert!(resp.approved);
@@ -1238,7 +1260,7 @@ mod tests {
             user_id: user_id.to_string(),
         };
 
-        let result = deactivate_license(State(state), Json(req)).await;
+        let result = deactivate_license(State(state), auth(user_id, "user"), Json(req)).await;
         assert!(result.is_ok());
         let Json(resp) = result.unwrap();
         assert!(resp.deactivated);
@@ -1283,7 +1305,7 @@ mod tests {
             license_key: Some(license_key.to_string()),
         };
 
-        let result = download_book(State(state), Json(req)).await;
+        let result = download_book(State(state), auth(user_id, "user"), Json(req)).await;
         assert!(result.is_ok());
         let Json(resp) = result.unwrap();
         assert!(resp.download_url.starts_with("/dl?t=tok_"));
@@ -1413,6 +1435,7 @@ mod tests {
 
         let Json(resp) = download_software(
             State(state.clone()),
+            auth("user_1", "user"),
             Json(DownloadRequest {
                 product_id: "p1".into(),
                 user_id: "user_1".into(),
@@ -1568,6 +1591,7 @@ mod tests {
 
         let err = activate_license(
             State(state),
+            auth("user_1", "user"),
             Json(ActivateLicenseRequest {
                 license_key: "bad-key".into(),
                 device_id: "dev_1".into(),
@@ -1589,6 +1613,7 @@ mod tests {
 
         let err = activate_license(
             State(state),
+            auth("user_1", "user"),
             Json(ActivateLicenseRequest {
                 license_key: "REDACTED_SECRET".into(),
                 device_id: "  ".into(), // blank after trim
@@ -1622,6 +1647,7 @@ mod tests {
 
         let err = activate_license(
             State(state),
+            auth("user_1", "user"),
             Json(ActivateLicenseRequest {
                 license_key: "REDACTED_SECRET".into(),
                 device_id: "dev_1".into(),
@@ -1655,6 +1681,7 @@ mod tests {
 
         let err = activate_license(
             State(state),
+            auth("attacker", "user"),
             Json(ActivateLicenseRequest {
                 license_key: "REDACTED_SECRET".into(),
                 device_id: "dev_1".into(),
@@ -1689,6 +1716,7 @@ mod tests {
 
         let err = activate_license(
             State(state),
+            auth("user_1", "user"),
             Json(ActivateLicenseRequest {
                 license_key: "REDACTED_SECRET".into(),
                 device_id: "dev_new".into(),
@@ -1710,6 +1738,7 @@ mod tests {
 
         let err = deactivate_license(
             State(state),
+            auth("user_1", "user"),
             Json(DeactivateLicenseRequest {
                 license_key: "bad".into(),
                 device_id: "dev_1".into(),
@@ -1730,6 +1759,7 @@ mod tests {
 
         let err = deactivate_license(
             State(state),
+            auth("user_1", "user"),
             Json(DeactivateLicenseRequest {
                 license_key: "REDACTED_SECRET".into(),
                 device_id: "".into(),
@@ -1761,6 +1791,7 @@ mod tests {
 
         let err = deactivate_license(
             State(state),
+            auth("attacker", "user"),
             Json(DeactivateLicenseRequest {
                 license_key: "REDACTED_SECRET".into(),
                 device_id: "dev_1".into(),
@@ -1781,6 +1812,7 @@ mod tests {
 
         let err = download_book(
             State(state),
+            auth("user_1", "user"),
             Json(DownloadRequest {
                 product_id: "p1".into(),
                 user_id: "user_1".into(),
@@ -1801,6 +1833,7 @@ mod tests {
 
         let err = download_book(
             State(state),
+            auth("user_1", "user"),
             Json(DownloadRequest {
                 product_id: "p1".into(),
                 user_id: "user_1".into(),
@@ -1833,6 +1866,7 @@ mod tests {
 
         let err = download_book(
             State(state),
+            auth("attacker", "user"),
             Json(DownloadRequest {
                 product_id: "p1".into(),
                 user_id: "attacker".into(),
@@ -1865,6 +1899,7 @@ mod tests {
 
         let err = download_book(
             State(state),
+            auth("user_1", "user"),
             Json(DownloadRequest {
                 product_id: "p1".into(),
                 user_id: "user_1".into(),
@@ -1897,6 +1932,7 @@ mod tests {
 
         let err = download_book(
             State(state),
+            auth("user_1", "user"),
             Json(DownloadRequest {
                 product_id: "p1".into(),
                 user_id: "user_1".into(),
@@ -1917,6 +1953,7 @@ mod tests {
 
         let err = download_software(
             State(state),
+            auth("user_1", "user"),
             Json(DownloadRequest {
                 product_id: "p1".into(),
                 user_id: "user_1".into(),
@@ -1937,6 +1974,7 @@ mod tests {
 
         let err = download_software(
             State(state),
+            auth("user_1", "user"),
             Json(DownloadRequest {
                 product_id: "p1".into(),
                 user_id: "user_1".into(),
@@ -1969,6 +2007,7 @@ mod tests {
 
         let err = download_software(
             State(state),
+            auth("attacker", "user"),
             Json(DownloadRequest {
                 product_id: "p1".into(),
                 user_id: "attacker".into(),
@@ -2001,6 +2040,7 @@ mod tests {
 
         let err = download_software(
             State(state),
+            auth("user_1", "user"),
             Json(DownloadRequest {
                 product_id: "p1".into(),
                 user_id: "user_1".into(),
@@ -2033,6 +2073,7 @@ mod tests {
 
         let err = download_software(
             State(state),
+            auth("user_1", "user"),
             Json(DownloadRequest {
                 product_id: "p1".into(),
                 user_id: "user_1".into(),
@@ -2093,6 +2134,7 @@ mod tests {
 
         let err = download_book(
             State(state),
+            auth("user_1", "user"),
             Json(DownloadRequest {
                 product_id: "p1".into(),
                 user_id: "user_1".into(),
@@ -2111,6 +2153,7 @@ mod tests {
 
         let err = download_software(
             State(state),
+            auth("user_1", "user"),
             Json(DownloadRequest {
                 product_id: "p1".into(),
                 user_id: "user_1".into(),
@@ -2131,6 +2174,7 @@ mod tests {
 
         let err = activate_license(
             State(state),
+            auth("user_1", "user"),
             Json(ActivateLicenseRequest {
                 license_key: "REDACTED_SECRET".into(),
                 device_id: "dev_1".into(),
@@ -2152,6 +2196,7 @@ mod tests {
 
         let err = deactivate_license(
             State(state),
+            auth("user_1", "user"),
             Json(DeactivateLicenseRequest {
                 license_key: "REDACTED_SECRET".into(),
                 device_id: "dev_1".into(),
@@ -2172,6 +2217,7 @@ mod tests {
 
         let err = download_book(
             State(state),
+            auth("user_1", "user"),
             Json(DownloadRequest {
                 product_id: "p1".into(),
                 user_id: "user_1".into(),
@@ -2192,6 +2238,7 @@ mod tests {
 
         let err = download_software(
             State(state),
+            auth("user_1", "user"),
             Json(DownloadRequest {
                 product_id: "p1".into(),
                 user_id: "user_1".into(),

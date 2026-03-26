@@ -186,11 +186,12 @@ async fn register_token(
     let now = chrono::Utc::now().to_rfc3339();
 
     // Upsert: if this token already exists, update user_id and platform
+    // Use UPSERT with explicit record ID for reliable in-memory behavior
     state
         .db
         .query_bind(
-            "UPSERT _push_tokens SET user_id = $user_id, token = $push_token, \
-             platform = $platform, updated_at = $now WHERE token = $push_token",
+            "UPSERT type::thing('_push_tokens', $push_token) SET user_id = $user_id, \
+             token = $push_token, platform = $platform, updated_at = $now",
             json!({
                 "user_id": body.user_id,
                 "push_token": body.token,
@@ -240,7 +241,7 @@ async fn send_notification(
             let results = state
                 .db
                 .query_bind(
-                    "SELECT token FROM _push_tokens WHERE user_id = $user_id",
+                    "SELECT * FROM _push_tokens WHERE user_id = $user_id",
                     json!({ "user_id": body.to }),
                 )
                 .await?;
@@ -255,7 +256,7 @@ async fn send_notification(
             let results = state
                 .db
                 .query_bind(
-                    "SELECT token FROM _push_subscriptions WHERE topic = $topic",
+                    "SELECT * FROM _push_subscriptions WHERE topic = $topic",
                     json!({ "topic": body.to }),
                 )
                 .await?;
@@ -371,9 +372,9 @@ async fn subscribe_topic(
     state
         .db
         .query_bind(
-            "UPSERT _push_subscriptions SET token = $push_token, topic = $topic, \
-             created_at = time::now() WHERE token = $push_token AND topic = $topic",
-            json!({ "push_token": body.token, "topic": body.topic }),
+            "UPSERT type::thing('_push_subscriptions', $sub_id) SET token = $push_token, topic = $topic, \
+             created_at = time::now()",
+            json!({ "sub_id": format!("{}_{}", body.token, body.topic), "push_token": body.token, "topic": body.topic }),
         )
         .await?;
 

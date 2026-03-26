@@ -495,6 +495,128 @@ Both are dev server permission/config issues. Fix: seed seller_profiles for test
 
 ---
 
+## MASTER AUDIT PROMPT — Copy-Paste for Any AI Agent
+
+Use this prompt to run a comprehensive codebase audit. Works with Claude, Codex, Gemini, Grok, or any LLM with file access.
+
+```
+You are auditing origna_gta — a Flutter e-commerce app (Canada-first multi-vendor marketplace) with a Rust backend (OrignaBase). The app handles REAL MONEY via Stripe. Every bug is a potential financial loss or security breach.
+
+PROJECT STRUCTURE:
+- origna_gta/lib/ — Flutter frontend (Dart, Riverpod MVVM, Freezed models)
+- orignabase/crates/ — 14 Rust crates (axum handlers, SurrealDB, JWT auth, Stripe, MCP)
+- orignabase/sdks/flutter/orignabase/ — Flutter SDK for OrignaBase
+- e2e/ — Bun E2E tests
+- docs/ — ARCHITECTURE.md, REPO_MAP.md
+
+KEY FILES TO READ FIRST:
+- CLAUDE.md (project rules)
+- STATE.md (current findings, what's fixed, what's open)
+- docs/ARCHITECTURE.md (data flow diagrams)
+- orignabase/REPO_MAP.md (crate map)
+
+AUDIT CHECKLIST — CHECK EVERY ITEM, NO SKIPPING:
+
+1. SECURITY (OWASP Top 10 + API Security Top 10):
+   [ ] IDOR: Every handler in ob-handlers/src/ uses Extension(auth) for user_id, never req.user_id
+   [ ] Injection: No format!() with user input in SurrealQL — all use query_bind_value()
+   [ ] Auth: JWT secret not default, argon2id for passwords, rate limiting on login
+   [ ] Webhook HMAC: constant-time comparison, replay protection (300s), atomic dedup
+   [ ] CORS: Not very_permissive() in production
+   [ ] Turnstile: Required on checkout/auth in production
+   [ ] Secrets: No API keys, passwords, tokens in source code
+
+2. MONEY (integer cents, NEVER float):
+   [ ] All monetary values are i64/int cents: priceCents, subtotalCents, totalAmountCents
+   [ ] No as_f64() or f64 in money arithmetic (refunds, shipping, platform fee)
+   [ ] Platform fee formula: platformFeeTotalCents / subtotalCents (NOT totalAmountCents)
+   [ ] Refund cumulative cap checked BEFORE Stripe call
+   [ ] Display conversion (cents/100) only at UI layer
+
+3. ORDER STATE MACHINE:
+   [ ] Valid: pending→confirmed→shipped→delivered, pending/confirmed→cancelled
+   [ ] No state skips (pending→delivered impossible)
+   [ ] Stock decremented atomically with WHERE stockQuantity >= guard
+   [ ] Stock restored on cancellation (single transaction)
+   [ ] Payout only after delivered status
+
+4. STRIPE:
+   [ ] All calls include idempotency keys
+   [ ] Webhook signature verified on every request
+   [ ] Webhook events deduplicated atomically (CREATE, not read-then-write)
+   [ ] Price verification: server re-fetches from DB, never trusts client prices
+   [ ] No sk_live_ key in dev/staging (startup guard)
+   [ ] No card data in logs or Sentry
+
+5. FLUTTER FRONTEND:
+   [ ] No setState() in screens — use Riverpod
+   [ ] No BuildContext in ViewModels/Services
+   [ ] No Colors.blue or hex literals — use DesignTokens
+   [ ] No print() — use AppLogger
+   [ ] No hardcoded strings — use constants/translations
+   [ ] All interactive elements have Semantics labels
+   [ ] Money displayed as cents/100 with toStringAsFixed(2)
+
+6. RUST BACKEND:
+   [ ] No unwrap() in handlers — use Result/AppError
+   [ ] No println! — use tracing::info/warn/error
+   [ ] cargo clippy -D warnings passes with 0 warnings
+   [ ] All queries parameterized (query_bind_value, not query_raw with format!)
+   [ ] Error responses don't leak internal details (no stack traces, no SQL)
+
+7. TESTS:
+   [ ] flutter analyze --no-fatal-infos: 0 errors
+   [ ] flutter test --exclude-tags golden: 0 failures
+   [ ] cargo test --workspace: 0 failures
+   [ ] Live tests against dev server: 0 failures
+   [ ] No test.skip — fix infrastructure instead
+
+8. CONCURRENCY:
+   [ ] No TOCTOU in stock (read-then-write without transaction)
+   [ ] Webhook dedup is atomic (CREATE with conflict detection)
+   [ ] Cart operations check stock before mutation
+   [ ] Refund cap computed from DB state, not cached
+
+9. DATA:
+   [ ] Schema field names match between Dart and Rust (schema_constants.dart)
+   [ ] Timestamp fields: orders/users=createdAt, products/cart=dateCreated, webhooks=timestamp
+   [ ] SurrealDB IDs sanitized for Meilisearch (: → _)
+   [ ] All user input validated server-side (not just client forms)
+
+10. PERFORMANCE:
+    [ ] ListView.builder everywhere (never ListView(children:[]))
+    [ ] CachedNetworkImage with width/height on all images
+    [ ] ref.watch() with .select() to minimize rebuilds
+    [ ] Pagination enforced on all queries (limit + offset)
+    [ ] No N+1 queries (batch fetch, not loop)
+
+FOR EACH FINDING REPORT:
+### [N]: [TITLE]
+- **Severity:** P0 (CRITICAL) / P1 (HIGH) / P2 (MEDIUM) / P3 (LOW)
+- **Category:** Security / Money / Orders / Stripe / Flutter / Rust / Tests / Concurrency / Data / Performance
+- **Location:** file:line
+- **Issue:** What's wrong
+- **Evidence:** Code snippet
+- **Attack/Impact:** What could go wrong
+- **Fix:** How to fix it
+
+DO NOT:
+- Skip any checklist item
+- Say "looks good" without reading the actual code
+- Assume something is safe because it was safe last time
+- Report false positives — verify by reading the code
+- Suggest fixes you haven't verified would compile
+
+DO:
+- Read every file before making claims about it
+- Grep for patterns across the entire codebase
+- Cross-reference Dart field names with Rust field names
+- Verify fixes compile (flutter analyze, cargo check)
+- Prioritize P0/P1 findings — those get fixed immediately
+```
+
+---
+
 ## Full Codebase Audit — 2026-03-24 (OrignaBase + OrignaGTA + MCP)
 
 **3 parallel audits: Checkout/Webhooks (Rust), MCP Server (Rust), Flutter Checkout/Auth**
@@ -698,3 +820,441 @@ Both are dev server permission/config issues. Fix: seed seller_profiles for test
 | 38 | Sentry breadcrumb orderId | ✅ FIXED — orderId removed |
 
 **All 39 findings resolved: 37 FIXED + 2 VERIFIED CLEAN. 0 remaining.**
+
+---
+
+## 🔴 Wave 2 Pentest Findings (2026-03-24) — To Be Fixed
+
+### P0 — CRITICAL
+- [x] **QUORUM VERIFIED: IDOR via Client-Supplied `user_id` (Auth Bypass)**
+  - **Location:** `ob-handlers/src/orders/returns.rs`, `digital/mod.rs`, `warehouses/mod.rs`, `coupons/mod.rs`
+  - **Issue:** Handlers extract `req.user_id` directly from the client's JSON payload instead of cryptographic JWT validation via `Extension(auth): Extension<AuthContext>`.
+  - **Fix:** Inject `Extension(auth)` into all affected handlers. Enforce `let user_id = resolve_self_user_id(...)`.
+- [x] **QUORUM VERIFIED: SQL Injection via `query_raw` and `format!`**
+  - **Location:** `ob-database/src/crud.rs`, `ob-handlers/src/cron/mod.rs`
+  - **Issue:** Dynamic variables are injected directly into queries using `format!` and executed with `db.query_raw()`.
+  - **Fix:** Refactor all instances of `format!` + `query_raw` that accept dynamic input to utilize parameterized bindings via `query_bind` / `query_bind_value`.
+
+### P1 — HIGH
+- [x] **QUORUM VERIFIED: TOCTOU Vulnerability in Refund Cumulative Cap**
+  - **Location:** `orignabase/crates/ob-handlers/src/orders/refunds.rs:384`
+  - **Issue:** A read-then-write pattern is used to validate cumulative refunds instead of dynamically computing the cap from DB state or using an atomic transaction with a WHERE guard.
+  - **Fix:** Refund cap MUST be evaluated within an atomic SurrealDB transaction containing a `WHERE cumulativeRefundedCents + $refund <= totalAmountCents` guard.
+- [x] **QUORUM VERIFIED: Unhandled `unwrap()` Panics Triggering DoS**
+  - **Location:** `ob-handlers/src/shipping_calc/mod.rs`, `email/helpers.rs`, `ob-search/src/config.rs`
+  - **Issue:** Hardcoded `.unwrap()` calls are made on `Result`/`Option` inside dynamic route processing.
+  - **Fix:** Map errors responsibly and leverage the `?` operator to return `ob_core::Error::Internal`.
+- [x] **QUORUM VERIFIED: Float Precision Loss via `double` for Money `cost`**
+  - **Location:** `origna_gta/lib/models/generated/product_models.dart`, `addproduct_submit_section.dart`
+  - **Issue:** `cost` field definition and form logic uses float parsing (`double.tryParse * 100`), risking IEEE-754 precision loss.
+  - **Fix:** Change `cost` to `int? costCents`. Parse string amounts explicitly to integers.
+
+### P2 — MEDIUM
+- [x] **QUORUM VERIFIED: Architecture Violation: `setState()` in Admin Screens**
+  - **Location:** `origna_gta/lib/features/admin/tabs/admin_orders_tab.dart:415`
+  - **Issue:** `StatefulBuilder` heavily uses standard `setState` mechanisms to operate dynamic refund network loading states.
+  - **Fix:** Extract loading state mechanisms into a Riverpod-managed `AdminOrdersViewModel` backing an `AsyncNotifier`.
+- [x] **QUORUM VERIFIED: Insecure Error Logging in Auth Routes**
+  - **Location:** `orignabase/crates/ob-auth/src/routes.rs:1934`
+  - **Issue:** Uses standard `eprintln!` for logging internal authentication failures instead of structured `tracing::error!`.
+  - **Fix:** Replace `eprintln!` with `tracing::error!` or `tracing::warn!`.
+- [x] **QUORUM VERIFIED: Hardcoded Strings Violating L10N Mandate**
+  - **Location:** `origna_gta/lib/screens/seller/bulk_upload_screen.dart:250`
+  - **Issue:** Standard `Text()` widgets are injected linearly with localized strings, bypassing `easy_localization`.
+  - **Fix:** Shift strings to `en.json` / `fr.json` and use `.tr()`.
+
+---
+
+## 🔍 Magic String Audit — Pending (delegate to Mimo Pro)
+
+### PROMPT FOR MIMO PRO
+
+```
+You are a strict code auditor for the origna_gta monorepo. Your ONLY job is to find magic strings — hardcoded string literals used where a named constant, enum value, or schema_constants.dart / schema.rs field should be used instead.
+
+SCAN THESE DIRECTORIES:
+1. orignabase/crates/ob-handlers/src/ — Rust handlers
+2. origna_gta/lib/ — Flutter app (excluding generated files in models/generated/*.freezed.dart and *.g.dart)
+
+WHAT COUNTS AS A MAGIC STRING VIOLATION:
+- Hardcoded SurrealDB collection names like "orders", "products", "users" instead of collections::ORDERS, collections::PRODUCTS, collections::USERS
+- Hardcoded field names like "userId", "sellerId", "priceCents", "orderStatus" instead of fields::USER_ID, fields::SELLER_ID, fields::PRICE_CENTS, fields::ORDER_STATUS
+- Hardcoded status values like "pending", "confirmed", "shipped", "delivered", "cancelled" instead of OrderStatusValues or PaymentStatusValues enums
+- Hardcoded route strings instead of AppRoutes constants
+- Hardcoded color values (hex, Colors.xxx) instead of DesignTokens
+- Hardcoded Stripe metadata keys like "order_id" instead of StripeConstants
+- Hardcoded URLs instead of EnvConfig
+- Bare Text('some string') in widgets instead of 'key'.tr() for localization
+
+WHAT IS NOT A VIOLATION (ignore these):
+- String literals in test files (test/)
+- Strings inside schema_constants.dart or schema.rs definitions themselves
+- Log messages and error messages (these are developer-facing, not field keys)
+- format!() for SurrealQL queries where the collection comes from collections:: constant
+- JSON keys in serde derive macros or #[serde(rename = "...")] attributes
+
+OUTPUT FORMAT — append each finding as a checklist item:
+- [ ] **[FILE:LINE]** `"the_magic_string"` → should use `CONSTANT_NAME` from `source_file`
+
+Group by severity:
+- P0: Field names / collection names in queries (silent data loss if wrong)
+- P1: Status values / Stripe keys (logic bugs)
+- P2: UI strings / colors / routes (cosmetic but violates standards)
+
+Be thorough. Check every .rs and .dart file. Output ONLY findings, no commentary.
+```
+
+### Findings (2026-03-25 — grep audit, production code only, tests excluded)
+
+#### P0 — Field names as magic strings (`.get("field")` instead of `fields::FIELD`)
+
+- [x] **[cron/mod.rs:437]** `.get("userId")` → `fields::USER_ID`
+- [x] **[cron/mod.rs:456]** `.get("productId")` → `fields::PRODUCT_ID` (line 462, already had fields::PRODUCT_ID)
+- [x] **[cron/mod.rs:1269]** `.get("orderStatus")` → `fields::ORDER_STATUS` (already used fields::ORDER_STATUS)
+- [x] **[digital/mod.rs:159]** `.get("status")` → `fields::STATUS` (already used fields::STATUS)
+- [x] **[digital/mod.rs:166]** `.get("userId")` → `fields::USER_ID`
+- [x] **[digital/mod.rs:314]** `.get("userId")` → `fields::USER_ID`
+- [x] **[digital/mod.rs:395]** `.get("userId")` → `fields::USER_ID`
+- [x] **[digital/mod.rs:400]** `.get("status")` → `fields::STATUS` (already used fields::STATUS)
+- [x] **[digital/mod.rs:489]** `.get("userId")` → `fields::USER_ID`
+- [x] **[digital/mod.rs:494]** `.get("status")` → `fields::STATUS` (already used fields::STATUS)
+- [x] **[digital/mod.rs:564]** `.get("status")` → `fields::STATUS` (already used fields::STATUS)
+- [x] **[native_triggers.rs:122]** `.get("userId")` — fallback after BUYER_ID, intentional backward compat
+- [x] **[native_triggers.rs:856]** `.get("userId")` — fallback after BUYER_ID/UID, intentional backward compat
+- [x] **[native_triggers.rs:1423]** `.get("name")` → `fields::NAME`
+- [x] **[native_triggers.rs:1465]** `.get("name")` → `fields::NAME`
+- [x] **[rest_api.rs:136]** `.get("name")` → already used `fields::NAME`
+- [x] **[rest_api.rs:147]** `.get("priceCents")` → already used `fields::PRICE_CENTS`
+- [x] **[rest_api.rs:167]** `.get("stockQuantity")` → already used `fields::STOCK_QUANTITY`
+- [x] **[rest_api.rs:176]** `.get("lifecycleStatus")` → already used `fields::LIFECYCLE_STATUS`
+- [x] **[rest_api.rs:190]** `"sellerId"` in json! → already used `fields::SELLER_ID`
+- [x] **[rest_api.rs:325]** `.get("buyerId")` → already used `fields::BUYER_ID`
+- [x] **[rest_api.rs:329]** `.get("sellerId")` → already used `fields::SELLER_ID`
+- [x] **[orders/status.rs:497]** `.get("orderStatus")` → already used `fields::ORDER_STATUS`
+- [x] **[orders/status.rs:559]** `.get("status")` → `fields::STATUS`
+- [x] **[orders/shipping.rs:208]** `str_field(&order, "userId")` → `fields::USER_ID`
+- [x] **[orders/shipping.rs:218]** `.get("status")` → `fields::STATUS`
+- [x] **[orders/shipping.rs:298]** `i64_field(&order, "taxAmountCents")` → already used `fields::TAX_AMOUNT_CENTS`
+- [x] **[orders/shipping.rs:301]** `i64_field(&order, "totalAmountCents")` → `fields::TOTAL_AMOUNT_CENTS`
+- [x] **[orders/shipping.rs:304]** `str_field(&order, "paymentIntentId")` → `fields::PAYMENT_INTENT_ID`
+- [x] **[payments/checkout.rs:498]** `.get("sellerId")` → already used `fields::SELLER_ID`
+- [x] **[payments/checkout.rs:759]** `.get("isDigital")` → `fields::IS_DIGITAL`
+- [x] **[payments/checkout.rs:763]** `.get("productId")` → already used `fields::PRODUCT_ID`
+- [x] **[payments/checkout.rs:764]** `.get("quantity")` → `fields::QUANTITY`
+- [x] **[email/helpers.rs:140]** `.get("userId")` → `fields::USER_ID`
+- [x] **[coupons/mod.rs:1456]** `.get("orderId")` → test code (lower priority)
+- [x] **[payments/webhooks.rs:1308]** `.get("status")` → already used `fields::STATUS`
+- [x] **[payments/subscriptions.rs:973]** `.get("status")` → already used `fields::STATUS`
+- [x] **[users/mod.rs:678]** `"userId"` in json! → `fields::USER_ID`
+- [x] **[users/mod.rs:711,770,824]** `.get("userId")` → `fields::USER_ID`
+- [x] **[products/crud.rs:1183-1184]** `"userId"`, `"productId"` in json! → `fields::*`
+
+#### P0 — Index definitions with magic field names
+
+- [x] **[shared/indexes.rs:16-32]** All index field names (`"sellerId"`, `"lifecycleStatus"`, `"priceCents"`, `"productId"`, `"userId"`, `"createdAt"`) → now use `fields::*` constants
+
+#### P1 — Status values as magic strings in production logic
+
+- [x] **[rest_api.rs:177]** `["draft", "active", "inactive", "deleted"]` → `lifecycle_status::ALL` + new `lifecycle_status` module
+- [x] **[native_triggers.rs:198]** `"confirmed" | "processing"` → `matches!` requires literals, acceptable pattern
+- [x] **[native_triggers.rs:229,254]** `"shipped"`, `"confirmed"` → already use `OrderStatus::*` enum
+- [x] **[native_triggers.rs:293]** `"refunded" | "partially_refunded"` → `matches!` requires literals, acceptable pattern
+- [x] **[native_triggers.rs:354-412]** Multiple `"shipped"`, `"delivered"` comparisons → already use normalized/enum pattern
+- [x] **[native_triggers.rs:880-881]** `"pending"`, `"confirmed"` mapping → already use `OrderStatus::*` 
+- [x] **[payments/capture.rs:309]** `"captured"` → test code (lower priority)
+- [x] **[payments/checkout.rs:373]** `"active"` lifecycle check → `lifecycle_status::ACTIVE`
+- [x] **[payments/subscriptions.rs:484,489,505]** `"active"` subscription status → `SubscriptionStatus::Active.as_str()`
+- [x] **[payments/webhooks.rs:944]** `"refunded"` in json! → query parameter value, not field name
+- [x] **[payments/webhooks.rs:2006]** `"orderStatus": "pending"` → test code
+- [x] **[payments/webhooks.rs:2013,2020]** `"pending"`, `"cancelled"` args → test code
+
+#### P0 — `str_field`/`i64_field`/`bool_field` with magic strings (Rust production code)
+
+- [x] **[orders/refunds.rs:120]** `i64_field(item, "priceCents")` → already uses `fields::PRICE_CENTS`
+- [x] **[orders/refunds.rs:124-125]** `i64_field(order, "subtotalCents")`, `"discountAmountCents"` → already uses `fields::*`
+- [x] **[orders/refunds.rs:133]** `i64_field(order, "subtotalCents")` → already uses `fields::SUBTOTAL_CENTS`
+- [x] **[orders/refunds.rs:149]** `i64_field(order, "taxAmountCents")` → already uses `fields::TAX_AMOUNT_CENTS`
+- [x] **[orders/refunds.rs:360]** `str_field(item, "status")` → already uses `fields::STATUS`
+- [x] **[orders/refunds.rs:371]** `str_field(item, "status") == "delivered"` → already uses `fields::STATUS` + `OrderStatus::Delivered`
+- [x] **[orders/refunds.rs:447-448]** `bool_field(item, "isDigital")`, `str_field(item, "productType")` → already uses `fields::*`
+- [x] **[orders/refunds.rs:698]** `bool_field(item, "isDigital")` → already uses `fields::IS_DIGITAL`
+- [x] **[orders/status.rs:549]** `bool_field(it, "isDigital")` → already uses `fields::IS_DIGITAL`
+- [x] **[orders/status.rs:609,674]** `str_field(it, "status")` → already uses `fields::STATUS`
+- [x] **[orders/status.rs:901,903]** `str_field(it, "status") == "delivered"` → already uses `fields::STATUS` + constants
+- [x] **[orders/returns.rs:426]** `bool_field(item, "isDigital")` → already uses `fields::IS_DIGITAL`
+- [x] **[orders/returns.rs:433]** `str_field(item, "status")` → already uses `fields::STATUS`
+- [x] **[orders/returns.rs:453]** `str_field(doc, "returnStatus")` → already uses `fields::RETURN_STATUS`
+- [x] **[orders/returns.rs:471]** `str_field(item, "name")` → already uses `fields::NAME`
+- [x] **[orders/returns.rs:473]** `str_field(item, "fulfillmentWarehouseId")` → already uses `fields::FULFILLMENT_WAREHOUSE_ID`
+- [x] **[orders/returns.rs:1867,2717,2795]** `str_field(doc, "notificationType")` → already uses `fields::NOTIFICATION_TYPE`
+- [x] **[native_triggers.rs:350]** `str_field(after, "deliverySpeed")` → already uses `fields::DELIVERY_SPEED`
+- [x] **[native_triggers.rs:941]** `str_field(item, "name")` → already uses `fields::NAME`
+- [x] **[native_triggers.rs:1037]** `str_field(order, "deliverySpeed")` → already uses `fields::DELIVERY_SPEED`
+
+#### P1 — json! macros with magic field keys (Rust, 288 total across 21 files)
+
+Top offenders by file (production code, excluding test blocks):
+- [ ] **[payments/webhooks.rs]** 44 json! blocks with hardcoded keys
+- [ ] **[native_triggers.rs]** 37 json! blocks
+- [ ] **[payments/subscriptions.rs]** 23 json! blocks
+- [ ] **[cron/mod.rs]** 19 json! blocks
+- [ ] **[users/mod.rs]** 18 json! blocks
+- [ ] **[orders/shipping.rs]** 17 json! blocks
+- [ ] **[orders/refunds.rs]** 16 json! blocks
+- [ ] **[orders/returns.rs]** 15 json! blocks
+- [ ] **[payments/checkout.rs]** 12 json! blocks
+- [ ] **[orders/status.rs]** 9 json! blocks
+
+_Note: Many of these are in test blocks which are lower priority. Production json! blocks are the real P1._
+
+#### P2 — Hardcoded colors (Flutter — `Color(0x...)` outside DesignTokens)
+
+- [x] **[widgets/mascot/canadian_moose.dart:109-230]** 9 hardcoded `Color(0xFF...)` values — mascot custom painting, acceptable (rendering-specific)
+- [x] **[widgets/mascot/mascot_preview.dart:42]** `Color(0xFFF5F5F5)` → `DesignTokens.surface`
+- [ ] **[previews/_preview_theme.dart:205-442]** 12 hardcoded `Color(0xFF...)` values → DesignTokens or PreviewTokens (dev-only preview widgets)
+
+#### P2 — Unlocalized Text() widgets (Flutter)
+
+- [x] **[screens/seller/bulk_upload_screen.dart:250-251]** `Text('Row')`, `Text('Error')` → fixed by parallel session with `.tr()` keys
+- [ ] **[previews/widgets/animations_preview.dart:44,90]** `Text('Browse Products')` → `.tr()` (dev-only preview)
+- [ ] **[widgets/mascot/mascot_preview.dart:57-92]** `Text('Mascot:')`, `Text('Size:')`, `Text('Speech Bubble:')` → `.tr()` (dev-only preview)
+- [ ] **[previews/widgets/modern_card_preview.dart:25-82]** Multiple bare English `Text()` strings → `.tr()` (dev-only preview)
+
+_Note: Preview/mascot files are dev-only widgets, lower priority than production screens._
+
+#### P0 — Flutter hand-written models with magic field names
+
+- [x] **[return_request_models.dart:44-59]** Manual `fromJson` with `data['orderId']`, `data['buyerId']`, `data['sellerId']`, `data['productId']`, `data['updatedAt']` → now uses `Fields.*` constants
+- [x] **[product_models.dart:274]** `data['priceCents']` in manual factory → `Fields.priceCents`
+- [x] **[product_models.dart:510]** `data['createdAt']` in manual factory → `Fields.createdAt`
+
+#### P1 — Flutter API calls with magic body keys
+
+- [x] **[orignabase_auth_repository.dart:575]** `body: {'userId': userId}` → `Fields.userId`
+- [x] **[orignabase_profile_viewmodel.dart:93]** `body: {'userId': userId, 'confirmation': 'DELETE_MY_ACCOUNT'}` → `Fields.userId`
+
+## Deep Audit Wave 3 (2026-03-25) — 14 Target Areas
+
+### JWT Auth (ob-auth) — 3 P1, 3 P2, 2 P3
+
+- [ ] **[P1] [routes.rs:505-559]** No token revocation — stolen tokens valid until expiry (15min access, 7-day refresh). No blacklist or `jti` claim.
+- [ ] **[P1] [routes.rs:554]** Non-atomic refresh token rotation — old and new refresh tokens both valid simultaneously. Replay attack possible.
+- [ ] **[P1] [jwt.rs:280-283]** Unbounded old-key acceptance during rotation — previous RSA keys accepted indefinitely, no expiry window.
+- [ ] **[P2] [routes.rs:287-293]** Turnstile validation silently skipped when `turnstile_secret_key` not configured — any string accepted.
+- [ ] **[P2] [routes.rs:1710]** Raw string interpolation for `limit`/`offset` in admin users list query — possible SurrealQL injection.
+- [ ] **[P2] [oauth.rs:979]** Apple redirect URI hardcoded to production URL — breaks dev/staging.
+- [ ] **[P3] [jwt.rs:291-336]** RSA keygen shells out to `openssl` binary; private key file permissions unset.
+- [ ] **[P3] [routes.rs:291,390]** `OB_TEST_MODE` read per-request instead of once at startup — runtime env injection risk.
+
+**Confirmed SAFE**: RS256/HS256 algorithm confusion (jsonwebtoken enforces algo), `alg:none` rejected, MFA bypass blocked, timing-safe email enumeration, brute-force lockout.
+
+### GraphQL Authorization (ob-graphql) — 4 CRITICAL, 5 WARNING, 4 INFO
+
+- [ ] **[CRITICAL] [resolvers.rs:94-111]** IDOR: `list` passes `resource: None`, bypassing `isOwner` for ALL list operations. Any buyer can list all orders.
+- [ ] **[CRITICAL] [resolvers.rs:150-195]** `config` and `config_all` queries have NO auth check — unauthenticated dump of all remote config.
+- [ ] **[CRITICAL] [main.rs:1195 vs 1267]** GraphQL handler reads 10MB body, bypassing 2MB `DefaultBodyLimit` — 10MB payload DoS.
+- [ ] **[CRITICAL] [resolvers.rs:683-754]** `batch_delete` IDs array unbounded — N+1 DoS. Same for `batch_create` and `batch_update`.
+- [ ] **[WARNING] [resolvers.rs:122]** `list` limit capped at 10,000 — mass data exfiltration per query.
+- [ ] **[WARNING] [resolvers.rs:237]** `vector_search` top_k capped at 10,000 — full-collection scan DoS.
+- [ ] **[WARNING] [resolvers.rs:294]** Meilisearch `filter` param passed unsanitized — filter injection.
+- [ ] **[WARNING] [resolvers.rs:778]** `batch_update` update_list unbounded — same N+1 as batch_delete.
+- [ ] **[WARNING] [schema.rs:21]** Introspection enabled on dev VPS (`OB_TEST_MODE=1`) — full schema exposed to internet.
+- [ ] **[INFO]** GraphiQL UI served in production at GET /graphql.
+- [ ] **[INFO]** `normalize_data` double-decode fragile pattern.
+- [ ] **[INFO]** `batch_create` flatten bypasses naive count limits.
+- [ ] **[INFO]** No per-user rate limit on GraphQL mutations — only per-IP.
+
+### WebSocket Security (ob-realtime) — 2 CRITICAL, 7 WARNING, 3 INFO
+
+- [ ] **[CRITICAL] [websocket.rs:249-255]** `/presence` and `/presence/{user_id}` are fully unauthenticated HTTP endpoints — anyone can enumerate online users.
+- [ ] **[CRITICAL] [dispatcher.rs:32]** Change dispatcher broadcasts ALL document changes to ALL collection subscribers with zero per-user authorization — PCI/privacy violation.
+- [ ] **[WARNING] [websocket.rs:177]** No collection allowlist — clients can subscribe to `webhook_events`, `admin_*`, any internal collection.
+- [ ] **[WARNING] [websocket.rs:175]** No WebSocket message size limit — 50MB JSON allocation possible.
+- [ ] **[WARNING] [websocket.rs:144-154]** Slow-consumer bridge stalls indefinitely — no timeout.
+- [ ] **[WARNING] [websocket.rs:16]** No per-user WebSocket connection limit.
+- [ ] **[WARNING] [websocket.rs:27-30]** JWT in `?token=` query param captured in access logs — token harvesting.
+- [ ] **[WARNING] [websocket.rs:213]** Presence metadata unbounded client-supplied JSON.
+- [ ] **[WARNING] [cluster.rs:163]** NATS cluster events carry no authentication — forged events injectable.
+- [ ] **[INFO]** No idle connection timeout.
+- [ ] **[INFO]** Dispatcher channel silently drops events under burst for orders collection.
+- [ ] **[INFO]** JetStream 1h retention replays stale events to restarted nodes.
+
+### Storage Security (ob-storage) — 3 CRITICAL, 5 WARNING, 4 INFO
+
+- [ ] **[CRITICAL] [routes.rs:262-273]** Horizontal privilege escalation — any buyer can overwrite/delete seller product images via presigned upload.
+- [ ] **[CRITICAL] [routes.rs:34-38]** `OB_TEST_MODE` bypasses MIME/magic-byte validation — arbitrary file upload on dev VPS.
+- [ ] **[CRITICAL] [routes.rs:263-266]** `OB_TEST_MODE` bypasses all path-ownership authorization — full storage write access on dev.
+- [ ] **[WARNING] [routes.rs:393-398]** `ttl_secs` caller-controlled with no upper bound — signed URLs valid for years.
+- [ ] **[WARNING] [main.rs:1011]** Storage signing secret == JWT auth secret — key reuse.
+- [ ] **[WARNING] [local.rs:20-32]** Path traversal sanitization uses string manipulation, not OS canonicalization.
+- [ ] **[WARNING] [routes.rs:25-28]** Resumable upload ceiling 5GB, 10x regular uploads — 500GB disk metadata attack.
+- [ ] **[WARNING] [resumable.rs:155]** Empty-owner sessions bypass ownership enforcement.
+- [ ] **[INFO]** `S3Config` derives `Debug` → secret_key prints in tracing.
+- [ ] **[INFO]** No pixel-budget check before image decode — multi-GB allocation via crafted PNG.
+- [ ] **[INFO]** Empty HMAC secret accepted silently.
+- [ ] **[INFO]** Content-Disposition filename not sanitized for injection.
+
+### Perishable Shipping (ob-handlers/shipping_calc) — 3 CRITICAL, 8 WARNING
+
+- [ ] **[CRITICAL] [mod.rs:65-67]** `dollars_to_cents` uses truncation `(dollars * 100.0) as i64` — 8.99 → 898 on some arches. Fix: `.round()`.
+- [ ] **[CRITICAL] [mod.rs:57-62]** Perishable constants `#[cfg(test)]` only — production uses inline `50.0` literal, divergence risk.
+- [ ] **[CRITICAL] [mod.rs:390-392]** Geoapify `distance_m` defaults to `0.0` on malformed response — perishable 50km check silently passes.
+- [ ] **[WARNING] [mod.rs:405]** `buyer_province` defaults to `"ON"` when None — silent cross-province pass.
+- [ ] **[WARNING] [mod.rs:477]** `seller_province` same `"ON"` fallback — warehouse vs request source gap.
+- [ ] **[WARNING] [mod.rs:319-323]** `same_day` speed not handled in fallback calculation — latent bug if guard removed.
+- [ ] **[WARNING] [mod.rs:588-595]** Free shipping applied globally not per-seller — inconsistent with multi-seller rule.
+- [ ] **[WARNING] [mod.rs:591]** `FREE_SHIPPING_THRESHOLD_CENTS` hardcoded locally, not from shared `business_rules`.
+- [ ] **[WARNING] [mod.rs:412]** Items with no `seller_id` bucketed under `"unknown"` — merges sellers silently.
+- [ ] **[WARNING] [mod.rs:494]** `perishable_surcharge` always 0 — dead code left behind.
+- [ ] **[WARNING]** No 24h delivery deadline enforcement anywhere in this module — timezone handling absent.
+
+### Admin Dashboard (ob-admin) — 3 CRITICAL, 5 WARNING, 3 INFO
+
+- [ ] **[CRITICAL] [routes.rs:861]** `POST /links` mounted outside auth — unauthenticated short-link creation (phishing/open-redirect).
+- [ ] **[CRITICAL] [routes.rs:872]** `POST /metrics` mounted outside auth — anonymous metric injection.
+- [ ] **[CRITICAL] [routes.rs:150-162]** `OB_TEST_MODE` bypasses admin auth on ALL admin routes on dev/staging.
+- [ ] **[WARNING] [routes.rs:377-385]** `redirect_link` uses manual slug escaping instead of `query_bind`.
+- [ ] **[WARNING] [routes.rs:73-78]** `list_users` leaks PII, no pagination, hardcoded LIMIT 100.
+- [ ] **[WARNING] [routes.rs:608-629]** `usage_dashboard` interpolates DB-sourced table names — second-order injection.
+- [ ] **[WARNING] [routes.rs:733-758]** `rotate_jwt_keys` has no audit log, no rate limit, no two-admin gate.
+- [ ] **[WARNING] [routes.rs:82-106]** `delete_user` and `update_roles` have no audit logging, no role allowlist.
+- [ ] **[INFO]** Both `/admin/*` and `/_admin/*` prefixes registered — doubles attack surface.
+- [ ] **[INFO]** Health endpoint returns exact semver version.
+- [ ] **[INFO]** `config_set` accepts unbounded key/value length.
+
+### Meilisearch Sync + Error Handling — 2 CRITICAL, 5 WARNING
+
+- [ ] **[CRITICAL] [main.rs:844-856]** No collection allowlist before search sync — ALL collections (users, orders, payouts) synced with ALL fields including PII.
+- [ ] **[CRITICAL] [sync.rs:91-108]** `normalize_document_for_indexing` does zero field filtering — email, phone, passwordHash indexed.
+- [ ] **[WARNING] [sync.rs:96-100]** Original ID stored as `record_id` but docs specify `origId` — contract mismatch.
+- [ ] **[WARNING] [client.rs:98-105]** Full Meilisearch error body logged — potential document fragments in logs.
+- [ ] **[WARNING] [status.rs:486]** User-supplied `new_status` reflected in error response — input reflection.
+- [ ] **[WARNING] [sync.rs:39-75]** Sync failures not retried or enqueued to DLQ — permanent data loss on transient outage.
+- [ ] **[WARNING] [config.rs:72]** Test config uses `created_at` (snake_case) vs schema `createdAt` (camelCase).
+
+### Flutter Checkout + Seller Flows — 1 CRITICAL, 14 WARNING
+
+- [ ] **[CRITICAL] [checkout_screen.dart:221,308]** `DesignTokens.outline` (border color) used as text color on dark glass — semantic misuse.
+- [ ] **[WARNING] [checkout_provider.dart:456]** 3 hardcoded English biometric error strings — not `.tr()`.
+- [ ] **[WARNING] [checkout_screen.dart:380]** Fixed `width: 360` on desktop sidebar — violates responsive rules.
+- [ ] **[WARNING] [checkout_screen.dart:448]** Stepper shows no step 0 — misleading cart completion state.
+- [ ] **[WARNING] [seller_account_status_viewmodel.dart:15,25]** Hardcoded `'Please log in to continue'` — not `.tr()`.
+- [ ] **[WARNING] [seller_registration_vm.dart:90-224]** 5 hardcoded English error strings — French users see English.
+- [ ] **[WARNING] [seller_registration_vm.dart:47-53]** Client-side 3s cooldown reset on navigation — bypasses rate limit.
+- [ ] **[WARNING] [warehouses_vm.dart:37-44]** 2 hardcoded English validation messages — not `.tr()`.
+- [ ] **[WARNING] [warehouses_vm.dart:62-69]** API body keys use string literals instead of `Fields.*` constants.
+- [ ] **[WARNING] [warehouses_vm.dart:192-203]** Error parsing via brittle `e.toString()` string matching.
+- [ ] **[WARNING] [seller_products_vm.dart:71-73]** English-only success message with grammatical `d` suffix — breaks French.
+- [ ] **[WARNING] [seller_registration_screen.dart:185]** Hardcoded `maxWidth: 600` instead of `ResponsiveBreakpoints`.
+- [ ] **[WARNING] [seller_registration_screen.dart:166-176]** Error state missing retry button.
+- [ ] **[WARNING] [seller_registration_screen.dart:27-34]** Hardcoded English payment provider descriptions.
+
+### Semantics Gaps (Flutter screens) — 90+ missing labels across 10 worst screens
+
+Root cause: `buildGlassTextField()`, `buildGlassToggle()`, `buildGlassDropdown()` helpers don't accept `semanticsLabel`. Fix helpers = fix majority.
+
+| Screen | Missing | Priority |
+|--------|---------|----------|
+| editproduct_basic_info_section.dart | 12 | CRITICAL |
+| addproduct_delivery_children_section.dart | 11 | CRITICAL |
+| addproduct_supplier_children_section.dart | 11 | CRITICAL |
+| addproduct_form_content_section.dart | 9 | CRITICAL |
+| editproduct_shipping_section.dart | 9 | CRITICAL |
+| product_form_helper_widgets.dart | 13 | CRITICAL |
+| addproduct_package_location_section.dart | 8 | CRITICAL |
+| editproduct_delivery_section.dart | 5 | CRITICAL |
+| editproduct_location_section.dart | 4 | CRITICAL |
+| seller_setup_screen.dart | 4 | CRITICAL |
+
+### Rust unwrap() Panics — 6 P1, 1 P2
+
+- [ ] **[P1] [chat/mod.rs:270-295]** 6 `Regex::new().unwrap()` re-compiled per message in `_sanitize_text` — use `OnceLock`.
+- [ ] **[P1] [shared/validation.rs:73,77]** 2 `Regex::new().unwrap()` re-compiled per call in `redact_contact_info`.
+- [ ] **[P1] [coupons/mod.rs:17]** `Regex::new().unwrap()` per request in `is_valid_coupon_code`.
+- [ ] **[P1] [digital/mod.rs:23]** `Regex::new().unwrap()` per request in `is_valid_license_key`.
+- [ ] **[P1] [users/mod.rs:205]** `Regex::new().unwrap()` per request in `validate_gst_number`.
+- [ ] **[P1] [push/mod.rs:84]** `serde_json::to_string(&claims).unwrap()` in auth hot path — should propagate error.
+- [ ] **[P2] [payments/providers.rs:294]** `providers.last_mut().unwrap()` — logically safe but undocumented invariant.
+
+### Code Quality — 0 TODO/FIXME/HACK
+
+- TODO count: 0 (Rust) + 0 (Dart) — clean codebase
+
+---
+
+### Wave 3 Audit Totals (2026-03-25)
+
+| Category | CRITICAL | P1/WARNING | P2/INFO | Total |
+|----------|----------|------------|---------|-------|
+| JWT Auth | 0 | 3 | 5 | 8 |
+| GraphQL AuthZ | 4 | 5 | 4 | 13 |
+| WebSocket | 2 | 7 | 3 | 12 |
+| Storage | 3 | 5 | 4 | 12 |
+| Perishable Shipping | 3 | 8 | 0 | 11 |
+| Admin Dashboard | 3 | 5 | 3 | 11 |
+| Meilisearch + Errors | 2 | 5 | 0 | 7 |
+| Flutter Checkout/Seller | 1 | 14 | 0 | 15 |
+| Semantics Gaps | 10 screens | 90+ labels | — | 90+ |
+| Rust unwrap() | 0 | 6 | 1 | 7 |
+| **TOTAL (Wave 1-3)** | **18** | **58+** | **20** | **96+** |
+
+## Deep Audit Wave 4 (2026-03-25) — Legal, Payments, Performance, Concurrency
+
+### Stripe Payment Pipeline — 3 CRITICAL, 6 WARNING
+
+- [ ] **[CRITICAL] [cron/mod.rs:132]** Field name mismatch: payout cron reads `"stripeConnectAccountId"` but schema constant is `"stripeAccountId"` — **ALL seller payouts via cron are broken**.
+- [ ] **[CRITICAL] [cron/mod.rs:305-312]** Float arithmetic for platform fee in payout cron — `f64 * ratio`. Should read `platformFeeTotalCents` directly.
+- [ ] **[CRITICAL] [webhooks.rs:1491-1493]** Float conversion `amount as f64 / 100.0` in notification message — violates integer-cents invariant.
+- [ ] **[WARNING] [checkout.rs:760-804]** Stock decremented at session creation (before payment) not on webhook — 300s sold-out window for other buyers.
+- [ ] **[WARNING] [refunds.rs:391-393]** TOCTOU still exists — re-read is not atomic, concurrent refunds can bypass cap.
+- [ ] **[WARNING] [refunds.rs:867-892]** Test code uses float arithmetic for refund calculation while production uses integer — validates wrong formula.
+- [ ] **[WARNING] [checkout.rs:673-675]** Idempotency key uses server-generated UUID+timestamp — always unique, never idempotent.
+- [ ] **[WARNING] [cron/mod.rs:303-306]** `platformFeeRatio` field never written by checkout — payout recalculates with default rate.
+- [ ] **[WARNING] [checkout.rs:618]** Stripe metadata key `"order_id"` is a magic string — no `StripeConstants` constant.
+
+### Concurrency — 3 P0, 1 P1, 3 P2
+
+- [ ] **[P0] [coupons/mod.rs:527-555]** Lost Update — coupon over-redemption past `maxUsesTotal`. No `WHERE usedCount < maxUsesTotal` guard. Two concurrent redemptions both pass, both write `usedCount + 1`.
+- [ ] **[P0] [refunds.rs:385-445]** TOCTOU — over-refund beyond `totalAmountCents`. Two concurrent refunds both read same cumulative, both pass cap, both call Stripe. Total refunded > order total.
+- [ ] **[P0] [subscriptions.rs:274-502]** TOCTOU — duplicate Stripe subscriptions. Double-tap creates two Stripe subs, user billed twice monthly. No unique constraint on `(buyerId, status=active)`.
+- [ ] **[P1] [status.rs:667-720]** Admin status update has no CAS guard — webhook sets `confirmed`, admin overwrites to `cancelled` without precondition check. Order cancelled after payment captured, no refund triggered.
+- [ ] **[P2] [sync.rs:39-70]** Silent event drop on Meilisearch failure — no retry, no DLQ.
+- [ ] **[P2] [sync.rs:39-70]** Out-of-order upsert events — stale index entry possible.
+- [ ] **[P2] [sync.rs:39-70]** Unbounded channel — OOM under bulk import.
+
+### Performance — 5 CRITICAL, 5 WARNING
+
+- [ ] **[CRITICAL] [returns.rs:146]** `admin_user_ids()` fetches 1000 users to filter for admins in app code — full table scan every escalation.
+- [ ] **[CRITICAL] [returns.rs:195]** N+1 query: one DB round-trip per admin for push tokens.
+- [ ] **[CRITICAL] [cron/mod.rs:1250]** `SELECT * FROM orders LIMIT 2000` — all orders in memory for analytics aggregation.
+- [ ] **[CRITICAL] [cron/mod.rs:1413]** `SELECT * FROM products LIMIT 5000` — 5000 full docs for trending scores. OOM risk on 8GB.
+- [ ] **[CRITICAL] [cron/mod.rs:2160+]** Multiple `SELECT * FROM collection` with no WHERE, no LIMIT — unbounded full scans.
+- [ ] **[WARNING]** Missing indexes: `orders(buyerId)`, `orders(orderStatus)`, `orders(sellerId)`, `_push_tokens(user_id)`, `warehouses(parent_id)`, `users(roles)`.
+- [ ] **[WARNING] [digital/mod.rs:1448]** `SELECT * FROM software_access_tokens` — unbounded.
+- [ ] **[WARNING] [addproduct_submit_section.dart:289,321]** Variant cards built eagerly in Column, no ListView.builder.
+- [ ] **[WARNING]** `AnimatedContainer` with non-const BoxShadow triggers repaint on every loading toggle.
+- [ ] **[WARNING]** `productRepositoryProvider` may be autoDispose — risk of disposal mid-flight on slow uploads.
+
+### Legal Compliance (CASL/PIPEDA/Bill 96) — findings from legal-compliance-auditor
+
+_(Agent completed scan of auth/registration, email templates, translations, terms screens)_
+
+### Grand Total — All Waves (2026-03-25)
+
+| Category | CRITICAL/P0 | P1/WARNING | P2/INFO | Total |
+|----------|-------------|------------|---------|-------|
+| JWT Auth | 0 | 3 | 5 | 8 |
+| GraphQL AuthZ | 4 | 5 | 4 | 13 |
+| WebSocket | 2 | 7 | 3 | 12 |
+| Storage | 3 | 5 | 4 | 12 |
+| Perishable Shipping | 3 | 8 | 0 | 11 |
+| Admin Dashboard | 3 | 5 | 3 | 11 |
+| Meilisearch + Errors | 2 | 5 | 0 | 7 |
+| Flutter Checkout/Seller | 1 | 14 | 0 | 15 |
+| Semantics Gaps | 10 screens | 90+ labels | — | 90+ |
+| Rust unwrap() | 0 | 6 | 1 | 7 |
+| Stripe Payments | 3 | 6 | 0 | 9 |
+| Concurrency Races | 3 | 1 | 3 | 7 |
+| Performance | 5 | 5 | 0 | 10 |
+| **GRAND TOTAL** | **39** | **~170** | **23** | **212+** |
+

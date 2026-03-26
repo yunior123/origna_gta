@@ -20,7 +20,10 @@ SemanticsHandle? _semanticsHandle;
 /// PII patterns to redact from Sentry event data.
 final _emailPattern = RegExp(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}');
 final _phonePattern = RegExp(r'\+?1?\d{10,15}');
-final _postalCodePattern = RegExp(r'[A-Z]\d[A-Z]\s?\d[A-Z]\d', caseSensitive: false);
+final _postalCodePattern = RegExp(
+  r'[A-Z]\d[A-Z]\s?\d[A-Z]\d',
+  caseSensitive: false,
+);
 
 /// Redact PII (emails, phone numbers, postal codes) from a string.
 String _redactPii(String input) {
@@ -70,19 +73,26 @@ void main() {
       try {
         await EasyLocalization.ensureInitialized();
       } catch (e, st) {
-        AppLogger.w('EasyLocalization init failed (non-fatal): $e', tag: 'init');
+        AppLogger.w(
+          'EasyLocalization init failed (non-fatal): $e',
+          tag: 'init',
+        );
         if (!kDebugMode) await Sentry.captureException(e, stackTrace: st);
       }
 
-      // Force semantic tree on web for accessibility + E2E Playwright testing.
+      // Force semantic tree on web for accessibility + E2E agent-browser testing.
       // Flutter Web renders to <canvas> — this generates a parallel <flt-semantics>
       // DOM tree with ARIA attributes that Playwright can target.
       // IMPORTANT: Store the handle — if it's GC'd, semantics gets disabled.
       // debug always on, profile only if FORCE_SEMANTICS=true, release never
-      if (kIsWeb && (kDebugMode || const bool.fromEnvironment('FORCE_SEMANTICS'))) {
+      if (kIsWeb &&
+          (kDebugMode || const bool.fromEnvironment('FORCE_SEMANTICS'))) {
         _semanticsHandle = SemanticsBinding.instance.ensureSemantics();
         if (kDebugMode) {
-          AppLogger.i('Semantics enabled: ${_semanticsHandle != null}', tag: 'init');
+          AppLogger.i(
+            'Semantics enabled: ${_semanticsHandle != null}',
+            tag: 'init',
+          );
         }
       }
 
@@ -120,8 +130,10 @@ void main() {
             .initialize(ob)
             .timeout(
               const Duration(seconds: 10),
-              onTimeout: () =>
-                  AppLogger.w('Config init timed out — proceeding with defaults', tag: 'init'),
+              onTimeout: () => AppLogger.w(
+                'Config init timed out — proceeding with defaults',
+                tag: 'init',
+              ),
             )
             .catchError((_) {}),
       );
@@ -136,10 +148,10 @@ void main() {
               options.environment = envConfig.isProduction
                   ? 'production'
                   : envConfig.isStaging
-                      ? 'staging'
-                      : envConfig.isDev
-                          ? 'dev'
-                          : 'emulator';
+                  ? 'staging'
+                  : envConfig.isDev
+                  ? 'dev'
+                  : 'emulator';
               options.tracesSampleRate = 0.1;
               options.beforeSend = (event, hint) {
                 // Strip PII from user data
@@ -166,7 +178,10 @@ void main() {
               }
             }).timeout(const Duration(seconds: 10));
           } catch (_) {
-            AppLogger.w('Sentry init failed — continuing without error tracking', tag: 'init');
+            AppLogger.w(
+              'Sentry init failed — continuing without error tracking',
+              tag: 'init',
+            );
           }
         }),
       );

@@ -1,10 +1,13 @@
 //! Seller warehouse management handlers.
 //! Ported from: functions/handlers/products.py
 
-use axum::{Json, Router, extract::State, routing::post};
+use axum::{Json, Router, extract::State, extract::Extension, routing::post};
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
+
+use ob_auth::middleware::AuthContext;
+use crate::shared::auth::resolve_self_user_id;
 
 use crate::HandlersState;
 use crate::shared::schema::{COUNTRY_CANADA, collections, fields};
@@ -209,13 +212,15 @@ async fn load_owned_warehouse(
 
 async fn create_warehouse(
     State(state): State<HandlersState>,
+    Extension(auth): Extension<AuthContext>,
     Json(req): Json<CreateWarehouseRequest>,
 ) -> ob_core::Result<Json<WarehouseMutationResponse>> {
     validate_uid("userId", &req.user_id)?;
+    let user_id = resolve_self_user_id(&auth, Some(req.user_id.as_str()), "userId")?;
 
     crate::shared::rate_limiter::check_user_rate_limit(
         &state.db,
-        &req.user_id,
+        &user_id,
         "create_warehouse",
         15, // 15 creations
         60, // per hour
@@ -227,7 +232,7 @@ async fn create_warehouse(
     let address = sanitize_address(&req.address)?;
 
     if req.is_default {
-        clear_other_defaults(&state, &req.user_id, None).await?;
+        clear_other_defaults(&state, &user_id, None).await?;
     }
 
     let collection = warehouses_collection();
@@ -237,7 +242,7 @@ async fn create_warehouse(
         .create_document(
             &collection,
             json!({
-                "parent_id": warehouse_parent(&req.user_id),
+                "parent_id": warehouse_parent(&user_id),
                 "parent_collection": collections::USERS,
                 "label": label,
                 "type": warehouse_type,
@@ -264,21 +269,23 @@ async fn create_warehouse(
 
 async fn update_warehouse(
     State(state): State<HandlersState>,
+    Extension(auth): Extension<AuthContext>,
     Json(req): Json<UpdateWarehouseRequest>,
 ) -> ob_core::Result<Json<WarehouseMutationResponse>> {
     validate_uid("userId", &req.user_id)?;
     validate_uid("warehouseId", &req.warehouse_id)?;
+    let user_id = resolve_self_user_id(&auth, Some(req.user_id.as_str()), "userId")?;
 
     crate::shared::rate_limiter::check_user_rate_limit(
         &state.db,
-        &req.user_id,
+        &user_id,
         "update_warehouse",
         30, // 30 updates
         60, // per hour
     )
     .await?;
 
-    let _existing = load_owned_warehouse(&state, &req.user_id, &req.warehouse_id).await?;
+    let _existing = load_owned_warehouse(&state, &user_id, &req.warehouse_id).await?;
 
     let mut patch = serde_json::Map::new();
     if let Some(label) = req.label.as_deref() {
@@ -292,7 +299,7 @@ async fn update_warehouse(
     }
     if let Some(is_default) = req.is_default {
         if is_default {
-            clear_other_defaults(&state, &req.user_id, Some(&req.warehouse_id)).await?;
+            clear_other_defaults(&state, &user_id, Some(&req.warehouse_id)).await?;
         }
         patch.insert(fields::IS_DEFAULT.to_string(), json!(is_default));
     }
@@ -324,27 +331,29 @@ async fn update_warehouse(
 
 async fn delete_warehouse(
     State(state): State<HandlersState>,
+    Extension(auth): Extension<AuthContext>,
     Json(req): Json<DeleteWarehouseRequest>,
 ) -> ob_core::Result<Json<WarehouseMutationResponse>> {
     validate_uid("userId", &req.user_id)?;
     validate_uid("warehouseId", &req.warehouse_id)?;
+    let user_id = resolve_self_user_id(&auth, Some(req.user_id.as_str()), "userId")?;
 
     crate::shared::rate_limiter::check_user_rate_limit(
         &state.db,
-        &req.user_id,
+        &user_id,
         "delete_warehouse",
         15, // 15 deletions
         60, // per hour
     )
     .await?;
 
-    let existing = load_owned_warehouse(&state, &req.user_id, &req.warehouse_id).await?;
+    let existing = load_owned_warehouse(&state, &user_id, &req.warehouse_id).await?;
 
     let product_guard_query = format!(
         "SELECT id FROM {} WHERE {} = '{}' AND {} CONTAINS '{}' LIMIT 1",
         collections::PRODUCTS,
         fields::SELLER_ID,
-        ob_core::escape_surreal_string(&req.user_id),
+        ob_core::escape_surreal_string(&user_id),
         "warehouseIds",
         ob_core::escape_surreal_string(&req.warehouse_id),
     );
@@ -363,7 +372,7 @@ async fn delete_warehouse(
         let promote_query = format!(
             "SELECT * FROM {} WHERE parent_id = '{}' AND id != type::thing('{}', '{}') ORDER BY createdAt ASC LIMIT 1",
             collection,
-            ob_core::escape_surreal_string(&warehouse_parent(&req.user_id)),
+            ob_core::escape_surreal_string(&warehouse_parent(&user_id)),
             collection,
             ob_core::escape_surreal_string(&req.warehouse_id),
         );
@@ -391,14 +400,16 @@ async fn delete_warehouse(
 
 async fn list_warehouses(
     State(state): State<HandlersState>,
+    Extension(auth): Extension<AuthContext>,
     Json(req): Json<ListWarehousesRequest>,
 ) -> ob_core::Result<Json<ListWarehousesResponse>> {
     validate_uid("userId", &req.user_id)?;
+    let user_id = resolve_self_user_id(&auth, Some(req.user_id.as_str()), "userId")?;
     let collection = warehouses_collection();
     let query = format!(
         "SELECT * FROM {} WHERE parent_id = '{}' ORDER BY isDefault DESC, createdAt ASC",
         collection,
-        ob_core::escape_surreal_string(&warehouse_parent(&req.user_id)),
+        ob_core::escape_surreal_string(&warehouse_parent(&user_id)),
     );
     let rows = state.db.query_raw(&query).await?;
     let warehouses = rows
@@ -426,10 +437,21 @@ async fn list_warehouses(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::extract::State;
+    use axum::extract::{Extension, State};
+    use ob_auth::middleware::AuthContext;
     use ob_core::Config;
     use ob_database::DatabaseClient;
     use std::sync::Arc;
+
+    fn auth(user_id: &str, role: &str) -> Extension<AuthContext> {
+        Extension(AuthContext {
+            user_id: user_id.to_string(),
+            roles: vec![role.to_string()],
+            authenticated: true,
+            email_verified: true,
+            custom_claims: serde_json::Value::Null,
+        })
+    }
 
     async fn setup_state() -> HandlersState { HandlersState {
             config: Arc::new(Config::load(None).unwrap()),
@@ -515,6 +537,7 @@ mod tests {
 
         let Json(resp) = create_warehouse(
             State(state.clone()),
+            auth("seller_1", "user"),
             Json(CreateWarehouseRequest {
                 user_id: "seller_1".into(),
                 label: "New Default".into(),
@@ -572,6 +595,7 @@ mod tests {
 
         let err = update_warehouse(
             State(state),
+            auth("seller_1", "user"),
             Json(UpdateWarehouseRequest {
                 user_id: "seller_1".into(),
                 warehouse_id,
@@ -633,6 +657,7 @@ mod tests {
 
         let _ = delete_warehouse(
             State(state.clone()),
+            auth("seller_1", "user"),
             Json(DeleteWarehouseRequest {
                 user_id: "seller_1".into(),
                 warehouse_id: first_id,
@@ -688,6 +713,7 @@ mod tests {
 
         let err = delete_warehouse(
             State(state),
+            auth("seller_1", "user"),
             Json(DeleteWarehouseRequest {
                 user_id: "seller_1".into(),
                 warehouse_id,
@@ -840,6 +866,7 @@ mod tests {
         let state = setup_state().await;
         let Json(resp) = create_warehouse(
             State(state),
+            auth("seller_1", "user"),
             Json(CreateWarehouseRequest {
                 user_id: "seller_1".into(),
                 label: "My Warehouse".into(),
@@ -884,6 +911,7 @@ mod tests {
 
         let Json(resp) = update_warehouse(
             State(state),
+            auth("seller_1", "user"),
             Json(UpdateWarehouseRequest {
                 user_id: "seller_1".into(),
                 warehouse_id: warehouse_id.clone(),
@@ -942,6 +970,7 @@ mod tests {
 
         let Json(resp) = update_warehouse(
             State(state.clone()),
+            auth("seller_1", "user"),
             Json(UpdateWarehouseRequest {
                 user_id: "seller_1".into(),
                 warehouse_id: second_id.clone(),
@@ -997,6 +1026,7 @@ mod tests {
 
         let Json(resp) = update_warehouse(
             State(state),
+            auth("seller_1", "user"),
             Json(UpdateWarehouseRequest {
                 user_id: "seller_1".into(),
                 warehouse_id: warehouse_id.clone(),
@@ -1041,6 +1071,7 @@ mod tests {
 
         let Json(resp) = delete_warehouse(
             State(state),
+            auth("seller_1", "user"),
             Json(DeleteWarehouseRequest {
                 user_id: "seller_1".into(),
                 warehouse_id: warehouse_id.clone(),
@@ -1089,6 +1120,7 @@ mod tests {
 
         let Json(resp) = list_warehouses(
             State(state),
+            auth("seller_1", "user"),
             Json(ListWarehousesRequest {
                 user_id: "seller_1".into(),
             }),
@@ -1111,6 +1143,7 @@ mod tests {
 
         let Json(resp) = list_warehouses(
             State(state),
+            auth("seller_no_warehouses", "user"),
             Json(ListWarehousesRequest {
                 user_id: "seller_no_warehouses".into(),
             }),
@@ -1144,6 +1177,7 @@ mod tests {
 
         let Json(resp) = list_warehouses(
             State(state),
+            auth("seller_1", "user"),
             Json(ListWarehousesRequest {
                 user_id: "seller_1".into(),
             }),
@@ -1164,6 +1198,7 @@ mod tests {
 
         let result = list_warehouses(
             State(state),
+            auth("", "user"),
             Json(ListWarehousesRequest { user_id: "".into() }),
         )
         .await;
@@ -1199,6 +1234,7 @@ mod tests {
 
         let Json(resp) = delete_warehouse(
             State(state),
+            auth("seller_1", "user"),
             Json(DeleteWarehouseRequest {
                 user_id: "seller_1".into(),
                 warehouse_id: warehouse_id.clone(),

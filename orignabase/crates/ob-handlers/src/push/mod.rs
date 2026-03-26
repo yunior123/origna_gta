@@ -81,7 +81,9 @@ async fn get_access_token(
 
     // Build unsigned JWT (header.payload) for token exchange
     let header = B64.encode(r#"{"alg":"RS256","typ":"JWT"}"#);
-    let payload = B64.encode(serde_json::to_string(&claims).unwrap());
+    let payload = B64.encode(serde_json::to_string(&claims).map_err(|e| {
+        PushError::InvalidServiceAccount(format!("Failed to serialize JWT claims: {e}"))
+    })?);
     let signing_input = format!("{header}.{payload}");
 
     // Sign with RSA private key using sha2

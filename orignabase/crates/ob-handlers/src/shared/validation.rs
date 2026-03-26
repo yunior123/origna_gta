@@ -5,6 +5,7 @@ use std::sync::OnceLock;
 
 static PHONE_RE: OnceLock<regex_lite::Regex> = OnceLock::new();
 static EMAIL_RE: OnceLock<regex_lite::Regex> = OnceLock::new();
+static EMAIL_REDACT_RE: OnceLock<regex_lite::Regex> = OnceLock::new();
 
 /// Validate that a string is non-empty and within max length.
 pub fn validate_string(field: &str, value: &str, max_len: usize) -> ob_core::Result<()> {
@@ -50,8 +51,10 @@ pub fn validate_email(email: &str) -> ob_core::Result<()> {
     if email.len() > 254 {
         return Err(Error::Validation("Email too long".into()));
     }
-    let email_regex = regex_lite::Regex::new(r"^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$")
-        .expect("static email regex should compile");
+    let email_regex = EMAIL_RE.get_or_init(|| {
+        regex_lite::Regex::new(r"^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$")
+            .expect("static email regex should compile")
+    });
     if !email_regex.is_match(email) {
         return Err(Error::Validation("Invalid email address".into()));
     }
@@ -91,8 +94,8 @@ pub fn redact_contact_info(text: &str) -> String {
     let phone_pattern = PHONE_RE
         .get_or_init(|| regex_lite::Regex::new(r"\+?\d[\d\s\-().]{8,}\d").expect("valid regex"));
     result = phone_pattern.replace_all(&result, "[REDACTED]").to_string();
-    // Redact emails
-    let email_pattern = EMAIL_RE.get_or_init(|| {
+    // Redact emails (unanchored pattern for finding emails within text)
+    let email_pattern = EMAIL_REDACT_RE.get_or_init(|| {
         regex_lite::Regex::new(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}")
             .expect("valid regex")
     });

@@ -1,17 +1,23 @@
 //! Coupon/promo code handlers.
 //! Ported from: functions/handlers/coupons.py
 
-use axum::{Json, Router, extract::State, routing::post};
+use axum::{Json, Router, extract::State, extract::Extension, routing::post};
 use serde::{Deserialize, Serialize};
 use tracing::{error, info, warn};
+
+use ob_auth::middleware::AuthContext;
+use crate::shared::auth::resolve_self_user_id;
 
 use crate::HandlersState;
 use crate::shared::schema::{collections, fields};
 use crate::shared::validation::validate_uid;
+use std::sync::OnceLock;
+
+static COUPON_CODE_RE: OnceLock<regex_lite::Regex> = OnceLock::new();
 
 /// Coupon code format: 4-20 uppercase alphanumeric characters.
 fn is_valid_coupon_code(code: &str) -> bool {
-    let re = regex_lite::Regex::new(r"^[A-Z0-9]{4,20}$").unwrap();
+    let re = COUPON_CODE_RE.get_or_init(|| regex_lite::Regex::new(r"^[A-Z0-9]{4,20}$").expect("valid regex"));
     re.is_match(code)
 }
 
@@ -133,13 +139,15 @@ fn compute_discount(discount_type: &str, discount_value: f64, cart_subtotal_cent
 
 async fn apply_coupon(
     State(state): State<HandlersState>,
+    Extension(auth): Extension<AuthContext>,
     Json(req): Json<ApplyCouponRequest>,
 ) -> Result<Json<ApplyCouponResponse>, ob_core::Error> {
     validate_uid("userId", &req.user_id)?;
+    let user_id = resolve_self_user_id(&auth, Some(req.user_id.as_str()), "userId")?;
 
     crate::shared::rate_limiter::check_user_rate_limit(
         &state.db,
-        &req.user_id,
+        &user_id,
         "apply_coupon",
         15, // 15 attempts
         1,  // per minute
@@ -245,7 +253,7 @@ async fn apply_coupon(
             &user_usage_query,
             serde_json::json!({
                 "coupon_id": coupon_id,
-                "user_id": req.user_id,
+                "user_id": user_id,
             }),
         )
         .await
@@ -309,13 +317,15 @@ async fn apply_coupon(
 
 async fn create_coupon(
     State(state): State<HandlersState>,
+    Extension(auth): Extension<AuthContext>,
     Json(req): Json<CreateCouponRequest>,
 ) -> Result<Json<CreateCouponResponse>, ob_core::Error> {
     validate_uid("userId", &req.user_id)?;
+    let user_id = resolve_self_user_id(&auth, Some(req.user_id.as_str()), "userId")?;
 
     crate::shared::rate_limiter::check_user_rate_limit(
         &state.db,
-        &req.user_id,
+        &user_id,
         "create_coupon",
         10, // 10 creations
         60, // per hour
@@ -325,7 +335,7 @@ async fn create_coupon(
     // Verify admin role
     let user = state
         .db
-        .get_document(collections::USERS, &req.user_id)
+        .get_document(collections::USERS, &user_id)
         .await
         .map_err(|_| ob_core::Error::NotFound("User not found".into()))?;
 
@@ -447,7 +457,7 @@ async fn create_coupon(
         "isActive": req.is_active,
         fields::SELLER_ID: req.seller_id,
         fields::CREATED_AT: now,
-        "createdByAdminId": req.user_id,
+        "createdByAdminId": user_id,
     });
 
     state
@@ -456,7 +466,7 @@ async fn create_coupon(
         .await
         .map_err(|e| ob_core::Error::Database(format!("Failed to create coupon: {e}")))?;
 
-    info!(code = %code, admin = %req.user_id, "Coupon created");
+    info!(code = %code, admin = %user_id, "Coupon created");
 
     Ok(Json(CreateCouponResponse {
         success: true,
@@ -468,14 +478,16 @@ async fn create_coupon(
 
 async fn redeem_coupon(
     State(state): State<HandlersState>,
+    Extension(auth): Extension<AuthContext>,
     Json(req): Json<RedeemCouponRequest>,
 ) -> Result<Json<RedeemCouponResponse>, ob_core::Error> {
     validate_uid("userId", &req.user_id)?;
     validate_uid("orderId", &req.order_id)?;
+    let user_id = resolve_self_user_id(&auth, Some(req.user_id.as_str()), "userId")?;
 
     crate::shared::rate_limiter::check_user_rate_limit(
         &state.db,
-        &req.user_id,
+        &user_id,
         "redeem_coupon",
         10, // 10 redemptions
         60, // per hour
@@ -514,36 +526,46 @@ async fn redeem_coupon(
         }));
     }
 
+    // Atomic increment with guard: only increments if usedCount < maxUsesTotal (or no limit set).
+    // This prevents the read-check-write race where two concurrent requests both pass the check.
+    let now = chrono::Utc::now().to_rfc3339();
     let max_uses = coupon.get(fields::MAX_USES).and_then(|v| v.as_i64());
-    let used_count = coupon
-        .get(fields::USED_COUNT)
-        .and_then(|v| v.as_i64())
-        .unwrap_or(0);
 
-    if let Some(max_uses) = max_uses
-        && used_count >= max_uses
-    {
-        warn!(code = %code, "Coupon at max uses during redemption — aborting");
+    let atomic_result = if max_uses.is_some() {
+        // Has a usage limit — only increment if not yet exhausted
+        let atomic_query = format!(
+            "UPDATE type::thing('{}', '{}') SET {} += 1, updatedAt = '{}' WHERE {} < {} RETURN AFTER",
+            collections::COUPONS,
+            code,
+            fields::USED_COUNT,
+            now,
+            fields::USED_COUNT,
+            fields::MAX_USES,
+        );
+        state.db.query_raw(&atomic_query).await.map_err(|e| {
+            error!(code = %code, error = %e, "Failed to atomically update coupon usage");
+            ob_core::Error::Database(format!("Failed to redeem coupon: {e}"))
+        })?
+    } else {
+        // No limit — always increment
+        let atomic_query = format!(
+            "UPDATE type::thing('{}', '{}') SET {} += 1, updatedAt = '{}' RETURN AFTER",
+            collections::COUPONS,
+            code,
+            fields::USED_COUNT,
+            now,
+        );
+        state.db.query_raw(&atomic_query).await.map_err(|e| {
+            error!(code = %code, error = %e, "Failed to atomically update coupon usage");
+            ob_core::Error::Database(format!("Failed to redeem coupon: {e}"))
+        })?
+    };
+
+    if atomic_result.is_empty() {
+        // UPDATE matched zero rows — coupon is at max uses
+        warn!(code = %code, "Coupon at max uses during atomic redemption — aborting");
         return Err(ob_core::Error::Validation("Coupon fully redeemed".into()));
     }
-
-    // Best-effort redemption: enforce limits, then persist the usage counter and usage record.
-    let now = chrono::Utc::now().to_rfc3339();
-    state
-        .db
-        .update_document(
-            collections::COUPONS,
-            &code,
-            serde_json::json!({
-                fields::USED_COUNT: used_count + 1,
-                "updatedAt": now,
-            }),
-        )
-        .await
-        .map_err(|e| {
-            error!(code = %code, error = %e, "Failed to update coupon usage");
-            ob_core::Error::Database(format!("Failed to redeem coupon: {e}"))
-        })?;
 
     state
         .db
@@ -551,7 +573,7 @@ async fn redeem_coupon(
             collections::COUPON_USES,
             serde_json::json!({
                 "couponId": code,
-                "userId": req.user_id,
+                "userId": user_id,
                 "orderId": req.order_id,
                 "redeemedAt": now,
             }),
@@ -573,11 +595,22 @@ async fn redeem_coupon(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::extract::State;
+    use axum::extract::{Extension, State};
+    use ob_auth::middleware::AuthContext;
     use ob_core::Config;
     use ob_database::DatabaseClient;
     use serde_json::json;
     use std::sync::Arc;
+
+    fn auth(user_id: &str, role: &str) -> Extension<AuthContext> {
+        Extension(AuthContext {
+            user_id: user_id.to_string(),
+            roles: vec![role.to_string()],
+            authenticated: true,
+            email_verified: true,
+            custom_claims: serde_json::Value::Null,
+        })
+    }
 
     async fn setup_state() -> HandlersState {
         HandlersState {
@@ -1027,6 +1060,7 @@ mod tests {
 
         let Json(resp) = apply_coupon(
             State(state),
+            auth("user_1", "user"),
             Json(ApplyCouponRequest {
                 code: " save10 ".into(),
                 order_subtotal_cents: 5_000,
@@ -1063,6 +1097,7 @@ mod tests {
 
         let inactive_err = apply_coupon(
             State(state.clone()),
+            auth("user_1", "user"),
             Json(ApplyCouponRequest {
                 code: "INACTIVE1".into(),
                 order_subtotal_cents: 1_000,
@@ -1095,6 +1130,7 @@ mod tests {
 
         let expired_err = apply_coupon(
             State(state.clone()),
+            auth("user_2", "user"),
             Json(ApplyCouponRequest {
                 code: "EXPIRED1".into(),
                 order_subtotal_cents: 1_000,
@@ -1127,6 +1163,7 @@ mod tests {
 
         let seller_err = apply_coupon(
             State(state),
+            auth("user_3", "user"),
             Json(ApplyCouponRequest {
                 code: "SELLER1".into(),
                 order_subtotal_cents: 1_000,
@@ -1174,6 +1211,7 @@ mod tests {
 
         let usage_err = apply_coupon(
             State(state.clone()),
+            auth("user_1", "user"),
             Json(ApplyCouponRequest {
                 code: "LIMIT01".into(),
                 order_subtotal_cents: 1_000,
@@ -1202,6 +1240,7 @@ mod tests {
 
         let min_err = apply_coupon(
             State(state),
+            auth("user_2", "user"),
             Json(ApplyCouponRequest {
                 code: "MINORD1".into(),
                 order_subtotal_cents: 1_500,
@@ -1231,6 +1270,7 @@ mod tests {
 
         let Json(resp) = create_coupon(
             State(state.clone()),
+            auth("admin_1", "admin"),
             Json(CreateCouponRequest {
                 code: " spring25 ".into(),
                 discount_type: "percentage".into(),
@@ -1291,6 +1331,7 @@ mod tests {
 
         let forbidden = create_coupon(
             State(state.clone()),
+            auth("buyer_1", "user"),
             Json(CreateCouponRequest {
                 code: "SAVE10".into(),
                 discount_type: "percentage".into(),
@@ -1336,6 +1377,7 @@ mod tests {
 
         let duplicate = create_coupon(
             State(state.clone()),
+            auth("admin_2", "admin"),
             Json(CreateCouponRequest {
                 code: "SAVE10".into(),
                 discount_type: "percentage".into(),
@@ -1355,6 +1397,7 @@ mod tests {
 
         let fixed_min = create_coupon(
             State(state),
+            auth("admin_2", "admin"),
             Json(CreateCouponRequest {
                 code: "FIX500".into(),
                 discount_type: "fixed_amount".into(),
@@ -1393,6 +1436,7 @@ mod tests {
 
         let Json(resp) = redeem_coupon(
             State(state.clone()),
+            auth("user_1", "user"),
             Json(RedeemCouponRequest {
                 code: "redeem1".into(),
                 order_id: "ord_1".into(),
@@ -1447,6 +1491,7 @@ mod tests {
 
         let Json(expired) = redeem_coupon(
             State(state.clone()),
+            auth("user_2", "user"),
             Json(RedeemCouponRequest {
                 code: "OLDONE1".into(),
                 order_id: "ord_2".into(),
@@ -1473,6 +1518,7 @@ mod tests {
 
         let full_err = redeem_coupon(
             State(state),
+            auth("user_3", "user"),
             Json(RedeemCouponRequest {
                 code: "FULL001".into(),
                 order_id: "ord_3".into(),
@@ -1492,6 +1538,7 @@ mod tests {
 
         let err = apply_coupon(
             State(state),
+            auth("user_1", "user"),
             Json(ApplyCouponRequest {
                 code: "a!".into(), // too short + invalid chars after uppercase
                 order_subtotal_cents: 1_000,
@@ -1513,6 +1560,7 @@ mod tests {
 
         let err = apply_coupon(
             State(state),
+            auth("user_1", "user"),
             Json(ApplyCouponRequest {
                 code: "SAVE20".into(),
                 order_subtotal_cents: -100,
@@ -1556,6 +1604,7 @@ mod tests {
 
         let err = apply_coupon(
             State(state),
+            auth("user_1", "user"),
             Json(ApplyCouponRequest {
                 code: "MAXED1".into(),
                 order_subtotal_cents: 5_000,
@@ -1586,6 +1635,7 @@ mod tests {
 
         let err = create_coupon(
             State(state),
+            auth("admin_1", "admin"),
             Json(CreateCouponRequest {
                 code: "a!b".into(), // invalid after uppercase: "A!B"
                 discount_type: "percentage".into(),
@@ -1622,6 +1672,7 @@ mod tests {
 
         let err = create_coupon(
             State(state),
+            auth("admin_1", "admin"),
             Json(CreateCouponRequest {
                 code: "VALID1".into(),
                 discount_type: "bogus_type".into(),
@@ -1658,6 +1709,7 @@ mod tests {
 
         let err = create_coupon(
             State(state),
+            auth("admin_1", "admin"),
             Json(CreateCouponRequest {
                 code: "VALID2".into(),
                 discount_type: "percentage".into(),
@@ -1697,6 +1749,7 @@ mod tests {
 
         let err = create_coupon(
             State(state),
+            auth("admin_1", "admin"),
             Json(CreateCouponRequest {
                 code: "OVER90".into(),
                 discount_type: "percentage".into(),
@@ -1736,6 +1789,7 @@ mod tests {
 
         let err = create_coupon(
             State(state),
+            auth("admin_1", "admin"),
             Json(CreateCouponRequest {
                 code: "SMALL1".into(),
                 discount_type: "fixed_amount".into(),
@@ -1777,6 +1831,7 @@ mod tests {
 
         let Json(resp) = create_coupon(
             State(state),
+            auth("admin_1", "admin"),
             Json(CreateCouponRequest {
                 code: "FREESHIP".into(),
                 discount_type: "free_shipping".into(),
@@ -1814,6 +1869,7 @@ mod tests {
 
         let err = create_coupon(
             State(state),
+            auth("admin_1", "admin"),
             Json(CreateCouponRequest {
                 code: "FIXCENT1".into(),
                 discount_type: "fixed_cents".into(),
@@ -1850,6 +1906,7 @@ mod tests {
 
         let err = create_coupon(
             State(state),
+            auth("admin_1", "admin"),
             Json(CreateCouponRequest {
                 code: "NEGMIN1".into(),
                 discount_type: "percentage".into(),
@@ -1889,6 +1946,7 @@ mod tests {
 
         let err = create_coupon(
             State(state),
+            auth("admin_1", "admin"),
             Json(CreateCouponRequest {
                 code: "ZEROMAX".into(),
                 discount_type: "percentage".into(),
@@ -1919,6 +1977,7 @@ mod tests {
 
         let err = redeem_coupon(
             State(state),
+            auth("user_1", "user"),
             Json(RedeemCouponRequest {
                 code: "  ".into(), // blank after trim
                 order_id: "ord_1".into(),
@@ -1942,6 +2001,7 @@ mod tests {
 
         let err = redeem_coupon(
             State(state),
+            auth("user_1", "user"),
             Json(RedeemCouponRequest {
                 code: "NONEXIST".into(),
                 order_id: "ord_1".into(),
@@ -1962,6 +2022,7 @@ mod tests {
 
         let err = apply_coupon(
             State(state),
+            auth("user_1", "user"),
             Json(ApplyCouponRequest {
                 code: "NONEXIST".into(),
                 order_subtotal_cents: 1_000,

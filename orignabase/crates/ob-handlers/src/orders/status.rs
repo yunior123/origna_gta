@@ -354,7 +354,7 @@ async fn confirm_item_receipt(
         .map_err(|_| ob_core::Error::NotFound("Order not found".into()))?;
 
     // Ownership check
-    let order_owner = str_field(&order, "userId");
+    let order_owner = str_field(&order, fields::USER_ID);
     if order_owner != user_id.as_str() {
         return Err(ob_core::Error::Forbidden(
             "Only the order owner can confirm receipt".into(),
@@ -494,7 +494,7 @@ async fn update_order_status(
         .map_err(|_| ob_core::Error::NotFound("Order not found".into()))?;
 
     let old_status_str = order
-        .get("orderStatus")
+        .get(fields::ORDER_STATUS)
         .and_then(|v| v.as_str())
         .unwrap_or("pending");
 
@@ -546,7 +546,7 @@ async fn update_order_status(
 
     // Block manually shipping digital items
     if new_status == OrderStatus::Shipped {
-        let has_digital = seller_items.iter().any(|it| bool_field(it, "isDigital"));
+        let has_digital = seller_items.iter().any(|it| bool_field(it, fields::IS_DIGITAL));
         if has_digital {
             return Err(ob_core::Error::Validation(
                 "Digital products cannot be manually shipped".into(),
@@ -556,7 +556,7 @@ async fn update_order_status(
         // Shipping approval gate
         if let Some(approval) = order.get("shippingApproval").and_then(|v| v.as_object()) {
             let approval_status = approval
-                .get("status")
+                .get(fields::STATUS)
                 .and_then(|v| v.as_str())
                 .unwrap_or("");
             if approval_status == "pending" {
@@ -606,8 +606,8 @@ async fn update_order_status(
         }
 
         let all_shipped = updated_items.iter().all(|it| {
-            let s = str_field(it, "status");
-            s == "shipped" || s == "delivered"
+            let s = str_field(it, fields::STATUS);
+            s == DeliveryStatus::Shipped.as_str() || s == DeliveryStatus::Delivered.as_str()
         });
 
         let mut update_data = json!({
@@ -671,8 +671,8 @@ async fn update_order_status(
     if new_status == OrderStatus::Shipped {
         let mut updated_items = items.clone();
         for item in updated_items.iter_mut() {
-            let s = str_field(item, "status");
-            if s != "delivered" && s != "refunded" {
+            let s = str_field(item, fields::STATUS);
+            if s != DeliveryStatus::Delivered.as_str() && s != DeliveryStatus::Refunded.as_str() {
                 item["status"] = json!("shipped");
                 item["shippedAt"] = json!(now);
                 if let Some(ref tn) = tracking_number {
@@ -701,11 +701,34 @@ async fn update_order_status(
 
     let email_update_data = update_data.clone();
 
-    state
+    // CAS guard: only write if orderStatus is still the value we read.
+    // A concurrent webhook (e.g. payment confirmation, auto-delivery) could have
+    // changed the status between our read and this write. The WHERE clause makes
+    // the update conditional and atomic in SurrealDB.
+    let order_id_stripped = req
+        .order_id
+        .strip_prefix(&format!("{}:", collections::ORDERS))
+        .unwrap_or(&req.order_id);
+    let cas_sql = "UPDATE type::thing($table, $id) MERGE $data WHERE orderStatus = $expected_status RETURN AFTER";
+    let cas_rows = state
         .db
-        .update_document(collections::ORDERS, &req.order_id, update_data)
+        .query_bind_value(
+            cas_sql,
+            json!({
+                "table": collections::ORDERS,
+                "id": order_id_stripped,
+                "data": update_data,
+                "expected_status": old_status.as_str(),
+            }),
+        )
         .await
         .map_err(|e| ob_core::Error::Database(format!("Failed to update order: {e}")))?;
+    if cas_rows.is_empty() {
+        return Err(ob_core::Error::Validation(format!(
+            "Order status changed concurrently — expected '{}', please retry",
+            old_status.as_str()
+        )));
+    }
 
     info!(
         order_id = %req.order_id,
@@ -856,7 +879,7 @@ async fn update_item_status(
     }
 
     // State machine validation for non-admins
-    let current_str = str_field(&items[idx], "status");
+    let current_str = str_field(&items[idx], fields::STATUS);
     let current_delivery = DeliveryStatus::from_str(current_str).unwrap_or(DeliveryStatus::Pending);
 
     if !is_admin && !is_valid_item_transition(current_delivery, new_delivery) {
@@ -868,7 +891,7 @@ async fn update_item_status(
 
     // Require tracking for shipped (unless pickup)
     if new_delivery == DeliveryStatus::Shipped && tracking_number.is_none() {
-        let is_pickup = str_field(&order, "deliverySpeed") == "pickup";
+        let is_pickup = str_field(&order, fields::DELIVERY_SPEED) == "pickup";
         if !is_pickup {
             return Err(ob_core::Error::Validation(
                 "Tracking number required for shipped status".into(),
@@ -898,10 +921,10 @@ async fn update_item_status(
 
     let all_delivered = items
         .iter()
-        .all(|it| str_field(it, "status") == "delivered");
+        .all(|it| str_field(it, fields::STATUS) == DeliveryStatus::Delivered.as_str());
     let all_shipped = items.iter().all(|it| {
-        let s = str_field(it, "status");
-        s == "shipped" || s == "delivered"
+        let s = str_field(it, fields::STATUS);
+        s == DeliveryStatus::Shipped.as_str() || s == DeliveryStatus::Delivered.as_str()
     });
 
     let mut update_data = json!({
@@ -910,7 +933,7 @@ async fn update_item_status(
     });
 
     // Promote order-level status
-    let current_order_status_str = str_field(&order, "orderStatus");
+    let current_order_status_str = str_field(&order, fields::ORDER_STATUS);
     if all_delivered && current_order_status_str != OrderStatus::Delivered.as_str() {
         let payment_status_str = str_field(&order, fields::PAYMENT_STATUS);
         if payment_status_str == PaymentStatus::Captured.as_str() {

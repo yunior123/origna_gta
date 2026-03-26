@@ -8,9 +8,14 @@ use serde_json::Value;
 use ob_database::Transaction;
 use tracing::{error, info, warn};
 
+
+/// Stripe metadata keys used in Checkout Sessions
+const STRIPE_META_ORDER_ID: &str = "order_id";
+const STRIPE_META_USER_ID: &str = "user_id";
+
 use crate::HandlersState;
 use crate::shared::auth::resolve_self_user_id;
-use crate::shared::schema::{OrderStatus, collections, fields};
+use crate::shared::schema::{OrderStatus, collections, fields, lifecycle_status};
 use crate::shared::validation::{validate_string, validate_uid};
 
 /// Request body for POST /api/payments/checkout — creates a Stripe Checkout Session.
@@ -370,7 +375,7 @@ async fn create_checkout_session(
             .get(fields::LIFECYCLE_STATUS)
             .and_then(|v| v.as_str())
             .unwrap_or("");
-        if lifecycle != "active" {
+        if lifecycle != lifecycle_status::ACTIVE {
             return Err(ob_core::Error::Validation(format!(
                 "Product {} is not available for purchase",
                 cart_item.product_id
@@ -495,7 +500,7 @@ async fn create_checkout_session(
     let unique_seller_ids: Vec<String> = validated_items
         .iter()
         .filter_map(|item| {
-            item.get("sellerId")
+            item.get(fields::SELLER_ID)
                 .and_then(|v| v.as_str())
                 .map(String::from)
         })
@@ -615,8 +620,8 @@ async fn create_checkout_session(
             "payment_intent_data[capture_method]".to_string(),
             "manual".to_string(),
         ),
-        ("metadata[order_id]".to_string(), order_id.clone()),
-        ("metadata[user_id]".to_string(), user_id.clone()),
+        (format!("metadata[{}]", STRIPE_META_ORDER_ID), order_id.clone()),
+        (format!("metadata[{}]", STRIPE_META_USER_ID), user_id.clone()),
     ];
 
     // Platform fee via Stripe Connect — only include when seller has a real Connect account
@@ -756,12 +761,12 @@ async fn create_checkout_session(
     let mut stock_op_indices: Vec<(usize, String)> = Vec::new();
     for item in &validated_items {
         if !item
-            .get("isDigital")
+            .get(fields::IS_DIGITAL)
             .and_then(|v| v.as_bool())
             .unwrap_or(false)
         {
-            let pid = item.get("productId").and_then(|v| v.as_str()).unwrap_or("");
-            let qty = item.get("quantity").and_then(|v| v.as_u64()).unwrap_or(1);
+            let pid = item.get(fields::PRODUCT_ID).and_then(|v| v.as_str()).unwrap_or("");
+            let qty = item.get(fields::QUANTITY).and_then(|v| v.as_u64()).unwrap_or(1);
             if ob_core::validate_document_id(pid).is_ok() && qty > 0 {
                 let idx = tx.len();
                 // CRITICAL: Atomic check + decrement using WHERE guard.

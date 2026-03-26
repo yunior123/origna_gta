@@ -10,6 +10,7 @@ use crate::HandlersState;
 use crate::shared::auth::{require_admin, resolve_self_user_id};
 use crate::shared::schema::{COUNTRY_CANADA, UserRole, collections, fields};
 use crate::shared::validation::{sanitize_html, validate_email, validate_string, validate_uid};
+use std::sync::OnceLock;
 
 // =============================================================================
 // REQUEST / RESPONSE TYPES
@@ -188,6 +189,7 @@ const MAX_NAME_LENGTH: usize = 100;
 const MIN_NAME_LENGTH: usize = 1;
 const VALID_LANGUAGES: &[&str] = &["en", "fr"];
 const GST_REGEX_PATTERN: &str = r"^\d{9}RT\d{4}$";
+static GST_RE: OnceLock<regex_lite::Regex> = OnceLock::new();
 const VALID_CONSENT_METHODS: &[&str] = &["google_oauth", "apple_oauth", "signup_form", "signup"];
 
 // =============================================================================
@@ -202,7 +204,7 @@ fn success(data: serde_json::Value) -> Json<SuccessResponse> {
 }
 
 fn validate_gst_number(gst: &str) -> ob_core::Result<()> {
-    let re = regex_lite::Regex::new(GST_REGEX_PATTERN).unwrap();
+    let re = GST_RE.get_or_init(|| regex_lite::Regex::new(GST_REGEX_PATTERN).expect("valid regex"));
     if !re.is_match(gst) {
         return Err(ob_core::Error::Validation(
             "Invalid GST number format. Expected: 123456789RT0001".into(),
@@ -634,8 +636,9 @@ async fn add_buyer_address(
     let _ = state.db.get_document(collections::USERS, &user_id).await?;
 
     let count_query = format!(
-        "SELECT count() FROM {} WHERE userId = $user_id GROUP ALL",
+        "SELECT count() FROM {} WHERE {} = $user_id GROUP ALL",
         collections::ADDRESSES,
+        fields::USER_ID,
     );
     let count_rows = state.db.query_bind_value(
         &count_query,
@@ -661,10 +664,11 @@ async fn add_buyer_address(
 
     if req.is_default {
         let clear_query = format!(
-            "UPDATE {} SET isDefault = false, {} = '{}' WHERE userId = '{}'",
+            "UPDATE {} SET isDefault = false, {} = '{}' WHERE {} = '{}'",
             collections::ADDRESSES,
             fields::UPDATED_AT,
             now,
+            fields::USER_ID,
             ob_core::escape_surreal_string(&user_id),
         );
         let _ = state.db.query_raw(&clear_query).await;
@@ -675,9 +679,9 @@ async fn add_buyer_address(
         .create_document(
             collections::ADDRESSES,
             json!({
-                "userId": user_id,
+                fields::USER_ID: user_id,
                 "label": req.label.as_deref().unwrap_or(""),
-                "isDefault": req.is_default,
+                fields::IS_DEFAULT: req.is_default,
                 "address": address,
                 fields::CREATED_AT: now,
                 fields::UPDATED_AT: now,
@@ -708,7 +712,7 @@ async fn update_buyer_address(
         .get_document(collections::ADDRESSES, &req.address_id)
         .await?;
 
-    if existing.get("userId").and_then(|v| v.as_str()) != Some(user_id.as_str()) {
+    if existing.get(fields::USER_ID).and_then(|v| v.as_str()) != Some(user_id.as_str()) {
         return Err(ob_core::Error::Forbidden(
             "Address ownership mismatch".into(),
         ));
@@ -725,10 +729,11 @@ async fn update_buyer_address(
 
     if req.is_default {
         let clear_query = format!(
-            "UPDATE {} SET isDefault = false, {} = '{}' WHERE userId = '{}' AND id != type::thing('{}', '{}')",
+            "UPDATE {} SET isDefault = false, {} = '{}' WHERE {} = '{}' AND id != type::thing('{}', '{}')",
             collections::ADDRESSES,
             fields::UPDATED_AT,
             now,
+            fields::USER_ID,
             ob_core::escape_surreal_string(&user_id),
             collections::ADDRESSES,
             ob_core::escape_surreal_string(&req.address_id),
@@ -767,14 +772,14 @@ async fn delete_buyer_address(
         .get_document(collections::ADDRESSES, &req.address_id)
         .await?;
 
-    if existing.get("userId").and_then(|v| v.as_str()) != Some(user_id.as_str()) {
+    if existing.get(fields::USER_ID).and_then(|v| v.as_str()) != Some(user_id.as_str()) {
         return Err(ob_core::Error::Forbidden(
             "Address ownership mismatch".into(),
         ));
     }
 
     let was_default = existing
-        .get("isDefault")
+        .get(fields::IS_DEFAULT)
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
     state
@@ -784,8 +789,9 @@ async fn delete_buyer_address(
 
     if was_default {
         let query = format!(
-            "SELECT * FROM {} WHERE userId = '{}' ORDER BY {} DESC LIMIT 1",
+            "SELECT * FROM {} WHERE {} = '{}' ORDER BY {} DESC LIMIT 1",
             collections::ADDRESSES,
+            fields::USER_ID,
             ob_core::escape_surreal_string(&user_id),
             fields::CREATED_AT,
         );
@@ -821,7 +827,7 @@ async fn set_default_buyer_address(
         .get_document(collections::ADDRESSES, &req.address_id)
         .await?;
 
-    if existing.get("userId").and_then(|v| v.as_str()) != Some(user_id.as_str()) {
+    if existing.get(fields::USER_ID).and_then(|v| v.as_str()) != Some(user_id.as_str()) {
         return Err(ob_core::Error::Forbidden(
             "Address ownership mismatch".into(),
         ));
@@ -829,10 +835,11 @@ async fn set_default_buyer_address(
 
     let now = Utc::now().to_rfc3339();
     let clear_query = format!(
-        "UPDATE {} SET isDefault = false, {} = '{}' WHERE userId = '{}'",
+        "UPDATE {} SET isDefault = false, {} = '{}' WHERE {} = '{}'",
         collections::ADDRESSES,
         fields::UPDATED_AT,
         now,
+        fields::USER_ID,
         ob_core::escape_surreal_string(&user_id),
     );
     let _ = state.db.query_raw(&clear_query).await;

@@ -9,7 +9,7 @@ use serde_json::{Value, json};
 use tracing::{error, info, warn};
 
 use crate::HandlersState;
-use crate::shared::schema::{business_rules, collections, fields};
+use crate::shared::schema::{business_rules, collections, fields, OrderStatus};
 use crate::shared::validation::{sanitize_html, validate_uid};
 
 // ---------------------------------------------------------------------------
@@ -117,12 +117,12 @@ pub(crate) fn calculate_refund_amount_cents(
     order: &Value,
     item: &Value,
 ) -> Result<i64, ob_core::Error> {
-    let item_price_cents = i64_field(item, "priceCents");
-    let item_quantity = item.get("quantity").and_then(|v| v.as_i64()).unwrap_or(1);
+    let item_price_cents = i64_field(item, fields::PRICE_CENTS);
+    let item_quantity = item.get(fields::QUANTITY).and_then(|v| v.as_i64()).unwrap_or(1);
     let mut item_subtotal_cents = item_price_cents * item_quantity;
 
-    let order_subtotal_pre = i64_field(order, "subtotalCents");
-    let order_discount = i64_field(order, "discountAmountCents");
+    let order_subtotal_pre = i64_field(order, fields::SUBTOTAL_CENTS);
+    let order_discount = i64_field(order, fields::DISCOUNT_AMOUNT_CENTS);
     if order_subtotal_pre > 0 && order_discount > 0 {
         let discounted_subtotal = (order_subtotal_pre - order_discount).max(0);
         // Integer-only scaled arithmetic with banker's rounding
@@ -130,7 +130,7 @@ pub(crate) fn calculate_refund_amount_cents(
             (item_subtotal_cents * discounted_subtotal + order_subtotal_pre / 2) / order_subtotal_pre;
     }
 
-    let order_subtotal_cents = i64_field(order, "subtotalCents");
+    let order_subtotal_cents = i64_field(order, fields::SUBTOTAL_CENTS);
     if order_subtotal_cents <= 0 {
         return Err(ob_core::Error::Validation(
             "Order subtotal must be positive to calculate proportional refund".into(),
@@ -146,7 +146,7 @@ pub(crate) fn calculate_refund_amount_cents(
         (order_shipping * item_subtotal_cents + order_subtotal_cents / 2) / order_subtotal_cents
     };
 
-    let order_tax = i64_field(order, "taxAmountCents");
+    let order_tax = i64_field(order, fields::TAX_AMOUNT_CENTS);
     // Integer-only proportional tax with banker's rounding
     let proportional_tax =
         (order_tax * item_subtotal_cents + order_subtotal_cents / 2) / order_subtotal_cents;
@@ -357,7 +357,7 @@ async fn refund_order_item(
     }
 
     // Already refunded check
-    if str_field(item, "status") == "refunded" {
+    if str_field(item, fields::STATUS) == OrderStatus::Refunded.as_str() {
         return Ok(Json(RefundItemResponse {
             success: true,
             refund_amount_cents: 0,
@@ -368,8 +368,8 @@ async fn refund_order_item(
 
     // Return window check (non-admin)
     if !is_admin
-        && str_field(item, "status") == "delivered"
-        && let Some(delivered_at) = item.get("deliveredAt")
+        && str_field(item, fields::STATUS) == OrderStatus::Delivered.as_str()
+        && let Some(delivered_at) = item.get(fields::DELIVERED_AT)
         && delivered_at_expired(delivered_at, Utc::now())
     {
         return Err(ob_core::Error::Validation(format!(
@@ -378,27 +378,66 @@ async fn refund_order_item(
         )));
     }
 
-    let item_quantity = item.get("quantity").and_then(|v| v.as_i64()).unwrap_or(1);
+    let item_quantity = item.get(fields::QUANTITY).and_then(|v| v.as_i64()).unwrap_or(1);
     let refund_amount_cents = calculate_refund_amount_cents(&order, item)?;
 
-    // SECURITY: Verify cumulative refund won't exceed order total BEFORE calling Stripe
-    let cumulative_refunded = i64_field(&order, "cumulativeRefundedCents") + refund_amount_cents;
-    let total_amount = i64_field(&order, "totalAmountCents");
-    if cumulative_refunded > total_amount {
+    // SECURITY: Atomically reserve the refund amount before calling Stripe.
+    // This UPDATE ... WHERE pattern is a single atomic operation in SurrealDB — it
+    // only succeeds if cumulativeRefundedCents + amt <= totalAmountCents at the
+    // moment of the write, closing the TOCTOU race between concurrent refund requests.
+    let order_id_stripped = req
+        .order_id
+        .strip_prefix(&format!("{}:", collections::ORDERS))
+        .unwrap_or(&req.order_id);
+    // `?? 0` is SurrealDB v2's NONE/null-coalescing operator for missing fields.
+    let reserve_sql = "UPDATE type::thing($table, $id) \
+        SET cumulativeRefundedCents = ((cumulativeRefundedCents ?? 0) + $amt) \
+        WHERE ((cumulativeRefundedCents ?? 0) + $amt) <= totalAmountCents \
+        RETURN AFTER";
+    let reserved_rows = state
+        .db
+        .query_bind_value(
+            reserve_sql,
+            json!({
+                "table": collections::ORDERS,
+                "id": order_id_stripped,
+                "amt": refund_amount_cents,
+            }),
+        )
+        .await
+        .map_err(|e| ob_core::Error::Database(format!("Failed to reserve refund amount: {e}")))?;
+    if reserved_rows.is_empty() {
+        // WHERE guard not satisfied: cumulative + amt would exceed total
+        let current = state
+            .db
+            .get_document(collections::ORDERS, &req.order_id)
+            .await
+            .ok();
+        let current_cumulative = current
+            .as_ref()
+            .and_then(|o| o.get(fields::CUMULATIVE_REFUNDED_CENTS))
+            .and_then(|v| v.as_i64())
+            .unwrap_or(0);
+        let total_amount = current
+            .as_ref()
+            .and_then(|o| o.get(fields::TOTAL_AMOUNT_CENTS))
+            .and_then(|v| v.as_i64())
+            .unwrap_or(0);
         return Err(ob_core::Error::Validation(format!(
             "Cumulative refund ({} cents) would exceed order total ({} cents)",
-            cumulative_refunded, total_amount
+            current_cumulative + refund_amount_cents,
+            total_amount
         )));
     }
 
     // Stripe refund
-    let payment_intent_id = str_field(&order, "paymentIntentId");
+    let payment_intent_id = str_field(&order, fields::PAYMENT_INTENT_ID);
     if payment_intent_id.is_empty() {
         return Err(ob_core::Error::Validation("No payment intent found".into()));
     }
 
     let idempotency_key = format!("refund_{}_{}", req.order_id, req.product_id);
-    let refund_id = stripe_refund(
+    let stripe_result = stripe_refund(
         &state,
         payment_intent_id,
         Some(refund_amount_cents),
@@ -406,25 +445,56 @@ async fn refund_order_item(
         &idempotency_key,
         &[("orderId", &req.order_id), ("productId", &req.product_id)],
     )
-    .await?;
+    .await;
+    // Rollback the atomic reservation on Stripe failure to avoid a
+    // permanently-reduced refund cap for an amount that was never charged.
+    let refund_id = match stripe_result {
+        Ok(id) => id,
+        Err(stripe_err) => {
+            let rollback_sql = "UPDATE type::thing($table, $id) \
+                SET cumulativeRefundedCents = ((cumulativeRefundedCents ?? $amt) - $amt) \
+                RETURN AFTER";
+            if let Err(rb_err) = state
+                .db
+                .query_bind_value(
+                    rollback_sql,
+                    json!({
+                        "table": collections::ORDERS,
+                        "id": order_id_stripped,
+                        "amt": refund_amount_cents,
+                    }),
+                )
+                .await
+            {
+                error!(
+                    order_id = %req.order_id,
+                    amount_cents = refund_amount_cents,
+                    "CRITICAL: refund reservation rollback failed after Stripe error — manual correction needed: {rb_err}"
+                );
+            }
+            return Err(stripe_err);
+        }
+    };
 
     // Update item status to refunded
     let now = Utc::now().to_rfc3339();
     let mut updated_items = items.clone();
     for it in updated_items.iter_mut() {
         if str_field(it, fields::PRODUCT_ID) == req.product_id {
-            it["status"] = json!("refunded");
-            it["refundedAt"] = json!(now);
-            it["refundReason"] = json!(reason);
-            it["refundAmountCents"] = json!(refund_amount_cents);
+            it[fields::STATUS] = json!(OrderStatus::Refunded.as_str());
+            it[fields::REFUNDED_AT] = json!(now);
+            it[fields::REFUND_REASON] = json!(reason);
+            it[fields::REFUND_AMOUNT_CENTS] = json!(refund_amount_cents);
             if let Some(ref rid) = refund_id {
-                it["refundId"] = json!(rid);
+                it[fields::REFUND_ID] = json!(rid);
             }
             break;
         }
     }
 
-    // cumulative_refunded already validated before Stripe call
+    // cumulativeRefundedCents was already set atomically before the Stripe call.
+    // Do NOT write it again here — that would overwrite the reserved value and
+    // re-open the TOCTOU window for concurrent refunds.
     state
         .db
         .update_document(
@@ -432,15 +502,14 @@ async fn refund_order_item(
             &req.order_id,
             json!({
                 fields::ITEMS: updated_items,
-                "cumulativeRefundedCents": cumulative_refunded,
                 fields::UPDATED_AT: now,
             }),
         )
         .await
         .map_err(|e| ob_core::Error::Database(format!("Failed to update refunded order: {e}")))?;
 
-    let is_digital = bool_field(item, "isDigital");
-    let item_type = str_field(item, "productType");
+    let is_digital = bool_field(item, fields::IS_DIGITAL);
+    let item_type = str_field(item, fields::PRODUCT_TYPE);
     let is_digital_by_type = matches!(item_type, "software" | "book" | "digital");
     if is_digital || is_digital_by_type {
         // Revoke digital licenses
@@ -557,7 +626,7 @@ async fn cancel_order(
 
     // Permission check — using JWT-authenticated user_id
     let is_admin = auth.roles.iter().any(|r| r == "admin");
-    let is_buyer = str_field(&order, "userId") == user_id;
+    let is_buyer = str_field(&order, fields::USER_ID) == user_id;
     let items = items_array(&order);
     let seller_items: Vec<&Value> = items
         .iter()
@@ -579,7 +648,7 @@ async fn cancel_order(
     }
 
     // State machine validation
-    let current_status = str_field(&order, "orderStatus");
+    let current_status = str_field(&order, fields::ORDER_STATUS);
     if !is_valid_order_transition(current_status, "cancelled") {
         return Err(ob_core::Error::Validation(format!(
             "Cannot cancel order with status: {current_status}"
@@ -600,7 +669,7 @@ async fn cancel_order(
     }
 
     let payment_status = str_field(&order, fields::PAYMENT_STATUS);
-    let payment_intent_id = str_field(&order, "paymentIntentId");
+    let payment_intent_id = str_field(&order, fields::PAYMENT_INTENT_ID);
     let now = Utc::now().to_rfc3339();
 
     let mut refunded = false;
@@ -690,7 +759,7 @@ async fn cancel_order(
         info!(order_id = %req.order_id, "Stock already restored, skipping");
     } else {
         for item in &items {
-            if bool_field(item, "isDigital") {
+            if bool_field(item, fields::IS_DIGITAL) {
                 continue;
             }
             let pid = str_field(item, fields::PRODUCT_ID);

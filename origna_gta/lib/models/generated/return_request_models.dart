@@ -1,4 +1,5 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 
 part 'return_request_models.freezed.dart';
 part 'return_request_models.g.dart';
@@ -41,22 +42,23 @@ abstract class ReturnRequest with _$ReturnRequest {
   factory ReturnRequest.fromMap(Map<String, dynamic> data, String docId) {
     return ReturnRequest(
       returnId: docId,
-      orderId: data['orderId'] as String? ?? '',
+      orderId: data[Fields.orderId] as String? ?? '',
       // Backend writes 'cartItemId' (Fields.CART_ITEM_ID); fall back to 'orderItemId' for compat
-      orderItemId: (data['cartItemId'] ?? data['orderItemId']) as String? ?? '',
-      buyerId: data['buyerId'] as String? ?? '',
-      sellerId: data['sellerId'] as String? ?? '',
-      productId: data['productId'] as String? ?? '',
+      orderItemId:
+          (data[Fields.cartItemId] ?? data['orderItemId']) as String? ?? '',
+      buyerId: data[Fields.buyerId] as String? ?? '',
+      sellerId: data[Fields.sellerId] as String? ?? '',
+      productId: data[Fields.productId] as String? ?? '',
       productName: data['productName'] as String? ?? '',
       quantity: (data['quantity'] as num?)?.toInt() ?? 1,
-      returnStatus: data['returnStatus'] as String? ?? 'requested',
+      returnStatus: data[Fields.returnStatus] as String? ?? 'requested',
       returnReason: data['returnReason'] as String? ?? '',
       returnAdminNote: data['returnAdminNote'] as String?,
       returnTrackingNumber: data['returnTrackingNumber'] as String?,
-      returnRefundAmountCents:
-          (data['returnRefundAmountCents'] as num?)?.toInt(),
-      requestedAt: _parseDateTime(data['requestedAt']),
-      updatedAt: _parseDateTime(data['updatedAt']),
+      returnRefundAmountCents: (data['returnRefundAmountCents'] as num?)
+          ?.toInt(),
+      requestedAt: _parseDateTime(data[Fields.requestedAt]),
+      updatedAt: _parseDateTime(data[Fields.updatedAt]),
       resolvedAt: _parseDateTime(data['resolvedAt']),
       escalatedAt: _parseDateTime(data['escalatedAt']),
       escalationReason: data['escalationReason'] as String?,

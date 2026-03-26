@@ -840,20 +840,22 @@ async fn serve(config: Config) -> Result<()> {
                 if let Some(cluster_tx) = &cluster_tx {
                     let _ = cluster_tx.send(event.clone()).await;
                 }
-                // Fan-out to search syncer
-                let search_action = match event.action {
-                    ob_realtime::registry::ChangeAction::Create
-                    | ob_realtime::registry::ChangeAction::Update => SearchAction::Upsert,
-                    ob_realtime::registry::ChangeAction::Delete => SearchAction::Delete,
-                };
-                let _ = search_sync_tx
-                    .send(SearchSyncEvent {
-                        action: search_action,
-                        index: event.collection.clone(),
-                        document_id: event.document_id.clone(),
-                        data: event.data,
-                    })
-                    .await;
+                // Fan-out to search syncer — products only (no PII collections)
+                if event.collection == "products" {
+                    let search_action = match event.action {
+                        ob_realtime::registry::ChangeAction::Create
+                        | ob_realtime::registry::ChangeAction::Update => SearchAction::Upsert,
+                        ob_realtime::registry::ChangeAction::Delete => SearchAction::Delete,
+                    };
+                    let _ = search_sync_tx
+                        .send(SearchSyncEvent {
+                            action: search_action,
+                            index: event.collection.clone(),
+                            document_id: event.document_id.clone(),
+                            data: event.data,
+                        })
+                        .await;
+                }
             }
         });
     }
@@ -1004,6 +1006,7 @@ async fn serve(config: Config) -> Result<()> {
         oauth_state_nonces: Arc::new(dashmap::DashMap::new()),
         turnstile_secret_key: config.secret("turnstile_secret_key").map(|s| s.to_string()),
         http_client: auth_http_client,
+        test_mode: std::env::var("OB_TEST_MODE").unwrap_or_default() == "1",
     };
 
     // --- Storage ---
@@ -1192,7 +1195,7 @@ async fn serve(config: Config) -> Result<()> {
                         };
 
                         // Parse GraphQL request from body
-                        let body = axum::body::to_bytes(req.into_body(), 10 * 1024 * 1024)
+                        let body = axum::body::to_bytes(req.into_body(), 2 * 1024 * 1024)
                             .await
                             .unwrap_or_default();
                         let gql_req: async_graphql::Request = serde_json::from_slice(&body)

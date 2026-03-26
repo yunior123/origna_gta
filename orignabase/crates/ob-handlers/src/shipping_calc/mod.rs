@@ -11,7 +11,7 @@ use std::collections::HashMap;
 use tracing::warn;
 
 use crate::HandlersState;
-use crate::shared::schema::{app_config, collections};
+use crate::shared::schema::{app_config, collections, business_rules};
 
 // ===========================================================================
 // Shipping tier constants (from Python ShippingTiers)
@@ -62,8 +62,8 @@ const PERISHABLE_DISTANCE_THRESHOLD_KM: f64 = 200.0;
 const PERISHABLE_LONG_DISTANCE: f64 = 10.0;
 
 // Helper: Convert dollars to cents
-const fn dollars_to_cents(dollars: f64) -> i64 {
-    (dollars * 100.0) as i64
+fn dollars_to_cents(dollars: f64) -> i64 {
+    (dollars * 100.0).round() as i64
 }
 
 
@@ -388,7 +388,7 @@ async fn geoapify_distance(
         .and_then(|v| v.get(0))
         .and_then(|v| v.get("distance"))
         .and_then(|v| v.as_f64())
-        .unwrap_or(0.0);
+        .ok_or_else(|| "Geoapify response missing distance field".to_string())?;
 
     Ok((distance_m / 1000.0).max(0.0))
 }
@@ -402,7 +402,8 @@ async fn calculate_shipping(
     Json(req): Json<CalculateShippingRequest>,
 ) -> Result<Json<CalculateShippingResponse>, ob_core::Error> {
     let speed = req.speed.as_str();
-    let buyer_province = req.buyer_address.state.as_deref().unwrap_or("ON");
+    let buyer_province = req.buyer_address.state.as_deref()
+        .ok_or_else(|| ob_core::Error::Validation("Buyer province is required for shipping calculation".into()))?;
     let buyer_lat = req.buyer_address.latitude;
     let buyer_lon = req.buyer_address.longitude;
 
@@ -474,7 +475,7 @@ async fn calculate_shipping(
             .as_ref()
             .and_then(|a| a.state.as_deref())
             .or(first.ship_from_province.as_deref())
-            .unwrap_or("ON");
+            .ok_or_else(|| ob_core::Error::Validation("Seller province is required for shipping calculation".into()))?;
 
         // Local delivery restriction
         let has_local_restriction = chargeable
@@ -491,7 +492,6 @@ async fn calculate_shipping(
         let has_perishable = chargeable
             .iter()
             .any(|it| it.is_perishable.unwrap_or(false));
-        let perishable_surcharge: i64 = 0;
         // CRITICAL FIX: Block perishables from cross-province shipping entirely
         if has_perishable && seller_province != buyer_province {
             return Err(ob_core::Error::Validation(
@@ -535,20 +535,9 @@ async fn calculate_shipping(
                         )));
                     }
 
-                    let (mut seller_cost, mut seller_breakdown) =
+                    let (seller_cost, seller_breakdown) =
                         calculate_tiered_itemized(distance_km, &chargeable, speed);
 
-                    // Add perishable surcharge to first perishable item
-                    if perishable_surcharge > 0 {
-                        for item in &chargeable {
-                            if item.is_perishable.unwrap_or(false) {
-                                let id = item_identifier(item);
-                                *seller_breakdown.entry(id).or_insert(0) += perishable_surcharge;
-                                seller_cost += perishable_surcharge;
-                                break;
-                            }
-                        }
-                    }
 
                     total_shipping += seller_cost;
                     overall_breakdown.extend(seller_breakdown);
@@ -567,29 +556,18 @@ async fn calculate_shipping(
         }
 
         // Fallback: province-based calculation
-        let (mut seller_cost, mut seller_breakdown) =
+        let (seller_cost, seller_breakdown) =
             calculate_fallback_itemized(&chargeable, seller_province, buyer_province, speed);
 
-        if perishable_surcharge > 0 {
-            for item in &chargeable {
-                if item.is_perishable.unwrap_or(false) {
-                    let id = item_identifier(item);
-                    *seller_breakdown.entry(id).or_insert(0) += perishable_surcharge;
-                    seller_cost += perishable_surcharge;
-                    break;
-                }
-            }
-        }
 
         total_shipping += seller_cost;
         overall_breakdown.extend(seller_breakdown);
     }
 
-    // CRITICAL FIX 3: Apply free shipping threshold (7500 cents = $75 CAD)
+    // Apply free shipping threshold ($75 CAD)
     let mut final_shipping = total_shipping;
     if let Some(subtotal) = req.subtotal_cents {
-        const FREE_SHIPPING_THRESHOLD_CENTS: i64 = 7500; // $75 CAD
-        if subtotal >= FREE_SHIPPING_THRESHOLD_CENTS {
+        if subtotal >= business_rules::FREE_SHIPPING_THRESHOLD_CENTS {
             final_shipping = 0; // Free shipping on orders >= $75
         }
     }

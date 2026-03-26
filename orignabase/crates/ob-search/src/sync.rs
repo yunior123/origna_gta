@@ -47,12 +47,35 @@ impl SearchSyncer {
             match event.action {
                 SearchAction::Upsert => {
                     let payload = normalize_document_for_indexing(&event.document_id, &event.data);
-                    if let Err(e) = self.client.upsert_documents(&event.index, &[payload]).await {
-                        tracing::error!(
-                            index = %event.index,
-                            doc_id = %event.document_id,
-                            "Search sync upsert failed: {e}"
-                        );
+                    let mut attempts = 0;
+                    let max_attempts = 3;
+
+                    loop {
+                        attempts += 1;
+                        match self.client.upsert_documents(&event.index, &[payload.clone()]).await {
+                            Ok(_) => break,
+                            Err(e) if attempts < max_attempts => {
+                                let delay = std::time::Duration::from_secs(1 << (attempts - 1)); // 1s, 2s
+                                tracing::warn!(
+                                    attempt = attempts,
+                                    index = %event.index,
+                                    doc_id = %event.document_id,
+                                    error = %e,
+                                    "meilisearch_sync_retry"
+                                );
+                                tokio::time::sleep(delay).await;
+                            }
+                            Err(e) => {
+                                tracing::error!(
+                                    attempt = attempts,
+                                    index = %event.index,
+                                    doc_id = %event.document_id,
+                                    error = %e,
+                                    "meilisearch_sync_permanent_failure"
+                                );
+                                break;
+                            }
+                        }
                     }
                 }
                 SearchAction::Delete => {

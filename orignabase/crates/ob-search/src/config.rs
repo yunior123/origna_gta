@@ -69,7 +69,7 @@ mod tests {
             [indexes.products]
             searchable = ["title", "description"]
             filterable = ["category", "price"]
-            sortable = ["price", "created_at"]
+            sortable = ["price", "createdAt"]
         "#;
         let config: SearchConfig = toml::from_str(toml_str).unwrap();
         assert!(config.enabled);

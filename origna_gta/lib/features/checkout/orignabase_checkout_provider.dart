@@ -452,8 +452,7 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
         } else {
           state = state.copyWith(isProcessing: false);
           return CheckoutError(
-            message:
-                'This transaction requires biometric authentication, but it\'s not available on this device.',
+            message: 'checkout.errors.biometric_unavailable'.tr(),
           );
         }
       }

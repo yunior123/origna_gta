@@ -572,7 +572,7 @@ class OrignaBaseAuthRepository implements AuthRepository {
       final response = await _ob.request(
         'POST',
         ApiEndpoints.usersProfileGet,
-        body: {'userId': userId},
+        body: {Fields.userId: userId},
       );
       final data = Map<String, dynamic>.from(response as Map);
       if (data['success'] != true) return null;

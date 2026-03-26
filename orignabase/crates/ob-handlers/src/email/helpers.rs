@@ -137,7 +137,7 @@ fn order_buyer_id(order: &Value) -> &str {
         .get(fields::BUYER_ID)
         .and_then(|v| v.as_str())
         .filter(|v| !v.is_empty())
-        .or_else(|| order.get("userId").and_then(|v| v.as_str()))
+        .or_else(|| order.get(fields::USER_ID).and_then(|v| v.as_str()))
         .unwrap_or("")
 }
 

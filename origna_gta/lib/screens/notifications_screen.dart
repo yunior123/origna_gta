@@ -49,7 +49,7 @@ class NotificationsScreen extends ConsumerWidget {
     if (uid == null) return;
     try {
       // MVVM FIX (AUDIT): Delegated to NotificationRepository — UI no longer builds database queries.
-      // TODO: Extract to NotificationViewModel if more notification logic is added
+      // TODO(#notifications-vm): Extract to NotificationViewModel if notification logic grows [LOW]
       await ref.read(notificationRepositoryProvider).markAllRead(uid);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -81,7 +81,7 @@ class NotificationsScreen extends ConsumerWidget {
   ) async {
     if (notification.isRead || uid == null) return;
     // MVVM FIX (AUDIT): Delegated to NotificationRepository.
-    // TODO: Extract to NotificationViewModel if more notification logic is added
+    // TODO(#notifications-vm): Extract to NotificationViewModel if notification logic grows [LOW]
     await ref
         .read(notificationRepositoryProvider)
         .markRead(uid, notification.id);

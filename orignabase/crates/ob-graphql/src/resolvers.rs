@@ -119,7 +119,7 @@ impl QueryRoot {
 
         // When cursor pagination is active, fetch limit+1 so clients can detect hasMore
         let effective_limit = limit.map(|n| {
-            let clamped = n.clamp(1, 10_000) as usize;
+            let clamped = n.clamp(1, 100) as usize;
             if start_after.is_some() {
                 clamped + 1
             } else {
@@ -138,16 +138,40 @@ impl QueryRoot {
             start_after.as_deref(),
         );
 
-        let results = db.query_raw(&query).await.map_err(|e| {
+        let docs = db.query_raw(&query).await.map_err(|e| {
             tracing::error!("DB error: {e}");
             async_graphql::Error::new("Internal server error")
         })?;
 
-        Ok(results)
+        // Post-fetch ownership filter: re-evaluate rules with each doc as resource
+        // so isOwner() checks work correctly for owner-scoped collections.
+        let filtered: Vec<Value> = docs
+            .into_iter()
+            .filter(|doc| {
+                let per_doc_ctx = SecurityContext {
+                    user_id: sec_ctx.user_id.clone(),
+                    roles: sec_ctx.roles.clone(),
+                    authenticated: sec_ctx.authenticated,
+                    resource: Some(doc.clone()),
+                    incoming: None,
+                };
+                rules.check(&collection, "read", &per_doc_ctx).unwrap_or(false)
+            })
+            .collect();
+
+        Ok(filtered)
     }
 
     /// Get a remote config value by key.
     async fn config(&self, ctx: &Context<'_>, key: String) -> GqlResult<Value> {
+        let auth = ctx
+            .data_opt::<AuthContext>()
+            .cloned()
+            .unwrap_or_else(AuthContext::anonymous);
+        if !auth.authenticated {
+            return Err(async_graphql::Error::new("Authentication required"));
+        }
+
         let db = ctx.data::<DatabaseClient>()?;
 
         let results = db
@@ -172,6 +196,17 @@ impl QueryRoot {
 
     /// Get all remote config key-value pairs.
     async fn config_all(&self, ctx: &Context<'_>) -> GqlResult<Value> {
+        let auth = ctx
+            .data_opt::<AuthContext>()
+            .cloned()
+            .unwrap_or_else(AuthContext::anonymous);
+        if !auth.authenticated {
+            return Err(async_graphql::Error::new("Authentication required"));
+        }
+        if !auth.roles.contains(&"admin".to_string()) {
+            return Err(async_graphql::Error::new("Admin role required"));
+        }
+
         let db = ctx.data::<DatabaseClient>()?;
 
         let configs = db
@@ -234,7 +269,7 @@ impl QueryRoot {
             return Err(async_graphql::Error::new("Permission denied"));
         }
 
-        let top_k = top_k.map(|n| n.clamp(1, 10_000) as usize).unwrap_or(10);
+        let top_k = top_k.map(|n| n.clamp(1, 100) as usize).unwrap_or(10);
 
         let results = db
             .vector_search(&collection, &vector_field, embedding, top_k, threshold)
@@ -620,6 +655,13 @@ impl MutationRoot {
                 }
             })
             .collect();
+
+        if docs.len() > 500 {
+            return Err(async_graphql::Error::new(
+                "Batch operations limited to 500 items",
+            ));
+        }
+
         let db = ctx.data::<DatabaseClient>()?;
         let rules = ctx.data::<Arc<RuleEngine>>()?;
 
@@ -686,6 +728,12 @@ impl MutationRoot {
         collection: String,
         ids: Vec<String>,
     ) -> GqlResult<Vec<Value>> {
+        if ids.len() > 500 {
+            return Err(async_graphql::Error::new(
+                "Batch operations limited to 500 items",
+            ));
+        }
+
         let db = ctx.data::<DatabaseClient>()?;
         let rules = ctx.data::<Arc<RuleEngine>>()?;
 
@@ -774,6 +822,12 @@ impl MutationRoot {
             Value::Array(arr) => arr,
             _ => return Err(async_graphql::Error::new("updates must be an array")),
         };
+
+        if update_list.len() > 500 {
+            return Err(async_graphql::Error::new(
+                "Batch operations limited to 500 items",
+            ));
+        }
 
         let mut results = Vec::with_capacity(update_list.len());
         for entry in update_list {

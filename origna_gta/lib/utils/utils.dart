@@ -497,6 +497,19 @@ void openTermsOfService(BuildContext context) {
   Navigator.pushNamed(context, AppRoutes.termsOfService);
 }
 
+int? parseMoneyToCents(String? input) {
+  if (input == null || input.trim().isEmpty) return null;
+  final clean = input.trim();
+  final parts = clean.split('.');
+  int dollars = int.tryParse(parts[0]) ?? 0;
+  int cents = 0;
+  if (parts.length > 1) {
+    final centsStr = parts[1].padRight(2, '0').substring(0, 2);
+    cents = int.tryParse(centsStr) ?? 0;
+  }
+  return (dollars * 100) + cents;
+}
+
 AddressDetails parseAddressSuggestion(Map<String, dynamic> suggestion) {
   final props = suggestion['properties'] ?? {};
 

@@ -26,7 +26,7 @@ api_key = "${OB_MEILI_KEY}"
 
 [search.indexes.products]
 searchable = ["title", "description", "category"]
-filterable = ["category", "priceCents", "isActive", "sellerId", "isPerishable"]
+filterable = ["category", "priceCents", "isActive", "sellerId", "isPerishable", "dietaryBadges", "allergens", "mayContainAllergens", "fopHighSodium", "fopHighSugars", "fopHighSaturatedFat"]
 sortable = ["priceCents", "createdAt"]
 
 [storage]

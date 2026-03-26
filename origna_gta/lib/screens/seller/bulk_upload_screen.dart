@@ -246,9 +246,9 @@ class _BulkUploadScreenState extends ConsumerState<BulkUploadScreen> {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: DataTable(
-        columns: const [
-          DataColumn(label: Text('Row')),
-          DataColumn(label: Text('Error')),
+        columns: [
+          DataColumn(label: Text('upload_row'.tr())),
+          DataColumn(label: Text('upload_error'.tr())),
         ],
         rows: errors.take(10).map((error) {
           return DataRow(

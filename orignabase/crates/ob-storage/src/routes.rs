@@ -31,12 +31,6 @@ const MAX_RESUMABLE_SIZE: u64 = 5 * 1024 * 1024 * 1024;
 /// Validate file signature (magic bytes) against declared Content-Type.
 /// Returns 415 Unsupported Media Type if validation fails.
 fn validate_file_signature(bytes: &[u8], content_type: &str) -> Result<()> {
-    if std::env::var("OB_TEST_MODE").unwrap_or_default() == "1"
-        && content_type == "application/octet-stream"
-    {
-        return Ok(());
-    }
-
     // Check Content-Type is in whitelist
     if !ALLOWED_UPLOAD_TYPES.contains(&content_type) {
         return Err(Error::UnsupportedMediaType(format!(
@@ -260,26 +254,23 @@ fn is_public_read_path(path: &str) -> bool {
 }
 
 fn can_user_write_path(auth: &AuthContext, path: &str) -> bool {
-    if std::env::var("OB_TEST_MODE").unwrap_or_default() == "1" {
-        return true;
-    }
     if !auth.authenticated || auth.user_id.is_empty() {
         return false;
     }
 
+    if path.starts_with("products/") || path.starts_with("products/videos/") {
+        // Require the seller's user_id to appear in the path to prevent
+        // horizontal privilege escalation between sellers.
+        // Expected path format: products/{user_id}/... or products/videos/{user_id}/...
+        return path.contains(&format!("/{}/", auth.user_id))
+            || auth.has_role("admin");
+    }
+
     path.starts_with(&format!("users/{}/", auth.user_id))
         || path.starts_with(&format!("reviews/{}/", auth.user_id))
-        || path.starts_with("products/")
-        || path.starts_with("products/videos/")
 }
 
 fn require_authenticated_user(auth: &AuthContext) -> Result<&str> {
-    if std::env::var("OB_TEST_MODE").unwrap_or_default() == "1" {
-        if auth.user_id.is_empty() {
-            return Ok("ob_test_mode");
-        }
-        return Ok(&auth.user_id);
-    }
     if !auth.authenticated || auth.user_id.is_empty() {
         return Err(Error::Auth("Authentication required".into()));
     }
@@ -796,8 +787,12 @@ mod tests {
             authenticated: true,
             ..AuthContext::anonymous()
         };
-        assert!(can_user_write_path(&auth, "products/img.jpg"));
-        assert!(can_user_write_path(&auth, "products/videos/vid.mp4"));
+        // Products path requires user_id in path for ownership
+        assert!(can_user_write_path(&auth, "products/user_123/img.jpg"));
+        assert!(can_user_write_path(&auth, "products/videos/user_123/vid.mp4"));
+        // Without user_id in path, should be rejected
+        assert!(!can_user_write_path(&auth, "products/img.jpg"));
+        assert!(!can_user_write_path(&auth, "products/other_user/img.jpg"));
         unsafe { std::env::remove_var("OB_TEST_MODE"); }
     }
 
@@ -837,11 +832,13 @@ mod tests {
     // ── require_authenticated_user tests ──
 
     #[test]
-    fn test_require_auth_in_test_mode() {
+    fn test_require_auth_in_test_mode_still_requires_auth() {
         let _lock = ENV_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
         unsafe { std::env::set_var("OB_TEST_MODE", "1"); }
+        // Authenticated user works normally
         let auth = AuthContext {
             user_id: "user_123".to_string(),
+            authenticated: true,
             ..AuthContext::anonymous()
         };
         let result = require_authenticated_user(&auth);
@@ -850,12 +847,13 @@ mod tests {
     }
 
     #[test]
-    fn test_require_auth_test_mode_empty_user_id() {
+    fn test_require_auth_test_mode_no_longer_bypasses() {
         let _lock = ENV_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
         unsafe { std::env::set_var("OB_TEST_MODE", "1"); }
+        // Anonymous user is rejected even in test mode
         let auth = AuthContext::anonymous();
         let result = require_authenticated_user(&auth);
-        assert_eq!(result.unwrap(), "ob_test_mode");
+        assert!(result.is_err());
         unsafe { std::env::remove_var("OB_TEST_MODE"); }
     }
 
@@ -1166,12 +1164,12 @@ mod tests {
     }
 
     #[test]
-    fn test_validate_file_signature_test_mode_bypass() {
+    fn test_validate_file_signature_test_mode_no_longer_bypasses() {
         let _lock = ENV_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
         unsafe { std::env::set_var("OB_TEST_MODE", "1"); }
-        // In test mode, application/octet-stream should be allowed
+        // Test mode no longer bypasses MIME validation — octet-stream is rejected
         let result = validate_file_signature(b"random bytes", "application/octet-stream");
-        assert!(result.is_ok(), "Test mode should bypass validation for octet-stream");
+        assert!(result.is_err(), "Test mode should NOT bypass validation");
         unsafe { std::env::remove_var("OB_TEST_MODE"); }
     }
 
@@ -1187,12 +1185,12 @@ mod tests {
     }
 
     #[test]
-    fn test_can_write_test_mode_allows_all() {
+    fn test_can_write_test_mode_no_longer_bypasses_auth() {
         let _lock = ENV_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
         unsafe { std::env::set_var("OB_TEST_MODE", "1"); }
         let auth = AuthContext::anonymous();
-        // Test mode allows all paths
-        assert!(can_user_write_path(&auth, "any/random/path.jpg"));
+        // Test mode no longer bypasses auth — anonymous users cannot write
+        assert!(!can_user_write_path(&auth, "any/random/path.jpg"));
         unsafe { std::env::remove_var("OB_TEST_MODE"); }
     }
 

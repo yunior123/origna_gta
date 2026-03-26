@@ -92,6 +92,10 @@ cd e2e && ORIGNABASE_URL=http://127.0.0.1:8080 bun run lib/seed-dev.ts
 - avoid ignoring live tests
 - fix instead of cheating, implement like pro instead of creating temporary workaround
 - if u have blockers then stop all and ask user
+- use when auditing, before fixing:.claude/skills/quorum-verify/SKILL.md
+- avoid launching too many claude code in bash. why?:it consumes too many tokens, subagents are prefered.ex:last time u called 5+ claude and consumed 10% of tokens in 2 minutes.
+- no magic strings, it leads to errors in production
+- always kill zombie flutter_test consuming ram
 
 ## MCP
 

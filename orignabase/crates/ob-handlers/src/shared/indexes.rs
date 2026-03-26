@@ -6,30 +6,44 @@
 use ob_database::DatabaseClient;
 use tracing::{info, warn};
 
-use crate::shared::schema::collections;
+use crate::shared::schema::{collections, fields};
 
 /// Create all required database indexes.
 /// Idempotent: SurrealDB ignores if index already exists.
 pub async fn create_required_indexes(db: &DatabaseClient) -> Result<(), String> {
     // Products table indexes
     info!("Creating indexes for products table");
-    create_index(db, "idx_products_seller", collections::PRODUCTS, "sellerId").await?;
-    create_index(db, "idx_products_category", collections::PRODUCTS, "categoryId").await?;
-    create_index(db, "idx_products_status", collections::PRODUCTS, "lifecycleStatus").await?;
-    create_index(db, "idx_products_price", collections::PRODUCTS, "priceCents").await?;
+    create_index(db, "idx_products_seller", collections::PRODUCTS, fields::SELLER_ID).await?;
+    create_index(db, "idx_products_category", collections::PRODUCTS, fields::CATEGORY).await?;
+    create_index(db, "idx_products_status", collections::PRODUCTS, fields::LIFECYCLE_STATUS).await?;
+    create_index(db, "idx_products_price", collections::PRODUCTS, fields::PRICE_CENTS).await?;
 
     // Product ratings table indexes
     info!("Creating indexes for product_ratings table");
-    create_composite_index(db, "idx_ratings_product_user", collections::PRODUCT_RATINGS, &["productId", "userId"]).await?;
-    create_composite_index(db, "idx_ratings_product_date", collections::PRODUCT_RATINGS, &["productId", "createdAt"]).await?;
+    create_composite_index(db, "idx_ratings_product_user", collections::PRODUCT_RATINGS, &[fields::PRODUCT_ID, fields::USER_ID]).await?;
+    create_composite_index(db, "idx_ratings_product_date", collections::PRODUCT_RATINGS, &[fields::PRODUCT_ID, fields::CREATED_AT]).await?;
 
     // Product questions table indexes
     info!("Creating indexes for product_questions table");
-    create_composite_index(db, "idx_questions_product_date", collections::PRODUCT_QUESTIONS, &["productId", "createdAt"]).await?;
+    create_composite_index(db, "idx_questions_product_date", collections::PRODUCT_QUESTIONS, &[fields::PRODUCT_ID, fields::CREATED_AT]).await?;
 
     // Favorites table indexes
     info!("Creating indexes for favorites table");
-    create_composite_index(db, "idx_favorites_user_product", collections::FAVORITES, &["userId", "productId"]).await?;
+    create_composite_index(db, "idx_favorites_user_product", collections::FAVORITES, &[fields::USER_ID, fields::PRODUCT_ID]).await?;
+
+    // Orders table indexes (for common queries: by buyer, by seller, by status)
+    info!("Creating indexes for orders table");
+    create_index(db, "idx_orders_buyer_id", collections::ORDERS, "buyerId").await?;
+    create_index(db, "idx_orders_status", collections::ORDERS, "orderStatus").await?;
+    create_index(db, "idx_orders_seller_id", collections::ORDERS, fields::SELLER_ID).await?;
+
+    // Push tokens index (for efficient admin notification lookups)
+    info!("Creating indexes for push tokens table");
+    create_index(db, "idx_push_tokens_user", "_push_tokens", "user_id").await?;
+
+    // Warehouses index (for seller warehouse lookups)
+    info!("Creating indexes for warehouses table");
+    create_index(db, "idx_warehouses_parent", collections::WAREHOUSES, "parent_id").await?;
 
     info!("All indexes created successfully");
     Ok(())

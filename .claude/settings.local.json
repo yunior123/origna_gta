@@ -41,14 +41,18 @@
       "mcp__claude_ai_Gmail__gmail_read_message",
       "mcp__cloudflare__execute",
       "mcp__cloudflare__search",
-      "mcp__plugin_firebase_firebase__firebase_list_projects"
+      "mcp__plugin_firebase_firebase__firebase_list_projects",
+      "mcp__github__search_repositories",
+      "mcp__exa__web_search_exa",
+      "mcp__tavily__tavily_search",
+      "mcp__github__search_code"
     ]
   },
+  "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "dart-mcp",
     "flutter-pilot",
     "github",
     "agent-cards"
-  ],
-  "enableAllProjectMcpServers": true
+  ]
 }
