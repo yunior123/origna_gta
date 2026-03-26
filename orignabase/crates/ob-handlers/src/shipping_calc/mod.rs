@@ -566,10 +566,8 @@ async fn calculate_shipping(
 
     // Apply free shipping threshold ($75 CAD)
     let mut final_shipping = total_shipping;
-    if let Some(subtotal) = req.subtotal_cents {
-        if subtotal >= business_rules::FREE_SHIPPING_THRESHOLD_CENTS {
-            final_shipping = 0; // Free shipping on orders >= $75
-        }
+    if req.subtotal_cents.is_some_and(|s| s >= business_rules::FREE_SHIPPING_THRESHOLD_CENTS) {
+        final_shipping = 0;
     }
 
     Ok(Json(CalculateShippingResponse {

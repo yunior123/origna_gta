@@ -206,13 +206,14 @@ async fn notify_admins_of_return_escalation(
     let mut token_map: std::collections::HashMap<String, Vec<String>> = std::collections::HashMap::new();
 
     for row in all_tokens_result {
-        if let (Some(user_id), Some(token_val)) = (row.get("user_id"), row.get("token")) {
-            if let (Some(uid_str), Some(token_str)) = (user_id.as_str(), token_val.as_str()) {
-                token_map
-                    .entry(uid_str.to_string())
-                    .or_insert_with(Vec::new)
-                    .push(token_str.to_string());
-            }
+        if let (Some(Some(uid_str)), Some(Some(token_str))) = (
+            row.get("user_id").map(|v| v.as_str()),
+            row.get("token").map(|v| v.as_str()),
+        ) {
+            token_map
+                .entry(uid_str.to_string())
+                .or_default()
+                .push(token_str.to_string());
         }
     }
 

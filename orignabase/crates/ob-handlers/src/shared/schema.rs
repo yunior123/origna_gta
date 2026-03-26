@@ -554,8 +554,12 @@ pub mod fields {
     pub const RETRY_COUNT: &str = "retryCount";
     pub const EVENT_TYPE: &str = "eventType";
     pub const FAILURE_REASON: &str = "failureReason";
+    pub const LAST_CHECKOUT_SESSION: &str = "lastCheckoutSession";
     pub const LAST_CHECKOUT_TIMESTAMP: &str = "lastCheckoutTimestamp";
     pub const ARCHIVED_AT: &str = "archivedAt";
+    pub const BENEFITS_ACTIVE_AT: &str = "benefitsActiveAt";
+    pub const EARLY_CANCEL_COUNT: &str = "earlyCancelCount";
+    pub const CANCELS_AT: &str = "cancelsAt";
 }
 
 // =============================================================================

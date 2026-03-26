@@ -465,16 +465,16 @@ async fn create_checkout_session(
             .to_string();
 
         validated_items.push(serde_json::json!({
-            "productId": cart_item.product_id,
-            "quantity": cart_item.quantity,
-            "priceCents": price_cents,
-            "sellerId": seller_id,
+            fields::PRODUCT_ID: cart_item.product_id,
+            fields::QUANTITY: cart_item.quantity,
+            fields::PRICE_CENTS: price_cents,
+            fields::SELLER_ID: seller_id,
             "title": product.get(fields::TITLE).and_then(|v| v.as_str()).unwrap_or(""),
             "imageUrl": product.get(fields::IMAGE_URLS)
                 .and_then(|v| v.as_array())
                 .and_then(|a| a.first())
                 .and_then(|v| v.as_str()).unwrap_or(""),
-            "isDigital": is_digital,
+            fields::IS_DIGITAL: is_digital,
             "isPerishable": is_perishable,
             "isLocalDeliveryOnly": is_local_delivery_only,
             "shipFromProvince": ship_from_province,

@@ -44,6 +44,8 @@
  1010      }; . but are we handling localhost, dev, staging and prod environments properly?. please search the web and github for best practices.
 45. create skill for security of infrasctructure, it will search latest news on how hackers are abusing the internet and gather cases that might affect us, then it will audit the code based on real findings, no false positives, critical issues only.
 46. reinforce and improve error codes and error handling for rust and dart, it has to be state of the art.
+47. take a look at flutter docs and how they handle previews. should we move previews out of previews folder and put then per screen and widget?. either case inspect previews and send pictures to codex or gemini for feedback, real pictures, it can be screenshots. i dont like the full scroll feature that we have for previews, prefer to keep it standard as per flutter documentation.
+48. document functions, classes, etc to avoid constant back and forth
 
 EXAMPLES:
 EX1

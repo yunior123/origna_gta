@@ -332,10 +332,10 @@ async fn approve_shipping_cost(
         let mut update_data = json!({
             "sellerShippingCosts": seller_shipping_map,
             fields::SHIPPING_COST_CENTS: new_total_shipping,
-            "taxAmountCents": new_tax,
-            "totalAmountCents": new_total,
+            fields::TAX_AMOUNT_CENTS: new_tax,
+            fields::TOTAL_AMOUNT_CENTS: new_total,
             "shippingApproval": {
-                "status": "approved",
+                fields::STATUS: "approved",
                 "respondedAt": now,
             },
             "shippingApprovalStatus": "approved",
@@ -358,11 +358,11 @@ async fn approve_shipping_cost(
         // Buyer rejected — cancel order atomically with stock restore
         let mut update_data = json!({
             "shippingApproval": {
-                "status": "rejected",
+                fields::STATUS: "rejected",
                 "respondedAt": now,
             },
             "shippingApprovalStatus": "rejected",
-            "orderStatus": "cancelled",
+            fields::ORDER_STATUS: "cancelled",
             "cancellationReason": "Buyer rejected shipping cost",
             fields::UPDATED_AT: now,
         });
@@ -384,7 +384,7 @@ async fn approve_shipping_cost(
                 .await
                 {
                     Ok(_) => {
-                        update_data["paymentStatus"] = json!("refunded");
+                        update_data[fields::PAYMENT_STATUS] = json!("refunded");
                     }
                     Err(e) => {
                         warn!(
@@ -552,7 +552,7 @@ async fn update_shipping_cost(
     if approval_required {
         let update_data = json!({
             "shippingApproval": {
-                "status": "pending",
+                fields::STATUS: "pending",
                 "actualCost": req.new_shipping_cost,
                 "originalCostCents": original_seller_cents,
                 "newCostCents": new_shipping_cents,
@@ -603,8 +603,8 @@ async fn update_shipping_cost(
 
         // Only update totals if payment not yet captured
         if payment_status != "captured" {
-            update_data["taxAmountCents"] = json!(new_tax);
-            update_data["totalAmountCents"] = json!(new_total);
+            update_data[fields::TAX_AMOUNT_CENTS] = json!(new_tax);
+            update_data[fields::TOTAL_AMOUNT_CENTS] = json!(new_total);
 
             let total_delta_cents = difference_cents + tax_difference_cents;
             if total_delta_cents > 0 {

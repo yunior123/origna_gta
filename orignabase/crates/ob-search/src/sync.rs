@@ -52,7 +52,7 @@ impl SearchSyncer {
 
                     loop {
                         attempts += 1;
-                        match self.client.upsert_documents(&event.index, &[payload.clone()]).await {
+                        match self.client.upsert_documents(&event.index, std::slice::from_ref(&payload)).await {
                             Ok(_) => break,
                             Err(e) if attempts < max_attempts => {
                                 let delay = std::time::Duration::from_secs(1 << (attempts - 1)); // 1s, 2s

@@ -1261,13 +1261,13 @@ async fn handle_charge_dispute_created(
             serde_json::json!({
                 "disputeId": dispute_id,
                 "chargeId": charge_id,
-                "paymentIntentId": payment_intent_id,
-                "orderId": order_id,
+                fields::PAYMENT_INTENT_ID: payment_intent_id,
+                fields::ORDER_ID: order_id,
                 "reason": reason,
                 "amountCents": amount,
                 "currency": currency,
-                "status": "needs_response",
-                "createdAt": now.timestamp(),
+                fields::STATUS: "needs_response",
+                fields::CREATED_AT: now.timestamp(),
                 "createdAtIso": now.to_rfc3339(),
             }),
         )
@@ -1484,7 +1484,7 @@ async fn handle_payout_failed(
             .create_document(
                 collections::NOTIFICATIONS,
                 serde_json::json!({
-                    "userId": seller_id,
+                    fields::USER_ID: seller_id,
                     "type": "payout_failed",
                     "title": "Payout Failed",
                     "message": format!(
@@ -1494,8 +1494,8 @@ async fn handle_payout_failed(
                         amount % 100,
                         failure_message
                     ),
-                    "read": false,
-                    "createdAt": now.timestamp(),
+                    fields::READ: false,
+                    fields::CREATED_AT: now.timestamp(),
                     "createdAtIso": now.to_rfc3339(),
                 }),
             )

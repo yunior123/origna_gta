@@ -557,12 +557,12 @@ async fn refund_order_item(
         .create_document(
             collections::ORDER_EVENTS,
             json!({
-                "orderId": req.order_id,
-                "userId": user_id,
-                "eventType": "item_refunded",
+                fields::ORDER_ID: req.order_id,
+                fields::USER_ID: user_id,
+                fields::EVENT_TYPE: "item_refunded",
                 "message": format!("Item {} refunded for {} cents", req.product_id, refund_amount_cents),
-                "metadata": { "productId": req.product_id, "refundAmountCents": refund_amount_cents },
-                "createdAt": now,
+                "metadata": { fields::PRODUCT_ID: req.product_id, "refundAmountCents": refund_amount_cents },
+                fields::CREATED_AT: now,
             }),
         )
         .await
@@ -700,7 +700,7 @@ async fn cancel_order(
                         collections::ORDERS,
                         &req.order_id,
                         json!({
-                            "paymentStatus": "CANCEL_FAILED",
+                            fields::PAYMENT_STATUS: "CANCEL_FAILED",
                             "requiresManualReview": true,
                             fields::UPDATED_AT: now,
                         }),
@@ -721,7 +721,7 @@ async fn cancel_order(
                         collections::ORDERS,
                         &req.order_id,
                         json!({
-                            "paymentStatus": "CANCEL_FAILED",
+                            fields::PAYMENT_STATUS: "CANCEL_FAILED",
                             "requiresManualReview": true,
                             fields::UPDATED_AT: now,
                         }),
@@ -741,12 +741,12 @@ async fn cancel_order(
             collections::ORDERS,
             &req.order_id,
             json!({
-                "orderStatus": "cancelled",
+                fields::ORDER_STATUS: "cancelled",
                 fields::PAYMENT_STATUS: new_payment_status,
                 "cancelledBy": req.user_id,
                 "cancelledAt": now,
                 "cancellationReason": reason,
-                "stockRestored": true,
+                fields::STOCK_RESTORED: true,
                 fields::UPDATED_AT: now,
             }),
         )
@@ -791,12 +791,12 @@ async fn cancel_order(
         .create_document(
             collections::ORDER_EVENTS,
             json!({
-                "orderId": req.order_id,
-                "userId": req.user_id,
-                "eventType": "order_cancelled",
+                fields::ORDER_ID: req.order_id,
+                fields::USER_ID: req.user_id,
+                fields::EVENT_TYPE: "order_cancelled",
                 "message": format!("Order cancelled. Refunded: {}", refunded),
                 "metadata": { "refunded": refunded },
-                "createdAt": now,
+                fields::CREATED_AT: now,
             }),
         )
         .await

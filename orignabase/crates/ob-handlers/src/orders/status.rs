@@ -313,12 +313,12 @@ async fn log_order_event(
         .create_document(
             collections::ORDER_EVENTS,
             json!({
-                "orderId": order_id,
-                "userId": user_id,
-                "eventType": event_type,
+                fields::ORDER_ID: order_id,
+                fields::USER_ID: user_id,
+                fields::EVENT_TYPE: event_type,
                 "message": message,
                 "metadata": metadata,
-                "createdAt": Utc::now().to_rfc3339(),
+                fields::CREATED_AT: Utc::now().to_rfc3339(),
             }),
         )
         .await;
@@ -438,7 +438,7 @@ async fn confirm_item_receipt(
         user_id,
         "item_receipt_confirmed",
         &format!("Item {} receipt confirmed by buyer", req.product_id),
-        json!({ "productId": req.product_id, "allDelivered": all_delivered }),
+        json!({ fields::PRODUCT_ID: req.product_id, "allDelivered": all_delivered }),
     )
     .await;
 
@@ -617,10 +617,10 @@ async fn update_order_status(
         });
 
         if all_shipped {
-            update_data["orderStatus"] = json!(OrderStatus::Shipped.as_str());
+            update_data[fields::ORDER_STATUS] = json!(OrderStatus::Shipped.as_str());
             update_data["shippedAt"] = json!(now.clone());
             if let Some(ref tn) = tracking_number {
-                update_data["trackingNumber"] = json!(tn);
+                update_data[fields::TRACKING_NUMBER] = json!(tn);
                 update_data[fields::SHIPPING_CARRIER] = json!(carrier.as_deref().unwrap_or(""));
             }
         }
@@ -638,7 +638,6 @@ async fn update_order_status(
             email_order["shippedAt"] = json!(now.clone());
             if let Some(ref tn) = tracking_number {
                 email_order[fields::TRACKING_NUMBER] = json!(tn);
-                email_order["trackingNumber"] = json!(tn);
             }
             if let Some(ref c) = carrier {
                 email_order[fields::SHIPPING_CARRIER] = json!(c);
@@ -663,7 +662,7 @@ async fn update_order_status(
     // Admin path: update order-level status directly
     let now = Utc::now().to_rfc3339();
     let mut update_data = json!({
-        "orderStatus": new_status.as_str(),
+        fields::ORDER_STATUS: new_status.as_str(),
         fields::UPDATED_AT: now,
     });
 
@@ -684,7 +683,7 @@ async fn update_order_status(
         update_data[fields::ITEMS] = json!(updated_items);
         update_data["shippedAt"] = json!(now);
         if let Some(ref tn) = tracking_number {
-            update_data["trackingNumber"] = json!(tn);
+            update_data[fields::TRACKING_NUMBER] = json!(tn);
             update_data[fields::SHIPPING_CARRIER] = json!(carrier.as_deref().unwrap_or(""));
         }
     }
@@ -762,7 +761,6 @@ async fn update_order_status(
         }
         if let Some(ref tn) = tracking_number {
             email_order[fields::TRACKING_NUMBER] = json!(tn);
-            email_order["trackingNumber"] = json!(tn);
         }
         if let Some(ref c) = carrier {
             email_order[fields::SHIPPING_CARRIER] = json!(c);
@@ -972,7 +970,7 @@ async fn update_item_status(
             req.product_id,
             new_delivery.as_str()
         ),
-        json!({ "productId": req.product_id, "newStatus": new_delivery.as_str() }),
+        json!({ fields::PRODUCT_ID: req.product_id, "newStatus": new_delivery.as_str() }),
     )
     .await;
 
