@@ -320,6 +320,16 @@ impl QueryRoot {
             return Err(async_graphql::Error::new("Permission denied"));
         }
 
+        // FIX: Sanitize filter to prevent injection attacks
+        if let Some(ref filter_str) = filter {
+            let upper = filter_str.to_uppercase();
+            // Reject filters with SQL/destructive keywords that could be injected
+            if upper.contains("REMOVE") || upper.contains("DROP") || upper.contains("DELETE") {
+                tracing::warn!("search_filter_injection_attempt: {}", filter_str);
+                return Err(async_graphql::Error::new("Invalid filter syntax"));
+            }
+        }
+
         let result = search
             .search(
                 &index,

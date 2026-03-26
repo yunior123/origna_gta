@@ -185,8 +185,17 @@ async fn handle_socket(socket: WebSocket, state: RealtimeState, user_id: String)
                 subscription_id: rt_msg.subscription_id,
                 event: Box::new(rt_msg.event),
             };
-            if srv_tx_bridge.send(server_msg).await.is_err() {
-                break;
+            // Add timeout to detect slow consumers and prevent stalls
+            match tokio::time::timeout(
+                std::time::Duration::from_secs(5),
+                srv_tx_bridge.send(server_msg),
+            ).await {
+                Ok(Ok(())) => {},
+                Ok(Err(_)) => break, // channel closed
+                Err(_) => {
+                    tracing::warn!("websocket_bridge_send_timeout: slow consumer disconnecting");
+                    break; // slow consumer — disconnect
+                }
             }
         }
     });
@@ -279,7 +288,21 @@ async fn handle_socket(socket: WebSocket, state: RealtimeState, user_id: String)
                         let _ = srv_tx.send(ServerMessage::Unsubscribed { id }).await;
                     }
                     Ok(ClientMessage::Presence { metadata }) => {
-                        // MEDIUM FIX: Use authenticated user_id from JWT, NOT from client message
+                        // FIX: Cap metadata size to prevent DoS attacks
+                        let metadata_str = serde_json::to_string(&metadata).unwrap_or_default();
+                        if metadata_str.len() > 4096 {
+                            tracing::warn!(
+                                user_id = %user_id,
+                                size = metadata_str.len(),
+                                "presence_metadata_too_large"
+                            );
+                            let _ = srv_tx.send(ServerMessage::Error {
+                                message: "Presence metadata too large (max 4KB)".to_string(),
+                            }).await;
+                            continue;
+                        }
+                        
+                        // Use authenticated user_id from JWT, NOT from client message
                         state
                             .registry
                             .set_presence(&user_id, &connection_id, metadata);
