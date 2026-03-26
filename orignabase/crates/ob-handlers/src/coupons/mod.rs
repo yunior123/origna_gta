@@ -94,6 +94,7 @@ pub struct RedeemCouponResponse {
 
 // ─── Router ─────────────────────────────────────────────────────────────────
 
+/// Create the coupons router for managing coupon validation and usage.
 pub fn router(state: HandlersState) -> Router {
     Router::new()
         .route("/api/coupons/apply", post(apply_coupon))

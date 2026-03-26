@@ -112,6 +112,7 @@ const EARLY_CANCEL_DAYS: i64 = 7;
 // Router
 // ---------------------------------------------------------------------------
 
+/// Create the subscriptions router for handling subscription webhooks.
 pub fn router(state: HandlersState) -> Router {
     Router::new()
         .route("/api/subscriptions/create", post(create_subscription))

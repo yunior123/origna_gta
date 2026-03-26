@@ -157,6 +157,7 @@ pub struct UpdateItemStatusResponse {
 // Router
 // ---------------------------------------------------------------------------
 
+/// Create the order status router with endpoints for updating order state.
 pub fn router(state: HandlersState) -> Router {
     Router::new()
         .route("/api/orders/confirm-receipt", post(confirm_item_receipt))

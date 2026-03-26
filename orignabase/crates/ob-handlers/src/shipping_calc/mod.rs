@@ -193,6 +193,7 @@ pub struct CalculateShippingResponse {
 // Router
 // ===========================================================================
 
+/// Create the shipping calculation router for computing shipping costs.
 pub fn router(state: HandlersState) -> Router {
     Router::new()
         .route("/api/shipping/calculate", post(calculate_shipping))

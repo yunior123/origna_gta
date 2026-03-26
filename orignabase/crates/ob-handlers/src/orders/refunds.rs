@@ -65,6 +65,7 @@ pub struct CancelOrderResponse {
 // Router
 // ---------------------------------------------------------------------------
 
+/// Create the refunds router with endpoints for handling return requests and refunds.
 pub fn router(state: HandlersState) -> Router {
     Router::new()
         .route("/api/orders/refund-item", post(refund_order_item))

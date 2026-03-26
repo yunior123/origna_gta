@@ -38,6 +38,7 @@ pub struct StripeWebhookEvent {
 // Router
 // ---------------------------------------------------------------------------
 
+/// Create the webhook router for handling Stripe webhook events.
 pub fn router(state: HandlersState) -> Router {
     Router::new()
         .route("/api/webhooks/stripe", post(handle_stripe_webhook))
