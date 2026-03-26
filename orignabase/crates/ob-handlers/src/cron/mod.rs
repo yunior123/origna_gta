@@ -41,7 +41,7 @@ async fn acquire_cron_lock(state: &HandlersState, job_name: &str, ttl_minutes: i
         .db
         .get_document(collections::CRON_LOCKS, job_name)
         .await
-        && let Some(locked_at) = doc.get("lockedAt").and_then(|v| v.as_str())
+        && let Some(locked_at) = doc.get(fields::LOCKED_AT).and_then(|v| v.as_str())
         && let Ok(ts) = chrono::DateTime::parse_from_rfc3339(locked_at)
         && ts.with_timezone(&Utc) > cutoff
         && doc.get(fields::STATUS).and_then(|v| v.as_str()) == Some("running")
@@ -51,9 +51,9 @@ async fn acquire_cron_lock(state: &HandlersState, job_name: &str, ttl_minutes: i
 
     // Create/update lock
     let lock_data = json!({
-        "lockedAt": now.to_rfc3339(),
-        "lockedBy": format!("cron_{job_name}"),
-        "status": "running",
+        fields::LOCKED_AT: now.to_rfc3339(),
+        fields::LOCKED_BY: format!("cron_{job_name}"),
+        fields::STATUS: "running",
     });
 
     state
@@ -72,8 +72,8 @@ async fn release_cron_lock(state: &HandlersState, job_name: &str) {
             collections::CRON_LOCKS,
             job_name,
             json!({
-                "status": "completed",
-                "completedAt": now.to_rfc3339(),
+                fields::STATUS: "completed",
+                fields::COMPLETED_AT: now.to_rfc3339(),
             }),
         )
         .await;
@@ -87,9 +87,9 @@ async fn alert_cron_failure(state: &HandlersState, job_name: &str, error_msg: &s
         .create_document(
             collections::CRON_FAILURES,
             json!({
-                "jobName": job_name,
-                "errorMessage": &error_msg[..error_msg.len().min(2000)],
-                "createdAt": Utc::now().to_rfc3339(),
+                fields::JOB_NAME: job_name,
+                fields::ERROR_MESSAGE: &error_msg[..error_msg.len().min(2000)],
+                fields::CREATED_AT: Utc::now().to_rfc3339(),
             }),
         )
         .await;
@@ -272,7 +272,7 @@ async fn run_auto_capture(state: &HandlersState) -> std::result::Result<(), Stri
                 collections::ORDERS,
                 order_id,
                 json!({
-                    "payoutStatus": "processing",
+                    fields::PAYOUT_STATUS: "processing",
                     fields::UPDATED_AT: Utc::now().to_rfc3339(),
                 }),
             )
@@ -329,11 +329,11 @@ async fn run_auto_capture(state: &HandlersState) -> std::result::Result<(), Stri
                         "id": payout_id,
                         fields::ORDER_ID: order_id,
                         fields::SELLER_ID: seller_id,
-                        "amountCents": amount_cents,
+                        fields::AMOUNT_CENTS: amount_cents,
                         "platformFeeTotalCents": fee_cents,
-                        "netAmountCents": net_cents,
+                        fields::NET_AMOUNT_CENTS: net_cents,
                         fields::STATUS: "pending",
-                        "autoCaptured": true,
+                        fields::AUTO_CAPTURED: true,
                         fields::CREATED_AT: Utc::now().to_rfc3339(),
                     }),
                 )
@@ -357,8 +357,8 @@ async fn run_auto_capture(state: &HandlersState) -> std::result::Result<(), Stri
                             &payout_id,
                             json!({
                                 fields::STATUS: "completed",
-                                "stripeTransferId": transfer_id,
-                                "payoutDate": Utc::now().to_rfc3339(),
+                                fields::STRIPE_TRANSFER_ID: transfer_id,
+                                fields::PAYOUT_DATE: Utc::now().to_rfc3339(),
                             }),
                         )
                         .await;
@@ -373,7 +373,7 @@ async fn run_auto_capture(state: &HandlersState) -> std::result::Result<(), Stri
                             &payout_id,
                             json!({
                                 fields::STATUS: "failed",
-                                "failureReason": e,
+                                fields::FAILURE_REASON: e,
                                 fields::UPDATED_AT: Utc::now().to_rfc3339(),
                             }),
                         )
@@ -401,7 +401,7 @@ async fn run_auto_capture(state: &HandlersState) -> std::result::Result<(), Stri
                 collections::ORDERS,
                 order_id,
                 json!({
-                    "payoutStatus": final_status,
+                    fields::PAYOUT_STATUS: final_status,
                     fields::UPDATED_AT: Utc::now().to_rfc3339(),
                 }),
             )
@@ -490,7 +490,7 @@ pub async fn check_expired_authorizations(state: &HandlersState) {
                             fields::ORDER_STATUS: "expired",
                             fields::PAYMENT_STATUS: "cancelled",
                             fields::CANCELLATION_REASON: "authorization_expired",
-                            "stockRestored": true,
+                            fields::STOCK_RESTORED: true,
                             fields::UPDATED_AT: now_str,
                         }),
                     )
@@ -503,9 +503,9 @@ pub async fn check_expired_authorizations(state: &HandlersState) {
                         json!({
                             fields::ORDER_ID: id,
                             fields::USER_ID: buyer_id,
-                            "eventType": "authorization_expired",
+                            fields::EVENT_TYPE: "authorization_expired",
                             "message": "Payment authorization expired after 7 days. Order cancelled and stock restored.",
-                            "createdAt": now_str,
+                            fields::CREATED_AT: now_str,
                         }),
                     )
                     .await;
@@ -560,7 +560,7 @@ pub async fn auto_archive_old_orders(state: &HandlersState) {
                     id,
                     json!({
                         "archived": true,
-                        "archivedAt": Utc::now().to_rfc3339(),
+                        fields::ARCHIVED_AT: Utc::now().to_rfc3339(),
                         fields::UPDATED_AT: Utc::now().to_rfc3339(),
                     }),
                 )
@@ -832,7 +832,7 @@ pub async fn retry_failed_meilisearch_syncs(state: &HandlersState) {
                 .and_then(|v| v.as_str())
                 .unwrap_or("");
             let retry_count = failure
-                .get("retryCount")
+                .get(fields::RETRY_COUNT)
                 .and_then(|v| v.as_u64())
                 .unwrap_or(0) as u32;
 
@@ -842,7 +842,7 @@ pub async fn retry_failed_meilisearch_syncs(state: &HandlersState) {
                     .update_document(
                         collections::MEILISEARCH_SYNC_FAILURES,
                         failure_id,
-                        json!({ "resolved": true }),
+                        json!({ fields::RESOLVED: true }),
                     )
                     .await;
                 resolved += 1;
@@ -856,8 +856,8 @@ pub async fn retry_failed_meilisearch_syncs(state: &HandlersState) {
                         collections::MEILISEARCH_SYNC_FAILURES,
                         failure_id,
                         json!({
-                            "resolved": true,
-                            "maxRetriesExceeded": true,
+                            fields::RESOLVED: true,
+                            fields::MAX_RETRIES_EXCEEDED: true,
                             fields::UPDATED_AT: Utc::now().to_rfc3339(),
                         }),
                     )
@@ -887,7 +887,7 @@ pub async fn retry_failed_meilisearch_syncs(state: &HandlersState) {
                                 collections::MEILISEARCH_SYNC_FAILURES,
                                 failure_id,
                                 json!({
-                                    "resolved": true,
+                                    fields::RESOLVED: true,
                                     fields::UPDATED_AT: Utc::now().to_rfc3339(),
                                 }),
                             )
@@ -902,7 +902,7 @@ pub async fn retry_failed_meilisearch_syncs(state: &HandlersState) {
                                 collections::MEILISEARCH_SYNC_FAILURES,
                                 failure_id,
                                 json!({
-                                    "resolved": true,
+                                    fields::RESOLVED: true,
                                     fields::UPDATED_AT: Utc::now().to_rfc3339(),
                                 }),
                             )
@@ -918,7 +918,7 @@ pub async fn retry_failed_meilisearch_syncs(state: &HandlersState) {
                             collections::MEILISEARCH_SYNC_FAILURES,
                             failure_id,
                             json!({
-                                "resolved": true,
+                                fields::RESOLVED: true,
                                 fields::UPDATED_AT: Utc::now().to_rfc3339(),
                             }),
                         )
@@ -975,11 +975,11 @@ pub async fn check_low_stock_alerts(state: &HandlersState) {
             checked += 1;
             let inventory = product.get("inventory");
             let threshold = inventory
-                .and_then(|i| i.get("lowStockThreshold"))
+                .and_then(|i| i.get(fields::LOW_STOCK_THRESHOLD))
                 .and_then(|v| v.as_i64())
                 .unwrap_or(0);
             let track_qty = inventory
-                .and_then(|i| i.get("trackQuantity"))
+                .and_then(|i| i.get(fields::TRACK_QUANTITY))
                 .and_then(|v| v.as_bool())
                 .unwrap_or(true);
 
@@ -996,7 +996,7 @@ pub async fn check_low_stock_alerts(state: &HandlersState) {
             }
 
             // Check cooldown
-            if let Some(last_alert) = product.get("lastLowStockAlertAt").and_then(|v| v.as_str())
+            if let Some(last_alert) = product.get(fields::LAST_LOW_STOCK_ALERT_AT).and_then(|v| v.as_str())
                 && let Ok(ts) = chrono::DateTime::parse_from_rfc3339(last_alert)
                 && now.signed_duration_since(ts.with_timezone(&Utc)) < cooldown
             {
@@ -1079,7 +1079,7 @@ pub async fn check_low_stock_alerts(state: &HandlersState) {
                     .update_document(
                         collections::PRODUCTS,
                         product_id,
-                        json!({ "lastLowStockAlertAt": now.to_rfc3339() }),
+                        json!({ fields::LAST_LOW_STOCK_ALERT_AT: now.to_rfc3339() }),
                     )
                     .await;
                 alerted += 1;
@@ -1142,7 +1142,7 @@ pub async fn send_abandoned_cart_emails(state: &HandlersState) {
             }
 
             // Check 72h cooldown
-            if let Some(last) = user.get("lastCartAbandonEmailAt").and_then(|v| v.as_str())
+            if let Some(last) = user.get(fields::LAST_CART_ABANDON_EMAIL_AT).and_then(|v| v.as_str())
                 && let Ok(ts) = chrono::DateTime::parse_from_rfc3339(last)
                 && ts.with_timezone(&Utc) > cooldown_cutoff
             {
@@ -1150,7 +1150,7 @@ pub async fn send_abandoned_cart_emails(state: &HandlersState) {
             }
 
             // Check last checkout
-            if let Some(last) = user.get("lastCheckoutTimestamp").and_then(|v| v.as_str())
+            if let Some(last) = user.get(fields::LAST_CHECKOUT_TIMESTAMP).and_then(|v| v.as_str())
                 && let Ok(ts) = chrono::DateTime::parse_from_rfc3339(last)
                 && ts.with_timezone(&Utc) > checkout_cutoff
             {
@@ -1216,7 +1216,7 @@ pub async fn send_abandoned_cart_emails(state: &HandlersState) {
                         .update_document(
                             collections::USERS,
                             user_id,
-                            json!({ "lastCartAbandonEmailAt": now.to_rfc3339() }),
+                            json!({ fields::LAST_CART_ABANDON_EMAIL_AT: now.to_rfc3339() }),
                         )
                         .await;
                     sent += 1;
@@ -1268,7 +1268,7 @@ pub async fn compute_seller_metrics(state: &HandlersState) {
 
         for order in &orders {
             let has_dispute = order
-                .get("hasDispute")
+                .get(fields::HAS_DISPUTE)
                 .and_then(|v| v.as_bool())
                 .unwrap_or(false);
             let order_status = order
@@ -1336,11 +1336,11 @@ pub async fn compute_seller_metrics(state: &HandlersState) {
                     seller_id,
                     json!({
                         fields::SELLER_ID: seller_id,
-                        "disputeRate": (dispute_rate * 10000.0).round() / 10000.0,
-                        "refundRate": (refund_rate * 10000.0).round() / 10000.0,
-                        "cancellationRate": (cancel_rate * 10000.0).round() / 10000.0,
+                        fields::DISPUTE_RATE: (dispute_rate * 10000.0).round() / 10000.0,
+                        fields::REFUND_RATE: (refund_rate * 10000.0).round() / 10000.0,
+                        fields::CANCELLATION_RATE: (cancel_rate * 10000.0).round() / 10000.0,
                         "totalItems30d": stats.total_items,
-                        "computedAt": now.to_rfc3339(),
+                        fields::COMPUTED_AT: now.to_rfc3339(),
                     }),
                 )
                 .await;
@@ -1369,7 +1369,7 @@ pub async fn compute_seller_metrics(state: &HandlersState) {
                             "breaches": breaches,
                             "severity": "high",
                             fields::CREATED_AT: now.to_rfc3339(),
-                            "resolved": false,
+                            fields::RESOLVED: false,
                         }),
                     )
                     .await;
@@ -1433,7 +1433,7 @@ pub async fn compute_trending_products(state: &HandlersState) {
                 .unwrap_or("");
 
             if prod
-                .get("isTrending")
+                .get(fields::IS_TRENDING)
                 .and_then(|v| v.as_bool())
                 .unwrap_or(false)
             {
@@ -1441,15 +1441,15 @@ pub async fn compute_trending_products(state: &HandlersState) {
             }
 
             let views = prod
-                .get("viewCount")
+                .get(fields::VIEW_COUNT)
                 .and_then(|v| v.as_f64())
                 .unwrap_or(0.0);
             let purchases = prod
-                .get("purchaseCount")
+                .get(fields::PURCHASE_COUNT)
                 .and_then(|v| v.as_f64())
                 .unwrap_or(0.0);
             let favorites = prod
-                .get("favoriteCount")
+                .get(fields::FAVORITE_COUNT)
                 .and_then(|v| v.as_f64())
                 .unwrap_or(0.0);
 
@@ -1475,9 +1475,9 @@ pub async fn compute_trending_products(state: &HandlersState) {
                     collections::PRODUCTS,
                     prod_id,
                     json!({
-                        "isTrending": true,
-                        "trendingAt": now.to_rfc3339(),
-                        "trendingScore": score,
+                        fields::IS_TRENDING: true,
+                        fields::TRENDING_AT: now.to_rfc3339(),
+                        fields::TRENDING_SCORE: score,
                     }),
                 )
                 .await;
@@ -1492,7 +1492,7 @@ pub async fn compute_trending_products(state: &HandlersState) {
                     .update_document(
                         collections::PRODUCTS,
                         prod_id,
-                        json!({ "isTrending": false }),
+                        json!({ fields::IS_TRENDING: false }),
                     )
                     .await;
                 cleared += 1;
@@ -1565,9 +1565,9 @@ pub async fn sync_expired_subscriptions(state: &HandlersState) {
                     uid,
                     json!({
                         fields::IS_PREMIUM: false,
-                        "premiumExpiresAt": null,
+                        fields::PREMIUM_EXPIRES_AT: null,
                         "stripeSubscriptionId": null,
-                        "premiumSince": null,
+                        fields::PREMIUM_SINCE: null,
                         fields::UPDATED_AT: now.to_rfc3339(),
                     }),
                 )
@@ -1621,8 +1621,8 @@ pub async fn escalate_stale_return_requests(state: &HandlersState) {
                     json!({
                         "returnStatus": "escalated",
                         fields::UPDATED_AT: now.to_rfc3339(),
-                        "escalatedAt": now.to_rfc3339(),
-                        "escalationReason": format!(
+                        fields::ESCALATED_AT: now.to_rfc3339(),
+                        fields::ESCALATION_REASON: format!(
                             "No seller response after {} days",
                             business_rules::RETURN_ESCALATION_DAYS
                         ),
@@ -1677,7 +1677,7 @@ pub async fn send_premium_renewal_reminders(state: &HandlersState) {
 
                 // Skip if cancelled at period end
                 if sub
-                    .get("cancelAtPeriodEnd")
+                    .get(fields::CANCEL_AT_PERIOD_END)
                     .and_then(|v| v.as_bool())
                     .unwrap_or(false)
                 {
@@ -1957,7 +1957,7 @@ pub async fn compute_co_purchase_recommendations(state: &HandlersState) {
                     fields::CREATED_AT,
                 ),
                 json!({
-                    "status": "delivered",
+                    fields::STATUS: "delivered",
                     "cutoff": cutoff.to_rfc3339(),
                 }),
             )
@@ -2027,7 +2027,7 @@ pub async fn compute_co_purchase_recommendations(state: &HandlersState) {
                     json!({
                         "productId": product_id,
                         "recommendations": top10,
-                        "computedAt": &now,
+                        fields::COMPUTED_AT: &now,
                     }),
                 )
                 .await

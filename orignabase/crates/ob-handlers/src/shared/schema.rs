@@ -514,6 +514,48 @@ pub mod fields {
     pub const RECOMMENDATIONS: &str = "recommendations";
     pub const RECOMMENDATION_TYPE: &str = "recommendationType";
     pub const SCORE: &str = "score";
+
+    // Cron-specific fields
+    pub const LOCKED_AT: &str = "lockedAt";
+    pub const LOCKED_BY: &str = "lockedBy";
+    pub const COMPLETED_AT: &str = "completedAt";
+    pub const JOB_NAME: &str = "jobName";
+    pub const ERROR_MESSAGE: &str = "errorMessage";
+    pub const RESOLVED: &str = "resolved";
+    pub const LAST_LOW_STOCK_ALERT_AT: &str = "lastLowStockAlertAt";
+    pub const LAST_CART_ABANDON_EMAIL_AT: &str = "lastCartAbandonEmailAt";
+    pub const IS_TRENDING: &str = "isTrending";
+    pub const MARKETING_OPT_IN: &str = "marketingOptIn";
+    pub const PAYOUT_STATUS: &str = "payoutStatus";
+    pub const PAYOUT_DATE: &str = "payoutDate";
+    pub const COMPUTED_AT: &str = "computedAt";
+    pub const TRENDING_SCORE: &str = "trendingScore";
+    pub const TRENDING_AT: &str = "trendingAt";
+    pub const FAVORITE_COUNT: &str = "favoriteCount";
+    pub const VIEW_COUNT: &str = "viewCount";
+    pub const PURCHASE_COUNT: &str = "purchaseCount";
+    pub const PREMIUM_SINCE: &str = "premiumSince";
+    pub const PREMIUM_EXPIRES_AT: &str = "premiumExpiresAt";
+    pub const DISPUTE_RATE: &str = "disputeRate";
+    pub const REFUND_RATE: &str = "refundRate";
+    pub const CANCELLATION_RATE: &str = "cancellationRate";
+    pub const HAS_DISPUTE: &str = "hasDispute";
+    pub const NET_AMOUNT_CENTS: &str = "netAmountCents";
+    pub const AMOUNT_CENTS: &str = "amountCents";
+    pub const STOCK_RESTORED: &str = "stockRestored";
+    pub const ESCALATED_AT: &str = "escalatedAt";
+    pub const ESCALATION_REASON: &str = "escalationReason";
+    pub const LOW_STOCK_THRESHOLD: &str = "lowStockThreshold";
+    pub const TRACK_QUANTITY: &str = "trackQuantity";
+    pub const CANCEL_AT_PERIOD_END: &str = "cancelAtPeriodEnd";
+    pub const STRIPE_TRANSFER_ID: &str = "stripeTransferId";
+    pub const AUTO_CAPTURED: &str = "autoCaptured";
+    pub const MAX_RETRIES_EXCEEDED: &str = "maxRetriesExceeded";
+    pub const RETRY_COUNT: &str = "retryCount";
+    pub const EVENT_TYPE: &str = "eventType";
+    pub const FAILURE_REASON: &str = "failureReason";
+    pub const LAST_CHECKOUT_TIMESTAMP: &str = "lastCheckoutTimestamp";
+    pub const ARCHIVED_AT: &str = "archivedAt";
 }
 
 // =============================================================================
