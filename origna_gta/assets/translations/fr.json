@@ -1446,7 +1446,12 @@
     "analytics_shipped": "Expédiées",
     "analytics_cancelled": "Annulées",
     "analytics_top_products": "Meilleurs produits",
-    "analytics_qty_sold": "Vendu"
+    "analytics_qty_sold": "Vendu",
+    "warehouse_label_required": "Le libellé de l'entrepôt doit contenir 1 à 100 caractères",
+    "warehouse_city_required": "La ville est requise pour l'adresse de l'entrepôt",
+    "bulk_product_success": "{updated} produit{updated_plural} {action}s{skipped_msg}",
+    "bulk_products_updated": "{} produit(s) {}s",
+    "bulk_products_updated_skipped": "{} produit(s) {}s ({} ignorés)"
   },
   "address": {
     "street": "Adresse",

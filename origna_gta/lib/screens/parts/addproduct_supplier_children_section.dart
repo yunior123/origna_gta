@@ -43,6 +43,7 @@ extension _AddProductSupplierChildrenSection on _AddProductScreenState {
           controller: _customSupplierNameController,
           label: 'product.custom_supplier_name'.tr(),
           icon: Icons.edit_rounded,
+        semanticsLabel: 'input-custom-supplier-name',
         ),
       ],
       const SizedBox(height: 12),
@@ -86,6 +87,7 @@ extension _AddProductSupplierChildrenSection on _AddProductScreenState {
         controller: _supplierSkuController,
         label: 'product.supplier_sku'.tr(),
         icon: Icons.qr_code_2_rounded,
+      semanticsLabel: 'input-supplier-sku',
       ),
       const SizedBox(height: 12),
       buildGlassTextField(
@@ -93,6 +95,7 @@ extension _AddProductSupplierChildrenSection on _AddProductScreenState {
         label: 'product.supplier_url'.tr(),
         icon: Icons.link_rounded,
         keyboardType: TextInputType.url,
+      semanticsLabel: 'input-supplier-url',
       ),
       const SizedBox(height: 12),
       Row(
@@ -123,6 +126,7 @@ extension _AddProductSupplierChildrenSection on _AddProductScreenState {
         label: 'product.internal_notes'.tr(),
         icon: Icons.sticky_note_2_rounded,
         maxLines: 2,
+      semanticsLabel: 'input-supplier-notes',
       ),
       const SizedBox(height: 24),
       buildSubSectionHeader(
@@ -177,6 +181,7 @@ extension _AddProductSupplierChildrenSection on _AddProductScreenState {
             label: 'product.low_stock_threshold'.tr(),
             icon: Icons.warning_amber_rounded,
             keyboardType: TextInputType.number,
+          semanticsLabel: 'input-low-stock-threshold',
           ),
         ],
       ],

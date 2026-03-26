@@ -1446,7 +1446,12 @@
     "analytics_shipped": "Shipped",
     "analytics_cancelled": "Cancelled",
     "analytics_top_products": "Top Products",
-    "analytics_qty_sold": "Sold"
+    "analytics_qty_sold": "Sold",
+    "warehouse_label_required": "Warehouse label must be 1-100 characters",
+    "warehouse_city_required": "City is required for a warehouse address",
+    "bulk_product_success": "{updated} product{updated_plural} {action}d{skipped_msg}",
+    "bulk_products_updated": "{} product(s) {}d",
+    "bulk_products_updated_skipped": "{} product(s) {}d ({} skipped)"
   },
   "address": {
     "street": "Street Address",

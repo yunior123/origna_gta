@@ -31,6 +31,7 @@ extension _AddProductSpecsSection on _AddProductScreenState {
           icon: Icons.branding_watermark_rounded,
           hint: 'Samsung, Apple, Nike...',
           onChanged: viewModel.setSpecBrand,
+          semanticsLabel: 'input-spec-brand',
         ),
         const SizedBox(height: 12),
 
@@ -42,6 +43,7 @@ extension _AddProductSpecsSection on _AddProductScreenState {
           icon: Icons.palette_rounded,
           hint: 'Black, White, Navy...',
           onChanged: viewModel.setSpecColor,
+          semanticsLabel: 'input-spec-color',
         ),
         const SizedBox(height: 12),
 
@@ -53,6 +55,7 @@ extension _AddProductSpecsSection on _AddProductScreenState {
           icon: Icons.texture_rounded,
           hint: 'Aluminum, Cotton, Leather...',
           onChanged: viewModel.setSpecMaterial,
+          semanticsLabel: 'input-spec-material',
         ),
         const SizedBox(height: 20),
 

@@ -20,52 +20,57 @@ extension _AddProductFormWidgets on _AddProductScreenState {
     void Function(String)? onChanged,
     bool readOnly = false,
     String? errorText,
+    String? semanticsLabel,
   }) {
-    return TextFormField(
-      key: key,
-      controller: controller,
-      maxLines: maxLines,
-      keyboardType: keyboardType,
-      textCapitalization: textCapitalization,
-      validator: validator,
-      onChanged: onChanged,
-      readOnly: readOnly,
-      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        prefixText: prefixText,
-        suffixText: suffixText,
-        prefixIcon: icon != null ? Icon(icon, size: 20) : null,
-        errorText: errorText,
-        filled: true,
-        fillColor: DesignTokens.surfaceVariant.withValues(alpha: 0.5),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(
-            color: DesignTokens.outline.withValues(alpha: 0.5),
+    return Semantics(
+      label: semanticsLabel,
+      textField: true,
+      child: TextFormField(
+        key: key,
+        controller: controller,
+        maxLines: maxLines,
+        keyboardType: keyboardType,
+        textCapitalization: textCapitalization,
+        validator: validator,
+        onChanged: onChanged,
+        readOnly: readOnly,
+        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: hint,
+          prefixText: prefixText,
+          suffixText: suffixText,
+          prefixIcon: icon != null ? Icon(icon, size: 20) : null,
+          errorText: errorText,
+          filled: true,
+          fillColor: DesignTokens.surfaceVariant.withValues(alpha: 0.5),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide(
+              color: DesignTokens.outline.withValues(alpha: 0.5),
+            ),
           ),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(
-            color: DesignTokens.outline.withValues(alpha: 0.3),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide(
+              color: DesignTokens.outline.withValues(alpha: 0.3),
+            ),
           ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: DesignTokens.primary, width: 1.5),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: DesignTokens.error),
+          ),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
+          labelStyle: TextStyle(color: DesignTokens.textSecondary, fontSize: 13),
+          hintStyle: TextStyle(color: DesignTokens.textDisabled, fontSize: 13),
         ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: DesignTokens.primary, width: 1.5),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: DesignTokens.error),
-        ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 14,
-        ),
-        labelStyle: TextStyle(color: DesignTokens.textSecondary, fontSize: 13),
-        hintStyle: TextStyle(color: DesignTokens.textDisabled, fontSize: 13),
       ),
     );
   }
@@ -79,10 +84,11 @@ extension _AddProductFormWidgets on _AddProductScreenState {
     required ValueChanged<bool> onChanged,
     String? infoTitle,
     String? infoBody,
+    String? semanticsLabel,
   }) {
     return Semantics(
       button: true,
-      label: 'btn-toggle-${label.toLowerCase().replaceAll(' ', '-')}',
+      label: semanticsLabel ?? 'btn-toggle-${label.toLowerCase().replaceAll(' ', '-')}',
       toggled: value,
       child: GestureDetector(
         key: key,
@@ -178,39 +184,44 @@ extension _AddProductFormWidgets on _AddProductScreenState {
     required String? value,
     required List<DropdownMenuItem<String>> items,
     required void Function(String?)? onChanged,
+    String? semanticsLabel,
   }) {
-    return DropdownButtonFormField<String>(
-      key: key,
-      menuMaxHeight: ResponsiveBreakpoints.dropdownMaxHeight(context),
-      initialValue: value,
-      decoration: InputDecoration(
-        labelText: label,
-        filled: true,
-        fillColor: DesignTokens.surfaceVariant.withValues(alpha: 0.5),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(
-            color: DesignTokens.outline.withValues(alpha: 0.5),
+    return Semantics(
+      label: semanticsLabel,
+      button: true,
+      child: DropdownButtonFormField<String>(
+        key: key,
+        menuMaxHeight: ResponsiveBreakpoints.dropdownMaxHeight(context),
+        initialValue: value,
+        decoration: InputDecoration(
+          labelText: label,
+          filled: true,
+          fillColor: DesignTokens.surfaceVariant.withValues(alpha: 0.5),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide(
+              color: DesignTokens.outline.withValues(alpha: 0.5),
+            ),
           ),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(
-            color: DesignTokens.outline.withValues(alpha: 0.3),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide(
+              color: DesignTokens.outline.withValues(alpha: 0.3),
+            ),
           ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: DesignTokens.primary, width: 1.5),
+          ),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
+          labelStyle: TextStyle(color: DesignTokens.textSecondary, fontSize: 13),
         ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: DesignTokens.primary, width: 1.5),
-        ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 14,
-        ),
-        labelStyle: TextStyle(color: DesignTokens.textSecondary, fontSize: 13),
+        items: items,
+        onChanged: onChanged,
       ),
-      items: items,
-      onChanged: onChanged,
     );
   }
 

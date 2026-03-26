@@ -149,6 +149,7 @@ extension _AddProductPackageLocationSection on _AddProductScreenState {
           onChanged: viewModel.onStreetChanged,
           validator: _validateStreet,
           hint: 'product.street_hint'.tr(),
+        semanticsLabel: 'input-street',
         ),
         if (state.showSuggestions && state.addressSuggestions.isNotEmpty)
           buildAddressSuggestions(state, viewModel),
@@ -158,6 +159,7 @@ extension _AddProductPackageLocationSection on _AddProductScreenState {
           label: 'product.apartment_unit'.tr(),
           icon: Icons.apartment_rounded,
           hint: 'product.apartment_hint'.tr(),
+        semanticsLabel: 'input-apartment',
         ),
         const SizedBox(height: 12),
         buildGlassTextField(
@@ -169,6 +171,7 @@ extension _AddProductPackageLocationSection on _AddProductScreenState {
           onChanged: state.addressVerified
               ? null
               : (_) => viewModel.clearCoordinates(),
+        semanticsLabel: 'input-city',
         ),
         const SizedBox(height: 12),
         Row(

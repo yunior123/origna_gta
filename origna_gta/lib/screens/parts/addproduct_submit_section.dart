@@ -283,6 +283,7 @@ extension _AddProductSubmitSection on _AddProductScreenState {
           icon: Icons.tune_rounded,
           value: state.hasVariants,
           onChanged: viewModel.toggleHasVariants,
+          semanticsLabel: 'toggle-has-variants',
         ),
         if (state.hasVariants) ...[
           const SizedBox(height: 16),

@@ -72,12 +72,18 @@ class OrignaBaseSellerProductsViewModel
       final int skipped =
           (data['data']?['skipped'] as int?) ?? (data['skipped'] as int?) ?? 0;
 
+      final String message = skipped > 0
+          ? 'seller.bulk_products_updated_skipped'.tr(
+              args: [updated.toString(), action, skipped.toString()],
+            )
+          : 'seller.bulk_products_updated'.tr(
+              args: [updated.toString(), action],
+            );
+
       state = state.copyWith(
         isLoading: false,
         selectedIds: {},
-        successMessage:
-            '$updated product${updated == 1 ? '' : 's'} ${action}d'
-            '${skipped > 0 ? ' ($skipped skipped)' : ''}',
+        successMessage: message,
       );
     } catch (e) {
       state = state.copyWith(

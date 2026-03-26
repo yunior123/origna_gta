@@ -32,6 +32,7 @@ extension _AddProductFoodInfoSection on _AddProductScreenState {
             en: v.isEmpty ? null : v,
             fr: state.ingredientsFr,
           ),
+        semanticsLabel: 'input-ingredients-en',
         ),
         const SizedBox(height: 16),
 
@@ -47,6 +48,7 @@ extension _AddProductFoodInfoSection on _AddProductScreenState {
             en: state.ingredientsEn,
             fr: v.isEmpty ? null : v,
           ),
+        semanticsLabel: 'input-ingredients-fr',
         ),
         const SizedBox(height: 20),
 
@@ -99,6 +101,7 @@ extension _AddProductFoodInfoSection on _AddProductScreenState {
             en: v.isEmpty ? null : v,
             fr: state.storageInstructionsFr,
           ),
+        semanticsLabel: 'input-storage-en',
         ),
         const SizedBox(height: 16),
 
@@ -114,6 +117,7 @@ extension _AddProductFoodInfoSection on _AddProductScreenState {
             en: state.storageInstructionsEn,
             fr: v.isEmpty ? null : v,
           ),
+        semanticsLabel: 'input-storage-fr',
         ),
         const SizedBox(height: 16),
 
@@ -127,6 +131,7 @@ extension _AddProductFoodInfoSection on _AddProductScreenState {
           keyboardType: TextInputType.number,
           onChanged: (v) =>
               viewModel.setBestBeforeDays(v.isEmpty ? null : int.tryParse(v)),
+        semanticsLabel: 'input-best-before-days',
         ),
       ],
     );
@@ -294,6 +299,7 @@ extension _AddProductFoodInfoSection on _AddProductScreenState {
             'servingsPerContainer',
             int.tryParse(v),
           ),
+        semanticsLabel: 'input-servings-per-container',
         ),
         const SizedBox(height: 12),
 
@@ -305,6 +311,7 @@ extension _AddProductFoodInfoSection on _AddProductScreenState {
           keyboardType: TextInputType.number,
           onChanged: (v) =>
               viewModel.updateNutritionField('caloriesKcal', int.tryParse(v)),
+        semanticsLabel: 'input-calories',
         ),
         const SizedBox(height: 12),
 
@@ -376,6 +383,7 @@ extension _AddProductFoodInfoSection on _AddProductScreenState {
           keyboardType: TextInputType.number,
           onChanged: (v) =>
               viewModel.updateNutritionField('sodiumMg', int.tryParse(v)),
+        semanticsLabel: 'input-sodium',
         ),
         const SizedBox(height: 12),
 

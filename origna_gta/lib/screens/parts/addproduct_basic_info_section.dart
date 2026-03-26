@@ -290,6 +290,7 @@ extension _AddProductBasicInfoSection on _AddProductScreenState {
                   label: 'product.name_french'.tr(),
                   icon: Icons.sell_rounded,
                   hint: 'product.name_french_hint'.tr(),
+                  semanticsLabel: 'input-product-name-french',
                 ),
                 const SizedBox(height: 16),
                 buildGlassTextField(
@@ -299,6 +300,7 @@ extension _AddProductBasicInfoSection on _AddProductScreenState {
                   icon: Icons.notes_rounded,
                   hint: 'product.description_french_hint'.tr(),
                   maxLines: 3,
+                  semanticsLabel: 'input-product-description-french',
                 ),
               ],
             ),

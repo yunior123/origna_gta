@@ -35,14 +35,14 @@ class OrignaBaseWarehousesViewModel extends StateNotifier<WarehousesState> {
     if (trimmedLabel.isEmpty || trimmedLabel.length > 100) {
       state = state.copyWith(
         isLoading: false,
-        errorMessage: 'Warehouse label must be 1-100 characters',
+        errorMessage: 'seller.warehouse_label_required'.tr(),
       );
       return;
     }
     if (address.city.trim().isEmpty) {
       state = state.copyWith(
         isLoading: false,
-        errorMessage: 'City is required for a warehouse address',
+        errorMessage: 'seller.warehouse_city_required'.tr(),
       );
       return;
     }
