@@ -11,7 +11,11 @@ Flutter e-commerce app (Canada-first multi-vendor marketplace). Backend: OrignaB
 ## Commands
 
 ```bash
-# Flutter (from origna_gta/)
+# CRITICAL: Always cd to the right subdirectory first!
+# Repo root has NO Cargo.toml and NO pubspec.yaml.
+
+# Flutter (from origna_gta/origna_gta/ — NOT repo root)
+cd origna_gta/origna_gta  # or use absolute path
 flutter analyze --no-fatal-infos && flutter test --exclude-tags golden
 flutter test test/unit/auth_provider_test.dart          # single test
 flutter test --name "should calculate subtotal"         # pattern match

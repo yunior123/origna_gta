@@ -1,6 +1,21 @@
 # Origna GTA — Repo Map
 
-Last updated: 2026-03-22
+Last updated: 2026-03-25
+
+## Working Directories (CRITICAL)
+
+```bash
+# Flutter commands — run from origna_gta/origna_gta/ (NOT repo root)
+cd origna_gta/origna_gta && flutter analyze && flutter test
+
+# Rust/Cargo commands — run from origna_gta/orignabase/ (NOT repo root)
+cd origna_gta/orignabase && cargo clippy -- -D warnings && cargo test
+
+# E2E commands — run from origna_gta/e2e/
+cd origna_gta/e2e && bun test
+```
+
+The repo root (`origna_gta/`) has NO Cargo.toml and NO pubspec.yaml. Running `cargo` or `flutter` from the root will fail with "could not find Cargo.toml" or "pubspec.yaml not found".
 
 ## Overview
 
