@@ -515,6 +515,12 @@ pub async fn refresh(
         return Err(Error::Auth("Invalid token type".into()));
     }
 
+    // Check if the refresh token has been revoked
+    if crate::revocation::is_token_revoked(&state.db, &body.refresh_token).await? {
+        tracing::warn!("Attempted refresh with revoked token");
+        return Err(Error::Auth("Token has been revoked".into()));
+    }
+
     // Look up user to get current roles
     // Use type::thing() to convert the string record ID back to a RecordId
     let users = state
@@ -553,11 +559,48 @@ pub async fn refresh(
         email_verified,
         custom_claims,
     )?;
-    let refresh_token = jwt::issue_refresh_token(&claims.sub, &state.jwt_keys, state.refresh_ttl)?;
+    let new_refresh_token = jwt::issue_refresh_token(&claims.sub, &state.jwt_keys, state.refresh_ttl)?;
+
+    // Atomically revoke the old refresh token after issuing the new one.
+    // If revocation fails, it's a non-fatal error (tokens will expire naturally).
+    if let Err(e) = crate::revocation::revoke_token(&state.db, &body.refresh_token, state.refresh_ttl).await {
+        tracing::warn!("Failed to revoke old refresh token: {}", e);
+        // Continue anyway - don't fail the refresh operation
+    }
 
     Ok(Json(json!({
         "access_token": access_token,
-        "refresh_token": refresh_token,
+        "refresh_token": new_refresh_token,
+    })))
+}
+
+/// Logout a user by revoking their refresh token.
+///
+/// POST /auth/logout
+/// Request body: { "refresh_token": "..." }
+///
+/// This endpoint revokes the refresh token, preventing further token refresh attempts.
+/// The token is hashed before storage to avoid storing plaintext tokens.
+#[derive(Deserialize)]
+pub struct LogoutRequest {
+    pub refresh_token: String,
+}
+
+pub async fn logout(
+    State(state): State<AuthState>,
+    Json(body): Json<LogoutRequest>,
+) -> Result<Json<serde_json::Value>> {
+    // Validate that the refresh token is well-formed (basic check)
+    if body.refresh_token.is_empty() {
+        return Err(Error::Auth("Refresh token is required".into()));
+    }
+
+    // Revoke the token
+    crate::revocation::revoke_token(&state.db, &body.refresh_token, state.refresh_ttl).await?;
+
+    tracing::info!("User logged out successfully");
+    Ok(Json(json!({
+        "message": "Logged out successfully"
     })))
 }
 
@@ -2455,6 +2498,7 @@ pub fn auth_router(state: AuthState) -> axum::Router {
         .route("/auth/register", axum::routing::post(register))
         .route("/auth/login", axum::routing::post(login))
         .route("/auth/refresh", axum::routing::post(refresh))
+        .route("/auth/logout", axum::routing::post(logout))
         .route(
             "/auth/forgot-password",
             axum::routing::post(forgot_password),
