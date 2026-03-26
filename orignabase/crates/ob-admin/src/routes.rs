@@ -47,7 +47,10 @@ async fn list_collections(State(state): State<AdminState>) -> Result<Json<Value>
         .get("tables")
         .and_then(|t| t.as_object())
         .map(|obj| obj.keys().cloned().collect::<Vec<_>>())
-        .unwrap_or_default();
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|t| ALLOWED_TABLES.contains(&t.as_str()))
+        .collect::<Vec<_>>();
     Ok(Json(json!({ "collections": tables })))
 }
 
@@ -650,7 +653,17 @@ async fn drop_index(
 // ── System Health & Usage Dashboard ──
 
 /// GET /_admin/usage — System usage overview.
+// Whitelist of allowed tables to prevent SQL injection via table name interpolation
+const ALLOWED_TABLES: &[&str] = &[
+    "users", "products", "orders", "cart", "reviews", "seller_profiles",
+    "webhook_events", "return_requests", "payouts", "payment_intents",
+    "user_sessions", "mfa_tokens", "rate_limit_tokens", "support_tickets",
+    "push_subscriptions", "notifications", "inventory_snapshots", "marketing_campaigns",
+    "analytics_events"
+];
+
 async fn usage_dashboard(State(state): State<AdminState>) -> Result<Json<Value>> {
+
     // Force-initialize START_TIME on first call
     let uptime_seconds = START_TIME.elapsed().as_secs();
 
@@ -677,7 +690,10 @@ async fn usage_dashboard(State(state): State<AdminState>) -> Result<Json<Value>>
         .get("tables")
         .and_then(|t| t.as_object())
         .map(|obj| obj.keys().cloned().collect::<Vec<_>>())
-        .unwrap_or_default();
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|t| ALLOWED_TABLES.contains(&t.as_str()))
+        .collect::<Vec<_>>();
     let collection_count = tables.len();
 
     // Estimate total documents across all collections (single batch query)
@@ -767,7 +783,10 @@ async fn system_alerts(State(state): State<AdminState>) -> Result<Json<Value>> {
         .get("tables")
         .and_then(|t| t.as_object())
         .map(|obj| obj.keys().cloned().collect::<Vec<_>>())
-        .unwrap_or_default();
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|t| ALLOWED_TABLES.contains(&t.as_str()))
+        .collect::<Vec<_>>();
 
     // Batch count all collections in a single query
     if !tables.is_empty() {

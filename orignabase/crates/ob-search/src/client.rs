@@ -100,8 +100,9 @@ impl SearchClient {
                 .text()
                 .await
                 .unwrap_or_else(|_| "unknown error".to_string());
+            let error_preview = if body.len() > 200 { &body[..200] } else { &body };
             return Err(Error::Internal(format!(
-                "Meilisearch error ({status}): {body}"
+                "Meilisearch error ({status}): {error_preview}"
             )));
         }
 

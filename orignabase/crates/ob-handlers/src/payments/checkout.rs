@@ -230,6 +230,7 @@ fn subtotal_matches_with_tolerance(client_subtotal_cents: i64, actual_subtotal_c
     (client_subtotal_cents - actual_subtotal_cents).abs() <= tolerance
 }
 
+/// Create the checkout router with routes for session creation and price verification.
 pub fn router(state: HandlersState) -> Router {
     Router::new()
         .route("/api/checkout/session", post(create_checkout_session))

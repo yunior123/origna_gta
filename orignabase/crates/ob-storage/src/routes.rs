@@ -25,8 +25,8 @@ const ALLOWED_UPLOAD_TYPES: &[&str] = &[
 /// Maximum file size for regular uploads: 500MB
 const MAX_UPLOAD_SIZE: usize = 500 * 1024 * 1024;
 
-/// Maximum total size for resumable uploads: 5GB
-const MAX_RESUMABLE_SIZE: u64 = 5 * 1024 * 1024 * 1024;
+/// Maximum total size for resumable uploads: 500MB (same as regular)
+const MAX_RESUMABLE_SIZE: u64 = 500 * 1024 * 1024; // 500MB, same as regular uploads
 
 /// Validate file signature (magic bytes) against declared Content-Type.
 /// Returns 415 Unsupported Media Type if validation fails.
@@ -288,7 +288,7 @@ pub async fn init_resumable(
     // CRITICAL FIX: Validate total_size doesn't exceed limit
     if params.total_size > MAX_RESUMABLE_SIZE {
         return Err(Error::Validation(format!(
-            "Total size {} exceeds limit {} (5GB)",
+            "Total size {} exceeds limit {} (500MB)",
             params.total_size, MAX_RESUMABLE_SIZE
         )));
     }
@@ -671,7 +671,7 @@ mod tests {
     fn test_max_resumable_size_enforced() {
         // Verify that MAX_RESUMABLE_SIZE constant is set
         assert!(MAX_RESUMABLE_SIZE > 0);
-        assert_eq!(MAX_RESUMABLE_SIZE, 5 * 1024 * 1024 * 1024); // 5GB
+        assert_eq!(MAX_RESUMABLE_SIZE, 500 * 1024 * 1024); // 500MB
     }
 
     #[test]

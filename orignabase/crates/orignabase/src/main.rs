@@ -1011,7 +1011,8 @@ async fn serve(config: Config) -> Result<()> {
 
     // --- Storage ---
     let storage = LocalStorage::new("./data/storage")?;
-    let url_gen = SignedUrlGenerator::new(&config.auth.jwt_secret, &base_url);
+    let storage_signing_key = format!("storage-{}", config.auth.jwt_secret);
+    let url_gen = SignedUrlGenerator::new(&storage_signing_key, &base_url);
     let resumable = ResumableUploadManager::new("./data/storage/.uploads")?;
     let storage_state = StorageState {
         storage,
