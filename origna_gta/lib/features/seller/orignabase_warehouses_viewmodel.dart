@@ -23,6 +23,8 @@ class OrignaBaseWarehousesViewModel extends StateNotifier<WarehousesState> {
   OrignaBase get _ob => _ref.read(orignabaseProvider);
   String? get _userId => _ref.read(userIdProvider);
 
+  /// Creates a new warehouse with the specified label, type, and address.
+
   Future<void> createWarehouse({
     required String label,
     required String type,
@@ -74,6 +76,8 @@ class OrignaBaseWarehousesViewModel extends StateNotifier<WarehousesState> {
     }
   }
 
+  /// Updates an existing warehouse with new label, type, address, or default flag.
+
   Future<void> updateWarehouse({
     required String warehouseId,
     String? label,
@@ -104,6 +108,8 @@ class OrignaBaseWarehousesViewModel extends StateNotifier<WarehousesState> {
       state = state.copyWith(isLoading: false, errorMessage: _parseError(e));
     }
   }
+
+  /// Deletes a warehouse by its ID.
 
   Future<void> deleteWarehouse(String warehouseId) async {
     if (state.isLoading) return;
@@ -171,6 +177,8 @@ class OrignaBaseWarehousesViewModel extends StateNotifier<WarehousesState> {
     longitude: m[Fields.longitude] as double?,
     label: m[Fields.label] as String?,
   );
+
+  /// Clears error and success messages from state.
 
   void clearStatus() {
     state = state.copyWith(errorMessage: null, isSuccess: false);

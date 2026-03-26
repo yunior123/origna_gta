@@ -95,6 +95,9 @@ class OrignaBaseProductRepository
   // ---------------------------------------------------------------------------
 
   @override
+  /// Creates a product with images uploaded atomically in a single operation.
+  
+  /// Returns the new product ID on success.
   Future<String> createProductAtomic(
     Product product,
     List<Uint8List> imageBytes, {
@@ -158,6 +161,7 @@ class OrignaBaseProductRepository
     return productId;
   }
 
+  /// Deletes a product by ID (seller must own the product).
   @override
   Future<void> deleteProduct(String productId) async {
     final userId = _currentUserId;
@@ -202,12 +206,15 @@ class OrignaBaseProductRepository
   Future<List<Product>> fetchProductsByIds(List<String> productIds) =>
       fetchProductsByIdsImpl(productIds);
 
+  /// Generates a unique product ID using timestamp and hash.
   @override
+  /// Generates a unique product ID using timestamp and hash.
   String generateProductId() {
     return DateTime.now().microsecondsSinceEpoch.toRadixString(36) +
         (DateTime.now().hashCode & 0xFFFF).toRadixString(36);
   }
 
+  /// Fetches autocomplete address suggestions for location fields.
   @override
   Future<List<Map<String, dynamic>>> getAutocompleteSuggestions(
     String query,
@@ -247,6 +254,7 @@ class OrignaBaseProductRepository
     String contentType,
   ) => getUploadVideoUrlInfoImpl(fileName, contentType);
 
+  /// Submits a product rating with optional review text and images.
   @override
   Future<void> submitRating(
     String orderId,
@@ -274,6 +282,7 @@ class OrignaBaseProductRepository
     );
   }
 
+  /// Submits a product rating atomically with review images uploaded in one operation.
   @override
   Future<void> submitRatingAtomic(
     String orderId,
@@ -303,6 +312,7 @@ class OrignaBaseProductRepository
     );
   }
 
+  /// Toggles a product in the buyer\'s favorites list.
   @override
   Future<void> toggleFavorite(String userId, String productId) async {
     await _ob.request(
@@ -312,6 +322,7 @@ class OrignaBaseProductRepository
     );
   }
 
+  /// Updates an existing product (seller must own the product).
   @override
   Future<void> updateProduct(
     String productId,
@@ -336,6 +347,7 @@ class OrignaBaseProductRepository
   Future<List<String>> uploadImages(List<Uint8List> images, String productId) =>
       uploadImagesImpl(images, productId);
 
+  /// Uploads a product video to cloud storage and returns the URL.
   @override
   Future<String?> uploadProductVideo(XFile videoFile, String sellerId) async {
     final bytes = await videoFile.readAsBytes();
@@ -364,6 +376,7 @@ class OrignaBaseProductRepository
     throw Exception('Upload failed with status ${response.statusCode}');
   }
 
+  /// Uploads product review images to cloud storage.
   @override
   Future<List<String>> uploadReviewImages(
     List<Uint8List> images,

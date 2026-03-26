@@ -61,6 +61,8 @@ class OrignaBaseSellerRegistrationViewModel
     return fallback;
   }
 
+  /// Continues the Stripe onboarding process (Step 2) if not already in progress.
+
   Future<void> continueOnboarding() async {
     if (!_canProceed()) return;
     await _continueOnboarding();
@@ -119,6 +121,8 @@ class OrignaBaseSellerRegistrationViewModel
       // Silently fail on background refresh
     }
   }
+
+  /// Sets the payment provider; currently only Stripe is available.
 
   Future<void> setPaymentProvider(String provider) async {
     if (state.isLoading) return;

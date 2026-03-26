@@ -358,6 +358,8 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
   /// Resets checkout state to initial values (used on navigation away).
   void reset() => state = const CheckoutState();
 
+  /// Sets the delivery speed and recalculates shipping cost for the cart.
+
   void setDeliverySpeed(DeliverySpeed speed) {
     if (state.availableDeliverySpeeds.contains(speed)) {
       state = state.copyWith(deliverySpeed: speed);
@@ -366,6 +368,8 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
       });
     }
   }
+
+  /// Sets the payment provider (currently only Stripe is supported).
 
   void setPaymentProvider(String provider) {
     if (provider == PaymentProviderValues.stripe) {
@@ -614,6 +618,8 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
       return CheckoutError(message: AppError.getMessage(e));
     }
   }
+
+  /// Updates the shipping address and clears the cached idempotency key for re-checkout.
 
   void updateAddress(Address address) {
     state = state.copyWith(address: address, idempotencyKey: null);
