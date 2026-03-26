@@ -41,9 +41,7 @@ class ChatConversationsScreen extends ConsumerWidget {
           // Never grant chat access when premium status cannot be verified.
           error: (_, _) => Center(
             child: SingleChildScrollView(
-              child: PremiumPaywallWidget(
-                featureName: 'chat.inbox_title'.tr(),
-              ),
+              child: PremiumPaywallWidget(featureName: 'chat.inbox_title'.tr()),
             ),
           ),
           data: (sub) {
@@ -111,7 +109,9 @@ class _ChatInboxBody extends ConsumerWidget {
             itemBuilder: (context, index) {
               final thread = threads[index];
               final isBuyer = thread.buyerId == uid;
-              final unreadCount = isBuyer ? thread.buyerUnreadCount : thread.sellerUnreadCount;
+              final unreadCount = isBuyer
+                  ? thread.buyerUnreadCount
+                  : thread.sellerUnreadCount;
               return FadeSlideIn(
                 delay: Duration(milliseconds: 30 * index.clamp(0, 10)),
                 child: _ChatThreadTile(
@@ -176,8 +176,12 @@ class _ChatThreadTile extends StatelessWidget {
                             thread.productTitle,
                             style: TextStyle(
                               fontSize: 15,
-                              fontWeight: hasUnread ? FontWeight.w700 : FontWeight.w600,
-                              color: isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary,
+                              fontWeight: hasUnread
+                                  ? FontWeight.w700
+                                  : FontWeight.w600,
+                              color: isDark
+                                  ? DesignTokens.textOnDark
+                                  : DesignTokens.textPrimary,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -189,8 +193,12 @@ class _ChatThreadTile extends StatelessWidget {
                             _formatTime(thread.lastMessageAt!),
                             style: TextStyle(
                               fontSize: 12,
-                              color: hasUnread ? DesignTokens.primary : DesignTokens.textSecondary,
-                              fontWeight: hasUnread ? FontWeight.w600 : FontWeight.w400,
+                              color: hasUnread
+                                  ? DesignTokens.primary
+                                  : DesignTokens.textSecondary,
+                              fontWeight: hasUnread
+                                  ? FontWeight.w600
+                                  : FontWeight.w400,
                             ),
                           ),
                         ],
@@ -205,9 +213,13 @@ class _ChatThreadTile extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 13,
                               color: hasUnread
-                                  ? (isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary)
+                                  ? (isDark
+                                        ? DesignTokens.textOnDark
+                                        : DesignTokens.textPrimary)
                                   : DesignTokens.textSecondary,
-                              fontWeight: hasUnread ? FontWeight.w500 : FontWeight.w400,
+                              fontWeight: hasUnread
+                                  ? FontWeight.w500
+                                  : FontWeight.w400,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -217,7 +229,10 @@ class _ChatThreadTile extends StatelessWidget {
                           const SizedBox(width: 8),
                           Container(
                             constraints: const BoxConstraints(minWidth: 20),
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               gradient: DesignTokens.primaryGradient,
                               borderRadius: BorderRadius.circular(10),
@@ -255,7 +270,7 @@ class _ChatThreadTile extends StatelessWidget {
     final now = DateTime.now();
     final diff = now.difference(time);
 
-    if (diff.inMinutes < 1) return 'now';
+    if (diff.inMinutes < 1) return 'common.now'.tr();
     if (diff.inMinutes < 60) return '${diff.inMinutes}m';
     if (diff.inHours < 24) return '${diff.inHours}h';
     if (diff.inDays < 7) return '${diff.inDays}d';
@@ -301,43 +316,95 @@ class _ProductAvatar extends StatelessWidget {
 
   Widget _fallbackIcon() {
     return ShaderMask(
-      shaderCallback: (bounds) => DesignTokens.primaryGradient.createShader(bounds),
-      child: const Icon(Icons.inventory_2_outlined, size: 22, color: DesignTokens.white),
+      shaderCallback: (bounds) =>
+          DesignTokens.primaryGradient.createShader(bounds),
+      child: const Icon(
+        Icons.inventory_2_outlined,
+        size: 22,
+        color: DesignTokens.white,
+      ),
     );
   }
 }
 
 // ─── Flutter Previews ────────────────────────────────────────────────────────
 
-
-
 // === Widget Previews ===
-
 
 // ═══ Widget Previews ═══
 
-@Preview(name: 'Chat Conversations — Mobile', group: 'Screens', size: Size(390, 844))
-Widget previewChatConversationsScreenMobile() => previewMobile(child: previewScopeLoggedIn(child: ChatConversationsScreen()));
+@Preview(
+  name: 'Chat Conversations — Mobile',
+  group: 'Screens',
+  size: Size(390, 844),
+)
+Widget previewChatConversationsScreenMobile() => previewMobile(
+  child: previewScopeLoggedIn(child: ChatConversationsScreen()),
+);
 
-@Preview(name: 'Chat Conversations — Tablet', group: 'Screens', size: Size(768, 1024))
-Widget previewChatConversationsScreenTablet() => previewTablet(child: previewScopeLoggedIn(child: ChatConversationsScreen()));
+@Preview(
+  name: 'Chat Conversations — Tablet',
+  group: 'Screens',
+  size: Size(768, 1024),
+)
+Widget previewChatConversationsScreenTablet() => previewTablet(
+  child: previewScopeLoggedIn(child: ChatConversationsScreen()),
+);
 
-@Preview(name: 'Chat Conversations — Desktop', group: 'Screens', size: Size(1280, 800))
-Widget previewChatConversationsScreenDesktop() => previewDesktop(child: previewScopeLoggedIn(child: ChatConversationsScreen()));
+@Preview(
+  name: 'Chat Conversations — Desktop',
+  group: 'Screens',
+  size: Size(1280, 800),
+)
+Widget previewChatConversationsScreenDesktop() => previewDesktop(
+  child: previewScopeLoggedIn(child: ChatConversationsScreen()),
+);
 
-@Preview(name: 'Chat Conversations — Web', group: 'Screens', size: Size(1440, 900))
-Widget previewChatConversationsScreenWeb() => previewWeb(child: previewScopeLoggedIn(child: ChatConversationsScreen()));
+@Preview(
+  name: 'Chat Conversations — Web',
+  group: 'Screens',
+  size: Size(1440, 900),
+)
+Widget previewChatConversationsScreenWeb() =>
+    previewWeb(child: previewScopeLoggedIn(child: ChatConversationsScreen()));
 
 // ── Light ────────────────────────────────────────────────────────────────────
-@Preview(name: 'Chat Conversations Light — Mobile', group: 'Screens', size: Size(390, 844))
-Widget previewChatConversationsLightMobile() => previewMobile(theme: previewLightTheme, child: previewScopeLoggedIn(child: ChatConversationsScreen()));
+@Preview(
+  name: 'Chat Conversations Light — Mobile',
+  group: 'Screens',
+  size: Size(390, 844),
+)
+Widget previewChatConversationsLightMobile() => previewMobile(
+  theme: previewLightTheme,
+  child: previewScopeLoggedIn(child: ChatConversationsScreen()),
+);
 
-@Preview(name: 'Chat Conversations Light — Desktop', group: 'Screens', size: Size(1280, 800))
-Widget previewChatConversationsLightDesktop() => previewDesktop(theme: previewLightTheme, child: previewScopeLoggedIn(child: ChatConversationsScreen()));
+@Preview(
+  name: 'Chat Conversations Light — Desktop',
+  group: 'Screens',
+  size: Size(1280, 800),
+)
+Widget previewChatConversationsLightDesktop() => previewDesktop(
+  theme: previewLightTheme,
+  child: previewScopeLoggedIn(child: ChatConversationsScreen()),
+);
 
-@Preview(name: 'Chat Conversations Light — Tablet', group: 'Screens', size: Size(768, 1024))
-Widget previewChatConversationsLightTablet() => previewTablet(theme: previewLightTheme, child: previewScopeLoggedIn(child: ChatConversationsScreen()));
+@Preview(
+  name: 'Chat Conversations Light — Tablet',
+  group: 'Screens',
+  size: Size(768, 1024),
+)
+Widget previewChatConversationsLightTablet() => previewTablet(
+  theme: previewLightTheme,
+  child: previewScopeLoggedIn(child: ChatConversationsScreen()),
+);
 
-@Preview(name: 'Chat Conversations Light — Web', group: 'Screens', size: Size(1440, 900))
-Widget previewChatConversationsLightWeb() => previewWeb(theme: previewLightTheme, child: previewScopeLoggedIn(child: ChatConversationsScreen()));
-
+@Preview(
+  name: 'Chat Conversations Light — Web',
+  group: 'Screens',
+  size: Size(1440, 900),
+)
+Widget previewChatConversationsLightWeb() => previewWeb(
+  theme: previewLightTheme,
+  child: previewScopeLoggedIn(child: ChatConversationsScreen()),
+);

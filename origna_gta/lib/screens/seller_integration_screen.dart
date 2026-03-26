@@ -45,7 +45,9 @@ class SellerIntegrationScreen extends ConsumerWidget {
       appBar: AppBarFactory.simple(title: 'seller_integration.title'.tr()),
       backgroundColor: DesignTokens.transparent,
       body: Container(
-        decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
+        decoration: BoxDecoration(
+          gradient: DesignTokens.backgroundGradient(isDark: isDark),
+        ),
         child: CustomScrollView(
           slivers: [
             SliverPadding(
@@ -94,10 +96,8 @@ class _ConfigRequiredCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return _GuideCard(
       icon: Icons.info_outline,
-      title: 'API configuration required',
-      child: const _BodyText(
-        'Set ORIGNABASE_URL to preview live activation and verification endpoints.',
-      ),
+      title: 'seller.api_config_required'.tr(),
+      child: _BodyText('seller.api_config_required_desc'.tr()),
     );
   }
 }
@@ -108,7 +108,14 @@ class _BodyText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(text, style: TextStyle(fontSize: 14, height: 1.6, color: DesignTokens.textSecondary));
+    return Text(
+      text,
+      style: TextStyle(
+        fontSize: 14,
+        height: 1.6,
+        color: DesignTokens.textSecondary,
+      ),
+    );
   }
 }
 
@@ -149,21 +156,42 @@ class _CodeBlock extends StatelessWidget {
         Container(
           width: double.infinity,
           padding: const EdgeInsets.fromLTRB(14, 12, 44, 12),
-          decoration: BoxDecoration(color: isDark ? DesignTokens.darkSurface : DesignTokens.surfaceVariant, borderRadius: BorderRadius.circular(8)),
-          child: SelectableText(code, style: const TextStyle(fontFamily: 'monospace', fontSize: 12, height: 1.6)),
+          decoration: BoxDecoration(
+            color: isDark
+                ? DesignTokens.darkSurface
+                : DesignTokens.surfaceVariant,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: SelectableText(
+            code,
+            style: const TextStyle(
+              fontFamily: 'monospace',
+              fontSize: 12,
+              height: 1.6,
+            ),
+          ),
         ),
         Positioned(
           right: 4,
           top: 4,
           child: Tooltip(
             message: 'common.copy'.tr(),
-            child: IconButton(
-              icon: const Icon(Icons.copy, size: 16),
-              tooltip: 'common.copy'.tr(),
-              onPressed: () {
-                Clipboard.setData(ClipboardData(text: code));
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('common.copied'.tr()), duration: const Duration(seconds: 2)));
-              },
+            child: Semantics(
+              button: true,
+              label: 'btn-copy-code',
+              child: IconButton(
+                icon: const Icon(Icons.copy, size: 16),
+                tooltip: 'common.copy'.tr(),
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: code));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('common.copied'.tr()),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                },
+              ),
             ),
           ),
         ),
@@ -176,7 +204,11 @@ class _EndpointRow extends StatelessWidget {
   final String method;
   final String url;
   final String label;
-  const _EndpointRow({required this.method, required this.url, required this.label});
+  const _EndpointRow({
+    required this.method,
+    required this.url,
+    required this.label,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -191,28 +223,48 @@ class _EndpointRow extends StatelessWidget {
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(color: DesignTokens.primary, borderRadius: BorderRadius.circular(4)),
+            decoration: BoxDecoration(
+              color: DesignTokens.primary,
+              borderRadius: BorderRadius.circular(4),
+            ),
             child: Text(
               method,
-              style: const TextStyle(color: DesignTokens.white, fontSize: 11, fontWeight: FontWeight.w700),
+              style: const TextStyle(
+                color: DesignTokens.white,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               url,
-              style: TextStyle(fontFamily: 'monospace', fontSize: 12, color: DesignTokens.primary),
+              style: TextStyle(
+                fontFamily: 'monospace',
+                fontSize: 12,
+                color: DesignTokens.primary,
+              ),
             ),
           ),
           Tooltip(
             message: 'common.copy'.tr(),
-            child: IconButton(
-              icon: const Icon(Icons.copy, size: 16),
-              tooltip: 'common.copy'.tr(),
-              onPressed: () {
-                Clipboard.setData(ClipboardData(text: url));
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('common.copied'.tr()), duration: const Duration(seconds: 2)));
-              },
+            child: Semantics(
+              button: true,
+              label: 'btn-copy-code',
+              child: IconButton(
+                icon: const Icon(Icons.copy, size: 16),
+                tooltip: 'common.copy'.tr(),
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: url));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('common.copied'.tr()),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                },
+              ),
             ),
           ),
         ],
@@ -227,7 +279,10 @@ class _EndpointsCard extends StatelessWidget {
   final String? activateEndpoint;
   final String? verifyEndpoint;
 
-  const _EndpointsCard({required this.activateEndpoint, required this.verifyEndpoint});
+  const _EndpointsCard({
+    required this.activateEndpoint,
+    required this.verifyEndpoint,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -237,9 +292,17 @@ class _EndpointsCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _EndpointRow(method: 'POST', url: activateEndpoint!, label: 'seller_integration.endpoints_activate_label'.tr()),
+          _EndpointRow(
+            method: 'POST',
+            url: activateEndpoint!,
+            label: 'seller_integration.endpoints_activate_label'.tr(),
+          ),
           const SizedBox(height: 8),
-          _EndpointRow(method: 'POST', url: verifyEndpoint!, label: 'seller_integration.endpoints_verify_label'.tr()),
+          _EndpointRow(
+            method: 'POST',
+            url: verifyEndpoint!,
+            label: 'seller_integration.endpoints_verify_label'.tr(),
+          ),
           const SizedBox(height: 12),
           _SubHeading('seller_integration.endpoints_req_title'.tr()),
           const _CodeBlock('''
@@ -276,9 +339,21 @@ class _ErrorCodesCard extends StatelessWidget {
         children: [
           _ErrorRow('not_found', 404, 'seller_integration.error_404'.tr()),
           _ErrorRow('revoked', 403, 'seller_integration.error_revoked'.tr()),
-          _ErrorRow('device_limit_exceeded', 403, 'seller_integration.error_limit'.tr()),
-          _ErrorRow('platform_not_supported', 403, 'seller_integration.error_platform'.tr()),
-          _ErrorRow('invalid_key_format', 400, 'seller_integration.error_format'.tr()),
+          _ErrorRow(
+            'device_limit_exceeded',
+            403,
+            'seller_integration.error_limit'.tr(),
+          ),
+          _ErrorRow(
+            'platform_not_supported',
+            403,
+            'seller_integration.error_platform'.tr(),
+          ),
+          _ErrorRow(
+            'invalid_key_format',
+            400,
+            'seller_integration.error_format'.tr(),
+          ),
         ],
       ),
     );
@@ -301,11 +376,18 @@ class _ErrorRow extends StatelessWidget {
           Container(
             width: 38,
             padding: const EdgeInsets.symmetric(vertical: 2),
-            decoration: BoxDecoration(color: DesignTokens.error.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
+            decoration: BoxDecoration(
+              color: DesignTokens.error.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(4),
+            ),
             child: Center(
               child: Text(
                 '$status',
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: DesignTokens.error),
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: DesignTokens.error,
+                ),
               ),
             ),
           ),
@@ -316,9 +398,19 @@ class _ErrorRow extends StatelessWidget {
               children: [
                 Text(
                   code,
-                  style: const TextStyle(fontFamily: 'monospace', fontSize: 12, fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                    fontFamily: 'monospace',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-                Text(description, style: TextStyle(fontSize: 13, color: DesignTokens.textSecondary)),
+                Text(
+                  description,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: DesignTokens.textSecondary,
+                  ),
+                ),
               ],
             ),
           ),
@@ -335,14 +427,20 @@ class _GuideCard extends StatelessWidget {
   final String title;
   final Widget child;
 
-  const _GuideCard({required this.icon, required this.title, required this.child});
+  const _GuideCard({
+    required this.icon,
+    required this.title,
+    required this.child,
+  });
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? DesignTokens.surface.withValues(alpha: 0.7) : DesignTokens.white,
+        color: isDark
+            ? DesignTokens.surface.withValues(alpha: 0.7)
+            : DesignTokens.white,
         borderRadius: BorderRadius.circular(DesignTokens.radius12),
         border: Border.all(color: DesignTokens.outline.withValues(alpha: 0.3)),
       ),
@@ -355,7 +453,13 @@ class _GuideCard extends StatelessWidget {
               Icon(icon, size: 20, color: DesignTokens.primary),
               const SizedBox(width: 10),
               Expanded(
-                child: Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
             ],
           ),
@@ -400,11 +504,17 @@ class _InfoChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: DesignTokens.secondary.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: DesignTokens.secondary.withValues(alpha: 0.3)),
+        border: Border.all(
+          color: DesignTokens.secondary.withValues(alpha: 0.3),
+        ),
       ),
       child: Text(
         text,
-        style: TextStyle(fontSize: 12, color: DesignTokens.secondary, fontWeight: FontWeight.w500),
+        style: TextStyle(
+          fontSize: 12,
+          color: DesignTokens.secondary,
+          fontWeight: FontWeight.w500,
+        ),
       ),
     );
   }
@@ -534,15 +644,27 @@ class _StepRow extends StatelessWidget {
             width: 22,
             height: 22,
             margin: const EdgeInsets.only(right: 10, top: 1),
-            decoration: BoxDecoration(color: DesignTokens.primary.withValues(alpha: 0.12), shape: BoxShape.circle),
+            decoration: BoxDecoration(
+              color: DesignTokens.primary.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
             child: Center(
               child: Text(
                 number,
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: DesignTokens.primary),
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: DesignTokens.primary,
+                ),
               ),
             ),
           ),
-          Expanded(child: Text(text, style: const TextStyle(fontSize: 14, height: 1.5))),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(fontSize: 14, height: 1.5),
+            ),
+          ),
         ],
       ),
     );
@@ -557,7 +679,10 @@ class _SubHeading extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
-      child: Text(text, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+      child: Text(
+        text,
+        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+      ),
     );
   }
 }
@@ -627,41 +752,86 @@ func activateLicense(key: String, platform: String = "macos") async throws -> Bo
   }
 }
 
-
 // === Widget Previews ===
-
 
 // ═══ Widget Previews ═══
 
-@Preview(name: 'Seller Integration Dark — Mobile', group: 'SellerIntegrationScreen', size: Size(390, 844))
-Widget previewSellerIntegrationDarkMobile() =>
-    previewMobile(theme: previewDarkTheme, child: previewScope(child: const SellerIntegrationScreen()));
+@Preview(
+  name: 'Seller Integration Dark — Mobile',
+  group: 'SellerIntegrationScreen',
+  size: Size(390, 844),
+)
+Widget previewSellerIntegrationDarkMobile() => previewMobile(
+  theme: previewDarkTheme,
+  child: previewScope(child: const SellerIntegrationScreen()),
+);
 
-@Preview(name: 'Seller Integration Dark — Tablet', group: 'SellerIntegrationScreen', size: Size(768, 1024))
-Widget previewSellerIntegrationDarkTablet() =>
-    previewTablet(theme: previewDarkTheme, child: previewScope(child: const SellerIntegrationScreen()));
+@Preview(
+  name: 'Seller Integration Dark — Tablet',
+  group: 'SellerIntegrationScreen',
+  size: Size(768, 1024),
+)
+Widget previewSellerIntegrationDarkTablet() => previewTablet(
+  theme: previewDarkTheme,
+  child: previewScope(child: const SellerIntegrationScreen()),
+);
 
-@Preview(name: 'Seller Integration Dark — Desktop', group: 'SellerIntegrationScreen', size: Size(1280, 800))
-Widget previewSellerIntegrationDarkDesktop() =>
-    previewDesktop(theme: previewDarkTheme, child: previewScope(child: const SellerIntegrationScreen()));
+@Preview(
+  name: 'Seller Integration Dark — Desktop',
+  group: 'SellerIntegrationScreen',
+  size: Size(1280, 800),
+)
+Widget previewSellerIntegrationDarkDesktop() => previewDesktop(
+  theme: previewDarkTheme,
+  child: previewScope(child: const SellerIntegrationScreen()),
+);
 
-@Preview(name: 'Seller Integration Dark — Web', group: 'SellerIntegrationScreen', size: Size(1440, 900))
-Widget previewSellerIntegrationDarkWeb() =>
-    previewWeb(theme: previewDarkTheme, child: previewScope(child: const SellerIntegrationScreen()));
+@Preview(
+  name: 'Seller Integration Dark — Web',
+  group: 'SellerIntegrationScreen',
+  size: Size(1440, 900),
+)
+Widget previewSellerIntegrationDarkWeb() => previewWeb(
+  theme: previewDarkTheme,
+  child: previewScope(child: const SellerIntegrationScreen()),
+);
 
-@Preview(name: 'Seller Integration Light — Mobile', group: 'SellerIntegrationScreen', size: Size(390, 844))
-Widget previewSellerIntegrationLightMobile() =>
-    previewMobile(theme: previewLightTheme, child: previewScope(child: const SellerIntegrationScreen()));
+@Preview(
+  name: 'Seller Integration Light — Mobile',
+  group: 'SellerIntegrationScreen',
+  size: Size(390, 844),
+)
+Widget previewSellerIntegrationLightMobile() => previewMobile(
+  theme: previewLightTheme,
+  child: previewScope(child: const SellerIntegrationScreen()),
+);
 
-@Preview(name: 'Seller Integration Light — Tablet', group: 'SellerIntegrationScreen', size: Size(768, 1024))
-Widget previewSellerIntegrationLightTablet() =>
-    previewTablet(theme: previewLightTheme, child: previewScope(child: const SellerIntegrationScreen()));
+@Preview(
+  name: 'Seller Integration Light — Tablet',
+  group: 'SellerIntegrationScreen',
+  size: Size(768, 1024),
+)
+Widget previewSellerIntegrationLightTablet() => previewTablet(
+  theme: previewLightTheme,
+  child: previewScope(child: const SellerIntegrationScreen()),
+);
 
-@Preview(name: 'Seller Integration Light — Desktop', group: 'SellerIntegrationScreen', size: Size(1280, 800))
-Widget previewSellerIntegrationLightDesktop() =>
-    previewDesktop(theme: previewLightTheme, child: previewScope(child: const SellerIntegrationScreen()));
+@Preview(
+  name: 'Seller Integration Light — Desktop',
+  group: 'SellerIntegrationScreen',
+  size: Size(1280, 800),
+)
+Widget previewSellerIntegrationLightDesktop() => previewDesktop(
+  theme: previewLightTheme,
+  child: previewScope(child: const SellerIntegrationScreen()),
+);
 
-@Preview(name: 'Seller Integration Light — Web', group: 'SellerIntegrationScreen', size: Size(1440, 900))
-Widget previewSellerIntegrationLightWeb() =>
-    previewWeb(theme: previewLightTheme, child: previewScope(child: const SellerIntegrationScreen()));
-
+@Preview(
+  name: 'Seller Integration Light — Web',
+  group: 'SellerIntegrationScreen',
+  size: Size(1440, 900),
+)
+Widget previewSellerIntegrationLightWeb() => previewWeb(
+  theme: previewLightTheme,
+  child: previewScope(child: const SellerIntegrationScreen()),
+);

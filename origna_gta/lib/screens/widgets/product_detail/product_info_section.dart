@@ -93,7 +93,9 @@ class SellerInfoCard extends ConsumerWidget {
                             isScrollControlled: true,
                             backgroundColor: DesignTokens.transparent,
                             builder: (context) => Container(
-                              height: MediaQuery.sizeOf(context).height * 0.7,
+                              height:
+                                  MediaQuery.sizeOf(context).height *
+                                  0.7, // height fraction — no responsive utility available
                               decoration: BoxDecoration(
                                 color: Theme.of(
                                   context,
@@ -357,14 +359,18 @@ class _ExpandableDescriptionState extends State<ExpandableDescription> {
           ),
           if (isLong) ...[
             const SizedBox(height: 8),
-            GestureDetector(
-              onTap: () => setState(() => _expanded = !_expanded),
-              child: Text(
-                _expanded ? 'common.see_less'.tr() : 'common.see_more'.tr(),
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: DesignTokens.primary,
+            Semantics(
+              button: true,
+              label: 'btn-toggle-description',
+              child: GestureDetector(
+                onTap: () => setState(() => _expanded = !_expanded),
+                child: Text(
+                  _expanded ? 'common.see_less'.tr() : 'common.see_more'.tr(),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: DesignTokens.primary,
+                  ),
                 ),
               ),
             ),

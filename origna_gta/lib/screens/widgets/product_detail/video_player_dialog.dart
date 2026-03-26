@@ -56,18 +56,25 @@ class _VideoPlayerDialogState extends State<VideoPlayerDialog> {
                       : const ModernLoadingIndicator()),
           ),
           Positioned(
-            top: MediaQuery.of(context).padding.top + 16,
+            top: MediaQuery.paddingOf(context).top + 16,
             right: 16,
             child: Container(
               decoration: BoxDecoration(
                 color: DesignTokens.black.withValues(alpha: 0.5),
                 shape: BoxShape.circle,
               ),
-              child: IconButton(
-                tooltip: 'common.close'.tr(),
-                icon:
-                    const Icon(Icons.close, color: DesignTokens.white, size: 28),
-                onPressed: () => Navigator.pop(context),
+              child: Semantics(
+                button: true,
+                label: 'btn-close-video',
+                child: IconButton(
+                  tooltip: 'common.close'.tr(),
+                  icon: const Icon(
+                    Icons.close,
+                    color: DesignTokens.white,
+                    size: 28,
+                  ),
+                  onPressed: () => Navigator.pop(context),
+                ),
               ),
             ),
           ),

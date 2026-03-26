@@ -10,10 +10,10 @@ import 'package:origna_gta/widgets/modern_card.dart';
 
 class _SpecColors {
   static Color groupHeader = DesignTokens.primary;
-  static Color specKey = Colors.white.withValues(alpha: 0.7);
+  static Color specKey = DesignTokens.white.withValues(alpha: 0.7);
   static Color specValue = DesignTokens.white;
   static Color zebraRow = DesignTokens.darkCard.withValues(alpha: 0.5);
-  static Color divider = Colors.white.withValues(alpha: 0.08);
+  static Color divider = DesignTokens.white.withValues(alpha: 0.08);
   static Color pillBg = DesignTokens.primary.withValues(alpha: 0.12);
   static Color pillText = DesignTokens.primary;
 }
@@ -246,7 +246,7 @@ class _SpecRow extends StatelessWidget {
     return Semantics(
       label: 'spec-$specKey: $label $value',
       child: Container(
-        color: isZebra ? _SpecColors.zebraRow : Colors.transparent,
+        color: isZebra ? _SpecColors.zebraRow : DesignTokens.transparent,
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,

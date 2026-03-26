@@ -80,9 +80,7 @@ void main() {
     testWidgets('renders login screen correctly', (WidgetTester tester) async {
       await tester.pumpWidget(
         TestWrapper(
-          overrides: [
-            authRepositoryProvider.overrideWithValue(fakeAuthRepo),
-          ],
+          overrides: [authRepositoryProvider.overrideWithValue(fakeAuthRepo)],
           child: const LoginScreen(),
         ),
       );
@@ -90,22 +88,22 @@ void main() {
       // Advance animations
       await tester.pumpAndSettle();
 
-      expect(find.text('OrignaGta'), findsOneWidget);
+      expect(find.text('Origna GTA'), findsOneWidget);
       expect(find.byType(LoginScreenLayout), findsOneWidget);
       expect(find.byKey(const Key('login_email_field')), findsOneWidget);
       expect(find.byKey(const Key('login_password_field')), findsOneWidget);
       expect(find.byKey(const Key('login_submit_button')), findsOneWidget);
     });
 
-    testWidgets('toggles between login and register mode', (WidgetTester tester) async {
+    testWidgets('toggles between login and register mode', (
+      WidgetTester tester,
+    ) async {
       tester.view.physicalSize = const Size(1080, 1920);
       tester.view.devicePixelRatio = 1.0;
 
       await tester.pumpWidget(
         TestWrapper(
-          overrides: [
-            authRepositoryProvider.overrideWithValue(fakeAuthRepo),
-          ],
+          overrides: [authRepositoryProvider.overrideWithValue(fakeAuthRepo)],
           child: const LoginScreen(),
         ),
       );
@@ -134,7 +132,9 @@ void main() {
       tester.view.resetDevicePixelRatio();
     });
 
-    testWidgets('shows Google sign-in when layout enables it', (WidgetTester tester) async {
+    testWidgets('shows Google sign-in when layout enables it', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -167,7 +167,9 @@ void main() {
       expect(find.byKey(const Key('login_google_button')), findsOneWidget);
     });
 
-    testWidgets('hides Google sign-in when layout disables it', (WidgetTester tester) async {
+    testWidgets('hides Google sign-in when layout disables it', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(

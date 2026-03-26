@@ -1,5 +1,4 @@
 import 'package:origna_gta/utils/preview_helpers.dart';
-import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -7,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/constants/validation_constants.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/routes.dart';
+import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
@@ -310,9 +310,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   }
 }
 
-
 // === Widget Previews ===
-
 
 // ═══ Widget Previews ═══
 
@@ -363,54 +361,124 @@ Widget _registerContent() => previewScope(
 );
 
 // ── Login Dark ───────────────────────────────────────────────────────────────
-@Preview(name: 'Login Dark — Mobile', group: 'Auth Screens', size: Size(390, 844))
+@Preview(
+  name: 'Login Dark — Mobile',
+  group: 'Auth Screens',
+  size: Size(390, 844),
+)
 Widget previewLoginScreenMobile() => previewMobile(child: _loginContent());
 
-@Preview(name: 'Login Dark — Tablet', group: 'Auth Screens', size: Size(768, 1024))
+@Preview(
+  name: 'Login Dark — Tablet',
+  group: 'Auth Screens',
+  size: Size(768, 1024),
+)
 Widget previewLoginScreenTablet() => previewTablet(child: _loginContent());
 
-@Preview(name: 'Login Dark — Desktop', group: 'Auth Screens', size: Size(1280, 800))
+@Preview(
+  name: 'Login Dark — Desktop',
+  group: 'Auth Screens',
+  size: Size(1280, 800),
+)
 Widget previewLoginScreenDesktop() => previewDesktop(child: _loginContent());
 
 @Preview(name: 'Login Dark — Web', group: 'Auth Screens', size: Size(1440, 900))
 Widget previewLoginScreenWeb() => previewWeb(child: _loginContent());
 
 // ── Login Light ──────────────────────────────────────────────────────────────
-@Preview(name: 'Login Light — Mobile', group: 'Auth Screens', size: Size(390, 844))
-Widget previewLoginLightMobile() => previewMobile(theme: previewLightTheme, child: _loginContent());
+@Preview(
+  name: 'Login Light — Mobile',
+  group: 'Auth Screens',
+  size: Size(390, 844),
+)
+Widget previewLoginLightMobile() =>
+    previewMobile(theme: previewLightTheme, child: _loginContent());
 
-@Preview(name: 'Login Light — Tablet', group: 'Auth Screens', size: Size(768, 1024))
-Widget previewLoginLightTablet() => previewTablet(theme: previewLightTheme, child: _loginContent());
+@Preview(
+  name: 'Login Light — Tablet',
+  group: 'Auth Screens',
+  size: Size(768, 1024),
+)
+Widget previewLoginLightTablet() =>
+    previewTablet(theme: previewLightTheme, child: _loginContent());
 
-@Preview(name: 'Login Light — Desktop', group: 'Auth Screens', size: Size(1280, 800))
-Widget previewLoginLightDesktop() => previewDesktop(theme: previewLightTheme, child: _loginContent());
+@Preview(
+  name: 'Login Light — Desktop',
+  group: 'Auth Screens',
+  size: Size(1280, 800),
+)
+Widget previewLoginLightDesktop() =>
+    previewDesktop(theme: previewLightTheme, child: _loginContent());
 
-@Preview(name: 'Login Light — Web', group: 'Auth Screens', size: Size(1440, 900))
-Widget previewLoginLightWeb() => previewWeb(theme: previewLightTheme, child: _loginContent());
+@Preview(
+  name: 'Login Light — Web',
+  group: 'Auth Screens',
+  size: Size(1440, 900),
+)
+Widget previewLoginLightWeb() =>
+    previewWeb(theme: previewLightTheme, child: _loginContent());
 
 // ── Register Dark ─────────────────────────────────────────────────────────────
-@Preview(name: 'Register Dark — Mobile', group: 'Auth Screens', size: Size(390, 844))
-Widget previewRegisterScreenMobile() => previewMobile(child: _registerContent());
+@Preview(
+  name: 'Register Dark — Mobile',
+  group: 'Auth Screens',
+  size: Size(390, 844),
+)
+Widget previewRegisterScreenMobile() =>
+    previewMobile(child: _registerContent());
 
-@Preview(name: 'Register Dark — Tablet', group: 'Auth Screens', size: Size(768, 1024))
-Widget previewRegisterScreenTablet() => previewTablet(child: _registerContent());
+@Preview(
+  name: 'Register Dark — Tablet',
+  group: 'Auth Screens',
+  size: Size(768, 1024),
+)
+Widget previewRegisterScreenTablet() =>
+    previewTablet(child: _registerContent());
 
-@Preview(name: 'Register Dark — Desktop', group: 'Auth Screens', size: Size(1280, 800))
-Widget previewRegisterScreenDesktop() => previewDesktop(child: _registerContent());
+@Preview(
+  name: 'Register Dark — Desktop',
+  group: 'Auth Screens',
+  size: Size(1280, 800),
+)
+Widget previewRegisterScreenDesktop() =>
+    previewDesktop(child: _registerContent());
 
-@Preview(name: 'Register Dark — Web', group: 'Auth Screens', size: Size(1440, 900))
+@Preview(
+  name: 'Register Dark — Web',
+  group: 'Auth Screens',
+  size: Size(1440, 900),
+)
 Widget previewRegisterScreenWeb() => previewWeb(child: _registerContent());
 
 // ── Register Light ────────────────────────────────────────────────────────────
-@Preview(name: 'Register Light — Mobile', group: 'Auth Screens', size: Size(390, 844))
-Widget previewRegisterLightMobile() => previewMobile(theme: previewLightTheme, child: _registerContent());
+@Preview(
+  name: 'Register Light — Mobile',
+  group: 'Auth Screens',
+  size: Size(390, 844),
+)
+Widget previewRegisterLightMobile() =>
+    previewMobile(theme: previewLightTheme, child: _registerContent());
 
-@Preview(name: 'Register Light — Tablet', group: 'Auth Screens', size: Size(768, 1024))
-Widget previewRegisterLightTablet() => previewTablet(theme: previewLightTheme, child: _registerContent());
+@Preview(
+  name: 'Register Light — Tablet',
+  group: 'Auth Screens',
+  size: Size(768, 1024),
+)
+Widget previewRegisterLightTablet() =>
+    previewTablet(theme: previewLightTheme, child: _registerContent());
 
-@Preview(name: 'Register Light — Desktop', group: 'Auth Screens', size: Size(1280, 800))
-Widget previewRegisterLightDesktop() => previewDesktop(theme: previewLightTheme, child: _registerContent());
+@Preview(
+  name: 'Register Light — Desktop',
+  group: 'Auth Screens',
+  size: Size(1280, 800),
+)
+Widget previewRegisterLightDesktop() =>
+    previewDesktop(theme: previewLightTheme, child: _registerContent());
 
-@Preview(name: 'Register Light — Web', group: 'Auth Screens', size: Size(1440, 900))
-Widget previewRegisterLightWeb() => previewWeb(theme: previewLightTheme, child: _registerContent());
-
+@Preview(
+  name: 'Register Light — Web',
+  group: 'Auth Screens',
+  size: Size(1440, 900),
+)
+Widget previewRegisterLightWeb() =>
+    previewWeb(theme: previewLightTheme, child: _registerContent());

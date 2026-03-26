@@ -31,6 +31,7 @@ export 'package:origna_gta/core/schema/schema_constants.dart'
 /// Application configuration constants
 class AppConfig {
   static const String appName = 'Origna GTA';
+  static const String appVersion = '1.1.0';
   static const String supportEmail = 'support@orignagta.ca';
   static const String websiteUrl = 'https://www.orignaventures.ca';
   static const String currency = 'cad';

@@ -20,10 +20,10 @@ class _NutritionColors {
   static Color allergenMayContainFg = DesignTokens.warning;
   static Color dietaryPositiveBg = DesignTokens.success.withValues(alpha: 0.12);
   static Color dietaryPositiveFg = DesignTokens.success;
-  static Color thickDivider = Colors.white.withValues(alpha: 0.3);
-  static Color thinDivider = Colors.white.withValues(alpha: 0.08);
-  static Color subNutrientText = Colors.white.withValues(alpha: 0.7);
-  static Color footnoteText = Colors.white.withValues(alpha: 0.55);
+  static Color thickDivider = DesignTokens.white.withValues(alpha: 0.3);
+  static Color thinDivider = DesignTokens.white.withValues(alpha: 0.08);
+  static Color subNutrientText = DesignTokens.white.withValues(alpha: 0.7);
+  static Color footnoteText = DesignTokens.white.withValues(alpha: 0.55);
 }
 
 // ============================================================================

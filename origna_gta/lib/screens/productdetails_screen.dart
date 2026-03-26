@@ -23,19 +23,19 @@ import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:origna_gta/widgets/modern_skeleton_loader.dart';
 
-import 'widgets/product_detail/product_actions_section.dart';
-import 'widgets/product_detail/product_detail_skeleton.dart';
-import 'widgets/product_detail/product_image_gallery.dart';
-import 'widgets/product_detail/nutrition_facts_section.dart';
-import 'widgets/product_detail/product_specs_section.dart';
-import 'widgets/product_detail/product_info_section.dart';
-import 'widgets/product_detail/product_price_section.dart';
-import 'widgets/product_detail/product_qa_section.dart';
-import 'widgets/product_detail/product_reviews_section.dart';
-import 'widgets/product_detail/related_products_section.dart';
-import 'widgets/product_detail/seller_products_section.dart';
-import 'widgets/product_detail/fbt_section.dart';
-import 'widgets/product_detail/video_player_dialog.dart';
+import 'package:origna_gta/screens/widgets/product_detail/product_actions_section.dart';
+import 'package:origna_gta/screens/widgets/product_detail/product_detail_skeleton.dart';
+import 'package:origna_gta/screens/widgets/product_detail/product_image_gallery.dart';
+import 'package:origna_gta/screens/widgets/product_detail/nutrition_facts_section.dart';
+import 'package:origna_gta/screens/widgets/product_detail/product_specs_section.dart';
+import 'package:origna_gta/screens/widgets/product_detail/product_info_section.dart';
+import 'package:origna_gta/screens/widgets/product_detail/product_price_section.dart';
+import 'package:origna_gta/screens/widgets/product_detail/product_qa_section.dart';
+import 'package:origna_gta/screens/widgets/product_detail/product_reviews_section.dart';
+import 'package:origna_gta/screens/widgets/product_detail/related_products_section.dart';
+import 'package:origna_gta/screens/widgets/product_detail/seller_products_section.dart';
+import 'package:origna_gta/screens/widgets/product_detail/fbt_section.dart';
+import 'package:origna_gta/screens/widgets/product_detail/video_player_dialog.dart';
 
 /// ProductDetailScreen — coordinator composing extracted widget sections.
 class ProductDetailScreen extends ConsumerStatefulWidget {

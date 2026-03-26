@@ -194,7 +194,9 @@ extension _EditProductSharedWidgets on _EditProductScreenState {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
                 image: DecorationImage(
-                  image: NetworkImage(state.existingImageUrls[index]),
+                  image: CachedNetworkImageProvider(
+                    state.existingImageUrls[index],
+                  ),
                   fit: BoxFit.cover,
                 ),
               ),

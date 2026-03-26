@@ -1694,6 +1694,15 @@ abstract final class NotificationTypes {
   static const perishableOrderUrgent =
       'perishable_order_urgent'; // GAP-13: Urgent perishable order alert to seller
 
+  // UI display types (used in notification icon/color mapping)
+  static const orderConfirmation = 'order_confirmation';
+  static const shippingUpdate = 'shipping_update';
+  static const paymentIssue = 'payment_issue';
+  static const accountUpdate = 'account_update';
+  static const chatMessage = 'chat_message';
+  static const stockAvailable = 'stock_available';
+  static const newOrder = 'new_order';
+
   static const all = {
     orderStatus,
     orderUpdate,

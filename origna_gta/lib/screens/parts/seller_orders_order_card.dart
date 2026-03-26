@@ -136,8 +136,12 @@ class _SellerOrderCard extends ConsumerWidget {
             borderRadius: BorderRadius.circular(20),
           ),
           child: Tooltip(
-            message:
-                'Gross: \$${sellerTotal.toStringAsFixed(2)} − \$${platformFee.toStringAsFixed(2)} fee',
+            message: 'seller_orders.net_tooltip'.tr(
+              namedArgs: {
+                'gross': sellerTotal.toStringAsFixed(2),
+                'fee': platformFee.toStringAsFixed(2),
+              },
+            ),
             child: Text(
               '\$${sellerNet.toStringAsFixed(2)}',
               style: const TextStyle(

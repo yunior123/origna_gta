@@ -22,16 +22,24 @@ class FavoritesScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final favoritesAsync = ref.watch(favoritedProductsProvider);
-    final userModel = ref.watch(userProfileProvider.select((value) => value.valueOrNull));
+    final userModel = ref.watch(
+      userProfileProvider.select((value) => value.valueOrNull),
+    );
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
+      decoration: BoxDecoration(
+        gradient: DesignTokens.backgroundGradient(isDark: isDark),
+      ),
       child: Scaffold(
         appBar: AppBarFactory.simple(
           title: 'favorites.my_favorites'.tr(),
           subtitle: (favoritesAsync.valueOrNull?.isNotEmpty ?? false)
-              ? 'favorites.items_count'.tr(namedArgs: {'count': '${favoritesAsync.valueOrNull?.length ?? 0}'})
+              ? 'favorites.items_count'.tr(
+                  namedArgs: {
+                    'count': '${favoritesAsync.valueOrNull?.length ?? 0}',
+                  },
+                )
               : null,
         ),
         backgroundColor: DesignTokens.transparent,
@@ -45,15 +53,26 @@ class FavoritesScreen extends ConsumerWidget {
                   height: 70,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: LinearGradient(colors: [DesignTokens.primary.withValues(alpha: 0.15), DesignTokens.secondary.withValues(alpha: 0.15)]),
+                    gradient: LinearGradient(
+                      colors: [
+                        DesignTokens.primary.withValues(alpha: 0.15),
+                        DesignTokens.secondary.withValues(alpha: 0.15),
+                      ],
+                    ),
                   ),
                   child: Center(
                     child: ShaderMask(
-                      shaderCallback: (bounds) => DesignTokens.primaryGradient.createShader(bounds),
+                      shaderCallback: (bounds) =>
+                          DesignTokens.primaryGradient.createShader(bounds),
                       child: const SizedBox(
                         width: 32,
                         height: 32,
-                        child: ModernLoadingIndicator(size: 32, strokeWidth: 3, color: DesignTokens.white, centered: false),
+                        child: ModernLoadingIndicator(
+                          size: 32,
+                          strokeWidth: 3,
+                          color: DesignTokens.white,
+                          centered: false,
+                        ),
                       ),
                     ),
                   ),
@@ -61,7 +80,11 @@ class FavoritesScreen extends ConsumerWidget {
                 const SizedBox(height: 16),
                 Text(
                   'favorites.loading_favorites'.tr(),
-                  style: TextStyle(color: DesignTokens.textSecondary, fontSize: 14, fontWeight: FontWeight.w500),
+                  style: TextStyle(
+                    color: DesignTokens.textSecondary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
             ),
@@ -70,7 +93,12 @@ class FavoritesScreen extends ConsumerWidget {
             icon: Icons.error_outline_rounded,
             title: 'favorites.unable_to_load'.tr(),
             subtitle: AppError.getMessage(error),
-            action: ModernButton(label: 'common.retry'.tr(), icon: Icons.refresh, isOutlined: true, onPressed: () => ref.invalidate(favoritedProductsProvider)),
+            action: ModernButton(
+              label: 'common.retry'.tr(),
+              icon: Icons.refresh,
+              isOutlined: true,
+              onPressed: () => ref.invalidate(favoritedProductsProvider),
+            ),
           ),
           data: (products) {
             if (products.isEmpty) {
@@ -82,16 +110,29 @@ class FavoritesScreen extends ConsumerWidget {
               );
             }
 
-            final available = products.where((p) => p.lifecycleStatus == ProductLifecycleStatusValues.active).toList();
-            final unavailable = products.where((p) => p.lifecycleStatus != ProductLifecycleStatusValues.active).toList();
+            final available = products
+                .where(
+                  (p) =>
+                      p.lifecycleStatus == ProductLifecycleStatusValues.active,
+                )
+                .toList();
+            final unavailable = products
+                .where(
+                  (p) =>
+                      p.lifecycleStatus != ProductLifecycleStatusValues.active,
+                )
+                .toList();
             final displayList = [...available, ...unavailable];
 
             return Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: ResponsiveBreakpoints.contentMaxWidth),
+                constraints: const BoxConstraints(
+                  maxWidth: ResponsiveBreakpoints.contentMaxWidth,
+                ),
                 child: RefreshIndicator(
                   color: DesignTokens.primary,
-                  onRefresh: () async => ref.invalidate(favoritedProductsProvider),
+                  onRefresh: () async =>
+                      ref.invalidate(favoritedProductsProvider),
                   semanticsLabel: 'btn-refresh-favorites',
                   child: CustomScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
@@ -100,22 +141,43 @@ class FavoritesScreen extends ConsumerWidget {
                         SliverToBoxAdapter(
                           child: Container(
                             margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
                             decoration: BoxDecoration(
-                              color: DesignTokens.warning.withValues(alpha: 0.12),
+                              color: DesignTokens.warning.withValues(
+                                alpha: 0.12,
+                              ),
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: DesignTokens.warning.withValues(alpha: 0.3)),
+                              border: Border.all(
+                                color: DesignTokens.warning.withValues(
+                                  alpha: 0.3,
+                                ),
+                              ),
                             ),
                             child: Row(
                               children: [
-                                Icon(Icons.info_outline_rounded, size: 16, color: DesignTokens.warning),
+                                Icon(
+                                  Icons.info_outline_rounded,
+                                  size: 16,
+                                  color: DesignTokens.warning,
+                                ),
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Semantics(
                                     label: 'text-unavailable-items-warning',
                                     child: Text(
-                                      'favorites.items_unavailable'.tr(namedArgs: {'count': '${unavailable.length}'}),
-                                      style: TextStyle(color: DesignTokens.warning, fontSize: 13, fontWeight: FontWeight.w500),
+                                      'favorites.items_unavailable'.tr(
+                                        namedArgs: {
+                                          'count': '${unavailable.length}',
+                                        },
+                                      ),
+                                      style: TextStyle(
+                                        color: DesignTokens.warning,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -126,23 +188,33 @@ class FavoritesScreen extends ConsumerWidget {
                       SliverPadding(
                         padding: const EdgeInsets.all(DesignTokens.spacing16),
                         sliver: SliverGrid(
-                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: getCrossAxisCount(context),
-                            crossAxisSpacing: DesignTokens.spacing12,
-                            mainAxisSpacing: DesignTokens.spacing12,
-                            childAspectRatio: _getCardAspectRatio(context),
-                          ),
+                          gridDelegate:
+                              SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: getCrossAxisCount(context),
+                                crossAxisSpacing: DesignTokens.spacing12,
+                                mainAxisSpacing: DesignTokens.spacing12,
+                                childAspectRatio: _getCardAspectRatio(context),
+                              ),
                           delegate: SliverChildBuilderDelegate(
                             (context, index) {
                               final product = displayList[index];
-                              final isUnavailable = product.lifecycleStatus != ProductLifecycleStatusValues.active;
+                              final isUnavailable =
+                                  product.lifecycleStatus !=
+                                  ProductLifecycleStatusValues.active;
                               return FadeSlideIn(
-                                delay: Duration(milliseconds: 50 * index.clamp(0, 8)),
+                                delay: Duration(
+                                  milliseconds: 50 * index.clamp(0, 8),
+                                ),
                                 child: Semantics(
-                                  label: 'card-favorite-product-${product.productId}',
+                                  label:
+                                      'card-favorite-product-${product.productId}',
                                   child: Opacity(
                                     opacity: isUnavailable ? 0.60 : 1.0,
-                                    child: ProductCard(productId: product.productId, product: product, userModel: userModel),
+                                    child: ProductCard(
+                                      productId: product.productId,
+                                      product: product,
+                                      userModel: userModel,
+                                    ),
                                   ),
                                 ),
                               );
@@ -165,17 +237,17 @@ class FavoritesScreen extends ConsumerWidget {
   }
 
   double _getCardAspectRatio(BuildContext context) {
-    final width = MediaQuery.sizeOf(context).width;
-    // Lower ratio = taller cards (prevents vertical overflow).
     // Synced with ResponsiveBreakpoints.cardAspect* — sized for worst case
     // (trending row + delivery chip visible simultaneously).
-    if (width < 360) return 0.58;
-    if (width < 600) return 0.62;
-    if (width < 900) return 0.67;
-    return 0.70;
+    return ResponsiveBreakpoints.getValue(
+      context: context,
+      mobile: ResponsiveBreakpoints.cardAspectMobile,
+      mobilePlus: ResponsiveBreakpoints.cardAspectMobilePlus,
+      tablet: ResponsiveBreakpoints.cardAspectTablet,
+      desktop: ResponsiveBreakpoints.cardAspectDesktop,
+    );
   }
 }
-
 
 // ═══ Widget Previews ═══
 
@@ -189,54 +261,126 @@ Widget _favoritesEmpty() => previewScopeLoggedIn(
 );
 
 // ── Dark (default) ──────────────────────────────────────────────────────────
-@Preview(name: 'Favorites / Wishlist Dark — Mobile', group: 'Screens', size: Size(390, 844))
+@Preview(
+  name: 'Favorites / Wishlist Dark — Mobile',
+  group: 'Screens',
+  size: Size(390, 844),
+)
 Widget previewFavoritesScreenMobile() => previewMobile(child: _favorites());
 
-@Preview(name: 'Favorites / Wishlist Dark — Tablet', group: 'Screens', size: Size(768, 1024))
+@Preview(
+  name: 'Favorites / Wishlist Dark — Tablet',
+  group: 'Screens',
+  size: Size(768, 1024),
+)
 Widget previewFavoritesScreenTablet() => previewTablet(child: _favorites());
 
-@Preview(name: 'Favorites / Wishlist Dark — Desktop', group: 'Screens', size: Size(1280, 800))
+@Preview(
+  name: 'Favorites / Wishlist Dark — Desktop',
+  group: 'Screens',
+  size: Size(1280, 800),
+)
 Widget previewFavoritesScreenDesktop() => previewDesktop(child: _favorites());
 
-@Preview(name: 'Favorites / Wishlist Dark — Web', group: 'Screens', size: Size(1440, 900))
+@Preview(
+  name: 'Favorites / Wishlist Dark — Web',
+  group: 'Screens',
+  size: Size(1440, 900),
+)
 Widget previewFavoritesScreenWeb() => previewWeb(child: _favorites());
 
 // ── Light ────────────────────────────────────────────────────────────────────
-@Preview(name: 'Favorites / Wishlist Light — Mobile', group: 'Screens', size: Size(390, 844))
-Widget previewFavoritesLightMobile() => previewMobile(theme: previewLightTheme, child: _favorites());
+@Preview(
+  name: 'Favorites / Wishlist Light — Mobile',
+  group: 'Screens',
+  size: Size(390, 844),
+)
+Widget previewFavoritesLightMobile() =>
+    previewMobile(theme: previewLightTheme, child: _favorites());
 
-@Preview(name: 'Favorites / Wishlist Light — Tablet', group: 'Screens', size: Size(768, 1024))
-Widget previewFavoritesLightTablet() => previewTablet(theme: previewLightTheme, child: _favorites());
+@Preview(
+  name: 'Favorites / Wishlist Light — Tablet',
+  group: 'Screens',
+  size: Size(768, 1024),
+)
+Widget previewFavoritesLightTablet() =>
+    previewTablet(theme: previewLightTheme, child: _favorites());
 
-@Preview(name: 'Favorites / Wishlist Light — Desktop', group: 'Screens', size: Size(1280, 800))
-Widget previewFavoritesLightDesktop() => previewDesktop(theme: previewLightTheme, child: _favorites());
+@Preview(
+  name: 'Favorites / Wishlist Light — Desktop',
+  group: 'Screens',
+  size: Size(1280, 800),
+)
+Widget previewFavoritesLightDesktop() =>
+    previewDesktop(theme: previewLightTheme, child: _favorites());
 
-@Preview(name: 'Favorites / Wishlist Light — Web', group: 'Screens', size: Size(1440, 900))
-Widget previewFavoritesLightWeb() => previewWeb(theme: previewLightTheme, child: _favorites());
+@Preview(
+  name: 'Favorites / Wishlist Light — Web',
+  group: 'Screens',
+  size: Size(1440, 900),
+)
+Widget previewFavoritesLightWeb() =>
+    previewWeb(theme: previewLightTheme, child: _favorites());
 
 // ── Empty State Dark ──────────────────────────────────────────────────────────
-@Preview(name: 'Favorites Empty Dark — Mobile', group: 'Screens', size: Size(390, 844))
+@Preview(
+  name: 'Favorites Empty Dark — Mobile',
+  group: 'Screens',
+  size: Size(390, 844),
+)
 Widget previewFavoritesEmptyMobile() => previewMobile(child: _favoritesEmpty());
 
-@Preview(name: 'Favorites Empty Dark — Tablet', group: 'Screens', size: Size(768, 1024))
+@Preview(
+  name: 'Favorites Empty Dark — Tablet',
+  group: 'Screens',
+  size: Size(768, 1024),
+)
 Widget previewFavoritesEmptyTablet() => previewTablet(child: _favoritesEmpty());
 
-@Preview(name: 'Favorites Empty Dark — Desktop', group: 'Screens', size: Size(1280, 800))
-Widget previewFavoritesEmptyDesktop() => previewDesktop(child: _favoritesEmpty());
+@Preview(
+  name: 'Favorites Empty Dark — Desktop',
+  group: 'Screens',
+  size: Size(1280, 800),
+)
+Widget previewFavoritesEmptyDesktop() =>
+    previewDesktop(child: _favoritesEmpty());
 
-@Preview(name: 'Favorites Empty Dark — Web', group: 'Screens', size: Size(1440, 900))
+@Preview(
+  name: 'Favorites Empty Dark — Web',
+  group: 'Screens',
+  size: Size(1440, 900),
+)
 Widget previewFavoritesEmptyWeb() => previewWeb(child: _favoritesEmpty());
 
 // ── Empty State Light ─────────────────────────────────────────────────────────
-@Preview(name: 'Favorites Empty Light — Mobile', group: 'Screens', size: Size(390, 844))
-Widget previewFavoritesEmptyLightMobile() => previewMobile(theme: previewLightTheme, child: _favoritesEmpty());
+@Preview(
+  name: 'Favorites Empty Light — Mobile',
+  group: 'Screens',
+  size: Size(390, 844),
+)
+Widget previewFavoritesEmptyLightMobile() =>
+    previewMobile(theme: previewLightTheme, child: _favoritesEmpty());
 
-@Preview(name: 'Favorites Empty Light — Tablet', group: 'Screens', size: Size(768, 1024))
-Widget previewFavoritesEmptyLightTablet() => previewTablet(theme: previewLightTheme, child: _favoritesEmpty());
+@Preview(
+  name: 'Favorites Empty Light — Tablet',
+  group: 'Screens',
+  size: Size(768, 1024),
+)
+Widget previewFavoritesEmptyLightTablet() =>
+    previewTablet(theme: previewLightTheme, child: _favoritesEmpty());
 
-@Preview(name: 'Favorites Empty Light — Desktop', group: 'Screens', size: Size(1280, 800))
-Widget previewFavoritesEmptyLightDesktop() => previewDesktop(theme: previewLightTheme, child: _favoritesEmpty());
+@Preview(
+  name: 'Favorites Empty Light — Desktop',
+  group: 'Screens',
+  size: Size(1280, 800),
+)
+Widget previewFavoritesEmptyLightDesktop() =>
+    previewDesktop(theme: previewLightTheme, child: _favoritesEmpty());
 
-@Preview(name: 'Favorites Empty Light — Web', group: 'Screens', size: Size(1440, 900))
-Widget previewFavoritesEmptyLightWeb() => previewWeb(theme: previewLightTheme, child: _favoritesEmpty());
-
+@Preview(
+  name: 'Favorites Empty Light — Web',
+  group: 'Screens',
+  size: Size(1440, 900),
+)
+Widget previewFavoritesEmptyLightWeb() =>
+    previewWeb(theme: previewLightTheme, child: _favoritesEmpty());

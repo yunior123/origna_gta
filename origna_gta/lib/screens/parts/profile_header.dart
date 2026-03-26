@@ -450,7 +450,7 @@ class ProfileScreenLayout extends StatelessWidget {
   }
 
   Widget _buildAppInfoSection(BuildContext context, bool isDark) {
-    const appVersion = '1.1.0';
+    const appVersion = AppConfig.appVersion;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -535,7 +535,7 @@ class ProfileScreenLayout extends StatelessWidget {
                 ),
               ),
               Text(
-                'Origna GTA',
+                AppConfig.appName,
                 style: TextStyle(
                   fontSize: 13,
                   color: DesignTokens.textSecondary,

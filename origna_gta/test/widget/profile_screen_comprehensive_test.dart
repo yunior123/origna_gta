@@ -842,7 +842,7 @@ void main() {
       );
 
       expect(find.text('App Info'), findsOneWidget);
-      expect(find.text('OrignaGTA'), findsOneWidget);
+      expect(find.text('Origna GTA'), findsOneWidget);
 
       tester.view.resetPhysicalSize();
       tester.view.resetDevicePixelRatio();

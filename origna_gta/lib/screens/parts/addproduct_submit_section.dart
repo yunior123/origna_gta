@@ -121,7 +121,7 @@ extension _AddProductSubmitSection on _AddProductScreenState {
                   ],
           ),
           child: Material(
-            color: Colors.transparent,
+            color: DesignTokens.transparent,
             child: InkWell(
               key: const Key('addproduct_submit_button'),
               borderRadius: BorderRadius.circular(16),

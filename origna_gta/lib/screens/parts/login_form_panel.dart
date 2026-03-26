@@ -134,9 +134,9 @@ class LoginScreenLayout extends StatelessWidget {
                               shaderCallback: (bounds) => DesignTokens
                                   .primaryGradient
                                   .createShader(bounds),
-                              child: const Text(
-                                'Origna GTA',
-                                style: TextStyle(
+                              child: Text(
+                                AppConfig.appName,
+                                style: const TextStyle(
                                   fontSize: 40,
                                   fontWeight: FontWeight.w700,
                                   color: DesignTokens.white,
@@ -562,9 +562,9 @@ class LoginScreenLayout extends StatelessWidget {
                                       shaderCallback: (b) => DesignTokens
                                           .primaryGradient
                                           .createShader(b),
-                                      child: const Text(
-                                        'Origna GTA',
-                                        style: TextStyle(
+                                      child: Text(
+                                        AppConfig.appName,
+                                        style: const TextStyle(
                                           fontSize: 48,
                                           fontWeight: FontWeight.w900,
                                           color: DesignTokens.white,

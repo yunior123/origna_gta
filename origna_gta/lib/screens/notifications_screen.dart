@@ -321,19 +321,23 @@ class _MarkAllReadBar extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          TextButton.icon(
-            onPressed: onMarkAllRead,
-            icon: const Icon(
-              Icons.done_all_rounded,
-              size: 18,
-              color: DesignTokens.primary,
-            ),
-            label: Text(
-              'notifications.mark_all_read'.tr(),
-              style: const TextStyle(
+          Semantics(
+            button: true,
+            label: 'btn-mark-all-read',
+            child: TextButton.icon(
+              onPressed: onMarkAllRead,
+              icon: const Icon(
+                Icons.done_all_rounded,
+                size: 18,
                 color: DesignTokens.primary,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
+              ),
+              label: Text(
+                'notifications.mark_all_read'.tr(),
+                style: const TextStyle(
+                  color: DesignTokens.primary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ),
@@ -492,13 +496,13 @@ class _NotificationTile extends StatelessWidget {
 
   IconData _iconForType(String type) {
     return switch (type) {
-      'order_confirmation' => Icons.shopping_bag_outlined,
-      'shipping_update' => Icons.local_shipping_outlined,
-      'payment_issue' => Icons.payment_outlined,
-      'account_update' => Icons.account_circle_outlined,
-      'chat_message' => Icons.chat_bubble_outline_rounded,
-      'stock_available' => Icons.inventory_2_outlined,
-      'new_order' => Icons.storefront_outlined,
+      NotificationTypes.orderConfirmation => Icons.shopping_bag_outlined,
+      NotificationTypes.shippingUpdate => Icons.local_shipping_outlined,
+      NotificationTypes.paymentIssue => Icons.payment_outlined,
+      NotificationTypes.accountUpdate => Icons.account_circle_outlined,
+      NotificationTypes.chatMessage => Icons.chat_bubble_outline_rounded,
+      NotificationTypes.stockAvailable => Icons.inventory_2_outlined,
+      NotificationTypes.newOrder => Icons.storefront_outlined,
       _ => Icons.notifications_outlined,
     };
   }
@@ -548,9 +552,7 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-
 // === Widget Previews ===
-
 
 // ═══ Widget Previews ═══
 
@@ -577,53 +579,132 @@ Widget _notificationsEmpty() => previewScope(
 );
 
 // ── Loading Dark ─────────────────────────────────────────────────────────────
-@Preview(name: 'Notifications Center Dark — Mobile', group: 'Screens', size: Size(390, 844))
-Widget previewNotificationsScreenMobile() => previewMobile(child: _notificationsLoading());
+@Preview(
+  name: 'Notifications Center Dark — Mobile',
+  group: 'Screens',
+  size: Size(390, 844),
+)
+Widget previewNotificationsScreenMobile() =>
+    previewMobile(child: _notificationsLoading());
 
-@Preview(name: 'Notifications Center Dark — Tablet', group: 'Screens', size: Size(768, 1024))
-Widget previewNotificationsScreenTablet() => previewTablet(child: _notificationsLoading());
+@Preview(
+  name: 'Notifications Center Dark — Tablet',
+  group: 'Screens',
+  size: Size(768, 1024),
+)
+Widget previewNotificationsScreenTablet() =>
+    previewTablet(child: _notificationsLoading());
 
-@Preview(name: 'Notifications Center Dark — Desktop', group: 'Screens', size: Size(1280, 800))
-Widget previewNotificationsScreenDesktop() => previewDesktop(child: _notificationsLoading());
+@Preview(
+  name: 'Notifications Center Dark — Desktop',
+  group: 'Screens',
+  size: Size(1280, 800),
+)
+Widget previewNotificationsScreenDesktop() =>
+    previewDesktop(child: _notificationsLoading());
 
-@Preview(name: 'Notifications Center Dark — Web', group: 'Screens', size: Size(1440, 900))
-Widget previewNotificationsScreenWeb() => previewWeb(child: _notificationsLoading());
+@Preview(
+  name: 'Notifications Center Dark — Web',
+  group: 'Screens',
+  size: Size(1440, 900),
+)
+Widget previewNotificationsScreenWeb() =>
+    previewWeb(child: _notificationsLoading());
 
 // ── Empty State Dark ─────────────────────────────────────────────────────────
-@Preview(name: 'Notifications Empty Dark — Mobile', group: 'Screens', size: Size(390, 844))
-Widget previewNotificationsScreenEmptyMobile() => previewMobile(child: _notificationsEmpty());
+@Preview(
+  name: 'Notifications Empty Dark — Mobile',
+  group: 'Screens',
+  size: Size(390, 844),
+)
+Widget previewNotificationsScreenEmptyMobile() =>
+    previewMobile(child: _notificationsEmpty());
 
-@Preview(name: 'Notifications Empty Dark — Tablet', group: 'Screens', size: Size(768, 1024))
-Widget previewNotificationsScreenEmptyTablet() => previewTablet(child: _notificationsEmpty());
+@Preview(
+  name: 'Notifications Empty Dark — Tablet',
+  group: 'Screens',
+  size: Size(768, 1024),
+)
+Widget previewNotificationsScreenEmptyTablet() =>
+    previewTablet(child: _notificationsEmpty());
 
-@Preview(name: 'Notifications Empty Dark — Desktop', group: 'Screens', size: Size(1280, 800))
-Widget previewNotificationsScreenEmptyDesktop() => previewDesktop(child: _notificationsEmpty());
+@Preview(
+  name: 'Notifications Empty Dark — Desktop',
+  group: 'Screens',
+  size: Size(1280, 800),
+)
+Widget previewNotificationsScreenEmptyDesktop() =>
+    previewDesktop(child: _notificationsEmpty());
 
-@Preview(name: 'Notifications Empty Dark — Web', group: 'Screens', size: Size(1440, 900))
-Widget previewNotificationsScreenEmptyWeb() => previewWeb(child: _notificationsEmpty());
+@Preview(
+  name: 'Notifications Empty Dark — Web',
+  group: 'Screens',
+  size: Size(1440, 900),
+)
+Widget previewNotificationsScreenEmptyWeb() =>
+    previewWeb(child: _notificationsEmpty());
 
 // ── Light mode ───────────────────────────────────────────────────────────────
-@Preview(name: 'Notifications Center Light — Mobile', group: 'Screens', size: Size(390, 844))
-Widget previewNotificationsLightMobile() => previewMobile(theme: previewLightTheme, child: _notificationsLoading());
+@Preview(
+  name: 'Notifications Center Light — Mobile',
+  group: 'Screens',
+  size: Size(390, 844),
+)
+Widget previewNotificationsLightMobile() =>
+    previewMobile(theme: previewLightTheme, child: _notificationsLoading());
 
-@Preview(name: 'Notifications Center Light — Tablet', group: 'Screens', size: Size(768, 1024))
-Widget previewNotificationsLightTablet() => previewTablet(theme: previewLightTheme, child: _notificationsLoading());
+@Preview(
+  name: 'Notifications Center Light — Tablet',
+  group: 'Screens',
+  size: Size(768, 1024),
+)
+Widget previewNotificationsLightTablet() =>
+    previewTablet(theme: previewLightTheme, child: _notificationsLoading());
 
-@Preview(name: 'Notifications Center Light — Desktop', group: 'Screens', size: Size(1280, 800))
-Widget previewNotificationsLightDesktop() => previewDesktop(theme: previewLightTheme, child: _notificationsLoading());
+@Preview(
+  name: 'Notifications Center Light — Desktop',
+  group: 'Screens',
+  size: Size(1280, 800),
+)
+Widget previewNotificationsLightDesktop() =>
+    previewDesktop(theme: previewLightTheme, child: _notificationsLoading());
 
-@Preview(name: 'Notifications Center Light — Web', group: 'Screens', size: Size(1440, 900))
-Widget previewNotificationsLightWeb() => previewWeb(theme: previewLightTheme, child: _notificationsLoading());
+@Preview(
+  name: 'Notifications Center Light — Web',
+  group: 'Screens',
+  size: Size(1440, 900),
+)
+Widget previewNotificationsLightWeb() =>
+    previewWeb(theme: previewLightTheme, child: _notificationsLoading());
 
-@Preview(name: 'Notifications Empty Light — Mobile', group: 'Screens', size: Size(390, 844))
-Widget previewNotificationsEmptyLightMobile() => previewMobile(theme: previewLightTheme, child: _notificationsEmpty());
+@Preview(
+  name: 'Notifications Empty Light — Mobile',
+  group: 'Screens',
+  size: Size(390, 844),
+)
+Widget previewNotificationsEmptyLightMobile() =>
+    previewMobile(theme: previewLightTheme, child: _notificationsEmpty());
 
-@Preview(name: 'Notifications Empty Light — Tablet', group: 'Screens', size: Size(768, 1024))
-Widget previewNotificationsEmptyLightTablet() => previewTablet(theme: previewLightTheme, child: _notificationsEmpty());
+@Preview(
+  name: 'Notifications Empty Light — Tablet',
+  group: 'Screens',
+  size: Size(768, 1024),
+)
+Widget previewNotificationsEmptyLightTablet() =>
+    previewTablet(theme: previewLightTheme, child: _notificationsEmpty());
 
-@Preview(name: 'Notifications Empty Light — Desktop', group: 'Screens', size: Size(1280, 800))
-Widget previewNotificationsEmptyLightDesktop() => previewDesktop(theme: previewLightTheme, child: _notificationsEmpty());
+@Preview(
+  name: 'Notifications Empty Light — Desktop',
+  group: 'Screens',
+  size: Size(1280, 800),
+)
+Widget previewNotificationsEmptyLightDesktop() =>
+    previewDesktop(theme: previewLightTheme, child: _notificationsEmpty());
 
-@Preview(name: 'Notifications Empty Light — Web', group: 'Screens', size: Size(1440, 900))
-Widget previewNotificationsEmptyLightWeb() => previewWeb(theme: previewLightTheme, child: _notificationsEmpty());
-
+@Preview(
+  name: 'Notifications Empty Light — Web',
+  group: 'Screens',
+  size: Size(1440, 900),
+)
+Widget previewNotificationsEmptyLightWeb() =>
+    previewWeb(theme: previewLightTheme, child: _notificationsEmpty());

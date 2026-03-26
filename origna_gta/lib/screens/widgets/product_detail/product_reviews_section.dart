@@ -518,7 +518,7 @@ class _ReviewCardState extends ConsumerState<ReviewCard> {
               ),
             ),
             Positioned(
-              top: MediaQuery.of(context).padding.top + 16,
+              top: MediaQuery.paddingOf(context).top + 16,
               right: 16,
               child: Container(
                 decoration: BoxDecoration(

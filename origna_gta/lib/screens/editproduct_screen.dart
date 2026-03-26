@@ -8,6 +8,7 @@ import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/screens/productaddimages_screen.dart';
 import 'package:origna_gta/screens/productaddvideo_screen.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/responsive_layout.dart';
 import 'package:origna_gta/utils/utils.dart';
@@ -331,7 +332,6 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
   }
 }
 
-
 // ═══ Widget Previews ═══
 
 Widget _editProductContent() => previewScope(
@@ -402,4 +402,3 @@ Widget previewEditProductScreenLightDesktop() =>
 )
 Widget previewEditProductScreenLightWeb() =>
     previewWeb(theme: previewLightTheme, child: _editProductContent());
-
