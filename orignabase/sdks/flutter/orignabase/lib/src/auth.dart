@@ -1,6 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
+
+import 'package:flutter/foundation.dart' show kIsWeb;
+
 import 'client.dart';
+import 'web_storage_stub.dart' if (dart.library.html) 'dart:html' as html;
 
 /// Authentication state.
 enum AuthStatus { authenticated, unauthenticated }
@@ -44,7 +48,59 @@ class OrignaBaseAuth {
 
   final _authStateController = StreamController<AuthState>.broadcast();
 
-  OrignaBaseAuth(this._client);
+  OrignaBaseAuth(this._client) {
+    // Restore persisted session on web (survives page refresh).
+    _restorePersistedSession();
+  }
+
+  // Web persistence keys
+  static const _kAccessToken = 'orignabase_access_token';
+  static const _kRefreshToken = 'orignabase_refresh_token';
+  static const _kEmail = 'orignabase_email';
+
+  void _persistTokens() {
+    if (!kIsWeb) return;
+    try {
+      final storage = html.window.localStorage;
+      if (_accessToken != null) {
+        storage[_kAccessToken] = _accessToken!;
+      }
+      if (_refreshToken != null) {
+        storage[_kRefreshToken] = _refreshToken!;
+      }
+      if (_lastEmail != null) {
+        storage[_kEmail] = _lastEmail!;
+      }
+    } catch (_) {
+      // localStorage may be unavailable in some contexts
+    }
+  }
+
+  void _clearPersistedTokens() {
+    if (!kIsWeb) return;
+    try {
+      html.window.localStorage.remove(_kAccessToken);
+      html.window.localStorage.remove(_kRefreshToken);
+      html.window.localStorage.remove(_kEmail);
+    } catch (_) {}
+  }
+
+  void _restorePersistedSession() {
+    if (!kIsWeb) return;
+    try {
+      final storage = html.window.localStorage;
+      final access = storage[_kAccessToken];
+      final refresh = storage[_kRefreshToken];
+      final email = storage[_kEmail];
+      if (access != null && access.isNotEmpty) {
+        _accessToken = access;
+        _refreshToken = refresh;
+        _lastEmail = email;
+        // Emit auth state so listeners pick up the restored session
+        _authStateController.add(currentState);
+      }
+    } catch (_) {}
+  }
 
   /// Current access token (null if not authenticated).
   String? get accessToken => _accessToken;
@@ -317,6 +373,7 @@ class OrignaBaseAuth {
   Future<void> signOut() async {
     _accessToken = null;
     _refreshToken = null;
+    _clearPersistedTokens();
     _authStateController.add(AuthState.unauthenticated);
 
     // Close realtime WebSocket if it was ever opened.
@@ -335,6 +392,7 @@ class OrignaBaseAuth {
     _accessToken = accessToken;
     _refreshToken = refreshToken;
     _lastEmail = email ?? currentEmail;
+    _persistTokens();
 
     final state = currentState;
     _authStateController.add(state);
@@ -361,6 +419,7 @@ class OrignaBaseAuth {
       roles: currentRoles,
       emailVerified: isEmailVerified,
     );
+    _persistTokens();
     _authStateController.add(state);
     return state;
   }

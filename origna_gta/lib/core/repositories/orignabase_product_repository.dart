@@ -15,6 +15,23 @@ import 'package:origna_gta/models/generated/models.dart';
 ///
 /// Search/query logic is in [ProductSearchHelpers].
 /// Image upload logic is in [ProductImageHelpers].
+/// Recursively cast Map<dynamic, dynamic> to Map<String, dynamic>.
+/// SurrealDB returns dynamic-keyed maps that Freezed's fromJson rejects.
+Map<String, dynamic> _deepCastMap(Map<dynamic, dynamic> source) {
+  return source.map((key, value) {
+    final castKey = key.toString();
+    if (value is Map) {
+      return MapEntry(castKey, _deepCastMap(value));
+    } else if (value is List) {
+      return MapEntry(
+        castKey,
+        value.map((e) => e is Map ? _deepCastMap(e) : e).toList(),
+      );
+    }
+    return MapEntry(castKey, value);
+  });
+}
+
 class OrignaBaseProductRepository
     with ProductSearchHelpers, ProductImageHelpers
     implements ProductRepository {
@@ -87,7 +104,10 @@ class OrignaBaseProductRepository
     data[Fields.productId] = doc.id.contains(':')
         ? doc.id.split(':').last
         : doc.id;
-    return Product.fromJson(data);
+
+    // Deep-cast nested maps from Map<dynamic, dynamic> to Map<String, dynamic>
+    // SurrealDB returns dynamic maps which Freezed's fromJson rejects.
+    return Product.fromJson(_deepCastMap(data));
   }
 
   // ---------------------------------------------------------------------------
@@ -96,7 +116,6 @@ class OrignaBaseProductRepository
 
   @override
   /// Creates a product with images uploaded atomically in a single operation.
-  
   /// Returns the new product ID on success.
   Future<String> createProductAtomic(
     Product product,
