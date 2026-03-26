@@ -40,7 +40,7 @@ class _EmailVerificationRequiredScreenState
         backgroundColor: DesignTokens.transparent,
         body: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 450),
+            constraints: const BoxConstraints(maxWidth: 600),
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(DesignTokens.spacing24),
               child: Column(

@@ -43,7 +43,7 @@ class _BulkUploadScreenState extends ConsumerState<BulkUploadScreen> {
         child: Container(
           constraints: BoxConstraints(
             maxWidth: 1200,
-            minHeight: MediaQuery.of(context).size.height,
+            minHeight: MediaQuery.sizeOf(context).height,
           ),
           child: Padding(
             padding: const EdgeInsets.all(24.0),

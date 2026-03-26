@@ -535,7 +535,7 @@ class ProfileScreenLayout extends StatelessWidget {
                 ),
               ),
               Text(
-                'OrignaGTA',
+                'Origna GTA',
                 style: TextStyle(
                   fontSize: 13,
                   color: DesignTokens.textSecondary,

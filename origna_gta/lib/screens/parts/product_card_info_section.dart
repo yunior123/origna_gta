@@ -35,24 +35,28 @@ class _ProductCardInfoSection extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // Product name
-            SizedBox(
-              height: titleFontSize * 1.25 * 2 + 2,
-              child: Text(
-                name,
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: titleFontSize,
-                  height: 1.25,
-                  color: isDark ? DesignTokens.white : DesignTokens.textPrimary,
+            // Product name — Flexible prevents overflow when optional rows are present
+            Flexible(
+              child: SizedBox(
+                height: titleFontSize * 1.25 * 2 + 2,
+                child: Text(
+                  name,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: titleFontSize,
+                    height: 1.25,
+                    color: isDark
+                        ? DesignTokens.white
+                        : DesignTokens.textPrimary,
+                  ),
+                  strutStyle: StrutStyle(
+                    fontSize: titleFontSize,
+                    height: 1.25,
+                    forceStrutHeight: true,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                strutStyle: StrutStyle(
-                  fontSize: titleFontSize,
-                  height: 1.25,
-                  forceStrutHeight: true,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
               ),
             ),
             // Digital product badge

@@ -135,7 +135,7 @@ class LoginScreenLayout extends StatelessWidget {
                                   .primaryGradient
                                   .createShader(bounds),
                               child: const Text(
-                                'OrignaGta',
+                                'Origna GTA',
                                 style: TextStyle(
                                   fontSize: 40,
                                   fontWeight: FontWeight.w700,
@@ -563,7 +563,7 @@ class LoginScreenLayout extends StatelessWidget {
                                           .primaryGradient
                                           .createShader(b),
                                       child: const Text(
-                                        'OrignaGTA',
+                                        'Origna GTA',
                                         style: TextStyle(
                                           fontSize: 48,
                                           fontWeight: FontWeight.w900,

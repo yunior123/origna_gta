@@ -116,7 +116,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
           product != null &&
               !canManage &&
               !product.hasVariants &&
-              MediaQuery.of(context).size.width < ResponsiveBreakpoints.tablet
+              ResponsiveBreakpoints.isMobile(context)
           ? StickyBottomCTA(
               product: product,
               isOutOfStock: isOutOfStock,
@@ -136,8 +136,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
           final imageUrls = product.imageUrls;
           final hasVideo =
               product.videoUrl != null && product.videoUrl!.isNotEmpty;
-          final isWideScreen =
-              MediaQuery.of(context).size.width >= ResponsiveBreakpoints.tablet;
+          final isWideScreen = !ResponsiveBreakpoints.isMobile(context);
 
           Widget buildProductInfo() => _ProductInfoColumn(
             product: product,
@@ -277,7 +276,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                 automaticallyImplyLeading: false,
                 pinned: true,
                 floating: true,
-                expandedHeight: (MediaQuery.of(context).size.height * 0.40)
+                expandedHeight: (MediaQuery.sizeOf(context).height * 0.40)
                     .clamp(280.0, 420.0),
                 backgroundColor: isDark
                     ? DesignTokens.darkSurface
@@ -620,7 +619,6 @@ class _ProductInfoColumn extends StatelessWidget {
   }
 }
 
-
 // ═══ Widget Previews ═══
 
 /// Preview stub — returns false immediately, no backend calls.
@@ -786,4 +784,3 @@ Widget previewProductDetailOosLightDesktop() => previewDesktop(
   theme: previewLightTheme,
   child: _productDetailsContent(stockQuantity: 0),
 );
-

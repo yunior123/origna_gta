@@ -93,7 +93,7 @@ class SellerInfoCard extends ConsumerWidget {
                             isScrollControlled: true,
                             backgroundColor: DesignTokens.transparent,
                             builder: (context) => Container(
-                              height: MediaQuery.of(context).size.height * 0.7,
+                              height: MediaQuery.sizeOf(context).height * 0.7,
                               decoration: BoxDecoration(
                                 color: Theme.of(
                                   context,
