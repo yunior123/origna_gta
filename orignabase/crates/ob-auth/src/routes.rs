@@ -44,6 +44,8 @@ pub struct AuthState {
     pub base_url: String,
     /// Short-lived OAuth state nonce store to reject replayed callbacks.
     pub oauth_state_nonces: Arc<dashmap::DashMap<String, i64>>,
+    /// Whether test mode is enabled (disables certain security checks)
+    pub test_mode: bool,
     /// Cloudflare Turnstile secret key
     pub turnstile_secret_key: Option<String>,
     pub http_client: reqwest::Client,
@@ -166,7 +168,7 @@ fn frontend_fallback_redirect(state: &AuthState) -> String {
     let fallback = match host {
         "api.orignagta.ca" => "https://orignagta.ca",
         "api-staging.orignagta.ca" => "https://orignagta-staging.web.app",
-        "localhost" | "127.0.0.1" if std::env::var("OB_TEST_MODE").unwrap_or_default() == "1" => {
+        "localhost" | "127.0.0.1" if state.test_mode => {
             "http://localhost:5001"
         }
         _ if host.starts_with("api.") => {
@@ -288,7 +290,7 @@ pub async fn register(
         if let Some(ref secret) = state.turnstile_secret_key {
             crate::turnstile::validate_turnstile_token(token, secret).await?;
         }
-    } else if std::env::var("OB_TEST_MODE").unwrap_or_default() != "1" {
+    } else if !state.test_mode {
         // Require Turnstile token in production
         return Err(Error::Validation("Turnstile token is required".into()));
     }
@@ -387,7 +389,7 @@ pub async fn login(
         if let Some(ref secret) = state.turnstile_secret_key {
             crate::turnstile::validate_turnstile_token(token, secret).await?;
         }
-    } else if std::env::var("OB_TEST_MODE").unwrap_or_default() != "1" {
+    } else if !state.test_mode {
         // Require Turnstile token in production
         return Err(Error::Validation("Turnstile token is required".into()));
     }
@@ -806,7 +808,7 @@ pub async fn apple_sign_in(
         oauth::generate_apple_client_secret(team_id, key_id, service_id, private_key)?;
 
     let mut user_info =
-        oauth::verify_apple_auth_code(&body.authorization_code, service_id, &client_secret).await?;
+        oauth::verify_apple_auth_code(&body.authorization_code, service_id, &state.base_url, &client_secret).await?;
 
     // Apple only sends display_name on first sign-in (from client)
     if user_info.display_name.is_none() {
@@ -2781,6 +2783,7 @@ mod tests {
             totp_encryption_key: None,
             base_url: "https://example.com".into(),
             oauth_state_nonces: Arc::new(dashmap::DashMap::new()),
+            test_mode: std::env::var("OB_TEST_MODE").unwrap_or_default() == "1",
             turnstile_secret_key: None,
             http_client: reqwest::Client::new(),
         };
@@ -2813,6 +2816,7 @@ mod tests {
             totp_encryption_key: None,
             base_url: "https://api.orignagta.ca".into(),
             oauth_state_nonces: Arc::new(dashmap::DashMap::new()),
+            test_mode: std::env::var("OB_TEST_MODE").unwrap_or_default() == "1",
             turnstile_secret_key: None,
             http_client: reqwest::Client::new(),
         };

@@ -276,11 +276,11 @@ pub fn verify_token(token: &str, keys: &JwtKeys) -> Result<Claims> {
         return Ok(data.claims);
     }
 
-    // Fall back to previous keys (only for RS256)
-    for prev_key in keys.previous_decoding_keys() {
-        if let Ok(data) = decode::<Claims>(token, &prev_key, &validation) {
-            return Ok(data.claims);
-        }
+    // Fall back to only the most recent previous key (max 1) to limit exposure window
+    if let Some(prev_key) = keys.previous_decoding_keys().into_iter().next()
+        && let Ok(data) = decode::<Claims>(token, &prev_key, &validation)
+    {
+        return Ok(data.claims);
     }
 
     Err(Error::Auth("Token verification failed".into()))
@@ -326,6 +326,14 @@ pub fn generate_rsa_keys(keys_dir: &Path) -> Result<(Vec<u8>, Vec<u8>)> {
             "openssl rsa failed: {}",
             String::from_utf8_lossy(&status.stderr)
         )));
+    }
+
+    // Set restrictive permissions on private key (Unix only)
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&private_path, std::fs::Permissions::from_mode(0o600))
+            .map_err(|e| Error::Config(format!("Failed to set key permissions: {e}")))?;
     }
 
     let private_pem = std::fs::read(&private_path)

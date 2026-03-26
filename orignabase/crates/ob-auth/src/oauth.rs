@@ -976,14 +976,14 @@ pub fn generate_apple_client_secret(
 }
 
 /// Verify Apple authorization code and extract user info.
-/// Note: redirect_uri is hardcoded to https://orignagta.ca/auth/apple/callback for now.
 pub async fn verify_apple_auth_code(
     authorization_code: &str,
     service_id: &str,
+    base_url: &str,
     client_secret: &str,
 ) -> Result<OAuthUserInfo> {
     let http_client = reqwest::Client::new();
-    let redirect_uri = "https://orignagta.ca/auth/apple/callback";
+    let redirect_uri = format!("{}/auth/apple/callback", base_url.trim_end_matches('/'));
 
     // Exchange the auth_code for an ID token
     exchange_apple_authorization_code(
@@ -991,7 +991,7 @@ pub async fn verify_apple_auth_code(
         authorization_code,
         service_id,
         client_secret,
-        redirect_uri,
+        redirect_uri.as_str(),
     )
     .await
 }
