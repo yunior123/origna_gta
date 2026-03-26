@@ -5,7 +5,7 @@ pub mod state;
 pub mod tenant;
 pub mod validate;
 
-pub use config::Config;
+pub use config::{Config, Environment};
 pub use error::{Error, Result};
 pub use state::AppState;
 pub use tenant::TenantContext;

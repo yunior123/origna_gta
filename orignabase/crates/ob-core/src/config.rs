@@ -2,6 +2,55 @@ use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::Path;
 
+/// Application environment, parsed from `ENVIRONMENT` env var at startup.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Environment {
+    Development,
+    Staging,
+    Production,
+}
+
+impl Environment {
+    /// Parse from the `ENVIRONMENT` env var. Defaults to Development if unset.
+    pub fn from_env() -> Self {
+        match std::env::var("ENVIRONMENT")
+            .unwrap_or_default()
+            .to_lowercase()
+            .as_str()
+        {
+            "production" | "prod" => Self::Production,
+            "staging" => Self::Staging,
+            _ => Self::Development,
+        }
+    }
+
+    pub fn is_production(&self) -> bool {
+        matches!(self, Self::Production)
+    }
+
+    pub fn is_dev(&self) -> bool {
+        matches!(self, Self::Development)
+    }
+
+    pub fn is_staging(&self) -> bool {
+        matches!(self, Self::Staging)
+    }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Development => "development",
+            Self::Staging => "staging",
+            Self::Production => "production",
+        }
+    }
+}
+
+impl std::fmt::Display for Environment {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct Config {
     #[serde(default = "default_host")]
