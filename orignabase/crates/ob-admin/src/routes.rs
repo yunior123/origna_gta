@@ -177,8 +177,21 @@ async fn analytics_summary(State(state): State<AdminState>) -> Result<Json<Value
 }
 
 /// GET /_admin/ — Serve the admin dashboard SPA.
-async fn dashboard() -> Html<&'static str> {
-    Html(DASHBOARD_HTML)
+async fn dashboard() -> Html<String> {
+    let env = std::env::var("ENVIRONMENT").unwrap_or_else(|_| "development".to_string());
+    let (badge_color, badge_text) = match env.as_str() {
+        "production" | "prod" => ("#ef4444", "PRODUCTION"),
+        "staging" => ("#f59e0b", "STAGING"),
+        _ => ("#22c55e", "DEV"),
+    };
+    
+    let badge_html = format!(
+        r#"<div style="position:fixed;top:8px;right:8px;background:{};color:white;padding:6px 14px;border-radius:4px;font-size:12px;font-weight:bold;z-index:9999;font-family:monospace;letter-spacing:0.5px;box-shadow:0 2px 8px rgba(0,0,0,0.3)">{}</div>"#,
+        badge_color, badge_text
+    );
+    
+    let html = DASHBOARD_HTML.replace("</body>", &format!("{}</body>", badge_html));
+    Html(html)
 }
 /// Helper function to check if IP is localhost.
 fn is_localhost(ip: &str) -> bool {
