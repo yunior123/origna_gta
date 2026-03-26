@@ -156,14 +156,14 @@ fn normalize_document_for_indexing(document_id: &str, data: &Value) -> Value {
             }
             safe_doc.insert("id".to_string(), Value::String(search_id));
             safe_doc.insert(
-                "record_id".to_string(),
+                "origId".to_string(),
                 Value::String(document_id.to_string()),
             );
             Value::Object(safe_doc)
         }
         _ => json!({
             "id": search_id,
-            "record_id": document_id,
+            "origId": document_id,
             "value": data,
         }),
     }
@@ -232,13 +232,13 @@ mod tests {
     }
 
     #[test]
-    fn test_normalize_document_for_indexing_preserves_record_id() {
+    fn test_normalize_document_for_indexing_preserves_orig_id() {
         let normalized = normalize_document_for_indexing(
             "products:abc123",
             &serde_json::json!({"id": "products:abc123", "name": "Widget"}),
         );
         assert_eq!(normalized["id"], "products_abc123");
-        assert_eq!(normalized["record_id"], "products:abc123");
+        assert_eq!(normalized["origId"], "products:abc123");
         assert_eq!(normalized["name"], "Widget");
     }
 
@@ -286,7 +286,7 @@ mod tests {
     fn test_normalize_document_with_null_data() {
         let normalized = normalize_document_for_indexing("doc_1", &Value::Null);
         assert_eq!(normalized["id"], "doc_1");
-        assert_eq!(normalized["record_id"], "doc_1");
+        assert_eq!(normalized["origId"], "doc_1");
         assert_eq!(normalized["value"], Value::Null);
     }
 
@@ -297,7 +297,7 @@ mod tests {
             &Value::String("hello".to_string()),
         );
         assert_eq!(normalized["id"], "doc_2");
-        assert_eq!(normalized["record_id"], "doc_2");
+        assert_eq!(normalized["origId"], "doc_2");
         assert_eq!(normalized["value"], "hello");
     }
 
@@ -338,7 +338,7 @@ mod tests {
         });
         let normalized = normalize_document_for_indexing("prod:1", &data);
         assert_eq!(normalized["id"], "prod_1");
-        assert_eq!(normalized["record_id"], "prod:1");
+        assert_eq!(normalized["origId"], "prod:1");
         assert_eq!(normalized["name"], "Widget");
         assert_eq!(normalized["priceCents"], 999);
         assert_eq!(normalized["keywords"].as_array().unwrap().len(), 2);
@@ -353,7 +353,7 @@ mod tests {
         let data = serde_json::json!({"id": "old_id", "name": "Test"});
         let normalized = normalize_document_for_indexing("new:id", &data);
         assert_eq!(normalized["id"], "new_id");
-        assert_eq!(normalized["record_id"], "new:id");
+        assert_eq!(normalized["origId"], "new:id");
     }
 
     #[test]

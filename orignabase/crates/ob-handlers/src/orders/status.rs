@@ -483,7 +483,7 @@ async fn update_order_status(
         .map(|s| sanitize_html(s).chars().take(50).collect::<String>());
 
     let new_status = parse_order_status(&req.new_status).ok_or_else(|| {
-        ob_core::Error::Validation(format!("Invalid order status: {}", req.new_status))
+        ob_core::Error::Validation("Invalid order status provided".into())
     })?;
 
     // Fetch order

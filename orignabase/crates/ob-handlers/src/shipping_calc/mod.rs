@@ -321,6 +321,8 @@ fn calculate_fallback_itemized(
 
     let multiplier_bp: i64 = if speed == "express" {
         EXPRESS_REGIONAL_BP
+    } else if speed == "same_day" {
+        SAME_DAY_HYPER_LOCAL_BP
     } else {
         100
     };
@@ -417,7 +419,11 @@ async fn calculate_shipping(
     // Group items by seller
     let mut by_seller: HashMap<String, Vec<&ShippingItem>> = HashMap::new();
     for item in &req.items {
-        let sid = item.seller_id.as_deref().unwrap_or("unknown").to_string();
+        let sid = item.seller_id.as_deref()
+            .ok_or_else(|| ob_core::Error::Validation(
+                "All items must have a valid seller ID for shipping calculation".into()
+            ))?
+            .to_string();
         by_seller.entry(sid).or_default().push(item);
     }
 

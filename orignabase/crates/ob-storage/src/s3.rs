@@ -10,7 +10,7 @@ use ob_core::{Error, Result};
 use crate::{ObjectMeta, StorageBackend};
 
 /// Configuration for S3-compatible storage (AWS S3, Cloudflare R2, MinIO).
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct S3Config {
     pub bucket: String,
     pub region: String,
@@ -18,6 +18,19 @@ pub struct S3Config {
     pub access_key: String,
     pub secret_key: String,
 }
+
+impl std::fmt::Debug for S3Config {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("S3Config")
+            .field("bucket", &self.bucket)
+            .field("region", &self.region)
+            .field("endpoint", &self.endpoint)
+            .field("access_key", &self.access_key)
+            .field("secret_key", &"[REDACTED]")
+            .finish()
+    }
+}
+
 
 impl S3Config {
     /// Create from environment variables (OB_STORAGE__*).
@@ -417,7 +430,9 @@ mod tests {
         assert!(debug_str.contains("access_key"));
         assert!(debug_str.contains("secret_key"));
         assert!(debug_str.contains("ak"));
-        assert!(debug_str.contains("sk"));
+        // Secret key should be redacted for security
+        assert!(debug_str.contains("[REDACTED]"));
+        assert!(!debug_str.contains("sk"));
     }
 
     #[test]
