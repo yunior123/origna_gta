@@ -568,7 +568,7 @@ async fn create_profile(
                 fields::NAME: name,
                 fields::ROLES: roles,
                 fields::CREATED_AT: now,
-                "preferredLanguage": lang,
+                fields::LANGUAGE: lang,
                 // Legal compliance (CASL / PIPEDA / Law 25)
                 "dataProcessingConsent": true,
                 fields::EMAIL_CONSENT: true,
@@ -748,7 +748,7 @@ async fn update_buyer_address(
             &req.address_id,
             json!({
                 "label": req.label.as_deref().unwrap_or(""),
-                "isDefault": req.is_default,
+                fields::IS_DEFAULT: req.is_default,
                 "address": address,
                 fields::UPDATED_AT: now,
             }),
@@ -804,7 +804,7 @@ async fn delete_buyer_address(
                 .update_document(
                     collections::ADDRESSES,
                     next_id,
-                    json!({ "isDefault": true, fields::UPDATED_AT: Utc::now().to_rfc3339() }),
+                    json!({ fields::IS_DEFAULT: true, fields::UPDATED_AT: Utc::now().to_rfc3339() }),
                 )
                 .await;
         }
@@ -850,7 +850,7 @@ async fn set_default_buyer_address(
             collections::ADDRESSES,
             &req.address_id,
             json!({
-                "isDefault": true,
+                fields::IS_DEFAULT: true,
                 fields::UPDATED_AT: now,
             }),
         )

@@ -98,6 +98,17 @@ pub struct SubscriptionNotificationPrefsRequest {
 const PREMIUM_PRICE_CENTS: i64 = (business_rules::PREMIUM_SUBSCRIPTION_PRICE_CAD * 100.0) as i64;
 
 // ---------------------------------------------------------------------------
+
+// =============================================================================
+// Abuse Prevention Constants
+// =============================================================================
+
+/// Hours before subscription shipping benefits activate
+const SUBSCRIPTION_BENEFITS_DELAY_HOURS: i64 = 48;
+/// Maximum early cancellations before blocking new subscriptions
+const MAX_EARLY_CANCELS: i64 = 3;
+/// Days threshold for "early" cancellation
+const EARLY_CANCEL_DAYS: i64 = 7;
 // Router
 // ---------------------------------------------------------------------------
 
@@ -185,6 +196,7 @@ async fn ensure_customer(
 
     // Store on user
     let now = chrono::Utc::now().to_rfc3339();
+    
     state
         .db
         .update_document(
@@ -269,6 +281,29 @@ async fn create_subscription(
         60,
     )
     .await?;
+
+    // Check for early cancellation abuse pattern
+    let abuse_check_sql = format!(
+        "SELECT {} FROM {} WHERE id = $uid",
+        fields::EARLY_CANCEL_COUNT,
+        collections::USERS
+    );
+    let abuse_results = state.db.query_bind(
+        &abuse_check_sql,
+        serde_json::json!({ "uid": format!("{}:{}", collections::USERS, &user_id) }),
+    ).await.unwrap_or_default();
+
+    let early_cancel_count = abuse_results
+        .first()
+        .and_then(|row| row.get(fields::EARLY_CANCEL_COUNT))
+        .and_then(|v| v.as_i64())
+        .unwrap_or(0);
+
+    if early_cancel_count >= MAX_EARLY_CANCELS {
+        return Err(ob_core::Error::Validation(
+            "Too many short-term subscriptions. Please contact support@orignagta.ca.".into()
+        ));
+    }
 
     // Check for existing active subscription (fast-path before Stripe call)
     let existing_sql = format!(
@@ -378,8 +413,8 @@ async fn create_subscription(
                 collections::USERS,
                 &user_id,
                 json!({
-                    "lastCheckoutSession": checkout_url,
-                    "lastCheckoutTimestamp": now,
+                    fields::LAST_CHECKOUT_SESSION: checkout_url,
+                    fields::LAST_CHECKOUT_TIMESTAMP: now,
                     fields::UPDATED_AT: now,
                 }),
             )
@@ -480,6 +515,8 @@ async fn create_subscription(
     // If two concurrent requests both passed the pre-check above, only one CREATE wins;
     // the loser gets an empty result and must cancel the Stripe subscription it just created.
     let now = chrono::Utc::now().to_rfc3339();
+    let now_ts = chrono::Utc::now().timestamp();
+    let benefits_active_ts = now_ts + (SUBSCRIPTION_BENEFITS_DELAY_HOURS * 3600);
     let raw_user_id = user_id.strip_prefix("users:").unwrap_or(&user_id);
     let sub_status_value = if sub_status == SubscriptionStatus::Active.as_str() {
         SubscriptionStatus::Active.as_str()
@@ -492,7 +529,8 @@ async fn create_subscription(
         fields::STATUS: sub_status_value,
         fields::SUBSCRIPTION_STATUS: sub_status_value,
         fields::CURRENT_PERIOD_END: period_end,
-        "cancelAtPeriodEnd": false,
+        fields::CANCEL_AT_PERIOD_END: false,
+        fields::BENEFITS_ACTIVE_AT: benefits_active_ts,
         fields::CREATED_AT: now,
         fields::UPDATED_AT: now,
     });
@@ -615,7 +653,39 @@ async fn cancel_subscription(
         ));
     }
 
-    // Update DB — cancel_pending, NOT cancelled. User paid for the full period.
+
+    // Check if this is an early cancellation (within EARLY_CANCEL_DAYS of creation)
+    let sub_created_at = sub_doc
+        .get(fields::CREATED_AT)
+        .and_then(|v| v.as_str())
+        .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
+        .map(|dt| dt.timestamp())
+        .unwrap_or(0);
+    
+    let now_ts = chrono::Utc::now().timestamp();
+    let days_active = (now_ts - sub_created_at) / 86400;
+
+    if days_active < EARLY_CANCEL_DAYS {
+        tracing::warn!(
+            user_id = %user_id,
+            subscription_id = %stripe_sub_id,
+            days_active = days_active,
+            "subscription_early_cancel_pattern"
+        );
+        // Increment early_cancel_count on user
+        let _ = state.db.query_bind(
+            &format!("UPDATE {}:{} SET {} += 1", collections::USERS, &user_id, fields::EARLY_CANCEL_COUNT),
+            serde_json::json!({}),
+        ).await;
+    }
+
+    // Get the period end timestamp from Stripe response (already have this from sub_doc)
+    let period_end = sub_doc
+        .get(fields::CURRENT_PERIOD_END)
+        .and_then(|v| v.as_i64())
+        .unwrap_or(now_ts);
+
+        // Update DB — cancel_pending, NOT cancelled. User paid for the full period.
     let now = chrono::Utc::now().to_rfc3339();
     let raw_user_id = user_id.strip_prefix("users:").unwrap_or(&user_id);
     let _ = state
@@ -626,8 +696,9 @@ async fn cancel_subscription(
             serde_json::json!({
                 fields::STATUS: SubscriptionStatus::CancelPending.as_str(),
                 fields::SUBSCRIPTION_STATUS: SubscriptionStatus::CancelPending.as_str(),
-                "cancelAtPeriodEnd": true,
+                fields::CANCEL_AT_PERIOD_END: true,
                 "cancelledAt": now,
+                fields::CANCELS_AT: period_end,
                 fields::UPDATED_AT: now,
             }),
         )
@@ -792,7 +863,7 @@ async fn reactivate_subscription(
             serde_json::json!({
                 fields::STATUS: SubscriptionStatus::Active.as_str(),
                 fields::SUBSCRIPTION_STATUS: SubscriptionStatus::Active.as_str(),
-                "cancelAtPeriodEnd": false,
+                fields::CANCEL_AT_PERIOD_END: false,
                 fields::UPDATED_AT: now,
             }),
         )
@@ -1012,7 +1083,7 @@ async fn handle_subscription_updated(
                 fields::STATUS: status,
                 fields::SUBSCRIPTION_STATUS: status,
                 fields::CURRENT_PERIOD_END: current_period_end,
-                "cancelAtPeriodEnd": cancel_at_period_end,
+                fields::CANCEL_AT_PERIOD_END: cancel_at_period_end,
                 fields::UPDATED_AT: now,
             }),
         )
@@ -1152,6 +1223,44 @@ async fn handle_invoice_payment_failed(
 
     info!(user_id = %uid, "Webhook: invoice payment failed, status set to past_due");
     Ok(())
+}
+
+
+// ---------------------------------------------------------------------------
+// Helper Functions (exported)
+// ---------------------------------------------------------------------------
+
+/// Check if a user's subscription benefits are active.
+/// Benefits require: active subscription AND benefits delay has passed (48h).
+pub async fn is_subscription_benefits_active(
+    state: &HandlersState,
+    user_id: &str,
+) -> bool {
+    let results = state.db.query_bind(
+        &format!(
+            "SELECT {}, {} FROM {} WHERE {} = $uid AND ({} = '{}' OR {} = '{}') LIMIT 1",
+            fields::BENEFITS_ACTIVE_AT,
+            fields::STATUS,
+            collections::SUBSCRIPTIONS,
+            fields::BUYER_ID,
+            fields::STATUS,
+            SubscriptionStatus::Active.as_str(),
+            fields::SUBSCRIPTION_STATUS,
+            SubscriptionStatus::Active.as_str(),
+        ),
+        serde_json::json!({ "uid": user_id }),
+    ).await.unwrap_or_default();
+
+    if let Some(sub) = results.first() {
+        let benefits_at = sub
+            .get(fields::BENEFITS_ACTIVE_AT)
+            .and_then(|v| v.as_i64())
+            .unwrap_or(i64::MAX);
+        let now = chrono::Utc::now().timestamp();
+        now >= benefits_at
+    } else {
+        false
+    }
 }
 
 // ---------------------------------------------------------------------------
