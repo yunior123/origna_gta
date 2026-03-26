@@ -1054,7 +1054,7 @@ _Note: Preview/mascot files are dev-only widgets, lower priority than production
 - [x] **[CRITICAL] [resolvers.rs:150-195]** config/config_all no auth — VERIFIED FALSE POSITIVE: auth required, config_all requires admin ✅
 - [x] **[CRITICAL] [main.rs:1195 vs 1267]** GraphQL body limit — VERIFIED FALSE POSITIVE: both layers enforce 2MB ✅
 - [x] **[CRITICAL] [resolvers.rs:683-754]** batch ops unbounded — VERIFIED FALSE POSITIVE: 500 item limit enforced ✅
-- [ ] **[WARNING] [resolvers.rs:122]** `list` limit capped at 10,000 — mass data exfiltration per query.
+- [x] **[WARNING] [resolvers.rs:122]** list limit 10,000 — FIXED: capped at 100 ✅
 - [x] **[WARNING] [resolvers.rs:237]** vector_search top_k — VERIFIED FALSE POSITIVE: clamped to 1-100 ✅
 - [x] **[WARNING] [resolvers.rs:294]** Meilisearch filter injection — FIXED: dangerous keyword rejection ✅
 - [x] **[WARNING] [resolvers.rs:778]** batch_update — VERIFIED FALSE POSITIVE: 500 item limit enforced ✅
@@ -1085,9 +1085,9 @@ _Note: Preview/mascot files are dev-only widgets, lower priority than production
 - [x] **[CRITICAL] [routes.rs:34-38]** OB_TEST_MODE bypasses — VERIFIED FALSE POSITIVE: no OB_TEST_MODE in storage routes ✅
 - [x] **[CRITICAL] [routes.rs:263-266]** OB_TEST_MODE bypasses auth — VERIFIED FALSE POSITIVE: same as above ✅
 - [x] **[WARNING] [routes.rs:393-398]** Storage TTL unbounded — FIXED: clamped to 60s-86400s (max 24h) ✅
-- [ ] **[WARNING] [main.rs:1011]** Storage signing secret == JWT auth secret — key reuse.
+- [x] **[WARNING] [main.rs:1011]** Storage key reuse — FIXED: separate storage signing key derived from JWT secret ✅
 - [x] **[WARNING] [local.rs:20-32]** Path traversal — FIXED: canonicalize() verification + symlink detection ✅
-- [ ] **[WARNING] [routes.rs:25-28]** Resumable upload ceiling 5GB, 10x regular uploads — 500GB disk metadata attack.
+- [x] **[WARNING] [routes.rs:25-28]** Resumable upload 5GB — FIXED: reduced to 500MB ✅
 - [x] **[WARNING] [resumable.rs:155]** Empty-owner bypass — FIXED: reject empty owner with auth error ✅
 - [x] **[INFO]** S3Config Debug — Codex agent fixing: custom Debug impl with [REDACTED] ✅
 - [x] **[INFO]** Pixel-budget image decode — ACCEPTED: 500MB upload limit + Cloudflare WAF limits payload size ✅
@@ -1101,10 +1101,10 @@ _Note: Preview/mascot files are dev-only widgets, lower priority than production
 - [x] **[CRITICAL] [mod.rs:390-392]** Geoapify distance 0.0 — FIXED: added tracing::warn on zero distance for monitoring ✅
 - [x] **[WARNING] [mod.rs:405]** buyer_province defaults to "ON" — FIXED: returns validation error ✅
 - [x] **[WARNING] [mod.rs:477]** seller_province defaults to "ON" — FIXED: returns validation error ✅
-- [ ] **[WARNING] [mod.rs:319-323]** `same_day` speed not handled in fallback calculation — latent bug if guard removed.
+- [x] **[WARNING] [mod.rs:319-323]** same_day fallback — FIXED: added same_day handling in fallback calc ✅
 - [x] **[WARNING] [mod.rs:588-595]** Free shipping global — ACCEPTED: current business rule is global threshold, per-seller is future enhancement ✅
 - [x] **[WARNING] [mod.rs:591]** FREE_SHIPPING_THRESHOLD hardcoded — FIXED: uses shared business_rules constant ✅
-- [ ] **[WARNING] [mod.rs:412]** Items with no `seller_id` bucketed under `"unknown"` — merges sellers silently.
+- [x] **[WARNING] [mod.rs:412]** Unknown seller_id — FIXED: returns validation error instead of silent bucketing ✅
 - [x] **[WARNING] [mod.rs:494]** perishable_surcharge dead code — FIXED: removed ✅
 - [x] **[WARNING]** 24h delivery deadline — ACCEPTED: enforcement via Stripe webhook + order status transitions, timezone is future enhancement ✅
 
@@ -1115,7 +1115,7 @@ _Note: Preview/mascot files are dev-only widgets, lower priority than production
 - [x] **[CRITICAL] [routes.rs:150-162]** OB_TEST_MODE admin bypass — FIXED: requires localhost OR admin role in test mode. 5 tests added ✅
 - [x] **[WARNING] [routes.rs:377-385]** redirect_link SQL injection — FIXED: parameterized query_bind with $slug ✅
 - [x] **[WARNING] [routes.rs:73-78]** list_users PII leak — FIXED: removed email from SELECT ✅
-- [ ] **[WARNING] [routes.rs:608-629]** `usage_dashboard` interpolates DB-sourced table names — second-order injection.
+- [x] **[WARNING] [routes.rs:608-629]** usage_dashboard injection — FIXED: table name whitelist validation ✅
 - [x] **[WARNING] [routes.rs:733-758]** rotate_jwt_keys no audit — FIXED: audit log + tracing::warn added ✅
 - [x] **[WARNING] [routes.rs:82-106]** delete_user no audit — FIXED: audit log + tracing::warn added ✅
 - [ ] **[INFO]** Both `/admin/*` and `/_admin/*` prefixes registered — doubles attack surface.
@@ -1126,9 +1126,9 @@ _Note: Preview/mascot files are dev-only widgets, lower priority than production
 
 - [x] **[CRITICAL] [main.rs:844-856]** PII sync — VERIFIED FALSE POSITIVE: SAFE_SEARCH_FIELDS whitelist approach ✅
 - [x] **[CRITICAL] [sync.rs:91-108]** PII indexing — VERIFIED FALSE POSITIVE: whitelist filters fields ✅
-- [ ] **[WARNING] [sync.rs:96-100]** Original ID stored as `record_id` but docs specify `origId` — contract mismatch.
-- [ ] **[WARNING] [client.rs:98-105]** Full Meilisearch error body logged — potential document fragments in logs.
-- [ ] **[WARNING] [status.rs:486]** User-supplied `new_status` reflected in error response — input reflection.
+- [x] **[WARNING] [sync.rs:96-100]** origId mismatch — FIXED: field renamed to origId ✅
+- [x] **[WARNING] [client.rs:98-105]** Meilisearch error body — FIXED: truncated to 200 chars in logs ✅
+- [x] **[WARNING] [status.rs:486]** Input reflection — FIXED: generic error message instead of echoing user input ✅
 - [x] **[WARNING] [sync.rs:39-75]** Sync no retry — FIXED: 3-attempt exponential backoff with error logging ✅
 - [x] **[WARNING] [config.rs:72]** snake_case mismatch — FIXED: changed to camelCase ✅
 
