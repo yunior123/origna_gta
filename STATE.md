@@ -1037,8 +1037,8 @@ _Note: Preview/mascot files are dev-only widgets, lower priority than production
 
 ### JWT Auth (ob-auth) — 3 P1, 3 P2, 2 P3
 
-- [ ] **[P1] [routes.rs:505-559]** No token revocation — DEFERRED: requires new `_revoked_tokens` collection + middleware. Risk mitigated by 15min access token TTL.
-- [ ] **[P1] [routes.rs:554]** Non-atomic refresh rotation — DEFERRED: requires redesign of refresh flow. Risk mitigated by JWT unbounded-key fix (Wave 1).
+- [x] **[P1] [routes.rs:505-559]** Token revocation — FIXED: POST /auth/logout + _revoked_tokens collection + is_token_revoked() middleware check ✅
+- [x] **[P1] [routes.rs:554]** Non-atomic refresh rotation — FIXED: old token revoked atomically when new one issued ✅
 - [x] **[P1] [jwt.rs:280-283]** Unbounded old-key acceptance — FIXED: limited to 1 most recent previous key ✅
 - [x] **[P2] [routes.rs:287-293]** Turnstile silently skipped — FIXED: returns error when secret not configured in non-test mode ✅
 - [x] **[P2] [routes.rs:1710]** Admin list_users injection — FIXED: parameterized query + limit clamped 1-100 ✅
