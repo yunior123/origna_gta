@@ -1041,7 +1041,7 @@ _Note: Preview/mascot files are dev-only widgets, lower priority than production
 - [ ] **[P1] [routes.rs:554]** Non-atomic refresh token rotation — old and new refresh tokens both valid simultaneously. Replay attack possible.
 - [x] **[P1] [jwt.rs:280-283]** Unbounded old-key acceptance — FIXED: limited to 1 most recent previous key ✅
 - [x] **[P2] [routes.rs:287-293]** Turnstile silently skipped — FIXED: returns error when secret not configured in non-test mode ✅
-- [ ] **[P2] [routes.rs:1710]** Raw string interpolation for `limit`/`offset` in admin users list query — possible SurrealQL injection.
+- [x] **[P2] [routes.rs:1710]** Admin list_users injection — FIXED: parameterized query + limit clamped 1-100 ✅
 - [x] **[P2] [oauth.rs:979]** Apple redirect URI hardcoded — FIXED: uses dynamic `state.base_url` like Google OAuth ✅
 - [x] **[P3] [jwt.rs:291-336]** Private key file permissions — FIXED: chmod 600 after generation ✅
 - [x] **[P3] [routes.rs:291,390]** OB_TEST_MODE per-request — FIXED: cached in AuthState.test_mode at startup ✅
@@ -1056,7 +1056,7 @@ _Note: Preview/mascot files are dev-only widgets, lower priority than production
 - [x] **[CRITICAL] [resolvers.rs:683-754]** batch ops unbounded — VERIFIED FALSE POSITIVE: 500 item limit enforced ✅
 - [ ] **[WARNING] [resolvers.rs:122]** `list` limit capped at 10,000 — mass data exfiltration per query.
 - [x] **[WARNING] [resolvers.rs:237]** vector_search top_k — VERIFIED FALSE POSITIVE: clamped to 1-100 ✅
-- [ ] **[WARNING] [resolvers.rs:294]** Meilisearch `filter` param passed unsanitized — filter injection.
+- [x] **[WARNING] [resolvers.rs:294]** Meilisearch filter injection — FIXED: dangerous keyword rejection ✅
 - [ ] **[WARNING] [resolvers.rs:778]** `batch_update` update_list unbounded — same N+1 as batch_delete.
 - [x] **[WARNING] [schema.rs:21]** Introspection — VERIFIED FALSE POSITIVE: disabled by default via OB_ENABLE_INTROSPECTION env ✅
 - [ ] **[INFO]** GraphiQL UI served in production at GET /graphql.
@@ -1070,10 +1070,10 @@ _Note: Preview/mascot files are dev-only widgets, lower priority than production
 - [x] **[CRITICAL] [dispatcher.rs:32]** Dispatcher per-user auth — FIXED: `filter_by_ownership()` filters subscribers by document ownership (buyerId/sellerId/userId) per collection. 8 tests added ✅
 - [x] **[WARNING] [websocket.rs:177]** No collection allowlist — FIXED: ALLOWED_COLLECTIONS whitelist enforced ✅
 - [x] **[WARNING] [websocket.rs:175]** No message size limit — FIXED: 64KB MAX_WS_MESSAGE_SIZE enforced ✅
-- [ ] **[WARNING] [websocket.rs:144-154]** Slow-consumer bridge stalls indefinitely — no timeout.
+- [x] **[WARNING] [websocket.rs:144-154]** Slow-consumer timeout — FIXED: 5s tokio::time::timeout on bridge send ✅
 - [x] **[WARNING] [websocket.rs:16]** No per-user connection limit — FIXED: MAX_CONNECTIONS_PER_USER = 5 ✅
 - [ ] **[WARNING] [websocket.rs:27-30]** JWT in `?token=` query param captured in access logs — token harvesting.
-- [ ] **[WARNING] [websocket.rs:213]** Presence metadata unbounded client-supplied JSON.
+- [x] **[WARNING] [websocket.rs:213]** Presence metadata unbounded — FIXED: 4KB size cap ✅
 - [ ] **[WARNING] [cluster.rs:163]** NATS cluster events carry no authentication — forged events injectable.
 - [ ] **[INFO]** No idle connection timeout.
 - [ ] **[INFO]** Dispatcher channel silently drops events under burst for orders collection.
@@ -1084,11 +1084,11 @@ _Note: Preview/mascot files are dev-only widgets, lower priority than production
 - [x] **[CRITICAL] [routes.rs:262-273]** Storage privilege escalation — VERIFIED FALSE POSITIVE: `can_user_write_path()` enforces ownership ✅
 - [x] **[CRITICAL] [routes.rs:34-38]** OB_TEST_MODE bypasses — VERIFIED FALSE POSITIVE: no OB_TEST_MODE in storage routes ✅
 - [x] **[CRITICAL] [routes.rs:263-266]** OB_TEST_MODE bypasses auth — VERIFIED FALSE POSITIVE: same as above ✅
-- [ ] **[WARNING] [routes.rs:393-398]** `ttl_secs` caller-controlled with no upper bound — signed URLs valid for years.
+- [x] **[WARNING] [routes.rs:393-398]** Storage TTL unbounded — FIXED: clamped to 60s-86400s (max 24h) ✅
 - [ ] **[WARNING] [main.rs:1011]** Storage signing secret == JWT auth secret — key reuse.
-- [ ] **[WARNING] [local.rs:20-32]** Path traversal sanitization uses string manipulation, not OS canonicalization.
+- [x] **[WARNING] [local.rs:20-32]** Path traversal — FIXED: canonicalize() verification + symlink detection ✅
 - [ ] **[WARNING] [routes.rs:25-28]** Resumable upload ceiling 5GB, 10x regular uploads — 500GB disk metadata attack.
-- [ ] **[WARNING] [resumable.rs:155]** Empty-owner sessions bypass ownership enforcement.
+- [x] **[WARNING] [resumable.rs:155]** Empty-owner bypass — FIXED: reject empty owner with auth error ✅
 - [ ] **[INFO]** `S3Config` derives `Debug` → secret_key prints in tracing.
 - [ ] **[INFO]** No pixel-budget check before image decode — multi-GB allocation via crafted PNG.
 - [ ] **[INFO]** Empty HMAC secret accepted silently.
