@@ -73,6 +73,8 @@ import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/env_config.dart';
 import 'package:origna_gta/widgets/env_preview_banner.dart';
+import 'package:origna_gta/services/app_update_service.dart';
+import 'package:origna_gta/widgets/update_required_dialog.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
 /// Handle initial route from URL (critical for web redirects from Stripe)
@@ -965,6 +967,20 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
   @override
   void initState() {
     super.initState();
+
+    // Check for required app updates (mobile/tablet only)
+    if (!kIsWeb) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        final minVersion = await AppUpdateService.checkForUpdate();
+        if (minVersion != null && mounted) {
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (_) => UpdateRequiredDialog(minVersion: minVersion),
+          );
+        }
+      });
+    }
 
     // Initialize Push Notifications after first frame to avoid ProviderScope.containerOf error in initState
     if (!kIsWeb) {
