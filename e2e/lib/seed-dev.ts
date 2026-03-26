@@ -141,6 +141,468 @@ function sellerAddress(label: string, country = 'Canada') {
     city: country === 'Canada' ? 'Toronto' : 'Shanghai',
     state: country === 'Canada' ? 'ON' : 'SH',
     postalCode: country === 'Canada' ? 'M5V 3A8' : '200001',
+// ════════════════════════════════════════════════════════════════════
+// SYNTHETIC USER GENERATION — CANADIAN NAMES + ADDRESSES
+// ════════════════════════════════════════════════════════════════════
+
+const CANADIAN_FIRST_NAMES_EN = [
+  'James', 'John', 'Robert', 'Michael', 'William', 'David', 'Richard', 'Joseph', 'Thomas', 'Christopher',
+  'Daniel', 'Matthew', 'Anthony', 'Donald', 'Steven', 'Paul', 'Andrew', 'Joshua', 'Kenneth', 'Kevin',
+  'Brian', 'George', 'Edward', 'Ronald', 'Timothy', 'Jason', 'Jeffrey', 'Ryan', 'Jacob', 'Gary',
+  'Sarah', 'Mary', 'Patricia', 'Jennifer', 'Linda', 'Barbara', 'Elizabeth', 'Susan', 'Jessica', 'Karen',
+  'Nancy', 'Lisa', 'Betty', 'Margaret', 'Sandra', 'Ashley', 'Kimberly', 'Emily', 'Donna', 'Michelle',
+  'Dorothy', 'Carol', 'Amanda', 'Melissa', 'Deborah', 'Stephanie', 'Rebecca', 'Sharon', 'Laura', 'Cynthia',
+];
+
+const CANADIAN_FIRST_NAMES_FR = [
+  'Jean', 'Pierre', 'Marc', 'Alain', 'André', 'Paul', 'François', 'Michel', 'Georges', 'Luc',
+  'Philippe', 'Christian', 'Claude', 'Serge', 'Gérard', 'Patrick', 'Daniel', 'Yves', 'Olivier', 'Laurent',
+  'Marie', 'Cécile', 'Sylvie', 'Michèle', 'Christine', 'Chantal', 'Francine', 'Nicole', 'Rolande', 'Josée',
+  'Danielle', 'Jacqueline', 'Hélène', 'Mariane', 'Pauline', 'Géraldine', 'Béatrice', 'Thérèse', 'Suzanne', 'Monique',
+];
+
+const CANADIAN_LAST_NAMES_EN = [
+  'Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez',
+  'Hernandez', 'Lopez', 'Gonzalez', 'Wilson', 'Anderson', 'Thomas', 'Taylor', 'Moore', 'Jackson', 'Martin',
+  'Lee', 'White', 'Harris', 'King', 'Scott', 'Green', 'Hall', 'Young', 'Hernandez', 'Wood',
+];
+
+const CANADIAN_LAST_NAMES_FR = [
+  'Dupont', 'Durand', 'Leclerc', 'Boucher', 'Gagnon', 'Côté', 'Gosselin', 'Beaumont', 'Delisle', 'Dion',
+  'Fontaine', 'Gauthier', 'Giroux', 'Godin', 'Gravel', 'Grise', 'Grondines', 'Guérard', 'Guiel', 'Guimond',
+  'Gujay', 'Guitard', 'Guimond', 'Labelle', 'Labonté', 'Laborde', 'Labrecque', 'Lacasse', 'Lacerne', 'Lachance',
+];
+
+const CANADIAN_CITIES = [
+  { city: 'Toronto', province: 'ON', postalPrefix: 'M' },
+  { city: 'Montreal', province: 'QC', postalPrefix: 'H' },
+  { city: 'Vancouver', province: 'BC', postalPrefix: 'V' },
+  { city: 'Calgary', province: 'AB', postalPrefix: 'T' },
+  { city: 'Ottawa', province: 'ON', postalPrefix: 'K' },
+  { city: 'Edmonton', province: 'AB', postalPrefix: 'T' },
+  { city: 'Winnipeg', province: 'MB', postalPrefix: 'R' },
+  { city: 'Quebec City', province: 'QC', postalPrefix: 'G' },
+  { city: 'Hamilton', province: 'ON', postalPrefix: 'L' },
+  { city: 'Kitchener', province: 'ON', postalPrefix: 'N' },
+  { city: 'London', province: 'ON', postalPrefix: 'N' },
+  { city: 'Halifax', province: 'NS', postalPrefix: 'B' },
+  { city: 'Victoria', province: 'BC', postalPrefix: 'V' },
+  { city: 'Saskatoon', province: 'SK', postalPrefix: 'S' },
+  { city: 'Mississauga', province: 'ON', postalPrefix: 'L' },
+];
+
+function generateCanadianPostalCode(seed: number, postalPrefix: string): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  const rng = (seed * 9301 + 49297) % 233280; // Simple LCG
+  const digit1 = String(Math.abs(rng) % 10);
+  const letter1 = chars[Math.abs(rng * 17) % chars.length];
+  const digit2 = String(Math.abs(rng * 19) % 10);
+  const space = ' ';
+  const digit3 = String(Math.abs(rng * 23) % 10);
+  const letter2 = chars[Math.abs(rng * 29) % chars.length];
+  const digit4 = String(Math.abs(rng * 31) % 10);
+  return `${postalPrefix}${digit1}${letter1} ${digit2}${letter2}${digit4}`;
+}
+
+function generateCanadianAddress(seed: number) {
+  const cityData = CANADIAN_CITIES[seed % CANADIAN_CITIES.length];
+  const streetNum = 100 + (seed * 17) % 9900;
+  const streetNames = ['Main', 'Oak', 'Maple', 'Pine', 'Elm', 'Cedar', 'King', 'Queen', 'Princess', 'Prince'];
+  const streetName = streetNames[seed % streetNames.length];
+  return {
+    street: `${streetNum} ${streetName} St`,
+    city: cityData.city,
+    state: cityData.province,
+    postalCode: generateCanadianPostalCode(seed, cityData.postalPrefix),
+    country: 'Canada',
+  };
+}
+
+function generateSyntheticUserName(seed: number): { firstName: string; lastName: string; email: string } {
+  const isEnglish = seed % 3 !== 0; // ~67% English, ~33% French
+  const isMale = seed % 2 === 0;
+  
+  let firstName: string;
+  let lastName: string;
+
+  if (isEnglish) {
+    firstName = CANADIAN_FIRST_NAMES_EN[seed % CANADIAN_FIRST_NAMES_EN.length];
+    lastName = CANADIAN_LAST_NAMES_EN[(seed * 7) % CANADIAN_LAST_NAMES_EN.length];
+  } else {
+    firstName = CANADIAN_FIRST_NAMES_FR[seed % CANADIAN_FIRST_NAMES_FR.length];
+    lastName = CANADIAN_LAST_NAMES_FR[(seed * 7) % CANADIAN_LAST_NAMES_FR.length];
+  }
+
+  const email = `user-${String(seed).padStart(6, '0')}@test.origna.ca`;
+  return { firstName, lastName, email };
+}
+
+async function seedSyntheticUsers(admin: AuthBundle, count: number = 5000) {
+  console.log(`  Generating ${count} synthetic users...`);
+  
+  const users: SeedUser[] = [];
+  
+  for (let i = 0; i < count; i++) {
+    const { firstName, lastName, email } = generateSyntheticUserName(i);
+    const roleRoll = Math.random();
+    let roles: string[];
+    
+    if (roleRoll < 0.80) {
+      roles = ['buyer']; // 80% buyer only
+    } else if (roleRoll < 0.95) {
+      roles = ['buyer', 'seller']; // 15% buyer + seller
+    } else {
+      roles = ['buyer', 'admin']; // 5% buyer + admin
+    }
+
+    users.push({
+      id: `synthetic_user_${String(i).padStart(6, '0')}`,
+      email,
+      displayName: `${firstName} ${lastName}`,
+      roles,
+      isPremium: Math.random() < 0.12, // ~12% premium
+      stripeOnboarded: roles.includes('seller') ? Math.random() < 0.85 : false,
+    });
+  }
+
+  // Write in batches of 50
+  await writeMany(users, async user => {
+    const cityData = CANADIAN_CITIES[Math.abs(user.id.charCodeAt(0) * 7) % CANADIAN_CITIES.length];
+    const seed = parseInt(user.id.split('_')[2] || '0');
+    const address = generateCanadianAddress(seed);
+    
+    await writeDoc(`users/${user.id}`, {
+      email: user.email,
+      displayName: user.displayName,
+      roles: user.roles,
+      isPremium: user.isPremium ?? false,
+      premiumSince: user.isPremium ? isoDaysAgo(Math.random() * 180) : null,
+      premiumExpiresAt: user.isPremium ? isoDaysAgo(-Math.random() * 90) : null,
+      pushEnabled: Math.random() > 0.2, // 80% have push enabled
+      notifyNewProducts: Math.random() > 0.3, // 70% subscribed to new products
+      notifyTrending: Math.random() > 0.4, // 60% subscribed to trending
+      emailVerified: true,
+      suspended: false,
+      stripeOnboarded: user.stripeOnboarded ?? false,
+      preferredLanguage: Math.random() < 0.25 ? 'fr' : 'en',
+      profileImageUrl: `https://picsum.photos/seed/avatar-${user.id}/200/200`,
+      homeAddress: address,
+      createdAt: isoDaysAgo(Math.random() * 365), // Random join date up to 1 year
+      updatedAt: new Date().toISOString(),
+    }, admin.idToken, true);
+  }, 50);
+
+  console.log(`  ✓ ${count} synthetic users created`);
+}
+
+// ════════════════════════════════════════════════════════════════════
+// ENHANCED FAVORITES — MORE REALISTIC DISTRIBUTION
+// ════════════════════════════════════════════════════════════════════
+
+async function seedEnhancedFavorites(admin: AuthBundle, buyerIds: string[], productIds: string[]) {
+  const favorites: any[] = [];
+  let favoriteIndex = 0;
+
+  for (const buyerId of buyerIds) {
+    // Each buyer has 5-20 favorites
+    const favCount = 5 + Math.floor(Math.random() * 16);
+    const buyerFavs = new Set<string>();
+    
+    while (buyerFavs.size < favCount && productIds.length > 0) {
+      const product = productIds[Math.floor(Math.random() * productIds.length)];
+      if (product !== 'e2e_product_oos') buyerFavs.add(product);
+    }
+
+    for (const productId of buyerFavs) {
+      favorites.push({
+        id: `favorite_${buyerId}_${favoriteIndex++}`,
+        userId: buyerId,
+        productId,
+        createdAt: isoDaysAgo(Math.random() * 90),
+        note: Math.random() > 0.7 ? 'Wishlist item' : undefined,
+      });
+    }
+  }
+
+  await writeMany(favorites, async fav => {
+    await writeDoc(`favorites/${fav.id}`, fav, admin.idToken, true);
+  }, 50);
+}
+
+// ════════════════════════════════════════════════════════════════════
+// ENHANCED ADDRESSES — CANADIAN POSTAL CODE GENERATION
+// ════════════════════════════════════════════════════════════════════
+
+async function seedEnhancedAddresses(admin: AuthBundle, userId: string, userType: string, addressCount: number = 4) {
+  const addresses = [];
+
+  for (let i = 0; i < addressCount; i++) {
+    const seed = (userId.charCodeAt(0) * (i + 1)) + (i * 137);
+    const address = generateCanadianAddress(seed);
+    
+    addresses.push({
+      id: `address_${userId}_${i}`,
+      userId,
+      name: `${userType} Address ${i + 1}`,
+      street: address.street,
+      city: address.city,
+      state: address.state,
+      postalCode: address.postalCode,
+      country: address.country,
+      isDefault: i === 0,
+      createdAt: isoDaysAgo(30 - i * 5),
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
+  await writeMany(addresses, async addr => {
+    await writeDoc(`addresses/${addr.id}`, addr, admin.idToken, true);
+  }, 10);
+}
+
+// ════════════════════════════════════════════════════════════════════
+// REALISTIC CART SEEDING — WITH IMAGES + PROPER STRUCTURE
+// ════════════════════════════════════════════════════════════════════
+
+async function seedEnhancedCart(admin: AuthBundle, buyerId: string, productIds: string[], products: any[]) {
+  const cartItems = [];
+  const itemCount = 2 + Math.floor(Math.random() * 4); // 2-5 items
+
+  for (let i = 0; i < itemCount; i++) {
+    const productId = productIds[Math.floor(Math.random() * productIds.length)];
+    const product = products.find(p => p.id === productId);
+    
+    if (!product) continue;
+
+    cartItems.push({
+      id: `cart_item_${buyerId}_${i}`,
+      userId: buyerId,
+      productId,
+      quantity: 1 + Math.floor(Math.random() * 3),
+      priceCents: product.priceCents,
+      imageUrl: sampleImageUrls(productId, 1)[0],
+      productName: product.title,
+      addedAt: isoDaysAgo(Math.random() * 7),
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
+  if (cartItems.length === 0) return;
+
+  // Write cart items
+  await writeMany(cartItems, async item => {
+    await writeDoc(`cart/${item.id}`, item, admin.idToken, true);
+  }, 10);
+
+  // Write cart summary
+  const totalCents = cartItems.reduce((sum, item) => sum + item.priceCents * item.quantity, 0);
+  await writeDoc(`user_carts/${buyerId}`, {
+    userId: buyerId,
+    itemCount: cartItems.length,
+    totalCents,
+    lastUpdated: new Date().toISOString(),
+  }, admin.idToken, true);
+}
+
+// ════════════════════════════════════════════════════════════════════
+// COMPREHENSIVE SUBSCRIPTIONS — WITH PAYMENT HISTORY
+// ════════════════════════════════════════════════════════════════════
+
+async function seedEnhancedSubscriptions(admin: AuthBundle, userIds: string[]) {
+  const subscriptions: any[] = [];
+  const invoices: any[] = [];
+
+  for (let i = 0; i < Math.min(userIds.length, 12); i++) {
+    const userId = userIds[i];
+    const tier = ['basic', 'pro', 'enterprise'][Math.floor(Math.random() * 3)];
+    const priceCents = { basic: 499, pro: 999, enterprise: 2499 }[tier];
+    
+    const startDate = isoDaysAgo(Math.random() * 180);
+    const isCancelled = Math.random() < 0.15;
+    
+    subscriptions.push({
+      id: `subscription_${userId}`,
+      userId,
+      tier,
+      status: isCancelled ? 'cancelled' : 'active',
+      priceCents,
+      renewalDate: isCancelled ? isoDaysAgo(-Math.random() * 30) : isoDaysAgo(-Math.random() * 30),
+      startDate,
+      cancelledAt: isCancelled ? isoDaysAgo(Math.random() * 20) : null,
+      maxUsesTotal: tier === 'basic' ? 5 : tier === 'pro' ? 20 : 9999,
+      usesRemaining: Math.floor(Math.random() * 10),
+      createdAt: startDate,
+      updatedAt: new Date().toISOString(),
+    });
+
+    // Generate 3-6 past invoices
+    const invoiceCount = 3 + Math.floor(Math.random() * 4);
+    for (let j = invoiceCount; j > 0; j--) {
+      invoices.push({
+        id: `invoice_${userId}_${j}`,
+        subscriptionId: `subscription_${userId}`,
+        userId,
+        amountCents: priceCents,
+        status: 'paid',
+        issuedAt: isoDaysAgo(j * 30),
+        dueAt: isoDaysAgo(j * 30 - 5),
+        paidAt: isoDaysAgo(j * 30 - Math.floor(Math.random() * 3)),
+        createdAt: isoDaysAgo(j * 30 + 1),
+      });
+    }
+  }
+
+  await writeMany(subscriptions, async sub => {
+    await writeDoc(`subscriptions/${sub.id}`, sub, admin.idToken, true);
+  }, 10);
+
+  await writeMany(invoices, async inv => {
+    await writeDoc(`subscription_invoices/${inv.id}`, inv, admin.idToken, true);
+  }, 20);
+}
+
+// ════════════════════════════════════════════════════════════════════
+// ENHANCED CHAT THREADS — WITH MESSAGE COUNT + METADATA
+// ════════════════════════════════════════════════════════════════════
+
+async function seedEnhancedChats(admin: AuthBundle, buyerIds: string[], sellerIds: string[], productIds: string[]) {
+  const chats: any[] = [];
+  const messages: any[] = [];
+  const threadCount = Math.min(buyerIds.length * 3, 50); // Up to 50 chat threads
+
+  for (let i = 0; i < threadCount; i++) {
+    const buyerId = buyerIds[i % buyerIds.length];
+    const sellerId = sellerIds[i % sellerIds.length];
+    const productId = productIds[i % productIds.length];
+
+    const chatId = `chat_thread_${i}`;
+    const msgCount = 3 + Math.floor(Math.random() * 20);
+
+    chats.push({
+      id: chatId,
+      participantIds: [buyerId, sellerId],
+      productId,
+      subject: ['Question about stock', 'Shipping inquiry', 'Product details', 'Custom order'][i % 4],
+      lastMessage: `Message ${msgCount}`,
+      lastMessageAt: isoDaysAgo(Math.random() * 30),
+      messageCount: msgCount,
+      isResolved: Math.random() < 0.6,
+      createdAt: isoDaysAgo(Math.random() * 60),
+      updatedAt: new Date().toISOString(),
+    });
+
+    // Generate chat messages
+    for (let j = 1; j <= msgCount; j++) {
+      const sender = j % 2 === 0 ? buyerId : sellerId;
+      messages.push({
+        id: `message_${chatId}_${j}`,
+        chatThreadId: chatId,
+        senderId: sender,
+        text: `Message content ${j}`,
+        imageUrl: Math.random() < 0.15 ? sampleImageUrls(`${chatId}-${j}`, 1)[0] : null,
+        createdAt: isoDaysAgo(Math.random() * 30),
+      });
+    }
+  }
+
+  await writeMany(chats, async chat => {
+    await writeDoc(`chat_threads/${chat.id}`, chat, admin.idToken, true);
+  }, 10);
+
+  await writeMany(messages, async msg => {
+    await writeDoc(`chat_messages/${msg.id}`, msg, admin.idToken, true);
+  }, 30);
+}
+
+// ════════════════════════════════════════════════════════════════════
+// COMPREHENSIVE REVIEWS — WITH IMAGES + VARIATIONS
+// ════════════════════════════════════════════════════════════════════
+
+async function seedEnhancedReviews(admin: AuthBundle, buyerIds: string[], sellerIds: string[], productIds: string[]) {
+  const reviews: any[] = [];
+  const reviewCount = Math.min(productIds.length * 5, 500); // Up to 500 reviews
+
+  const reviewTexts = [
+    'Great product, exactly as described!',
+    'Fast shipping and excellent quality',
+    'Not as expected, but still decent',
+    'Outstanding value for money',
+    'Perfect for my needs',
+    'Would recommend to anyone',
+    'Broke after one week',
+    'Amazing customer service',
+    'Product arrived damaged',
+    'Better than other brands',
+  ];
+
+  for (let i = 0; i < reviewCount; i++) {
+    const buyerId = buyerIds[i % buyerIds.length];
+    const productId = productIds[i % productIds.length];
+    const rating = 1 + Math.floor(Math.random() * 5); // 1-5 stars
+
+    reviews.push({
+      id: `review_${i}`,
+      productId,
+      buyerId,
+      rating,
+      title: `Review ${i + 1}`,
+      text: reviewTexts[i % reviewTexts.length],
+      imageUrls: Math.random() < 0.3 ? sampleImageUrls(`review-${i}`, 1) : [],
+      helpful: Math.floor(Math.random() * 50),
+      unhelpful: Math.floor(Math.random() * 10),
+      verified: Math.random() < 0.9,
+      flagged: Math.random() < 0.05,
+      createdAt: isoDaysAgo(Math.random() * 180),
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
+  await writeMany(reviews, async review => {
+    await writeDoc(`product_reviews/${review.id}`, review, admin.idToken, true);
+  }, 50);
+}
+
+// ════════════════════════════════════════════════════════════════════
+// RETURN REQUESTS — ALL STATES + PROPER TIMESTAMPS
+// ════════════════════════════════════════════════════════════════════
+
+async function seedEnhancedReturnRequests(admin: AuthBundle, buyerIds: string[], productIds: string[]) {
+  const returns: any[] = [];
+  const states = ['pending', 'approved', 'rejected', 'shipped_back', 'received'];
+
+  for (let i = 0; i < 30; i++) {
+    const buyerId = buyerIds[i % buyerIds.length];
+    const productId = productIds[i % productIds.length];
+    const state = states[i % states.length];
+    const reason = ['Defective', 'Wrong size', 'Changed mind', 'Damaged', 'Missing parts'][i % 5];
+
+    const createdDate = isoDaysAgo(Math.random() * 60);
+    const approvedDate = state !== 'pending' ? isoDaysAgo(Math.random() * 45) : null;
+    const shippedDate = (state === 'shipped_back' || state === 'received') ? isoDaysAgo(Math.random() * 20) : null;
+    const receivedDate = state === 'received' ? isoDaysAgo(Math.random() * 5) : null;
+
+    returns.push({
+      id: `return_${i}`,
+      buyerId,
+      productId,
+      reason,
+      status: state,
+      requestedAt: createdDate,
+      approvedAt: approvedDate,
+      shippedAt: shippedDate,
+      receivedAt: receivedDate,
+      refundedAt: state === 'received' ? new Date().toISOString() : null,
+      notes: `${reason} item`,
+      createdAt: createdDate,
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
+  await writeMany(returns, async ret => {
+    await writeDoc(`return_requests/${ret.id}`, ret, admin.idToken, true);
+  }, 10);
+}
+
     country,
   };
 }
@@ -1672,6 +2134,7 @@ async function seedComparisonLists(admin: AuthBundle, buyerIds: string[], produc
   }
 }
 
+
 async function main() {
   console.log(`🌱 Mega seeding ${process.env.ORIGNABASE_URL || 'default'} with ${PRODUCT_COUNT}+ products...`);
 
@@ -1682,39 +2145,60 @@ async function main() {
   const ids = await upsertUsers(admin);
   console.log(`  ✓ users seeded (admin=${ids.adminId}, seller=${ids.sellerId}, buyer=${ids.buyerId})`);
 
+  // ════════════════════════════════════════════════════════════════════
+  // SYNTHETIC USERS — 5000+ realistic users with Canadian names/addresses
+  // ════════════════════════════════════════════════════════════════════
+  const syntheticUserCount = Number(process.env.SEED_SYNTHETIC_USERS || 5000);
+  if (syntheticUserCount > 0) {
+    await seedSyntheticUsers(admin, syntheticUserCount);
+  }
+
   await seedWarehouses(admin, [ids.adminId, ids.sellerId, 'seed_seller_01', 'seed_seller_02']);
   console.log('  ✓ warehouses seeded');
 
   const productIds = await seedProducts(admin, ids);
   console.log(`  ✓ products seeded (${productIds.length})`);
 
-  await seedFavorites(admin, ids.buyerId, productIds.filter(id => id !== 'e2e_product_oos'));
-  // Multi-user favorites
-  const extraBuyerFavIds = ids.buyerPool.slice(0, 5);
-  for (const extraBuyerId of extraBuyerFavIds) {
-    const favStart = extraBuyerFavIds.indexOf(extraBuyerId) * 10;
-    await seedFavorites(admin, extraBuyerId, productIds.filter(id => id !== 'e2e_product_oos').slice(favStart, favStart + 15));
-  }
-  console.log(`  ✓ favorites seeded (${FAVORITE_COUNT} main + ${extraBuyerFavIds.length * 15} multi-user)`);
+  // ════════════════════════════════════════════════════════════════════
+  // ENHANCED FAVORITES — MORE REALISTIC DISTRIBUTION
+  // ════════════════════════════════════════════════════════════════════
+  const allBuyerIds = [ids.buyerId, ...ids.buyerPool];
+  await seedEnhancedFavorites(admin, allBuyerIds, productIds);
+  console.log(`  ✓ enhanced favorites seeded (${allBuyerIds.length} buyers)`);
 
-  await seedAddresses(admin, ids.buyerId, 'buyer');
-  await seedAddresses(admin, ids.adminId, 'admin');
-  await seedAddresses(admin, ids.sellerId, 'seller');
-  // Multi-user addresses
-  for (let i = 0; i < 4; i++) {
-    await seedAddresses(admin, ids.buyerPool[i], `buyer_${i + 1}`);
+  // ════════════════════════════════════════════════════════════════════
+  // ENHANCED ADDRESSES — CANADIAN POSTAL CODES
+  // ════════════════════════════════════════════════════════════════════
+  await seedEnhancedAddresses(admin, ids.buyerId, 'buyer', 4);
+  await seedEnhancedAddresses(admin, ids.adminId, 'admin', 3);
+  await seedEnhancedAddresses(admin, ids.sellerId, 'seller', 2);
+  for (let i = 0; i < 8; i++) {
+    await seedEnhancedAddresses(admin, ids.buyerPool[i], `buyer_${i + 1}`, 3);
   }
-  console.log(`  ✓ addresses seeded (${ADDRESS_COUNT * 7})`);
+  console.log(`  ✓ enhanced addresses seeded (${ADDRESS_COUNT * 10})`);
 
-  await seedCart(admin, ids.buyerId, productIds);
-  // Multi-user cart
+  // ════════════════════════════════════════════════════════════════════
+  // ENHANCED CART — WITH PRODUCT DETAILS
+  // ════════════════════════════════════════════════════════════════════
+  // Fetch product data for cart seeding
+  const productsData = (await Promise.all(productIds.map(async id => {
+    try {
+      const res = await fetch(`${process.env.ORIGNABASE_URL || 'http://127.0.0.1:8080'}/documents/products/${id}`, {
+        headers: { 'Authorization': `Bearer ${admin.idToken}` }
+      });
+      return res.json();
+    } catch { return null; }
+  }))).filter(p => p);
+
+  await seedEnhancedCart(admin, ids.buyerId, productIds, productsData);
   for (let i = 0; i < 3; i++) {
-    const extraBuyerId = ids.buyerPool[i];
-    const cartStart = i * 5;
-    await seedCart(admin, extraBuyerId, productIds.slice(cartStart, cartStart + 5));
+    await seedEnhancedCart(admin, ids.buyerPool[i], productIds, productsData);
   }
-  console.log(`  ✓ cart seeded (${BUYER_CART_COUNT} main + 3 multi-user)`);
+  console.log(`  ✓ enhanced cart seeded (${BUYER_CART_COUNT} carts)`);
 
+  // ════════════════════════════════════════════════════════════════════
+  // ORIGINAL SEEDING (KEEP EXISTING DATA)
+  // ════════════════════════════════════════════════════════════════════
   await seedOrders(admin, ids.buyerId, ids.sellerId, productIds);
   console.log('  ✓ orders seeded (30)');
 
@@ -1722,23 +2206,34 @@ async function main() {
   await seedNotifications(admin, notifUserIds);
   console.log(`  ✓ notifications seeded (${NOTIFICATION_COUNT} across ${notifUserIds.length} users)`);
 
-  await seedReviews(admin, [ids.buyerId, 'seed_buyer_01', 'seed_buyer_02', 'seed_buyer_03'], ids.sellerId, productIds);
-  console.log(`  ✓ reviews seeded (${REVIEW_COUNT})`);
+  // ════════════════════════════════════════════════════════════════════
+  // ENHANCED REVIEWS — COMPREHENSIVE
+  // ════════════════════════════════════════════════════════════════════
+  await seedEnhancedReviews(admin, [ids.buyerId, ...ids.buyerPool.slice(0, 10)], [ids.sellerId, ...ids.sellerPool.slice(0, 3)], productIds);
+  console.log('  ✓ enhanced reviews seeded (up to 500)');
 
   await seedQuestions(admin, [ids.buyerId, 'seed_buyer_04', 'seed_buyer_05'], ids.sellerId, productIds);
   console.log(`  ✓ Q&A seeded (${QUESTION_COUNT})`);
 
-  await seedChats(admin, ids.buyerId, ids.sellerId);
+  // ════════════════════════════════════════════════════════════════════
+  // ENHANCED CHATS — COMPLETE THREADS WITH MESSAGES
+  // ════════════════════════════════════════════════════════════════════
+  await seedEnhancedChats(admin, [ids.buyerId, ...ids.buyerPool.slice(0, 10)], [ids.sellerId, ...ids.sellerPool.slice(0, 3)], productIds);
+  console.log('  ✓ enhanced chat threads seeded (up to 50)');
+
   await seedStockNotifications(admin, ids.buyerId);
   // More stock notifications for multiple users
   await seedMoreStockNotifications(admin, [ids.buyerId, ...ids.buyerPool.slice(0, 5)], productIds);
-  console.log('  ✓ chats and stock notifications seeded');
+  console.log('  ✓ stock notifications seeded');
 
   const allUserIds = [ids.adminId, ids.sellerId, ids.buyerId, ...ids.sellerPool, ...ids.buyerPool];
   const allSellerIds = [ids.adminId, ids.sellerId, 'seed_seller_01', 'seed_seller_02'];
 
-  await seedSubscriptions(admin, allUserIds);
-  console.log(`  ✓ subscriptions seeded (18)`);
+  // ════════════════════════════════════════════════════════════════════
+  // ENHANCED SUBSCRIPTIONS — WITH PAYMENT HISTORY
+  // ════════════════════════════════════════════════════════════════════
+  await seedEnhancedSubscriptions(admin, allUserIds);
+  console.log(`  ✓ enhanced subscriptions seeded (with invoice history)`);
 
   await seedSellerProfiles(admin, allSellerIds);
   console.log('  ✓ seller profiles seeded');
@@ -1746,8 +2241,11 @@ async function main() {
   await seedSellerMetrics(admin, allSellerIds);
   console.log('  ✓ seller metrics seeded');
 
-  await seedReturnRequests(admin, ids.buyerId, ids.sellerId, productIds);
-  console.log('  ✓ return requests seeded (15)');
+  // ════════════════════════════════════════════════════════════════════
+  // ENHANCED RETURN REQUESTS — ALL STATES
+  // ════════════════════════════════════════════════════════════════════
+  await seedEnhancedReturnRequests(admin, [ids.buyerId, ...ids.buyerPool.slice(0, 8)], productIds);
+  console.log('  ✓ enhanced return requests seeded (all states)');
 
   await seedDisputes(admin, ids.buyerId, ids.sellerId, productIds);
   console.log(`  ✓ disputes seeded (${DISPUTE_COUNT})`);
@@ -1776,8 +2274,8 @@ async function main() {
   await seedCategories(admin);
   console.log('  ✓ categories seeded (21)');
 
-  const allBuyerIds = [ids.buyerId, ...ids.buyerPool.filter((_, i) => i < 10)];
-  await seedMoreChats(admin, allBuyerIds, allSellerIds, productIds);
+  const allBuyersExpanded = [ids.buyerId, ...ids.buyerPool.filter((_, i) => i < 10)];
+  await seedMoreChats(admin, allBuyersExpanded, allSellerIds, productIds);
   console.log('  ✓ additional chat threads seeded (10)');
 
   // === ADDITIONAL SEED DATA FOR FULL VIEW COVERAGE ===
@@ -1815,16 +2313,18 @@ async function main() {
   await delay(1500);
   console.log('🌱 Mega seed complete.');
   console.log(`   Products: ${productIds.length}`);
+  console.log(`   Synthetic users: ${syntheticUserCount}`);
   console.log(`   Collections seeded: users, products, favorites, addresses, warehouses, cart, orders,`);
   console.log(`     notifications, reviews, Q&A, chats, stock_notifications, subscriptions,`);
   console.log(`     seller_profiles, seller_metrics, return_requests, categories,`);
   console.log(`     disputes, coupons, promotions, download_sessions, mfa_settings,`);
   console.log(`     review_answers, user_preferences, payouts, admin_audit_logs,`);
   console.log(`     seller_ratings, dashboard_metrics, import_jobs, comparison_lists`);
-  console.log(`   Multi-user: favorites(6), addresses(7), cart(4), notifications(9), stock_notifications(6)`);
+  console.log(`   Multi-user: favorites(${allBuyerIds.length}), addresses(${allBuyerIds.length}+), cart(4+), chats(50+), reviews(500+)`);
   console.log(`   Additional: flagged reviews(10), suspended sellers(3), tracking(15), return labels(5),`);
   console.log(`     abandoned carts(5), audit logs(55), seller ratings(20), metrics(30d), imports(5), comparisons(3)`);
   console.log(`   All views and widgets now have populated non-empty state for demos.`);
+  console.log(`   Canadian addresses & realistic names in ${syntheticUserCount} synthetic users.`);
 }
 
 main().catch(err => {
