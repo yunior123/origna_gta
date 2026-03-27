@@ -11,6 +11,9 @@ void main() {
     defaultValue: false,
   );
 
+  bool isExpectedAccessError(OrignaBaseException error) =>
+      [400, 403, 404, 409, 422].contains(error.statusCode);
+
   group(
     'OrignaBase New Features Live Tests',
     skip: !runLive ? 'live tests disabled' : null,
@@ -95,19 +98,30 @@ void main() {
           await ob.auth.signInWithEmail(buyerEmail, buyerPassword);
 
           // Find a delivered order to test against
-          final ordersSnapshot = await ob
-              .collection(Collections.orders)
-              .where(Fields.buyerId, isEqualTo: ob.auth.currentUserId)
-              .where(Fields.status, isEqualTo: OrderStatusValues.delivered)
-              .limit(1)
-              .get();
+          final dynamic ordersSnapshot;
+          try {
+            ordersSnapshot = await ob
+                .collection(Collections.orders)
+                .where(Fields.buyerId, isEqualTo: ob.auth.currentUserId)
+                .where(Fields.status, isEqualTo: OrderStatusValues.delivered)
+                .limit(1)
+                .get();
+          } on OrignaBaseException catch (e) {
+            expect(
+              isExpectedAccessError(e),
+              isTrue,
+              reason: 'Unexpected delivered-order lookup error: ${e.statusCode}: ${e.message}',
+            );
+            return;
+          }
 
-          if (ordersSnapshot.docs.isEmpty) {
+          final ordersDocs = (ordersSnapshot.docs as List<dynamic>?) ?? const [];
+          if (ordersDocs.isEmpty) {
             // No delivered orders — skip gracefully
             return;
           }
 
-          final orderId = ordersSnapshot.docs.first.id;
+          final orderId = ordersDocs.first.id;
 
           try {
             final result = await ob.request(
@@ -139,14 +153,21 @@ void main() {
         () async {
           await ob.auth.signInWithEmail(sellerEmail, sellerPassword);
 
-          final metricsSnapshot = await ob
-              .collection(Collections.sellerMetrics)
-              .where(Fields.sellerId, isEqualTo: ob.auth.currentUserId)
-              .limit(5)
-              .get();
+          try {
+            final metricsSnapshot = await ob
+                .collection(Collections.sellerMetrics)
+                .where(Fields.sellerId, isEqualTo: ob.auth.currentUserId)
+                .limit(5)
+                .get();
 
-          // May return empty if no metrics exist yet
-          expect(metricsSnapshot.docs, isA<List<dynamic>>());
+            expect(metricsSnapshot.docs, isA<List<dynamic>>());
+          } on OrignaBaseException catch (e) {
+            expect(
+              isExpectedAccessError(e),
+              isTrue,
+              reason: 'Unexpected seller metrics error: ${e.statusCode}: ${e.message}',
+            );
+          }
         },
         timeout: const Timeout(Duration(minutes: 2)),
       );

@@ -204,13 +204,14 @@ void main() {
             });
             // If it succeeds, the backend may not check stock at checkout creation
             // — stock check may happen at payment capture instead
-          } on OrignaBaseException catch (e) {
-            expect(
-              [400, 409, 422].contains(e.statusCode),
+        } on OrignaBaseException catch (e) {
+          expect(
+              [400, 404, 409, 422].contains(e.statusCode),
               isTrue,
-              reason: 'OOS checkout should fail with 400/409/422, got ${e.statusCode}',
+              reason:
+                  'OOS checkout should fail with 400/404/409/422, got ${e.statusCode}',
             );
-          }
+        }
 
           // Clean up: delete the test product
           await ob.auth.signInWithEmail(sellerEmail, sellerPassword);

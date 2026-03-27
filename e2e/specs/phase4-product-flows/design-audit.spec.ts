@@ -11,13 +11,20 @@ const TARGET = process.env.E2E_TARGET_URL ?? WEB_APP_URL;
 
 async function auditPage(browser: AgentBrowser, route: string) {
   const url = `${TARGET}${route}`;
-  try {
-    await browser.open(url, 15_000);
-    await browser.waitForFlutter(5_000);
-    return { loaded: true };
-  } catch (_) {
-    return { loaded: false };
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      await browser.open(url, 20_000);
+      await browser.waitForFlutter(8_000);
+      return { loaded: true };
+    } catch (_) {
+      try {
+        await browser.clearState();
+      } catch {
+        // Ignore retry cleanup failures.
+      }
+    }
   }
+  return { loaded: false };
 }
 
 describe('Design Audit — Route Loading', () => {

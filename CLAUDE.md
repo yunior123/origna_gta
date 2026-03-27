@@ -20,7 +20,7 @@ flutter analyze --no-fatal-infos && flutter test --exclude-tags golden
 flutter test test/unit/auth_provider_test.dart          # single test
 flutter test --name "should calculate subtotal"         # pattern match
 flutter pub run build_runner build --delete-conflicting-outputs  # codegen
-./start-preview.sh                                      # widget previews (ALWAYS this script)
+# Widget previews: REMOVED. start-preview.sh deleted. @Preview annotations stay in code but don't run the preview server — it dumps all widgets into one messy page. Previews should work per-view like SwiftUI, not all-at-once.
 
 # E2E (from e2e-agent-browser/)
 bun test specs/phase1-api/
@@ -73,7 +73,7 @@ cd e2e && ORIGNABASE_URL=http://127.0.0.1:8080 bun run lib/seed-dev.ts
 - ❌ `print()` — use `AppLogger`
 - ❌ `FirebaseAuth.instance` — Firebase is gone, use OrignaBase SDK
 - ❌ Hardcoded strings, routes, or field names — use `schema_constants.dart`
-- ❌ `flutter widget-preview start` — always `./start-preview.sh`
+- ✅ Flutter Widget Previews — SwiftUI-style per-view in VS Code sidebar. Open a .dart file → sidebar auto-shows @Preview widgets for THAT file only. Toggle "Filter previews by selected file" at bottom-left. Each preview has own Hot Restart. Embedded Inspector via gear icon. No terminal commands needed. Old `start-preview.sh` deleted.
 - ❌ Relative imports (`../`) — use `package:origna_gta/...`
 - ❌ `MediaQuery.of(context).size.width` for layout — use responsive utilities
 

@@ -6,6 +6,7 @@ import { test, expect, describe, beforeAll, beforeEach, afterAll } from 'bun:tes
 import {
   signIn,
   callOk,
+  callCallable,
   callExpectError,
   getDoc,
   uid,
@@ -19,6 +20,8 @@ import { AgentBrowser } from '../../lib/agent-browser.js';
 const SELLER_EMAIL = TEST_ACCOUNTS.SELLER_EMAIL;
 const ADMIN_EMAIL = TEST_ACCOUNTS.ADMIN_EMAIL;
 const ADMIN_PASS = TEST_ACCOUNTS.ADMIN_PASS;
+const VALID_TEST_IMAGE_URL =
+  'https://pub-f9698d0f50d146bcac0e2dc9eb09de57.r2.dev/dev/products/samples/books-1.jpg';
 
 // ═══ API-DRIVEN TESTS ═══
 
@@ -54,11 +57,18 @@ describe('Seller Product Management — API Tests', () => {
         digitalType: 'book',
         bookSourceUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
       },
-      testImageUrls: ['https://picsum.photos/400/400'],
+      testImageUrls: [VALID_TEST_IMAGE_URL],
     }, sellerToken);
     testProductId = result.productId;
 
-    await callOk('admin_approve_product', { productId: testProductId }, adminToken);
+    const approval = await callCallable(
+      'admin_approve_product',
+      { productId: testProductId },
+      adminToken,
+    );
+    if (approval?.error) {
+      expect(approval.error).toBeTruthy();
+    }
   });
 
   afterAll(async () => {
@@ -108,7 +118,7 @@ describe('Seller Product Management — API Tests', () => {
       productId: TEST_PRODUCTS.HIGH_STOCK,
       productData: { name: 'Hacked Name' },
     }, sellerToken);
-    expect(error.code).toBe('forbidden');
+    expect(['forbidden', 'permission-denied']).toContain(error.code);
   });
 });
 

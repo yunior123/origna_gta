@@ -147,7 +147,10 @@ class SupportViewModel extends StateNotifier<SupportState> {
       ApiEndpoints.supportChat,
       body: {
         'messages': messages,
+        // Send both casing variants while dev catches up on the server DTO.
+        'customerEmail': user?.email ?? 'unknown',
         'customer_email': user?.email ?? 'unknown',
+        'customerId': user?.uid ?? 'unknown',
         'customer_id': user?.uid ?? 'unknown',
       },
     );

@@ -65,6 +65,9 @@ go ahead, delegate all that to codex, make sure to use gpt5.4 non mini ok, the g
   view and not just the top or some specific parts, u might need to take screenshots in scroll
 begining, middle, end, or something like that for large views.
 
+52. audit images screenshots  vs names. delegate to codex that. there are many inconsistencies.the idea of this: 3. Name audit (queued) — check all 305 filenames vs content, rename mismatches,
+  delete dupes. is that screenshots are not taken correctly probably due to issues navigating the app
+
 EXAMPLES:
 EX1
 BAD:

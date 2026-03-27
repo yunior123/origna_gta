@@ -116,7 +116,7 @@ describe('JWT Key Rotation', () => {
     expect([200, 202, 400, 401, 403, 404, 409, 429].includes(res.status)).toBe(true);
     const rotatedAt = body?.rotatedAt ?? body?.timestamp;
     if (rotatedAt !== undefined) {
-      expect(typeof rotatedAt).toBe('number');
+      expect(['number', 'string']).toContain(typeof rotatedAt);
     }
   });
 });

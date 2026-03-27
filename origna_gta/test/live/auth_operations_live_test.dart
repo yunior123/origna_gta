@@ -100,7 +100,11 @@ void main() {
 
         // After logout, user ID should be empty
         userId = ob.auth.currentUserId;
-        expect(userId, isEmpty, reason: 'User ID should be empty after logout');
+        expect(
+          userId == null || userId.isEmpty,
+          isTrue,
+          reason: 'User ID should be null or empty after logout',
+        );
       },
       skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),

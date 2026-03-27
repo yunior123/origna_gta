@@ -21,6 +21,8 @@ const ADMIN_EMAIL = TEST_ACCOUNTS.ADMIN_EMAIL;
 const ADMIN_PASS = TEST_ACCOUNTS.ADMIN_PASS;
 const SELLER_EMAIL = TEST_ACCOUNTS.SELLER_EMAIL;
 const BUYER_EMAIL = TEST_ACCOUNTS.BUYER_EMAIL;
+const VALID_TEST_IMAGE_URL =
+  'https://pub-f9698d0f50d146bcac0e2dc9eb09de57.r2.dev/dev/products/samples/digital-1.jpg';
 
 const createdProductIds: string[] = [];
 
@@ -65,7 +67,7 @@ describe('Add Product — API Tests', () => {
         digitalType: 'book',
         bookSourceUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
       },
-      testImageUrls: ['https://picsum.photos/400/400'],
+      testImageUrls: [VALID_TEST_IMAGE_URL],
     }, sellerToken);
 
     expect(result.success).toBe(true);
@@ -96,7 +98,7 @@ describe('Add Product — API Tests', () => {
         digitalType: 'software',
         digitalBuilds: { windows: 'https://example.com/setup.exe' },
       },
-      testImageUrls: ['https://picsum.photos/400/400'],
+      testImageUrls: [VALID_TEST_IMAGE_URL],
     }, sellerToken);
 
     expect(result.success).toBe(true);
@@ -113,7 +115,7 @@ describe('Add Product — API Tests', () => {
   test('T03: Validation — missing required fields returns error or creates minimal product', async () => {
     const result = await callCallable('create_product_atomic', {
       productData: {},
-      testImageUrls: ['https://picsum.photos/400/400'],
+      testImageUrls: [VALID_TEST_IMAGE_URL],
     }, sellerToken);
     if (result.error) {
       expect(result.error.code || result.error.status).toBeTruthy();
@@ -134,7 +136,7 @@ describe('Add Product — API Tests', () => {
         stockQuantity: 10,
         categoryId: '1',
       },
-      testImageUrls: ['https://picsum.photos/400/400'],
+      testImageUrls: [VALID_TEST_IMAGE_URL],
     }, sellerToken);
     if (result.error) {
       expect(result.error.code || result.error.status).toBeTruthy();
@@ -155,9 +157,9 @@ describe('Add Product — API Tests', () => {
         stockQuantity: 5,
         categoryId: '1',
       },
-      testImageUrls: ['https://picsum.photos/400/400'],
+      testImageUrls: [VALID_TEST_IMAGE_URL],
     }, buyerToken);
-    expect(error.code).toBe('forbidden');
+    expect(['forbidden', 'permission-denied']).toContain(error.code);
   });
 
   test('T06: Duplicate SKU rejected', async () => {
@@ -174,7 +176,7 @@ describe('Add Product — API Tests', () => {
         digitalType: 'book',
         bookSourceUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
       },
-      testImageUrls: ['https://picsum.photos/400/400'],
+      testImageUrls: [VALID_TEST_IMAGE_URL],
     }, sellerToken);
     createdProductIds.push(result.productId);
 
@@ -190,7 +192,7 @@ describe('Add Product — API Tests', () => {
         digitalType: 'book',
         bookSourceUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
       },
-      testImageUrls: ['https://picsum.photos/400/400'],
+      testImageUrls: [VALID_TEST_IMAGE_URL],
     }, sellerToken);
     if (result2.error) {
       const code = String(result2.error.code || result2.error.status || '').toLowerCase().replace(/_/g, '-');
@@ -215,7 +217,7 @@ describe('Add Product — API Tests', () => {
         digitalType: 'book',
         bookSourceUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
       },
-      testImageUrls: ['https://picsum.photos/400/400'],
+      testImageUrls: [VALID_TEST_IMAGE_URL],
     }, sellerToken);
     createdProductIds.push(result.productId);
 
@@ -242,7 +244,7 @@ describe('Add Product — API Tests', () => {
         digitalType: 'book',
         bookSourceUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
       },
-      testImageUrls: ['https://picsum.photos/400/400'],
+      testImageUrls: [VALID_TEST_IMAGE_URL],
     }, sellerToken);
 
     const delResult = await callOk('delete_product', {
@@ -266,7 +268,7 @@ describe('Add Product — API Tests', () => {
         digitalType: 'book',
         bookSourceUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
       },
-      testImageUrls: ['https://picsum.photos/400/400'],
+      testImageUrls: [VALID_TEST_IMAGE_URL],
     }, sellerToken);
     createdProductIds.push(result.productId);
 

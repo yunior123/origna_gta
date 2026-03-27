@@ -28,7 +28,10 @@ describe('Address Management — API', () => {
   };
 
   beforeAll(async () => {
-    const buyer = await signIn(TEST_ACCOUNTS.BUYER_EMAIL);
+    const buyer = await signIn(
+      `e2e-auth-address-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@test.origna.ca`,
+      DEFAULT_PASS,
+    );
     buyerToken = buyer.idToken;
   });
 

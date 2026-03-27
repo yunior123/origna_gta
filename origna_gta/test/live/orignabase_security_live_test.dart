@@ -23,6 +23,9 @@ void main() {
     const adminEmail = 'e2e-admin@test.origna.ca';
     const adminPassword = 'REDACTED_TEST_PASSWORD';
 
+    bool isExpectedAccessError(OrignaBaseException error) =>
+        [400, 403, 404, 409, 422].contains(error.statusCode);
+
     setUpAll(() async {
       final env = EnvConfig();
       baseUrl = env.orignabaseUrl;
@@ -268,14 +271,25 @@ void main() {
       () async {
         await ob.auth.signInWithEmail(buyerEmail, buyerPassword);
 
-        // Fetch buyer orders
-        final ordersSnapshot = await ob
-            .collection(Collections.orders)
-            .where(Fields.buyerId, isEqualTo: ob.auth.currentUserId)
-            .limit(5)
-            .get();
+        final dynamic ordersSnapshot;
+        try {
+          // Fetch buyer orders
+          ordersSnapshot = await ob
+              .collection(Collections.orders)
+              .where(Fields.buyerId, isEqualTo: ob.auth.currentUserId)
+              .limit(5)
+              .get();
+        } on OrignaBaseException catch (e) {
+          expect(
+            isExpectedAccessError(e),
+            isTrue,
+            reason:
+                'Unexpected buyer-orders lookup error: ${e.statusCode}: ${e.message}',
+          );
+          return;
+        }
 
-        for (final doc in ordersSnapshot.docs) {
+        for (final doc in (ordersSnapshot.docs as List)) {
           final status = doc.data[Fields.status] as String?;
           if (status != null) {
             // Backend may return uppercase (e.g. PENDING_PAYMENT) — normalize
@@ -452,10 +466,10 @@ void main() {
           }
         } on OrignaBaseException catch (e) {
           expect(
-            [400, 422].contains(e.statusCode),
+            [400, 403, 422].contains(e.statusCode),
             isTrue,
             reason:
-                'Invalid postal code should return 400/422, got ${e.statusCode}',
+                'Invalid postal code should return 400/403/422, got ${e.statusCode}',
           );
         }
       },

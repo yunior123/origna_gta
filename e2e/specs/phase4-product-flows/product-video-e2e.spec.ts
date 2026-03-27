@@ -15,6 +15,9 @@ import {
 } from '../../lib/api-client.js';
 import { TEST_ACCOUNTS } from '../../lib/config.js';
 
+const VALID_TEST_IMAGE_URL =
+  'https://pub-f9698d0f50d146bcac0e2dc9eb09de57.r2.dev/dev/products/samples/digital-2.jpg';
+
 describe('Product Video Flow', () => {
   let sellerToken: string;
   const createdIds: string[] = [];
@@ -45,7 +48,7 @@ describe('Product Video Flow', () => {
         isDigital: false,
         videoUrl: 'https://www.w3schools.com/html/mov_bbb.mp4',
       },
-      testImageUrls: ['https://picsum.photos/400/400'],
+      testImageUrls: [VALID_TEST_IMAGE_URL],
     }, sellerToken);
 
     expect(result.success).toBe(true);
@@ -67,7 +70,7 @@ describe('Product Video Flow', () => {
           isDigital: false,
           videoUrl: longUrl,
         },
-        testImageUrls: ['https://picsum.photos/400/400'],
+        testImageUrls: [VALID_TEST_IMAGE_URL],
       }, sellerToken);
       // If accepted, clean up
       if (result.productId) createdIds.push(result.productId);
@@ -84,7 +87,7 @@ describe('Product Video Flow', () => {
           isDigital: false,
           videoUrl: longUrl,
         },
-        testImageUrls: ['https://picsum.photos/400/400'],
+        testImageUrls: [VALID_TEST_IMAGE_URL],
       }, sellerToken);
       expect(error.code).toBeTruthy();
     }
@@ -102,7 +105,7 @@ describe('Product Video Flow', () => {
           isDigital: false,
           videoUrl: 'not-a-valid-url',
         },
-        testImageUrls: ['https://picsum.photos/400/400'],
+        testImageUrls: [VALID_TEST_IMAGE_URL],
       }, sellerToken);
       // Backend may reject invalid URLs
       expect(error.code).toBeTruthy();

@@ -26,6 +26,8 @@ const ELECTRONICS_PRODUCT_2 = 'mseed_prod_electronics_2';
 const CATEGORY_ELECTRONICS = '1';
 const SUBCATEGORY_AUDIO = 'Audio';
 const SUBCATEGORY_INVALID = 'NonExistentSubcategory_XYZ';
+const VALID_TEST_IMAGE_URL =
+  'https://pub-f9698d0f50d146bcac0e2dc9eb09de57.r2.dev/dev/products/samples/electronics-2.jpg';
 
 const createdProductIds: string[] = [];
 
@@ -102,7 +104,7 @@ describe('Subcategory Filtering — API', () => {
         digitalType: 'book',
         bookSourceUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
       },
-      testImageUrls: ['https://picsum.photos/seed/subcat_test/600/600'],
+      testImageUrls: [VALID_TEST_IMAGE_URL],
     }, sellerToken);
 
     expect(result.success).toBe(true);
@@ -129,7 +131,7 @@ describe('Subcategory Filtering — API', () => {
         digitalType: 'book',
         bookSourceUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
       },
-      testImageUrls: ['https://picsum.photos/seed/subcat_bad/600/600'],
+      testImageUrls: [VALID_TEST_IMAGE_URL],
     }, sellerToken);
 
     if (response?.error) {
@@ -153,7 +155,7 @@ describe('Subcategory Filtering — API', () => {
         digitalType: 'book',
         bookSourceUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
       },
-      testImageUrls: ['https://picsum.photos/seed/subcat_upd/600/600'],
+      testImageUrls: [VALID_TEST_IMAGE_URL],
     }, sellerToken);
 
     expect(result.success).toBe(true);
