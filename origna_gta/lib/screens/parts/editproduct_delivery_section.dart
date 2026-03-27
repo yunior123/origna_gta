@@ -75,8 +75,8 @@ extension _EditProductDeliverySection on _EditProductScreenState {
               children: [
                 if (daysController != null)
                   Expanded(
-                    child: Semantics(
-                      label: 'input-edit-product-delivery-days',
+                    child: Tooltip(
+                      message: 'input-edit-product-delivery-days',
                       child: TextFormField(
                         controller: daysController,
                         keyboardType: TextInputType.number,
@@ -89,8 +89,8 @@ extension _EditProductDeliverySection on _EditProductScreenState {
                   ),
                 if (extraController != null)
                   Expanded(
-                    child: Semantics(
-                      label: 'input-edit-product-delivery-extra',
+                    child: Tooltip(
+                      message: 'input-edit-product-delivery-extra',
                       child: TextFormField(
                         controller: extraController,
                         keyboardType: TextInputType.number,
@@ -103,8 +103,8 @@ extension _EditProductDeliverySection on _EditProductScreenState {
                   ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Semantics(
-                    label: 'input-edit-product-delivery-price',
+                  child: Tooltip(
+                    message: 'input-edit-product-delivery-price',
                     child: TextFormField(
                       controller: priceController,
                       keyboardType: const TextInputType.numberWithOptions(
@@ -189,8 +189,8 @@ extension _EditProductDeliverySection on _EditProductScreenState {
                 viewModel.setLinuxDownloadUrl(v.isEmpty ? null : v),
           ),
           const SizedBox(height: 8),
-          Semantics(
-            label: 'input-edit-product-device-limit',
+          Tooltip(
+            message: 'input-edit-product-device-limit',
             child: TextFormField(
               key: const Key('editproduct_device_limit'),
               controller: _deviceLimitController,

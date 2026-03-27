@@ -14,8 +14,8 @@ extension _EditProductBasicInfo on _EditProductScreenState {
       children: [
         _buildApprovalStatusBanner(),
         _buildSectionTitle('product.basic_information'.tr()),
-        Semantics(
-          label: 'input-edit-product-name',
+        Tooltip(
+          message: 'input-edit-product-name',
           child: TextFormField(
             key: const Key('product_edit_name_field'),
             controller: _nameController,
@@ -29,8 +29,8 @@ extension _EditProductBasicInfo on _EditProductScreenState {
           ),
         ),
         const SizedBox(height: 12),
-        Semantics(
-          label: 'input-edit-product-description',
+        Tooltip(
+          message: 'input-edit-product-description',
           child: TextFormField(
             key: const Key('product_edit_description_field'),
             controller: _descriptionController,
@@ -77,8 +77,8 @@ extension _EditProductBasicInfo on _EditProductScreenState {
           ),
         ),
         const SizedBox(height: 12),
-        Semantics(
-          label: 'input-edit-product-name-french',
+        Tooltip(
+          message: 'input-edit-product-name-french',
           child: TextFormField(
             key: const Key('product_edit_name_f_field'),
             controller: _nameFController,
@@ -90,8 +90,8 @@ extension _EditProductBasicInfo on _EditProductScreenState {
           ),
         ),
         const SizedBox(height: 12),
-        Semantics(
-          label: 'input-edit-product-description-french',
+        Tooltip(
+          message: 'input-edit-product-description-french',
           child: TextFormField(
             key: const Key('product_edit_description_f_field'),
             controller: _descriptionFController,
@@ -107,8 +107,8 @@ extension _EditProductBasicInfo on _EditProductScreenState {
         Row(
           children: [
             Expanded(
-              child: Semantics(
-                label: 'input-edit-product-price',
+              child: Tooltip(
+                message: 'input-edit-product-price',
                 child: TextFormField(
                   key: const Key('product_edit_price_field'),
                   controller: _priceController,
@@ -127,8 +127,8 @@ extension _EditProductBasicInfo on _EditProductScreenState {
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: Semantics(
-                label: 'input-edit-product-stock',
+              child: Tooltip(
+                message: 'input-edit-product-stock',
                 child: TextFormField(
                   key: const Key('product_edit_stock_field'),
                   controller: _stockController,
@@ -151,8 +151,8 @@ extension _EditProductBasicInfo on _EditProductScreenState {
           ],
         ),
         const SizedBox(height: 12),
-        Semantics(
-          label: 'input-edit-product-compare-at-price',
+        Tooltip(
+          message: 'input-edit-product-compare-at-price',
           child: TextFormField(
             key: const Key('product_edit_compare_at_price_field'),
             controller: _compareAtPriceController,
@@ -178,8 +178,8 @@ extension _EditProductBasicInfo on _EditProductScreenState {
           ),
         ),
         const SizedBox(height: 12),
-        Semantics(
-          label: 'input-edit-product-tax-code',
+        Tooltip(
+          message: 'input-edit-product-tax-code',
           child: TextFormField(
             key: const Key('product_edit_tax_code_field'),
             controller: _taxCodeController,
@@ -223,8 +223,8 @@ extension _EditProductBasicInfo on _EditProductScreenState {
         ),
         if (ref.watch(_editProductLowStockAlertProvider)) ...[
           const SizedBox(height: 4),
-          Semantics(
-            label: 'input-edit-product-low-stock-threshold',
+          Tooltip(
+            message: 'input-edit-product-low-stock-threshold',
             child: TextFormField(
               key: const Key('editproduct_low_stock_threshold_field'),
               controller: _lowStockThresholdController,

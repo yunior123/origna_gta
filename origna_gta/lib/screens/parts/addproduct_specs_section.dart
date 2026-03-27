@@ -13,6 +13,10 @@ extension _AddProductSpecsSection on _AddProductScreenState {
   ) {
     final categoryId = int.tryParse(state.selectedCategoryId ?? '') ?? 0;
     final config = getSpecsForCategory(categoryId);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final inputTextColor = isDark
+        ? DesignTokens.white
+        : DesignTokens.textPrimary;
 
     return buildSectionCard(
       key: const Key('addproduct_section_specs'),
@@ -63,10 +67,10 @@ extension _AddProductSpecsSection on _AddProductScreenState {
         if (config != null) ...[
           Text(
             config.categoryName,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: DesignTokens.white,
+              color: inputTextColor,
             ),
           ),
           const SizedBox(height: 12),
@@ -100,9 +104,8 @@ extension _AddProductSpecsSection on _AddProductScreenState {
               child: Row(
                 children: [
                   Expanded(
-                    child: Semantics(
-                      label: 'input-add-product-spec-key-$index',
-                      textField: true,
+                    child: Tooltip(
+                      message: 'input-add-product-spec-key-$index',
                       child: TextFormField(
                         initialValue: spec['key'],
                         decoration: InputDecoration(
@@ -127,10 +130,7 @@ extension _AddProductSpecsSection on _AddProductScreenState {
                             ),
                           ),
                         ),
-                        style: const TextStyle(
-                          color: DesignTokens.white,
-                          fontSize: 14,
-                        ),
+                        style: TextStyle(color: inputTextColor, fontSize: 14),
                         onChanged: (v) =>
                             viewModel.updateSpec(index, v, spec['value'] ?? ''),
                       ),
@@ -138,9 +138,8 @@ extension _AddProductSpecsSection on _AddProductScreenState {
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Semantics(
-                      label: 'input-add-product-spec-value-$index',
-                      textField: true,
+                    child: Tooltip(
+                      message: 'input-add-product-spec-value-$index',
                       child: TextFormField(
                         initialValue: spec['value'],
                         decoration: InputDecoration(
@@ -165,27 +164,20 @@ extension _AddProductSpecsSection on _AddProductScreenState {
                             ),
                           ),
                         ),
-                        style: const TextStyle(
-                          color: DesignTokens.white,
-                          fontSize: 14,
-                        ),
+                        style: TextStyle(color: inputTextColor, fontSize: 14),
                         onChanged: (v) =>
                             viewModel.updateSpec(index, spec['key'] ?? '', v),
                       ),
                     ),
                   ),
-                  Semantics(
-                    button: true,
-                    label: 'btn-add-product-remove-spec-$index',
-                    child: IconButton(
-                      icon: Icon(
-                        Icons.remove_circle_outline,
-                        color: DesignTokens.error,
-                        size: 20,
-                      ),
-                      onPressed: () => viewModel.removeSpec(index),
-                      tooltip: 'specs.remove_spec'.tr(),
+                  IconButton(
+                    icon: Icon(
+                      Icons.remove_circle_outline,
+                      color: DesignTokens.error,
+                      size: 20,
                     ),
+                    onPressed: () => viewModel.removeSpec(index),
+                    tooltip: 'btn-add-product-remove-spec-$index',
                   ),
                 ],
               ),
@@ -227,6 +219,11 @@ extension _AddProductSpecsSection on _AddProductScreenState {
     required AddProductState state,
     required AddProductViewModel viewModel,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final inputTextColor = isDark
+        ? DesignTokens.white
+        : DesignTokens.textPrimary;
+
     // Find existing value in specEntries for this template key
     final existingIndex = state.specEntries.indexWhere(
       (e) => e['key'] == template.key,
@@ -287,7 +284,7 @@ extension _AddProductSpecsSection on _AddProductScreenState {
           ),
         ),
         dropdownColor: DesignTokens.darkCard,
-        style: const TextStyle(color: DesignTokens.white, fontSize: 14),
+        style: TextStyle(color: inputTextColor, fontSize: 14),
         items: template.options!
             .map((o) => DropdownMenuItem(value: o, child: Text(o)))
             .toList(),
@@ -310,9 +307,8 @@ extension _AddProductSpecsSection on _AddProductScreenState {
     }
 
     // Text/number input
-    return Semantics(
-      label: 'input-add-product-spec-${template.key}',
-      textField: true,
+    return Tooltip(
+      message: 'input-add-product-spec-${template.key}',
       child: TextFormField(
         key: Key('spec_${template.key}_field'),
         initialValue: existingIndex >= 0
@@ -338,7 +334,7 @@ extension _AddProductSpecsSection on _AddProductScreenState {
             ),
           ),
         ),
-        style: const TextStyle(color: DesignTokens.white, fontSize: 14),
+        style: TextStyle(color: inputTextColor, fontSize: 14),
         keyboardType: template.valueType == SpecValueTypeValues.number
             ? TextInputType.number
             : TextInputType.text,

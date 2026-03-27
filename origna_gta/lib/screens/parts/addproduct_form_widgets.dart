@@ -22,9 +22,8 @@ extension _AddProductFormWidgets on _AddProductScreenState {
     String? errorText,
     String? semanticsLabel,
   }) {
-    return Semantics(
-      label: semanticsLabel,
-      textField: true,
+    return Tooltip(
+      message: semanticsLabel ?? label,
       child: TextFormField(
         key: key,
         controller: controller,
@@ -43,7 +42,7 @@ extension _AddProductFormWidgets on _AddProductScreenState {
           prefixIcon: icon != null ? Icon(icon, size: 20) : null,
           errorText: errorText,
           filled: true,
-          fillColor: DesignTokens.surfaceVariant.withValues(alpha: 0.5),
+          fillColor: _formFillColor(context),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
             borderSide: BorderSide(
@@ -204,7 +203,7 @@ extension _AddProductFormWidgets on _AddProductScreenState {
         decoration: InputDecoration(
           labelText: label,
           filled: true,
-          fillColor: DesignTokens.surfaceVariant.withValues(alpha: 0.5),
+          fillColor: _formFillColor(context),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
             borderSide: BorderSide(
@@ -492,10 +491,9 @@ extension _AddProductFormWidgets on _AddProductScreenState {
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Semantics(
-        label:
+      child: Tooltip(
+        message:
             'input-add-product-url-${label.toLowerCase().replaceAll(' ', '-')}',
-        textField: true,
         child: TextFormField(
           initialValue: value,
           decoration: InputDecoration(
@@ -503,7 +501,7 @@ extension _AddProductFormWidgets on _AddProductScreenState {
             hintText: placeholder,
             prefixIcon: const Icon(Icons.link_rounded, size: 20),
             filled: true,
-            fillColor: DesignTokens.surfaceVariant.withValues(alpha: 0.5),
+            fillColor: _formFillColor(context),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
               borderSide: BorderSide(

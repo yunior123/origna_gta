@@ -180,9 +180,8 @@ class _EmailVerificationRequiredScreenState
                   const SizedBox(height: 20),
                   FadeSlideIn(
                     delay: const Duration(milliseconds: 200),
-                    child: Semantics(
-                      label: 'btn-email-different-account',
-                      button: true,
+                    child: Tooltip(
+                      message: 'btn-email-different-account',
                       child: TextButton.icon(
                         onPressed: () async {
                           await ref.read(authActionsProvider).signOut();

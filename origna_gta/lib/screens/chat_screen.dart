@@ -235,9 +235,8 @@ class _MessagesListState extends ConsumerState<_MessagesList> {
                   style: TextStyle(color: DesignTokens.textSecondary),
                 ),
                 const SizedBox(height: 12),
-                Semantics(
-                  label: 'btn-chat-send',
-                  button: true,
+                Tooltip(
+                  message: 'btn-chat-send',
                   child: TextButton(
                     onPressed: widget.onFocusInput,
                     child: Text('chat.send_message_cta'.tr()),
@@ -628,18 +627,14 @@ class _MessageInput extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          Semantics(
-            button: true,
-            label: 'btn-send-message',
-            child: IconButton.filled(
-              key: const Key('chat_send_button'),
-              icon: const Icon(Icons.send_rounded),
-              onPressed: isSending ? null : onSend,
-              tooltip: 'send'.tr(),
-              style: IconButton.styleFrom(
-                backgroundColor: DesignTokens.primary,
-                foregroundColor: DesignTokens.white,
-              ),
+          IconButton.filled(
+            key: const Key('chat_send_button'),
+            icon: const Icon(Icons.send_rounded),
+            onPressed: isSending ? null : onSend,
+            tooltip: 'btn-send-message',
+            style: IconButton.styleFrom(
+              backgroundColor: DesignTokens.primary,
+              foregroundColor: DesignTokens.white,
             ),
           ),
         ],

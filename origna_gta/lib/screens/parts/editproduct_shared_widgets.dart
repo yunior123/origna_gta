@@ -66,8 +66,8 @@ extension _EditProductSharedWidgets on _EditProductScreenState {
     return Padding(
       key: key,
       padding: const EdgeInsets.only(bottom: 10),
-      child: Semantics(
-        label: 'input-edit-product-url',
+      child: Tooltip(
+        message: 'input-edit-product-url',
         child: TextFormField(
           controller: controller,
           decoration: InputDecoration(labelText: label),
@@ -198,7 +198,7 @@ extension _EditProductSharedWidgets on _EditProductScreenState {
                 borderRadius: BorderRadius.circular(8),
                 image: DecorationImage(
                   image: CachedNetworkImageProvider(
-                    state.existingImageUrls[index],
+                    state.existingImageUrls[index].trim(),
                   ),
                   fit: BoxFit.cover,
                 ),
@@ -231,7 +231,9 @@ extension _EditProductSharedWidgets on _EditProductScreenState {
         margin: const EdgeInsets.all(16),
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: DesignTokens.textOnPrimary,
+          color: Theme.of(ctx).brightness == Brightness.dark
+              ? DesignTokens.darkCard
+              : DesignTokens.textOnPrimary,
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
@@ -303,9 +305,8 @@ extension _EditProductSharedWidgets on _EditProductScreenState {
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
-              child: Semantics(
-                button: true,
-                label: 'btn-edit-product-got-it',
+              child: Tooltip(
+                message: 'btn-edit-product-got-it',
                 child: ElevatedButton(
                   onPressed: () => Navigator.pop(ctx),
                   style: ElevatedButton.styleFrom(

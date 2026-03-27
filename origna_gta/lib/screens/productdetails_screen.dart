@@ -92,9 +92,10 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     final selectedVariantId = ref.watch(
       productDetailViewModelProvider.select((s) => s.selectedVariantId),
     );
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final ratingsAsync = ref.watch(productRatingsProvider(productId));
     final product = _resolveDisplayProduct(productAsync);
+    final resolvedProductId = product?.productId ?? productId;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final ratingsAsync = ref.watch(productRatingsProvider(resolvedProductId));
 
     final matchedVariant =
         product?.hasVariants == true && selectedVariantId != null
@@ -136,7 +137,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
               subtitle: 'product.not_found_desc'.tr(),
             );
           }
-          _recordRecentlyViewedOnce(productId);
+          _recordRecentlyViewedOnce(resolvedProductId);
           final imageUrls = product.imageUrls;
           final hasVideo =
               product.videoUrl != null && product.videoUrl!.isNotEmpty;
@@ -156,24 +157,27 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
               FBTSection(product: product),
               const SizedBox(height: 32),
               ReviewsSection(
-                productId: productId,
+                productId: resolvedProductId,
                 productName: product.name,
                 ratingCount: product.ratingCount,
                 averageRating: product.rating,
                 ratingsAsync: ratingsAsync,
                 onRetry: () =>
-                    ref.invalidate(productRatingsProvider(productId)),
+                    ref.invalidate(productRatingsProvider(resolvedProductId)),
               ),
               const SizedBox(height: 32),
-              QASection(productId: productId, sellerId: product.sellerId),
+              QASection(
+                productId: resolvedProductId,
+                sellerId: product.sellerId,
+              ),
               const SizedBox(height: 32),
               SellerProductsSection(
                 sellerId: product.sellerId,
-                excludeProductId: productId,
+                excludeProductId: resolvedProductId,
               ),
               const SizedBox(height: 32),
               SimilarProductsSection(
-                productId: productId,
+                productId: resolvedProductId,
                 categoryId: product.categoryId,
               ),
               const SizedBox(height: 40),
@@ -220,15 +224,11 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                       ),
                       child: Row(
                         children: [
-                          Semantics(
-                            button: true,
-                            label: 'btn-back-product-details',
-                            child: IconButton(
-                              key: const Key('productdetail_back_button'),
-                              tooltip: 'product.go_back'.tr(),
-                              icon: const Icon(Icons.arrow_back),
-                              onPressed: () => Navigator.pop(context),
-                            ),
+                          IconButton(
+                            key: const Key('productdetail_back_button'),
+                            tooltip: 'btn-back-product-details',
+                            icon: const Icon(Icons.arrow_back),
+                            onPressed: () => Navigator.pop(context),
                           ),
                           const Spacer(),
                           buildShareButton(),
@@ -303,18 +303,14 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                               width: 1,
                             ),
                           ),
-                          child: Semantics(
-                            button: true,
-                            label: 'btn-back-product-details',
-                            child: IconButton(
-                              key: const Key('productdetail_back_button'),
-                              tooltip: 'product.go_back'.tr(),
-                              icon: const Icon(
-                                Icons.arrow_back,
-                                color: DesignTokens.white,
-                              ),
-                              onPressed: () => Navigator.pop(context),
+                          child: IconButton(
+                            key: const Key('productdetail_back_button'),
+                            tooltip: 'btn-back-product-details',
+                            icon: const Icon(
+                              Icons.arrow_back,
+                              color: DesignTokens.white,
                             ),
+                            onPressed: () => Navigator.pop(context),
                           ),
                         ),
                       ),
@@ -395,7 +391,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                   child: ModernButton(
                     label: 'common.retry'.tr(),
                     icon: Icons.refresh_rounded,
-                    onPressed: () => ref.invalidate(productByIdProvider(productId)),
+                    onPressed: () =>
+                        ref.invalidate(productByIdProvider(resolvedProductId)),
                   ),
                 ),
               ),
@@ -413,8 +410,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     bool isDark,
     AsyncValue<List<Map<String, dynamic>>> ratingsAsync,
   ) {
-    final matchedVariant =
-        product.hasVariants && selectedVariantId != null
+    final matchedVariant = product.hasVariants && selectedVariantId != null
         ? product.variants
               .where((v) => v.variantId == selectedVariantId)
               .firstOrNull
@@ -498,18 +494,16 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
       ],
     );
 
-    Widget buildImageGallery({
-      required double height,
-      bool wide = false,
-    }) => ProductImageGallery(
-      imageUrls: imageUrls,
-      hasVideo: hasVideo,
-      videoUrl: product.videoUrl,
-      height: height,
-      isWideScreen: wide,
-      onVideoTap: () => _showVideoPlayer(context, product.videoUrl!),
-      onImageTap: (urls, idx) => _showImageDialog(context, urls, idx),
-    );
+    Widget buildImageGallery({required double height, bool wide = false}) =>
+        ProductImageGallery(
+          imageUrls: imageUrls,
+          hasVideo: hasVideo,
+          videoUrl: product.videoUrl,
+          height: height,
+          isWideScreen: wide,
+          onVideoTap: () => _showVideoPlayer(context, product.videoUrl!),
+          onImageTap: (urls, idx) => _showImageDialog(context, urls, idx),
+        );
 
     Widget buildShareButton() => product.slug != null
         ? IconButton(
@@ -538,15 +532,11 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                 ),
                 child: Row(
                   children: [
-                    Semantics(
-                      button: true,
-                      label: 'btn-back-product-details',
-                      child: IconButton(
-                        key: const Key('productdetail_back_button'),
-                        tooltip: 'product.go_back'.tr(),
-                        icon: const Icon(Icons.arrow_back),
-                        onPressed: () => Navigator.pop(context),
-                      ),
+                    IconButton(
+                      key: const Key('productdetail_back_button'),
+                      tooltip: 'btn-back-product-details',
+                      icon: const Icon(Icons.arrow_back),
+                      onPressed: () => Navigator.pop(context),
                     ),
                     const Spacer(),
                     buildShareButton(),
@@ -600,15 +590,11 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
           backgroundColor: isDark
               ? DesignTokens.darkSurface
               : DesignTokens.white,
-          leading: Semantics(
-            button: true,
-            label: 'btn-back-product-details',
-            child: IconButton(
-              key: const Key('productdetail_back_button'),
-              tooltip: 'product.go_back'.tr(),
-              icon: const Icon(Icons.arrow_back),
-              onPressed: () => Navigator.pop(context),
-            ),
+          leading: IconButton(
+            key: const Key('productdetail_back_button'),
+            tooltip: 'btn-back-product-details',
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => Navigator.pop(context),
           ),
           actions: [buildShareButton()],
           flexibleSpace: FlexibleSpaceBar(

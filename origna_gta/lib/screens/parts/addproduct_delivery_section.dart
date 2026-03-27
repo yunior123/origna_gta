@@ -149,9 +149,8 @@ extension _AddProductDeliverySection on _AddProductScreenState {
             onChanged: viewModel.setLinuxDownloadUrl,
           ),
           const SizedBox(height: 8),
-          Semantics(
-            label: 'input-add-product-device-limit',
-            textField: true,
+          Tooltip(
+            message: 'input-add-product-device-limit',
             child: TextFormField(
               initialValue: state.deviceLimit?.toString(),
               decoration: InputDecoration(
@@ -323,9 +322,8 @@ extension _AddProductDeliverySection on _AddProductScreenState {
           ),
         ),
         Expanded(
-          child: Semantics(
-            label: 'input-add-product-shipping-discount-$label',
-            textField: true,
+          child: Tooltip(
+            message: 'input-add-product-shipping-discount-$label',
             child: TextFormField(
               controller: controller,
               keyboardType: TextInputType.number,
@@ -343,9 +341,7 @@ extension _AddProductDeliverySection on _AddProductScreenState {
                 suffixText: 'product.percent_off'.tr(),
                 isDense: true,
                 filled: true,
-                fillColor: DesignTokens.darkSurfaceVariant.withValues(
-                  alpha: 0.5,
-                ),
+                fillColor: _formFillColor(context).withValues(alpha: 0.5),
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 12,
                   vertical: 10,

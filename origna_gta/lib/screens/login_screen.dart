@@ -208,9 +208,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                   const SizedBox(height: 20),
                   Form(
                     key: formKey,
-                    child: Semantics(
-                      label: 'input-login-forgot-email',
-                      textField: true,
+                    child: Tooltip(
+                      message: 'input-login-forgot-email',
                       child: TextFormField(
                         controller: emailController,
                         keyboardType: TextInputType.emailAddress,
@@ -233,10 +232,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                 ],
               ),
               actions: [
-                Semantics(
-                  label: 'btn-forgot-cancel',
-                  button: true,
-                  excludeSemantics: true,
+                Tooltip(
+                  message: 'btn-forgot-cancel',
                   child: TextButton(
                     onPressed: () => Navigator.pop(dialogContext),
                     style: TextButton.styleFrom(

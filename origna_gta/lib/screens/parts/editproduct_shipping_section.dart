@@ -38,8 +38,8 @@ extension _EditProductShipping on _EditProductScreenState {
           Row(
             children: [
               Expanded(
-                child: Semantics(
-                  label: 'input-edit-product-weight',
+                child: Tooltip(
+                  message: 'input-edit-product-weight',
                   child: TextFormField(
                     controller: _weightController,
                     keyboardType: const TextInputType.numberWithOptions(
@@ -54,8 +54,8 @@ extension _EditProductShipping on _EditProductScreenState {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Semantics(
-                  label: 'input-edit-product-ship-days',
+                child: Tooltip(
+                  message: 'input-edit-product-ship-days',
                   child: TextFormField(
                     controller: _shipDaysController,
                     keyboardType: TextInputType.number,
@@ -72,8 +72,8 @@ extension _EditProductShipping on _EditProductScreenState {
           Row(
             children: [
               Expanded(
-                child: Semantics(
-                  label: 'input-edit-product-length',
+                child: Tooltip(
+                  message: 'input-edit-product-length',
                   child: TextFormField(
                     controller: _lengthController,
                     decoration: InputDecoration(
@@ -84,8 +84,8 @@ extension _EditProductShipping on _EditProductScreenState {
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: Semantics(
-                  label: 'input-edit-product-width',
+                child: Tooltip(
+                  message: 'input-edit-product-width',
                   child: TextFormField(
                     controller: _widthController,
                     decoration: InputDecoration(
@@ -96,8 +96,8 @@ extension _EditProductShipping on _EditProductScreenState {
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: Semantics(
-                  label: 'input-edit-product-height',
+                child: Tooltip(
+                  message: 'input-edit-product-height',
                   child: TextFormField(
                     controller: _heightController,
                     decoration: InputDecoration(
@@ -112,8 +112,8 @@ extension _EditProductShipping on _EditProductScreenState {
           Row(
             children: [
               Expanded(
-                child: Semantics(
-                  label: 'input-edit-product-min-order-qty',
+                child: Tooltip(
+                  message: 'input-edit-product-min-order-qty',
                   child: TextFormField(
                     controller: _minOrderController,
                     keyboardType: TextInputType.number,

@@ -118,8 +118,8 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                   buildLocationSection(state, viewModel),
                   buildMediaSection(state, viewModel),
                   Semantics(
-                    button: true,
                     label: 'btn-save-product',
+                    button: true,
                     child: SizedBox(
                       height: 50,
                       child: ElevatedButton(

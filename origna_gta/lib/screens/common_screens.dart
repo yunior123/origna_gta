@@ -132,9 +132,8 @@ class AuthRequiredGate extends ConsumerWidget {
                         const SizedBox(height: 12),
                         FadeSlideIn(
                           delay: const Duration(milliseconds: 200),
-                          child: Semantics(
-                            label: 'btn-common-go-home',
-                            button: true,
+                          child: Tooltip(
+                            message: 'btn-common-go-home',
                             child: TextButton(
                               onPressed: () =>
                                   Navigator.of(context).pushNamedAndRemoveUntil(

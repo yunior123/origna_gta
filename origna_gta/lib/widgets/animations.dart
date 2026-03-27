@@ -365,9 +365,8 @@ Widget previewEmptyStates() => previewGrid(
       icon: Icons.favorite_border_rounded,
       title: 'No favorites yet',
       subtitle: 'Tap the heart icon on any product to save it here.',
-      action: Semantics(
-        label: 'btn-browse-products',
-        button: true,
+      action: Tooltip(
+        message: 'btn-browse-products',
         child: ElevatedButton(
           onPressed: () {},
           child: const Text('Browse Products'),
@@ -440,9 +439,8 @@ Widget previewEmptyStatesLight() => previewGrid(
       icon: Icons.favorite_border_rounded,
       title: 'No favorites yet',
       subtitle: 'Tap the heart icon on any product to save it here.',
-      action: Semantics(
-        label: 'btn-browse-products',
-        button: true,
+      action: Tooltip(
+        message: 'btn-browse-products',
         child: ElevatedButton(
           onPressed: () {},
           child: const Text('Browse Products'),

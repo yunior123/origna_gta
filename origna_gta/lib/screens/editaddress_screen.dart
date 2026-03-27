@@ -534,9 +534,8 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
     void Function(String)? onChanged,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Semantics(
-      label: 'input-address-${label.toLowerCase().replaceAll(' ', '-')}',
-      textField: true,
+    return Tooltip(
+      message: 'input-address-${label.toLowerCase().replaceAll(' ', '-')}',
       child: TextFormField(
         key: key,
         controller: controller,

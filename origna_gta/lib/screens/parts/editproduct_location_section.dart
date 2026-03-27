@@ -22,8 +22,8 @@ extension _EditProductLocation on _EditProductScreenState {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _buildSectionTitle('product.product_location'.tr()),
-        Semantics(
-          label: 'input-edit-product-street-address',
+        Tooltip(
+          message: 'input-edit-product-street-address',
           child: TextFormField(
             controller: _streetController,
             decoration: InputDecoration(
@@ -41,8 +41,8 @@ extension _EditProductLocation on _EditProductScreenState {
         Row(
           children: [
             Expanded(
-              child: Semantics(
-                label: 'input-edit-product-city',
+              child: Tooltip(
+                message: 'input-edit-product-city',
                 child: TextFormField(
                   controller: _cityController,
                   decoration: InputDecoration(
@@ -71,8 +71,8 @@ extension _EditProductLocation on _EditProductScreenState {
           ],
         ),
         const SizedBox(height: 12),
-        Semantics(
-          label: 'input-edit-product-postal-code',
+        Tooltip(
+          message: 'input-edit-product-postal-code',
           child: TextFormField(
             controller: _postalCodeController,
             decoration: InputDecoration(
