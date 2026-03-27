@@ -63,6 +63,19 @@ void main() {
       expect(find.text('Test note'), findsOneWidget);
     });
 
+    testWidgets('falls back to default product name when item name is blank', (
+      tester,
+    ) async {
+      final blankNameItem = Map<String, dynamic>.from(testItem)
+        ..[Fields.name] = '   ';
+
+      await tester.pumpWidget(createTestWidget(item: blankNameItem));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(find.text('product.product_fallback'.tr()), findsOneWidget);
+    });
+
     testWidgets('shows digital delivery label for digital items', (tester) async {
       final digitalItem = Map<String, dynamic>.from(testItem)..[Fields.isDigital] = true;
       await tester.pumpWidget(createTestWidget(item: digitalItem));

@@ -7,7 +7,7 @@
 import { test, expect, describe, beforeAll } from 'bun:test';
 import {
   signIn, callOk, callExpectError,
-  fullCheckoutAndPay, fullMultiSellerCheckoutAndPay,
+  buildMultiSellerPayload, fullCheckoutAndPay, fullMultiSellerCheckoutAndPay,
   waitForOrderStatus, getOrder,
   getTestProduct, getSellerAuth, discoverProducts,
 } from '../../lib/api-client.js';
@@ -27,6 +27,18 @@ describe('Multi-Seller Orders', () => {
   let productB: { id: string; sellerId: string } | null = null; // Canada (Seller)
   let productC: { id: string; sellerId: string } | null = null; // China (Seller)
   let singleProductId: string;
+
+  async function expectMultiSellerCheckoutRejected(
+    items: { productId: string; quantity: number }[],
+  ) {
+    const auth = await signIn(BUYER_EMAIL);
+    const payload = await buildMultiSellerPayload(auth.localId, items, auth.idToken);
+    return callExpectError(
+      'create_checkout_session',
+      { ...payload, idempotencyKey: `multi-seller-reject-${Date.now()}-${Math.random().toString(36).slice(2)}` },
+      auth.idToken,
+    );
+  }
 
   beforeAll(async () => {
     const auth = await signIn(BUYER_EMAIL);
@@ -70,73 +82,29 @@ describe('Multi-Seller Orders', () => {
     expect(order.items.length).toBeGreaterThanOrEqual(1);
   });
 
-  test('Multi-seller cart creates order with correct items', { timeout: 60_000 }, async () => {
-    let result: any;
-    try {
-      result = await fullMultiSellerCheckoutAndPay(BUYER_EMAIL, [
-        { productId: productA!.id, quantity: 1 },
-        { productId: productB!.id, quantity: 1 },
-      ]);
-    } catch (e: any) {
-      if (isRateLimited(e)) { console.log('Skipped: rate limited'); return; }
-      throw e;
-    }
-    expect(result.orderId).toBeTruthy();
-
-    const auth = await signIn(BUYER_EMAIL);
-    let order: any;
-    try {
-      order = await waitForOrderStatus(result.orderId, ['confirmed'], auth.idToken, 15_000);
-    } catch (e: any) {
-      if (/PENDING_PAYMENT|pending/i.test(String(e?.message ?? ''))) {
-        console.log('Skipped: order stuck in PENDING_PAYMENT (no Stripe webhook in test env)');
-        return;
-      }
-      throw e;
-    }
-    expect(order.items.length).toBe(2);
+  test('Multi-seller cart is rejected by checkout validation', { timeout: 60_000 }, async () => {
+    const error = await expectMultiSellerCheckoutRejected([
+      { productId: productA!.id, quantity: 1 },
+      { productId: productB!.id, quantity: 1 },
+    ]);
+    expect(['validation-error', 'invalid-argument']).toContain(error.code);
+    expect(error.message).toContain('Multi-seller carts require separate checkout sessions per seller');
   });
 
-  test('Multi-country + Multi-seller cart creates order', { timeout: 60_000 }, async () => {
-    let result: any;
-    try {
-      // Product A (Canada, Admin) + Product C (China, Seller)
-      result = await fullMultiSellerCheckoutAndPay(BUYER_EMAIL, [
-        { productId: productA!.id, quantity: 1 },
-        { productId: productC!.id, quantity: 1 },
-      ]);
-    } catch (e: any) {
-      if (isRateLimited(e)) { console.log('Skipped: rate limited'); return; }
-      throw e;
-    }
-    expect(result.orderId).toBeTruthy();
-
-    const auth = await signIn(BUYER_EMAIL);
-    let order: any;
-    try {
-      order = await waitForOrderStatus(result.orderId, ['confirmed'], auth.idToken, 15_000);
-    } catch (e: any) {
-      if (/PENDING_PAYMENT|pending/i.test(String(e?.message ?? ''))) {
-        console.log('Skipped: order stuck in PENDING_PAYMENT (no Stripe webhook in test env)');
-        return;
-      }
-      throw e;
-    }
-    expect(order.items.length).toBe(2);
+  test('Multi-country + multi-seller cart is rejected by checkout validation', { timeout: 60_000 }, async () => {
+    const error = await expectMultiSellerCheckoutRejected([
+      { productId: productA!.id, quantity: 1 },
+      { productId: productC!.id, quantity: 1 },
+    ]);
+    expect(['validation-error', 'invalid-argument']).toContain(error.code);
+    expect(error.message).toContain('Multi-seller carts require separate checkout sessions per seller');
   });
 
-  test('Per-item status tracking works for multi-item order', { timeout: 60_000 }, async () => {
-    let result: any;
-    try {
-      // Use productB + productC (not productA + productB) to avoid the 60s order dedup
-      result = await fullMultiSellerCheckoutAndPay(BUYER_EMAIL, [
-        { productId: productB!.id, quantity: 1 },
-        { productId: productC!.id, quantity: 1 },
-      ]);
-    } catch (e: any) {
-      if (isRateLimited(e)) { console.log('Skipped: rate limited'); return; }
-      throw e;
-    }
+  test('Same-seller multi-item workflows still work when checkout is allowed', { timeout: 60_000 }, async () => {
+    const result = await fullMultiSellerCheckoutAndPay(BUYER_EMAIL, [
+      { productId: productB!.id, quantity: 1 },
+      { productId: productC!.id, quantity: 1 },
+    ]);
 
     const auth = await signIn(BUYER_EMAIL);
     try {
@@ -149,7 +117,6 @@ describe('Multi-Seller Orders', () => {
       throw e;
     }
 
-    // Seller B marks their item as shipped
     const sellerAuth = await getSellerAuth(productB!.sellerId);
     await callOk('update_item_status', {
       orderId: result.orderId,
@@ -166,71 +133,25 @@ describe('Multi-Seller Orders', () => {
     }
   });
 
-  test('Wrong seller cannot update another seller items', { timeout: 60_000 }, async () => {
-    let result: any;
-    try {
-      result = await fullMultiSellerCheckoutAndPay(BUYER_EMAIL, [
-        { productId: productA!.id, quantity: 1 },
-        { productId: productB!.id, quantity: 1 },
-      ]);
-    } catch (e: any) {
-      if (isRateLimited(e)) { console.log('Skipped: rate limited'); return; }
-      throw e;
-    }
-
-    const auth = await signIn(BUYER_EMAIL);
-    try {
-      await waitForOrderStatus(result.orderId, ['confirmed'], auth.idToken, 15_000);
-    } catch (e: any) {
-      if (/PENDING_PAYMENT|pending/i.test(String(e?.message ?? ''))) {
-        console.log('Skipped: order stuck in PENDING_PAYMENT (no Stripe webhook in test env)');
-        return;
-      }
-      throw e;
-    }
-
-    // Seller B (non-admin SELLER account) tries to update seller A's item — should fail
-    const sellerAuthB = await getSellerAuth(productB!.sellerId); // SELLER account (non-admin)
-    const error = await callExpectError('update_item_status', {
-      orderId: result.orderId,
-      productId: productA!.id,  // ADMIN's item — SELLER cannot update this
-      newStatus: 'shipped',
-    }, sellerAuthB.idToken);
-
-    expect(error.code, 'Cross-seller update should be rejected').not.toBe('unexpected-success');
+  test('Wrong seller cannot update another seller items because multi-seller order creation is rejected', { timeout: 60_000 }, async () => {
+    const error = await expectMultiSellerCheckoutRejected([
+      { productId: productA!.id, quantity: 1 },
+      { productId: productB!.id, quantity: 1 },
+    ]);
+    expect(
+      ['validation-error', 'invalid-argument'],
+      'Cross-seller update flow should be blocked at checkout',
+    ).toContain(error.code);
   });
 
-  test('Seller cannot update order-level status for multi-seller order', { timeout: 60_000 }, async () => {
-    let result: any;
-    try {
-      result = await fullMultiSellerCheckoutAndPay(BUYER_EMAIL, [
-        { productId: productA!.id, quantity: 1 },
-        { productId: productB!.id, quantity: 1 },
-      ]);
-    } catch (e: any) {
-      if (isRateLimited(e)) { console.log('Skipped: rate limited'); return; }
-      throw e;
-    }
-
-    const auth = await signIn(BUYER_EMAIL);
-    try {
-      await waitForOrderStatus(result.orderId, ['confirmed'], auth.idToken, 15_000);
-    } catch (e: any) {
-      if (/PENDING_PAYMENT|pending/i.test(String(e?.message ?? ''))) {
-        console.log('Skipped: order stuck in PENDING_PAYMENT (no Stripe webhook in test env)');
-        return;
-      }
-      throw e;
-    }
-
-    // Seller B (non-admin) tries to update the WHOLE order status — should be rejected.
-    const sellerAuth = await getSellerAuth(productB!.sellerId);
-    const error = await callExpectError('update_order_status', {
-      orderId: result.orderId,
-      newStatus: 'processing',
-    }, sellerAuth.idToken);
-
-    expect(error.code, 'Order-level update should be rejected for multi-seller order').not.toBe('unexpected-success');
-    // Message may or may not contain 'Multi-seller order' — don't assert on message text
+  test('Seller cannot update order-level status for a multi-seller order because checkout rejects it', { timeout: 60_000 }, async () => {
+    const error = await expectMultiSellerCheckoutRejected([
+      { productId: productA!.id, quantity: 1 },
+      { productId: productB!.id, quantity: 1 },
+    ]);
+    expect(
+      ['validation-error', 'invalid-argument'],
+      'Order-level update flow should be blocked at checkout',
+    ).toContain(error.code);
   });
 });

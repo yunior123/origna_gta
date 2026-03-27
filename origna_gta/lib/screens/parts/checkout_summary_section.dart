@@ -5,6 +5,7 @@ class _TermsText extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final termsAccepted = ref.watch(checkoutTermsAcceptedProvider);
     final hasInteracted = ref.watch(checkoutTermsInteractedProvider);
     final showError = hasInteracted && !termsAccepted;
@@ -14,7 +15,7 @@ class _TermsText extends ConsumerWidget {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: DesignTokens.surface,
+          color: isDark ? DesignTokens.darkCard : DesignTokens.surface,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: showError ? DesignTokens.error : DesignTokens.outlineVariant,
@@ -54,7 +55,9 @@ class _TermsText extends ConsumerWidget {
                 text: TextSpan(
                   style: TextStyle(
                     fontSize: 13,
-                    color: DesignTokens.textPrimary,
+                    color: isDark
+                        ? DesignTokens.textOnDark
+                        : DesignTokens.textPrimary,
                     height: 1.4,
                   ),
                   children: [
@@ -116,6 +119,7 @@ class _DigitalEulaText extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final eulaAccepted = ref.watch(checkoutEulaAcceptedProvider);
     final hasInteracted = ref.watch(checkoutEulaInteractedProvider);
     final showError = hasInteracted && !eulaAccepted;
@@ -125,7 +129,7 @@ class _DigitalEulaText extends ConsumerWidget {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: DesignTokens.surface,
+          color: isDark ? DesignTokens.darkCard : DesignTokens.surface,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: showError ? DesignTokens.error : DesignTokens.outlineVariant,
@@ -165,7 +169,9 @@ class _DigitalEulaText extends ConsumerWidget {
                 'checkout.digital_eula_agree'.tr(),
                 style: TextStyle(
                   fontSize: 13,
-                  color: DesignTokens.textPrimary,
+                  color: isDark
+                      ? DesignTokens.textOnDark
+                      : DesignTokens.textPrimary,
                   height: 1.4,
                 ),
               ),
@@ -184,6 +190,7 @@ class _AgeGateText extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final ageVerifAccepted = ref.watch(checkoutAgeVerifAcceptedProvider);
     final hasInteracted = ref.watch(checkoutAgeVerifInteractedProvider);
     final showError = hasInteracted && !ageVerifAccepted;
@@ -193,7 +200,7 @@ class _AgeGateText extends ConsumerWidget {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: DesignTokens.surface,
+          color: isDark ? DesignTokens.darkCard : DesignTokens.surface,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: showError ? DesignTokens.error : DesignTokens.outlineVariant,
@@ -235,7 +242,9 @@ class _AgeGateText extends ConsumerWidget {
                 'checkout.age_gate_agree'.tr(),
                 style: TextStyle(
                   fontSize: 13,
-                  color: DesignTokens.textPrimary,
+                  color: isDark
+                      ? DesignTokens.textOnDark
+                      : DesignTokens.textPrimary,
                   height: 1.4,
                 ),
               ),

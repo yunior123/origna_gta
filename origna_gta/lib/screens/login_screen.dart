@@ -208,22 +208,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                   const SizedBox(height: 20),
                   Form(
                     key: formKey,
-                    child: TextFormField(
-                      controller: emailController,
-                      keyboardType: TextInputType.emailAddress,
-                      decoration: InputDecoration(
-                        labelText: 'auth.email'.tr(),
-                        prefixIcon: Icon(Icons.email_outlined),
+                    child: Semantics(
+                      label: 'input-login-forgot-email',
+                      textField: true,
+                      child: TextFormField(
+                        controller: emailController,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: InputDecoration(
+                          labelText: 'auth.email'.tr(),
+                          prefixIcon: Icon(Icons.email_outlined),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'auth.please_enter_email'.tr();
+                          }
+                          if (!ValidationConstants.emailRegex.hasMatch(value)) {
+                            return 'auth.enter_valid_email'.tr();
+                          }
+                          return null;
+                        },
                       ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'auth.please_enter_email'.tr();
-                        }
-                        if (!ValidationConstants.emailRegex.hasMatch(value)) {
-                          return 'auth.enter_valid_email'.tr();
-                        }
-                        return null;
-                      },
                     ),
                   ),
                 ],

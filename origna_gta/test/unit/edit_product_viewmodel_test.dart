@@ -70,6 +70,18 @@ void main() {
       expect(state.standardEnabled, isTrue);
     });
 
+    test('normalizes legacy province names to province codes', () {
+      final legacyProvinceProduct = initialProduct.copyWith(
+        sellerAddress: initialProduct.sellerAddress?.copyWith(state: 'Ontario'),
+      );
+
+      final state = container.read(
+        editProductViewModelProvider(legacyProvinceProduct),
+      );
+
+      expect(state.selectedProvince, ProvinceCodeValues.ontario);
+    });
+
     test('onStreetChanged fetches suggestions', () async {
       final viewModel = container.read(
         editProductViewModelProvider(initialProduct).notifier,

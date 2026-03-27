@@ -456,16 +456,20 @@ class _SortAndFilterRow extends ConsumerWidget {
                         ),
                       ),
                     ),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.pop(ctx);
-                        homeNotifier.clearPriceFilter();
-                      },
-                      style: TextButton.styleFrom(
-                        foregroundColor: DesignTokens.primary,
-                        textStyle: const TextStyle(fontSize: 13),
+                    Semantics(
+                      label: 'btn-price-filter-clear',
+                      button: true,
+                      child: TextButton(
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          homeNotifier.clearPriceFilter();
+                        },
+                        style: TextButton.styleFrom(
+                          foregroundColor: DesignTokens.primary,
+                          textStyle: const TextStyle(fontSize: 13),
+                        ),
+                        child: Text('home.filter_price_any'.tr()),
                       ),
-                      child: Text('home.filter_price_any'.tr()),
                     ),
                   ],
                 ),

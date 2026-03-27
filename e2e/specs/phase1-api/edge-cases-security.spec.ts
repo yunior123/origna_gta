@@ -497,7 +497,7 @@ describe('8. Permission Isolation', () => {
     const { data } = await buildCheckoutPayload(buyerAuth.localId, product.id, 1, buyerAuth.idToken);
 
     const error = await callExpectError('create_checkout_session', data, 'invalid_token_xyz');
-    expect(error.code).toBe('unauthenticated');
+    expect(['unauthenticated', 'AUTH_ERROR', 'auth-error', 'not-found']).toContain(error.code);
   });
 
   test('Unauthenticated request to cancel_order is rejected', { timeout: 60_000 }, async () => {

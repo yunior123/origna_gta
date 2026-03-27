@@ -5,22 +5,32 @@ import 'package:mockito/annotations.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:origna_gta/core/repositories/cart_repository.dart';
 import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/core/repositories/product_repository.dart';
+import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/models/models.dart';
 
-@GenerateNiceMocks([
-  MockSpec<CartRepository>(),
-])
+@GenerateNiceMocks([MockSpec<CartRepository>()])
 import 'cart_provider_test.mocks.dart';
+
+class MockProductRepository extends Mock implements ProductRepository {}
+
+class StubProductRepository extends Fake implements ProductRepository {
+  @override
+  Future<List<Product>> fetchProductsByIds(List<String> productIds) async => [];
+}
 
 void main() {
   late MockCartRepository mockRepo;
+  late MockProductRepository mockProductRepository;
   late ProviderContainer container;
 
   setUp(() {
     mockRepo = MockCartRepository();
+    mockProductRepository = MockProductRepository();
     container = ProviderContainer(
       overrides: [
         cartRepositoryProvider.overrideWithValue(mockRepo),
+        productRepositoryProvider.overrideWithValue(mockProductRepository),
         userIdProvider.overrideWith((ref) => 'user_123'),
       ],
     );
@@ -79,6 +89,38 @@ void main() {
       
       final count = container.read(cartItemCountProvider);
       expect(count, 5);
+    });
+
+    test('cartItemDetailProvider preserves snapshot data for missing products', () async {
+      final createdAt = DateTime.now();
+      final container = ProviderContainer(
+        overrides: [
+          productRepositoryProvider.overrideWithValue(StubProductRepository()),
+          cartItemsProvider.overrideWith(
+            (ref) => Stream.value([
+              CartItemModel(
+                cartItemId: 'p1',
+                productId: 'p1',
+                quantity: 2,
+                createdAt: createdAt,
+                productName: 'Archived Product',
+                productDescription: 'Saved in cart',
+                imageUrls: const ['https://example.com/p1.png'],
+                priceSnapshot: 2599,
+              ),
+            ]),
+          ),
+        ],
+      );
+
+      await container.read(cartItemsProvider.future);
+      final detail = await container.read(cartItemDetailProvider('p1').future);
+
+      expect(detail, isNotNull);
+      expect(detail!.name, 'Archived Product');
+      expect(detail.priceCents, 2599);
+      expect(detail.price, 25.99);
+      expect(detail.imageUrls, ['https://example.com/p1.png']);
     });
   });
 }

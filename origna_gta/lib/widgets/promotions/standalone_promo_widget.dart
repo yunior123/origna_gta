@@ -104,26 +104,30 @@ class StandalonePromoWidget extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: ElevatedButton(
-                  onPressed: onTap,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: isDark
-                        ? DesignTokens.white
-                        : DesignTokens.promoAccentLight,
-                    foregroundColor: isDark
-                        ? DesignTokens.black
-                        : DesignTokens.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16.0),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16.0),
+                child: Semantics(
+                  label: 'btn-promo-apply',
+                  button: true,
+                  child: ElevatedButton(
+                    onPressed: onTap,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isDark
+                          ? DesignTokens.white
+                          : DesignTokens.promoAccentLight,
+                      foregroundColor: isDark
+                          ? DesignTokens.black
+                          : DesignTokens.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16.0),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16.0),
+                      ),
+                      elevation: 0,
                     ),
-                    elevation: 0,
-                  ),
-                  child: Text(
-                    'promotions.shop_now'.tr(),
-                    style: const TextStyle(
-                      fontSize: 16.0,
-                      fontWeight: FontWeight.bold,
+                    child: Text(
+                      'promotions.shop_now'.tr(),
+                      style: const TextStyle(
+                        fontSize: 16.0,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
@@ -136,9 +140,7 @@ class StandalonePromoWidget extends StatelessWidget {
   }
 }
 
-
 // === Widget Previews ===
-
 
 // ═══ Widget Previews ═══
 
@@ -180,4 +182,3 @@ Widget previewPromoBannerLight() => MaterialApp(
     ),
   ),
 );
-

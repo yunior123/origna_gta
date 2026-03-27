@@ -100,6 +100,15 @@ cd e2e && ORIGNABASE_URL=http://127.0.0.1:8080 bun run lib/seed-dev.ts
 - avoid launching too many claude code in bash. why?:it consumes too many tokens, subagents are prefered.ex:last time u called 5+ claude and consumed 10% of tokens in 2 minutes.
 - no magic strings, it leads to errors in production
 - always kill zombie flutter_test consuming ram
+- autolearn:if u find an issue while solving other then solve it or added to state.md
+- avoid simple unprofessional fixes. if u encounter an issue make sure to solve like pro.
+- codex delegation: ONLY gpt-5.4 (full). NEVER gpt-5.4-mini, o4-mini, o3, or any model < 5.3. Lower models destroy the codebase.
+- codex flag: `codex exec --dangerously-bypass-approvals-and-sandbox -c 'model="gpt-5.4"'`
+- after ANY codex run: verify `flutter analyze` + `flutter test` PASS before accepting changes. Revert if broken.
+- codex cannot verify screenshots match filenames — always audit screenshots manually after codex captures them.
+- codex/gemini monitoring: launch with `> /tmp/codex-output.log 2>&1 &` then monitor via `nohup /tmp/monitor-codex.sh &`. Script checks every 5min: process alive, screenshot count, last output line.
+- before commit: always run `/code-review` (4 parallel reviewers: correctness, security, performance, standards). Score ≥9 blocks commit.
+- before push: `flutter analyze --no-fatal-infos && flutter test --exclude-tags golden && cargo clippy -D warnings && cargo test`
 
 ## MCP
 

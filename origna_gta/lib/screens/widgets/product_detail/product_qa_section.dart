@@ -71,15 +71,19 @@ class _QASectionState extends ConsumerState<QASection> {
                   ),
                 ),
                 if (qaList.length > 3 && !showAll)
-                  TextButton(
-                    onPressed: () =>
-                        ref.read(_qaShowAllProvider.notifier).state = true,
-                    style: TextButton.styleFrom(
-                      foregroundColor: DesignTokens.primary,
-                    ),
-                    child: Text(
-                      'qa.see_all'.tr(
-                        namedArgs: {'count': qaList.length.toString()},
+                  Semantics(
+                    label: 'btn-qa-see-all',
+                    button: true,
+                    child: TextButton(
+                      onPressed: () =>
+                          ref.read(_qaShowAllProvider.notifier).state = true,
+                      style: TextButton.styleFrom(
+                        foregroundColor: DesignTokens.primary,
+                      ),
+                      child: Text(
+                        'qa.see_all'.tr(
+                          namedArgs: {'count': qaList.length.toString()},
+                        ),
                       ),
                     ),
                   ),

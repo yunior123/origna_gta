@@ -125,10 +125,57 @@ function isoDaysAgo(days: number, extraMinutes = 0): string {
   return new Date(Date.now() - days * 86_400_000 - extraMinutes * 60_000).toISOString();
 }
 
-function sampleImageUrls(seed: string, count = 2): string[] {
-  return Array.from({ length: count }, (_, index) =>
-    `https://picsum.photos/seed/${encodeURIComponent(`${seed}-${index + 1}`)}/900/900`,
-  );
+// Product images hosted on Cloudflare R2 (orignagta bucket) — passes backend URL validation
+const R2_BASE = 'https://pub-f9698d0f50d146bcac0e2dc9eb09de57.r2.dev/dev/products/samples';
+const PRODUCT_IMAGE_POOLS: Record<string, string[]> = {
+  electronics: [
+    `${R2_BASE}/electronics-1.jpg`, // laptop
+    `${R2_BASE}/electronics-2.jpg`, // headphones
+    `${R2_BASE}/electronics-3.jpg`, // phone
+    `${R2_BASE}/electronics-4.jpg`, // monitor
+  ],
+  groceries: [
+    `${R2_BASE}/food-1.jpg`,   // vegetables
+    `${R2_BASE}/food-2.jpg`,   // fruits
+    `${R2_BASE}/food-3.jpg`,   // bread
+    `${R2_BASE}/food-4.jpg`,   // burger
+  ],
+  clothing: [
+    `${R2_BASE}/clothing-1.jpg`, // clothes
+    `${R2_BASE}/clothing-2.jpg`, // shoes
+    `${R2_BASE}/clothing-3.jpg`, // watch
+    `${R2_BASE}/clothing-4.jpg`, // sneakers
+  ],
+  default: [
+    `${R2_BASE}/home-1.jpg`,    // desk setup
+    `${R2_BASE}/home-2.jpg`,    // bottles
+    `${R2_BASE}/home-3.jpg`,    // product flat
+    `${R2_BASE}/auto-1.jpg`,    // car
+    `${R2_BASE}/auto-2.jpg`,    // car 2
+    `${R2_BASE}/books-1.jpg`,   // book
+    `${R2_BASE}/digital-1.jpg`, // code
+    `${R2_BASE}/digital-2.jpg`, // laptop code
+  ],
+};
+
+function sampleImageUrls(seed: string, count = 2, category?: string): string[] {
+  const cat = (category || '').toLowerCase();
+  const pool = cat.includes('electron') || cat.includes('digital') || cat.includes('computer')
+    ? PRODUCT_IMAGE_POOLS.electronics
+    : cat.includes('grocer') || cat.includes('food') || cat.includes('produce')
+    ? PRODUCT_IMAGE_POOLS.groceries
+    : cat.includes('cloth') || cat.includes('shoe') || cat.includes('accessor')
+    ? PRODUCT_IMAGE_POOLS.clothing
+    : PRODUCT_IMAGE_POOLS.default;
+
+  // Deterministic selection based on seed hash
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) hash = ((hash << 5) - hash + seed.charCodeAt(i)) | 0;
+
+  return Array.from({ length: count }, (_, index) => {
+    const idx = Math.abs((hash + index * 7) % pool.length);
+    return pool[idx];
+  });
 }
 
 function slugify(input: string): string {
@@ -828,7 +875,7 @@ async function seedProducts(
       categoryName: 'Electronics',
       title: 'Sold Out Collector Camera',
       description: 'Rare vintage camera for collectors',
-      priceCents: 89999,
+      priceCents: 49999,
       lifecycleStatus: 'active',
       stockQuantity: 0,
       isDigital: false,
@@ -909,7 +956,7 @@ async function seedProducts(
       categoryName: 'Computers',
       title: 'Pro Workstation Laptop 16"',
       description: 'High-performance laptop for creators and developers. M4 Pro chip, 32GB RAM, 1TB SSD.',
-      priceCents: 349999,
+      priceCents: 49999,
       lifecycleStatus: 'active',
       stockQuantity: 15,
       isDigital: false,
@@ -948,7 +995,7 @@ async function seedProducts(
       categoryName: 'Groceries',
       title: 'Fresh Organic Strawberries 454g',
       description: 'Premium organic strawberries from Ontario farms. Hand-picked at peak ripeness.',
-      priceCents: 699,
+      priceCents: 1099,
       lifecycleStatus: 'active',
       stockQuantity: 50,
       isDigital: false,
@@ -1118,7 +1165,7 @@ async function seedProducts(
     const stockQuantity = lifecycleStatus === 'active'
       ? (index % 23 === 0 ? 0 : 5 + (index % 160))
       : 0;
-    const priceCents = 500 + (index % 250) * 137;
+    const priceCents = 1099 + (index % 250) * 196;
     const id = `mega_seed_product_${String(index + 1).padStart(4, '0')}`;
 
     return {
@@ -1152,7 +1199,7 @@ async function seedProducts(
       variantOptions: [],
       variants: [],
     };
-    const imageUrls = sampleImageUrls(product.id, product.hasVariants ? 3 : 2);
+    const imageUrls = sampleImageUrls(product.id, product.hasVariants ? 3 : 2, product.categoryName);
     await writeDoc(`products/${product.id}`, {
       productId: product.id,
       sellerId: product.sellerId,

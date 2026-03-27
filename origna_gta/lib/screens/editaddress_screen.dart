@@ -534,79 +534,119 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
     void Function(String)? onChanged,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return TextFormField(
-      key: key,
-      controller: controller,
-      keyboardType: keyboardType,
-      textCapitalization: textCapitalization,
-      onChanged: onChanged,
-      validator: validator,
-      style: TextStyle(
-        color: isDark ? DesignTokens.white : DesignTokens.textPrimary,
-      ),
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: icon != null
-            ? Icon(icon, color: DesignTokens.primary.withValues(alpha: 0.7))
-            : null,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(DesignTokens.radius12),
-          borderSide: BorderSide(
-            color: isDark
-                ? DesignTokens.textPrimary
-                : DesignTokens.outlineVariant,
+    return Semantics(
+      label: 'input-address-${label.toLowerCase().replaceAll(' ', '-')}',
+      textField: true,
+      child: TextFormField(
+        key: key,
+        controller: controller,
+        keyboardType: keyboardType,
+        textCapitalization: textCapitalization,
+        onChanged: onChanged,
+        validator: validator,
+        style: TextStyle(
+          color: isDark ? DesignTokens.white : DesignTokens.textPrimary,
+        ),
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: icon != null
+              ? Icon(icon, color: DesignTokens.primary.withValues(alpha: 0.7))
+              : null,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(DesignTokens.radius12),
+            borderSide: BorderSide(
+              color: isDark
+                  ? DesignTokens.textPrimary
+                  : DesignTokens.outlineVariant,
+            ),
           ),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(DesignTokens.radius12),
-          borderSide: BorderSide(
-            color: isDark
-                ? DesignTokens.textPrimary
-                : DesignTokens.outlineVariant,
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(DesignTokens.radius12),
+            borderSide: BorderSide(
+              color: isDark
+                  ? DesignTokens.textPrimary
+                  : DesignTokens.outlineVariant,
+            ),
           ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(DesignTokens.radius12),
+            borderSide: const BorderSide(color: DesignTokens.primary, width: 2),
+          ),
+          filled: true,
+          fillColor: isDark ? DesignTokens.darkSurface : DesignTokens.white,
         ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(DesignTokens.radius12),
-          borderSide: const BorderSide(color: DesignTokens.primary, width: 2),
-        ),
-        filled: true,
-        fillColor: isDark ? DesignTokens.darkSurface : DesignTokens.white,
       ),
     );
   }
 }
 
-
 // === Widget Previews ===
-
 
 // ═══ Widget Previews ═══
 
 Widget _addEditAddress() => previewScopeLoggedIn(child: AddEditAddressScreen());
 
 // ── Dark (default) ──────────────────────────────────────────────────────────
-@Preview(name: 'Manage Address Dark — Mobile', group: 'Screens', size: Size(390, 844))
-Widget previewAddEditAddressScreenMobile() => previewMobile(child: _addEditAddress());
+@Preview(
+  name: 'Manage Address Dark — Mobile',
+  group: 'Screens',
+  size: Size(390, 844),
+)
+Widget previewAddEditAddressScreenMobile() =>
+    previewMobile(child: _addEditAddress());
 
-@Preview(name: 'Manage Address Dark — Tablet', group: 'Screens', size: Size(768, 1024))
-Widget previewAddEditAddressScreenTablet() => previewTablet(child: _addEditAddress());
+@Preview(
+  name: 'Manage Address Dark — Tablet',
+  group: 'Screens',
+  size: Size(768, 1024),
+)
+Widget previewAddEditAddressScreenTablet() =>
+    previewTablet(child: _addEditAddress());
 
-@Preview(name: 'Manage Address Dark — Desktop', group: 'Screens', size: Size(1280, 800))
-Widget previewAddEditAddressScreenDesktop() => previewDesktop(child: _addEditAddress());
+@Preview(
+  name: 'Manage Address Dark — Desktop',
+  group: 'Screens',
+  size: Size(1280, 800),
+)
+Widget previewAddEditAddressScreenDesktop() =>
+    previewDesktop(child: _addEditAddress());
 
-@Preview(name: 'Manage Address Dark — Web', group: 'Screens', size: Size(1440, 900))
+@Preview(
+  name: 'Manage Address Dark — Web',
+  group: 'Screens',
+  size: Size(1440, 900),
+)
 Widget previewAddEditAddressScreenWeb() => previewWeb(child: _addEditAddress());
 
 // ── Light ────────────────────────────────────────────────────────────────────
-@Preview(name: 'Manage Address Light — Mobile', group: 'Screens', size: Size(390, 844))
-Widget previewAddEditAddressLightMobile() => previewMobile(theme: previewLightTheme, child: _addEditAddress());
+@Preview(
+  name: 'Manage Address Light — Mobile',
+  group: 'Screens',
+  size: Size(390, 844),
+)
+Widget previewAddEditAddressLightMobile() =>
+    previewMobile(theme: previewLightTheme, child: _addEditAddress());
 
-@Preview(name: 'Manage Address Light — Tablet', group: 'Screens', size: Size(768, 1024))
-Widget previewAddEditAddressLightTablet() => previewTablet(theme: previewLightTheme, child: _addEditAddress());
+@Preview(
+  name: 'Manage Address Light — Tablet',
+  group: 'Screens',
+  size: Size(768, 1024),
+)
+Widget previewAddEditAddressLightTablet() =>
+    previewTablet(theme: previewLightTheme, child: _addEditAddress());
 
-@Preview(name: 'Manage Address Light — Desktop', group: 'Screens', size: Size(1280, 800))
-Widget previewAddEditAddressLightDesktop() => previewDesktop(theme: previewLightTheme, child: _addEditAddress());
+@Preview(
+  name: 'Manage Address Light — Desktop',
+  group: 'Screens',
+  size: Size(1280, 800),
+)
+Widget previewAddEditAddressLightDesktop() =>
+    previewDesktop(theme: previewLightTheme, child: _addEditAddress());
 
-@Preview(name: 'Manage Address Light — Web', group: 'Screens', size: Size(1440, 900))
-Widget previewAddEditAddressLightWeb() => previewWeb(theme: previewLightTheme, child: _addEditAddress());
-
+@Preview(
+  name: 'Manage Address Light — Web',
+  group: 'Screens',
+  size: Size(1440, 900),
+)
+Widget previewAddEditAddressLightWeb() =>
+    previewWeb(theme: previewLightTheme, child: _addEditAddress());

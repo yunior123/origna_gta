@@ -17,7 +17,12 @@ class CanadianMoose extends StatefulWidget {
   final double size;
   final bool showSpeechBubble;
 
-  const CanadianMoose({super.key, required this.controller, this.size = 90, this.showSpeechBubble = true});
+  const CanadianMoose({
+    super.key,
+    required this.controller,
+    this.size = 90,
+    this.showSpeechBubble = true,
+  });
 
   @override
   State<CanadianMoose> createState() => _CanadianMooseState();
@@ -129,14 +134,25 @@ class MoosePainter extends CustomPainter {
   void _drawBody(Canvas canvas, Size size) {
     final bodyPaint = Paint()..color = const Color(0xFF6D4C41);
     final bodyRect = RRect.fromRectAndRadius(
-      Rect.fromCenter(center: Offset(0, size.height * 0.1), width: size.width * 0.6, height: size.height * 0.45),
+      Rect.fromCenter(
+        center: Offset(0, size.height * 0.1),
+        width: size.width * 0.6,
+        height: size.height * 0.45,
+      ),
       Radius.circular(size.width * 0.2),
     );
     canvas.drawRRect(bodyRect, bodyPaint);
 
     // Lighter belly
     final bellyPaint = Paint()..color = const Color(0xFF8D6E63);
-    canvas.drawOval(Rect.fromCenter(center: Offset(0, size.height * 0.15), width: size.width * 0.35, height: size.height * 0.3), bellyPaint);
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(0, size.height * 0.15),
+        width: size.width * 0.35,
+        height: size.height * 0.3,
+      ),
+      bellyPaint,
+    );
   }
 
   void _drawEars(Canvas canvas, Size size) {
@@ -147,14 +163,28 @@ class MoosePainter extends CustomPainter {
     canvas.save();
     canvas.translate(-size.width * 0.22, -size.height * 0.05);
     canvas.rotate(-0.4 + wiggle);
-    canvas.drawOval(Rect.fromCenter(center: const Offset(0, 0), width: size.width * 0.12, height: size.height * 0.08), earPaint);
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: const Offset(0, 0),
+        width: size.width * 0.12,
+        height: size.height * 0.08,
+      ),
+      earPaint,
+    );
     canvas.restore();
 
     // Right
     canvas.save();
     canvas.translate(size.width * 0.22, -size.height * 0.05);
     canvas.rotate(0.4 - wiggle);
-    canvas.drawOval(Rect.fromCenter(center: const Offset(0, 0), width: size.width * 0.12, height: size.height * 0.08), earPaint);
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: const Offset(0, 0),
+        width: size.width * 0.12,
+        height: size.height * 0.08,
+      ),
+      earPaint,
+    );
     canvas.restore();
   }
 
@@ -162,8 +192,14 @@ class MoosePainter extends CustomPainter {
     final lookX = lookTarget.dx * 3;
     final lookY = lookTarget.dy * 2;
 
-    final eyePosL = Offset(-size.width * 0.1 + lookX, -size.height * 0.02 + lookY);
-    final eyePosR = Offset(size.width * 0.1 + lookX, -size.height * 0.02 + lookY);
+    final eyePosL = Offset(
+      -size.width * 0.1 + lookX,
+      -size.height * 0.02 + lookY,
+    );
+    final eyePosR = Offset(
+      size.width * 0.1 + lookX,
+      -size.height * 0.02 + lookY,
+    );
 
     if (blinkValue > 0.1) {
       final blinkPaint = Paint()
@@ -171,26 +207,78 @@ class MoosePainter extends CustomPainter {
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2.5
         ..strokeCap = StrokeCap.round;
-      canvas.drawArc(Rect.fromCenter(center: eyePosL, width: size.width * 0.08, height: size.height * 0.04), 0.2, 2.7, false, blinkPaint);
-      canvas.drawArc(Rect.fromCenter(center: eyePosR, width: size.width * 0.08, height: size.height * 0.04), 0.2, 2.7, false, blinkPaint);
+      canvas.drawArc(
+        Rect.fromCenter(
+          center: eyePosL,
+          width: size.width * 0.08,
+          height: size.height * 0.04,
+        ),
+        0.2,
+        2.7,
+        false,
+        blinkPaint,
+      );
+      canvas.drawArc(
+        Rect.fromCenter(
+          center: eyePosR,
+          width: size.width * 0.08,
+          height: size.height * 0.04,
+        ),
+        0.2,
+        2.7,
+        false,
+        blinkPaint,
+      );
     } else {
       // Large kawaii eyes
       final eyeRadius = size.width * 0.06;
-      canvas.drawCircle(eyePosL, eyeRadius, Paint()..color = DesignTokens.white);
-      canvas.drawCircle(eyePosR, eyeRadius, Paint()..color = DesignTokens.white);
-      canvas.drawCircle(eyePosL, eyeRadius * 0.7, Paint()..color = DesignTokens.black);
-      canvas.drawCircle(eyePosR, eyeRadius * 0.7, Paint()..color = DesignTokens.black);
+      canvas.drawCircle(
+        eyePosL,
+        eyeRadius,
+        Paint()..color = DesignTokens.white,
+      );
+      canvas.drawCircle(
+        eyePosR,
+        eyeRadius,
+        Paint()..color = DesignTokens.white,
+      );
+      canvas.drawCircle(
+        eyePosL,
+        eyeRadius * 0.7,
+        Paint()..color = DesignTokens.black,
+      );
+      canvas.drawCircle(
+        eyePosR,
+        eyeRadius * 0.7,
+        Paint()..color = DesignTokens.black,
+      );
       // Highlights
-      canvas.drawCircle(eyePosL - Offset(eyeRadius * 0.3, eyeRadius * 0.3), eyeRadius * 0.25, Paint()..color = DesignTokens.white);
-      canvas.drawCircle(eyePosR - Offset(eyeRadius * 0.3, eyeRadius * 0.3), eyeRadius * 0.25, Paint()..color = DesignTokens.white);
+      canvas.drawCircle(
+        eyePosL - Offset(eyeRadius * 0.3, eyeRadius * 0.3),
+        eyeRadius * 0.25,
+        Paint()..color = DesignTokens.white,
+      );
+      canvas.drawCircle(
+        eyePosR - Offset(eyeRadius * 0.3, eyeRadius * 0.3),
+        eyeRadius * 0.25,
+        Paint()..color = DesignTokens.white,
+      );
     }
 
     // Blush
     final blushPaint = Paint()
       ..color = DesignTokens.error.withValues(alpha: 0.15)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
-    canvas.drawCircle(Offset(-size.width * 0.18, size.height * 0.05), size.width * 0.05, blushPaint);
-    canvas.drawCircle(Offset(size.width * 0.18, size.height * 0.05), size.width * 0.05, blushPaint);
+    canvas.drawCircle(
+      Offset(-size.width * 0.18, size.height * 0.05),
+      size.width * 0.05,
+      blushPaint,
+    );
+    canvas.drawCircle(
+      Offset(size.width * 0.18, size.height * 0.05),
+      size.width * 0.05,
+      blushPaint,
+    );
   }
 
   void _drawHead(Canvas canvas, Size size) {
@@ -202,7 +290,11 @@ class MoosePainter extends CustomPainter {
     // Head shape - cuter, more rounded
     final headPaint = Paint()..color = const Color(0xFF795548);
     final headRect = RRect.fromRectAndRadius(
-      Rect.fromCenter(center: const Offset(0, 0), width: size.width * 0.5, height: size.height * 0.38),
+      Rect.fromCenter(
+        center: const Offset(0, 0),
+        width: size.width * 0.5,
+        height: size.height * 0.38,
+      ),
       Radius.circular(size.width * 0.18),
     );
 
@@ -212,7 +304,11 @@ class MoosePainter extends CustomPainter {
     // Snout
     final snoutPaint = Paint()..color = const Color(0xFFA1887F);
     final snoutRect = RRect.fromRectAndRadius(
-      Rect.fromCenter(center: Offset(0, size.height * 0.08), width: size.width * 0.52, height: size.height * 0.22),
+      Rect.fromCenter(
+        center: Offset(0, size.height * 0.08),
+        width: size.width * 0.52,
+        height: size.height * 0.22,
+      ),
       Radius.circular(size.width * 0.12),
     );
     canvas.drawRRect(snoutRect, snoutPaint);
@@ -225,8 +321,16 @@ class MoosePainter extends CustomPainter {
 
   void _drawNostrils(Canvas canvas, Size size) {
     final nostrilPaint = Paint()..color = const Color(0xFF4E342E);
-    canvas.drawCircle(Offset(-size.width * 0.08, size.height * 0.14), 2, nostrilPaint);
-    canvas.drawCircle(Offset(size.width * 0.08, size.height * 0.14), 2, nostrilPaint);
+    canvas.drawCircle(
+      Offset(-size.width * 0.08, size.height * 0.14),
+      2,
+      nostrilPaint,
+    );
+    canvas.drawCircle(
+      Offset(size.width * 0.08, size.height * 0.14),
+      2,
+      nostrilPaint,
+    );
 
     final mouthPaint = Paint()
       ..color = const Color(0xFF4E342E)
@@ -235,14 +339,26 @@ class MoosePainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
     final mouthPath = Path()
       ..moveTo(-size.width * 0.04, size.height * 0.2)
-      ..quadraticBezierTo(0, size.height * 0.24, size.width * 0.04, size.height * 0.2);
+      ..quadraticBezierTo(
+        0,
+        size.height * 0.24,
+        size.width * 0.04,
+        size.height * 0.2,
+      );
     canvas.drawPath(mouthPath, mouthPaint);
   }
 
   void _drawScarf(Canvas canvas, Size size) {
     final scarfPaint = Paint()..color = DesignTokens.primary;
-    final scarfRect = Rect.fromCenter(center: Offset(0, -size.height * 0.05), width: size.width * 0.55, height: size.height * 0.12);
-    canvas.drawRRect(RRect.fromRectAndRadius(scarfRect, Radius.circular(size.height * 0.03)), scarfPaint);
+    final scarfRect = Rect.fromCenter(
+      center: Offset(0, -size.height * 0.05),
+      width: size.width * 0.55,
+      height: size.height * 0.12,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(scarfRect, Radius.circular(size.height * 0.03)),
+      scarfPaint,
+    );
 
     // Scarf tail
     canvas.save();
@@ -251,7 +367,12 @@ class MoosePainter extends CustomPainter {
     final tailPath = Path()
       ..moveTo(-size.width * 0.06, 0)
       ..lineTo(size.width * 0.05, 0)
-      ..quadraticBezierTo(size.width * 0.08, size.height * 0.1, size.width * 0.05, size.height * 0.2)
+      ..quadraticBezierTo(
+        size.width * 0.08,
+        size.height * 0.1,
+        size.width * 0.05,
+        size.height * 0.2,
+      )
       ..lineTo(-size.width * 0.04, size.height * 0.2)
       ..close();
     canvas.drawPath(tailPath, scarfPaint);
@@ -267,16 +388,41 @@ class MoosePainter extends CustomPainter {
     final shadowScale = 1 - (jumpHeight * 0.3);
 
     canvas.drawOval(
-      Rect.fromCenter(center: Offset(0, size.height * 0.45 - jumpOffset), width: size.width * 0.6 * shadowScale, height: size.height * 0.12 * shadowScale),
+      Rect.fromCenter(
+        center: Offset(0, size.height * 0.45 - jumpOffset),
+        width: size.width * 0.6 * shadowScale,
+        height: size.height * 0.12 * shadowScale,
+      ),
       shadowPaint,
     );
   }
 
   void _drawSingleAntler(Canvas canvas, Size size, Paint paint) {
     final path = Path();
-    path.addOval(Rect.fromLTWH(0, -size.height * 0.1, size.width * 0.25, size.height * 0.15));
-    path.addOval(Rect.fromLTWH(size.width * 0.05, -size.height * 0.15, size.width * 0.08, size.height * 0.1));
-    path.addOval(Rect.fromLTWH(size.width * 0.15, -size.height * 0.16, size.width * 0.06, size.height * 0.12));
+    path.addOval(
+      Rect.fromLTWH(
+        0,
+        -size.height * 0.1,
+        size.width * 0.25,
+        size.height * 0.15,
+      ),
+    );
+    path.addOval(
+      Rect.fromLTWH(
+        size.width * 0.05,
+        -size.height * 0.15,
+        size.width * 0.08,
+        size.height * 0.1,
+      ),
+    );
+    path.addOval(
+      Rect.fromLTWH(
+        size.width * 0.15,
+        -size.height * 0.16,
+        size.width * 0.06,
+        size.height * 0.12,
+      ),
+    );
     canvas.drawPath(path, paint);
   }
 }
@@ -297,7 +443,8 @@ class MooseTips {
   static String getTipForIndex(int index) => _tips[index % _tips.length];
 }
 
-class _CanadianMooseState extends State<CanadianMoose> with TickerProviderStateMixin {
+class _CanadianMooseState extends State<CanadianMoose>
+    with TickerProviderStateMixin {
   late AnimationController _idleController;
   late AnimationController _jumpController;
   late AnimationController _blinkController;
@@ -328,7 +475,11 @@ class _CanadianMooseState extends State<CanadianMoose> with TickerProviderStateM
                 builder: (context, child) {
                   return Opacity(
                     opacity: _bubbleController.value,
-                    child: Transform.scale(scale: 0.8 + (_bubbleController.value * 0.2), alignment: Alignment.bottomRight, child: _buildSpeechBubble()),
+                    child: Transform.scale(
+                      scale: 0.8 + (_bubbleController.value * 0.2),
+                      alignment: Alignment.bottomRight,
+                      child: _buildSpeechBubble(),
+                    ),
                   );
                 },
               ),
@@ -339,41 +490,51 @@ class _CanadianMooseState extends State<CanadianMoose> with TickerProviderStateM
             bottom: 0,
             child: MouseRegion(
               onHover: (event) {
-                final dx = (event.localPosition.dx - widget.size / 2) / (widget.size / 2);
-                final dy = (event.localPosition.dy - widget.size / 2) / (widget.size / 2);
-                widget.controller.lookAt(Offset(dx.clamp(-1, 1), dy.clamp(-1, 1)));
+                final dx =
+                    (event.localPosition.dx - widget.size / 2) /
+                    (widget.size / 2);
+                final dy =
+                    (event.localPosition.dy - widget.size / 2) /
+                    (widget.size / 2);
+                widget.controller.lookAt(
+                  Offset(dx.clamp(-1, 1), dy.clamp(-1, 1)),
+                );
               },
-              child: GestureDetector(
-                onTap: () {
-                  widget.controller.jump();
-                  if (!_isBubbleVisible) {
-                    setState(() => _isBubbleVisible = true);
-                    _bubbleController.forward();
-                  }
-                },
-                child: AnimatedBuilder(
-                  animation: Listenable.merge([
-                    _idleController,
-                    _jumpController,
-                    _blinkController,
-                    _earWiggleController,
-                    _breathingController,
-                    widget.controller,
-                  ]),
-                  builder: (context, child) {
-                    return CustomPaint(
-                      size: Size(widget.size, widget.size),
-                      painter: MoosePainter(
-                        idleValue: _idleController.value,
-                        jumpValue: _jumpController.value,
-                        blinkValue: _blinkController.value,
-                        earWiggle: _earWiggleController.value,
-                        breathingValue: _breathingController.value,
-                        lookTarget: widget.controller.lookTarget,
-                        excitement: widget.controller.excitementLevel,
-                      ),
-                    );
+              child: Semantics(
+                label: 'btn-moose-tap',
+                button: true,
+                child: GestureDetector(
+                  onTap: () {
+                    widget.controller.jump();
+                    if (!_isBubbleVisible) {
+                      setState(() => _isBubbleVisible = true);
+                      _bubbleController.forward();
+                    }
                   },
+                  child: AnimatedBuilder(
+                    animation: Listenable.merge([
+                      _idleController,
+                      _jumpController,
+                      _blinkController,
+                      _earWiggleController,
+                      _breathingController,
+                      widget.controller,
+                    ]),
+                    builder: (context, child) {
+                      return CustomPaint(
+                        size: Size(widget.size, widget.size),
+                        painter: MoosePainter(
+                          idleValue: _idleController.value,
+                          jumpValue: _jumpController.value,
+                          blinkValue: _blinkController.value,
+                          earWiggle: _earWiggleController.value,
+                          breathingValue: _breathingController.value,
+                          lookTarget: widget.controller.lookTarget,
+                          excitement: widget.controller.excitementLevel,
+                        ),
+                      );
+                    },
+                  ),
                 ),
               ),
             ),
@@ -401,13 +562,31 @@ class _CanadianMooseState extends State<CanadianMoose> with TickerProviderStateM
   @override
   void initState() {
     super.initState();
-    _idleController = AnimationController(vsync: this, duration: const Duration(seconds: 3))..repeat(reverse: true);
-    _jumpController = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
-    _blinkController = AnimationController(vsync: this, duration: const Duration(milliseconds: 200));
+    _idleController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 3),
+    )..repeat(reverse: true);
+    _jumpController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _blinkController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+    );
     _scheduleNextBlink();
-    _earWiggleController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000))..repeat(reverse: true);
-    _bubbleController = AnimationController(vsync: this, duration: const Duration(milliseconds: 400));
-    _breathingController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1800))..repeat(reverse: true);
+    _earWiggleController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    )..repeat(reverse: true);
+    _bubbleController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+    _breathingController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1800),
+    )..repeat(reverse: true);
 
     if (widget.showSpeechBubble) {
       _speechBubbleTimer = Timer(const Duration(seconds: 2), () {
@@ -437,7 +616,13 @@ class _CanadianMooseState extends State<CanadianMoose> with TickerProviderStateM
               bottomLeft: Radius.circular(16),
               bottomRight: Radius.circular(4),
             ),
-            boxShadow: [BoxShadow(color: DesignTokens.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4))],
+            boxShadow: [
+              BoxShadow(
+                color: DesignTokens.black.withValues(alpha: 0.1),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -451,25 +636,49 @@ class _CanadianMooseState extends State<CanadianMoose> with TickerProviderStateM
                 child: Text(
                   MooseTips.getTipForIndex(_currentTipIndex),
                   key: ValueKey<int>(_currentTipIndex),
-                  style: TextStyle(color: DesignTokens.textPrimary, fontSize: 11, fontFamily: 'Inter', fontWeight: FontWeight.w600, height: 1.4),
+                  style: TextStyle(
+                    color: DesignTokens.textPrimary,
+                    fontSize: 11,
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w600,
+                    height: 1.4,
+                  ),
                 ),
               ),
               const SizedBox(height: 8),
-              GestureDetector(
-                onTap: _launchSupportEmail,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(color: DesignTokens.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.contact_support_outlined, color: DesignTokens.primary, size: 12),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Support',
-                        style: TextStyle(color: DesignTokens.primary, fontSize: 10, fontWeight: FontWeight.w700),
-                      ),
-                    ],
+              Semantics(
+                label: 'btn-moose-help',
+                button: true,
+                child: GestureDetector(
+                  onTap: _launchSupportEmail,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: DesignTokens.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.contact_support_outlined,
+                          color: DesignTokens.primary,
+                          size: 12,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Support',
+                          style: TextStyle(
+                            color: DesignTokens.primary,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -498,7 +707,10 @@ class _CanadianMooseState extends State<CanadianMoose> with TickerProviderStateM
     final Uri emailUri = Uri(
       scheme: 'mailto',
       path: EmailConfig.supportEmail,
-      queryParameters: {'subject': 'Support Request - Origna GTA App', 'body': 'Hello Origna GTA Support Team,\n\n'},
+      queryParameters: {
+        'subject': 'Support Request - Origna GTA App',
+        'body': 'Hello Origna GTA Support Team,\n\n',
+      },
     );
     try {
       if (await canLaunchUrl(emailUri)) {
@@ -513,13 +725,16 @@ class _CanadianMooseState extends State<CanadianMoose> with TickerProviderStateM
 
   void _scheduleNextBlink() {
     _blinkTimer?.cancel();
-    _blinkTimer = Timer(Duration(milliseconds: 3000 + math.Random().nextInt(2000)), () async {
-      if (!mounted) return;
-      await _blinkController.forward();
-      if (!mounted) return;
-      await _blinkController.reverse();
-      _scheduleNextBlink();
-    });
+    _blinkTimer = Timer(
+      Duration(milliseconds: 3000 + math.Random().nextInt(2000)),
+      () async {
+        if (!mounted) return;
+        await _blinkController.forward();
+        if (!mounted) return;
+        await _blinkController.reverse();
+        _scheduleNextBlink();
+      },
+    );
   }
 
   void _startTipRotation() {
@@ -552,9 +767,7 @@ class _ModernBubbleTail extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-
 // === Widget Previews ===
-
 
 // ═══ Widget Previews ═══
 
@@ -566,7 +779,13 @@ Widget previewCanadianMooseDefault() => MaterialApp(
   theme: ThemeData.dark(),
   home: Scaffold(
     backgroundColor: DesignTokens.darkBackground,
-    body: Center(child: CanadianMoose(controller: MooseController(), size: 90, showSpeechBubble: false)),
+    body: Center(
+      child: CanadianMoose(
+        controller: MooseController(),
+        size: 90,
+        showSpeechBubble: false,
+      ),
+    ),
   ),
 );
 
@@ -579,7 +798,11 @@ Widget previewCanadianMooseLarge() => MaterialApp(
     body: Center(
       child: Padding(
         padding: const EdgeInsets.all(80),
-        child: CanadianMoose(controller: MooseController(), size: 150, showSpeechBubble: false),
+        child: CanadianMoose(
+          controller: MooseController(),
+          size: 150,
+          showSpeechBubble: false,
+        ),
       ),
     ),
   ),
@@ -593,7 +816,13 @@ Widget previewShopMascotDefault() => MaterialApp(
   theme: ThemeData.dark(),
   home: Scaffold(
     backgroundColor: DesignTokens.darkBackground,
-    body: Center(child: ShopMascot(controller: MascotController(), size: 80, showSpeechBubble: false)),
+    body: Center(
+      child: ShopMascot(
+        controller: MascotController(),
+        size: 80,
+        showSpeechBubble: false,
+      ),
+    ),
   ),
 );
 
@@ -606,9 +835,12 @@ Widget previewShopMascotLarge() => MaterialApp(
     body: Center(
       child: Padding(
         padding: const EdgeInsets.all(80),
-        child: ShopMascot(controller: MascotController(), size: 140, showSpeechBubble: false),
+        child: ShopMascot(
+          controller: MascotController(),
+          size: 140,
+          showSpeechBubble: false,
+        ),
       ),
     ),
   ),
 );
-

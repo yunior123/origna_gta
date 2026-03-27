@@ -145,9 +145,13 @@ class ReviewsSection extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                TextButton(
-                  onPressed: onRetry,
-                  child: Text('common.retry'.tr()),
+                Semantics(
+                  label: 'btn-reviews-retry',
+                  button: true,
+                  child: TextButton(
+                    onPressed: onRetry,
+                    child: Text('common.retry'.tr()),
+                  ),
                 ),
               ],
             ),
@@ -318,30 +322,37 @@ class _ReviewCardState extends ConsumerState<ReviewCard> {
                     scrollDirection: Axis.horizontal,
                     itemCount: photoUrls.length,
                     separatorBuilder: (context, i) => const SizedBox(width: 8),
-                    itemBuilder: (context, idx) => GestureDetector(
-                      onTap: isPremium
-                          ? () =>
-                                _showReviewPhotoDialog(context, photoUrls, idx)
-                          : null,
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: CachedNetworkImage(
-                          imageUrl: photoUrls[idx],
-                          width: 80,
-                          height: 80,
-                          fit: BoxFit.cover,
-                          placeholder: (ctx, url) =>
-                              ModernSkeletonLoader.imagePlaceholder(
-                                width: 80,
-                                height: 80,
-                              ),
-                          errorWidget: (ctx, url, err) => Container(
+                    itemBuilder: (context, idx) => Semantics(
+                      label: 'btn-review-photo-${idx + 1}',
+                      button: true,
+                      child: GestureDetector(
+                        onTap: isPremium
+                            ? () => _showReviewPhotoDialog(
+                                context,
+                                photoUrls,
+                                idx,
+                              )
+                            : null,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: CachedNetworkImage(
+                            imageUrl: photoUrls[idx],
                             width: 80,
                             height: 80,
-                            color: DesignTokens.outlineVariant,
-                            child: const Icon(
-                              Icons.image_not_supported,
-                              size: 32,
+                            fit: BoxFit.cover,
+                            placeholder: (ctx, url) =>
+                                ModernSkeletonLoader.imagePlaceholder(
+                                  width: 80,
+                                  height: 80,
+                                ),
+                            errorWidget: (ctx, url, err) => Container(
+                              width: 80,
+                              height: 80,
+                              color: DesignTokens.outlineVariant,
+                              child: const Icon(
+                                Icons.image_not_supported,
+                                size: 32,
+                              ),
                             ),
                           ),
                         ),
@@ -358,30 +369,34 @@ class _ReviewCardState extends ConsumerState<ReviewCard> {
                         child: Container(
                           color: DesignTokens.black.withValues(alpha: 0.45),
                           child: Center(
-                            child: GestureDetector(
-                              onTap: () => Navigator.pushNamed(
-                                context,
-                                AppRoutes.subscription,
-                              ),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(
-                                    Icons.lock_rounded,
-                                    color: DesignTokens.white,
-                                    size: 20,
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'subscription.premium_label'.tr(),
-                                    style: const TextStyle(
+                            child: Semantics(
+                              label: 'btn-review-photos-premium',
+                              button: true,
+                              child: GestureDetector(
+                                onTap: () => Navigator.pushNamed(
+                                  context,
+                                  AppRoutes.subscription,
+                                ),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.lock_rounded,
                                       color: DesignTokens.white,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w700,
-                                      letterSpacing: 0.5,
+                                      size: 20,
                                     ),
-                                  ),
-                                ],
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'subscription.premium_label'.tr(),
+                                      style: const TextStyle(
+                                        color: DesignTokens.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
@@ -457,22 +472,26 @@ class _ReviewCardState extends ConsumerState<ReviewCard> {
                           centered: false,
                         ),
                       )
-                    : TextButton(
-                        style: TextButton.styleFrom(
-                          minimumSize: Size.zero,
-                          foregroundColor: DesignTokens.primary,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
+                    : Semantics(
+                        label: 'btn-review-helpful',
+                        button: true,
+                        child: TextButton(
+                          style: TextButton.styleFrom(
+                            minimumSize: Size.zero,
+                            foregroundColor: DesignTokens.primary,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           ),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        onPressed: () => _voteHelpful(ratingId, true),
-                        child: Text(
-                          'product.helpful_yes_count'.tr(
-                            namedArgs: {'count': '$helpfulCount'},
+                          onPressed: () => _voteHelpful(ratingId, true),
+                          child: Text(
+                            'product.helpful_yes_count'.tr(
+                              namedArgs: {'count': '$helpfulCount'},
+                            ),
+                            style: const TextStyle(fontSize: 12),
                           ),
-                          style: const TextStyle(fontSize: 12),
                         ),
                       ),
               ],

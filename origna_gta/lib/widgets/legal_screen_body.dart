@@ -8,15 +8,21 @@ import 'package:flutter/widget_previews.dart';
 
 IconData iconForSection(String title) {
   final t = title.toLowerCase();
-  if (t.contains('collect') || t.contains('information')) return Icons.description_outlined;
+  if (t.contains('collect') || t.contains('information'))
+    return Icons.description_outlined;
   if (t.contains('use')) return Icons.analytics_outlined;
   if (t.contains('shar') || t.contains('third')) return Icons.share_outlined;
-  if (t.contains('right') || t.contains('choice')) return Icons.verified_user_outlined;
-  if (t.contains('security') || t.contains('protect')) return Icons.shield_outlined;
+  if (t.contains('right') || t.contains('choice'))
+    return Icons.verified_user_outlined;
+  if (t.contains('security') || t.contains('protect'))
+    return Icons.shield_outlined;
   if (t.contains('cookie')) return Icons.cookie_outlined;
-  if (t.contains('retention') || t.contains('stor')) return Icons.storage_outlined;
-  if (t.contains('children') || t.contains('minor')) return Icons.child_care_outlined;
-  if (t.contains('change') || t.contains('update')) return Icons.edit_note_outlined;
+  if (t.contains('retention') || t.contains('stor'))
+    return Icons.storage_outlined;
+  if (t.contains('children') || t.contains('minor'))
+    return Icons.child_care_outlined;
+  if (t.contains('change') || t.contains('update'))
+    return Icons.edit_note_outlined;
   if (t.contains('contact')) return Icons.mail_outlined;
   if (t.contains('partner')) return Icons.people_outlined;
   if (t.contains('payment')) return Icons.payment_outlined;
@@ -24,11 +30,15 @@ IconData iconForSection(String title) {
   if (t.contains('acceptance')) return Icons.handshake_outlined;
   if (t.contains('account')) return Icons.person_add_outlined;
   if (t.contains('purchase')) return Icons.payment_outlined;
-  if (t.contains('shipping') || t.contains('delivery')) return Icons.local_shipping_outlined;
-  if (t.contains('return') || t.contains('refund')) return Icons.assignment_return_outlined;
+  if (t.contains('shipping') || t.contains('delivery'))
+    return Icons.local_shipping_outlined;
+  if (t.contains('return') || t.contains('refund'))
+    return Icons.assignment_return_outlined;
   if (t.contains('prohibited')) return Icons.block_outlined;
-  if (t.contains('intellectual') || t.contains('property')) return Icons.copyright_outlined;
-  if (t.contains('liability') || t.contains('limitation')) return Icons.shield_outlined;
+  if (t.contains('intellectual') || t.contains('property'))
+    return Icons.copyright_outlined;
+  if (t.contains('liability') || t.contains('limitation'))
+    return Icons.shield_outlined;
   if (t.contains('privacy')) return Icons.lock_outlined;
   if (t.contains('termination')) return Icons.cancel_outlined;
   if (t.contains('governing') || t.contains('law')) return Icons.gavel_outlined;
@@ -47,7 +57,14 @@ List<PolicySection> parseSections(String raw) {
     final bodyStart = match.end;
     final bodyEnd = i + 1 < matches.length ? matches[i + 1].start : raw.length;
     final body = raw.substring(bodyStart, bodyEnd).trim();
-    sections.add(PolicySection(number: number, title: title, body: body, icon: iconForSection(title)));
+    sections.add(
+      PolicySection(
+        number: number,
+        title: title,
+        body: body,
+        icon: iconForSection(title),
+      ),
+    );
   }
 
   return sections;
@@ -64,7 +81,13 @@ class LegalScreenBody extends StatefulWidget {
   final String heroBadge;
   final IconData heroBadgeIcon;
 
-  const LegalScreenBody({super.key, required this.rawContent, required this.heroTitle, required this.heroBadge, required this.heroBadgeIcon});
+  const LegalScreenBody({
+    super.key,
+    required this.rawContent,
+    required this.heroTitle,
+    required this.heroBadge,
+    required this.heroBadgeIcon,
+  });
 
   @override
   State<LegalScreenBody> createState() => _LegalScreenBodyState();
@@ -81,7 +104,12 @@ class PolicySection {
   final String body;
   final IconData icon;
 
-  const PolicySection({required this.number, required this.title, required this.body, required this.icon});
+  const PolicySection({
+    required this.number,
+    required this.title,
+    required this.body,
+    required this.icon,
+  });
 }
 
 class _LegalScreenBodyState extends State<LegalScreenBody> {
@@ -145,8 +173,15 @@ class _LegalScreenBodyState extends State<LegalScreenBody> {
         tooltip: 'legal.back'.tr(),
         icon: Container(
           padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(color: DesignTokens.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
-          child: const Icon(Icons.arrow_back, color: DesignTokens.white, size: 20),
+          decoration: BoxDecoration(
+            color: DesignTokens.white.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: const Icon(
+            Icons.arrow_back,
+            color: DesignTokens.white,
+            size: 20,
+          ),
         ),
         onPressed: () => Navigator.pop(context),
       ),
@@ -157,7 +192,11 @@ class _LegalScreenBodyState extends State<LegalScreenBody> {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [DesignTokens.gradientStart, DesignTokens.gradientMiddle, DesignTokens.gradientEnd],
+              colors: [
+                DesignTokens.gradientStart,
+                DesignTokens.gradientMiddle,
+                DesignTokens.gradientEnd,
+              ],
             ),
           ),
           child: Stack(
@@ -169,7 +208,10 @@ class _LegalScreenBodyState extends State<LegalScreenBody> {
                   child: Container(
                     width: 160,
                     height: 160,
-                    decoration: BoxDecoration(shape: BoxShape.circle, color: DesignTokens.white.withValues(alpha: 0.04)),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: DesignTokens.white.withValues(alpha: 0.04),
+                    ),
                   ),
                 ),
               ),
@@ -180,7 +222,10 @@ class _LegalScreenBodyState extends State<LegalScreenBody> {
                   child: Container(
                     width: 120,
                     height: 120,
-                    decoration: BoxDecoration(shape: BoxShape.circle, color: DesignTokens.accent.withValues(alpha: 0.06)),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: DesignTokens.accent.withValues(alpha: 0.06),
+                    ),
                   ),
                 ),
               ),
@@ -192,21 +237,32 @@ class _LegalScreenBodyState extends State<LegalScreenBody> {
                   children: [
                     FadeSlideIn(
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
                           color: DesignTokens.accent.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: DesignTokens.accent.withValues(alpha: 0.3)),
+                          border: Border.all(
+                            color: DesignTokens.accent.withValues(alpha: 0.3),
+                          ),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(widget.heroBadgeIcon, size: 14, color: DesignTokens.accent.withValues(alpha: 0.9)),
+                            Icon(
+                              widget.heroBadgeIcon,
+                              size: 14,
+                              color: DesignTokens.accent.withValues(alpha: 0.9),
+                            ),
                             const SizedBox(width: 6),
                             Text(
                               widget.heroBadge,
                               style: TextStyle(
-                                color: DesignTokens.accent.withValues(alpha: 0.9),
+                                color: DesignTokens.accent.withValues(
+                                  alpha: 0.9,
+                                ),
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
                                 letterSpacing: 0.8,
@@ -221,7 +277,13 @@ class _LegalScreenBodyState extends State<LegalScreenBody> {
                       delay: const Duration(milliseconds: 100),
                       child: Text(
                         widget.heroTitle,
-                        style: const TextStyle(color: DesignTokens.white, fontSize: 32, fontWeight: FontWeight.w800, height: 1.15, letterSpacing: -0.5),
+                        style: const TextStyle(
+                          color: DesignTokens.white,
+                          fontSize: 32,
+                          fontWeight: FontWeight.w800,
+                          height: 1.15,
+                          letterSpacing: -0.5,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -229,7 +291,11 @@ class _LegalScreenBodyState extends State<LegalScreenBody> {
                       delay: const Duration(milliseconds: 200),
                       child: Text(
                         '${'legal.last_updated_february_2026'.tr()}  •  ${_sections.length}',
-                        style: TextStyle(color: DesignTokens.white.withValues(alpha: 0.55), fontSize: 13, fontWeight: FontWeight.w400),
+                        style: TextStyle(
+                          color: DesignTokens.white.withValues(alpha: 0.55),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w400,
+                        ),
                       ),
                     ),
                   ],
@@ -250,7 +316,14 @@ class _LegalScreenBodyState extends State<LegalScreenBody> {
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
           child: Text(
             'legal.jump_to_section'.tr(),
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.5, color: isDark ? DesignTokens.white.withValues(alpha: 0.38) : DesignTokens.textDisabled),
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.5,
+              color: isDark
+                  ? DesignTokens.white.withValues(alpha: 0.38)
+                  : DesignTokens.textDisabled,
+            ),
           ),
         ),
         SizedBox(
@@ -262,25 +335,44 @@ class _LegalScreenBodyState extends State<LegalScreenBody> {
             separatorBuilder: (_, _) => const SizedBox(width: 8),
             itemBuilder: (context, index) {
               final section = _sections[index];
-              return GestureDetector(
-                onTap: () => _scrollToSection(section.number),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: isDark ? DesignTokens.primary.withValues(alpha: 0.12) : DesignTokens.primary.withValues(alpha: 0.07),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: DesignTokens.primary.withValues(alpha: 0.15)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(section.icon, size: 14, color: DesignTokens.primary),
-                      const SizedBox(width: 6),
-                      Text(
-                        '${section.number}',
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: DesignTokens.primary),
+              return Semantics(
+                label: 'btn-legal-section-${section.number}',
+                button: true,
+                child: GestureDetector(
+                  onTap: () => _scrollToSection(section.number),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? DesignTokens.primary.withValues(alpha: 0.12)
+                          : DesignTokens.primary.withValues(alpha: 0.07),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: DesignTokens.primary.withValues(alpha: 0.15),
                       ),
-                    ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          section.icon,
+                          size: 14,
+                          color: DesignTokens.primary,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          '${section.number}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: DesignTokens.primary,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               );
@@ -312,12 +404,24 @@ class _LegalScreenBodyState extends State<LegalScreenBody> {
                   child: Container(
                     width: 5,
                     height: 5,
-                    decoration: const BoxDecoration(color: DesignTokens.primary, shape: BoxShape.circle),
+                    decoration: const BoxDecoration(
+                      color: DesignTokens.primary,
+                      shape: BoxShape.circle,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: Text(trimmed.substring(2), style: TextStyle(fontSize: 13.5, height: 1.6, color: isDark ? DesignTokens.white.withValues(alpha: 0.7) : DesignTokens.textSecondary)),
+                  child: Text(
+                    trimmed.substring(2),
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      height: 1.6,
+                      color: isDark
+                          ? DesignTokens.white.withValues(alpha: 0.7)
+                          : DesignTokens.textSecondary,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -327,13 +431,25 @@ class _LegalScreenBodyState extends State<LegalScreenBody> {
         widgets.add(
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
-            child: Text(trimmed, style: TextStyle(fontSize: 13.5, height: 1.65, color: isDark ? DesignTokens.white.withValues(alpha: 0.7) : DesignTokens.textSecondary)),
+            child: Text(
+              trimmed,
+              style: TextStyle(
+                fontSize: 13.5,
+                height: 1.65,
+                color: isDark
+                    ? DesignTokens.white.withValues(alpha: 0.7)
+                    : DesignTokens.textSecondary,
+              ),
+            ),
           ),
         );
       }
     }
 
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: widgets);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: widgets,
+    );
   }
 
   Widget _buildSectionCard(PolicySection section, bool isDark) {
@@ -342,104 +458,154 @@ class _LegalScreenBodyState extends State<LegalScreenBody> {
     return Padding(
       key: _sectionKeys[section.number],
       padding: const EdgeInsets.only(bottom: 12),
-      child: Material(
-        color: DesignTokens.transparent,
-        child: InkWell(
-          onTap: () {
-            setState(() {
-              if (isExpanded) {
-                _expanded.remove(section.number);
-              } else {
-                _expanded.add(section.number);
-              }
-            });
-          },
-          borderRadius: BorderRadius.circular(DesignTokens.radius16),
-          child: AnimatedContainer(
-            duration: DesignTokens.durationNormal,
-            curve: Curves.easeOutCubic,
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: isDark ? DesignTokens.darkSurfaceVariant : DesignTokens.white,
-              borderRadius: BorderRadius.circular(DesignTokens.radius16),
-              border: Border.all(
-                color: isExpanded ? DesignTokens.primary.withValues(alpha: 0.3) : (isDark ? DesignTokens.darkOutline : DesignTokens.outlineVariant),
-                width: isExpanded ? 1.5 : 1,
-              ),
-              boxShadow: isExpanded
-                  ? [BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.08), blurRadius: 16, offset: const Offset(0, 4))]
-                  : DesignTokens.shadowSm,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        gradient: isExpanded ? DesignTokens.primaryGradient : null,
-                        color: isExpanded ? null : (isDark ? DesignTokens.primary.withValues(alpha: 0.12) : DesignTokens.primary.withValues(alpha: 0.08)),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Center(
-                        child: Text(
-                          '${section.number}',
-                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: isExpanded ? DesignTokens.white : DesignTokens.primary),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Text(
-                        section.title,
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: isDark ? DesignTokens.white : DesignTokens.textPrimary,
-                          letterSpacing: -0.2,
-                        ),
-                      ),
-                    ),
-                    Icon(section.icon, size: 20, color: isDark ? DesignTokens.white.withValues(alpha: 0.38) : DesignTokens.textDisabled),
-                    const SizedBox(width: 8),
-                    AnimatedRotation(
-                      turns: isExpanded ? 0.5 : 0,
-                      duration: DesignTokens.durationNormal,
-                      child: Icon(
-                        Icons.keyboard_arrow_down,
-                        size: 22,
-                        color: isExpanded ? DesignTokens.primary : (isDark ? DesignTokens.white.withValues(alpha: 0.3) : DesignTokens.textDisabled),
-                      ),
-                    ),
-                  ],
+      child: Semantics(
+        label: 'btn-legal-expand-section-${section.number}',
+        button: true,
+        child: Material(
+          color: DesignTokens.transparent,
+          child: InkWell(
+            onTap: () {
+              setState(() {
+                if (isExpanded) {
+                  _expanded.remove(section.number);
+                } else {
+                  _expanded.add(section.number);
+                }
+              });
+            },
+            borderRadius: BorderRadius.circular(DesignTokens.radius16),
+            child: AnimatedContainer(
+              duration: DesignTokens.durationNormal,
+              curve: Curves.easeOutCubic,
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? DesignTokens.darkSurfaceVariant
+                    : DesignTokens.white,
+                borderRadius: BorderRadius.circular(DesignTokens.radius16),
+                border: Border.all(
+                  color: isExpanded
+                      ? DesignTokens.primary.withValues(alpha: 0.3)
+                      : (isDark
+                            ? DesignTokens.darkOutline
+                            : DesignTokens.outlineVariant),
+                  width: isExpanded ? 1.5 : 1,
                 ),
-                AnimatedCrossFade(
-                  firstChild: const SizedBox.shrink(),
-                  secondChild: Padding(
-                    padding: const EdgeInsets.only(top: 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          height: 1,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [DesignTokens.primary.withValues(alpha: 0.2), DesignTokens.secondary.withValues(alpha: 0.1), DesignTokens.transparent],
+                boxShadow: isExpanded
+                    ? [
+                        BoxShadow(
+                          color: DesignTokens.primary.withValues(alpha: 0.08),
+                          blurRadius: 16,
+                          offset: const Offset(0, 4),
+                        ),
+                      ]
+                    : DesignTokens.shadowSm,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          gradient: isExpanded
+                              ? DesignTokens.primaryGradient
+                              : null,
+                          color: isExpanded
+                              ? null
+                              : (isDark
+                                    ? DesignTokens.primary.withValues(
+                                        alpha: 0.12,
+                                      )
+                                    : DesignTokens.primary.withValues(
+                                        alpha: 0.08,
+                                      )),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Center(
+                          child: Text(
+                            '${section.number}',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                              color: isExpanded
+                                  ? DesignTokens.white
+                                  : DesignTokens.primary,
                             ),
                           ),
                         ),
-                        const SizedBox(height: 14),
-                        _buildSectionBody(section.body, isDark),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Text(
+                          section.title,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: isDark
+                                ? DesignTokens.white
+                                : DesignTokens.textPrimary,
+                            letterSpacing: -0.2,
+                          ),
+                        ),
+                      ),
+                      Icon(
+                        section.icon,
+                        size: 20,
+                        color: isDark
+                            ? DesignTokens.white.withValues(alpha: 0.38)
+                            : DesignTokens.textDisabled,
+                      ),
+                      const SizedBox(width: 8),
+                      AnimatedRotation(
+                        turns: isExpanded ? 0.5 : 0,
+                        duration: DesignTokens.durationNormal,
+                        child: Icon(
+                          Icons.keyboard_arrow_down,
+                          size: 22,
+                          color: isExpanded
+                              ? DesignTokens.primary
+                              : (isDark
+                                    ? DesignTokens.white.withValues(alpha: 0.3)
+                                    : DesignTokens.textDisabled),
+                        ),
+                      ),
+                    ],
                   ),
-                  crossFadeState: isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
-                  duration: DesignTokens.durationNormal,
-                  sizeCurve: Curves.easeOutCubic,
-                ),
-              ],
+                  AnimatedCrossFade(
+                    firstChild: const SizedBox.shrink(),
+                    secondChild: Padding(
+                      padding: const EdgeInsets.only(top: 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            height: 1,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  DesignTokens.primary.withValues(alpha: 0.2),
+                                  DesignTokens.secondary.withValues(alpha: 0.1),
+                                  DesignTokens.transparent,
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          _buildSectionBody(section.body, isDark),
+                        ],
+                      ),
+                    ),
+                    crossFadeState: isExpanded
+                        ? CrossFadeState.showSecond
+                        : CrossFadeState.showFirst,
+                    duration: DesignTokens.durationNormal,
+                    sizeCurve: Curves.easeOutCubic,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -451,14 +617,17 @@ class _LegalScreenBodyState extends State<LegalScreenBody> {
     final key = _sectionKeys[number];
     if (key?.currentContext != null) {
       setState(() => _expanded.add(number));
-      Scrollable.ensureVisible(key!.currentContext!, duration: DesignTokens.durationNormal, curve: Curves.easeOutCubic, alignment: 0.1);
+      Scrollable.ensureVisible(
+        key!.currentContext!,
+        duration: DesignTokens.durationNormal,
+        curve: Curves.easeOutCubic,
+        alignment: 0.1,
+      );
     }
   }
 }
 
-
 // === Widget Previews ===
-
 
 // ═══ Widget Previews ═══
 
@@ -472,7 +641,12 @@ const _kTermsMock = '''
 By using our service, you agree to our terms.
 ''';
 
-@Preview(name: 'Legal — Mobile Dark', group: 'Legal Content', size: Size(390, 844), brightness: Brightness.dark)
+@Preview(
+  name: 'Legal — Mobile Dark',
+  group: 'Legal Content',
+  size: Size(390, 844),
+  brightness: Brightness.dark,
+)
 Widget previewLegalMobile() => previewMobile(
   child: const LegalScreenBody(
     heroTitle: 'Privacy Policy',
@@ -482,7 +656,12 @@ Widget previewLegalMobile() => previewMobile(
   ),
 );
 
-@Preview(name: 'Legal — Tablet Dark', group: 'Legal Content', size: Size(768, 1024), brightness: Brightness.dark)
+@Preview(
+  name: 'Legal — Tablet Dark',
+  group: 'Legal Content',
+  size: Size(768, 1024),
+  brightness: Brightness.dark,
+)
 Widget previewLegalTablet() => previewTablet(
   child: const LegalScreenBody(
     heroTitle: 'Privacy Policy',
@@ -492,7 +671,12 @@ Widget previewLegalTablet() => previewTablet(
   ),
 );
 
-@Preview(name: 'Legal — Desktop Dark', group: 'Legal Content', size: Size(1280, 800), brightness: Brightness.dark)
+@Preview(
+  name: 'Legal — Desktop Dark',
+  group: 'Legal Content',
+  size: Size(1280, 800),
+  brightness: Brightness.dark,
+)
 Widget previewLegalDesktop() => previewDesktop(
   child: const LegalScreenBody(
     heroTitle: 'Privacy Policy',
@@ -526,7 +710,12 @@ Widget previewLegalVariants() => previewGrid(
   ],
 );
 
-@Preview(name: 'Legal Light — Mobile', group: 'Legal Content', size: Size(390, 844), brightness: Brightness.light)
+@Preview(
+  name: 'Legal Light — Mobile',
+  group: 'Legal Content',
+  size: Size(390, 844),
+  brightness: Brightness.light,
+)
 Widget previewLegalLightMobile() => previewMobile(
   theme: previewLightTheme,
   child: const LegalScreenBody(
@@ -537,7 +726,12 @@ Widget previewLegalLightMobile() => previewMobile(
   ),
 );
 
-@Preview(name: 'Legal Light — Tablet', group: 'Legal Content', size: Size(768, 1024), brightness: Brightness.light)
+@Preview(
+  name: 'Legal Light — Tablet',
+  group: 'Legal Content',
+  size: Size(768, 1024),
+  brightness: Brightness.light,
+)
 Widget previewLegalLightTablet() => previewTablet(
   theme: previewLightTheme,
   child: const LegalScreenBody(
@@ -548,7 +742,12 @@ Widget previewLegalLightTablet() => previewTablet(
   ),
 );
 
-@Preview(name: 'Legal Light — Desktop', group: 'Legal Content', size: Size(1280, 800), brightness: Brightness.light)
+@Preview(
+  name: 'Legal Light — Desktop',
+  group: 'Legal Content',
+  size: Size(1280, 800),
+  brightness: Brightness.light,
+)
 Widget previewLegalLightDesktop() => previewDesktop(
   theme: previewLightTheme,
   child: const LegalScreenBody(
@@ -583,4 +782,3 @@ Widget previewLegalVariantsLight() => previewGrid(
     ),
   ],
 );
-

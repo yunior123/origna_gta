@@ -100,76 +100,92 @@ extension _AddProductSpecsSection on _AddProductScreenState {
               child: Row(
                 children: [
                   Expanded(
-                    child: TextFormField(
-                      initialValue: spec['key'],
-                      decoration: InputDecoration(
-                        labelText: 'Key',
-                        labelStyle: TextStyle(
-                          color: DesignTokens.textSecondary,
-                        ),
-                        prefixIcon: Icon(
-                          Icons.label_outline,
-                          size: 18,
-                          color: DesignTokens.primary,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(
-                            color: DesignTokens.outline.withValues(alpha: 0.3),
+                    child: Semantics(
+                      label: 'input-add-product-spec-key-$index',
+                      textField: true,
+                      child: TextFormField(
+                        initialValue: spec['key'],
+                        decoration: InputDecoration(
+                          labelText: 'Key',
+                          labelStyle: TextStyle(
+                            color: DesignTokens.textSecondary,
+                          ),
+                          prefixIcon: Icon(
+                            Icons.label_outline,
+                            size: 18,
+                            color: DesignTokens.primary,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: DesignTokens.outline.withValues(
+                                alpha: 0.3,
+                              ),
+                            ),
                           ),
                         ),
+                        style: const TextStyle(
+                          color: DesignTokens.white,
+                          fontSize: 14,
+                        ),
+                        onChanged: (v) =>
+                            viewModel.updateSpec(index, v, spec['value'] ?? ''),
                       ),
-                      style: const TextStyle(
-                        color: DesignTokens.white,
-                        fontSize: 14,
-                      ),
-                      onChanged: (v) =>
-                          viewModel.updateSpec(index, v, spec['value'] ?? ''),
                     ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: TextFormField(
-                      initialValue: spec['value'],
-                      decoration: InputDecoration(
-                        labelText: 'Value',
-                        labelStyle: TextStyle(
-                          color: DesignTokens.textSecondary,
-                        ),
-                        prefixIcon: Icon(
-                          Icons.text_fields,
-                          size: 18,
-                          color: DesignTokens.primary,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(
-                            color: DesignTokens.outline.withValues(alpha: 0.3),
+                    child: Semantics(
+                      label: 'input-add-product-spec-value-$index',
+                      textField: true,
+                      child: TextFormField(
+                        initialValue: spec['value'],
+                        decoration: InputDecoration(
+                          labelText: 'Value',
+                          labelStyle: TextStyle(
+                            color: DesignTokens.textSecondary,
+                          ),
+                          prefixIcon: Icon(
+                            Icons.text_fields,
+                            size: 18,
+                            color: DesignTokens.primary,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: DesignTokens.outline.withValues(
+                                alpha: 0.3,
+                              ),
+                            ),
                           ),
                         ),
+                        style: const TextStyle(
+                          color: DesignTokens.white,
+                          fontSize: 14,
+                        ),
+                        onChanged: (v) =>
+                            viewModel.updateSpec(index, spec['key'] ?? '', v),
                       ),
-                      style: const TextStyle(
-                        color: DesignTokens.white,
-                        fontSize: 14,
-                      ),
-                      onChanged: (v) =>
-                          viewModel.updateSpec(index, spec['key'] ?? '', v),
                     ),
                   ),
-                  IconButton(
-                    icon: Icon(
-                      Icons.remove_circle_outline,
-                      color: DesignTokens.error,
-                      size: 20,
+                  Semantics(
+                    button: true,
+                    label: 'btn-add-product-remove-spec-$index',
+                    child: IconButton(
+                      icon: Icon(
+                        Icons.remove_circle_outline,
+                        color: DesignTokens.error,
+                        size: 20,
+                      ),
+                      onPressed: () => viewModel.removeSpec(index),
+                      tooltip: 'specs.remove_spec'.tr(),
                     ),
-                    onPressed: () => viewModel.removeSpec(index),
-                    tooltip: 'specs.remove_spec'.tr(),
                   ),
                 ],
               ),
@@ -181,19 +197,23 @@ extension _AddProductSpecsSection on _AddProductScreenState {
         const SizedBox(height: 8),
         Align(
           alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-            onPressed: viewModel.addSpec,
-            icon: Icon(
-              Icons.add_rounded,
-              size: 18,
-              color: DesignTokens.primary,
-            ),
-            label: Text(
-              'specs.add_custom'.tr(),
-              style: TextStyle(
+          child: Semantics(
+            button: true,
+            label: 'btn-add-product-add-custom-spec',
+            child: TextButton.icon(
+              onPressed: viewModel.addSpec,
+              icon: Icon(
+                Icons.add_rounded,
+                size: 18,
                 color: DesignTokens.primary,
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
+              ),
+              label: Text(
+                'specs.add_custom'.tr(),
+                style: TextStyle(
+                  color: DesignTokens.primary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
           ),
@@ -290,55 +310,59 @@ extension _AddProductSpecsSection on _AddProductScreenState {
     }
 
     // Text/number input
-    return TextFormField(
-      key: Key('spec_${template.key}_field'),
-      initialValue: existingIndex >= 0
-          ? state.specEntries[existingIndex]['value']
-          : null,
-      decoration: InputDecoration(
-        labelText: template.labelEn,
-        labelStyle: TextStyle(color: DesignTokens.textSecondary),
-        hintText: template.unit != null ? 'e.g., 16 ${template.unit}' : null,
-        suffixText: template.unit,
-        prefixIcon: Icon(
-          template.valueType == SpecValueTypeValues.number
-              ? Icons.numbers_rounded
-              : Icons.text_fields,
-          size: 18,
-          color: DesignTokens.primary,
-        ),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(
-            color: DesignTokens.outline.withValues(alpha: 0.3),
+    return Semantics(
+      label: 'input-add-product-spec-${template.key}',
+      textField: true,
+      child: TextFormField(
+        key: Key('spec_${template.key}_field'),
+        initialValue: existingIndex >= 0
+            ? state.specEntries[existingIndex]['value']
+            : null,
+        decoration: InputDecoration(
+          labelText: template.labelEn,
+          labelStyle: TextStyle(color: DesignTokens.textSecondary),
+          hintText: template.unit != null ? 'e.g., 16 ${template.unit}' : null,
+          suffixText: template.unit,
+          prefixIcon: Icon(
+            template.valueType == SpecValueTypeValues.number
+                ? Icons.numbers_rounded
+                : Icons.text_fields,
+            size: 18,
+            color: DesignTokens.primary,
+          ),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(
+              color: DesignTokens.outline.withValues(alpha: 0.3),
+            ),
           ),
         ),
-      ),
-      style: const TextStyle(color: DesignTokens.white, fontSize: 14),
-      keyboardType: template.valueType == SpecValueTypeValues.number
-          ? TextInputType.number
-          : TextInputType.text,
-      onChanged: (v) {
-        if (v.isEmpty && existingIndex >= 0) {
-          viewModel.removeSpec(existingIndex);
-        } else if (v.isNotEmpty) {
-          if (existingIndex >= 0) {
-            viewModel.updateSpec(existingIndex, template.key, v);
-          } else {
-            viewModel.addSpecWithValues(
-              template.key,
-              v,
-              group: template.group,
-              valueType: template.valueType,
-              unit: template.unit,
-            );
+        style: const TextStyle(color: DesignTokens.white, fontSize: 14),
+        keyboardType: template.valueType == SpecValueTypeValues.number
+            ? TextInputType.number
+            : TextInputType.text,
+        onChanged: (v) {
+          if (v.isEmpty && existingIndex >= 0) {
+            viewModel.removeSpec(existingIndex);
+          } else if (v.isNotEmpty) {
+            if (existingIndex >= 0) {
+              viewModel.updateSpec(existingIndex, template.key, v);
+            } else {
+              viewModel.addSpecWithValues(
+                template.key,
+                v,
+                group: template.group,
+                valueType: template.valueType,
+                unit: template.unit,
+              );
+            }
           }
-        }
-      },
-      validator: template.isRequired
-          ? (v) => v?.isEmpty ?? true ? 'common.required'.tr() : null
-          : null,
+        },
+        validator: template.isRequired
+            ? (v) => v?.isEmpty ?? true ? 'common.required'.tr() : null
+            : null,
+      ),
     );
   }
 }

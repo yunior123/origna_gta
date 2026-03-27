@@ -181,16 +181,20 @@ class TermsScreen extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 28),
-            TextButton.icon(
-              onPressed: () => Navigator.pop(context),
-              icon: const Icon(
-                Icons.arrow_back,
-                color: DesignTokens.white,
-                size: 18,
-              ),
-              label: Text(
-                'seller.go_back'.tr(),
-                style: const TextStyle(color: DesignTokens.white),
+            Semantics(
+              label: 'btn-terms-go-back',
+              button: true,
+              child: TextButton.icon(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(
+                  Icons.arrow_back,
+                  color: DesignTokens.white,
+                  size: 18,
+                ),
+                label: Text(
+                  'seller.go_back'.tr(),
+                  style: const TextStyle(color: DesignTokens.white),
+                ),
               ),
             ),
           ],
@@ -501,148 +505,154 @@ class _TermsBodyState extends State<_TermsBody> {
       padding: const EdgeInsets.only(bottom: 12),
       child: Material(
         color: DesignTokens.transparent,
-        child: InkWell(
-          onTap: () {
-            setState(() {
-              if (isExpanded) {
-                _expanded.remove(section.number);
-              } else {
-                _expanded.add(section.number);
-              }
-            });
-          },
-          borderRadius: BorderRadius.circular(DesignTokens.radius16),
-          child: AnimatedContainer(
-            duration: DesignTokens.durationNormal,
-            curve: Curves.easeOutCubic,
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: isDark
-                  ? DesignTokens.darkSurfaceVariant
-                  : DesignTokens.white,
-              borderRadius: BorderRadius.circular(DesignTokens.radius16),
-              border: Border.all(
-                color: isExpanded
-                    ? DesignTokens.primary.withValues(alpha: 0.3)
-                    : (isDark
-                          ? DesignTokens.darkOutline
-                          : DesignTokens.outlineVariant),
-                width: isExpanded ? 1.5 : 1,
-              ),
-              boxShadow: isExpanded
-                  ? [
-                      BoxShadow(
-                        color: DesignTokens.primary.withValues(alpha: 0.08),
-                        blurRadius: 16,
-                        offset: const Offset(0, 4),
-                      ),
-                    ]
-                  : DesignTokens.shadowSm,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Section header
-                Row(
-                  children: [
-                    // Number badge
-                    Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        gradient: isExpanded
-                            ? DesignTokens.primaryGradient
-                            : null,
-                        color: isExpanded
-                            ? null
-                            : (isDark
-                                  ? DesignTokens.primary.withValues(alpha: 0.12)
-                                  : DesignTokens.primary.withValues(
-                                      alpha: 0.08,
-                                    )),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Center(
-                        child: Text(
-                          '${section.number}',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                            color: isExpanded
-                                ? DesignTokens.white
-                                : DesignTokens.primary,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    // Title
-                    Expanded(
-                      child: Text(
-                        _titleCase(section.title),
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: isDark
-                              ? DesignTokens.white
-                              : DesignTokens.textPrimary,
-                          letterSpacing: -0.2,
-                        ),
-                      ),
-                    ),
-                    // Icon
-                    Icon(
-                      section.icon,
-                      size: 20,
-                      color: DesignTokens.textDisabled,
-                    ),
-                    const SizedBox(width: 8),
-                    // Expand indicator
-                    AnimatedRotation(
-                      turns: isExpanded ? 0.5 : 0,
-                      duration: DesignTokens.durationNormal,
-                      child: Icon(
-                        Icons.keyboard_arrow_down,
-                        size: 22,
-                        color: isExpanded
-                            ? DesignTokens.primary
-                            : DesignTokens.textDisabled,
-                      ),
-                    ),
-                  ],
+        child: Semantics(
+          label: 'btn-terms-toc-section-${section.number}',
+          button: true,
+          child: InkWell(
+            onTap: () {
+              setState(() {
+                if (isExpanded) {
+                  _expanded.remove(section.number);
+                } else {
+                  _expanded.add(section.number);
+                }
+              });
+            },
+            borderRadius: BorderRadius.circular(DesignTokens.radius16),
+            child: AnimatedContainer(
+              duration: DesignTokens.durationNormal,
+              curve: Curves.easeOutCubic,
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? DesignTokens.darkSurfaceVariant
+                    : DesignTokens.white,
+                borderRadius: BorderRadius.circular(DesignTokens.radius16),
+                border: Border.all(
+                  color: isExpanded
+                      ? DesignTokens.primary.withValues(alpha: 0.3)
+                      : (isDark
+                            ? DesignTokens.darkOutline
+                            : DesignTokens.outlineVariant),
+                  width: isExpanded ? 1.5 : 1,
                 ),
-                // Expanded content
-                AnimatedCrossFade(
-                  firstChild: const SizedBox.shrink(),
-                  secondChild: Padding(
-                    padding: const EdgeInsets.only(top: 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          height: 1,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                DesignTokens.primary.withValues(alpha: 0.2),
-                                DesignTokens.secondary.withValues(alpha: 0.1),
-                                DesignTokens.transparent,
-                              ],
+                boxShadow: isExpanded
+                    ? [
+                        BoxShadow(
+                          color: DesignTokens.primary.withValues(alpha: 0.08),
+                          blurRadius: 16,
+                          offset: const Offset(0, 4),
+                        ),
+                      ]
+                    : DesignTokens.shadowSm,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Section header
+                  Row(
+                    children: [
+                      // Number badge
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          gradient: isExpanded
+                              ? DesignTokens.primaryGradient
+                              : null,
+                          color: isExpanded
+                              ? null
+                              : (isDark
+                                    ? DesignTokens.primary.withValues(
+                                        alpha: 0.12,
+                                      )
+                                    : DesignTokens.primary.withValues(
+                                        alpha: 0.08,
+                                      )),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Center(
+                          child: Text(
+                            '${section.number}',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                              color: isExpanded
+                                  ? DesignTokens.white
+                                  : DesignTokens.primary,
                             ),
                           ),
                         ),
-                        const SizedBox(height: 14),
-                        _buildSectionBody(section.body, isDark),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(width: 14),
+                      // Title
+                      Expanded(
+                        child: Text(
+                          _titleCase(section.title),
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: isDark
+                                ? DesignTokens.white
+                                : DesignTokens.textPrimary,
+                            letterSpacing: -0.2,
+                          ),
+                        ),
+                      ),
+                      // Icon
+                      Icon(
+                        section.icon,
+                        size: 20,
+                        color: DesignTokens.textDisabled,
+                      ),
+                      const SizedBox(width: 8),
+                      // Expand indicator
+                      AnimatedRotation(
+                        turns: isExpanded ? 0.5 : 0,
+                        duration: DesignTokens.durationNormal,
+                        child: Icon(
+                          Icons.keyboard_arrow_down,
+                          size: 22,
+                          color: isExpanded
+                              ? DesignTokens.primary
+                              : DesignTokens.textDisabled,
+                        ),
+                      ),
+                    ],
                   ),
-                  crossFadeState: isExpanded
-                      ? CrossFadeState.showSecond
-                      : CrossFadeState.showFirst,
-                  duration: DesignTokens.durationNormal,
-                  sizeCurve: Curves.easeOutCubic,
-                ),
-              ],
+                  // Expanded content
+                  AnimatedCrossFade(
+                    firstChild: const SizedBox.shrink(),
+                    secondChild: Padding(
+                      padding: const EdgeInsets.only(top: 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            height: 1,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  DesignTokens.primary.withValues(alpha: 0.2),
+                                  DesignTokens.secondary.withValues(alpha: 0.1),
+                                  DesignTokens.transparent,
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          _buildSectionBody(section.body, isDark),
+                        ],
+                      ),
+                    ),
+                    crossFadeState: isExpanded
+                        ? CrossFadeState.showSecond
+                        : CrossFadeState.showFirst,
+                    duration: DesignTokens.durationNormal,
+                    sizeCurve: Curves.easeOutCubic,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -771,34 +781,79 @@ class _TermsBodyState extends State<_TermsBody> {
 
 // ─── Flutter Previews ────────────────────────────────────────────────────────
 
-
 // === Widget Previews ===
-
 
 // ═══ Widget Previews ═══
 
-@Preview(name: 'Specific Legal Terms — Mobile', group: 'Screens — Legal', size: Size(390, 844))
-Widget previewTermsScreenMobile() => previewMobile(child: previewScope(child: TermsScreen()));
+@Preview(
+  name: 'Specific Legal Terms — Mobile',
+  group: 'Screens — Legal',
+  size: Size(390, 844),
+)
+Widget previewTermsScreenMobile() =>
+    previewMobile(child: previewScope(child: TermsScreen()));
 
-@Preview(name: 'Specific Legal Terms — Tablet', group: 'Screens — Legal', size: Size(768, 1024))
-Widget previewTermsScreenTablet() => previewTablet(child: previewScope(child: TermsScreen()));
+@Preview(
+  name: 'Specific Legal Terms — Tablet',
+  group: 'Screens — Legal',
+  size: Size(768, 1024),
+)
+Widget previewTermsScreenTablet() =>
+    previewTablet(child: previewScope(child: TermsScreen()));
 
-@Preview(name: 'Specific Legal Terms — Desktop', group: 'Screens — Legal', size: Size(1280, 800))
-Widget previewTermsScreenDesktop() => previewDesktop(child: previewScope(child: TermsScreen()));
+@Preview(
+  name: 'Specific Legal Terms — Desktop',
+  group: 'Screens — Legal',
+  size: Size(1280, 800),
+)
+Widget previewTermsScreenDesktop() =>
+    previewDesktop(child: previewScope(child: TermsScreen()));
 
-@Preview(name: 'Specific Legal Terms — Web', group: 'Screens — Legal', size: Size(1440, 900))
-Widget previewTermsScreenWeb() => previewWeb(child: previewScope(child: TermsScreen()));
+@Preview(
+  name: 'Specific Legal Terms — Web',
+  group: 'Screens — Legal',
+  size: Size(1440, 900),
+)
+Widget previewTermsScreenWeb() =>
+    previewWeb(child: previewScope(child: TermsScreen()));
 
 // ── Light ────────────────────────────────────────────────────────────────────
-@Preview(name: 'Specific Legal Terms Light — Mobile', group: 'Screens — Legal', size: Size(390, 844))
-Widget previewTermsScreenLightMobile() => previewMobile(theme: previewLightTheme, child: previewScope(child: TermsScreen()));
+@Preview(
+  name: 'Specific Legal Terms Light — Mobile',
+  group: 'Screens — Legal',
+  size: Size(390, 844),
+)
+Widget previewTermsScreenLightMobile() => previewMobile(
+  theme: previewLightTheme,
+  child: previewScope(child: TermsScreen()),
+);
 
-@Preview(name: 'Specific Legal Terms Light — Tablet', group: 'Screens — Legal', size: Size(768, 1024))
-Widget previewTermsScreenLightTablet() => previewTablet(theme: previewLightTheme, child: previewScope(child: TermsScreen()));
+@Preview(
+  name: 'Specific Legal Terms Light — Tablet',
+  group: 'Screens — Legal',
+  size: Size(768, 1024),
+)
+Widget previewTermsScreenLightTablet() => previewTablet(
+  theme: previewLightTheme,
+  child: previewScope(child: TermsScreen()),
+);
 
-@Preview(name: 'Specific Legal Terms Light — Desktop', group: 'Screens — Legal', size: Size(1280, 800))
-Widget previewTermsScreenLightDesktop() => previewDesktop(theme: previewLightTheme, child: previewScope(child: TermsScreen()));
+@Preview(
+  name: 'Specific Legal Terms Light — Desktop',
+  group: 'Screens — Legal',
+  size: Size(1280, 800),
+)
+Widget previewTermsScreenLightDesktop() => previewDesktop(
+  theme: previewLightTheme,
+  child: previewScope(child: TermsScreen()),
+);
 
-@Preview(name: 'Specific Legal Terms Light — Web', group: 'Screens — Legal', size: Size(1440, 900))
-Widget previewTermsScreenLightWeb() => previewWeb(theme: previewLightTheme, child: previewScope(child: TermsScreen()));
-
+@Preview(
+  name: 'Specific Legal Terms Light — Web',
+  group: 'Screens — Legal',
+  size: Size(1440, 900),
+)
+Widget previewTermsScreenLightWeb() => previewWeb(
+  theme: previewLightTheme,
+  child: previewScope(child: TermsScreen()),
+);

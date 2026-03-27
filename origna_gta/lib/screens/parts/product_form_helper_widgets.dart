@@ -23,15 +23,23 @@ class _AddVariantOptionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return OutlinedButton.icon(
-      key: const Key('addproduct_add_variant_option_button'),
-      onPressed: () => _showAddDialog(context),
-      icon: const Icon(Icons.add_rounded, size: 18),
-      label: Text('product.add_variant_option_btn'.tr()),
-      style: OutlinedButton.styleFrom(
-        foregroundColor: DesignTokens.secondary,
-        side: BorderSide(color: DesignTokens.secondary.withValues(alpha: 0.4)),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    return Semantics(
+      button: true,
+      label: 'btn-add-variant-option',
+      child: OutlinedButton.icon(
+        key: const Key('addproduct_add_variant_option_button'),
+        onPressed: () => _showAddDialog(context),
+        icon: const Icon(Icons.add_rounded, size: 18),
+        label: Text('product.add_variant_option_btn'.tr()),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: DesignTokens.secondary,
+          side: BorderSide(
+            color: DesignTokens.secondary.withValues(alpha: 0.4),
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
       ),
     );
   }
@@ -83,27 +91,39 @@ class _AddVariantOptionButton extends StatelessWidget {
                 ),
                 const Divider(height: 20),
               ],
-              TextField(
-                controller: nameCtrl,
-                decoration: InputDecoration(
-                  labelText: 'product.option_name'.tr(),
-                  hintText: 'product.eg_size'.tr(),
+              Semantics(
+                textField: true,
+                label: 'input-variant-option-name',
+                child: TextField(
+                  controller: nameCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'product.option_name'.tr(),
+                    hintText: 'product.eg_size'.tr(),
+                  ),
                 ),
               ),
               const SizedBox(height: 8),
-              TextField(
-                controller: valuesCtrl,
-                decoration: InputDecoration(
-                  labelText: 'product.option_values_hint'.tr(),
-                  hintText: 'product.eg_size_values'.tr(),
+              Semantics(
+                textField: true,
+                label: 'input-variant-option-values',
+                child: TextField(
+                  controller: valuesCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'product.option_values_hint'.tr(),
+                    hintText: 'product.eg_size_values'.tr(),
+                  ),
                 ),
               ),
             ],
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text('common.cancel'.tr()),
+            Semantics(
+              button: true,
+              label: 'btn-cancel-add-variant',
+              child: TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text('common.cancel'.tr()),
+              ),
             ),
             FilledButton(
               onPressed: () {
@@ -218,13 +238,20 @@ class _VariantOptionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: DesignTokens.surfaceVariant.withValues(alpha: 0.4),
+        color: isDark
+            ? DesignTokens.darkSurfaceVariant.withValues(alpha: 0.9)
+            : DesignTokens.surfaceVariant.withValues(alpha: 0.4),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: DesignTokens.outline.withValues(alpha: 0.2)),
+        border: Border.all(
+          color: isDark
+              ? DesignTokens.darkOutline
+              : DesignTokens.outline.withValues(alpha: 0.2),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -282,9 +309,13 @@ class _VariantOptionCard extends StatelessWidget {
                     label: Text(v, style: const TextStyle(fontSize: 12)),
                     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     visualDensity: VisualDensity.compact,
-                    backgroundColor: DesignTokens.surface,
+                    backgroundColor: isDark
+                        ? DesignTokens.darkCard
+                        : DesignTokens.surface,
                     side: BorderSide(
-                      color: DesignTokens.outline.withValues(alpha: 0.3),
+                      color: isDark
+                          ? DesignTokens.darkOutline
+                          : DesignTokens.outline.withValues(alpha: 0.3),
                     ),
                   ),
                 )
@@ -305,25 +336,37 @@ class _VariantOptionCard extends StatelessWidget {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(
-              controller: nameCtrl,
-              decoration: InputDecoration(
-                labelText: 'product.option_name'.tr(),
+            Semantics(
+              textField: true,
+              label: 'input-edit-variant-option-name',
+              child: TextField(
+                controller: nameCtrl,
+                decoration: InputDecoration(
+                  labelText: 'product.option_name'.tr(),
+                ),
               ),
             ),
             const SizedBox(height: 8),
-            TextField(
-              controller: valuesCtrl,
-              decoration: InputDecoration(
-                labelText: 'product.option_values_hint'.tr(),
+            Semantics(
+              textField: true,
+              label: 'input-edit-variant-option-values',
+              child: TextField(
+                controller: valuesCtrl,
+                decoration: InputDecoration(
+                  labelText: 'product.option_values_hint'.tr(),
+                ),
               ),
             ),
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('common.cancel'.tr()),
+          Semantics(
+            button: true,
+            label: 'btn-cancel-edit-variant',
+            child: TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('common.cancel'.tr()),
+            ),
           ),
           FilledButton(
             onPressed: () {
@@ -410,46 +453,58 @@ class _VariantRow extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: TextFormField(
-                  initialValue: price?.toStringAsFixed(2),
-                  decoration: _variantFieldDecoration(
-                    'product.price_dollar'.tr(),
-                    prefixText: '\$ ',
+                child: Semantics(
+                  textField: true,
+                  label: 'input-variant-price',
+                  child: TextFormField(
+                    initialValue: price?.toStringAsFixed(2),
+                    decoration: _variantFieldDecoration(
+                      'product.price_dollar'.tr(),
+                      prefixText: '\$ ',
+                    ),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    onChanged: (v) => onPriceChanged(double.tryParse(v)),
                   ),
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  onChanged: (v) => onPriceChanged(double.tryParse(v)),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: TextFormField(
-                  initialValue: stockQuantity.toString(),
-                  decoration: _variantFieldDecoration('product.stock'.tr()),
-                  keyboardType: TextInputType.number,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
+                child: Semantics(
+                  textField: true,
+                  label: 'input-variant-stock',
+                  child: TextFormField(
+                    initialValue: stockQuantity.toString(),
+                    decoration: _variantFieldDecoration('product.stock'.tr()),
+                    keyboardType: TextInputType.number,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    onChanged: (v) => onStockChanged(int.tryParse(v) ?? 0),
                   ),
-                  onChanged: (v) => onStockChanged(int.tryParse(v) ?? 0),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: TextFormField(
-                  initialValue: sku,
-                  decoration: _variantFieldDecoration('product.sku'.tr()),
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
+                child: Semantics(
+                  textField: true,
+                  label: 'input-variant-sku',
+                  child: TextFormField(
+                    initialValue: sku,
+                    decoration: _variantFieldDecoration('product.sku'.tr()),
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    onChanged: (v) =>
+                        onSkuChanged(v.trim().isEmpty ? null : v.trim()),
                   ),
-                  onChanged: (v) =>
-                      onSkuChanged(v.trim().isEmpty ? null : v.trim()),
                 ),
               ),
             ],

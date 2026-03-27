@@ -9,9 +9,10 @@ extension _EditProductDeliverySection on _EditProductScreenState {
     EditProductState state,
     EditProductViewModel viewModel,
   ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Card(
       elevation: 0,
-      color: DesignTokens.surface,
+      color: isDark ? DesignTokens.darkCard : DesignTokens.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -74,36 +75,45 @@ extension _EditProductDeliverySection on _EditProductScreenState {
               children: [
                 if (daysController != null)
                   Expanded(
-                    child: TextFormField(
-                      controller: daysController,
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                        labelText: unitLabel,
-                        isDense: true,
+                    child: Semantics(
+                      label: 'input-edit-product-delivery-days',
+                      child: TextFormField(
+                        controller: daysController,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: unitLabel,
+                          isDense: true,
+                        ),
                       ),
                     ),
                   ),
                 if (extraController != null)
                   Expanded(
-                    child: TextFormField(
-                      controller: extraController,
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                        labelText: unitLabel,
-                        isDense: true,
+                    child: Semantics(
+                      label: 'input-edit-product-delivery-extra',
+                      child: TextFormField(
+                        controller: extraController,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: unitLabel,
+                          isDense: true,
+                        ),
                       ),
                     ),
                   ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: TextFormField(
-                    controller: priceController,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    decoration: InputDecoration(
-                      labelText: 'product.price_dollar'.tr(),
-                      isDense: true,
+                  child: Semantics(
+                    label: 'input-edit-product-delivery-price',
+                    child: TextFormField(
+                      controller: priceController,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      decoration: InputDecoration(
+                        labelText: 'product.price_dollar'.tr(),
+                        isDense: true,
+                      ),
                     ),
                   ),
                 ),
@@ -179,15 +189,18 @@ extension _EditProductDeliverySection on _EditProductScreenState {
                 viewModel.setLinuxDownloadUrl(v.isEmpty ? null : v),
           ),
           const SizedBox(height: 8),
-          TextFormField(
-            key: const Key('editproduct_device_limit'),
-            controller: _deviceLimitController,
-            decoration: InputDecoration(
-              labelText: 'product.device_limit_label'.tr(),
-              hintText: 'product.device_limit_hint'.tr(),
+          Semantics(
+            label: 'input-edit-product-device-limit',
+            child: TextFormField(
+              key: const Key('editproduct_device_limit'),
+              controller: _deviceLimitController,
+              decoration: InputDecoration(
+                labelText: 'product.device_limit_label'.tr(),
+                hintText: 'product.device_limit_hint'.tr(),
+              ),
+              keyboardType: TextInputType.number,
+              onChanged: (v) => viewModel.setDeviceLimit(int.tryParse(v)),
             ),
-            keyboardType: TextInputType.number,
-            onChanged: (v) => viewModel.setDeviceLimit(int.tryParse(v)),
           ),
         ],
         if (state.digitalType == DigitalTypeValues.book) ...[

@@ -326,23 +326,27 @@ class _WarehouseFormSheetState extends ConsumerState<_WarehouseFormSheet> {
               // Save button
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: saving ? null : _submit,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: DesignTokens.primary,
-                    foregroundColor: DesignTokens.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                child: Semantics(
+                  label: 'btn-warehouse-save',
+                  button: true,
+                  child: ElevatedButton(
+                    onPressed: saving ? null : _submit,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: DesignTokens.primary,
+                      foregroundColor: DesignTokens.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
+                    child: saving
+                        ? const ModernLoadingIndicator(size: 20)
+                        : Text(
+                            isEdit
+                                ? 'common.save'.tr()
+                                : 'seller.add_location'.tr(),
+                          ),
                   ),
-                  child: saving
-                      ? const ModernLoadingIndicator(size: 20)
-                      : Text(
-                          isEdit
-                              ? 'common.save'.tr()
-                              : 'seller.add_location'.tr(),
-                        ),
                 ),
               ),
             ],

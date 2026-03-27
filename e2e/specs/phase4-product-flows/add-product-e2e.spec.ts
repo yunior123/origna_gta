@@ -157,7 +157,7 @@ describe('Add Product — API Tests', () => {
       },
       testImageUrls: ['https://picsum.photos/400/400'],
     }, buyerToken);
-    expect(error.code).toBe('permission-denied');
+    expect(error.code).toBe('forbidden');
   });
 
   test('T06: Duplicate SKU rejected', async () => {

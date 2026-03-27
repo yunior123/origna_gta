@@ -26,7 +26,8 @@ class FadeSlideIn extends StatefulWidget {
   State<FadeSlideIn> createState() => _FadeSlideInState();
 }
 
-class _FadeSlideInState extends State<FadeSlideIn> with SingleTickerProviderStateMixin {
+class _FadeSlideInState extends State<FadeSlideIn>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
@@ -37,8 +38,10 @@ class _FadeSlideInState extends State<FadeSlideIn> with SingleTickerProviderStat
     super.initState();
     _controller = AnimationController(vsync: this, duration: widget.duration);
     _fadeAnimation = CurvedAnimation(parent: _controller, curve: widget.curve);
-    _slideAnimation = Tween<Offset>(begin: widget.beginOffset, end: Offset.zero)
-        .animate(CurvedAnimation(parent: _controller, curve: widget.curve));
+    _slideAnimation = Tween<Offset>(
+      begin: widget.beginOffset,
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _controller, curve: widget.curve));
 
     if (widget.delay == Duration.zero) {
       _controller.forward();
@@ -126,7 +129,8 @@ class AnimatedEmptyState extends StatefulWidget {
   State<AnimatedEmptyState> createState() => _AnimatedEmptyStateState();
 }
 
-class _AnimatedEmptyStateState extends State<AnimatedEmptyState> with SingleTickerProviderStateMixin {
+class _AnimatedEmptyStateState extends State<AnimatedEmptyState>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
@@ -139,9 +143,10 @@ class _AnimatedEmptyStateState extends State<AnimatedEmptyState> with SingleTick
       vsync: this,
       duration: const Duration(milliseconds: 600),
     );
-    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.elasticOut),
-    );
+    _scaleAnimation = Tween<double>(
+      begin: 0.8,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.elasticOut));
     _fadeAnimation = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
     _controller.forward();
 
@@ -171,7 +176,11 @@ class _AnimatedEmptyStateState extends State<AnimatedEmptyState> with SingleTick
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 if (widget.showMascot && _mascotController != null) ...[
-                  ShopMascot(controller: _mascotController!, size: 80, showSpeechBubble: false),
+                  ShopMascot(
+                    controller: _mascotController!,
+                    size: 80,
+                    showSpeechBubble: false,
+                  ),
                   const SizedBox(height: 12),
                 ],
                 Container(
@@ -180,26 +189,51 @@ class _AnimatedEmptyStateState extends State<AnimatedEmptyState> with SingleTick
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: LinearGradient(
-                      colors: [DesignTokens.primary.withValues(alpha: 0.15), DesignTokens.secondary.withValues(alpha: 0.1)],
+                      colors: [
+                        DesignTokens.primary.withValues(alpha: 0.15),
+                        DesignTokens.secondary.withValues(alpha: 0.1),
+                      ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
-                    border: Border.all(color: DesignTokens.primary.withValues(alpha: 0.18), width: 1.5),
-                    boxShadow: [BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.1), blurRadius: 20, spreadRadius: 4)],
+                    border: Border.all(
+                      color: DesignTokens.primary.withValues(alpha: 0.18),
+                      width: 1.5,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: DesignTokens.primary.withValues(alpha: 0.1),
+                        blurRadius: 20,
+                        spreadRadius: 4,
+                      ),
+                    ],
                   ),
-                  child: Icon(widget.icon, size: 48, color: DesignTokens.primary.withValues(alpha: 0.75)),
+                  child: Icon(
+                    widget.icon,
+                    size: 48,
+                    color: DesignTokens.primary.withValues(alpha: 0.75),
+                  ),
                 ),
                 const SizedBox(height: 24),
                 Text(
                   widget.title,
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: DesignTokens.textPrimary, letterSpacing: -0.3),
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: DesignTokens.textPrimary,
+                    letterSpacing: -0.3,
+                  ),
                   textAlign: TextAlign.center,
                 ),
                 if (widget.subtitle != null) ...[
                   const SizedBox(height: 8),
                   Text(
                     widget.subtitle!,
-                    style: const TextStyle(fontSize: 14, color: DesignTokens.textSecondary, height: 1.5),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: DesignTokens.textSecondary,
+                      height: 1.5,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                 ],
@@ -233,7 +267,8 @@ class ScaleBounce extends StatefulWidget {
   State<ScaleBounce> createState() => _ScaleBounceState();
 }
 
-class _ScaleBounceState extends State<ScaleBounce> with SingleTickerProviderStateMixin {
+class _ScaleBounceState extends State<ScaleBounce>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
 
@@ -244,9 +279,10 @@ class _ScaleBounceState extends State<ScaleBounce> with SingleTickerProviderStat
       vsync: this,
       duration: const Duration(milliseconds: 100),
     );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: widget.scaleDown).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: widget.scaleDown,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override
@@ -257,24 +293,25 @@ class _ScaleBounceState extends State<ScaleBounce> with SingleTickerProviderStat
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => _controller.forward(),
-      onTapUp: (_) {
-        _controller.reverse();
-        widget.onTap?.call();
-      },
-      onTapCancel: () => _controller.reverse(),
-      child: ScaleTransition(scale: _scaleAnimation, child: widget.child),
+    return Semantics(
+      label: 'btn-bounce-tap',
+      button: true,
+      child: GestureDetector(
+        onTapDown: (_) => _controller.forward(),
+        onTapUp: (_) {
+          _controller.reverse();
+          widget.onTap?.call();
+        },
+        onTapCancel: () => _controller.reverse(),
+        child: ScaleTransition(scale: _scaleAnimation, child: widget.child),
+      ),
     );
   }
 }
 
 // ─── Flutter Widget Previews ─────────────────────────────────────────────────
 
-
-
 // === Widget Previews ===
-
 
 // ═══ Widget Previews ═══
 
@@ -284,10 +321,17 @@ Widget previewAnimations() => previewGrid(
     FadeSlideIn(
       child: Container(
         padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(color: DesignTokens.darkCard, borderRadius: BorderRadius.circular(DesignTokens.radius16)),
+        decoration: BoxDecoration(
+          color: DesignTokens.darkCard,
+          borderRadius: BorderRadius.circular(DesignTokens.radius16),
+        ),
         child: const Text(
           'Faded In ✓',
-          style: TextStyle(color: DesignTokens.white, fontSize: 18, fontWeight: FontWeight.w600),
+          style: TextStyle(
+            color: DesignTokens.white,
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
     ),
@@ -299,8 +343,14 @@ Widget previewAnimations() => previewGrid(
             Container(
               margin: const EdgeInsets.only(bottom: 12),
               padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(color: DesignTokens.darkCard, borderRadius: BorderRadius.circular(DesignTokens.radius12)),
-              child: Text('Item $i', style: const TextStyle(color: DesignTokens.white)),
+              decoration: BoxDecoration(
+                color: DesignTokens.darkCard,
+                borderRadius: BorderRadius.circular(DesignTokens.radius12),
+              ),
+              child: Text(
+                'Item $i',
+                style: const TextStyle(color: DesignTokens.white),
+              ),
             ),
         ],
       ),
@@ -315,10 +365,26 @@ Widget previewEmptyStates() => previewGrid(
       icon: Icons.favorite_border_rounded,
       title: 'No favorites yet',
       subtitle: 'Tap the heart icon on any product to save it here.',
-      action: ElevatedButton(onPressed: () {}, child: const Text('Browse Products')),
+      action: Semantics(
+        label: 'btn-browse-products',
+        button: true,
+        child: ElevatedButton(
+          onPressed: () {},
+          child: const Text('Browse Products'),
+        ),
+      ),
     ),
-    const AnimatedEmptyState(icon: Icons.shopping_cart_outlined, title: 'Your cart is empty', subtitle: 'Start adding items to see them here.'),
-    const AnimatedEmptyState(icon: Icons.inbox_outlined, title: 'No orders yet', subtitle: 'Your completed orders will appear here.', showMascot: true),
+    const AnimatedEmptyState(
+      icon: Icons.shopping_cart_outlined,
+      title: 'Your cart is empty',
+      subtitle: 'Start adding items to see them here.',
+    ),
+    const AnimatedEmptyState(
+      icon: Icons.inbox_outlined,
+      title: 'No orders yet',
+      subtitle: 'Your completed orders will appear here.',
+      showMascot: true,
+    ),
   ],
 );
 
@@ -329,10 +395,17 @@ Widget previewAnimationsLight() => previewGrid(
     FadeSlideIn(
       child: Container(
         padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(color: DesignTokens.darkCard, borderRadius: BorderRadius.circular(DesignTokens.radius16)),
+        decoration: BoxDecoration(
+          color: DesignTokens.darkCard,
+          borderRadius: BorderRadius.circular(DesignTokens.radius16),
+        ),
         child: const Text(
           'Faded In ✓',
-          style: TextStyle(color: DesignTokens.white, fontSize: 18, fontWeight: FontWeight.w600),
+          style: TextStyle(
+            color: DesignTokens.white,
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
     ),
@@ -344,8 +417,14 @@ Widget previewAnimationsLight() => previewGrid(
             Container(
               margin: const EdgeInsets.only(bottom: 12),
               padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(color: DesignTokens.darkCard, borderRadius: BorderRadius.circular(DesignTokens.radius12)),
-              child: Text('Item $i', style: const TextStyle(color: DesignTokens.white)),
+              decoration: BoxDecoration(
+                color: DesignTokens.darkCard,
+                borderRadius: BorderRadius.circular(DesignTokens.radius12),
+              ),
+              child: Text(
+                'Item $i',
+                style: const TextStyle(color: DesignTokens.white),
+              ),
             ),
         ],
       ),
@@ -361,10 +440,25 @@ Widget previewEmptyStatesLight() => previewGrid(
       icon: Icons.favorite_border_rounded,
       title: 'No favorites yet',
       subtitle: 'Tap the heart icon on any product to save it here.',
-      action: ElevatedButton(onPressed: () {}, child: const Text('Browse Products')),
+      action: Semantics(
+        label: 'btn-browse-products',
+        button: true,
+        child: ElevatedButton(
+          onPressed: () {},
+          child: const Text('Browse Products'),
+        ),
+      ),
     ),
-    const AnimatedEmptyState(icon: Icons.shopping_cart_outlined, title: 'Your cart is empty', subtitle: 'Start adding items to see them here.'),
-    const AnimatedEmptyState(icon: Icons.inbox_outlined, title: 'No orders yet', subtitle: 'Your completed orders will appear here.', showMascot: true),
+    const AnimatedEmptyState(
+      icon: Icons.shopping_cart_outlined,
+      title: 'Your cart is empty',
+      subtitle: 'Start adding items to see them here.',
+    ),
+    const AnimatedEmptyState(
+      icon: Icons.inbox_outlined,
+      title: 'No orders yet',
+      subtitle: 'Your completed orders will appear here.',
+      showMascot: true,
+    ),
   ],
 );
-

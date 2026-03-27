@@ -68,7 +68,10 @@ class MascotPainter extends CustomPainter {
 
     canvas.save();
     canvas.translate(centerX, centerY + hoverOffset + jumpOffset);
-    canvas.scale(breathingScale, 2.0 - breathingScale); // Squish and stretch for breathing
+    canvas.scale(
+      breathingScale,
+      2.0 - breathingScale,
+    ); // Squish and stretch for breathing
 
     _drawShadow(canvas, size, jumpValue);
     _drawBody(canvas, size);
@@ -97,12 +100,25 @@ class MascotPainter extends CustomPainter {
 
     final wobble = math.sin(idleValue * math.pi * 2) * 2;
 
-    canvas.drawLine(Offset(0, -size.height * 0.3), Offset(wobble, -size.height * 0.45), linePaint);
+    canvas.drawLine(
+      Offset(0, -size.height * 0.3),
+      Offset(wobble, -size.height * 0.45),
+      linePaint,
+    );
 
     final ballPaint = Paint()
-      ..shader = RadialGradient(
-        colors: [DesignTokens.tertiary, DesignTokens.tertiary.withValues(alpha: 0.8)],
-      ).createShader(Rect.fromCircle(center: Offset(wobble, -size.height * 0.48), radius: size.width * 0.08));
+      ..shader =
+          RadialGradient(
+            colors: [
+              DesignTokens.tertiary,
+              DesignTokens.tertiary.withValues(alpha: 0.8),
+            ],
+          ).createShader(
+            Rect.fromCircle(
+              center: Offset(wobble, -size.height * 0.48),
+              radius: size.width * 0.08,
+            ),
+          );
 
     // Antenna glow
     canvas.drawCircle(
@@ -112,20 +128,35 @@ class MascotPainter extends CustomPainter {
         ..color = DesignTokens.tertiary.withValues(alpha: 0.3)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
     );
-    canvas.drawCircle(Offset(wobble, -size.height * 0.48), size.width * 0.08, ballPaint);
+    canvas.drawCircle(
+      Offset(wobble, -size.height * 0.48),
+      size.width * 0.08,
+      ballPaint,
+    );
   }
 
   void _drawBody(Canvas canvas, Size size) {
     // Body gradient for depth
     final bodyPaint = Paint()
-      ..shader = LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [DesignTokens.primary, DesignTokens.secondary],
-      ).createShader(Rect.fromCenter(center: const Offset(0, 0), width: size.width * 0.6, height: size.height * 0.5));
+      ..shader =
+          LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [DesignTokens.primary, DesignTokens.secondary],
+          ).createShader(
+            Rect.fromCenter(
+              center: const Offset(0, 0),
+              width: size.width * 0.6,
+              height: size.height * 0.5,
+            ),
+          );
 
     final bodyRect = RRect.fromRectAndRadius(
-      Rect.fromCenter(center: const Offset(0, 0), width: size.width * 0.65, height: size.height * 0.55),
+      Rect.fromCenter(
+        center: const Offset(0, 0),
+        width: size.width * 0.65,
+        height: size.height * 0.55,
+      ),
       Radius.circular(size.width * 0.25), // More rounded/cute
     );
     canvas.drawRRect(bodyRect, bodyPaint);
@@ -134,19 +165,46 @@ class MascotPainter extends CustomPainter {
     final blushPaint = Paint()
       ..color = DesignTokens.tertiary.withValues(alpha: 0.3)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
-    canvas.drawCircle(Offset(-size.width * 0.2, size.height * 0.1), size.width * 0.05, blushPaint);
-    canvas.drawCircle(Offset(size.width * 0.2, size.height * 0.1), size.width * 0.05, blushPaint);
+    canvas.drawCircle(
+      Offset(-size.width * 0.2, size.height * 0.1),
+      size.width * 0.05,
+      blushPaint,
+    );
+    canvas.drawCircle(
+      Offset(size.width * 0.2, size.height * 0.1),
+      size.width * 0.05,
+      blushPaint,
+    );
 
     // High quality shine
     final shinePaint = Paint()
-      ..shader = LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [DesignTokens.white.withValues(alpha: 0.4), DesignTokens.white.withValues(alpha: 0)],
-      ).createShader(Rect.fromLTWH(-size.width * 0.25, -size.height * 0.2, size.width * 0.4, size.height * 0.2));
+      ..shader =
+          LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              DesignTokens.white.withValues(alpha: 0.4),
+              DesignTokens.white.withValues(alpha: 0),
+            ],
+          ).createShader(
+            Rect.fromLTWH(
+              -size.width * 0.25,
+              -size.height * 0.2,
+              size.width * 0.4,
+              size.height * 0.2,
+            ),
+          );
 
     canvas.drawRRect(
-      RRect.fromRectAndRadius(Rect.fromLTWH(-size.width * 0.25, -size.height * 0.2, size.width * 0.3, size.height * 0.1), Radius.circular(size.width * 0.1)),
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(
+          -size.width * 0.25,
+          -size.height * 0.2,
+          size.width * 0.3,
+          size.height * 0.1,
+        ),
+        Radius.circular(size.width * 0.1),
+      ),
       shinePaint,
     );
   }
@@ -158,7 +216,13 @@ class MascotPainter extends CustomPainter {
         ..strokeWidth = 3
         ..strokeCap = StrokeCap.round
         ..style = PaintingStyle.stroke;
-      canvas.drawArc(Rect.fromCircle(center: center, radius: radius), 0.2, math.pi - 0.4, false, strokePaint);
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        0.2,
+        math.pi - 0.4,
+        false,
+        strokePaint,
+      );
     } else {
       // Glow
       canvas.drawCircle(
@@ -170,14 +234,22 @@ class MascotPainter extends CustomPainter {
       );
       canvas.drawCircle(center, radius, Paint()..color = DesignTokens.accent);
       // Pupil highlight
-      canvas.drawCircle(center - Offset(radius * 0.3, radius * 0.3), radius * 0.2, Paint()..color = DesignTokens.white);
+      canvas.drawCircle(
+        center - Offset(radius * 0.3, radius * 0.3),
+        radius * 0.2,
+        Paint()..color = DesignTokens.white,
+      );
     }
   }
 
   void _drawFace(Canvas canvas, Size size) {
     final facePaint = Paint()..color = DesignTokens.darkSurface;
     final faceRect = RRect.fromRectAndRadius(
-      Rect.fromCenter(center: Offset(0, -size.height * 0.05), width: size.width * 0.45, height: size.height * 0.28),
+      Rect.fromCenter(
+        center: Offset(0, -size.height * 0.05),
+        width: size.width * 0.45,
+        height: size.height * 0.28,
+      ),
       Radius.circular(size.width * 0.1),
     );
     canvas.drawRRect(faceRect, facePaint);
@@ -195,24 +267,38 @@ class MascotPainter extends CustomPainter {
       eyePaint,
       size.width * 0.06, // Larger eyes
     );
-    _drawEye(canvas, Offset(size.width * 0.1 + lookX, -size.height * 0.05 + lookY), eyePaint, size.width * 0.06);
+    _drawEye(
+      canvas,
+      Offset(size.width * 0.1 + lookX, -size.height * 0.05 + lookY),
+      eyePaint,
+      size.width * 0.06,
+    );
   }
 
   void _drawHands(Canvas canvas, Size size) {
     final handPaint = Paint()..color = DesignTokens.textOnPrimary;
-    final handY = size.height * 0.08 + (math.sin(idleValue * math.pi * 2 + 1) * 3);
+    final handY =
+        size.height * 0.08 + (math.sin(idleValue * math.pi * 2 + 1) * 3);
 
     // Rounded paws
     canvas.drawRRect(
       RRect.fromRectAndRadius(
-        Rect.fromCenter(center: Offset(-size.width * 0.32, handY), width: size.width * 0.12, height: size.width * 0.12),
+        Rect.fromCenter(
+          center: Offset(-size.width * 0.32, handY),
+          width: size.width * 0.12,
+          height: size.width * 0.12,
+        ),
         Radius.circular(size.width * 0.04),
       ),
       handPaint,
     );
     canvas.drawRRect(
       RRect.fromRectAndRadius(
-        Rect.fromCenter(center: Offset(size.width * 0.32, handY), width: size.width * 0.12, height: size.width * 0.12),
+        Rect.fromCenter(
+          center: Offset(size.width * 0.32, handY),
+          width: size.width * 0.12,
+          height: size.width * 0.12,
+        ),
         Radius.circular(size.width * 0.04),
       ),
       handPaint,
@@ -222,8 +308,15 @@ class MascotPainter extends CustomPainter {
   void _drawScarf(Canvas canvas, Size size) {
     final scarfPaint = Paint()..color = DesignTokens.accent;
 
-    final scarfRect = Rect.fromCenter(center: Offset(0, size.height * 0.22), width: size.width * 0.6, height: size.height * 0.12);
-    canvas.drawRRect(RRect.fromRectAndRadius(scarfRect, Radius.circular(size.height * 0.04)), scarfPaint);
+    final scarfRect = Rect.fromCenter(
+      center: Offset(0, size.height * 0.22),
+      width: size.width * 0.6,
+      height: size.height * 0.12,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(scarfRect, Radius.circular(size.height * 0.04)),
+      scarfPaint,
+    );
 
     // Scarf tail
     canvas.save();
@@ -233,7 +326,12 @@ class MascotPainter extends CustomPainter {
     final tailPath = Path()
       ..moveTo(-size.width * 0.08, 0)
       ..lineTo(size.width * 0.06, 0)
-      ..quadraticBezierTo(size.width * 0.1, size.height * 0.1, size.width * 0.08, size.height * 0.25)
+      ..quadraticBezierTo(
+        size.width * 0.1,
+        size.height * 0.1,
+        size.width * 0.08,
+        size.height * 0.25,
+      )
       ..lineTo(-size.width * 0.05, size.height * 0.25)
       ..close();
     canvas.drawPath(tailPath, scarfPaint);
@@ -249,7 +347,11 @@ class MascotPainter extends CustomPainter {
     final shadowScale = 1 - (jumpHeight * 0.4);
 
     canvas.drawOval(
-      Rect.fromCenter(center: Offset(0, size.height * 0.45 - jumpOffset), width: size.width * 0.6 * shadowScale, height: size.height * 0.12 * shadowScale),
+      Rect.fromCenter(
+        center: Offset(0, size.height * 0.45 - jumpOffset),
+        width: size.width * 0.6 * shadowScale,
+        height: size.height * 0.12 * shadowScale,
+      ),
       shadowPaint,
     );
   }
@@ -257,7 +359,16 @@ class MascotPainter extends CustomPainter {
 
 /// Tooltip messages displayed by the shop mascot (localized).
 class MascotTips {
-  static const List<String> _emojis = ['🛍️', '💳', '🚚', '⭐', '🔍', '🏷️', '💬', '🍁'];
+  static const List<String> _emojis = [
+    '🛍️',
+    '💳',
+    '🚚',
+    '⭐',
+    '🔍',
+    '🏷️',
+    '💬',
+    '🍁',
+  ];
   static const List<String> _keys = [
     'mascot.tip_browse',
     'mascot.tip_secure',
@@ -281,7 +392,12 @@ class ShopMascot extends StatefulWidget {
   final double size;
   final bool showSpeechBubble;
 
-  const ShopMascot({super.key, required this.controller, this.size = 80, this.showSpeechBubble = true});
+  const ShopMascot({
+    super.key,
+    required this.controller,
+    this.size = 80,
+    this.showSpeechBubble = true,
+  });
 
   @override
   State<ShopMascot> createState() => _ShopMascotState();
@@ -340,7 +456,11 @@ class _ShopMascotState extends State<ShopMascot> with TickerProviderStateMixin {
                 builder: (context, child) {
                   return Opacity(
                     opacity: _bubbleController.value,
-                    child: Transform.scale(scale: 0.8 + (_bubbleController.value * 0.2), alignment: Alignment.bottomRight, child: _buildSpeechBubble()),
+                    child: Transform.scale(
+                      scale: 0.8 + (_bubbleController.value * 0.2),
+                      alignment: Alignment.bottomRight,
+                      child: _buildSpeechBubble(),
+                    ),
                   );
                 },
               ),
@@ -351,33 +471,49 @@ class _ShopMascotState extends State<ShopMascot> with TickerProviderStateMixin {
             bottom: 0,
             child: MouseRegion(
               onHover: (event) {
-                final dx = (event.localPosition.dx - widget.size / 2) / (widget.size / 2);
-                final dy = (event.localPosition.dy - widget.size / 2) / (widget.size / 2);
-                widget.controller.lookAt(Offset(dx.clamp(-1, 1), dy.clamp(-1, 1)));
+                final dx =
+                    (event.localPosition.dx - widget.size / 2) /
+                    (widget.size / 2);
+                final dy =
+                    (event.localPosition.dy - widget.size / 2) /
+                    (widget.size / 2);
+                widget.controller.lookAt(
+                  Offset(dx.clamp(-1, 1), dy.clamp(-1, 1)),
+                );
               },
-              child: GestureDetector(
-                onTap: () {
-                  widget.controller.jump();
-                  if (!_isBubbleVisible) {
-                    setState(() => _isBubbleVisible = true);
-                    _bubbleController.forward();
-                  }
-                },
-                child: AnimatedBuilder(
-                  animation: Listenable.merge([_idleController, _jumpController, _blinkController, _breathingController, widget.controller]),
-                  builder: (context, child) {
-                    return CustomPaint(
-                      size: Size(widget.size, widget.size),
-                      painter: MascotPainter(
-                        idleValue: _idleController.value,
-                        jumpValue: _jumpController.value,
-                        blinkValue: _blinkController.value,
-                        breathingValue: _breathingController.value,
-                        lookTarget: widget.controller.lookTarget,
-                        excitement: widget.controller.excitementLevel,
-                      ),
-                    );
+              child: Semantics(
+                label: 'btn-mascot-tap',
+                button: true,
+                child: GestureDetector(
+                  onTap: () {
+                    widget.controller.jump();
+                    if (!_isBubbleVisible) {
+                      setState(() => _isBubbleVisible = true);
+                      _bubbleController.forward();
+                    }
                   },
+                  child: AnimatedBuilder(
+                    animation: Listenable.merge([
+                      _idleController,
+                      _jumpController,
+                      _blinkController,
+                      _breathingController,
+                      widget.controller,
+                    ]),
+                    builder: (context, child) {
+                      return CustomPaint(
+                        size: Size(widget.size, widget.size),
+                        painter: MascotPainter(
+                          idleValue: _idleController.value,
+                          jumpValue: _jumpController.value,
+                          blinkValue: _blinkController.value,
+                          breathingValue: _breathingController.value,
+                          lookTarget: widget.controller.lookTarget,
+                          excitement: widget.controller.excitementLevel,
+                        ),
+                      );
+                    },
+                  ),
                 ),
               ),
             ),
@@ -404,12 +540,27 @@ class _ShopMascotState extends State<ShopMascot> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    _idleController = AnimationController(vsync: this, duration: const Duration(seconds: 2))..repeat(reverse: true);
-    _jumpController = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
-    _blinkController = AnimationController(vsync: this, duration: const Duration(milliseconds: 150));
+    _idleController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+    _jumpController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    _blinkController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 150),
+    );
     _scheduleNextBlink();
-    _bubbleController = AnimationController(vsync: this, duration: const Duration(milliseconds: 400));
-    _breathingController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1500))..repeat(reverse: true);
+    _bubbleController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+    _breathingController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat(reverse: true);
 
     if (widget.showSpeechBubble) {
       _initialBubbleTimer = Timer(const Duration(seconds: 2), () {
@@ -440,8 +591,16 @@ class _ShopMascotState extends State<ShopMascot> with TickerProviderStateMixin {
               bottomRight: Radius.circular(4),
             ),
             boxShadow: [
-              BoxShadow(color: DesignTokens.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4)),
-              BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.1), blurRadius: 20, spreadRadius: -2),
+              BoxShadow(
+                color: DesignTokens.black.withValues(alpha: 0.1),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+              BoxShadow(
+                color: DesignTokens.primary.withValues(alpha: 0.1),
+                blurRadius: 20,
+                spreadRadius: -2,
+              ),
             ],
           ),
           child: Column(
@@ -454,7 +613,10 @@ class _ShopMascotState extends State<ShopMascot> with TickerProviderStateMixin {
                   return FadeTransition(
                     opacity: animation,
                     child: SlideTransition(
-                      position: Tween<Offset>(begin: const Offset(0, 0.2), end: Offset.zero).animate(animation),
+                      position: Tween<Offset>(
+                        begin: const Offset(0, 0.2),
+                        end: Offset.zero,
+                      ).animate(animation),
                       child: child,
                     ),
                   );
@@ -462,32 +624,56 @@ class _ShopMascotState extends State<ShopMascot> with TickerProviderStateMixin {
                 child: Text(
                   MascotTips.getTipForIndex(_currentTipIndex),
                   key: ValueKey<int>(_currentTipIndex),
-                  style: TextStyle(color: DesignTokens.textPrimary, fontSize: 11, fontFamily: 'Inter', fontWeight: FontWeight.w600, height: 1.4),
+                  style: TextStyle(
+                    color: DesignTokens.textPrimary,
+                    fontSize: 11,
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w600,
+                    height: 1.4,
+                  ),
                 ),
               ),
               const SizedBox(height: 8),
-              GestureDetector(
-                onTap: () => _showContactDialog(context),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: DesignTokens.primaryGradient.begin,
-                      end: DesignTokens.primaryGradient.end,
-                      colors: DesignTokens.primaryGradient.colors.map((c) => c.withValues(alpha: 0.1)).toList(),
+              Semantics(
+                label: 'btn-mascot-help',
+                button: true,
+                child: GestureDetector(
+                  onTap: () => _showContactDialog(context),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
                     ),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.chat_bubble_outline_rounded, color: DesignTokens.primary, size: 12),
-                      const SizedBox(width: 4),
-                      Text(
-                        'mascot.get_help'.tr(),
-                        style: TextStyle(color: DesignTokens.primary, fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: -0.2),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: DesignTokens.primaryGradient.begin,
+                        end: DesignTokens.primaryGradient.end,
+                        colors: DesignTokens.primaryGradient.colors
+                            .map((c) => c.withValues(alpha: 0.1))
+                            .toList(),
                       ),
-                    ],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.chat_bubble_outline_rounded,
+                          color: DesignTokens.primary,
+                          size: 12,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'mascot.get_help'.tr(),
+                          style: TextStyle(
+                            color: DesignTokens.primary,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -0.2,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -524,13 +710,16 @@ class _ShopMascotState extends State<ShopMascot> with TickerProviderStateMixin {
 
   void _scheduleNextBlink() {
     _blinkTimer?.cancel();
-    _blinkTimer = Timer(Duration(milliseconds: 2000 + math.Random().nextInt(2000)), () async {
-      if (!mounted) return;
-      await _blinkController.forward();
-      if (!mounted) return;
-      await _blinkController.reverse();
-      _scheduleNextBlink();
-    });
+    _blinkTimer = Timer(
+      Duration(milliseconds: 2000 + math.Random().nextInt(2000)),
+      () async {
+        if (!mounted) return;
+        await _blinkController.forward();
+        if (!mounted) return;
+        await _blinkController.reverse();
+        _scheduleNextBlink();
+      },
+    );
   }
 
   void _showContactDialog(BuildContext context) {
@@ -538,20 +727,27 @@ class _ShopMascotState extends State<ShopMascot> with TickerProviderStateMixin {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        backgroundColor: Theme.of(ctx).brightness == Brightness.dark ? DesignTokens.darkSurface : DesignTokens.white,
+        backgroundColor: Theme.of(ctx).brightness == Brightness.dark
+            ? DesignTokens.darkSurface
+            : DesignTokens.white,
         title: Text(
           'profile.contact_us'.tr(),
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.w700,
-            color: Theme.of(ctx).brightness == Brightness.dark ? DesignTokens.textOnDark : DesignTokens.textPrimary,
+            color: Theme.of(ctx).brightness == Brightness.dark
+                ? DesignTokens.textOnDark
+                : DesignTokens.textPrimary,
           ),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('profile.contact_us_desc'.tr(), style: TextStyle(color: DesignTokens.textSecondary, fontSize: 14)),
+            Text(
+              'profile.contact_us_desc'.tr(),
+              style: TextStyle(color: DesignTokens.textSecondary, fontSize: 14),
+            ),
             const SizedBox(height: 16),
             Semantics(
               link: true,
@@ -563,20 +759,33 @@ class _ShopMascotState extends State<ShopMascot> with TickerProviderStateMixin {
                     Uri(
                       scheme: 'mailto',
                       path: EmailConfig.supportEmail,
-                      queryParameters: {'subject': 'Support Request - Origna GTA App', 'body': 'Hello Origna GTA Support Team,\n\n'},
+                      queryParameters: {
+                        'subject': 'Support Request - Origna GTA App',
+                        'body': 'Hello Origna GTA Support Team,\n\n',
+                      },
                     ),
                   ),
                   borderRadius: BorderRadius.circular(12),
                   splashColor: DesignTokens.primary.withValues(alpha: 0.1),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 12,
+                      horizontal: 8,
+                    ),
                     child: Row(
                       children: [
-                        Icon(Icons.email_outlined, color: DesignTokens.primary, size: 20),
+                        Icon(
+                          Icons.email_outlined,
+                          color: DesignTokens.primary,
+                          size: 20,
+                        ),
                         const SizedBox(width: 12),
                         Text(
                           EmailConfig.supportEmail,
-                          style: TextStyle(color: DesignTokens.primary, fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                            color: DesignTokens.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ],
                     ),
@@ -594,14 +803,24 @@ class _ShopMascotState extends State<ShopMascot> with TickerProviderStateMixin {
                   borderRadius: BorderRadius.circular(12),
                   splashColor: DesignTokens.primary.withValues(alpha: 0.1),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 12,
+                      horizontal: 8,
+                    ),
                     child: Row(
                       children: [
-                        Icon(Icons.language, color: DesignTokens.primary, size: 20),
+                        Icon(
+                          Icons.language,
+                          color: DesignTokens.primary,
+                          size: 20,
+                        ),
                         const SizedBox(width: 12),
                         Text(
                           'orignagta.ca',
-                          style: TextStyle(color: DesignTokens.primary, fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                            color: DesignTokens.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ],
                     ),
@@ -612,9 +831,16 @@ class _ShopMascotState extends State<ShopMascot> with TickerProviderStateMixin {
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('common.close'.tr(), style: TextStyle(color: DesignTokens.primary)),
+          Semantics(
+            label: 'btn-mascot-contact-close',
+            button: true,
+            child: TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(
+                'common.close'.tr(),
+                style: TextStyle(color: DesignTokens.primary),
+              ),
+            ),
           ),
         ],
       ),

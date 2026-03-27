@@ -180,26 +180,30 @@ class _EmailVerificationRequiredScreenState
                   const SizedBox(height: 20),
                   FadeSlideIn(
                     delay: const Duration(milliseconds: 200),
-                    child: TextButton.icon(
-                      onPressed: () async {
-                        await ref.read(authActionsProvider).signOut();
-                        if (context.mounted) {
-                          Navigator.of(context).pushNamedAndRemoveUntil(
-                            AppRoutes.home,
-                            (route) => false,
-                          );
-                        }
-                      },
-                      icon: Icon(
-                        Icons.logout,
-                        size: 16,
-                        color: DesignTokens.textSecondary,
-                      ),
-                      label: Text(
-                        'email_verification.different_account'.tr(),
-                        style: TextStyle(
+                    child: Semantics(
+                      label: 'btn-email-different-account',
+                      button: true,
+                      child: TextButton.icon(
+                        onPressed: () async {
+                          await ref.read(authActionsProvider).signOut();
+                          if (context.mounted) {
+                            Navigator.of(context).pushNamedAndRemoveUntil(
+                              AppRoutes.home,
+                              (route) => false,
+                            );
+                          }
+                        },
+                        icon: Icon(
+                          Icons.logout,
+                          size: 16,
                           color: DesignTokens.textSecondary,
-                          fontWeight: FontWeight.w500,
+                        ),
+                        label: Text(
+                          'email_verification.different_account'.tr(),
+                          style: TextStyle(
+                            color: DesignTokens.textSecondary,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
                     ),

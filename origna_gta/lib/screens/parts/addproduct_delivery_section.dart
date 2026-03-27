@@ -53,16 +53,20 @@ extension _AddProductDeliverySection on _AddProductScreenState {
                   ),
                 ),
                 if (infoTitle != null && infoBody != null)
-                  GestureDetector(
-                    onTap: () => showInfoSheet(infoTitle, infoBody),
-                    child: Padding(
-                      padding: const EdgeInsets.only(right: 4),
-                      child: Icon(
-                        Icons.info_outline_rounded,
-                        size: 16,
-                        color: isEnabled
-                            ? color.withValues(alpha: 0.5)
-                            : DesignTokens.textDisabled,
+                  Semantics(
+                    button: true,
+                    label: 'btn-add-product-delivery-info',
+                    child: GestureDetector(
+                      onTap: () => showInfoSheet(infoTitle, infoBody),
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 4),
+                        child: Icon(
+                          Icons.info_outline_rounded,
+                          size: 16,
+                          color: isEnabled
+                              ? color.withValues(alpha: 0.5)
+                              : DesignTokens.textDisabled,
+                        ),
                       ),
                     ),
                   ),
@@ -145,14 +149,19 @@ extension _AddProductDeliverySection on _AddProductScreenState {
             onChanged: viewModel.setLinuxDownloadUrl,
           ),
           const SizedBox(height: 8),
-          TextFormField(
-            initialValue: state.deviceLimit?.toString(),
-            decoration: InputDecoration(
-              labelText: 'product.device_limit_label'.tr(),
-              hintText: 'product.device_limit_hint'.tr(),
+          Semantics(
+            label: 'input-add-product-device-limit',
+            textField: true,
+            child: TextFormField(
+              initialValue: state.deviceLimit?.toString(),
+              decoration: InputDecoration(
+                labelText: 'product.device_limit_label'.tr(),
+                hintText: 'product.device_limit_hint'.tr(),
+              ),
+              keyboardType: TextInputType.number,
+              onChanged: (v) =>
+                  viewModel.setDeviceLimit(int.tryParse(v.trim())),
             ),
-            keyboardType: TextInputType.number,
-            onChanged: (v) => viewModel.setDeviceLimit(int.tryParse(v.trim())),
           ),
         ],
         if (state.digitalType == DigitalTypeValues.book) ...[
@@ -220,15 +229,19 @@ extension _AddProductDeliverySection on _AddProductScreenState {
                   ),
                 ),
               ),
-              GestureDetector(
-                onTap: () => showInfoSheet(
-                  'product.bulk_shipping_discounts'.tr(),
-                  'product.bulk_discount_info_body'.tr(),
-                ),
-                child: Icon(
-                  Icons.info_outline_rounded,
-                  size: 18,
-                  color: DesignTokens.textDisabled,
+              Semantics(
+                button: true,
+                label: 'btn-add-product-bulk-discount-info',
+                child: GestureDetector(
+                  onTap: () => showInfoSheet(
+                    'product.bulk_shipping_discounts'.tr(),
+                    'product.bulk_discount_info_body'.tr(),
+                  ),
+                  child: Icon(
+                    Icons.info_outline_rounded,
+                    size: 18,
+                    color: DesignTokens.textDisabled,
+                  ),
                 ),
               ),
             ],
@@ -310,45 +323,51 @@ extension _AddProductDeliverySection on _AddProductScreenState {
           ),
         ),
         Expanded(
-          child: TextFormField(
-            controller: controller,
-            keyboardType: TextInputType.number,
-            style: const TextStyle(fontSize: 13),
-            validator: (v) {
-              if (v == null || v.isEmpty) return null;
-              final val = double.tryParse(v);
-              if (val == null || val < 0 || val > 100) {
-                return 'product.discount_range'.tr();
-              }
-              return null;
-            },
-            decoration: InputDecoration(
-              hintText: hint,
-              suffixText: 'product.percent_off'.tr(),
-              isDense: true,
-              filled: true,
-              fillColor: DesignTokens.darkSurfaceVariant.withValues(alpha: 0.5),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 10,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide(
-                  color: DesignTokens.outline.withValues(alpha: 0.3),
+          child: Semantics(
+            label: 'input-add-product-shipping-discount-$label',
+            textField: true,
+            child: TextFormField(
+              controller: controller,
+              keyboardType: TextInputType.number,
+              style: const TextStyle(fontSize: 13),
+              validator: (v) {
+                if (v == null || v.isEmpty) return null;
+                final val = double.tryParse(v);
+                if (val == null || val < 0 || val > 100) {
+                  return 'product.discount_range'.tr();
+                }
+                return null;
+              },
+              decoration: InputDecoration(
+                hintText: hint,
+                suffixText: 'product.percent_off'.tr(),
+                isDense: true,
+                filled: true,
+                fillColor: DesignTokens.darkSurfaceVariant.withValues(
+                  alpha: 0.5,
                 ),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide(
-                  color: DesignTokens.outline.withValues(alpha: 0.2),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
                 ),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(
-                  color: DesignTokens.success,
-                  width: 1.5,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(
+                    color: DesignTokens.outline.withValues(alpha: 0.3),
+                  ),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(
+                    color: DesignTokens.outline.withValues(alpha: 0.2),
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(
+                    color: DesignTokens.success,
+                    width: 1.5,
+                  ),
                 ),
               ),
             ),

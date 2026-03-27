@@ -32,7 +32,7 @@ extension _AddProductFoodInfoSection on _AddProductScreenState {
             en: v.isEmpty ? null : v,
             fr: state.ingredientsFr,
           ),
-        semanticsLabel: 'input-ingredients-en',
+          semanticsLabel: 'input-ingredients-en',
         ),
         const SizedBox(height: 16),
 
@@ -48,7 +48,7 @@ extension _AddProductFoodInfoSection on _AddProductScreenState {
             en: state.ingredientsEn,
             fr: v.isEmpty ? null : v,
           ),
-        semanticsLabel: 'input-ingredients-fr',
+          semanticsLabel: 'input-ingredients-fr',
         ),
         const SizedBox(height: 20),
 
@@ -101,7 +101,7 @@ extension _AddProductFoodInfoSection on _AddProductScreenState {
             en: v.isEmpty ? null : v,
             fr: state.storageInstructionsFr,
           ),
-        semanticsLabel: 'input-storage-en',
+          semanticsLabel: 'input-storage-en',
         ),
         const SizedBox(height: 16),
 
@@ -117,7 +117,7 @@ extension _AddProductFoodInfoSection on _AddProductScreenState {
             en: state.storageInstructionsEn,
             fr: v.isEmpty ? null : v,
           ),
-        semanticsLabel: 'input-storage-fr',
+          semanticsLabel: 'input-storage-fr',
         ),
         const SizedBox(height: 16),
 
@@ -131,7 +131,7 @@ extension _AddProductFoodInfoSection on _AddProductScreenState {
           keyboardType: TextInputType.number,
           onChanged: (v) =>
               viewModel.setBestBeforeDays(v.isEmpty ? null : int.tryParse(v)),
-        semanticsLabel: 'input-best-before-days',
+          semanticsLabel: 'input-best-before-days',
         ),
       ],
     );
@@ -145,6 +145,7 @@ extension _AddProductFoodInfoSection on _AddProductScreenState {
     required void Function(String) onToggle,
     required String translationPrefix,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -183,13 +184,17 @@ extension _AddProductFoodInfoSection on _AddProductScreenState {
               selected: isSelected,
               onSelected: (_) => onToggle(value),
               selectedColor: DesignTokens.primary,
-              backgroundColor: DesignTokens.surface,
+              backgroundColor: isDark
+                  ? DesignTokens.darkCard
+                  : DesignTokens.surface,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
                 side: BorderSide(
                   color: isSelected
                       ? DesignTokens.primary
-                      : DesignTokens.outline.withValues(alpha: 0.3),
+                      : (isDark
+                            ? DesignTokens.darkOutline
+                            : DesignTokens.outline.withValues(alpha: 0.3)),
                 ),
               ),
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -299,7 +304,7 @@ extension _AddProductFoodInfoSection on _AddProductScreenState {
             'servingsPerContainer',
             int.tryParse(v),
           ),
-        semanticsLabel: 'input-servings-per-container',
+          semanticsLabel: 'input-servings-per-container',
         ),
         const SizedBox(height: 12),
 
@@ -311,7 +316,7 @@ extension _AddProductFoodInfoSection on _AddProductScreenState {
           keyboardType: TextInputType.number,
           onChanged: (v) =>
               viewModel.updateNutritionField('caloriesKcal', int.tryParse(v)),
-        semanticsLabel: 'input-calories',
+          semanticsLabel: 'input-calories',
         ),
         const SizedBox(height: 12),
 
@@ -383,7 +388,7 @@ extension _AddProductFoodInfoSection on _AddProductScreenState {
           keyboardType: TextInputType.number,
           onChanged: (v) =>
               viewModel.updateNutritionField('sodiumMg', int.tryParse(v)),
-        semanticsLabel: 'input-sodium',
+          semanticsLabel: 'input-sodium',
         ),
         const SizedBox(height: 12),
 

@@ -1032,6 +1032,7 @@
     "add_to_cart_failed": "Failed to add to cart",
     "item_load_error": "Failed to load this item",
     "item_no_longer_available": "This item is no longer available.",
+    "currently_unavailable": "Currently unavailable",
     "subtotal_with_count": "Subtotal ({count} items)",
     "free_shipping_qualified": "You qualify for FREE shipping! 🎉",
     "free_shipping_progress": "Add ${amount} for FREE shipping",

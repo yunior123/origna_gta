@@ -308,7 +308,7 @@ class _IngredientsCard extends StatelessWidget {
                   foodMetadata.ingredientsEn!,
                   style: TextStyle(
                     fontSize: 13,
-                    color: Colors.white.withValues(alpha: 0.85),
+                    color: DesignTokens.white.withValues(alpha: 0.85),
                     height: 1.5,
                   ),
                 ),
@@ -875,7 +875,7 @@ class _StorageCard extends StatelessWidget {
                       foodMetadata.storageInstructionsEn!,
                       style: TextStyle(
                         fontSize: 13,
-                        color: Colors.white.withValues(alpha: 0.85),
+                        color: DesignTokens.white.withValues(alpha: 0.85),
                         height: 1.5,
                       ),
                     ),
@@ -912,7 +912,7 @@ class _StorageCard extends StatelessWidget {
                     'Best before: ${foodMetadata.bestBeforeDays} days from production',
                     style: TextStyle(
                       fontSize: 13,
-                      color: Colors.white.withValues(alpha: 0.85),
+                      color: DesignTokens.white.withValues(alpha: 0.85),
                     ),
                   ),
                 ],

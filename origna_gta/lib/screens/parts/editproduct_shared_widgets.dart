@@ -66,11 +66,14 @@ extension _EditProductSharedWidgets on _EditProductScreenState {
     return Padding(
       key: key,
       padding: const EdgeInsets.only(bottom: 10),
-      child: TextFormField(
-        controller: controller,
-        decoration: InputDecoration(labelText: label),
-        keyboardType: TextInputType.url,
-        onChanged: onChanged,
+      child: Semantics(
+        label: 'input-edit-product-url',
+        child: TextFormField(
+          controller: controller,
+          decoration: InputDecoration(labelText: label),
+          keyboardType: TextInputType.url,
+          onChanged: onChanged,
+        ),
       ),
     );
   }
@@ -300,20 +303,24 @@ extension _EditProductSharedWidgets on _EditProductScreenState {
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () => Navigator.pop(ctx),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: DesignTokens.primary,
-                  foregroundColor: DesignTokens.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+              child: Semantics(
+                button: true,
+                label: 'btn-edit-product-got-it',
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: DesignTokens.primary,
+                    foregroundColor: DesignTokens.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0,
                   ),
-                  elevation: 0,
-                ),
-                child: Text(
-                  'common.got_it'.tr(),
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                  child: Text(
+                    'common.got_it'.tr(),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
                 ),
               ),
             ),

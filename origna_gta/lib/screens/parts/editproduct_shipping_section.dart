@@ -38,25 +38,31 @@ extension _EditProductShipping on _EditProductScreenState {
           Row(
             children: [
               Expanded(
-                child: TextFormField(
-                  controller: _weightController,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  decoration: InputDecoration(
-                    labelText: 'product.weight'.tr(),
-                    prefixIcon: const Icon(Icons.scale_outlined),
+                child: Semantics(
+                  label: 'input-edit-product-weight',
+                  child: TextFormField(
+                    controller: _weightController,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    decoration: InputDecoration(
+                      labelText: 'product.weight'.tr(),
+                      prefixIcon: const Icon(Icons.scale_outlined),
+                    ),
                   ),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: TextFormField(
-                  controller: _shipDaysController,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: 'product.ship_days'.tr(),
-                    prefixIcon: const Icon(Icons.schedule_outlined),
+                child: Semantics(
+                  label: 'input-edit-product-ship-days',
+                  child: TextFormField(
+                    controller: _shipDaysController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: 'product.ship_days'.tr(),
+                      prefixIcon: const Icon(Icons.schedule_outlined),
+                    ),
                   ),
                 ),
               ),
@@ -66,28 +72,37 @@ extension _EditProductShipping on _EditProductScreenState {
           Row(
             children: [
               Expanded(
-                child: TextFormField(
-                  controller: _lengthController,
-                  decoration: InputDecoration(
-                    labelText: 'product.length_cm'.tr(),
+                child: Semantics(
+                  label: 'input-edit-product-length',
+                  child: TextFormField(
+                    controller: _lengthController,
+                    decoration: InputDecoration(
+                      labelText: 'product.length_cm'.tr(),
+                    ),
                   ),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: TextFormField(
-                  controller: _widthController,
-                  decoration: InputDecoration(
-                    labelText: 'product.width_cm'.tr(),
+                child: Semantics(
+                  label: 'input-edit-product-width',
+                  child: TextFormField(
+                    controller: _widthController,
+                    decoration: InputDecoration(
+                      labelText: 'product.width_cm'.tr(),
+                    ),
                   ),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: TextFormField(
-                  controller: _heightController,
-                  decoration: InputDecoration(
-                    labelText: 'product.height_cm'.tr(),
+                child: Semantics(
+                  label: 'input-edit-product-height',
+                  child: TextFormField(
+                    controller: _heightController,
+                    decoration: InputDecoration(
+                      labelText: 'product.height_cm'.tr(),
+                    ),
                   ),
                 ),
               ),
@@ -97,17 +112,20 @@ extension _EditProductShipping on _EditProductScreenState {
           Row(
             children: [
               Expanded(
-                child: TextFormField(
-                  controller: _minOrderController,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: 'product.min_order_qty'.tr(),
-                    prefixIcon: const Icon(Icons.format_list_numbered),
+                child: Semantics(
+                  label: 'input-edit-product-min-order-qty',
+                  child: TextFormField(
+                    controller: _minOrderController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: 'product.min_order_qty'.tr(),
+                      prefixIcon: const Icon(Icons.format_list_numbered),
+                    ),
+                    validator: (value) =>
+                        value?.isEmpty ?? true ? 'common.required'.tr() : null,
+                    onChanged: (v) =>
+                        viewModel.setMinimumOrderQuantity(int.tryParse(v) ?? 1),
                   ),
-                  validator: (value) =>
-                      value?.isEmpty ?? true ? 'common.required'.tr() : null,
-                  onChanged: (v) =>
-                      viewModel.setMinimumOrderQuantity(int.tryParse(v) ?? 1),
                 ),
               ),
               const SizedBox(width: 12),

@@ -46,6 +46,24 @@
 46. reinforce and improve error codes and error handling for rust and dart, it has to be state of the art.
 47. take a look at flutter docs and how they handle previews. should we move previews out of previews folder and put then per screen and widget?. either case inspect previews and send pictures to codex or gemini for feedback, real pictures, it can be screenshots. i dont like the full scroll feature that we have for previews, prefer to keep it standard as per flutter documentation.save screenshots in desktop
 48. document functions, classes, etc to avoid constant back and forth
+49. new task:search latest blog from anthropic for agent harness, lets study how to apply it to our project
+https://www.anthropic.com/engineering/harness-design-long-running-apps
+50. /harness-loop use agent browser  and dont stop till u audit and fix
+    all design entirely, every single view and widget, variants and states,all
+      layouts.save all screenshots to desktop, make sure to deploy all first to dev before using agent browser. delegate
+  to codex or gemini. no excuses, if u encounter issues u solve them. all screenshots to desktop. all screens and widgets. run all e2e tests when done, no excuses, fix as needed.
+go ahead, delegate all that to codex, make sure to use gpt5.4 non mini ok, the gpt5.4 full is better.
+  delegate all in detail, cover all please, then u can go to sleep since codex will take care of the
+  rest. u can tell codex the issues we found, how worried are we of doing it properly, we need to
+  review each single piece of the design right. give all tips to codex on how to do all: ex image
+  upload to cloudflare, etc. u need to be very specific and go into details, codex will take care of
+  the rest. codex should analyze design from a user perspective:ex i was able to realize that in cart
+  when product not available it does not even show and image or description about it which is crazy, we
+  should be able to identify crazy things like that, that is part of debugging ui, u can also say to
+  codex: hey, search the web for this view, what do u think it might be wrong or missing? there are
+  many ecommerce store outthere to take as reference. just make sure that the screenshots covor entire
+  view and not just the top or some specific parts, u might need to take screenshots in scroll
+begining, middle, end, or something like that for large views.
 
 EXAMPLES:
 EX1

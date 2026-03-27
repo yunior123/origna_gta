@@ -6,9 +6,9 @@ import 'dart:io' show Platform;
 
 class UpdateRequiredDialog extends StatelessWidget {
   final String minVersion;
-  
+
   const UpdateRequiredDialog({super.key, required this.minVersion});
-  
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -24,18 +24,22 @@ class UpdateRequiredDialog extends StatelessWidget {
           style: TextStyle(color: DesignTokens.textSecondary),
         ),
         actions: [
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: DesignTokens.primary,
+          Semantics(
+            label: 'btn-update-app',
+            button: true,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: DesignTokens.primary,
+              ),
+              onPressed: _openStore,
+              child: Text('app.update_now'.tr()),
             ),
-            onPressed: _openStore,
-            child: Text('app.update_now'.tr()),
           ),
         ],
       ),
     );
   }
-  
+
   void _openStore() {
     // TODO: Replace with actual store URLs when published
     final url = Platform.isIOS

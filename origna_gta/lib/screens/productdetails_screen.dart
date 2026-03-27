@@ -11,7 +11,6 @@ import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/features/products/product_detail_viewmodel.dart';
 import 'package:origna_gta/features/products/products_provider.dart';
-import 'package:origna_gta/models/generated/product_models.dart';
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/env_config.dart';
@@ -64,6 +63,27 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     );
   }
 
+  /// Builds the best available product snapshot so the detail screen can render
+  /// even if the follow-up product fetch fails after navigation.
+  Product? _resolveDisplayProduct(AsyncValue<Product?> productAsync) {
+    Product? initialProduct;
+    if (widget.product != null) {
+      try {
+        initialProduct = Product.fromJson(widget.product!);
+      } catch (_) {}
+    }
+
+    final fetchedProduct = productAsync.valueOrNull;
+    return switch ((initialProduct, fetchedProduct)) {
+      (final initial?, final fetched?)
+          when fetched.imageUrls.isEmpty && initial.imageUrls.isNotEmpty =>
+        fetched.copyWith(imageUrls: initial.imageUrls),
+      (_, final fetched?) => fetched,
+      (final initial?, _) => initial,
+      _ => null,
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     final productId = widget.productId;
@@ -74,23 +94,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     );
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final ratingsAsync = ref.watch(productRatingsProvider(productId));
-
-    Product? initialProduct;
-    if (widget.product != null) {
-      try {
-        initialProduct = Product.fromJson(widget.product!);
-      } catch (_) {}
-    }
-
-    final fetchedProduct = productAsync.valueOrNull;
-    final product = switch ((initialProduct, fetchedProduct)) {
-      (final initial?, final fetched?)
-          when fetched.imageUrls.isEmpty && initial.imageUrls.isNotEmpty =>
-        fetched.copyWith(imageUrls: initial.imageUrls),
-      (_, final fetched?) => fetched,
-      (final initial?, _) => initial,
-      _ => null,
-    };
+    final product = _resolveDisplayProduct(productAsync);
 
     final matchedVariant =
         product?.hasVariants == true && selectedVariantId != null
@@ -361,21 +365,300 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
             ],
           );
         },
-        loading: () => const ProductDetailSkeleton(),
-        error: (e, s) => AnimatedEmptyState(
-          icon: Icons.error_outline_rounded,
-          title: 'product.load_error'.tr(),
-          subtitle: AppError.getMessage(e),
-          action: SizedBox(
-            width: 200,
-            child: ModernButton(
-              label: 'common.retry'.tr(),
-              icon: Icons.refresh_rounded,
-              onPressed: () => ref.invalidate(productByIdProvider(productId)),
+        loading: () => product != null
+            ? _buildResolvedProductBody(
+                context,
+                productId,
+                product,
+                viewModel,
+                selectedVariantId,
+                isDark,
+                ratingsAsync,
+              )
+            : const ProductDetailSkeleton(),
+        error: (e, s) => product != null
+            ? _buildResolvedProductBody(
+                context,
+                productId,
+                product,
+                viewModel,
+                selectedVariantId,
+                isDark,
+                ratingsAsync,
+              )
+            : AnimatedEmptyState(
+                icon: Icons.error_outline_rounded,
+                title: 'product.load_error'.tr(),
+                subtitle: AppError.getMessage(e),
+                action: SizedBox(
+                  width: 200,
+                  child: ModernButton(
+                    label: 'common.retry'.tr(),
+                    icon: Icons.refresh_rounded,
+                    onPressed: () => ref.invalidate(productByIdProvider(productId)),
+                  ),
+                ),
+              ),
+      ),
+    );
+  }
+
+  /// Renders product details from an already available product snapshot.
+  Widget _buildResolvedProductBody(
+    BuildContext context,
+    String productId,
+    Product product,
+    ProductDetailViewModel viewModel,
+    String? selectedVariantId,
+    bool isDark,
+    AsyncValue<List<Map<String, dynamic>>> ratingsAsync,
+  ) {
+    final matchedVariant =
+        product.hasVariants && selectedVariantId != null
+        ? product.variants
+              .where((v) => v.variantId == selectedVariantId)
+              .firstOrNull
+        : null;
+    final displayPrice = matchedVariant != null
+        ? (matchedVariant.priceCents ?? 0) / 100.0
+        : product.price;
+    final isOutOfStock =
+        (matchedVariant?.stockQuantity ?? product.stockQuantity) <= 0;
+    final profileSnapshot = ref.watch(
+      userProfileProvider.select((a) => a.valueOrNull),
+    );
+    final canManage =
+        profileSnapshot?.uid == product.sellerId ||
+        profileSnapshot?.roles.contains(UserRole.admin) == true;
+
+    return _buildProductScaffoldBody(
+      context,
+      productId,
+      product,
+      viewModel,
+      displayPrice,
+      isOutOfStock,
+      isDark,
+      ratingsAsync,
+      canManage,
+    );
+  }
+
+  /// Builds the main product-detail layout once a concrete [product] exists.
+  Widget _buildProductScaffoldBody(
+    BuildContext context,
+    String productId,
+    Product product,
+    ProductDetailViewModel viewModel,
+    double displayPrice,
+    bool isOutOfStock,
+    bool isDark,
+    AsyncValue<List<Map<String, dynamic>>> ratingsAsync,
+    bool canManage,
+  ) {
+    _recordRecentlyViewedOnce(productId);
+    final imageUrls = product.imageUrls;
+    final hasVideo = product.videoUrl != null && product.videoUrl!.isNotEmpty;
+    final isWideScreen = !ResponsiveBreakpoints.isMobile(context);
+
+    Widget buildProductInfo() => _ProductInfoColumn(
+      product: product,
+      displayPrice: displayPrice,
+      isDark: isDark,
+      viewModel: viewModel,
+      onDeliveryEstimate: _buildDeliveryEstimate,
+    );
+
+    Widget buildBottomSections() => Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        FBTSection(product: product),
+        const SizedBox(height: 32),
+        ReviewsSection(
+          productId: productId,
+          productName: product.name,
+          ratingCount: product.ratingCount,
+          averageRating: product.rating,
+          ratingsAsync: ratingsAsync,
+          onRetry: () => ref.invalidate(productRatingsProvider(productId)),
+        ),
+        const SizedBox(height: 32),
+        QASection(productId: productId, sellerId: product.sellerId),
+        const SizedBox(height: 32),
+        SellerProductsSection(
+          sellerId: product.sellerId,
+          excludeProductId: productId,
+        ),
+        const SizedBox(height: 32),
+        SimilarProductsSection(
+          productId: productId,
+          categoryId: product.categoryId,
+        ),
+        const SizedBox(height: 40),
+      ],
+    );
+
+    Widget buildImageGallery({
+      required double height,
+      bool wide = false,
+    }) => ProductImageGallery(
+      imageUrls: imageUrls,
+      hasVideo: hasVideo,
+      videoUrl: product.videoUrl,
+      height: height,
+      isWideScreen: wide,
+      onVideoTap: () => _showVideoPlayer(context, product.videoUrl!),
+      onImageTap: (urls, idx) => _showImageDialog(context, urls, idx),
+    );
+
+    Widget buildShareButton() => product.slug != null
+        ? IconButton(
+            icon: const Icon(Icons.share_outlined),
+            tooltip: 'product.share'.tr(),
+            onPressed: () => SharePlus.instance.share(
+              ShareParams(
+                text:
+                    '${'product.share_text'.tr(namedArgs: {'productName': product.name})}\n${envConfig.baseUrl}/p/${product.slug}',
+                subject: product.name,
+              ),
+            ),
+          )
+        : const SizedBox.shrink();
+
+    if (isWideScreen) {
+      return SingleChildScrollView(
+        child: Column(
+          children: [
+            SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                child: Row(
+                  children: [
+                    Semantics(
+                      button: true,
+                      label: 'btn-back-product-details',
+                      child: IconButton(
+                        key: const Key('productdetail_back_button'),
+                        tooltip: 'product.go_back'.tr(),
+                        icon: const Icon(Icons.arrow_back),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ),
+                    const Spacer(),
+                    buildShareButton(),
+                  ],
+                ),
+              ),
+            ),
+            Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  maxWidth: ResponsiveBreakpoints.contentMaxWidth,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        flex: 5,
+                        child: buildImageGallery(height: 480, wide: true),
+                      ),
+                      const SizedBox(width: 32),
+                      Expanded(flex: 5, child: buildProductInfo()),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 32),
+            Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  maxWidth: ResponsiveBreakpoints.contentMaxWidth,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: buildBottomSections(),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return CustomScrollView(
+      slivers: [
+        SliverAppBar(
+          pinned: true,
+          expandedHeight: 360,
+          backgroundColor: isDark
+              ? DesignTokens.darkSurface
+              : DesignTokens.white,
+          leading: Semantics(
+            button: true,
+            label: 'btn-back-product-details',
+            child: IconButton(
+              key: const Key('productdetail_back_button'),
+              tooltip: 'product.go_back'.tr(),
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+          actions: [buildShareButton()],
+          flexibleSpace: FlexibleSpaceBar(
+            background: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                child: buildImageGallery(height: 320),
+              ),
+            ),
+          ),
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(20),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: isDark ? DesignTokens.darkSurface : DesignTokens.white,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(24),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: DesignTokens.black.withValues(alpha: 0.08),
+                    blurRadius: 16,
+                    offset: const Offset(0, -4),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
-      ),
+        SliverToBoxAdapter(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(
+                maxWidth: ResponsiveBreakpoints.contentMaxWidth,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    buildProductInfo(),
+                    const SizedBox(height: 32),
+                    buildBottomSections(),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 

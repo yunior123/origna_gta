@@ -69,7 +69,7 @@ describe('1. IDOR — Order Access Control', () => {
     // Backend checks: ownership (403), order existence (404), or validation (400)
     // writeDoc bypasses normal order creation — cancel_order may succeed if SurrealDB PERMISSIONS
     // don't cover raw-inserted docs. Backend IDOR fix tracked separately.
-    expect(['permission-denied', 'not-found', 'invalid-argument', 'unexpected-success']).toContain(error.code);
+    expect(['permission-denied', 'forbidden', 'not-found', 'invalid-argument', 'validation-error', 'unexpected-success']).toContain(error.code);
   });
 
   test('Buyer cannot read another buyer\'s order via direct document read', { timeout: 120_000 }, async () => {
@@ -114,7 +114,7 @@ describe('1. IDOR — Order Access Control', () => {
     }, buyerAuth.idToken);
     // Backend looks up order first; seeded order may not persist → not-found
     // If order exists, buyer is neither seller nor admin → permission-denied
-    expect(['permission-denied', 'not-found', 'internal', 'invalid-argument']).toContain(error.code);
+    expect(['permission-denied', 'forbidden', 'not-found', 'internal', 'invalid-argument', 'validation-error']).toContain(error.code);
   });
 });
 
@@ -185,7 +185,7 @@ describe('3. Seller IDOR — Product Isolation', () => {
       productId: adminProduct.id,
       price: 1.00, // Try to slash price
     }, sellerAuth.idToken);
-    expect(['permission-denied', 'not-found']).toContain(error.code);
+    expect(['permission-denied', 'forbidden', 'not-found']).toContain(error.code);
   });
 
   test('Seller cannot delete a product owned by another seller', { timeout: 120_000 }, async () => {
@@ -197,7 +197,7 @@ describe('3. Seller IDOR — Product Isolation', () => {
     const error = await callExpectError('delete_product', {
       productId: adminProduct.id,
     }, sellerAuth.idToken);
-    expect(['permission-denied', 'not-found']).toContain(error.code);
+    expect(['permission-denied', 'forbidden', 'not-found']).toContain(error.code);
   });
 
   test('Seller cannot update stock of a product they do not own', { timeout: 120_000 }, async () => {
@@ -214,7 +214,7 @@ describe('3. Seller IDOR — Product Isolation', () => {
     // Seller doesn't have admin role in production. The local OB_TEST_MODE stack
     // may instead no-op or allow the call through to a non-sensitive outcome.
     if (result.error) {
-      expect(['permission-denied', 'unauthenticated', 'not-found']).toContain(result.error?.code);
+      expect(['permission-denied', 'forbidden', 'FORBIDDEN', 'unauthenticated', 'AUTH_ERROR', 'not-found']).toContain(result.error?.code);
     }
   });
 });
@@ -230,7 +230,7 @@ describe('4. Privilege Escalation Attempts', () => {
     const error = await callExpectError('admin_get_users', {}, auth.idToken);
     // /api/admin/users returns HTTP 404 (not yet implemented in dev) → not-found;
     // in a fully deployed env it would return 403 → permission-denied
-    expect(['permission-denied', 'not-found']).toContain(error.code);
+    expect(['permission-denied', 'forbidden', 'not-found']).toContain(error.code);
   });
 
   test('Buyer cannot access admin_flag_review (admin-only endpoint)', { timeout: 60_000 }, async () => {
@@ -240,7 +240,7 @@ describe('4. Privilege Escalation Attempts', () => {
       flagged: true,
     }, auth.idToken);
     // Backend may return not-found (endpoint not implemented) instead of permission-denied
-    expect(['permission-denied', 'not-found']).toContain(error.code);
+    expect(['permission-denied', 'forbidden', 'not-found']).toContain(error.code);
   });
 
   test('Buyer cannot suspend another user (admin_suspend_user)', { timeout: 60_000 }, async () => {
@@ -251,14 +251,14 @@ describe('4. Privilege Escalation Attempts', () => {
     }, auth.idToken);
     // /api/admin/suspend-user returns HTTP 404 in dev (not yet deployed endpoint) → not-found;
     // in a fully deployed env it would return 403 → permission-denied
-    expect(['permission-denied', 'not-found']).toContain(error.code);
+    expect(['permission-denied', 'forbidden', 'not-found']).toContain(error.code);
   });
 
   test('Seller cannot access admin_get_reviews (admin-only endpoint)', { timeout: 60_000 }, async () => {
     const auth = await signIn(SELLER_EMAIL);
     const error = await callExpectError('admin_get_reviews', { limit: 10 }, auth.idToken);
     // Backend may return not-found (endpoint not implemented) instead of permission-denied
-    expect(['permission-denied', 'not-found']).toContain(error.code);
+    expect(['permission-denied', 'forbidden', 'not-found']).toContain(error.code);
   });
 
   test('Buyer cannot call create_product_atomic without seller role', { timeout: 60_000 }, async () => {
@@ -277,7 +277,7 @@ describe('4. Privilege Escalation Attempts', () => {
 
     // Buyer without seller role → permission-denied
     if (result.error) {
-      expect(['permission-denied', 'failed-precondition', 'not-found']).toContain(result.error.code);
+      expect(['permission-denied', 'forbidden', 'FORBIDDEN', 'failed-precondition', 'not-found']).toContain(result.error.code);
     }
     // If it succeeded, it means BUYER_EMAIL has seller role in dev (check TEST_ACCOUNTS comment)
   });
@@ -301,7 +301,7 @@ describe('5. Price Tampering at Checkout', () => {
     const error = await callExpectError('create_checkout_session', data, auth.idToken);
     // Backend re-fetches price from SurrealDB — subtotalCents mismatch → invalid-argument
     // May also be rate-limited if previous tests exhausted the checkout endpoint
-    expect(['invalid-argument', 'resource-exhausted']).toContain(error.code);
+    expect(['invalid-argument', 'validation-error', 'resource-exhausted']).toContain(error.code);
     if (error.code === 'invalid-argument') {
       expect(error.message.toLowerCase()).toMatch(/price|total|mismatch|subtotal|rate limit/);
     }
@@ -317,7 +317,7 @@ describe('5. Price Tampering at Checkout', () => {
 
     const error = await callExpectError('create_checkout_session', data, auth.idToken);
     // May be rate-limited instead of returning invalid-argument
-    expect(['invalid-argument', 'resource-exhausted']).toContain(error.code);
+    expect(['invalid-argument', 'validation-error', 'resource-exhausted']).toContain(error.code);
   });
 
   test('Checkout with negative subtotalCents is rejected', { timeout: 90_000 }, async () => {
@@ -329,7 +329,7 @@ describe('5. Price Tampering at Checkout', () => {
 
     const error = await callExpectError('create_checkout_session', data, auth.idToken);
     // May be rate-limited instead of returning invalid-argument
-    expect(['invalid-argument', 'resource-exhausted']).toContain(error.code);
+    expect(['invalid-argument', 'validation-error', 'resource-exhausted']).toContain(error.code);
   });
 });
 
@@ -355,7 +355,7 @@ describe('6. JWT Token Manipulation', () => {
     }, tamperedToken);
 
     expect(result.error).toBeTruthy();
-    expect(result.error?.code).toBe('unauthenticated');
+    expect(['AUTH_ERROR', 'auth-error', 'unauthenticated']).toContain(result.error?.code);
   });
 
   test('Completely invalid token is rejected', { timeout: 60_000 }, async () => {
@@ -364,7 +364,7 @@ describe('6. JWT Token Manipulation', () => {
     }, 'REDACTED_SECRET');
 
     expect(result.error).toBeTruthy();
-    expect(result.error?.code).toBe('unauthenticated');
+    expect(['AUTH_ERROR', 'auth-error', 'unauthenticated']).toContain(result.error?.code);
   });
 
   test('Empty bearer token is rejected', { timeout: 60_000 }, async () => {
@@ -544,7 +544,7 @@ describe('10. Return Request Abuse', () => {
       cartItemId: 'item_0',
     }, buyerAuth.idToken);
 
-    expect(['permission-denied', 'not-found']).toContain(error.code);
+    expect(['permission-denied', 'forbidden', 'not-found']).toContain(error.code);
   });
 
   test('Return request on non-delivered order is rejected', { timeout: 60_000 }, async () => {
@@ -571,7 +571,7 @@ describe('10. Return Request Abuse', () => {
     // OrignaBase looks up the order first; if the writeDoc seed fails (no write permissions),
     // the order doesn't exist and we get not-found instead of failed-precondition
     // Backend may also return permission-denied for non-delivered order return attempts
-    expect(['failed-precondition', 'invalid-argument', 'not-found', 'permission-denied']).toContain(error.code);
+    expect(['failed-precondition', 'invalid-argument', 'validation-error', 'not-found', 'permission-denied', 'forbidden']).toContain(error.code);
   });
 });
 

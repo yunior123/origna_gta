@@ -68,13 +68,43 @@ final cartItemDetailProvider = FutureProvider.autoDispose
       // Pull from batch-fetched product cache (single whereIn query for all cart items)
       final productCache = await ref.watch(_cartProductsBatchProvider.future);
       final productData = productCache[productId];
-      if (productData == null) return null;
 
       // Find the exact cart item to get variant info — await to ensure state is fully resolved
       final cartItems = await ref.watch(cartItemsProvider.future);
       final cartItem = cartItems
           .where((i) => i.cartItemId == cartItemDocId)
           .firstOrNull;
+
+      final isUnavailable =
+          productData == null ||
+          productData[Fields.lifecycleStatus] !=
+              ProductLifecycleStatusValues.active;
+
+      if (isUnavailable) {
+        if (cartItem == null) return null;
+        final snapshotPriceCents = cartItem.priceSnapshot ?? 0;
+        return CartItemDetailModel(
+          productId: productId,
+          name: cartItem.productName ?? '',
+          description: cartItem.productDescription ?? '',
+          price: snapshotPriceCents / 100.0,
+          priceCents: snapshotPriceCents,
+          imageUrls: cartItem.imageUrls,
+          quantity: cartItem.quantity,
+          createdAt: createdAt,
+          sellerAddress: Address.fromMap(const <String, dynamic>{}),
+          sellerId: '',
+          sellerName: '',
+          estimatedShipDays: 3,
+          deliveryOptions: const [],
+          minimumOrderQuantity: 1,
+          freeShipping: false,
+          isDigital: false,
+          variantId: cartItem.variantId,
+          variantTitle: cartItem.variantTitle,
+          variantOptions: cartItem.variantOptions,
+        );
+      }
 
       return CartItemDetailModel(
         productId: productId,
@@ -549,6 +579,5 @@ class CartController {
     return true;
   }
 }
-
 
 // === Widget Previews ===

@@ -391,7 +391,11 @@ class CartItemModel {
   final int quantity;
   final String productId;
   final DateTime createdAt;
+  final String? productName;
+  final String? productDescription;
+  final List<String> imageUrls;
   final String? buyerNote;
+  final int? priceSnapshot;
   final String? variantId;
   final String? variantTitle;
   final Map<String, String>? variantOptions;
@@ -401,7 +405,11 @@ class CartItemModel {
     required this.quantity,
     required this.productId,
     required this.createdAt,
+    this.productName,
+    this.productDescription,
+    this.imageUrls = const [],
     this.buyerNote,
+    this.priceSnapshot,
     this.variantId,
     this.variantTitle,
     this.variantOptions,
@@ -413,7 +421,11 @@ class CartItemModel {
       quantity: (map[Fields.quantity] as num?)?.toInt() ?? 0,
       productId: (map[Fields.productId] as String?) ?? '',
       createdAt: _parseDateTimeRequired(map[Fields.createdAt]),
+      productName: map[Fields.name] as String?,
+      productDescription: map[Fields.description] as String?,
+      imageUrls: List<String>.from(map[Fields.imageUrls] as Iterable? ?? []),
       buyerNote: map[Fields.buyerNote] as String?,
+      priceSnapshot: (map[Fields.priceSnapshot] as num?)?.toInt(),
       variantId: map[Fields.variantId] as String?,
       variantTitle: map[Fields.variantTitle] as String?,
       variantOptions: map[Fields.variantOptions] != null
@@ -430,7 +442,13 @@ class CartItemModel {
       Fields.productId: productId,
       Fields.createdAt: createdAt,
     };
+    if (productName != null) map[Fields.name] = productName;
+    if (productDescription != null) {
+      map[Fields.description] = productDescription;
+    }
+    if (imageUrls.isNotEmpty) map[Fields.imageUrls] = imageUrls;
     if (buyerNote != null) map[Fields.buyerNote] = buyerNote;
+    if (priceSnapshot != null) map[Fields.priceSnapshot] = priceSnapshot;
     if (variantId != null) map[Fields.variantId] = variantId;
     if (variantTitle != null) map[Fields.variantTitle] = variantTitle;
     if (variantOptions != null) map[Fields.variantOptions] = variantOptions;
@@ -452,6 +470,9 @@ class CartModel {
   final Map<String, String>? variantOptions;
   final String? variantSku;
   final int? priceSnapshot; // Price in cents at time of cart addition
+  final String? productName;
+  final String? productDescription;
+  final List<String> imageUrls;
 
   CartModel({
     this.cartItemId = '',
@@ -463,6 +484,9 @@ class CartModel {
     this.variantOptions,
     this.variantSku,
     this.priceSnapshot,
+    this.productName,
+    this.productDescription,
+    this.imageUrls = const [],
   });
 
   factory CartModel.fromMap(Map<String, dynamic> map, {String? docId}) {
@@ -480,6 +504,9 @@ class CartModel {
           : null,
       variantSku: map[Fields.variantSku] as String?,
       priceSnapshot: (map[Fields.priceSnapshot] as num?)?.toInt(),
+      productName: map[Fields.name] as String?,
+      productDescription: map[Fields.description] as String?,
+      imageUrls: List<String>.from(map[Fields.imageUrls] as Iterable? ?? []),
     );
   }
 
@@ -489,6 +516,11 @@ class CartModel {
       Fields.quantity: quantity,
       Fields.createdAt: createdAt,
     };
+    if (productName != null) map[Fields.name] = productName;
+    if (productDescription != null) {
+      map[Fields.description] = productDescription;
+    }
+    if (imageUrls.isNotEmpty) map[Fields.imageUrls] = imageUrls;
     if (variantId != null) map[Fields.variantId] = variantId;
     if (variantTitle != null) map[Fields.variantTitle] = variantTitle;
     if (variantOptions != null) map[Fields.variantOptions] = variantOptions;
@@ -1382,6 +1414,5 @@ class UserModel {
     };
   }
 }
-
 
 // === Widget Previews ===

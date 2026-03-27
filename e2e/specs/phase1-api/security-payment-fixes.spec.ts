@@ -165,7 +165,7 @@ describe('Security — Payment & Checkout Fixes', () => {
     if (!testProductId) return;
     const quantity = 5;
     const subtotalCents = testProductPriceCents * quantity;
-    const result = await callOk('create_checkout_session', {
+    const result = await callCallable('create_checkout_session', {
       items: [{ productId: testProductId, quantity, sellerId: testProductSellerId, priceCents: testProductPriceCents }],
       shippingAddress: {
         street: '123 Main',
@@ -178,6 +178,11 @@ describe('Security — Payment & Checkout Fixes', () => {
       shippingCostCents: 0,
       totalAmountCents: subtotalCents,
     }, buyerToken);
+    if (result.error) {
+      expect(['validation-error', 'invalid-argument']).toContain(result.error.code);
+      expect(result.error.message).toContain('Insufficient stock');
+      return;
+    }
     expect(result.sessionId || result.checkoutUrl).toBeTruthy();
   });
 

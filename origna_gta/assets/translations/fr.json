@@ -1032,6 +1032,7 @@
     "add_to_cart_failed": "Impossible d'ajouter au panier",
     "item_load_error": "Impossible de charger cet article",
     "item_no_longer_available": "Cet article n'est plus disponible.",
+    "currently_unavailable": "Actuellement indisponible",
     "subtotal_with_count": "Sous-total ({count} articles)",
     "free_shipping_qualified": "Livraison GRATUITE disponible ! 🎉",
     "free_shipping_progress": "Ajoutez {amount} $ pour la livraison GRATUITE",

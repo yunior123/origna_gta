@@ -354,12 +354,16 @@ class _RejectionBanner extends StatelessWidget {
                   size: 14,
                   color: DesignTokens.primary,
                 ),
-                label: Text(
-                  tr('seller.fix_and_resubmit'),
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: DesignTokens.primary,
+                label: Semantics(
+                  label: 'btn-fix-resubmit',
+                  button: true,
+                  child: Text(
+                    tr('seller.fix_and_resubmit'),
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: DesignTokens.primary,
+                    ),
                   ),
                 ),
                 style: TextButton.styleFrom(

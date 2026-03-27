@@ -6,8 +6,10 @@ import 'package:origna_gta/core/repositories/orignabase_auth_repository.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 
 void main() {
-  const runLive =
-      bool.fromEnvironment('RUN_ORIGNABASE_LIVE_TESTS', defaultValue: false);
+  const runLive = bool.fromEnvironment(
+    'RUN_ORIGNABASE_LIVE_TESTS',
+    defaultValue: false,
+  );
 
   group('Seller registration live integration', () {
     late ProviderContainer container;
@@ -37,7 +39,10 @@ void main() {
         if (!runLive) return;
 
         // Sign in as a registered seller
-        await authRepo.signInWithEmail('e2e-seller@test.origna.ca', 'REDACTED_TEST_PASSWORD');
+        await authRepo.signInWithEmail(
+          'e2e-seller@test.origna.ca',
+          'REDACTED_TEST_PASSWORD',
+        );
 
         final sellerId = ob.auth.currentUserId;
         expect(sellerId, isNotNull, reason: 'Seller should be authenticated');
@@ -52,7 +57,10 @@ void main() {
         if (!runLive) return;
 
         // Sign in as a registered seller
-        await authRepo.signInWithEmail('e2e-seller@test.origna.ca', 'REDACTED_TEST_PASSWORD');
+        await authRepo.signInWithEmail(
+          'e2e-seller@test.origna.ca',
+          'REDACTED_TEST_PASSWORD',
+        );
 
         final sellerId = ob.auth.currentUserId;
         expect(sellerId, isNotNull);
@@ -66,8 +74,11 @@ void main() {
             .get();
 
         if (sellerProfileQuery != null) {
-          expect(true, isTrue,
-              reason: 'Seller should have a seller_profiles document');
+          expect(
+            true,
+            isTrue,
+            reason: 'Seller should have a seller_profiles document',
+          );
         }
       },
       skip: !runLive,
@@ -79,7 +90,10 @@ void main() {
       () async {
         if (!runLive) return;
 
-        await authRepo.signInWithEmail('e2e-seller@test.origna.ca', 'REDACTED_TEST_PASSWORD');
+        await authRepo.signInWithEmail(
+          'e2e-seller@test.origna.ca',
+          'REDACTED_TEST_PASSWORD',
+        );
 
         final sellerId = ob.auth.currentUserId;
         expect(sellerId, isNotNull);
@@ -106,7 +120,10 @@ void main() {
       () async {
         if (!runLive) return;
 
-        await authRepo.signInWithEmail('e2e-seller@test.origna.ca', 'REDACTED_TEST_PASSWORD');
+        await authRepo.signInWithEmail(
+          'e2e-seller@test.origna.ca',
+          'REDACTED_TEST_PASSWORD',
+        );
 
         final sellerId = ob.auth.currentUserId;
         expect(sellerId, isNotNull);
@@ -140,21 +157,26 @@ void main() {
       () async {
         if (!runLive) return;
 
-        await authRepo.signInWithEmail('e2e-seller@test.origna.ca', 'REDACTED_TEST_PASSWORD');
+        await authRepo.signInWithEmail(
+          'e2e-seller@test.origna.ca',
+          'REDACTED_TEST_PASSWORD',
+        );
 
         final sellerId = ob.auth.currentUserId;
         expect(sellerId, isNotNull);
 
         // Fetch user document
-        final userDocQuery =
-            await ob.collection(Collections.users).doc(sellerId!).get();
+        final userDocQuery = await ob
+            .collection(Collections.users)
+            .doc(sellerId!)
+            .get();
 
         if (userDocQuery != null) {
           final userData = userDocQuery.data;
           expect(userData, isNotNull);
 
           // User should have seller role
-          final userRole = userData!['role'];
+          final userRole = userData['role'];
           expect(
             userRole,
             equals('seller'),

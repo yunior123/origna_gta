@@ -66,6 +66,10 @@ class OrignaBaseCartRepository implements CartRepository {
 
     final cartRef = _cartRef(userId);
     final docId = variantId != null ? '${productId}_$variantId' : productId;
+    final imageUrls = List<String>.from(
+      productDoc.data[Fields.imageUrls] as Iterable? ?? const <String>[],
+    );
+    final priceSnapshot = (productDoc.get<num>(Fields.priceCents))?.toInt();
 
     // Read-then-write: OrignaBase does not have client-side transactions yet.
     // Use deterministic doc ID to avoid duplicates.
@@ -104,6 +108,10 @@ class OrignaBaseCartRepository implements CartRepository {
         variantTitle: variantTitle,
         variantOptions: variantOptions,
         variantSku: variantSku,
+        priceSnapshot: priceSnapshot,
+        productName: productDoc.get<String>(Fields.name),
+        productDescription: productDoc.get<String>(Fields.description),
+        imageUrls: imageUrls,
       ).toMap(),
       // userId required by cart create rule: auth.uid == incoming.userId.
       Fields.userId: fullUserId,

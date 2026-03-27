@@ -93,62 +93,71 @@ class VariantAndCartSection extends ConsumerWidget {
                     runSpacing: 8,
                     children: values.map((val) {
                       final isSelected = selected == val;
-                      return GestureDetector(
-                        onTap: () {
-                          final newOptions = {...selectedOptions, optName: val};
-                          String? newVariantId;
-                          for (final v in product.variants) {
-                            bool match = true;
-                            for (final entry in newOptions.entries) {
-                              final name = entry.key.toLowerCase();
-                              final value = entry.value;
-                              if (v.optionValues[name] != value &&
-                                  v.optionValues[entry.key] != value) {
-                                match = false;
+                      return Semantics(
+                        label: 'btn-variant-option-$val',
+                        button: true,
+                        child: GestureDetector(
+                          onTap: () {
+                            final newOptions = {
+                              ...selectedOptions,
+                              optName: val,
+                            };
+                            String? newVariantId;
+                            for (final v in product.variants) {
+                              bool match = true;
+                              for (final entry in newOptions.entries) {
+                                final name = entry.key.toLowerCase();
+                                final value = entry.value;
+                                if (v.optionValues[name] != value &&
+                                    v.optionValues[entry.key] != value) {
+                                  match = false;
+                                  break;
+                                }
+                              }
+                              if (match) {
+                                newVariantId = v.variantId;
                                 break;
                               }
                             }
-                            if (match) {
-                              newVariantId = v.variantId;
-                              break;
-                            }
-                          }
-                          viewModel.setSelectedOption(
-                            optName,
-                            val,
-                            variantId: newVariantId,
-                          );
-                        },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 150),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? DesignTokens.primary
-                                : (isDark
-                                      ? DesignTokens.darkCard
-                                      : DesignTokens.white),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
+                            viewModel.setSelectedOption(
+                              optName,
+                              val,
+                              variantId: newVariantId,
+                            );
+                          },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 150),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
                               color: isSelected
                                   ? DesignTokens.primary
-                                  : DesignTokens.outline.withValues(alpha: 0.4),
-                              width: isSelected ? 2 : 1,
-                            ),
-                          ),
-                          child: Text(
-                            val,
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                              color: isSelected
-                                  ? DesignTokens.white
                                   : (isDark
-                                        ? DesignTokens.white
-                                        : DesignTokens.textPrimary),
+                                        ? DesignTokens.darkCard
+                                        : DesignTokens.white),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: isSelected
+                                    ? DesignTokens.primary
+                                    : DesignTokens.outline.withValues(
+                                        alpha: 0.4,
+                                      ),
+                                width: isSelected ? 2 : 1,
+                              ),
+                            ),
+                            child: Text(
+                              val,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: isSelected
+                                    ? DesignTokens.white
+                                    : (isDark
+                                          ? DesignTokens.white
+                                          : DesignTokens.textPrimary),
+                              ),
                             ),
                           ),
                         ),

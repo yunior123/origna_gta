@@ -583,7 +583,15 @@ fn build_cors_layer(is_test_mode: bool) -> CorsLayer {
                 axum::http::Method::PATCH,
                 axum::http::Method::OPTIONS,
             ])
-            .allow_headers(tower_http::cors::Any);
+            .allow_headers([
+                axum::http::header::ACCEPT,
+                axum::http::header::AUTHORIZATION,
+                axum::http::header::CONTENT_TYPE,
+                axum::http::header::ORIGIN,
+                axum::http::header::CACHE_CONTROL,
+                "x-requested-with".parse().expect("static header should parse"),
+                "x-tenant-id".parse().expect("static header should parse"),
+            ]);
     }
 
     let allowed_origins = vec![

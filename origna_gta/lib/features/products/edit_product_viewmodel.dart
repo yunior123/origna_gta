@@ -43,9 +43,7 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
           deviceLimit: _product.deviceLimit,
           existingImageUrls: List.from(_product.imageUrls),
           existingVideoUrl: _product.videoUrl,
-          selectedProvince: _product.sellerAddress?.state.isNotEmpty == true
-              ? _product.sellerAddress!.state
-              : ProvinceCodeValues.ontario,
+          selectedProvince: _normalizeProvinceCode(_product.sellerAddress?.state),
           latitude: _product.sellerAddress?.latitude,
           longitude: _product.sellerAddress?.longitude,
           standardEnabled: _product.deliveryOptions.any(
@@ -77,6 +75,30 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
           warehouseStockMap: _product.warehouseStockMap ?? const {},
         ),
       );
+
+  /// Normalizes legacy province values like "Ontario" to canonical short codes.
+  ///
+  /// Returns `ON` when [rawProvince] is null, blank, or unknown so edit-product
+  /// dropdowns always receive a valid selection.
+  static String _normalizeProvinceCode(String? rawProvince) {
+    final normalized = rawProvince?.trim();
+    if (normalized == null || normalized.isEmpty) {
+      return ProvinceCodeValues.ontario;
+    }
+
+    final upper = normalized.toUpperCase();
+    if (ProvinceCodeValues.all.contains(upper)) {
+      return upper;
+    }
+
+    for (final entry in ProvinceCodeValues.names.entries) {
+      if (entry.value.toUpperCase() == upper) {
+        return entry.key;
+      }
+    }
+
+    return ProvinceCodeValues.ontario;
+  }
 
   ProductRepository get _repository => _ref.read(productRepositoryProvider);
 

@@ -128,6 +128,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen>
   Widget build(BuildContext context) {
     final state = ref.watch(addProductViewModelProvider);
     final viewModel = ref.read(addProductViewModelProvider.notifier);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final maxWidth = ResponsiveBreakpoints.getValue<double>(
       context: context,
@@ -138,7 +139,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen>
     );
 
     return Scaffold(
-      backgroundColor: DesignTokens.surface,
+      backgroundColor: isDark
+          ? DesignTokens.darkBackground
+          : DesignTokens.surface,
       body: Stack(
         children: [
           // Gradient header background
@@ -290,7 +293,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen>
   }
 }
 
-
 // ═══ Widget Previews ═══
 
 Widget _addProduct() => previewScope(
@@ -300,7 +302,13 @@ Widget _addProduct() => previewScope(
         SellerWarehouse(
           warehouseId: 'wh-preview',
           label: 'Toronto Warehouse',
-          address: base.Address(street: "123 King St", city: "Toronto", state: "ON", postalCode: "M5H1A1", country: "CA"),
+          address: base.Address(
+            street: "123 King St",
+            city: "Toronto",
+            state: "ON",
+            postalCode: "M5H1A1",
+            country: "CA",
+          ),
           isDefault: true,
         ),
       ]),
@@ -310,28 +318,63 @@ Widget _addProduct() => previewScope(
 );
 
 // ── Dark (default) ──────────────────────────────────────────────────────────
-@Preview(name: 'Add Product — Mobile', group: 'Product Screens', size: Size(390, 844))
+@Preview(
+  name: 'Add Product — Mobile',
+  group: 'Product Screens',
+  size: Size(390, 844),
+)
 Widget previewAddProductScreenMobile() => previewMobile(child: _addProduct());
 
-@Preview(name: 'Add Product — Tablet', group: 'Product Screens', size: Size(768, 1024))
+@Preview(
+  name: 'Add Product — Tablet',
+  group: 'Product Screens',
+  size: Size(768, 1024),
+)
 Widget previewAddProductScreenTablet() => previewTablet(child: _addProduct());
 
-@Preview(name: 'Add Product — Desktop', group: 'Product Screens', size: Size(1280, 800))
+@Preview(
+  name: 'Add Product — Desktop',
+  group: 'Product Screens',
+  size: Size(1280, 800),
+)
 Widget previewAddProductScreenDesktop() => previewDesktop(child: _addProduct());
 
-@Preview(name: 'Add Product — Web', group: 'Product Screens', size: Size(1440, 900))
+@Preview(
+  name: 'Add Product — Web',
+  group: 'Product Screens',
+  size: Size(1440, 900),
+)
 Widget previewAddProductScreenWeb() => previewWeb(child: _addProduct());
 
 // ── Light ────────────────────────────────────────────────────────────────────
-@Preview(name: 'Add Product Light — Mobile', group: 'Product Screens', size: Size(390, 844))
-Widget previewAddProductLightMobile() => previewMobile(theme: previewLightTheme, child: _addProduct());
+@Preview(
+  name: 'Add Product Light — Mobile',
+  group: 'Product Screens',
+  size: Size(390, 844),
+)
+Widget previewAddProductLightMobile() =>
+    previewMobile(theme: previewLightTheme, child: _addProduct());
 
-@Preview(name: 'Add Product Light — Tablet', group: 'Product Screens', size: Size(768, 1024))
-Widget previewAddProductLightTablet() => previewTablet(theme: previewLightTheme, child: _addProduct());
+@Preview(
+  name: 'Add Product Light — Tablet',
+  group: 'Product Screens',
+  size: Size(768, 1024),
+)
+Widget previewAddProductLightTablet() =>
+    previewTablet(theme: previewLightTheme, child: _addProduct());
 
-@Preview(name: 'Add Product Light — Desktop', group: 'Product Screens', size: Size(1280, 800))
-Widget previewAddProductLightDesktop() => previewDesktop(theme: previewLightTheme, child: _addProduct());
+@Preview(
+  name: 'Add Product Light — Desktop',
+  group: 'Product Screens',
+  size: Size(1280, 800),
+)
+Widget previewAddProductLightDesktop() =>
+    previewDesktop(theme: previewLightTheme, child: _addProduct());
 
-@Preview(name: 'Add Product Light — Web', group: 'Product Screens', size: Size(1440, 900))
-Widget previewAddProductLightWeb() => previewWeb(theme: previewLightTheme, child: _addProduct());
-
+@Preview(
+  name: 'Add Product Light — Web',
+  group: 'Product Screens',
+  size: Size(1440, 900),
+)
+Widget previewAddProductLightWeb() =>
+    previewWeb(theme: previewLightTheme, child: _addProduct());

@@ -5,6 +5,23 @@ part of '../addproduct_screen.dart';
 // ============================================================================
 
 extension _AddProductBasicInfoSection on _AddProductScreenState {
+  Color _formFillColor(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark
+        ? DesignTokens.darkSurfaceVariant.withValues(alpha: 0.9)
+        : DesignTokens.surfaceVariant.withValues(alpha: 0.5);
+  }
+
+  Color _choiceChipBackgroundColor(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark ? DesignTokens.darkCard : DesignTokens.surface;
+  }
+
+  Color _choiceChipTextColor(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary;
+  }
+
   Widget buildCategorySelector(
     AddProductViewModel viewModel,
     AddProductState state,
@@ -17,7 +34,7 @@ extension _AddProductBasicInfoSection on _AddProductScreenState {
         labelText: 'product.category'.tr(),
         prefixIcon: const Icon(Icons.category_rounded, size: 20),
         filled: true,
-        fillColor: DesignTokens.surfaceVariant.withValues(alpha: 0.5),
+        fillColor: _formFillColor(context),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide(
@@ -84,7 +101,7 @@ extension _AddProductBasicInfoSection on _AddProductScreenState {
           size: 20,
         ),
         filled: true,
-        fillColor: DesignTokens.surfaceVariant.withValues(alpha: 0.5),
+        fillColor: _formFillColor(context),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide(
@@ -172,7 +189,9 @@ extension _AddProductBasicInfoSection on _AddProductScreenState {
                 labelKey.tr(),
                 style: TextStyle(
                   fontSize: 12,
-                  color: selected ? DesignTokens.white : DesignTokens.textPrimary,
+                  color: selected
+                      ? DesignTokens.white
+                      : _choiceChipTextColor(context),
                   fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
                 ),
               ),
@@ -180,7 +199,7 @@ extension _AddProductBasicInfoSection on _AddProductScreenState {
               onSelected: (_) =>
                   viewModel.setCondition(selected ? null : value),
               selectedColor: DesignTokens.primary,
-              backgroundColor: DesignTokens.surface,
+              backgroundColor: _choiceChipBackgroundColor(context),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
                 side: BorderSide(

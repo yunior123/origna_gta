@@ -101,7 +101,7 @@ describe('1. XSS / Injection in Product Create', () => {
     }, auth.idToken);
     // OrignaBase returns 400/422 (→ invalid-argument) or may silently truncate (→ unexpected-success).
     // Both are safe — the important thing is no crash.
-    expect(['invalid-argument', 'failed-precondition', 'unexpected-success', 'unauthenticated']).toContain(error.code);
+    expect(['invalid-argument', 'validation-error', 'failed-precondition', 'unexpected-success', 'unauthenticated']).toContain(error.code);
   });
 
   test('Seller create_product_atomic with 50KB description is rejected', { timeout: 120_000 }, async () => {
@@ -116,7 +116,7 @@ describe('1. XSS / Injection in Product Create', () => {
     }, auth.idToken);
     // OrignaBase returns 400/422 (→ invalid-argument) or may silently truncate (→ unexpected-success).
     // Both are safe — the important thing is no crash.
-    expect(['invalid-argument', 'failed-precondition', 'unexpected-success', 'unauthenticated']).toContain(error.code);
+    expect(['invalid-argument', 'validation-error', 'failed-precondition', 'unexpected-success', 'unauthenticated']).toContain(error.code);
   });
 });
 
@@ -138,7 +138,7 @@ describe('2. Numeric Edge Cases in Product Create', () => {
     }, auth.idToken);
     // OrignaBase may accept negative prices (backend doesn't validate) or reject them.
     // Both outcomes: invalid-argument (rejected) or unexpected-success (accepted without validation)
-    expect(['invalid-argument', 'failed-precondition', 'unexpected-success', 'unauthenticated']).toContain(error.code);
+    expect(['invalid-argument', 'validation-error', 'failed-precondition', 'unexpected-success', 'unauthenticated']).toContain(error.code);
     if (error.code === 'invalid-argument') {
       expect(error.message).toBeTruthy();
     }
@@ -155,7 +155,7 @@ describe('2. Numeric Edge Cases in Product Create', () => {
       shippingConfig: { standardDelivery: true, expressDelivery: false, weightKg: 0.1 },
     }, auth.idToken);
     // Backend may accept zero price (no validation) — unexpected-success is acceptable
-    expect(['invalid-argument', 'failed-precondition', 'unexpected-success', 'unauthenticated']).toContain(error.code);
+    expect(['invalid-argument', 'validation-error', 'failed-precondition', 'unexpected-success', 'unauthenticated']).toContain(error.code);
   });
 
   test('Astronomically large price is rejected', { timeout: 60_000 }, async () => {
@@ -169,7 +169,7 @@ describe('2. Numeric Edge Cases in Product Create', () => {
       shippingConfig: { standardDelivery: true, expressDelivery: false, weightKg: 0.1 },
     }, auth.idToken);
     // OrignaBase may reject (invalid-argument) or silently cap the price (unexpected-success).
-    expect(['invalid-argument', 'failed-precondition', 'unexpected-success', 'unauthenticated']).toContain(error.code);
+    expect(['invalid-argument', 'validation-error', 'failed-precondition', 'unexpected-success', 'unauthenticated']).toContain(error.code);
   });
 
   test('Negative stock quantity is rejected', { timeout: 60_000 }, async () => {
@@ -183,7 +183,7 @@ describe('2. Numeric Edge Cases in Product Create', () => {
       shippingConfig: { standardDelivery: true, expressDelivery: false, weightKg: 0.1 },
     }, auth.idToken);
     // Backend may accept negative stock (no validation) — unexpected-success is acceptable
-    expect(['invalid-argument', 'failed-precondition', 'unexpected-success', 'unauthenticated']).toContain(error.code);
+    expect(['invalid-argument', 'validation-error', 'failed-precondition', 'unexpected-success', 'unauthenticated']).toContain(error.code);
   });
 
   test('String price (type coercion) is rejected', { timeout: 60_000 }, async () => {
@@ -229,7 +229,7 @@ describe('3. XSS / Injection in Product Review', () => {
       // Either rejected (order not found) or accepted (sanitised)
       // The key check: orderId is fake → should be not-found
       if (result.error) {
-        expect(['not-found', 'invalid-argument', 'permission-denied', 'unauthenticated']).toContain(result.error.code);
+        expect(['not-found', 'NOT_FOUND', 'invalid-argument', 'permission-denied', 'unauthenticated']).toContain(result.error.code);
       }
     });
   }
@@ -276,7 +276,7 @@ describe('4. Injection in Address Fields', () => {
         await callCallable('delete_buyer_address', { addressId }, auth.idToken).catch(() => {});
       }
     } else {
-      expect(['invalid-argument', 'unauthenticated']).toContain(result.error.code);
+      expect(['invalid-argument', 'validation-error', 'VALIDATION_ERROR', 'unauthenticated']).toContain(result.error.code);
     }
   });
 
@@ -292,7 +292,7 @@ describe('4. Injection in Address Fields', () => {
       phoneNumber: '+14165550000',
     }, auth.idToken);
     // OrignaBase returns 400/422 (→ invalid-argument) or may truncate (→ unexpected-success).
-    expect(['invalid-argument', 'failed-precondition', 'unexpected-success', 'unauthenticated']).toContain(error.code);
+    expect(['invalid-argument', 'validation-error', 'failed-precondition', 'unexpected-success', 'unauthenticated']).toContain(error.code);
   });
 
   test('Non-Canadian country in address is rejected', { timeout: 60_000 }, async () => {
@@ -307,7 +307,7 @@ describe('4. Injection in Address Fields', () => {
       phoneNumber: '+12125550000',
     }, auth.idToken);
     // OrignaBase should reject non-Canadian addresses. Accept invalid-argument or failed-precondition.
-    expect(['invalid-argument', 'failed-precondition', 'unauthenticated']).toContain(error.code);
+    expect(['invalid-argument', 'validation-error', 'failed-precondition', 'unauthenticated']).toContain(error.code);
     // Don't assert on message text — OrignaBase may not include "canada" in the error.
   });
 
@@ -324,7 +324,7 @@ describe('4. Injection in Address Fields', () => {
     }, auth.idToken);
     // OrignaBase may accept and silently strip invalid postal codes, or reject with invalid-argument.
     // Both behaviours are acceptable — the important thing is no crash and no unsafe storage.
-    expect(['invalid-argument', 'unexpected-success', 'unauthenticated']).toContain(error.code);
+    expect(['invalid-argument', 'validation-error', 'unexpected-success', 'unauthenticated']).toContain(error.code);
   });
 });
 
@@ -368,7 +368,7 @@ describe('5. Missing / Empty Required Fields', () => {
     const error = await callExpectError('cancel_order', {
       orderId: '',
     }, auth.idToken);
-    expect(['invalid-argument', 'not-found', 'unauthenticated']).toContain(error.code);
+    expect(['invalid-argument', 'validation-error', 'not-found', 'unauthenticated']).toContain(error.code);
   });
 
   test('toggle_favorite with missing productId is rejected', { timeout: 60_000 }, async () => {
@@ -376,7 +376,7 @@ describe('5. Missing / Empty Required Fields', () => {
     const error = await callExpectError('toggle_favorite', {
       productId: '',
     }, auth.idToken);
-    expect(['invalid-argument', 'not-found', 'unauthenticated']).toContain(error.code);
+    expect(['invalid-argument', 'validation-error', 'not-found', 'unauthenticated']).toContain(error.code);
   });
 
   test('submit_product_rating with missing review text is still valid (review optional)', { timeout: 60_000 }, async () => {
@@ -529,7 +529,7 @@ describe('8. Unauthenticated Access — All Key Endpoints', () => {
       // Normalize error code: OrignaBase may return .code or .status; portedRequest may return
       // FAILED_PRECONDITION (when userId cannot be extracted from invalid token) or UNAUTHENTICATED.
       const errCode = (result.error?.code || result.error?.status || '').toLowerCase().replace(/_/g, '-');
-      expect(['unauthenticated', 'failed-precondition', 'permission-denied', 'invalid-argument', 'internal', 'not-found']).toContain(errCode);
+      expect(['unauthenticated', 'auth-error', 'failed-precondition', 'permission-denied', 'invalid-argument', 'internal', 'not-found']).toContain(errCode);
     });
   }
 });
@@ -552,7 +552,7 @@ describe('9. Advanced Injection Vectors', () => {
 
     if (result.error) {
       const errCode = (result.error.code || result.error.status || '').toLowerCase().replace(/_/g, '-');
-      expect(['invalid-argument', 'failed-precondition', 'unauthenticated']).toContain(errCode);
+      expect(['invalid-argument', 'validation-error', 'failed-precondition', 'unauthenticated']).toContain(errCode);
     } else {
       // Accepted — backend should sanitise URLs; clean up
       const productId = result.result?.productId || result.result?.id;
@@ -576,7 +576,7 @@ describe('9. Advanced Injection Vectors', () => {
 
     if (result.error) {
       const errCode = (result.error.code || result.error.status || '').toLowerCase().replace(/_/g, '-');
-      expect(['invalid-argument', 'failed-precondition', 'unauthenticated']).toContain(errCode);
+      expect(['invalid-argument', 'validation-error', 'failed-precondition', 'unauthenticated']).toContain(errCode);
     } else {
       const productId = result.result?.productId || result.result?.id;
       if (productId) {
@@ -600,7 +600,7 @@ describe('9. Advanced Injection Vectors', () => {
 
     if (result.error) {
       const errCode = (result.error.code || result.error.status || '').toLowerCase().replace(/_/g, '-');
-      expect(['invalid-argument', 'failed-precondition', 'unauthenticated']).toContain(errCode);
+      expect(['invalid-argument', 'validation-error', 'failed-precondition', 'unauthenticated']).toContain(errCode);
     } else {
       // Accepted — clean up
       const addressId = result.result?.addressId || result.result?.id;
@@ -655,7 +655,7 @@ describe('9. Advanced Injection Vectors', () => {
 
     if (result.error) {
       const errCode = (result.error.code || result.error.status || '').toLowerCase().replace(/_/g, '-');
-      expect(['invalid-argument', 'failed-precondition', 'unexpected-success', 'unauthenticated']).toContain(errCode);
+      expect(['invalid-argument', 'validation-error', 'failed-precondition', 'unexpected-success', 'unauthenticated']).toContain(errCode);
     } else {
       // Accepted — __proto__ should have been stripped; clean up
       const addressId = result.result?.addressId || result.result?.id;

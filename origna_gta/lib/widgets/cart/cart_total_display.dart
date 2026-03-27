@@ -561,12 +561,16 @@ class CartTotalDisplay extends ConsumerWidget {
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            style: TextButton.styleFrom(
-              foregroundColor: DesignTokens.textSecondary,
+          Semantics(
+            label: 'btn-cart-note-cancel',
+            button: true,
+            child: TextButton(
+              onPressed: () => Navigator.pop(context),
+              style: TextButton.styleFrom(
+                foregroundColor: DesignTokens.textSecondary,
+              ),
+              child: Text('common.cancel'.tr()),
             ),
-            child: Text('common.cancel'.tr()),
           ),
           ModernButton(
             label: 'common.save'.tr(),

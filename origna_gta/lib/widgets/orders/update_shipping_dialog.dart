@@ -135,26 +135,30 @@ void showUpdateShippingDialog(
               // Carrier note (only when 'other' is selected)
               if (carrierValue == CarrierValues.other) ...[
                 const SizedBox(height: 14),
-                TextField(
-                  controller: carrierNoteController,
-                  decoration: InputDecoration(
-                    labelText: 'seller.carrier_note_label'.tr(),
-                    prefixIcon: Icon(
-                      Icons.edit_outlined,
-                      color: DesignTokens.primary,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(
-                        DesignTokens.radius12,
-                      ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(
-                        DesignTokens.radius12,
-                      ),
-                      borderSide: BorderSide(
+                Semantics(
+                  textField: true,
+                  label: 'input-carrier-note-update',
+                  child: TextField(
+                    controller: carrierNoteController,
+                    decoration: InputDecoration(
+                      labelText: 'seller.carrier_note_label'.tr(),
+                      prefixIcon: Icon(
+                        Icons.edit_outlined,
                         color: DesignTokens.primary,
-                        width: 2,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(
+                          DesignTokens.radius12,
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(
+                          DesignTokens.radius12,
+                        ),
+                        borderSide: BorderSide(
+                          color: DesignTokens.primary,
+                          width: 2,
+                        ),
                       ),
                     ),
                   ),
@@ -192,11 +196,15 @@ void showUpdateShippingDialog(
             ],
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(
-                'common.cancel'.tr(),
-                style: TextStyle(color: DesignTokens.textSecondary),
+            Semantics(
+              button: true,
+              label: 'btn-cancel-update-shipping',
+              child: TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(
+                  'common.cancel'.tr(),
+                  style: TextStyle(color: DesignTokens.textSecondary),
+                ),
               ),
             ),
             SizedBox(

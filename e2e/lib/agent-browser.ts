@@ -33,6 +33,10 @@ export class AgentBrowser {
     return result.stdout.toString();
   }
 
+  private normalizeRef(ref: string): string {
+    return /^@?e\d+$/i.test(ref) ? (ref.startsWith('@') ? ref : `@${ref}`) : ref;
+  }
+
   async open(url: string, timeoutMs = 60_000): Promise<void> {
     if (!url.includes('checkout.stripe.com')) {
       let currentUrl = '';
@@ -99,11 +103,11 @@ export class AgentBrowser {
   }
 
   async click(ref: string): Promise<void> {
-    this.run(['click', ref]);
+    this.run(['click', this.normalizeRef(ref)]);
   }
 
   async fill(ref: string, text: string): Promise<void> {
-    this.run(['fill', ref, text]);
+    this.run(['fill', this.normalizeRef(ref), text]);
   }
 
   async press(key: string): Promise<void> {

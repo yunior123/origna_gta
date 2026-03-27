@@ -161,7 +161,7 @@ void main() {
 
       final state = c.read(obWarehousesViewModelProvider);
       expect(state.errorMessage, isNotNull);
-      expect(state.errorMessage, contains('1-100 characters'));
+      expect(state.errorMessage, contains('warehouse_label_required'));
       expect(state.isLoading, isFalse);
       expect(state.isSuccess, isFalse);
     });
@@ -180,7 +180,7 @@ void main() {
 
       final state = c.read(obWarehousesViewModelProvider);
       expect(state.errorMessage, isNotNull);
-      expect(state.errorMessage, contains('1-100 characters'));
+      expect(state.errorMessage, contains('warehouse_label_required'));
     });
 
     test('createWarehouse rejects whitespace-only label', () async {
@@ -213,7 +213,7 @@ void main() {
 
       final state = c.read(obWarehousesViewModelProvider);
       expect(state.errorMessage, isNotNull);
-      expect(state.errorMessage, contains('City is required'));
+      expect(state.errorMessage, contains('warehouse_city_required'));
     });
 
     test('createWarehouse rejects address with whitespace-only city', () async {

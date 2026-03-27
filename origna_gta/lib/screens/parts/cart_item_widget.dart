@@ -88,13 +88,17 @@ class _CartItemWidget extends ConsumerWidget {
                   style: TextStyle(color: DesignTokens.error, fontSize: 13),
                 ),
               ),
-              TextButton(
-                onPressed: () =>
-                    ref.invalidate(cartItemDetailProvider(cartItemDocId)),
-                style: TextButton.styleFrom(
-                  foregroundColor: DesignTokens.primary,
+              Semantics(
+                label: 'btn-cart-item-retry',
+                button: true,
+                child: TextButton(
+                  onPressed: () =>
+                      ref.invalidate(cartItemDetailProvider(cartItemDocId)),
+                  style: TextButton.styleFrom(
+                    foregroundColor: DesignTokens.primary,
+                  ),
+                  child: Text('common.retry'.tr()),
                 ),
-                child: Text('common.retry'.tr()),
               ),
             ],
           ),
@@ -102,6 +106,124 @@ class _CartItemWidget extends ConsumerWidget {
       ),
       data: (item) {
         if (item == null) {
+          final cartItem = ref.watch(
+            cartItemsProvider.select(
+              (async) => async.maybeWhen(
+                data: (items) => items
+                    .where((candidate) => candidate.cartItemId == cartItemDocId)
+                    .firstOrNull,
+                orElse: () => null,
+              ),
+            ),
+          );
+          final hasSnapshotContent =
+              cartItem?.productName?.trim().isNotEmpty == true ||
+              cartItem?.productDescription?.trim().isNotEmpty == true ||
+              cartItem?.imageUrls.isNotEmpty == true;
+
+          if (cartItem != null && hasSnapshotContent) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Stack(
+                children: [
+                  CartItemScreen(
+                    productId: cartItem.productId,
+                    cartItemId: cartItemDocId,
+                    item: {
+                      Fields.productId: cartItem.productId,
+                      Fields.name:
+                          cartItem.productName?.trim().isNotEmpty == true
+                          ? cartItem.productName!.trim()
+                          : 'product.product_fallback'.tr(),
+                      Fields.description: cartItem.productDescription ?? '',
+                      Fields.imageUrls: cartItem.imageUrls,
+                      Fields.priceCents: cartItem.priceSnapshot ?? 0,
+                      Fields.quantity: cartItem.quantity,
+                      Fields.variantTitle: cartItem.variantTitle,
+                      Fields.variantOptions: cartItem.variantOptions,
+                    },
+                    onRemove: () => ref
+                        .read(cartControllerProvider)
+                        .removeFromCart(cartItemDocId),
+                  ),
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: DesignTokens.black.withValues(alpha: 0.22),
+                          borderRadius: BorderRadius.circular(
+                            DesignTokens.radius16,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    left: DesignTokens.spacing12,
+                    right: DesignTokens.spacing12,
+                    top: DesignTokens.spacing12,
+                    child: Container(
+                      padding: const EdgeInsets.all(DesignTokens.spacing12),
+                      decoration: BoxDecoration(
+                        color: DesignTokens.warning.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(
+                          DesignTokens.radius12,
+                        ),
+                        border: Border.all(
+                          color: DesignTokens.warning.withValues(alpha: 0.28),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.info_outline_rounded,
+                            color: DesignTokens.warning,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'cart.item_no_longer_available'.tr(),
+                              style: TextStyle(
+                                color: isDark
+                                    ? DesignTokens.textOnDark
+                                    : DesignTokens.warningText,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: DesignTokens.warning.withValues(
+                                alpha: 0.18,
+                              ),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              'cart.currently_unavailable'.tr(),
+                              style: TextStyle(
+                                color: isDark
+                                    ? DesignTokens.textOnDark
+                                    : DesignTokens.warningText,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Container(
@@ -130,15 +252,19 @@ class _CartItemWidget extends ConsumerWidget {
                       ),
                     ),
                   ),
-                  TextButton(
-                    onPressed: () => ref
-                        .read(cartControllerProvider)
-                        .removeFromCart(cartItemDocId),
-                    style: TextButton.styleFrom(
-                      foregroundColor: DesignTokens.warning,
-                      textStyle: const TextStyle(fontSize: 12),
+                  Semantics(
+                    label: 'btn-cart-item-remove',
+                    button: true,
+                    child: TextButton(
+                      onPressed: () => ref
+                          .read(cartControllerProvider)
+                          .removeFromCart(cartItemDocId),
+                      style: TextButton.styleFrom(
+                        foregroundColor: DesignTokens.warning,
+                        textStyle: const TextStyle(fontSize: 12),
+                      ),
+                      child: Text('common.remove'.tr()),
                     ),
-                    child: Text('common.remove'.tr()),
                   ),
                 ],
               ),

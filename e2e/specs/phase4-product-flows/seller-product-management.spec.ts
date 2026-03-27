@@ -108,7 +108,7 @@ describe('Seller Product Management — API Tests', () => {
       productId: TEST_PRODUCTS.HIGH_STOCK,
       productData: { name: 'Hacked Name' },
     }, sellerToken);
-    expect(error.code).toBe('permission-denied');
+    expect(error.code).toBe('forbidden');
   });
 });
 

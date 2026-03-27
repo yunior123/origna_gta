@@ -83,12 +83,16 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
         ),
       ),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          style: TextButton.styleFrom(
-            foregroundColor: DesignTokens.textSecondary,
+        Semantics(
+          label: 'btn-profile-delete-cancel',
+          button: true,
+          child: TextButton(
+            onPressed: () => Navigator.pop(context),
+            style: TextButton.styleFrom(
+              foregroundColor: DesignTokens.textSecondary,
+            ),
+            child: Text('common.cancel'.tr()),
           ),
-          child: Text('common.cancel'.tr()),
         ),
         ModernButton(
           onPressed:

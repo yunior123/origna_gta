@@ -174,29 +174,37 @@ class _CategoryChips extends ConsumerWidget {
                   ]
                 : [],
           ),
-          child: Material(
-            color: DesignTokens.transparent,
-            child: InkWell(
-              onTap: () {
-                homeNotifier.onCategorySelected(
-                  isAll ? null : category!.categoryId,
-                );
-              },
-              borderRadius: BorderRadius.circular(DesignTokens.radius12),
-              splashColor: DesignTokens.white.withValues(alpha: 0.2),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 6,
-                ),
-                child: Text(
-                  isAll ? 'home.category_all'.tr() : category!.name.tr(),
-                  style: TextStyle(
-                    color: isSelected
-                        ? DesignTokens.textOnPrimary
-                        : unselectedText,
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                    fontSize: 13,
+          child: Semantics(
+            label: isAll
+                ? 'btn-hero-category-all'
+                : 'btn-hero-category-${category!.categoryId}',
+            button: true,
+            child: Material(
+              color: DesignTokens.transparent,
+              child: InkWell(
+                onTap: () {
+                  homeNotifier.onCategorySelected(
+                    isAll ? null : category!.categoryId,
+                  );
+                },
+                borderRadius: BorderRadius.circular(DesignTokens.radius12),
+                splashColor: DesignTokens.white.withValues(alpha: 0.2),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 6,
+                  ),
+                  child: Text(
+                    isAll ? 'home.category_all'.tr() : category!.name.tr(),
+                    style: TextStyle(
+                      color: isSelected
+                          ? DesignTokens.textOnPrimary
+                          : unselectedText,
+                      fontWeight: isSelected
+                          ? FontWeight.w600
+                          : FontWeight.w500,
+                      fontSize: 13,
+                    ),
                   ),
                 ),
               ),

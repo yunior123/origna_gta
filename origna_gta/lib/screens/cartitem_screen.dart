@@ -31,8 +31,11 @@ class CartItemScreen extends StatelessWidget {
     // Extract item fields using schema constants (static - won't rebuild on quantity change)
     final imageUrlsList =
         (item[Fields.imageUrls] as List<dynamic>?)?.cast<String>() ?? [];
-    final name =
-        item[Fields.name] as String? ?? 'product.product_fallback'.tr();
+    final rawName = (item[Fields.name] as String?)?.trim();
+    final name = rawName?.isNotEmpty == true
+        ? rawName!
+        : 'product.product_fallback'.tr();
+    final description = (item[Fields.description] as String?)?.trim();
     final unitPriceCents =
         item[Fields.priceCents] as int? ??
         (((item[Fields.price] as num?)?.toDouble() ?? 0.0) * 100).round();
@@ -125,6 +128,21 @@ class CartItemScreen extends StatelessWidget {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
+                      if (description != null && description.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          description,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isDark
+                                ? DesignTokens.textOnDarkSecondary
+                                : DesignTokens.textSecondary,
+                            height: 1.35,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                       if (isDigital) ...[
                         const SizedBox(height: 4),
                         Row(
@@ -487,78 +505,86 @@ class CartItemScreen extends StatelessWidget {
 
   Widget _buildNoteRow(BuildContext context, bool isDark, String? buyerNote) {
     if (buyerNote == null || buyerNote.isEmpty) {
-      return InkWell(
-        onTap: () => _showAddNoteSheet(context),
-        borderRadius: BorderRadius.circular(4),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.add_comment_outlined,
-                size: 14,
-                color: DesignTokens.primary,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                'cart.item_note_add'.tr(),
-                style: TextStyle(
-                  fontSize: 12,
+      return Semantics(
+        label: 'btn-cart-add-note',
+        button: true,
+        child: InkWell(
+          onTap: () => _showAddNoteSheet(context),
+          borderRadius: BorderRadius.circular(4),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.add_comment_outlined,
+                  size: 14,
                   color: DesignTokens.primary,
-                  fontWeight: FontWeight.w500,
                 ),
-              ),
-            ],
+                const SizedBox(width: 6),
+                Text(
+                  'cart.item_note_add'.tr(),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: DesignTokens.primary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       );
     }
 
-    return InkWell(
-      onTap: () => _showAddNoteSheet(context, initialNote: buyerNote),
-      borderRadius: BorderRadius.circular(4),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
-        decoration: BoxDecoration(
-          color: isDark ? DesignTokens.surfaceVariant : DesignTokens.surface,
-          border: Border.all(color: DesignTokens.outlineVariant),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(
-              Icons.edit_note_outlined,
-              size: 16,
-              color: DesignTokens.textSecondary,
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'cart.item_note_label'.tr(),
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: DesignTokens.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    buyerNote,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: DesignTokens.textPrimary,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                ],
+    return Semantics(
+      label: 'btn-cart-edit-note',
+      button: true,
+      child: InkWell(
+        onTap: () => _showAddNoteSheet(context, initialNote: buyerNote),
+        borderRadius: BorderRadius.circular(4),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+          decoration: BoxDecoration(
+            color: isDark ? DesignTokens.surfaceVariant : DesignTokens.surface,
+            border: Border.all(color: DesignTokens.outlineVariant),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                Icons.edit_note_outlined,
+                size: 16,
+                color: DesignTokens.textSecondary,
               ),
-            ),
-            Icon(Icons.edit_outlined, size: 14, color: DesignTokens.primary),
-          ],
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'cart.item_note_label'.tr(),
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: DesignTokens.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      buyerNote,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: DesignTokens.textPrimary,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.edit_outlined, size: 14, color: DesignTokens.primary),
+            ],
+          ),
         ),
       ),
     );
@@ -653,30 +679,34 @@ class CartItemScreen extends StatelessWidget {
             const SizedBox(height: 16),
             Consumer(
               builder: (context, ref, _) {
-                return ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: DesignTokens.primary,
-                    foregroundColor: DesignTokens.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                return Semantics(
+                  label: 'btn-cart-save-note',
+                  button: true,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: DesignTokens.primary,
+                      foregroundColor: DesignTokens.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
-                  ),
-                  onPressed: () {
-                    final note = controller.text.trim();
-                    ref
-                        .read(cartControllerProvider)
-                        .updateBuyerNote(
-                          cartItemId,
-                          note.isEmpty ? null : note,
-                        );
-                    Navigator.pop(context);
-                  },
-                  child: Text(
-                    'cart.item_note_save'.tr(),
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                    onPressed: () {
+                      final note = controller.text.trim();
+                      ref
+                          .read(cartControllerProvider)
+                          .updateBuyerNote(
+                            cartItemId,
+                            note.isEmpty ? null : note,
+                          );
+                      Navigator.pop(context);
+                    },
+                    child: Text(
+                      'cart.item_note_save'.tr(),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 );
@@ -689,9 +719,7 @@ class CartItemScreen extends StatelessWidget {
   }
 }
 
-
 // === Widget Previews ===
-
 
 // ═══ Widget Previews ═══
 
@@ -711,28 +739,62 @@ Widget _cartItemContent() => previewScope(
   ),
 );
 
-@Preview(name: 'Cart Item — Mobile', group: 'Cart Screens', size: Size(390, 844))
-Widget previewCartItemScreenMobile() => previewMobile(child: _cartItemContent());
+@Preview(
+  name: 'Cart Item — Mobile',
+  group: 'Cart Screens',
+  size: Size(390, 844),
+)
+Widget previewCartItemScreenMobile() =>
+    previewMobile(child: _cartItemContent());
 
-@Preview(name: 'Cart Item — Tablet', group: 'Cart Screens', size: Size(768, 1024))
-Widget previewCartItemScreenTablet() => previewTablet(child: _cartItemContent());
+@Preview(
+  name: 'Cart Item — Tablet',
+  group: 'Cart Screens',
+  size: Size(768, 1024),
+)
+Widget previewCartItemScreenTablet() =>
+    previewTablet(child: _cartItemContent());
 
-@Preview(name: 'Cart Item — Desktop', group: 'Cart Screens', size: Size(1280, 800))
-Widget previewCartItemScreenDesktop() => previewDesktop(child: _cartItemContent());
+@Preview(
+  name: 'Cart Item — Desktop',
+  group: 'Cart Screens',
+  size: Size(1280, 800),
+)
+Widget previewCartItemScreenDesktop() =>
+    previewDesktop(child: _cartItemContent());
 
 @Preview(name: 'Cart Item — Web', group: 'Cart Screens', size: Size(1440, 900))
 Widget previewCartItemScreenWeb() => previewWeb(child: _cartItemContent());
 
 // ── Light ────────────────────────────────────────────────────────────────────
-@Preview(name: 'Cart Item Light — Mobile', group: 'Cart Screens', size: Size(390, 844))
-Widget previewCartItemScreenLightMobile() => previewMobile(theme: previewLightTheme, child: _cartItemContent());
+@Preview(
+  name: 'Cart Item Light — Mobile',
+  group: 'Cart Screens',
+  size: Size(390, 844),
+)
+Widget previewCartItemScreenLightMobile() =>
+    previewMobile(theme: previewLightTheme, child: _cartItemContent());
 
-@Preview(name: 'Cart Item Light — Tablet', group: 'Cart Screens', size: Size(768, 1024))
-Widget previewCartItemScreenLightTablet() => previewTablet(theme: previewLightTheme, child: _cartItemContent());
+@Preview(
+  name: 'Cart Item Light — Tablet',
+  group: 'Cart Screens',
+  size: Size(768, 1024),
+)
+Widget previewCartItemScreenLightTablet() =>
+    previewTablet(theme: previewLightTheme, child: _cartItemContent());
 
-@Preview(name: 'Cart Item Light — Desktop', group: 'Cart Screens', size: Size(1280, 800))
-Widget previewCartItemScreenLightDesktop() => previewDesktop(theme: previewLightTheme, child: _cartItemContent());
+@Preview(
+  name: 'Cart Item Light — Desktop',
+  group: 'Cart Screens',
+  size: Size(1280, 800),
+)
+Widget previewCartItemScreenLightDesktop() =>
+    previewDesktop(theme: previewLightTheme, child: _cartItemContent());
 
-@Preview(name: 'Cart Item Light — Web', group: 'Cart Screens', size: Size(1440, 900))
-Widget previewCartItemScreenLightWeb() => previewWeb(theme: previewLightTheme, child: _cartItemContent());
-
+@Preview(
+  name: 'Cart Item Light — Web',
+  group: 'Cart Screens',
+  size: Size(1440, 900),
+)
+Widget previewCartItemScreenLightWeb() =>
+    previewWeb(theme: previewLightTheme, child: _cartItemContent());

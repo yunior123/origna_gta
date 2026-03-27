@@ -495,66 +495,70 @@ class PendingApprovalsBanner extends StatelessWidget {
         child: Material(
           color: DesignTokens.transparent,
           borderRadius: BorderRadius.circular(DesignTokens.radius16),
-          child: InkWell(
-            onTap: () =>
-                Navigator.pushNamed(context, AppRoutes.shippingApproval),
-            borderRadius: BorderRadius.circular(DesignTokens.radius16),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: DesignTokens.white.withValues(alpha: 0.2),
-                      shape: BoxShape.circle,
+          child: Semantics(
+            button: true,
+            label: 'btn-pending-shipping-approval',
+            child: InkWell(
+              onTap: () =>
+                  Navigator.pushNamed(context, AppRoutes.shippingApproval),
+              borderRadius: BorderRadius.circular(DesignTokens.radius16),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: DesignTokens.white.withValues(alpha: 0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.pending_actions,
+                        color: DesignTokens.white,
+                        size: 22,
+                      ),
                     ),
-                    child: const Icon(
-                      Icons.pending_actions,
-                      color: DesignTokens.white,
-                      size: 22,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'orders.orders_need_approval'.tr(
-                            namedArgs: {'count': count.toString()},
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'orders.orders_need_approval'.tr(
+                              namedArgs: {'count': count.toString()},
+                            ),
+                            style: const TextStyle(
+                              color: DesignTokens.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                            ),
                           ),
-                          style: const TextStyle(
-                            color: DesignTokens.white,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15,
+                          const SizedBox(height: 3),
+                          Text(
+                            'orders.review_shipping_cost'.tr(),
+                            style: TextStyle(
+                              color: DesignTokens.white.withValues(alpha: 0.7),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          'orders.review_shipping_cost'.tr(),
-                          style: TextStyle(
-                            color: DesignTokens.white.withValues(alpha: 0.7),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: DesignTokens.white.withValues(alpha: 0.2),
-                      shape: BoxShape.circle,
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: DesignTokens.white.withValues(alpha: 0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.chevron_right,
+                        color: DesignTokens.white,
+                        size: 20,
+                      ),
                     ),
-                    child: const Icon(
-                      Icons.chevron_right,
-                      color: DesignTokens.white,
-                      size: 20,
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -715,16 +719,20 @@ class _BookDownloadButtonState extends ConsumerState<BookDownloadButton> {
   @override
   Widget build(BuildContext context) {
     final loading = ref.watch(_bookDownloadLoadingProvider);
-    return ElevatedButton.icon(
-      icon: loading
-          ? const SizedBox(
-              width: 16,
-              height: 16,
-              child: ModernLoadingIndicator.small(),
-            )
-          : const Icon(Icons.download_outlined, size: 16),
-      label: Text('orders.download_book'.tr()),
-      onPressed: loading ? null : _download,
+    return Semantics(
+      button: true,
+      label: 'btn-download-book',
+      child: ElevatedButton.icon(
+        icon: loading
+            ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: ModernLoadingIndicator.small(),
+              )
+            : const Icon(Icons.download_outlined, size: 16),
+        label: Text('orders.download_book'.tr()),
+        onPressed: loading ? null : _download,
+      ),
     );
   }
 
@@ -955,45 +963,49 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
     bool isLoading = false,
     VoidCallback? onTap,
   }) {
-    return Material(
-      color: DesignTokens.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(DesignTokens.radius12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                color.withValues(alpha: 0.12),
-                color.withValues(alpha: 0.04),
+    return Semantics(
+      button: true,
+      label: 'btn-order-action-$label',
+      child: Material(
+        color: DesignTokens.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(DesignTokens.radius12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  color.withValues(alpha: 0.12),
+                  color.withValues(alpha: 0.04),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(DesignTokens.radius12),
+              border: Border.all(color: color.withValues(alpha: 0.25)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (isLoading)
+                  ModernLoadingIndicator(
+                    size: 14,
+                    strokeWidth: 2,
+                    color: color,
+                    centered: false,
+                  )
+                else if (icon != null)
+                  Icon(icon, size: 16, color: color),
+                const SizedBox(width: 6),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: color,
+                  ),
+                ),
               ],
             ),
-            borderRadius: BorderRadius.circular(DesignTokens.radius12),
-            border: Border.all(color: color.withValues(alpha: 0.25)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (isLoading)
-                ModernLoadingIndicator(
-                  size: 14,
-                  strokeWidth: 2,
-                  color: color,
-                  centered: false,
-                )
-              else if (icon != null)
-                Icon(icon, size: 16, color: color),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: color,
-                ),
-              ),
-            ],
           ),
         ),
       ),
@@ -2067,32 +2079,40 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
                   ),
                   const SizedBox(width: 4),
                   Flexible(
-                    child: GestureDetector(
-                      onLongPress: () =>
-                          Clipboard.setData(ClipboardData(text: trackingNum)),
-                      child: Text(
-                        trackingNum,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: isDark
-                              ? DesignTokens.white.withValues(alpha: 0.7)
-                              : DesignTokens.textSecondary,
-                          fontWeight: FontWeight.w600,
-                          fontFamily: 'monospace',
+                    child: Semantics(
+                      button: true,
+                      label: 'btn-copy-tracking-long-press',
+                      child: GestureDetector(
+                        onLongPress: () =>
+                            Clipboard.setData(ClipboardData(text: trackingNum)),
+                        child: Text(
+                          trackingNum,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: isDark
+                                ? DesignTokens.white.withValues(alpha: 0.7)
+                                : DesignTokens.textSecondary,
+                            fontWeight: FontWeight.w600,
+                            fontFamily: 'monospace',
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ),
                   if (carrier != CarrierValues.other) ...[
                     const SizedBox(width: 4),
-                    GestureDetector(
-                      onTap: () =>
-                          Clipboard.setData(ClipboardData(text: trackingNum)),
-                      child: const Icon(
-                        Icons.copy_rounded,
-                        size: 12,
-                        color: DesignTokens.statusShipped,
+                    Semantics(
+                      button: true,
+                      label: 'btn-copy-tracking-number',
+                      child: GestureDetector(
+                        onTap: () =>
+                            Clipboard.setData(ClipboardData(text: trackingNum)),
+                        child: const Icon(
+                          Icons.copy_rounded,
+                          size: 12,
+                          color: DesignTokens.statusShipped,
+                        ),
                       ),
                     ),
                   ],
@@ -2104,42 +2124,49 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
         // "Track Package" button — only for known carriers with URLs
         if (trackingUrl != null) ...[
           const SizedBox(height: 6),
-          GestureDetector(
-            onTap: () async {
-              final uri = Uri.parse(trackingUrl);
-              await safeLaunchUrl(uri, mode: LaunchMode.externalApplication);
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [
-                    DesignTokens.gradientStart,
-                    DesignTokens.gradientEnd,
-                  ],
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
+          Semantics(
+            button: true,
+            label: 'btn-track-package',
+            child: GestureDetector(
+              onTap: () async {
+                final uri = Uri.parse(trackingUrl);
+                await safeLaunchUrl(uri, mode: LaunchMode.externalApplication);
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
                 ),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.open_in_new_rounded,
-                    size: 12,
-                    color: DesignTokens.white,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [
+                      DesignTokens.gradientStart,
+                      DesignTokens.gradientEnd,
+                    ],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
                   ),
-                  const SizedBox(width: 4),
-                  Text(
-                    'orders.track_package'.tr(),
-                    style: const TextStyle(
-                      fontSize: 11,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.open_in_new_rounded,
+                      size: 12,
                       color: DesignTokens.white,
-                      fontWeight: FontWeight.w700,
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 4),
+                    Text(
+                      'orders.track_package'.tr(),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: DesignTokens.white,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -2490,20 +2517,24 @@ class _SoftwareDownloadLinksState extends ConsumerState<SoftwareDownloadLinks> {
           children: builds.keys.map((platform) {
             final isLoading = loadingMap[platform] == true;
             final label = platformLabels[platform] ?? platform;
-            return OutlinedButton.icon(
-              icon: isLoading
-                  ? const SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: ModernLoadingIndicator(
-                        size: 14,
-                        strokeWidth: 2,
-                        centered: false,
-                      ),
-                    )
-                  : const Icon(Icons.download_outlined, size: 16),
-              label: Text(label),
-              onPressed: isLoading ? null : () => _download(platform),
+            return Semantics(
+              button: true,
+              label: 'btn-download-$platform',
+              child: OutlinedButton.icon(
+                icon: isLoading
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: ModernLoadingIndicator(
+                          size: 14,
+                          strokeWidth: 2,
+                          centered: false,
+                        ),
+                      )
+                    : const Icon(Icons.download_outlined, size: 16),
+                label: Text(label),
+                onPressed: isLoading ? null : () => _download(platform),
+              ),
             );
           }).toList(),
         ),
@@ -2552,9 +2583,7 @@ class _SoftwareDownloadLinksState extends ConsumerState<SoftwareDownloadLinks> {
   }
 }
 
-
 // === Widget Previews ===
-
 
 // ═══ Widget Previews ═══
 
@@ -2562,16 +2591,28 @@ class _SoftwareDownloadLinksState extends ConsumerState<SoftwareDownloadLinks> {
 Widget previewOrderBanners() => previewGrid(
   children: [
     const PendingApprovalsBanner(count: 3),
-    const Padding(padding: EdgeInsets.all(24), child: SellerPackageTimeline(currentStep: 1)),
+    const Padding(
+      padding: EdgeInsets.all(24),
+      child: SellerPackageTimeline(currentStep: 1),
+    ),
   ],
 );
 
 @Preview(name: 'Order Timelines', group: 'OrderWidgets')
 Widget previewOrderTimelines() => previewGrid(
   children: [
-    const Padding(padding: EdgeInsets.all(24), child: OrderStatusTimeline(currentStep: 0)),
-    const Padding(padding: EdgeInsets.all(24), child: OrderStatusTimeline(currentStep: 2)),
-    const Padding(padding: EdgeInsets.all(24), child: OrderStatusTimeline(currentStep: 4)),
+    const Padding(
+      padding: EdgeInsets.all(24),
+      child: OrderStatusTimeline(currentStep: 0),
+    ),
+    const Padding(
+      padding: EdgeInsets.all(24),
+      child: OrderStatusTimeline(currentStep: 2),
+    ),
+    const Padding(
+      padding: EdgeInsets.all(24),
+      child: OrderStatusTimeline(currentStep: 4),
+    ),
   ],
 );
 
@@ -2580,7 +2621,10 @@ Widget previewOrderBannersLight() => previewGrid(
   theme: previewLightTheme,
   children: [
     const PendingApprovalsBanner(count: 3),
-    const Padding(padding: EdgeInsets.all(24), child: SellerPackageTimeline(currentStep: 1)),
+    const Padding(
+      padding: EdgeInsets.all(24),
+      child: SellerPackageTimeline(currentStep: 1),
+    ),
   ],
 );
 
@@ -2588,9 +2632,17 @@ Widget previewOrderBannersLight() => previewGrid(
 Widget previewOrderTimelinesLight() => previewGrid(
   theme: previewLightTheme,
   children: [
-    const Padding(padding: EdgeInsets.all(24), child: OrderStatusTimeline(currentStep: 0)),
-    const Padding(padding: EdgeInsets.all(24), child: OrderStatusTimeline(currentStep: 2)),
-    const Padding(padding: EdgeInsets.all(24), child: OrderStatusTimeline(currentStep: 4)),
+    const Padding(
+      padding: EdgeInsets.all(24),
+      child: OrderStatusTimeline(currentStep: 0),
+    ),
+    const Padding(
+      padding: EdgeInsets.all(24),
+      child: OrderStatusTimeline(currentStep: 2),
+    ),
+    const Padding(
+      padding: EdgeInsets.all(24),
+      child: OrderStatusTimeline(currentStep: 4),
+    ),
   ],
 );
-

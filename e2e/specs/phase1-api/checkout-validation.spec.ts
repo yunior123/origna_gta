@@ -24,7 +24,20 @@ const ADMIN_EMAIL = TEST_ACCOUNTS.ADMIN_EMAIL;
  * OrignaBase may return 'not-found', 'invalid-argument', or 'failed-precondition'
  * depending on where validation fails in the pipeline. All mean "rejected".
  */
-const REJECTION_CODES = ['invalid-argument', 'not-found', 'failed-precondition', 'permission-denied', 'resource-exhausted', 'unauthenticated', 'internal', 'unexpected-success'];
+const REJECTION_CODES = [
+  'invalid-argument',
+  'validation-error',
+  'not-found',
+  'failed-precondition',
+  'permission-denied',
+  'forbidden',
+  'resource-exhausted',
+  'unauthenticated',
+  'auth-error',
+  'AUTH_ERROR',
+  'internal',
+  'unexpected-success',
+];
 
 function expectRejected(error: { code: string; message: string }, _label: string): void {
   expect(

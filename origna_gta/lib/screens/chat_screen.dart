@@ -235,9 +235,13 @@ class _MessagesListState extends ConsumerState<_MessagesList> {
                   style: TextStyle(color: DesignTokens.textSecondary),
                 ),
                 const SizedBox(height: 12),
-                TextButton(
-                  onPressed: widget.onFocusInput,
-                  child: Text('chat.send_message_cta'.tr()),
+                Semantics(
+                  label: 'btn-chat-send',
+                  button: true,
+                  child: TextButton(
+                    onPressed: widget.onFocusInput,
+                    child: Text('chat.send_message_cta'.tr()),
+                  ),
                 ),
               ],
             ),

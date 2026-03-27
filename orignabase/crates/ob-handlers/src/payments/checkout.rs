@@ -53,8 +53,8 @@ pub struct CartItem {
 pub struct ShippingAddress {
     pub street: String,
     pub city: String,
-    #[serde(alias = "province", rename = "state")]
-    pub province: String,
+    #[serde(alias = "province")]
+    pub state: String,
     pub postal_code: String,
     pub country: String,
 }
@@ -318,7 +318,7 @@ async fn create_checkout_session(
         ));
     }
 
-    let province = normalize_province(&req.shipping_address.province);
+    let province = normalize_province(&req.shipping_address.state);
     if !VALID_PROVINCES.contains(&province.as_str()) {
         return Err(ob_core::Error::Validation(format!(
             "Invalid province '{province}'. Must be one of: {}",
@@ -1064,7 +1064,7 @@ mod tests {
         }"#;
         let addr: ShippingAddress = serde_json::from_str(json).unwrap();
         assert_eq!(addr.street, "123 Main St");
-        assert_eq!(addr.province, "ON");
+        assert_eq!(addr.state, "ON");
     }
 
     #[test]
@@ -1205,7 +1205,7 @@ mod tests {
         let shipping = ShippingAddress {
             street: "123 Main St".into(),
             city: "Toronto".into(),
-            province: "ON".into(),
+            state: "ON".into(),
             postal_code: "M5V2H1".into(),
             country: "CA".into(),
         };
@@ -1297,7 +1297,7 @@ mod tests {
         let shipping = ShippingAddress {
             street: "123 Main St".into(),
             city: "Toronto".into(),
-            province: "ON".into(),
+            state: "ON".into(),
             postal_code: "M5V2H1".into(),
             country: "CA".into(),
         };
@@ -1570,7 +1570,7 @@ mod tests {
                 shipping_address: ShippingAddress {
                     street: "123 Main St".into(),
                     city: "Toronto".into(),
-                    province: "ON".into(),
+                    state: "ON".into(),
                     postal_code: "M5V2H1".into(),
                     country: "CA".into(),
                 },
@@ -1658,7 +1658,7 @@ mod tests {
                 shipping_address: ShippingAddress {
                     street: "123 Main St".into(),
                     city: "Toronto".into(),
-                    province: "ON".into(),
+                    state: "ON".into(),
                     postal_code: "M5V2H1".into(),
                     country: "CA".into(),
                 },
@@ -1692,7 +1692,7 @@ mod tests {
                 shipping_address: ShippingAddress {
                     street: "123 Main St".into(),
                     city: "Toronto".into(),
-                    province: "ON".into(),
+                    state: "ON".into(),
                     postal_code: "M5V2H1".into(),
                     country: "CA".into(),
                 },
@@ -1860,7 +1860,7 @@ mod tests {
                 shipping_address: ShippingAddress {
                     street: "1 St".into(),
                     city: "Toronto".into(),
-                    province: "ON".into(),
+                    state: "ON".into(),
                     postal_code: "M5V2H1".into(),
                     country: "CA".into(),
                 },
@@ -1892,7 +1892,7 @@ mod tests {
                 shipping_address: ShippingAddress {
                     street: "1 St".into(),
                     city: "Toronto".into(),
-                    province: "ON".into(),
+                    state: "ON".into(),
                     postal_code: "M5V2H1".into(),
                     country: "CA".into(),
                 },
@@ -1924,7 +1924,7 @@ mod tests {
                 shipping_address: ShippingAddress {
                     street: "1 St".into(),
                     city: "Toronto".into(),
-                    province: "ON".into(),
+                    state: "ON".into(),
                     postal_code: "M5V2H1".into(),
                     country: "CA".into(),
                 },
@@ -1952,7 +1952,7 @@ mod tests {
                 shipping_address: ShippingAddress {
                     street: "1 St".into(),
                     city: "Toronto".into(),
-                    province: "ON".into(),
+                    state: "ON".into(),
                     postal_code: "M5V2H1".into(),
                     country: "CA".into(),
                 },
@@ -1984,7 +1984,7 @@ mod tests {
                 shipping_address: ShippingAddress {
                     street: "1 St".into(),
                     city: "Toronto".into(),
-                    province: "ON".into(),
+                    state: "ON".into(),
                     postal_code: "M5V2H1".into(),
                     country: "CA".into(),
                 },
@@ -2016,7 +2016,7 @@ mod tests {
                 shipping_address: ShippingAddress {
                     street: "1 St".into(),
                     city: "Toronto".into(),
-                    province: "ON".into(),
+                    state: "ON".into(),
                     postal_code: "M5V2H1".into(),
                     country: "CA".into(),
                 },
@@ -2048,7 +2048,7 @@ mod tests {
                 shipping_address: ShippingAddress {
                     street: "1 St".into(),
                     city: "Toronto".into(),
-                    province: "ZZ".into(),
+                    state: "ZZ".into(),
                     postal_code: "M5V2H1".into(),
                     country: "CA".into(),
                 },
@@ -2081,7 +2081,7 @@ mod tests {
                 shipping_address: ShippingAddress {
                     street: "1 St".into(),
                     city: "Toronto".into(),
-                    province: "ON".into(),
+                    state: "ON".into(),
                     postal_code: "M5V2H1".into(),
                     country: "CA".into(),
                 },
@@ -2131,7 +2131,7 @@ mod tests {
                 shipping_address: ShippingAddress {
                     street: "1 St".into(),
                     city: "Toronto".into(),
-                    province: "ON".into(),
+                    state: "ON".into(),
                     postal_code: "M5V2H1".into(),
                     country: "CA".into(),
                 },
@@ -2181,7 +2181,7 @@ mod tests {
                 shipping_address: ShippingAddress {
                     street: "1 St".into(),
                     city: "Toronto".into(),
-                    province: "ON".into(),
+                    state: "ON".into(),
                     postal_code: "M5V2H1".into(),
                     country: "CA".into(),
                 },
@@ -2258,7 +2258,7 @@ mod tests {
                 shipping_address: ShippingAddress {
                     street: "1 St".into(),
                     city: "Toronto".into(),
-                    province: "ON".into(),
+                    state: "ON".into(),
                     postal_code: "M5V2H1".into(),
                     country: "CA".into(),
                 },

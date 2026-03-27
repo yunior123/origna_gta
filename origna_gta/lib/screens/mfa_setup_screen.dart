@@ -333,11 +333,15 @@ class _MfaSetupScreenState extends ConsumerState<MfaSetupScreen> {
 
         const SizedBox(height: 16),
         Center(
-          child: TextButton(
-            onPressed: () {
-              ref.read(mfaViewModelProvider.notifier).goToStep(1);
-            },
-            child: Text('common.back'.tr()),
+          child: Semantics(
+            label: 'btn-mfa-back',
+            button: true,
+            child: TextButton(
+              onPressed: () {
+                ref.read(mfaViewModelProvider.notifier).goToStep(1);
+              },
+              child: Text('common.back'.tr()),
+            ),
           ),
         ),
       ],
@@ -540,7 +544,6 @@ class _MfaSetupScreenState extends ConsumerState<MfaSetupScreen> {
   }
 }
 
-
 // ═══ Widget Previews ═══
 
 Widget _setupContent() => previewScope(
@@ -551,24 +554,50 @@ Widget _setupContent() => previewScope(
 );
 
 // ── Dark ─────────────────────────────────────────────────────────────────────
-@Preview(name: 'MFA Setup Dark — Mobile', group: 'MFA Screens', size: Size(390, 844))
+@Preview(
+  name: 'MFA Setup Dark — Mobile',
+  group: 'MFA Screens',
+  size: Size(390, 844),
+)
 Widget previewMfaSetupDarkMobile() => previewMobile(child: _setupContent());
 
-@Preview(name: 'MFA Setup Dark — Tablet', group: 'MFA Screens', size: Size(768, 1024))
+@Preview(
+  name: 'MFA Setup Dark — Tablet',
+  group: 'MFA Screens',
+  size: Size(768, 1024),
+)
 Widget previewMfaSetupDarkTablet() => previewTablet(child: _setupContent());
 
-@Preview(name: 'MFA Setup Dark — Desktop', group: 'MFA Screens', size: Size(1280, 800))
+@Preview(
+  name: 'MFA Setup Dark — Desktop',
+  group: 'MFA Screens',
+  size: Size(1280, 800),
+)
 Widget previewMfaSetupDarkDesktop() => previewDesktop(child: _setupContent());
 
-@Preview(name: 'MFA Setup Dark — Web', group: 'MFA Screens', size: Size(1440, 900))
+@Preview(
+  name: 'MFA Setup Dark — Web',
+  group: 'MFA Screens',
+  size: Size(1440, 900),
+)
 Widget previewMfaSetupDarkWeb() => previewWeb(child: _setupContent());
 
 // ── Light ────────────────────────────────────────────────────────────────────
-@Preview(name: 'MFA Setup Light — Mobile', group: 'MFA Screens', size: Size(390, 844))
-Widget previewMfaSetupLightMobile() => previewMobile(theme: previewLightTheme, child: _setupContent());
+@Preview(
+  name: 'MFA Setup Light — Mobile',
+  group: 'MFA Screens',
+  size: Size(390, 844),
+)
+Widget previewMfaSetupLightMobile() =>
+    previewMobile(theme: previewLightTheme, child: _setupContent());
 
-@Preview(name: 'MFA Setup Light — Desktop', group: 'MFA Screens', size: Size(1280, 800))
-Widget previewMfaSetupLightDesktop() => previewDesktop(theme: previewLightTheme, child: _setupContent());
+@Preview(
+  name: 'MFA Setup Light — Desktop',
+  group: 'MFA Screens',
+  size: Size(1280, 800),
+)
+Widget previewMfaSetupLightDesktop() =>
+    previewDesktop(theme: previewLightTheme, child: _setupContent());
 
 /// Preview ViewModel that starts at step 1 (QR code) with mock data.
 class _PreviewMfaSetupViewModel extends MfaViewModel {
@@ -598,4 +627,3 @@ class _FakeRef implements Ref {
   @override
   dynamic noSuchMethod(Invocation invocation) => null;
 }
-

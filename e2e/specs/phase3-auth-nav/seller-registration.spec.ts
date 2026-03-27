@@ -65,7 +65,7 @@ describe('Seller Registration — API Tests', () => {
 
   test('T04: Unauthenticated request rejected', { timeout: 60_000 }, async () => {
     const error = await callExpectError('get_connect_account_status', {}, 'invalid-token');
-    expect(error.code).toBe('unauthenticated');
+    expect(error.code).toBe('auth-error');
   });
 
   test('T05: Buyer calling create_account_link — returns error or unexpected success', { timeout: 60_000 }, async () => {

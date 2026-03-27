@@ -58,7 +58,10 @@ extension _AddProductFormWidgets on _AddProductScreenState {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: DesignTokens.primary, width: 1.5),
+            borderSide: const BorderSide(
+              color: DesignTokens.primary,
+              width: 1.5,
+            ),
           ),
           errorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
@@ -68,7 +71,10 @@ extension _AddProductFormWidgets on _AddProductScreenState {
             horizontal: 16,
             vertical: 14,
           ),
-          labelStyle: TextStyle(color: DesignTokens.textSecondary, fontSize: 13),
+          labelStyle: TextStyle(
+            color: DesignTokens.textSecondary,
+            fontSize: 13,
+          ),
           hintStyle: TextStyle(color: DesignTokens.textDisabled, fontSize: 13),
         ),
       ),
@@ -88,7 +94,9 @@ extension _AddProductFormWidgets on _AddProductScreenState {
   }) {
     return Semantics(
       button: true,
-      label: semanticsLabel ?? 'btn-toggle-${label.toLowerCase().replaceAll(' ', '-')}',
+      label:
+          semanticsLabel ??
+          'btn-toggle-${label.toLowerCase().replaceAll(' ', '-')}',
       toggled: value,
       child: GestureDetector(
         key: key,
@@ -211,13 +219,19 @@ extension _AddProductFormWidgets on _AddProductScreenState {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: DesignTokens.primary, width: 1.5),
+            borderSide: const BorderSide(
+              color: DesignTokens.primary,
+              width: 1.5,
+            ),
           ),
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 16,
             vertical: 14,
           ),
-          labelStyle: TextStyle(color: DesignTokens.textSecondary, fontSize: 13),
+          labelStyle: TextStyle(
+            color: DesignTokens.textSecondary,
+            fontSize: 13,
+          ),
         ),
         items: items,
         onChanged: onChanged,
@@ -478,53 +492,58 @@ extension _AddProductFormWidgets on _AddProductScreenState {
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: TextFormField(
-        initialValue: value,
-        decoration: InputDecoration(
-          labelText: label,
-          hintText: placeholder,
-          prefixIcon: const Icon(Icons.link_rounded, size: 20),
-          filled: true,
-          fillColor: DesignTokens.surfaceVariant.withValues(alpha: 0.5),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(
-              color: DesignTokens.outline.withValues(alpha: 0.5),
+      child: Semantics(
+        label:
+            'input-add-product-url-${label.toLowerCase().replaceAll(' ', '-')}',
+        textField: true,
+        child: TextFormField(
+          initialValue: value,
+          decoration: InputDecoration(
+            labelText: label,
+            hintText: placeholder,
+            prefixIcon: const Icon(Icons.link_rounded, size: 20),
+            filled: true,
+            fillColor: DesignTokens.surfaceVariant.withValues(alpha: 0.5),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(
+                color: DesignTokens.outline.withValues(alpha: 0.5),
+              ),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(
+                color: DesignTokens.outline.withValues(alpha: 0.3),
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(
+                color: DesignTokens.primary,
+                width: 1.5,
+              ),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: DesignTokens.error),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
+            labelStyle: const TextStyle(
+              color: DesignTokens.textSecondary,
+              fontSize: 13,
+            ),
+            hintStyle: const TextStyle(
+              color: DesignTokens.textDisabled,
+              fontSize: 13,
             ),
           ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(
-              color: DesignTokens.outline.withValues(alpha: 0.3),
-            ),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(
-              color: DesignTokens.primary,
-              width: 1.5,
-            ),
-          ),
-          errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: DesignTokens.error),
-          ),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 14,
-          ),
-          labelStyle: const TextStyle(
-            color: DesignTokens.textSecondary,
-            fontSize: 13,
-          ),
-          hintStyle: const TextStyle(
-            color: DesignTokens.textDisabled,
-            fontSize: 13,
-          ),
+          keyboardType: TextInputType.url,
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+          onChanged: (v) => onChanged(v.trim().isEmpty ? null : v.trim()),
         ),
-        keyboardType: TextInputType.url,
-        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-        onChanged: (v) => onChanged(v.trim().isEmpty ? null : v.trim()),
       ),
     );
   }

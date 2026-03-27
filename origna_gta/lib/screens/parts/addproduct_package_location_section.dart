@@ -111,14 +111,18 @@ extension _AddProductPackageLocationSection on _AddProductScreenState {
           DesignTokens.info,
         ),
         const SizedBox(height: 8),
-        OutlinedButton.icon(
-          key: const Key('addproduct_manage_warehouses_button'),
-          onPressed: () =>
-              Navigator.of(context).pushNamed(AppRoutes.sellerWarehouses),
-          icon: const Icon(Icons.add_location_alt_rounded, size: 18),
-          label: Text('product.warehouse_add_button'.tr()),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: DesignTokens.primary,
+        Semantics(
+          button: true,
+          label: 'btn-add-product-manage-warehouses',
+          child: OutlinedButton.icon(
+            key: const Key('addproduct_manage_warehouses_button'),
+            onPressed: () =>
+                Navigator.of(context).pushNamed(AppRoutes.sellerWarehouses),
+            icon: const Icon(Icons.add_location_alt_rounded, size: 18),
+            label: Text('product.warehouse_add_button'.tr()),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: DesignTokens.primary,
+            ),
           ),
         ),
         const SizedBox(height: 16),
@@ -149,7 +153,7 @@ extension _AddProductPackageLocationSection on _AddProductScreenState {
           onChanged: viewModel.onStreetChanged,
           validator: _validateStreet,
           hint: 'product.street_hint'.tr(),
-        semanticsLabel: 'input-street',
+          semanticsLabel: 'input-street',
         ),
         if (state.showSuggestions && state.addressSuggestions.isNotEmpty)
           buildAddressSuggestions(state, viewModel),
@@ -159,7 +163,7 @@ extension _AddProductPackageLocationSection on _AddProductScreenState {
           label: 'product.apartment_unit'.tr(),
           icon: Icons.apartment_rounded,
           hint: 'product.apartment_hint'.tr(),
-        semanticsLabel: 'input-apartment',
+          semanticsLabel: 'input-apartment',
         ),
         const SizedBox(height: 12),
         buildGlassTextField(
@@ -171,7 +175,7 @@ extension _AddProductPackageLocationSection on _AddProductScreenState {
           onChanged: state.addressVerified
               ? null
               : (_) => viewModel.clearCoordinates(),
-        semanticsLabel: 'input-city',
+          semanticsLabel: 'input-city',
         ),
         const SizedBox(height: 12),
         Row(
@@ -211,18 +215,22 @@ extension _AddProductPackageLocationSection on _AddProductScreenState {
           const SizedBox(height: 8),
           Align(
             alignment: Alignment.centerRight,
-            child: TextButton.icon(
-              key: const Key('addproduct_clear_address_button'),
-              onPressed: () {
-                _streetController.clear();
-                _cityController.clear();
-                _postalCodeController.clear();
-                viewModel.clearCoordinates();
-              },
-              icon: const Icon(Icons.clear_rounded, size: 16),
-              label: Text(
-                'product.clear_address'.tr(),
-                style: const TextStyle(fontSize: 12),
+            child: Semantics(
+              button: true,
+              label: 'btn-add-product-clear-address',
+              child: TextButton.icon(
+                key: const Key('addproduct_clear_address_button'),
+                onPressed: () {
+                  _streetController.clear();
+                  _cityController.clear();
+                  _postalCodeController.clear();
+                  viewModel.clearCoordinates();
+                },
+                icon: const Icon(Icons.clear_rounded, size: 16),
+                label: Text(
+                  'product.clear_address'.tr(),
+                  style: const TextStyle(fontSize: 12),
+                ),
               ),
             ),
           ),
@@ -246,17 +254,21 @@ extension _AddProductPackageLocationSection on _AddProductScreenState {
               Icons.warehouse_rounded,
             ),
             const Spacer(),
-            TextButton.icon(
-              key: const Key('addproduct_manage_warehouses_button'),
-              onPressed: () =>
-                  Navigator.of(context).pushNamed(AppRoutes.sellerWarehouses),
-              icon: const Icon(Icons.settings_rounded, size: 14),
-              label: Text(
-                'product.warehouse_manage'.tr(),
-                style: const TextStyle(fontSize: 12),
-              ),
-              style: TextButton.styleFrom(
-                foregroundColor: DesignTokens.primary,
+            Semantics(
+              button: true,
+              label: 'btn-add-product-manage-warehouses-list',
+              child: TextButton.icon(
+                key: const Key('addproduct_manage_warehouses_button'),
+                onPressed: () =>
+                    Navigator.of(context).pushNamed(AppRoutes.sellerWarehouses),
+                icon: const Icon(Icons.settings_rounded, size: 14),
+                label: Text(
+                  'product.warehouse_manage'.tr(),
+                  style: const TextStyle(fontSize: 12),
+                ),
+                style: TextButton.styleFrom(
+                  foregroundColor: DesignTokens.primary,
+                ),
               ),
             ),
           ],
@@ -407,31 +419,36 @@ extension _AddProductPackageLocationSection on _AddProductScreenState {
                           const SizedBox(width: 12),
                           SizedBox(
                             width: 80,
-                            child: TextFormField(
-                              key: Key(
-                                'addproduct_warehouse_stock_${warehouse.warehouseId}',
-                              ),
-                              initialValue: stockQty > 0
-                                  ? stockQty.toString()
-                                  : '',
-                              keyboardType: TextInputType.number,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.digitsOnly,
-                              ],
-                              decoration: InputDecoration(
-                                hintText: '0',
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 6,
+                            child: Semantics(
+                              label:
+                                  'input-add-product-warehouse-stock-${warehouse.warehouseId}',
+                              textField: true,
+                              child: TextFormField(
+                                key: Key(
+                                  'addproduct_warehouse_stock_${warehouse.warehouseId}',
                                 ),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
+                                initialValue: stockQty > 0
+                                    ? stockQty.toString()
+                                    : '',
+                                keyboardType: TextInputType.number,
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.digitsOnly,
+                                ],
+                                decoration: InputDecoration(
+                                  hintText: '0',
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 6,
+                                  ),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  isDense: true,
                                 ),
-                                isDense: true,
-                              ),
-                              onChanged: (v) => viewModel.setWarehouseStock(
-                                warehouse.warehouseId,
-                                int.tryParse(v) ?? 0,
+                                onChanged: (v) => viewModel.setWarehouseStock(
+                                  warehouse.warehouseId,
+                                  int.tryParse(v) ?? 0,
+                                ),
                               ),
                             ),
                           ),

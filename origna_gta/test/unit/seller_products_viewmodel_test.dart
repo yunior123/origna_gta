@@ -6,9 +6,7 @@ import 'package:origna_gta/features/seller/seller_products_viewmodel.dart';
 import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:orignabase/orignabase.dart';
 
-@GenerateNiceMocks([
-  MockSpec<OrignaBase>(),
-])
+@GenerateNiceMocks([MockSpec<OrignaBase>()])
 import 'seller_products_viewmodel_test.mocks.dart';
 
 void main() {
@@ -19,9 +17,7 @@ void main() {
     mockOrignaBase = MockOrignaBase();
 
     container = ProviderContainer(
-      overrides: [
-        orignabaseProvider.overrideWithValue(mockOrignaBase),
-      ],
+      overrides: [orignabaseProvider.overrideWithValue(mockOrignaBase)],
     );
   });
 
@@ -36,27 +32,35 @@ void main() {
       final notifier = container.read(sellerProductsViewModelProvider.notifier);
 
       notifier.toggleSelection('p1');
-      expect(container.read(sellerProductsViewModelProvider).selectedIds, {'p1'});
+      expect(container.read(sellerProductsViewModelProvider).selectedIds, {
+        'p1',
+      });
 
       notifier.toggleSelection('p2');
-      expect(container.read(sellerProductsViewModelProvider).selectedIds, {'p1', 'p2'});
+      expect(container.read(sellerProductsViewModelProvider).selectedIds, {
+        'p1',
+        'p2',
+      });
 
       notifier.toggleSelection('p1');
-      expect(container.read(sellerProductsViewModelProvider).selectedIds, {'p2'});
+      expect(container.read(sellerProductsViewModelProvider).selectedIds, {
+        'p2',
+      });
     });
 
     test('bulkAction calls OrignaBase and clears selection', () async {
       final notifier = container.read(sellerProductsViewModelProvider.notifier);
       notifier.toggleSelection('p1');
 
-      when(mockOrignaBase.request(any, any, body: anyNamed('body')))
-          .thenAnswer((_) async => {'updated': 1, 'skipped': 0});
+      when(
+        mockOrignaBase.request(any, any, body: anyNamed('body')),
+      ).thenAnswer((_) async => {'updated': 1, 'skipped': 0});
 
       await notifier.bulkAction('archive');
 
       final state = container.read(sellerProductsViewModelProvider);
       expect(state.selectedIds, isEmpty);
-      expect(state.successMessage, contains('1 product archived'));
+      expect(state.successMessage, contains('bulk_products_updated'));
     });
   });
 }

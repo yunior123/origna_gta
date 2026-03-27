@@ -65,7 +65,7 @@ void main() {
         800.0: 3,
         1100.0: 4,
         1300.0: 5,
-        1500.0: 6,
+        1500.0: 5,
       };
 
       for (final entry in testCases.entries) {

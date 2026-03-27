@@ -21,6 +21,7 @@ class FilterChipWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: Semantics(
@@ -33,12 +34,16 @@ class FilterChipWidget extends StatelessWidget {
             duration: DesignTokens.durationFast,
             padding: padding,
             decoration: BoxDecoration(
-              color: isSelected ? DesignTokens.primary : DesignTokens.white,
+              color: isSelected
+                  ? DesignTokens.primary
+                  : (isDark ? DesignTokens.darkCard : DesignTokens.white),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
                 color: isSelected
                     ? DesignTokens.primary
-                    : DesignTokens.outlineVariant.withValues(alpha: 0.5),
+                    : (isDark
+                          ? DesignTokens.darkOutline
+                          : DesignTokens.outlineVariant.withValues(alpha: 0.5)),
               ),
               boxShadow: isSelected
                   ? [
@@ -55,7 +60,9 @@ class FilterChipWidget extends StatelessWidget {
               style: TextStyle(
                 color: isSelected
                     ? DesignTokens.white
-                    : DesignTokens.textSecondary,
+                    : (isDark
+                          ? DesignTokens.textOnDarkSecondary
+                          : DesignTokens.textSecondary),
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                 fontSize: fontSize,
               ),

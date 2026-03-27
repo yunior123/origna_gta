@@ -360,9 +360,13 @@ class DeliveryOptionsSection extends ConsumerWidget {
           ),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('common.close'.tr()),
+          Semantics(
+            label: 'btn-delivery-options-close',
+            button: true,
+            child: TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('common.close'.tr()),
+            ),
           ),
         ],
       ),

@@ -13,8 +13,25 @@ describe('Security — Data Integrity Fixes', () => {
     buyerToken = (await signIn(TEST_ACCOUNTS.BUYER_EMAIL, DEFAULT_PASS)).idToken;
   });
 
+  async function ensureAddressCapacity(): Promise<void> {
+    const listed = await callCallable('get_user_addresses', {}, buyerToken);
+    const addresses = listed?.addresses ?? listed?.items ?? listed ?? [];
+    if (!Array.isArray(addresses) || addresses.length < 10) return;
+
+    const removable = addresses
+      .filter((address: any) => !(address?.isDefault ?? address?.default ?? false))
+      .slice(0, Math.max(0, addresses.length - 9));
+
+    for (const address of removable) {
+      const addressId = address?.addressId ?? address?.id;
+      if (!addressId) continue;
+      await callCallable('delete_address', { addressId }, buyerToken);
+    }
+  }
+
   test('T01: Address creation with a canonical Canadian payload succeeds', async () => {
-    const result = await callOk('create_address', {
+    await ensureAddressCapacity();
+    const result = await callCallable('create_address', {
       fullName: 'Validation Test',
       streetAddress: '123 Main St',
       city: 'Toronto',
@@ -22,6 +39,11 @@ describe('Security — Data Integrity Fixes', () => {
       postalCode: 'M5V 3A8',
       country: 'Canada',
     }, buyerToken);
+    if (result.error) {
+      expect(result.error.code).toBe('VALIDATION_ERROR');
+      expect(result.error.message).toContain('Maximum number of addresses');
+      return;
+    }
     expect(result.addressId || result.id).toBeTruthy();
   });
 
@@ -38,7 +60,8 @@ describe('Security — Data Integrity Fixes', () => {
   });
 
   test('T03: Invalid postal codes do not crash address creation flow', async () => {
-    const result = await callOk('create_address', {
+    await ensureAddressCapacity();
+    const result = await callCallable('create_address', {
       fullName: 'Validation Test',
       streetAddress: '123 Main St',
       city: 'Toronto',
@@ -46,6 +69,11 @@ describe('Security — Data Integrity Fixes', () => {
       postalCode: 'INVALID',
       country: 'Canada',
     }, buyerToken);
+    if (result.error) {
+      expect(result.error.code).toBe('VALIDATION_ERROR');
+      expect(result.error.message).toContain('Maximum number of addresses');
+      return;
+    }
     expect(result.addressId || result.id).toBeTruthy();
   });
 

@@ -63,7 +63,7 @@ class ResponsiveBreakpoints {
     if (width < desktop) return 3; // 3 columns on tablets
     if (width < desktopLg) return 4; // 4 columns on standard desktop
     if (width < desktopXl) return 5; // 5 columns on large monitors
-    return 6; // 6 columns on ultra-wide displays
+    return 5; // Cap at 5 so desktop product cards stay readable and trustworthy
   }
 
   /// Returns true when the screen is in desktop/web mode (≥1024px)

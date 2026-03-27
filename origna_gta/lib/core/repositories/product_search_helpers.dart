@@ -155,6 +155,14 @@ mixin ProductSearchHelpers {
         ProductLifecycleStatusValues.active) {
       return null;
     }
-    return docToProduct(doc);
+    try {
+      return docToProduct(doc);
+    } catch (e) {
+      AppLogger.d(
+        'OrignaBaseProductRepo: failed to map product $productId: $e',
+        tag: 'product',
+      );
+      return null;
+    }
   }
 }

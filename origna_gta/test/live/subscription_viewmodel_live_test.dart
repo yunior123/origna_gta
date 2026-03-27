@@ -6,8 +6,10 @@ import 'package:origna_gta/core/repositories/orignabase_auth_repository.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 
 void main() {
-  const runLive =
-      bool.fromEnvironment('RUN_ORIGNABASE_LIVE_TESTS', defaultValue: false);
+  const runLive = bool.fromEnvironment(
+    'RUN_ORIGNABASE_LIVE_TESTS',
+    defaultValue: false,
+  );
 
   group('Subscription benefits live integration', () {
     late ProviderContainer container;
@@ -37,15 +39,20 @@ void main() {
         if (!runLive) return;
 
         // Sign in as a buyer
-        await authRepo.signInWithEmail('e2e-buyer@test.origna.ca', 'REDACTED_TEST_PASSWORD');
+        await authRepo.signInWithEmail(
+          'e2e-buyer@test.origna.ca',
+          'REDACTED_TEST_PASSWORD',
+        );
 
         final userId = ob.auth.currentUserId;
         expect(userId, isNotNull, reason: 'User should be authenticated');
 
         // Fetch user document
-        final userDocQuery =
-            await ob.collection(Collections.users).doc(userId!).get();
-        
+        final userDocQuery = await ob
+            .collection(Collections.users)
+            .doc(userId!)
+            .get();
+
         if (userDocQuery != null) {
           expect(true, isTrue, reason: 'User document should exist');
         }
@@ -59,17 +66,25 @@ void main() {
       () async {
         if (!runLive) return;
 
-        await authRepo.signInWithEmail('e2e-buyer@test.origna.ca', 'REDACTED_TEST_PASSWORD');
+        await authRepo.signInWithEmail(
+          'e2e-buyer@test.origna.ca',
+          'REDACTED_TEST_PASSWORD',
+        );
 
         final userId = ob.auth.currentUserId;
-        final userDocQuery =
-            await ob.collection(Collections.users).doc(userId!).get();
+        final userDocQuery = await ob
+            .collection(Collections.users)
+            .doc(userId!)
+            .get();
 
         if (userDocQuery != null) {
           final data = userDocQuery.data;
           expect(data, isNotNull);
-          expect(data!.containsKey('role'), isTrue,
-              reason: 'User should have a role');
+          expect(
+            data.containsKey('role'),
+            isTrue,
+            reason: 'User should have a role',
+          );
         }
       },
       skip: !runLive,
@@ -82,15 +97,20 @@ void main() {
         if (!runLive) return;
 
         // Sign in as admin
-        await authRepo.signInWithEmail('e2e-admin@test.origna.ca', 'REDACTED_TEST_PASSWORD');
+        await authRepo.signInWithEmail(
+          'e2e-admin@test.origna.ca',
+          'REDACTED_TEST_PASSWORD',
+        );
 
         final userId = ob.auth.currentUserId;
         expect(userId, isNotNull, reason: 'Admin should be authenticated');
 
         // Fetch user document
-        final userDocQuery =
-            await ob.collection(Collections.users).doc(userId!).get();
-        
+        final userDocQuery = await ob
+            .collection(Collections.users)
+            .doc(userId!)
+            .get();
+
         if (userDocQuery != null) {
           expect(true, isTrue, reason: 'Admin user document should exist');
         }
