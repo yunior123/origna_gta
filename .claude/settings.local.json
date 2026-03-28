@@ -49,6 +49,19 @@
       "mcp__plugin_playwright_playwright__browser_resize"
     ]
   },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /Users/yuniorrodriguezosorio/.claude/hooks/codex_model_guardrail.py"
+          }
+        ]
+      }
+    ]
+  },
   "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "dart-mcp",

@@ -202,7 +202,9 @@ mod tests {
     #[tokio::test]
     async fn test_database_rate_limiter() {
         // Ensure OB_TEST_MODE doesn't bypass rate limiting in unit tests
-        unsafe { std::env::remove_var("OB_TEST_MODE"); }
+        unsafe {
+            std::env::remove_var("OB_TEST_MODE");
+        }
         let db = DatabaseClient::new_mem().await;
         let user_id = "user_123";
         let action = "test_action";
@@ -282,7 +284,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_rate_limit_error_message_content() {
-        unsafe { std::env::remove_var("OB_TEST_MODE"); }
+        unsafe {
+            std::env::remove_var("OB_TEST_MODE");
+        }
         let db = DatabaseClient::new_mem().await;
         // Exhaust the limit
         let _ = check_user_rate_limit(&db, "user_msg", "webhook", 1, 1).await;
@@ -295,7 +299,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_rate_limit_zero_max_requests_blocks_immediately() {
-        unsafe { std::env::remove_var("OB_TEST_MODE"); }
+        unsafe {
+            std::env::remove_var("OB_TEST_MODE");
+        }
         let db = DatabaseClient::new_mem().await;
         // max_requests=0 means no requests allowed
         let result = check_user_rate_limit(&db, "user_zero", "action", 0, 1).await;

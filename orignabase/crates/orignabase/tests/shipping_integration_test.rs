@@ -5,8 +5,7 @@
 use serde_json::{Value, json};
 
 fn base_url() -> String {
-    std::env::var("OB_TEST_URL")
-        .unwrap_or_else(|_| "https://api.dev.orignagta.ca".to_string())
+    std::env::var("OB_TEST_URL").unwrap_or_else(|_| "https://api.dev.orignagta.ca".to_string())
 }
 
 /// Login as buyer and return access token.
@@ -48,7 +47,10 @@ async fn calculate_shipping(
         .map_err(|e| format!("request failed: {}", e))?;
 
     let status = resp.status();
-    let body: Value = resp.json().await.map_err(|e| format!("parse response: {}", e))?;
+    let body: Value = resp
+        .json()
+        .await
+        .map_err(|e| format!("parse response: {}", e))?;
 
     if status == 200 {
         Ok(body)
@@ -84,7 +86,10 @@ async fn test_shipping_calculation_standard_delivery() {
     match calculate_shipping(&client, &buyer_token, items, delivery_address).await {
         Ok(result) => {
             let shipping_cost_cents = result["shippingCostCents"].as_i64();
-            assert!(shipping_cost_cents.is_some(), "Should return shippingCostCents");
+            assert!(
+                shipping_cost_cents.is_some(),
+                "Should return shippingCostCents"
+            );
             assert!(
                 shipping_cost_cents.unwrap_or(0) > 0,
                 "Cross-province shipping should have a cost"

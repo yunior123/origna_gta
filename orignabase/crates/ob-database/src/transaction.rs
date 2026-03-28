@@ -87,9 +87,7 @@ impl Transaction {
         // Collect results from each statement.
         let mut results = Vec::with_capacity(self.queries.len());
         for i in 0..self.queries.len() {
-            let sval: surrealdb::Value = response
-                .take(i)
-                .unwrap_or_default();
+            let sval: surrealdb::Value = response.take(i).unwrap_or_default();
             let json_val = serde_json::to_value(&sval).unwrap_or(Value::Null);
             if let Some(arr) = json_val.as_array() {
                 if arr.len() == 1 {

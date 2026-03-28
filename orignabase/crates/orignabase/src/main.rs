@@ -2,8 +2,8 @@ use anyhow::Result;
 use async_graphql::http::GraphiQLSource;
 use axum::Router;
 use axum::extract::DefaultBodyLimit;
-use axum::http::{HeaderValue, Method, header};
 use axum::http::header::AUTHORIZATION;
+use axum::http::{HeaderValue, Method, StatusCode, header};
 use axum::response::IntoResponse;
 use clap::{Parser, Subcommand};
 use ob_admin::admin_router;
@@ -17,7 +17,7 @@ use ob_functions::{
     CronScheduler, DbTriggerExecutor, FunctionLimits, FunctionRegistry, WasmRuntime,
     functions_router,
 };
-use ob_graphql::{build_schema_with_limits, GraphQlLimits};
+use ob_graphql::{GraphQlLimits, build_schema_with_limits};
 use ob_realtime::ChangeDispatcher;
 use ob_realtime::registry::SubscriptionRegistry;
 use ob_realtime::websocket::realtime_router;
@@ -28,18 +28,22 @@ use ob_security::{RuleEngine, parse_rules};
 use ob_storage::routes::{StorageState, storage_router};
 use ob_storage::{LocalStorage, ResumableUploadManager, SignedUrlGenerator};
 use std::collections::HashMap;
+use std::future::pending;
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
+use tower::ServiceBuilder;
 use tower_governor::GovernorLayer;
 use tower_governor::governor::GovernorConfigBuilder;
 use tower_governor::key_extractor::PeerIpKeyExtractor;
 use tower_http::catch_panic::CatchPanicLayer;
 use tower_http::compression::CompressionLayer;
 use tower_http::cors::CorsLayer;
+use tower_http::request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer};
 use tower_http::set_header::SetResponseHeaderLayer;
 use tower_http::timeout::TimeoutLayer;
 use tower_http::trace::TraceLayer;
+use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse};
 use tracing_subscriber::EnvFilter;
 
 // ── CLI Credential Storage ──
@@ -258,6 +262,7 @@ async fn main() -> Result<()> {
         )
         .json()
         .init();
+    install_panic_hook();
 
     let cli = Cli::parse();
     let config_path = cli.config.as_deref().map(std::path::Path::new);
@@ -480,7 +485,6 @@ match /users/{userId} {
         Commands::Schema { action } => {
             let db = DatabaseClient::connect(&config.database).await?;
             match action {
-
                 SchemaAction::Inspect => {
                     let tables = db.query_raw("INFO FOR DB").await?;
                     println!("{}", serde_json::to_string_pretty(&tables)?);
@@ -570,7 +574,9 @@ fn build_cors_layer(is_test_mode: bool) -> CorsLayer {
             "http://127.0.0.1:3000".parse::<HeaderValue>().unwrap(),
             "http://127.0.0.1:8080".parse::<HeaderValue>().unwrap(),
             "https://dev.orignagta.ca".parse::<HeaderValue>().unwrap(),
-            "https://staging.orignagta.ca".parse::<HeaderValue>().unwrap(),
+            "https://staging.orignagta.ca"
+                .parse::<HeaderValue>()
+                .unwrap(),
         ];
         return CorsLayer::new()
             .allow_origin(test_origins)
@@ -589,16 +595,21 @@ fn build_cors_layer(is_test_mode: bool) -> CorsLayer {
                 axum::http::header::CONTENT_TYPE,
                 axum::http::header::ORIGIN,
                 axum::http::header::CACHE_CONTROL,
-                "x-requested-with".parse().expect("static header should parse"),
+                "x-requested-with"
+                    .parse()
+                    .expect("static header should parse"),
                 "x-tenant-id".parse().expect("static header should parse"),
-            ]);
+            ])
+            .max_age(Duration::from_secs(3600));
     }
 
     let allowed_origins = vec![
         "https://orignagta.ca".parse::<HeaderValue>().unwrap(),
         "https://www.orignagta.ca".parse::<HeaderValue>().unwrap(),
         "https://dev.orignagta.ca".parse::<HeaderValue>().unwrap(),
-        "https://staging.orignagta.ca".parse::<HeaderValue>().unwrap(),
+        "https://staging.orignagta.ca"
+            .parse::<HeaderValue>()
+            .unwrap(),
     ];
 
     CorsLayer::new()
@@ -618,9 +629,12 @@ fn build_cors_layer(is_test_mode: bool) -> CorsLayer {
             header::CONTENT_TYPE,
             header::ORIGIN,
             header::CACHE_CONTROL,
-            "x-requested-with".parse().expect("static header should parse"),
+            "x-requested-with"
+                .parse()
+                .expect("static header should parse"),
             "x-tenant-id".parse().expect("static header should parse"),
         ])
+        .max_age(Duration::from_secs(3600))
 }
 
 /// Validate configuration and panic on critical security issues.
@@ -633,10 +647,7 @@ fn validate_config_warnings(config: &Config) -> Result<()> {
 
     if config.auth.jwt_secret == "CHANGE_ME_IN_PRODUCTION" {
         let msg = "JWT secret is the default value (INSECURE). Set OB_AUTH__JWT_SECRET or auth.jwt_secret in orignabase.toml.";
-        warnings.push((
-            "critical",
-            msg,
-        ));
+        warnings.push(("critical", msg));
 
         // CRITICAL FIX: Block in production, allow in test mode
         if !is_test_mode {
@@ -1167,8 +1178,14 @@ async fn serve(config: Config) -> Result<()> {
 
     // Health check is outside the governor layer to avoid IP extraction issues
     // behind reverse proxies (Docker/Caddy).
-    let health_route = Router::new().route("/health", axum::routing::get(|| async { "ok" }));
-
+    let health_db = db.clone();
+    let health_route = Router::new().route(
+        "/health",
+        axum::routing::get(move || {
+            let db = health_db.clone();
+            async move { health_handler(db).await }
+        }),
+    );
     let app = Router::new()
         .merge(health_route)
         .route(
@@ -1299,10 +1316,17 @@ async fn serve(config: Config) -> Result<()> {
             axum::http::StatusCode::REQUEST_TIMEOUT,
             Duration::from_secs(30),
         ))
-        .layer(TraceLayer::new_for_http())
         .layer(
-            build_cors_layer(is_test_mode),
+            ServiceBuilder::new()
+                .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
+                .layer(
+                    TraceLayer::new_for_http()
+                        .make_span_with(DefaultMakeSpan::new().include_headers(true))
+                        .on_response(DefaultOnResponse::new().include_headers(true)),
+                )
+                .layer(PropagateRequestIdLayer::x_request_id()),
         )
+        .layer(build_cors_layer(is_test_mode))
         .layer(axum::middleware::from_fn(
             ob_auth::middleware::auth_extractor,
         ))
@@ -1324,9 +1348,65 @@ async fn serve(config: Config) -> Result<()> {
         listener,
         app.into_make_service_with_connect_info::<std::net::SocketAddr>(),
     )
+    .with_graceful_shutdown(shutdown_signal())
     .await?;
 
     Ok(())
+}
+
+fn install_panic_hook() {
+    std::panic::set_hook(Box::new(|panic_info| {
+        let location = panic_info
+            .location()
+            .map(|loc| format!("{}:{}", loc.file(), loc.line()))
+            .unwrap_or_else(|| "unknown".to_string());
+        let payload = panic_info
+            .payload()
+            .downcast_ref::<&str>()
+            .map(|msg| (*msg).to_string())
+            .or_else(|| panic_info.payload().downcast_ref::<String>().cloned())
+            .unwrap_or_else(|| "non-string panic payload".to_string());
+        tracing::error!(location = %location, panic = %payload, "Unhandled panic");
+    }));
+}
+
+async fn health_handler(db: DatabaseClient) -> impl IntoResponse {
+    match db.query_raw_value("RETURN 1").await {
+        Ok(_) => (StatusCode::OK, "ok").into_response(),
+        Err(error) => {
+            tracing::error!(error = %error, "health_check_db_ping_failed");
+            (StatusCode::SERVICE_UNAVAILABLE, "db_unhealthy").into_response()
+        }
+    }
+}
+
+async fn shutdown_signal() {
+    #[cfg(unix)]
+    let terminate = async {
+        match tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()) {
+            Ok(mut signal) => {
+                signal.recv().await;
+            }
+            Err(error) => {
+                tracing::warn!(error = %error, "failed_to_install_sigterm_handler");
+                pending::<()>().await;
+            }
+        }
+    };
+
+    #[cfg(not(unix))]
+    let terminate = pending::<()>();
+
+    tokio::select! {
+        result = tokio::signal::ctrl_c() => {
+            if let Err(error) = result {
+                tracing::warn!(error = %error, "failed_to_install_ctrl_c_handler");
+            }
+        }
+        _ = terminate => {}
+    }
+
+    tracing::info!("Shutdown signal received");
 }
 
 // ── Backup / Restore ──

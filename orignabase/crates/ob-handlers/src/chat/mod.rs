@@ -190,11 +190,13 @@ Always be clear and concise. Format responses in a friendly, conversational tone
     // Call Anthropic API with timeout
     let response = tokio::time::timeout(
         std::time::Duration::from_secs(30),
-        state.http_client.post("https://api.anthropic.com/v1/messages")
+        state
+            .http_client
+            .post("https://api.anthropic.com/v1/messages")
             .header("x-api-key", api_key)
             .header("anthropic-version", "2023-06-01")
             .json(&anthropic_request)
-            .send()
+            .send(),
     )
     .await
     .map_err(|_| {
@@ -246,7 +248,6 @@ Always be clear and concise. Format responses in a friendly, conversational tone
     Ok(Json(SupportChatResponse { reply, escalated }))
 }
 
-
 // ─── Router ─────────────────────────────────────────────────────────────────
 
 pub fn router(state: HandlersState) -> Router {
@@ -277,30 +278,42 @@ fn _sanitize_text(text: &str) -> String {
     }
 
     // Strip zero-width chars and other invisible whitespace
-    let zero_width = ZERO_WIDTH_RE.get_or_init(|| regex_lite::Regex::new(r"[\u{200B}\u{200C}\u{200D}\u{FEFF}]").expect("valid regex"));
+    let zero_width = ZERO_WIDTH_RE.get_or_init(|| {
+        regex_lite::Regex::new(r"[\u{200B}\u{200C}\u{200D}\u{FEFF}]").expect("valid regex")
+    });
     let text = zero_width.replace_all(text, "");
 
     // Strip HTML and script tags
-    let script_tag = SCRIPT_TAG_RE.get_or_init(|| regex_lite::Regex::new("(?i)<script[^>]*>.*?</script>").expect("valid regex"));
+    let script_tag = SCRIPT_TAG_RE.get_or_init(|| {
+        regex_lite::Regex::new("(?i)<script[^>]*>.*?</script>").expect("valid regex")
+    });
     let text = script_tag.replace_all(&text, "");
 
     let clean = sanitize_html(&text);
 
-    let js_scheme = JS_SCHEME_RE.get_or_init(|| regex_lite::Regex::new("(?i)javascript:").expect("valid regex"));
+    let js_scheme = JS_SCHEME_RE
+        .get_or_init(|| regex_lite::Regex::new("(?i)javascript:").expect("valid regex"));
     let text = js_scheme.replace_all(&clean, "");
 
     // Redact email addresses
-    let email_pat = EMAIL_RE.get_or_init(|| regex_lite::Regex::new(r"(?i)\b[\w._%+\-]+(\s*[@\[(]at[\])]\s*|@)[\w.\-]+\.[a-zA-Z]{2,}\b").expect("valid regex"));
+    let email_pat = EMAIL_RE.get_or_init(|| {
+        regex_lite::Regex::new(r"(?i)\b[\w._%+\-]+(\s*[@\[(]at[\])]\s*|@)[\w.\-]+\.[a-zA-Z]{2,}\b")
+            .expect("valid regex")
+    });
     let text = email_pat.replace_all(&text, "[email removed]");
 
     // Redact URLs and web links
-    let url_pat = URL_RE.get_or_init(|| regex_lite::Regex::new(r"(?i)https?://[^\s]+").expect("valid regex"));
+    let url_pat =
+        URL_RE.get_or_init(|| regex_lite::Regex::new(r"(?i)https?://[^\s]+").expect("valid regex"));
     let text = url_pat.replace_all(&text, "[link removed]");
-    let www_pat = WWW_RE.get_or_init(|| regex_lite::Regex::new(r"(?i)www\.[^\s]+").expect("valid regex"));
+    let www_pat =
+        WWW_RE.get_or_init(|| regex_lite::Regex::new(r"(?i)www\.[^\s]+").expect("valid regex"));
     let text = www_pat.replace_all(&text, "[link removed]");
 
     // Redact phone numbers (10-15 digits)
-    let phone_pat = PHONE_RE.get_or_init(|| regex_lite::Regex::new(r"(\+?[\d\s\-\.()]{10,20}\d)").expect("valid regex"));
+    let phone_pat = PHONE_RE.get_or_init(|| {
+        regex_lite::Regex::new(r"(\+?[\d\s\-\.()]{10,20}\d)").expect("valid regex")
+    });
     let text = phone_pat.replace_all(&text, |caps: &regex_lite::Captures| {
         let raw = &caps[0];
         let digits: String = raw.chars().filter(|c| c.is_ascii_digit()).collect();
@@ -497,8 +510,7 @@ async fn send_message(
     let text_raw = req.message_text.as_deref().unwrap_or("");
     let image_urls = req.image_urls.as_ref();
 
-    if req.chat_id.is_empty() || (text_raw.is_empty() && image_urls.is_none_or(|v| v.is_empty()))
-    {
+    if req.chat_id.is_empty() || (text_raw.is_empty() && image_urls.is_none_or(|v| v.is_empty())) {
         return Err(ob_core::Error::Validation(
             "chatId and text/images required.".into(),
         ));

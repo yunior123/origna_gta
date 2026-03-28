@@ -12,7 +12,12 @@ void main() {
     defaultValue: false,
   );
 
-  group('OrignaBase Security Live Tests', skip: !runLive ? 'live tests disabled' : null, () {
+  if (!runLive) {
+    test('live tests disabled', () {});
+    return;
+  }
+
+  group('OrignaBase Security Live Tests', () {
     late ProviderContainer container;
     late OrignaBase ob;
     late String baseUrl;
@@ -314,15 +319,15 @@ void main() {
     test(
       'stripe webhook endpoint rejects unsigned requests',
       () async {
-        final uri = Uri.parse('$baseUrl/stripe/webhook');
+        final uri = Uri.parse('$baseUrl/api/webhooks/stripe');
         final response = await http.post(
           uri,
           headers: {'Content-Type': 'application/json'},
           body: '{"type":"payment_intent.succeeded","data":{}}',
         );
-        // Should reject with 400 or 401 (no Stripe-Signature header)
+        // Mounted webhook route should reject missing Stripe-Signature.
         expect(
-          [400, 401, 403, 404].contains(response.statusCode),
+          [400, 401, 403].contains(response.statusCode),
           isTrue,
           reason:
               'Unsigned webhook should be rejected, got ${response.statusCode}',

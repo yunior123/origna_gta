@@ -31,7 +31,6 @@ impl std::fmt::Debug for S3Config {
     }
 }
 
-
 impl S3Config {
     /// Create from environment variables (OB_STORAGE__*).
     pub fn from_env() -> Option<Self> {
@@ -321,11 +320,21 @@ mod tests {
     #[test]
     fn test_s3_config_from_env_with_all_vars() {
         let _g = ENV_LOCK.lock().unwrap();
-        unsafe { std::env::set_var("OB_STORAGE__S3_BUCKET", "test-bucket"); }
-        unsafe { std::env::set_var("OB_STORAGE__S3_REGION", "us-west-2"); }
-        unsafe { std::env::set_var("OB_STORAGE__S3_ENDPOINT", "http://localhost:9000"); }
-        unsafe { std::env::set_var("OB_STORAGE__S3_ACCESS_KEY", "test-key"); }
-        unsafe { std::env::set_var("OB_STORAGE__S3_SECRET_KEY", "test-secret"); }
+        unsafe {
+            std::env::set_var("OB_STORAGE__S3_BUCKET", "test-bucket");
+        }
+        unsafe {
+            std::env::set_var("OB_STORAGE__S3_REGION", "us-west-2");
+        }
+        unsafe {
+            std::env::set_var("OB_STORAGE__S3_ENDPOINT", "http://localhost:9000");
+        }
+        unsafe {
+            std::env::set_var("OB_STORAGE__S3_ACCESS_KEY", "test-key");
+        }
+        unsafe {
+            std::env::set_var("OB_STORAGE__S3_SECRET_KEY", "test-secret");
+        }
 
         let config = S3Config::from_env().unwrap();
         assert_eq!(config.bucket, "test-bucket");
@@ -334,59 +343,109 @@ mod tests {
         assert_eq!(config.access_key, "test-key");
         assert_eq!(config.secret_key, "test-secret");
 
-        unsafe { std::env::remove_var("OB_STORAGE__S3_BUCKET"); }
-        unsafe { std::env::remove_var("OB_STORAGE__S3_REGION"); }
-        unsafe { std::env::remove_var("OB_STORAGE__S3_ENDPOINT"); }
-        unsafe { std::env::remove_var("OB_STORAGE__S3_ACCESS_KEY"); }
-        unsafe { std::env::remove_var("OB_STORAGE__S3_SECRET_KEY"); }
+        unsafe {
+            std::env::remove_var("OB_STORAGE__S3_BUCKET");
+        }
+        unsafe {
+            std::env::remove_var("OB_STORAGE__S3_REGION");
+        }
+        unsafe {
+            std::env::remove_var("OB_STORAGE__S3_ENDPOINT");
+        }
+        unsafe {
+            std::env::remove_var("OB_STORAGE__S3_ACCESS_KEY");
+        }
+        unsafe {
+            std::env::remove_var("OB_STORAGE__S3_SECRET_KEY");
+        }
     }
 
     #[test]
     fn test_s3_config_from_env_region_defaults_to_auto() {
         let _g = ENV_LOCK.lock().unwrap();
-        unsafe { std::env::set_var("OB_STORAGE__S3_BUCKET", "test-bucket-rto"); }
-        unsafe { std::env::set_var("OB_STORAGE__S3_ACCESS_KEY", "test-key-rto"); }
-        unsafe { std::env::set_var("OB_STORAGE__S3_SECRET_KEY", "test-secret-rto"); }
-        unsafe { std::env::remove_var("OB_STORAGE__S3_REGION"); }
-        unsafe { std::env::remove_var("OB_STORAGE__S3_ENDPOINT"); }
+        unsafe {
+            std::env::set_var("OB_STORAGE__S3_BUCKET", "test-bucket-rto");
+        }
+        unsafe {
+            std::env::set_var("OB_STORAGE__S3_ACCESS_KEY", "test-key-rto");
+        }
+        unsafe {
+            std::env::set_var("OB_STORAGE__S3_SECRET_KEY", "test-secret-rto");
+        }
+        unsafe {
+            std::env::remove_var("OB_STORAGE__S3_REGION");
+        }
+        unsafe {
+            std::env::remove_var("OB_STORAGE__S3_ENDPOINT");
+        }
 
         let config = S3Config::from_env().unwrap();
         assert_eq!(config.region, "auto");
         assert!(config.endpoint.is_none());
 
-        unsafe { std::env::remove_var("OB_STORAGE__S3_BUCKET"); }
-        unsafe { std::env::remove_var("OB_STORAGE__S3_ACCESS_KEY"); }
-        unsafe { std::env::remove_var("OB_STORAGE__S3_SECRET_KEY"); }
+        unsafe {
+            std::env::remove_var("OB_STORAGE__S3_BUCKET");
+        }
+        unsafe {
+            std::env::remove_var("OB_STORAGE__S3_ACCESS_KEY");
+        }
+        unsafe {
+            std::env::remove_var("OB_STORAGE__S3_SECRET_KEY");
+        }
     }
 
     #[test]
     fn test_s3_config_from_env_missing_bucket() {
         let _g = ENV_LOCK.lock().unwrap();
-        unsafe { std::env::remove_var("OB_STORAGE__S3_BUCKET"); }
-        unsafe { std::env::remove_var("OB_STORAGE__S3_ACCESS_KEY"); }
-        unsafe { std::env::remove_var("OB_STORAGE__S3_SECRET_KEY"); }
+        unsafe {
+            std::env::remove_var("OB_STORAGE__S3_BUCKET");
+        }
+        unsafe {
+            std::env::remove_var("OB_STORAGE__S3_ACCESS_KEY");
+        }
+        unsafe {
+            std::env::remove_var("OB_STORAGE__S3_SECRET_KEY");
+        }
         assert!(S3Config::from_env().is_none());
     }
 
     #[test]
     fn test_s3_config_from_env_missing_access_key() {
         let _g = ENV_LOCK.lock().unwrap();
-        unsafe { std::env::set_var("OB_STORAGE__S3_BUCKET", "bucket"); }
-        unsafe { std::env::remove_var("OB_STORAGE__S3_ACCESS_KEY"); }
-        unsafe { std::env::remove_var("OB_STORAGE__S3_SECRET_KEY"); }
+        unsafe {
+            std::env::set_var("OB_STORAGE__S3_BUCKET", "bucket");
+        }
+        unsafe {
+            std::env::remove_var("OB_STORAGE__S3_ACCESS_KEY");
+        }
+        unsafe {
+            std::env::remove_var("OB_STORAGE__S3_SECRET_KEY");
+        }
         assert!(S3Config::from_env().is_none());
-        unsafe { std::env::remove_var("OB_STORAGE__S3_BUCKET"); }
+        unsafe {
+            std::env::remove_var("OB_STORAGE__S3_BUCKET");
+        }
     }
 
     #[test]
     fn test_s3_config_from_env_missing_secret_key() {
         let _g = ENV_LOCK.lock().unwrap();
-        unsafe { std::env::set_var("OB_STORAGE__S3_BUCKET", "bucket"); }
-        unsafe { std::env::set_var("OB_STORAGE__S3_ACCESS_KEY", "key"); }
-        unsafe { std::env::remove_var("OB_STORAGE__S3_SECRET_KEY"); }
+        unsafe {
+            std::env::set_var("OB_STORAGE__S3_BUCKET", "bucket");
+        }
+        unsafe {
+            std::env::set_var("OB_STORAGE__S3_ACCESS_KEY", "key");
+        }
+        unsafe {
+            std::env::remove_var("OB_STORAGE__S3_SECRET_KEY");
+        }
         assert!(S3Config::from_env().is_none());
-        unsafe { std::env::remove_var("OB_STORAGE__S3_BUCKET"); }
-        unsafe { std::env::remove_var("OB_STORAGE__S3_ACCESS_KEY"); }
+        unsafe {
+            std::env::remove_var("OB_STORAGE__S3_BUCKET");
+        }
+        unsafe {
+            std::env::remove_var("OB_STORAGE__S3_ACCESS_KEY");
+        }
     }
 
     #[test]
@@ -455,31 +514,65 @@ mod tests {
     #[test]
     fn test_s3_config_partial_env_missing_access_key() {
         let _g = ENV_LOCK.lock().unwrap();
-        unsafe { std::env::set_var("OB_STORAGE__S3_BUCKET", "b"); }
-        unsafe { std::env::set_var("OB_STORAGE__S3_REGION", "us-east-1"); }
-        unsafe { std::env::set_var("OB_STORAGE__S3_SECRET_KEY", "sk"); }
-        unsafe { std::env::remove_var("OB_STORAGE__S3_ACCESS_KEY"); }
-        unsafe { std::env::remove_var("OB_STORAGE__S3_ENDPOINT"); }
+        unsafe {
+            std::env::set_var("OB_STORAGE__S3_BUCKET", "b");
+        }
+        unsafe {
+            std::env::set_var("OB_STORAGE__S3_REGION", "us-east-1");
+        }
+        unsafe {
+            std::env::set_var("OB_STORAGE__S3_SECRET_KEY", "sk");
+        }
+        unsafe {
+            std::env::remove_var("OB_STORAGE__S3_ACCESS_KEY");
+        }
+        unsafe {
+            std::env::remove_var("OB_STORAGE__S3_ENDPOINT");
+        }
         assert!(S3Config::from_env().is_none());
-        unsafe { std::env::remove_var("OB_STORAGE__S3_BUCKET"); }
-        unsafe { std::env::remove_var("OB_STORAGE__S3_REGION"); }
-        unsafe { std::env::remove_var("OB_STORAGE__S3_SECRET_KEY"); }
+        unsafe {
+            std::env::remove_var("OB_STORAGE__S3_BUCKET");
+        }
+        unsafe {
+            std::env::remove_var("OB_STORAGE__S3_REGION");
+        }
+        unsafe {
+            std::env::remove_var("OB_STORAGE__S3_SECRET_KEY");
+        }
     }
 
     #[test]
     fn test_s3_config_region_empty_string_is_used() {
         let _g = ENV_LOCK.lock().unwrap();
-        unsafe { std::env::set_var("OB_STORAGE__S3_BUCKET", "b"); }
-        unsafe { std::env::set_var("OB_STORAGE__S3_REGION", ""); }
-        unsafe { std::env::set_var("OB_STORAGE__S3_ACCESS_KEY", "ak"); }
-        unsafe { std::env::set_var("OB_STORAGE__S3_SECRET_KEY", "sk"); }
-        unsafe { std::env::remove_var("OB_STORAGE__S3_ENDPOINT"); }
+        unsafe {
+            std::env::set_var("OB_STORAGE__S3_BUCKET", "b");
+        }
+        unsafe {
+            std::env::set_var("OB_STORAGE__S3_REGION", "");
+        }
+        unsafe {
+            std::env::set_var("OB_STORAGE__S3_ACCESS_KEY", "ak");
+        }
+        unsafe {
+            std::env::set_var("OB_STORAGE__S3_SECRET_KEY", "sk");
+        }
+        unsafe {
+            std::env::remove_var("OB_STORAGE__S3_ENDPOINT");
+        }
         let config = S3Config::from_env().unwrap();
         assert_eq!(config.region, "");
-        unsafe { std::env::remove_var("OB_STORAGE__S3_BUCKET"); }
-        unsafe { std::env::remove_var("OB_STORAGE__S3_REGION"); }
-        unsafe { std::env::remove_var("OB_STORAGE__S3_ACCESS_KEY"); }
-        unsafe { std::env::remove_var("OB_STORAGE__S3_SECRET_KEY"); }
+        unsafe {
+            std::env::remove_var("OB_STORAGE__S3_BUCKET");
+        }
+        unsafe {
+            std::env::remove_var("OB_STORAGE__S3_REGION");
+        }
+        unsafe {
+            std::env::remove_var("OB_STORAGE__S3_ACCESS_KEY");
+        }
+        unsafe {
+            std::env::remove_var("OB_STORAGE__S3_SECRET_KEY");
+        }
     }
 
     #[test]
@@ -518,7 +611,9 @@ mod tests {
     #[tokio::test]
     async fn test_s3_storage_upload_error_on_unreachable() {
         let storage = test_s3_storage().await;
-        let result = storage.upload("test/file.txt", b"hello", "text/plain").await;
+        let result = storage
+            .upload("test/file.txt", b"hello", "text/plain")
+            .await;
         assert!(result.is_err(), "Upload to unreachable S3 should fail");
     }
 
@@ -564,20 +659,40 @@ mod tests {
         let storage = test_s3_storage().await;
         let result = storage.presign_download("test/file.txt", 3600).await;
         // Presigning doesn't need network — it's computed locally
-        assert!(result.is_ok(), "Presign download should succeed without network");
+        assert!(
+            result.is_ok(),
+            "Presign download should succeed without network"
+        );
         let url = result.unwrap();
-        assert!(url.contains("test-bucket"), "URL should contain bucket name");
-        assert!(url.contains("test/file.txt"), "URL should contain object key");
+        assert!(
+            url.contains("test-bucket"),
+            "URL should contain bucket name"
+        );
+        assert!(
+            url.contains("test/file.txt"),
+            "URL should contain object key"
+        );
     }
 
     #[tokio::test]
     async fn test_s3_storage_presign_upload_generates_url() {
         let storage = test_s3_storage().await;
-        let result = storage.presign_upload("uploads/img.jpg", "image/jpeg", 3600).await;
-        assert!(result.is_ok(), "Presign upload should succeed without network");
+        let result = storage
+            .presign_upload("uploads/img.jpg", "image/jpeg", 3600)
+            .await;
+        assert!(
+            result.is_ok(),
+            "Presign upload should succeed without network"
+        );
         let url = result.unwrap();
-        assert!(url.contains("test-bucket"), "URL should contain bucket name");
-        assert!(url.contains("uploads/img.jpg"), "URL should contain object key");
+        assert!(
+            url.contains("test-bucket"),
+            "URL should contain bucket name"
+        );
+        assert!(
+            url.contains("uploads/img.jpg"),
+            "URL should contain object key"
+        );
     }
 
     #[tokio::test]
@@ -656,7 +771,7 @@ mod tests {
     async fn test_s3_storage_exists_different_paths() {
         let storage = test_s3_storage().await;
         // exists() returns Ok(false) for unreachable server
-        assert_eq!(storage.exists("any/path").await.unwrap(), false);
-        assert_eq!(storage.exists("another/path.jpg").await.unwrap(), false);
+        assert!(!storage.exists("any/path").await.unwrap());
+        assert!(!storage.exists("another/path.jpg").await.unwrap());
     }
 }

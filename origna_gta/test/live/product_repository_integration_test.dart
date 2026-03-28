@@ -8,6 +8,11 @@ import 'package:origna_gta/core/schema/schema_constants.dart';
 void main() {
   const runLive = bool.fromEnvironment('RUN_ORIGNABASE_LIVE_TESTS', defaultValue: false);
 
+  if (!runLive) {
+    test('live tests disabled', () {});
+    return;
+  }
+
   bool isExpectedPermissionError(Object error) {
     final msg = error.toString().toLowerCase();
     return msg.contains('403') ||
@@ -49,7 +54,6 @@ void main() {
         expect(product!.productId, equals('e2e_product_test_seller'));
         expect(product.priceCents, isPositive);
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -60,7 +64,6 @@ void main() {
         final product = await repo.fetchProductById('nonexistent_product_xyz');
         expect(product, isNull);
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -78,7 +81,6 @@ void main() {
         expect(result.lastDocumentId, isA<String?>());
         expect(result.hasMore, isA<bool>());
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -90,7 +92,6 @@ void main() {
         final products = await repo.fetchProductsByIds(ids);
         expect(products, isList);
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -101,7 +102,6 @@ void main() {
         final products = await repo.fetchProductsByIds([]);
         expect(products, isEmpty);
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -125,7 +125,6 @@ void main() {
           );
         }
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -149,7 +148,6 @@ void main() {
           );
         }
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -161,8 +159,7 @@ void main() {
         expect(id, isNotEmpty);
         expect(id, isA<String>());
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
-  }, skip: !runLive);
+  });
 }

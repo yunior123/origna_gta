@@ -176,7 +176,10 @@ mod tests {
 
     #[test]
     fn test_message_forbidden() {
-        assert_eq!(McpError::Forbidden("secret reason".into()).message(), "Forbidden");
+        assert_eq!(
+            McpError::Forbidden("secret reason".into()).message(),
+            "Forbidden"
+        );
     }
 
     #[test]

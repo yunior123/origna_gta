@@ -67,20 +67,22 @@ fn build_cors_layer(config: &Config, is_test_mode: bool) -> CorsLayer {
 
     cors.allow_credentials(true)
         .allow_methods([
-        Method::GET,
-        Method::POST,
-        Method::PUT,
-        Method::PATCH,
-        Method::DELETE,
-        Method::OPTIONS,
-    ])
+            Method::GET,
+            Method::POST,
+            Method::PUT,
+            Method::PATCH,
+            Method::DELETE,
+            Method::OPTIONS,
+        ])
         .allow_headers([
             header::ACCEPT,
             header::AUTHORIZATION,
             header::CONTENT_TYPE,
             header::ORIGIN,
             header::CACHE_CONTROL,
-            "x-requested-with".parse().expect("static header should parse"),
+            "x-requested-with"
+                .parse()
+                .expect("static header should parse"),
             "x-tenant-id".parse().expect("static header should parse"),
         ])
 }

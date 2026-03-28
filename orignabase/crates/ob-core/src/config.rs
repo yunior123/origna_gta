@@ -689,10 +689,12 @@ mod tests {
         unsafe { std::env::set_var("OB_PORT", "not_a_number") };
         let result = Config::load(None);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("OB_PORT must be a number"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("OB_PORT must be a number")
+        );
         clear_all_ob_env_vars();
 
         // -- OB_DATABASE__ENDPOINT --
@@ -741,10 +743,12 @@ mod tests {
         unsafe { std::env::set_var("OB_AUTH__ACCESS_TOKEN_TTL_SECS", "abc") };
         let result = Config::load(None);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Invalid access token TTL"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Invalid access token TTL")
+        );
         clear_all_ob_env_vars();
 
         // -- OB_AUTH__REFRESH_TOKEN_TTL_SECS (valid) --
@@ -757,10 +761,12 @@ mod tests {
         unsafe { std::env::set_var("OB_AUTH__REFRESH_TOKEN_TTL_SECS", "xyz") };
         let result = Config::load(None);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Invalid refresh token TTL"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Invalid refresh token TTL")
+        );
         clear_all_ob_env_vars();
 
         // -- OB_SECURITY__RULES_PATH --

@@ -17,7 +17,7 @@
 20. improve local host test configuration and test system for stripe cli webhook forwarding, orignabase, meilisearch,flutter
 21. use delegation to document codebase like pro, search web for best practices. document so well that it will avoid going back and forth many times: ex: we were using for loop for images compression then future.wait then for loop again. document functions, clases, etc
 22. priority goes to live tests in rust first then flutter, increase coverage for tests running against localhost orignabase,surrealdb,meilisearch,flutter
-23. u have limited tokens so u have to delegate a lot, u can try gemini,kilo,opencode
+23. u have limited tokens so u have to delegate a lot, u can try gemini,kilo,opencode,codex
 24. fix all, test in depth
 25. create delegation plan, ask me questions
 26. do not skip, be a pro. ex:Right — skipping application_fee_amount in test mode is a workaround, not a proper fix. The pro fix: check the seller's
@@ -38,15 +38,15 @@
 40. when running e2e, after running smoke tests then try the the tests that trigger email being sent for yuniorrodriguezo460@gmail.com, yr62813@gmail.com, yuniorrodriguezo4601@yahoo.com
 41. be careful with ram
 42. in the case of future updates users should be prompted to update app, specially for mobile, tablet, etc
-43. how do we see the admin side of orignabase, similar to firebase panel, inspect that.maybe we can have something like dev.admin.orignagta.ca and do the same for staging, production. verify that, make sure security is bullet proof.
+
 44. right now we have this:     http_client: auth_http_client,
  1009 +        test_mode: std::env::var("OB_TEST_MODE").unwrap_or_default() == "1",
  1010      }; . but are we handling localhost, dev, staging and prod environments properly?. please search the web and github for best practices.
-45. create skill for security of infrasctructure, it will search latest news on how hackers are abusing the internet and gather cases that might affect us, then it will audit the code based on real findings, no false positives, critical issues only.
+45. improve skill for security of infrasctructure, it will search latest news on how hackers are abusing the internet and gather cases that might affect us, then it will audit the code based on real findings, no false positives, critical issues only.
 46. reinforce and improve error codes and error handling for rust and dart, it has to be state of the art.
-47. take a look at flutter docs and how they handle previews. should we move previews out of previews folder and put then per screen and widget?. either case inspect previews and send pictures to codex or gemini for feedback, real pictures, it can be screenshots. i dont like the full scroll feature that we have for previews, prefer to keep it standard as per flutter documentation.save screenshots in desktop
+47. take a look at flutter docs and how they handle previews. improve.
 48. document functions, classes, etc to avoid constant back and forth
-49. new task:search latest blog from anthropic for agent harness, lets study how to apply it to our project
+49. improve harness loop
 https://www.anthropic.com/engineering/harness-design-long-running-apps
 50. /harness-loop use agent browser  and dont stop till u audit and fix
     all design entirely, every single view and widget, variants and states,all
@@ -67,6 +67,8 @@ begining, middle, end, or something like that for large views.
 
 52. audit images screenshots  vs names. delegate to codex that. there are many inconsistencies.the idea of this: 3. Name audit (queued) — check all 305 filenames vs content, rename mismatches,
   delete dupes. is that screenshots are not taken correctly probably due to issues navigating the app
+
+55. e2e ai: give it navigation routes info + semantics from flutter + test users:yuniorrodriguezo460@gmail.com, yr62813@gmail.com, yuniorrodriguezo4601@yahoo.com + big prompt to make it cover all
 
 EXAMPLES:
 EX1

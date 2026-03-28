@@ -13,7 +13,12 @@ void main() {
   );
 
   if (!runLive) {
-    test('Skip live tests', () {}, skip: 'live tests disabled');
+    test('live tests disabled', () {});
+    return;
+  }
+
+  if (!runLive) {
+    test('Skip live tests', () {});
     return;
   }
 

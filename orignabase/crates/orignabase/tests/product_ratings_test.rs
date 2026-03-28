@@ -20,7 +20,10 @@ async fn register_test_user(client: &Client) -> (String, String) {
         .expect("register failed");
     assert_eq!(resp.status(), 200);
     let body: Value = resp.json().await.unwrap();
-    let token = body["access_token"].as_str().expect("missing access_token").to_string();
+    let token = body["access_token"]
+        .as_str()
+        .expect("missing access_token")
+        .to_string();
     let user_id = body["user"]["id"].as_str().unwrap_or("").to_string();
     (token, user_id)
 }
@@ -60,7 +63,10 @@ async fn test_rate_purchased_product() {
     let query = create_doc_query("products", &product_data);
     let (status, body) = graphql(&client, Some(&seller_token), &query).await;
     assert_eq!(status, 200);
-    let product_id = body["data"]["create"]["id"].as_str().unwrap_or("").to_string();
+    let product_id = body["data"]["create"]["id"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
 
     // Create order
     let order_data = json!({
@@ -74,7 +80,10 @@ async fn test_rate_purchased_product() {
     let query = create_doc_query("orders", &order_data);
     let (status, body) = graphql(&client, Some(&buyer_token), &query).await;
     assert_eq!(status, 200);
-    let order_id = body["data"]["create"]["id"].as_str().unwrap_or("").to_string();
+    let order_id = body["data"]["create"]["id"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
 
     // Submit rating
     let rating_data = json!({
@@ -107,7 +116,10 @@ async fn test_seller_cannot_rate_own_product() {
     let query = create_doc_query("products", &product_data);
     let (status, body) = graphql(&client, Some(&seller_token), &query).await;
     assert_eq!(status, 200);
-    let product_id = body["data"]["create"]["id"].as_str().unwrap_or("").to_string();
+    let product_id = body["data"]["create"]["id"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
 
     // Seller tries to rate own product
     let rating_data = json!({
@@ -141,7 +153,10 @@ async fn test_get_ratings_list() {
     let query = create_doc_query("products", &product_data);
     let (status, body) = graphql(&client, Some(&seller_token), &query).await;
     assert_eq!(status, 200);
-    let product_id = body["data"]["create"]["id"].as_str().unwrap_or("").to_string();
+    let product_id = body["data"]["create"]["id"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
 
     // Submit rating
     let rating_data = json!({
@@ -158,9 +173,8 @@ async fn test_get_ratings_list() {
     // Fetch ratings
     let filters = serde_json::to_string(&json!({"productId": {"_eq": product_id}})).unwrap();
     let escaped_f = serde_json::to_string(&filters).unwrap();
-    let query = format!(
-        r#"{{ list(collection: "product_ratings", filters: {escaped_f}, limit: 10) }}"#
-    );
+    let query =
+        format!(r#"{{ list(collection: "product_ratings", filters: {escaped_f}, limit: 10) }}"#);
     let (status, body) = graphql(&client, Some(&buyer_token), &query).await;
 
     assert_eq!(status, 200);
@@ -184,13 +198,15 @@ async fn test_get_ratings_pagination() {
     let query = create_doc_query("products", &product_data);
     let (status, body) = graphql(&client, Some(&seller_token), &query).await;
     assert_eq!(status, 200);
-    let product_id = body["data"]["create"]["id"].as_str().unwrap_or("").to_string();
+    let product_id = body["data"]["create"]["id"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
 
     let filters = serde_json::to_string(&json!({"productId": {"_eq": product_id}})).unwrap();
     let escaped_f = serde_json::to_string(&filters).unwrap();
-    let query = format!(
-        r#"{{ list(collection: "product_ratings", filters: {escaped_f}, limit: 5) }}"#
-    );
+    let query =
+        format!(r#"{{ list(collection: "product_ratings", filters: {escaped_f}, limit: 5) }}"#);
     let (status, body) = graphql(&client, Some(&buyer_token), &query).await;
 
     assert_eq!(status, 200);

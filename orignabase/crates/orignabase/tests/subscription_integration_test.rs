@@ -3,12 +3,9 @@
 //! Run with: `cd orignabase && cargo test --test subscription_integration_test -- --ignored`
 
 use serde_json::{Value, json};
-use std::time::Duration;
-use tokio::time::sleep;
 
 fn base_url() -> String {
-    std::env::var("OB_TEST_URL")
-        .unwrap_or_else(|_| "https://api.dev.orignagta.ca".to_string())
+    std::env::var("OB_TEST_URL").unwrap_or_else(|_| "https://api.dev.orignagta.ca".to_string())
 }
 
 /// Login as buyer and return (token, user_id).
@@ -54,20 +51,23 @@ async fn create_subscription(
         .map_err(|e| format!("request failed: {}", e))?;
 
     let status = resp.status();
-    let body: Value = resp.json().await.map_err(|e| format!("parse response: {}", e))?;
+    let body: Value = resp
+        .json()
+        .await
+        .map_err(|e| format!("parse response: {}", e))?;
 
     if status == 201 {
         Ok(body)
     } else {
-        Err(format!("subscription creation failed: {} — {}", status, body))
+        Err(format!(
+            "subscription creation failed: {} — {}",
+            status, body
+        ))
     }
 }
 
 /// Get user's subscription status.
-async fn get_subscription_status(
-    client: &reqwest::Client,
-    token: &str,
-) -> Result<Value, String> {
+async fn get_subscription_status(client: &reqwest::Client, token: &str) -> Result<Value, String> {
     let resp = client
         .get(format!("{}/subscriptions/status", base_url()))
         .header("Authorization", format!("Bearer {}", token))
@@ -76,7 +76,10 @@ async fn get_subscription_status(
         .map_err(|e| format!("request failed: {}", e))?;
 
     let status = resp.status();
-    let body: Value = resp.json().await.map_err(|e| format!("parse response: {}", e))?;
+    let body: Value = resp
+        .json()
+        .await
+        .map_err(|e| format!("parse response: {}", e))?;
 
     if status == 200 {
         Ok(body)
@@ -149,30 +152,34 @@ async fn test_subscription_early_cancel_tracking() {
 
         // Immediately cancel (within 7 days)
         let cancel_resp = client
-            .post(format!("{}/subscriptions/{}/cancel", base_url(), subscription_id))
+            .post(format!(
+                "{}/subscriptions/{}/cancel",
+                base_url(),
+                subscription_id
+            ))
             .header("Authorization", format!("Bearer {}", buyer_token))
             .json(&json!({}))
             .send()
             .await;
 
-        if let Ok(resp) = cancel_resp {
-            if resp.status() == 200 {
-                let body: Value = resp.json().await.unwrap_or(json!({}));
-                
-                let was_early_cancel = body["wasEarlyCancel"].as_bool().unwrap_or(false);
-                assert!(
-                    was_early_cancel,
-                    "Immediate cancellation should be marked as early cancel"
-                );
+        if let Ok(resp) = cancel_resp
+            && resp.status() == 200
+        {
+            let body: Value = resp.json().await.unwrap_or(json!({}));
 
-                // Check subscription status again
-                if let Ok(status) = get_subscription_status(&client, &buyer_token).await {
-                    let early_cancel_count = status["earlyCancelCount"].as_i64().unwrap_or(0);
-                    assert!(
-                        early_cancel_count >= 1,
-                        "early_cancel_count should increment after early cancel"
-                    );
-                }
+            let was_early_cancel = body["wasEarlyCancel"].as_bool().unwrap_or(false);
+            assert!(
+                was_early_cancel,
+                "Immediate cancellation should be marked as early cancel"
+            );
+
+            // Check subscription status again
+            if let Ok(status) = get_subscription_status(&client, &buyer_token).await {
+                let early_cancel_count = status["earlyCancelCount"].as_i64().unwrap_or(0);
+                assert!(
+                    early_cancel_count >= 1,
+                    "early_cancel_count should increment after early cancel"
+                );
             }
         }
     }

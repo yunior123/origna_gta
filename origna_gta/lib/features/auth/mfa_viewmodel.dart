@@ -9,6 +9,17 @@ final mfaViewModelProvider =
   (ref) => MfaViewModel(ref),
 );
 
+/// Manages MFA setup, verification, and disable flows for the current user.
+///
+/// Returns:
+/// - UI state via [MfaState], including setup step, QR/manual secret data,
+///   recovery codes, and loading/error flags.
+///
+/// Gotchas:
+/// - Setup is multi-step: [startSetup] only creates a pending secret; MFA is not
+///   active until [verifySetup] succeeds.
+/// - Challenge verification methods return booleans for login flow callers while
+///   also mutating [state] for loading and error display.
 class MfaViewModel extends StateNotifier<MfaState> {
   final Ref _ref;
 
@@ -73,7 +84,18 @@ class MfaViewModel extends StateNotifier<MfaState> {
   }
 
   /// Verifies a TOTP code during MFA challenge (login flow).
-  /// Returns `true` if authentication succeeded.
+  ///
+  /// Parameters:
+  /// - [challengeToken]: short-lived token returned from the password login step.
+  /// - [code]: six-digit TOTP code from the authenticator app.
+  ///
+  /// Returns:
+  /// - `true` when the backend accepts the challenge and authenticates the user.
+  /// - `false` when verification fails; [state.errorMessage] is populated.
+  ///
+  /// Gotchas:
+  /// - This method does not navigate or persist session state itself; callers must
+  ///   react to the boolean result.
   Future<bool> verifyChallenge(String challengeToken, String code) async {
     state = state.copyWith(isLoading: true, errorMessage: null);
     try {

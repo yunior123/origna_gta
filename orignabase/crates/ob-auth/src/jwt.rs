@@ -1,6 +1,6 @@
-use crate::{fingerprint_public_key, KeyRotationManager};
+use crate::{KeyRotationManager, fingerprint_public_key};
 use chrono::Utc;
-use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
+use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use ob_core::{Error, Result};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -109,10 +109,12 @@ impl JwtKeys {
     }
 
     fn validation(&self) -> Validation {
-        match self {
+        let mut validation = match self {
             Self::Rsa { .. } => Validation::new(Algorithm::RS256),
             Self::Hmac { .. } => Validation::default(), // HS256
-        }
+        };
+        validation.leeway = 30;
+        validation
     }
 
     fn decoding_key(&self) -> DecodingKey {
@@ -266,8 +268,20 @@ pub fn issue_challenge_token(user_id: &str, keys: &JwtKeys) -> Result<String> {
         .map_err(|e| Error::Auth(format!("Challenge token creation failed: {e}")))
 }
 
-/// Verify and decode a JWT token.
-/// For RS256 keys: tries current key first, falls back to previous keys.
+/// Verifies a JWT against the active signing key set and returns its claims.
+///
+/// Parameters:
+/// - `token`: raw bearer token string to decode and validate.
+/// - `keys`: current JWT key material plus any retained previous decoding keys.
+///
+/// Returns:
+/// - `Ok(Claims)` when signature, expiry, and standard claim validation succeed.
+/// - `Err(...)` if no active or previous key can validate the token.
+///
+/// Gotchas:
+/// - Validation policy comes from `keys.validation()`, so accepted algorithms and claim
+///   checks are centralized there rather than in each caller.
+/// - Only the most recent previous key is tried to limit the post-rotation acceptance window.
 pub fn verify_token(token: &str, keys: &JwtKeys) -> Result<Claims> {
     let validation = keys.validation();
 
@@ -344,8 +358,19 @@ pub fn generate_rsa_keys(keys_dir: &Path) -> Result<(Vec<u8>, Vec<u8>)> {
     Ok((private_pem, public_pem))
 }
 
-/// Rotate JWT keys: generate new key pair, archive old one, update metadata.
-/// Returns the fingerprint of the new key.
+/// Rotates the JWT RSA key pair on disk and records the new public-key fingerprint.
+///
+/// Parameters:
+/// - `keys_dir`: directory containing the active key pair and rotation metadata.
+///
+/// Returns:
+/// - `Ok(String)` with the fingerprint of the newly active public key.
+/// - `Err(...)` if archiving, key generation, metadata persistence, or cleanup fails.
+///
+/// Gotchas:
+/// - Existing keys are archived before replacement, so the directory must be writable.
+/// - The caller is responsible for reloading in-memory key state after rotation completes.
+/// - Backup cleanup is intentionally conservative and keeps a small rollback window.
 pub fn rotate_keys(keys_dir: &Path) -> Result<String> {
     use std::fs;
 
@@ -608,7 +633,7 @@ mod tests {
 
         let now = chrono::Utc::now().timestamp();
         let age = now - claims.iat;
-        assert!(age >= 0 && age <= 5);
+        assert!((0..=5).contains(&age));
     }
 
     #[test]
@@ -1005,7 +1030,7 @@ mod tests {
         let backups: Vec<_> = std::fs::read_dir(&dir)
             .unwrap()
             .filter_map(|e| e.ok())
-            .filter(|e| e.path().extension().map_or(false, |ext| ext == "bak"))
+            .filter(|e| e.path().extension().is_some_and(|ext| ext == "bak"))
             .collect();
         assert!(!backups.is_empty());
         let _ = std::fs::remove_dir_all(&dir);
@@ -1022,7 +1047,7 @@ mod tests {
         let remaining: Vec<_> = std::fs::read_dir(&dir)
             .unwrap()
             .filter_map(|e| e.ok())
-            .filter(|e| e.path().extension().map_or(false, |ext| ext == "bak"))
+            .filter(|e| e.path().extension().is_some_and(|ext| ext == "bak"))
             .collect();
         assert_eq!(remaining.len(), 3);
         let _ = std::fs::remove_dir_all(&dir);

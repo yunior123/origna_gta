@@ -10,7 +10,12 @@ void main() {
     defaultValue: false,
   );
 
-  group('Checkout Integration', skip: !runLive ? 'live tests disabled' : null, () {
+  if (!runLive) {
+    test('live tests disabled', () {});
+    return;
+  }
+
+  group('Checkout Integration', () {
     late ProviderContainer container;
     late OrignaBase ob;
     const buyerEmail = 'e2e-buyer@test.origna.ca';

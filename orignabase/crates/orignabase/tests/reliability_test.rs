@@ -346,9 +346,8 @@ async fn test_12_connection_pool_exhaustion_100_concurrent_requests() {
             }))
             .expect("serialize");
             let escaped = serde_json::to_string(&data).expect("escape");
-            let query = format!(
-                r#"mutation {{ create(collection: "{collection}", data: {escaped}) }}"#,
-            );
+            let query =
+                format!(r#"mutation {{ create(collection: "{collection}", data: {escaped}) }}"#,);
             let resp = graphql(&client, token.as_str(), &query).await;
             resp.status()
         });

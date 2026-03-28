@@ -7,6 +7,11 @@ import 'package:origna_gta/core/repositories/orignabase_cart_repository.dart';
 void main() {
   const runLive = bool.fromEnvironment('RUN_ORIGNABASE_LIVE_TESTS', defaultValue: false);
 
+  if (!runLive) {
+    test('live tests disabled', () {});
+    return;
+  }
+
   group('OrignaBaseCartRepository integration', () {
     late ProviderContainer container;
     late OrignaBase ob;
@@ -51,7 +56,6 @@ void main() {
         final event = await stream.first.timeout(const Duration(seconds: 10));
         expect(event, isList);
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -77,7 +81,6 @@ void main() {
         // Clean up
         await repo.clearCart(buyerId);
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -110,7 +113,6 @@ void main() {
         // Clean up
         await repo.clearCart(buyerId);
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -139,7 +141,6 @@ void main() {
         // Clean up
         await repo.clearCart(buyerId);
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -163,7 +164,6 @@ void main() {
         cartItems = await repo.watchCart(buyerId).first.timeout(const Duration(seconds: 10));
         expect(cartItems, isEmpty);
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -175,7 +175,6 @@ void main() {
         final isValid = await repo.isVariantValid(productId, 'nonexistent_variant_xyz');
         expect(isValid, isFalse);
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -188,8 +187,7 @@ void main() {
         expect(sellerId, isNotEmpty);
         expect(sellerId, isA<String>());
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
-  }, skip: !runLive);
+  });
 }

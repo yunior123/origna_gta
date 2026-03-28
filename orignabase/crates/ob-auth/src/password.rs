@@ -1,13 +1,31 @@
 use argon2::{
-    Argon2,
-    password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString, rand_core::OsRng},
+    password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
+    Algorithm, Argon2, Params, Version,
 };
 use ob_core::{Error, Result};
+use std::sync::OnceLock;
+
+fn secure_argon2() -> Argon2<'static> {
+    let params = Params::new(65536, 3, 1, None).expect("hardcoded Argon2id params must be valid");
+    Argon2::new(Algorithm::Argon2id, Version::V0x13, params)
+}
+
+fn dummy_hash() -> &'static str {
+    static DUMMY_HASH: OnceLock<String> = OnceLock::new();
+
+    DUMMY_HASH
+        .get_or_init(|| {
+            hash_password("origna_dummy_password")
+                .expect("hardcoded dummy password hash generation must succeed")
+        })
+        .as_str()
+}
 
 /// Hash a password using Argon2id (OWASP recommended).
+/// Uses 64MB memory, 3 iterations, 1 parallelism per OWASP guidelines.
 pub fn hash_password(password: &str) -> Result<String> {
     let salt = SaltString::generate(&mut OsRng);
-    let argon2 = Argon2::default();
+    let argon2 = secure_argon2();
 
     argon2
         .hash_password(password.as_bytes(), &salt)
@@ -20,8 +38,9 @@ pub fn hash_password(password: &str) -> Result<String> {
 /// burns the same CPU time as a real password verification would, ensuring
 /// the response time is indistinguishable from a real failed login.
 pub fn dummy_verify(password: &str) {
-    let salt = SaltString::generate(&mut OsRng);
-    let _ = Argon2::default().hash_password(password.as_bytes(), &salt);
+    if let Ok(parsed) = PasswordHash::new(dummy_hash()) {
+        let _ = secure_argon2().verify_password(password.as_bytes(), &parsed);
+    }
 }
 
 /// Verify a password against its Argon2id hash.
@@ -29,7 +48,7 @@ pub fn verify_password(password: &str, hash: &str) -> Result<bool> {
     let parsed =
         PasswordHash::new(hash).map_err(|e| Error::Internal(format!("Invalid hash: {e}")))?;
 
-    Ok(Argon2::default()
+    Ok(secure_argon2()
         .verify_password(password.as_bytes(), &parsed)
         .is_ok())
 }
@@ -166,22 +185,32 @@ fn test_timing_dummy_verify_similar_to_real() {
     let password = "test_password_12345";
     let hash = hash_password(password).unwrap();
 
-    let start_dummy = Instant::now();
-    dummy_verify(&password);
-    let dummy_time = start_dummy.elapsed();
+    // Warm the cached dummy hash to avoid one-time initialization skewing timings.
+    dummy_verify(password);
 
-    let start_real = Instant::now();
-    let _ = verify_password(&password, &hash);
-    let real_time = start_real.elapsed();
+    let dummy_total = (0..3).fold(0u128, |acc, _| {
+        let start = Instant::now();
+        dummy_verify(password);
+        acc + start.elapsed().as_millis()
+    });
+
+    let real_total = (0..3).fold(0u128, |acc, _| {
+        let start = Instant::now();
+        let _ = verify_password(password, &hash);
+        acc + start.elapsed().as_millis()
+    });
+
+    let dummy_time = dummy_total / 3;
+    let real_time = real_total / 3;
 
     // Dummy and real should be in similar ballpark (within 2x)
     // Note: This is a rough heuristic, timing can vary
-    let ratio = dummy_time.as_millis() as f64 / real_time.as_millis().max(1) as f64;
+    let ratio = dummy_time as f64 / real_time.max(1) as f64;
     assert!(
         ratio > 0.5 && ratio < 2.0,
         "Timing mismatch: dummy {}, real {}",
-        dummy_time.as_millis(),
-        real_time.as_millis()
+        dummy_time,
+        real_time
     );
 }
 

@@ -20,7 +20,10 @@ async fn register_test_user(client: &Client) -> (String, String) {
         .expect("register failed");
     assert_eq!(resp.status(), 200);
     let body: Value = resp.json().await.unwrap();
-    let token = body["access_token"].as_str().expect("missing access_token").to_string();
+    let token = body["access_token"]
+        .as_str()
+        .expect("missing access_token")
+        .to_string();
     let user_id = body["user"]["id"].as_str().unwrap_or("").to_string();
     (token, user_id)
 }
@@ -60,7 +63,10 @@ async fn test_create_return_for_delivered_order() {
     let query = create_doc_query("products", &product_data);
     let (status, body) = graphql(&client, Some(&seller_token), &query).await;
     assert_eq!(status, 200);
-    let product_id = body["data"]["create"]["id"].as_str().unwrap_or("").to_string();
+    let product_id = body["data"]["create"]["id"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
 
     // Create order
     let order_data = json!({
@@ -74,7 +80,10 @@ async fn test_create_return_for_delivered_order() {
     let query = create_doc_query("orders", &order_data);
     let (status, body) = graphql(&client, Some(&buyer_token), &query).await;
     assert_eq!(status, 200);
-    let order_id = body["data"]["create"]["id"].as_str().unwrap_or("").to_string();
+    let order_id = body["data"]["create"]["id"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
 
     // Create return request
     let return_data = json!({
@@ -108,7 +117,10 @@ async fn test_cannot_return_pending_order() {
     let query = create_doc_query("products", &product_data);
     let (status, body) = graphql(&client, Some(&seller_token), &query).await;
     assert_eq!(status, 200);
-    let product_id = body["data"]["create"]["id"].as_str().unwrap_or("").to_string();
+    let product_id = body["data"]["create"]["id"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
 
     // Create order in pending state
     let order_data = json!({
@@ -122,7 +134,10 @@ async fn test_cannot_return_pending_order() {
     let query = create_doc_query("orders", &order_data);
     let (status, body) = graphql(&client, Some(&buyer_token), &query).await;
     assert_eq!(status, 200);
-    let order_id = body["data"]["create"]["id"].as_str().unwrap_or("").to_string();
+    let order_id = body["data"]["create"]["id"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
 
     // Create return for pending order
     let return_data = json!({
@@ -155,7 +170,10 @@ async fn test_return_request_rejection() {
     let query = create_doc_query("products", &product_data);
     let (status, body) = graphql(&client, Some(&seller_token), &query).await;
     assert_eq!(status, 200);
-    let product_id = body["data"]["create"]["id"].as_str().unwrap_or("").to_string();
+    let product_id = body["data"]["create"]["id"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
 
     let order_data = json!({
         "buyerId": buyer_id,
@@ -168,7 +186,10 @@ async fn test_return_request_rejection() {
     let query = create_doc_query("orders", &order_data);
     let (status, body) = graphql(&client, Some(&buyer_token), &query).await;
     assert_eq!(status, 200);
-    let order_id = body["data"]["create"]["id"].as_str().unwrap_or("").to_string();
+    let order_id = body["data"]["create"]["id"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
 
     // Create return request
     let return_data = json!({
@@ -182,7 +203,10 @@ async fn test_return_request_rejection() {
     let (status, body) = graphql(&client, Some(&buyer_token), &query).await;
     assert_eq!(status, 200);
 
-    let return_id = body["data"]["create"]["id"].as_str().unwrap_or("").to_string();
+    let return_id = body["data"]["create"]["id"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
     if !return_id.is_empty() {
         // Seller rejects the return
         let data = serde_json::to_string(&json!({"status": "rejected"})).unwrap();
@@ -211,7 +235,10 @@ async fn test_partial_refund() {
     let query = create_doc_query("products", &product_data);
     let (status, body) = graphql(&client, Some(&seller_token), &query).await;
     assert_eq!(status, 200);
-    let product_id = body["data"]["create"]["id"].as_str().unwrap_or("").to_string();
+    let product_id = body["data"]["create"]["id"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
 
     let order_data = json!({
         "buyerId": buyer_id,
@@ -224,7 +251,10 @@ async fn test_partial_refund() {
     let query = create_doc_query("orders", &order_data);
     let (status, body) = graphql(&client, Some(&buyer_token), &query).await;
     assert_eq!(status, 200);
-    let order_id = body["data"]["create"]["id"].as_str().unwrap_or("").to_string();
+    let order_id = body["data"]["create"]["id"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
 
     // Create refund record
     let refund_data = json!({

@@ -480,8 +480,9 @@ pub(crate) fn html_escape(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tokio::sync::Mutex;
 
-    static ENV_MUTEX: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    static ENV_MUTEX: Mutex<()> = Mutex::const_new(());
 
     /// Guard that cleans up env vars even on panic.
     struct EnvGuard;
@@ -496,14 +497,16 @@ mod tests {
         use wiremock::matchers::{method, path};
         use wiremock::{Mock, MockServer, ResponseTemplate};
 
-        let _lock = ENV_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+        let _lock = ENV_MUTEX.lock().await;
         let server = MockServer::start().await;
         let _guard = EnvGuard;
         unsafe { std::env::set_var("MAILJET_API_URL", server.uri()) };
 
         Mock::given(method("POST"))
             .and(path("/"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({"status":"success"})))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_json(serde_json::json!({"status":"success"})),
+            )
             .mount(&server)
             .await;
 
@@ -518,7 +521,7 @@ mod tests {
         use wiremock::matchers::{method, path};
         use wiremock::{Mock, MockServer, ResponseTemplate};
 
-        let _lock = ENV_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+        let _lock = ENV_MUTEX.lock().await;
         let server = MockServer::start().await;
         let _guard = EnvGuard;
         unsafe { std::env::set_var("MAILJET_API_URL", server.uri()) };
@@ -670,10 +673,7 @@ mod tests {
         assert_eq!(err.to_string(), "Missing credentials");
 
         let err2 = EmailError::MailjetApi { status: 400 };
-        assert_eq!(
-            err2.to_string(),
-            "Email service error (status 400)"
-        );
+        assert_eq!(err2.to_string(), "Email service error (status 400)");
     }
 
     #[test]

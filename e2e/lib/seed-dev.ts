@@ -19,13 +19,24 @@
 
 import { signIn } from './auth.js';
 import { TEST_ACCOUNTS } from './config.js';
-import { writeDoc } from './api-client.js';
+import { callOk, obGraphQL, parseGraphQLValue, writeDoc } from './api-client.js';
+import { existsSync, unlinkSync } from 'node:fs';
 
 type AuthBundle = Awaited<ReturnType<typeof signIn>>;
 
 type SeedUser = {
+  seedKey?: string;
   id: string;
   email: string;
+  displayName: string;
+  roles: string[];
+  isPremium?: boolean;
+  suspended?: boolean;
+  stripeOnboarded?: boolean;
+};
+
+type SeededAuthBundle = AuthBundle & {
+  seedKey?: string;
   displayName: string;
   roles: string[];
   isPremium?: boolean;
@@ -120,6 +131,26 @@ const NOTIFICATION_TYPES = [
   'payout_ready',
   'new_message',
 ];
+const LEGACY_TEST_EMAILS = [
+  'yuniorrodriguezo460@gmail.com',
+  'yr62813@gmail.com',
+  'yuniorrodriguezo4601@yahoo.com',
+] as const;
+const CANADIAN_ADDRESS_LABELS = ['Home', 'Work', 'Other', 'Studio', 'Parents'] as const;
+const PRIMARY_SELLER_DASHBOARD_PRODUCTS = [
+  { id: 'seller_dash_active_01', title: 'Seller Dashboard Active Camera', categoryId: 1, categoryName: 'Electronics', subcategory: 'Cameras', priceCents: 18999, lifecycleStatus: 'active', stockQuantity: 18 },
+  { id: 'seller_dash_active_02', title: 'Seller Dashboard Active Headphones', categoryId: 1, categoryName: 'Electronics', subcategory: 'Audio', priceCents: 8999, lifecycleStatus: 'active', stockQuantity: 42 },
+  { id: 'seller_dash_active_03', title: 'Seller Dashboard Active Desk Lamp', categoryId: 4, categoryName: 'Home & Kitchen', subcategory: 'Lighting', priceCents: 4599, lifecycleStatus: 'active', stockQuantity: 27 },
+  { id: 'seller_dash_active_04', title: 'Seller Dashboard Active Sneakers', categoryId: 6, categoryName: 'Shoes & Accessories', subcategory: 'Sneakers', priceCents: 11999, lifecycleStatus: 'active', stockQuantity: 24 },
+  { id: 'seller_dash_active_05', title: 'Seller Dashboard Active Keyboard', categoryId: 2, categoryName: 'Computers', subcategory: 'Accessories', priceCents: 13999, lifecycleStatus: 'active', stockQuantity: 35 },
+  { id: 'seller_dash_draft_01', title: 'Seller Dashboard Draft Bundle', categoryId: 21, categoryName: 'Digital', subcategory: 'Templates', priceCents: 2999, lifecycleStatus: 'draft', stockQuantity: 0 },
+  { id: 'seller_dash_draft_02', title: 'Seller Dashboard Draft Office Kit', categoryId: 13, categoryName: 'Office', subcategory: 'Desk', priceCents: 6599, lifecycleStatus: 'draft', stockQuantity: 0 },
+  { id: 'seller_dash_draft_03', title: 'Seller Dashboard Draft Winter Coat', categoryId: 5, categoryName: 'Fashion', subcategory: 'Outerwear', priceCents: 22999, lifecycleStatus: 'draft', stockQuantity: 0 },
+  { id: 'seller_dash_inactive_01', title: 'Seller Dashboard Inactive Monitor', categoryId: 2, categoryName: 'Computers', subcategory: 'Monitors', priceCents: 26999, lifecycleStatus: 'paused', stockQuantity: 0 },
+  { id: 'seller_dash_inactive_02', title: 'Seller Dashboard Inactive Blender', categoryId: 4, categoryName: 'Home & Kitchen', subcategory: 'Cookware', priceCents: 9999, lifecycleStatus: 'archived', stockQuantity: 0 },
+  { id: 'seller_dash_inactive_03', title: 'Seller Dashboard Inactive Cycling Jersey', categoryId: 10, categoryName: 'Sports', subcategory: 'Cycling', priceCents: 7499, lifecycleStatus: 'paused', stockQuantity: 0 },
+  { id: 'seller_dash_inactive_04', title: 'Seller Dashboard Inactive Travel Bag', categoryId: 6, categoryName: 'Shoes & Accessories', subcategory: 'Travel', priceCents: 15999, lifecycleStatus: 'archived', stockQuantity: 0 },
+] as const;
 
 function isoDaysAgo(days: number, extraMinutes = 0): string {
   return new Date(Date.now() - days * 86_400_000 - extraMinutes * 60_000).toISOString();
@@ -158,6 +189,22 @@ const PRODUCT_IMAGE_POOLS: Record<string, string[]> = {
   ],
 };
 
+const PRODUCT_VIDEO_URLS = [
+  'https://samplelib.com/lib/preview/mp4/sample-5s.mp4',
+  'https://samplelib.com/lib/preview/mp4/sample-10s.mp4',
+  'https://samplelib.com/lib/preview/mp4/sample-15s.mp4',
+] as const;
+
+function sampleVideo(seed: string): { url: string; durationSeconds: number } {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) hash = ((hash << 5) - hash + seed.charCodeAt(i)) | 0;
+  const index = Math.abs(hash % PRODUCT_VIDEO_URLS.length);
+  return {
+    url: PRODUCT_VIDEO_URLS[index],
+    durationSeconds: index == 0 ? 5 : index == 1 ? 10 : 15,
+  };
+}
+
 function sampleImageUrls(seed: string, count = 2, category?: string): string[] {
   const cat = (category || '').toLowerCase();
   const pool = cat.includes('electron') || cat.includes('digital') || cat.includes('computer')
@@ -180,6 +227,23 @@ function sampleImageUrls(seed: string, count = 2, category?: string): string[] {
 
 function slugify(input: string): string {
   return input.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+}
+
+function userIdFromEmail(email: string): string {
+  return `seed_${slugify(email.replace('@', '-at-'))}`;
+}
+
+function userRef(userId: string): string {
+  return userId.startsWith('users:') ? userId : `users:${userId}`;
+}
+
+async function resolveSeedUser(email: string, password: string, fallbackRoles: string[]) {
+  try {
+    const auth = await signIn(email, password);
+    return { id: auth.localId, email: auth.email, roles: fallbackRoles };
+  } catch {
+    return { id: userIdFromEmail(email), email, roles: fallbackRoles };
+  }
 }
 
 function sellerAddress(label: string, country = 'Canada') {
@@ -336,7 +400,7 @@ async function seedSyntheticUsers(admin: AuthBundle, count: number = 5000) {
       suspended: false,
       stripeOnboarded: user.stripeOnboarded ?? false,
       preferredLanguage: Math.random() < 0.25 ? 'fr' : 'en',
-      profileImageUrl: `https://picsum.photos/seed/avatar-${user.id}/200/200`,
+      profileImageUrl: sampleImageUrls(`profile-${user.id}`, 1, 'fashion')[0],
       homeAddress: address,
       createdAt: isoDaysAgo(Math.random() * 365), // Random join date up to 1 year
       updatedAt: new Date().toISOString(),
@@ -365,11 +429,13 @@ async function seedEnhancedFavorites(admin: AuthBundle, buyerIds: string[], prod
     }
 
     for (const productId of buyerFavs) {
+      const createdAt = isoDaysAgo(Math.random() * 90);
       favorites.push({
         id: `favorite_${buyerId}_${favoriteIndex++}`,
         userId: buyerId,
         productId,
-        createdAt: isoDaysAgo(Math.random() * 90),
+        createdAt,
+        dateFavorited: createdAt,
         note: Math.random() > 0.7 ? 'Wishlist item' : undefined,
       });
     }
@@ -378,6 +444,39 @@ async function seedEnhancedFavorites(admin: AuthBundle, buyerIds: string[], prod
   await writeMany(favorites, async fav => {
     await writeDoc(`favorites/${fav.id}`, fav, admin.idToken, true);
   }, 50);
+}
+
+async function listFavoritesForUser(token: string, userId: string): Promise<any[]> {
+  const query = `
+    query ListFavorites($collection: String!, $filters: JSON) {
+      list(collection: $collection, filters: $filters, limit: 200)
+    }
+  `;
+  const result = await obGraphQL(
+    query,
+    {
+      collection: 'favorites',
+      filters: { userId: { _eq: userRef(userId) } },
+    },
+    token,
+  );
+  if (!result.ok) return [];
+  const raw = parseGraphQLValue(result.body?.data?.list);
+  return Array.isArray(raw) ? raw.filter(item => item && typeof item === 'object') : [];
+}
+
+async function seedBuyerFavoritesViaApi(user: AuthBundle, productIds: string[]) {
+  const existingFavorites = await listFavoritesForUser(user.idToken, user.localId);
+  const existingProductIds = new Set(
+    existingFavorites
+      .map(item => item?.productId)
+      .filter((productId): productId is string => typeof productId === 'string' && productId.length > 0),
+  );
+
+  const targetProductIds = productIds.slice(0, FAVORITE_COUNT).filter(productId => !existingProductIds.has(productId));
+  for (const productId of targetProductIds) {
+    await callOk('toggle_favorite', { productId }, user.idToken);
+  }
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -390,16 +489,19 @@ async function seedEnhancedAddresses(admin: AuthBundle, userId: string, userType
   for (let i = 0; i < addressCount; i++) {
     const seed = (userId.charCodeAt(0) * (i + 1)) + (i * 137);
     const address = generateCanadianAddress(seed);
+    const label = CANADIAN_ADDRESS_LABELS[i % CANADIAN_ADDRESS_LABELS.length];
     
     addresses.push({
       id: `address_${userId}_${i}`,
       userId,
-      name: `${userType} Address ${i + 1}`,
-      street: address.street,
-      city: address.city,
-      state: address.state,
-      postalCode: address.postalCode,
-      country: address.country,
+      label,
+      address: {
+        street: address.street,
+        city: address.city,
+        province: address.state,
+        postalCode: address.postalCode,
+        country: address.country,
+      },
       isDefault: i === 0,
       createdAt: isoDaysAgo(30 - i * 5),
       updatedAt: new Date().toISOString(),
@@ -411,30 +513,112 @@ async function seedEnhancedAddresses(admin: AuthBundle, userId: string, userType
   }, 10);
 }
 
+async function listAddressesForUser(token: string, userId: string): Promise<any[]> {
+  const query = `
+    query ListAddresses($collection: String!, $filters: JSON) {
+      list(collection: $collection, filters: $filters, limit: 200)
+    }
+  `;
+  const result = await obGraphQL(
+    query,
+    {
+      collection: 'addresses',
+      filters: { userId: { _eq: userRef(userId) } },
+    },
+    token,
+  );
+  if (!result.ok) return [];
+  const raw = parseGraphQLValue(result.body?.data?.list);
+  return Array.isArray(raw) ? raw.filter(item => item && typeof item === 'object') : [];
+}
+
+async function seedBuyerAddressesViaApi(user: AuthBundle, userType: string, addressCount = 4) {
+  const existingAddresses = await listAddressesForUser(user.idToken, user.localId);
+  let currentAddressCount = existingAddresses.length;
+  if (currentAddressCount >= 10) {
+    return;
+  }
+  const existingKeys = new Set(
+    existingAddresses.map(address => [
+      address?.label ?? '',
+      address?.street ?? address?.address?.street ?? '',
+      address?.city ?? address?.address?.city ?? '',
+      address?.province ?? address?.address?.province ?? '',
+      address?.postalCode ?? address?.address?.postalCode ?? '',
+      address?.country ?? address?.address?.country ?? '',
+    ].join('|')),
+  );
+
+  for (let i = 0; i < addressCount; i++) {
+    const seed = (user.localId.charCodeAt(0) * (i + 1)) + (i * 137);
+    const address = generateCanadianAddress(seed);
+    const label = CANADIAN_ADDRESS_LABELS[i % CANADIAN_ADDRESS_LABELS.length];
+    const dedupeKey = [
+      label,
+      address.street,
+      address.city,
+      address.state,
+      address.postalCode,
+      address.country,
+    ].join('|');
+    if (existingKeys.has(dedupeKey)) continue;
+    if (currentAddressCount >= 10) break;
+
+    try {
+      await callOk(
+        'add_buyer_address',
+        {
+          label,
+          street: address.street,
+          city: address.city,
+          province: address.state,
+          postalCode: address.postalCode,
+          country: address.country,
+          isDefault: i === 0 && existingAddresses.length === 0,
+        },
+        user.idToken,
+      );
+    } catch (error) {
+      if (String(error).includes('Maximum number of addresses (10) reached')) {
+        break;
+      }
+      throw error;
+    }
+    existingKeys.add(dedupeKey);
+    currentAddressCount += 1;
+  }
+}
+
 // ════════════════════════════════════════════════════════════════════
 // REALISTIC CART SEEDING — WITH IMAGES + PROPER STRUCTURE
 // ════════════════════════════════════════════════════════════════════
 
 async function seedEnhancedCart(admin: AuthBundle, buyerId: string, productIds: string[], products: any[]) {
   const cartItems = [];
-  const itemCount = 2 + Math.floor(Math.random() * 4); // 2-5 items
+  const productMap = new Map(products.map(product => [product.id, product]));
+  const guaranteedProductIds = [...productIds.filter(id => id !== 'e2e_product_oos').slice(0, 3), 'e2e_product_oos'];
+  const buyerRecordRef = userRef(buyerId);
 
-  for (let i = 0; i < itemCount; i++) {
-    const productId = productIds[Math.floor(Math.random() * productIds.length)];
-    const product = products.find(p => p.id === productId);
-    
-    if (!product) continue;
+  for (let i = 0; i < guaranteedProductIds.length; i++) {
+    const productId = guaranteedProductIds[i];
+    const product = productMap.get(productId);
+    const fallbackPriceCents = productId === 'e2e_product_oos' ? 2999 : 1999 + (i * 500);
+    const fallbackName = productId === 'e2e_product_oos' ? 'Sold Out Seed Item' : `Seed Cart Item ${i + 1}`;
 
+    const isUnavailable = productId === 'e2e_product_oos' || Number(product?.stockQuantity ?? 1) <= 0;
     cartItems.push({
       id: `cart_item_${buyerId}_${i}`,
-      userId: buyerId,
+      userId: buyerRecordRef,
       productId,
-      quantity: 1 + Math.floor(Math.random() * 3),
-      priceCents: product.priceCents,
-      imageUrl: sampleImageUrls(productId, 1)[0],
-      productName: product.title,
-      addedAt: isoDaysAgo(Math.random() * 7),
+      quantity: isUnavailable ? 1 : 1 + (i % 3),
+      priceCents: Number(product?.priceCents ?? fallbackPriceCents),
+      imageUrl: sampleImageUrls(productId, 1, product?.categoryName)[0],
+      productName: String(product?.title ?? fallbackName),
+      addedAt: isoDaysAgo(i + 1),
       updatedAt: new Date().toISOString(),
+      availabilityStatus: isUnavailable ? 'unavailable' : 'available',
+      isUnavailable,
+      unavailableReason: isUnavailable ? 'out_of_stock' : null,
     });
   }
 
@@ -442,15 +626,27 @@ async function seedEnhancedCart(admin: AuthBundle, buyerId: string, productIds: 
 
   // Write cart items
   await writeMany(cartItems, async item => {
-    await writeDoc(`cart/${item.id}`, item, admin.idToken, true);
+    await writeDoc(`users/${buyerId}/cart/${item.id}`, item, admin.idToken, true);
   }, 10);
 
   // Write cart summary
   const totalCents = cartItems.reduce((sum, item) => sum + item.priceCents * item.quantity, 0);
+  await writeDoc(`users/${buyerId}`, {
+    cart: cartItems.map(item => ({
+      productId: item.productId,
+      quantity: item.quantity,
+      priceCents: item.priceCents,
+      productName: item.productName,
+      imageUrl: item.imageUrl,
+      availabilityStatus: item.availabilityStatus,
+      isUnavailable: item.isUnavailable,
+    })),
+  }, admin.idToken, true);
   await writeDoc(`user_carts/${buyerId}`, {
-    userId: buyerId,
+    userId: buyerRecordRef,
     itemCount: cartItems.length,
     totalCents,
+    unavailableItemCount: cartItems.filter(item => item.isUnavailable).length,
     lastUpdated: new Date().toISOString(),
   }, admin.idToken, true);
 }
@@ -465,18 +661,19 @@ async function seedEnhancedSubscriptions(admin: AuthBundle, userIds: string[]) {
 
   for (let i = 0; i < Math.min(userIds.length, 12); i++) {
     const userId = userIds[i];
-    const tier = ['basic', 'pro', 'enterprise'][Math.floor(Math.random() * 3)];
+    const tier = i === 0 ? 'premium' : i === 1 ? 'premium' : ['basic', 'pro', 'enterprise'][Math.floor(Math.random() * 3)];
     const priceCents = { basic: 499, pro: 999, enterprise: 2499 }[tier];
     
     const startDate = isoDaysAgo(Math.random() * 180);
-    const isCancelled = Math.random() < 0.15;
+    const isCancelled = i === 1 ? true : i === 0 ? false : Math.random() < 0.15;
     
     subscriptions.push({
       id: `subscription_${userId}`,
       userId,
       tier,
-      status: isCancelled ? 'cancelled' : 'active',
-      priceCents,
+      planType: tier === 'premium' ? 'premium_monthly' : tier,
+      status: isCancelled ? 'inactive' : 'active',
+      priceCents: tier === 'premium' ? 786 : priceCents,
       renewalDate: isCancelled ? isoDaysAgo(-Math.random() * 30) : isoDaysAgo(-Math.random() * 30),
       startDate,
       cancelledAt: isCancelled ? isoDaysAgo(Math.random() * 20) : null,
@@ -527,7 +724,7 @@ async function seedEnhancedChats(admin: AuthBundle, buyerIds: string[], sellerId
     const productId = productIds[i % productIds.length];
 
     const chatId = `chat_thread_${i}`;
-    const msgCount = 3 + Math.floor(Math.random() * 20);
+    const msgCount = 5 + Math.floor(Math.random() * 12);
 
     chats.push({
       id: chatId,
@@ -549,7 +746,14 @@ async function seedEnhancedChats(admin: AuthBundle, buyerIds: string[], sellerId
         id: `message_${chatId}_${j}`,
         chatThreadId: chatId,
         senderId: sender,
-        text: `Message content ${j}`,
+        text: [
+          'Hi, is this still available?',
+          'Yes, I can ship it tomorrow.',
+          'Can you confirm the color variant?',
+          'It is the same one shown in the photos.',
+          'Perfect, I will place the order today.',
+          'I can also bundle shipping if you add another item.',
+        ][(j - 1) % 6],
         imageUrl: Math.random() < 0.15 ? sampleImageUrls(`${chatId}-${j}`, 1)[0] : null,
         createdAt: isoDaysAgo(Math.random() * 30),
       });
@@ -598,6 +802,7 @@ async function seedEnhancedReviews(admin: AuthBundle, buyerIds: string[], seller
       rating,
       title: `Review ${i + 1}`,
       text: reviewTexts[i % reviewTexts.length],
+      sellerId: sellerIds[i % sellerIds.length],
       imageUrls: Math.random() < 0.3 ? sampleImageUrls(`review-${i}`, 1) : [],
       helpful: Math.floor(Math.random() * 50),
       unhelpful: Math.floor(Math.random() * 10),
@@ -671,36 +876,62 @@ async function writeMany<T>(
   }
 }
 
-async function upsertUsers(admin: AuthBundle) {
+async function upsertUsers(admin: AuthBundle, seller: AuthBundle, buyer: AuthBundle) {
+  const legacyBuyer = await resolveSeedUser(LEGACY_TEST_EMAILS[0], TEST_ACCOUNTS.BUYER_PASS, ['buyer']);
+  const legacyAdmin = await resolveSeedUser(LEGACY_TEST_EMAILS[1], TEST_ACCOUNTS.ADMIN_PASS, ['buyer', 'admin']);
+  const legacySeller = await resolveSeedUser(LEGACY_TEST_EMAILS[2], TEST_ACCOUNTS.SELLER_PASS, ['buyer', 'seller']);
   const coreUsers: SeedUser[] = [
     {
       id: admin.localId,
-      email: TEST_ACCOUNTS.ADMIN_EMAIL,
+      email: admin.email,
       displayName: 'E2E Admin',
       roles: ['buyer', 'seller', 'admin'],
       isPremium: true,
       stripeOnboarded: true,
     },
     {
-      id: (await signIn(TEST_ACCOUNTS.SELLER_EMAIL, TEST_ACCOUNTS.SELLER_PASS)).localId,
-      email: TEST_ACCOUNTS.SELLER_EMAIL,
+      id: seller.localId,
+      email: seller.email,
       displayName: 'E2E Seller',
       roles: ['buyer', 'seller'],
       isPremium: true,
       stripeOnboarded: true,
     },
     {
-      id: (await signIn(TEST_ACCOUNTS.BUYER_EMAIL, TEST_ACCOUNTS.BUYER_PASS)).localId,
-      email: TEST_ACCOUNTS.BUYER_EMAIL,
+      id: buyer.localId,
+      email: buyer.email,
       displayName: 'E2E Buyer',
       roles: ['buyer'],
       isPremium: true,
     },
+    {
+      id: legacyBuyer.id,
+      email: legacyBuyer.email,
+      displayName: 'Legacy Buyer Seed',
+      roles: legacyBuyer.roles,
+      isPremium: false,
+    },
+    {
+      id: legacyAdmin.id,
+      email: legacyAdmin.email,
+      displayName: 'Legacy Admin Seed',
+      roles: legacyAdmin.roles,
+      isPremium: true,
+      stripeOnboarded: true,
+    },
+    {
+      id: legacySeller.id,
+      email: legacySeller.email,
+      displayName: 'Legacy Seller Seed',
+      roles: legacySeller.roles,
+      isPremium: false,
+      stripeOnboarded: true,
+    },
   ];
 
-  const syntheticUsers: SeedUser[] = [
+  const syntheticSpecs = [
     ...Array.from({ length: 8 }, (_, i) => ({
-      id: `seed_seller_${String(i + 1).padStart(2, '0')}`,
+      seedKey: `seed_seller_${String(i + 1).padStart(2, '0')}`,
       email: `seed-seller-${i + 1}@test.origna.ca`,
       displayName: `Seed Seller ${i + 1}`,
       roles: ['buyer', 'seller'],
@@ -708,14 +939,29 @@ async function upsertUsers(admin: AuthBundle) {
       stripeOnboarded: i % 3 !== 0,
     })),
     ...Array.from({ length: 16 }, (_, i) => ({
-      id: `seed_buyer_${String(i + 1).padStart(2, '0')}`,
+      seedKey: `seed_buyer_${String(i + 1).padStart(2, '0')}`,
       email: `seed-buyer-${i + 1}@test.origna.ca`,
       displayName: `Seed Buyer ${i + 1}`,
       roles: ['buyer'],
       isPremium: i % 4 === 0,
       suspended: i === 15,
     })),
-  ];
+  ] as const;
+  const syntheticUsers: SeedUser[] = await Promise.all(
+    syntheticSpecs.map(async spec => {
+      const resolved = await resolveSeedUser(spec.email, TEST_ACCOUNTS.BUYER_PASS, [...spec.roles]);
+      return {
+        seedKey: spec.seedKey,
+        id: resolved.id,
+        email: resolved.email,
+        displayName: spec.displayName,
+        roles: [...spec.roles],
+        isPremium: spec.isPremium,
+        suspended: 'suspended' in spec ? spec.suspended : undefined,
+        stripeOnboarded: 'stripeOnboarded' in spec ? spec.stripeOnboarded : undefined,
+      };
+    }),
+  );
 
   const users = [...coreUsers, ...syntheticUsers];
   await writeMany(users, async user => {
@@ -733,17 +979,26 @@ async function upsertUsers(admin: AuthBundle) {
       suspended: user.suspended ?? false,
       stripeOnboarded: user.stripeOnboarded ?? false,
       preferredLanguage: 'en',
+      profileImageUrl: sampleImageUrls(`profile-${user.id}`, 1, 'fashion')[0],
       createdAt: isoDaysAgo(45),
       updatedAt: new Date().toISOString(),
     }, admin.idToken, true);
   }, 20);
 
+  const legacyUserIds = [legacyBuyer.id, legacyAdmin.id, legacySeller.id];
+  const resolvedIdsByKey = Object.fromEntries(
+    syntheticUsers
+      .filter((user): user is SeedUser & { seedKey: string } => typeof user.seedKey === 'string' && user.seedKey.length > 0)
+      .map(user => [user.seedKey, user.id]),
+  );
   return {
     adminId: coreUsers[0].id,
     sellerId: coreUsers[1].id,
     buyerId: coreUsers[2].id,
-    sellerPool: [...new Set([coreUsers[0].id, coreUsers[1].id, ...syntheticUsers.filter(u => u.roles.includes('seller')).map(u => u.id)])],
-    buyerPool: [...new Set([coreUsers[2].id, ...syntheticUsers.filter(u => u.roles.length === 1).map(u => u.id)])],
+    sellerPool: [...new Set([coreUsers[0].id, coreUsers[1].id, legacySeller.id, ...syntheticUsers.filter(u => u.roles.includes('seller')).map(u => u.id)])],
+    buyerPool: [...new Set([coreUsers[2].id, legacyBuyer.id, legacyAdmin.id, legacySeller.id, ...syntheticUsers.filter(u => u.roles.length === 1).map(u => u.id)])],
+    legacyUserIds,
+    resolvedIdsByKey,
   };
 }
 
@@ -1153,6 +1408,21 @@ async function seedProducts(
     },
   ];
 
+  const sellerDashboardProducts = PRIMARY_SELLER_DASHBOARD_PRODUCTS.map((product, index) => ({
+    ...product,
+    sellerId: ids.sellerId,
+    description: `${product.title} seeded for seller dashboard coverage.`,
+    isDigital: product.categoryId === 21,
+    isPerishable: false,
+    freeShipping: index % 2 === 0,
+    hasVariants: index % 3 === 0,
+    shipFromCountry: 'Canada',
+    isTrending: product.lifecycleStatus === 'active' && index % 2 === 0,
+    isLocalDeliveryOnly: false,
+    reviewCount: 3 + (index % 6),
+    rating: Number((3.8 + (index % 2) * 0.6).toFixed(1)),
+  }));
+
   const generatedProducts = Array.from({ length: PRODUCT_COUNT }, (_, index) => {
     const categoryId = (index % 21) + 1;
     const categoryName = CATEGORY_LABELS[categoryId - 1];
@@ -1191,7 +1461,7 @@ async function seedProducts(
     };
   });
 
-  const allProducts = [...stableProducts, ...generatedProducts];
+  const allProducts = [...stableProducts, ...sellerDashboardProducts, ...generatedProducts];
 
   await writeMany(allProducts, async product => {
     const variants = product.hasVariants ? productVariantSeed(product.id, product.id.startsWith('e2e_') ? 2499 : product.priceCents) : {
@@ -1200,9 +1470,10 @@ async function seedProducts(
       variants: [],
     };
     const imageUrls = sampleImageUrls(product.id, product.hasVariants ? 3 : 2, product.categoryName);
+    const productVideo = sampleVideo(product.id);
     await writeDoc(`products/${product.id}`, {
       productId: product.id,
-      sellerId: product.sellerId,
+      sellerId: userRef(product.sellerId),
       sellerSku: `SKU-${product.id.toUpperCase()}`,
       name: product.title,
       title: product.title,
@@ -1215,13 +1486,14 @@ async function seedProducts(
       compareAtPrice: Number(((product.priceCents + 900) / 100).toFixed(2)),
       stockQuantity: product.stockQuantity,
       lifecycleStatus: product.lifecycleStatus,
+      sellerDashboardStatus: product.lifecycleStatus === 'active' ? 'active' : product.lifecycleStatus === 'draft' ? 'draft' : 'inactive',
       sellerAddress: sellerAddress(product.categoryName, product.shipFromCountry),
       shipFromCountry: product.shipFromCountry,
       shipFromProvince: product.shipFromCountry === 'Canada' ? 'ON' : 'SH',
       shipFromCity: product.shipFromCountry === 'Canada' ? 'Toronto' : 'Shanghai',
       imageUrls,
-      videoUrl: product.id.endsWith('0001') ? 'https://samplelib.com/lib/preview/mp4/sample-5s.mp4' : null,
-      videoDurationSeconds: product.id.endsWith('0001') ? 5 : null,
+      videoUrl: productVideo.url,
+      videoDurationSeconds: productVideo.durationSeconds,
       keywords: [(product.categoryName || 'product').toLowerCase(), product.subcategory.toLowerCase(), 'seeded', 'demo'],
       createdAt: isoDaysAgo((allProducts.indexOf(product) % 60) + 1),
       updatedAt: new Date().toISOString(),
@@ -1267,10 +1539,12 @@ async function seedProducts(
 async function seedFavorites(admin: AuthBundle, buyerId: string, productIds: string[]) {
   const favorites = productIds.slice(0, FAVORITE_COUNT);
   await writeMany(favorites, async (productId, index) => {
+    const createdAt = isoDaysAgo(index % 14, index * 11);
     await writeDoc(`favorites/fav_${buyerId}_${productId}`, {
       userId: buyerId,
       productId,
-      createdAt: isoDaysAgo(index % 14, index * 11),
+      createdAt,
+      dateFavorited: createdAt,
     }, admin.idToken, true);
   }, 20);
 }
@@ -1281,12 +1555,14 @@ async function seedAddresses(admin: AuthBundle, userId: string, prefix: string) 
     await writeDoc(`addresses/${prefix}_address_${index + 1}`, {
       userId,
       label: index === 0 ? 'Home' : index === 1 ? 'Work' : `Address ${index + 1}`,
-      street: `${100 + index} Demo ${city} St`,
-      apartment: index % 2 === 0 ? `${index + 1}A` : '',
-      city,
-      province: ['ON', 'ON', 'ON', 'QC', 'BC', 'AB', 'NS', 'QC'][index],
-      postalCode: ['M5V 3A8', 'L5B 2C9', 'K1P 1J1', 'H2Y 1C6', 'V6B 1A1', 'T2P 1J9', 'B3J 2K9', 'G1R 4P5'][index],
-      country: 'Canada',
+      address: {
+        street: `${100 + index} Demo ${city} St`,
+        apartment: index % 2 === 0 ? `${index + 1}A` : '',
+        city,
+        province: ['ON', 'ON', 'ON', 'QC', 'BC', 'AB', 'NS', 'QC'][index],
+        postalCode: ['M5V 3A8', 'L5B 2C9', 'K1P 1J1', 'H2Y 1C6', 'V6B 1A1', 'T2P 1J9', 'B3J 2K9', 'G1R 4P5'][index],
+        country: 'Canada',
+      },
       isDefault: index === 0,
       createdAt: isoDaysAgo(index + 1),
       updatedAt: new Date().toISOString(),
@@ -1353,10 +1629,12 @@ async function seedCart(admin: AuthBundle, buyerId: string, productIds: string[]
   }, 10);
 }
 
-async function seedOrders(admin: AuthBundle, buyerId: string, sellerId: string, productIds: string[]) {
-  const orders = Array.from({ length: 30 }, (_, index) => {
+async function seedOrders(admin: AuthBundle, buyerIds: string[], sellerId: string, secondarySellerId: string, productIds: string[]) {
+  const orders = Array.from({ length: 45 }, (_, index) => {
     const status = ORDER_STATUSES[index % ORDER_STATUSES.length];
-    const sellerIds = index % 4 === 0 ? [sellerId, 'seed_seller_01'] : [sellerId];
+    const sellerIds = index % 4 === 0 ? [sellerId, secondarySellerId] : [sellerId];
+    const buyerId = buyerIds[Math.floor(index / ORDER_STATUSES.length) % buyerIds.length];
+    const sellerRecordRefs = sellerIds.map(userRef);
     const lineItems = sellerIds.map((sid, itemIndex) => {
       const productId = productIds[(index * 3 + itemIndex) % productIds.length];
       return {
@@ -1367,7 +1645,7 @@ async function seedOrders(admin: AuthBundle, buyerId: string, sellerId: string, 
         price: 19.99 + itemIndex * 6,
         quantity: 1 + ((index + itemIndex) % 3),
         imageUrls: sampleImageUrls(`${productId}-order`, 1),
-        sellerId: sid,
+        sellerId: userRef(sid),
         status,
         isDigital: productId === 'e2e_product_test_seller',
         isPerishable: productId === 'e2e_product_perishable',
@@ -1378,16 +1656,21 @@ async function seedOrders(admin: AuthBundle, buyerId: string, sellerId: string, 
     const subtotalCents = lineItems.reduce((sum, item) => sum + Math.round(item.price * 100) * item.quantity, 0);
     return {
       id: `seed_order_${String(index + 1).padStart(3, '0')}`,
+      orderId: `seed_order_${String(index + 1).padStart(3, '0')}`,
       orderStatus: status,
+      status,
       paymentStatus: status === 'cancelled' ? 'refunded' : 'paid',
+      buyerId,
       userId: buyerId,
-      sellerIds,
+      sellerId: sellerRecordRefs[0],
+      sellerIds: sellerRecordRefs,
       items: lineItems,
       subtotalCents,
       shippingCostCents: status === 'cancelled' ? 0 : 899 + (index % 3) * 200,
       taxAmountCents: Math.round(subtotalCents * 0.13),
       totalAmountCents: subtotalCents + Math.round(subtotalCents * 0.13) + (status === 'cancelled' ? 0 : 899 + (index % 3) * 200),
       createdAt: isoDaysAgo(index + 1),
+      confirmedAt: ['confirmed', 'shipped', 'delivered'].includes(status) ? isoDaysAgo(Math.max(1, index)) : null,
       deliveredAt: status === 'delivered' ? isoDaysAgo(Math.max(1, index - 2)) : null,
       shippedAt: status === 'shipped' || status === 'delivered' ? isoDaysAgo(Math.max(1, index - 1)) : null,
       trackingNumber: status === 'shipped' || status === 'delivered' ? `TRK-${1000 + index}` : null,
@@ -1409,8 +1692,9 @@ async function seedOrders(admin: AuthBundle, buyerId: string, sellerId: string, 
 }
 
 async function seedNotifications(admin: AuthBundle, userIds: string[]) {
+  const notificationsPerUser = Math.max(6, Math.ceil(NOTIFICATION_COUNT / Math.max(1, userIds.length)));
   const items = userIds.flatMap((userId, userIndex) =>
-    Array.from({ length: NOTIFICATION_COUNT / userIds.length }, (_, index) => ({
+    Array.from({ length: notificationsPerUser }, (_, index) => ({
       id: `notif_${userId}_${index + 1}`,
       userId,
       type: NOTIFICATION_TYPES[(userIndex + index) % NOTIFICATION_TYPES.length],
@@ -1419,6 +1703,9 @@ async function seedNotifications(admin: AuthBundle, userIds: string[]) {
       isRead: index % 3 === 0,
       createdAt: isoDaysAgo(index % 10, index * 19),
       route: index % 2 === 0 ? '/orders' : '/notifications',
+      orderId: `seed_order_${String(((userIndex * notificationsPerUser + index) % 45) + 1).padStart(3, '0')}`,
+      productId: index % 2 === 0 ? `mega_seed_product_${String((index % 12) + 1).padStart(4, '0')}` : 'e2e_product_test_seller',
+      chatThreadId: index % 4 === 0 ? `chat_thread_${(userIndex + index) % 12}` : null,
     })),
   );
 
@@ -1535,16 +1822,21 @@ async function seedSellerProfiles(admin: AuthBundle, sellerIds: string[]) {
   for (let i = 0; i < sellerIds.length; i++) {
     const sellerId = sellerIds[i];
     const onboarded = i % 3 !== 2;
+    const approvalStatus = i % 3 === 0 ? 'approved' : i % 3 === 1 ? 'pending' : 'rejected';
     
     await writeDoc(`seller_profiles/${sellerId}`, {
       sellerId,
       businessName: `Seed Business ${i + 1}`,
       description: `Seeded seller profile for demonstration and testing purposes.`,
+      status: approvalStatus,
+      approvalStatus,
+      verificationStatus: approvalStatus,
       chargesEnabled: onboarded,
       payoutsEnabled: onboarded,
       detailsSubmitted: onboarded,
       onboardingCompleted: onboarded && i % 2 === 0,
-      pendingRequirements: onboarded ? [] : ['business_type', 'representative'],
+      pendingRequirements: approvalStatus === 'pending' ? ['business_type', 'representative'] : [],
+      rejectionReason: approvalStatus === 'rejected' ? 'Seeded KYC rejection example' : null,
       chargesEnabledAt: onboarded ? isoDaysAgo(15) : null,
       payoutsEnabledAt: onboarded ? isoDaysAgo(10) : null,
       defaultCurrency: 'CAD',
@@ -1719,7 +2011,65 @@ async function seedDisputes(admin: AuthBundle, buyerId: string, sellerId: string
 
 async function seedCoupons(admin: AuthBundle, sellerIds: string[]) {
   const couponTypes = ['percentage', 'fixed_amount', 'free_shipping'] as const;
-  const coupons = Array.from({ length: COUPON_COUNT }, (_, index) => {
+  const coupons = [
+    {
+      id: 'coupon_active_platform',
+      code: 'ACTIVE10',
+      type: 'percentage',
+      value: 10,
+      minOrderCents: 2500,
+      maxDiscountCents: 5000,
+      sellerId: null,
+      isGlobal: true,
+      isActive: true,
+      maxUsesTotal: 500,
+      maxUsesPerUser: 2,
+      currentUses: 41,
+      startsAt: isoDaysAgo(7),
+      expiresAt: isoDaysAgo(-21),
+      description: 'Canonical active platform coupon.',
+      createdAt: isoDaysAgo(14),
+      updatedAt: new Date().toISOString(),
+    },
+    {
+      id: 'coupon_expired_platform',
+      code: 'EXPIRED15',
+      type: 'fixed_amount',
+      value: 1500,
+      minOrderCents: 5000,
+      maxDiscountCents: null,
+      sellerId: null,
+      isGlobal: true,
+      isActive: false,
+      maxUsesTotal: 100,
+      maxUsesPerUser: 1,
+      currentUses: 22,
+      startsAt: isoDaysAgo(60),
+      expiresAt: isoDaysAgo(2),
+      description: 'Canonical expired platform coupon.',
+      createdAt: isoDaysAgo(60),
+      updatedAt: new Date().toISOString(),
+    },
+    {
+      id: 'coupon_usage_limited_seller',
+      code: 'LIMITSHIP',
+      type: 'free_shipping',
+      value: 0,
+      minOrderCents: 3500,
+      maxDiscountCents: null,
+      sellerId: sellerIds[0] ?? null,
+      isGlobal: false,
+      isActive: false,
+      maxUsesTotal: 5,
+      maxUsesPerUser: 1,
+      currentUses: 5,
+      startsAt: isoDaysAgo(14),
+      expiresAt: isoDaysAgo(-14),
+      description: 'Canonical seller coupon that exhausted its usage limit.',
+      createdAt: isoDaysAgo(20),
+      updatedAt: new Date().toISOString(),
+    },
+    ...Array.from({ length: COUPON_COUNT }, (_, index) => {
     const type = couponTypes[index % couponTypes.length];
     const isExpired = index % 6 === 0;
     const isMaxedOut = index % 7 === 0;
@@ -1743,7 +2093,8 @@ async function seedCoupons(admin: AuthBundle, sellerIds: string[]) {
       createdAt: isoDaysAgo(30),
       updatedAt: new Date().toISOString(),
     };
-  });
+    }),
+  ];
 
   await writeMany(coupons, async coupon => {
     await writeDoc(`coupons/${coupon.id}`, coupon, admin.idToken, true);
@@ -2185,11 +2536,18 @@ async function seedComparisonLists(admin: AuthBundle, buyerIds: string[], produc
 async function main() {
   console.log(`🌱 Mega seeding ${process.env.ORIGNABASE_URL || 'default'} with ${PRODUCT_COUNT}+ products...`);
 
-  const admin = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
-  const _seller = await signIn(TEST_ACCOUNTS.SELLER_EMAIL, TEST_ACCOUNTS.SELLER_PASS);
-  const _buyer = await signIn(TEST_ACCOUNTS.BUYER_EMAIL, TEST_ACCOUNTS.BUYER_PASS);
+  // Force fresh auth resolution so seeded user-bound data lands on the current
+  // canonical dev UI accounts instead of stale cached identities from /tmp.
+  const tokenCacheFile = '/tmp/origna_e2e_tokens.json';
+  if (existsSync(tokenCacheFile)) {
+    unlinkSync(tokenCacheFile);
+  }
 
-  const ids = await upsertUsers(admin);
+  const admin = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
+  const seller = await signIn(TEST_ACCOUNTS.SELLER_EMAIL, TEST_ACCOUNTS.SELLER_PASS);
+  const buyer = await signIn(TEST_ACCOUNTS.BUYER_EMAIL, TEST_ACCOUNTS.BUYER_PASS);
+
+  const ids = await upsertUsers(admin, seller, buyer);
   console.log(`  ✓ users seeded (admin=${ids.adminId}, seller=${ids.sellerId}, buyer=${ids.buyerId})`);
 
   // ════════════════════════════════════════════════════════════════════
@@ -2200,7 +2558,13 @@ async function main() {
     await seedSyntheticUsers(admin, syntheticUserCount);
   }
 
-  await seedWarehouses(admin, [ids.adminId, ids.sellerId, 'seed_seller_01', 'seed_seller_02']);
+  await seedWarehouses(admin, [
+    ids.adminId,
+    ids.sellerId,
+    ids.resolvedIdsByKey.seed_seller_01,
+    ids.resolvedIdsByKey.seed_seller_02,
+    ...ids.sellerPool.slice(0, 2),
+  ].filter(Boolean));
   console.log('  ✓ warehouses seeded');
 
   const productIds = await seedProducts(admin, ids);
@@ -2209,20 +2573,15 @@ async function main() {
   // ════════════════════════════════════════════════════════════════════
   // ENHANCED FAVORITES — MORE REALISTIC DISTRIBUTION
   // ════════════════════════════════════════════════════════════════════
-  const allBuyerIds = [ids.buyerId, ...ids.buyerPool];
-  await seedEnhancedFavorites(admin, allBuyerIds, productIds);
-  console.log(`  ✓ enhanced favorites seeded (${allBuyerIds.length} buyers)`);
+  const allBuyerIds = [...new Set([ids.buyerId, ...ids.buyerPool, ...ids.legacyUserIds])];
+  await seedBuyerFavoritesViaApi(buyer, productIds);
+  console.log(`  ✓ buyer favorites seeded (${buyer.localId})`);
 
   // ════════════════════════════════════════════════════════════════════
   // ENHANCED ADDRESSES — CANADIAN POSTAL CODES
   // ════════════════════════════════════════════════════════════════════
-  await seedEnhancedAddresses(admin, ids.buyerId, 'buyer', 4);
-  await seedEnhancedAddresses(admin, ids.adminId, 'admin', 3);
-  await seedEnhancedAddresses(admin, ids.sellerId, 'seller', 2);
-  for (let i = 0; i < 8; i++) {
-    await seedEnhancedAddresses(admin, ids.buyerPool[i], `buyer_${i + 1}`, 3);
-  }
-  console.log(`  ✓ enhanced addresses seeded (${ADDRESS_COUNT * 10})`);
+  await seedBuyerAddressesViaApi(buyer, 'buyer', 4);
+  console.log(`  ✓ buyer addresses seeded (${buyer.localId})`);
 
   // ════════════════════════════════════════════════════════════════════
   // ENHANCED CART — WITH PRODUCT DETAILS
@@ -2238,6 +2597,9 @@ async function main() {
   }))).filter(p => p);
 
   await seedEnhancedCart(admin, ids.buyerId, productIds, productsData);
+  for (const legacyUserId of ids.legacyUserIds) {
+    await seedEnhancedCart(admin, legacyUserId, productIds, productsData);
+  }
   for (let i = 0; i < 3; i++) {
     await seedEnhancedCart(admin, ids.buyerPool[i], productIds, productsData);
   }
@@ -2246,12 +2608,18 @@ async function main() {
   // ════════════════════════════════════════════════════════════════════
   // ORIGINAL SEEDING (KEEP EXISTING DATA)
   // ════════════════════════════════════════════════════════════════════
-  await seedOrders(admin, ids.buyerId, ids.sellerId, productIds);
-  console.log('  ✓ orders seeded (30)');
+  await seedOrders(
+    admin,
+    [ids.buyerId, ...ids.legacyUserIds, ...ids.buyerPool.slice(0, 6)],
+    ids.sellerId,
+    ids.resolvedIdsByKey.seed_seller_01 ?? ids.sellerId,
+    productIds,
+  );
+  console.log('  ✓ orders seeded (45)');
 
-  const notifUserIds = [ids.buyerId, ids.sellerId, ids.adminId, ...ids.buyerPool.slice(0, 4), ...ids.sellerPool.slice(0, 2)];
+  const notifUserIds = [ids.buyerId, ids.sellerId, ids.adminId, ...ids.legacyUserIds, ...ids.buyerPool.slice(0, 4), ...ids.sellerPool.slice(0, 2)];
   await seedNotifications(admin, notifUserIds);
-  console.log(`  ✓ notifications seeded (${NOTIFICATION_COUNT} across ${notifUserIds.length} users)`);
+  console.log(`  ✓ notifications seeded (6+ each across ${notifUserIds.length} users)`);
 
   // ════════════════════════════════════════════════════════════════════
   // ENHANCED REVIEWS — COMPREHENSIVE
@@ -2259,7 +2627,16 @@ async function main() {
   await seedEnhancedReviews(admin, [ids.buyerId, ...ids.buyerPool.slice(0, 10)], [ids.sellerId, ...ids.sellerPool.slice(0, 3)], productIds);
   console.log('  ✓ enhanced reviews seeded (up to 500)');
 
-  await seedQuestions(admin, [ids.buyerId, 'seed_buyer_04', 'seed_buyer_05'], ids.sellerId, productIds);
+  await seedQuestions(
+    admin,
+    [
+      ids.buyerId,
+      ids.resolvedIdsByKey.seed_buyer_04 ?? ids.buyerId,
+      ids.resolvedIdsByKey.seed_buyer_05 ?? ids.buyerId,
+    ],
+    ids.sellerId,
+    productIds,
+  );
   console.log(`  ✓ Q&A seeded (${QUESTION_COUNT})`);
 
   // ════════════════════════════════════════════════════════════════════
@@ -2273,8 +2650,8 @@ async function main() {
   await seedMoreStockNotifications(admin, [ids.buyerId, ...ids.buyerPool.slice(0, 5)], productIds);
   console.log('  ✓ stock notifications seeded');
 
-  const allUserIds = [ids.adminId, ids.sellerId, ids.buyerId, ...ids.sellerPool, ...ids.buyerPool];
-  const allSellerIds = [ids.adminId, ids.sellerId, 'seed_seller_01', 'seed_seller_02'];
+  const allUserIds = [...new Set([ids.adminId, ids.sellerId, ids.buyerId, ...ids.legacyUserIds, ...ids.sellerPool, ...ids.buyerPool])];
+  const allSellerIds = [...new Set([ids.adminId, ids.sellerId, ...ids.sellerPool.slice(0, 4)])];
 
   // ════════════════════════════════════════════════════════════════════
   // ENHANCED SUBSCRIPTIONS — WITH PAYMENT HISTORY
@@ -2306,7 +2683,13 @@ async function main() {
   await seedDownloadSessions(admin, ids.buyerId, productIds);
   console.log(`  ✓ download sessions seeded (${DOWNLOAD_SESSION_COUNT})`);
 
-  await seedMfaSettings(admin, [ids.adminId, ids.sellerId, 'seed_seller_01', 'seed_buyer_01', 'seed_buyer_02']);
+  await seedMfaSettings(admin, [
+    ids.adminId,
+    ids.sellerId,
+    ids.resolvedIdsByKey.seed_seller_01 ?? ids.sellerId,
+    ids.resolvedIdsByKey.seed_buyer_01 ?? ids.buyerId,
+    ids.resolvedIdsByKey.seed_buyer_02 ?? ids.buyerId,
+  ]);
   console.log('  ✓ MFA settings seeded (5 users)');
 
   await seedReviewAnswers(admin, ids.sellerId);
@@ -2330,7 +2713,12 @@ async function main() {
   await seedAdminAuditLogs(admin, ids.adminId, allSellerIds, ids.buyerPool.slice(0, 8));
   console.log('  ✓ admin audit logs seeded (55)');
 
-  await seedFlaggedReviews(admin, [ids.buyerId, 'seed_buyer_01', 'seed_buyer_02', 'seed_buyer_03'], ids.sellerId, productIds);
+  await seedFlaggedReviews(admin, [
+    ids.buyerId,
+    ids.resolvedIdsByKey.seed_buyer_01 ?? ids.buyerId,
+    ids.resolvedIdsByKey.seed_buyer_02 ?? ids.buyerId,
+    ids.resolvedIdsByKey.seed_buyer_03 ?? ids.buyerId,
+  ], ids.sellerId, productIds);
   console.log('  ✓ flagged/reported reviews seeded (10)');
 
   await seedSuspendedSellers(admin);

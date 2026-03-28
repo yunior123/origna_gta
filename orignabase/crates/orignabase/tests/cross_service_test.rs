@@ -100,14 +100,14 @@ async fn search_finds_created_product() {
             &format!(r#"{{ search(collection: "products", query: "{name}", limit: 5) }}"#),
         )
         .await;
-        if let Some(results) = resp["data"]["search"].as_array() {
-            if results.iter().any(|r| {
+        if let Some(results) = resp["data"]["search"].as_array()
+            && results.iter().any(|r| {
                 r["name"].as_str() == Some(&name)
                     || serde_json::to_string(r).unwrap_or_default().contains(&name)
-            }) {
-                found = true;
-                break;
-            }
+            })
+        {
+            found = true;
+            break;
         }
     }
     if !found {
@@ -132,7 +132,7 @@ async fn search_reflects_updated_name() {
         &json!({"name": old_name, "price": 999}),
     )
     .await;
-    let clean_id = doc_id.split(':').last().unwrap_or(&doc_id);
+    let clean_id = doc_id.split(':').next_back().unwrap_or(&doc_id);
 
     tokio::time::sleep(Duration::from_secs(2)).await;
 
@@ -178,7 +178,7 @@ async fn deleted_product_removed_from_search() {
     let (token, _) = register_test_user(&c).await;
     let name = format!("DeleteMe_{}", Uuid::new_v4().simple());
     let doc_id = create_doc(&c, &token, "products", &json!({"name": name, "price": 100})).await;
-    let clean_id = doc_id.split(':').last().unwrap_or(&doc_id);
+    let clean_id = doc_id.split(':').next_back().unwrap_or(&doc_id);
 
     tokio::time::sleep(Duration::from_secs(2)).await;
 
@@ -204,7 +204,7 @@ async fn deleted_product_removed_from_search() {
         !text.contains(&name)
             || resp["data"]["search"]
                 .as_array()
-                .map_or(true, |a| a.is_empty()),
+                .is_none_or(|a| a.is_empty()),
         "Deleted product should not appear in search"
     );
 }
@@ -380,7 +380,7 @@ async fn create_then_read_matches() {
     )
     .await;
     assert!(!doc_id.is_empty(), "Create should return a document ID");
-    let clean_id = doc_id.split(':').last().unwrap_or(&doc_id);
+    let clean_id = doc_id.split(':').next_back().unwrap_or(&doc_id);
 
     let body = graphql(
         &c,
@@ -390,7 +390,10 @@ async fn create_then_read_matches() {
     .await;
     let doc = &body["data"]["get"];
     assert!(
-        doc["name"].as_str().map(|n| n.contains("verify_me")).unwrap_or(false)
+        doc["name"]
+            .as_str()
+            .map(|n| n.contains("verify_me"))
+            .unwrap_or(false)
             || serde_json::to_string(doc).unwrap().contains("verify_me"),
         "Read should match created data, got: {}",
         serde_json::to_string_pretty(doc).unwrap_or_default()
@@ -412,7 +415,10 @@ async fn token_refresh_continues_crud() {
         &json!({"name": "before_refresh", "priceCents": 100, "stockQuantity": 1}),
     )
     .await;
-    assert!(!doc_id_before.is_empty(), "CRUD should work with original token");
+    assert!(
+        !doc_id_before.is_empty(),
+        "CRUD should work with original token"
+    );
 
     // Refresh token via POST body (not Bearer header)
     let resp = c
@@ -438,7 +444,10 @@ async fn token_refresh_continues_crud() {
         &json!({"name": "after_refresh", "priceCents": 200, "stockQuantity": 1}),
     )
     .await;
-    assert!(!doc_id_after.is_empty(), "CRUD should work with refreshed token");
+    assert!(
+        !doc_id_after.is_empty(),
+        "CRUD should work with refreshed token"
+    );
 }
 
 #[tokio::test]

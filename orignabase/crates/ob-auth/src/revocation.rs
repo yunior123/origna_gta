@@ -58,10 +58,7 @@ pub async fn revoke_token(
 /// # Arguments
 /// * `db` - Database client
 /// * `token` - Raw token to check
-pub async fn is_token_revoked(
-    db: &ob_database::DatabaseClient,
-    token: &str,
-) -> Result<bool> {
+pub async fn is_token_revoked(db: &ob_database::DatabaseClient, token: &str) -> Result<bool> {
     let token_hash = hash_token(token);
 
     let results = db
@@ -111,7 +108,10 @@ mod tests {
         let token2 = "token2";
         let hash1 = hash_token(token1);
         let hash2 = hash_token(token2);
-        assert_ne!(hash1, hash2, "Different tokens should have different hashes");
+        assert_ne!(
+            hash1, hash2,
+            "Different tokens should have different hashes"
+        );
     }
 
     #[test]
@@ -120,7 +120,10 @@ mod tests {
         let hash = hash_token(token);
         // SHA256 produces 64 hex characters
         assert_eq!(hash.len(), 64, "SHA256 hex hash should be 64 characters");
-        assert!(hash.chars().all(|c| c.is_ascii_hexdigit()), "Hash should be valid hex");
+        assert!(
+            hash.chars().all(|c| c.is_ascii_hexdigit()),
+            "Hash should be valid hex"
+        );
     }
 }
 
@@ -143,12 +146,16 @@ mod integration_tests {
     fn test_hash_format() {
         let token = "test.jwt.token";
         let hash = hash_token(token);
-        
+
         // Verify it's valid hex
         for c in hash.chars() {
-            assert!(c.is_ascii_hexdigit(), "Hash contains invalid hex character: {}", c);
+            assert!(
+                c.is_ascii_hexdigit(),
+                "Hash contains invalid hex character: {}",
+                c
+            );
         }
-        
+
         // Verify length is 64 (SHA256 produces 256 bits = 64 hex chars)
         assert_eq!(hash.len(), 64);
     }
@@ -157,10 +164,10 @@ mod integration_tests {
     fn test_different_tokens_different_hashes() {
         let token1 = "access_token_abc123";
         let token2 = "refresh_token_xyz789";
-        
+
         let hash1 = hash_token(token1);
         let hash2 = hash_token(token2);
-        
+
         assert_ne!(hash1, hash2);
     }
 

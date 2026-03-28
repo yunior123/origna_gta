@@ -13,6 +13,9 @@ import 'add_product_validation.dart';
 import 'product_image_helpers.dart';
 import 'variant_models.dart';
 
+/// Riverpod provider for [AddProductViewModel].
+///
+/// Auto-disposed — fresh state per product creation session.
 final addProductViewModelProvider =
     StateNotifierProvider.autoDispose<AddProductViewModel, AddProductState>((
       ref,
@@ -21,15 +24,33 @@ final addProductViewModelProvider =
     });
 
 /// Manages multi-step product creation: form validation, image upload, server submission.
+///
+/// ## Key Decisions
+/// - Request ID guard ([_activeRequestId]) prevents stale submissions from overwriting
+///   newer state if the user submits twice rapidly.
+/// - Validation is extracted to [validateAddProductInputs] in `add_product_validation.dart`.
+/// - Images are compressed client-side before upload to save bandwidth.
+/// - Digital products force free shipping and skip address/delivery validation.
+/// - Variant support: cartesian product of option values auto-generates variant entries.
+/// - Warehouse stock: per-warehouse quantities validated server-side.
+///
+/// See also:
+/// - [AddProductState] for the state shape
+/// - [EditProductViewModel] for editing existing products
 class AddProductViewModel extends StateNotifier<AddProductState> {
   final Ref _ref;
   String? _activeRequestId;
 
   AddProductViewModel(this._ref) : super(const AddProductState());
 
+  /// Adds an [ImageModel] to the product image list.
   void addImage(ImageModel image) =>
       state = state.copyWith(imageModels: [...state.imageModels, image]);
 
+  /// Toggles an allergen in the selected allergens list.
+  ///
+  /// Parameters:
+  /// - [allergen]: allergen identifier (e.g., 'peanuts', 'gluten').
   void toggleAllergen(String allergen) {
     final current = List<String>.from(state.selectedAllergens);
     if (current.contains(allergen)) {
@@ -40,6 +61,7 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     state = state.copyWith(selectedAllergens: current);
   }
 
+  /// Toggles a "may contain" allergen in the precautionary allergens list.
   void toggleMayContainAllergen(String allergen) {
     final current = List<String>.from(state.selectedMayContainAllergens);
     if (current.contains(allergen)) {
@@ -50,6 +72,7 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     state = state.copyWith(selectedMayContainAllergens: current);
   }
 
+  /// Toggles a dietary badge (e.g., 'vegan', 'gluten-free') in the selected list.
   void toggleDietaryBadge(String badge) {
     final current = List<String>.from(state.selectedDietaryBadges);
     if (current.contains(badge)) {
@@ -60,10 +83,12 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     state = state.copyWith(selectedDietaryBadges: current);
   }
 
+  /// Sets ingredient lists in English and/or French.
   void setIngredients({String? en, String? fr}) {
     state = state.copyWith(ingredientsEn: en, ingredientsFr: fr);
   }
 
+  /// Sets storage instructions in English and/or French.
   void setStorageInstructions({String? en, String? fr}) {
     state = state.copyWith(
       storageInstructionsEn: en,
@@ -71,10 +96,16 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     );
   }
 
+  /// Sets the best-before shelf life in days (perishable food products).
   void setBestBeforeDays(int? days) {
     state = state.copyWith(bestBeforeDays: days);
   }
 
+  /// Updates a single nutrition field by name.
+  ///
+  /// Parameters:
+  /// - [field]: field name matching [AddProductState] nutrition properties (e.g., 'caloriesKcal').
+  /// - [value]: integer value in the field's native unit (mg, mcg, kcal).
   void updateNutritionField(String field, int? value) {
     state = switch (field) {
       'servingSizeAmount' => state.copyWith(servingSizeAmount: value),
@@ -97,30 +128,43 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     };
   }
 
+  /// Sets the serving size unit (e.g., 'g', 'ml', 'piece').
   void setServingSizeUnit(String unit) {
     state = state.copyWith(servingSizeUnit: unit);
   }
 
   // === PRODUCT SPECS METHODS ===
 
+  /// Sets the product brand name for specs.
   void setSpecBrand(String? brand) {
     state = state.copyWith(specBrand: brand);
   }
 
+  /// Sets the product color for specs.
   void setSpecColor(String? color) {
     state = state.copyWith(specColor: color);
   }
 
+  /// Sets the product material for specs.
   void setSpecMaterial(String? material) {
     state = state.copyWith(specMaterial: material);
   }
 
+  /// Adds an empty spec entry (key-value pair) to the list.
   void addSpec() {
     final entries = List<Map<String, String>>.from(state.specEntries);
     entries.add({'key': '', 'value': ''});
     state = state.copyWith(specEntries: entries);
   }
 
+  /// Adds a spec entry with pre-filled values.
+  ///
+  /// Parameters:
+  /// - [key]: spec label (e.g., 'Material').
+  /// - [value]: spec value (e.g., 'Cotton').
+  /// - [group]: optional grouping label.
+  /// - [valueType]: value type hint ('text', 'number', 'url').
+  /// - [unit]: optional unit label (e.g., 'cm').
   void addSpecWithValues(
     String key,
     String value, {
@@ -140,6 +184,7 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     state = state.copyWith(specEntries: entries);
   }
 
+  /// Removes the spec entry at [index].
   void removeSpec(int index) {
     final entries = List<Map<String, String>>.from(state.specEntries);
     if (index >= 0 && index < entries.length) {
@@ -148,6 +193,7 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     }
   }
 
+  /// Updates the spec entry at [index] with a new [key] and [value].
   void updateSpec(int index, String key, String value) {
     final entries = List<Map<String, String>>.from(state.specEntries);
     if (index >= 0 && index < entries.length) {
@@ -201,6 +247,9 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     // Bug #27: Prevent double-submit with request ID guard
     final requestId = DateTime.now().microsecondsSinceEpoch.toString();
     _activeRequestId = requestId;
+
+    // Input boundary: convert dollars to cents immediately
+    final priceCents = (price * 100).round();
 
     final config = _ref.read(envConfigProvider);
     final isDevOrTestRun = config.isDev || config.isEmulator;
@@ -390,7 +439,7 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
         nameF: nameF?.trim().isEmpty == true ? null : nameF?.trim(),
         keywords: generateSearchKeywords(name),
         stockQuantity: effectiveStock,
-        priceCents: (price * 100).round(),
+        priceCents: priceCents,
         compareAtPriceCents: compareAtPrice != null
             ? (compareAtPrice * 100).round()
             : null,
@@ -592,9 +641,11 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     }
   }
 
+  /// Removes the image at [index] from the product image list.
   void removeImage(int index) => state = state.copyWith(
     imageModels: List<ImageModel>.from(state.imageModels)..removeAt(index),
   );
+  /// Removes the variant option at [index] and regenerates variant combinations.
   void removeVariantOption(int index) {
     final options = List<VariantOption>.from(state.variantOptions);
     options.removeAt(index);
@@ -602,6 +653,7 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     _regenerateVariants();
   }
 
+  /// Removes the current video file from state.
   void removeVideo() =>
       state = state.copyWith(videoFile: null, videoDurationSeconds: null);
 
@@ -629,41 +681,58 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     );
   }
 
+  /// Sets the multi-step form active step index.
   void setActiveStep(int step) => state = state.copyWith(activeStep: step);
+
+  /// Toggles whether backorders are allowed for this product.
   void setAllowBackorder(bool value) =>
       state = state.copyWith(allowBackorder: value);
 
+  /// Sets the book source URL for digital book products.
   void setBookSourceUrl(String? url) =>
       state = state.copyWith(bookSourceUrl: url);
 
+  /// Sets the selected category and clears any previously selected subcategory.
   void setCategoryId(String? id) =>
       state = state.copyWith(selectedCategoryId: id, selectedSubcategory: null);
+
+  /// Sets the product condition (e.g., 'new', 'used', 'refurbished').
   void setCondition(String? condition) =>
       state = state.copyWith(condition: condition);
 
+  /// Sets the device limit for digital software products.
   void setDeviceLimit(int? limit) => state = state.copyWith(deviceLimit: limit);
 
+  /// Sets the digital product type (e.g., 'software', 'book').
   void setDigitalType(String? type) =>
       state = state.copyWith(digitalType: type);
 
+  /// Sets whether a discount tier validation error should be shown.
   void setDiscountTierError(bool value) =>
       state = state.copyWith(discountTierError: value);
 
+  /// Toggles express delivery; disables local-only when enabled.
   void setExpressEnabled(bool value) => state = state.copyWith(
     expressEnabled: value,
     isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly,
   );
 
+  /// Sets whether the user has attempted to submit (triggers validation display).
   void setHasAttemptedSubmit(bool value) =>
       state = state.copyWith(hasAttemptedSubmit: value);
 
+  /// Toggles tracking number availability for the product.
   void setHasTracking(bool value) => state = state.copyWith(hasTracking: value);
+
+  /// Toggles inventory management for the product.
   void setInventoryManaged(bool value) =>
       state = state.copyWith(inventoryManaged: value);
 
+  /// Sets the Linux download URL for digital software products.
   void setLinuxDownloadUrl(String? url) =>
       state = state.copyWith(linuxDownloadUrl: url);
 
+  /// Toggles local-only delivery; disables standard/express/same-day when enabled.
   void setLocalDeliveryOnly(bool value) => state = state.copyWith(
     isLocalDeliveryOnly: value,
     standardEnabled: value ? false : state.standardEnabled,
@@ -671,54 +740,74 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     sameDayEnabled: value ? false : state.sameDayEnabled,
   );
 
+  /// Toggles low-stock alert for inventory management.
   void setLowStockAlertEnabled(bool value) =>
       state = state.copyWith(lowStockAlertEnabled: value);
 
+  /// Sets the macOS download URL for digital software products.
   void setMacosDownloadUrl(String? url) =>
       state = state.copyWith(macosDownloadUrl: url);
 
+  /// Sets the minimum order quantity for this product.
   void setMinimumOrderQuantity(int value) =>
       state = state.copyWith(minimumOrderQuantity: value);
 
+  /// Sets the province code for the product address.
   void setProvince(String province) =>
       state = state.copyWith(selectedProvince: province);
+
+  /// Toggles same-day delivery; disables local-only when enabled.
   void setSameDayEnabled(bool value) => state = state.copyWith(
     sameDayEnabled: value,
     isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly,
   );
+  /// Sets the seller SKU, trimming whitespace and treating empty as null.
   void setSellerSku(String? sku) => state = state.copyWith(
     sellerSku: sku?.trim().isEmpty == true ? null : sku?.trim(),
   );
+  /// Toggles standard delivery; disables local-only when enabled.
   void setStandardEnabled(bool value) => state = state.copyWith(
     standardEnabled: value,
     isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly,
   );
+  /// Sets the selected subcategory for the product.
   void setSubcategory(String? sub) =>
       state = state.copyWith(selectedSubcategory: sub);
+
+  /// Sets the supplier currency code.
   void setSupplierCurrency(String currency) =>
       state = state.copyWith(selectedSupplierCurrency: currency);
 
-  // C-03: Setters for business logic state
+  /// Sets the supplier type (e.g., 'dropship', 'wholesale').
   void setSupplierType(String type) =>
       state = state.copyWith(selectedSupplierType: type);
 
+  /// Toggles quantity tracking for inventory.
   void setTrackQuantity(bool value) =>
       state = state.copyWith(trackQuantity: value);
 
+  /// Sets the product video file and its duration in seconds.
   void setVideo(XFile? file, int? durationSeconds) => state = state.copyWith(
     videoFile: file,
     videoDurationSeconds: durationSeconds,
   );
 
+  /// Sets stock quantity for a specific warehouse.
+  ///
+  /// Parameters:
+  /// - [warehouseId]: the warehouse identifier.
+  /// - [qty]: stock quantity at that warehouse.
   void setWarehouseStock(String warehouseId, int qty) {
     final stockMap = Map<String, int>.from(state.warehouseStockMap);
     stockMap[warehouseId] = qty;
     state = state.copyWith(warehouseStockMap: stockMap);
   }
 
+  /// Sets the Windows download URL for digital software products.
   void setWindowsDownloadUrl(String? url) =>
       state = state.copyWith(windowsDownloadUrl: url);
 
+  /// Toggles age restriction flag for the product.
   void toggleAgeRestricted(bool value) =>
       state = state.copyWith(isAgeRestricted: value);
 
@@ -788,6 +877,7 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     }
   }
 
+  /// Toggles perishable flag — forces local-only delivery when enabled.
   void togglePerishable(bool value) {
     if (value) {
       state = state.copyWith(isPerishable: true, isLocalDeliveryOnly: true);
@@ -796,6 +886,7 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     }
   }
 
+  /// Toggles warehouse selection — adds or removes [warehouseId] and its stock entry.
   void toggleWarehouseSelection(String warehouseId) {
     final current = List<String>.from(state.selectedWarehouseIds);
     if (current.contains(warehouseId)) {
@@ -813,10 +904,11 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     }
   }
 
-  /// Bug #1: Allow ProductAddImages widget to sync images back to ViewModel
+  /// Syncs the full image list back to the ViewModel (Bug #1 fix).
   void updateImages(List<ImageModel> images) =>
       state = state.copyWith(imageModels: images);
 
+  /// Updates the variant option at [index] with new [name] and [values], then regenerates variants.
   void updateVariantOption(int index, String name, List<String> values) {
     final options = List<VariantOption>.from(state.variantOptions);
     options[index] = VariantOption(name: name, values: values);
@@ -824,6 +916,7 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     _regenerateVariants();
   }
 
+  /// Updates the price (in dollars, converted to cents) for the variant at [index].
   void updateVariantPrice(int index, double? price) {
     final variants = List<ProductVariantEntry>.from(state.variants);
     final priceCents = price != null ? (price * 100).round() : null;
@@ -831,20 +924,24 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     state = state.copyWith(variants: variants);
   }
 
+  /// Updates the SKU for the variant at [index].
   void updateVariantSku(int index, String? sku) {
     final variants = List<ProductVariantEntry>.from(state.variants);
     variants[index] = variants[index].copyWith(sku: sku);
     state = state.copyWith(variants: variants);
   }
 
+  /// Updates the stock quantity for the variant at [index].
   void updateVariantStock(int index, int stockQuantity) {
     final variants = List<ProductVariantEntry>.from(state.variants);
     variants[index] = variants[index].copyWith(stockQuantity: stockQuantity);
     state = state.copyWith(variants: variants);
   }
 
-  /// Auto-generates all variant combinations from variantOptions.
+  /// Auto-generates all variant combinations from variantOptions (cartesian product).
+  ///
   /// Preserves price/stock/sku from existing variants where optionValues match.
+  /// Called internally by [addVariantOption], [removeVariantOption], and [updateVariantOption].
   void _regenerateVariants() {
     final options = state.variantOptions;
     if (options.isEmpty) {

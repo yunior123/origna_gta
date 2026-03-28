@@ -363,14 +363,11 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
               style: TextStyle(color: DesignTokens.textSecondary),
             ),
             const SizedBox(height: 24),
-            Semantics(
-              button: true,
-              label: 'btn-retry-load-orders',
-              child: ModernButton(
-                onPressed: () => ref.invalidate(buyerOrdersProvider),
-                label: 'orders.retry'.tr(),
-                icon: Icons.refresh,
-              ),
+            ModernButton(
+              onPressed: () => ref.invalidate(buyerOrdersProvider),
+              label: 'orders.retry'.tr(),
+              semanticsLabel: 'btn-retry-load-orders',
+              icon: Icons.refresh,
             ),
           ],
         ),

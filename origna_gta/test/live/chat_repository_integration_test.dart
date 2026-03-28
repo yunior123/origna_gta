@@ -7,6 +7,11 @@ import 'package:origna_gta/features/chat/orignabase_chat_repository.dart';
 void main() {
   const runLive = bool.fromEnvironment('RUN_ORIGNABASE_LIVE_TESTS', defaultValue: false);
 
+  if (!runLive) {
+    test('live tests disabled', () {});
+    return;
+  }
+
   bool isExpectedLiveAccessError(Object error) {
     final msg = error.toString().toLowerCase();
     return msg.contains('403') ||
@@ -67,7 +72,6 @@ void main() {
               reason: 'Unexpected error: $e');
         }
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -89,7 +93,6 @@ void main() {
           );
         }
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -111,7 +114,6 @@ void main() {
           );
         }
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -133,7 +135,6 @@ void main() {
           );
         }
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -157,8 +158,7 @@ void main() {
           reason: 'markRead should complete without throwing',
         );
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
-  }, skip: !runLive);
+  });
 }

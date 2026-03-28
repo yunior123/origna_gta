@@ -16,13 +16,14 @@ extension _AddProductDeliverySection on _AddProductScreenState {
     String? infoTitle,
     String? infoBody,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return AnimatedContainer(
       key: key,
       duration: DesignTokens.durationNormal,
       decoration: BoxDecoration(
         color: isEnabled
             ? color.withValues(alpha: 0.04)
-            : DesignTokens.surfaceVariant.withValues(alpha: 0.3),
+            : (isDark ? DesignTokens.darkSurfaceVariant : DesignTokens.surfaceVariant).withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isEnabled

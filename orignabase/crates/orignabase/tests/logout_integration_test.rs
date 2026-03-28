@@ -7,8 +7,7 @@ use std::time::Duration;
 use tokio::time::sleep;
 
 fn base_url() -> String {
-    std::env::var("OB_TEST_URL")
-        .unwrap_or_else(|_| "https://api.dev.orignagta.ca".to_string())
+    std::env::var("OB_TEST_URL").unwrap_or_else(|_| "https://api.dev.orignagta.ca".to_string())
 }
 
 /// Login and return (access_token, refresh_token).
@@ -25,15 +24,12 @@ async fn login(client: &reqwest::Client) -> (String, String) {
 
     assert_eq!(resp.status(), 200, "Login failed");
     let body: Value = resp.json().await.expect("parse login response");
-    
+
     let access_token = body["access_token"]
         .as_str()
         .expect("missing access_token")
         .to_string();
-    let refresh_tok = body["refresh_token"]
-        .as_str()
-        .unwrap_or("")
-        .to_string();
+    let refresh_tok = body["refresh_token"].as_str().unwrap_or("").to_string();
 
     (access_token, refresh_tok)
 }
@@ -79,17 +75,17 @@ async fn refresh_access_token(
         .map_err(|e| format!("refresh request failed: {}", e))?;
 
     let status = resp.status();
-    let body: Value = resp.json().await.map_err(|e| format!("parse response: {}", e))?;
+    let body: Value = resp
+        .json()
+        .await
+        .map_err(|e| format!("parse response: {}", e))?;
 
     if status == 200 {
         let new_access = body["access_token"]
             .as_str()
             .ok_or("missing new access_token")?
             .to_string();
-        let new_refresh = body["refresh_token"]
-            .as_str()
-            .unwrap_or("")
-            .to_string();
+        let new_refresh = body["refresh_token"].as_str().unwrap_or("").to_string();
         Ok((new_access, new_refresh))
     } else {
         Err(format!("refresh token failed: {} — {}", status, body))
@@ -150,7 +146,9 @@ async fn test_logout_revokes_refresh_token() {
             // Expect 401 or "invalid token" error
             let error_str = e.to_string();
             assert!(
-                error_str.contains("401") || error_str.contains("invalid") || error_str.contains("revoked"),
+                error_str.contains("401")
+                    || error_str.contains("invalid")
+                    || error_str.contains("revoked"),
                 "Should reject revoked refresh token: {}",
                 e
             );
@@ -177,7 +175,10 @@ async fn test_refresh_rotation_revokes_old() {
     // Refresh to get new tokens
     match refresh_access_token(&client, &refresh_token_1).await {
         Ok((access_token_2, refresh_token_2)) => {
-            assert!(!access_token_2.is_empty(), "Should receive new access_token");
+            assert!(
+                !access_token_2.is_empty(),
+                "Should receive new access_token"
+            );
 
             // Verify new token works
             assert!(

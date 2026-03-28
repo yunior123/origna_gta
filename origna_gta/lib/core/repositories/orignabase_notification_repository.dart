@@ -4,17 +4,31 @@ import 'package:origna_gta/utils/utils.dart';
 
 /// OrignaBase implementation of the notification repository.
 ///
-/// Notifications are stored in the flat [Collections.notifications] collection
-/// with a [Fields.userId] field referencing the owner.
+/// Uses the flat [Collections.notifications] collection with a [Fields.userId]
+/// field to reference the notification owner. Provides batch and single-item
+/// read-state management.
+///
+/// Error handling: 403 (Forbidden) and 404 (NotFound) are silently swallowed
+/// since they indicate the notification was already deleted or the user no
+/// longer has access — both are non-fatal for read-state updates.
 class OrignaBaseNotificationRepository {
+  /// The OrignaBase client used for database operations.
   final OrignaBase _ob;
 
+  /// Creates a notification repository with the given OrignaBase [client].
   OrignaBaseNotificationRepository(this._ob);
 
-  /// Marks all unread notifications as read using batch update.
+  /// Marks all unread notifications as read for the given user.
   ///
-  /// Silently succeeds when the user has no notifications (list returns
-  /// empty or 403 due to null resource context on the SurrealDB rule).
+  /// Parameters:
+  /// - [uid]: the user's document ID.
+  ///
+  /// Queries for all unread notifications, then batch-updates them.
+  /// Silently succeeds when:
+  /// - The user has no notifications (empty result).
+  /// - The backend returns 403 (null resource context in SurrealDB rules).
+  ///
+  /// Throws on other errors (logged via [AppError]).
   Future<void> markAllRead(String uid) async {
     try {
       final snapshot = await _ob
@@ -44,9 +58,18 @@ class OrignaBaseNotificationRepository {
     }
   }
 
-  /// Marks a single notification as read.
+  /// Marks a single notification as read by its document ID.
   ///
-  /// Silently succeeds when the notification does not exist (non-fatal).
+  /// Parameters:
+  /// - [uid]: the user's document ID.
+  /// - [notificationId]: the notification document ID.
+  ///
+  /// Silently succeeds when:
+  /// - The notification does not exist (404).
+  /// - The user lacks access (403).
+  /// - An internal server error occurs for a nonexistent document.
+  ///
+  /// Throws on other errors (logged via [AppError]).
   Future<void> markRead(String uid, String notificationId) async {
     try {
       await _ob

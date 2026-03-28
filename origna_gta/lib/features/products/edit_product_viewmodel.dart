@@ -11,6 +11,10 @@ import 'package:origna_gta/utils/utils.dart';
 import 'edit_product_state.dart';
 import 'product_image_helpers.dart';
 
+/// Riverpod provider for [EditProductViewModel].
+///
+/// Family provider keyed by the [models.Product] being edited — each product
+/// gets its own pre-filled state from the existing product data.
 final editProductViewModelProvider = StateNotifierProvider.autoDispose
     .family<EditProductViewModel, EditProductState, models.Product>((
       ref,
@@ -20,6 +24,16 @@ final editProductViewModelProvider = StateNotifierProvider.autoDispose
     });
 
 /// Manages product editing: loads existing data, validates changes, submits update.
+///
+/// ## Key Decisions
+/// - Pre-fills all state from the existing [models.Product] in the constructor.
+/// - Ownership guard: [updateProduct] verifies the current user owns the product before submitting.
+/// - Digital products skip address/shipping validation; physical products require delivery options.
+/// - Province codes are normalized ([_normalizeProvinceCode]) to handle legacy full-name values.
+///
+/// See also:
+/// - [EditProductState] for the state shape
+/// - [AddProductViewModel] for new product creation
 class EditProductViewModel extends StateNotifier<EditProductState> {
   final Ref _ref;
   final models.Product _product;
@@ -102,6 +116,10 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
 
   ProductRepository get _repository => _ref.read(productRepositoryProvider);
 
+  /// Reads an image file and adds it to the new images list.
+  ///
+  /// Parameters:
+  /// - [file]: the picked image file to add.
   Future<void> addImage(XFile file) async {
     final bytes = await file.readAsBytes();
     state = state.copyWith(
@@ -112,10 +130,15 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
     );
   }
 
+  /// Replaces the entire new images list with [images].
   void updateNewImages(List<ImageModel> images) {
     state = state.copyWith(newImages: List<ImageModel>.from(images));
   }
 
+  /// Triggers address autocomplete when street input changes.
+  ///
+  /// Parameters:
+  /// - [value]: current street text; queries are skipped when < 3 characters.
   Future<void> onStreetChanged(String value) async {
     if (value.length < 3) {
       state = state.copyWith(showSuggestions: false, addressSuggestions: []);
@@ -132,11 +155,13 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
     }
   }
 
+  /// Removes the existing image at [index] from the image list.
   void removeExistingImage(int index) {
     final newList = List<String>.from(state.existingImageUrls)..removeAt(index);
     state = state.copyWith(existingImageUrls: newList);
   }
 
+  /// Removes the current video (both new upload and existing URL).
   void removeVideo() {
     state = state.copyWith(
       videoFile: null,
@@ -145,6 +170,10 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
     );
   }
 
+  /// Populates state with province, lat/lng from a Geoapify suggestion.
+  ///
+  /// Parameters:
+  /// - [suggestion]: raw feature map from Geoapify autocomplete API.
   void selectAddress(Map<String, dynamic> suggestion) {
     final details = parseAddressSuggestion(suggestion);
     state = state.copyWith(
@@ -156,11 +185,14 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
     );
   }
 
+  /// Sets the book source URL for digital book products.
   void setBookSourceUrl(String? url) =>
       state = state.copyWith(bookSourceUrl: url);
 
+  /// Sets the device limit for digital software products.
   void setDeviceLimit(int? limit) => state = state.copyWith(deviceLimit: limit);
 
+  /// Sets the digital product type (e.g., 'software', 'book').
   void setDigitalType(String? type) =>
       state = state.copyWith(digitalType: type);
 
@@ -173,29 +205,43 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
     state = state.copyWith(existingImageUrls: urls);
   }
 
+  /// Toggles express delivery; disables local-only when enabled.
   void setExpressEnabled(bool value) => state = state.copyWith(
     expressEnabled: value,
     isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly,
   );
 
+  /// Sets the Linux download URL for digital software products.
   void setLinuxDownloadUrl(String? url) =>
       state = state.copyWith(linuxDownloadUrl: url);
 
+  /// Sets the macOS download URL for digital software products.
   void setMacosDownloadUrl(String? url) =>
       state = state.copyWith(macosDownloadUrl: url);
 
+  /// Sets the minimum order quantity for this product.
   void setMinimumOrderQuantity(int value) =>
       state = state.copyWith(minimumOrderQuantity: value);
+
+  /// Sets the province code for the product address.
   void setProvince(String province) =>
       state = state.copyWith(selectedProvince: province);
+
+  /// Toggles same-day delivery; disables local-only when enabled.
   void setSameDayEnabled(bool value) => state = state.copyWith(
     sameDayEnabled: value,
     isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly,
   );
+  /// Toggles standard delivery; disables local-only when enabled.
   void setStandardEnabled(bool value) => state = state.copyWith(
     standardEnabled: value,
     isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly,
   );
+  /// Sets the product video file and its duration.
+  ///
+  /// Parameters:
+  /// - [file]: the video file to upload.
+  /// - [durationSeconds]: video length in seconds (validated against [BusinessRules.maxVideoDurationSeconds]).
   void setVideo(XFile file, int durationSeconds) {
     state = state.copyWith(
       videoFile: file,
@@ -204,12 +250,18 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
     );
   }
 
+  /// Sets the Windows download URL for digital software products.
   void setWindowsDownloadUrl(String? url) =>
       state = state.copyWith(windowsDownloadUrl: url);
 
+  /// Toggles age restriction flag for the product.
   void toggleAgeRestricted(bool value) =>
       state = state.copyWith(isAgeRestricted: value);
 
+  /// Toggles digital product mode — clears delivery options and forces free shipping on.
+  ///
+  /// When enabling: saves standard delivery state, disables all delivery tiers.
+  /// When disabling: restores previously saved standard delivery state.
   void toggleDigital(bool value) => state = state.copyWith(
     isDigital: value,
     freeShipping: value ? true : state.freeShipping,
@@ -231,12 +283,15 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
     deviceLimit: value ? state.deviceLimit : null,
   );
 
+  /// Toggles free shipping for the product.
   void toggleFreeShipping(bool value) =>
       state = state.copyWith(freeShipping: value);
 
+  /// Toggles local-only delivery; disables standard/express/same-day when enabled.
   void toggleLocalDelivery(bool value) =>
       state = state.copyWith(isLocalDeliveryOnly: value);
 
+  /// Toggles perishable flag — forces local-only delivery when enabled.
   void togglePerishable(bool value) {
     if (value) {
       state = state.copyWith(isPerishable: true, isLocalDeliveryOnly: true);
@@ -245,8 +300,28 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
     }
   }
 
+  /// Toggles the sold-out flag — sets stock to 0 when enabled.
   void toggleSoldOut(bool value) => state = state.copyWith(isSoldOut: value);
 
+  /// Validates all inputs and submits the product update to the server.
+  ///
+  /// Parameters:
+  /// - [name], [description], [price], [stock], [categoryId]: required product fields.
+  /// - [street], [apartment], [city], [postalCode]: product address (physical only).
+  /// - [weight], [length], [width], [height]: optional package dimensions.
+  /// - [taxCode]: optional tax code.
+  /// - [shipDays]: estimated shipping days.
+  /// - [deliveryOptions]: seller delivery options.
+  /// - [inventory]: optional inventory configuration.
+  /// - [compareAtPrice]: original/crossed-out price for discount display (must be > price).
+  /// - [nameF], [descriptionF]: French translations (Bill 96).
+  ///
+  /// Ownership guard: verifies current user owns the product.
+  /// Uploads new images and video before updating the product document.
+  ///
+  /// Gotchas:
+  /// - Digital products skip address and delivery option validation.
+  /// - Physical products require at least one delivery tier (unless local-only).
   Future<void> updateProduct({
     required String name,
     required String description,
@@ -274,6 +349,9 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
   }) async {
     // Guard: prevent double-submit
     if (state.isLoading) return;
+
+    // Input boundary: convert dollars to cents immediately
+    final priceCents = (price * 100).round();
 
     // CRITICAL: Ownership guard — prevent editing another seller's product
     final currentUid = _ref.read(userIdProvider);
@@ -469,7 +547,7 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
         descriptionF: descriptionF?.trim().isEmpty == true
             ? null
             : descriptionF?.trim(),
-        priceCents: (price * 100).round(),
+        priceCents: priceCents,
         stockQuantity: state.isSoldOut ? 0 : stock,
         categoryId: categoryId,
         imageUrls: allImageUrls,

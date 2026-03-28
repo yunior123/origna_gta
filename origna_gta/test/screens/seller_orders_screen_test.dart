@@ -96,6 +96,28 @@ void main() {
   }
 
   group('SellerOrdersScreen Tests', () {
+    testWidgets('builds without error with mocked providers', (
+      WidgetTester tester,
+    ) async {
+      setupScreenSize(tester);
+      await tester.pumpWidget(
+        createSellerOrdersScreen(
+          overrides: [
+            sellerOrdersProvider.overrideWith((ref) => Stream.value([])),
+            sellerUnansweredQaProvider('seller_123').overrideWith(
+              (ref) => Stream.value(0),
+            ),
+          ],
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      expect(find.byType(SellerOrdersScreen), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('renders empty state correctly', (WidgetTester tester) async {
       setupScreenSize(tester);
       await tester.pumpWidget(

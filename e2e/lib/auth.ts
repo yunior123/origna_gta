@@ -365,6 +365,7 @@ export async function signInOrignaBase(email: string, password: string): Promise
 
   return {
     idToken: accessToken,
+    accessToken,
     refreshToken,
     localId,
     email: normalizedEmail,

@@ -13,6 +13,11 @@ void main() {
     defaultValue: false,
   );
 
+  if (!runLive) {
+    test('live tests disabled', () {});
+    return;
+  }
+
   group('OrignaBaseNotificationRepository live', () {
     late ProviderContainer container;
     late OrignaBase ob;
@@ -51,7 +56,6 @@ void main() {
           // Expected for nonexistent notification
         }
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -60,8 +64,7 @@ void main() {
       () async {
         await notificationRepo.markAllRead(userId);
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
-  }, skip: !runLive);
+  });
 }

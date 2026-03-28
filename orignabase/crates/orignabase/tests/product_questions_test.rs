@@ -20,7 +20,10 @@ async fn register_test_user(client: &Client) -> (String, String) {
         .expect("register failed");
     assert_eq!(resp.status(), 200);
     let body: Value = resp.json().await.unwrap();
-    let token = body["access_token"].as_str().expect("missing access_token").to_string();
+    let token = body["access_token"]
+        .as_str()
+        .expect("missing access_token")
+        .to_string();
     let user_id = body["user"]["id"].as_str().unwrap_or("").to_string();
     (token, user_id)
 }
@@ -60,7 +63,10 @@ async fn test_ask_product_question() {
     let query = create_doc_query("products", &product_data);
     let (status, body) = graphql(&client, Some(&seller_token), &query).await;
     assert_eq!(status, 200);
-    let product_id = body["data"]["create"]["id"].as_str().unwrap_or("").to_string();
+    let product_id = body["data"]["create"]["id"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
 
     // Ask a question
     let question_data = json!({
@@ -93,7 +99,10 @@ async fn test_get_product_questions() {
     let query = create_doc_query("products", &product_data);
     let (status, body) = graphql(&client, Some(&seller_token), &query).await;
     assert_eq!(status, 200);
-    let product_id = body["data"]["create"]["id"].as_str().unwrap_or("").to_string();
+    let product_id = body["data"]["create"]["id"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
 
     // Ask a question
     let question_data = json!({
@@ -109,9 +118,8 @@ async fn test_get_product_questions() {
     // Fetch questions for the product
     let filters = serde_json::to_string(&json!({"productId": {"_eq": product_id}})).unwrap();
     let escaped_f = serde_json::to_string(&filters).unwrap();
-    let query = format!(
-        r#"{{ list(collection: "product_questions", filters: {escaped_f}, limit: 10) }}"#
-    );
+    let query =
+        format!(r#"{{ list(collection: "product_questions", filters: {escaped_f}, limit: 10) }}"#);
     let (status, body) = graphql(&client, Some(&buyer_token), &query).await;
 
     assert_eq!(status, 200);
@@ -135,7 +143,10 @@ async fn test_seller_answers_question() {
     let query = create_doc_query("products", &product_data);
     let (status, body) = graphql(&client, Some(&seller_token), &query).await;
     assert_eq!(status, 200);
-    let product_id = body["data"]["create"]["id"].as_str().unwrap_or("").to_string();
+    let product_id = body["data"]["create"]["id"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
 
     // Ask question
     let question_data = json!({
@@ -147,7 +158,10 @@ async fn test_seller_answers_question() {
     let query = create_doc_query("product_questions", &question_data);
     let (status, body) = graphql(&client, Some(&buyer_token), &query).await;
     assert_eq!(status, 200);
-    let question_id = body["data"]["create"]["id"].as_str().unwrap_or("").to_string();
+    let question_id = body["data"]["create"]["id"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
 
     if !question_id.is_empty() {
         // Seller answers
@@ -182,13 +196,15 @@ async fn test_get_questions_pagination() {
     let query = create_doc_query("products", &product_data);
     let (status, body) = graphql(&client, Some(&seller_token), &query).await;
     assert_eq!(status, 200);
-    let product_id = body["data"]["create"]["id"].as_str().unwrap_or("").to_string();
+    let product_id = body["data"]["create"]["id"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
 
     let filters = serde_json::to_string(&json!({"productId": {"_eq": product_id}})).unwrap();
     let escaped_f = serde_json::to_string(&filters).unwrap();
-    let query = format!(
-        r#"{{ list(collection: "product_questions", filters: {escaped_f}, limit: 5) }}"#
-    );
+    let query =
+        format!(r#"{{ list(collection: "product_questions", filters: {escaped_f}, limit: 5) }}"#);
     let (status, body) = graphql(&client, Some(&buyer_token), &query).await;
 
     assert_eq!(status, 200);

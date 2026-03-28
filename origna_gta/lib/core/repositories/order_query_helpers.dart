@@ -9,13 +9,23 @@ import 'package:origna_gta/models/generated/models.dart' as models;
 
 /// Extracted realtime stream helpers for [OrignaBaseOrderRepository].
 ///
-/// Contains the generic _watchOrders pattern and session-based polling so the
-/// main repository file stays focused on the public API surface.
+/// Contains the generic [watchOrdersImpl] pattern and session-based polling
+/// so the main repository file stays focused on the public API surface.
+/// Mixed into [OrignaBaseOrderRepository].
+///
+/// Design: WebSocket subscriptions seed from an initial HTTP fetch, then
+/// apply incremental document changes. Malformed documents are skipped silently.
 mixin OrderQueryHelpers {
+  /// The OrignaBase client instance (provided by the mixing class).
   OrignaBase get ob;
+
+  /// Converts an OrignaBase [Document] to a [models.Order].
   models.Order docToOrder(Document doc);
 
   /// Valid payment statuses for buyer/seller order streams.
+  ///
+  /// Includes all terminal and active payment states (authorized, captured,
+  /// disputed, refunded, cancelled, authorizationExpired).
   static final activePaymentStatuses = [
     PaymentStatus.authorized.value,
     PaymentStatus.captured.value,
@@ -25,7 +35,9 @@ mixin OrderQueryHelpers {
     PaymentStatus.authorizationExpired.value,
   ];
 
-  /// Converts [PaymentStatus] enum to its database string value.
+  /// Converts a [PaymentStatus] enum value to its database string representation.
+  ///
+  /// Used for query filters that require string values rather than enum instances.
   static String paymentStatusToString(PaymentStatus status) {
     switch (status) {
       case PaymentStatus.awaitingPayment:
@@ -65,13 +77,23 @@ mixin OrderQueryHelpers {
     }
   }
 
-  /// Strips `collection:` prefix for flexible ID comparison.
+  /// Strips the `collection:` prefix from a SurrealDB record ID for comparison.
+  ///
+  /// Example: `"users:abc123"` → `"abc123"`.
   static String normalizeId(String id) =>
       id.contains(':') ? id.split(':').last : id;
 
-  /// Realtime stream backed by WebSocket subscription on the `orders`
-  /// collection. Seeds state from an initial HTTP fetch, then applies
-  /// incremental changes received over the socket.
+  /// Realtime stream of orders backed by WebSocket subscription.
+  ///
+  /// Seeds state from an initial HTTP fetch, then applies incremental
+  /// changes received over the WebSocket connection.
+  ///
+  /// Parameters:
+  /// - [initialQuery]: function that builds the initial OrignaBase query.
+  /// - [accept]: filter predicate applied to each order (client-side post-filter).
+  /// - [sort]: sorting function applied to the accumulated order list.
+  ///
+  /// Returns a stream that emits the full sorted list on each change.
   Stream<List<models.Order>> watchOrdersImpl({
     required Query Function() initialQuery,
     required bool Function(models.Order) accept,
@@ -131,8 +153,15 @@ mixin OrderQueryHelpers {
     return controller.stream;
   }
 
-  /// Session lookup: short-lived stream that polls until the order appears.
+  /// Short-lived polling stream that waits for an order to appear by Stripe session ID.
+  ///
   /// WebSocket is not suitable here because we don't know the order ID upfront.
+  /// Polls every 3 seconds until a captured order with the given [sessionId] is found,
+  /// then stops. Used on the post-payment success screen.
+  ///
+  /// [sessionId]: the Stripe Checkout session ID to look up.
+  ///
+  /// Emits null until the order is found, then emits the order and cancels the timer.
   Stream<models.Order?> watchPaidOrderBySessionImpl(String sessionId) {
     late StreamController<models.Order?> controller;
     Timer? timer;

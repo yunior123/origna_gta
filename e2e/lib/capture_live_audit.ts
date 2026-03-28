@@ -4,49 +4,25 @@ import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { AgentBrowser } from './agent-browser.js';
 
-const OUT_DIR =
-  '/Users/yuniorrodriguezosorio/Desktop/origna-design-review-2026-03-26';
+const OUT_DIR = '/Users/yuniorrodriguezosorio/Desktop/origna-design-review-2026-03-26';
 
-function runAgentBrowser(args: string[], timeout = 30_000): string {
-  const result = Bun.spawnSync(['agent-browser', ...args], {
-    env: process.env,
-    timeout,
-  });
-  if (result.exitCode !== 0) {
-    throw new Error(
-      `agent-browser ${args[0]} failed: ${
-        result.stderr.toString().trim() || result.stdout.toString().trim()
-      }`,
-    );
-  }
-  return result.stdout.toString();
-}
+const SCREEN_KEYWORDS: Record<string, string[]> = {
+  'menu-my-orders': ['Commandes', 'commandes', 'order-card', 'Aucune commande'],
+  'menu-favorites': ['favoris', 'Favoris', 'favorite', 'Aucun favori'],
+  'menu-my-messages': ['messages', 'Messages', 'chat', 'Premium requis', 'Boîte de réception', 'Aucun message'],
+  'menu-premium': ['Abonnement', 'Premium', 'subscription', 'Annuler'],
+  'menu-address': ['Adresses', 'adresse', 'address', 'livraison'],
+  'menu-seller-orders': ['Gérer les commandes', 'seller-order', 'commande'],
+  'menu-seller-dashboard': ['Mes produits', 'produit', 'Ajouter', 'produits'],
+  'menu-seller-analytics': ['Analytique', 'analytique', 'Revenue'],
+  'menu-admin-panel': ['Panneau', 'admin', 'Vendeurs', 'Utilisateurs', 'Statistiques'],
+  'btn-add-product': ['Nouveau produit', 'add-product', 'Nom du produit'],
+  'btn-cart': ['panier', 'Panier', 'cart', 'Passer à la caisse'],
+  'menu-language': ['Langue', 'language', 'Français', 'English'],
+};
 
 async function sleep(ms: number): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function setViewport(width: number, height: number): Promise<void> {
-  runAgentBrowser(['set', 'viewport', String(width), String(height)]);
-  await sleep(800);
-}
-
-async function authenticate(browser: AgentBrowser): Promise<void> {
-  await browser.open('https://dev.orignagta.ca', 60_000);
-  await sleep(4_000);
-  runAgentBrowser([
-    'eval',
-    `(async()=>{const r=await fetch('https://api.dev.orignagta.ca/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:'e2e-admin@test.origna.ca',password:'REDACTED_TEST_PASSWORD'})});const d=await r.json();localStorage.setItem('orignabase_access_token',d.access_token);localStorage.setItem('orignabase_refresh_token',d.refresh_token);localStorage.setItem('orignabase_email','e2e-admin@test.origna.ca');return JSON.stringify({ok:!!d.access_token,userId:d.user?.id})})()`,
-  ]);
-  await browser.open('https://dev.orignagta.ca', 60_000);
-  await sleep(6_000);
-  await browser.snapshot({ interactive: true, compact: true });
-}
-
-async function capture(browser: AgentBrowser, name: string): Promise<void> {
-  const path = join(OUT_DIR, name);
-  await browser.screenshot(path);
-  console.log(`captured ${name}`);
 }
 
 async function safeClickSearch(
@@ -62,134 +38,152 @@ async function safeClickSearch(
     }
     await browser.scrollAndWait('down', 2_000).catch(() => undefined);
   }
-
   for (let i = 0; i < scrollAttempts; i += 1) {
     await browser.scrollAndWait('up', 2_000).catch(() => undefined);
   }
-
   return false;
-}
-
-async function goHome(browser: AgentBrowser): Promise<void> {
-  await browser.open('https://dev.orignagta.ca', 60_000);
-  await sleep(4_000);
-}
-
-async function goProfile(browser: AgentBrowser): Promise<void> {
-  await goHome(browser);
-  await browser.safeClick(/btn-home-settings/i);
-  await sleep(3_000);
 }
 
 async function main() {
   mkdirSync(OUT_DIR, { recursive: true });
   const browser = new AgentBrowser();
 
-  await authenticate(browser);
-  await setViewport(1440, 900);
+  // Make sure we are logged in and ready
+  await browser.goHomeAndLogin();
 
-  await goHome(browser);
+  const capture = async (name: string, keywords: string[], width: number = 1440, height: number = 900) => {
+    await browser.screenshotWithVerify({
+      filepath: join(OUT_DIR, name),
+      expectedKeywords: keywords,
+      viewport: { width, height },
+    });
+  };
+
+  // HOME PAGE STUFF (1440x900)
+  await browser.run(['set', 'viewport', '1440', '900'] as any);
+  await browser.open('https://dev.orignagta.ca', 60_000);
+  await sleep(4000);
   await browser.safeClick(/btn-home-sort/i);
-  await capture(browser, '165-home-sort-active.png');
+  await capture('165-home-sort-active.png', ['Trier', 'sort']);
   await browser.safeClick(/btn-home-price-filter/i);
-  await capture(browser, '166-home-price-filter-active.png');
-  await capture(browser, '143-modern-product-card.png');
-  await capture(browser, '153-promo-banner.png');
+  await capture('166-home-price-filter-active.png', ['Prix', 'price']);
+  await capture('143-modern-product-card.png', ['btn-add-to-cart', 'panier']);
+  await capture('153-promo-banner.png', ['origna', 'promo', 'btn-home-settings', 'panier']);
 
-  await browser.safeClick(/btn-add-product/i);
-  await sleep(4_000);
-  await capture(browser, '138-addproduct-food-info.png');
-  await browser.scrollAndWait('down', 2_000).catch(() => undefined);
-  await capture(browser, '139-addproduct-delivery.png');
-  await browser.scrollAndWait('down', 2_000).catch(() => undefined);
-  await capture(browser, '140-addproduct-package.png');
-  await browser.scrollAndWait('down', 2_000).catch(() => undefined);
-  await capture(browser, '141-addproduct-specs.png');
-  await browser.scrollAndWait('down', 2_000).catch(() => undefined);
-  await capture(browser, '142-addproduct-supplier.png');
+  // ADD PRODUCT
+  await browser.goHomeAndLogin();
+  let res = await browser.navigateAndVerify({ clickRef: 'btn-add-product', expectedKeywords: SCREEN_KEYWORDS['btn-add-product'] });
+  if (res.success) {
+    await sleep(2000);
+    await capture('138-addproduct-food-info.png', SCREEN_KEYWORDS['btn-add-product']);
+    await browser.scrollAndWait('down', 2_000).catch(() => undefined);
+    await capture('139-addproduct-delivery.png', ['livraison', 'delivery']);
+    await browser.scrollAndWait('down', 2_000).catch(() => undefined);
+    await capture('140-addproduct-package.png', ['poids', 'weight']);
+    await browser.scrollAndWait('down', 2_000).catch(() => undefined);
+    await capture('141-addproduct-specs.png', ['spécifications']);
+    await browser.scrollAndWait('down', 2_000).catch(() => undefined);
+    await capture('142-addproduct-supplier.png', ['fournisseur', 'supplier', 'boutique']);
+  }
 
-  await goHome(browser);
-  await safeClickSearch(browser, /btn-edit-product-/i, 2);
-  await capture(browser, '105-edit-product-top.png');
-  await browser.scrollAndWait('down', 2_000).catch(() => undefined);
-  await capture(browser, '106-edit-product-media.png');
-  await browser.scrollAndWait('down', 2_000).catch(() => undefined);
-  await capture(browser, '107-edit-product-shipping.png');
-  await browser.scrollAndWait('down', 2_000).catch(() => undefined);
-  await capture(browser, '108-edit-product-location.png');
+  // EDIT PRODUCT
+  await browser.goHomeAndLogin();
+  const editClicked = await safeClickSearch(browser, /btn-edit-product-/i, 2);
+  if (editClicked) {
+    await capture('105-edit-product-top.png', ['Modifier', 'edit']);
+    await browser.scrollAndWait('down', 2_000).catch(() => undefined);
+    await capture('106-edit-product-media.png', ['images', 'media']);
+    await browser.scrollAndWait('down', 2_000).catch(() => undefined);
+    await capture('107-edit-product-shipping.png', ['livraison', 'shipping']);
+    await browser.scrollAndWait('down', 2_000).catch(() => undefined);
+    await capture('108-edit-product-location.png', ['adresse', 'location']);
+  }
 
-  await goProfile(browser);
-  await capture(browser, '167-profile-header-card.png');
+  // PROFILE HEADER
+  await browser.goHomeAndLogin();
+  await browser.safeClick(/btn-home-settings/i);
+  await sleep(3000);
+  await capture('167-profile-header-card.png', ['Abonnement', 'Paramètres', 'Settings']);
 
-  await browser.safeClick(/menu-favorites/i);
-  await sleep(3_000);
-  await capture(browser, '159-favorites-empty.png');
+  // FAVORITES
+  res = await browser.navigateToProfileMenu('menu-favorites', SCREEN_KEYWORDS['menu-favorites']);
+  if (res.success) await capture('159-favorites-empty.png', SCREEN_KEYWORDS['menu-favorites']);
 
-  await goProfile(browser);
-  await browser.safeClick(/menu-address/i);
-  await sleep(3_000);
-  await capture(browser, '112-seller-warehouses-list.png');
-  await safeClickSearch(browser, /add|edit|address/i, 3);
-  await capture(browser, '128-address-edit-form.png');
+  // ADDRESS
+  res = await browser.navigateToProfileMenu('menu-address', SCREEN_KEYWORDS['menu-address']);
+  if (res.success) {
+    await capture('112-seller-warehouses-list.png', SCREEN_KEYWORDS['menu-address']);
+    const formClicked = await safeClickSearch(browser, /add|edit|address|nouvelle/i, 3);
+    if (formClicked) await capture('128-address-edit-form.png', ['sauvegarder', 'save', 'ville', 'city']);
+  }
 
-  await goProfile(browser);
-  await browser.safeClick(/menu-my-messages/i);
-  await sleep(3_000);
-  await capture(browser, '164-chat-empty.png');
-  await safeClickSearch(browser, /chat-thread-/i, 3);
-  await capture(browser, '127-chat-conversation.png');
+  // MESSAGES
+  res = await browser.navigateToProfileMenu('menu-my-messages', SCREEN_KEYWORDS['menu-my-messages']);
+  if (res.success) {
+    await capture('164-chat-empty.png', SCREEN_KEYWORDS['menu-my-messages']);
+    const threadClicked = await safeClickSearch(browser, /chat-thread-/i, 3);
+    if (threadClicked) await capture('127-chat-conversation.png', ['envoyer', 'send', 'message']);
+  }
 
-  await goProfile(browser);
-  await browser.safeClick(/menu-premium/i);
-  await sleep(3_000);
-  await capture(browser, '129-subscription-cancel-flow.png');
-  await safeClickSearch(browser, /cancel-subscription|btn-cancel-subscription/i, 2);
-  await capture(browser, '130-subscription-success.png');
+  // PREMIUM
+  res = await browser.navigateToProfileMenu('menu-premium', SCREEN_KEYWORDS['menu-premium']);
+  if (res.success) {
+    await capture('129-subscription-cancel-flow.png', SCREEN_KEYWORDS['menu-premium']);
+    const cancelClicked = await safeClickSearch(browser, /cancel-subscription|btn-cancel-subscription|annuler/i, 2);
+    if (cancelClicked) await capture('130-subscription-success.png', ['succès', 'success', 'annulé']);
+  }
 
-  await goProfile(browser);
-  await browser.safeClick(/menu-seller-orders/i);
-  await sleep(4_000);
-  await capture(browser, '162-seller-orders-populated.png');
-  await capture(browser, '156-mark-shipped-dialog.png');
-  await capture(browser, '157-update-shipping-dialog.png');
+  // SELLER ORDERS
+  res = await browser.navigateToProfileMenu('menu-seller-orders', SCREEN_KEYWORDS['menu-seller-orders']);
+  if (res.success) {
+    await capture('162-seller-orders-populated.png', SCREEN_KEYWORDS['menu-seller-orders']);
+    const orderClicked = await safeClickSearch(browser, /order-card-|btn-update-shipping/i, 2);
+    if (orderClicked) await capture('156-mark-shipped-dialog.png', ['expédition', 'shipped']);
+  }
 
-  await goProfile(browser);
-  await browser.safeClick(/menu-seller-dashboard/i);
-  await sleep(4_000);
-  await capture(browser, '163-seller-products-populated.png');
+  // SELLER DASHBOARD
+  res = await browser.navigateToProfileMenu('menu-seller-dashboard', SCREEN_KEYWORDS['menu-seller-dashboard']);
+  if (res.success) await capture('163-seller-products-populated.png', SCREEN_KEYWORDS['menu-seller-dashboard']);
 
-  await goProfile(browser);
-  await browser.safeClick(/menu-admin-panel/i);
-  await sleep(4_000);
-  await capture(browser, '168-admin-users-tab.png');
-  await browser.safeClick(/admin-tab-orders|admin_tab_orders/i);
-  await sleep(2_500);
-  await capture(browser, '169-admin-orders-tab.png');
-  await browser.safeClick(/admin-tab-products|admin_tab_products/i);
-  await sleep(2_500);
-  await capture(browser, '170-admin-products-tab.png');
+  // ADMIN PANEL
+  res = await browser.navigateToProfileMenu('menu-admin-panel', SCREEN_KEYWORDS['menu-admin-panel']);
+  if (res.success) {
+    await capture('168-admin-users-tab.png', ['Utilisateurs', 'Users', 'admin']);
+    await browser.safeClick(/admin-tab-orders|admin_tab_orders|Commandes/i);
+    await sleep(2500);
+    await capture('169-admin-orders-tab.png', ['Commandes', 'Orders']);
+    await browser.safeClick(/admin-tab-products|admin_tab_products|Produits/i);
+    await sleep(2500);
+    await capture('170-admin-products-tab.png', ['Produits', 'Products']);
+  }
 
-  await goHome(browser);
-  await browser.safeClick(/btn-cart/i);
-  await sleep(4_000);
-  await capture(browser, '144-cart-total-breakdown.png');
-  await capture(browser, '145-free-shipping-progress.png');
-  await safeClickSearch(browser, /checkout|place order|btn-checkout/i, 2);
-  await capture(browser, '095-checkout-address-section.png');
-  await browser.scrollAndWait('down', 2_000).catch(() => undefined);
-  await capture(browser, '096-checkout-items-section.png');
-  await browser.scrollAndWait('down', 2_000).catch(() => undefined);
-  await capture(browser, '097-checkout-payment-section.png');
+  // CART & CHECKOUT
+  await browser.goHomeAndLogin();
+  res = await browser.navigateAndVerify({ clickRef: 'btn-cart', expectedKeywords: SCREEN_KEYWORDS['btn-cart'] });
+  if (res.success) {
+    await capture('144-cart-total-breakdown.png', SCREEN_KEYWORDS['btn-cart']);
+    await capture('145-free-shipping-progress.png', ['livraison', 'shipping', 'gratuit']);
+    const checkoutClicked = await safeClickSearch(browser, /checkout|place order|btn-checkout|Passer/i, 2);
+    if (checkoutClicked) {
+      await capture('095-checkout-address-section.png', ['adresse', 'address']);
+      await browser.scrollAndWait('down', 2_000).catch(() => undefined);
+      await capture('096-checkout-items-section.png', ['articles', 'items']);
+      await browser.scrollAndWait('down', 2_000).catch(() => undefined);
+      await capture('097-checkout-payment-section.png', ['paiement', 'payment']);
+    }
+  }
 
-  await capture(browser, '171-home-default-desktop.png');
-  await goProfile(browser);
-  await capture(browser, '172-profile-menu-desktop.png');
-  await goHome(browser);
-  await capture(browser, '173-home-categories-desktop.png');
-  await goProfile(browser);
-  await browser.safeClick(/menu-language/i);
-  await sleep(2_000);
-  await capture(browser, '152-language-selector.png');
+  // MORE DESKTOP
+  await browser.goHomeAndLogin();
+  await capture('171-home-default-desktop.png', ['panier', 'btn-add-product']);
+  await browser.safeClick(/btn-home-settings/i);
+  await sleep(3000);
+  await capture('172-profile-menu-desktop.png', ['Abonnement', 'Paramètres']);
+  await browser.goHomeAndLogin();
+  await capture('173-home-categories-desktop.png', ['catégorie', 'panier']);
+  
+  res = await browser.navigateToProfileMenu('menu-language', SCREEN_KEYWORDS['menu-language']);
+  if (res.success) await capture('152-language-selector.png', SCREEN_KEYWORDS['menu-language']);
 }
 
-await main();
+main().catch(console.error);

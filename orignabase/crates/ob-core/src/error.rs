@@ -26,6 +26,9 @@ pub enum Error {
     #[error("Unsupported media type: {0}")]
     UnsupportedMediaType(String),
 
+    #[error("Too many requests: {0}")]
+    TooManyRequests(String),
+
     #[error("Internal error: {0}")]
     Internal(String),
 }
@@ -41,6 +44,7 @@ impl Error {
             Error::NotFound(_) => StatusCode::NOT_FOUND,
             Error::Validation(_) => StatusCode::BAD_REQUEST,
             Error::UnsupportedMediaType(_) => StatusCode::UNSUPPORTED_MEDIA_TYPE,
+            Error::TooManyRequests(_) => StatusCode::TOO_MANY_REQUESTS,
             Error::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
@@ -55,6 +59,7 @@ impl Error {
             Error::NotFound(_) => "NOT_FOUND",
             Error::Validation(_) => "VALIDATION_ERROR",
             Error::UnsupportedMediaType(_) => "UNSUPPORTED_MEDIA_TYPE",
+            Error::TooManyRequests(_) => "TOO_MANY_REQUESTS",
             Error::Internal(_) => "INTERNAL_ERROR",
         }
     }
@@ -155,10 +160,7 @@ mod tests {
 
     #[test]
     fn test_error_code_database() {
-        assert_eq!(
-            Error::Database("x".into()).error_code(),
-            "DATABASE_ERROR"
-        );
+        assert_eq!(Error::Database("x".into()).error_code(), "DATABASE_ERROR");
     }
 
     #[test]
@@ -476,10 +478,7 @@ mod tests {
         let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
         assert_eq!(json["error"]["status"], 400);
         assert_eq!(json["error"]["code"], "VALIDATION_ERROR");
-        assert!(json["error"]["message"]
-            .as_str()
-            .unwrap()
-            .contains("email"));
+        assert!(json["error"]["message"].as_str().unwrap().contains("email"));
     }
 
     #[tokio::test]
@@ -492,9 +491,11 @@ mod tests {
         let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
         assert_eq!(json["error"]["status"], 404);
         assert_eq!(json["error"]["code"], "NOT_FOUND");
-        assert!(json["error"]["message"]
-            .as_str()
-            .unwrap()
-            .contains("Product"));
+        assert!(
+            json["error"]["message"]
+                .as_str()
+                .unwrap()
+                .contains("Product")
+        );
     }
 }

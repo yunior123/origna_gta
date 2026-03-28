@@ -2,19 +2,36 @@ import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/app_logger.dart';
 
-/// OrignaBase config service.
-/// Fetches config key-value pairs from OrignaBase's /config endpoint.
+/// Service for fetching and caching remote configuration from OrignaBase.
+///
+/// Singleton that loads all config key-value pairs from OrignaBase's `/config`
+/// endpoint on startup and caches them in memory. Supports `--dart-define`
+/// overrides for local development and integration testing.
+///
+/// Config values include:
+/// - Geoapify API key (geocoding/address autocomplete)
+/// - Image base URL (Cloudflare R2 CDN)
+/// - Sentry DSN (error reporting)
+/// - Google OAuth web client ID
 class OrignaBaseConfigService {
   static final OrignaBaseConfigService _instance =
       OrignaBaseConfigService._internal();
 
+  /// In-memory cache of config key-value pairs.
   final Map<String, String> _cache = {};
+
+  /// The OrignaBase client instance, set during [initialize].
   OrignaBase? _ob;
 
+  /// Returns the singleton [OrignaBaseConfigService] instance.
   factory OrignaBaseConfigService() => _instance;
 
   OrignaBaseConfigService._internal();
 
+  /// The Geoapify API key for geocoding and address autocomplete.
+  ///
+  /// Prefers a `--dart-define` override (for dev/integration), falls back
+  /// to the server-fetched value.
   String get geoapifyKey {
     // Allow integration/dev to override via --dart-define.
     const override = String.fromEnvironment(
@@ -25,16 +42,27 @@ class OrignaBaseConfigService {
     return _cache[RemoteConfigKeys.geoapifyApiKey] ?? '';
   }
 
+  /// Base URL for serving product images (e.g., `https://cdn.example.com/`).
   String get imageBaseUrl =>
       _cache[RemoteConfigKeys.imageBaseUrl] ?? '';
 
+  /// Sentry DSN for error reporting and crash analytics.
   String get sentryDnsKey =>
       _cache[RemoteConfigKeys.sentryDnsKey] ?? '';
 
+  /// Google OAuth web client ID for Sign-In with Google on web.
   String get googleWebClientId =>
       _cache[RemoteConfigKeys.googleWebClientId] ?? '';
 
-  /// Initialize with defaults, then fetch from OrignaBase server.
+  /// Initializes the config service with safe defaults, then fetches from server.
+  ///
+  /// Parameters:
+  /// - [ob]: the OrignaBase client instance for API access.
+  /// - [skipFetch]: if `true`, sets defaults but skips the server fetch
+  ///   (useful for offline/testing scenarios).
+  ///
+  /// Errors during the fetch are caught and logged — the app starts with
+  /// empty defaults rather than crashing.
   Future<void> initialize(OrignaBase ob, {bool skipFetch = false}) async {
     _ob = ob;
 
@@ -58,7 +86,13 @@ class OrignaBaseConfigService {
     }
   }
 
-  /// Re-fetch a single config value on demand.
+  /// Re-fetches a single config value from the server on demand.
+  ///
+  /// Parameters:
+  /// - [key]: the config key to fetch (e.g., [RemoteConfigKeys.geoapifyApiKey]).
+  ///
+  /// Returns the fetched value, or the cached value (or empty string) if the
+  /// fetch fails or the OrignaBase client is not yet initialized.
   Future<String> getString(String key) async {
     if (_ob == null) return _cache[key] ?? '';
     try {

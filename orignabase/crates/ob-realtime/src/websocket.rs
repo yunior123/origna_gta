@@ -37,7 +37,6 @@ const MAX_WS_MESSAGE_SIZE: usize = 65_536;
 /// Maximum concurrent WebSocket connections per user
 const MAX_CONNECTIONS_PER_USER: usize = 5;
 
-
 /// State shared with WebSocket handler.
 #[derive(Clone)]
 pub struct RealtimeState {
@@ -154,7 +153,7 @@ pub async fn ws_handler(
 
 async fn handle_socket(socket: WebSocket, state: RealtimeState, user_id: String) {
     let connection_id = uuid::Uuid::new_v4().to_string();
-    
+
     // Check per-user connection limit
     {
         let mut current_conns = state.connection_counts.entry(user_id.clone()).or_insert(0);
@@ -189,8 +188,10 @@ async fn handle_socket(socket: WebSocket, state: RealtimeState, user_id: String)
             match tokio::time::timeout(
                 std::time::Duration::from_secs(5),
                 srv_tx_bridge.send(server_msg),
-            ).await {
-                Ok(Ok(())) => {},
+            )
+            .await
+            {
+                Ok(Ok(())) => {}
                 Ok(Err(_)) => break, // channel closed
                 Err(_) => {
                     tracing::warn!("websocket_bridge_send_timeout: slow consumer disconnecting");
@@ -251,7 +252,10 @@ async fn handle_socket(socket: WebSocket, state: RealtimeState, user_id: String)
                             );
                             let _ = srv_tx
                                 .send(ServerMessage::Error {
-                                    message: format!("Subscription to '{}' is not allowed", collection),
+                                    message: format!(
+                                        "Subscription to '{}' is not allowed",
+                                        collection
+                                    ),
                                 })
                                 .await;
                             continue;
@@ -296,12 +300,14 @@ async fn handle_socket(socket: WebSocket, state: RealtimeState, user_id: String)
                                 size = metadata_str.len(),
                                 "presence_metadata_too_large"
                             );
-                            let _ = srv_tx.send(ServerMessage::Error {
-                                message: "Presence metadata too large (max 4KB)".to_string(),
-                            }).await;
+                            let _ = srv_tx
+                                .send(ServerMessage::Error {
+                                    message: "Presence metadata too large (max 4KB)".to_string(),
+                                })
+                                .await;
                             continue;
                         }
-                        
+
                         // Use authenticated user_id from JWT, NOT from client message
                         state
                             .registry
@@ -435,7 +441,10 @@ mod tests {
             token: Some("jwt_from_query".to_string()),
         };
         let headers = axum::http::HeaderMap::new();
-        assert_eq!(extract_ws_token(&query, &headers), Some("jwt_from_query".to_string()));
+        assert_eq!(
+            extract_ws_token(&query, &headers),
+            Some("jwt_from_query".to_string())
+        );
     }
 
     #[test]
@@ -446,7 +455,10 @@ mod tests {
             axum::http::header::AUTHORIZATION,
             axum::http::HeaderValue::from_static("Bearer jwt_from_header"),
         );
-        assert_eq!(extract_ws_token(&query, &headers), Some("jwt_from_header".to_string()));
+        assert_eq!(
+            extract_ws_token(&query, &headers),
+            Some("jwt_from_header".to_string())
+        );
     }
 
     #[test]
@@ -459,7 +471,10 @@ mod tests {
             axum::http::header::AUTHORIZATION,
             axum::http::HeaderValue::from_static("Bearer header_token"),
         );
-        assert_eq!(extract_ws_token(&query, &headers), Some("query_token".to_string()));
+        assert_eq!(
+            extract_ws_token(&query, &headers),
+            Some("query_token".to_string())
+        );
     }
 
     #[test]
@@ -472,7 +487,10 @@ mod tests {
             axum::http::header::AUTHORIZATION,
             axum::http::HeaderValue::from_static("Bearer header_token"),
         );
-        assert_eq!(extract_ws_token(&query, &headers), Some("header_token".to_string()));
+        assert_eq!(
+            extract_ws_token(&query, &headers),
+            Some("header_token".to_string())
+        );
     }
 
     #[test]
@@ -512,7 +530,12 @@ mod tests {
         let json = r#"{"type":"subscribe","id":"sub1","collection":"products","filter_hash":123}"#;
         let msg: ClientMessage = serde_json::from_str(json).unwrap();
         match msg {
-            ClientMessage::Subscribe { id, collection, filter_hash, document_id } => {
+            ClientMessage::Subscribe {
+                id,
+                collection,
+                filter_hash,
+                document_id,
+            } => {
                 assert_eq!(id, "sub1");
                 assert_eq!(collection, "products");
                 assert_eq!(filter_hash, 123);
@@ -524,7 +547,8 @@ mod tests {
 
     #[test]
     fn test_deserialize_subscribe_with_document_id() {
-        let json = r#"{"type":"subscribe","id":"sub1","collection":"users","document_id":"user_42"}"#;
+        let json =
+            r#"{"type":"subscribe","id":"sub1","collection":"users","document_id":"user_42"}"#;
         let msg: ClientMessage = serde_json::from_str(json).unwrap();
         match msg {
             ClientMessage::Subscribe { document_id, .. } => {
@@ -589,7 +613,9 @@ mod tests {
 
     #[test]
     fn test_serialize_subscribed_message() {
-        let msg = ServerMessage::Subscribed { id: "sub1".to_string() };
+        let msg = ServerMessage::Subscribed {
+            id: "sub1".to_string(),
+        };
         let json = serde_json::to_string(&msg).unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
         assert_eq!(parsed["type"], "subscribed");
@@ -598,7 +624,9 @@ mod tests {
 
     #[test]
     fn test_serialize_unsubscribed_message() {
-        let msg = ServerMessage::Unsubscribed { id: "sub1".to_string() };
+        let msg = ServerMessage::Unsubscribed {
+            id: "sub1".to_string(),
+        };
         let json = serde_json::to_string(&msg).unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
         assert_eq!(parsed["type"], "unsubscribed");
@@ -771,7 +799,9 @@ mod tests {
 
     #[test]
     fn test_serialize_unsubscribed_roundtrip() {
-        let msg = ServerMessage::Unsubscribed { id: "sub_42".to_string() };
+        let msg = ServerMessage::Unsubscribed {
+            id: "sub_42".to_string(),
+        };
         let json = serde_json::to_string(&msg).unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
         assert_eq!(parsed["type"], "unsubscribed");
@@ -917,7 +947,9 @@ mod tests {
 
         let resp = router.oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(resp.into_body(), 10_000).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 10_000)
+            .await
+            .unwrap();
         let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(json["count"], 0);
         assert!(json["online"].as_array().unwrap().is_empty());
@@ -942,7 +974,9 @@ mod tests {
 
         let resp = router.oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(resp.into_body(), 10_000).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 10_000)
+            .await
+            .unwrap();
         let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(json["user_id"], "user_xyz");
         assert_eq!(json["online"], false);
@@ -970,7 +1004,9 @@ mod tests {
 
         let resp = router.oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(resp.into_body(), 10_000).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 10_000)
+            .await
+            .unwrap();
         let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(json["user_id"], "alice");
         assert_eq!(json["online"], true);
@@ -998,7 +1034,9 @@ mod tests {
 
         let resp = router.oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(resp.into_body(), 10_000).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 10_000)
+            .await
+            .unwrap();
         let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(json["count"], 2);
         assert_eq!(json["online"].as_array().unwrap().len(), 2);

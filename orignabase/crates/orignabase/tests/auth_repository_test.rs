@@ -372,9 +372,7 @@ async fn test_auth_protected_endpoint_requires_token() {
     assert!(
         data.is_none()
             || data.and_then(|d| d.as_object()).is_none()
-            || data
-                .and_then(|d| d.get("get"))
-                .map_or(true, |v| v.is_null()),
+            || data.and_then(|d| d.get("get")).is_none_or(|v| v.is_null()),
         "Should return null data without auth"
     );
 }
@@ -402,9 +400,7 @@ async fn test_auth_invalid_token() {
     assert!(
         data.is_none()
             || data.and_then(|d| d.as_object()).is_none()
-            || data
-                .and_then(|d| d.get("get"))
-                .map_or(true, |v| v.is_null()),
+            || data.and_then(|d| d.get("get")).is_none_or(|v| v.is_null()),
         "Should return null data with invalid token"
     );
 }
@@ -435,9 +431,7 @@ async fn test_auth_expired_token_simulation() {
     assert!(
         data.is_none()
             || data.and_then(|d| d.as_object()).is_none()
-            || data
-                .and_then(|d| d.get("get"))
-                .map_or(true, |v| v.is_null()),
+            || data.and_then(|d| d.get("get")).is_none_or(|v| v.is_null()),
         "Should return null data with bad token"
     );
 }

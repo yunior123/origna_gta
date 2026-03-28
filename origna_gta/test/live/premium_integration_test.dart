@@ -11,6 +11,11 @@ import 'package:uuid/uuid.dart';
 void main() {
   const runLive = bool.fromEnvironment('RUN_ORIGNABASE_LIVE_TESTS', defaultValue: false);
 
+  if (!runLive) {
+    test('live tests disabled', () {});
+    return;
+  }
+
   group('Premium Integration Flow', () {
     test('User transitions from Non-Premium to Premium and unlocks features', () async {
       final container = ProviderContainer();
@@ -114,6 +119,6 @@ void main() {
       }
 
       container.dispose();
-    }, skip: !runLive, timeout: const Timeout(Duration(minutes: 2)));
-  }, skip: !runLive);
+    }, timeout: const Timeout(Duration(minutes: 2)));
+  });
 }

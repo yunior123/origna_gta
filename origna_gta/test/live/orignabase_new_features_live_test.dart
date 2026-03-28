@@ -11,12 +11,16 @@ void main() {
     defaultValue: false,
   );
 
+  if (!runLive) {
+    test('live tests disabled', () {});
+    return;
+  }
+
   bool isExpectedAccessError(OrignaBaseException error) =>
       [400, 403, 404, 409, 422].contains(error.statusCode);
 
   group(
     'OrignaBase New Features Live Tests',
-    skip: !runLive ? 'live tests disabled' : null,
     () {
       late ProviderContainer container;
       late OrignaBase ob;

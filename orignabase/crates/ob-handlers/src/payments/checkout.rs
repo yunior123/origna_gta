@@ -3,11 +3,10 @@
 
 use axum::{Extension, Json, Router, extract::State, routing::post};
 use ob_auth::middleware::AuthContext;
+use ob_database::Transaction;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use ob_database::Transaction;
 use tracing::{error, info, warn};
-
 
 /// Stripe metadata keys used in Checkout Sessions
 const STRIPE_META_ORDER_ID: &str = "order_id";
@@ -85,17 +84,17 @@ const INTL_SHIPPING_BASE_CENTS: i64 = 599;
 fn province_tax_rate_bps(province: &str) -> u64 {
     match province {
         // HST provinces
-        "ON" => 1300,                // 13% HST
+        "ON" => 1300,                      // 13% HST
         "NB" | "NL" | "NS" | "PE" => 1500, // 15% HST
         // GST + QST
-        "QC" => 1498,               // 5% GST + 9.975% QST ≈ 14.975% → 1497.5 bps, round to 1498
+        "QC" => 1498, // 5% GST + 9.975% QST ≈ 14.975% → 1497.5 bps, round to 1498
         // GST + PST
-        "BC" => 1200,               // 5% GST + 7% PST = 12%
-        "MB" => 1200,               // 5% GST + 7% RST = 12%
-        "SK" => 1100,               // 5% GST + 6% PST = 11%
+        "BC" => 1200, // 5% GST + 7% PST = 12%
+        "MB" => 1200, // 5% GST + 7% RST = 12%
+        "SK" => 1100, // 5% GST + 6% PST = 11%
         // GST only
         "AB" | "NT" | "NU" | "YT" => 500, // 5% GST
-        _ => 500,                    // Default to GST only
+        _ => 500,                         // Default to GST only
     }
 }
 
@@ -108,11 +107,22 @@ fn calculate_tax_cents(taxable_base_cents: i64, province: &str) -> i64 {
     (taxable_base_cents * rate_bps + 5000) / 10000
 }
 
-/// Calculates shipping cost in cents for an order.
-/// - Digital items: no shipping
-/// - Free shipping if subtotal >= threshold ($75 CAD)
-/// - International/cross-province seller: higher base rate
-/// - Otherwise: standard flat rate
+/// Calculates the server-authoritative shipping amount for a validated cart.
+///
+/// Parameters:
+/// - `subtotal_cents`: post-validation cart subtotal in integer cents.
+/// - `buyer_province`: normalized Canadian province code for the buyer.
+/// - `items`: validated product snapshots assembled during checkout validation.
+///
+/// Returns:
+/// - `Ok(cents)` with the flat shipping charge to persist on the order.
+/// - `Err(...)` when item-level shipping restrictions make the order invalid.
+///
+/// Gotchas:
+/// - Digital-only carts always return `0`.
+/// - Free shipping is evaluated before cross-province pricing.
+/// - Perishable and local-delivery-only items hard-fail when the buyer province
+///   differs from the seller province.
 fn calculate_shipping_cost_cents(
     subtotal_cents: i64,
     buyer_province: &str,
@@ -238,6 +248,26 @@ pub fn router(state: HandlersState) -> Router {
         .with_state(state)
 }
 
+/// Creates a Stripe Checkout Session and the corresponding pending order record.
+///
+/// Parameters:
+/// - `state`: shared handler state containing DB, config, Stripe, and Turnstile clients.
+/// - `auth`: authenticated caller context used to resolve the buyer identity.
+/// - `req`: checkout payload containing cart items, shipping address, consent flags,
+///   and an optional idempotency key.
+///
+/// Returns:
+/// - `Ok(Json<CheckoutResponse>)` with the Stripe session ID, internal order ID,
+///   and redirect URL when checkout setup succeeds.
+/// - `Err(...)` for validation, auth, Stripe, or database failures.
+///
+/// Gotchas:
+/// - This handler re-validates prices, stock, seller eligibility, and shipping
+///   rules server-side; the client subtotal is advisory only.
+/// - Multi-seller carts are rejected because the current Stripe Connect flow can
+///   route funds to only one destination account.
+/// - Stock reservation is finalized through a SurrealDB transaction after the
+///   Stripe session is created, so retries must reuse idempotency keys.
 async fn create_checkout_session(
     State(state): State<HandlersState>,
     Extension(auth): Extension<AuthContext>,
@@ -254,7 +284,9 @@ async fn create_checkout_session(
             ));
         }
     } else if !is_test_mode {
-        return Err(ob_core::Error::Validation("Turnstile token is required".into()));
+        return Err(ob_core::Error::Validation(
+            "Turnstile token is required".into(),
+        ));
     }
 
     let user_id = resolve_self_user_id(&auth, req.user_id.as_deref(), "userId")?;
@@ -345,10 +377,13 @@ async fn create_checkout_session(
         fields::PRODUCT_ID,
     );
 
-    let product_rows: Vec<Value> = state.db.query_bind_value(
-        &products_query,
-        serde_json::json!({"record_ids": record_ids, "product_ids": product_ids}),
-    ).await?;
+    let product_rows: Vec<Value> = state
+        .db
+        .query_bind_value(
+            &products_query,
+            serde_json::json!({"record_ids": record_ids, "product_ids": product_ids}),
+        )
+        .await?;
 
     if product_rows.len() != req.items.len() {
         return Err(ob_core::Error::NotFound(
@@ -416,9 +451,10 @@ async fn create_checkout_session(
         // JWT has "users:xyz123", seller_id from product is "xyz123" (short form)
         let user_id_short = user_id.strip_prefix("users:").unwrap_or(&user_id);
         if seller_id == user_id_short {
-            return Err(ob_core::Error::Validation(
-                format!("Cannot purchase your own products (seller: {}, buyer: {})", seller_id, user_id_short),
-            ));
+            return Err(ob_core::Error::Validation(format!(
+                "Cannot purchase your own products (seller: {}, buyer: {})",
+                seller_id, user_id_short
+            )));
         }
 
         // Age verification for restricted items
@@ -579,10 +615,14 @@ async fn create_checkout_session(
             fields::BUYER_ID,
             fields::CREATED_AT,
         );
-        let existing: Vec<Value> = match state.db.query_bind_value(
-            &dedup_query,
-            serde_json::json!({"buyer_id": user_id, "cutoff": five_min_ago}),
-        ).await {
+        let existing: Vec<Value> = match state
+            .db
+            .query_bind_value(
+                &dedup_query,
+                serde_json::json!({"buyer_id": user_id, "cutoff": five_min_ago}),
+            )
+            .await
+        {
             Ok(rows) => rows,
             Err(err) => {
                 warn!(user_id = %user_id, error = %err, "Dedup check failed, allowing checkout to proceed");
@@ -621,8 +661,14 @@ async fn create_checkout_session(
             "payment_intent_data[capture_method]".to_string(),
             "manual".to_string(),
         ),
-        (format!("metadata[{}]", STRIPE_META_ORDER_ID), order_id.clone()),
-        (format!("metadata[{}]", STRIPE_META_USER_ID), user_id.clone()),
+        (
+            format!("metadata[{}]", STRIPE_META_ORDER_ID),
+            order_id.clone(),
+        ),
+        (
+            format!("metadata[{}]", STRIPE_META_USER_ID),
+            user_id.clone(),
+        ),
     ];
 
     // Platform fee via Stripe Connect — only include when seller has a real Connect account
@@ -635,17 +681,17 @@ async fn create_checkout_session(
                 && let Some(acct_id) = profile.get("stripeAccountId").and_then(|v| v.as_str())
                 && acct_id.starts_with("acct_")
             {
-                        has_connect_account = true;
-                        // Add the connected account header for Stripe Connect
-                        form_data.push((
-                            "payment_intent_data[on_behalf_of]".to_string(),
-                            acct_id.to_string(),
-                        ));
-                        form_data.push((
-                            "payment_intent_data[transfer_data][destination]".to_string(),
-                            acct_id.to_string(),
-                        ));
-                        break;
+                has_connect_account = true;
+                // Add the connected account header for Stripe Connect
+                form_data.push((
+                    "payment_intent_data[on_behalf_of]".to_string(),
+                    acct_id.to_string(),
+                ));
+                form_data.push((
+                    "payment_intent_data[transfer_data][destination]".to_string(),
+                    acct_id.to_string(),
+                ));
+                break;
             }
         }
         if has_connect_account {
@@ -676,10 +722,14 @@ async fn create_checkout_session(
         form_data.push((format!("line_items[{}][quantity]", i), qty.to_string()));
     }
 
-    let idempotency_key = req
-        .idempotency_key
-        .unwrap_or_else(|| format!("checkout_{}_{}", order_id, chrono::Utc::now().timestamp_millis()));
-    
+    let idempotency_key = req.idempotency_key.unwrap_or_else(|| {
+        format!(
+            "checkout_{}_{}",
+            order_id,
+            chrono::Utc::now().timestamp_millis()
+        )
+    });
+
     let stripe_response = state
         .http_client
         .post(format!("{}/checkout/sessions", state.stripe_base_url))
@@ -708,11 +758,8 @@ async fn create_checkout_session(
     let checkout_url = session["url"].as_str().map(str::to_string);
 
     // --- Calculate shipping and tax ---
-    let shipping_cost_cents = calculate_shipping_cost_cents(
-        actual_subtotal_cents,
-        &province,
-        &validated_items,
-    )?;
+    let shipping_cost_cents =
+        calculate_shipping_cost_cents(actual_subtotal_cents, &province, &validated_items)?;
     let taxable_base_cents = actual_subtotal_cents + shipping_cost_cents;
     let tax_amount_cents = calculate_tax_cents(taxable_base_cents, &province);
     let total_amount_cents = actual_subtotal_cents + shipping_cost_cents + tax_amount_cents;
@@ -746,17 +793,17 @@ async fn create_checkout_session(
     // CRITICAL: Stock check and decrement must be atomic to prevent race conditions
     // where two concurrent buyers both pass validation on stock 2 and create negative stock.
     // Use SurrealDB transaction to ensure all-or-nothing semantics.
-    
+
     // Build atomic transaction: create order + reserve stock for all physical items
     let mut tx = Transaction::new();
-    
+
     // Operation 1: Create the order
     // Use CREATE with explicit ID to ensure the order_id is used as the record key
     tx.add(
         &format!("CREATE {}:{} CONTENT $order", collections::ORDERS, order_id),
         Some(serde_json::json!({"order": order_doc})),
     );
-    
+
     // Operations 2+: Decrement stock for each non-digital item
     // This is atomic with order creation — if stock goes negative, entire transaction rolls back
     let mut stock_op_indices: Vec<(usize, String)> = Vec::new();
@@ -766,8 +813,14 @@ async fn create_checkout_session(
             .and_then(|v| v.as_bool())
             .unwrap_or(false)
         {
-            let pid = item.get(fields::PRODUCT_ID).and_then(|v| v.as_str()).unwrap_or("");
-            let qty = item.get(fields::QUANTITY).and_then(|v| v.as_u64()).unwrap_or(1);
+            let pid = item
+                .get(fields::PRODUCT_ID)
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+            let qty = item
+                .get(fields::QUANTITY)
+                .and_then(|v| v.as_u64())
+                .unwrap_or(1);
             if ob_core::validate_document_id(pid).is_ok() && qty > 0 {
                 let idx = tx.len();
                 // CRITICAL: Atomic check + decrement using WHERE guard.
@@ -785,13 +838,11 @@ async fn create_checkout_session(
     }
 
     // Execute transaction atomically
-    let tx_results = tx.commit(&state.db)
-        .await
-        .map_err(|e| {
-            ob_core::Error::Database(format!(
-                "Failed to create order and reserve stock (atomic transaction): {e}"
-            ))
-        })?;
+    let tx_results = tx.commit(&state.db).await.map_err(|e| {
+        ob_core::Error::Database(format!(
+            "Failed to create order and reserve stock (atomic transaction): {e}"
+        ))
+    })?;
 
     // Verify all stock decrements actually affected a row (WHERE guard matched)
     for (idx, pid) in &stock_op_indices {
@@ -803,9 +854,9 @@ async fn create_checkout_session(
         };
         if is_empty {
             warn!(product_id = %pid, order_id = %order_id, "Insufficient stock — UPDATE matched 0 rows");
-            return Err(ob_core::Error::Validation(
-                format!("Insufficient stock for product {pid}. Please reduce quantity or remove from cart.")
-            ));
+            return Err(ob_core::Error::Validation(format!(
+                "Insufficient stock for product {pid}. Please reduce quantity or remove from cart."
+            )));
         }
     }
 
@@ -987,9 +1038,15 @@ mod tests {
         // Even at $100k, tolerance is fixed $2.00
         let actual = 10_000_000; // $100,000
         let tolerance = checkout_subtotal_tolerance(actual);
-        assert_eq!(tolerance, 200, "Tolerance for $100k should be fixed $2.00, not $1k");
+        assert_eq!(
+            tolerance, 200,
+            "Tolerance for $100k should be fixed $2.00, not $1k"
+        );
         assert!(subtotal_matches_with_tolerance(actual + tolerance, actual));
-        assert!(!subtotal_matches_with_tolerance(actual + tolerance + 1, actual));
+        assert!(!subtotal_matches_with_tolerance(
+            actual + tolerance + 1,
+            actual
+        ));
     }
 
     #[test]
@@ -1157,7 +1214,7 @@ mod tests {
         // age_restricted = true, age_verification_accepted = true → should pass
         let age_verification_accepted = true;
         assert!(
-            !(age_restricted && !age_verification_accepted),
+            !age_restricted || age_verification_accepted,
             "Should allow when verified"
         );
 
@@ -1165,7 +1222,7 @@ mod tests {
         let age_restricted = false;
         let age_verification_accepted = false;
         assert!(
-            !(age_restricted && !age_verification_accepted),
+            !age_restricted || age_verification_accepted,
             "Non-restricted items should not require verification"
         );
     }
@@ -1292,7 +1349,9 @@ mod tests {
     async fn test_create_checkout_session_rejects_stock_self_purchase_restricted_and_duplicate_orders()
      {
         // Unset OB_TEST_MODE so dedup logic is active for this test
-        unsafe { std::env::remove_var("OB_TEST_MODE"); }
+        unsafe {
+            std::env::remove_var("OB_TEST_MODE");
+        }
         let state = setup_state().await;
         let shipping = ShippingAddress {
             street: "123 Main St".into(),
@@ -1499,7 +1558,8 @@ mod tests {
         // If it does trigger, verify the error message is correct
         if let Err(e) = duplicate {
             assert!(
-                e.to_string().contains("Duplicate order") || e.to_string().contains("payment session"),
+                e.to_string().contains("Duplicate order")
+                    || e.to_string().contains("payment session"),
                 "Expected duplicate or payment error, got: {e}"
             );
         }
@@ -1593,7 +1653,10 @@ mod tests {
             .get_document(collections::ORDERS, &resp.order_id)
             .await
             .unwrap();
-        assert_eq!(order[fields::ORDER_STATUS], OrderStatus::PendingPayment.as_str());
+        assert_eq!(
+            order[fields::ORDER_STATUS],
+            OrderStatus::PendingPayment.as_str()
+        );
         assert_eq!(order[fields::PAYMENT_STATUS], "awaiting_payment");
         assert_eq!(order[fields::CHECKOUT_SESSION_ID], "cs_test_123");
         assert_eq!(order[fields::SUBTOTAL_CENTS], 3000);
@@ -1608,6 +1671,72 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(product[fields::STOCK_QUANTITY], 3);
+    }
+
+    #[tokio::test]
+    async fn test_create_checkout_session_rejects_negative_price_product() {
+        let state = setup_state().await;
+        state
+            .db
+            .upsert_document(
+                collections::PRODUCTS,
+                "prod_negative_price",
+                json!({
+                    fields::PRODUCT_ID: "prod_negative_price",
+                    fields::SELLER_ID: "seller_negative",
+                    fields::LIFECYCLE_STATUS: "active",
+                    fields::STOCK_QUANTITY: 5,
+                    fields::PRICE_CENTS: -500,
+                    fields::TITLE: "Broken Widget",
+                    fields::IMAGE_URLS: [],
+                }),
+            )
+            .await
+            .unwrap();
+        state
+            .db
+            .upsert_document(
+                collections::USERS,
+                "seller_negative",
+                json!({
+                    fields::UID: "seller_negative",
+                    "suspended": false,
+                    "onboardingCompleted": true,
+                    "chargesEnabled": true,
+                    "payoutsEnabled": true,
+                }),
+            )
+            .await
+            .unwrap();
+
+        let err = create_checkout_session(
+            State(state),
+            Extension(auth("buyer_1")),
+            Json(CreateCheckoutRequest {
+                turnstile_token: None,
+                items: vec![CartItem {
+                    product_id: "prod_negative_price".into(),
+                    quantity: 1,
+                }],
+                shipping_address: ShippingAddress {
+                    street: "123 Main St".into(),
+                    city: "Toronto".into(),
+                    state: "ON".into(),
+                    postal_code: "M5V2H1".into(),
+                    country: "CA".into(),
+                },
+                user_id: Some("buyer_1".to_string()),
+                subtotal_cents: 0,
+                coupon_code: None,
+                eula_accepted: false,
+                age_verification_accepted: false,
+                idempotency_key: None,
+            }),
+        )
+        .await
+        .unwrap_err();
+
+        assert!(err.to_string().contains("invalid price"));
     }
 
     #[tokio::test]
@@ -1998,7 +2127,11 @@ mod tests {
         )
         .await
         .unwrap_err();
-        assert!(err.to_string().contains("Subtotal cannot be negative"), "Got: {}", err);
+        assert!(
+            err.to_string().contains("Subtotal cannot be negative"),
+            "Got: {}",
+            err
+        );
     }
 
     #[tokio::test]
@@ -2296,13 +2429,13 @@ mod tests {
     fn test_province_tax_rates() {
         assert_eq!(province_tax_rate_bps("ON"), 1300); // 13% HST
         assert_eq!(province_tax_rate_bps("QC"), 1498); // ~14.975%
-        assert_eq!(province_tax_rate_bps("AB"), 500);  // 5% GST
+        assert_eq!(province_tax_rate_bps("AB"), 500); // 5% GST
         assert_eq!(province_tax_rate_bps("BC"), 1200); // 12%
         assert_eq!(province_tax_rate_bps("NB"), 1500); // 15% HST
         assert_eq!(province_tax_rate_bps("NS"), 1500); // 15% HST
         assert_eq!(province_tax_rate_bps("SK"), 1100); // 11%
         assert_eq!(province_tax_rate_bps("MB"), 1200); // 12%
-        assert_eq!(province_tax_rate_bps("YT"), 500);  // 5% GST
+        assert_eq!(province_tax_rate_bps("YT"), 500); // 5% GST
     }
 
     #[test]
@@ -2339,30 +2472,45 @@ mod tests {
     fn test_shipping_free_above_threshold() {
         let items = vec![json!({"isDigital": false, "shipFromProvince": "ON"})];
         // $75.00 subtotal → free shipping
-        assert_eq!(calculate_shipping_cost_cents(7500, "ON", &items).unwrap(), 0);
+        assert_eq!(
+            calculate_shipping_cost_cents(7500, "ON", &items).unwrap(),
+            0
+        );
         // $100.00 subtotal → free shipping
-        assert_eq!(calculate_shipping_cost_cents(10000, "ON", &items).unwrap(), 0);
+        assert_eq!(
+            calculate_shipping_cost_cents(10000, "ON", &items).unwrap(),
+            0
+        );
     }
 
     #[test]
     fn test_shipping_standard_below_threshold() {
         let items = vec![json!({"isDigital": false, "shipFromProvince": "ON"})];
         // $50.00 subtotal, same province → standard rate
-        assert_eq!(calculate_shipping_cost_cents(5000, "ON", &items).unwrap(), STANDARD_SHIPPING_CENTS);
+        assert_eq!(
+            calculate_shipping_cost_cents(5000, "ON", &items).unwrap(),
+            STANDARD_SHIPPING_CENTS
+        );
     }
 
     #[test]
     fn test_shipping_cross_province() {
         let items = vec![json!({"isDigital": false, "shipFromProvince": "BC"})];
         // $50.00 subtotal, seller in BC, buyer in ON → cross-province rate
-        assert_eq!(calculate_shipping_cost_cents(5000, "ON", &items).unwrap(), INTL_SHIPPING_BASE_CENTS);
+        assert_eq!(
+            calculate_shipping_cost_cents(5000, "ON", &items).unwrap(),
+            INTL_SHIPPING_BASE_CENTS
+        );
     }
 
     #[test]
     fn test_shipping_digital_items_free() {
         let items = vec![json!({"isDigital": true, "shipFromProvince": "ON"})];
         // All digital → no shipping regardless of subtotal
-        assert_eq!(calculate_shipping_cost_cents(1000, "ON", &items).unwrap(), 0);
+        assert_eq!(
+            calculate_shipping_cost_cents(1000, "ON", &items).unwrap(),
+            0
+        );
     }
 
     #[test]
@@ -2372,28 +2520,43 @@ mod tests {
             json!({"isDigital": false, "shipFromProvince": "ON"}),
         ];
         // Mixed: physical items present → standard rate applies
-        assert_eq!(calculate_shipping_cost_cents(3000, "ON", &items).unwrap(), STANDARD_SHIPPING_CENTS);
+        assert_eq!(
+            calculate_shipping_cost_cents(3000, "ON", &items).unwrap(),
+            STANDARD_SHIPPING_CENTS
+        );
     }
 
     #[test]
     fn test_shipping_empty_ship_from_province_not_cross() {
         let items = vec![json!({"isDigital": false, "shipFromProvince": ""})];
         // Empty shipFromProvince → not cross-province → standard rate
-        assert_eq!(calculate_shipping_cost_cents(3000, "ON", &items).unwrap(), STANDARD_SHIPPING_CENTS);
+        assert_eq!(
+            calculate_shipping_cost_cents(3000, "ON", &items).unwrap(),
+            STANDARD_SHIPPING_CENTS
+        );
     }
 
     #[test]
     fn test_shipping_international_seller() {
-        let items = vec![json!({"isDigital": false, "shipFromProvince": "", "shipFromCountry": "China"})];
+        let items =
+            vec![json!({"isDigital": false, "shipFromProvince": "", "shipFromCountry": "China"})];
         // International seller → cross-province/intl rate
-        assert_eq!(calculate_shipping_cost_cents(3000, "ON", &items).unwrap(), INTL_SHIPPING_BASE_CENTS);
+        assert_eq!(
+            calculate_shipping_cost_cents(3000, "ON", &items).unwrap(),
+            INTL_SHIPPING_BASE_CENTS
+        );
     }
 
     #[test]
     fn test_shipping_canadian_seller_country_not_cross() {
-        let items = vec![json!({"isDigital": false, "shipFromProvince": "ON", "shipFromCountry": "Canada"})];
+        let items = vec![
+            json!({"isDigital": false, "shipFromProvince": "ON", "shipFromCountry": "Canada"}),
+        ];
         // Canadian seller, same province → standard rate
-        assert_eq!(calculate_shipping_cost_cents(3000, "ON", &items).unwrap(), STANDARD_SHIPPING_CENTS);
+        assert_eq!(
+            calculate_shipping_cost_cents(3000, "ON", &items).unwrap(),
+            STANDARD_SHIPPING_CENTS
+        );
     }
 }
 

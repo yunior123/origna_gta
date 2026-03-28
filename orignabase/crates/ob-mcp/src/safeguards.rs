@@ -63,16 +63,17 @@ impl IdempotencyTracker {
 
         // If exceeding max entries, evict oldest 50%
         if cache.len() >= MAX_ENTRIES {
-            let mut entries: Vec<(String, i64)> = cache
-                .iter()
-                .map(|(k, (_, ts))| (k.clone(), *ts))
-                .collect();
+            let mut entries: Vec<(String, i64)> =
+                cache.iter().map(|(k, (_, ts))| (k.clone(), *ts)).collect();
             entries.sort_by_key(|(_, ts)| *ts);
             let evict_count = entries.len() / 2;
             for (k, _) in entries.into_iter().take(evict_count) {
                 cache.remove(&k);
             }
-            tracing::debug!("IdempotencyTracker: evicted {} entries (capacity limit)", evict_count);
+            tracing::debug!(
+                "IdempotencyTracker: evicted {} entries (capacity limit)",
+                evict_count
+            );
         }
 
         cache.insert(key, (result, now));
@@ -122,9 +123,10 @@ impl SpendLimit {
     /// Check if user can spend amount_cents
     pub async fn check(&self, user_id: &str, amount_cents: u64) -> McpResult<()> {
         if amount_cents > self.max_amount_cents {
-            return Err(McpError::ValidationError(
-                format!("Amount exceeds per-request limit of ${}", self.max_amount_cents / 100),
-            ));
+            return Err(McpError::ValidationError(format!(
+                "Amount exceeds per-request limit of ${}",
+                self.max_amount_cents / 100
+            )));
         }
 
         let spend = self.user_spend.read().await;
@@ -171,7 +173,9 @@ impl ConfirmationToken {
             return Err(McpError::ValidationError("Token expired".to_string()));
         }
         if self.token != provided_token {
-            return Err(McpError::ValidationError("Invalid confirmation token".to_string()));
+            return Err(McpError::ValidationError(
+                "Invalid confirmation token".to_string(),
+            ));
         }
         Ok(())
     }
@@ -205,7 +209,10 @@ mod tests {
         {
             let mut cache = tracker.cache.write().await;
             let old_ts = chrono::Utc::now().timestamp() - IDEMPOTENCY_TTL_SECS - 1;
-            cache.insert("old-key".to_string(), (serde_json::json!({"old": true}), old_ts));
+            cache.insert(
+                "old-key".to_string(),
+                (serde_json::json!({"old": true}), old_ts),
+            );
         }
 
         // Cleanup should remove expired entry
@@ -221,7 +228,10 @@ mod tests {
         {
             let mut cache = tracker.cache.write().await;
             let old_ts = chrono::Utc::now().timestamp() - IDEMPOTENCY_TTL_SECS - 1;
-            cache.insert("expired".to_string(), (serde_json::json!({"expired": true}), old_ts));
+            cache.insert(
+                "expired".to_string(),
+                (serde_json::json!({"expired": true}), old_ts),
+            );
         }
 
         // Should return None for expired entry

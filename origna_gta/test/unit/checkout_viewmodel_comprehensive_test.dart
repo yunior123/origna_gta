@@ -386,6 +386,113 @@ void main() {
 
       await future1;
     });
+
+    test('startCheckout keeps cart provider alive after successful session creation', () async {
+      var cartSubscriptions = 0;
+      container = ProviderContainer(
+        overrides: [
+          orderRepositoryProvider.overrideWithValue(mockOrderRepo),
+          userRepositoryProvider.overrideWithValue(mockUserRepo),
+          orignabaseProvider.overrideWithValue(mockOrignaBase),
+          obUserIdProvider.overrideWithValue('user_123'),
+          cartSubtotalProvider.overrideWithValue(1000),
+          cartItemsProvider.overrideWith((ref) {
+            cartSubscriptions++;
+            return Stream.value(const <CartItemModel>[]);
+          }),
+        ],
+      );
+
+      when(mockOrderRepo.createCheckoutSession(any)).thenAnswer((_) async {
+        return {
+          ApiKeys.checkoutUrl: 'https://checkout.example/session',
+          Fields.orderId: 'order_123',
+          ApiKeys.sessionId: 'session_123',
+          Fields.taxAmountCents: 130,
+        };
+      });
+      when(
+        mockOrderRepo.updateLastSession(any, any, any),
+      ).thenAnswer((_) async {});
+
+      final sub = container.listen(cartItemsProvider, (previous, next) {});
+      addTearDown(sub.close);
+      await container.read(cartItemsProvider.future);
+      expect(cartSubscriptions, 1);
+
+      container.read(checkoutStateProvider.notifier).updateAddress(
+        Address(
+          street: '123 St',
+          city: 'Toronto',
+          state: 'ON',
+          postalCode: 'M1M 1M1',
+          country: 'CA',
+        ),
+      );
+
+      final result = await container
+          .read(checkoutStateProvider.notifier)
+          .startCheckout(
+            items: [createTestItem()],
+            user: createTestUser(),
+            subtotalCents: 1000,
+          );
+
+      expect(result, isA<CheckoutSuccess>());
+      expect(cartSubscriptions, 1);
+    });
+
+    test('startCheckout keeps cart provider alive for duplicate checkout URL', () async {
+      var cartSubscriptions = 0;
+      container = ProviderContainer(
+        overrides: [
+          orderRepositoryProvider.overrideWithValue(mockOrderRepo),
+          userRepositoryProvider.overrideWithValue(mockUserRepo),
+          orignabaseProvider.overrideWithValue(mockOrignaBase),
+          obUserIdProvider.overrideWithValue('user_123'),
+          cartSubtotalProvider.overrideWithValue(1000),
+          cartItemsProvider.overrideWith((ref) {
+            cartSubscriptions++;
+            return Stream.value(const <CartItemModel>[]);
+          }),
+        ],
+      );
+
+      when(mockOrderRepo.createCheckoutSession(any)).thenAnswer((_) async {
+        return {
+          ApiKeys.duplicate: true,
+          ApiKeys.checkoutUrl: 'https://checkout.example/existing',
+          Fields.orderId: 'order_existing',
+          ApiKeys.sessionId: 'session_existing',
+        };
+      });
+
+      final sub = container.listen(cartItemsProvider, (previous, next) {});
+      addTearDown(sub.close);
+      await container.read(cartItemsProvider.future);
+      expect(cartSubscriptions, 1);
+
+      container.read(checkoutStateProvider.notifier).updateAddress(
+        Address(
+          street: '123 St',
+          city: 'Toronto',
+          state: 'ON',
+          postalCode: 'M1M 1M1',
+          country: 'CA',
+        ),
+      );
+
+      final result = await container
+          .read(checkoutStateProvider.notifier)
+          .startCheckout(
+            items: [createTestItem()],
+            user: createTestUser(),
+            subtotalCents: 1000,
+          );
+
+      expect(result, isA<CheckoutSuccess>());
+      expect(cartSubscriptions, 1);
+    });
   });
 
   group('CheckoutNotifier Error Handling Tests', () {

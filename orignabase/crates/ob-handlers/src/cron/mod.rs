@@ -107,75 +107,25 @@ async fn stripe_provider_enabled(state: &HandlersState) -> bool {
     doc.get("providers")
         .and_then(|v| v.as_array())
         .and_then(|providers| {
-            providers
-                .iter()
-                .find(|provider| provider.get(fields::NAME).and_then(|v| v.as_str()) == Some("stripe"))
+            providers.iter().find(|provider| {
+                provider.get(fields::NAME).and_then(|v| v.as_str()) == Some("stripe")
+            })
         })
         .and_then(|provider| provider.get("enabled").and_then(|v| v.as_bool()))
         .unwrap_or(true)
 }
 
-/// Create a Stripe Transfer for seller payout.
-/// Returns the transfer ID if successful.
-async fn stripe_create_transfer(
-    state: &HandlersState,
-    seller_id: &str,
-    amount_cents: i64,
-    order_id: &str,
-) -> Result<String, String> {
-    let stripe_key = state
-        .config
-        .require_secret("stripe_secret_key")
-        .map_err(|e| e.to_string())?;
-
-    // Get seller's Stripe Connect account ID
-    let seller = state
-        .db
-        .get_document(collections::USERS, seller_id)
-        .await
-        .map_err(|e| format!("Seller not found: {}", e))?;
-
-    let stripe_account_id = seller
-        .get(fields::STRIPE_ACCOUNT_ID)
-        .and_then(|v| v.as_str())
-        .ok_or_else(|| "Seller has no Stripe Connect account".to_string())?;
-
-    let form: Vec<(&str, String)> = vec![
-        ("amount", amount_cents.to_string()),
-        ("currency", "cad".to_string()),
-        ("destination", stripe_account_id.to_string()),
-        ("metadata[order_id]", order_id.to_string()),
-        ("metadata[seller_id]", seller_id.to_string()),
-    ];
-
-    let resp = state
-        .http_client
-        .post(format!("{}/transfers", state.stripe_base_url))
-        .basic_auth(stripe_key, None::<&str>)
-        .header("Idempotency-Key", format!("{}-{}", order_id, seller_id))
-        .form(&form)
-        .send()
-        .await
-        .map_err(|e| format!("Request failed: {}", e))?;
-
-    if !resp.status().is_success() {
-        return Err("Stripe transfer creation failed".to_string());
-    }
-
-    let body: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
-    body.get("id")
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string())
-        .ok_or_else(|| "No transfer ID in response".to_string())
-}
-
-
 // ---------------------------------------------------------------------------
 // Cron job: auto_capture_confirmed_receipts
 // ---------------------------------------------------------------------------
 
-/// Auto-payout for delivered orders: create Stripe transfers to sellers for
-/// orders delivered AUTO_CONFIRM_DAYS+ ago without dispute.
+/// Finalize payout records for delivered orders past the auto-confirm window.
+///
+/// NOTE: Funds are already transferred to sellers at checkout time via Stripe
+/// Connect destination charges (transfer_data[destination] + application_fee_amount
+/// in checkout.rs). This cron job does NOT create a separate Stripe Transfer —
+/// doing so would pay the seller twice. Instead, it creates payout bookkeeping
+/// records and marks the order's payoutStatus as completed.
 pub async fn auto_capture_confirmed_receipts(state: &HandlersState) {
     info!("Running auto_capture_confirmed_receipts");
 
@@ -300,7 +250,10 @@ async fn run_auto_capture(state: &HandlersState) -> std::result::Result<(), Stri
                     .get(fields::PRICE_CENTS)
                     .and_then(|v| v.as_i64())
                     .unwrap_or(0);
-                let qty = item.get(fields::QUANTITY).and_then(|v| v.as_i64()).unwrap_or(1);
+                let qty = item
+                    .get(fields::QUANTITY)
+                    .and_then(|v| v.as_i64())
+                    .unwrap_or(1);
                 *sellers_total_cents
                     .entry(seller_id.to_string())
                     .or_insert(0) += price * qty;
@@ -315,7 +268,8 @@ async fn run_auto_capture(state: &HandlersState) -> std::result::Result<(), Stri
 
         for (seller_id, amount_cents) in &sellers_total_cents {
             // Proportional fee per seller: (seller_amount / order_subtotal) * total_platform_fee
-            let fee_cents = (*amount_cents * platform_fee_total + order_subtotal / 2) / order_subtotal;
+            let fee_cents =
+                (*amount_cents * platform_fee_total + order_subtotal / 2) / order_subtotal;
             let net_cents = amount_cents - fee_cents;
 
             // Create payout record
@@ -339,48 +293,21 @@ async fn run_auto_capture(state: &HandlersState) -> std::result::Result<(), Stri
                 )
                 .await;
 
-            // CRITICAL FIX: Actually create Stripe Transfer
-            let transfer_result = stripe_create_transfer(
-                state,
-                seller_id,
-                net_cents,
-                order_id,
-            )
-            .await;
-
-            match transfer_result {
-                Ok(transfer_id) => {
-                    let _ = state
-                        .db
-                        .update_document(
-                            collections::PAYOUTS,
-                            &payout_id,
-                            json!({
-                                fields::STATUS: "completed",
-                                fields::STRIPE_TRANSFER_ID: transfer_id,
-                                fields::PAYOUT_DATE: Utc::now().to_rfc3339(),
-                            }),
-                        )
-                        .await;
-                    success_count += 1;
-                }
-                Err(e) => {
-                    warn!("Stripe transfer failed for seller {}: {}", seller_id, e);
-                    let _ = state
-                        .db
-                        .update_document(
-                            collections::PAYOUTS,
-                            &payout_id,
-                            json!({
-                                fields::STATUS: "failed",
-                                fields::FAILURE_REASON: e,
-                                fields::UPDATED_AT: Utc::now().to_rfc3339(),
-                            }),
-                        )
-                        .await;
-                    failed_count += 1;
-                }
-            }
+            // Funds were already transferred to the seller at checkout time via
+            // Stripe Connect destination charge (transfer_data[destination]).
+            // No separate Stripe Transfer is needed — just mark payout completed.
+            let _ = state
+                .db
+                .update_document(
+                    collections::PAYOUTS,
+                    &payout_id,
+                    json!({
+                        fields::STATUS: "completed",
+                        fields::PAYOUT_DATE: Utc::now().to_rfc3339(),
+                    }),
+                )
+                .await;
+            success_count += 1;
         }
 
         // Update order payout status
@@ -433,14 +360,21 @@ pub async fn check_expired_authorizations(state: &HandlersState) {
         collections::ORDERS
     );
 
-    match state.db.query_bind_value(&sql, json!({ "cutoff": cutoff.to_rfc3339() })).await {
+    match state
+        .db
+        .query_bind_value(&sql, json!({ "cutoff": cutoff.to_rfc3339() }))
+        .await
+    {
         Ok(orders) => {
             let mut cancelled = 0u32;
             let now_str = Utc::now().to_rfc3339();
 
             for order in &orders {
                 let id = order.get(fields::ID).and_then(|v| v.as_str()).unwrap_or("");
-                let buyer_id = order.get(fields::USER_ID).and_then(|v| v.as_str()).unwrap_or("");
+                let buyer_id = order
+                    .get(fields::USER_ID)
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
                 let payment_intent_id = order
                     .get(fields::PAYMENT_INTENT_ID)
                     .and_then(|v| v.as_str())
@@ -459,8 +393,14 @@ pub async fn check_expired_authorizations(state: &HandlersState) {
                             .and_then(|v| v.as_bool())
                             .unwrap_or(false);
                         if !is_digital {
-                            let pid = item.get(fields::PRODUCT_ID).and_then(|v| v.as_str()).unwrap_or("");
-                            let qty = item.get(fields::QUANTITY).and_then(|v| v.as_i64()).unwrap_or(1);
+                            let pid = item
+                                .get(fields::PRODUCT_ID)
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("");
+                            let qty = item
+                                .get(fields::QUANTITY)
+                                .and_then(|v| v.as_i64())
+                                .unwrap_or(1);
                             if !pid.is_empty() && qty > 0
                                 && let Err(e) = state
                                     .db
@@ -637,7 +577,11 @@ pub async fn cleanup_stale_rate_limits(state: &HandlersState) {
             collections::RATE_LIMITS
         );
 
-        let docs = state.db.query_bind_value(&sql, json!({ "cutoff": cutoff.to_rfc3339() })).await.map_err(|e| e.to_string())?;
+        let docs = state
+            .db
+            .query_bind_value(&sql, json!({ "cutoff": cutoff.to_rfc3339() }))
+            .await
+            .map_err(|e| e.to_string())?;
         let mut deleted = 0u32;
 
         for doc in &docs {
@@ -673,10 +617,11 @@ pub async fn cleanup_orphaned_r2_images(state: &HandlersState) {
 
     let result = async {
         // Collect all referenced image URLs from products
-        let products = state.db.query_bind(
-            "SELECT imageUrls FROM products LIMIT 5000",
-            json!({})
-        ).await.map_err(|e| e.to_string())?;
+        let products = state
+            .db
+            .query_bind("SELECT imageUrls FROM products LIMIT 5000", json!({}))
+            .await
+            .map_err(|e| e.to_string())?;
 
         let mut referenced_keys: std::collections::HashSet<String> =
             std::collections::HashSet::new();
@@ -723,13 +668,18 @@ pub async fn cleanup_stale_webhook_events(state: &HandlersState) {
     }
 
     let result = async {
-        let cutoff = Utc::now() - Duration::days(business_rules::WEBHOOK_EVENT_RETENTION_DAYS as i64);
+        let cutoff =
+            Utc::now() - Duration::days(business_rules::WEBHOOK_EVENT_RETENTION_DAYS as i64);
         let sql = format!(
             "SELECT * FROM {} WHERE timestamp <= $cutoff LIMIT 500",
             collections::WEBHOOK_EVENTS
         );
 
-        let docs = state.db.query_bind_value(&sql, json!({ "cutoff": cutoff.to_rfc3339() })).await.map_err(|e| e.to_string())?;
+        let docs = state
+            .db
+            .query_bind_value(&sql, json!({ "cutoff": cutoff.to_rfc3339() }))
+            .await
+            .map_err(|e| e.to_string())?;
         let mut deleted = 0u32;
 
         for doc in &docs {
@@ -774,7 +724,11 @@ pub async fn cleanup_stale_security_alerts(state: &HandlersState) {
             collections::SECURITY_ALERTS
         );
 
-        let docs = state.db.query_bind_value(&sql, json!({ "cutoff": cutoff.to_rfc3339() })).await.map_err(|e| e.to_string())?;
+        let docs = state
+            .db
+            .query_bind_value(&sql, json!({ "cutoff": cutoff.to_rfc3339() }))
+            .await
+            .map_err(|e| e.to_string())?;
         let mut deleted = 0u32;
 
         for doc in &docs {
@@ -996,7 +950,9 @@ pub async fn check_low_stock_alerts(state: &HandlersState) {
             }
 
             // Check cooldown
-            if let Some(last_alert) = product.get(fields::LAST_LOW_STOCK_ALERT_AT).and_then(|v| v.as_str())
+            if let Some(last_alert) = product
+                .get(fields::LAST_LOW_STOCK_ALERT_AT)
+                .and_then(|v| v.as_str())
                 && let Ok(ts) = chrono::DateTime::parse_from_rfc3339(last_alert)
                 && now.signed_duration_since(ts.with_timezone(&Utc)) < cooldown
             {
@@ -1142,7 +1098,9 @@ pub async fn send_abandoned_cart_emails(state: &HandlersState) {
             }
 
             // Check 72h cooldown
-            if let Some(last) = user.get(fields::LAST_CART_ABANDON_EMAIL_AT).and_then(|v| v.as_str())
+            if let Some(last) = user
+                .get(fields::LAST_CART_ABANDON_EMAIL_AT)
+                .and_then(|v| v.as_str())
                 && let Ok(ts) = chrono::DateTime::parse_from_rfc3339(last)
                 && ts.with_timezone(&Utc) > cooldown_cutoff
             {
@@ -1150,7 +1108,9 @@ pub async fn send_abandoned_cart_emails(state: &HandlersState) {
             }
 
             // Check last checkout
-            if let Some(last) = user.get(fields::LAST_CHECKOUT_TIMESTAMP).and_then(|v| v.as_str())
+            if let Some(last) = user
+                .get(fields::LAST_CHECKOUT_TIMESTAMP)
+                .and_then(|v| v.as_str())
                 && let Ok(ts) = chrono::DateTime::parse_from_rfc3339(last)
                 && ts.with_timezone(&Utc) > checkout_cutoff
             {
@@ -1158,10 +1118,14 @@ pub async fn send_abandoned_cart_emails(state: &HandlersState) {
             }
 
             // Query cart items
-            if let Ok(cart_items) = state.db.query_bind(
-                "SELECT * FROM cart WHERE userId = $user_id LIMIT 10",
-                json!({"user_id": user_id})
-            ).await {
+            if let Ok(cart_items) = state
+                .db
+                .query_bind(
+                    "SELECT * FROM cart WHERE userId = $user_id LIMIT 10",
+                    json!({"user_id": user_id}),
+                )
+                .await
+            {
                 if cart_items.is_empty() {
                     continue;
                 }
@@ -1258,7 +1222,10 @@ pub async fn compute_seller_metrics(state: &HandlersState) {
         );
         let orders = state
             .db
-            .query_bind_value(&orders_sql, json!({ "window_start": window_start.to_rfc3339() }))
+            .query_bind_value(
+                &orders_sql,
+                json!({ "window_start": window_start.to_rfc3339() }),
+            )
             .await
             .map_err(|e| e.to_string())?;
 
@@ -1608,7 +1575,11 @@ pub async fn escalate_stale_return_requests(state: &HandlersState) {
             collections::RETURN_REQUESTS
         );
 
-        let returns = state.db.query_bind_value(&sql, json!({ "cutoff": cutoff.to_rfc3339() })).await.map_err(|e| e.to_string())?;
+        let returns = state
+            .db
+            .query_bind_value(&sql, json!({ "cutoff": cutoff.to_rfc3339() }))
+            .await
+            .map_err(|e| e.to_string())?;
         let mut escalated = 0u32;
 
         for ret in &returns {
@@ -2180,22 +2151,6 @@ mod tests {
         }
     }
 
-    async fn setup_stripe_state(server: &MockServer) -> HandlersState {
-        let mut config = Config::load(None).unwrap();
-        config
-            .secrets
-            .values
-            .insert("stripe_secret_key".to_string(), "STRIPE_SECRET_KEY_REDACTED".to_string());
-        HandlersState {
-            config: Arc::new(config),
-            db: DatabaseClient::new_mem().await,
-            http_client: reqwest::Client::new(),
-            stripe_client: None,
-            stripe_base_url: server.uri(),
-            turnstile_secret_key: None,
-        }
-    }
-
     async fn setup_state_with_config(config: Config, stripe_base_url: String) -> HandlersState {
         HandlersState {
             config: Arc::new(config),
@@ -2297,28 +2252,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_auto_capture_confirmed_receipts_flow() {
-        let server = MockServer::start().await;
-        Mock::given(method("POST"))
-            .and(path("/transfers"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
-                "id": "tr_123"
-            })))
-            .mount(&server)
-            .await;
-
-        let state = setup_stripe_state(&server).await;
-        state
-            .db
-            .upsert_document(
-                collections::USERS,
-                "seller_1",
-                json!({
-                    fields::UID: "seller_1",
-                    fields::STRIPE_ACCOUNT_ID: "acct_seller1",
-                }),
-            )
-            .await
-            .unwrap();
+        // No MockServer needed — payout bookkeeping only, no Stripe Transfer call.
+        // Funds already transferred via destination charge at checkout time.
+        let state = setup_state().await;
         let order_id = "order_1";
         let delivered_at = (Utc::now() - Duration::days(10)).to_rfc3339();
 
@@ -3187,7 +3123,7 @@ mod tests {
             .unwrap();
         let events = state
             .db
-            .query_raw(&"SELECT * FROM events WHERE eventType = 'authorization_expired'")
+            .query_raw("SELECT * FROM events WHERE eventType = 'authorization_expired'")
             .await
             .unwrap();
 
@@ -3328,44 +3264,13 @@ mod tests {
     }
 
     // -----------------------------------------------------------------------
-    // Coverage: auto_capture partial payout (lines 297-298)
+    // Coverage: auto_capture multi-seller payout bookkeeping
     // -----------------------------------------------------------------------
     #[tokio::test]
     async fn test_auto_capture_partial_payout() {
-        let server = MockServer::start().await;
-        Mock::given(method("POST"))
-            .and(path("/transfers"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
-                "id": "tr_partial"
-            })))
-            .mount(&server)
-            .await;
-
-        let state = setup_stripe_state(&server).await;
-        state
-            .db
-            .upsert_document(
-                collections::USERS,
-                "seller_a",
-                json!({
-                    fields::UID: "seller_a",
-                    fields::STRIPE_ACCOUNT_ID: "acct_sellerA",
-                }),
-            )
-            .await
-            .unwrap();
-        state
-            .db
-            .upsert_document(
-                collections::USERS,
-                "seller_b",
-                json!({
-                    fields::UID: "seller_b",
-                    fields::STRIPE_ACCOUNT_ID: "acct_sellerB",
-                }),
-            )
-            .await
-            .unwrap();
+        // No MockServer needed — no Stripe Transfer call, funds already
+        // routed via destination charge at checkout.
+        let state = setup_state().await;
         let delivered_at = (Utc::now() - Duration::days(10)).to_rfc3339();
 
         state
@@ -4194,7 +4099,9 @@ mod tests {
             .mount(&server)
             .await;
 
-        unsafe { std::env::set_var("MAILJET_API_URL", format!("{}/v3.1/send", server.uri())); }
+        unsafe {
+            std::env::set_var("MAILJET_API_URL", format!("{}/v3.1/send", server.uri()));
+        }
 
         let mut config = Config::load(None).unwrap();
         config
@@ -4439,7 +4346,9 @@ mod tests {
             .mount(&server)
             .await;
 
-        unsafe { std::env::set_var("MAILJET_API_URL", format!("{}/v3.1/send", server.uri())); }
+        unsafe {
+            std::env::set_var("MAILJET_API_URL", format!("{}/v3.1/send", server.uri()));
+        }
 
         let mut config = Config::load(None).unwrap();
         config
@@ -4505,7 +4414,9 @@ mod tests {
             .mount(&server)
             .await;
 
-        unsafe { std::env::set_var("MAILJET_API_URL", format!("{}/v3.1/send", server.uri())); }
+        unsafe {
+            std::env::set_var("MAILJET_API_URL", format!("{}/v3.1/send", server.uri()));
+        }
 
         let mut config = Config::load(None).unwrap();
         config
@@ -4705,7 +4616,7 @@ mod tests {
 
         let alerts = state
             .db
-            .query_raw(&"SELECT * FROM security_alerts WHERE type = 'seller_metrics_breach'")
+            .query_raw("SELECT * FROM security_alerts WHERE type = 'seller_metrics_breach'")
             .await
             .unwrap();
         assert!(!alerts.is_empty());
@@ -5001,7 +4912,9 @@ mod tests {
             .mount(&server)
             .await;
 
-        unsafe { std::env::set_var("MAILJET_API_URL", format!("{}/v3.1/send", server.uri())); }
+        unsafe {
+            std::env::set_var("MAILJET_API_URL", format!("{}/v3.1/send", server.uri()));
+        }
 
         let mut config = Config::load(None).unwrap();
         config
@@ -5067,7 +4980,9 @@ mod tests {
             .mount(&server)
             .await;
 
-        unsafe { std::env::set_var("MAILJET_API_URL", format!("{}/v3.1/send", server.uri())); }
+        unsafe {
+            std::env::set_var("MAILJET_API_URL", format!("{}/v3.1/send", server.uri()));
+        }
 
         let mut config = Config::load(None).unwrap();
         config
@@ -5701,7 +5616,9 @@ mod tests {
             .mount(&server)
             .await;
 
-        unsafe { std::env::set_var("MAILJET_API_URL", format!("{}/v3.1/send", server.uri())); }
+        unsafe {
+            std::env::set_var("MAILJET_API_URL", format!("{}/v3.1/send", server.uri()));
+        }
 
         let mut config = Config::load(None).unwrap();
         config
@@ -5748,32 +5665,12 @@ mod tests {
     }
 
     // -----------------------------------------------------------------------
-    // Coverage: auto_capture — items with non-DELIVERED status (line 224 skip)
+    // Coverage: auto_capture — items with non-DELIVERED status are skipped
     // -----------------------------------------------------------------------
     #[tokio::test]
     async fn test_auto_capture_mixed_item_statuses() {
-        let server = MockServer::start().await;
-        Mock::given(method("POST"))
-            .and(path("/transfers"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
-                "id": "tr_mixed"
-            })))
-            .mount(&server)
-            .await;
-
-        let state = setup_stripe_state(&server).await;
-        state
-            .db
-            .upsert_document(
-                collections::USERS,
-                "seller_mix",
-                json!({
-                    fields::UID: "seller_mix",
-                    fields::STRIPE_ACCOUNT_ID: "acct_sellerMix",
-                }),
-            )
-            .await
-            .unwrap();
+        // No MockServer needed — no Stripe Transfer call.
+        let state = setup_state().await;
         let delivered_at = (Utc::now() - Duration::days(10)).to_rfc3339();
 
         state
@@ -6159,7 +6056,9 @@ mod tests {
             .mount(&server)
             .await;
 
-        unsafe { std::env::set_var("MAILJET_API_URL", format!("{}/v3.1/send", server.uri())); }
+        unsafe {
+            std::env::set_var("MAILJET_API_URL", format!("{}/v3.1/send", server.uri()));
+        }
 
         let mut config = Config::load(None).unwrap();
         config
@@ -6221,7 +6120,9 @@ mod tests {
             .mount(&server)
             .await;
 
-        unsafe { std::env::set_var("MAILJET_API_URL", format!("{}/v3.1/send", server.uri())); }
+        unsafe {
+            std::env::set_var("MAILJET_API_URL", format!("{}/v3.1/send", server.uri()));
+        }
 
         let mut config = Config::load(None).unwrap();
         config
@@ -6433,7 +6334,10 @@ mod tests {
                 .get("recommendations")
                 .and_then(|v| v.as_array())
                 .expect("recommendations should be an array");
-            assert!(!recs.is_empty(), "prodA should have at least one recommendation");
+            assert!(
+                !recs.is_empty(),
+                "prodA should have at least one recommendation"
+            );
         }
     }
 
@@ -6472,11 +6376,7 @@ mod tests {
         // Expected: A-B: 2, A-C: 2, B-C: 1
         use std::collections::HashMap;
 
-        let orders = vec![
-            vec!["A", "B"],
-            vec!["A", "C"],
-            vec!["A", "B", "C"],
-        ];
+        let orders = vec![vec!["A", "B"], vec!["A", "C"], vec!["A", "B", "C"]];
 
         let mut co_occurrence: HashMap<&str, HashMap<&str, u32>> = HashMap::new();
         for product_ids in &orders {

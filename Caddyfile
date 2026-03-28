@@ -20,8 +20,20 @@
 		X-Content-Type-Options "nosniff"
 		Referrer-Policy "strict-origin-when-cross-origin"
 		Permissions-Policy "accelerometer=(), camera=(), geolocation=(), gyroscope=(), microphone=(), payment=(), usb=()"
+		Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://challenges.cloudflare.com https://accounts.google.com https://apis.google.com https://github.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; font-src 'self' data:; connect-src 'self' https://api.orignagta.ca https://api.dev.orignagta.ca https://api.staging.orignagta.ca https://api.stripe.com https://challenges.cloudflare.com https://accounts.google.com https://*.googleapis.com wss://api.orignagta.ca wss://api.dev.orignagta.ca wss://api.staging.orignagta.ca; frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://challenges.cloudflare.com https://accounts.google.com; worker-src 'self' blob:; frame-ancestors 'self'; manifest-src 'self'"
 		-Server
 	}
+}
+
+(site_cache_rules) {
+	@immutable_assets {
+		path /assets/* /canvaskit/* /icons/* /splash/* *.js *.mjs *.css *.wasm *.png *.jpg *.jpeg *.webp *.svg *.woff *.woff2 *.ttf *.otf
+		not path /flutter_bootstrap.js /flutter_service_worker.js /manifest.json /index.html
+	}
+	header @immutable_assets Cache-Control "public, max-age=31536000, immutable"
+
+	@app_shell path / /index.html /flutter_bootstrap.js /flutter_service_worker.js /manifest.json
+	header @app_shell Cache-Control "no-cache, no-store, must-revalidate"
 }
 
 api.orignagta.ca {
@@ -61,6 +73,7 @@ api.orignagta.ca {
 
 orignagta.ca, www.orignagta.ca {
 	import site_security_headers
+	import site_cache_rules
 	encode zstd gzip
 
 	root * /var/www/orignagta/production/current
@@ -70,6 +83,7 @@ orignagta.ca, www.orignagta.ca {
 
 dev.orignagta.ca {
 	import site_security_headers
+	import site_cache_rules
 	encode zstd gzip
 
 	root * /var/www/orignagta/dev/current
@@ -79,6 +93,7 @@ dev.orignagta.ca {
 
 staging.orignagta.ca {
 	import site_security_headers
+	import site_cache_rules
 	encode zstd gzip
 
 	root * /var/www/orignagta/staging/current

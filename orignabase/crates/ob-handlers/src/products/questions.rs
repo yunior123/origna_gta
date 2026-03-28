@@ -938,7 +938,7 @@ mod tests {
         .await
         .unwrap();
         assert_eq!(answered_resp.total, 1);
-        assert_eq!(answered_resp.questions[0].is_answered, true);
+        assert!(answered_resp.questions[0].is_answered);
         assert_eq!(
             answered_resp.questions[0].answer_text.as_deref(),
             Some("Yes, blue is in stock.")

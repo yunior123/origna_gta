@@ -117,7 +117,10 @@ async fn test_602_product_update_price() {
         r#"mutation { create(collection: "products", data: {name: "Price Test", priceCents: 1000}) }"#,
     )
     .await;
-    let product_id = create_body["data"]["create"]["id"].as_str().unwrap().to_string();
+    let product_id = create_body["data"]["create"]["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
 
     // Update price
     let (status, body) = graphql(
@@ -146,7 +149,10 @@ async fn test_603_product_delete() {
         r#"mutation { create(collection: "products", data: {name: "Delete Test", priceCents: 100}) }"#,
     )
     .await;
-    let product_id = create_body["data"]["create"]["id"].as_str().unwrap().to_string();
+    let product_id = create_body["data"]["create"]["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
 
     // Delete
     let (status, body) = graphql(
@@ -236,7 +242,10 @@ async fn test_606_cart_update_quantity() {
         r#"mutation { create(collection: "carts", data: {items: [{productId: "p1", quantity: 1, priceCents: 500}]}) }"#,
     )
     .await;
-    let cart_id = create_body["data"]["create"]["id"].as_str().unwrap().to_string();
+    let cart_id = create_body["data"]["create"]["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
 
     // Update quantity
     let (status, _body) = graphql(
@@ -263,7 +272,10 @@ async fn test_607_cart_delete() {
         r#"mutation { create(collection: "carts", data: {items: []}) }"#,
     )
     .await;
-    let cart_id = create_body["data"]["create"]["id"].as_str().unwrap().to_string();
+    let cart_id = create_body["data"]["create"]["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
 
     let (status, body) = graphql(
         &client,
@@ -292,7 +304,10 @@ async fn test_608_cart_empty_items() {
 
     assert_eq!(status, 200);
     let items = &body["data"]["create"]["items"];
-    assert!(items.is_array() || items.is_null(), "Empty cart should have empty/null items");
+    assert!(
+        items.is_array() || items.is_null(),
+        "Empty cart should have empty/null items"
+    );
 }
 
 // =============================================================================
@@ -325,7 +340,10 @@ async fn test_610_order_update_status() {
         r#"mutation {{ create(collection: "orders", data: {{userId: "{user_id}", items: [{{productId: "p1", quantity: 1, priceCents: 500}}], totalAmountCents: 500, status: "pending"}}) }}"#
     );
     let (_, create_body) = graphql(&client, Some(&token), &query).await;
-    let order_id = create_body["data"]["create"]["id"].as_str().unwrap().to_string();
+    let order_id = create_body["data"]["create"]["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
 
     // Update status
     let (status, body) = graphql(
@@ -501,7 +519,10 @@ async fn test_617_sequential_product_operations() {
             ),
         )
         .await;
-        let product_id = create_body["data"]["create"]["id"].as_str().unwrap().to_string();
+        let product_id = create_body["data"]["create"]["id"]
+            .as_str()
+            .unwrap()
+            .to_string();
 
         // Read
         let (status, _) = graphql(

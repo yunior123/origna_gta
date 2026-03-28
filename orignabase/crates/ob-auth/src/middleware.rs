@@ -9,7 +9,9 @@ use crate::jwt::{Claims, JwtKeys, verify_token};
 pub fn assert_jwt_secret_configured(jwt_secret: &str) {
     let environment = std::env::var("ENVIRONMENT").unwrap_or_default();
     if environment == "production" && jwt_secret == "CHANGE_ME_IN_PRODUCTION" {
-        panic!("FATAL: JWT secret is still the default 'CHANGE_ME_IN_PRODUCTION' in production. Set OB_AUTH__JWT_SECRET to a strong random value.");
+        panic!(
+            "FATAL: JWT secret is still the default 'CHANGE_ME_IN_PRODUCTION' in production. Set OB_AUTH__JWT_SECRET to a strong random value."
+        );
     }
 }
 
@@ -17,7 +19,10 @@ pub fn assert_jwt_secret_configured(jwt_secret: &str) {
 pub fn assert_no_live_stripe_in_dev(stripe_key: &str) {
     let environment = std::env::var("ENVIRONMENT").unwrap_or_default();
     if environment != "production" && stripe_key.starts_with("sk_live_") {
-        panic!("FATAL: Live Stripe key (sk_live_) detected in {} environment. Use sk_test_ for non-production.", environment);
+        panic!(
+            "FATAL: Live Stripe key (sk_live_) detected in {} environment. Use sk_test_ for non-production.",
+            environment
+        );
     }
 }
 
@@ -27,7 +32,9 @@ pub fn assert_test_mode_not_in_production() {
     let test_mode = std::env::var("OB_TEST_MODE").unwrap_or_default() == "1";
     let environment = std::env::var("ENVIRONMENT").unwrap_or_default();
     if test_mode && environment == "production" {
-        panic!("FATAL: OB_TEST_MODE=1 is set in production environment. This bypasses authentication and is a critical security risk. Remove OB_TEST_MODE or set ENVIRONMENT to a non-production value.");
+        panic!(
+            "FATAL: OB_TEST_MODE=1 is set in production environment. This bypasses authentication and is a critical security risk. Remove OB_TEST_MODE or set ENVIRONMENT to a non-production value."
+        );
     }
 }
 
@@ -86,13 +93,17 @@ pub async fn auth_extractor(mut request: Request, next: Next) -> Result<Response
                 match verify_token(token, keys) {
                     Ok(claims) if claims.typ == "access" => AuthContext::from_claims(claims),
                     Ok(_) if test_mode => {
-                        warn!("OB_TEST_MODE: bypassing auth for invalid token type — falling back to anonymous");
+                        warn!(
+                            "OB_TEST_MODE: bypassing auth for invalid token type — falling back to anonymous"
+                        );
                         AuthContext::anonymous()
                     }
                     Ok(_) => return Err(Error::Auth("Invalid token type".into())),
                     Err(e) => {
                         if test_mode {
-                            warn!("OB_TEST_MODE: bypassing auth for invalid JWT ({e}) — falling back to anonymous");
+                            warn!(
+                                "OB_TEST_MODE: bypassing auth for invalid JWT ({e}) — falling back to anonymous"
+                            );
                             AuthContext::anonymous()
                         } else {
                             // CRITICAL FIX: Authorization header present but JWT invalid → 401
@@ -114,7 +125,9 @@ pub async fn auth_extractor(mut request: Request, next: Next) -> Result<Response
         } else {
             // Authorization header present but doesn't start with "Bearer "
             if test_mode {
-                warn!("OB_TEST_MODE: invalid Authorization header format — falling back to anonymous");
+                warn!(
+                    "OB_TEST_MODE: invalid Authorization header format — falling back to anonymous"
+                );
                 AuthContext::anonymous()
             } else {
                 return Err(Error::Auth("Invalid Authorization header format".into()));

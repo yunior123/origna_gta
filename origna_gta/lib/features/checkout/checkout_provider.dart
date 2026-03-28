@@ -15,11 +15,11 @@ import 'orignabase_checkout_provider.dart';
 /// Falls back to Ontario's HST rate (13%) when no address is set.
 /// Used by checkout summary to display the tax percentage label.
 final checkoutTaxRateProvider = Provider.autoDispose<double>((ref) {
-  final checkoutState = ref.watch(checkoutStateProvider);
-  if (checkoutState.address == null) {
+  final address = ref.watch(checkoutStateProvider.select((s) => s.address));
+  if (address == null) {
     return getTaxRate(ProvinceCodeValues.ontario);
   }
-  return getTaxRate(checkoutState.address!.state);
+  return getTaxRate(address.state);
 });
 
 /// Computed provider for checkout total in dollars.
@@ -32,13 +32,17 @@ final checkoutTaxRateProvider = Provider.autoDispose<double>((ref) {
 /// - [cartSubtotalProvider] returns integer cents — divided by 100.0 for dollar conversion.
 /// - Coupon discount clamped to 0 minimum — negative totals are impossible.
 final checkoutTotalProvider = Provider.autoDispose<double>((ref) {
-  final checkoutState = ref.watch(checkoutStateProvider);
+  final (couponDiscountCents, taxAmount, shippingCost) = ref.watch(
+    checkoutStateProvider.select(
+      (s) => (s.couponDiscountCents, s.taxAmount, s.shippingCost),
+    ),
+  );
   // cartSubtotalProvider returns INTEGER CENTS — divide by 100.0 to get dollars.
   final subtotalDollars = ref.watch(cartSubtotalProvider) / 100.0;
-  final couponDiscountDollars = checkoutState.couponDiscountCents / 100.0;
+  final couponDiscountDollars = couponDiscountCents / 100.0;
   return (subtotalDollars - couponDiscountDollars).clamp(0.0, double.infinity) +
-      checkoutState.taxAmount +
-      checkoutState.shippingCost;
+      taxAmount +
+      shippingCost;
 });
 
 /// Computed effective subtotal after coupon discount (in dollars).

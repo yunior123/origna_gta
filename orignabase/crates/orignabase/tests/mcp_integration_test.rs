@@ -33,10 +33,7 @@ async fn register_test_user(client: &reqwest::Client) -> (String, String) {
 
 /// Check if MCP endpoints are available (returns true if /mcp/tools returns 200).
 async fn mcp_available(client: &reqwest::Client) -> bool {
-    let resp = client
-        .get(format!("{}/mcp/tools", base_url()))
-        .send()
-        .await;
+    let resp = client.get(format!("{}/mcp/tools", base_url())).send().await;
     matches!(resp, Ok(r) if r.status() == 200)
 }
 
@@ -64,14 +61,21 @@ async fn test_mcp_list_tools() {
 
     assert_eq!(status, 200, "List tools should succeed: {body:?}");
     let tools = body["tools"].as_array().expect("should return tools array");
-    assert!(tools.len() >= 10, "Should have at least 10 tools, got {}", tools.len());
+    assert!(
+        tools.len() >= 10,
+        "Should have at least 10 tools, got {}",
+        tools.len()
+    );
 
-    let tool_names: Vec<&str> = tools
-        .iter()
-        .filter_map(|t| t["name"].as_str())
-        .collect();
-    assert!(tool_names.contains(&"search_products"), "Should include search_products");
-    assert!(tool_names.contains(&"get_product"), "Should include get_product");
+    let tool_names: Vec<&str> = tools.iter().filter_map(|t| t["name"].as_str()).collect();
+    assert!(
+        tool_names.contains(&"search_products"),
+        "Should include search_products"
+    );
+    assert!(
+        tool_names.contains(&"get_product"),
+        "Should include get_product"
+    );
 }
 
 #[tokio::test]
@@ -94,8 +98,14 @@ async fn test_mcp_list_tools_has_descriptions() {
     let tools = body["tools"].as_array().unwrap();
 
     for tool in tools {
-        assert!(tool["name"].as_str().is_some(), "Each tool should have a name");
-        assert!(tool["description"].as_str().is_some(), "Each tool should have a description: {tool:?}");
+        assert!(
+            tool["name"].as_str().is_some(),
+            "Each tool should have a name"
+        );
+        assert!(
+            tool["description"].as_str().is_some(),
+            "Each tool should have a description: {tool:?}"
+        );
     }
 }
 
@@ -187,9 +197,18 @@ async fn test_mcp_rpc_invalid_method() {
     let status = resp.status().as_u16();
     let body: Value = resp.json().await.unwrap_or(json!({}));
 
-    assert_eq!(status, 200, "Should return 200 with JSON-RPC error: {body:?}");
-    assert!(body["error"].is_object(), "Should have error field for unknown method");
-    assert_eq!(body["error"]["code"], -32601, "Should be method not found error");
+    assert_eq!(
+        status, 200,
+        "Should return 200 with JSON-RPC error: {body:?}"
+    );
+    assert!(
+        body["error"].is_object(),
+        "Should have error field for unknown method"
+    );
+    assert_eq!(
+        body["error"]["code"], -32601,
+        "Should be method not found error"
+    );
 }
 
 #[tokio::test]
@@ -216,7 +235,10 @@ async fn test_mcp_rpc_get_product_by_id() {
     let status = resp.status().as_u16();
     let body: Value = resp.json().await.unwrap_or(json!({}));
 
-    assert_eq!(status, 200, "Should return valid JSON-RPC response: {body:?}");
+    assert_eq!(
+        status, 200,
+        "Should return valid JSON-RPC response: {body:?}"
+    );
     assert_eq!(body["jsonrpc"], "2.0");
 }
 
@@ -244,7 +266,10 @@ async fn test_mcp_rpc_check_inventory() {
     let status = resp.status().as_u16();
     let body: Value = resp.json().await.unwrap_or(json!({}));
 
-    assert_eq!(status, 200, "Check inventory should return valid response: {body:?}");
+    assert_eq!(
+        status, 200,
+        "Check inventory should return valid response: {body:?}"
+    );
     assert_eq!(body["jsonrpc"], "2.0");
 }
 
@@ -304,5 +329,8 @@ async fn test_mcp_rpc_string_id() {
     let body: Value = resp.json().await.unwrap_or(json!({}));
 
     assert_eq!(status, 200);
-    assert_eq!(body["id"], "request-abc-123", "String ID should be preserved in response");
+    assert_eq!(
+        body["id"], "request-abc-123",
+        "String ID should be preserved in response"
+    );
 }

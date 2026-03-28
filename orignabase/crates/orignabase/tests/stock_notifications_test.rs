@@ -34,7 +34,13 @@ async fn register_test_user(client: &Client) -> (String, String) {
 }
 
 /// Create a product via GraphQL (the actual OrignaBase API)
-async fn create_product(client: &Client, token: &str, name: &str, price_cents: i64, stock: i64) -> Option<String> {
+async fn create_product(
+    client: &Client,
+    token: &str,
+    name: &str,
+    price_cents: i64,
+    stock: i64,
+) -> Option<String> {
     let query = format!(
         r#"mutation {{ create(collection: "products", data: {{name: "{}", priceCents: {}, stockQuantity: {}, lifecycleStatus: "active", isDigital: false, isPerishable: false}}) }}"#,
         name, price_cents, stock
@@ -77,7 +83,10 @@ async fn test_subscribe_to_stock_notification() {
     let product_id = create_product(&client, &seller_token, "Out of Stock Product", 5000, 0).await;
     let product_id = match product_id {
         Some(id) => id,
-        None => { println!("Could not create product; skipping"); return; }
+        None => {
+            println!("Could not create product; skipping");
+            return;
+        }
     };
 
     // Buyer subscribes to stock notification
@@ -92,7 +101,8 @@ async fn test_subscribe_to_stock_notification() {
     // Endpoint should succeed (200) or may not be fully implemented (404/422)
     assert!(
         status == 200 || status == 404 || status == 422,
-        "Stock notify endpoint should respond (status={})", status
+        "Stock notify endpoint should respond (status={})",
+        status
     );
 }
 
@@ -106,7 +116,10 @@ async fn test_subscribe_idempotent() {
     let product_id = create_product(&client, &seller_token, "Idempotent Test", 3000, 0).await;
     let product_id = match product_id {
         Some(id) => id,
-        None => { println!("Could not create product; skipping"); return; }
+        None => {
+            println!("Could not create product; skipping");
+            return;
+        }
     };
 
     // Subscribe first time
@@ -130,7 +143,8 @@ async fn test_subscribe_idempotent() {
     // Both should return same status (200 if implemented, 404/422 if not)
     assert!(
         status1 == 200 || status1 == 404 || status1 == 422,
-        "First subscription should respond (status={})", status1
+        "First subscription should respond (status={})",
+        status1
     );
     assert_eq!(status1, status2, "Second subscription should be idempotent");
 }
@@ -145,7 +159,10 @@ async fn test_unsubscribe_stock_notification() {
     let product_id = create_product(&client, &seller_token, "Unsubscribe Test", 4000, 0).await;
     let product_id = match product_id {
         Some(id) => id,
-        None => { println!("Could not create product; skipping"); return; }
+        None => {
+            println!("Could not create product; skipping");
+            return;
+        }
     };
 
     // Subscribe
@@ -168,7 +185,8 @@ async fn test_unsubscribe_stock_notification() {
 
     assert!(
         status == 200 || status == 404 || status == 422,
-        "Unsubscribe should respond (status={})", status
+        "Unsubscribe should respond (status={})",
+        status
     );
 }
 
@@ -181,7 +199,10 @@ async fn test_cannot_subscribe_to_own_product() {
     let product_id = create_product(&client, &seller_token, "Own Product", 6000, 0).await;
     let product_id = match product_id {
         Some(id) => id,
-        None => { println!("Could not create product; skipping"); return; }
+        None => {
+            println!("Could not create product; skipping");
+            return;
+        }
     };
 
     // Seller tries to subscribe to own product
@@ -212,7 +233,10 @@ async fn test_subscribe_to_in_stock_product() {
     let product_id = create_product(&client, &seller_token, "In Stock Product", 5000, 50).await;
     let product_id = match product_id {
         Some(id) => id,
-        None => { println!("Could not create product; skipping"); return; }
+        None => {
+            println!("Could not create product; skipping");
+            return;
+        }
     };
 
     let (status, _) = api_post(
@@ -226,7 +250,8 @@ async fn test_subscribe_to_in_stock_product() {
     // May succeed (200), reject (400), or not exist (404)
     assert!(
         status == 200 || status >= 400,
-        "Endpoint should respond (status={})", status
+        "Endpoint should respond (status={})",
+        status
     );
 }
 
@@ -240,7 +265,10 @@ async fn test_unsubscribe_not_subscribed() {
     let product_id = create_product(&client, &seller_token, "Not Subscribed", 2000, 0).await;
     let product_id = match product_id {
         Some(id) => id,
-        None => { println!("Could not create product; skipping"); return; }
+        None => {
+            println!("Could not create product; skipping");
+            return;
+        }
     };
 
     // Unsubscribe without subscribing first
@@ -255,7 +283,8 @@ async fn test_unsubscribe_not_subscribed() {
     // Should handle gracefully (200 idempotent, 400 error, or 404 not implemented)
     assert!(
         status == 200 || status >= 400,
-        "Should handle gracefully (status={})", status
+        "Should handle gracefully (status={})",
+        status
     );
 }
 
@@ -269,7 +298,10 @@ async fn test_stock_notification_response_structure() {
     let product_id = create_product(&client, &seller_token, "Response Structure", 7000, 0).await;
     let product_id = match product_id {
         Some(id) => id,
-        None => { println!("Could not create product; skipping"); return; }
+        None => {
+            println!("Could not create product; skipping");
+            return;
+        }
     };
 
     let (status, subscribe_resp) = api_post(
@@ -305,7 +337,10 @@ async fn test_multiple_users_subscribe_same_product() {
     let product_id = create_product(&client, &seller_token, "Popular Product", 9000, 0).await;
     let product_id = match product_id {
         Some(id) => id,
-        None => { println!("Could not create product; skipping"); return; }
+        None => {
+            println!("Could not create product; skipping");
+            return;
+        }
     };
 
     // Buyer 1 subscribes
@@ -329,7 +364,11 @@ async fn test_multiple_users_subscribe_same_product() {
     // Both should get same status (200 if implemented, 404 if not)
     assert!(
         status1 == 200 || status1 == 404 || status1 == 422,
-        "First user should get valid response (status={})", status1
+        "First user should get valid response (status={})",
+        status1
     );
-    assert_eq!(status1, status2, "Both users should get same response status");
+    assert_eq!(
+        status1, status2,
+        "Both users should get same response status"
+    );
 }

@@ -15,6 +15,9 @@ abstract class ProductActionsState with _$ProductActionsState {
   }) = _ProductActionsState;
 }
 
+/// Riverpod provider for [ProductActionsViewModel].
+///
+/// Auto-disposed — fresh state per action invocation.
 final productActionsViewModelProvider =
     StateNotifierProvider.autoDispose<
       ProductActionsViewModel,
@@ -24,11 +27,18 @@ final productActionsViewModelProvider =
     });
 
 /// ViewModel for product lifecycle actions: activate, deactivate, delete.
+///
+/// All mutations set [ProductActionsState.isLoading] during the operation and
+/// [isSuccess] on completion. Errors are captured into [errorMessage].
 class ProductActionsViewModel extends StateNotifier<ProductActionsState> {
   final Ref _ref;
 
   ProductActionsViewModel(this._ref) : super(const ProductActionsState());
 
+  /// Deletes a product by [productId].
+  ///
+  /// Returns `true` on success, `false` on failure or if already loading (double-submit guard).
+  /// Rethrows nothing — errors are captured into [ProductActionsState.errorMessage].
   Future<bool> deleteProduct(String productId) async {
     if (state.isLoading) return false;
     state = state.copyWith(

@@ -1,5 +1,17 @@
 import 'package:origna_gta/models/generated/models.dart' as models;
 
+/// Contract for order management operations.
+///
+/// Implementations: [OrignaBaseOrderRepository] (production).
+///
+/// Covers the complete order lifecycle:
+/// - Checkout session creation (Stripe integration)
+/// - Payment capture and authorization
+/// - Buyer receipt confirmation
+/// - Seller shipping updates with tracking
+/// - Shipping cost approval workflow
+/// - Return requests
+/// - Realtime order watching (buyer and seller views)
 abstract class OrderRepository {
   /// Approves or rejects a seller-submitted shipping cost update for [orderId].
   Future<void> approveShippingCost(String orderId, bool approved);

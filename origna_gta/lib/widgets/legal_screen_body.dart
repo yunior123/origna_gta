@@ -8,40 +8,78 @@ import 'package:flutter/widget_previews.dart';
 
 IconData iconForSection(String title) {
   final t = title.toLowerCase();
-  if (t.contains('collect') || t.contains('information'))
+  if (t.contains('collect') || t.contains('information')) {
     return Icons.description_outlined;
-  if (t.contains('use')) return Icons.analytics_outlined;
-  if (t.contains('shar') || t.contains('third')) return Icons.share_outlined;
-  if (t.contains('right') || t.contains('choice'))
+  }
+  if (t.contains('use')) {
+    return Icons.analytics_outlined;
+  }
+  if (t.contains('shar') || t.contains('third')) {
+    return Icons.share_outlined;
+  }
+  if (t.contains('right') || t.contains('choice')) {
     return Icons.verified_user_outlined;
-  if (t.contains('security') || t.contains('protect'))
+  }
+  if (t.contains('security') || t.contains('protect')) {
     return Icons.shield_outlined;
-  if (t.contains('cookie')) return Icons.cookie_outlined;
-  if (t.contains('retention') || t.contains('stor'))
+  }
+  if (t.contains('cookie')) {
+    return Icons.cookie_outlined;
+  }
+  if (t.contains('retention') || t.contains('stor')) {
     return Icons.storage_outlined;
-  if (t.contains('children') || t.contains('minor'))
+  }
+  if (t.contains('children') || t.contains('minor')) {
     return Icons.child_care_outlined;
-  if (t.contains('change') || t.contains('update'))
+  }
+  if (t.contains('change') || t.contains('update')) {
     return Icons.edit_note_outlined;
-  if (t.contains('contact')) return Icons.mail_outlined;
-  if (t.contains('partner')) return Icons.people_outlined;
-  if (t.contains('payment')) return Icons.payment_outlined;
-  if (t.contains(UserRoleValues.seller)) return Icons.storefront_outlined;
-  if (t.contains('acceptance')) return Icons.handshake_outlined;
-  if (t.contains('account')) return Icons.person_add_outlined;
-  if (t.contains('purchase')) return Icons.payment_outlined;
-  if (t.contains('shipping') || t.contains('delivery'))
+  }
+  if (t.contains('contact')) {
+    return Icons.mail_outlined;
+  }
+  if (t.contains('partner')) {
+    return Icons.people_outlined;
+  }
+  if (t.contains('payment')) {
+    return Icons.payment_outlined;
+  }
+  if (t.contains(UserRoleValues.seller)) {
+    return Icons.storefront_outlined;
+  }
+  if (t.contains('acceptance')) {
+    return Icons.handshake_outlined;
+  }
+  if (t.contains('account')) {
+    return Icons.person_add_outlined;
+  }
+  if (t.contains('purchase')) {
+    return Icons.payment_outlined;
+  }
+  if (t.contains('shipping') || t.contains('delivery')) {
     return Icons.local_shipping_outlined;
-  if (t.contains('return') || t.contains('refund'))
+  }
+  if (t.contains('return') || t.contains('refund')) {
     return Icons.assignment_return_outlined;
-  if (t.contains('prohibited')) return Icons.block_outlined;
-  if (t.contains('intellectual') || t.contains('property'))
+  }
+  if (t.contains('prohibited')) {
+    return Icons.block_outlined;
+  }
+  if (t.contains('intellectual') || t.contains('property')) {
     return Icons.copyright_outlined;
-  if (t.contains('liability') || t.contains('limitation'))
+  }
+  if (t.contains('liability') || t.contains('limitation')) {
     return Icons.shield_outlined;
-  if (t.contains('privacy')) return Icons.lock_outlined;
-  if (t.contains('termination')) return Icons.cancel_outlined;
-  if (t.contains('governing') || t.contains('law')) return Icons.gavel_outlined;
+  }
+  if (t.contains('privacy')) {
+    return Icons.lock_outlined;
+  }
+  if (t.contains('termination')) {
+    return Icons.cancel_outlined;
+  }
+  if (t.contains('governing') || t.contains('law')) {
+    return Icons.gavel_outlined;
+  }
   return Icons.article_outlined;
 }
 

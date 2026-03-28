@@ -10,6 +10,11 @@ void main() {
   const runLive =
       bool.fromEnvironment('RUN_ORIGNABASE_LIVE_TESTS', defaultValue: false);
 
+  if (!runLive) {
+    test('live tests disabled', () {});
+    return;
+  }
+
   bool isExpectedPermissionError(Object error) {
     final msg = error.toString().toLowerCase();
     return msg.contains('403') ||
@@ -45,7 +50,7 @@ void main() {
 
         final sub = container.listen(
           warehousesViewModelProvider,
-          (_, __) {},
+          (previous, next) {},
           fireImmediately: true,
         );
         final viewModelNotifier =
@@ -86,7 +91,6 @@ void main() {
           sub.close();
         }
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -97,7 +101,7 @@ void main() {
 
         final sub = container.listen(
           warehousesViewModelProvider,
-          (_, __) {},
+          (previous, next) {},
           fireImmediately: true,
         );
         final viewModelNotifier =
@@ -158,8 +162,7 @@ void main() {
           sub.close();
         }
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
-  }, skip: !runLive);
+  });
 }

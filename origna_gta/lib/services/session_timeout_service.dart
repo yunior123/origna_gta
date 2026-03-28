@@ -4,20 +4,31 @@ import 'package:flutter/material.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 
-/// Service to automatically logout users after 15 minutes of inactivity.
+/// Service that automatically signs out users after a period of inactivity.
 ///
-/// SECURITY: Phase 3 - Session timeout implementation
-/// Tracks user interactions and signs out after 15 minutes of inactivity.
+/// SECURITY: Implements Phase 3 session timeout. Tracks user interactions via
+/// [recordActivity] and triggers a sign-out after [BusinessRules.sessionTimeoutMinutes]
+/// minutes of no activity.
+///
+/// Design:
+/// - Singleton pattern for global access.
+/// - Backend-agnostic: injects auth callbacks via [configure].
+/// - User-bound timer: only signs out the user whose session started the timer
+///   (prevents accidental logout if user switches accounts).
+/// - Shows a SnackBar notification before signing out.
 class SessionTimeoutService {
   static final Duration _defaultInactivityTimeout = Duration(
     minutes: BusinessRules.sessionTimeoutMinutes,
   );
 
+  /// The inactivity timeout duration (configurable for testing).
   Duration _inactivityTimeout = _defaultInactivityTimeout;
 
+  /// Overrides the inactivity timeout in tests.
   @visibleForTesting
   set inactivityTimeout(Duration value) => _inactivityTimeout = value;
 
+  /// Resets the singleton to its initial state for testing.
   @visibleForTesting
   static void resetInstance() {
     _instance.stopMonitoring();
@@ -27,18 +38,33 @@ class SessionTimeoutService {
   }
 
   /// Singleton instance
+  /// The singleton instance.
   static final SessionTimeoutService _instance =
       SessionTimeoutService._internal();
+
+  /// Timer that fires when inactivity timeout is reached.
   Timer? _timeoutTimer;
+
+  /// Timestamp of the last recorded user activity.
   DateTime _lastActivityTime = DateTime.now();
+
+  /// Navigator key used for showing SnackBars on timeout.
   GlobalKey<NavigatorState>? _navigatorKey;
+
+  /// The user ID whose session started the current timer (BOOT-H2 binding).
   String? _watchedUserId;
+
+  /// Provider function that returns the current authenticated user ID.
   String? Function()? _currentUserIdProvider;
+
+  /// Callback function that performs the actual sign-out.
   Future<void> Function()? _signOutCallback;
 
+  /// Overrides the last activity time in tests.
   @visibleForTesting
   set lastActivityTime(DateTime value) => _lastActivityTime = value;
 
+  /// Exposes the timeout handler for testing.
   @visibleForTesting
   Future<void> handleTimeoutForTesting() => _handleTimeout();
 

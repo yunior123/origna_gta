@@ -118,7 +118,6 @@ class _AddVariantOptionButton extends StatelessWidget {
           ),
           actions: [
             Semantics(
-              button: true,
               label: 'btn-cancel-add-variant',
               child: TextButton(
                 onPressed: () => Navigator.pop(ctx),
@@ -361,7 +360,6 @@ class _VariantOptionCard extends StatelessWidget {
         ),
         actions: [
           Semantics(
-            button: true,
             label: 'btn-cancel-edit-variant',
             child: TextButton(
               onPressed: () => Navigator.pop(ctx),
@@ -453,58 +451,46 @@ class _VariantRow extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Semantics(
-                  textField: true,
-                  label: 'input-variant-price',
-                  child: TextFormField(
-                    initialValue: price?.toStringAsFixed(2),
-                    decoration: _variantFieldDecoration(
-                      'product.price_dollar'.tr(),
-                      prefixText: '\$ ',
-                    ),
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    onChanged: (v) => onPriceChanged(double.tryParse(v)),
+                child: TextFormField(
+                  initialValue: price?.toStringAsFixed(2),
+                  decoration: _variantFieldDecoration(
+                    'product.price_dollar'.tr(),
+                    prefixText: '\$ ',
                   ),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  onChanged: (v) => onPriceChanged(double.tryParse(v)),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: Semantics(
-                  textField: true,
-                  label: 'input-variant-stock',
-                  child: TextFormField(
-                    initialValue: stockQuantity.toString(),
-                    decoration: _variantFieldDecoration('product.stock'.tr()),
-                    keyboardType: TextInputType.number,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    onChanged: (v) => onStockChanged(int.tryParse(v) ?? 0),
+                child: TextFormField(
+                  initialValue: stockQuantity.toString(),
+                  decoration: _variantFieldDecoration('product.stock'.tr()),
+                  keyboardType: TextInputType.number,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
                   ),
+                  onChanged: (v) => onStockChanged(int.tryParse(v) ?? 0),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: Semantics(
-                  textField: true,
-                  label: 'input-variant-sku',
-                  child: TextFormField(
-                    initialValue: sku,
-                    decoration: _variantFieldDecoration('product.sku'.tr()),
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    onChanged: (v) =>
-                        onSkuChanged(v.trim().isEmpty ? null : v.trim()),
+                child: TextFormField(
+                  initialValue: sku,
+                  decoration: _variantFieldDecoration('product.sku'.tr()),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
                   ),
+                  onChanged: (v) =>
+                      onSkuChanged(v.trim().isEmpty ? null : v.trim()),
                 ),
               ),
             ],

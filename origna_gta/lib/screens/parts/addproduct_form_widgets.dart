@@ -106,7 +106,7 @@ extension _AddProductFormWidgets on _AddProductScreenState {
           decoration: BoxDecoration(
             color: value
                 ? DesignTokens.primary.withValues(alpha: 0.06)
-                : DesignTokens.surfaceVariant.withValues(alpha: 0.5),
+                : (Theme.of(context).brightness == Brightness.dark ? DesignTokens.darkSurfaceVariant : DesignTokens.surfaceVariant).withValues(alpha: 0.5),
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: value
@@ -605,7 +605,7 @@ extension _AddProductFormWidgets on _AddProductScreenState {
                       child: Container(
                         padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
-                          color: DesignTokens.surfaceVariant,
+                          color: Theme.of(context).brightness == Brightness.dark ? DesignTokens.darkSurfaceVariant : DesignTokens.surfaceVariant,
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(

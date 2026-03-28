@@ -255,8 +255,14 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     );
     _taxCodeController = TextEditingController(text: p.taxCode ?? '');
     final existingThreshold = p.inventory?.lowStockThreshold ?? 0;
-    ref.read(_editProductLowStockAlertProvider.notifier).state =
-        existingThreshold > 0;
+    // Defer provider modification to avoid "modified during build" assertion.
+    // initState runs while the widget tree is building, so direct writes are
+    // disallowed by Riverpod.
+    Future.microtask(() {
+      if (!mounted) return;
+      ref.read(_editProductLowStockAlertProvider.notifier).state =
+          existingThreshold > 0;
+    });
     _lowStockThresholdController = TextEditingController(
       text: existingThreshold > 0 ? existingThreshold.toString() : '5',
     );

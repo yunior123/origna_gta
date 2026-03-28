@@ -8,6 +8,11 @@ import 'package:origna_gta/models/models.dart';
 void main() {
   const runLive = bool.fromEnvironment('RUN_ORIGNABASE_LIVE_TESTS', defaultValue: false);
 
+  if (!runLive) {
+    test('live tests disabled', () {});
+    return;
+  }
+
   group('OrignaBaseAuthRepository integration', () {
     late ProviderContainer container;
     late OrignaBase ob;
@@ -35,7 +40,6 @@ void main() {
           reason: 'signInWithEmail should succeed with valid credentials',
         );
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -49,7 +53,6 @@ void main() {
           reason: 'signInWithEmail should throw for invalid email format',
         );
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -62,7 +65,6 @@ void main() {
         final result = await repo.isEmailVerified();
         expect(result, isA<bool>());
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -78,7 +80,6 @@ void main() {
           reason: 'signOut should complete without throwing',
         );
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -91,7 +92,6 @@ void main() {
         final result = await repo.validateCurrentUser();
         expect(result, isTrue);
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -107,7 +107,6 @@ void main() {
           reason: 'ensureUserDocumentExists should complete',
         );
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -128,8 +127,7 @@ void main() {
         // Event may be null if auth state doesn't match
         expect(event, isA<UserModel?>());
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
-  }, skip: !runLive);
+  });
 }

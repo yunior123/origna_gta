@@ -19,8 +19,14 @@ async fn register_test_user(client: &reqwest::Client) -> (String, String, String
         .expect("register failed");
     assert_eq!(resp.status(), 200);
     let body: Value = resp.json().await.unwrap();
-    let token = body["access_token"].as_str().expect("missing access_token").to_string();
-    let user_id = body["user"]["id"].as_str().expect("missing user.id").to_string();
+    let token = body["access_token"]
+        .as_str()
+        .expect("missing access_token")
+        .to_string();
+    let user_id = body["user"]["id"]
+        .as_str()
+        .expect("missing user.id")
+        .to_string();
     (token, user_id, email)
 }
 
@@ -110,9 +116,7 @@ async fn test_list_products_filter_category() {
 
     let filters = serde_json::to_string(&json!({"category": {"_eq": "electronics"}})).unwrap();
     let escaped_f = serde_json::to_string(&filters).unwrap();
-    let query = format!(
-        r#"{{ list(collection: "products", filters: {escaped_f}, limit: 20) }}"#
-    );
+    let query = format!(r#"{{ list(collection: "products", filters: {escaped_f}, limit: 20) }}"#);
     let (status, body) = graphql(&client, Some(&token), &query).await;
 
     assert_eq!(status, 200);
@@ -130,9 +134,7 @@ async fn test_list_products_filter_price_range() {
     }))
     .unwrap();
     let escaped_f = serde_json::to_string(&filters).unwrap();
-    let query = format!(
-        r#"{{ list(collection: "products", filters: {escaped_f}, limit: 20) }}"#
-    );
+    let query = format!(r#"{{ list(collection: "products", filters: {escaped_f}, limit: 20) }}"#);
     let (status, body) = graphql(&client, Some(&token), &query).await;
 
     assert_eq!(status, 200);
@@ -145,7 +147,8 @@ async fn test_list_products_sort_by_price_asc() {
     let client = reqwest::Client::new();
     let (token, _user_id, _) = register_test_user(&client).await;
 
-    let query = r#"{ list(collection: "products", orderBy: "priceCents", descending: false, limit: 20) }"#;
+    let query =
+        r#"{ list(collection: "products", orderBy: "priceCents", descending: false, limit: 20) }"#;
     let (status, body) = graphql(&client, Some(&token), query).await;
 
     assert_eq!(status, 200);
@@ -158,7 +161,8 @@ async fn test_list_products_sort_by_price_desc() {
     let client = reqwest::Client::new();
     let (token, _user_id, _) = register_test_user(&client).await;
 
-    let query = r#"{ list(collection: "products", orderBy: "priceCents", descending: true, limit: 20) }"#;
+    let query =
+        r#"{ list(collection: "products", orderBy: "priceCents", descending: true, limit: 20) }"#;
     let (status, body) = graphql(&client, Some(&token), query).await;
 
     assert_eq!(status, 200);
@@ -171,7 +175,8 @@ async fn test_list_products_sort_by_newest() {
     let client = reqwest::Client::new();
     let (token, _user_id, _) = register_test_user(&client).await;
 
-    let query = r#"{ list(collection: "products", orderBy: "createdAt", descending: true, limit: 20) }"#;
+    let query =
+        r#"{ list(collection: "products", orderBy: "createdAt", descending: true, limit: 20) }"#;
     let (status, body) = graphql(&client, Some(&token), query).await;
 
     assert_eq!(status, 200);
@@ -190,9 +195,7 @@ async fn test_search_products_multiple_filters() {
     }))
     .unwrap();
     let escaped_f = serde_json::to_string(&filters).unwrap();
-    let query = format!(
-        r#"{{ list(collection: "products", filters: {escaped_f}, limit: 10) }}"#
-    );
+    let query = format!(r#"{{ list(collection: "products", filters: {escaped_f}, limit: 10) }}"#);
     let (status, body) = graphql(&client, Some(&token), &query).await;
 
     assert_eq!(status, 200);
@@ -223,10 +226,14 @@ async fn test_search_special_characters_in_query() {
     let client = reqwest::Client::new();
     let (token, _user_id, _) = register_test_user(&client).await;
 
-    let query = r#"{ search(index: "products", query: "test & <script>alert(1)</script>", limit: 10) }"#;
+    let query =
+        r#"{ search(index: "products", query: "test & <script>alert(1)</script>", limit: 10) }"#;
     let (status, body) = graphql(&client, Some(&token), query).await;
 
-    assert_eq!(status, 200, "Special chars should not crash search: {body:?}");
+    assert_eq!(
+        status, 200,
+        "Special chars should not crash search: {body:?}"
+    );
 }
 
 #[tokio::test]
@@ -248,9 +255,7 @@ async fn test_search_very_long_query() {
     let (token, _user_id, _) = register_test_user(&client).await;
 
     let long_term = "a".repeat(500);
-    let query = format!(
-        r#"{{ search(index: "products", query: "{long_term}", limit: 10) }}"#
-    );
+    let query = format!(r#"{{ search(index: "products", query: "{long_term}", limit: 10) }}"#);
     let (status, body) = graphql(&client, Some(&token), &query).await;
 
     assert_eq!(status, 200, "Long query should not crash: {body:?}");
@@ -277,7 +282,10 @@ async fn test_search_large_offset() {
     let query = r#"{ search(index: "products", query: "", limit: 10, offset: 999999) }"#;
     let (status, body) = graphql(&client, Some(&token), query).await;
 
-    assert_eq!(status, 200, "Large offset should return empty hits: {body:?}");
+    assert_eq!(
+        status, 200,
+        "Large offset should return empty hits: {body:?}"
+    );
 }
 
 #[tokio::test]
@@ -306,9 +314,7 @@ async fn test_list_products_with_lifecycle_filter() {
 
     let filters = serde_json::to_string(&json!({"lifecycleStatus": {"_eq": "active"}})).unwrap();
     let escaped_f = serde_json::to_string(&filters).unwrap();
-    let query = format!(
-        r#"{{ list(collection: "products", filters: {escaped_f}, limit: 20) }}"#
-    );
+    let query = format!(r#"{{ list(collection: "products", filters: {escaped_f}, limit: 20) }}"#);
     let (status, body) = graphql(&client, Some(&token), &query).await;
 
     assert_eq!(status, 200, "Lifecycle filter should work: {body:?}");
@@ -322,9 +328,7 @@ async fn test_list_products_perishable_filter() {
 
     let filters = serde_json::to_string(&json!({"isPerishable": {"_eq": true}})).unwrap();
     let escaped_f = serde_json::to_string(&filters).unwrap();
-    let query = format!(
-        r#"{{ list(collection: "products", filters: {escaped_f}, limit: 10) }}"#
-    );
+    let query = format!(r#"{{ list(collection: "products", filters: {escaped_f}, limit: 10) }}"#);
     let (status, body) = graphql(&client, Some(&token), &query).await;
 
     assert_eq!(status, 200, "Perishable filter should work: {body:?}");

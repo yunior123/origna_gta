@@ -125,7 +125,7 @@ class FBTSection extends ConsumerWidget {
         );
       },
       loading: () => const SizedBox.shrink(),
-      error: (_, __) => const SizedBox.shrink(),
+      error: (error, stackTrace) => const SizedBox.shrink(),
     );
   }
 
@@ -223,7 +223,8 @@ class _FBTProductItem extends StatelessWidget {
                     width: 80,
                     height: 80,
                     fit: BoxFit.cover,
-                    errorWidget: (_, __, e) => _imagePlaceholder(),
+                    errorWidget: (context, url, error) =>
+                        _imagePlaceholder(),
                   )
                 : _imagePlaceholder(),
           ),

@@ -184,8 +184,7 @@ mod tests {
     #[test]
     fn test_resolve_admin_mismatched_provided() {
         let auth = auth_ctx("admin_1", vec!["admin"], true);
-        let err =
-            resolve_admin_user_id(&auth, Some("other_admin"), "sellerId").unwrap_err();
+        let err = resolve_admin_user_id(&auth, Some("other_admin"), "sellerId").unwrap_err();
         match err {
             ob_core::Error::Forbidden(msg) => {
                 assert!(msg.contains("sellerId"));

@@ -1,4 +1,4 @@
-use crate::email::{email_wrapper, html_escape, t, OrderSummary};
+use crate::email::{OrderSummary, email_wrapper, html_escape, t};
 use crate::shared::schema::email_config;
 
 /// Generate buyer shipping notification HTML with tracking details.

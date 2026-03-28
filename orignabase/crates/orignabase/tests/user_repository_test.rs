@@ -35,11 +35,7 @@ async fn register_test_user(client: &reqwest::Client) -> (String, String, String
     (token, user_id, email)
 }
 
-async fn graphql(
-    client: &reqwest::Client,
-    token: Option<&str>,
-    query: &str,
-) -> (u16, Value) {
+async fn graphql(client: &reqwest::Client, token: Option<&str>, query: &str) -> (u16, Value) {
     let url = format!("{}/graphql", base_url());
     let mut req = client.post(&url).json(&json!({"query": query}));
     if let Some(t) = token {
@@ -73,9 +69,7 @@ async fn test_user_get_profile_success() {
     let client = reqwest::Client::new();
     let (token, user_id, _email) = register_test_user(&client).await;
 
-    let query = format!(
-        r#"{{ get(collection: "users", id: "{user_id}") }}"#
-    );
+    let query = format!(r#"{{ get(collection: "users", id: "{user_id}") }}"#);
     let (status, body) = graphql(&client, Some(&token), &query).await;
 
     assert_eq!(status, 200);
@@ -112,9 +106,8 @@ async fn test_user_update_profile_success() {
     }))
     .unwrap();
     let escaped = serde_json::to_string(&data).unwrap();
-    let query = format!(
-        r#"mutation {{ update(collection: "users", id: "{user_id}", data: {escaped}) }}"#
-    );
+    let query =
+        format!(r#"mutation {{ update(collection: "users", id: "{user_id}", data: {escaped}) }}"#);
     let (status, body) = graphql(&client, Some(&token), &query).await;
 
     assert_eq!(status, 200);
@@ -151,9 +144,7 @@ async fn test_user_add_address() {
     addr["userId"] = json!(user_id);
     let data = serde_json::to_string(&addr).unwrap();
     let escaped = serde_json::to_string(&data).unwrap();
-    let query = format!(
-        r#"mutation {{ create(collection: "addresses", data: {escaped}) }}"#
-    );
+    let query = format!(r#"mutation {{ create(collection: "addresses", data: {escaped}) }}"#);
     let (status, body) = graphql(&client, Some(&token), &query).await;
 
     assert_eq!(status, 200);
@@ -171,9 +162,7 @@ async fn test_user_add_address_requires_authentication() {
 
     let data = serde_json::to_string(&address_data("Home")).unwrap();
     let escaped = serde_json::to_string(&data).unwrap();
-    let query = format!(
-        r#"mutation {{ create(collection: "addresses", data: {escaped}) }}"#
-    );
+    let query = format!(r#"mutation {{ create(collection: "addresses", data: {escaped}) }}"#);
     let (status, body) = graphql(&client, None, &query).await;
 
     assert_eq!(status, 200);
@@ -212,8 +201,7 @@ async fn test_user_delete_address() {
     let client = reqwest::Client::new();
     let (token, _user_id, _email) = register_test_user(&client).await;
 
-    let query =
-        r#"mutation { delete(collection: "addresses", id: "addresses:nonexistent_123") }"#;
+    let query = r#"mutation { delete(collection: "addresses", id: "addresses:nonexistent_123") }"#;
     let (status, body) = graphql(&client, Some(&token), query).await;
 
     assert_eq!(status, 200);
@@ -225,8 +213,7 @@ async fn test_user_delete_address() {
 async fn test_user_delete_address_requires_authentication() {
     let client = reqwest::Client::new();
 
-    let query =
-        r#"mutation { delete(collection: "addresses", id: "addresses:test_123") }"#;
+    let query = r#"mutation { delete(collection: "addresses", id: "addresses:test_123") }"#;
     let (status, body) = graphql(&client, None, query).await;
 
     assert_eq!(status, 200);

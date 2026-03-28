@@ -7,6 +7,11 @@ void main() {
   const runLive =
       bool.fromEnvironment('RUN_ORIGNABASE_LIVE_TESTS', defaultValue: false);
 
+  if (!runLive) {
+    test('live tests disabled', () {});
+    return;
+  }
+
   group('Authentication operations live integration', () {
     late OrignaBaseAuthRepository authRepo;
     late OrignaBase ob;
@@ -41,7 +46,6 @@ void main() {
         final userId = ob.auth.currentUserId;
         expect(userId, isNotEmpty, reason: 'User ID should be populated');
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -59,7 +63,6 @@ void main() {
           reason: 'Login with wrong password should throw',
         );
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -79,7 +82,6 @@ void main() {
         userId = ob.auth.currentUserId;
         expect(userId, isNotEmpty, reason: 'Token should be valid');
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -106,7 +108,6 @@ void main() {
           reason: 'User ID should be null or empty after logout',
         );
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -123,7 +124,6 @@ void main() {
           throwsA(isA<OrignaBaseAuthException>()),
         );
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -140,7 +140,6 @@ void main() {
           throwsA(isA<OrignaBaseAuthException>()),
         );
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -157,8 +156,7 @@ void main() {
 
         expect(isVerified, isTrue, reason: 'Test user email should be verified');
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
-  }, skip: !runLive);
+  });
 }

@@ -862,7 +862,7 @@ mod tests {
         let service = EmailService::new(config);
         let vars = service.base_vars();
         assert_eq!(vars.get("AppName").unwrap(), "TestApp");
-        assert!(vars.get("SiteURL").is_none());
+        assert!(!vars.contains_key("SiteURL"));
     }
 
     #[test]
@@ -894,7 +894,10 @@ mod tests {
         let template = default_reset_password();
         let mut vars = HashMap::new();
         vars.insert("AppName".into(), "MyApp".into());
-        vars.insert("ActionURL".into(), "https://myapp.com/reset?token=xyz".into());
+        vars.insert(
+            "ActionURL".into(),
+            "https://myapp.com/reset?token=xyz".into(),
+        );
         vars.insert("ExpiresIn".into(), "1 hour".into());
 
         let rendered = template.render(&vars);
@@ -908,7 +911,10 @@ mod tests {
         let template = default_magic_link();
         let mut vars = HashMap::new();
         vars.insert("AppName".into(), "MyApp".into());
-        vars.insert("ActionURL".into(), "https://myapp.com/magic?token=abc".into());
+        vars.insert(
+            "ActionURL".into(),
+            "https://myapp.com/magic?token=abc".into(),
+        );
         vars.insert("ExpiresIn".into(), "15 minutes".into());
 
         let rendered = template.render(&vars);
@@ -948,9 +954,21 @@ mod tests {
     #[test]
     fn test_default_templates_all_have_text_and_html() {
         for template in default_templates() {
-            assert!(!template.text.is_empty(), "Template '{}' has empty text", template.name);
-            assert!(!template.html.is_empty(), "Template '{}' has empty html", template.name);
-            assert!(!template.subject.is_empty(), "Template '{}' has empty subject", template.name);
+            assert!(
+                !template.text.is_empty(),
+                "Template '{}' has empty text",
+                template.name
+            );
+            assert!(
+                !template.html.is_empty(),
+                "Template '{}' has empty html",
+                template.name
+            );
+            assert!(
+                !template.subject.is_empty(),
+                "Template '{}' has empty subject",
+                template.name
+            );
         }
     }
 
@@ -1055,7 +1073,10 @@ mod tests {
             site_url: None,
         };
         let service = EmailService::new(config);
-        let template = service.get_template_by_name(TEMPLATE_VERIFY_EMAIL).await.unwrap();
+        let template = service
+            .get_template_by_name(TEMPLATE_VERIFY_EMAIL)
+            .await
+            .unwrap();
         assert_eq!(template.name, TEMPLATE_VERIFY_EMAIL);
     }
 
@@ -1217,7 +1238,10 @@ mod tests {
 
         let templates = service.list_templates().await.unwrap();
         assert_eq!(templates.len(), 6);
-        let verify = templates.iter().find(|t| t.name == TEMPLATE_VERIFY_EMAIL).unwrap();
+        let verify = templates
+            .iter()
+            .find(|t| t.name == TEMPLATE_VERIFY_EMAIL)
+            .unwrap();
         assert_eq!(verify.subject, "Custom subject");
     }
 

@@ -1,19 +1,19 @@
 //! Transport layer — HTTP/SSE + stdio for MCP communication
 
 use crate::auth::{McpContext, extract_claims};
-use crate::server::JsonRpcRequest;
 use crate::safeguards::{IdempotencyTracker, SpendLimit};
+use crate::server::JsonRpcRequest;
 use crate::{McpState, OrignaGtaMcp};
 use axum::{
-    extract::{State, Json},
-    http::{StatusCode, header::AUTHORIZATION, HeaderMap},
+    Router,
+    extract::{Json, State},
+    http::{HeaderMap, StatusCode, header::AUTHORIZATION},
     response::IntoResponse,
     routing::{get, post},
-    Router,
 };
 use serde_json::Value;
 use std::sync::Arc;
-use tracing::{info, debug};
+use tracing::{debug, info};
 
 /// Public type exported for use in main.rs
 pub type McpRouter = Router;
@@ -22,7 +22,7 @@ pub type McpRouter = Router;
 pub fn create_mcp_router(state: McpState) -> Router {
     let idempotency = IdempotencyTracker::new();
     let spend_limit = SpendLimit::new(
-        100_000_000, // $1,000,000 CAD per request
+        100_000_000,   // $1,000,000 CAD per request
         1_000_000_000, // $10,000,000 CAD per 24h per user
     );
 
@@ -44,18 +44,16 @@ async fn handle_rpc(
 
     // Extract auth context from Authorization header
     let ctx = match headers.get(AUTHORIZATION).and_then(|v| v.to_str().ok()) {
-        Some(auth_header) => {
-            match extract_claims(Some(auth_header), &mcp.state.jwt_keys) {
-                Ok(claims) => {
-                    debug!(uid = %claims.uid, "Authenticated MCP request");
-                    McpContext::with_claims(claims)
-                }
-                Err(_) => {
-                    debug!("Invalid auth header, proceeding as anonymous");
-                    McpContext::new()
-                }
+        Some(auth_header) => match extract_claims(Some(auth_header), &mcp.state.jwt_keys) {
+            Ok(claims) => {
+                debug!(uid = %claims.uid, "Authenticated MCP request");
+                McpContext::with_claims(claims)
             }
-        }
+            Err(_) => {
+                debug!("Invalid auth header, proceeding as anonymous");
+                McpContext::new()
+            }
+        },
         None => McpContext::new(),
     };
 
@@ -339,8 +337,7 @@ mod tests {
             "id": 99
         });
 
-        let req: crate::server::JsonRpcRequest =
-            serde_json::from_value(request_json).unwrap();
+        let req: crate::server::JsonRpcRequest = serde_json::from_value(request_json).unwrap();
         let ctx = crate::auth::McpContext::new();
         let resp = server.handle_request(req, ctx).await;
 
@@ -361,8 +358,7 @@ mod tests {
             "id": 42
         });
 
-        let req: crate::server::JsonRpcRequest =
-            serde_json::from_value(request_json).unwrap();
+        let req: crate::server::JsonRpcRequest = serde_json::from_value(request_json).unwrap();
         let ctx = crate::auth::McpContext::new();
         let resp = server.handle_request(req, ctx).await;
 
@@ -547,7 +543,9 @@ mod tests {
 
         let resp = router.oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body_bytes = axum::body::to_bytes(resp.into_body(), 100_000).await.unwrap();
+        let body_bytes = axum::body::to_bytes(resp.into_body(), 100_000)
+            .await
+            .unwrap();
         let resp_json: serde_json::Value = serde_json::from_slice(&body_bytes).unwrap();
         assert_eq!(resp_json["jsonrpc"], "2.0");
         assert_eq!(resp_json["id"], 1);
@@ -579,7 +577,9 @@ mod tests {
 
         let resp = router.oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body_bytes = axum::body::to_bytes(resp.into_body(), 100_000).await.unwrap();
+        let body_bytes = axum::body::to_bytes(resp.into_body(), 100_000)
+            .await
+            .unwrap();
         let resp_json: serde_json::Value = serde_json::from_slice(&body_bytes).unwrap();
         assert!(resp_json["error"].is_object());
         assert_eq!(resp_json["error"]["code"], -32601);
@@ -658,7 +658,9 @@ mod tests {
 
         let resp = router.oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body_bytes = axum::body::to_bytes(resp.into_body(), 100_000).await.unwrap();
+        let body_bytes = axum::body::to_bytes(resp.into_body(), 100_000)
+            .await
+            .unwrap();
         let resp_json: serde_json::Value = serde_json::from_slice(&body_bytes).unwrap();
         let tools = resp_json["tools"].as_array().unwrap();
         assert_eq!(tools.len(), 13);
@@ -675,8 +677,7 @@ mod tests {
                 "params": {"query": format!("item_{i}")},
                 "id": i
             });
-            let req: crate::server::JsonRpcRequest =
-                serde_json::from_value(request_json).unwrap();
+            let req: crate::server::JsonRpcRequest = serde_json::from_value(request_json).unwrap();
             let ctx = crate::auth::McpContext::new();
             let resp = server.handle_request(req, ctx).await;
             assert_eq!(resp.jsonrpc, "2.0");

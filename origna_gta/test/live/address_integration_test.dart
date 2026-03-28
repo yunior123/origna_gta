@@ -11,6 +11,11 @@ void main() {
     defaultValue: false,
   );
 
+  if (!runLive) {
+    test('live tests disabled', () {});
+    return;
+  }
+
   bool isExpectedPermissionError(Object error) {
     final msg = error.toString().toLowerCase();
     return msg.contains('403') ||
@@ -18,7 +23,7 @@ void main() {
         msg.contains('forbidden');
   }
 
-  group('Address Integration', skip: !runLive ? 'live tests disabled' : null, () {
+  group('Address Integration', () {
     late ProviderContainer container;
     late OrignaBase ob;
     late String createdAddressId;

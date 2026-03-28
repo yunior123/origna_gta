@@ -9,11 +9,32 @@ import 'product_repository.dart';
 ///
 /// These are pure functions (+ OrignaBase collection refs) so they can be
 /// unit-tested in isolation without instantiating the full repository.
+/// Mixed into [OrignaBaseProductRepository] to keep the main file focused
+/// on the public API surface.
 mixin ProductSearchHelpers {
+  /// The OrignaBase client instance (provided by the mixing class).
   OrignaBase get ob;
+
+  /// Converts an OrignaBase [Document] to a [Product] model.
   Product docToProduct(Document doc);
 
-  /// Fetches products matching optional filters with cursor pagination.
+  /// Fetches products matching optional filters with cursor-based pagination.
+  ///
+  /// Parameters:
+  /// - [searchQuery]: full-text search query (split into words, matched against keywords).
+  /// - [categoryId]: filter by category ID.
+  /// - [subcategory]: filter by subcategory name.
+  /// - [sellerId]: filter by seller ID.
+  /// - [lastDocumentId]: cursor for pagination (ID of the last document from the previous page).
+  /// - [pageSize]: number of products per page (default 20). Internally fetches N+1 for hasMore detection.
+  /// - [sortOption]: sorting strategy (relevance, priceLowToHigh, priceHighToLow, newest).
+  /// - [minPriceCents]/[maxPriceCents]: price range filter in cents.
+  ///
+  /// Returns a [ProductQueryResult] with products, cursor, and hasMore flag.
+  ///
+  /// Error handling:
+  /// - Malformed documents are skipped and logged (does not abort the query).
+  /// - Only active products (lifecycleStatus == 'active') are returned.
   Future<ProductQueryResult> fetchProductsImpl({
     String? searchQuery,
     int? categoryId,
@@ -106,20 +127,57 @@ mixin ProductSearchHelpers {
   }
 
   /// Fetches multiple products by their IDs in parallel chunks of 30.
+  ///
+  /// Parameters:
+  /// - [productIds]: list of product document IDs to fetch.
+  ///
+  /// Returns a list of [Product] models. Missing or malformed documents are
+  /// silently skipped. Processes in chunks of 30 and fetches each chunk with a
+  /// single `whereIn` query to avoid one document read per product ID.
   Future<List<Product>> fetchProductsByIdsImpl(List<String> productIds) async {
     if (productIds.isEmpty) return [];
 
     final List<Product> results = [];
     for (int i = 0; i < productIds.length; i += 30) {
       final chunk = productIds.skip(i).take(30).toList();
-      final futures = chunk.map(
-        (id) => ob.collection(Collections.products).doc(id).get(),
-      );
-      final docs = await Future.wait(futures);
-      for (final doc in docs) {
-        if (doc != null && doc.exists) {
+      final snapshot = await ob
+          .collection(Collections.products)
+          .where(Fields.productId, whereIn: chunk)
+          .get();
+
+      final productsById = <String, Product>{};
+      final fetchedIds = <String>{};
+      for (final doc in snapshot.docs) {
+        if (!doc.exists) continue;
+        final fetchedId = doc.data[Fields.productId] as String? ?? doc.id;
+        fetchedIds.add(fetchedId);
+        try {
+          final product = docToProduct(doc);
+          productsById[product.productId] = product;
+        } catch (e) {
+          AppLogger.d(
+            'OrignaBaseProductRepo: skipping malformed doc ${doc.id}: $e',
+            tag: 'product',
+          );
+        }
+      }
+
+      final missingIds = chunk
+          .where(
+            (productId) =>
+                !productsById.containsKey(productId) &&
+                !fetchedIds.contains(productId),
+          )
+          .toList();
+      if (missingIds.isNotEmpty) {
+        final fallbackDocs = await Future.wait(
+          missingIds.map((id) => ob.collection(Collections.products).doc(id).get()),
+        );
+        for (final doc in fallbackDocs) {
+          if (doc == null || !doc.exists) continue;
           try {
-            results.add(docToProduct(doc));
+            final product = docToProduct(doc);
+            productsById[product.productId] = product;
           } catch (e) {
             AppLogger.d(
               'OrignaBaseProductRepo: skipping malformed doc ${doc.id}: $e',
@@ -128,11 +186,24 @@ mixin ProductSearchHelpers {
           }
         }
       }
+
+      for (final productId in chunk) {
+        final product = productsById[productId];
+        if (product != null) {
+          results.add(product);
+        }
+      }
     }
     return results;
   }
 
   /// Looks up a single active product by its URL slug.
+  ///
+  /// Parameters:
+  /// - [slug]: the URL-friendly product identifier.
+  ///
+  /// Returns the matching [Product], or `null` if no active product with
+  /// that slug exists.
   Future<Product?> getProductBySlugImpl(String slug) async {
     final snapshot = await ob
         .collection(Collections.products)
@@ -148,6 +219,12 @@ mixin ProductSearchHelpers {
   }
 
   /// Fetches a single active product by ID.
+  ///
+  /// Returns `null` when the product does not exist or is not active.
+  /// SDK network/auth errors propagate to the caller (the Riverpod provider
+  /// enters [AsyncError] so the UI can show retry / login prompts).
+  /// Deserialization errors are caught and logged — returning `null` so the
+  /// UI shows "product not found" instead of a generic load error.
   Future<Product?> fetchProductByIdImpl(String productId) async {
     final doc = await ob.collection(Collections.products).doc(productId).get();
     if (doc == null || !doc.exists) return null;
@@ -157,9 +234,9 @@ mixin ProductSearchHelpers {
     }
     try {
       return docToProduct(doc);
-    } catch (e) {
+    } catch (e, st) {
       AppLogger.d(
-        'OrignaBaseProductRepo: failed to map product $productId: $e',
+        'OrignaBaseProductRepo: failed to deserialize product $productId: $e\n$st',
         tag: 'product',
       );
       return null;

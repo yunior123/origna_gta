@@ -56,11 +56,20 @@ pub fn generate_qr_base64(secret: &[u8], issuer: &str, account: &str) -> Result<
         .map_err(|e| Error::Internal(format!("QR generation failed: {e}")))
 }
 
-/// Verify a TOTP code against a secret, with replay prevention.
+/// Verifies a TOTP code and rejects replayed codes from the same or older time step.
 ///
-/// Returns the current time step if verification succeeds.
-/// `last_used_step` should be the step returned from the previous successful verification.
-/// Codes from the same or earlier step are rejected to prevent replay attacks.
+/// Parameters:
+/// - `secret`: decrypted MFA secret bytes for the user.
+/// - `code`: user-supplied TOTP code as a string.
+/// - `last_used_step`: last successful time-step value previously returned for this user.
+///
+/// Returns:
+/// - `Ok(step)` with the current TOTP time step when verification succeeds.
+/// - `Err(...)` if the code is malformed, invalid, replayed, or system time cannot be read.
+///
+/// Gotchas:
+/// - Replay prevention compares integer time steps, not the raw code value.
+/// - Clock skew tolerance is delegated to the underlying TOTP library configuration.
 pub fn verify_totp(secret: &[u8], code: &str, last_used_step: Option<u64>) -> Result<u64> {
     let totp = build_totp(secret, "orignabase", "user")?;
 
@@ -318,7 +327,6 @@ fn test_recovery_codes_non_empty() {
     let codes = generate_recovery_codes();
     for code in &codes {
         assert!(!code.is_empty());
-        assert!(code.len() > 0);
     }
 }
 

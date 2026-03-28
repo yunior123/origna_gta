@@ -118,8 +118,11 @@ async fn test_product_create_success() {
     let has_data = body
         .get("data")
         .and_then(|d| d.get("create"))
-        .map_or(false, |v| !v.is_null());
-    assert!(has_errors || has_data, "Should return product data or validation errors");
+        .is_some_and(|v| !v.is_null());
+    assert!(
+        has_errors || has_data,
+        "Should return product data or validation errors"
+    );
 }
 
 #[tokio::test]
@@ -151,7 +154,7 @@ async fn test_product_create_missing_title() {
     let data_is_null = body
         .get("data")
         .and_then(|d| d.get("create"))
-        .map_or(true, |v| v.is_null());
+        .is_none_or(|v| v.is_null());
     assert!(has_errors || data_is_null, "Should reject missing title");
 }
 
@@ -183,7 +186,7 @@ async fn test_product_create_invalid_price() {
     let data_is_null = body
         .get("data")
         .and_then(|d| d.get("create"))
-        .map_or(true, |v| v.is_null());
+        .is_none_or(|v| v.is_null());
     assert!(has_errors || data_is_null, "Should reject negative price");
 }
 
@@ -215,7 +218,7 @@ async fn test_product_create_invalid_stock() {
     let data_is_null = body
         .get("data")
         .and_then(|d| d.get("create"))
-        .map_or(true, |v| v.is_null());
+        .is_none_or(|v| v.is_null());
     assert!(has_errors || data_is_null, "Should reject negative stock");
 }
 
@@ -243,7 +246,7 @@ async fn test_product_create_requires_authentication() {
     let data_is_null = body
         .get("data")
         .and_then(|d| d.get("create"))
-        .map_or(true, |v| v.is_null());
+        .is_none_or(|v| v.is_null());
     let has_errors = body.get("errors").is_some();
     assert!(
         data_is_null || has_errors,
@@ -369,7 +372,7 @@ async fn test_product_update_requires_authentication() {
     let data_is_null = body
         .get("data")
         .and_then(|d| d.get("update"))
-        .map_or(true, |v| v.is_null());
+        .is_none_or(|v| v.is_null());
     let has_errors = body.get("errors").is_some();
     assert!(
         data_is_null || has_errors,
@@ -402,7 +405,7 @@ async fn test_product_update_nonexistent() {
     let data_is_null = body
         .get("data")
         .and_then(|d| d.get("update"))
-        .map_or(true, |v| v.is_null());
+        .is_none_or(|v| v.is_null());
     let has_errors = body.get("errors").is_some();
     assert!(
         data_is_null || has_errors,
@@ -431,7 +434,7 @@ async fn test_product_delete_requires_authentication() {
     let data_is_null = body
         .get("data")
         .and_then(|d| d.get("delete"))
-        .map_or(true, |v| v.is_null());
+        .is_none_or(|v| v.is_null());
     let has_errors = body.get("errors").is_some();
     assert!(
         data_is_null || has_errors,
@@ -461,7 +464,7 @@ async fn test_product_delete_nonexistent() {
     let data_is_null = body
         .get("data")
         .and_then(|d| d.get("delete"))
-        .map_or(true, |v| v.is_null());
+        .is_none_or(|v| v.is_null());
     let has_errors = body.get("errors").is_some();
     assert!(
         data_is_null || has_errors,
@@ -554,7 +557,7 @@ async fn test_product_digital_no_shipping() {
     let has_data = body
         .get("data")
         .and_then(|d| d.get("create"))
-        .map_or(false, |v| !v.is_null());
+        .is_some_and(|v| !v.is_null());
     assert!(has_errors || has_data);
 }
 
@@ -587,6 +590,6 @@ async fn test_product_perishable_local_delivery() {
     let has_data = body
         .get("data")
         .and_then(|d| d.get("create"))
-        .map_or(false, |v| !v.is_null());
+        .is_some_and(|v| !v.is_null());
     assert!(has_errors || has_data);
 }

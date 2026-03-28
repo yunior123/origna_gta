@@ -12,6 +12,11 @@ void main() {
     defaultValue: false,
   );
 
+  if (!runLive) {
+    test('live tests disabled', () {});
+    return;
+  }
+
   group('Seller features live', () {
     late ProviderContainer container;
     late OrignaBase ob;
@@ -61,7 +66,6 @@ void main() {
           );
         }
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -87,7 +91,6 @@ void main() {
           expect(sellerProfileDoc.data, isA<Map<String, dynamic>>());
         }
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -120,7 +123,6 @@ void main() {
           expect(e, isNotNull);
         }
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -144,7 +146,6 @@ void main() {
           expect(e, isNotNull);
         }
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -179,7 +180,6 @@ void main() {
           expect(e, isNotNull);
         }
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -198,7 +198,6 @@ void main() {
         expect(snapshot, isNotNull);
         expect(snapshot.docs, isA<List<dynamic>>());
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -225,7 +224,6 @@ void main() {
           );
         }
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -247,7 +245,6 @@ void main() {
           expect(e, isNotNull);
         }
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -279,7 +276,6 @@ void main() {
           );
         }
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -304,8 +300,7 @@ void main() {
           );
         }
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
-  }, skip: !runLive ? 'live tests disabled' : null);
+  });
 }

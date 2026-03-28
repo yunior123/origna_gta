@@ -31,6 +31,7 @@ cd origna_gta
 flutter build web --release \
   --dart-define=ENVIRONMENT=${ENV} \
   --dart-define=ORIGNABASE_URL=${ORIGNABASE_URL} \
+  --pwa-strategy=none \
   --no-tree-shake-icons
 
 # Inject Turnstile site key

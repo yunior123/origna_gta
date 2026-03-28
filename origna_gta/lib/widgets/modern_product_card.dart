@@ -491,7 +491,7 @@ Widget previewProductCardStates() => previewGrid(
         productName: 'Limited Edition Winter Parka',
         priceCents: 29900,
         imageUrl:
-            'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?q=80&w=3087&auto=format&fit=crop',
+            'https://pub-f9698d0f50d146bcac0e2dc9eb09de57.r2.dev/dev/products/samples/clothing-1.jpg',
         sellerName: 'Northern Gear',
         onTap: () {},
         isOutOfStock: true,
@@ -523,7 +523,7 @@ Widget previewProductCardVariants() => previewGrid(
         productName: 'Handmade Canadian Maple Syrup',
         priceCents: 2499,
         imageUrl:
-            'https://images.unsplash.com/photo-1589182373726-e4f658ab50f0?q=80&w=3087&auto=format&fit=crop',
+            'https://pub-f9698d0f50d146bcac0e2dc9eb09de57.r2.dev/dev/products/samples/clothing-2.jpg',
         sellerName: 'Maple Artisans Co.',
         rating: 4.8,
         reviewCount: 154,
@@ -540,7 +540,7 @@ Widget previewProductCardVariants() => previewGrid(
         priceCents: 4500,
         compareAtPriceCents: 5500,
         imageUrl:
-            'https://images.unsplash.com/photo-1631451095765-2c91616fc9e6?q=80&w=3087&auto=format&fit=crop',
+            'https://pub-f9698d0f50d146bcac0e2dc9eb09de57.r2.dev/dev/products/samples/clothing-3.jpg',
         sellerName: 'Fromagerie de Quebec',
         rating: 4.9,
         reviewCount: 89,
@@ -565,7 +565,7 @@ Widget previewProductCardStatesLight() => previewGrid(
         productName: 'Limited Edition Winter Parka',
         priceCents: 29900,
         imageUrl:
-            'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?q=80&w=3087&auto=format&fit=crop',
+            'https://pub-f9698d0f50d146bcac0e2dc9eb09de57.r2.dev/dev/products/samples/clothing-4.jpg',
         sellerName: 'Northern Gear',
         onTap: () {},
         isOutOfStock: true,
@@ -601,7 +601,7 @@ Widget previewProductCardVariantsLight() => previewGrid(
         productName: 'Handmade Canadian Maple Syrup',
         priceCents: 2499,
         imageUrl:
-            'https://images.unsplash.com/photo-1589182373726-e4f658ab50f0?q=80&w=3087&auto=format&fit=crop',
+            'https://pub-f9698d0f50d146bcac0e2dc9eb09de57.r2.dev/dev/products/samples/clothing-2.jpg',
         sellerName: 'Maple Artisans Co.',
         rating: 4.8,
         reviewCount: 154,
@@ -618,7 +618,7 @@ Widget previewProductCardVariantsLight() => previewGrid(
         priceCents: 4500,
         compareAtPriceCents: 5500,
         imageUrl:
-            'https://images.unsplash.com/photo-1631451095765-2c91616fc9e6?q=80&w=3087&auto=format&fit=crop',
+            'https://pub-f9698d0f50d146bcac0e2dc9eb09de57.r2.dev/dev/products/samples/clothing-3.jpg',
         sellerName: 'Fromagerie de Quebec',
         rating: 4.9,
         reviewCount: 89,
@@ -643,7 +643,8 @@ Widget previewProductCardVariantsLight() => previewGrid(
 const _kProductName = 'Vintage Leather Jacket';
 const _kPriceCents = 8999;
 const _kCompareAtPriceCents = 12999;
-const _kImageUrl = 'https://picsum.photos/seed/jacket/200/300';
+const _kImageUrl =
+    'https://pub-f9698d0f50d146bcac0e2dc9eb09de57.r2.dev/dev/products/samples/clothing-1.jpg';
 const _kSellerName = 'Toronto Vintage';
 const _kRating = 4.5;
 const _kReviewCount = 42;
@@ -916,4 +917,3 @@ Widget previewProductCardAllVariants() => previewGrid(
     ),
   ],
 );
-

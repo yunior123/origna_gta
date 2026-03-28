@@ -20,7 +20,10 @@ async fn register_test_user(client: &Client) -> (String, String) {
         .expect("register failed");
     assert_eq!(resp.status(), 200);
     let body: Value = resp.json().await.unwrap();
-    let token = body["access_token"].as_str().expect("missing access_token").to_string();
+    let token = body["access_token"]
+        .as_str()
+        .expect("missing access_token")
+        .to_string();
     let user_id = body["user"]["id"].as_str().unwrap_or("").to_string();
     (token, user_id)
 }
@@ -60,7 +63,10 @@ async fn test_order_create_pending_status() {
     let query = create_doc_query("products", &product_data);
     let (status, body) = graphql(&client, Some(&seller_token), &query).await;
     assert_eq!(status, 200);
-    let product_id = body["data"]["create"]["id"].as_str().unwrap_or("").to_string();
+    let product_id = body["data"]["create"]["id"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
     assert!(!product_id.is_empty(), "Product should have an ID");
 
     // Create order
@@ -77,15 +83,23 @@ async fn test_order_create_pending_status() {
     let query = create_doc_query("orders", &order_data);
     let (status, body) = graphql(&client, Some(&buyer_token), &query).await;
     assert_eq!(status, 200);
-    let order_id = body["data"]["create"]["id"].as_str().unwrap_or("").to_string();
+    let order_id = body["data"]["create"]["id"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
     assert!(!order_id.is_empty(), "Order should have an ID");
 
     // Verify order has correct initial status
     let get_query = format!(r#"{{ get(collection: "orders", id: "{order_id}") }}"#);
     let (status, detail) = graphql(&client, Some(&buyer_token), &get_query).await;
     assert_eq!(status, 200);
-    let status_field = detail["data"]["get"]["status"].as_str().unwrap_or("unknown");
-    assert_eq!(status_field, "pending", "Initial order status should be 'pending'");
+    let status_field = detail["data"]["get"]["status"]
+        .as_str()
+        .unwrap_or("unknown");
+    assert_eq!(
+        status_field, "pending",
+        "Initial order status should be 'pending'"
+    );
 }
 
 #[tokio::test]
@@ -105,7 +119,10 @@ async fn test_order_cancel_pending() {
     let query = create_doc_query("products", &product_data);
     let (status, body) = graphql(&client, Some(&seller_token), &query).await;
     assert_eq!(status, 200);
-    let product_id = body["data"]["create"]["id"].as_str().unwrap_or("").to_string();
+    let product_id = body["data"]["create"]["id"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
 
     // Create order
     let order_data = json!({
@@ -119,7 +136,10 @@ async fn test_order_cancel_pending() {
     let query = create_doc_query("orders", &order_data);
     let (status, body) = graphql(&client, Some(&buyer_token), &query).await;
     assert_eq!(status, 200);
-    let order_id = body["data"]["create"]["id"].as_str().unwrap_or("").to_string();
+    let order_id = body["data"]["create"]["id"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
 
     // Cancel order via update
     let data = serde_json::to_string(&json!({"status": "cancelled"})).unwrap();
@@ -134,8 +154,13 @@ async fn test_order_cancel_pending() {
     let get_query = format!(r#"{{ get(collection: "orders", id: "{order_id}") }}"#);
     let (status, detail) = graphql(&client, Some(&buyer_token), &get_query).await;
     assert_eq!(status, 200);
-    let status_field = detail["data"]["get"]["status"].as_str().unwrap_or("unknown");
-    assert_eq!(status_field, "cancelled", "Order status should be 'cancelled'");
+    let status_field = detail["data"]["get"]["status"]
+        .as_str()
+        .unwrap_or("unknown");
+    assert_eq!(
+        status_field, "cancelled",
+        "Order status should be 'cancelled'"
+    );
 }
 
 #[tokio::test]
@@ -155,7 +180,10 @@ async fn test_order_state_transitions() {
     let query = create_doc_query("products", &product_data);
     let (status, body) = graphql(&client, Some(&seller_token), &query).await;
     assert_eq!(status, 200);
-    let product_id = body["data"]["create"]["id"].as_str().unwrap_or("").to_string();
+    let product_id = body["data"]["create"]["id"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
 
     // Create order
     let order_data = json!({
@@ -169,13 +197,19 @@ async fn test_order_state_transitions() {
     let query = create_doc_query("orders", &order_data);
     let (status, body) = graphql(&client, Some(&buyer_token), &query).await;
     assert_eq!(status, 200);
-    let order_id = body["data"]["create"]["id"].as_str().unwrap_or("").to_string();
+    let order_id = body["data"]["create"]["id"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
 
     // Verify initial state: pending
     let get_query = format!(r#"{{ get(collection: "orders", id: "{order_id}") }}"#);
     let (status, detail) = graphql(&client, Some(&buyer_token), &get_query).await;
     assert_eq!(status, 200);
-    assert_eq!(detail["data"]["get"]["status"].as_str().unwrap_or(""), "pending");
+    assert_eq!(
+        detail["data"]["get"]["status"].as_str().unwrap_or(""),
+        "pending"
+    );
 
     // Transition to confirmed
     let data = serde_json::to_string(&json!({"status": "confirmed"})).unwrap();
@@ -193,7 +227,10 @@ async fn test_order_state_transitions() {
     assert!(order.get("buyerId").is_some(), "Order must have buyerId");
     assert!(order.get("sellerId").is_some(), "Order must have sellerId");
     assert!(order.get("status").is_some(), "Order must have status");
-    assert!(order.get("totalAmountCents").is_some(), "Order must have totalAmountCents");
+    assert!(
+        order.get("totalAmountCents").is_some(),
+        "Order must have totalAmountCents"
+    );
     assert!(order.get("items").is_some(), "Order must have items");
 }
 
@@ -214,7 +251,10 @@ async fn test_buyer_orders_pagination() {
         });
         let query = create_doc_query("products", &product_data);
         let (_, body) = graphql(&client, Some(&seller_token), &query).await;
-        let product_id = body["data"]["create"]["id"].as_str().unwrap_or("").to_string();
+        let product_id = body["data"]["create"]["id"]
+            .as_str()
+            .unwrap_or("")
+            .to_string();
 
         let price = 2000 + (i * 1000);
         let order_data = json!({
@@ -233,9 +273,8 @@ async fn test_buyer_orders_pagination() {
     // Fetch buyer orders with pagination
     let filters = serde_json::to_string(&json!({"buyerId": {"_eq": buyer_id}})).unwrap();
     let escaped_f = serde_json::to_string(&filters).unwrap();
-    let query = format!(
-        r#"{{ list(collection: "orders", filters: {escaped_f}, limit: 2, offset: 0) }}"#
-    );
+    let query =
+        format!(r#"{{ list(collection: "orders", filters: {escaped_f}, limit: 2, offset: 0) }}"#);
     let (status, body) = graphql(&client, Some(&buyer_token), &query).await;
     assert_eq!(status, 200);
 
@@ -244,9 +283,8 @@ async fn test_buyer_orders_pagination() {
     assert!(orders_list.len() <= 2, "Should respect limit parameter");
 
     // Fetch with offset
-    let query2 = format!(
-        r#"{{ list(collection: "orders", filters: {escaped_f}, limit: 2, offset: 2) }}"#
-    );
+    let query2 =
+        format!(r#"{{ list(collection: "orders", filters: {escaped_f}, limit: 2, offset: 2) }}"#);
     let (status, _body2) = graphql(&client, Some(&buyer_token), &query2).await;
     assert_eq!(status, 200);
 }
@@ -267,7 +305,10 @@ async fn test_order_detail_fields() {
     let query = create_doc_query("products", &product_data);
     let (status, body) = graphql(&client, Some(&seller_token), &query).await;
     assert_eq!(status, 200);
-    let product_id = body["data"]["create"]["id"].as_str().unwrap_or("").to_string();
+    let product_id = body["data"]["create"]["id"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
 
     let order_data = json!({
         "buyerId": buyer_id,
@@ -282,7 +323,10 @@ async fn test_order_detail_fields() {
     let query = create_doc_query("orders", &order_data);
     let (status, body) = graphql(&client, Some(&buyer_token), &query).await;
     assert_eq!(status, 200);
-    let order_id = body["data"]["create"]["id"].as_str().unwrap_or("").to_string();
+    let order_id = body["data"]["create"]["id"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
 
     // Fetch full order detail
     let get_query = format!(r#"{{ get(collection: "orders", id: "{order_id}") }}"#);

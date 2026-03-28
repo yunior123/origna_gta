@@ -15,8 +15,12 @@ import 'package:origna_gta/models/generated/models.dart';
 ///
 /// Search/query logic is in [ProductSearchHelpers].
 /// Image upload logic is in [ProductImageHelpers].
-/// Recursively cast Map<dynamic, dynamic> to Map<String, dynamic>.
-/// SurrealDB returns dynamic-keyed maps that Freezed's fromJson rejects.
+/// Recursively cast `Map<dynamic, dynamic>` to `Map<String, dynamic>` and
+/// normalize nanosecond-precision timestamps that Dart cannot parse.
+///
+/// SurrealDB returns dynamic-keyed maps that Freezed's fromJson rejects,
+/// and ISO-8601 timestamps with 9 fractional digits that [DateTime.parse]
+/// cannot handle. This function fixes both issues in a single pass.
 Map<String, dynamic> _deepCastMap(Map<dynamic, dynamic> source) {
   return source.map((key, value) {
     final castKey = key.toString();
@@ -28,16 +32,32 @@ Map<String, dynamic> _deepCastMap(Map<dynamic, dynamic> source) {
         value.map((e) => e is Map ? _deepCastMap(e) : e).toList(),
       );
     }
+    // Normalize nanosecond-precision ISO timestamps in nested objects
+    // (e.g. inventory.lastLowStockAlertAt, answeredAt, etc.)
+    if (value is String) {
+      return MapEntry(castKey, truncateNanoseconds(value));
+    }
     return MapEntry(castKey, value);
   });
 }
 
+/// OrignaBase implementation of [ProductRepository].
+///
+/// This repository manages product-related data using the OrignaBase SDK.
+/// It provides methods for CRUD operations, searching, favoriting, and uploading
+/// product-related media.
+///
+/// Search/query logic is in [ProductSearchHelpers].
+/// Image upload logic is in [ProductImageHelpers].
 class OrignaBaseProductRepository
     with ProductSearchHelpers, ProductImageHelpers
     implements ProductRepository {
   final OrignaBase _ob;
   final http.Client _httpClient;
 
+  /// Creates a new instance of [OrignaBaseProductRepository].
+  ///
+  /// Takes an [OrignaBase] client and an optional [http.Client] for network requests.
   OrignaBaseProductRepository(this._ob, {http.Client? httpClient})
     : _httpClient = httpClient ?? http.Client();
 
@@ -53,9 +73,20 @@ class OrignaBaseProductRepository
 
   String? get _currentUserId => _ob.auth.currentUserId;
 
-  // ---------------------------------------------------------------------------
-  // Helper: convert OrignaBase Document -> Product
-  // ---------------------------------------------------------------------------
+  /// Converts a [Document] from the OrignaBase SDK into a [Product] model.
+  ///
+  /// Normalizes fields such as:
+  /// - Field name mapping (e.g., 'title' -> 'name')
+  /// - Type coercion (e.g., categoryId from String to int)
+  /// - Price/cents conversion
+  /// - ISO timestamp normalization for Dart's [DateTime.parse] compatibility
+  /// - Collection prefix stripping from document IDs
+  ///
+  /// Gotchas:
+  /// - Truncates nanosecond-precision timestamps to microseconds to prevent
+  ///   [DateTime.parse] failures.
+  /// - Performs a deep-cast of the data map to ensure [Product.fromJson] receives
+  ///   `Map<String, dynamic>` instead of `Map<dynamic, dynamic>`.
   @override
   Product docToProduct(Document doc) {
     final data = <String, dynamic>{...doc.data};
@@ -85,18 +116,42 @@ class OrignaBaseProductRepository
     // Normalize timestamps: SurrealDB returns nanosecond-precision ISO strings
     // (e.g. "2026-03-12T11:56:03.185238962+00:00") which Dart's DateTime.parse
     // cannot handle (only supports up to microseconds). Truncate to 6 decimal places.
+    // Note: nested timestamps (e.g. inventory.lastLowStockAlertAt) are handled
+    // by _deepCastMap which normalizes all string values.
     for (final key in [
       Fields.createdAt,
       Fields.dateCreated,
       Fields.updatedAt,
       'trendingAt',
-      'lastLowStockAlertAt',
     ]) {
       final raw = data[key];
       if (raw is String) {
         data[key] = truncateNanoseconds(raw);
       } else if (raw is DateTime) {
         data[key] = raw.toIso8601String();
+      }
+    }
+
+    // Normalize sellerAddress: backend may store 'province' instead of 'state'
+    // (pre-schema-sync data), or have missing required fields. Address.fromJson
+    // requires non-null street, city, state, postalCode — strip invalid addresses
+    // to prevent deserialization crash.
+    final addr = data[Fields.sellerAddress];
+    if (addr is Map) {
+      final a = Map<String, dynamic>.from(addr.cast<String, dynamic>());
+      // Backward compat: 'province' → 'state'
+      a['state'] ??= a['province'] ?? '';
+      a['street'] ??= '';
+      a['city'] ??= '';
+      a['postalCode'] ??= '';
+      a['country'] ??= 'Canada';
+      // If all required fields are empty, drop the address entirely
+      if ((a['street'] as String).isEmpty &&
+          (a['city'] as String).isEmpty &&
+          (a['state'] as String).isEmpty) {
+        data.remove(Fields.sellerAddress);
+      } else {
+        data[Fields.sellerAddress] = a;
       }
     }
 
@@ -114,9 +169,23 @@ class OrignaBaseProductRepository
   // Product CRUD
   // ---------------------------------------------------------------------------
 
-  @override
   /// Creates a product with images uploaded atomically in a single operation.
-  /// Returns the new product ID on success.
+  ///
+  /// Parameters:
+  /// - [product]: the product model to create (ID and createdAt are ignored).
+  /// - [imageBytes]: raw bytes for product images to be uploaded to R2.
+  /// - [testImageUrls]: optional pre-defined URLs for testing purposes.
+  /// - [bookSourceUrl]: optional source URL for digital book products.
+  ///
+  /// Returns the newly created product's document ID.
+  ///
+  /// Throws:
+  /// - [Exception] if the user is not authenticated.
+  /// - [Exception] if the backend fails to return a product ID.
+  ///
+  /// Gotchas:
+  /// - If [testImageUrls] is provided, [imageBytes] are ignored.
+  @override
   Future<String> createProductAtomic(
     Product product,
     List<Uint8List> imageBytes, {
@@ -180,7 +249,10 @@ class OrignaBaseProductRepository
     return productId;
   }
 
-  /// Deletes a product by ID (seller must own the product).
+  /// Deletes a product by ID.
+  ///
+  /// Throws [Exception] if not authenticated. The backend enforces that the
+  /// seller must own the product.
   @override
   Future<void> deleteProduct(String productId) async {
     final userId = _currentUserId;
@@ -194,10 +266,26 @@ class OrignaBaseProductRepository
     );
   }
 
+  /// Fetches a single product by its document ID.
+  ///
+  /// Returns null if the product is not found.
   @override
   Future<Product?> fetchProductById(String productId) =>
       fetchProductByIdImpl(productId);
 
+  /// Queries products from the catalog with support for filtering, sorting, and pagination.
+  ///
+  /// Parameters:
+  /// - [searchQuery]: optional text search query.
+  /// - [categoryId]: optional category filter.
+  /// - [subcategory]: optional subcategory filter.
+  /// - [sellerId]: filter by a specific seller.
+  /// - [lastDocumentId]: for cursor-based pagination.
+  /// - [pageSize]: number of items per page (default 20).
+  /// - [sortOption]: sorting criteria (relevance, price, newest).
+  /// - [minPriceCents]/[maxPriceCents]: price range filters in cents.
+  ///
+  /// Returns a [ProductQueryResult] containing the list of products and pagination metadata.
   @override
   Future<ProductQueryResult> fetchProducts({
     String? searchQuery,
@@ -221,13 +309,17 @@ class OrignaBaseProductRepository
     maxPriceCents: maxPriceCents,
   );
 
+  /// Fetches multiple products by their document IDs in a batch.
+  ///
+  /// Useful for populating cart or favorites lists with full product data.
   @override
   Future<List<Product>> fetchProductsByIds(List<String> productIds) =>
       fetchProductsByIdsImpl(productIds);
 
   /// Generates a unique product ID using timestamp and hash.
+  ///
+  /// Used for pre-flight operations or local optimistic UI before creation.
   @override
-  /// Generates a unique product ID using timestamp and hash.
   String generateProductId() {
     return DateTime.now().microsecondsSinceEpoch.toRadixString(36) +
         (DateTime.now().hashCode & 0xFFFF).toRadixString(36);

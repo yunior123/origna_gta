@@ -100,12 +100,12 @@ mod injection {
         assert_eq!(status, 200);
         // Should have errors or empty data — NOT drop the table
         let has_errors = body.get("errors").is_some();
-        let data_null = body.get("data").map_or(true, |d| d.is_null());
+        let data_null = body.get("data").is_none_or(|d| d.is_null());
         let data_empty = body
             .get("data")
             .and_then(|d| d.get("list"))
             .and_then(|l| l.as_array())
-            .map_or(false, |a| a.is_empty());
+            .is_some_and(|a| a.is_empty());
         assert!(
             has_errors || data_null || data_empty,
             "Injection should not succeed: {body}"
@@ -146,7 +146,7 @@ mod injection {
         let data_null = body
             .get("data")
             .and_then(|d| d.get("get"))
-            .map_or(true, |v| v.is_null());
+            .is_none_or(|v| v.is_null());
         assert!(
             has_errors || data_null,
             "Path traversal should not succeed: {body}"
@@ -253,7 +253,7 @@ mod jwt_tampering {
             let data_null = body
                 .get("data")
                 .and_then(|d| d.get("create"))
-                .map_or(true, |v| v.is_null());
+                .is_none_or(|v| v.is_null());
             assert!(
                 has_errors || data_null,
                 "Bad token should not allow mutation: {body}"
@@ -636,12 +636,12 @@ mod path_traversal {
             let data_null = body
                 .get("data")
                 .and_then(|d| d.get("list"))
-                .map_or(true, |v| v.is_null());
+                .is_none_or(|v| v.is_null());
             let data_empty = body
                 .get("data")
                 .and_then(|d| d.get("list"))
                 .and_then(|l| l.as_array())
-                .map_or(false, |a| a.is_empty());
+                .is_some_and(|a| a.is_empty());
             assert!(
                 has_errors || data_null || data_empty,
                 "Path traversal should not succeed: {body}"
@@ -776,9 +776,14 @@ mod payload {
             .post(format!("{}/graphql", base_url()))
             .header("Content-Type", "application/json")
             .header("Authorization", format!("Bearer {token}"))
-            .body(format!(
-                r#"{{"query": "mutation {{ create(collection: \"test_nest\", data: \"{{}}\") }}"}}"#
-            ))
+            .body(
+                serde_json::json!({
+                    "query": format!(
+                        "mutation {{ create(collection: \"test_nest\", data: {nested}) }}"
+                    )
+                })
+                .to_string(),
+            )
             .send()
             .await
             .unwrap();

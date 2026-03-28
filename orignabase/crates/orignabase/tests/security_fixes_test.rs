@@ -1,5 +1,5 @@
 //! Security fixes live integration tests
-//! 
+//!
 //! Tests critical security fixes against dev SurrealDB:
 //! - Auth bypass prevention
 //! - CORS validation
@@ -8,11 +8,11 @@
 //! - JWT expiry
 //! - Input validation
 //! - SurrealQL injection prevention
-//! 
+//!
 //! Run: cargo test --test security_fixes_test -- --ignored
 
 use reqwest::{Client, StatusCode};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use uuid::Uuid;
 
 mod security_fixes {
@@ -32,7 +32,7 @@ mod security_fixes {
 
     async fn register_and_login(email: &str, password: &str) -> String {
         let client = client();
-        
+
         client
             .post(format!("{}/auth/register", base_url()))
             .json(&json!({"email": email, "password": password}))
@@ -153,9 +153,7 @@ mod security_fixes {
             .expect("create product failed");
 
         if product_resp.status() != StatusCode::OK {
-            println!(
-                "Product creation not fully implemented; skipping test assertion"
-            );
+            println!("Product creation not fully implemented; skipping test assertion");
             return;
         }
 
@@ -323,7 +321,8 @@ mod security_fixes {
         // (validation may be client-side only). Both are acceptable behaviors.
         assert!(
             status == StatusCode::OK || status == StatusCode::BAD_REQUEST,
-            "GraphQL endpoint should respond (status={})", status
+            "GraphQL endpoint should respond (status={})",
+            status
         );
         // If 200 but with GraphQL errors, that counts as validation
         if status == StatusCode::OK && body.get("errors").is_some() {
@@ -356,7 +355,8 @@ mod security_fixes {
         // Either server validates postal code (error) or accepts it (validation client-side)
         assert!(
             status == StatusCode::OK || status == StatusCode::BAD_REQUEST,
-            "GraphQL endpoint should respond (status={})", status
+            "GraphQL endpoint should respond (status={})",
+            status
         );
         // If 200 but with GraphQL errors, that counts as validation
         if status == StatusCode::OK && body.get("errors").is_some() {
@@ -483,7 +483,8 @@ mod security_fixes {
                     response.status() == StatusCode::PAYLOAD_TOO_LARGE
                         || response.status() == StatusCode::BAD_REQUEST
                         || response.status() == StatusCode::REQUEST_TIMEOUT,
-                    "oversized payload should be rejected (got {})", response.status()
+                    "oversized payload should be rejected (got {})",
+                    response.status()
                 );
             }
             Err(_) => {
@@ -537,14 +538,15 @@ mod security_fixes {
         // Both are valid — the test verifies the endpoint responds correctly
         assert!(
             status == StatusCode::OK || status == StatusCode::BAD_REQUEST,
-            "GraphQL endpoint should respond (status={})", status
+            "GraphQL endpoint should respond (status={})",
+            status
         );
         // If server allows the update without error, state validation may be client-side
         // If GraphQL errors present, server enforces state transitions — good
-        if status == StatusCode::OK {
-            if let Some(errors) = body.get("errors") {
-                println!("Server enforces state transitions: {:?}", errors);
-            }
+        if status == StatusCode::OK
+            && let Some(errors) = body.get("errors")
+        {
+            println!("Server enforces state transitions: {:?}", errors);
         }
     }
 

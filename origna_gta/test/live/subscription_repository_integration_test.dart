@@ -12,7 +12,12 @@ void main() {
   );
 
   if (!runLive) {
-    test('Skip live tests', () {}, skip: 'live tests disabled');
+    test('live tests disabled', () {});
+    return;
+  }
+
+  if (!runLive) {
+    test('Skip live tests', () {});
     return;
   }
 
@@ -62,7 +67,6 @@ void main() {
           rethrow;
         }
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -82,7 +86,6 @@ void main() {
           expect(e, isNotNull);
         }
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -97,7 +100,6 @@ void main() {
           expect(e, isNotNull);
         }
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -116,7 +118,6 @@ void main() {
           expect(e, isNotNull);
         }
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -138,7 +139,6 @@ void main() {
           expect(e, isNotNull);
         }
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -164,7 +164,6 @@ void main() {
 
         expect(true, isTrue);
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -175,6 +174,6 @@ void main() {
         reason: 'Premium subscription price should be defined',
       );
       expect(BusinessRules.premiumSubscriptionPriceCad, greaterThan(0));
-    }, skip: !runLive);
+    });
   });
 }

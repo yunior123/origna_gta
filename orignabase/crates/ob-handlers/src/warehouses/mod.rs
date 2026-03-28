@@ -1,13 +1,13 @@
 //! Seller warehouse management handlers.
 //! Ported from: functions/handlers/products.py
 
-use axum::{Json, Router, extract::State, extract::Extension, routing::post};
+use axum::{Json, Router, extract::Extension, extract::State, routing::post};
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
-use ob_auth::middleware::AuthContext;
 use crate::shared::auth::resolve_self_user_id;
+use ob_auth::middleware::AuthContext;
 
 use crate::HandlersState;
 use crate::shared::schema::{COUNTRY_CANADA, collections, fields};
@@ -453,7 +453,8 @@ mod tests {
         })
     }
 
-    async fn setup_state() -> HandlersState { HandlersState {
+    async fn setup_state() -> HandlersState {
+        HandlersState {
             config: Arc::new(Config::load(None).unwrap()),
             db: DatabaseClient::new_mem().await,
             http_client: reqwest::Client::new(),

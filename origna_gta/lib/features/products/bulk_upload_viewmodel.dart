@@ -4,6 +4,9 @@ import 'package:origna_gta/utils/csv_parser.dart';
 
 import 'bulk_upload_state.dart';
 
+/// Riverpod provider for [BulkUploadViewModel].
+///
+/// Auto-disposed — fresh state per bulk upload session.
 final bulkUploadViewModelProvider =
     StateNotifierProvider.autoDispose<BulkUploadViewModel, BulkUploadState>((
       ref,
@@ -18,13 +21,25 @@ final bulkUploadViewModelProvider =
 /// - Validate parsed products
 /// - Upload validated products via OrignaBase SDK
 /// - Manage UI state (loading, errors, results)
+///
+/// ## Key Decisions
+/// - CSV parsing is synchronous; upload is async via OrignaBase SDK.
+/// - Parse errors are collected per-row — valid rows still proceed.
+/// - Upload endpoint: `POST /api/products/bulk` via OrignaBase SDK.
+///
+/// See also:
+/// - [BulkUploadState] for the state shape
 class BulkUploadViewModel extends StateNotifier<BulkUploadState> {
   final Ref _ref;
 
   BulkUploadViewModel(this._ref) : super(const BulkUploadState());
 
-  /// Set CSV content and parse it.
-  /// Validates each row and collects errors.
+  /// Parses [csvContent] and populates [BulkUploadState.parsedProducts] and [parseErrors].
+  ///
+  /// Each row is mapped via [mapCsvToBulkProduct]. Rows with mapping errors are
+  /// collected as [BulkProductError] with their row index.
+  ///
+  /// Sets [errorMessage] when the CSV is empty or no valid products are found.
   void parseCsvContent(String csvContent) {
     state = state.copyWith(
       csvContent: csvContent,
@@ -83,18 +98,24 @@ class BulkUploadViewModel extends StateNotifier<BulkUploadState> {
     }
   }
 
-  /// Clear all state.
+  /// Resets all state to initial values.
   void reset() {
     state = const BulkUploadState();
   }
 
-  /// Generate a CSV template for download.
+  /// Generates a CSV template string for the user to download and fill in.
   String generateTemplate() {
     return generateCsvTemplate();
   }
 
-  /// Upload parsed products to OrignaBase.
-  /// Uses the OrignaBase SDK to call POST /api/products/bulk.
+  /// Uploads parsed products to OrignaBase via `POST /api/products/bulk`.
+  ///
+  /// Requires [BulkUploadState.parsedProducts] to be non-empty.
+  /// Sets [isUploading] during the operation; [isSuccess] when all products succeed.
+  ///
+  /// Gotchas:
+  /// - Partial failures are supported — [uploadErrors] lists per-row failures
+  ///   while [createdProducts] lists successful ones.
   Future<void> uploadProducts() async {
     final products = state.parsedProducts;
 

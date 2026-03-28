@@ -393,30 +393,27 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
 
                     const SizedBox(height: DesignTokens.spacing24),
 
-                    Semantics(
-                      button: true,
-                      label: 'btn-save-address',
-                      child: ModernButton(
-                        key: const Key('btn_save_address'),
-                        label: state.isLoading
-                            ? 'address.saving'.tr()
-                            : 'address.save_address'.tr(),
-                        imageIcon: 'assets/icons/save_icon.png',
-                        isLoading: state.isLoading,
-                        onPressed: state.isLoading
-                            ? null
-                            : () {
-                                if (_formKey.currentState!.validate()) {
-                                  viewModel.saveAddress(
-                                    street: _streetController.text,
-                                    apartment: _apartmentController.text,
-                                    city: _cityController.text,
-                                    postalCode: _postalCodeController.text,
-                                    phoneNumber: _phoneController.text,
-                                  );
-                                }
-                              },
-                      ),
+                    ModernButton(
+                      key: const Key('btn_save_address'),
+                      label: state.isLoading
+                          ? 'address.saving'.tr()
+                          : 'address.save_address'.tr(),
+                      semanticsLabel: 'btn-save-address',
+                      imageIcon: 'assets/icons/save_icon.png',
+                      isLoading: state.isLoading,
+                      onPressed: state.isLoading
+                          ? null
+                          : () {
+                              if (_formKey.currentState!.validate()) {
+                                viewModel.saveAddress(
+                                  street: _streetController.text,
+                                  apartment: _apartmentController.text,
+                                  city: _cityController.text,
+                                  postalCode: _postalCodeController.text,
+                                  phoneNumber: _phoneController.text,
+                                );
+                              }
+                            },
                     ),
 
                     const SizedBox(height: DesignTokens.spacing32),

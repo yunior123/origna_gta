@@ -13,6 +13,11 @@ void main() {
     defaultValue: false,
   );
 
+  if (!runLive) {
+    test('live tests disabled', () {});
+    return;
+  }
+
   group('OrignaBaseQARepository live', () {
     late ProviderContainer container;
     late OrignaBase ob;
@@ -46,7 +51,6 @@ void main() {
         expect(questions, isA<List<QAModel>>());
         // List may be empty but should be a valid list
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -73,7 +77,6 @@ void main() {
         // Question should appear in the list (may take a moment)
         // Note: Real-time updates may be delayed, so we just verify stream works
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -91,7 +94,6 @@ void main() {
           expect(e, isNotNull);
         }
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -107,7 +109,6 @@ void main() {
         expect(questions, isA<List<QAModel>>());
         // Should be empty or fail gracefully
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -152,8 +153,7 @@ void main() {
           'REDACTED_TEST_PASSWORD',
         );
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
-  }, skip: !runLive ? 'live tests disabled' : null);
+  });
 }

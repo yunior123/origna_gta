@@ -11,6 +11,11 @@ void main() {
     defaultValue: false,
   );
 
+  if (!runLive) {
+    test('live tests disabled', () {});
+    return;
+  }
+
   bool isExpectedPermissionError(Object error) {
     final msg = error.toString().toLowerCase();
     return msg.contains('403') ||
@@ -54,7 +59,6 @@ void main() {
         final sellerId = ob.auth.currentUserId;
         expect(sellerId, isNotNull, reason: 'Seller should be authenticated');
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -96,7 +100,6 @@ void main() {
           );
         }
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -134,7 +137,6 @@ void main() {
           );
         }
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -178,7 +180,6 @@ void main() {
           );
         }
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -221,8 +222,7 @@ void main() {
           );
         }
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
-  }, skip: !runLive);
+  });
 }

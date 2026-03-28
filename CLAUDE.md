@@ -103,12 +103,21 @@ cd e2e && ORIGNABASE_URL=http://127.0.0.1:8080 bun run lib/seed-dev.ts
 - autolearn:if u find an issue while solving other then solve it or added to state.md
 - avoid simple unprofessional fixes. if u encounter an issue make sure to solve like pro.
 - codex delegation: ONLY gpt-5.4 (full). NEVER gpt-5.4-mini, o4-mini, o3, or any model < 5.3. Lower models destroy the codebase.
-- codex flag: `codex exec --dangerously-bypass-approvals-and-sandbox -c 'model="gpt-5.4"'`
+- codex flag (v0.117.0+): `codex exec -m gpt-5.4 -s danger-full-access "prompt"` — OLD syntax `--dangerously-bypass-approvals-and-sandbox -c 'model="gpt-5.4"'` is deprecated
+- codex batches: launch 3+ parallel codex for non-conflicting tasks (different directories), divide and conquer
+- codex temp files: pipe output to `/tmp/codex-batch{N}-output.log` — never lose results
+- gemini flag (v0.35.2+): `gemini -m gemini-3-pro-preview -y -p "prompt"` — `-p` for headless, `-y` for yolo. Be patient with 429 retries (2-3 min)
+- gemini temp files: MUST use `/tmp/gemini-workspace/` — NEVER create temp files in project root
+- mimo/free models: available via OpenRouter inside opencode (`/opt/homebrew/bin/opencode run -m opencode/mimo-v2-pro-free`) and kilocode. OpenRouter API key already configured. Prefer mimo over subagents for delegation — saves Claude tokens
 - after ANY codex run: verify `flutter analyze` + `flutter test` PASS before accepting changes. Revert if broken.
 - codex cannot verify screenshots match filenames — always audit screenshots manually after codex captures them.
 - codex/gemini monitoring: launch with `> /tmp/codex-output.log 2>&1 &` then monitor via `nohup /tmp/monitor-codex.sh &`. Script checks every 5min: process alive, screenshot count, last output line.
 - before commit: always run `/code-review` (4 parallel reviewers: correctness, security, performance, standards). Score ≥9 blocks commit.
 - before push: `flutter analyze --no-fatal-infos && flutter test --exclude-tags golden && cargo clippy -D warnings && cargo test`
+- use sleep as monitor technique
+- there might be false positives in audits, be carefull
+- use sleep monitor technique to always keep mimo,gemini,codex, etc busy doing audit based on real evidence and no false positive, creating more tests, documenting, fixing issues, searching web for common bugs on github or internet for ecommerce stores and see how we can prevent those in our app, use the harness loop constatntly. in the case of mimo alternate opencode, kilo, openrouter. Search web on how to better always keep working non stop on a project, like infinite work, non stop, always on. check gstack for ideas, skills catalog, etc.
+Make them audit full codebase in depth. Use all agents and skills for it.
 
 ## MCP
 

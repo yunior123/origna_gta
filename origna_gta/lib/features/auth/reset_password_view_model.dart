@@ -8,7 +8,18 @@ final resetPasswordViewModelProvider = StateNotifierProvider.autoDispose.family<
   return ResetPasswordViewModel(ref, oobCode);
 });
 
-/// Manages the password reset flow: email validation, sending reset link, and code confirmation.
+/// Manages the password reset confirmation flow for a previously issued reset code.
+///
+/// Parameters:
+/// - Constructor [oobCode]: reset token extracted from the deep link or route.
+///
+/// Returns:
+/// - UI state via [ResetPasswordState], including loading, success, and localized errors.
+///
+/// Gotchas:
+/// - This notifier confirms a reset token; it does not request the original email.
+/// - Password validation is intentionally lightweight here and relies on the backend
+///   for the final policy check.
 class ResetPasswordViewModel extends StateNotifier<ResetPasswordState> {
   final Ref _ref;
   final String _oobCode;

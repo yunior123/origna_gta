@@ -11,7 +11,12 @@ void main() {
     defaultValue: false,
   );
 
-  group('Product Lifecycle Integration', skip: !runLive ? 'live tests disabled' : null, () {
+  if (!runLive) {
+    test('live tests disabled', () {});
+    return;
+  }
+
+  group('Product Lifecycle Integration', () {
     late ProviderContainer container;
     late OrignaBase ob;
     late String createdProductId;

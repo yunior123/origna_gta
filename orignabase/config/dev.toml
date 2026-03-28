@@ -14,7 +14,7 @@ password = "root"
 [auth]
 jwt_secret = "dev-secret-change-in-production"
 access_token_ttl_secs = 3600       # 1 hour (longer for dev)
-refresh_token_ttl_secs = 604800    # 7 days
+refresh_token_ttl_secs = 518400    # 6 days
 
 [security]
 rules_path = "rules.ob"

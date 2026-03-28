@@ -49,6 +49,13 @@ pub fn router(state: HandlersState) -> Router {
 // Main Webhook Handler
 // ---------------------------------------------------------------------------
 
+/// Verifies a signed Stripe webhook request, records the event idempotently,
+/// dispatches to the matching payment handler, and returns a JSON status body.
+///
+/// The handler rejects missing or stale signatures before touching the database,
+/// stores the event ID atomically to prevent duplicate side effects, and removes
+/// the dedup record when downstream processing fails so Stripe retries can
+/// re-deliver the event safely.
 async fn handle_stripe_webhook(
     State(state): State<HandlersState>,
     request: Request,
@@ -65,7 +72,9 @@ async fn handle_stripe_webhook(
         .map_err(|e| ob_core::Error::Internal(format!("Failed to read body: {e}")))?;
 
     // --- Verify webhook signature — REQUIRED in all environments ---
-    let webhook_secret = state.config.require_secret("stripe_webhook_secret")
+    let webhook_secret = state
+        .config
+        .require_secret("stripe_webhook_secret")
         .map_err(|_| {
             error!("stripe_webhook_secret not configured — refusing webhook");
             ob_core::Error::Forbidden("Webhook processing unavailable".into())
@@ -73,16 +82,12 @@ async fn handle_stripe_webhook(
 
     if signature.is_empty() {
         error!("Missing stripe-signature header");
-        return Err(ob_core::Error::Auth(
-            "Missing webhook signature".into(),
-        ));
+        return Err(ob_core::Error::Auth("Missing webhook signature".into()));
     }
 
     if !verify_stripe_signature(&body_bytes, signature, webhook_secret) {
         error!("Stripe webhook signature verification failed");
-        return Err(ob_core::Error::Auth(
-            "Invalid webhook signature".into(),
-        ));
+        return Err(ob_core::Error::Auth("Invalid webhook signature".into()));
     }
 
     // --- Parse event ---
@@ -140,9 +145,7 @@ async fn handle_stripe_webhook(
         "checkout.session.completed" => {
             handle_checkout_session_completed(&state, &event.data).await
         }
-        "checkout.session.expired" => {
-            handle_checkout_session_expired(&state, &event.data).await
-        }
+        "checkout.session.expired" => handle_checkout_session_expired(&state, &event.data).await,
         "checkout.session.async_payment_succeeded" => {
             handle_checkout_session_async_payment_succeeded(&state, &event.data).await
         }
@@ -168,14 +171,15 @@ async fn handle_stripe_webhook(
     };
 
     match result {
-        Ok(()) => {
-            Ok(Json(json!({ "status": "ok", "event_id": event.id })))
-        }
+        Ok(()) => Ok(Json(json!({ "status": "ok", "event_id": event.id }))),
         Err(e) => {
             // Handler failed — return 500 so Stripe retries.
             // Delete the event so the retry hits the handler again.
-            let _ = state.db.delete_document(collections::WEBHOOK_EVENTS, &event.id).await;
-            
+            let _ = state
+                .db
+                .delete_document(collections::WEBHOOK_EVENTS, &event.id)
+                .await;
+
             error!(
                 event_id = %event.id,
                 event_type = %event.r#type,
@@ -261,7 +265,9 @@ async fn is_duplicate_webhook(
     // Stripe event IDs are "evt_xxx" format, not SurrealDB record IDs.
     // Just validate non-empty and reasonable length.
     if event_id.is_empty() || event_id.len() > 512 {
-        return Err(ob_core::Error::Validation("Invalid webhook event ID".into()));
+        return Err(ob_core::Error::Validation(
+            "Invalid webhook event ID".into(),
+        ));
     }
 
     let result = state
@@ -317,7 +323,9 @@ async fn try_store_webhook_event_atomic(
 
     // Validate event ID
     if event.id.is_empty() || event.id.len() > 512 {
-        return Err(ob_core::Error::Validation("Invalid webhook event ID".into()));
+        return Err(ob_core::Error::Validation(
+            "Invalid webhook event ID".into(),
+        ));
     }
 
     // Try CREATE — SurrealDB errors on duplicate ID
@@ -337,13 +345,16 @@ async fn try_store_webhook_event_atomic(
         .await;
 
     match result {
-        Ok(_) => Ok(true),  // New event, proceed
+        Ok(_) => Ok(true), // New event, proceed
         Err(e) => {
             let err_str = e.to_string();
-            if err_str.contains("already exists") || err_str.contains("duplicate") || err_str.contains("RecordIdAlreadyExists") {
-                Ok(false)  // Duplicate, skip
+            if err_str.contains("already exists")
+                || err_str.contains("duplicate")
+                || err_str.contains("RecordIdAlreadyExists")
+            {
+                Ok(false) // Duplicate, skip
             } else {
-                Err(e)  // Real error, propagate
+                Err(e) // Real error, propagate
             }
         }
     }
@@ -378,14 +389,21 @@ async fn find_order_by_metadata_id(
     state: &HandlersState,
     order_id: &str,
 ) -> Result<Option<Value>, ob_core::Error> {
+    let order_key = order_id.strip_prefix("orders:").unwrap_or(order_id);
     let rows: Vec<Value> = state
         .db
         .query_bind_value(
             &format!(
-                "SELECT * FROM {} WHERE id = $order_id LIMIT 1",
+                "SELECT * FROM {} WHERE id = type::thing('{}', $order_key) OR id = $order_id OR {} = $order_key LIMIT 1",
                 collections::ORDERS
+                ,
+                collections::ORDERS,
+                fields::ORDER_ID,
             ),
-            serde_json::json!({"order_id": order_id}),
+            serde_json::json!({
+                "order_id": order_id,
+                "order_key": order_key,
+            }),
         )
         .await?;
 
@@ -683,7 +701,14 @@ async fn handle_payment_intent_succeeded(
 
     // Stock already decremented at checkout time — only update order status
     // Precondition guard: only update if still PendingPayment (handles late webhooks)
-    if !update_order_status(state, order_id, OrderStatus::PendingPayment.as_str(), OrderStatus::PaymentAuthorized.as_str()).await? {
+    if !update_order_status(
+        state,
+        order_id,
+        OrderStatus::PendingPayment.as_str(),
+        OrderStatus::PaymentAuthorized.as_str(),
+    )
+    .await?
+    {
         return Ok(());
     }
 
@@ -759,7 +784,13 @@ async fn handle_payment_intent_failed(
 
     if current_status == OrderStatus::PendingPayment.as_str() {
         // Cancel order — precondition: only if still PendingPayment
-        update_order_status(state, order_id, OrderStatus::PendingPayment.as_str(), OrderStatus::Cancelled.as_str()).await?;
+        update_order_status(
+            state,
+            order_id,
+            OrderStatus::PendingPayment.as_str(),
+            OrderStatus::Cancelled.as_str(),
+        )
+        .await?;
     }
 
     // Release coupon reservation (unmark as used)
@@ -810,7 +841,13 @@ async fn handle_payment_intent_canceled(
         .unwrap_or("");
 
     if current_status == OrderStatus::PendingPayment.as_str() {
-        update_order_status(state, order_id, OrderStatus::PendingPayment.as_str(), OrderStatus::Cancelled.as_str()).await?;
+        update_order_status(
+            state,
+            order_id,
+            OrderStatus::PendingPayment.as_str(),
+            OrderStatus::Cancelled.as_str(),
+        )
+        .await?;
     }
 
     // Release coupon reservation
@@ -916,8 +953,11 @@ async fn handle_charge_refunded(
     }
 
     // Only restore stock on FULL refunds, and ensure we haven't already restored
-    let stock_restored = order.get("stockRestored").and_then(|v| v.as_bool()).unwrap_or(false);
-    
+    let stock_restored = order
+        .get("stockRestored")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+
     let mut is_full_refund = false;
     if refunded_amount_cents >= total_amount_cents {
         is_full_refund = true;
@@ -1021,7 +1061,14 @@ async fn handle_checkout_session_completed(
 
     // Stock already decremented at checkout time — only update order status
     // Precondition guard: only update if still PendingPayment (handles late webhooks)
-    if !update_order_status(state, order_id, OrderStatus::PendingPayment.as_str(), OrderStatus::PaymentAuthorized.as_str()).await? {
+    if !update_order_status(
+        state,
+        order_id,
+        OrderStatus::PendingPayment.as_str(),
+        OrderStatus::PaymentAuthorized.as_str(),
+    )
+    .await?
+    {
         return Ok(());
     }
 
@@ -1117,7 +1164,13 @@ async fn handle_checkout_session_expired(
         .unwrap_or("");
 
     if current_status == OrderStatus::PendingPayment.as_str() {
-        update_order_status(state, order_id, OrderStatus::PendingPayment.as_str(), OrderStatus::Expired.as_str()).await?;
+        update_order_status(
+            state,
+            order_id,
+            OrderStatus::PendingPayment.as_str(),
+            OrderStatus::Expired.as_str(),
+        )
+        .await?;
 
         // Release any held stock (if stock was pre-reserved)
         restore_stock_for_order(state, &order).await?;
@@ -1181,7 +1234,13 @@ async fn handle_checkout_session_async_payment_failed(
         .unwrap_or("");
 
     if current_status == OrderStatus::PendingPayment.as_str() {
-        update_order_status(state, order_id, OrderStatus::PendingPayment.as_str(), OrderStatus::Failed.as_str()).await?;
+        update_order_status(
+            state,
+            order_id,
+            OrderStatus::PendingPayment.as_str(),
+            OrderStatus::Failed.as_str(),
+        )
+        .await?;
     }
 
     // Release coupon reservation
@@ -1214,10 +1273,7 @@ async fn handle_charge_dispute_created(
         .and_then(|i| i.as_str())
         .ok_or_else(|| ob_core::Error::Validation("No dispute ID".into()))?;
 
-    let charge_id = dispute
-        .get("charge")
-        .and_then(|i| i.as_str())
-        .unwrap_or("");
+    let charge_id = dispute.get("charge").and_then(|i| i.as_str()).unwrap_or("");
 
     let payment_intent_id = dispute
         .get("payment_intent")
@@ -1229,10 +1285,7 @@ async fn handle_charge_dispute_created(
         .and_then(|r| r.as_str())
         .unwrap_or("unknown");
 
-    let amount = dispute
-        .get("amount")
-        .and_then(|a| a.as_i64())
-        .unwrap_or(0);
+    let amount = dispute.get("amount").and_then(|a| a.as_i64()).unwrap_or(0);
 
     let currency = dispute
         .get("currency")
@@ -1250,7 +1303,13 @@ async fn handle_charge_dispute_created(
 
     // Flag order as disputed if found
     if !order_id.is_empty() {
-        update_order_status(state, order_id, OrderStatus::PaymentAuthorized.as_str(), OrderStatus::Disputed.as_str()).await?;
+        update_order_status(
+            state,
+            order_id,
+            OrderStatus::PaymentAuthorized.as_str(),
+            OrderStatus::Disputed.as_str(),
+        )
+        .await?;
     }
 
     // Log dispute record in disputes collection for admin review
@@ -1337,10 +1396,7 @@ async fn handle_charge_dispute_closed(
     let order = find_order_by_payment_intent(state, payment_intent_id).await?;
 
     if let Some(ref order_val) = order {
-        let order_id = order_val
-            .get("id")
-            .and_then(|v| v.as_str())
-            .unwrap_or("");
+        let order_id = order_val.get("id").and_then(|v| v.as_str()).unwrap_or("");
 
         if !order_id.is_empty() && dispute_resolution == "lost" {
             // Dispute lost: update payment status to reflect the chargeback
@@ -1395,10 +1451,7 @@ async fn handle_payout_failed(
         .and_then(|i| i.as_str())
         .ok_or_else(|| ob_core::Error::Validation("No payout ID".into()))?;
 
-    let amount = payout
-        .get("amount")
-        .and_then(|a| a.as_i64())
-        .unwrap_or(0);
+    let amount = payout.get("amount").and_then(|a| a.as_i64()).unwrap_or(0);
 
     let currency = payout
         .get("currency")
@@ -1573,10 +1626,7 @@ async fn handle_account_updated(
         return Ok(());
     }
 
-    let seller_profile_id = rows[0]
-        .get("id")
-        .and_then(|v| v.as_str())
-        .unwrap_or("");
+    let seller_profile_id = rows[0].get("id").and_then(|v| v.as_str()).unwrap_or("");
 
     if seller_profile_id.is_empty() {
         return Ok(());
@@ -1760,6 +1810,23 @@ mod tests {
     async fn setup_state() -> HandlersState {
         HandlersState {
             config: Arc::new(Config::load(None).unwrap()),
+            db: DatabaseClient::new_mem().await,
+            http_client: reqwest::Client::new(),
+            stripe_client: None,
+            stripe_base_url: "https://api.stripe.com/v1".into(),
+            turnstile_secret_key: None,
+        }
+    }
+
+    async fn setup_state_with_webhook_secret(secret: &str) -> HandlersState {
+        let mut config = Config::load(None).unwrap();
+        config
+            .secrets
+            .values
+            .insert("stripe_webhook_secret".to_string(), secret.to_string());
+
+        HandlersState {
+            config: Arc::new(config),
             db: DatabaseClient::new_mem().await,
             http_client: reqwest::Client::new(),
             stripe_client: None,
@@ -1969,6 +2036,76 @@ mod tests {
         store_webhook_event(&state, &event).await.unwrap();
     }
 
+    #[tokio::test]
+    async fn test_try_store_webhook_event_atomic_is_idempotent_for_duplicate_event_ids() {
+        let state = setup_state().await;
+        let event = StripeWebhookEvent {
+            id: "evt_atomic_idem_001".to_string(),
+            r#type: "payment_intent.succeeded".to_string(),
+            data: json!({"object": {"id": "pi_atomic_001"}}),
+            created: 1_614_556_800,
+        };
+
+        let first = try_store_webhook_event_atomic(&state, &event)
+            .await
+            .unwrap();
+        let second = try_store_webhook_event_atomic(&state, &event)
+            .await
+            .unwrap();
+
+        assert!(first, "first delivery should persist the webhook event");
+        assert!(!second, "duplicate delivery must be treated as idempotent");
+    }
+
+    #[test]
+    fn test_signature_verification_rejects_expired_timestamp_over_300_seconds() {
+        let secret = "STRIPE_WEBHOOK_SECRET_REDACTED";
+        let body = br#"{"id":"evt_expired","type":"charge.succeeded"}"#;
+        let expired_timestamp = (std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs() as i64
+            - 301)
+            .to_string();
+        let signature = make_hmac_signature(secret, body, &expired_timestamp);
+
+        assert!(!verify_stripe_signature(body, &signature, secret));
+    }
+
+    #[tokio::test]
+    async fn test_handle_stripe_webhook_returns_duplicate_for_same_event_id() {
+        let secret = "STRIPE_WEBHOOK_SECRET_REDACTED";
+        let state = setup_state_with_webhook_secret(secret).await;
+        let body = serde_json::to_vec(&json!({
+            "id": "evt_duplicate_full_handler",
+            "type": "charge.succeeded",
+            "data": {"object": {"id": "ch_test_duplicate"}},
+            "created": 1_714_567_800_i64,
+        }))
+        .unwrap();
+        let signature = make_hmac_signature(secret, &body, &now_timestamp());
+
+        let first_request = axum::http::Request::builder()
+            .uri("/api/webhooks/stripe")
+            .header("stripe-signature", signature.clone())
+            .body(axum::body::Body::from(body.clone()))
+            .unwrap();
+        let Json(first) = handle_stripe_webhook(State(state.clone()), first_request)
+            .await
+            .unwrap();
+        assert_eq!(first["status"], "ok");
+
+        let second_request = axum::http::Request::builder()
+            .uri("/api/webhooks/stripe")
+            .header("stripe-signature", signature)
+            .body(axum::body::Body::from(body))
+            .unwrap();
+        let Json(second) = handle_stripe_webhook(State(state), second_request)
+            .await
+            .unwrap();
+        assert_eq!(second["status"], "duplicate");
+    }
+
     // -----------------------------------------------------------------------
     // find_order_by_metadata_id / find_order_by_payment_intent
     // (query_bind_value with SELECT * has RecordId serialization issue in mem DB)
@@ -2019,8 +2156,45 @@ mod tests {
     #[tokio::test]
     async fn test_update_order_status_nonexistent() {
         let state = setup_state().await;
-        let result = update_order_status(&state, "orders:no_such_order", "pending", "cancelled").await;
+        let result =
+            update_order_status(&state, "orders:no_such_order", "pending", "cancelled").await;
         assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_update_order_status_precondition_failure_keeps_existing_state() {
+        let state = setup_state().await;
+        state
+            .db
+            .query_raw(
+                "CREATE orders:upd_precondition CONTENT {
+                    id: orders:upd_precondition,
+                    orderId: 'upd_precondition',
+                    orderStatus: 'confirmed',
+                    totalAmountCents: 3000,
+                    items: [{productId: 'prod_001', quantity: 1}]
+                }",
+            )
+            .await
+            .unwrap();
+
+        let updated =
+            update_order_status(&state, "orders:upd_precondition", "pending", "cancelled")
+                .await
+                .unwrap();
+
+        assert!(!updated);
+
+        let order = state
+            .db
+            .get_document(collections::ORDERS, "upd_precondition")
+            .await
+            .unwrap();
+
+        assert_eq!(
+            order.get(fields::ORDER_STATUS).and_then(|v| v.as_str()),
+            Some("confirmed")
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -2704,6 +2878,73 @@ mod tests {
         });
         let result = handle_checkout_session_completed(&state, &data).await;
         assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_handle_checkout_session_completed_marks_coupon_redemption() {
+        let state = setup_state().await;
+        state
+            .db
+            .query_raw(
+                "CREATE orders:coupon_order CONTENT {
+                    id: orders:coupon_order,
+                    orderId: 'coupon_order',
+                    orderStatus: 'pending_payment',
+                    paymentStatus: 'awaiting_payment',
+                    items: []
+                }",
+            )
+            .await
+            .unwrap();
+        state
+            .db
+            .create_document(
+                collections::COUPON_USES,
+                json!({
+                    "orderId": "coupon_order",
+                    "couponCode": "SAVE10",
+                    "userId": "buyer_coupon",
+                    "redeemedAt": Value::Null,
+                }),
+            )
+            .await
+            .unwrap();
+
+        let data = json!({
+            "object": {
+                "id": "cs_coupon",
+                "payment_intent": "pi_coupon",
+                "metadata": {
+                    "order_id": "coupon_order",
+                    "coupon_code": "SAVE10"
+                }
+            }
+        });
+
+        handle_checkout_session_completed(&state, &data)
+            .await
+            .unwrap();
+
+        let coupon_rows: Vec<Value> = state
+            .db
+            .query_bind_value(
+                "SELECT * FROM coupon_uses WHERE orderId = $order_id AND couponCode = $coupon_code LIMIT 1",
+                json!({
+                    "order_id": "coupon_order",
+                    "coupon_code": "SAVE10",
+                }),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(coupon_rows.len(), 1);
+        assert!(
+            coupon_rows[0]
+                .get("couponCode")
+                .and_then(|value| value.as_str())
+                == Some("SAVE10"),
+            "checkout.session.completed should preserve the reserved coupon usage record"
+        );
     }
 
     // -----------------------------------------------------------------------

@@ -1,7 +1,7 @@
 //! Shipping approval workflow handlers.
 //! Ported from: functions/handlers/orders.py::approve_shipping_cost, update_shipping_cost
 
-use axum::{Json, Router, extract::State, extract::Extension, routing::post};
+use axum::{Json, Router, extract::Extension, extract::State, routing::post};
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -69,6 +69,8 @@ pub struct UpdateShippingCostResponse {
 // Router
 // ---------------------------------------------------------------------------
 
+/// Builds the shipping-adjustment router used for buyer approvals and seller
+/// shipping cost updates.
 pub fn router(state: HandlersState) -> Router {
     Router::new()
         .route("/api/orders/approve-shipping", post(approve_shipping_cost))
@@ -175,6 +177,11 @@ async fn stripe_modify_pi(
 // approve_shipping_cost
 // ---------------------------------------------------------------------------
 
+/// Confirms or rejects a pending shipping-cost increase from the buyer side.
+///
+/// The handler enforces ownership, verifies the quoted amount the buyer saw,
+/// recalculates any tax delta, and updates the order plus Stripe authorization
+/// when the buyer accepts the new shipping cost.
 async fn approve_shipping_cost(
     State(state): State<HandlersState>,
     Extension(auth): Extension<AuthContext>,
@@ -403,10 +410,7 @@ async fn approve_shipping_cost(
 
         let mut tx = ob_database::Transaction::new();
         tx.add(
-            &format!(
-                "UPDATE {}:$order_id MERGE $data",
-                collections::ORDERS,
-            ),
+            &format!("UPDATE {}:$order_id MERGE $data", collections::ORDERS,),
             Some(json!({"order_id": req.order_id, "data": update_data})),
         );
 
@@ -461,6 +465,12 @@ async fn approve_shipping_cost(
 // update_shipping_cost
 // ---------------------------------------------------------------------------
 
+/// Updates seller-proposed shipping costs for an order and determines whether
+/// the new amount requires explicit buyer approval.
+///
+/// The handler validates bounds, records the requested change, and either
+/// applies the updated totals immediately or transitions the order into the
+/// pending-approval flow.
 async fn update_shipping_cost(
     State(state): State<HandlersState>,
     Extension(auth): Extension<AuthContext>,

@@ -4,6 +4,27 @@ use ob_core::{Error, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+const MAX_QUERY_LENGTH: usize = 500;
+
+fn sanitize_search_query(input: &str) -> String {
+    let mut result = String::with_capacity(input.len().min(MAX_QUERY_LENGTH));
+
+    for c in input.chars() {
+        if c.is_control() {
+            continue;
+        }
+        if c.is_whitespace() {
+            if !result.ends_with(' ') {
+                result.push(' ');
+            }
+        } else {
+            result.push(c);
+        }
+    }
+
+    result.trim().chars().take(MAX_QUERY_LENGTH).collect()
+}
+
 /// HTTP client wrapper for Meilisearch API.
 #[derive(Clone)]
 pub struct SearchClient {
@@ -56,10 +77,12 @@ impl SearchClient {
         offset: Option<usize>,
         filter: Option<&str>,
     ) -> Result<SearchResult> {
+        let sanitized_query = sanitize_search_query(query);
+
         if !self.config.enabled {
             return Ok(SearchResult {
                 hits: vec![],
-                query: query.to_string(),
+                query: sanitized_query,
                 processing_time_ms: 0,
                 estimated_total_hits: Some(0),
             });
@@ -68,7 +91,7 @@ impl SearchClient {
         let url = format!("{}/indexes/{}/search", self.config.url, index);
 
         let mut body = serde_json::json!({
-            "q": query,
+            "q": sanitized_query,
         });
 
         if let Some(n) = limit {
@@ -100,7 +123,11 @@ impl SearchClient {
                 .text()
                 .await
                 .unwrap_or_else(|_| "unknown error".to_string());
-            let error_preview = if body.len() > 200 { &body[..200] } else { &body };
+            let error_preview = if body.len() > 200 {
+                &body[..200]
+            } else {
+                &body
+            };
             return Err(Error::Internal(format!(
                 "Meilisearch error ({status}): {error_preview}"
             )));
@@ -219,9 +246,7 @@ impl SearchClient {
             .map_err(|e| Error::Internal(format!("Meilisearch settings update failed: {e}")))?;
 
         if !resp.status().is_success() {
-            return Err(Error::Internal(
-                "Meilisearch settings update failed".into(),
-            ));
+            return Err(Error::Internal("Meilisearch settings update failed".into()));
         }
 
         Ok(())
@@ -231,6 +256,60 @@ impl SearchClient {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_sanitize_search_query_basic() {
+        assert_eq!(sanitize_search_query("hello world"), "hello world");
+    }
+
+    #[test]
+    fn test_sanitize_search_query_strips_control_chars() {
+        assert_eq!(sanitize_search_query("hello\x00world"), "helloworld");
+        assert_eq!(sanitize_search_query("test\n\r\t"), "test");
+    }
+
+    #[test]
+    fn test_sanitize_search_query_normalizes_whitespace() {
+        assert_eq!(sanitize_search_query("hello   world"), "hello world");
+        assert_eq!(sanitize_search_query("a  b   c"), "a b c");
+    }
+
+    #[test]
+    fn test_sanitize_search_query_trims() {
+        assert_eq!(sanitize_search_query("  hello  "), "hello");
+    }
+
+    #[test]
+    fn test_sanitize_search_query_length_limit() {
+        let long_query = "a".repeat(600);
+        let sanitized = sanitize_search_query(&long_query);
+        assert_eq!(sanitized.len(), 500);
+    }
+
+    #[test]
+    fn test_sanitize_search_query_preserves_normal_chars() {
+        assert_eq!(sanitize_search_query("test&query!@#$"), "test&query!@#$");
+    }
+
+    #[test]
+    fn test_sanitize_search_query_empty() {
+        assert_eq!(sanitize_search_query(""), "");
+        assert_eq!(sanitize_search_query("   "), "");
+    }
+
+    #[test]
+    fn test_sanitize_search_query_special_chars() {
+        assert_eq!(
+            sanitize_search_query("<script>alert(1)</script>"),
+            "<script>alert(1)</script>"
+        );
+    }
+
+    #[test]
+    fn test_sanitize_search_query_unicode() {
+        assert_eq!(sanitize_search_query("café"), "café");
+        assert_eq!(sanitize_search_query("日本語"), "日本語");
+    }
 
     #[test]
     fn test_search_result_serde_roundtrip() {
@@ -378,7 +457,10 @@ mod tests {
                 indexes: Default::default(),
             };
             let client = SearchClient::new(config, reqwest::Client::new());
-            let result = client.search("products", "widget", None, None, None).await.unwrap();
+            let result = client
+                .search("products", "widget", None, None, None)
+                .await
+                .unwrap();
             assert!(result.hits.is_empty());
             assert_eq!(result.query, "widget");
             assert_eq!(result.processing_time_ms, 0);
@@ -674,7 +756,10 @@ mod tests {
             .await;
 
         let client = SearchClient::new(enabled_config(&mock_server.uri()), reqwest::Client::new());
-        let result = client.search("products", "widget", Some(10), None, None).await.unwrap();
+        let result = client
+            .search("products", "widget", Some(10), None, None)
+            .await
+            .unwrap();
         assert_eq!(result.hits.len(), 1);
         assert_eq!(result.query, "widget");
         assert_eq!(result.processing_time_ms, 5);
@@ -701,7 +786,13 @@ mod tests {
 
         let client = SearchClient::new(enabled_config(&mock_server.uri()), reqwest::Client::new());
         let result = client
-            .search("products", "phone", Some(5), Some(10), Some("category = 'electronics'"))
+            .search(
+                "products",
+                "phone",
+                Some(5),
+                Some(10),
+                Some("category = 'electronics'"),
+            )
             .await
             .unwrap();
         assert!(result.hits.is_empty());
@@ -750,7 +841,10 @@ mod tests {
             .await;
 
         let client = SearchClient::new(enabled_config(&mock_server.uri()), reqwest::Client::new());
-        let result = client.search("products", "w", None, None, None).await.unwrap();
+        let result = client
+            .search("products", "w", None, None, None)
+            .await
+            .unwrap();
         // First hit should have record_id restored
         assert_eq!(result.hits[0]["id"], "products:abc");
         // Second hit without record_id should keep original id
@@ -795,7 +889,9 @@ mod tests {
 
         Mock::given(matchers::method("POST"))
             .and(matchers::path("/indexes/products/documents"))
-            .respond_with(ResponseTemplate::new(202).set_body_json(serde_json::json!({"taskUid": 1})))
+            .respond_with(
+                ResponseTemplate::new(202).set_body_json(serde_json::json!({"taskUid": 1})),
+            )
             .expect(1)
             .mount(&mock_server)
             .await;
@@ -833,7 +929,9 @@ mod tests {
 
         Mock::given(matchers::method("DELETE"))
             .and(matchers::path("/indexes/products/documents/doc_1"))
-            .respond_with(ResponseTemplate::new(202).set_body_json(serde_json::json!({"taskUid": 2})))
+            .respond_with(
+                ResponseTemplate::new(202).set_body_json(serde_json::json!({"taskUid": 2})),
+            )
             .expect(1)
             .mount(&mock_server)
             .await;
@@ -863,26 +961,31 @@ mod tests {
 
     #[tokio::test]
     async fn test_ensure_indexes_with_settings() {
-        use wiremock::{Mock, MockServer, ResponseTemplate, matchers};
-        use std::collections::HashMap;
         use crate::config::IndexConfig;
+        use std::collections::HashMap;
+        use wiremock::{Mock, MockServer, ResponseTemplate, matchers};
 
         let mock_server = MockServer::start().await;
 
         // Mock all 3 settings endpoints
         Mock::given(matchers::method("PUT"))
-            .respond_with(ResponseTemplate::new(202).set_body_json(serde_json::json!({"taskUid": 1})))
+            .respond_with(
+                ResponseTemplate::new(202).set_body_json(serde_json::json!({"taskUid": 1})),
+            )
             .expect(3) // searchable, filterable, sortable
             .mount(&mock_server)
             .await;
 
         let mut indexes = HashMap::new();
-        indexes.insert("products".to_string(), IndexConfig {
-            searchable: vec!["title".into(), "description".into()],
-            filterable: vec!["category".into()],
-            sortable: vec!["price".into()],
-            primary_key: "id".into(),
-        });
+        indexes.insert(
+            "products".to_string(),
+            IndexConfig {
+                searchable: vec!["title".into(), "description".into()],
+                filterable: vec!["category".into()],
+                sortable: vec!["price".into()],
+                primary_key: "id".into(),
+            },
+        );
 
         let config = SearchConfig {
             enabled: true,
@@ -897,9 +1000,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_ensure_indexes_settings_error() {
-        use wiremock::{Mock, MockServer, ResponseTemplate, matchers};
-        use std::collections::HashMap;
         use crate::config::IndexConfig;
+        use std::collections::HashMap;
+        use wiremock::{Mock, MockServer, ResponseTemplate, matchers};
 
         let mock_server = MockServer::start().await;
 
@@ -910,12 +1013,15 @@ mod tests {
             .await;
 
         let mut indexes = HashMap::new();
-        indexes.insert("products".to_string(), IndexConfig {
-            searchable: vec!["title".into()],
-            filterable: vec![],
-            sortable: vec![],
-            primary_key: "id".into(),
-        });
+        indexes.insert(
+            "products".to_string(),
+            IndexConfig {
+                searchable: vec!["title".into()],
+                filterable: vec![],
+                sortable: vec![],
+                primary_key: "id".into(),
+            },
+        );
 
         let config = SearchConfig {
             enabled: true,

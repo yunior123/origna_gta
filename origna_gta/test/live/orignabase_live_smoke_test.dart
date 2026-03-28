@@ -12,6 +12,11 @@ void main() {
     defaultValue: false,
   );
 
+  if (!runLive) {
+    test('live tests disabled', () {});
+    return;
+  }
+
   group('OrignaBase live smoke', () {
     late ProviderContainer container;
     late OrignaBase ob;
@@ -89,8 +94,7 @@ void main() {
 
         fail('Expected at least one active indexed product in dev, got $result');
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
-  }, skip: !runLive);
+  });
 }

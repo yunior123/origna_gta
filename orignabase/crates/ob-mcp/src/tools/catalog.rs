@@ -1,8 +1,8 @@
 //! Catalog tools — search, get product, check inventory
 
-use crate::errors::{McpError, McpResult};
 use crate::McpState;
-use serde_json::{json, Value};
+use crate::errors::{McpError, McpResult};
+use serde_json::{Value, json};
 
 /// Search products by query, category, price range
 pub async fn search_products(state: McpState, params: &Value) -> McpResult<Value> {
@@ -139,7 +139,9 @@ mod tests {
     #[tokio::test]
     async fn test_search_products_valid_query() {
         let state = make_state().await;
-        let result = search_products(state, &json!({"query": "shirt"})).await.unwrap();
+        let result = search_products(state, &json!({"query": "shirt"}))
+            .await
+            .unwrap();
         assert_eq!(result["total"], 0);
         assert_eq!(result["limit"], 20);
         assert_eq!(result["offset"], 0);
@@ -181,7 +183,9 @@ mod tests {
     #[tokio::test]
     async fn test_search_products_default_limit_offset() {
         let state = make_state().await;
-        let result = search_products(state, &json!({"query": "x"})).await.unwrap();
+        let result = search_products(state, &json!({"query": "x"}))
+            .await
+            .unwrap();
         assert_eq!(result["limit"], 20);
         assert_eq!(result["offset"], 0);
     }
@@ -215,7 +219,9 @@ mod tests {
     #[tokio::test]
     async fn test_get_product_valid_id() {
         let state = make_state().await;
-        let result = get_product(state, &json!({"product_id": "products:p1"})).await.unwrap();
+        let result = get_product(state, &json!({"product_id": "products:p1"}))
+            .await
+            .unwrap();
         assert_eq!(result["id"], "products:p1");
         assert!(result["priceCents"].is_number());
     }
@@ -238,7 +244,9 @@ mod tests {
     #[tokio::test]
     async fn test_get_product_returns_expected_fields() {
         let state = make_state().await;
-        let result = get_product(state, &json!({"product_id": "products:p1"})).await.unwrap();
+        let result = get_product(state, &json!({"product_id": "products:p1"}))
+            .await
+            .unwrap();
         assert!(result["name"].is_string());
         assert!(result["description"].is_string());
         assert!(result["stockQuantity"].is_number());
@@ -258,7 +266,9 @@ mod tests {
     #[tokio::test]
     async fn test_check_inventory_valid() {
         let state = make_state().await;
-        let result = check_inventory(state, &json!({"product_id": "products:p1"})).await.unwrap();
+        let result = check_inventory(state, &json!({"product_id": "products:p1"}))
+            .await
+            .unwrap();
         assert_eq!(result["product_id"], "products:p1");
         assert!(result["stock_quantity"].is_number());
         assert_eq!(result["available"], true);

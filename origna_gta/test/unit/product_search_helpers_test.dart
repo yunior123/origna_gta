@@ -75,6 +75,23 @@ void main() {
     return doc;
   }
 
+  void stubBatchFetch(Map<String, Document?> docsById) {
+    when(
+      mockCollection.where(Fields.productId, whereIn: anyNamed('whereIn')),
+    ).thenAnswer((invocation) {
+      final ids = List<String>.from(
+        invocation.namedArguments[#whereIn] as List<dynamic>,
+      );
+      final batchQuery = MockQuery();
+      final batchSnapshot = MockQuerySnapshot();
+      when(batchQuery.get()).thenAnswer((_) async => batchSnapshot);
+      when(batchSnapshot.docs).thenReturn(
+        ids.map((id) => docsById[id]).whereType<Document>().toList(),
+      );
+      return batchQuery;
+    });
+  }
+
   group('ProductSearchHelpers.fetchProductsImpl', () {
     test('returns products from snapshot', () async {
       final doc = makeDoc('p1');
@@ -202,17 +219,17 @@ void main() {
     });
 
     test('fetches products by ID', () async {
-      final mockDocRef = MockDocumentRef();
       final doc = makeDoc('p1');
-
-      when(mockCollection.doc('p1')).thenReturn(mockDocRef);
-      when(mockDocRef.get()).thenAnswer((_) async => doc);
+      stubBatchFetch({'p1': doc});
 
       final helper = _TestSearch(ob: mockOb, converter: makeProduct);
       final result = await helper.fetchProductsByIdsImpl(['p1']);
 
       expect(result.length, 1);
       expect(result.first.productId, 'p1');
+      verify(
+        mockCollection.where(Fields.productId, whereIn: ['p1']),
+      ).called(1);
     });
 
     test('skips non-existent documents', () async {
@@ -221,6 +238,7 @@ void main() {
       when(doc.exists).thenReturn(false);
       when(doc.id).thenReturn('p_missing');
 
+      stubBatchFetch({});
       when(mockCollection.doc('p_missing')).thenReturn(mockDocRef);
       when(mockDocRef.get()).thenAnswer((_) async => doc);
 
@@ -465,28 +483,25 @@ void main() {
   group('ProductSearchHelpers.fetchProductsByIdsImpl edge cases', () {
     test('handles chunking for more than 30 IDs', () async {
       final ids = List.generate(65, (i) => 'p$i');
-      final mockDocRef = MockDocumentRef();
-      final doc = makeDoc('p0');
-
-      when(mockCollection.doc(any)).thenReturn(mockDocRef);
-      when(mockDocRef.get()).thenAnswer((_) async => doc);
+      final docsById = {for (final id in ids) id: makeDoc(id)};
+      stubBatchFetch(docsById);
 
       final helper = _TestSearch(ob: mockOb, converter: makeProduct);
       final result = await helper.fetchProductsByIdsImpl(ids);
 
-      verify(mockCollection.doc(any)).called(65);
+      verify(
+        mockCollection.where(Fields.productId, whereIn: anyNamed('whereIn')),
+      ).called(3);
       expect(result.length, 65);
     });
 
     test('handles malformed documents gracefully', () async {
-      final mockDocRef = MockDocumentRef();
       final doc = MockDocument();
 
       when(doc.exists).thenReturn(true);
       when(doc.id).thenReturn('malformed');
       when(doc.data).thenReturn({});
-      when(mockCollection.doc('malformed')).thenReturn(mockDocRef);
-      when(mockDocRef.get()).thenAnswer((_) async => doc);
+      stubBatchFetch({'malformed': doc});
 
       final helper = _TestSearch(
         ob: mockOb,
@@ -503,6 +518,7 @@ void main() {
     test('handles null document return', () async {
       final mockDocRef = MockDocumentRef();
 
+      stubBatchFetch({});
       when(mockCollection.doc('null-doc')).thenReturn(mockDocRef);
       when(mockDocRef.get()).thenAnswer((_) async => null);
 
@@ -514,16 +530,15 @@ void main() {
 
     test('handles exactly 30 IDs (boundary)', () async {
       final ids = List.generate(30, (i) => 'p$i');
-      final mockDocRef = MockDocumentRef();
-      final doc = makeDoc('p0');
-
-      when(mockCollection.doc(any)).thenReturn(mockDocRef);
-      when(mockDocRef.get()).thenAnswer((_) async => doc);
+      final docsById = {for (final id in ids) id: makeDoc(id)};
+      stubBatchFetch(docsById);
 
       final helper = _TestSearch(ob: mockOb, converter: makeProduct);
       final result = await helper.fetchProductsByIdsImpl(ids);
 
-      verify(mockCollection.doc(any)).called(30);
+      verify(
+        mockCollection.where(Fields.productId, whereIn: anyNamed('whereIn')),
+      ).called(1);
       expect(result.length, 30);
     });
   });

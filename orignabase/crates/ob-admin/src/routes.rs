@@ -83,13 +83,13 @@ async fn list_users(
         .and_then(|s| s.parse::<i32>().ok())
         .unwrap_or(20)
         .clamp(1, 100) as usize;
-    
+
     let offset = params
         .get("offset")
         .and_then(|s| s.parse::<i32>().ok())
         .unwrap_or(0)
         .max(0) as usize;
-    
+
     let users = state
         .db
         .query_bind(
@@ -99,7 +99,6 @@ async fn list_users(
         .await?;
     Ok(Json(json!({ "users": users })))
 }
-
 
 /// DELETE /_admin/users/:id — Delete a user.
 async fn delete_user(
@@ -184,12 +183,12 @@ async fn dashboard() -> Html<String> {
         "staging" => ("#f59e0b", "STAGING"),
         _ => ("#22c55e", "DEV"),
     };
-    
+
     let badge_html = format!(
         r#"<div style="position:fixed;top:8px;right:8px;background:{};color:white;padding:6px 14px;border-radius:4px;font-size:12px;font-weight:bold;z-index:9999;font-family:monospace;letter-spacing:0.5px;box-shadow:0 2px 8px rgba(0,0,0,0.3)">{}</div>"#,
         badge_color, badge_text
     );
-    
+
     let html = DASHBOARD_HTML.replace("</body>", &format!("{}</body>", badge_html));
     Html(html)
 }
@@ -209,17 +208,13 @@ fn require_admin(auth: &AuthContext, client_ip: &str) -> Result<()> {
 
         // Test mode on dev/staging: allow localhost without auth, require admin role for remote IPs
         if is_localhost(client_ip) {
-            tracing::debug!(
-                "OB_TEST_MODE: allowing admin access from localhost ({client_ip})"
-            );
+            tracing::debug!("OB_TEST_MODE: allowing admin access from localhost ({client_ip})");
             return Ok(());
         }
 
         // Request from non-localhost IP in test mode — require authentication and admin role
         if !auth.authenticated {
-            tracing::warn!(
-                "OB_TEST_MODE: rejecting unauthenticated admin access from {client_ip}"
-            );
+            tracing::warn!("OB_TEST_MODE: rejecting unauthenticated admin access from {client_ip}");
             return Err(Error::Auth("Authentication required".into()));
         }
 
@@ -274,7 +269,6 @@ async fn require_admin_middleware(request: Request, next: Next) -> Result<Respon
     require_admin(&auth, &client_ip)?;
     Ok(next.run(request).await)
 }
-
 
 // ── Remote Config ──
 
@@ -668,15 +662,28 @@ async fn drop_index(
 /// GET /_admin/usage — System usage overview.
 // Whitelist of allowed tables to prevent SQL injection via table name interpolation
 const ALLOWED_TABLES: &[&str] = &[
-    "users", "products", "orders", "cart", "reviews", "seller_profiles",
-    "webhook_events", "return_requests", "payouts", "payment_intents",
-    "user_sessions", "mfa_tokens", "rate_limit_tokens", "support_tickets",
-    "push_subscriptions", "notifications", "inventory_snapshots", "marketing_campaigns",
-    "analytics_events"
+    "users",
+    "products",
+    "orders",
+    "cart",
+    "reviews",
+    "seller_profiles",
+    "webhook_events",
+    "return_requests",
+    "payouts",
+    "payment_intents",
+    "user_sessions",
+    "mfa_tokens",
+    "rate_limit_tokens",
+    "support_tickets",
+    "push_subscriptions",
+    "notifications",
+    "inventory_snapshots",
+    "marketing_campaigns",
+    "analytics_events",
 ];
 
 async fn usage_dashboard(State(state): State<AdminState>) -> Result<Json<Value>> {
-
     // Force-initialize START_TIME on first call
     let uptime_seconds = START_TIME.elapsed().as_secs();
 
@@ -983,6 +990,9 @@ pub fn admin_router(state: AdminState) -> axum::Router {
         .route_layer(axum::middleware::from_fn(require_admin_middleware));
 
     axum::Router::new()
+        // Health checks are intentionally outside the admin middleware so that
+        // external monitoring (uptime probes, load-balancer checks) can reach
+        // them without an admin JWT.
         .route("/_admin/health", axum::routing::get(health))
         .route("/admin/health", axum::routing::get(health))
         // Remote Config (public read, allowlisted)
@@ -1022,14 +1032,13 @@ mod tests {
     #[test]
     fn test_require_admin_localhost_no_auth_dev() {
         let auth = AuthContext::anonymous();
-        let result = require_admin(&auth, "127.0.0.1");
         // In dev test mode, localhost should bypass auth check
         // This matches the fix: localhost is allowed without credentials
+        let _ = require_admin(&auth, "127.0.0.1");
     }
 
     #[test]
     fn test_require_admin_production_always_rejects() {
-        let auth = AuthContext::anonymous();
         // Even though we can't easily test OB_TEST_MODE=1 here (it requires unsafe),
         // the code clearly blocks it: production env rejects the bypass
         // See lines 169-171 in require_admin function

@@ -7,8 +7,7 @@ use std::time::Duration;
 use tokio::time::sleep;
 
 fn base_url() -> String {
-    std::env::var("OB_TEST_URL")
-        .unwrap_or_else(|_| "https://api.dev.orignagta.ca".to_string())
+    std::env::var("OB_TEST_URL").unwrap_or_else(|_| "https://api.dev.orignagta.ca".to_string())
 }
 
 /// Login as buyer and return access token.
@@ -61,7 +60,10 @@ async fn get_orders(client: &reqwest::Client, token: &str) -> Result<Vec<Value>,
         .map_err(|e| format!("request failed: {}", e))?;
 
     let status = resp.status();
-    let body: Value = resp.json().await.map_err(|e| format!("parse response: {}", e))?;
+    let body: Value = resp
+        .json()
+        .await
+        .map_err(|e| format!("parse response: {}", e))?;
 
     if status == 200 {
         Ok(body.as_array().cloned().unwrap_or_default())
@@ -93,12 +95,18 @@ async fn create_return_request(
         .map_err(|e| format!("request failed: {}", e))?;
 
     let status = resp.status();
-    let body: Value = resp.json().await.map_err(|e| format!("parse response: {}", e))?;
+    let body: Value = resp
+        .json()
+        .await
+        .map_err(|e| format!("parse response: {}", e))?;
 
     if status == 201 {
         Ok(body)
     } else {
-        Err(format!("create return request failed: {} — {}", status, body))
+        Err(format!(
+            "create return request failed: {} — {}",
+            status, body
+        ))
     }
 }
 
@@ -121,12 +129,18 @@ async fn approve_return_request(
         .map_err(|e| format!("request failed: {}", e))?;
 
     let status = resp.status();
-    let body: Value = resp.json().await.map_err(|e| format!("parse response: {}", e))?;
+    let body: Value = resp
+        .json()
+        .await
+        .map_err(|e| format!("parse response: {}", e))?;
 
     if status == 200 {
         Ok(body)
     } else {
-        Err(format!("approve return request failed: {} — {}", status, body))
+        Err(format!(
+            "approve return request failed: {} — {}",
+            status, body
+        ))
     }
 }
 
@@ -195,7 +209,10 @@ async fn test_return_request_lifecycle() {
                     let return_status = return_req["status"].as_str().unwrap_or("");
 
                     // Verify initial status is "pending"
-                    assert_eq!(return_status, "pending", "Return should start in pending state");
+                    assert_eq!(
+                        return_status, "pending",
+                        "Return should start in pending state"
+                    );
 
                     // Admin approves the return
                     sleep(Duration::from_millis(500)).await;
@@ -272,7 +289,9 @@ async fn test_return_request_expired_window() {
                         .await
                         {
                             Ok(_) => {
-                                eprintln!("Return request created — order not yet outside 30-day window");
+                                eprintln!(
+                                    "Return request created — order not yet outside 30-day window"
+                                );
                             }
                             Err(e) => {
                                 // Expect 400 with message about return window

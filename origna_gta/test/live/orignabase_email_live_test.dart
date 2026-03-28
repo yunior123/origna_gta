@@ -10,9 +10,13 @@ void main() {
     defaultValue: false,
   );
 
+  if (!runLive) {
+    test('live tests disabled', () {});
+    return;
+  }
+
   group(
     'OrignaBase Email & External Services Live Tests',
-    skip: !runLive ? 'live tests disabled' : null,
     () {
       late ProviderContainer container;
       late OrignaBase ob;

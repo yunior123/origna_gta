@@ -11,7 +11,7 @@ use std::collections::HashMap;
 use tracing::warn;
 
 use crate::HandlersState;
-use crate::shared::schema::{app_config, collections, business_rules};
+use crate::shared::schema::{app_config, business_rules, collections};
 
 // ===========================================================================
 // Shipping tier constants (from Python ShippingTiers)
@@ -68,7 +68,6 @@ const PERISHABLE_LONG_DISTANCE: f64 = 10.0;
 fn dollars_to_cents(dollars: f64) -> i64 {
     (dollars * 100.0).round() as i64
 }
-
 
 // ===========================================================================
 // Province adjacency & regions
@@ -412,18 +411,23 @@ async fn calculate_shipping(
     Json(req): Json<CalculateShippingRequest>,
 ) -> Result<Json<CalculateShippingResponse>, ob_core::Error> {
     let speed = req.speed.as_str();
-    let buyer_province = req.buyer_address.state.as_deref()
-        .ok_or_else(|| ob_core::Error::Validation("Buyer province is required for shipping calculation".into()))?;
+    let buyer_province = req.buyer_address.state.as_deref().ok_or_else(|| {
+        ob_core::Error::Validation("Buyer province is required for shipping calculation".into())
+    })?;
     let buyer_lat = req.buyer_address.latitude;
     let buyer_lon = req.buyer_address.longitude;
 
     // Group items by seller
     let mut by_seller: HashMap<String, Vec<&ShippingItem>> = HashMap::new();
     for item in &req.items {
-        let sid = item.seller_id.as_deref()
-            .ok_or_else(|| ob_core::Error::Validation(
-                "All items must have a valid seller ID for shipping calculation".into()
-            ))?
+        let sid = item
+            .seller_id
+            .as_deref()
+            .ok_or_else(|| {
+                ob_core::Error::Validation(
+                    "All items must have a valid seller ID for shipping calculation".into(),
+                )
+            })?
             .to_string();
         by_seller.entry(sid).or_default().push(item);
     }
@@ -439,36 +443,36 @@ async fn calculate_shipping(
         let first_item = seller_items.first();
         if let Some(first) = first_item {
             let seller_id = first.seller_id.as_deref().unwrap_or("unknown");
-            
+
             // Check if seller has warehouse address configured
-            let seller = state.db.get_document(collections::USERS, seller_id)
+            let seller = state
+                .db
+                .get_document(collections::USERS, seller_id)
                 .await
-                .map_err(|_| ob_core::Error::NotFound(
-                    format!("Seller {} not found", seller_id)
-                ))?;
-            
-            let warehouse_addr = seller
-                .get("warehouseAddress")
-                .and_then(|v| v.as_object());
-            
+                .map_err(|_| ob_core::Error::NotFound(format!("Seller {} not found", seller_id)))?;
+
+            let warehouse_addr = seller.get("warehouseAddress").and_then(|v| v.as_object());
+
             if warehouse_addr.is_none() {
-                return Err(ob_core::Error::Validation(
-                    format!("Seller {} has no warehouse configured. Please contact seller to set up warehouse address.", seller_id)
-                ));
+                return Err(ob_core::Error::Validation(format!(
+                    "Seller {} has no warehouse configured. Please contact seller to set up warehouse address.",
+                    seller_id
+                )));
             }
-            
+
             // Validate warehouse has required fields
             let warehouse_province = warehouse_addr
                 .and_then(|w| w.get("state"))
                 .and_then(|v| v.as_str());
-            
+
             if warehouse_province.is_none() {
-                return Err(ob_core::Error::Validation(
-                    format!("Seller {} warehouse missing province field", seller_id)
-                ));
+                return Err(ob_core::Error::Validation(format!(
+                    "Seller {} warehouse missing province field",
+                    seller_id
+                )));
             }
         }
-        
+
         // Filter to chargeable items
         let chargeable: Vec<&ShippingItem> = seller_items
             .iter()
@@ -489,7 +493,11 @@ async fn calculate_shipping(
             .as_ref()
             .and_then(|a| a.state.as_deref())
             .or(first.ship_from_province.as_deref())
-            .ok_or_else(|| ob_core::Error::Validation("Seller province is required for shipping calculation".into()))?;
+            .ok_or_else(|| {
+                ob_core::Error::Validation(
+                    "Seller province is required for shipping calculation".into(),
+                )
+            })?;
 
         // Local delivery restriction
         let has_local_restriction = chargeable
@@ -552,7 +560,6 @@ async fn calculate_shipping(
                     let (seller_cost, seller_breakdown) =
                         calculate_tiered_itemized(distance_km, &chargeable, speed);
 
-
                     total_shipping += seller_cost;
                     overall_breakdown.extend(seller_breakdown);
                     continue;
@@ -573,14 +580,16 @@ async fn calculate_shipping(
         let (seller_cost, seller_breakdown) =
             calculate_fallback_itemized(&chargeable, seller_province, buyer_province, speed);
 
-
         total_shipping += seller_cost;
         overall_breakdown.extend(seller_breakdown);
     }
 
     // Apply free shipping threshold ($75 CAD)
     let mut final_shipping = total_shipping;
-    if req.subtotal_cents.is_some_and(|s| s >= business_rules::FREE_SHIPPING_THRESHOLD_CENTS) {
+    if req
+        .subtotal_cents
+        .is_some_and(|s| s >= business_rules::FREE_SHIPPING_THRESHOLD_CENTS)
+    {
         final_shipping = 0;
     }
 
@@ -657,11 +666,23 @@ mod tests {
     #[test]
     fn test_speed_multipliers() {
         assert_eq!(get_speed_multiplier_bp("standard", 10.0), 100);
-        assert_eq!(get_speed_multiplier_bp("express", 10.0), EXPRESS_HYPER_LOCAL_BP);
+        assert_eq!(
+            get_speed_multiplier_bp("express", 10.0),
+            EXPRESS_HYPER_LOCAL_BP
+        );
         assert_eq!(get_speed_multiplier_bp("express", 30.0), EXPRESS_LOCAL_BP);
-        assert_eq!(get_speed_multiplier_bp("express", 100.0), EXPRESS_REGIONAL_BP);
-        assert_eq!(get_speed_multiplier_bp("express", 300.0), EXPRESS_DEFAULT_BP);
-        assert_eq!(get_speed_multiplier_bp("same_day", 10.0), SAME_DAY_HYPER_LOCAL_BP);
+        assert_eq!(
+            get_speed_multiplier_bp("express", 100.0),
+            EXPRESS_REGIONAL_BP
+        );
+        assert_eq!(
+            get_speed_multiplier_bp("express", 300.0),
+            EXPRESS_DEFAULT_BP
+        );
+        assert_eq!(
+            get_speed_multiplier_bp("same_day", 10.0),
+            SAME_DAY_HYPER_LOCAL_BP
+        );
     }
 
     #[test]
@@ -923,26 +944,53 @@ mod tests {
     #[test]
     fn test_same_day_multiplier_tiers() {
         // Hyper-local: <= 15km
-        assert_eq!(get_speed_multiplier_bp("same_day", 5.0), SAME_DAY_HYPER_LOCAL_BP);
-        assert_eq!(get_speed_multiplier_bp("same_day", 15.0), SAME_DAY_HYPER_LOCAL_BP);
+        assert_eq!(
+            get_speed_multiplier_bp("same_day", 5.0),
+            SAME_DAY_HYPER_LOCAL_BP
+        );
+        assert_eq!(
+            get_speed_multiplier_bp("same_day", 15.0),
+            SAME_DAY_HYPER_LOCAL_BP
+        );
         // Local: > 15km, <= 50km
         assert_eq!(get_speed_multiplier_bp("same_day", 30.0), SAME_DAY_LOCAL_BP);
         assert_eq!(get_speed_multiplier_bp("same_day", 50.0), SAME_DAY_LOCAL_BP);
         // Regional: > 50km, <= 150km
-        assert_eq!(get_speed_multiplier_bp("same_day", 100.0), SAME_DAY_REGIONAL_BP);
-        assert_eq!(get_speed_multiplier_bp("same_day", 150.0), SAME_DAY_REGIONAL_BP);
+        assert_eq!(
+            get_speed_multiplier_bp("same_day", 100.0),
+            SAME_DAY_REGIONAL_BP
+        );
+        assert_eq!(
+            get_speed_multiplier_bp("same_day", 150.0),
+            SAME_DAY_REGIONAL_BP
+        );
         // Default: > 150km
-        assert_eq!(get_speed_multiplier_bp("same_day", 200.0), SAME_DAY_DEFAULT_BP);
+        assert_eq!(
+            get_speed_multiplier_bp("same_day", 200.0),
+            SAME_DAY_DEFAULT_BP
+        );
     }
 
     #[test]
     fn test_express_multiplier_tiers_all_boundaries() {
-        assert_eq!(get_speed_multiplier_bp("express", 15.0), EXPRESS_HYPER_LOCAL_BP);
+        assert_eq!(
+            get_speed_multiplier_bp("express", 15.0),
+            EXPRESS_HYPER_LOCAL_BP
+        );
         assert_eq!(get_speed_multiplier_bp("express", 15.01), EXPRESS_LOCAL_BP);
         assert_eq!(get_speed_multiplier_bp("express", 50.0), EXPRESS_LOCAL_BP);
-        assert_eq!(get_speed_multiplier_bp("express", 50.01), EXPRESS_REGIONAL_BP);
-        assert_eq!(get_speed_multiplier_bp("express", 150.0), EXPRESS_REGIONAL_BP);
-        assert_eq!(get_speed_multiplier_bp("express", 150.01), EXPRESS_DEFAULT_BP);
+        assert_eq!(
+            get_speed_multiplier_bp("express", 50.01),
+            EXPRESS_REGIONAL_BP
+        );
+        assert_eq!(
+            get_speed_multiplier_bp("express", 150.0),
+            EXPRESS_REGIONAL_BP
+        );
+        assert_eq!(
+            get_speed_multiplier_bp("express", 150.01),
+            EXPRESS_DEFAULT_BP
+        );
     }
 
     #[test]
@@ -1005,7 +1053,6 @@ mod tests {
         let base = base_cost_for_distance(20.0); // 6.99
         // First item: base=6.99
         // Second item: 2 * 6.99 * 0.35 = 4.893
-        let expected_first = base;
         let base_cents = dollars_to_cents(base);
         let expected_first_cents = base_cents;
         let expected_second_cents = (2 * base_cents * ADDITIONAL_ITEM_RATE_BP + 50) / 100;
@@ -1386,7 +1433,8 @@ mod tests {
         // Perishable surcharge was removed — cross-province perishables are now blocked entirely.
         // Second item (perishable): additional item rate = (899 * 35 + 50) / 100 = 315 cents
         let perish_cost = resp.breakdown["cart_perish"];
-        let expected = (1 * dollars_to_cents(FALLBACK_SAME_PROVINCE) * ADDITIONAL_ITEM_RATE_BP + 50) / 100;
+        let expected =
+            (dollars_to_cents(FALLBACK_SAME_PROVINCE) * ADDITIONAL_ITEM_RATE_BP + 50) / 100;
         assert_eq!(perish_cost, expected);
     }
 

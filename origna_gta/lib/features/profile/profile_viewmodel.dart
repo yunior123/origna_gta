@@ -5,5 +5,6 @@ export 'orignabase_profile_viewmodel.dart';
 
 import 'orignabase_profile_viewmodel.dart';
 
-/// Backward-compatible typedef.
+/// Backward-compatible typedef so older imports referencing [ProfileViewModel]
+/// continue to resolve to [OrignaBaseProfileViewModel].
 typedef ProfileViewModel = OrignaBaseProfileViewModel;

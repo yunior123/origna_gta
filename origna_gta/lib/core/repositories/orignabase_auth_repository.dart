@@ -41,34 +41,42 @@ class OrignaBaseAuthException implements Exception {
 
 /// OrignaBase implementation of [AuthRepository].
 ///
-/// Handles all authentication flows: email/password, Google OAuth, Apple Sign-In,
-/// email verification, password reset, and account deletion.
+/// This repository handles all authentication-related operations, including
+/// multi-factor authentication, third-party OAuth providers, and account management.
 ///
-/// Google Sign-In on web uses server-side OAuth redirect via `/auth/google/start`
-/// because `google_sign_in_web` does not support `authenticate()`.
-///
-/// Error codes from OrignaBase SDK typed exceptions are mapped to Firebase-style
-/// codes (`user-not-found`, `wrong-password`, etc.) for backward compatibility
-/// with the existing error handling in login_viewmodel.dart.
+/// Error codes from OrignaBase SDK exceptions are mapped to Firebase-style
+/// codes (`user-not-found`, `wrong-password`, etc.) to maintain compatibility
+/// with existing error handling logic in the app.
 class OrignaBaseAuthRepository implements AuthRepository {
   final OrignaBase _ob;
   bool _googleSignInInitialized = false;
 
+  /// Creates a new instance of [OrignaBaseAuthRepository].
   OrignaBaseAuthRepository(this._ob);
 
   /// Timestamp of last successful re-authentication (epoch milliseconds).
+  /// Used to enforce a freshness window for sensitive operations like account deletion.
   int? _lastReAuthenticatedAt;
 
   // ---------------------------------------------------------------------------
   // Auth methods
   // ---------------------------------------------------------------------------
 
-  /// Registers a new user with email/password, creates the profile document,
-  /// and sends a verification email.
+  /// Registers a new user with email and password.
   ///
-  /// Profile document includes: roles=[buyer], preferredLanguage (from device),
-  /// CASL consent fields (marketingOptIn, consentMethod, timestamps),
-  /// and terms/privacy acceptance.
+  /// Parameters:
+  /// - [email]: the user's email address.
+  /// - [password]: the user's chosen password.
+  /// - [name]: the user's display name.
+  /// - [marketingOptIn]: whether the user opted into marketing communications.
+  ///
+  /// This method also:
+  /// 1. Creates a user profile document in the `users` collection.
+  /// 2. Sends an email verification link.
+  ///
+  /// Throws:
+  /// - [OrignaBaseAuthException] with code `invalid-email` if the email format is incorrect.
+  /// - [OrignaBaseAuthException] with various codes if the registration fails.
   @override
   Future<void> registerWithEmail(
     String email,
@@ -114,10 +122,20 @@ class OrignaBaseAuthRepository implements AuthRepository {
     }
   }
 
-  /// Signs in with email/password. Retries up to 3 times on network errors.
+  /// Signs in a user with email and password.
   ///
-  /// SECURITY: Never retries on 429 (rate limit) to avoid amplifying brute-force.
-  /// Throws `mfa-required` with [challengeToken] if MFA is enabled on the account.
+  /// Parameters:
+  /// - [email]: the user's email address.
+  /// - [password]: the user's password.
+  ///
+  /// This method includes a retry mechanism for network errors (up to 3 attempts).
+  ///
+  /// Throws:
+  /// - [OrignaBaseAuthException] with code `mfa-required` if the account has MFA enabled.
+  /// - [OrignaBaseAuthException] with various codes if sign-in fails.
+  ///
+  /// Gotchas:
+  /// - Retries are avoided on rate-limited (429) errors to prevent amplifying brute-force attacks.
   @override
   Future<void> signInWithEmail(String email, String password) async {
     final trimmedEmail = email.trim().toLowerCase();
@@ -167,12 +185,15 @@ class OrignaBaseAuthRepository implements AuthRepository {
     }
   }
 
-  /// Initiates Google Sign-In.
+  /// Signs in a user with Google OAuth.
   ///
-  /// - **Web**: Redirects to OrignaBase `/auth/google/start` OAuth flow.
-  ///   google_sign_in_web GIS SDK does NOT support `authenticate()`.
-  /// - **Mobile**: Uses native Google Sign-In SDK to get ID token,
-  ///   then exchanges it via `_ob.auth.signInWithGoogle()`.
+  /// Handles platform-specific differences:
+  /// - **Web**: Uses a server-side OAuth redirect flow via `/auth/google/start`.
+  /// - **Mobile**: Uses the native Google Sign-In SDK to obtain an ID token.
+  ///
+  /// Throws:
+  /// - [OrignaBaseAuthException] if Google Sign-In is disabled on the backend.
+  /// - [OrignaBaseAuthException] if the ID token cannot be obtained (mobile).
   @override
   Future<void> signInWithGoogle() async {
     try {
@@ -254,10 +275,10 @@ class OrignaBaseAuthRepository implements AuthRepository {
     }
   }
 
-  /// Initiates Apple Sign-In via the native Sign In with Apple SDK.
+  /// Signs in a user with Apple Sign-In.
   ///
-  /// Apple provides the user's name only on the FIRST sign-in. The name is
-  /// persisted to `pending_profiles` for recovery during profile creation.
+  /// Uses the native `SignInWithApple` SDK. The user's name is only provided
+  /// by Apple on the very first sign-in attempt and is persisted to `pending_profiles`.
   @override
   Future<void> signInWithApple() async {
     try {
@@ -315,10 +336,10 @@ class OrignaBaseAuthRepository implements AuthRepository {
     }
   }
 
-  /// Signs out of OrignaBase, clears FCM notification token, and disconnects Google.
+  /// Signs out the current user.
   ///
-  /// Waits up to 5 seconds for the auth state change event to propagate
-  /// before returning. Best-effort: does not block navigation on timeout.
+  /// Clears the notification token from the backend, signs out of OrignaBase,
+  /// and disconnects the Google account if applicable.
   @override
   Future<void> signOut() async {
     try {
@@ -353,6 +374,9 @@ class OrignaBaseAuthRepository implements AuthRepository {
   // Email verification
   // ---------------------------------------------------------------------------
 
+  /// Sends a verification email to the currently authenticated user.
+  ///
+  /// Throws [OrignaBaseAuthException] if no user is signed in.
   @override
   Future<void> sendEmailVerification() async {
     final accessToken = _ob.auth.accessToken;
@@ -372,6 +396,10 @@ class OrignaBaseAuthRepository implements AuthRepository {
     }
   }
 
+  /// Checks whether the current user's email address has been verified.
+  ///
+  /// This method uses the access token claim for a fast path and refreshes
+  /// the token to pick up recent changes if necessary.
   @override
   Future<bool> isEmailVerified() async {
     // Fast path: trust the current access-token claim when it already says the
@@ -396,6 +424,9 @@ class OrignaBaseAuthRepository implements AuthRepository {
   // Password reset
   // ---------------------------------------------------------------------------
 
+  /// Sends a password reset email to the specified address.
+  ///
+  /// Implements anti-enumeration security by swallowing "user-not-found" errors.
   @override
   Future<void> sendPasswordResetEmail(String email) async {
     final trimmedEmail = email.trim().toLowerCase();
@@ -423,6 +454,7 @@ class OrignaBaseAuthRepository implements AuthRepository {
     }
   }
 
+  /// Completes the password reset flow using a verification code.
   @override
   Future<void> confirmPasswordReset(String code, String newPassword) async {
     try {
@@ -436,10 +468,10 @@ class OrignaBaseAuthRepository implements AuthRepository {
   // Account management
   // ---------------------------------------------------------------------------
 
-  /// Re-authenticates the user by verifying their password against OrignaBase.
+  /// Re-authenticates the user with their password.
   ///
-  /// Must be called before sensitive operations like [deleteAccount].
-  /// Records the timestamp so callers can enforce a freshness window.
+  /// This is required before sensitive operations like account deletion.
+  /// Sets [_lastReAuthenticatedAt] to the current time.
   Future<void> reAuthenticate(String password) async {
     final email = _ob.auth.currentState.email;
     if (email == null || email.isEmpty) {
@@ -456,10 +488,10 @@ class OrignaBaseAuthRepository implements AuthRepository {
     }
   }
 
-  /// Permanently deletes the user's account and signs out.
+  /// Permanently deletes the current user's account and signs them out.
   ///
-  /// Requires [reAuthenticate] to have been called within the last 60 seconds.
-  /// Sends DELETE_MY_ACCOUNT confirmation to the server-side handler.
+  /// Throws [OrignaBaseAuthException] with code `requires-recent-login` if the
+  /// user has not re-authenticated within the last 60 seconds.
   @override
   Future<void> deleteAccount() async {
     final userId = _currentUserId;
@@ -484,6 +516,10 @@ class OrignaBaseAuthRepository implements AuthRepository {
     await _ob.auth.signOut();
   }
 
+  /// Ensures that a user profile document exists in the `users` collection.
+  ///
+  /// This is called during app initialization to recover from failed profile
+  /// creation attempts during sign-up.
   @override
   Future<void> ensureUserDocumentExists() async {
     final accessToken = _ob.auth.accessToken;
@@ -505,6 +541,10 @@ class OrignaBaseAuthRepository implements AuthRepository {
     }
   }
 
+  /// Validates whether the current user session is still valid.
+  ///
+  /// Refreshes the token and checks for the existence of the user document.
+  /// Automatically signs out the user if the session is stale or the account is disabled.
   @override
   Future<bool> validateCurrentUser() async {
     final accessToken = _ob.auth.accessToken;
@@ -550,6 +590,9 @@ class OrignaBaseAuthRepository implements AuthRepository {
     }
   }
 
+  /// Provides a stream of the user's profile model.
+  ///
+  /// Emits the current profile immediately and updates whenever the auth state changes.
   @override
   Stream<UserModel?> watchProfile(String userId) async* {
     // Emit immediately from the current auth state so the provider resolves
@@ -561,6 +604,7 @@ class OrignaBaseAuthRepository implements AuthRepository {
     }
   }
 
+  /// Internal helper to fetch the profile document based on an [AuthState].
   Future<UserModel?> _fetchProfileForAuthState(
     String userId,
     AuthState authState,
@@ -594,7 +638,7 @@ class OrignaBaseAuthRepository implements AuthRepository {
   // Private helpers
   // ---------------------------------------------------------------------------
 
-  /// Current user ID from the last known auth state, or null.
+  /// Returns the current user ID from the OrignaBase client.
   String? get _currentUserId {
     return _ob.auth.currentUserId;
   }

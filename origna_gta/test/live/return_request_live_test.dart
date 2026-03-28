@@ -10,6 +10,11 @@ void main() {
     defaultValue: false,
   );
 
+  if (!runLive) {
+    test('live tests disabled', () {});
+    return;
+  }
+
   bool isExpectedPermissionError(Object error) {
     final msg = error.toString().toLowerCase();
     return msg.contains('403') ||
@@ -56,7 +61,6 @@ void main() {
           );
         }
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
   });
@@ -90,7 +94,7 @@ void main() {
       const userId = 'users:e8baqega99d6c1x8cf9n';
       final stream = repo.watchBuyerOrders(userId);
       expect(stream, isA<Stream<Object?>>());
-    }, skip: !runLive);
+    });
 
     test(
       'fetchOrderById returns order details',
@@ -112,7 +116,6 @@ void main() {
           );
         }
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
   });

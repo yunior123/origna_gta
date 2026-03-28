@@ -55,8 +55,7 @@ pub fn extract_claims(auth_header: Option<&str>, jwt_keys: &JwtKeys) -> McpResul
 
 /// Verify JWT and map ob-auth Claims to McpClaims
 fn parse_jwt_claims(token: &str, jwt_keys: &JwtKeys) -> McpResult<McpClaims> {
-    let claims = verify_token(token, jwt_keys)
-        .map_err(|_| McpError::Unauthorized)?;
+    let claims = verify_token(token, jwt_keys).map_err(|_| McpError::Unauthorized)?;
 
     // Reject non-access tokens (refresh, email_verify, password_reset, etc.)
     if claims.typ != "access" {
@@ -265,14 +264,8 @@ mod tests {
     #[test]
     fn test_extract_claims_valid() {
         let keys = test_keys();
-        let token = issue_access_token(
-            "users:u1",
-            &["buyer".to_string()],
-            &keys,
-            3600,
-            true,
-        )
-        .unwrap();
+        let token =
+            issue_access_token("users:u1", &["buyer".to_string()], &keys, 3600, true).unwrap();
 
         let header = format!("Bearer {}", token);
         let result = extract_claims(Some(&header), &keys);
@@ -286,14 +279,8 @@ mod tests {
     #[test]
     fn test_extract_claims_admin_role() {
         let keys = test_keys();
-        let token = issue_access_token(
-            "users:admin1",
-            &["admin".to_string()],
-            &keys,
-            3600,
-            true,
-        )
-        .unwrap();
+        let token =
+            issue_access_token("users:admin1", &["admin".to_string()], &keys, 3600, true).unwrap();
 
         let header = format!("Bearer {}", token);
         let claims = extract_claims(Some(&header), &keys).unwrap();
@@ -326,14 +313,8 @@ mod tests {
         let sign_keys = JwtKeys::from_secret("signing-secret");
         let verify_keys = JwtKeys::from_secret("different-secret");
 
-        let token = issue_access_token(
-            "users:u1",
-            &["buyer".to_string()],
-            &sign_keys,
-            3600,
-            true,
-        )
-        .unwrap();
+        let token =
+            issue_access_token("users:u1", &["buyer".to_string()], &sign_keys, 3600, true).unwrap();
 
         let header = format!("Bearer {}", token);
         let result = extract_claims(Some(&header), &verify_keys);
@@ -359,14 +340,8 @@ mod tests {
     fn test_extract_claims_uid_without_users_prefix() {
         let keys = test_keys();
         // sub without "users:" prefix — uid should equal sub
-        let token = issue_access_token(
-            "custom_id_123",
-            &["seller".to_string()],
-            &keys,
-            3600,
-            true,
-        )
-        .unwrap();
+        let token = issue_access_token("custom_id_123", &["seller".to_string()], &keys, 3600, true)
+            .unwrap();
 
         let header = format!("Bearer {}", token);
         let claims = extract_claims(Some(&header), &keys).unwrap();
@@ -395,14 +370,7 @@ mod tests {
     #[test]
     fn test_extract_claims_no_roles() {
         let keys = test_keys();
-        let token = issue_access_token(
-            "users:u1",
-            &[],
-            &keys,
-            3600,
-            true,
-        )
-        .unwrap();
+        let token = issue_access_token("users:u1", &[], &keys, 3600, true).unwrap();
 
         let header = format!("Bearer {}", token);
         let claims = extract_claims(Some(&header), &keys).unwrap();

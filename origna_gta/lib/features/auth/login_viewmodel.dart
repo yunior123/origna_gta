@@ -76,12 +76,25 @@ String _friendlyAuthError(OrignaBaseAuthException e) {
 /// - [LoginState] for the state shape
 /// - [AuthRepository] for persistence layer
 /// - [ValidationConstants] for input validation rules
+///
+/// Gotchas:
+/// - This notifier mutates UI-facing flags aggressively; screens should treat
+///   [LoginState] as the single source of truth instead of caching form outcomes.
+/// - Several success paths log analytics with `unawaited`, so analytics failures
+///   never block sign-in.
 class LoginViewModel extends StateNotifier<LoginState> {
   final Ref _ref;
 
   LoginViewModel(this._ref) : super(const LoginState());
 
   /// Handles Apple Sign-In flow.
+  ///
+  /// Parameters:
+  /// - None. The current mode and loading state are taken from [state].
+  ///
+  /// Returns:
+  /// - Completes when the Apple sign-in attempt has either updated [state] with
+  ///   success or surfaced an error message.
   ///
   /// Guards against double-tap via [state.isLoading]. Silently ignores
   /// user cancellation (no error message shown). Logs analytics on success.
@@ -120,16 +133,27 @@ class LoginViewModel extends StateNotifier<LoginState> {
 
   /// Handles email/password authentication (login or registration based on [state.isLogin]).
   ///
-  /// [email] — user's email address.
-  /// [password] — user's password.
-  /// [name] — required for registration, ignored for login.
-  /// [marketingOptIn] — whether user consents to marketing emails (registration only).
+  /// Parameters:
+  /// - [email]: user-supplied email address.
+  /// - [password]: plaintext password for sign-in or registration.
+  /// - [name]: optional display name; required only when registering.
+  /// - [marketingOptIn]: whether to persist marketing consent during registration.
+  ///
+  /// Returns:
+  /// - Completes when [state] reflects success, MFA challenge requirements, or
+  ///   the translated error message for the failed attempt.
   ///
   /// Registration enforces strong password policy ([_validatePasswordStrength]).
   /// Login does NOT enforce email verification — it's a checkout gate instead.
   ///
   /// On MFA-required: transitions state to MFA mode with [challengeToken].
   /// On success: sets [isSuccess] = true, clears MFA state.
+  ///
+  /// Gotchas:
+  /// - Validation rules differ between login and registration; password strength
+  ///   and name checks are intentionally skipped for login.
+  /// - Backend `mfa-required` errors are treated as a successful password check
+  ///   and move the UI into challenge mode instead of surfacing an error.
   Future<void> handleAuth({
     required String email,
     required String password,
@@ -242,6 +266,12 @@ class LoginViewModel extends StateNotifier<LoginState> {
 
   /// Handles Google Sign-In flow.
   ///
+  /// Parameters:
+  /// - None. Provider configuration is read from injected repositories.
+  ///
+  /// Returns:
+  /// - Completes when [state] has been updated for success or failure.
+  ///
   /// Guards against double-tap via [state.isLoading]. Silently ignores
   /// popup-closed/user cancellation. Logs analytics on success.
   Future<void> handleGoogleSignIn() async {
@@ -270,18 +300,28 @@ class LoginViewModel extends StateNotifier<LoginState> {
     }
   }
 
+/// Sends a password reset email to [email].
+  ///
+  /// Delegates to [AuthRepository.sendPasswordResetEmail]. Errors are not caught —
+  /// callers should wrap in try/catch and show a snackbar.
   Future<void> resetPassword(String email) async {
     await _ref.read(authRepositoryProvider).sendPasswordResetEmail(email);
   }
 
+  /// Sets the terms-and-conditions acceptance checkbox value.
   void setAcceptedTerms(bool value) {
     state = state.copyWith(acceptedTerms: value);
   }
 
+  /// Sets the marketing opt-in checkbox value (registration only).
   void setMarketingOptIn(bool value) {
     state = state.copyWith(marketingOptIn: value);
   }
 
+  /// Toggles between login and registration mode.
+  ///
+  /// Resets form state (terms, marketing, MFA, errors) to prevent stale data
+  /// from leaking between modes.
   void toggleAuthMode() {
     state = state.copyWith(
       isLogin: !state.isLogin,
@@ -294,11 +334,15 @@ class LoginViewModel extends StateNotifier<LoginState> {
     );
   }
 
+  /// Toggles password field visibility.
   void toggleObscurePassword() {
     state = state.copyWith(obscurePassword: !state.obscurePassword);
   }
 
-  /// Validate email format
+  /// Validates email format and length.
+  ///
+  /// Returns a translation key string on failure, or null when valid.
+  /// Checks: non-empty, min/max length ([ValidationConstants]), regex pattern.
   String? _validateEmail(String? email) {
     if (email == null || email.trim().isEmpty) {
       return 'auth.validation.email_required_validation';
@@ -321,7 +365,10 @@ class LoginViewModel extends StateNotifier<LoginState> {
     return null; // Valid
   }
 
-  /// Validate name format (must match server-side validation)
+  /// Validates display name (registration only).
+  ///
+  /// Returns a translation key string on failure, or null when valid.
+  /// Allows Unicode letters, spaces, hyphens, apostrophes, and periods — mirrors backend.
   String? _validateName(String? name) {
     if (name == null || name.trim().isEmpty) {
       return 'auth.validation.name_required_validation';
@@ -346,7 +393,11 @@ class LoginViewModel extends StateNotifier<LoginState> {
     return null; // Valid
   }
 
-  /// Validate password strength (SECURITY FIX M-3)
+  /// Validates password strength for registration (SECURITY FIX M-3).
+  ///
+  /// Returns a translation key string on failure, or null when valid.
+  /// Enforces: min 8 chars, uppercase, lowercase, digit, special char,
+  /// not in common password list. Provides specific hints for each failure.
   String? _validatePasswordStrength(String password) {
     // F-84: Enforce centralised password policy for registration
     if (password.length < ValidationConstants.minPasswordLength) {

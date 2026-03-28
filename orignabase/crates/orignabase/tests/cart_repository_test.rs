@@ -38,11 +38,7 @@ async fn register_test_user(client: &reqwest::Client) -> (String, String, String
     (token, user_id, email)
 }
 
-async fn graphql(
-    client: &reqwest::Client,
-    token: Option<&str>,
-    query: &str,
-) -> (u16, Value) {
+async fn graphql(client: &reqwest::Client, token: Option<&str>, query: &str) -> (u16, Value) {
     let url = format!("{}/graphql", base_url());
     let mut req = client.post(&url).json(&json!({"query": query}));
     if let Some(t) = token {
@@ -72,9 +68,7 @@ async fn test_cart_add_item() {
     }))
     .unwrap();
     let escaped = serde_json::to_string(&data).unwrap();
-    let query = format!(
-        r#"mutation {{ create(collection: "carts", data: {escaped}) }}"#
-    );
+    let query = format!(r#"mutation {{ create(collection: "carts", data: {escaped}) }}"#);
     let (status, body) = graphql(&client, Some(&token), &query).await;
 
     assert_eq!(status, 200, "GraphQL should return 200");
@@ -100,9 +94,7 @@ async fn test_cart_add_item_missing_product_id() {
     }))
     .unwrap();
     let escaped = serde_json::to_string(&data).unwrap();
-    let query = format!(
-        r#"mutation {{ create(collection: "carts", data: {escaped}) }}"#
-    );
+    let query = format!(r#"mutation {{ create(collection: "carts", data: {escaped}) }}"#);
     let (status, body) = graphql(&client, Some(&token), &query).await;
 
     assert_eq!(status, 200);
@@ -122,9 +114,7 @@ async fn test_cart_add_requires_authentication() {
     }))
     .unwrap();
     let escaped = serde_json::to_string(&data).unwrap();
-    let query = format!(
-        r#"mutation {{ create(collection: "carts", data: {escaped}) }}"#
-    );
+    let query = format!(r#"mutation {{ create(collection: "carts", data: {escaped}) }}"#);
     let (status, body) = graphql(&client, None, &query).await;
 
     // GraphQL always returns 200 — auth failure is in the response body
@@ -147,14 +137,15 @@ async fn test_cart_get() {
 
     let filters = serde_json::to_string(&json!({"userId": {"_eq": user_id}})).unwrap();
     let escaped_f = serde_json::to_string(&filters).unwrap();
-    let query = format!(
-        r#"{{ list(collection: "carts", filters: {escaped_f}, limit: 10) }}"#
-    );
+    let query = format!(r#"{{ list(collection: "carts", filters: {escaped_f}, limit: 10) }}"#);
     let (status, body) = graphql(&client, Some(&token), &query).await;
 
     assert_eq!(status, 200);
     let result = &body["data"]["list"];
-    assert!(result.is_array() || result.is_null(), "Should return array or null");
+    assert!(
+        result.is_array() || result.is_null(),
+        "Should return array or null"
+    );
 }
 
 #[tokio::test]
@@ -193,31 +184,30 @@ async fn test_cart_clear() {
     // List cart items for user, then batch delete
     let filters = serde_json::to_string(&json!({"userId": {"_eq": user_id}})).unwrap();
     let escaped_f = serde_json::to_string(&filters).unwrap();
-    let list_query = format!(
-        r#"{{ list(collection: "carts", filters: {escaped_f}, limit: 100) }}"#
-    );
+    let list_query =
+        format!(r#"{{ list(collection: "carts", filters: {escaped_f}, limit: 100) }}"#);
     let (_, list_body) = graphql(&client, Some(&token), &list_query).await;
 
-    if let Some(items) = list_body["data"]["list"].as_array() {
-        if !items.is_empty() {
-            let ids: Vec<String> = items
-                .iter()
-                .filter_map(|item| {
-                    item["id"].as_str().map(|s| {
-                        s.split(':').last().unwrap_or(s).to_string()
-                    })
-                })
-                .collect();
+    if let Some(items) = list_body["data"]["list"].as_array()
+        && !items.is_empty()
+    {
+        let ids: Vec<String> = items
+            .iter()
+            .filter_map(|item| {
+                item["id"]
+                    .as_str()
+                    .map(|s| s.split(':').next_back().unwrap_or(s).to_string())
+            })
+            .collect();
 
-            if !ids.is_empty() {
-                let ids_json: Vec<String> = ids.iter().map(|id| format!("\"{id}\"")).collect();
-                let del_query = format!(
-                    r#"mutation {{ batchDelete(collection: "carts", ids: [{}]) }}"#,
-                    ids_json.join(", ")
-                );
-                let (status, _) = graphql(&client, Some(&token), &del_query).await;
-                assert_eq!(status, 200, "Batch delete should succeed");
-            }
+        if !ids.is_empty() {
+            let ids_json: Vec<String> = ids.iter().map(|id| format!("\"{id}\"")).collect();
+            let del_query = format!(
+                r#"mutation {{ batchDelete(collection: "carts", ids: [{}]) }}"#,
+                ids_json.join(", ")
+            );
+            let (status, _) = graphql(&client, Some(&token), &del_query).await;
+            assert_eq!(status, 200, "Batch delete should succeed");
         }
     }
 }

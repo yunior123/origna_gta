@@ -307,10 +307,10 @@ mod tests {
     use super::*;
     use axum::extract::State;
     use ob_auth::middleware::AuthContext;
-    use std::sync::Mutex;
     use std::time::Duration;
+    use tokio::sync::Mutex;
 
-    static ENV_MUTEX: Mutex<()> = Mutex::new(());
+    static ENV_MUTEX: Mutex<()> = Mutex::const_new(());
 
     #[tokio::test]
     async fn test_get_suggestions_success() {
@@ -320,7 +320,7 @@ mod tests {
         use wiremock::matchers::{method, query_param};
         use wiremock::{Mock, MockServer, ResponseTemplate};
 
-        let _lock = ENV_MUTEX.lock().unwrap();
+        let _lock = ENV_MUTEX.lock().await;
         let server = MockServer::start().await;
         unsafe { std::env::set_var("GEOAPIFY_API_URL", server.uri()) };
 
@@ -443,7 +443,7 @@ mod tests {
         use wiremock::matchers::method;
         use wiremock::{Mock, MockServer, ResponseTemplate};
 
-        let _lock = ENV_MUTEX.lock().unwrap();
+        let _lock = ENV_MUTEX.lock().await;
         let server = MockServer::start().await;
         unsafe { std::env::set_var("GEOAPIFY_API_URL", server.uri()) };
 
@@ -493,7 +493,7 @@ mod tests {
         use wiremock::matchers::method;
         use wiremock::{Mock, MockServer, ResponseTemplate};
 
-        let _lock = ENV_MUTEX.lock().unwrap();
+        let _lock = ENV_MUTEX.lock().await;
         let server = MockServer::start().await;
         unsafe { std::env::set_var("GEOAPIFY_API_URL", server.uri()) };
 

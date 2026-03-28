@@ -391,15 +391,15 @@ mod tests {
             r#"{{"client_email":"t@t.com","private_key":"k","token_uri":"{}/token"}}"#,
             server.uri()
         );
-    let result = get_access_token(&client, &sa_json).await;
-    assert!(matches!(result, Err(PushError::OAuth2(_))));
-    let err_str = result.unwrap_err().to_string();
-    assert!(
-        err_str.contains("Token endpoint returned error")
-            || err_str.contains("invalid_grant")
-            || err_str.contains("OAuth2"),
-        "Got: {err_str}"
-    );
+        let result = get_access_token(&client, &sa_json).await;
+        assert!(matches!(result, Err(PushError::OAuth2(_))));
+        let err_str = result.unwrap_err().to_string();
+        assert!(
+            err_str.contains("Token endpoint returned error")
+                || err_str.contains("invalid_grant")
+                || err_str.contains("OAuth2"),
+            "Got: {err_str}"
+        );
     }
 
     // --- Coverage: OAuth2 token response parse error (lines 124-127, 129) ---

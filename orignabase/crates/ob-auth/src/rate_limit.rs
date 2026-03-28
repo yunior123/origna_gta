@@ -104,6 +104,62 @@ pub async fn rate_limit_middleware(
     Ok(next.run(request).await)
 }
 
+/// Database-backed rate limiter for user actions (e.g., TOTP attempts).
+/// Used for per-user rate limiting (not IP-based).
+pub async fn check_rate_limit(
+    db: &ob_database::DatabaseClient,
+    user_id: &str,
+    action: &str,
+    max_attempts: i64,
+    window_seconds: i64,
+) -> std::result::Result<(), Error> {
+    use chrono::Utc;
+
+    let now = Utc::now().timestamp();
+    let window_start = now - window_seconds;
+
+    // Count recent attempts (parameterized to prevent SQL injection)
+    let query = "SELECT count() FROM mfa_attempts WHERE user_id = $user_id AND action = $action AND timestamp >= $window_start GROUP ALL";
+
+    let results = db
+        .query_bind_value(
+            query,
+            serde_json::json!({
+                "user_id": user_id,
+                "action": action,
+                "window_start": window_start,
+            }),
+        )
+        .await
+        .map_err(|e| Error::Internal(format!("Rate limit check failed: {}", e)))?;
+
+    let count = if let Some(row) = results.first() {
+        row.get("count").and_then(|v| v.as_i64()).unwrap_or(0)
+    } else {
+        0
+    };
+
+    if count >= max_attempts {
+        return Err(Error::Auth(
+            "Too many failed attempts. Please try again later.".into(),
+        ));
+    }
+
+    // Log this attempt
+    let _ = db
+        .create_document(
+            "mfa_attempts",
+            serde_json::json!({
+                "user_id": user_id,
+                "action": action,
+                "timestamp": now,
+            }),
+        )
+        .await;
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -222,10 +278,7 @@ mod tests {
     #[test]
     fn test_extract_ip_from_trusted_proxy_x_real_ip() {
         // Peer is 127.0.0.1 (Caddy) → trust X-Real-IP
-        let req = build_request_with_peer(
-            "127.0.0.1:8080",
-            vec![("x-real-ip", "198.51.100.7")],
-        );
+        let req = build_request_with_peer("127.0.0.1:8080", vec![("x-real-ip", "198.51.100.7")]);
         let ip = extract_ip(&req);
         assert_eq!(ip, IpAddr::V4(Ipv4Addr::new(198, 51, 100, 7)));
     }
@@ -243,77 +296,16 @@ mod tests {
     #[test]
     fn test_extract_ip_rejects_spoofed_xff_from_untrusted_peer() {
         // Peer is NOT 127.0.0.1 → ignore X-Forwarded-For, use peer IP
-        let req = build_request_with_peer(
-            "203.0.113.99:54321",
-            vec![("x-forwarded-for", "1.2.3.4")],
-        );
+        let req =
+            build_request_with_peer("203.0.113.99:54321", vec![("x-forwarded-for", "1.2.3.4")]);
         let ip = extract_ip(&req);
         assert_eq!(ip, IpAddr::V4(Ipv4Addr::new(203, 0, 113, 99)));
     }
 
     #[test]
     fn test_extract_ip_rejects_spoofed_x_real_ip_from_untrusted_peer() {
-        let req = build_request_with_peer(
-            "10.0.0.5:12345",
-            vec![("x-real-ip", "1.2.3.4")],
-        );
+        let req = build_request_with_peer("10.0.0.5:12345", vec![("x-real-ip", "1.2.3.4")]);
         let ip = extract_ip(&req);
         assert_eq!(ip, IpAddr::V4(Ipv4Addr::new(10, 0, 0, 5)));
     }
-}
-
-/// Database-backed rate limiter for user actions (e.g., TOTP attempts).
-/// Used for per-user rate limiting (not IP-based).
-pub async fn check_rate_limit(
-    db: &ob_database::DatabaseClient,
-    user_id: &str,
-    action: &str,
-    max_attempts: i64,
-    window_seconds: i64,
-) -> std::result::Result<(), Error> {
-    use chrono::Utc;
-
-    let now = Utc::now().timestamp();
-    let window_start = now - window_seconds;
-
-    // Count recent attempts (parameterized to prevent SQL injection)
-    let query = "SELECT count() FROM mfa_attempts WHERE user_id = $user_id AND action = $action AND timestamp >= $window_start GROUP ALL";
-
-    let results = db
-        .query_bind_value(
-            query,
-            serde_json::json!({
-                "user_id": user_id,
-                "action": action,
-                "window_start": window_start,
-            }),
-        )
-        .await
-        .map_err(|e| Error::Internal(format!("Rate limit check failed: {}", e)))?;
-
-    let count = if let Some(row) = results.first() {
-        row.get("count").and_then(|v| v.as_i64()).unwrap_or(0)
-    } else {
-        0
-    };
-
-    if count >= max_attempts {
-        return Err(Error::Auth(
-            "Too many failed attempts. Please try again later.".into(),
-        ));
-    }
-
-    // Log this attempt
-    let _ = db
-        .create_document(
-            "mfa_attempts",
-            serde_json::json!({
-                "user_id": user_id,
-                "action": action,
-                "timestamp": now,
-            }),
-        )
-        .await;
-
-    Ok(())
 }

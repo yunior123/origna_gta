@@ -13,6 +13,11 @@ void main() {
     defaultValue: false,
   );
 
+  if (!runLive) {
+    test('live tests disabled', () {});
+    return;
+  }
+
   group('OrignaBaseCartRepository live', () {
     late ProviderContainer container;
     late OrignaBase ob;
@@ -52,7 +57,6 @@ void main() {
         final cartItems = await cartStream.first;
         expect(cartItems, isA<List<dynamic>>());
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -68,7 +72,6 @@ void main() {
           // Product may not exist in dev — graceful handling is acceptable
         }
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -81,7 +84,6 @@ void main() {
         final cartItems = await cartStream.first;
         expect(cartItems, isEmpty);
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -94,7 +96,6 @@ void main() {
           // Expected for nonexistent item
         }
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -107,8 +108,7 @@ void main() {
           // Expected for nonexistent item
         }
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
-  }, skip: !runLive);
+  });
 }

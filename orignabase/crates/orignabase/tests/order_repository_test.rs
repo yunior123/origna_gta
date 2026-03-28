@@ -19,8 +19,14 @@ async fn register_test_user(client: &reqwest::Client) -> (String, String, String
         .expect("register failed");
     assert_eq!(resp.status(), 200);
     let body: Value = resp.json().await.unwrap();
-    let token = body["access_token"].as_str().expect("missing access_token").to_string();
-    let user_id = body["user"]["id"].as_str().expect("missing user.id").to_string();
+    let token = body["access_token"]
+        .as_str()
+        .expect("missing access_token")
+        .to_string();
+    let user_id = body["user"]["id"]
+        .as_str()
+        .expect("missing user.id")
+        .to_string();
     (token, user_id, email)
 }
 
@@ -102,9 +108,8 @@ async fn test_order_get_buyer_orders() {
 
     let filters = serde_json::to_string(&json!({"buyerId": {"_eq": user_id}})).unwrap();
     let escaped_f = serde_json::to_string(&filters).unwrap();
-    let query = format!(
-        r#"{{ list(collection: "orders", filters: {escaped_f}, limit: 10, offset: 0) }}"#
-    );
+    let query =
+        format!(r#"{{ list(collection: "orders", filters: {escaped_f}, limit: 10, offset: 0) }}"#);
     let (status, body) = graphql(&client, Some(&token), &query).await;
 
     assert_eq!(status, 200);
@@ -118,11 +123,11 @@ async fn test_order_get_seller_orders() {
     let client = reqwest::Client::new();
     let (token, _user_id, _email) = register_test_user(&client).await;
 
-    let filters = serde_json::to_string(&json!({"sellerId": {"_eq": "users:test_seller"}})).unwrap();
+    let filters =
+        serde_json::to_string(&json!({"sellerId": {"_eq": "users:test_seller"}})).unwrap();
     let escaped_f = serde_json::to_string(&filters).unwrap();
-    let query = format!(
-        r#"{{ list(collection: "orders", filters: {escaped_f}, limit: 10, offset: 0) }}"#
-    );
+    let query =
+        format!(r#"{{ list(collection: "orders", filters: {escaped_f}, limit: 10, offset: 0) }}"#);
     let (status, body) = graphql(&client, Some(&token), &query).await;
 
     assert_eq!(status, 200);

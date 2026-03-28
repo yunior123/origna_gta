@@ -20,7 +20,10 @@ async fn register_test_user(client: &Client) -> (String, String) {
         .expect("register failed");
     assert_eq!(resp.status(), 200);
     let body: Value = resp.json().await.unwrap();
-    let token = body["access_token"].as_str().expect("missing access_token").to_string();
+    let token = body["access_token"]
+        .as_str()
+        .expect("missing access_token")
+        .to_string();
     let user_id = body["user"]["id"].as_str().unwrap_or("").to_string();
     (token, user_id)
 }
@@ -60,7 +63,10 @@ async fn test_shipping_create_product_and_order() {
     let query = create_doc_query("products", &product_data);
     let (status, body) = graphql(&client, Some(&seller_token), &query).await;
     assert_eq!(status, 200);
-    let product_id = body["data"]["create"]["id"].as_str().unwrap_or("").to_string();
+    let product_id = body["data"]["create"]["id"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
 
     if !product_id.is_empty() {
         // Create order via GraphQL
@@ -99,7 +105,10 @@ async fn test_shipping_free_threshold() {
     let query = create_doc_query("products", &product_data);
     let (status, body) = graphql(&client, Some(&seller_token), &query).await;
     assert_eq!(status, 200);
-    let product_id = body["data"]["create"]["id"].as_str().unwrap_or("").to_string();
+    let product_id = body["data"]["create"]["id"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
 
     if !product_id.is_empty() {
         // Order below threshold — should have shipping cost
@@ -129,7 +138,9 @@ async fn test_shipping_free_threshold() {
         let query = create_doc_query("orders", &order_data2);
         let (status, body) = graphql(&client, Some(&buyer_token), &query).await;
         assert_eq!(status, 200);
-        let shipping = body["data"]["create"]["shippingCostCents"].as_i64().unwrap_or(-1);
+        let shipping = body["data"]["create"]["shippingCostCents"]
+            .as_i64()
+            .unwrap_or(-1);
         assert_eq!(shipping, 0, "Order above $75 should have free shipping");
     }
 }
@@ -150,7 +161,10 @@ async fn test_shipping_cost_in_integer_cents() {
     let query = create_doc_query("products", &product_data);
     let (status, body) = graphql(&client, Some(&seller_token), &query).await;
     assert_eq!(status, 200);
-    let product_id = body["data"]["create"]["id"].as_str().unwrap_or("").to_string();
+    let product_id = body["data"]["create"]["id"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
 
     if !product_id.is_empty() {
         let order_data = json!({
@@ -166,6 +180,9 @@ async fn test_shipping_cost_in_integer_cents() {
         let (status, body) = graphql(&client, Some(&buyer_token), &query).await;
         assert_eq!(status, 200);
         let cost = body["data"]["create"]["shippingCostCents"].as_i64();
-        assert!(cost.is_some() || body.get("errors").is_some(), "Shipping cost must be integer cents");
+        assert!(
+            cost.is_some() || body.get("errors").is_some(),
+            "Shipping cost must be integer cents"
+        );
     }
 }

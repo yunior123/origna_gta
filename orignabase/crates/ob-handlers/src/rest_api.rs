@@ -1,24 +1,26 @@
 //! REST API endpoints for MCP server integration
 //! Provides GET-based endpoints that wrap existing business logic handlers
 
-use axum::{
-    extract::{Extension, Path, Query, State},
-    routing::get,
-    Json, Router,
-};
-use serde::Deserialize;
-use serde_json::json;
-use ob_auth::middleware::AuthContext;
 use crate::HandlersState;
 use crate::shared::schema::{collections, fields, lifecycle_status};
-
+use axum::{
+    Json, Router,
+    extract::{Extension, Path, Query, State},
+    routing::get,
+};
+use ob_auth::middleware::AuthContext;
+use serde::Deserialize;
+use serde_json::json;
 
 pub fn router(state: HandlersState) -> Router {
     Router::new()
         // Products
         .route("/products", get(get_products).post(create_product))
         .route("/products/{id}", get(get_product))
-        .route("/products/{id}/recommendations", get(get_product_recommendations))
+        .route(
+            "/products/{id}/recommendations",
+            get(get_product_recommendations),
+        )
         // Cart
         .route("/cart", get(get_cart))
         // Orders
@@ -46,7 +48,9 @@ pub struct SearchProductsQuery {
     offset: i64,
 }
 
-fn default_limit() -> i64 { 20 }
+fn default_limit() -> i64 {
+    20
+}
 
 async fn get_products(
     State(state): State<HandlersState>,
@@ -91,10 +95,10 @@ async fn get_products(
     bind_params.insert("limit".into(), json!(limit));
     bind_params.insert("offset".into(), json!(offset));
 
-    let results = state.db.query_bind_value(
-        &query,
-        serde_json::Value::Object(bind_params),
-    ).await?;
+    let results = state
+        .db
+        .query_bind_value(&query, serde_json::Value::Object(bind_params))
+        .await?;
 
     Ok(Json(serde_json::Value::Array(results)))
 }
@@ -129,7 +133,9 @@ async fn get_product_recommendations(
         && let Some(recs) = rec_doc.get("recommendations")
         && recs.as_array().is_some_and(|a| !a.is_empty())
     {
-        return Ok(Json(json!({ "recommendations": recs, "source": "co_purchase" })));
+        return Ok(Json(
+            json!({ "recommendations": recs, "source": "co_purchase" }),
+        ));
     }
 
     // 2. Fallback: bundledProductIds from product itself
@@ -142,7 +148,9 @@ async fn get_product_recommendations(
     if let Some(bundled) = product.get("bundledProductIds")
         && bundled.as_array().is_some_and(|a| !a.is_empty())
     {
-        return Ok(Json(json!({ "recommendations": bundled, "source": "seller_curated" })));
+        return Ok(Json(
+            json!({ "recommendations": bundled, "source": "seller_curated" }),
+        ));
     }
 
     // 3. Fallback: same category products
@@ -173,7 +181,9 @@ async fn get_product_recommendations(
         .filter_map(|v| v.get("productId").cloned())
         .collect();
 
-    Ok(Json(json!({ "recommendations": ids, "source": "category" })))
+    Ok(Json(
+        json!({ "recommendations": ids, "source": "category" }),
+    ))
 }
 
 /// POST /products — Create a product with validation.
@@ -200,10 +210,14 @@ async fn create_product(
     // Require name
     match obj.get(fields::NAME).and_then(|v| v.as_str()) {
         Some(name) if name.trim().is_empty() => {
-            return Err(ob_core::Error::Validation("Product name cannot be empty".into()));
+            return Err(ob_core::Error::Validation(
+                "Product name cannot be empty".into(),
+            ));
         }
         None => {
-            return Err(ob_core::Error::Validation("Product name is required".into()));
+            return Err(ob_core::Error::Validation(
+                "Product name is required".into(),
+            ));
         }
         _ => {}
     }
@@ -255,7 +269,10 @@ async fn create_product(
     product_obj.insert(fields::SELLER_ID.into(), json!(user_id));
     // Products use dateCreated (not createdAt) per schema
     product_obj.insert("dateCreated".into(), json!(chrono::Utc::now().to_rfc3339()));
-    product_obj.insert(fields::UPDATED_AT.into(), json!(chrono::Utc::now().to_rfc3339()));
+    product_obj.insert(
+        fields::UPDATED_AT.into(),
+        json!(chrono::Utc::now().to_rfc3339()),
+    );
 
     let created = state
         .db
@@ -318,10 +335,7 @@ async fn get_cart(
         .await
         .map_err(|_| ob_core::Error::NotFound("User not found".into()))?;
 
-    let cart = user
-        .get("cart")
-        .cloned()
-        .unwrap_or_else(|| json!([]));
+    let cart = user.get("cart").cloned().unwrap_or_else(|| json!([]));
 
     Ok(Json(cart))
 }
@@ -364,10 +378,10 @@ async fn list_orders(
     bind_params.insert("limit".into(), json!(limit));
     bind_params.insert("offset".into(), json!(offset));
 
-    let results = state.db.query_bind_value(
-        &query,
-        serde_json::Value::Object(bind_params),
-    ).await?;
+    let results = state
+        .db
+        .query_bind_value(&query, serde_json::Value::Object(bind_params))
+        .await?;
 
     Ok(Json(serde_json::Value::Array(results)))
 }
@@ -396,7 +410,9 @@ async fn get_order(
         .unwrap_or("");
 
     if buyer_id != user_id && seller_id != user_id {
-        return Err(ob_core::Error::Forbidden("You do not own this order".into()));
+        return Err(ob_core::Error::Forbidden(
+            "You do not own this order".into(),
+        ));
     }
 
     Ok(Json(order))
@@ -407,7 +423,11 @@ async fn get_order(
 // ───────────────────────────────────────────────────────────────────────────
 
 fn require_authenticated(auth: &AuthContext) -> Result<String, ob_core::Error> {
-    if auth.authenticated { Ok(auth.user_id.clone()) } else { Err(ob_core::Error::Auth("Authentication required".into())) }
+    if auth.authenticated {
+        Ok(auth.user_id.clone())
+    } else {
+        Err(ob_core::Error::Auth("Authentication required".into()))
+    }
 }
 
 #[cfg(test)]
@@ -537,12 +557,9 @@ mod tests {
             .await
             .unwrap();
 
-        let Json(resp) = get_product_recommendations(
-            State(state),
-            Path("target_prod".into()),
-        )
-        .await
-        .unwrap();
+        let Json(resp) = get_product_recommendations(State(state), Path("target_prod".into()))
+            .await
+            .unwrap();
 
         assert_eq!(resp["source"], "category");
     }
@@ -589,12 +606,9 @@ mod tests {
             .await
             .unwrap();
 
-        let Json(resp) = get_product_recommendations(
-            State(state),
-            Path("prod1".into()),
-        )
-        .await
-        .unwrap();
+        let Json(resp) = get_product_recommendations(State(state), Path("prod1".into()))
+            .await
+            .unwrap();
 
         assert_eq!(resp["source"], "co_purchase");
         assert!(!resp["recommendations"].as_array().unwrap().is_empty());
@@ -628,12 +642,9 @@ mod tests {
             .await
             .unwrap();
 
-        let Json(resp) = get_product_recommendations(
-            State(state),
-            Path("prod_bundle".into()),
-        )
-        .await
-        .unwrap();
+        let Json(resp) = get_product_recommendations(State(state), Path("prod_bundle".into()))
+            .await
+            .unwrap();
 
         assert_eq!(resp["source"], "seller_curated");
     }

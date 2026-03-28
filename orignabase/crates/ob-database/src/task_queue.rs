@@ -992,7 +992,7 @@ mod tests {
         assert_eq!(task.status, TaskStatus::Running);
         assert_eq!(task.attempts, 1);
 
-        let _ = queue.complete(&task_id).await.unwrap();
+        queue.complete(&task_id).await.unwrap();
     }
 
     #[tokio::test]
@@ -1011,7 +1011,7 @@ mod tests {
             .unwrap();
 
         let (task_id, _) = queue.claim_next("default").await.unwrap().unwrap();
-        let _ = queue.fail(&task_id, "Temporary failure").await.unwrap();
+        queue.fail(&task_id, "Temporary failure").await.unwrap();
     }
 
     #[tokio::test]
@@ -1030,7 +1030,7 @@ mod tests {
             .unwrap();
 
         let (task_id, _) = queue.claim_next("default").await.unwrap().unwrap();
-        let _ = queue.fail(&task_id, "permanent error").await.unwrap();
+        queue.fail(&task_id, "permanent error").await.unwrap();
 
         let dl_tasks = queue.list_dead_letter("default", 10).await.unwrap();
         assert_eq!(dl_tasks.len(), 1);

@@ -4,6 +4,7 @@
 
 export interface AuthData {
   idToken: string;
+  accessToken?: string;
   refreshToken: string;
   localId: string;
   email: string;

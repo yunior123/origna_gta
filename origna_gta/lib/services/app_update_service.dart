@@ -4,9 +4,28 @@ import 'package:origna_gta/utils/app_logger.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
+/// Service for checking whether the app needs to be updated.
+///
+/// Compares the current app version (from `PackageInfo`) against the minimum
+/// required version stored in OrignaBase's server config. Used to enforce
+/// mandatory updates when breaking API changes are deployed.
+///
+/// All methods are static — this is a stateless utility service.
 class AppUpdateService {
-  /// Check if app update is required.
-  /// Returns null if no update needed, or the minimum version string if update required.
+  /// Checks if the app needs to be updated to meet the server's minimum version.
+  ///
+  /// Compares the current app version against the `min_app_version` config
+  /// value fetched from OrignaBase.
+  ///
+  /// Returns:
+  /// - `null` if no update is needed or the check fails (fails open).
+  /// - The minimum required version string (e.g., `"1.2.0"`) if an update
+  ///   is required.
+  ///
+  /// Error handling:
+  /// - Network errors and timeouts (5s) are caught and return `null` to avoid
+  ///   blocking app startup on transient connectivity issues.
+  /// - Non-200 HTTP responses also return `null`.
   static Future<String?> checkForUpdate() async {
     try {
       final packageInfo = await PackageInfo.fromPlatform();
@@ -34,7 +53,10 @@ class AppUpdateService {
     }
   }
   
-  /// Compare semantic versions. Returns true if current < minimum.
+  /// Compares two semantic version strings (major.minor.patch).
+  ///
+  /// Returns `true` if [current] is strictly lower than [minimum].
+  /// Missing segments default to 0. Non-numeric segments are treated as 0.
   static bool _isVersionLower(String current, String minimum) {
     final currentParts = current.split('.').map(int.tryParse).toList();
     final minParts = minimum.split('.').map(int.tryParse).toList();

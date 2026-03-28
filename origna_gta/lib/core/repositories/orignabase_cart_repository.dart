@@ -5,19 +5,28 @@ import 'package:origna_gta/models/models.dart';
 
 /// OrignaBase implementation of [CartRepository].
 ///
-/// Cart items are stored as a subcollection: users/{userId}/cart/{docId}.
-/// Document IDs are deterministic: `productId` or `productId_variantId`.
+/// This repository manages the buyer's shopping cart using OrignaBase subcollections.
+/// Cart items are stored under `users/{userId}/cart/{docId}`, where `docId` is
+/// deterministic (either the product ID or `productId_variantId`).
+///
+/// Deterministic IDs allow for simple upserts and prevent duplicate entries for
+/// the same product/variant without requiring complex transactional logic.
 class OrignaBaseCartRepository implements CartRepository {
+  /// Maximum quantity allowed for a single cart item.
   static const int maxCartItemQuantity = 99;
+
+  /// Minimum quantity allowed for a cart item (quantities < 1 trigger removal).
   static const int minCartItemQuantity = 1;
 
   final OrignaBase _ob;
 
+  /// Creates a new instance of [OrignaBaseCartRepository].
   OrignaBaseCartRepository(this._ob);
 
-  /// Returns the cart subcollection reference using the bare record ID
-  /// (stripping any collection prefix like "users:") so it matches the
-  /// SurrealDB parent_id filter format: `users:<bareId>`.
+  /// Returns the cart subcollection reference for a specific user.
+  ///
+  /// Normalizes the [userId] to its bare record ID to match the SurrealDB
+  /// parent_id filter format (`users:<bareId>`).
   SubcollectionRef _cartRef(String userId) {
     final bareId = userId.contains(':') ? userId.split(':').last : userId;
     return _ob
@@ -25,14 +34,28 @@ class OrignaBaseCartRepository implements CartRepository {
         .subcollection(bareId, Collections.cart);
   }
 
-  /// Adds [quantity] units of [productId] to the user's cart.
+  /// Adds a specified quantity of a product (or variant) to the user's cart.
   ///
-  /// Verifies stock availability before mutation. Uses deterministic doc IDs
-  /// (`productId` or `productId_variantId`) to prevent duplicates without
-  /// client-side transactions.
+  /// Parameters:
+  /// - [userId]: the ID of the buyer.
+  /// - [productId]: the ID of the product to add.
+  /// - [quantity]: number of units to add.
+  /// - [variantId]: optional ID of the product variant.
   ///
-  /// Throws [NotFoundException] if product doesn't exist.
-  /// Throws [ConflictException] if insufficient stock.
+  /// This method performs several steps:
+  /// 1. Verifies that the product exists and has sufficient stock.
+  /// 2. Checks if the item already exists in the cart.
+  /// 3. Increments the quantity if it exists, or creates a new entry if not.
+  ///
+  /// Throws:
+  /// - [NotFoundException] if the product does not exist.
+  /// - [ConflictException] if the requested quantity exceeds available stock.
+  ///
+  /// Gotchas:
+  /// - Uses a read-then-write pattern since the SDK does not yet support
+  ///   client-side transactions.
+  /// - Explicitly sets the `parent_id` and `userId` fields to satisfy backend
+  ///   security rules and subcollection filtering requirements.
   @override
   Future<void> addToCart(
     String userId,
@@ -123,9 +146,7 @@ class OrignaBaseCartRepository implements CartRepository {
     await cartRef.doc(docId).set(data);
   }
 
-  /// Deletes all cart items for [userId] using a batch operation.
-  ///
-  /// Extracts bare record IDs from the full document paths before deletion.
+  /// Removes all items from the user\'s cart using a batch deletion.
   @override
   Future<void> clearCart(String userId) async {
     final cartRef = _cartRef(userId);
@@ -143,6 +164,7 @@ class OrignaBaseCartRepository implements CartRepository {
     await batch.commit();
   }
 
+  /// Returns the ID of the seller for a specific product.
   @override
   Future<String?> getProductSellerId(String productId) async {
     final doc = await _ob.collection(Collections.products).doc(productId).get();
@@ -150,6 +172,7 @@ class OrignaBaseCartRepository implements CartRepository {
     return doc.get<String>(Fields.sellerId);
   }
 
+  /// Validates whether a specific variant is active and exists for a product.
   @override
   Future<bool> isVariantValid(String productId, String variantId) async {
     final doc = await _ob.collection(Collections.products).doc(productId).get();
@@ -163,11 +186,13 @@ class OrignaBaseCartRepository implements CartRepository {
     });
   }
 
+  /// Removes a single item from the cart.
   @override
   Future<void> removeFromCart(String userId, String cartItemId) async {
     await _cartRef(userId).doc(cartItemId).delete();
   }
 
+  /// Updates the optional buyer note for a cart item.
   @override
   Future<void> updateBuyerNote(
     String userId,
@@ -183,6 +208,10 @@ class OrignaBaseCartRepository implements CartRepository {
     }
   }
 
+  /// Updates the quantity for a cart item.
+  ///
+  /// If the quantity is set to less than [minCartItemQuantity], the item is
+  /// removed from the cart.
   @override
   Future<void> updateQuantity(
     String userId,
@@ -202,11 +231,10 @@ class OrignaBaseCartRepository implements CartRepository {
     }
   }
 
-  /// Real-time stream of cart items for [userId], sorted by creation date.
+  /// Provides a real-time stream of the user\'s cart items.
   ///
-  /// Emits the full cart on initial load, then incrementally applies
-  /// create/update/delete changes from OrignaBase realtime subscriptions.
-  /// Items with quantity <= 0 are filtered out.
+  /// Emits the full cart on initial load, then updates based on real-time
+  /// document changes (create, update, delete). Items are sorted by creation date.
   @override
   Stream<List<CartItemModel>> watchCart(String userId) {
     return (() async* {

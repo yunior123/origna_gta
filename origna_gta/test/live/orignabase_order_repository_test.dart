@@ -13,6 +13,11 @@ void main() {
     defaultValue: false,
   );
 
+  if (!runLive) {
+    test('live tests disabled', () {});
+    return;
+  }
+
   bool isExpectedPermissionError(Object error) {
     final msg = error.toString().toLowerCase();
     return msg.contains('403') ||
@@ -59,7 +64,6 @@ void main() {
         final order = await orderRepo.fetchOrderById('nonexistent_order_id');
         expect(order, isNull);
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -78,10 +82,9 @@ void main() {
           );
         }
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
-  }, skip: !runLive);
+  });
 
   // --- Seller tests -----------------------------------------------
   group('OrignaBaseOrderRepository live (seller)', () {
@@ -124,10 +127,9 @@ void main() {
           );
         }
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
-  }, skip: !runLive);
+  });
 
   // --- Admin tests -----------------------------------------------
   group('OrignaBaseOrderRepository live (admin)', () {
@@ -168,8 +170,7 @@ void main() {
           // Expected for nonexistent order
         }
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
-  }, skip: !runLive);
+  });
 }

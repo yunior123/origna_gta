@@ -21,7 +21,12 @@ void main() {
   );
 
   if (!runLive) {
-    test('Skip live tests', () {}, skip: 'live tests disabled');
+    test('live tests disabled', () {});
+    return;
+  }
+
+  if (!runLive) {
+    test('Skip live tests', () {});
     return;
   }
 
@@ -53,7 +58,6 @@ void main() {
         expect(users, isA<List<dynamic>>());
         // List may be empty but should be a valid list type
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -65,7 +69,6 @@ void main() {
 
         expect(orders, isA<List<dynamic>>());
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -77,7 +80,6 @@ void main() {
 
         expect(sellers, isA<List<dynamic>>());
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -89,7 +91,6 @@ void main() {
 
         expect(products, isA<List<dynamic>>());
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -101,7 +102,6 @@ void main() {
 
         expect(products, isA<List<dynamic>>());
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -113,7 +113,6 @@ void main() {
 
         expect(reviews, isA<List<dynamic>>());
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -134,7 +133,6 @@ void main() {
           expect(user.uid, anyOf(currentUserId, shortId));
         }
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -146,7 +144,6 @@ void main() {
         expect(providers, isA<Map<String, dynamic>>());
         expect(providers.containsKey('success'), isTrue);
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -176,7 +173,6 @@ void main() {
           }
         }
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -196,7 +192,6 @@ void main() {
           if (!_isExpectedError(e)) fail('Unexpected error updating roles: $e');
         }
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -214,7 +209,6 @@ void main() {
           }
         }
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -231,7 +225,6 @@ void main() {
           }
         }
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -247,7 +240,6 @@ void main() {
           }
         }
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -265,7 +257,6 @@ void main() {
           }
         }
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
   });

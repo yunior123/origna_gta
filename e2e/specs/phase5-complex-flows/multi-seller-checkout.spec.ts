@@ -9,11 +9,12 @@
 import { test, expect, describe, beforeAll, beforeEach, afterAll } from 'bun:test';
 import { AgentBrowser } from '../../lib/agent-browser.js';
 import {
-  signIn, callOk, callCallable,
+  signIn, callOk, callCallable, callExpectError,
   writeDoc, deleteDoc, readDoc,
   discoverProducts, getOrder,
   fullMultiSellerCheckoutAndPay,
   buildCheckoutPayload,
+  buildMultiSellerPayload,
 } from '../../lib/api-client.js';
 import { TEST_ACCOUNTS, TEST_UIDS, WEB_APP_URL } from '../../lib/config.js';
 
@@ -160,37 +161,28 @@ describe('Multi-Seller Checkout', () => {
     expect(snap.refs.length).toBeGreaterThanOrEqual(0);
   });
 
-  test('Multi-seller checkout creates separate orders via API', { timeout: 120_000 }, async () => {
+  test('Multi-seller checkout is rejected until buyers split checkout per seller', { timeout: 120_000 }, async () => {
     if (!adminProduct || !sellerProduct) {
       console.log('Skipped: multi-seller products not available');
       return;
     }
 
-    let result: any;
-    try {
-      result = await fullMultiSellerCheckoutAndPay(BUYER_EMAIL, [
-        { productId: ADMIN_PRODUCT_ID, quantity: 1 },
-        { productId: SELLER_PRODUCT_ID, quantity: 1 },
-      ]);
-    } catch (e: any) {
-      if (isRateLimited(e) || isTransientError(e)) {
-        console.log('Skipped: ' + String(e?.message ?? '').slice(0, 80));
-        return;
-      }
-      // Multi-seller checkout may not be supported as a single session
-      // In that case, the backend creates one order per seller
-      if (/not supported|invalid|single seller/i.test(String(e?.message ?? ''))) {
-        console.log('Multi-seller single checkout not supported — testing individually');
-        return;
-      }
-      throw e;
-    }
-
-    expect(result.orderId).toBeTruthy();
-
-    // Verify order exists
     const auth = await signIn(BUYER_EMAIL);
-    const order = await getOrder(result.orderId, auth.idToken);
-    expect(order).toBeTruthy();
+    const payload = await buildMultiSellerPayload(auth.localId, [
+      { productId: ADMIN_PRODUCT_ID, quantity: 1 },
+      { productId: SELLER_PRODUCT_ID, quantity: 1 },
+    ], auth.idToken);
+
+    const error = await callExpectError(
+      'create_checkout_session',
+      {
+        ...payload,
+        idempotencyKey: `multi-seller-ui-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      },
+      auth.idToken,
+    );
+
+    expect(['validation-error', 'invalid-argument']).toContain(error.code);
+    expect(error.message).toContain('Multi-seller carts require separate checkout sessions per seller');
   });
 });

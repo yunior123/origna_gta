@@ -190,7 +190,6 @@ extension _AddProductSpecsSection on _AddProductScreenState {
         Align(
           alignment: Alignment.centerLeft,
           child: Semantics(
-            button: true,
             label: 'btn-add-product-add-custom-spec',
             child: TextButton.icon(
               onPressed: viewModel.addSpec,

@@ -52,7 +52,11 @@ impl SearchSyncer {
 
                     loop {
                         attempts += 1;
-                        match self.client.upsert_documents(&event.index, std::slice::from_ref(&payload)).await {
+                        match self
+                            .client
+                            .upsert_documents(&event.index, std::slice::from_ref(&payload))
+                            .await
+                        {
                             Ok(_) => break,
                             Err(e) if attempts < max_attempts => {
                                 let delay = std::time::Duration::from_secs(1 << (attempts - 1)); // 1s, 2s
@@ -155,10 +159,7 @@ fn normalize_document_for_indexing(document_id: &str, data: &Value) -> Value {
                 }
             }
             safe_doc.insert("id".to_string(), Value::String(search_id));
-            safe_doc.insert(
-                "origId".to_string(),
-                Value::String(document_id.to_string()),
-            );
+            safe_doc.insert("origId".to_string(), Value::String(document_id.to_string()));
             Value::Object(safe_doc)
         }
         _ => json!({
@@ -292,10 +293,8 @@ mod tests {
 
     #[test]
     fn test_normalize_document_with_string_data() {
-        let normalized = normalize_document_for_indexing(
-            "doc_2",
-            &Value::String("hello".to_string()),
-        );
+        let normalized =
+            normalize_document_for_indexing("doc_2", &Value::String("hello".to_string()));
         assert_eq!(normalized["id"], "doc_2");
         assert_eq!(normalized["origId"], "doc_2");
         assert_eq!(normalized["value"], "hello");
@@ -303,10 +302,7 @@ mod tests {
 
     #[test]
     fn test_normalize_document_with_number_data() {
-        let normalized = normalize_document_for_indexing(
-            "doc_3",
-            &serde_json::json!(42),
-        );
+        let normalized = normalize_document_for_indexing("doc_3", &serde_json::json!(42));
         assert_eq!(normalized["id"], "doc_3");
         assert_eq!(normalized["value"], 42);
     }

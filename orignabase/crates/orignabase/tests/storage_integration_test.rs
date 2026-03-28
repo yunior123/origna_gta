@@ -23,8 +23,14 @@ async fn register_test_user(client: &reqwest::Client) -> (String, String, String
         .expect("register failed");
     assert_eq!(resp.status(), 200, "Registration should succeed");
     let body: Value = resp.json().await.unwrap();
-    let token = body["access_token"].as_str().expect("missing access_token").to_string();
-    let user_id = body["user"]["id"].as_str().expect("missing user.id").to_string();
+    let token = body["access_token"]
+        .as_str()
+        .expect("missing access_token")
+        .to_string();
+    let user_id = body["user"]["id"]
+        .as_str()
+        .expect("missing user.id")
+        .to_string();
     (token, user_id, email)
 }
 
@@ -56,7 +62,10 @@ async fn test_storage_presign_upload_single_path() {
     assert_eq!(status, 200, "Presign upload should succeed: {body:?}");
     let urls = body["urls"].as_array().expect("should return urls array");
     assert_eq!(urls.len(), 1);
-    assert!(urls[0]["upload_url"].as_str().is_some(), "Should include upload_url");
+    assert!(
+        urls[0]["upload_url"].as_str().is_some(),
+        "Should include upload_url"
+    );
 }
 
 #[tokio::test]
@@ -165,7 +174,10 @@ async fn test_storage_presign_download_single_path() {
     assert_eq!(status, 200, "Presign download should succeed: {body:?}");
     let urls = body["urls"].as_array().expect("should return urls array");
     assert_eq!(urls.len(), 1);
-    assert!(urls[0]["download_url"].as_str().is_some(), "Should include download_url");
+    assert!(
+        urls[0]["download_url"].as_str().is_some(),
+        "Should include download_url"
+    );
 }
 
 #[tokio::test]
@@ -246,12 +258,20 @@ async fn test_storage_upload_and_download_roundtrip() {
         .expect("missing download_url");
 
     // Step 4: Download and verify content matches
-    let dl_resp = client.get(download_url).send().await.expect("download failed");
+    let dl_resp = client
+        .get(download_url)
+        .send()
+        .await
+        .expect("download failed");
     let dl_status = dl_resp.status().as_u16();
     assert_eq!(dl_status, 200, "Download should succeed");
 
     let downloaded = dl_resp.bytes().await.unwrap();
-    assert_eq!(downloaded.as_ref(), file_content, "Downloaded content should match uploaded");
+    assert_eq!(
+        downloaded.as_ref(),
+        file_content,
+        "Downloaded content should match uploaded"
+    );
 }
 
 // =============================================================================

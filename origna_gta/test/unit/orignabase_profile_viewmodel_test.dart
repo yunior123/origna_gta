@@ -3,13 +3,25 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/core/repositories/auth_repository.dart';
 import 'package:origna_gta/core/repositories/user_repository.dart';
+import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/features/profile/orignabase_profile_viewmodel.dart';
 // ---------------------------------------------------------------------------
 // Test fakes
 // ---------------------------------------------------------------------------
 
 class _FakeAuth implements OrignaBaseAuth {
+  int signOutCalls = 0;
+
+  @override
+  Future<void> signOut() async => signOutCalls++;
+
+  @override
+  dynamic noSuchMethod(Invocation i) => super.noSuchMethod(i);
+}
+
+class _FakeAuthRepository implements AuthRepository {
   int signOutCalls = 0;
 
   @override
@@ -69,6 +81,7 @@ void main() {
   late _FakeAuth fakeAuth;
   late _FakeOb fakeOb;
   late _FakeUserRepo fakeUserRepo;
+  late _FakeAuthRepository fakeAuthRepo;
   late ProviderContainer container;
 
   ProviderContainer makeContainer({String? userId}) {
@@ -77,6 +90,7 @@ void main() {
         orignabaseProvider.overrideWithValue(fakeOb),
         userRepositoryProvider.overrideWithValue(fakeUserRepo),
         obUserIdProvider.overrideWithValue(userId),
+        authActionsProvider.overrideWithValue(AuthActions(fakeAuthRepo)),
       ],
     );
   }
@@ -85,6 +99,7 @@ void main() {
     fakeAuth = _FakeAuth();
     fakeOb = _FakeOb(fakeAuth);
     fakeUserRepo = _FakeUserRepo();
+    fakeAuthRepo = _FakeAuthRepository();
     container = makeContainer(userId: 'user_123');
     addTearDown(container.dispose);
   });
@@ -100,7 +115,7 @@ void main() {
 
     test('signOut calls auth.signOut()', () async {
       await container.read(profileViewModelProvider.notifier).signOut();
-      expect(fakeAuth.signOutCalls, 1);
+      expect(fakeAuthRepo.signOutCalls, 1);
     });
 
     test('updateLanguage does nothing when userId is null', () async {
@@ -180,7 +195,7 @@ void main() {
       final state = container.read(profileViewModelProvider);
       expect(state.isDeleted, isTrue);
       expect(state.isLoading, isFalse);
-      expect(fakeAuth.signOutCalls, 1);
+      expect(fakeAuthRepo.signOutCalls, 1);
     });
 
     test('deleteAccount sets errorMessage when userId is null', () async {

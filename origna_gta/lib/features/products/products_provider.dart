@@ -21,6 +21,15 @@ import 'package:origna_gta/utils/utils.dart';
 /// fetches all chunks in parallel via [Future.wait]. Reassembles results into
 /// a single flat list.
 ///
+/// Parameters:
+/// - None (watches [favoritesProvider]).
+///
+/// Returns:
+/// - A list of [Product] models for all items in the user's wishlist.
+///
+/// Gotchas:
+/// - High number of favorites can trigger multiple parallel network requests.
+///
 /// See also:
 /// - [favoritesProvider] for the reactive set of favorite IDs
 /// - [FavoritesController] for toggle operations
@@ -45,7 +54,7 @@ final favoritedProductsProvider = FutureProvider.autoDispose<List<Product>>((
   return results.expand((x) => x).toList();
 });
 
-/// Favorites controller
+/// Riverpod provider for [FavoritesController].
 final favoritesControllerProvider = Provider.autoDispose<FavoritesController>((
   ref,
 ) {
@@ -58,12 +67,17 @@ final favoritesControllerProvider = Provider.autoDispose<FavoritesController>((
 
 /// Stream of favorite product IDs for the current user.
 ///
+/// Returns an empty set when no user is signed in.
+///
 /// ## Key Decisions
 /// - Uses [keepAlive] when a user is logged in to prevent the stream from being
 ///   disposed during transient rebuilds (e.g., category switches clear the product
 ///   grid which briefly removes all ProductCard watchers). Without this, the
 ///   stream restarts in AsyncLoading and the heart icon blinks.
 /// - The [keepAlive] link is closed on dispose to prevent leaks after logout.
+///
+/// Gotchas:
+/// - This provider only tracks IDs; use [favoritedProductsProvider] for full data.
 final favoritesProvider = StreamProvider.autoDispose<Set<String>>((ref) {
   final userId = ref.watch(userIdProvider);
   if (userId == null) return Stream.value({});
@@ -78,7 +92,10 @@ final favoritesProvider = StreamProvider.autoDispose<Set<String>>((ref) {
   return repository.watchFavorites(userId);
 });
 
-/// Convenience provider that uses current filter state
+/// Convenience provider that applies current filter state (category, search) to the product list.
+///
+/// Returns:
+/// - A list of products matching the current [selectedCategoryProvider] and [searchQueryProvider].
 final filteredProductsProvider = FutureProvider.autoDispose<List<Product>>((
   ref,
 ) async {
@@ -94,6 +111,9 @@ final filteredProductsProvider = FutureProvider.autoDispose<List<Product>>((
 ///
 /// Returns `null` if the product doesn't exist. Used by product detail screen
 /// deep links and admin product preview.
+///
+/// Parameters:
+/// - [productId]: the ID of the product to fetch.
 final productByIdProvider = FutureProvider.autoDispose.family<Product?, String>(
   (ref, productId) async {
     final repository = ref.watch(productRepositoryProvider);
@@ -101,14 +121,20 @@ final productByIdProvider = FutureProvider.autoDispose.family<Product?, String>(
   },
 );
 
-/// Fetches a single product by slug
+/// Fetches a single product by its URL-friendly slug.
+///
+/// Parameters:
+/// - [slug]: the product slug.
 final productBySlugProvider = FutureProvider.autoDispose
     .family<Product?, String>((ref, slug) async {
       final repository = ref.watch(productRepositoryProvider);
       return repository.getProductBySlug(slug);
     });
 
-/// Fetches products based on query parameters
+/// Fetches a page of products based on query parameters.
+///
+/// Parameters:
+/// - [query]: [ProductQuery] object containing filters and limits.
 final productsProvider = FutureProvider.autoDispose
     .family<List<Product>, ProductQuery>((ref, query) async {
       final repository = ref.watch(productRepositoryProvider);
@@ -120,9 +146,13 @@ final productsProvider = FutureProvider.autoDispose
       return result.products;
     });
 
-/// ({@macro similarProductsParams}) — fetches up to 8 active products in the
-/// same category, excluding the current product. Used by the "Customers also
-/// bought" row on the product detail screen.
+/// Fetches up to 8 active products in the same category, excluding the current product.
+///
+/// Used by the "Customers also bought" row on the product detail screen.
+///
+/// Parameters:
+/// - [excludeProductId]: the ID of the product being viewed.
+/// - [categoryId]: the category ID to filter by.
 final similarProductsProvider = FutureProvider.autoDispose
     .family<List<Product>, ({String excludeProductId, int categoryId})>((
       ref,
@@ -140,7 +170,12 @@ final similarProductsProvider = FutureProvider.autoDispose
     });
 
 /// Products from the same seller (excluding current product).
+///
 /// Used for "More from this seller" section on product detail page.
+///
+/// Parameters:
+/// - [sellerId]: the ID of the seller.
+/// - [excludeProductId]: the ID of the product being viewed.
 final moreFromSellerProvider = FutureProvider.autoDispose
     .family<List<Product>, ({String sellerId, String excludeProductId})>((
       ref,
@@ -160,7 +195,10 @@ final moreFromSellerProvider = FutureProvider.autoDispose
           .toList();
     });
 
-/// Streams the count of unanswered product questions for a seller
+/// Streams the count of unanswered product questions for a seller.
+///
+/// Parameters:
+/// - [sellerId]: the ID of the seller.
 final sellerUnansweredQaProvider = StreamProvider.autoDispose
     .family<int, String>((ref, sellerId) {
       final repository = ref.watch(productRepositoryProvider);
@@ -171,10 +209,10 @@ final sellerUnansweredQaProvider = StreamProvider.autoDispose
 // FAVORITES PROVIDER
 // ============================================================================
 
-/// Current search query
+/// State provider for the current search query string.
 final searchQueryProvider = StateProvider.autoDispose<String>((ref) => '');
 
-/// Currently selected category ID (null = all categories)
+/// State provider for the currently selected category ID (null = all categories).
 final selectedCategoryProvider = StateProvider.autoDispose<int?>((ref) => null);
 
 /// Stateless controller for toggling product favorites and checking favorite status.
@@ -193,18 +231,29 @@ final selectedCategoryProvider = StateProvider.autoDispose<int?>((ref) => null);
 class FavoritesController {
   final Ref _ref;
 
+  /// Creates a new [FavoritesController].
   FavoritesController(this._ref);
 
   ProductRepository get _repository => _ref.read(productRepositoryProvider);
   String? get _userId => _ref.read(userIdProvider);
 
-  /// Check if product is favorited
+  /// Checks whether a product is currently in the user's favorites list.
+  ///
+  /// Parameters:
+  /// - [productId]: the ID of the product to check.
   bool isFavorite(String productId) {
     final favorites = _ref.read(favoritesProvider).valueOrNull ?? {};
     return favorites.contains(productId);
   }
 
-  /// Toggle favorite status
+  /// Toggles the favorite status of a product.
+  ///
+  /// Parameters:
+  /// - [productId]: the ID of the product to toggle.
+  /// - [productName]: optional name for analytics.
+  /// - [priceCad]: optional price for analytics.
+  ///
+  /// Logs `add_to_wishlist` or `remove_from_wishlist` analytics events on success.
   Future<void> toggleFavorite(
     String productId, {
     String? productName,

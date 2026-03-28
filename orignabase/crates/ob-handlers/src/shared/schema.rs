@@ -581,8 +581,17 @@ pub mod allergen_values {
     pub const WHEAT: &str = "wheat";
 
     pub const ALL: &[&str] = &[
-        EGGS, MILK, MUSTARD, PEANUTS, CRUSTACEANS,
-        FISH, SESAME, SOY, SULPHITES, TREE_NUTS, WHEAT,
+        EGGS,
+        MILK,
+        MUSTARD,
+        PEANUTS,
+        CRUSTACEANS,
+        FISH,
+        SESAME,
+        SOY,
+        SULPHITES,
+        TREE_NUTS,
+        WHEAT,
     ];
 }
 
@@ -600,8 +609,16 @@ pub mod dietary_badge_values {
     pub const SUGAR_FREE: &str = "sugar_free";
 
     pub const ALL: &[&str] = &[
-        ORGANIC, VEGAN, VEGETARIAN, HALAL, KOSHER,
-        GLUTEN_FREE, NON_GMO, DAIRY_FREE, NUT_FREE, SUGAR_FREE,
+        ORGANIC,
+        VEGAN,
+        VEGETARIAN,
+        HALAL,
+        KOSHER,
+        GLUTEN_FREE,
+        NON_GMO,
+        DAIRY_FREE,
+        NUT_FREE,
+        SUGAR_FREE,
     ];
 }
 

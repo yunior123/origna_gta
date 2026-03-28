@@ -7,6 +7,11 @@ import 'package:origna_gta/core/repositories/orignabase_notification_repository.
 void main() {
   const runLive = bool.fromEnvironment('RUN_ORIGNABASE_LIVE_TESTS', defaultValue: false);
 
+  if (!runLive) {
+    test('live tests disabled', () {});
+    return;
+  }
+
   group('OrignaBaseNotificationRepository integration', () {
     late ProviderContainer container;
     late OrignaBase ob;
@@ -44,7 +49,6 @@ void main() {
           reason: 'markAllRead should complete without throwing',
         );
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -60,8 +64,7 @@ void main() {
           reason: 'markRead should complete',
         );
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
-  }, skip: !runLive);
+  });
 }

@@ -96,33 +96,27 @@ fn filter_by_ownership(
         "cart" | "notifications" | "subscriptions" => {
             // Single-owner collections
             let owner_id = data.get("userId").and_then(|v| v.as_str());
-            subscribers.retain(|sub| {
-                match sub.user_id.as_deref() {
-                    None => true,
-                    Some(uid) => Some(uid) == owner_id,
-                }
+            subscribers.retain(|sub| match sub.user_id.as_deref() {
+                None => true,
+                Some(uid) => Some(uid) == owner_id,
             });
         }
         "return_requests" => {
             // Visible to buyer and seller
             let buyer_id = data.get("buyerId").and_then(|v| v.as_str());
             let seller_id = data.get("sellerId").and_then(|v| v.as_str());
-            subscribers.retain(|sub| {
-                match sub.user_id.as_deref() {
-                    None => true,
-                    Some(uid) => Some(uid) == buyer_id || Some(uid) == seller_id,
-                }
+            subscribers.retain(|sub| match sub.user_id.as_deref() {
+                None => true,
+                Some(uid) => Some(uid) == buyer_id || Some(uid) == seller_id,
             });
         }
         "chat_messages" | "chat_threads" => {
             // Chat visible to both participants
             let buyer_id = data.get("buyerId").and_then(|v| v.as_str());
             let seller_id = data.get("sellerId").and_then(|v| v.as_str());
-            subscribers.retain(|sub| {
-                match sub.user_id.as_deref() {
-                    None => true,
-                    Some(uid) => Some(uid) == buyer_id || Some(uid) == seller_id,
-                }
+            subscribers.retain(|sub| match sub.user_id.as_deref() {
+                None => true,
+                Some(uid) => Some(uid) == buyer_id || Some(uid) == seller_id,
             });
         }
         "seller_profiles" | "warehouses" => {
@@ -131,11 +125,9 @@ fn filter_by_ownership(
                 .get("sellerId")
                 .and_then(|v| v.as_str())
                 .or_else(|| data.get("parent_id").and_then(|v| v.as_str()));
-            subscribers.retain(|sub| {
-                match sub.user_id.as_deref() {
-                    None => true,
-                    Some(uid) => Some(uid) == seller_id,
-                }
+            subscribers.retain(|sub| match sub.user_id.as_deref() {
+                None => true,
+                Some(uid) => Some(uid) == seller_id,
             });
         }
         // Public collections: products, reviews, users, categories, etc. — no filtering
@@ -445,7 +437,10 @@ mod tests {
         // User B should NOT receive it
         let result_b =
             tokio::time::timeout(std::time::Duration::from_millis(100), sub_rx_b.recv()).await;
-        assert!(result_b.is_err(), "User B should not receive User A's cart updates");
+        assert!(
+            result_b.is_err(),
+            "User B should not receive User A's cart updates"
+        );
 
         drop(event_tx);
         let _ = handle.await;

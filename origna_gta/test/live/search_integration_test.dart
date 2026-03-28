@@ -11,7 +11,12 @@ void main() {
     defaultValue: false,
   );
 
-  group('Search Integration', skip: !runLive ? 'live tests disabled' : null, () {
+  if (!runLive) {
+    test('live tests disabled', () {});
+    return;
+  }
+
+  group('Search Integration', () {
     late ProviderContainer container;
     late OrignaBase ob;
 

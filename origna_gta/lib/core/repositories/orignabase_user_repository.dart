@@ -15,15 +15,21 @@ import 'package:uuid/uuid.dart';
 /// User profile watching uses OrignaBase document-level `.snapshots()`.
 /// Address subcollection uses collection-level `.snapshots()`.
 /// Seller account status uses polling since it combines two collections.
+///
+/// Handles address CRUD (with default selection), notification preferences,
+/// language settings, terms acceptance, and seller account verification.
 class OrignaBaseUserRepository implements UserRepository {
+  /// The OrignaBase client used for API and database operations.
   final OrignaBase _ob;
 
+  /// Creates a user repository with the given OrignaBase [client].
   OrignaBaseUserRepository(this._ob);
 
   // ---------------------------------------------------------------------------
   // Auth helper
   // ---------------------------------------------------------------------------
 
+  /// Returns the current user ID from the OrignaBase auth state.
   String? get _currentUserId {
     return _ob.auth.currentUserId;
   }
@@ -41,6 +47,16 @@ class OrignaBaseUserRepository implements UserRepository {
   // Address CRUD (direct OrignaBase operations)
   // ---------------------------------------------------------------------------
 
+  /// Adds an address to the user's address book.
+  ///
+  /// [address]: the address model to create.
+  ///
+  /// Generates a UUID for the document ID. If [Address.isDefault] is true,
+  /// clears the default flag on all other addresses.
+  ///
+  /// Returns the new address document ID.
+  ///
+  /// Throws [Exception] if not authenticated or creation fails.
   @override
   Future<String> addBuyerAddress(Address address) async {
     final userId = _currentUserId;
@@ -68,6 +84,12 @@ class OrignaBaseUserRepository implements UserRepository {
     return addressId;
   }
 
+  /// Deletes an address from the user's address book.
+  ///
+  /// [addressId]: the address document ID to delete.
+  ///
+  /// Verifies the address belongs to the current user before deleting.
+  /// Throws [Exception] if not authenticated, not found, or unauthorized.
   @override
   Future<void> deleteBuyerAddress(String addressId) async {
     final userId = _currentUserId;
@@ -85,6 +107,15 @@ class OrignaBaseUserRepository implements UserRepository {
     }
   }
 
+  /// Fetches the seller's Stripe Connect account verification status.
+  ///
+  /// Combines the user document (roles) with the seller_profiles document
+  /// (Stripe onboarding state) to determine if the user can sell products.
+  ///
+  /// [userId]: the user to check.
+  ///
+  /// Returns a [SellerAccountStatus] with flags for charges, pending
+  /// requirements, and onboarding completion.
   @override
   Future<SellerAccountStatus> getSellerAccountStatus(String userId) async {
     final userDoc = await _ob.collection(Collections.users).doc(userId).get();
@@ -98,6 +129,12 @@ class OrignaBaseUserRepository implements UserRepository {
     );
   }
 
+  /// Fetches the user profile from the server.
+  ///
+  /// [userId]: the user's document ID.
+  ///
+  /// Returns the [UserModel] or null if the profile doesn't exist.
+  /// Uses the `users/profile/get` endpoint which includes computed fields.
   @override
   Future<UserModel?> getUserProfile(String userId) async {
     final response = await _ob.request(
@@ -117,6 +154,10 @@ class OrignaBaseUserRepository implements UserRepository {
     return UserModel.fromMap(profile);
   }
 
+  /// Records the user's acceptance of the current Terms of Service version.
+  ///
+  /// Updates `termsAcceptedAt` and `termsVersion` on the user profile.
+  /// Throws [Exception] if not authenticated or the update fails.
   @override
   Future<void> recordTermsAcceptance() async {
     final userId = _currentUserId;
@@ -138,6 +179,12 @@ class OrignaBaseUserRepository implements UserRepository {
     }
   }
 
+  /// Sets an address as the default, clearing the flag on all others.
+  ///
+  /// [addressId]: the address document ID to set as default.
+  ///
+  /// Verifies ownership before updating. Throws [Exception] if not found
+  /// or unauthorized.
   @override
   Future<void> setDefaultBuyerAddress(String addressId) async {
     final userId = _currentUserId;
@@ -156,6 +203,12 @@ class OrignaBaseUserRepository implements UserRepository {
     }
   }
 
+  /// Clears the default flag on all addresses except the specified one.
+  ///
+  /// [userId]: the user's ID.
+  /// [exceptAddressId]: the address ID to keep as default.
+  ///
+  /// Best-effort operation — logs warnings on failure but does not throw.
   Future<void> _clearOtherDefaultAddresses(
     String userId,
     String exceptAddressId,
@@ -172,11 +225,28 @@ class OrignaBaseUserRepository implements UserRepository {
       // Strip it so comparison works regardless of whether exceptAddressId
       // was passed as a bare ID or a full path.
       final bareExcept = _bareId(exceptAddressId).replaceAll('`', '');
+      final otherDefaultIds = <String>[];
 
       for (final doc in snapshot.docs) {
         final bareDocId = _bareId(doc.id).replaceAll('`', '');
         if (bareDocId != bareExcept) {
-          await _ob.collection(Collections.addresses).doc(bareDocId).update({
+          otherDefaultIds.add(bareDocId);
+        }
+      }
+
+      if (otherDefaultIds.isEmpty) return;
+
+      try {
+        final batch = _ob.batch();
+        for (final addressId in otherDefaultIds) {
+          batch.update(Collections.addresses, addressId, {
+            Fields.isDefault: false,
+          });
+        }
+        await batch.commit();
+      } on UnimplementedError {
+        for (final addressId in otherDefaultIds) {
+          await _ob.collection(Collections.addresses).doc(addressId).update({
             Fields.isDefault: false,
           });
         }
@@ -190,6 +260,7 @@ class OrignaBaseUserRepository implements UserRepository {
     }
   }
 
+  /// Converts an [Address] model to a payload map for database writes.
   Map<String, dynamic> _addressPayload(Address address) {
     return {
       'street': address.street,
@@ -202,6 +273,8 @@ class OrignaBaseUserRepository implements UserRepository {
     };
   }
 
+  /// Parses an address document from OrignaBase, handling collection prefix
+  /// stripping and nested address field normalization.
   Address _parseAddressDocument(Map<String, dynamic> doc, {String? docId}) {
     // Strip collection prefix from docId (e.g., "addresses:abc123" → "abc123")
     // and backticks that SurrealDB adds around UUIDs (e.g., "`abc-123`" → "abc-123").
@@ -219,6 +292,12 @@ class OrignaBaseUserRepository implements UserRepository {
     return Address.fromMap(doc, docId: bareDocId);
   }
 
+  /// Updates an existing address in the user's address book.
+  ///
+  /// [addressId]: the address document ID.
+  /// [address]: the updated address model.
+  ///
+  /// Verifies ownership. If [Address.isDefault] is true, clears other defaults.
   @override
   Future<void> updateBuyerAddress(String addressId, Address address) async {
     final userId = _currentUserId;
@@ -239,6 +318,13 @@ class OrignaBaseUserRepository implements UserRepository {
     }
   }
 
+  /// Updates the user's notification preferences.
+  ///
+  /// [userId]: the user's document ID.
+  /// [notifyNewProducts]: whether to notify when new products are listed.
+  /// [notifyTrending]: whether to notify about trending products.
+  ///
+  /// Only sends non-null values to the server. No-op if all are null.
   @override
   Future<void> updateNotificationPreferences(
     String userId, {
@@ -264,6 +350,10 @@ class OrignaBaseUserRepository implements UserRepository {
     }
   }
 
+  /// Updates the user's preferred language.
+  ///
+  /// [userId]: the user's document ID.
+  /// [lang]: the language code ('en' or 'fr').
   @override
   Future<void> updatePreferredLanguage(String userId, String lang) async {
     final response = await _ob.request(
@@ -277,6 +367,14 @@ class OrignaBaseUserRepository implements UserRepository {
     }
   }
 
+  /// Provides a polling stream of the user's address book.
+  ///
+  /// [userId]: the user's document ID.
+  /// [limit]: max addresses per page (default 50).
+  /// [offset]: number to skip for pagination.
+  ///
+  /// Polls every 5 seconds with exponential backoff on errors (up to 60s).
+  /// Sorted with default address first.
   @override
   Stream<List<Address>> watchAddresses(
     String userId, {
@@ -340,6 +438,13 @@ class OrignaBaseUserRepository implements UserRepository {
     return controller.stream;
   }
 
+  /// Polls the seller account status every 5 seconds.
+  ///
+  /// Combines the user document (roles) and seller_profiles document
+  /// (Stripe onboarding) into a single [SellerAccountStatus] stream.
+  ///
+  /// Uses exponential backoff on errors (up to 60s) since this watches
+  /// two separate collections and cannot use OrignaBase realtime directly.
   @override
   Stream<SellerAccountStatus> watchSellerAccountStatus(String userId) {
     // OrignaBase supports document-level snapshots. Combine user doc and
@@ -411,6 +516,13 @@ class OrignaBaseUserRepository implements UserRepository {
   // Private helpers
   // ---------------------------------------------------------------------------
 
+  /// Parses seller status from user and seller_profiles documents.
+  ///
+  /// Determines [SellerAccountStatus] by combining:
+  /// - User roles (is seller/admin)
+  /// - Stripe charges/payouts enabled
+  /// - Onboarding completed flag
+  /// - Pending requirements list
   SellerAccountStatus _parseSellerStatus(
     Map<String, dynamic>? userData,
     Map<String, dynamic>? spData,

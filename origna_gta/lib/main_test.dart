@@ -93,8 +93,10 @@ Future<void> mainTest() async {
       if (message.contains(
         'Invalid state transition from AppLifecycleState.hidden to AppLifecycleState.resumed',
       )) {
-        // ignore: avoid_print
-        print('⚠️ Ignored web lifecycle assertion in test run');
+        AppLogger.w(
+          'Ignored web lifecycle assertion in test run',
+          tag: 'test',
+        );
         return true;
       }
       return false;

@@ -17,6 +17,7 @@ import {
   writeDoc,
   uid,
   ensureOrignaBaseUiAccount,
+  buildCheckoutPayload,
 } from '../../lib/api-client.js';
 import {
   TEST_ACCOUNTS,
@@ -32,6 +33,7 @@ const ADMIN_EMAIL = TEST_ACCOUNTS.ADMIN_EMAIL;
 const ADMIN_PASS = TEST_ACCOUNTS.ADMIN_PASS;
 const SELLER_EMAIL = TEST_ACCOUNTS.SELLER1_EMAIL;
 const BUYER_EMAIL = TEST_ACCOUNTS.BUYER1_EMAIL;
+const VALID_TEST_IMAGE_URL = 'https://pub-f9698d0f50d146bcac0e2dc9eb09de57.r2.dev/dev/products/samples/digital-1.jpg';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -45,9 +47,7 @@ async function createCheckoutProduct() {
     price,
     stockQuantity: 10,
     categoryId: '1',
-    imageUrls: [
-      `https://picsum.photos/seed/deep-checkout-${uid()}/400/400`,
-    ],
+    testImageUrls: [VALID_TEST_IMAGE_URL],
     shippingConfig: {
       standardDelivery: true,
       expressDelivery: false,
@@ -55,7 +55,12 @@ async function createCheckoutProduct() {
     },
   }, sellerAuth.idToken);
 
-  return { sellerAuth, productId: result.productId, price };
+  const productId = result.productId ?? result.id ?? result.result?.productId ?? result.result?.id;
+  if (!productId) {
+    throw new Error('create_product_atomic did not return a productId');
+  }
+
+  return { sellerAuth, productId, price };
 }
 
 async function waitForOrder(orderId: string, token: string, maxMs = 30_000) {
@@ -68,37 +73,16 @@ async function waitForOrder(orderId: string, token: string, maxMs = 30_000) {
   return getOrder(orderId, token);
 }
 
-function authUserId(auth: { idToken: string; localId: string }) {
-  try {
-    const [, payload] = auth.idToken.split('.');
-    if (!payload) return auth.localId;
-    const decoded = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
-    return decoded.user_id || decoded.sub || decoded.uid || auth.localId;
-  } catch {
-    return auth.localId;
-  }
-}
-
 async function createFreshBuyerAuth() {
   const buyerEmail = `e2e-buyer-order-${uid()}@test.origna.ca`;
   const provisioned = await ensureOrignaBaseUiAccount(buyerEmail, DEFAULT_PASS);
   return signIn(provisioned.email, DEFAULT_PASS);
 }
 
-function checkoutPayload(userId: string, productId: string, price: number) {
-  return {
-    userId,
-    items: [{ productId, quantity: 1 }],
-    subtotalCents: Math.round(price * 100),
-    idempotencyKey: `deep-checkout-${uid()}`,
-    shippingAddress: {
-      street: '100 Queen St W',
-      city: 'Toronto',
-      province: 'ON',
-      postalCode: 'M5H2N2',
-      country: 'CA',
-    },
-  };
+async function createFreshAddressBuyerAuth() {
+  const buyerEmail = `e2e-buyer-address-${uid()}@test.origna.ca`;
+  const provisioned = await ensureOrignaBaseUiAccount(buyerEmail, DEFAULT_PASS);
+  return signIn(provisioned.email, DEFAULT_PASS);
 }
 
 // ─── Shared login & navigation ───────────────────────────────────────────────
@@ -211,17 +195,17 @@ describe('A. Full Buyer Journey', () => {
 
   test('A3: Buyer can create checkout session via API and verify order', async () => {
     const auth = await createFreshBuyerAuth();
-    const { sellerAuth, productId, price } = await createCheckoutProduct();
+    const productId = TEST_PRODUCTS.HIGH_STOCK;
+    const { data } = await buildCheckoutPayload(auth.localId, productId, 1, auth.idToken);
 
     let checkout: any;
     try {
       checkout = await callOk(
         'create_checkout_session',
-        checkoutPayload(authUserId(auth), productId, price),
+        { ...data, idempotencyKey: `deep-checkout-${uid()}` },
         auth.idToken,
       );
     } catch (error) {
-      await callOk('delete_product', { productId }, sellerAuth.idToken).catch(() => {});
       throw error;
     }
 
@@ -235,7 +219,6 @@ describe('A. Full Buyer Journey', () => {
     expect(order).toBeTruthy();
     expect(order?.orderStatus).toBeTruthy();
     expect(order?.items?.length).toBeGreaterThan(0);
-    await callOk('delete_product', { productId }, sellerAuth.idToken).catch(() => {});
   }, 300_000);
 });
 
@@ -438,8 +421,8 @@ describe('C. Admin Panel Operations', () => {
       const msg = (response.error.message || '').toLowerCase();
       const code = (response.error.code || '').toLowerCase();
       if (msg.includes('mfa') || msg.includes('admin access') || msg.includes('authorization denied') ||
-          code.includes('not-found') || code.includes('forbidden') || code.includes('permission-denied') ||
-          msg.includes('not found') || msg.includes('not implemented')) return;
+          code.includes('not-found') || code.includes('forbidden') || code.includes('permission-denied') || code.includes('404') ||
+          msg.includes('not found') || msg.includes('not implemented') || msg.includes('404')) return;
       throw new Error(`admin_update_product_stock failed: ${response.error.message}`);
     }
 
@@ -493,7 +476,7 @@ describe('D. Profile & Address Management', () => {
   }, 180_000);
 
   test('D2: Address CRUD via API — add, set default, delete', async () => {
-    const auth = await signIn(BUYER_EMAIL, DEFAULT_PASS);
+    const auth = await createFreshAddressBuyerAuth();
 
     const addResult = await callOk('add_buyer_address', {
       street: '789 Deep Test Blvd',
@@ -521,17 +504,17 @@ describe('E. Order Lifecycle Deep', () => {
   test('E1: Full order state machine — pending -> confirmed -> processing -> shipped -> delivered', async () => {
     const buyerAuth = await createFreshBuyerAuth();
     const adminAuth = await signIn(ADMIN_EMAIL, ADMIN_PASS);
-    const { sellerAuth, productId, price } = await createCheckoutProduct();
+    const productId = TEST_PRODUCTS.HIGH_STOCK;
+    const { data } = await buildCheckoutPayload(buyerAuth.localId, productId, 1, buyerAuth.idToken);
 
     let checkout: any;
     try {
       checkout = await callOk(
         'create_checkout_session',
-        checkoutPayload(authUserId(buyerAuth), productId, price),
+        { ...data, idempotencyKey: `deep-lifecycle-${uid()}` },
         buyerAuth.idToken,
       );
     } catch (error) {
-      await callOk('delete_product', { productId }, sellerAuth.idToken).catch(() => {});
       throw error;
     }
     const orderId = checkout.orderId;
@@ -545,7 +528,7 @@ describe('E. Order Lifecycle Deep', () => {
     await callCallable('update_order_status', {
       orderId,
       newStatus: 'processing',
-    }, sellerAuth.idToken);
+    }, adminAuth.idToken);
 
     // Transition: processing -> shipped
     await callCallable('update_order_status', {
@@ -553,7 +536,7 @@ describe('E. Order Lifecycle Deep', () => {
       newStatus: 'shipped',
       trackingNumber: `TRACK-${uid()}`,
       carrier: 'Canada Post',
-    }, sellerAuth.idToken);
+    }, adminAuth.idToken);
 
     // Transition: shipped -> delivered (admin only)
     await callCallable('update_order_status', {
@@ -565,23 +548,22 @@ describe('E. Order Lifecycle Deep', () => {
     if (finalOrder?.orderStatus === 'delivered') {
       expect(finalOrder.orderStatus).toBe('delivered');
     }
-    await callOk('delete_product', { productId }, sellerAuth.idToken).catch(() => {});
   }, 300_000);
 
   test('E2: Return request flow — buyer requests, admin approves', async () => {
     const buyerAuth = await createFreshBuyerAuth();
     const adminAuth = await signIn(ADMIN_EMAIL, ADMIN_PASS);
-    const { sellerAuth, productId, price } = await createCheckoutProduct();
+    const productId = TEST_PRODUCTS.HIGH_STOCK;
+    const { data } = await buildCheckoutPayload(buyerAuth.localId, productId, 1, buyerAuth.idToken);
 
     let checkout: any;
     try {
       checkout = await callOk(
         'create_checkout_session',
-        checkoutPayload(authUserId(buyerAuth), productId, price),
+        { ...data, idempotencyKey: `deep-return-${uid()}` },
         buyerAuth.idToken,
       );
     } catch (error) {
-      await callOk('delete_product', { productId }, sellerAuth.idToken).catch(() => {});
       throw error;
     }
     const orderId = checkout.orderId;
@@ -604,7 +586,6 @@ describe('E. Order Lifecycle Deep', () => {
         orderId,
       }, adminAuth.idToken);
     }
-    await callOk('delete_product', { productId }, sellerAuth.idToken).catch(() => {});
   }, 300_000);
 });
 

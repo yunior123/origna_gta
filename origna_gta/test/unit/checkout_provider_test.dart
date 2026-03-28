@@ -47,7 +47,13 @@ void main() {
     });
 
     test('updateAddress updates state', () {
-      final address = Address(street: 'S', city: 'C', state: 'P', postalCode: 'Z', country: 'CA');
+      final address = Address(
+        street: 'S',
+        city: 'C',
+        state: 'P',
+        postalCode: 'Z',
+        country: 'CA',
+      );
       container.read(checkoutStateProvider.notifier).updateAddress(address);
 
       final state = container.read(checkoutStateProvider);
@@ -55,15 +61,49 @@ void main() {
     });
 
     test('applyCoupon calls OrignaBase', () async {
-      when(mockOrignaBase.request(any, any, body: anyNamed('body')))
-          .thenAnswer((_) async => {Fields.discountAmountCents: 500});
+      when(
+        mockOrignaBase.request(any, any, body: anyNamed('body')),
+      ).thenAnswer((_) async => {Fields.discountAmountCents: 500});
 
-      await container.read(checkoutStateProvider.notifier).applyCoupon('SAVE5', 10000);
+      await container
+          .read(checkoutStateProvider.notifier)
+          .applyCoupon('SAVE5', 10000);
 
       final state = container.read(checkoutStateProvider);
       expect(state.couponCode, 'SAVE5');
       expect(state.couponDiscountCents, 500);
-      verify(mockOrignaBase.request('POST', '/api/coupons/apply', body: anyNamed('body'))).called(1);
+      verify(
+        mockOrignaBase.request(
+          'POST',
+          '/api/coupons/apply',
+          body: anyNamed('body'),
+        ),
+      ).called(1);
     });
+
+    test(
+      'applyCoupon preserves coupon usage limit errors from OrignaBase',
+      () async {
+        when(
+          mockOrignaBase.request(any, any, body: anyNamed('body')),
+        ).thenThrow(
+          OrignaBaseException(
+            "You've reached the maximum uses for this coupon",
+          ),
+        );
+
+        await container
+            .read(checkoutStateProvider.notifier)
+            .applyCoupon('SAVE5', 10000);
+
+        final state = container.read(checkoutStateProvider);
+        expect(state.couponCode, isNull);
+        expect(state.couponDiscountCents, 0);
+        expect(
+          state.couponError,
+          "You've reached the maximum uses for this coupon",
+        );
+      },
+    );
   });
 }

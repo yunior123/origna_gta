@@ -12,6 +12,11 @@ void main() {
     defaultValue: false,
   );
 
+  if (!runLive) {
+    test('live tests disabled', () {});
+    return;
+  }
+
   group('OrignaBaseProductRepository live', () {
     late ProviderContainer container;
     late OrignaBase ob;
@@ -47,7 +52,6 @@ void main() {
         );
         expect(product, isNull);
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -68,7 +72,6 @@ void main() {
           expect(product.productId, testProductId);
         }
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -85,7 +88,6 @@ void main() {
         expect(result.products, isA<List<dynamic>>());
         // Result may be empty but should not throw
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -104,7 +106,6 @@ void main() {
         expect(result2.products, isA<List<dynamic>>());
         // Different page sizes should work without throwing
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -123,7 +124,6 @@ void main() {
           expect(product.productId, isNotEmpty);
         }
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -141,7 +141,6 @@ void main() {
         expect(products, isA<List<dynamic>>());
         // May contain matches or be empty, but should not throw
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -155,8 +154,7 @@ void main() {
         expect(suggestions, isA<List<dynamic>>());
         // May be empty but should not throw
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
-  }, skip: !runLive);
+  });
 }

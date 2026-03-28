@@ -13,6 +13,11 @@ void main() {
     defaultValue: false,
   );
 
+  if (!runLive) {
+    test('live tests disabled', () {});
+    return;
+  }
+
   bool isExpectedLivePermissionError(Object error) {
     final msg = error.toString().toLowerCase();
     return msg.contains('403') ||
@@ -60,7 +65,6 @@ void main() {
           expect(profile.email, isNotEmpty);
         }
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -82,7 +86,6 @@ void main() {
           );
         }
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -93,7 +96,6 @@ void main() {
         final addresses = await addressesStream.first;
         expect(addresses, isList);
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -102,7 +104,6 @@ void main() {
       () async {
         await userRepo.updatePreferredLanguage(adminUserId, 'en');
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -111,10 +112,9 @@ void main() {
       () async {
         await userRepo.recordTermsAcceptance();
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
-  }, skip: !runLive);
+  });
 
   // --- Seller-role tests -----------------------------------------------
   group('OrignaBaseUserRepository live (seller)', () {
@@ -155,7 +155,6 @@ void main() {
           );
         }
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -173,8 +172,7 @@ void main() {
           );
         }
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
-  }, skip: !runLive);
+  });
 }

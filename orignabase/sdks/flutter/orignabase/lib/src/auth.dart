@@ -371,6 +371,19 @@ class OrignaBaseAuth {
   /// and purges the offline cache to prevent stale data leaking
   /// across sessions.
   Future<void> signOut() async {
+    // Revoke the refresh token on the backend so it cannot be reused.
+    final token = _refreshToken;
+    if (token != null) {
+      try {
+        await _client.request('POST', '/auth/logout', body: {
+          'refresh_token': token,
+        });
+      } catch (_) {
+        // Best-effort: local state is always cleared even if the
+        // network call fails (offline, expired token, etc.).
+      }
+    }
+
     _accessToken = null;
     _refreshToken = null;
     _clearPersistedTokens();

@@ -1,22 +1,20 @@
 //! Order tools — list, get, return requests, checkout
 
+use crate::McpState;
 use crate::errors::{McpError, McpResult};
 use crate::safeguards::SpendLimit;
-use crate::McpState;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 /// List orders for user
-pub async fn list_orders(
-    _state: McpState,
-    user_id: &str,
-    params: &Value,
-) -> McpResult<Value> {
+pub async fn list_orders(_state: McpState, user_id: &str, params: &Value) -> McpResult<Value> {
     let _status = params.get("status").and_then(|v| v.as_str());
     let limit = params.get("limit").and_then(|v| v.as_u64()).unwrap_or(20);
     let offset = params.get("offset").and_then(|v| v.as_u64()).unwrap_or(0);
 
     if limit > 100 {
-        return Err(McpError::ValidationError("Limit must be <= 100".to_string()));
+        return Err(McpError::ValidationError(
+            "Limit must be <= 100".to_string(),
+        ));
     }
 
     // Query orders where buyerId = user_id
@@ -34,18 +32,16 @@ pub async fn list_orders(
 }
 
 /// Get order details
-pub async fn get_order(
-    _state: McpState,
-    user_id: &str,
-    params: &Value,
-) -> McpResult<Value> {
+pub async fn get_order(_state: McpState, user_id: &str, params: &Value) -> McpResult<Value> {
     let order_id = params
         .get("order_id")
         .and_then(|v| v.as_str())
         .ok_or_else(|| McpError::InvalidParams("Missing 'order_id'".to_string()))?;
 
     if !order_id.contains(':') {
-        return Err(McpError::ValidationError("Invalid order ID format".to_string()));
+        return Err(McpError::ValidationError(
+            "Invalid order ID format".to_string(),
+        ));
     }
 
     // Fetch order
@@ -69,11 +65,7 @@ pub async fn get_order(
 }
 
 /// Request a return for an order
-pub async fn request_return(
-    _state: McpState,
-    user_id: &str,
-    params: &Value,
-) -> McpResult<Value> {
+pub async fn request_return(_state: McpState, user_id: &str, params: &Value) -> McpResult<Value> {
     let order_id = params
         .get("order_id")
         .and_then(|v| v.as_str())
@@ -85,7 +77,9 @@ pub async fn request_return(
         .ok_or_else(|| McpError::InvalidParams("Missing 'reason'".to_string()))?;
 
     if !order_id.contains(':') {
-        return Err(McpError::ValidationError("Invalid order ID format".to_string()));
+        return Err(McpError::ValidationError(
+            "Invalid order ID format".to_string(),
+        ));
     }
 
     // Fetch order and verify ownership
@@ -116,7 +110,9 @@ pub async fn create_checkout(
         .ok_or_else(|| McpError::InvalidParams("Missing 'items' array".to_string()))?;
 
     if items.is_empty() {
-        return Err(McpError::ValidationError("Items array cannot be empty".to_string()));
+        return Err(McpError::ValidationError(
+            "Items array cannot be empty".to_string(),
+        ));
     }
 
     let _shipping_address = params
@@ -203,14 +199,18 @@ mod tests {
     #[tokio::test]
     async fn test_list_orders_with_status() {
         let state = make_state().await;
-        let result = list_orders(state, "users:u1", &json!({"status": "delivered"})).await.unwrap();
+        let result = list_orders(state, "users:u1", &json!({"status": "delivered"}))
+            .await
+            .unwrap();
         assert_eq!(result["user_id"], "users:u1");
     }
 
     #[tokio::test]
     async fn test_list_orders_with_pagination() {
         let state = make_state().await;
-        let result = list_orders(state, "users:u1", &json!({"limit": 5, "offset": 10})).await.unwrap();
+        let result = list_orders(state, "users:u1", &json!({"limit": 5, "offset": 10}))
+            .await
+            .unwrap();
         assert_eq!(result["limit"], 5);
         assert_eq!(result["offset"], 10);
     }
@@ -244,7 +244,9 @@ mod tests {
     #[tokio::test]
     async fn test_get_order_valid() {
         let state = make_state().await;
-        let result = get_order(state, "users:u1", &json!({"order_id": "orders:o1"})).await.unwrap();
+        let result = get_order(state, "users:u1", &json!({"order_id": "orders:o1"}))
+            .await
+            .unwrap();
         assert_eq!(result["id"], "orders:o1");
         assert_eq!(result["buyer_id"], "users:u1");
     }
@@ -314,7 +316,9 @@ mod tests {
     async fn test_request_return_unique_return_ids() {
         let state = make_state().await;
         let params = json!({"order_id": "orders:o1", "reason": "defective"});
-        let r1 = request_return(state.clone(), "users:u1", &params).await.unwrap();
+        let r1 = request_return(state.clone(), "users:u1", &params)
+            .await
+            .unwrap();
         let r2 = request_return(state, "users:u1", &params).await.unwrap();
         assert_ne!(r1["return_id"], r2["return_id"]);
     }
@@ -329,7 +333,8 @@ mod tests {
             "users:u1",
             &json!({"shipping_address": {"line1": "123 Main"}}),
             None,
-        ).await;
+        )
+        .await;
         assert!(result.is_err());
         assert!(matches!(result.unwrap_err(), McpError::InvalidParams(_)));
     }
@@ -342,7 +347,8 @@ mod tests {
             "users:u1",
             &json!({"items": [{"product_id": "p1", "quantity": 1}]}),
             None,
-        ).await;
+        )
+        .await;
         assert!(result.is_err());
         assert!(matches!(result.unwrap_err(), McpError::InvalidParams(_)));
     }
@@ -355,7 +361,8 @@ mod tests {
             "users:u1",
             &json!({"items": [], "shipping_address": {}}),
             None,
-        ).await;
+        )
+        .await;
         assert!(result.is_err());
         assert!(matches!(result.unwrap_err(), McpError::ValidationError(_)));
     }
@@ -391,10 +398,17 @@ mod tests {
             "items": [{"product_id": "products:p1", "quantity": 2}],
             "shipping_address": {"line1": "123 Main St"}
         });
-        let result = create_checkout(state, "users:u1", &params, None).await.unwrap();
+        let result = create_checkout(state, "users:u1", &params, None)
+            .await
+            .unwrap();
         assert!(result["checkout_id"].is_string());
         assert_eq!(result["user_id"], "users:u1");
-        assert!(result["session_url"].as_str().unwrap().starts_with("https://"));
+        assert!(
+            result["session_url"]
+                .as_str()
+                .unwrap()
+                .starts_with("https://")
+        );
         assert!(result["expires_at"].is_number());
     }
 
@@ -431,8 +445,12 @@ mod tests {
             "items": [{"product_id": "products:p1", "quantity": 1}],
             "shipping_address": {"line1": "123 Main"}
         });
-        let r1 = create_checkout(state.clone(), "users:u1", &params, None).await.unwrap();
-        let r2 = create_checkout(state, "users:u1", &params, None).await.unwrap();
+        let r1 = create_checkout(state.clone(), "users:u1", &params, None)
+            .await
+            .unwrap();
+        let r2 = create_checkout(state, "users:u1", &params, None)
+            .await
+            .unwrap();
         assert_ne!(r1["checkout_id"], r2["checkout_id"]);
     }
 
@@ -443,7 +461,9 @@ mod tests {
             "items": [{"product_id": "products:p1", "quantity": 1}],
             "shipping_address": {"line1": "123 Main"}
         });
-        let result = create_checkout(state, "users:u1", &params, None).await.unwrap();
+        let result = create_checkout(state, "users:u1", &params, None)
+            .await
+            .unwrap();
         let expires = result["expires_at"].as_i64().unwrap();
         assert!(expires > chrono::Utc::now().timestamp());
     }

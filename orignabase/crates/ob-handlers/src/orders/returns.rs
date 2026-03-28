@@ -2,7 +2,7 @@
 //! Ported from: functions/handlers/orders.py::create_return_request,
 //!   approve_return_request, reject_return_request
 
-use axum::{Json, Router, extract::State, extract::Extension, routing::post};
+use axum::{Json, Router, extract::Extension, extract::State, routing::post};
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -98,6 +98,8 @@ pub struct EscalateReturnResponse {
 // Router
 // ---------------------------------------------------------------------------
 
+/// Builds the returns router for creating, approving, rejecting, and escalating
+/// return requests.
 pub fn router(state: HandlersState) -> Router {
     Router::new()
         .route("/api/returns/create", post(create_return_request))
@@ -203,7 +205,8 @@ async fn notify_admins_of_return_escalation(
 
     // Group tokens by admin_id
     let mut all_admin_tokens: Vec<AdminTokens> = Vec::with_capacity(admin_ids.len());
-    let mut token_map: std::collections::HashMap<String, Vec<String>> = std::collections::HashMap::new();
+    let mut token_map: std::collections::HashMap<String, Vec<String>> =
+        std::collections::HashMap::new();
 
     for row in all_tokens_result {
         if let (Some(Some(uid_str)), Some(Some(token_str))) = (
@@ -381,6 +384,8 @@ fn valid_return_transitions(from: &str) -> Vec<&'static str> {
 // create_return_request
 // ---------------------------------------------------------------------------
 
+/// Creates a buyer-initiated return request for an eligible order item after
+/// validating ownership, order status, and the return reason payload.
 async fn create_return_request(
     State(state): State<HandlersState>,
     Extension(auth): Extension<AuthContext>,
@@ -516,6 +521,8 @@ async fn create_return_request(
 // approve_return_request
 // ---------------------------------------------------------------------------
 
+/// Advances a return request through seller or admin approval actions such as
+/// approval, label issuance, and receipt confirmation.
 async fn approve_return_request(
     State(state): State<HandlersState>,
     Extension(auth): Extension<AuthContext>,
@@ -767,6 +774,8 @@ async fn approve_return_request(
 // reject_return_request
 // ---------------------------------------------------------------------------
 
+/// Rejects a pending return request and records the actor plus rejection
+/// reason for later audit or support review.
 async fn reject_return_request(
     State(state): State<HandlersState>,
     Extension(auth): Extension<AuthContext>,
@@ -841,6 +850,8 @@ async fn reject_return_request(
     }))
 }
 
+/// Escalates a return request to admins, persists the escalation reason, and
+/// fans out notifications to the admin cohort for follow-up.
 async fn escalate_return_request(
     State(state): State<HandlersState>,
     Extension(auth): Extension<AuthContext>,
@@ -2698,8 +2709,12 @@ mod tests {
 
         // Set FCM env vars so Phase 2 enters the send_push branch
         // SAFETY: test is single-threaded for env var access
-        unsafe { std::env::set_var("OB_FCM_PROJECT_ID", "test-project-id"); }
-        unsafe { std::env::set_var("OB_FCM_SERVICE_ACCOUNT", "test-service-account"); }
+        unsafe {
+            std::env::set_var("OB_FCM_PROJECT_ID", "test-project-id");
+        }
+        unsafe {
+            std::env::set_var("OB_FCM_SERVICE_ACCOUNT", "test-service-account");
+        }
 
         let result = escalate_return_request(
             State(state.clone()),
@@ -2714,8 +2729,12 @@ mod tests {
 
         // Clean up env vars
         // SAFETY: test cleanup
-        unsafe { std::env::remove_var("OB_FCM_PROJECT_ID"); }
-        unsafe { std::env::remove_var("OB_FCM_SERVICE_ACCOUNT"); }
+        unsafe {
+            std::env::remove_var("OB_FCM_PROJECT_ID");
+        }
+        unsafe {
+            std::env::remove_var("OB_FCM_SERVICE_ACCOUNT");
+        }
 
         let Json(resp) = result.unwrap();
         assert!(resp.success);

@@ -188,8 +188,20 @@ fn short_device_name(user_agent: &str) -> String {
 
 // ── Run suspicious login check after successful auth ─────────────────
 
-/// Called after a successful login to record history, check for suspicious
-/// activity, and upsert the known device.
+/// Records post-login telemetry and raises best-effort suspicious-device alerts.
+///
+/// Parameters:
+/// - `db`: database client used for login history, alerts, and known-device records.
+/// - `user_id`: authenticated user ID that just completed login.
+/// - `headers`: request headers used to derive IP address and user-agent details.
+///
+/// Returns:
+/// - Nothing. All persistence is best-effort and ignored on failure.
+///
+/// Gotchas:
+/// - This function must never block or fail the primary login flow.
+/// - Device identity is derived from a user-agent hash, so browser upgrades may
+///   look like new devices and trigger alerts.
 pub async fn on_login_success(
     db: &ob_database::DatabaseClient,
     user_id: &str,
@@ -226,10 +238,7 @@ pub async fn on_login_failure(
 
 /// Record a failed login attempt by email for lockout tracking.
 /// Called from the login handler for both "user not found" and "wrong password" cases.
-pub async fn record_failed_login_for_lockout(
-    db: &ob_database::DatabaseClient,
-    email: &str,
-) {
+pub async fn record_failed_login_for_lockout(db: &ob_database::DatabaseClient, email: &str) {
     let _ = record_failed_login_attempt(db, email).await;
 }
 
@@ -242,10 +251,7 @@ const LOCKOUT_WINDOW_SECS: i64 = 15 * 60;
 
 /// Record a failed login attempt for lockout tracking.
 /// Uses the `login_lockout` collection with Unix timestamps.
-async fn record_failed_login_attempt(
-    db: &ob_database::DatabaseClient,
-    email: &str,
-) -> Result<()> {
+async fn record_failed_login_attempt(db: &ob_database::DatabaseClient, email: &str) -> Result<()> {
     let now_secs = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()
@@ -267,10 +273,7 @@ async fn record_failed_login_attempt(
 /// Returns `Ok(())` if the account is NOT locked out, or an `Error::Auth` if it is.
 ///
 /// Skipped when `OB_TEST_MODE=1` to allow tests to run freely.
-pub async fn check_account_lockout(
-    db: &ob_database::DatabaseClient,
-    email: &str,
-) -> Result<()> {
+pub async fn check_account_lockout(db: &ob_database::DatabaseClient, email: &str) -> Result<()> {
     // Skip lockout in test mode
     if std::env::var("OB_TEST_MODE").unwrap_or_default() == "1" {
         return Ok(());
@@ -546,7 +549,10 @@ mod tests {
     #[test]
     fn test_extract_ip_from_x_forwarded_for() {
         let mut headers = HeaderMap::new();
-        headers.insert("x-forwarded-for", HeaderValue::from_static("1.2.3.4, 5.6.7.8"));
+        headers.insert(
+            "x-forwarded-for",
+            HeaderValue::from_static("1.2.3.4, 5.6.7.8"),
+        );
         assert_eq!(extract_ip(&headers), "1.2.3.4");
     }
 
@@ -766,7 +772,10 @@ mod tests {
         }
 
         let result = check_account_lockout(&db, email).await;
-        assert!(result.is_ok(), "Account should NOT be locked after 4 failures");
+        assert!(
+            result.is_ok(),
+            "Account should NOT be locked after 4 failures"
+        );
     }
 
     #[tokio::test]
@@ -870,6 +879,10 @@ mod tests {
             )
             .await
             .unwrap();
-        assert_eq!(results.len(), 1, "Should have created exactly one lockout record");
+        assert_eq!(
+            results.len(),
+            1,
+            "Should have created exactly one lockout record"
+        );
     }
 }

@@ -10,11 +10,16 @@ import 'package:origna_gta/models/generated/models.dart' as models;
 ///
 /// Realtime stream logic is extracted into [OrderQueryHelpers].
 /// This file focuses on the public API surface and mutation endpoints.
+///
+/// All mutations go through OrignaBase's server-side endpoints (via `_ob.request`)
+/// to enforce business rules, payment verification, and multi-seller order splitting.
 class OrignaBaseOrderRepository
     with OrderQueryHelpers
     implements OrderRepository {
+  /// The OrignaBase client used for API requests.
   final OrignaBase _ob;
 
+  /// Creates an order repository with the given OrignaBase [client].
   OrignaBaseOrderRepository(this._ob);
 
   // Mixin accessor
@@ -24,6 +29,10 @@ class OrignaBaseOrderRepository
   // ---------------------------------------------------------------------------
   // Helper: convert an OrignaBase Document to a models.Order
   // ---------------------------------------------------------------------------
+
+  /// Converts an OrignaBase [Document] to a [models.Order].
+  ///
+  /// Merges the document data with the document ID as `orderId`.
   @override
   models.Order docToOrder(Document doc) {
     final data = <String, dynamic>{...doc.data, Fields.orderId: doc.id};
@@ -34,6 +43,10 @@ class OrignaBaseOrderRepository
   // Backend action calls via ob.request
   // ---------------------------------------------------------------------------
 
+  /// Approves or rejects a seller-submitted shipping cost update.
+  ///
+  /// [orderId]: the order ID.
+  /// [approved]: whether the buyer approves the new shipping cost.
   @override
   Future<void> approveShippingCost(String orderId, bool approved) async {
     await _ob.request(
@@ -43,6 +56,10 @@ class OrignaBaseOrderRepository
     );
   }
 
+  /// Captures the pre-authorized Stripe payment for an order.
+  ///
+  /// [orderId]: the order to capture payment for.
+  /// Called after buyer confirms delivery or auto-capture triggers.
   @override
   Future<void> capturePayment(String orderId) async {
     await _ob.request(
@@ -52,6 +69,11 @@ class OrignaBaseOrderRepository
     );
   }
 
+  /// Buyer confirms receipt of an order, triggering payment capture.
+  ///
+  /// [orderId]: the order ID.
+  /// [productId]: optional specific product ID for partial receipt confirmation.
+  ///   If omitted, confirms the entire order (triggers capture endpoint).
   @override
   Future<void> confirmReceipt(String orderId, {String? productId}) async {
     if (productId != null && productId.isNotEmpty) {
@@ -69,6 +91,12 @@ class OrignaBaseOrderRepository
     }
   }
 
+  /// Creates a Stripe Checkout session for the given order data.
+  ///
+  /// [orderData]: the order payload (items, shipping, buyer info).
+  ///
+  /// Returns a map with `sessionId` and `checkoutUrl` for redirecting
+  /// the user to Stripe's hosted checkout page.
   @override
   Future<Map<String, dynamic>> createCheckoutSession(
     Map<String, dynamic> orderData,
@@ -81,6 +109,9 @@ class OrignaBaseOrderRepository
     return Map<String, dynamic>.from(response as Map);
   }
 
+  /// Fetches a single order by document ID.
+  ///
+  /// Returns null if the order does not exist.
   @override
   Future<models.Order?> fetchOrderById(String orderId) async {
     final doc = await _ob.collection(Collections.orders).doc(orderId).get();
@@ -88,6 +119,14 @@ class OrignaBaseOrderRepository
     return docToOrder(doc);
   }
 
+  /// Updates the shipping status of a specific item within an order.
+  ///
+  /// [orderId]: the order containing the item.
+  /// [itemId]: the product/item ID to update.
+  /// [status]: the new status (e.g., 'shipped', 'delivered').
+  /// [trackingNumber]: optional tracking number for shipped items.
+  /// [carrier]: optional carrier name (e.g., 'Canada Post', 'UPS').
+  /// [carrierNote]: optional seller note about the shipment.
   @override
   Future<void> updateItemStatus(
     String orderId,
@@ -113,6 +152,13 @@ class OrignaBaseOrderRepository
     );
   }
 
+  /// Persists the last checkout session and order IDs on the user document.
+  ///
+  /// Used for post-payment recovery (e.g., polling the success screen).
+  ///
+  /// [userId]: the buyer's user ID.
+  /// [sessionId]: the Stripe checkout session ID.
+  /// [orderId]: the resulting order ID.
   @override
   Future<void> updateLastSession(
     String userId,
@@ -126,6 +172,11 @@ class OrignaBaseOrderRepository
     });
   }
 
+  /// Submits a revised shipping cost for an order with an audit reason.
+  ///
+  /// [orderId]: the order to update.
+  /// [newShippingCostCents]: the new shipping cost in cents.
+  /// [reason]: the reason for the cost change (audit trail).
   @override
   Future<void> updateShippingCost(
     String orderId,
@@ -147,6 +198,9 @@ class OrignaBaseOrderRepository
   // Realtime streams — delegated to OrderQueryHelpers mixin
   // ---------------------------------------------------------------------------
 
+  /// Provides a realtime stream of orders placed by the buyer.
+  ///
+  /// Filters to orders with active payment statuses, sorted by creation date descending.
   @override
   Stream<List<models.Order>> watchBuyerOrders(String userId) {
     return watchOrdersImpl(
@@ -172,10 +226,18 @@ class OrignaBaseOrderRepository
     );
   }
 
+  /// Watches a single order matched by Stripe session ID.
+  ///
+  /// Polls until a captured order with the given session ID exists.
+  /// Returns null if no matching order is found.
   @override
   Stream<models.Order?> watchPaidOrderBySession(String sessionId) =>
       watchPaidOrderBySessionImpl(sessionId);
 
+  /// Provides a realtime stream of orders containing items sold by the seller.
+  ///
+  /// Filters to orders where the seller is listed in `sellerIds`,
+  /// with active payment statuses. Sorted by creation date descending.
   @override
   Stream<List<models.Order>> watchSellerOrders(String userId) {
     return watchOrdersImpl(
@@ -209,6 +271,14 @@ class OrignaBaseOrderRepository
   // Return requests
   // ---------------------------------------------------------------------------
 
+  /// Creates a return request for specific items in an order.
+  ///
+  /// [orderId]: the order containing the items to return.
+  /// [cartItemIds]: the specific cart item IDs to return.
+  /// [reason]: the return reason code.
+  /// [description]: optional free-text description of the issue.
+  ///
+  /// Returns the server response as a map (includes the return request ID).
   @override
   Future<Map<String, dynamic>> createReturnRequest({
     required String orderId,
@@ -230,6 +300,13 @@ class OrignaBaseOrderRepository
     return Map<String, dynamic>.from(response as Map);
   }
 
+  /// Fetches return requests for a specific order.
+  ///
+  /// [orderId]: the order to query return requests for.
+  /// [limit]: max results per page (default 50).
+  /// [offset]: number of results to skip for pagination.
+  ///
+  /// Returns a list of [models.ReturnRequest] models.
   @override
   Future<List<models.ReturnRequest>> fetchReturnRequests(
     String orderId, {

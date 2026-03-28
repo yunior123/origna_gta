@@ -15,7 +15,9 @@ fn base_url() -> String {
 }
 
 fn ws_url() -> String {
-    base_url().replace("http://", "ws://").replace("https://", "wss://")
+    base_url()
+        .replace("http://", "ws://")
+        .replace("https://", "wss://")
 }
 
 /// Register a test user and return (access_token, user_id).
@@ -47,7 +49,10 @@ async fn test_ws_connect_with_valid_token() {
     let url = format!("{}/realtime?token={}", ws_url(), token);
     let result = connect_async(&url).await;
 
-    assert!(result.is_ok(), "WebSocket connection with valid token should succeed");
+    assert!(
+        result.is_ok(),
+        "WebSocket connection with valid token should succeed"
+    );
     let (ws_stream, _response) = result.unwrap();
     let (mut _write, _read) = ws_stream.split();
 }
@@ -140,7 +145,10 @@ async fn test_ws_subscribe_collection() {
     assert!(response.is_ok(), "Should receive subscribed confirmation");
     if let Ok(Some(Ok(Message::Text(text)))) = response {
         let msg: Value = serde_json::from_str(&text).unwrap_or(json!({}));
-        assert_eq!(msg["type"], "subscribed", "Should confirm subscription: {msg:?}");
+        assert_eq!(
+            msg["type"], "subscribed",
+            "Should confirm subscription: {msg:?}"
+        );
         assert_eq!(msg["id"], sub_id);
     }
 }
@@ -173,7 +181,9 @@ async fn test_ws_unsubscribe() {
     // Unsubscribe
     write
         .send(Message::Text(
-            json!({"type": "unsubscribe", "id": sub_id}).to_string().into(),
+            json!({"type": "unsubscribe", "id": sub_id})
+                .to_string()
+                .into(),
         ))
         .await
         .unwrap();
@@ -182,7 +192,10 @@ async fn test_ws_unsubscribe() {
     let response = tokio::time::timeout(std::time::Duration::from_secs(5), read.next()).await;
     if let Ok(Some(Ok(Message::Text(text)))) = response {
         let msg: Value = serde_json::from_str(&text).unwrap_or(json!({}));
-        assert_eq!(msg["type"], "unsubscribed", "Should confirm unsubscription: {msg:?}");
+        assert_eq!(
+            msg["type"], "unsubscribed",
+            "Should confirm unsubscription: {msg:?}"
+        );
     }
 }
 
@@ -217,7 +230,10 @@ async fn test_ws_presence_update() {
     // Server may or may not respond to presence immediately depending on config
     if let Ok(Some(Ok(Message::Text(text)))) = response {
         let msg: Value = serde_json::from_str(&text).unwrap_or(json!({}));
-        assert_eq!(msg["type"], "presence_update", "Should get presence_update: {msg:?}");
+        assert_eq!(
+            msg["type"], "presence_update",
+            "Should get presence_update: {msg:?}"
+        );
         assert!(msg["online"].is_array(), "Should include online users list");
     }
     // Timeout is acceptable — presence updates may be batched or delayed
@@ -248,7 +264,10 @@ async fn test_ws_invalid_message_returns_error() {
 
     if let Ok(Some(Ok(Message::Text(text)))) = response {
         let msg: Value = serde_json::from_str(&text).unwrap_or(json!({}));
-        assert_eq!(msg["type"], "error", "Should return error for invalid message: {msg:?}");
+        assert_eq!(
+            msg["type"], "error",
+            "Should return error for invalid message: {msg:?}"
+        );
     }
 }
 
@@ -278,7 +297,10 @@ async fn test_ws_subscribe_to_specific_document() {
     let response = tokio::time::timeout(std::time::Duration::from_secs(5), read.next()).await;
     if let Ok(Some(Ok(Message::Text(text)))) = response {
         let msg: Value = serde_json::from_str(&text).unwrap_or(json!({}));
-        assert_eq!(msg["type"], "subscribed", "Should confirm doc subscription: {msg:?}");
+        assert_eq!(
+            msg["type"], "subscribed",
+            "Should confirm doc subscription: {msg:?}"
+        );
         assert_eq!(msg["id"], sub_id);
     }
 }

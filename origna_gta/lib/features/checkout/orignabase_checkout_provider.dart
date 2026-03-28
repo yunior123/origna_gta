@@ -68,6 +68,12 @@ final _stripeCircuitBreaker = CircuitBreakerRegistry.get(
 /// - [CheckoutState] for the state shape
 /// - [OrderRepository] for persistence layer
 /// - [cartSubtotalProvider] for subtotal computation
+///
+/// Gotchas:
+/// - This notifier mixes synchronous state transitions with async side effects, so
+///   callers should avoid assuming that one state update means the whole checkout
+///   pipeline has completed.
+/// - Client-side tax and shipping are estimates; the backend remains authoritative.
 class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
   static const double _localDeliveryRadiusKm =
       BusinessRules.localDeliveryRadiusKm;
@@ -83,12 +89,21 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
 
   /// Validates and applies a coupon code server-side, storing the discount in state.
   ///
-  /// [code] — the coupon code (trimmed and uppercased before sending).
-  /// [subtotalCents] — current cart subtotal in integer cents for validation.
-  /// [sellerIds] — optional seller IDs to scope the coupon (multi-seller orders).
+  /// Parameters:
+  /// - [code]: coupon code entered by the buyer; normalized before the request.
+  /// - [subtotalCents]: current cart subtotal in integer cents.
+  /// - [sellerIds]: optional seller scope when a coupon is seller-specific.
+  ///
+  /// Returns:
+  /// - Completes after [state] reflects the applied discount or an error message.
   ///
   /// After successful application, triggers shipping recalculation and tax update
   /// via [_recalculateTotalsAfterCouponChange].
+  ///
+  /// Gotchas:
+  /// - Empty coupon strings are ignored silently.
+  /// - Shipping and tax are recomputed from the discounted subtotal, so applying a
+  ///   coupon can change more than the discount line item.
   Future<void> applyCoupon(
     String code,
     int subtotalCents, {
@@ -110,6 +125,7 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
       final data = Map<String, dynamic>.from(result as Map);
       final discountCents =
           (data[Fields.discountAmountCents] as num?)?.toInt() ?? 0;
+      if (!mounted) return;
       state = state.copyWith(
         couponCode: trimmed,
         couponDiscountCents: discountCents,
@@ -121,8 +137,10 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
       );
       _recalculateTotalsAfterCouponChange(postDiscountSubtotalCents);
     } on OrignaBaseException catch (e) {
+      if (!mounted) return;
       state = state.copyWith(isCouponLoading: false, couponError: e.message);
     } catch (e, st) {
+      if (!mounted) return;
       state = state.copyWith(
         isCouponLoading: false,
         couponError: 'checkout.coupon_apply_failed'.tr(),
@@ -133,9 +151,20 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
 
   /// Verifies cart prices against current product prices server-side.
   ///
+  /// Parameters:
+  /// - [items]: cart entries with product IDs, client prices, and quantities.
+  ///
+  /// Returns:
+  /// - A decoded response map containing drift metadata such as `hasChanges`,
+  ///   `priceChanges`, `stockChanges`, and `removedProducts`.
+  ///
   /// Detects price drift, stock changes, and removed products between
   /// add-to-cart and checkout. Returns a map with `hasChanges`, `priceChanges`,
   /// `stockChanges`, and `removedProducts` arrays.
+  ///
+  /// Gotchas:
+  /// - Errors are rethrown after logging so callers can decide whether checkout
+  ///   should fail open or fail closed.
   Future<Map<String, dynamic>> verifyCartPrices(
     List<CartItemDetailModel> items,
   ) async {
@@ -165,6 +194,13 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
   /// Calculates shipping cost for cart items based on seller locations, item
   /// dimensions, delivery speed, and buyer address.
   ///
+  /// Parameters:
+  /// - [items]: fully hydrated cart items, including seller metadata and shipping flags.
+  ///
+  /// Returns:
+  /// - Completes after [state] is updated with shipping cost, available speeds,
+  ///   local-delivery status, and any error message.
+  ///
   /// Key behaviors:
   /// - Digital-only carts: shipping cost = 0, no address required.
   /// - Free shipping threshold: checked against post-coupon subtotal in integer cents.
@@ -174,6 +210,10 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
   ///   (perishable, local-only, international).
   ///
   /// Wrapped by [_shippingCircuitBreaker] — returns user-friendly error on open circuit.
+  ///
+  /// Gotchas:
+  /// - Missing coordinates on either side force local-delivery detection to `false`.
+  /// - This method recalculates taxes as a follow-up side effect after shipping succeeds.
   Future<void> calculateShipping(List<CartItemDetailModel> items) async {
     if (items.isEmpty) {
       state = state.copyWith(shippingError: 'checkout.errors.no_items'.tr());
@@ -269,6 +309,7 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
           .toList();
 
       final hasIntl = itemChecks.any((item) => item.isInternational);
+      if (!mounted) return;
 
       state = state.copyWith(
         baseShippingCost: cost,
@@ -296,11 +337,13 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
 
       calculateTaxes(subtotal, shippingCost: cost);
     } on CircuitBreakerOpenException catch (_) {
+      if (!mounted) return;
       state = state.copyWith(
         shippingError: 'checkout.errors.shipping_unavailable'.tr(),
         isCalculatingShipping: false,
       );
     } catch (e) {
+      if (!mounted) return;
       state = state.copyWith(
         shippingError: 'checkout.errors.shipping_calc_failed'.tr(),
         isCalculatingShipping: false,
@@ -321,7 +364,8 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
 
   /// Loads the user's default shipping address into state on checkout entry.
   ///
-  /// Tries the address book first, falls back to the user profile address.
+  /// Tries the address book first (default address), falls back to the user profile address.
+  /// Silently catches errors — checkout can proceed without a pre-loaded address.
   Future<void> initialize() async {
     final userId = _userId;
     if (userId == null) return;
@@ -345,6 +389,8 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
   }
 
   /// Removes the applied coupon and recalculates shipping/taxes without discount.
+  ///
+  /// Reads the current cart subtotal to recompute totals post-removal.
   void removeCoupon() {
     final subtotalCents = _ref.read(cartSubtotalProvider);
     state = state.copyWith(
@@ -359,7 +405,9 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
   void reset() => state = const CheckoutState();
 
   /// Sets the delivery speed and recalculates shipping cost for the cart.
-
+  ///
+  /// Only applies if [speed] is in [CheckoutState.availableDeliverySpeeds].
+  /// Triggers a shipping recalculation via [calculateShipping].
   void setDeliverySpeed(DeliverySpeed speed) {
     if (state.availableDeliverySpeeds.contains(speed)) {
       state = state.copyWith(deliverySpeed: speed);
@@ -369,8 +417,9 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
     }
   }
 
-  /// Sets the payment provider (currently only Stripe is supported).
-
+  /// Sets the payment provider.
+  ///
+  /// Currently only [PaymentProviderValues.stripe] is accepted — other values are ignored.
   void setPaymentProvider(String provider) {
     if (provider == PaymentProviderValues.stripe) {
       state = state.copyWith(paymentProvider: provider);
@@ -378,6 +427,18 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
   }
 
   /// Creates a Stripe Checkout Session and returns the redirect URL.
+  ///
+  /// Parameters:
+  /// - [items]: cart items being purchased.
+  /// - [user]: currently authenticated buyer profile.
+  /// - [subtotalCents]: authoritative client subtotal in integer cents.
+  /// - [eulaAccepted]: whether digital-item terms were accepted.
+  /// - [ageVerificationAccepted]: whether age-restricted items were acknowledged.
+  ///
+  /// Returns:
+  /// - [CheckoutSuccess] with the redirect URL, order ID, and session ID.
+  /// - [CheckoutAlreadyProcessed] when an idempotent retry hits an existing order.
+  /// - [CheckoutError] when validation or remote checkout creation fails.
   ///
   /// Pre-flight validation: cart non-empty, address valid (for physical items),
   /// subtotal > 0, email present, not already processing.
@@ -388,9 +449,15 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
   /// 1. Verify cart prices haven't changed (fail-open on error)
   /// 2. Create Stripe session via [OrderRepository.createCheckoutSession]
   /// 3. Handle duplicate session (idempotency) — returns existing URL
-  /// 4. Store session ID and invalidates cart on success
+  /// 4. Store session ID and keep the cart until payment confirmation webhook
   ///
   /// Returns [CheckoutSuccess] with redirect URL, or [CheckoutError] on failure.
+  ///
+  /// Gotchas:
+  /// - Price verification currently fails closed; any verification error blocks checkout.
+  /// - High-value orders require local biometric auth before the server request is sent.
+  /// - The cart stays intact until the payment-confirmation webhook performs
+  ///   authoritative server-side cleanup.
   Future<CheckoutResult> startCheckout({
     required List<CartItemDetailModel> items,
     required UserModel user,
@@ -556,7 +623,6 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
         final orderId = result[Fields.orderId] as String;
         if (checkoutUrl != null && checkoutUrl.isNotEmpty) {
           state = state.copyWith(isProcessing: false, idempotencyKey: null);
-          _ref.invalidate(cartItemsProvider);
           return CheckoutSuccess(
             checkoutUrl: checkoutUrl,
             orderId: orderId,
@@ -582,10 +648,6 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
         idempotencyKey: null,
         serverTaxAmountCents: serverTaxAmountCents,
       );
-
-      // Invalidate local cart state after successful checkout session creation.
-      // Server-side cart cleanup is handled by the webhook.
-      _ref.invalidate(cartItemsProvider);
 
       return CheckoutSuccess(
         checkoutUrl: checkoutUrl,
@@ -620,16 +682,25 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
   }
 
   /// Updates the shipping address and clears the cached idempotency key for re-checkout.
-
+  ///
+  /// Parameters:
+  /// - [address]: new shipping address to use for the checkout.
+  ///
+  /// Clears the idempotency key so the next [startCheckout] creates a fresh session.
   void updateAddress(Address address) {
     state = state.copyWith(address: address, idempotencyKey: null);
   }
 
+  /// Recalculates shipping and taxes after a coupon change.
+  ///
+  /// Parameters:
+  /// - [subtotalCents]: post-discount subtotal in integer cents.
   void _recalculateTotalsAfterCouponChange(int subtotalCents) {
     _ref.read(cartWithDetailsProvider).whenData(calculateShipping);
     calculateTaxes(subtotalCents / 100.0, shippingCost: state.shippingCost);
   }
 
+  /// Computes the Haversine distance in km between two coordinate pairs.
   double _calculateDistanceKm(
     double lat1,
     double lon1,
@@ -649,6 +720,9 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
     return earthRadiusKm * c;
   }
 
+  /// Checks whether all items can be delivered locally (within [_localDeliveryRadiusKm]).
+  ///
+  /// Returns `false` if any item or the buyer address lacks coordinates.
   Future<bool> _checkLocalDelivery(
     List<CartItemDetailModel> items,
     Address buyerAddress,
@@ -672,9 +746,11 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
     return true;
   }
 
+  /// Generates a unique idempotency key: `chk_{userId}_{uuid}`.
   String _generateIdempotencyKey(String userId) {
     return 'chk_${userId}_${const Uuid().v4()}';
   }
 
+  /// Converts degrees to radians.
   double _toRadians(double deg) => deg * pi / 180;
 }

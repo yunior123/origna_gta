@@ -12,7 +12,12 @@ void main() {
     defaultValue: false,
   );
 
-  group('Coupons Integration', skip: !runLive ? 'live tests disabled' : null, () {
+  if (!runLive) {
+    test('live tests disabled', () {});
+    return;
+  }
+
+  group('Coupons Integration', () {
     late String baseUrl;
     late String adminToken;
     late String adminUserId;

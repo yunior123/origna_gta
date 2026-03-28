@@ -13,31 +13,53 @@ import 'package:origna_gta/services/push_transport.dart';
 import 'package:origna_gta/utils/app_logger.dart';
 import 'package:origna_gta/utils/utils.dart';
 
-/// OrignaBase notification service — replaces legacy token storage.
-/// Token registration/cleanup goes through OrignaBase push API, while the
-/// client-side transport is abstracted behind [PushMessagingClient].
+/// Manages the complete push notification lifecycle for the app.
+///
+/// Responsibilities:
+/// - Requests notification permission from the user.
+/// - Registers/unregisters the FCM token with OrignaBase's push service.
+/// - Listens for token refresh and re-registers automatically.
+/// - Handles foreground messages (shows SnackBar).
+/// - Handles notification taps (routes to order detail, product detail, etc.).
+/// - Saves push opt-out status when the user declines permission.
+///
+/// This is a singleton service. On web, initialization is a no-op (push is
+/// not supported). The transport layer is abstracted behind [PushMessagingClient].
 class OrignaBaseNotificationService {
   static final OrignaBaseNotificationService instance =
       OrignaBaseNotificationService._internal();
 
+  /// Global key for showing SnackBars from anywhere (including outside widget tree).
   static GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
       GlobalKey<ScaffoldMessengerState>();
 
+  /// Global key for navigating from notification taps without BuildContext.
   static GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
+  /// Whether the service has been initialized.
   bool _initialized = false;
+
+  /// Guard against concurrent initialization.
   bool _isInitializing = false;
 
+  /// Subscription to the push token refresh stream.
   StreamSubscription<dynamic>? _tokenSubscription;
+
+  /// Subscription to auth state changes for re-registering tokens on login.
   ProviderSubscription<dynamic>? _authSubscription;
+
+  /// The Riverpod container used for reading providers.
   ProviderContainer? _container;
 
+  /// Override for [PushMessagingClient] in tests.
   @visibleForTesting
   PushMessagingClient? messagingOverride;
 
+  /// Override for foreground message stream in tests.
   @visibleForTesting
   Stream<AppRemoteMessage>? onMessageOverride;
 
+  /// Override for notification-opened-app stream in tests.
   @visibleForTesting
   Stream<AppRemoteMessage>? onMessageOpenedAppOverride;
 
@@ -45,6 +67,7 @@ class OrignaBaseNotificationService {
 
   OrignaBaseNotificationService._internal();
 
+  /// Resets all service state for testing. Cancels active subscriptions.
   @visibleForTesting
   void resetForTesting() {
     _initialized = false;
@@ -57,24 +80,29 @@ class OrignaBaseNotificationService {
     onMessageOpenedAppOverride = null;
   }
 
+  /// Override for the Riverpod container in tests.
   @visibleForTesting
   set testContainerOverride(ProviderContainer container) {
     _container = container;
   }
 
+  /// Override for the navigator key in tests.
   @visibleForTesting
   set testNavigatorKey(GlobalKey<NavigatorState> key) {
     navigatorKey = key;
   }
 
+  /// Override for the scaffold messenger key in tests.
   @visibleForTesting
   set testScaffoldMessengerKey(GlobalKey<ScaffoldMessengerState> key) {
     scaffoldMessengerKey = key;
   }
 
+  /// Resolves the push messaging client (test override or no-op).
   PushMessagingClient get _messaging =>
       messagingOverride ?? const NoopPushMessagingClient();
 
+  /// Reads the OrignaBase client from the Riverpod container.
   OrignaBase get _ob => _container!.read(orignabaseProvider);
 
   /// Removes the device's FCM token from OrignaBase.
@@ -95,6 +123,7 @@ class OrignaBaseNotificationService {
     }
   }
 
+  /// Cancels active token and auth subscriptions.
   void dispose() {
     _tokenSubscription?.cancel();
     _authSubscription?.close();
@@ -225,11 +254,15 @@ class OrignaBaseNotificationService {
     }
   }
 
-  /// Save FCM token to OrignaBase push service.
+  /// Exposed for testing — delegates to [_saveTokenToOrignaBase].
   @visibleForTesting
   Future<void> saveTokenToOrignaBase({String? token}) =>
       _saveTokenToOrignaBase(token: token);
 
+  /// Saves the current FCM token to OrignaBase's push service.
+  ///
+  /// If [token] is provided, uses it directly; otherwise fetches from the
+  /// messaging client. Registers the token with the user's ID and platform.
   Future<void> _saveTokenToOrignaBase({String? token}) async {
     if (_container == null) return;
     final userId = _container!.read(obUserIdProvider);

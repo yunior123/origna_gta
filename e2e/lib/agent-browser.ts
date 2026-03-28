@@ -13,7 +13,7 @@ export class AgentBrowser {
     this.headed = options?.headed ?? process.env.HEADED === 'true';
   }
 
-  private run(args: string[], timeoutMs = 30_000): string {
+  public run(args: string[], timeoutMs = 30_000): string {
     const fullArgs = [...args];
     if (this.headed) fullArgs.unshift('--headed');
     
@@ -134,7 +134,8 @@ export class AgentBrowser {
 
   async close(): Promise<void> {
     try {
-      this.run(['close'], 5_000);
+      // Keep teardown comfortably under Bun's default 5s hook timeout.
+      this.run(['close'], 1_500);
     } catch (e) {
       console.warn(`[close] agent-browser close failed (non-fatal):`, String(e).slice(0, 80));
     }
@@ -260,4 +261,154 @@ export class AgentBrowser {
       await new Promise(r => setTimeout(r, 200));
     }
   }
+
+  async navigateAndVerify(options: {
+    clickRef: string;
+    expectedKeywords: string[];
+    scrollIntoView?: boolean;
+    retries?: number;
+    waitMs?: number;
+  }): Promise<{ success: boolean; snapshot: string; error?: string }> {
+    const { clickRef, expectedKeywords, scrollIntoView = false, retries = 1, waitMs = 3000 } = options;
+
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      const before = await this.snapshot({ compact: true });
+      const beforeRaw = before.raw;
+
+      let actualRef = clickRef;
+      if (!/^@?e\d+$/i.test(clickRef)) {
+        const match = this.findByLabel(before, new RegExp(clickRef, 'i'))?.ref;
+        if (match) {
+          actualRef = match;
+        } else {
+          const m = beforeRaw.match(new RegExp(`"ref":"(@?e\\\\d+)".*?"name":".*?${clickRef}.*?"`, 'i')) || 
+                    beforeRaw.match(new RegExp(`${clickRef}.*?ref=(e\\\\d+)`, 'i'));
+          if (m) actualRef = m[1];
+          else {
+            if (attempt < retries) { await new Promise(r => setTimeout(r, 1000)); continue; }
+            return { success: false, snapshot: beforeRaw, error: `Ref not found for label: ${clickRef}` };
+          }
+        }
+      }
+
+      if (scrollIntoView) {
+        try { this.run(['scrollintoview', this.normalizeRef(actualRef)]); } catch(e) {}
+        await new Promise(r => setTimeout(r, 500));
+      }
+
+      try {
+        await this.click(actualRef);
+      } catch (e) {
+        if (attempt < retries) { await new Promise(r => setTimeout(r, 1000)); continue; }
+        return { success: false, snapshot: beforeRaw, error: `Click failed on ${actualRef}` };
+      }
+      await new Promise(r => setTimeout(r, waitMs));
+
+      const after = await this.snapshot({ compact: true });
+      const afterRaw = after.raw;
+
+      if (afterRaw === beforeRaw) {
+        console.warn(`[navigateAndVerify] Page didn't change after clicking ${clickRef} (attempt ${attempt + 1})`);
+        if (attempt < retries) {
+          await new Promise(r => setTimeout(r, 1000));
+          continue;
+        }
+        return { success: false, snapshot: afterRaw, error: 'Page unchanged after click' };
+      }
+
+      const hasExpected = expectedKeywords.some(kw => afterRaw.toLowerCase().includes(kw.toLowerCase()));
+      if (!hasExpected) {
+        console.warn(`[navigateAndVerify] Page changed but expected keywords [${expectedKeywords.join(', ')}] not found (attempt ${attempt + 1})`);
+        if (attempt < retries) continue;
+        return { success: false, snapshot: afterRaw, error: `Keywords not found: ${expectedKeywords.join(', ')}` };
+      }
+
+      return { success: true, snapshot: afterRaw };
+    }
+
+    return { success: false, snapshot: '', error: 'All retries exhausted' };
+  }
+
+  async screenshotWithVerify(options: {
+    filepath: string;
+    expectedKeywords: string[];
+    viewport?: { width: number; height: number };
+  }): Promise<boolean> {
+    const { filepath, expectedKeywords, viewport } = options;
+
+    if (viewport) {
+      this.run(['set', 'viewport', String(viewport.width), String(viewport.height)]);
+      await new Promise(r => setTimeout(r, 500));
+    }
+
+    const snap = await this.snapshot({ compact: true });
+    const snapRaw = snap.raw;
+    const hasExpected = expectedKeywords.some(kw => snapRaw.toLowerCase().includes(kw.toLowerCase()));
+
+    if (!hasExpected) {
+      console.error(`[screenshotWithVerify] SKIPPING ${filepath} — expected keywords [${expectedKeywords.join(', ')}] not on current page`);
+      return false;
+    }
+
+    await this.screenshot(filepath);
+    console.log(`[screenshotWithVerify] OK: ${filepath}`);
+    return true;
+  }
+
+  async goHomeAndLogin(): Promise<string> {
+    await this.open('https://dev.orignagta.ca', 60_000);
+    await new Promise(r => setTimeout(r, 3000));
+
+    let snap = await this.snapshot({ compact: true });
+    if (!snap.raw.includes('btn-add-product')) {
+      this.run(['eval', `(async()=>{const r=await fetch('https://api.dev.orignagta.ca/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:'e2e-admin@test.origna.ca',password:'REDACTED_TEST_PASSWORD'})});const d=await r.json();localStorage.setItem('orignabase_access_token',d.access_token);localStorage.setItem('orignabase_refresh_token',d.refresh_token);localStorage.setItem('orignabase_email','e2e-admin@test.origna.ca');return 'OK'})()`]);
+      await this.open('https://dev.orignagta.ca', 60_000);
+      await new Promise(r => setTimeout(r, 5000));
+      snap = await this.snapshot({ compact: true });
+    }
+
+    if (!snap.raw.includes('btn-add-product')) {
+      throw new Error('Login failed — btn-add-product not found after login');
+    }
+
+    return snap.raw;
+  }
+
+  async navigateToProfileMenu(menuName: string, expectedKeywords: string[]): Promise<{ success: boolean; snapshot: string; error?: string }> {
+    const homeSnapRaw = await this.goHomeAndLogin();
+    const homeSnapObj = await this.snapshot({ compact: true });
+    
+    let settingsRef = this.findByLabel(homeSnapObj, /btn-home-settings/i)?.ref;
+    if (!settingsRef) {
+       // try fallback with text
+       const m = homeSnapRaw.match(/btn-home-settings.*?ref=(e\d+)/i) || homeSnapRaw.match(/"ref":"(@?e\d+)".*?"name":"btn-home-settings"/i);
+       if (m) settingsRef = m[1];
+    }
+    
+    if (!settingsRef) return { success: false, snapshot: homeSnapRaw, error: 'btn-home-settings not found' };
+
+    await this.click(settingsRef);
+    await new Promise(r => setTimeout(r, 2000));
+
+    const profileSnapObj = await this.snapshot({ compact: true });
+    let menuRef = this.findByLabel(profileSnapObj, new RegExp(menuName, 'i'))?.ref;
+    
+    if (!menuRef) {
+      const m = profileSnapObj.raw.match(new RegExp(`${menuName}.*?ref=(e\\d+)`, 'i')) || profileSnapObj.raw.match(new RegExp(`"ref":"(@?e\\d+)".*?"name":"${menuName}"`, 'i'));
+      if (m) menuRef = m[1];
+    }
+
+    if (!menuRef) {
+      console.error(`Menu item ${menuName} not found in profile snapshot`);
+      return { success: false, snapshot: profileSnapObj.raw, error: `Menu item ${menuName} not found` };
+    }
+
+    return this.navigateAndVerify({
+      clickRef: menuRef,
+      expectedKeywords,
+      scrollIntoView: true,
+      waitMs: 3000,
+    });
+  }
+
 }

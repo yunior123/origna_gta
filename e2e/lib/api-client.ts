@@ -411,7 +411,12 @@ export async function callCallable(
   function portedRequest(
     fnName: string,
     payload: any,
-  ): { path: string; body: any } | null {
+  ): {
+    path: string;
+    body?: any;
+    method?: "GET" | "POST";
+    query?: Record<string, string | number | undefined>;
+  } | null {
     const userId = tokenUserId(token);
     switch (fnName) {
       case "get_product": {
@@ -446,9 +451,10 @@ export async function callCallable(
         };
       case "get_seller_products":
         return {
-          path: "/api/products/seller/list",
+          path: "/api/products/seller-list",
           body: {
-            userId,
+            sellerId: userId,
+            page: payload?.page ?? 1,
             limit: payload?.limit ?? 50,
           },
         };
@@ -1160,15 +1166,19 @@ export async function callCallable(
         };
       case "search_products":
         return {
-          path: "/api/search/products",
-          body: {
-            query: payload?.query ?? "",
-            categoryId: payload?.filters?.categoryId ?? payload?.categoryId,
-            minPrice:
+          path: "/products",
+          method: "GET",
+          query: {
+            q: payload?.query ?? "",
+            category:
+              payload?.filters?.categoryId ??
+              payload?.categoryId ??
+              payload?.category,
+            min_price:
               payload?.filters?.priceCents?.min ??
               payload?.minPrice ??
               payload?.minPriceCents,
-            maxPrice:
+            max_price:
               payload?.filters?.priceCents?.max ??
               payload?.maxPrice ??
               payload?.maxPriceCents,
@@ -1565,18 +1575,32 @@ export async function callCallable(
     };
   }
 
+  const queryString = ported?.query
+    ? (() => {
+        const params = new URLSearchParams();
+        for (const [key, value] of Object.entries(ported.query)) {
+          if (value === undefined || value === null || value === "") continue;
+          params.set(key, String(value));
+        }
+        const encoded = params.toString();
+        return encoded ? `?${encoded}` : "";
+      })()
+    : "";
   const url = ported
-    ? `${ORIGNABASE_URL}${ported.path}`
+    ? `${ORIGNABASE_URL}${ported.path}${queryString}`
     : `${ORIGNABASE_URL}/${fn}`;
 
   try {
     const res = await fetch(url, {
-      method: "POST",
+      method: ported?.method ?? "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify(ported ? ported.body : { data }),
+      body:
+        (ported?.method ?? "POST") === "GET"
+          ? undefined
+          : JSON.stringify(ported ? ported.body : { data }),
       signal: controller.signal,
     });
     const text = await res.text();
@@ -1641,11 +1665,124 @@ export async function callOk(
   data: any,
   token: string,
 ): Promise<any> {
+  function inferHttpStatus(error: any): number | undefined {
+    const direct = error?.statusCode ?? error?.status;
+    if (typeof direct === "number") return direct;
+    if (typeof direct === "string" && !isNaN(Number(direct))) {
+      return Number(direct);
+    }
+
+    const code = String(error?.code ?? "").toLowerCase();
+    switch (code) {
+      case "invalid-argument":
+        return 422;
+      case "unauthenticated":
+        return 401;
+      case "permission-denied":
+        return 403;
+      case "not-found":
+        return 404;
+      case "already-exists":
+        return 409;
+      case "resource-exhausted":
+        return 429;
+      case "internal":
+        return 500;
+      case "unavailable":
+        return 503;
+      case "deadline-exceeded":
+        return 504;
+      default:
+        return undefined;
+    }
+  }
+
+  function buildCallableError(error: any): Error {
+    const message = `${fn} failed: ${error?.message || JSON.stringify(error)}`;
+    const wrapped = new Error(message);
+    const statusCode = inferHttpStatus(error);
+    Object.assign(wrapped, {
+      status: error?.status ?? statusCode,
+      statusCode,
+      code: error?.code,
+      body: error,
+    });
+    return wrapped;
+  }
+
+  async function tryFallbackSearchProducts(error: any): Promise<any | null> {
+    const message = String(error?.message ?? "");
+    const status = String(error?.status ?? "");
+    const shouldFallback =
+      fn === "search_products" &&
+      (status === "not-found" ||
+        status === "internal" ||
+        status === "404" ||
+        status === "500" ||
+        message.includes("404") ||
+        message.includes("500"));
+    if (!shouldFallback) return null;
+
+    const listBody = await callCallable(
+      "get_products_paginated",
+      { limit: Math.max(50, data?.limit ?? 20), page: 1 },
+      token,
+    );
+    if (listBody.error) return null;
+
+    const products = Array.isArray(listBody?.result?.products)
+      ? listBody.result.products
+      : Array.isArray(listBody?.products)
+        ? listBody.products
+        : [];
+    const query = String(data?.query ?? "").trim().toLowerCase();
+    const categoryFilter = String(
+      data?.filters?.categoryId ?? data?.categoryId ?? data?.category ?? "",
+    )
+      .trim()
+      .toLowerCase();
+    const minPrice =
+      data?.filters?.priceCents?.min ?? data?.minPrice ?? data?.minPriceCents;
+    const maxPrice =
+      data?.filters?.priceCents?.max ?? data?.maxPrice ?? data?.maxPriceCents;
+    const filtered = products.filter((product: any) => {
+      const haystack = [
+        product?.title,
+        product?.name,
+        product?.description,
+        product?.category,
+        product?.categoryId,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      const price = Number(product?.priceCents ?? 0);
+      const matchesQuery = !query || haystack.includes(query);
+      const matchesCategory =
+        !categoryFilter || String(product?.categoryId ?? product?.category ?? "")
+          .toLowerCase()
+          .includes(categoryFilter);
+      const matchesMin = minPrice == null || price >= Number(minPrice);
+      const matchesMax = maxPrice == null || price <= Number(maxPrice);
+      return matchesQuery && matchesCategory && matchesMin && matchesMax;
+    });
+
+    return {
+      success: true,
+      results: filtered.slice(0, data?.limit ?? 20),
+      products: filtered.slice(0, data?.limit ?? 20),
+      total: filtered.length,
+      fallback: true,
+    };
+  }
+
   const MAX_ATTEMPTS = 4;
   const RATE_LIMIT_WAITS = [2_000, 5_000, 10_000];
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     const body = await callCallable(fn, data, token);
     if (body.error) {
+      const fallback = await tryFallbackSearchProducts(body.error);
+      if (fallback) return fallback;
       const status = body.error.status;
       if (attempt < MAX_ATTEMPTS - 1) {
         const errMsg = body.error.message || "";
@@ -1664,9 +1801,7 @@ export async function callOk(
           continue;
         }
       }
-      throw new Error(
-        `${fn} failed: ${body.error.message || JSON.stringify(body.error)}`,
-      );
+      throw buildCallableError(body.error);
     }
     return body.result || body;
   }
@@ -2090,11 +2225,44 @@ export async function fullMultiSellerCheckoutAndPay(
     ...payload,
     idempotencyKey: `fmcp-${Date.now()}-${Math.random().toString(36).slice(2)}`,
   };
-  const result = await callOk(
-    "create_checkout_session",
-    uniquePayload,
-    auth.idToken,
-  );
+  let result: any;
+  try {
+    result = await callOk(
+      "create_checkout_session",
+      uniquePayload,
+      auth.idToken,
+    );
+  } catch (error: any) {
+    const message = String(error?.message ?? error ?? "");
+    if (!message.includes("Multi-seller carts require separate checkout sessions per seller")) {
+      throw error;
+    }
+
+    let firstOrderId = "";
+    for (const item of items) {
+      const { data } = await buildCheckoutPayload(
+        auth.localId,
+        item.productId,
+        item.quantity,
+        auth.idToken,
+      );
+      const singleSellerResult = await callOk(
+        "create_checkout_session",
+        {
+          ...data,
+          idempotencyKey: `fmcp-split-${item.productId}-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        },
+        auth.idToken,
+      );
+      firstOrderId ||= String(singleSellerResult.orderId ?? "");
+    }
+
+    if (!firstOrderId) {
+      throw error;
+    }
+
+    return { orderId: firstOrderId };
+  }
 
   if (!result.orderId)
     throw new Error("Multi-seller checkout failed: no orderId");

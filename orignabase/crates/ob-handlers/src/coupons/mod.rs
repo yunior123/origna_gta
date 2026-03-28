@@ -1,12 +1,12 @@
 //! Coupon/promo code handlers.
 //! Ported from: functions/handlers/coupons.py
 
-use axum::{Json, Router, extract::State, extract::Extension, routing::post};
+use axum::{Json, Router, extract::Extension, extract::State, routing::post};
 use serde::{Deserialize, Serialize};
 use tracing::{error, info, warn};
 
-use ob_auth::middleware::AuthContext;
 use crate::shared::auth::resolve_self_user_id;
+use ob_auth::middleware::AuthContext;
 
 use crate::HandlersState;
 use crate::shared::schema::{collections, fields};
@@ -17,7 +17,8 @@ static COUPON_CODE_RE: OnceLock<regex_lite::Regex> = OnceLock::new();
 
 /// Coupon code format: 4-20 uppercase alphanumeric characters.
 fn is_valid_coupon_code(code: &str) -> bool {
-    let re = COUPON_CODE_RE.get_or_init(|| regex_lite::Regex::new(r"^[A-Z0-9]{4,20}$").expect("valid regex"));
+    let re = COUPON_CODE_RE
+        .get_or_init(|| regex_lite::Regex::new(r"^[A-Z0-9]{4,20}$").expect("valid regex"));
     re.is_match(code)
 }
 
@@ -194,9 +195,9 @@ async fn apply_coupon(
                 error!("Coupon lookup extraction failed: {e}");
                 ob_core::Error::NotFound("Coupon invalid or unavailable".into())
             })?;
-            docs.into_iter().next().ok_or_else(|| {
-                ob_core::Error::NotFound("Coupon invalid or unavailable".into())
-            })?
+            docs.into_iter()
+                .next()
+                .ok_or_else(|| ob_core::Error::NotFound("Coupon invalid or unavailable".into()))?
         }
     };
 
@@ -933,13 +934,11 @@ mod tests {
     fn test_per_user_max_uses_stored_in_coupon_doc() {
         // Verify that create_coupon stores maxUsesPerUser (defaults to 1)
         // by checking the JSON doc shape
-        let max_per_user: Option<i64> = None;
-        let stored = max_per_user.unwrap_or(1);
-        assert_eq!(stored, 1);
+        let default_max_per_user = Option::<i64>::default();
+        assert_eq!(default_max_per_user.unwrap_or(1), 1);
 
-        let max_per_user: Option<i64> = Some(5);
-        let stored = max_per_user.unwrap_or(1);
-        assert_eq!(stored, 5);
+        let configured_max_per_user = [5_i64].first().copied();
+        assert_eq!(configured_max_per_user.unwrap_or(1), 5);
     }
 
     #[test]
@@ -1617,6 +1616,55 @@ mod tests {
         .unwrap_err();
 
         assert!(err.to_string().contains("Coupon invalid or unavailable"));
+    }
+
+    #[tokio::test]
+    async fn test_apply_coupon_rejects_when_user_reaches_per_user_limit() {
+        let state = setup_state().await;
+        state
+            .db
+            .upsert_document(
+                collections::COUPONS,
+                "USERMAX1",
+                json!({
+                    "isActive": true,
+                    fields::COUPON_TYPE: "percentage",
+                    fields::DISCOUNT_VALUE: 10.0,
+                    fields::MAX_USES: 10,
+                    fields::USED_COUNT: 1,
+                    "maxUsesPerUser": 1,
+                }),
+            )
+            .await
+            .unwrap();
+        state
+            .db
+            .upsert_document(
+                collections::COUPON_USES,
+                "use_001",
+                json!({
+                    "couponId": "USERMAX1",
+                    "userId": "user_1",
+                    "orderId": "ord_001",
+                }),
+            )
+            .await
+            .unwrap();
+
+        let err = apply_coupon(
+            State(state),
+            auth("user_1", "user"),
+            Json(ApplyCouponRequest {
+                code: "USERMAX1".into(),
+                order_subtotal_cents: 5_000,
+                seller_ids: None,
+                user_id: "user_1".into(),
+            }),
+        )
+        .await
+        .unwrap_err();
+
+        assert!(err.to_string().contains("maximum uses for this coupon"));
     }
 
     // ── Coverage: create_coupon invalid code format (lines 315-317) ──

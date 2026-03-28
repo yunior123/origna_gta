@@ -288,7 +288,21 @@ struct OidcTokenResponse {
     id_token: Option<String>,
 }
 
-/// CRITICAL FIX: Verify OIDC ID token signature using provider's JWKS
+/// Verifies an OIDC `id_token` signature and extracts minimal identity claims.
+///
+/// Parameters:
+/// - `id_token`: provider-issued JWT returned from the token exchange.
+/// - `jwks_uri`: URL used to fetch the provider signing keys.
+/// - `http_client`: shared HTTP client for JWKS retrieval.
+///
+/// Returns:
+/// - `Ok(OidcTokenInfo)` with the verified subject, email, name, and picture claims.
+/// - `Err(...)` if key discovery, certificate parsing, signature validation, or claim checks fail.
+///
+/// Gotchas:
+/// - This function assumes the caller passes a JWKS endpoint, not the discovery document.
+/// - It attempts RSA first and then EC verification because providers differ in signing algorithms.
+/// - Only minimal structural claim validation happens here; issuer/audience policy belongs to the caller.
 async fn verify_oidc_id_token_with_signature(
     id_token: &str,
     jwks_uri: &str,
@@ -328,7 +342,24 @@ async fn verify_oidc_id_token_with_signature(
     Ok(claims)
 }
 
-/// Exchange an OIDC authorization code for tokens, then extract user info.
+/// Exchanges an OIDC authorization code and converts the verified ID token into local user info.
+///
+/// Parameters:
+/// - `http_client`: HTTP client used for the token exchange and JWKS lookup.
+/// - `token_endpoint`: provider token endpoint that accepts the authorization code.
+/// - `authorization_code`: short-lived code received from the browser redirect.
+/// - `client_id`: OAuth client identifier registered with the provider.
+/// - `client_secret`: OAuth client secret for confidential-client exchanges.
+/// - `redirect_uri`: redirect URI that must match the authorization request.
+///
+/// Returns:
+/// - `Ok(OAuthUserInfo)` with provider ID, optional email, display name, and picture.
+/// - `Err(...)` when the exchange or ID token verification fails.
+///
+/// Gotchas:
+/// - The current JWKS lookup derives an issuer base URL from `token_endpoint`; providers
+///   with non-standard layouts may require a discovery-document implementation instead.
+/// - The response must include an `id_token`; access-token-only providers are unsupported here.
 pub async fn exchange_oidc_authorization_code(
     http_client: &reqwest::Client,
     token_endpoint: &str,
@@ -391,12 +422,110 @@ fn base64_decode(input: &str) -> std::result::Result<Vec<u8>, base64::DecodeErro
     use base64::prelude::*;
     let mut input = input.to_string();
     // Add padding
-    while input.len() % 4 != 0 {
+    while !input.len().is_multiple_of(4) {
         input.push('=');
     }
     // Replace URL-safe characters
     let input = input.replace('-', "+").replace('_', "/");
     BASE64_STANDARD.decode(&input)
+}
+
+/// Generates the Apple client-secret JWT required for code exchange.
+///
+/// Parameters:
+/// - `team_id`: Apple developer team identifier.
+/// - `key_id`: Apple key identifier used in the JWT header.
+/// - `service_id`: Apple service ID that acts as the JWT subject/client ID.
+/// - `private_key`: `.p8` EC private key contents.
+///
+/// Returns:
+/// - `Ok(String)` containing the signed ES256 client-secret JWT.
+/// - `Err(...)` if the private key is invalid or the JWT cannot be encoded.
+///
+/// Gotchas:
+/// - Apple expects a long-lived client secret; this implementation uses a 180-day expiry.
+/// - The header `kid` must match the uploaded Apple signing key or token exchange will fail.
+pub fn generate_apple_client_secret(
+    team_id: &str,
+    key_id: &str,
+    service_id: &str,
+    private_key: &str,
+) -> Result<String> {
+    use chrono::Utc;
+    use jsonwebtoken::{Algorithm, EncodingKey, Header, encode};
+    use serde::{Deserialize, Serialize};
+
+    #[derive(Debug, Serialize, Deserialize)]
+    struct AppleClientSecretClaims {
+        iss: String, // team_id
+        iat: i64,    // issued at
+        exp: i64,    // expiration (6 months)
+        aud: String, // "https://appleid.apple.com"
+        sub: String, // service_id (client_id)
+    }
+
+    let now = Utc::now().timestamp();
+    let claims = AppleClientSecretClaims {
+        iss: team_id.to_string(),
+        iat: now,
+        exp: now + (180 * 24 * 60 * 60), // 6 months
+        aud: "https://appleid.apple.com".to_string(),
+        sub: service_id.to_string(),
+    };
+
+    let encoding_key = EncodingKey::from_ec_pem(private_key.as_bytes())
+        .map_err(|e| Error::Auth(format!("Invalid Apple private key: {e}")))?;
+
+    let mut header = Header::new(Algorithm::ES256);
+    header.kid = Some(key_id.to_string());
+    encode(&header, &claims, &encoding_key)
+        .map_err(|e| Error::Auth(format!("Failed to generate client secret: {e}")))
+}
+
+/// Verify Apple authorization code and extract user info.
+pub async fn verify_apple_auth_code(
+    authorization_code: &str,
+    service_id: &str,
+    base_url: &str,
+    client_secret: &str,
+) -> Result<OAuthUserInfo> {
+    let http_client = reqwest::Client::new();
+    let redirect_uri = format!("{}/auth/apple/callback", base_url.trim_end_matches('/'));
+
+    // Exchange the auth_code for an ID token
+    exchange_apple_authorization_code(
+        &http_client,
+        authorization_code,
+        service_id,
+        client_secret,
+        redirect_uri.as_str(),
+    )
+    .await
+}
+
+/// Verify OIDC access token and extract user info.
+pub async fn verify_oidc_token(access_token: &str, issuer_url: &str) -> Result<OAuthUserInfo> {
+    let http_client = reqwest::Client::new();
+
+    // Construct the token endpoint from issuer URL
+    let token_endpoint = format!("{}/token", issuer_url);
+
+    // For generic OIDC, we treat the access_token as an authorization code for token exchange
+    // This is a simplification - in reality you'd need client_id, client_secret, and redirect_uri
+    // For now, exchange using dummy values (this should be improved)
+    let client_id = "origna-gta";
+    let client_secret = "";
+    let redirect_uri = "https://orignagta.ca/auth/oidc/callback";
+
+    exchange_oidc_authorization_code(
+        &http_client,
+        &token_endpoint,
+        access_token,
+        client_id,
+        client_secret,
+        redirect_uri,
+    )
+    .await
 }
 
 #[cfg(test)]
@@ -449,7 +578,10 @@ mod tests {
         assert_eq!(decoded.provider, OAuthProvider::Google);
         assert_eq!(decoded.email, Some("user@example.com".to_string()));
         assert_eq!(decoded.display_name, Some("John Doe".to_string()));
-        assert_eq!(decoded.picture, Some("https://example.com/pic.jpg".to_string()));
+        assert_eq!(
+            decoded.picture,
+            Some("https://example.com/pic.jpg".to_string())
+        );
     }
 
     #[test]
@@ -502,7 +634,11 @@ mod tests {
 
     #[test]
     fn test_oauth_provider_serde_roundtrip() {
-        for provider in [OAuthProvider::Google, OAuthProvider::Apple, OAuthProvider::Oidc] {
+        for provider in [
+            OAuthProvider::Google,
+            OAuthProvider::Apple,
+            OAuthProvider::Oidc,
+        ] {
             let json = serde_json::to_string(&provider).unwrap();
             let back: OAuthProvider = serde_json::from_str(&json).unwrap();
             assert_eq!(provider, back);
@@ -641,8 +777,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_fetch_jwks_success() {
-        use wiremock::{Mock, MockServer, ResponseTemplate};
         use wiremock::matchers::method;
+        use wiremock::{Mock, MockServer, ResponseTemplate};
 
         let server = MockServer::start().await;
         Mock::given(method("GET"))
@@ -657,8 +793,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_fetch_jwks_server_error() {
-        use wiremock::{Mock, MockServer, ResponseTemplate};
         use wiremock::matchers::method;
+        use wiremock::{Mock, MockServer, ResponseTemplate};
 
         let server = MockServer::start().await;
         Mock::given(method("GET"))
@@ -674,8 +810,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_fetch_jwks_invalid_json() {
-        use wiremock::{Mock, MockServer, ResponseTemplate};
         use wiremock::matchers::method;
+        use wiremock::{Mock, MockServer, ResponseTemplate};
 
         let server = MockServer::start().await;
         Mock::given(method("GET"))
@@ -693,8 +829,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_exchange_google_code_token_endpoint_error() {
-        use wiremock::{Mock, MockServer, ResponseTemplate};
         use wiremock::matchers::method;
+        use wiremock::{Mock, MockServer, ResponseTemplate};
 
         let server = MockServer::start().await;
         Mock::given(method("POST"))
@@ -712,7 +848,9 @@ mod tests {
         )
         .await;
         assert!(result.is_err());
-        assert!(format!("{}", result.unwrap_err()).contains("OAuth provider authentication failed"));
+        assert!(
+            format!("{}", result.unwrap_err()).contains("OAuth provider authentication failed")
+        );
     }
 
     #[tokio::test]
@@ -726,22 +864,22 @@ mod tests {
             "https://example.com/callback",
         )
         .await;
-    assert!(result.is_err());
-    let err_msg = format!("{}", result.unwrap_err());
-    assert!(
-        err_msg.contains("auth failed")
-            || err_msg.contains("verification failed")
-            || err_msg.contains("OAuth provider"),
-        "Got: {err_msg}"
-    );
+        assert!(result.is_err());
+        let err_msg = format!("{}", result.unwrap_err());
+        assert!(
+            err_msg.contains("auth failed")
+                || err_msg.contains("verification failed")
+                || err_msg.contains("OAuth provider"),
+            "Got: {err_msg}"
+        );
     }
 
     // --- async: exchange_apple_authorization_code ---
 
     #[tokio::test]
     async fn test_exchange_apple_code_token_endpoint_error() {
-        use wiremock::{Mock, MockServer, ResponseTemplate};
         use wiremock::matchers::method;
+        use wiremock::{Mock, MockServer, ResponseTemplate};
 
         let server = MockServer::start().await;
         Mock::given(method("POST"))
@@ -759,7 +897,9 @@ mod tests {
         )
         .await;
         assert!(result.is_err());
-        assert!(format!("{}", result.unwrap_err()).contains("OAuth provider authentication failed"));
+        assert!(
+            format!("{}", result.unwrap_err()).contains("OAuth provider authentication failed")
+        );
     }
 
     #[tokio::test]
@@ -776,7 +916,9 @@ mod tests {
         assert!(result.is_err());
         let err_msg = format!("{}", result.unwrap_err());
         assert!(
-            err_msg.contains("OAuth provider authentication failed") || err_msg.contains("fetch JWKS") || err_msg.contains("verification failed"),
+            err_msg.contains("OAuth provider authentication failed")
+                || err_msg.contains("fetch JWKS")
+                || err_msg.contains("verification failed"),
             "Got: {err_msg}"
         );
     }
@@ -785,8 +927,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_exchange_oidc_code_token_endpoint_error() {
-        use wiremock::{Mock, MockServer, ResponseTemplate};
         use wiremock::matchers::method;
+        use wiremock::{Mock, MockServer, ResponseTemplate};
 
         let server = MockServer::start().await;
         Mock::given(method("POST"))
@@ -805,13 +947,15 @@ mod tests {
         )
         .await;
         assert!(result.is_err());
-        assert!(format!("{}", result.unwrap_err()).contains("OAuth provider authentication failed"));
+        assert!(
+            format!("{}", result.unwrap_err()).contains("OAuth provider authentication failed")
+        );
     }
 
     #[tokio::test]
     async fn test_exchange_oidc_code_no_id_token() {
-        use wiremock::{Mock, MockServer, ResponseTemplate};
         use wiremock::matchers::method;
+        use wiremock::{Mock, MockServer, ResponseTemplate};
 
         let server = MockServer::start().await;
         Mock::given(method("POST"))
@@ -840,12 +984,8 @@ mod tests {
 
     #[test]
     fn test_generate_apple_client_secret_invalid_key() {
-        let result = generate_apple_client_secret(
-            "TEAM1",
-            "KEY1",
-            "service.id",
-            "not a valid pem key",
-        );
+        let result =
+            generate_apple_client_secret("TEAM1", "KEY1", "service.id", "not a valid pem key");
         assert!(result.is_err());
         assert!(format!("{}", result.unwrap_err()).contains("Invalid Apple private key"));
     }
@@ -862,7 +1002,11 @@ mod tests {
 
     #[test]
     fn test_oauth_provider_all_variants() {
-        let providers = [OAuthProvider::Google, OAuthProvider::Apple, OAuthProvider::Oidc];
+        let providers = [
+            OAuthProvider::Google,
+            OAuthProvider::Apple,
+            OAuthProvider::Oidc,
+        ];
         assert_eq!(providers.len(), 3);
         for p in &providers {
             let s = p.to_string();
@@ -874,8 +1018,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_verify_google_id_token_http_error() {
-        use wiremock::{Mock, MockServer, ResponseTemplate};
         use wiremock::matchers::method;
+        use wiremock::{Mock, MockServer, ResponseTemplate};
 
         let server = MockServer::start().await;
         Mock::given(method("GET"))
@@ -891,8 +1035,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_verify_google_id_token_bad_json() {
-        use wiremock::{Mock, MockServer, ResponseTemplate};
         use wiremock::matchers::method;
+        use wiremock::{Mock, MockServer, ResponseTemplate};
 
         let server = MockServer::start().await;
         Mock::given(method("GET"))
@@ -935,88 +1079,4 @@ mod tests {
         assert_eq!(parsed["kid"], "test-kid");
         assert_eq!(parsed["alg"], "HS256");
     }
-}
-
-/// Takes team_id, key_id, service_id (client_id), and private_key (p8 format).
-pub fn generate_apple_client_secret(
-    team_id: &str,
-    key_id: &str,
-    service_id: &str,
-    private_key: &str,
-) -> Result<String> {
-    use chrono::Utc;
-    use jsonwebtoken::{Algorithm, EncodingKey, Header, encode};
-    use serde::{Deserialize, Serialize};
-
-    #[derive(Debug, Serialize, Deserialize)]
-    struct AppleClientSecretClaims {
-        iss: String, // team_id
-        iat: i64,    // issued at
-        exp: i64,    // expiration (6 months)
-        aud: String, // "https://appleid.apple.com"
-        sub: String, // service_id (client_id)
-    }
-
-    let now = Utc::now().timestamp();
-    let claims = AppleClientSecretClaims {
-        iss: team_id.to_string(),
-        iat: now,
-        exp: now + (180 * 24 * 60 * 60), // 6 months
-        aud: "https://appleid.apple.com".to_string(),
-        sub: service_id.to_string(),
-    };
-
-    let encoding_key = EncodingKey::from_ec_pem(private_key.as_bytes())
-        .map_err(|e| Error::Auth(format!("Invalid Apple private key: {e}")))?;
-
-    let mut header = Header::new(Algorithm::ES256);
-    header.kid = Some(key_id.to_string());
-    encode(&header, &claims, &encoding_key)
-        .map_err(|e| Error::Auth(format!("Failed to generate client secret: {e}")))
-}
-
-/// Verify Apple authorization code and extract user info.
-pub async fn verify_apple_auth_code(
-    authorization_code: &str,
-    service_id: &str,
-    base_url: &str,
-    client_secret: &str,
-) -> Result<OAuthUserInfo> {
-    let http_client = reqwest::Client::new();
-    let redirect_uri = format!("{}/auth/apple/callback", base_url.trim_end_matches('/'));
-
-    // Exchange the auth_code for an ID token
-    exchange_apple_authorization_code(
-        &http_client,
-        authorization_code,
-        service_id,
-        client_secret,
-        redirect_uri.as_str(),
-    )
-    .await
-}
-
-/// Verify OIDC access token and extract user info.
-pub async fn verify_oidc_token(access_token: &str, issuer_url: &str) -> Result<OAuthUserInfo> {
-    let http_client = reqwest::Client::new();
-
-    // Construct the token endpoint from issuer URL
-    let token_endpoint = format!("{}/token", issuer_url);
-
-    // For generic OIDC, we treat the access_token as an authorization code for token exchange
-    // This is a simplification - in reality you'd need client_id, client_secret, and redirect_uri
-    // For now, exchange using dummy values (this should be improved)
-    let client_id = "origna-gta";
-    let client_secret = "";
-    let redirect_uri = "https://orignagta.ca/auth/oidc/callback";
-
-    exchange_oidc_authorization_code(
-        &http_client,
-        &token_endpoint,
-        access_token,
-        client_id,
-        client_secret,
-        redirect_uri,
-    )
-    .await
 }

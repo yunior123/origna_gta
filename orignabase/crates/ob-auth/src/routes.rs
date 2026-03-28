@@ -168,9 +168,7 @@ fn frontend_fallback_redirect(state: &AuthState) -> String {
     let fallback = match host {
         "api.orignagta.ca" => "https://orignagta.ca",
         "api-staging.orignagta.ca" => "https://orignagta-staging.web.app",
-        "localhost" | "127.0.0.1" if state.test_mode => {
-            "http://localhost:5001"
-        }
+        "localhost" | "127.0.0.1" if state.test_mode => "http://localhost:5001",
         _ if host.starts_with("api.") => {
             return format!(
                 "{}://{}",
@@ -199,12 +197,14 @@ fn validate_google_redirect_target(state: &AuthState, redirect_to: &str) -> Resu
 
     if let Ok(base_url) = reqwest::Url::parse(&state.base_url) {
         allowed_origins.push(base_url.origin().ascii_serialization());
-        if let Some(host) = base_url.host_str() && host.starts_with("api.") {
-                allowed_origins.push(format!(
-                    "{}://{}",
-                    base_url.scheme(),
-                    host.trim_start_matches("api.")
-                ));
+        if let Some(host) = base_url.host_str()
+            && host.starts_with("api.")
+        {
+            allowed_origins.push(format!(
+                "{}://{}",
+                base_url.scheme(),
+                host.trim_start_matches("api.")
+            ));
         }
     }
 
@@ -280,7 +280,25 @@ fn ensure_user_not_disabled(user: &serde_json::Value) -> Result<()> {
     Ok(())
 }
 
-/// POST /auth/register
+/// Registers a new email/password user and optionally issues auth tokens.
+///
+/// Parameters:
+/// - `state`: auth subsystem state containing config, DB access, JWT keys, and
+///   optional email/Turnstile services.
+/// - `body`: registration payload with email, password, display name, and
+///   Turnstile token.
+///
+/// Returns:
+/// - `Ok(Json<AuthResponse>)` with either auth tokens or an
+///   email-verification-required payload, depending on configuration.
+/// - `Err(...)` when bot protection, validation, password hashing, or DB writes fail.
+///
+/// Gotchas:
+/// - Duplicate emails intentionally return a generic validation failure rather than
+///   exposing whether the account exists.
+/// - When `require_email_verification` is enabled, registration succeeds without
+///   issuing usable access or refresh tokens.
+/// - Verification email delivery is best-effort and does not roll back user creation.
 pub async fn register(
     State(state): State<AuthState>,
     Json(body): Json<RegisterRequest>,
@@ -378,7 +396,22 @@ pub async fn register(
     }))
 }
 
-/// POST /auth/login
+/// Authenticates an email/password user and starts MFA when required.
+///
+/// Parameters:
+/// - `state`: auth subsystem state with DB, JWT keys, and security configuration.
+/// - `headers`: request headers used for IP/device extraction and login tracking.
+/// - `body`: login payload containing email, password, and Turnstile token.
+///
+/// Returns:
+/// - `Ok(Json<AuthResponse>)` with full auth tokens for normal logins.
+/// - `Ok(Json<AuthResponse>)` with an MFA challenge token when the account requires TOTP.
+/// - `Err(...)` for lockout, validation, password, or account-state failures.
+///
+/// Gotchas:
+/// - Account lockout is checked before password verification to avoid wasting CPU.
+/// - Unknown users still trigger a dummy password verification to reduce timing leaks.
+/// - Successful logins record session and device history on a best-effort basis.
 pub async fn login(
     State(state): State<AuthState>,
     headers: HeaderMap,
@@ -504,7 +537,20 @@ pub async fn login(
     }))
 }
 
-/// POST /auth/refresh
+/// Exchanges a valid refresh token for a new access/refresh token pair.
+///
+/// Parameters:
+/// - `state`: auth subsystem state with JWT keys, DB access, and token TTLs.
+/// - `body`: refresh payload containing the previous refresh token.
+///
+/// Returns:
+/// - `Ok(Json<Value>)` with `access_token` and `refresh_token`.
+/// - `Err(...)` when the token is invalid, revoked, or the backing user cannot be used.
+///
+/// Gotchas:
+/// - The old refresh token is revoked only after new tokens are issued.
+/// - Revocation failure is logged and tolerated so active sessions are not stranded.
+/// - User roles and custom claims are reloaded from storage on every refresh.
 pub async fn refresh(
     State(state): State<AuthState>,
     Json(body): Json<RefreshRequest>,
@@ -536,6 +582,20 @@ pub async fn refresh(
         .ok_or_else(|| Error::Auth("User not found".into()))?;
     ensure_user_not_disabled(user)?;
 
+    // Reject refresh tokens issued before the last password change.
+    // This ensures a password reset invalidates all pre-existing sessions.
+    if let Some(pw_changed) = user["password_changed_at"].as_i64()
+        && claims.iat < pw_changed
+    {
+        tracing::warn!(
+            user_id = %claims.sub,
+            "Refresh token rejected: issued before password change"
+        );
+        return Err(Error::Auth(
+            "Session invalidated by password change. Please log in again.".into(),
+        ));
+    }
+
     let roles: Vec<String> = user["roles"]
         .as_array()
         .map(|arr| {
@@ -559,11 +619,14 @@ pub async fn refresh(
         email_verified,
         custom_claims,
     )?;
-    let new_refresh_token = jwt::issue_refresh_token(&claims.sub, &state.jwt_keys, state.refresh_ttl)?;
+    let new_refresh_token =
+        jwt::issue_refresh_token(&claims.sub, &state.jwt_keys, state.refresh_ttl)?;
 
     // Atomically revoke the old refresh token after issuing the new one.
     // If revocation fails, it's a non-fatal error (tokens will expire naturally).
-    if let Err(e) = crate::revocation::revoke_token(&state.db, &body.refresh_token, state.refresh_ttl).await {
+    if let Err(e) =
+        crate::revocation::revoke_token(&state.db, &body.refresh_token, state.refresh_ttl).await
+    {
         tracing::warn!("Failed to revoke old refresh token: {}", e);
         // Continue anyway - don't fail the refresh operation
     }
@@ -748,7 +811,21 @@ pub async fn google_oauth_start(
     Ok(Redirect::temporary(google_url.as_str()))
 }
 
-/// GET /auth/google/callback — finish the backend-owned Google OAuth web flow.
+/// Completes the backend-owned Google OAuth redirect flow and returns tokens to the frontend.
+///
+/// Parameters:
+/// - `state`: auth subsystem state containing OAuth client config, JWT keys, and DB access.
+/// - `query`: callback query parameters from Google, including `code`, `state`, or `error`.
+///
+/// Returns:
+/// - `Ok(Redirect)` to the frontend target with either token fragments or OAuth error details.
+/// - `Err(...)` when state validation, provider exchange, or local user resolution fails.
+///
+/// Gotchas:
+/// - The redirect target is recovered from the signed OAuth state token, not trusted
+///   directly from query parameters.
+/// - Provider-side errors are converted into fragment params instead of failing with JSON.
+/// - Successful completion delegates to [`oauth_find_or_create_user`] before redirecting.
 pub async fn google_oauth_callback(
     State(state): State<AuthState>,
     Query(query): Query<GoogleOAuthCallbackRequest>,
@@ -850,8 +927,13 @@ pub async fn apple_sign_in(
     let client_secret =
         oauth::generate_apple_client_secret(team_id, key_id, service_id, private_key)?;
 
-    let mut user_info =
-        oauth::verify_apple_auth_code(&body.authorization_code, service_id, &state.base_url, &client_secret).await?;
+    let mut user_info = oauth::verify_apple_auth_code(
+        &body.authorization_code,
+        service_id,
+        &state.base_url,
+        &client_secret,
+    )
+    .await?;
 
     // Apple only sends display_name on first sign-in (from client)
     if user_info.display_name.is_none() {
@@ -875,8 +957,21 @@ pub async fn oidc_sign_in(
     oauth_find_or_create_user(&state, user_info).await
 }
 
-/// Shared logic: find existing user by provider+provider_id, or create new one.
-/// Returns auth tokens.
+/// Finds or creates the local user record for an OAuth identity and issues tokens.
+///
+/// Parameters:
+/// - `state`: auth subsystem state with DB, JWT keys, and token TTLs.
+/// - `info`: normalized provider identity returned by Google, Apple, or generic OIDC flows.
+///
+/// Returns:
+/// - `Ok(Json<AuthResponse>)` with local auth tokens and a sanitized user payload.
+/// - `Err(...)` if account linking, creation, or token issuance fails.
+///
+/// Gotchas:
+/// - Existing email/password accounts are linked to the OAuth provider instead of
+///   creating a duplicate user.
+/// - OAuth users are treated as email-verified by default unless the user record says otherwise.
+/// - Session recording is best-effort and does not block successful sign-in.
 async fn oauth_find_or_create_user(
     state: &AuthState,
     info: OAuthUserInfo,
@@ -1041,6 +1136,8 @@ pub async fn forgot_password(
             json!({
                 "reset_token_hash": token_hash,
                 "reset_token_expires": chrono::Utc::now().timestamp() + 3600,
+                "reset_token_used": false,
+                "reset_token_used_at": null,
             }),
         )
         .await?;
@@ -1063,7 +1160,21 @@ pub async fn forgot_password(
     }
 }
 
-/// POST /auth/reset-password — Reset password using a valid reset token.
+/// Resets a password using a signed reset token that is still pending in storage.
+///
+/// Parameters:
+/// - `state`: auth subsystem state with DB and JWT keys.
+/// - `body`: reset payload containing the reset token and new password.
+///
+/// Returns:
+/// - `Ok(Json<Value>)` with a success message when the password is updated.
+/// - `Err(...)` when the token is invalid, expired, reused, or the new password is rejected.
+///
+/// Gotchas:
+/// - The JWT token is necessary but not sufficient; its SHA-256 hash must also match
+///   the stored pending reset token.
+/// - Tokens are one-time use and are marked consumed during the password update.
+/// - No session tokens are issued here; callers must sign in again after success.
 pub async fn reset_password(
     State(state): State<AuthState>,
     Json(body): Json<ResetPasswordRequest>,
@@ -1121,6 +1232,9 @@ pub async fn reset_password(
     let user_id = claims.sub;
 
     // CRITICAL FIX: Mark token as USED BEFORE updating password (atomic operation)
+    // Also set password_changed_at so existing refresh tokens are invalidated —
+    // the refresh endpoint rejects tokens issued before this timestamp.
+    let password_changed_at = chrono::Utc::now().timestamp();
     state
         .db
         .update_document(
@@ -1132,9 +1246,12 @@ pub async fn reset_password(
                 "reset_token_expires": null,
                 "reset_token_used": true,
                 "reset_token_used_at": chrono::Utc::now().to_rfc3339(),
+                "password_changed_at": password_changed_at,
             }),
         )
         .await?;
+
+    tracing::info!(user_id = %user_id, "Password reset: all pre-existing sessions invalidated");
 
     Ok(Json(json!({ "message": "Password reset successfully" })))
 }
@@ -1319,8 +1436,21 @@ pub struct MfaVerifySetupResponse {
     pub recovery_codes: Vec<String>,
 }
 
-/// POST /auth/mfa/verify-setup — Verify TOTP code to activate MFA.
-/// Returns recovery codes on success.
+/// Verifies the first TOTP code for MFA setup and activates MFA permanently.
+///
+/// Parameters:
+/// - `state`: auth subsystem state with DB, encryption key, and optional email service.
+/// - `auth`: authenticated user context for the account being updated.
+/// - `body`: setup verification payload containing the first TOTP code.
+///
+/// Returns:
+/// - `Ok(Json<MfaVerifySetupResponse>)` with plaintext recovery codes to show once.
+/// - `Err(...)` if setup is missing, secrets cannot be decrypted, or the code is invalid.
+///
+/// Gotchas:
+/// - Recovery codes are returned only in this response; only hashes are stored afterward.
+/// - The pending secret is re-encrypted into the permanent MFA field before activation.
+/// - MFA alert email delivery is best-effort and does not affect the successful response.
 pub async fn mfa_verify_setup(
     State(state): State<AuthState>,
     Extension(auth): Extension<AuthContext>,
@@ -1369,7 +1499,9 @@ pub async fn mfa_verify_setup(
     }
 
     // Re-encrypt secret for permanent storage
-    let key = state.totp_encryption_key.as_ref()
+    let key = state
+        .totp_encryption_key
+        .as_ref()
         .ok_or_else(|| Error::Internal("TOTP encryption key not configured".into()))?;
     let permanent_encrypted = base64::Engine::encode(
         &base64::engine::general_purpose::STANDARD,
@@ -1409,7 +1541,20 @@ pub struct MfaChallengeRequest {
     pub code: String,
 }
 
-/// POST /auth/mfa/challenge — Verify TOTP during login. Returns real tokens.
+/// Completes an MFA login challenge by verifying a TOTP code and issuing real tokens.
+///
+/// Parameters:
+/// - `state`: auth subsystem state with DB, encryption key, JWT keys, and rate limiting.
+/// - `body`: challenge payload containing the short-lived MFA challenge token and TOTP code.
+///
+/// Returns:
+/// - `Ok(Json<AuthResponse>)` with full access and refresh tokens after TOTP succeeds.
+/// - `Err(...)` when the challenge token, rate limit, secret state, or code verification fails.
+///
+/// Gotchas:
+/// - Challenge tokens must have type `mfa_challenge`; normal access tokens are rejected.
+/// - Successful verification persists `mfa_last_used_step` to block same-window replay.
+/// - Exceeded rate limits can mark the user as MFA-locked before returning the error.
 pub async fn mfa_challenge(
     State(state): State<AuthState>,
     Json(body): Json<MfaChallengeRequest>,
@@ -1460,6 +1605,36 @@ pub async fn mfa_challenge(
     let user = users
         .first()
         .ok_or_else(|| Error::Auth("User not found".into()))?;
+
+    // Enforce MFA brute-force lock: if mfa_locked is true, check if 15 min have elapsed
+    if user["mfa_locked"].as_bool() == Some(true) {
+        let should_unlock = user["mfa_locked_at"]
+            .as_str()
+            .and_then(|ts| chrono::DateTime::parse_from_rfc3339(ts).ok())
+            .map(|locked_at| {
+                chrono::Utc::now().signed_duration_since(locked_at) > chrono::Duration::minutes(15)
+            })
+            .unwrap_or(false);
+
+        if should_unlock {
+            // Auto-unlock: clear the lock flag
+            let _ = state
+                .db
+                .update_document(
+                    "users",
+                    user_id,
+                    json!({
+                        "mfa_locked": false,
+                    }),
+                )
+                .await;
+        } else {
+            return Err(Error::TooManyRequests(
+                "Account temporarily locked due to too many failed MFA attempts. Try again later."
+                    .into(),
+            ));
+        }
+    }
 
     let mfa_secret_b64 = user["mfa_secret"]
         .as_str()
@@ -1539,7 +1714,20 @@ pub struct MfaRecoveryRequest {
     pub recovery_code: String,
 }
 
-/// POST /auth/mfa/recovery — Use a recovery code to bypass TOTP.
+/// Completes an MFA login challenge with a recovery code instead of a TOTP code.
+///
+/// Parameters:
+/// - `state`: auth subsystem state with DB and JWT keys.
+/// - `body`: challenge payload containing the MFA challenge token and plaintext recovery code.
+///
+/// Returns:
+/// - `Ok(Json<AuthResponse>)` with full auth tokens when a recovery code matches.
+/// - `Err(...)` if the challenge token is invalid or no stored recovery code matches.
+///
+/// Gotchas:
+/// - Recovery codes are stored hashed and are consumed permanently on first successful use.
+/// - Unlike [`mfa_challenge`], this path does not update `mfa_last_used_step`.
+/// - The sanitized user payload omits MFA secrets and recovery code hashes.
 pub async fn mfa_recovery(
     State(state): State<AuthState>,
     Json(body): Json<MfaRecoveryRequest>,
@@ -1641,7 +1829,21 @@ pub struct MfaDisableRequest {
     pub code: String,
 }
 
-/// DELETE /auth/mfa — Disable MFA (requires current TOTP code).
+/// Disables MFA for the authenticated user after verifying a current TOTP code.
+///
+/// Parameters:
+/// - `state`: auth subsystem state with DB, encryption key, and optional email service.
+/// - `auth`: authenticated user context for the account being modified.
+/// - `body`: disable payload containing a current TOTP code.
+///
+/// Returns:
+/// - `Ok(Json<Value>)` with a success message once MFA state is cleared.
+/// - `Err(...)` when the caller is unauthenticated, MFA is not enabled, or the code fails.
+///
+/// Gotchas:
+/// - The stored secret must still be decryptable with the configured TOTP encryption key.
+/// - Disabling MFA clears the secret, recovery codes, pending setup data, and replay state.
+/// - Alert email delivery is best-effort and does not block a successful disable operation.
 pub async fn mfa_disable(
     State(state): State<AuthState>,
     Extension(auth): Extension<AuthContext>,

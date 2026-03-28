@@ -640,10 +640,11 @@ async fn add_buyer_address(
         collections::ADDRESSES,
         fields::USER_ID,
     );
-    let count_rows = state.db.query_bind_value(
-        &count_query,
-        serde_json::json!({"user_id": user_id}),
-    ).await.unwrap_or_default();
+    let count_rows = state
+        .db
+        .query_bind_value(&count_query, serde_json::json!({"user_id": user_id}))
+        .await
+        .unwrap_or_default();
     if let Some(first) = count_rows.first() {
         let count = first.get("count").and_then(|v| v.as_i64()).unwrap_or(0);
         if count >= 10 {

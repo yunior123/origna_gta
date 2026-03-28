@@ -23,8 +23,11 @@ pub use jwt::{
     rotate_keys,
 };
 pub use key_rotation::{KeyRotationManager, fingerprint_public_key};
-pub use middleware::{AuthContext, assert_test_mode_not_in_production, assert_jwt_secret_configured, assert_no_live_stripe_in_dev};
+pub use middleware::{
+    AuthContext, assert_jwt_secret_configured, assert_no_live_stripe_in_dev,
+    assert_test_mode_not_in_production,
+};
 pub use oauth::{OAuthProvider, OAuthUserInfo};
 pub use rate_limit::RateLimiter;
-pub use revocation::{revoke_token, is_token_revoked, cleanup_revoked_tokens};
+pub use revocation::{cleanup_revoked_tokens, is_token_revoked, revoke_token};
 pub use turnstile::validate_turnstile_token;

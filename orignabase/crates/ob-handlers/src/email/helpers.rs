@@ -347,26 +347,79 @@ pub async fn send_order_confirmation_emails(
     Ok(())
 }
 
+pub async fn send_shipping_notification(
+    state: &HandlersState,
+    order: &Value,
+    tracking_number: &str,
+    carrier: Option<&str>,
+    buyer_lang: Option<&str>,
+) {
+    let order_id = order
+        .get("id")
+        .and_then(|v| v.as_str())
+        .map(record_key)
+        .unwrap_or("");
+    let Some((api_key, secret_key)) = mailjet_credentials(
+        state,
+        order_id,
+        "Mailjet credentials unavailable; skipping order status email",
+    ) else {
+        return;
+    };
+    let Some((buyer_email, buyer_name, resolved_lang)) = resolve_buyer_contact(state, order).await
+    else {
+        warn!(order_id = %order_id, "Buyer email unavailable; skipping shipping email");
+        return;
+    };
+    if tracking_number.trim().is_empty() {
+        return;
+    }
+
+    let lang = buyer_lang
+        .filter(|value| !value.trim().is_empty())
+        .map(normalize_lang)
+        .unwrap_or(&resolved_lang);
+    let summary = build_order_summary(order);
+    let subject = if lang == "fr" {
+        format!("Commande #{} expédiée — Origna", summary.order_id)
+    } else {
+        format!("Order #{} shipped — Origna", summary.order_id)
+    };
+    let html = shipping_notification_html(&summary, &buyer_name, tracking_number, carrier, lang);
+    if let Err(err) = send_email(
+        &state.http_client,
+        &api_key,
+        &secret_key,
+        &buyer_email,
+        &subject,
+        &html,
+    )
+    .await
+    {
+        warn!(order_id = %order_id, to = %buyer_email, error = %err, "Failed to send shipping notification email");
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::shared::schema::fields;
     use serde_json::json;
     use std::sync::Arc;
-    use std::sync::Mutex;
+    use tokio::sync::Mutex;
 
-    static ENV_MUTEX: Mutex<()> = Mutex::new(());
+    static ENV_MUTEX: Mutex<()> = Mutex::const_new(());
 
     async fn make_test_state() -> HandlersState {
         let mut config = ob_core::Config::load(None).unwrap();
-        config.secrets.values.insert(
-            "mailjet_api_key".into(),
-            "test_api_key".into(),
-        );
-        config.secrets.values.insert(
-            "mailjet_secret_key".into(),
-            "test_secret_key".into(),
-        );
+        config
+            .secrets
+            .values
+            .insert("mailjet_api_key".into(), "test_api_key".into());
+        config
+            .secrets
+            .values
+            .insert("mailjet_secret_key".into(), "test_secret_key".into());
         let db = ob_database::DatabaseClient::new_mem().await;
         HandlersState::new(Arc::new(config), db)
     }
@@ -734,9 +787,7 @@ mod tests {
             fields::TAX_AMOUNT_CENTS: 650,
             fields::TOTAL_AMOUNT_CENTS: 6450,
         });
-        let items = vec![
-            json!({fields::NAME: "Item1", fields::PRICE_CENTS: 5000, "quantity": 1}),
-        ];
+        let items = vec![json!({fields::NAME: "Item1", fields::PRICE_CENTS: 5000, "quantity": 1})];
         let summary = build_order_summary_from_items(&order, &items);
         assert_eq!(summary.subtotal_cents, 5000);
         assert_eq!(summary.shipping_cost_cents, 800);
@@ -1009,7 +1060,7 @@ mod tests {
         use wiremock::matchers::method;
         use wiremock::{Mock, MockServer, ResponseTemplate};
 
-        let _lock = ENV_MUTEX.lock().unwrap();
+        let _lock = ENV_MUTEX.lock().await;
         let server = MockServer::start().await;
         unsafe { std::env::set_var("MAILJET_API_URL", server.uri()) };
 
@@ -1054,10 +1105,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_send_order_confirmation_emails_no_buyer_email() {
-        use wiremock::{Mock, MockServer, ResponseTemplate};
         use wiremock::matchers::method;
+        use wiremock::{Mock, MockServer, ResponseTemplate};
 
-        let _lock = ENV_MUTEX.lock().unwrap();
+        let _lock = ENV_MUTEX.lock().await;
         let server = MockServer::start().await;
         unsafe { std::env::set_var("MAILJET_API_URL", server.uri()) };
 
@@ -1085,10 +1136,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_send_order_confirmation_emails_seller_no_email() {
-        use wiremock::{Mock, MockServer, ResponseTemplate};
         use wiremock::matchers::method;
+        use wiremock::{Mock, MockServer, ResponseTemplate};
 
-        let _lock = ENV_MUTEX.lock().unwrap();
+        let _lock = ENV_MUTEX.lock().await;
         let server = MockServer::start().await;
         unsafe { std::env::set_var("MAILJET_API_URL", server.uri()) };
 
@@ -1161,10 +1212,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_send_shipping_notification_success() {
-        use wiremock::{Mock, MockServer, ResponseTemplate};
         use wiremock::matchers::method;
+        use wiremock::{Mock, MockServer, ResponseTemplate};
 
-        let _lock = ENV_MUTEX.lock().unwrap();
+        let _lock = ENV_MUTEX.lock().await;
         let server = MockServer::start().await;
         unsafe { std::env::set_var("MAILJET_API_URL", server.uri()) };
 
@@ -1208,10 +1259,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_send_shipping_notification_lang_override() {
-        use wiremock::{Mock, MockServer, ResponseTemplate};
         use wiremock::matchers::method;
+        use wiremock::{Mock, MockServer, ResponseTemplate};
 
-        let _lock = ENV_MUTEX.lock().unwrap();
+        let _lock = ENV_MUTEX.lock().await;
         let server = MockServer::start().await;
         unsafe { std::env::set_var("MAILJET_API_URL", server.uri()) };
 
@@ -1245,8 +1296,14 @@ mod tests {
     #[test]
     fn test_mailjet_credentials_present() {
         let mut config = ob_core::Config::load(None).unwrap();
-        config.secrets.values.insert("mailjet_api_key".into(), "key".into());
-        config.secrets.values.insert("mailjet_secret_key".into(), "secret".into());
+        config
+            .secrets
+            .values
+            .insert("mailjet_api_key".into(), "key".into());
+        config
+            .secrets
+            .values
+            .insert("mailjet_secret_key".into(), "secret".into());
         let db_fut = ob_database::DatabaseClient::new_mem();
         let rt = tokio::runtime::Runtime::new().unwrap();
         let db = rt.block_on(db_fut);
@@ -1266,58 +1323,5 @@ mod tests {
         let state = HandlersState::new(Arc::new(config), db);
         let creds = mailjet_credentials(&state, "order1", "test");
         assert!(creds.is_none());
-    }
-}
-
-pub async fn send_shipping_notification(
-    state: &HandlersState,
-    order: &Value,
-    tracking_number: &str,
-    carrier: Option<&str>,
-    buyer_lang: Option<&str>,
-) {
-    let order_id = order
-        .get("id")
-        .and_then(|v| v.as_str())
-        .map(record_key)
-        .unwrap_or("");
-    let Some((api_key, secret_key)) = mailjet_credentials(
-        state,
-        order_id,
-        "Mailjet credentials unavailable; skipping order status email",
-    ) else {
-        return;
-    };
-    let Some((buyer_email, buyer_name, resolved_lang)) = resolve_buyer_contact(state, order).await
-    else {
-        warn!(order_id = %order_id, "Buyer email unavailable; skipping shipping email");
-        return;
-    };
-    if tracking_number.trim().is_empty() {
-        return;
-    }
-
-    let lang = buyer_lang
-        .filter(|value| !value.trim().is_empty())
-        .map(normalize_lang)
-        .unwrap_or(&resolved_lang);
-    let summary = build_order_summary(order);
-    let subject = if lang == "fr" {
-        format!("Commande #{} expédiée — Origna", summary.order_id)
-    } else {
-        format!("Order #{} shipped — Origna", summary.order_id)
-    };
-    let html = shipping_notification_html(&summary, &buyer_name, tracking_number, carrier, lang);
-    if let Err(err) = send_email(
-        &state.http_client,
-        &api_key,
-        &secret_key,
-        &buyer_email,
-        &subject,
-        &html,
-    )
-    .await
-    {
-        warn!(order_id = %order_id, to = %buyer_email, error = %err, "Failed to send shipping notification email");
     }
 }

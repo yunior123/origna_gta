@@ -9,6 +9,11 @@ void main() {
   const runLive =
       bool.fromEnvironment('RUN_ORIGNABASE_LIVE_TESTS', defaultValue: false);
 
+  if (!runLive) {
+    test('live tests disabled', () {});
+    return;
+  }
+
   bool isExpectedSupportError(Object error) {
     final msg = error.toString().toLowerCase();
     return msg.contains('422') ||
@@ -47,7 +52,7 @@ void main() {
 
         final sub = container.listen(
           supportViewModelProvider,
-          (_, __) {},
+          (previous, next) {},
           fireImmediately: true,
         );
         final viewModelNotifier =
@@ -74,7 +79,6 @@ void main() {
           sub.close();
         }
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -85,7 +89,7 @@ void main() {
 
         final sub = container.listen(
           supportViewModelProvider,
-          (_, __) {},
+          (previous, next) {},
           fireImmediately: true,
         );
         final viewModelNotifier =
@@ -111,7 +115,6 @@ void main() {
           sub.close();
         }
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -139,8 +142,7 @@ void main() {
           reason: 'Empty messages should not be added to chat',
         );
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
-  }, skip: !runLive);
+  });
 }

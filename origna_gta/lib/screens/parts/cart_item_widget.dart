@@ -90,7 +90,6 @@ class _CartItemWidget extends ConsumerWidget {
               ),
               Semantics(
                 label: 'btn-cart-item-retry',
-                button: true,
                 child: TextButton(
                   onPressed: () =>
                       ref.invalidate(cartItemDetailProvider(cartItemDocId)),
@@ -254,7 +253,6 @@ class _CartItemWidget extends ConsumerWidget {
                   ),
                   Semantics(
                     label: 'btn-cart-item-remove',
-                    button: true,
                     child: TextButton(
                       onPressed: () => ref
                           .read(cartControllerProvider)

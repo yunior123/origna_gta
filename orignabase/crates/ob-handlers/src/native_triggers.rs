@@ -4,7 +4,7 @@ use std::hash::{Hash, Hasher};
 use tokio::sync::mpsc;
 use tracing::{error, info};
 
-use crate::shared::schema::{collections, fields, notification_types, OrderStatus};
+use crate::shared::schema::{OrderStatus, collections, fields, notification_types};
 use crate::{HandlersState, products};
 use crate::{email, push};
 
@@ -290,7 +290,10 @@ impl NativeTriggerExecutor {
             return Ok(());
         }
         let normalized_payment = normalize_status(new_payment);
-        if !matches!(normalized_payment.as_str(), "refunded" | "partially_refunded") {
+        if !matches!(
+            normalized_payment.as_str(),
+            "refunded" | "partially_refunded"
+        ) {
             return Ok(());
         }
 
@@ -350,10 +353,9 @@ impl NativeTriggerExecutor {
         let is_pickup = str_field(after, fields::DELIVERY_SPEED) == "pickup";
         let before_order_status = normalize_status(order_status(before));
         let after_order_status = normalize_status(order_status(after));
-        let skip_full_order_shipped =
-            before_order_status != OrderStatus::Shipped.as_str()
-                && after_order_status == OrderStatus::Shipped.as_str()
-                && !is_pickup;
+        let skip_full_order_shipped = before_order_status != OrderStatus::Shipped.as_str()
+            && after_order_status == OrderStatus::Shipped.as_str()
+            && !is_pickup;
 
         let mut shipped_items = Vec::new();
         let mut delivered_items = Vec::new();
@@ -748,7 +750,7 @@ impl NativeTriggerExecutor {
             .db
             .query_bind_value(
                 "SELECT token FROM _push_tokens WHERE user_id = $user_id",
-                json!({"user_id": escaped_user_id})
+                json!({"user_id": escaped_user_id}),
             )
             .await
             .unwrap_or_default();
@@ -1674,7 +1676,7 @@ mod tests {
 
     #[test]
     fn aggregate_item_status_message_batches_multiple_items() {
-        let items = vec![
+        let items = [
             json!({"name": "Apples", fields::CART_ITEM_ID: "c1"}),
             json!({"name": "Bread", fields::CART_ITEM_ID: "c2"}),
         ];
@@ -2114,11 +2116,11 @@ mod tests {
                 "userId": "buyer_1",
                 fields::ITEMS: [{ fields::SELLER_ID: "seller_1" }],
             });
-            if let Some(after_obj) = after.as_object_mut() {
-                if let Some(extra_obj) = extra.as_object() {
-                    for (key, value) in extra_obj {
-                        after_obj.insert(key.clone(), value.clone());
-                    }
+            if let Some(after_obj) = after.as_object_mut()
+                && let Some(extra_obj) = extra.as_object()
+            {
+                for (key, value) in extra_obj {
+                    after_obj.insert(key.clone(), value.clone());
                 }
             }
 
@@ -3562,13 +3564,15 @@ mod tests {
 
     #[test]
     fn seller_order_status_message_processing_fr() {
-        let (t, _b) = seller_order_status_message("processing", "orders:abc12345", &json!({}), "fr");
+        let (t, _b) =
+            seller_order_status_message("processing", "orders:abc12345", &json!({}), "fr");
         assert!(t.contains("préparation"));
     }
 
     #[test]
     fn seller_order_status_message_processing_en() {
-        let (t, _b) = seller_order_status_message("processing", "orders:abc12345", &json!({}), "en");
+        let (t, _b) =
+            seller_order_status_message("processing", "orders:abc12345", &json!({}), "en");
         assert!(t.contains("processing"));
     }
 
@@ -3586,13 +3590,15 @@ mod tests {
 
     #[test]
     fn seller_order_status_message_in_transit_fr() {
-        let (t, _b) = seller_order_status_message("in_transit", "orders:abc12345", &json!({}), "fr");
+        let (t, _b) =
+            seller_order_status_message("in_transit", "orders:abc12345", &json!({}), "fr");
         assert!(t.contains("transit"));
     }
 
     #[test]
     fn seller_order_status_message_in_transit_en() {
-        let (t, _b) = seller_order_status_message("in_transit", "orders:abc12345", &json!({}), "en");
+        let (t, _b) =
+            seller_order_status_message("in_transit", "orders:abc12345", &json!({}), "en");
         assert!(t.contains("transit"));
     }
 
@@ -3667,7 +3673,8 @@ mod tests {
 
     #[test]
     fn buyer_payment_message_partial_refund_fr_with_amount() {
-        let (t, b) = buyer_payment_message("partially_refunded", "orders:abc12345", Some(325), "fr");
+        let (t, b) =
+            buyer_payment_message("partially_refunded", "orders:abc12345", Some(325), "fr");
         assert!(t.contains("partiel"));
         assert!(b.contains("$3.25"));
     }
@@ -3801,7 +3808,7 @@ mod tests {
 
     #[test]
     fn aggregate_item_status_shipped_pickup_fr() {
-        let items = vec![json!({"name": "A"}), json!({"name": "B"})];
+        let items = [json!({"name": "A"}), json!({"name": "B"})];
         let (t, b) =
             aggregate_item_status_message("shipped", "orders:abc12345", &items, "fr", true);
         assert!(t.contains("ramassage"));
@@ -3810,7 +3817,7 @@ mod tests {
 
     #[test]
     fn aggregate_item_status_shipped_pickup_en() {
-        let items = vec![json!({"name": "A"}), json!({"name": "B"})];
+        let items = [json!({"name": "A"}), json!({"name": "B"})];
         let (t, b) =
             aggregate_item_status_message("shipped", "orders:abc12345", &items, "en", true);
         assert!(t.contains("pickup"));
@@ -3819,7 +3826,7 @@ mod tests {
 
     #[test]
     fn aggregate_item_status_shipped_fr() {
-        let items = vec![json!({"name": "A"}), json!({"name": "B"})];
+        let items = [json!({"name": "A"}), json!({"name": "B"})];
         let (t, b) =
             aggregate_item_status_message("shipped", "orders:abc12345", &items, "fr", false);
         assert!(t.contains("expédiés"));
@@ -3828,7 +3835,7 @@ mod tests {
 
     #[test]
     fn aggregate_item_status_delivered_fr() {
-        let items = vec![json!({"name": "A"}), json!({"name": "B"})];
+        let items = [json!({"name": "A"}), json!({"name": "B"})];
         let (t, b) =
             aggregate_item_status_message("delivered", "orders:abc12345", &items, "fr", false);
         assert!(t.contains("livrés"));
@@ -3837,7 +3844,7 @@ mod tests {
 
     #[test]
     fn aggregate_item_status_delivered_en() {
-        let items = vec![json!({"name": "A"}), json!({"name": "B"})];
+        let items = [json!({"name": "A"}), json!({"name": "B"})];
         let (t, b) =
             aggregate_item_status_message("delivered", "orders:abc12345", &items, "en", false);
         assert!(t.contains("delivered"));
@@ -3846,7 +3853,7 @@ mod tests {
 
     #[test]
     fn aggregate_item_status_unknown_falls_back_to_single_item_message() {
-        let items = vec![json!({"name": "A"}), json!({"name": "B"})];
+        let items = [json!({"name": "A"}), json!({"name": "B"})];
         let (t, _b) =
             aggregate_item_status_message("unknown", "orders:abc12345", &items, "en", false);
         assert!(t.contains("Item update"));
@@ -3856,7 +3863,7 @@ mod tests {
 
     #[test]
     fn urgent_perishable_message_fr_with_names() {
-        let items = vec![json!({"name": "Milk"}), json!({"name": "Eggs"})];
+        let items = [json!({"name": "Milk"}), json!({"name": "Eggs"})];
         let (t, b) = urgent_perishable_message("orders:abc12345", &items, "fr");
         assert!(t.contains("URGENT"));
         assert!(b.contains("Milk"));
@@ -3865,7 +3872,7 @@ mod tests {
 
     #[test]
     fn urgent_perishable_message_fr_no_names() {
-        let items = vec![json!({})];
+        let items = [json!({})];
         let (t, b) = urgent_perishable_message("orders:abc12345", &items, "fr");
         assert!(t.contains("URGENT"));
         assert!(b.contains("périssable"));
@@ -3873,7 +3880,7 @@ mod tests {
 
     #[test]
     fn urgent_perishable_message_en_with_names() {
-        let items = vec![json!({"name": "Fish"})];
+        let items = [json!({"name": "Fish"})];
         let (t, b) = urgent_perishable_message("orders:abc12345", &items, "en");
         assert!(t.contains("URGENT"));
         assert!(b.contains("Fish"));
@@ -3881,7 +3888,7 @@ mod tests {
 
     #[test]
     fn urgent_perishable_message_en_no_names() {
-        let items = vec![json!({})];
+        let items = [json!({})];
         let (_, b) = urgent_perishable_message("orders:abc12345", &items, "en");
         assert!(b.contains("Perishable order"));
     }
@@ -4687,7 +4694,9 @@ mod tests {
 
         // Set MAILJET_API_URL to unreachable so we exercise the code path
         // but the actual HTTP call fails
-        unsafe { std::env::set_var("MAILJET_API_URL", "http://127.0.0.1:1/v3.1/send"); }
+        unsafe {
+            std::env::set_var("MAILJET_API_URL", "http://127.0.0.1:1/v3.1/send");
+        }
 
         executor
             .dispatch_email(
@@ -4700,7 +4709,9 @@ mod tests {
             )
             .await;
 
-        unsafe { std::env::remove_var("MAILJET_API_URL"); }
+        unsafe {
+            std::env::remove_var("MAILJET_API_URL");
+        }
 
         // Mail log should exist
         let mail_logs = executor
@@ -4727,8 +4738,12 @@ mod tests {
             .unwrap();
 
         // Set FCM env vars (invalid SA JSON so send_push fails but code path is exercised)
-        unsafe { std::env::set_var("OB_FCM_PROJECT_ID", "test-project-push"); }
-        unsafe { std::env::set_var("OB_FCM_SERVICE_ACCOUNT", "{}"); }
+        unsafe {
+            std::env::set_var("OB_FCM_PROJECT_ID", "test-project-push");
+        }
+        unsafe {
+            std::env::set_var("OB_FCM_SERVICE_ACCOUNT", "{}");
+        }
 
         executor
             .dispatch_push(
@@ -4740,8 +4755,12 @@ mod tests {
             )
             .await;
 
-        unsafe { std::env::remove_var("OB_FCM_PROJECT_ID"); }
-        unsafe { std::env::remove_var("OB_FCM_SERVICE_ACCOUNT"); }
+        unsafe {
+            std::env::remove_var("OB_FCM_PROJECT_ID");
+        }
+        unsafe {
+            std::env::remove_var("OB_FCM_SERVICE_ACCOUNT");
+        }
     }
 
     // ── Coverage: dispatch_push with multiple tokens (lines 738-800 loop) ──
@@ -4763,8 +4782,12 @@ mod tests {
             .await
             .unwrap();
 
-        unsafe { std::env::set_var("OB_FCM_PROJECT_ID", "test-project-multi"); }
-        unsafe { std::env::set_var("OB_FCM_SERVICE_ACCOUNT", "{}"); }
+        unsafe {
+            std::env::set_var("OB_FCM_PROJECT_ID", "test-project-multi");
+        }
+        unsafe {
+            std::env::set_var("OB_FCM_SERVICE_ACCOUNT", "{}");
+        }
 
         executor
             .dispatch_push(
@@ -4776,8 +4799,12 @@ mod tests {
             )
             .await;
 
-        unsafe { std::env::remove_var("OB_FCM_PROJECT_ID"); }
-        unsafe { std::env::remove_var("OB_FCM_SERVICE_ACCOUNT"); }
+        unsafe {
+            std::env::remove_var("OB_FCM_PROJECT_ID");
+        }
+        unsafe {
+            std::env::remove_var("OB_FCM_SERVICE_ACCOUNT");
+        }
     }
 
     // ── Coverage: run() error path — trigger that returns Err (line 26) ──
@@ -4825,7 +4852,7 @@ mod tests {
                         "userId": "buyer_1",
                         "variantKey": "blue"
                     }
-                })
+                }),
             )
             .await;
 

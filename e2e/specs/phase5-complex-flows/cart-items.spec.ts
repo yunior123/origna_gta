@@ -11,6 +11,8 @@ import { TEST_ACCOUNTS, WEB_APP_URL } from '../../lib/config.js';
 
 const BUYER_EMAIL = TEST_ACCOUNTS.BUYER_EMAIL;
 const BUYER_PASS = TEST_ACCOUNTS.BUYER_PASS;
+const cartQtyPlusPattern = /btn-cart-qty-plus|cart.*qty.*plus|qty.*plus|increase|increment|\bplus\b/i;
+const cartQtyMinusPattern = /btn-cart-qty-minus|cart.*qty.*minus|qty.*minus|decrease|decrement|\bminus\b/i;
 
 async function loginAs(browser: AgentBrowser, email: string, password: string) {
   await browser.open(`${WEB_APP_URL}/login`);
@@ -81,8 +83,8 @@ describe('Cart Items', () => {
 
   test('T02: Quantity buttons exist on cart items', { timeout: 60_000 }, async () => {
     const snap = await browser.snapshot({ interactive: true, compact: true });
-    const plusBtn = browser.findByLabel(snap, /btn-cart-qty-plus|qty.*plus|\+|increase/i);
-    const minusBtn = browser.findByLabel(snap, /btn-cart-qty-minus|qty.*minus|-|decrease/i);
+    const plusBtn = browser.findByLabel(snap, cartQtyPlusPattern);
+    const minusBtn = browser.findByLabel(snap, cartQtyMinusPattern);
     // Buttons may exist if cart has items
     if (plusBtn || minusBtn) {
       expect(plusBtn || minusBtn).toBeTruthy();
@@ -94,7 +96,7 @@ describe('Cart Items', () => {
 
   test('T03: Quantity cannot go below 1', { timeout: 60_000 }, async () => {
     const snap = await browser.snapshot({ interactive: true, compact: true });
-    const minusBtn = browser.findByLabel(snap, /btn-cart-qty-minus|qty.*minus|-|decrease/i);
+    const minusBtn = browser.findByLabel(snap, cartQtyMinusPattern);
     if (minusBtn) {
       // Click minus multiple times
       await browser.click(minusBtn.ref);

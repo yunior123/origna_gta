@@ -11,8 +11,8 @@ use tracing::{info, warn};
 use crate::HandlersState;
 use crate::shared::auth::{require_authenticated, resolve_self_user_id};
 use crate::shared::nutrition::{
-    compute_fop_warnings, validate_food_metadata, validate_nutrition_facts, FoodMetadata,
-    NutritionFacts,
+    FoodMetadata, NutritionFacts, compute_fop_warnings, validate_food_metadata,
+    validate_nutrition_facts,
 };
 use crate::shared::schema::{collections, fields};
 use crate::shared::validation::{sanitize_html, validate_string, validate_uid};
@@ -20,7 +20,6 @@ use crate::shared::validation::{sanitize_html, validate_string, validate_uid};
 const DEFAULT_PAGE_SIZE: u32 = 20;
 const MAX_PAGE_SIZE: u32 = 100;
 const MAX_PRODUCT_IMAGES: usize = 5;
-
 
 // ─── Validation Functions ───────────────────────────────────────────────────
 
@@ -57,10 +56,7 @@ fn validate_image_url(url: &str) -> Result<(), ob_core::Error> {
 }
 
 /// Validate product lifecycle state transition.
-fn validate_lifecycle_transition(
-    from_state: &str,
-    to_state: &str,
-) -> Result<(), ob_core::Error> {
+fn validate_lifecycle_transition(from_state: &str, to_state: &str) -> Result<(), ob_core::Error> {
     // No-op: same state is always valid
     if from_state == to_state {
         return Ok(());
@@ -75,7 +71,7 @@ fn validate_lifecycle_transition(
             return Err(ob_core::Error::Validation(format!(
                 "Unknown product state: {}",
                 from_state
-            )))
+            )));
         }
     };
 
@@ -123,7 +119,9 @@ fn validate_price_and_stock(
 /// If `nutritionFacts` is present, validates it and auto-computes FOP warnings.
 /// If `foodMetadata` is present, validates allergens and dietary badges.
 /// FOP flags are set on `foodMetadata` based on `nutritionFacts` values.
-fn validate_and_process_nutrition(obj: &mut serde_json::Map<String, Value>) -> Result<(), ob_core::Error> {
+fn validate_and_process_nutrition(
+    obj: &mut serde_json::Map<String, Value>,
+) -> Result<(), ob_core::Error> {
     // Validate nutritionFacts if present
     let nutrition_facts: Option<NutritionFacts> = obj
         .get(fields::NUTRITION_FACTS)
@@ -158,8 +156,9 @@ fn validate_and_process_nutrition(obj: &mut serde_json::Map<String, Value>) -> R
         fm.fop_high_sugars = high_sugars;
         fm.fop_high_saturated_fat = high_sat_fat;
 
-        let fm_value = serde_json::to_value(&fm)
-            .map_err(|e| ob_core::Error::Internal(format!("Failed to serialize foodMetadata: {e}")))?;
+        let fm_value = serde_json::to_value(&fm).map_err(|e| {
+            ob_core::Error::Internal(format!("Failed to serialize foodMetadata: {e}"))
+        })?;
         obj.insert(fields::FOOD_METADATA.to_string(), fm_value);
 
         tracing::debug!(
@@ -175,23 +174,35 @@ fn validate_and_process_nutrition(obj: &mut serde_json::Map<String, Value>) -> R
 
 /// Validate product specs if present and denormalize brand/color/material to top-level
 /// for Meilisearch filtering.
-fn validate_and_denormalize_specs(obj: &mut serde_json::Map<String, Value>) -> Result<(), ob_core::Error> {
+fn validate_and_denormalize_specs(
+    obj: &mut serde_json::Map<String, Value>,
+) -> Result<(), ob_core::Error> {
     if let Some(specs_val) = obj.get("specs").cloned()
-        && !specs_val.is_null() {
-            let specs: crate::shared::specs::ProductSpecs = serde_json::from_value(specs_val)
-                .map_err(|e| ob_core::Error::Validation(format!("Invalid specs: {e}")))?;
-            crate::shared::specs::validate_product_specs(&specs)?;
-            // Denormalize brand/color/material to top-level for Meilisearch
-            if let Some(ref brand) = specs.brand {
-                obj.insert("brand".to_string(), serde_json::Value::String(brand.clone()));
-            }
-            if let Some(ref color) = specs.color {
-                obj.insert("color".to_string(), serde_json::Value::String(color.clone()));
-            }
-            if let Some(ref material) = specs.material {
-                obj.insert("material".to_string(), serde_json::Value::String(material.clone()));
-            }
+        && !specs_val.is_null()
+    {
+        let specs: crate::shared::specs::ProductSpecs = serde_json::from_value(specs_val)
+            .map_err(|e| ob_core::Error::Validation(format!("Invalid specs: {e}")))?;
+        crate::shared::specs::validate_product_specs(&specs)?;
+        // Denormalize brand/color/material to top-level for Meilisearch
+        if let Some(ref brand) = specs.brand {
+            obj.insert(
+                "brand".to_string(),
+                serde_json::Value::String(brand.clone()),
+            );
         }
+        if let Some(ref color) = specs.color {
+            obj.insert(
+                "color".to_string(),
+                serde_json::Value::String(color.clone()),
+            );
+        }
+        if let Some(ref material) = specs.material {
+            obj.insert(
+                "material".to_string(),
+                serde_json::Value::String(material.clone()),
+            );
+        }
+    }
     Ok(())
 }
 
@@ -415,14 +426,8 @@ async fn bulk_upload_products(
     }
 
     // Rate limit: 5 bulk uploads per hour per seller
-    crate::shared::rate_limiter::check_user_rate_limit(
-        &state.db,
-        &user_id,
-        "bulk_upload",
-        5,
-        60,
-    )
-    .await?;
+    crate::shared::rate_limiter::check_user_rate_limit(&state.db, &user_id, "bulk_upload", 5, 60)
+        .await?;
 
     // Validate batch size
     if req.products.is_empty() {
@@ -516,11 +521,17 @@ async fn bulk_upload_products(
                 });
                 continue;
             }
-            obj.insert(fields::DESCRIPTION.to_string(), serde_json::json!(sanitized_desc));
+            obj.insert(
+                fields::DESCRIPTION.to_string(),
+                serde_json::json!(sanitized_desc),
+            );
         }
 
         // Sanitize title in object
-        obj.insert(fields::TITLE.to_string(), serde_json::json!(sanitized_title));
+        obj.insert(
+            fields::TITLE.to_string(),
+            serde_json::json!(sanitized_title),
+        );
 
         created_products.push((idx, obj));
     }
@@ -546,7 +557,10 @@ async fn bulk_upload_products(
             fields::CREATED_AT.to_string(),
             serde_json::json!(now.clone()),
         );
-        product.insert(fields::UPDATED_AT.to_string(), serde_json::json!(now.clone()));
+        product.insert(
+            fields::UPDATED_AT.to_string(),
+            serde_json::json!(now.clone()),
+        );
 
         // Ensure imageUrls is present (can be empty)
         if !product.contains_key(fields::IMAGE_URLS) {
@@ -560,15 +574,11 @@ async fn bulk_upload_products(
             .await
         {
             Ok(created) => {
-                if let Some(id) = created
-                    .get("id")
-                    .and_then(|v| v.as_str())
-                    .map(|s| {
-                        s.strip_prefix(&format!("{}:", collections::PRODUCTS))
-                            .unwrap_or(s)
-                            .to_string()
-                    })
-                {
+                if let Some(id) = created.get("id").and_then(|v| v.as_str()).map(|s| {
+                    s.strip_prefix(&format!("{}:", collections::PRODUCTS))
+                        .unwrap_or(s)
+                        .to_string()
+                }) {
                     product_ids.push(id);
                 }
             }
@@ -620,7 +630,8 @@ async fn upload_images(
     for url in &req.image_urls {
         validate_image_url(url)?;
     }
-        let product = state.db
+    let product = state
+        .db
         .get_document(collections::PRODUCTS, &req.product_id)
         .await
         .map_err(|_| ob_core::Error::NotFound("Product not found".into()))?;
@@ -718,6 +729,11 @@ async fn upload_review_images(
     }))
 }
 
+/// Creates a product atomically after validating seller permissions, payload
+/// structure, pricing, media URLs, and denormalized search attributes.
+///
+/// The handler writes the seller-owned product document in one operation and
+/// returns the generated product ID plus the accepted image URLs.
 async fn create_product_atomic(
     State(state): State<HandlersState>,
     Extension(auth): Extension<AuthContext>,
@@ -1134,6 +1150,12 @@ async fn bulk_update_products(
     })))
 }
 
+/// Applies a partial update to an existing product owned by the caller or an
+/// admin, re-running lifecycle, pricing, image, nutrition, and spec validation
+/// before persisting the patch.
+///
+/// Only validated fields are written back to the document, and every successful
+/// update refreshes the product's `updatedAt` timestamp.
 async fn update_product(
     State(state): State<HandlersState>,
     Extension(auth): Extension<AuthContext>,
@@ -1181,12 +1203,8 @@ async fn update_product(
     }
 
     // Validate price and stock constraints
-    let price_cents = obj
-        .get(fields::PRICE_CENTS)
-        .and_then(|v| v.as_i64());
-    let stock_quantity = obj
-        .get(fields::STOCK_QUANTITY)
-        .and_then(|v| v.as_i64());
+    let price_cents = obj.get(fields::PRICE_CENTS).and_then(|v| v.as_i64());
+    let stock_quantity = obj.get(fields::STOCK_QUANTITY).and_then(|v| v.as_i64());
     validate_price_and_stock(price_cents, stock_quantity)?;
 
     // Validate image URLs if being updated
@@ -1328,7 +1346,8 @@ mod tests {
     use ob_database::DatabaseClient;
     use std::sync::Arc;
 
-    async fn setup_state() -> HandlersState { HandlersState {
+    async fn setup_state() -> HandlersState {
+        HandlersState {
             config: Arc::new(Config::load(None).unwrap()),
             db: DatabaseClient::new_mem().await,
             http_client: reqwest::Client::new(),
@@ -1391,7 +1410,7 @@ mod tests {
 
     #[test]
     fn test_upload_images_rejects_empty_url_string() {
-        let urls = vec![
+        let urls = [
             "https://cdn.example.com/ok.jpg".to_string(),
             "  ".to_string(),
         ];
@@ -1555,11 +1574,11 @@ mod tests {
         assert!(empty.is_empty() || empty.len() > 3);
 
         // 4 files invalid
-        let four = vec!["a".into(), "b".into(), "c".into(), "d".to_string()];
+        let four = ["a".into(), "b".into(), "c".into(), "d".to_string()];
         assert!(four.is_empty() || four.len() > 3);
 
         // 1-3 files valid
-        let ok = vec!["a.jpg".to_string()];
+        let ok = ["a.jpg".to_string()];
         assert!(!ok.is_empty() && ok.len() <= 3);
     }
 
@@ -2200,7 +2219,10 @@ mod tests {
             Extension(auth("seller_1", &["seller"])),
             Json(UploadImagesRequest {
                 product_id: "prod_1".into(),
-                image_urls: vec!["https://cdn.orignagta.ca/images/a.jpg".into(), "https://cdn.orignagta.ca/images/b.jpg".into()],
+                image_urls: vec![
+                    "https://cdn.orignagta.ca/images/a.jpg".into(),
+                    "https://cdn.orignagta.ca/images/b.jpg".into(),
+                ],
             }),
         )
         .await

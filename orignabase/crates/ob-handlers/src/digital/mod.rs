@@ -3,7 +3,7 @@
 
 use axum::{
     Json, Router,
-    extract::{Query, State, Extension},
+    extract::{Extension, Query, State},
     response::Redirect,
     routing::{get, post},
 };
@@ -11,8 +11,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tracing::info;
 
-use ob_auth::middleware::AuthContext;
 use crate::shared::auth::resolve_self_user_id;
+use ob_auth::middleware::AuthContext;
 
 use crate::HandlersState;
 use crate::shared::schema::{business_rules, collections, fields};
@@ -23,7 +23,9 @@ static LICENSE_KEY_RE: OnceLock<regex_lite::Regex> = OnceLock::new();
 
 /// License key format: XXXX-XXXX-XXXX-XXXX (uppercase alphanumeric).
 fn is_valid_license_key(key: &str) -> bool {
-    let re = LICENSE_KEY_RE.get_or_init(|| regex_lite::Regex::new(business_rules::LICENSE_KEY_PATTERN).expect("valid regex"));
+    let re = LICENSE_KEY_RE.get_or_init(|| {
+        regex_lite::Regex::new(business_rules::LICENSE_KEY_PATTERN).expect("valid regex")
+    });
     re.is_match(key)
 }
 
@@ -159,14 +161,20 @@ async fn activate_license(
     }
 
     // Verify status
-    let status = license.get(fields::STATUS).and_then(|v| v.as_str()).unwrap_or("");
+    let status = license
+        .get(fields::STATUS)
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
 
     if status != "active" {
         return Err(ob_core::Error::Forbidden("License has been revoked".into()));
     }
 
     // Verify ownership
-    let owner_id = license.get(fields::USER_ID).and_then(|v| v.as_str()).unwrap_or("");
+    let owner_id = license
+        .get(fields::USER_ID)
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
 
     if owner_id != user_id {
         return Err(ob_core::Error::Forbidden(
@@ -314,7 +322,10 @@ async fn deactivate_license(
     }
 
     // Verify ownership
-    let owner_id = license.get(fields::USER_ID).and_then(|v| v.as_str()).unwrap_or("");
+    let owner_id = license
+        .get(fields::USER_ID)
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
 
     if owner_id != user_id {
         return Err(ob_core::Error::Forbidden("Not your license".into()));
@@ -395,12 +406,18 @@ async fn download_book(
         return Err(ob_core::Error::NotFound("License not found".into()));
     }
 
-    let owner = license.get(fields::USER_ID).and_then(|v| v.as_str()).unwrap_or("");
+    let owner = license
+        .get(fields::USER_ID)
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
     if owner != user_id {
         return Err(ob_core::Error::Forbidden("Not your license".into()));
     }
 
-    let status = license.get(fields::STATUS).and_then(|v| v.as_str()).unwrap_or("");
+    let status = license
+        .get(fields::STATUS)
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
     if status != "active" {
         return Err(ob_core::Error::Forbidden("License revoked".into()));
     }
@@ -489,12 +506,18 @@ async fn download_software(
         return Err(ob_core::Error::NotFound("License not found".into()));
     }
 
-    let owner = license.get(fields::USER_ID).and_then(|v| v.as_str()).unwrap_or("");
+    let owner = license
+        .get(fields::USER_ID)
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
     if owner != user_id {
         return Err(ob_core::Error::Forbidden("Not your license".into()));
     }
 
-    let status = license.get(fields::STATUS).and_then(|v| v.as_str()).unwrap_or("");
+    let status = license
+        .get(fields::STATUS)
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
     if status != "active" {
         return Err(ob_core::Error::Forbidden("License revoked".into()));
     }
@@ -938,7 +961,7 @@ mod tests {
     #[test]
     fn test_idempotent_reactivation_logic() {
         // Simulate: device_id already in activations list
-        let activations = vec![
+        let activations = [
             serde_json::json!({"deviceId": "dev_1", "platform": "macos"}),
             serde_json::json!({"deviceId": "dev_2", "platform": "windows"}),
         ];
@@ -1447,10 +1470,7 @@ mod tests {
 
         assert!(resp.download_url.starts_with("/sdl?t=tok_"));
         let tokens = db
-            .query_bind(
-                "SELECT * FROM software_access_tokens",
-                json!({})
-            )
+            .query_bind("SELECT * FROM software_access_tokens", json!({}))
             .await
             .unwrap();
         assert_eq!(tokens.len(), 1);

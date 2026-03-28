@@ -1,5 +1,5 @@
 use crate::DatabaseClient;
-use ob_core::{Error, Result, escape_surreal_string, validate_document_id, validate_identifier};
+use ob_core::{Error, Result, validate_document_id, validate_identifier};
 use serde_json::Value;
 use surrealdb::RecordId;
 
@@ -277,20 +277,33 @@ impl DatabaseClient {
         let mut merge_fields = serde_json::Map::new();
         let mut set_clauses = Vec::new();
         let mut unset_fields = Vec::new();
+        let mut binds = serde_json::Map::new();
+        let mut bind_idx = 0usize;
+
+        let mut next_bind_name = || {
+            let name = format!("value_{bind_idx}");
+            bind_idx += 1;
+            name
+        };
 
         for (field, value) in obj {
             if let Some(ops) = value.as_object() {
                 if ops.contains_key("_serverTimestamp") {
                     set_clauses.push(format!("{field} = time::now()"));
                 } else if let Some(n) = ops.get("_increment") {
-                    let n_str = n.to_string();
-                    set_clauses.push(format!("{field} += {n_str}"));
+                    let bind_name = next_bind_name();
+                    binds.insert(bind_name.clone(), n.clone());
+                    set_clauses.push(format!("{field} += ${bind_name}"));
                 } else if let Some(arr) = ops.get("_arrayUnion") {
-                    let arr_str = arr.to_string();
-                    set_clauses.push(format!("{field} = array::union({field}, {arr_str})"));
+                    let bind_name = next_bind_name();
+                    binds.insert(bind_name.clone(), arr.clone());
+                    set_clauses.push(format!("{field} = array::union({field}, ${bind_name})"));
                 } else if let Some(arr) = ops.get("_arrayRemove") {
-                    let arr_str = arr.to_string();
-                    set_clauses.push(format!("{field} = array::complement({field}, {arr_str})"));
+                    let bind_name = next_bind_name();
+                    binds.insert(bind_name.clone(), arr.clone());
+                    set_clauses.push(format!(
+                        "{field} = array::complement({field}, ${bind_name})"
+                    ));
                 } else if ops.contains_key("_deleteField") {
                     unset_fields.push(field.clone());
                 } else {
@@ -301,17 +314,20 @@ impl DatabaseClient {
             }
         }
 
+        // Field names originate from caller payloads, not compile-time constants,
+        // so only identifiers are interpolated and only after validate_identifier
+        // restricts them to ASCII Surreal-safe names. All user-controlled values
+        // below are passed as bound parameters.
+        //
         // Build combined query using SET for everything (MERGE + SET in same
         // statement is not supported by SurrealDB).
         let mut all_set_clauses = set_clauses;
 
         // Convert merge fields to SET clauses
         for (field, value) in &merge_fields {
-            let val_str = match value {
-                Value::String(s) => format!("'{}'", escape_surreal_string(s)),
-                _ => value.to_string(),
-            };
-            all_set_clauses.push(format!("{field} = {val_str}"));
+            let bind_name = next_bind_name();
+            binds.insert(bind_name.clone(), value.clone());
+            all_set_clauses.push(format!("{field} = ${bind_name}"));
         }
 
         let mut query_parts = Vec::new();
@@ -349,12 +365,13 @@ impl DatabaseClient {
         query_parts[last_idx].push_str(" RETURN AFTER");
 
         let full_query = query_parts.join(";\n");
+        let binds_value = Value::Object(binds.clone());
 
         // For multi-statement queries, query_raw reads index 0.
         // We need the LAST statement's result, so use query_raw_value
         // and parse the response directly when there are multiple statements.
         if query_parts.len() == 1 {
-            let results = self.query_raw(&full_query).await?;
+            let results = self.query_bind_value(&full_query, binds_value).await?;
             results
                 .into_iter()
                 .next()
@@ -364,6 +381,7 @@ impl DatabaseClient {
             let mut response = self
                 .inner()
                 .query(&full_query)
+                .bind(Value::Object(binds))
                 .await
                 .map_err(|e| Error::Database(format!("FieldValue update failed: {e}")))?;
 
@@ -860,10 +878,7 @@ mod tests {
             .unwrap();
 
         let results = db
-            .query_bind_value(
-                "SELECT val FROM kv WHERE key = $key",
-                json!({"key": "a"}),
-            )
+            .query_bind_value("SELECT val FROM kv WHERE key = $key", json!({"key": "a"}))
             .await
             .unwrap();
         assert!(!results.is_empty());
@@ -891,9 +906,7 @@ mod tests {
     #[tokio::test]
     async fn test_batch_create_invalid_collection() {
         let db = DatabaseClient::new_mem().await;
-        let result = db
-            .batch_create("bad-name", vec![json!({"a": 1})])
-            .await;
+        let result = db.batch_create("bad-name", vec![json!({"a": 1})]).await;
         assert!(result.is_err());
     }
 
@@ -986,7 +999,11 @@ mod tests {
             .unwrap();
         let id = created["id"].as_str().unwrap().to_string();
         let parts: Vec<&str> = id.split(':').collect();
-        let short_id = if parts.len() == 2 { parts[1].to_string() } else { id.clone() };
+        let short_id = if parts.len() == 2 {
+            parts[1].to_string()
+        } else {
+            id.clone()
+        };
 
         let fetched = db.get_document("lifecycle", &short_id).await.unwrap();
         assert_eq!(fetched["step"], "create");
@@ -1007,9 +1024,7 @@ mod tests {
     #[tokio::test]
     async fn test_upsert_document_invalid_collection() {
         let db = DatabaseClient::new_mem().await;
-        let result = db
-            .upsert_document("bad-name", "id1", json!({"a": 1}))
-            .await;
+        let result = db.upsert_document("bad-name", "id1", json!({"a": 1})).await;
         assert!(result.is_err());
     }
 

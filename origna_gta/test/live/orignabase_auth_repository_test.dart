@@ -13,6 +13,11 @@ void main() {
     defaultValue: false,
   );
 
+  if (!runLive) {
+    test('live tests disabled', () {});
+    return;
+  }
+
   group('OrignaBaseAuthRepository live', () {
     late ProviderContainer container;
     late OrignaBase ob;
@@ -55,7 +60,6 @@ void main() {
         await authRepo.signInWithEmail(email, password);
         expect(ob.auth.accessToken, isNotEmpty);
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -70,7 +74,6 @@ void main() {
         expect(ob.auth.accessToken, isNotEmpty);
         expect(ob.auth.currentUserId, isNotEmpty);
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -88,7 +91,6 @@ void main() {
           throwsA(isA<OrignaBaseAuthException>()),
         );
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -107,7 +109,6 @@ void main() {
         final verified = await authRepo.isEmailVerified();
         expect(verified, isFalse);
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -123,7 +124,6 @@ void main() {
         await authRepo.signOut();
         expect(ob.auth.accessToken, isNull);
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -138,7 +138,6 @@ void main() {
         final isValid = await authRepo.validateCurrentUser();
         expect(isValid, isTrue);
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
@@ -153,8 +152,7 @@ void main() {
         // No session → not authenticated → false
         expect(isValid, isFalse);
       },
-      skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
-  }, skip: !runLive);
+  });
 }

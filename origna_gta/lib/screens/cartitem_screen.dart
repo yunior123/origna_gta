@@ -309,47 +309,37 @@ class CartItemScreen extends StatelessWidget {
                       },
                     ),
                     const SizedBox(height: DesignTokens.spacing8),
-                    Semantics(
-                      button: true,
-                      label: 'btn-remove-cart-item',
-                      child: IconButton(
-                        tooltip: 'cart.remove_from_cart'.tr(),
-                        icon: Icon(
-                          Icons.delete_outline_rounded,
-                          color: DesignTokens.error.withValues(alpha: 0.7),
-                          size: 20,
-                        ),
-                        onPressed: onRemove,
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                        splashRadius: 18,
+                    IconButton(
+                      tooltip: 'btn-remove-cart-item',
+                      icon: Icon(
+                        Icons.delete_outline_rounded,
+                        color: DesignTokens.error.withValues(alpha: 0.7),
+                        size: 20,
                       ),
+                      onPressed: onRemove,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      splashRadius: 18,
                     ),
                     const SizedBox(height: DesignTokens.spacing4),
                     Consumer(
                       builder: (context, ref, _) {
-                        return Semantics(
-                          button: true,
-                          label: 'btn-save-for-later',
-                          child: IconButton(
-                            tooltip: 'cart.save_for_later'.tr(),
-                            icon: Icon(
-                              Icons.bookmark_outline_rounded,
-                              color: DesignTokens.primary.withValues(
-                                alpha: 0.8,
-                              ),
-                              size: 20,
-                            ),
-                            onPressed: () => _saveForLater(
-                              context,
-                              ref,
-                              productId,
-                              cartItemId,
-                            ),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                            splashRadius: 18,
+                        return IconButton(
+                          tooltip: 'btn-save-for-later',
+                          icon: Icon(
+                            Icons.bookmark_outline_rounded,
+                            color: DesignTokens.primary.withValues(alpha: 0.8),
+                            size: 20,
                           ),
+                          onPressed: () => _saveForLater(
+                            context,
+                            ref,
+                            productId,
+                            cartItemId,
+                          ),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          splashRadius: 18,
                         );
                       },
                     ),
@@ -661,18 +651,15 @@ class CartItemScreen extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-            Semantics(
-              label: 'input-cart-item-note',
-              child: TextField(
-                controller: controller,
-                autofocus: true,
-                maxLength: 200,
-                maxLines: 3,
-                decoration: InputDecoration(
-                  hintText: 'cart.item_note_hint'.tr(),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              maxLength: 200,
+              maxLines: 3,
+              decoration: InputDecoration(
+                hintText: 'cart.item_note_hint'.tr(),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
               ),
             ),
@@ -681,7 +668,6 @@ class CartItemScreen extends StatelessWidget {
               builder: (context, ref, _) {
                 return Semantics(
                   label: 'btn-cart-save-note',
-                  button: true,
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: DesignTokens.primary,

@@ -197,7 +197,7 @@ async fn ensure_customer(
 
     // Store on user
     let now = chrono::Utc::now().to_rfc3339();
-    
+
     state
         .db
         .update_document(
@@ -231,7 +231,7 @@ async fn get_user_subscription(
 
     // Validate user ID format before querying
     ob_core::validate_surreal_record_id(user_id)?;
-    
+
     let rows = state
         .db
         .query_raw(&format!(
@@ -289,10 +289,14 @@ async fn create_subscription(
         fields::EARLY_CANCEL_COUNT,
         collections::USERS
     );
-    let abuse_results = state.db.query_bind(
-        &abuse_check_sql,
-        serde_json::json!({ "uid": format!("{}:{}", collections::USERS, &user_id) }),
-    ).await.unwrap_or_default();
+    let abuse_results = state
+        .db
+        .query_bind(
+            &abuse_check_sql,
+            serde_json::json!({ "uid": format!("{}:{}", collections::USERS, &user_id) }),
+        )
+        .await
+        .unwrap_or_default();
 
     let early_cancel_count = abuse_results
         .first()
@@ -302,7 +306,7 @@ async fn create_subscription(
 
     if early_cancel_count >= MAX_EARLY_CANCELS {
         return Err(ob_core::Error::Validation(
-            "Too many short-term subscriptions. Please contact support@orignagta.ca.".into()
+            "Too many short-term subscriptions. Please contact support@orignagta.ca.".into(),
         ));
     }
 
@@ -314,17 +318,21 @@ async fn create_subscription(
         fields::STATUS,
         fields::SUBSCRIPTION_STATUS
     );
-    let existing_records = state.db.query_bind_value(&existing_sql, json!({ "uid": user_id })).await?;
-    
+    let existing_records = state
+        .db
+        .query_bind_value(&existing_sql, json!({ "uid": user_id }))
+        .await?;
+
     if !existing_records.is_empty() {
         let existing = &existing_records[0];
         let existing_sub_id = existing
             .get("id")
             .and_then(|v| v.as_str())
             .unwrap_or("unknown");
-        return Err(ob_core::Error::Validation(
-            format!("User already has an active subscription: {}", existing_sub_id)
-        ));
+        return Err(ob_core::Error::Validation(format!(
+            "User already has an active subscription: {}",
+            existing_sub_id
+        )));
     }
 
     let stripe_key = state.config.require_secret("stripe_secret_key")?;
@@ -654,7 +662,6 @@ async fn cancel_subscription(
         ));
     }
 
-
     // Check if this is an early cancellation (within EARLY_CANCEL_DAYS of creation)
     let sub_created_at = sub_doc
         .get(fields::CREATED_AT)
@@ -662,7 +669,7 @@ async fn cancel_subscription(
         .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
         .map(|dt| dt.timestamp())
         .unwrap_or(0);
-    
+
     let now_ts = chrono::Utc::now().timestamp();
     let days_active = (now_ts - sub_created_at) / 86400;
 
@@ -674,10 +681,18 @@ async fn cancel_subscription(
             "subscription_early_cancel_pattern"
         );
         // Increment early_cancel_count on user
-        let _ = state.db.query_bind(
-            &format!("UPDATE {}:{} SET {} += 1", collections::USERS, &user_id, fields::EARLY_CANCEL_COUNT),
-            serde_json::json!({}),
-        ).await;
+        let _ = state
+            .db
+            .query_bind(
+                &format!(
+                    "UPDATE {}:{} SET {} += 1",
+                    collections::USERS,
+                    &user_id,
+                    fields::EARLY_CANCEL_COUNT
+                ),
+                serde_json::json!({}),
+            )
+            .await;
     }
 
     // Get the period end timestamp from Stripe response (already have this from sub_doc)
@@ -686,7 +701,7 @@ async fn cancel_subscription(
         .and_then(|v| v.as_i64())
         .unwrap_or(now_ts);
 
-        // Update DB — cancel_pending, NOT cancelled. User paid for the full period.
+    // Update DB — cancel_pending, NOT cancelled. User paid for the full period.
     let now = chrono::Utc::now().to_rfc3339();
     let raw_user_id = user_id.strip_prefix("users:").unwrap_or(&user_id);
     let _ = state
@@ -1226,31 +1241,31 @@ async fn handle_invoice_payment_failed(
     Ok(())
 }
 
-
 // ---------------------------------------------------------------------------
 // Helper Functions (exported)
 // ---------------------------------------------------------------------------
 
 /// Check if a user's subscription benefits are active.
 /// Benefits require: active subscription AND benefits delay has passed (48h).
-pub async fn is_subscription_benefits_active(
-    state: &HandlersState,
-    user_id: &str,
-) -> bool {
-    let results = state.db.query_bind(
-        &format!(
-            "SELECT {}, {} FROM {} WHERE {} = $uid AND ({} = '{}' OR {} = '{}') LIMIT 1",
-            fields::BENEFITS_ACTIVE_AT,
-            fields::STATUS,
-            collections::SUBSCRIPTIONS,
-            fields::BUYER_ID,
-            fields::STATUS,
-            SubscriptionStatus::Active.as_str(),
-            fields::SUBSCRIPTION_STATUS,
-            SubscriptionStatus::Active.as_str(),
-        ),
-        serde_json::json!({ "uid": user_id }),
-    ).await.unwrap_or_default();
+pub async fn is_subscription_benefits_active(state: &HandlersState, user_id: &str) -> bool {
+    let results = state
+        .db
+        .query_bind(
+            &format!(
+                "SELECT {}, {} FROM {} WHERE {} = $uid AND ({} = '{}' OR {} = '{}') LIMIT 1",
+                fields::BENEFITS_ACTIVE_AT,
+                fields::STATUS,
+                collections::SUBSCRIPTIONS,
+                fields::BUYER_ID,
+                fields::STATUS,
+                SubscriptionStatus::Active.as_str(),
+                fields::SUBSCRIPTION_STATUS,
+                SubscriptionStatus::Active.as_str(),
+            ),
+            serde_json::json!({ "uid": user_id }),
+        )
+        .await
+        .unwrap_or_default();
 
     if let Some(sub) = results.first() {
         let benefits_at = sub

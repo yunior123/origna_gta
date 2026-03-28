@@ -8,8 +8,7 @@ use std::time::Duration;
 use tokio::time::sleep;
 
 fn base_url() -> String {
-    std::env::var("OB_TEST_URL")
-        .unwrap_or_else(|_| "https://api.dev.orignagta.ca".to_string())
+    std::env::var("OB_TEST_URL").unwrap_or_else(|_| "https://api.dev.orignagta.ca".to_string())
 }
 
 /// Login as buyer and return access token.
@@ -56,24 +55,6 @@ async fn login_seller(client: &reqwest::Client) -> String {
         .to_string()
 }
 
-/// Get list of coupons for a seller (requires seller auth).
-async fn get_seller_coupons(client: &reqwest::Client, token: &str) -> Vec<Value> {
-    let resp = client
-        .get(format!("{}/coupons", base_url()))
-        .header("Authorization", format!("Bearer {}", token))
-        .send()
-        .await
-        .expect("get coupons request failed");
-
-    if resp.status() != 200 {
-        eprintln!("get_seller_coupons failed: {}", resp.status());
-        return vec![];
-    }
-
-    let body: Value = resp.json().await.unwrap_or(json!([]));
-    body.as_array().cloned().unwrap_or_default()
-}
-
 /// Apply coupon to checkout (buyer action).
 async fn apply_coupon_to_checkout(
     client: &reqwest::Client,
@@ -93,7 +74,10 @@ async fn apply_coupon_to_checkout(
         .map_err(|e| format!("apply coupon request failed: {}", e))?;
 
     let status = resp.status();
-    let body: Value = resp.json().await.map_err(|e| format!("parse response: {}", e))?;
+    let body: Value = resp
+        .json()
+        .await
+        .map_err(|e| format!("parse response: {}", e))?;
 
     if status == 200 {
         Ok(body)
@@ -114,8 +98,11 @@ async fn test_apply_valid_coupon_reduces_checkout_total() {
     let seller_token = login_seller(&client).await;
 
     // Create a test coupon (10% off, max 50 uses)
-    let coupon_code = format!("TEST_COUPON_{}", uuid::Uuid::new_v4().to_string()[0..8].to_uppercase());
-    
+    let coupon_code = format!(
+        "TEST_COUPON_{}",
+        uuid::Uuid::new_v4().to_string()[0..8].to_uppercase()
+    );
+
     let create_resp = client
         .post(format!("{}/coupons/create", base_url()))
         .header("Authorization", format!("Bearer {}", seller_token))
@@ -129,11 +116,11 @@ async fn test_apply_valid_coupon_reduces_checkout_total() {
         .send()
         .await;
 
-    if let Ok(resp) = create_resp {
-        if resp.status() != 201 {
-            eprintln!("Failed to create test coupon: {}", resp.status());
-            return; // Skip test if we can't create coupon
-        }
+    if let Ok(resp) = create_resp
+        && resp.status() != 201
+    {
+        eprintln!("Failed to create test coupon: {}", resp.status());
+        return; // Skip test if we can't create coupon
     }
 
     // Apply the coupon to a checkout with $100 subtotal
@@ -146,7 +133,10 @@ async fn test_apply_valid_coupon_reduces_checkout_total() {
 
             // 10% of $100 = $10
             assert!(discount_cents > 0, "Discount should be applied");
-            assert!(discounted_total < subtotal_cents, "Total should be less than subtotal");
+            assert!(
+                discounted_total < subtotal_cents,
+                "Total should be less than subtotal"
+            );
             assert_eq!(
                 discounted_total,
                 subtotal_cents - discount_cents,
@@ -193,8 +183,11 @@ async fn test_coupon_max_uses_enforced() {
     let buyer_token = login_buyer(&client).await;
 
     // Create a coupon with max 1 use
-    let coupon_code = format!("MAXUSE_{}", uuid::Uuid::new_v4().to_string()[0..8].to_uppercase());
-    
+    let coupon_code = format!(
+        "MAXUSE_{}",
+        uuid::Uuid::new_v4().to_string()[0..8].to_uppercase()
+    );
+
     let create_resp = client
         .post(format!("{}/coupons/create", base_url()))
         .header("Authorization", format!("Bearer {}", seller_token))
@@ -207,10 +200,10 @@ async fn test_coupon_max_uses_enforced() {
         .send()
         .await;
 
-    if let Ok(resp) = create_resp {
-        if resp.status() != 201 {
-            return; // Skip if coupon creation not supported
-        }
+    if let Ok(resp) = create_resp
+        && resp.status() != 201
+    {
+        return; // Skip if coupon creation not supported
     }
 
     let subtotal = 5000;

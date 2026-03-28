@@ -5,8 +5,7 @@
 use serde_json::{Value, json};
 
 fn base_url() -> String {
-    std::env::var("OB_TEST_URL")
-        .unwrap_or_else(|_| "https://api.dev.orignagta.ca".to_string())
+    std::env::var("OB_TEST_URL").unwrap_or_else(|_| "https://api.dev.orignagta.ca".to_string())
 }
 
 /// Login as admin and return access token.
@@ -30,10 +29,7 @@ async fn login_admin(client: &reqwest::Client) -> String {
 }
 
 /// List all users (admin only).
-async fn list_users(
-    client: &reqwest::Client,
-    token: &str,
-) -> Result<Vec<Value>, String> {
+async fn list_users(client: &reqwest::Client, token: &str) -> Result<Vec<Value>, String> {
     let resp = client
         .get(format!("{}/admin/users", base_url()))
         .header("Authorization", format!("Bearer {}", token))
@@ -42,7 +38,10 @@ async fn list_users(
         .map_err(|e| format!("request failed: {}", e))?;
 
     let status = resp.status();
-    let body: Value = resp.json().await.map_err(|e| format!("parse response: {}", e))?;
+    let body: Value = resp
+        .json()
+        .await
+        .map_err(|e| format!("parse response: {}", e))?;
 
     if status == 200 {
         Ok(body.as_array().cloned().unwrap_or_default())
@@ -52,11 +51,7 @@ async fn list_users(
 }
 
 /// Get user details (admin only).
-async fn get_user(
-    client: &reqwest::Client,
-    token: &str,
-    user_id: &str,
-) -> Result<Value, String> {
+async fn get_user(client: &reqwest::Client, token: &str, user_id: &str) -> Result<Value, String> {
     let resp = client
         .get(format!("{}/admin/users/{}", base_url(), user_id))
         .header("Authorization", format!("Bearer {}", token))
@@ -65,7 +60,10 @@ async fn get_user(
         .map_err(|e| format!("request failed: {}", e))?;
 
     let status = resp.status();
-    let body: Value = resp.json().await.map_err(|e| format!("parse response: {}", e))?;
+    let body: Value = resp
+        .json()
+        .await
+        .map_err(|e| format!("parse response: {}", e))?;
 
     if status == 200 {
         Ok(body)
@@ -135,23 +133,23 @@ async fn test_admin_get_user_requires_admin_role() {
     let admin_token = login_admin(&client).await;
 
     // List users to get a valid user ID
-    if let Ok(users) = list_users(&client, &admin_token).await {
-        if !users.is_empty() {
-            let user_id = users[0]["id"]
-                .as_str()
-                .map(|s| s.to_string())
-                .unwrap_or_default();
+    if let Ok(users) = list_users(&client, &admin_token).await
+        && !users.is_empty()
+    {
+        let user_id = users[0]["id"]
+            .as_str()
+            .map(|s| s.to_string())
+            .unwrap_or_default();
 
-            if !user_id.is_empty() {
-                // Get user details as admin — should succeed
-                match get_user(&client, &admin_token, &user_id).await {
-                    Ok(user) => {
-                        let id = user["id"].as_str().unwrap_or("");
-                        assert_eq!(id, user_id, "Should return requested user");
-                    }
-                    Err(e) => {
-                        eprintln!("Get user as admin failed: {}", e);
-                    }
+        if !user_id.is_empty() {
+            // Get user details as admin — should succeed
+            match get_user(&client, &admin_token, &user_id).await {
+                Ok(user) => {
+                    let id = user["id"].as_str().unwrap_or("");
+                    assert_eq!(id, user_id, "Should return requested user");
+                }
+                Err(e) => {
+                    eprintln!("Get user as admin failed: {}", e);
                 }
             }
         }
@@ -169,7 +167,7 @@ async fn test_admin_actions_logged_with_uid() {
         Ok(_users) => {
             // If we can list users, verify there's an audit log
             // (This test assumes audit logging is implemented)
-            
+
             // Try to fetch audit log (endpoint may not exist)
             let audit_resp = client
                 .get(format!("{}/admin/audit-log", base_url()))
@@ -177,20 +175,20 @@ async fn test_admin_actions_logged_with_uid() {
                 .send()
                 .await;
 
-            if let Ok(resp) = audit_resp {
-                if resp.status() == 200 {
-                    let body: Value = resp.json().await.unwrap_or(json!({}));
-                    let empty_vec = vec![];
-                    let logs = body.as_array().unwrap_or(&empty_vec);
-                    
-                    // Verify recent log entries have adminUid
-                    for log in logs.iter().take(5) {
-                        let has_admin_uid = log.get("adminUid").is_some();
-                        assert!(
-                            has_admin_uid,
-                            "Admin actions should be logged with adminUid"
-                        );
-                    }
+            if let Ok(resp) = audit_resp
+                && resp.status() == 200
+            {
+                let body: Value = resp.json().await.unwrap_or(json!({}));
+                let empty_vec = vec![];
+                let logs = body.as_array().unwrap_or(&empty_vec);
+
+                // Verify recent log entries have adminUid
+                for log in logs.iter().take(5) {
+                    let has_admin_uid = log.get("adminUid").is_some();
+                    assert!(
+                        has_admin_uid,
+                        "Admin actions should be logged with adminUid"
+                    );
                 }
             }
         }

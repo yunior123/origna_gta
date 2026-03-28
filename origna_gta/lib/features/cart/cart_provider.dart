@@ -51,11 +51,19 @@ final cartItemDateProvider = Provider.autoDispose.family<DateTime?, String>((
   );
 });
 
-/// Family provider for individual cart item details - cached by Riverpod
-/// AUDIT FIX: Reads from batch-fetched cache instead of making individual
-/// database reads per item (N+1 query elimination).
-/// Keyed by cartItemDocId (format: productId or productId_variantId) to correctly
-/// distinguish items with the same product but different variants.
+/// Provider for individual cart item details, keyed by cart item document ID.
+///
+/// Parameters:
+/// - [cartItemDocId]: unique identifier for the cart item (format: `productId` or `productId_variantId`).
+///
+/// Returns:
+/// - A [FutureProvider] emitting a [CartItemDetailModel] enriched with product metadata.
+///
+/// AUDIT FIX: Reads from a batch-fetched product cache ([_cartProductsBatchProvider])
+/// instead of making individual database reads per item, eliminating N+1 query issues.
+///
+/// Gotchas:
+/// - If a product is no longer active, returns a model populated from the cart item's price snapshot.
 final cartItemDetailProvider = FutureProvider.autoDispose
     .family<CartItemDetailModel?, String>((ref, cartItemDocId) async {
       final createdAt = ref.watch(cartItemDateProvider(cartItemDocId));
@@ -166,7 +174,13 @@ final cartItemDetailProvider = FutureProvider.autoDispose
 // ============================================================================
 
 /// Provider that returns the current quantity for a specific cart item.
-/// Keyed by [cartItemId] (not productId) so duplicate-product entries are tracked independently.
+///
+/// Parameters:
+/// - [cartItemId]: the document ID of the cart item.
+///
+/// Returns:
+/// - An [AsyncValue] containing the integer quantity.
+///
 /// F-004 fix: using productId caused merged quantities when the same product appeared twice.
 final cartItemQuantityProvider = Provider.autoDispose
     .family<AsyncValue<int>, String>((ref, cartItemId) {
@@ -185,6 +199,7 @@ final cartItemQuantityProvider = Provider.autoDispose
 // CART PROVIDERS
 // ============================================================================
 
+/// Stream of all cart items for the currently authenticated user.
 final cartItemsProvider = StreamProvider.autoDispose<List<CartItemModel>>((
   ref,
 ) {
@@ -199,7 +214,9 @@ final cartItemsProvider = StreamProvider.autoDispose<List<CartItemModel>>((
 // ============================================================================
 
 /// Validates that all cart items can be shipped to the buyer's default address.
-/// Returns a list of product IDs that are UN-SHIPPABLE to the current destination.
+///
+/// Returns:
+/// - A list of product IDs that are un-shippable to the buyer's current province.
 final cartShippingValidationProvider = FutureProvider.autoDispose<List<String>>((
   ref,
 ) async {
@@ -241,8 +258,9 @@ final cartShippingValidationProvider = FutureProvider.autoDispose<List<String>>(
   return unshippable;
 });
 
-/// Cart subtotal in integer cents — use for all arithmetic and threshold checks.
-/// Display: `'\$${(subtotal / 100).toStringAsFixed(2)}'`
+/// Computes the cart subtotal in integer cents.
+///
+/// Used for all financial arithmetic and business rule checks (e.g., free shipping threshold).
 final cartSubtotalProvider = Provider.autoDispose<int>((ref) {
   final cartDetails = ref.watch(cartWithDetailsProvider);
   return cartDetails.maybeWhen(
@@ -254,8 +272,10 @@ final cartSubtotalProvider = Provider.autoDispose<int>((ref) {
   );
 });
 
-/// Fetches cart items with full product details using the shared batch-fetch cache.
-/// Reuses [_cartProductsBatchProvider] to avoid a duplicate batch query.
+/// Fetches cart items with full product details using the batch-fetch cache.
+///
+/// Returns:
+/// - A list of [CartItemDetailModel] for all items in the user's cart.
 final cartWithDetailsProvider =
     FutureProvider.autoDispose<List<CartItemDetailModel>>((ref) async {
       final cartItems = ref.watch(cartItemsProvider);
@@ -353,7 +373,7 @@ final cartWithDetailsProvider =
       );
     });
 
-// Provider for delivery instructions (stored during cart/checkout flow)
+/// State provider for delivery instructions entered during checkout.
 final deliveryInstructionsProvider = StateProvider.autoDispose<String>(
   (ref) => '',
 );
@@ -362,8 +382,10 @@ final deliveryInstructionsProvider = StateProvider.autoDispose<String>(
 // SINGLE CART ITEM DETAIL PROVIDER (Family)
 // ============================================================================
 
-/// Exposes product IDs that are in the cart but no longer available in the catalog.
-/// UI should use this to display "X items are no longer available" banners.
+/// Identifies products in the cart that are no longer available in the active catalog.
+///
+/// Returns:
+/// - A list of product IDs for unavailable items.
 final unavailableCartItemsProvider = FutureProvider.autoDispose<List<String>>((
   ref,
 ) async {
@@ -381,8 +403,9 @@ final unavailableCartItemsProvider = FutureProvider.autoDispose<List<String>>((
   );
 });
 
-/// Internal provider that batch-fetches product documents for all cart items.
-/// Returns a `Map<productId, productData>` for O(1) lookup by [cartItemDetailProvider].
+/// Internal provider that batch-fetches full product documents for all cart entries.
+///
+/// Returns a map of `productId` to its raw JSON data.
 final _cartProductsBatchProvider =
     FutureProvider.autoDispose<Map<String, Map<String, dynamic>>>((ref) async {
       final productRepository = ref.watch(productRepositoryProvider);
@@ -408,30 +431,18 @@ final _cartProductsBatchProvider =
       return cache;
     });
 
-/// Stateless controller for cart mutations: add, remove, update quantity,
-/// buyer notes, and save-for-later.
+/// Stateless controller for cart mutations: add, remove, and update.
 ///
-/// All operations require an authenticated user — methods return early with
-/// `false` or `void` when [_userId] is null. Errors are captured via Sentry
-/// and the caller receives a failure indicator.
+/// All operations require an authenticated user.
 ///
 /// ## Key Decisions
-/// - Self-purchase prevention: [addToCart] checks if the product seller
-///   matches the current user and returns false if so.
-/// - Variant validation: [addToCart] validates that the variant ID exists
-///   and is active in the product's variants array before adding.
-/// - Client-side stock check removed — server-side validation at checkout
-///   is transactional and authoritative.
-/// - Analytics are fire-and-forget (`unawaited`) — cart operations never
-///   block on analytics.
-///
-/// See also:
-/// - [CartRepository] for persistence layer
-/// - [cartItemsProvider] for the reactive cart stream
-/// - [CartItemDetailModel] for the enriched cart item shape
+/// - Self-purchase prevention: [addToCart] returns `false` if the buyer is the seller.
+/// - Variant validation: [addToCart] verifies the variant is active before adding.
+/// - Analytics: All mutations log fire-and-forget analytics events.
 class CartController {
   final Ref _ref;
 
+  /// Creates a new [CartController].
   CartController(this._ref);
 
   CartRepository get _repository => _ref.read(cartRepositoryProvider);
@@ -439,16 +450,13 @@ class CartController {
 
   /// Adds a product to the user's cart.
   ///
-  /// [productId] — the product document ID.
-  /// [quantity] — units to add (server enforces stock limit).
-  /// [variantId] — optional variant ID; validated against product's variants array.
-  /// [productName], [priceCad] — optional, used for analytics logging only.
+  /// Parameters:
+  /// - [productId]: the ID of the product.
+  /// - [quantity]: units to add.
+  /// - [variantId]: optional variant ID.
   ///
-  /// Returns `true` on success, `false` if:
-  /// - No user is logged in
-  /// - Product seller matches current user (self-purchase prevention)
-  /// - Variant ID is invalid or inactive
-  /// - Network error occurs
+  /// Returns:
+  /// - `true` on success, `false` on failure or if self-purchase is attempted.
   Future<bool> addToCart(
     String productId,
     int quantity, {
@@ -496,7 +504,9 @@ class CartController {
     }
   }
 
-  /// Check if user can add this product (not their own)
+  /// Checks if the current user can add a specific product to their cart.
+  ///
+  /// Prevents users from purchasing products they are selling.
   Future<bool> canAddToCart(String productId) async {
     final userId = _userId;
     if (userId == null) return false;
@@ -511,34 +521,35 @@ class CartController {
     }
   }
 
-  /// Removes all items from the user's cart.
-  ///
-  /// No-ops silently if no user is logged in.
+  /// Clears all items from the current user's cart.
   Future<void> clearCart() async {
     final userId = _userId;
     if (userId == null) return;
     await _repository.clearCart(userId);
   }
 
-  /// Invalidates the [cartItemsProvider] to force a fresh fetch from the database.
-  ///
-  /// Use after external mutations (e.g., admin stock update) that bypass this controller.
+  /// Forces a refresh of the cart item stream by invalidating the provider.
   void refreshCart() {
     _ref.invalidate(cartItemsProvider);
   }
 
   /// Removes a specific item from the user's cart.
   ///
-  /// [cartItemId] — the cart item document ID (format: `productId` or `productId_variantId`).
-  /// No-ops silently if no user is logged in.
+  /// Parameters:
+  /// - [cartItemId]: the ID of the cart entry to remove.
   Future<void> removeFromCart(String cartItemId) async {
     final userId = _userId;
     if (userId == null) return;
     await _repository.removeFromCart(userId, cartItemId);
   }
 
-  /// Saves a cart item to the user's favorites and removes it from the cart.
-  /// Returns true on success, false on failure.
+  /// Saves a cart item to favorites and removes it from the cart.
+  ///
+  /// Parameters:
+  /// - [productId]: the product to favorite.
+  /// - [cartItemId]: the cart entry to remove after favoriting.
+  ///
+  /// Returns `true` on success, `false` on failure.
   Future<bool> saveForLater(String productId, String cartItemId) async {
     final userId = _userId;
     if (userId == null) return false;
@@ -555,25 +566,25 @@ class CartController {
     }
   }
 
-  /// Updates the buyer's note for a specific cart item.
+  /// Updates the optional buyer note for a cart item.
   ///
-  /// [cartItemId] — the cart item document ID.
-  /// [note] — the note text, or null to clear it.
-  /// No-ops silently if no user is logged in.
+  /// Parameters:
+  /// - [cartItemId]: the cart entry to update.
+  /// - [note]: the note text, or null to clear.
   Future<void> updateBuyerNote(String cartItemId, String? note) async {
     final userId = _userId;
     if (userId == null) return;
     await _repository.updateBuyerNote(userId, cartItemId, note);
   }
 
-  /// Updates the quantity of a cart item.
-  /// Returns false if the update fails (e.g., item not found).
+  /// Updates the quantity of an item in the cart.
+  ///
+  /// Parameters:
+  /// - [cartItemId]: the ID of the cart item.
+  /// - [newQuantity]: the updated number of units.
   Future<bool> updateQuantity(String cartItemId, int newQuantity) async {
     final userId = _userId;
     if (userId == null) return false;
-
-    // Client-side stock check removed — it's non-transactional (race condition).
-    // Server-side validation at checkout is properly transactional and authoritative.
 
     await _repository.updateQuantity(userId, cartItemId, newQuantity);
     return true;

@@ -14,7 +14,7 @@ password = "${OB_DB_PASSWORD}"
 [auth]
 jwt_secret = "${OB_JWT_SECRET}"
 access_token_ttl_secs = 900        # 15 minutes
-refresh_token_ttl_secs = 604800    # 7 days
+refresh_token_ttl_secs = 518400    # 6 days
 
 [security]
 rules_path = "/etc/orignabase/rules.ob"

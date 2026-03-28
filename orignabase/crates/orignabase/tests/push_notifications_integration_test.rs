@@ -96,7 +96,10 @@ async fn test_push_register_token_success() {
     .await;
 
     assert_eq!(status, 200, "Register token should succeed: {body:?}");
-    assert_eq!(body["registered"], true, "Response should confirm registration");
+    assert_eq!(
+        body["registered"], true,
+        "Response should confirm registration"
+    );
 }
 
 #[tokio::test]
@@ -118,7 +121,10 @@ async fn test_push_register_token_android_platform() {
     )
     .await;
 
-    assert_eq!(status, 200, "Android token registration should succeed: {body:?}");
+    assert_eq!(
+        status, 200,
+        "Android token registration should succeed: {body:?}"
+    );
     assert_eq!(body["registered"], true);
 }
 
@@ -141,7 +147,10 @@ async fn test_push_register_token_ios_platform() {
     )
     .await;
 
-    assert_eq!(status, 200, "iOS token registration should succeed: {body:?}");
+    assert_eq!(
+        status, 200,
+        "iOS token registration should succeed: {body:?}"
+    );
     assert_eq!(body["registered"], true);
 }
 
@@ -249,7 +258,10 @@ async fn test_push_register_multiple_tokens_same_user() {
         }),
     )
     .await;
-    assert_eq!(status_2, 200, "Same user should register multiple device tokens");
+    assert_eq!(
+        status_2, 200,
+        "Same user should register multiple device tokens"
+    );
 }
 
 #[tokio::test]
@@ -342,7 +354,10 @@ async fn test_push_unregister_nonexistent_token() {
     .await;
 
     // Should be idempotent — deleting nonexistent token is not an error
-    assert_eq!(status, 200, "Unregistering nonexistent token should succeed: {body:?}");
+    assert_eq!(
+        status, 200,
+        "Unregistering nonexistent token should succeed: {body:?}"
+    );
 }
 
 #[tokio::test]
@@ -350,13 +365,7 @@ async fn test_push_unregister_nonexistent_token() {
 async fn test_push_unregister_missing_token_field() {
     let client = reqwest::Client::new();
 
-    let (status, _body) = delete_json(
-        &client,
-        "/push/register",
-        None,
-        json!({}),
-    )
-    .await;
+    let (status, _body) = delete_json(&client, "/push/register", None, json!({})).await;
 
     assert!(
         status == 400 || status == 422,
@@ -678,7 +687,10 @@ async fn test_push_unsubscribe_nonexistent_idempotent() {
     )
     .await;
 
-    assert_eq!(status, 200, "Unsubscribing nonexistent should be idempotent: {body:?}");
+    assert_eq!(
+        status, 200,
+        "Unsubscribing nonexistent should be idempotent: {body:?}"
+    );
 }
 
 // =============================================================================
@@ -703,6 +715,9 @@ async fn test_push_send_default_target_type_is_user() {
     )
     .await;
 
-    assert_eq!(status, 200, "Default target_type (user) should work: {body:?}");
+    assert_eq!(
+        status, 200,
+        "Default target_type (user) should work: {body:?}"
+    );
     assert_eq!(body["sent"], 0, "No devices registered for random user");
 }

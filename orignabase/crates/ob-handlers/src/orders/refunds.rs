@@ -2,14 +2,14 @@
 //! Ported from: functions/handlers/orders.py::refund_order_item, cancel_order
 
 use axum::{Extension, Json, Router, extract::State, routing::post};
-use ob_auth::middleware::AuthContext;
 use chrono::Utc;
+use ob_auth::middleware::AuthContext;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use tracing::{error, info, warn};
 
 use crate::HandlersState;
-use crate::shared::schema::{business_rules, collections, fields, OrderStatus};
+use crate::shared::schema::{OrderStatus, business_rules, collections, fields};
 use crate::shared::validation::{sanitize_html, validate_uid};
 
 // ---------------------------------------------------------------------------
@@ -119,7 +119,10 @@ pub(crate) fn calculate_refund_amount_cents(
     item: &Value,
 ) -> Result<i64, ob_core::Error> {
     let item_price_cents = i64_field(item, fields::PRICE_CENTS);
-    let item_quantity = item.get(fields::QUANTITY).and_then(|v| v.as_i64()).unwrap_or(1);
+    let item_quantity = item
+        .get(fields::QUANTITY)
+        .and_then(|v| v.as_i64())
+        .unwrap_or(1);
     let mut item_subtotal_cents = item_price_cents * item_quantity;
 
     let order_subtotal_pre = i64_field(order, fields::SUBTOTAL_CENTS);
@@ -127,8 +130,8 @@ pub(crate) fn calculate_refund_amount_cents(
     if order_subtotal_pre > 0 && order_discount > 0 {
         let discounted_subtotal = (order_subtotal_pre - order_discount).max(0);
         // Integer-only scaled arithmetic with banker's rounding
-        item_subtotal_cents =
-            (item_subtotal_cents * discounted_subtotal + order_subtotal_pre / 2) / order_subtotal_pre;
+        item_subtotal_cents = (item_subtotal_cents * discounted_subtotal + order_subtotal_pre / 2)
+            / order_subtotal_pre;
     }
 
     let order_subtotal_cents = i64_field(order, fields::SUBTOTAL_CENTS);
@@ -214,7 +217,7 @@ pub(crate) async fn stripe_refund(
             .header("Authorization", format!("Bearer {stripe_key}"))
             .header("Idempotency-Key", idempotency_key)
             .form(&params)
-            .send()
+            .send(),
     )
     .await
     .map_err(|_| ob_core::Error::Internal("Stripe refund request timeout".into()))?
@@ -280,6 +283,11 @@ pub(crate) async fn stripe_cancel_pi(
 // refund_order_item
 // ---------------------------------------------------------------------------
 
+/// Refunds a single order item for the seller or an admin after validating
+/// permissions, refund eligibility, and the proportional refund amount.
+///
+/// When the underlying Stripe refund succeeds, the handler records the refund
+/// metadata on the order and returns the refunded amount in cents.
 async fn refund_order_item(
     State(state): State<HandlersState>,
     Extension(auth): Extension<AuthContext>,
@@ -379,7 +387,10 @@ async fn refund_order_item(
         )));
     }
 
-    let item_quantity = item.get(fields::QUANTITY).and_then(|v| v.as_i64()).unwrap_or(1);
+    let item_quantity = item
+        .get(fields::QUANTITY)
+        .and_then(|v| v.as_i64())
+        .unwrap_or(1);
     let refund_amount_cents = calculate_refund_amount_cents(&order, item)?;
 
     // SECURITY: Atomically reserve the refund amount before calling Stripe.
@@ -588,23 +599,24 @@ async fn refund_order_item(
 // cancel_order
 // ---------------------------------------------------------------------------
 
+/// Cancels an order on behalf of the buyer, seller, or admin subject to the
+/// current order state and actor permissions.
+///
+/// Authorized-but-uncaptured payments are canceled in Stripe, captured payments
+/// are refunded, and the order document is updated with the cancellation audit
+/// trail and resulting payment state.
 async fn cancel_order(
     State(state): State<HandlersState>,
     Extension(auth): Extension<AuthContext>,
     Json(req): Json<CancelOrderRequest>,
 ) -> Result<Json<CancelOrderResponse>, ob_core::Error> {
     // SECURITY: derive user_id from JWT, never trust client-supplied value
-    let user_id = crate::shared::auth::resolve_self_user_id(&auth, Some(req.user_id.as_str()), "userId")?;
+    let user_id =
+        crate::shared::auth::resolve_self_user_id(&auth, Some(req.user_id.as_str()), "userId")?;
     validate_uid("orderId", &req.order_id)?;
 
-    crate::shared::rate_limiter::check_user_rate_limit(
-        &state.db,
-        &user_id,
-        "cancel_order",
-        5,
-        1,
-    )
-    .await?;
+    crate::shared::rate_limiter::check_user_rate_limit(&state.db, &user_id, "cancel_order", 5, 1)
+        .await?;
 
     let reason = req
         .reason
@@ -657,12 +669,7 @@ async fn cancel_order(
     }
 
     // Buyers can only cancel pre-shipment
-    let buyer_cancellable = [
-        "pending",
-        "pending",
-        "confirmed",
-        "confirmed",
-    ];
+    let buyer_cancellable = ["pending", "pending", "confirmed", "confirmed"];
     if is_buyer && !is_admin && !is_seller && !buyer_cancellable.contains(&current_status) {
         return Err(ob_core::Error::Validation(
             "Order cannot be cancelled at this stage. Contact support if there is an issue.".into(),
@@ -1100,7 +1107,7 @@ mod tests {
 
         let refund = calculate_refund_amount_cents(&order, &item).unwrap();
         // item = 3000, proportion = 1.0, shipping = 0, tax = 390
-        assert_eq!(refund, 3000 + 0 + 390);
+        assert_eq!(refund, 3000 + 390);
     }
 
     #[test]
@@ -1117,7 +1124,7 @@ mod tests {
 
         let refund = calculate_refund_amount_cents(&order, &item).unwrap();
         // proportion = 2500/5000 = 0.5, shipping = 500, tax = 0
-        assert_eq!(refund, 2500 + 500 + 0);
+        assert_eq!(refund, 2500 + 500);
     }
 
     #[test]
@@ -1684,7 +1691,9 @@ mod tests {
 
         let events = state
             .db
-            .query_raw(&"SELECT * FROM events WHERE orderId = 'order_1' AND eventType = 'item_refunded'")
+            .query_raw(
+                "SELECT * FROM events WHERE orderId = 'order_1' AND eventType = 'item_refunded'",
+            )
             .await
             .unwrap();
         assert_eq!(events.len(), 1);
@@ -1780,7 +1789,9 @@ mod tests {
 
         let licenses = state
             .db
-            .query_raw(&"SELECT * FROM licenses WHERE orderId = 'order_digital' AND productId = 'ebook_1'")
+            .query_raw(
+                "SELECT * FROM licenses WHERE orderId = 'order_digital' AND productId = 'ebook_1'",
+            )
             .await
             .unwrap();
         assert_eq!(licenses.len(), 1);
@@ -1913,7 +1924,7 @@ mod tests {
 
         let events = state
             .db
-            .query_raw(&"SELECT * FROM events WHERE orderId = 'order_cancel' AND eventType = 'order_cancelled'")
+            .query_raw("SELECT * FROM events WHERE orderId = 'order_cancel' AND eventType = 'order_cancelled'")
             .await
             .unwrap();
         assert_eq!(events.len(), 1);

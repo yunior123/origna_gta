@@ -4,8 +4,8 @@
 //! - update_order_status (seller/admin updates order-level status)
 //! - update_item_status (seller/admin updates per-item status)
 
-use axum::{Json, Router, extract::State, routing::post};
 use axum::extract::Extension;
+use axum::{Json, Router, extract::State, routing::post};
 use chrono::Utc;
 use ob_auth::middleware::AuthContext;
 use serde::{Deserialize, Serialize};
@@ -158,6 +158,8 @@ pub struct UpdateItemStatusResponse {
 // ---------------------------------------------------------------------------
 
 /// Create the order status router with endpoints for updating order state.
+/// Creates the order-status router covering buyer delivery confirmation plus
+/// seller or admin order and item status transitions.
 pub fn router(state: HandlersState) -> Router {
     Router::new()
         .route("/api/orders/confirm-receipt", post(confirm_item_receipt))
@@ -329,6 +331,8 @@ async fn log_order_event(
 // confirm_item_receipt
 // ---------------------------------------------------------------------------
 
+/// Confirms receipt of a delivered item for the buyer and promotes the order to
+/// delivered when every item is now complete and payment has been captured.
 async fn confirm_item_receipt(
     State(state): State<HandlersState>,
     Extension(auth): Extension<AuthContext>,
@@ -454,6 +458,8 @@ async fn confirm_item_receipt(
 // update_order_status
 // ---------------------------------------------------------------------------
 
+/// Updates the top-level order status for seller or admin actors while
+/// enforcing the allowed transition graph and required shipping metadata.
 async fn update_order_status(
     State(state): State<HandlersState>,
     Extension(auth): Extension<AuthContext>,
@@ -483,9 +489,8 @@ async fn update_order_status(
         .as_deref()
         .map(|s| sanitize_html(s).chars().take(50).collect::<String>());
 
-    let new_status = parse_order_status(&req.new_status).ok_or_else(|| {
-        ob_core::Error::Validation("Invalid order status provided".into())
-    })?;
+    let new_status = parse_order_status(&req.new_status)
+        .ok_or_else(|| ob_core::Error::Validation("Invalid order status provided".into()))?;
 
     // Fetch order
     let order = state
@@ -547,7 +552,9 @@ async fn update_order_status(
 
     // Block manually shipping digital items
     if new_status == OrderStatus::Shipped {
-        let has_digital = seller_items.iter().any(|it| bool_field(it, fields::IS_DIGITAL));
+        let has_digital = seller_items
+            .iter()
+            .any(|it| bool_field(it, fields::IS_DIGITAL));
         if has_digital {
             return Err(ob_core::Error::Validation(
                 "Digital products cannot be manually shipped".into(),
@@ -794,6 +801,8 @@ async fn update_order_status(
 // update_item_status
 // ---------------------------------------------------------------------------
 
+/// Updates an individual order item's delivery status and synchronizes any
+/// order-level transitions that depend on the aggregate item state.
 async fn update_item_status(
     State(state): State<HandlersState>,
     Extension(auth): Extension<AuthContext>,
@@ -1170,8 +1179,7 @@ mod tests {
 
     #[test]
     fn test_update_order_status_request_deserialize() {
-        let json_str =
-            r#"{"orderId":"o1","newStatus":"shipped","trackingNumber":"TN123"}"#;
+        let json_str = r#"{"orderId":"o1","newStatus":"shipped","trackingNumber":"TN123"}"#;
         let req: UpdateOrderStatusRequest = serde_json::from_str(json_str).unwrap();
         assert_eq!(req.order_id, "o1");
         assert_eq!(req.new_status, "shipped");
@@ -1450,8 +1458,14 @@ mod tests {
         assert_eq!(DeliveryStatus::from_str("Delivered"), None);
         assert_eq!(DeliveryStatus::from_str("REFUNDED"), None);
         // Lowercase is now valid
-        assert_eq!(DeliveryStatus::from_str("shipped"), Some(DeliveryStatus::Shipped));
-        assert_eq!(DeliveryStatus::from_str("refunded"), Some(DeliveryStatus::Refunded));
+        assert_eq!(
+            DeliveryStatus::from_str("shipped"),
+            Some(DeliveryStatus::Shipped)
+        );
+        assert_eq!(
+            DeliveryStatus::from_str("refunded"),
+            Some(DeliveryStatus::Refunded)
+        );
     }
 
     #[test]
@@ -2562,6 +2576,40 @@ mod tests {
         assert!(err.to_string().contains("Invalid transition"));
     }
 
+    #[tokio::test]
+    async fn test_update_order_status_rejects_regression_from_delivered_to_processing() {
+        let state = setup_state().await;
+        seed_user(&state, "admin_1", &["admin"]).await;
+        state
+            .db
+            .upsert_document(
+                collections::ORDERS,
+                "ord_delivered_regression",
+                json!({
+                    fields::ORDER_STATUS: OrderStatus::Delivered.as_str(),
+                    fields::PAYMENT_STATUS: PaymentStatus::Captured.as_str(),
+                    fields::ITEMS: [],
+                }),
+            )
+            .await
+            .unwrap();
+
+        let err = update_order_status(
+            State(state),
+            Extension(auth("admin_1")),
+            Json(UpdateOrderStatusRequest {
+                order_id: "ord_delivered_regression".into(),
+                new_status: OrderStatus::Processing.as_str().into(),
+                tracking_number: None,
+                carrier: None,
+            }),
+        )
+        .await
+        .unwrap_err();
+
+        assert!(err.to_string().contains("Invalid transition"));
+    }
+
     // -----------------------------------------------------------------------
     // Coverage: seller shipped path — not all shipped returns old status (lines 512, 516-518, 539, 552)
     // -----------------------------------------------------------------------
@@ -2692,7 +2740,7 @@ mod tests {
         // Then seller_items won't include it, but the code sets is_seller based on seller_items being non-empty.
         // This is getting complex. Let me just test the admin SHIPPED cascade path instead.
         // Actually for coverage, let's skip this edge case and focus on admin paths.
-        assert!(true); // placeholder, real coverage via admin path tests below
+        // Placeholder covered by admin path tests below.
     }
 
     // -----------------------------------------------------------------------
@@ -3335,6 +3383,6 @@ mod tests {
         // But wait — what about items with no sellerId at all? Those would have sellerId="" which
         // wouldn't be "seller_1", so they wouldn't get shipped. And distinct sellers would include "".
         // Two distinct → multi-seller block. So line 552 is indeed unreachable.
-        assert!(true); // Confirmed unreachable
+        // Confirmed unreachable.
     }
 }

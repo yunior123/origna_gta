@@ -1,8 +1,8 @@
 //! Admin tools — analytics, reviews
 
-use crate::errors::{McpError, McpResult};
 use crate::McpState;
-use serde_json::{json, Value};
+use crate::errors::{McpError, McpResult};
+use serde_json::{Value, json};
 
 /// Get marketplace analytics (admin only)
 pub async fn get_analytics(_state: McpState, params: &Value) -> McpResult<Value> {
@@ -16,7 +16,7 @@ pub async fn get_analytics(_state: McpState, params: &Value) -> McpResult<Value>
         _ => {
             return Err(McpError::ValidationError(
                 "Period must be 'day', 'week', or 'month'".to_string(),
-            ))
+            ));
         }
     }
 
@@ -39,11 +39,7 @@ pub async fn get_analytics(_state: McpState, params: &Value) -> McpResult<Value>
 }
 
 /// Create product review (any authenticated user)
-pub async fn create_review(
-    _state: McpState,
-    user_id: &str,
-    params: &Value,
-) -> McpResult<Value> {
+pub async fn create_review(_state: McpState, user_id: &str, params: &Value) -> McpResult<Value> {
     let product_id = params
         .get("product_id")
         .and_then(|v| v.as_str())
@@ -140,21 +136,27 @@ mod tests {
     #[tokio::test]
     async fn test_get_analytics_day_period() {
         let state = make_state().await;
-        let result = get_analytics(state, &json!({"period": "day"})).await.unwrap();
+        let result = get_analytics(state, &json!({"period": "day"}))
+            .await
+            .unwrap();
         assert_eq!(result["period"], "day");
     }
 
     #[tokio::test]
     async fn test_get_analytics_week_period() {
         let state = make_state().await;
-        let result = get_analytics(state, &json!({"period": "week"})).await.unwrap();
+        let result = get_analytics(state, &json!({"period": "week"}))
+            .await
+            .unwrap();
         assert_eq!(result["period"], "week");
     }
 
     #[tokio::test]
     async fn test_get_analytics_month_period() {
         let state = make_state().await;
-        let result = get_analytics(state, &json!({"period": "month"})).await.unwrap();
+        let result = get_analytics(state, &json!({"period": "month"}))
+            .await
+            .unwrap();
         assert_eq!(result["period"], "month");
     }
 
@@ -185,7 +187,9 @@ mod tests {
     #[tokio::test]
     async fn test_get_analytics_returns_stub_fields() {
         let state = make_state().await;
-        let result = get_analytics(state, &json!({"period": "day"})).await.unwrap();
+        let result = get_analytics(state, &json!({"period": "day"}))
+            .await
+            .unwrap();
         assert!(result["top_sellers"].is_array());
         assert!(result["top_products"].is_array());
         assert_eq!(result["total_revenue_cents"], 0);
@@ -250,12 +254,16 @@ mod tests {
         let state = make_state().await;
         let params_1 = json!({"product_id": "products:p1", "rating": 1});
         assert!(matches!(
-            create_review(state.clone(), "users:u1", &params_1).await.unwrap_err(),
+            create_review(state.clone(), "users:u1", &params_1)
+                .await
+                .unwrap_err(),
             McpError::Forbidden(_)
         ));
         let params_5 = json!({"product_id": "products:p1", "rating": 5});
         assert!(matches!(
-            create_review(state, "users:u1", &params_5).await.unwrap_err(),
+            create_review(state, "users:u1", &params_5)
+                .await
+                .unwrap_err(),
             McpError::Forbidden(_)
         ));
     }

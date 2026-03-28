@@ -183,7 +183,6 @@ class TermsScreen extends ConsumerWidget {
             const SizedBox(height: 28),
             Semantics(
               label: 'btn-terms-go-back',
-              button: true,
               child: TextButton.icon(
                 onPressed: () => Navigator.pop(context),
                 icon: const Icon(

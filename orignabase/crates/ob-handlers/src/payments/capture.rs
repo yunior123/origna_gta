@@ -321,7 +321,10 @@ mod tests {
         let json = r#"{"orderId": "order-1"}"#;
         let req: CapturePaymentRequest = serde_json::from_str(json).unwrap();
         assert_eq!(req.order_id, "order-1");
-        assert!(req.user_id.is_none(), "Missing userId should default to None");
+        assert!(
+            req.user_id.is_none(),
+            "Missing userId should default to None"
+        );
     }
 
     #[test]
@@ -372,10 +375,7 @@ mod tests {
 
     #[test]
     fn test_order_status_payment_authorized_str() {
-        assert_eq!(
-            OrderStatus::PaymentAuthorized.as_str(),
-            "confirmed"
-        );
+        assert_eq!(OrderStatus::PaymentAuthorized.as_str(), "confirmed");
     }
 
     #[test]
