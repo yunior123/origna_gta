@@ -1703,11 +1703,13 @@ mod tests {
         // A user not in the DB and not matching any order item seller →
         // is_user_admin returns false, is_seller is false → permission denied.
         let state = setup_state().await;
+        let u = uuid::Uuid::new_v4().to_string();
+        let oid = format!("ord_msd_{u}");
         state
             .db
             .upsert_document(
                 collections::ORDERS,
-                "ord_1",
+                &oid,
                 json!({
                     fields::ORDER_STATUS: OrderStatus::Processing.as_str(),
                     fields::ITEMS: [{
@@ -1723,7 +1725,7 @@ mod tests {
             State(state),
             Extension(auth("unknown_user")),
             Json(UpdateOrderStatusRequest {
-                order_id: "ord_1".into(),
+                order_id: oid,
                 new_status: OrderStatus::Shipped.as_str().into(),
                 tracking_number: Some("TN123".into()),
                 carrier: Some("Carrier".into()),
@@ -1782,25 +1784,20 @@ mod tests {
     #[tokio::test]
     async fn test_update_order_status_blocks_shipping_when_approval_pending() {
         let state = setup_state().await;
-        state
-            .db
-            .upsert_document(
-                collections::USERS,
-                "seller_1",
-                json!({ fields::ROLES: ["seller"] }),
-            )
-            .await
-            .unwrap();
+        let u = uuid::Uuid::new_v4().to_string();
+        let sid = format!("seller_ap_{u}");
+        let oid = format!("ord_ap_{u}");
+        seed_user(&state, &sid, &["seller"]).await;
         state
             .db
             .upsert_document(
                 collections::ORDERS,
-                "ord_1",
+                &oid,
                 json!({
                     fields::ORDER_STATUS: OrderStatus::Processing.as_str(),
                     "shippingApproval": { "status": "pending" },
                     fields::ITEMS: [{
-                        fields::SELLER_ID: "seller_1",
+                        fields::SELLER_ID: sid,
                         fields::STATUS: DeliveryStatus::Pending.as_str(),
                     }],
                 }),
@@ -1810,9 +1807,9 @@ mod tests {
 
         let err = update_order_status(
             State(state),
-            Extension(auth("seller_1")),
+            Extension(auth(&sid)),
             Json(UpdateOrderStatusRequest {
-                order_id: "ord_1".into(),
+                order_id: oid,
                 new_status: OrderStatus::Shipped.as_str().into(),
                 tracking_number: Some("TN123".into()),
                 carrier: None,
@@ -1826,24 +1823,19 @@ mod tests {
     #[tokio::test]
     async fn test_update_order_status_blocks_multi_seller_order_for_seller() {
         let state = setup_state().await;
-        state
-            .db
-            .upsert_document(
-                collections::USERS,
-                "seller_1",
-                json!({ fields::ROLES: ["seller"] }),
-            )
-            .await
-            .unwrap();
+        let u = uuid::Uuid::new_v4().to_string();
+        let sid = format!("seller_ms_{u}");
+        let oid = format!("ord_ms_{u}");
+        seed_user(&state, &sid, &["seller"]).await;
         state
             .db
             .upsert_document(
                 collections::ORDERS,
-                "ord_1",
+                &oid,
                 json!({
                     fields::ORDER_STATUS: OrderStatus::Processing.as_str(),
                     fields::ITEMS: [
-                        { fields::SELLER_ID: "seller_1", fields::STATUS: DeliveryStatus::Pending.as_str() },
+                        { fields::SELLER_ID: sid, fields::STATUS: DeliveryStatus::Pending.as_str() },
                         { fields::SELLER_ID: "seller_2", fields::STATUS: DeliveryStatus::Pending.as_str() }
                     ],
                 }),
@@ -1853,9 +1845,9 @@ mod tests {
 
         let err = update_order_status(
             State(state),
-            Extension(auth("seller_1")),
+            Extension(auth(&sid)),
             Json(UpdateOrderStatusRequest {
-                order_id: "ord_1".into(),
+                order_id: oid,
                 new_status: OrderStatus::Shipped.as_str().into(),
                 tracking_number: Some("TN123".into()),
                 carrier: None,
@@ -1869,24 +1861,19 @@ mod tests {
     #[tokio::test]
     async fn test_update_order_status_seller_cascades_to_order_when_all_items_shipped() {
         let state = setup_state().await;
-        state
-            .db
-            .upsert_document(
-                collections::USERS,
-                "seller_1",
-                json!({ fields::ROLES: ["seller"] }),
-            )
-            .await
-            .unwrap();
+        let u = uuid::Uuid::new_v4().to_string();
+        let sid = format!("seller_cas_{u}");
+        let oid = format!("ord_cas_{u}");
+        seed_user(&state, &sid, &["seller"]).await;
         state
             .db
             .upsert_document(
                 collections::ORDERS,
-                "ord_1",
+                &oid,
                 json!({
                     fields::ORDER_STATUS: OrderStatus::Processing.as_str(),
                     fields::ITEMS: [{
-                        fields::SELLER_ID: "seller_1",
+                        fields::SELLER_ID: sid,
                         fields::STATUS: DeliveryStatus::Pending.as_str(),
                     }],
                 }),
@@ -1896,9 +1883,9 @@ mod tests {
 
         let Json(resp) = update_order_status(
             State(state.clone()),
-            Extension(auth("seller_1")),
+            Extension(auth(&sid)),
             Json(UpdateOrderStatusRequest {
-                order_id: "ord_1".into(),
+                order_id: oid.clone(),
                 new_status: OrderStatus::Shipped.as_str().into(),
                 tracking_number: Some("TN123".into()),
                 carrier: Some("Carrier".into()),
@@ -1911,7 +1898,7 @@ mod tests {
         assert_eq!(resp.all_items_shipped, Some(true));
         let order = state
             .db
-            .get_document(collections::ORDERS, "ord_1")
+            .get_document(collections::ORDERS, &oid)
             .await
             .unwrap();
         assert_eq!(order[fields::ORDER_STATUS], OrderStatus::Shipped.as_str());

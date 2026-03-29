@@ -318,14 +318,17 @@ mod tests {
     #[tokio::test]
     async fn test_subscribe_success_creates_notification_and_is_idempotent() {
         let state = setup_state().await;
+        let u = uuid::Uuid::new_v4().to_string();
+        let prod = format!("prod_sub_{u}");
+        let buyer = format!("buyer_sub_{u}");
         state
             .db
             .upsert_document(
                 collections::PRODUCTS,
-                "prod_1",
+                &prod,
                 json!({
-                    fields::PRODUCT_ID: "prod_1",
-                    fields::SELLER_ID: "seller_1",
+                    fields::PRODUCT_ID: prod,
+                    fields::SELLER_ID: format!("seller_sub_{u}"),
                     fields::STOCK_QUANTITY: 0,
                     fields::TITLE: "Blue Widget",
                 }),
@@ -336,9 +339,9 @@ mod tests {
             .db
             .upsert_document(
                 collections::USERS,
-                "buyer_1",
+                &buyer,
                 json!({
-                    fields::UID: "buyer_1",
+                    fields::UID: buyer,
                     fields::EMAIL: "buyer@example.com",
                 }),
             )
@@ -348,8 +351,8 @@ mod tests {
         let Json(resp) = subscribe(
             State(state.clone()),
             Json(StockSubscribeRequest {
-                product_id: "prod_1".into(),
-                user_id: "buyer_1".into(),
+                product_id: prod.clone(),
+                user_id: buyer.clone(),
             }),
         )
         .await
@@ -359,7 +362,7 @@ mod tests {
         let rows = state
             .db
             .query_raw(
-                "SELECT * FROM stock_notifications WHERE productId = 'prod_1' AND userId = 'buyer_1'",
+                &format!("SELECT * FROM stock_notifications WHERE productId = '{}' AND userId = '{}'", prod, buyer),
             )
             .await
             .unwrap();
@@ -371,8 +374,8 @@ mod tests {
         let Json(idempotent) = subscribe(
             State(state.clone()),
             Json(StockSubscribeRequest {
-                product_id: "prod_1".into(),
-                user_id: "buyer_1".into(),
+                product_id: prod.clone(),
+                user_id: buyer.clone(),
             }),
         )
         .await
@@ -540,13 +543,16 @@ mod tests {
     #[tokio::test]
     async fn test_unsubscribe_deletes_active_notifications() {
         let state = setup_state().await;
+        let u = uuid::Uuid::new_v4().to_string();
+        let prod = format!("prod_unsub_{u}");
+        let buyer = format!("buyer_unsub_{u}");
         state
             .db
             .create_document(
                 collections::STOCK_NOTIFICATIONS,
                 json!({
-                    fields::PRODUCT_ID: "prod_1",
-                    "userId": "buyer_1",
+                    fields::PRODUCT_ID: prod,
+                    "userId": buyer,
                     "notifiedAt": null,
                 }),
             )
@@ -557,8 +563,8 @@ mod tests {
             .create_document(
                 collections::STOCK_NOTIFICATIONS,
                 json!({
-                    fields::PRODUCT_ID: "prod_1",
-                    "userId": "buyer_1",
+                    fields::PRODUCT_ID: prod,
+                    "userId": buyer,
                     "notifiedAt": "2026-03-10T10:00:00Z",
                 }),
             )
@@ -568,8 +574,8 @@ mod tests {
         let Json(resp) = unsubscribe(
             State(state.clone()),
             Json(StockUnsubscribeRequest {
-                product_id: "prod_1".into(),
-                user_id: "buyer_1".into(),
+                product_id: prod.clone(),
+                user_id: buyer.clone(),
             }),
         )
         .await
@@ -579,7 +585,7 @@ mod tests {
         let rows = state
             .db
             .query_raw(
-                "SELECT * FROM stock_notifications WHERE productId = 'prod_1' AND userId = 'buyer_1'",
+                &format!("SELECT * FROM stock_notifications WHERE productId = '{}' AND userId = '{}'", prod, buyer),
             )
             .await
             .unwrap();

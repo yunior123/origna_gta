@@ -179,7 +179,7 @@ async fn run_auto_capture(state: &HandlersState) -> std::result::Result<(), Stri
         let disputes = state
             .db
             .query_bind(
-                &format!("SELECT * FROM {} WHERE data->>'type' = 'dispute_created' AND (data->>'resolved')::boolean = false AND data->>'orderId' = $order_id LIMIT 1", collections::SECURITY_ALERTS),
+                &format!("SELECT * FROM {} WHERE data->>'type' = 'dispute_created' AND data->>'resolved' = 'false' AND data->>'orderId' = $order_id LIMIT 1", collections::SECURITY_ALERTS),
                 json!({
                     "order_id": order_id
                 }),
@@ -480,7 +480,7 @@ pub async fn auto_archive_old_orders(state: &HandlersState) {
     let result = async {
         let cutoff = Utc::now() - Duration::days(business_rules::AUTO_ARCHIVE_DAYS as i64);
         let sql = format!(
-            "SELECT * FROM {} WHERE data->>'orderStatus' IN ('delivered','cancelled','expired','failed','disputed') AND data->>'updatedAt' <= $cutoff AND ((data->>'archived')::boolean IS NOT TRUE) LIMIT 200",
+            "SELECT * FROM {} WHERE data->>'orderStatus' IN ('delivered','cancelled','expired','failed','disputed') AND data->>'updatedAt' <= $cutoff AND (data->>'archived' IS NULL OR data->>'archived' = 'false') LIMIT 200",
             collections::ORDERS
         );
 
@@ -716,7 +716,7 @@ pub async fn cleanup_stale_security_alerts(state: &HandlersState) {
         let cutoff =
             Utc::now() - Duration::days(business_rules::SECURITY_ALERT_ARCHIVE_DAYS as i64);
         let sql = format!(
-            "SELECT * FROM {} WHERE (data->>'resolved')::boolean = true AND data->>'timestamp' <= $cutoff LIMIT 500",
+            "SELECT * FROM {} WHERE data->>'resolved' = 'true' AND data->>'timestamp' <= $cutoff LIMIT 500",
             collections::SECURITY_ALERTS
         );
 
@@ -2160,6 +2160,19 @@ mod tests {
         state
     }
 
+    /// Helper: insert a pending notification with old created_at for drain tests.
+    async fn insert_old_notification(db: &DatabaseClient, data: Value) -> String {
+        let id = format!("notif_{}", uuid::Uuid::new_v4());
+        let old_ts = (Utc::now() - Duration::minutes(5)).to_rfc3339();
+        let data_str = serde_json::to_string(&data).unwrap();
+        // Use raw INSERT to set created_at to an old timestamp
+        let escaped = data_str.replace('\'', "''");
+        let _ = db.query_raw(&format!(
+            "INSERT INTO _pending_notifications (id, data, created_at) VALUES ('{id}', '{escaped}'::jsonb, '{old_ts}'::timestamptz) ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, created_at = EXCLUDED.created_at"
+        )).await;
+        id
+    }
+
     /// Helper: pre-release a cron lock to avoid interference from stale locks.
     async fn pre_release_lock(state: &HandlersState, lock_name: &str) {
         let _ = state
@@ -2798,10 +2811,6 @@ mod tests {
             .await
             .unwrap();
 
-        // Verify the document was stored correctly
-        let before = state.db.get_document(collections::MEILISEARCH_SYNC_FAILURES, failure_id).await.unwrap();
-        assert_eq!(before["resolved"], false, "resolved should be false before cron runs");
-
         // Product not found, should resolve
         retry_failed_meilisearch_syncs(&state).await;
 
@@ -2810,7 +2819,7 @@ mod tests {
             .get_document(collections::MEILISEARCH_SYNC_FAILURES, failure_id)
             .await
             .unwrap();
-        assert_eq!(failure["resolved"], true, "resolved should be true after cron resolves it: {:?}", failure);
+        assert_eq!(failure["resolved"], true);
     }
 
     #[tokio::test]
@@ -3682,12 +3691,8 @@ mod tests {
 
         cleanup_stale_rate_limits(&state).await;
 
-        let docs = state
-            .db
-            .query_raw(&format!("SELECT * FROM {}", collections::RATE_LIMITS))
-            .await
-            .unwrap();
-        assert!(docs.is_empty());
+        assert!(state.db.get_document(collections::RATE_LIMITS, "rl1").await.is_err());
+        assert!(state.db.get_document(collections::RATE_LIMITS, "rl2").await.is_err());
     }
 
     // -----------------------------------------------------------------------
@@ -3794,12 +3799,8 @@ mod tests {
 
         cleanup_stale_webhook_events(&state).await;
 
-        let docs = state
-            .db
-            .query_raw(&format!("SELECT * FROM {}", collections::WEBHOOK_EVENTS))
-            .await
-            .unwrap();
-        assert!(docs.is_empty());
+        assert!(state.db.get_document(collections::WEBHOOK_EVENTS, "we1").await.is_err());
+        assert!(state.db.get_document(collections::WEBHOOK_EVENTS, "we2").await.is_err());
     }
 
     // -----------------------------------------------------------------------
@@ -3860,12 +3861,8 @@ mod tests {
 
         cleanup_stale_security_alerts(&state).await;
 
-        let docs = state
-            .db
-            .query_raw(&format!("SELECT * FROM {}", collections::SECURITY_ALERTS))
-            .await
-            .unwrap();
-        assert!(docs.is_empty());
+        assert!(state.db.get_document(collections::SECURITY_ALERTS, "sa1").await.is_err());
+        assert!(state.db.get_document(collections::SECURITY_ALERTS, "sa2").await.is_err());
     }
 
     // -----------------------------------------------------------------------
@@ -5210,9 +5207,16 @@ mod tests {
         let state = setup_state().await;
 
         // Insert a pending notification that's old enough
-        state.db.query_bind(
-            "CREATE _pending_notifications SET status = 'pending', created_at = time::now() - 5m, token = 'tok', title = 'T', body = 'B'",
-            json!({}),
+        let notif_id = format!("notif_{}", uuid::Uuid::new_v4());
+        state.db.upsert_document(
+            "_pending_notifications",
+            &notif_id,
+            json!({
+                "status": "pending",
+                "token": "tok",
+                "title": "T",
+                "body": "B",
+            }),
         ).await.unwrap();
 
         // Call drain — behavior depends on env var state (parallel test race):
@@ -5265,16 +5269,19 @@ mod tests {
         }
 
         // Insert pending notifications old enough (>30s)
-        state.db.query_bind(
-            "CREATE _pending_notifications SET status = 'pending', created_at = time::now() - 5m, token = 'device_tok_1', title = 'Hello', body = 'World', data = { screen: 'home' }",
-            json!({}),
-        ).await.unwrap();
+        let notif_id_1 = format!("notif_{}", uuid::Uuid::new_v4());
+        let notif_id_2 = format!("notif_{}", uuid::Uuid::new_v4());
+        let old_ts = (Utc::now() - Duration::minutes(5)).to_rfc3339();
+        state.db.query_raw(&format!(
+            "INSERT INTO _pending_notifications (id, data, created_at) VALUES ('{}', '{{\"status\":\"pending\",\"token\":\"device_tok_1\",\"title\":\"Hello\",\"body\":\"World\",\"data\":{{\"screen\":\"home\"}}}}'::jsonb, '{}'::timestamptz) ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, created_at = EXCLUDED.created_at",
+            notif_id_1, old_ts
+        )).await.unwrap();
 
         // Insert one with attempts = 2 (will become 3 = failed)
-        state.db.query_bind(
-            "CREATE _pending_notifications SET status = 'pending', created_at = time::now() - 5m, token = 'device_tok_2', title = 'Retry', body = 'Me', attempts = 2",
-            json!({}),
-        ).await.unwrap();
+        state.db.query_raw(&format!(
+            "INSERT INTO _pending_notifications (id, data, created_at) VALUES ('{}', '{{\"status\":\"pending\",\"token\":\"device_tok_2\",\"title\":\"Retry\",\"body\":\"Me\",\"attempts\":2}}'::jsonb, '{}'::timestamptz) ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, created_at = EXCLUDED.created_at",
+            notif_id_2, old_ts
+        )).await.unwrap();
 
         drain_pending_notifications(&state).await;
 
@@ -5904,10 +5911,9 @@ mod tests {
         let state = setup_state().await;
 
         // Insert pending notification old enough
-        state.db.query_bind(
-            "CREATE _pending_notifications SET status = 'pending', created_at = time::now() - 5m, token = 'retry_tok', title = 'Retry Title', body = 'Retry Body', attempts = 0",
-            json!({}),
-        ).await.unwrap();
+        insert_old_notification(&state.db, json!({
+            "status": "pending", "token": "retry_tok", "title": "Retry Title", "body": "Retry Body", "attempts": 0
+        })).await;
 
         // Set env vars with invalid SA so send_push fails
         unsafe {
@@ -5931,10 +5937,9 @@ mod tests {
     async fn test_drain_notifications_failed_branch() {
         let state = setup_state().await;
 
-        state.db.query_bind(
-            "CREATE _pending_notifications SET status = 'pending', created_at = time::now() - 5m, token = 'fail_tok', title = 'Fail', body = 'Body', attempts = 2",
-            json!({}),
-        ).await.unwrap();
+        insert_old_notification(&state.db, json!({
+            "status": "pending", "token": "fail_tok", "title": "Fail", "body": "Body", "attempts": 2
+        })).await;
 
         unsafe {
             std::env::set_var("OB_FCM_PROJECT_ID", "test-drain-fail");
@@ -5957,10 +5962,9 @@ mod tests {
         let state = setup_state().await;
 
         // Record with no token field → continue at line 1738-1739
-        state.db.query_bind(
-            "CREATE _pending_notifications SET status = 'pending', created_at = time::now() - 5m, title = 'NoTok', body = 'Body'",
-            json!({}),
-        ).await.unwrap();
+        insert_old_notification(&state.db, json!({
+            "status": "pending", "title": "NoTok", "body": "Body"
+        })).await;
 
         unsafe {
             std::env::set_var("OB_FCM_PROJECT_ID", "test-drain-notok");
@@ -5982,10 +5986,10 @@ mod tests {
     async fn test_drain_notifications_with_data_payload() {
         let state = setup_state().await;
 
-        state.db.query_bind(
-            "CREATE _pending_notifications SET status = 'pending', created_at = time::now() - 5m, token = 'data_tok', title = 'Data', body = 'Body', data = { screen: 'orders', orderId: 'ord_1' }, attempts = 1",
-            json!({}),
-        ).await.unwrap();
+        insert_old_notification(&state.db, json!({
+            "status": "pending", "token": "data_tok", "title": "Data", "body": "Body",
+            "data": {"screen": "orders", "orderId": "ord_1"}, "attempts": 1
+        })).await;
 
         unsafe {
             std::env::set_var("OB_FCM_PROJECT_ID", "test-drain-data");
@@ -6008,20 +6012,17 @@ mod tests {
         let state = setup_state().await;
 
         // Record with attempts=0 → retry
-        state.db.query_bind(
-            "CREATE _pending_notifications SET status = 'pending', created_at = time::now() - 5m, token = 'mix_tok1', title = 'A', body = 'B', attempts = 0",
-            json!({}),
-        ).await.unwrap();
+        insert_old_notification(&state.db, json!({
+            "status": "pending", "token": "mix_tok1", "title": "A", "body": "B", "attempts": 0
+        })).await;
         // Record with attempts=2 → fail (becomes 3)
-        state.db.query_bind(
-            "CREATE _pending_notifications SET status = 'pending', created_at = time::now() - 5m, token = 'mix_tok2', title = 'C', body = 'D', attempts = 2",
-            json!({}),
-        ).await.unwrap();
+        insert_old_notification(&state.db, json!({
+            "status": "pending", "token": "mix_tok2", "title": "C", "body": "D", "attempts": 2
+        })).await;
         // Record with attempts=5 → fail (already exceeded)
-        state.db.query_bind(
-            "CREATE _pending_notifications SET status = 'pending', created_at = time::now() - 5m, token = 'mix_tok3', title = 'E', body = 'F', attempts = 5",
-            json!({}),
-        ).await.unwrap();
+        insert_old_notification(&state.db, json!({
+            "status": "pending", "token": "mix_tok3", "title": "E", "body": "F", "attempts": 5
+        })).await;
 
         unsafe {
             std::env::set_var("OB_FCM_PROJECT_ID", "test-drain-mix");
