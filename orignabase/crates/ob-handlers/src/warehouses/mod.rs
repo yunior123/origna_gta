@@ -688,12 +688,14 @@ mod tests {
     async fn test_delete_warehouse_blocked_when_products_reference_it() {
         let state = setup_state().await;
         let collection = warehouses_collection();
+        let seller_id = unique_seller_id();
+        let product_id = Uuid::new_v4().to_string();
         let created = state
             .db
             .create_document(
                 &collection,
                 json!({
-                    "parent_id": warehouse_parent("seller_1"),
+                    "parent_id": warehouse_parent(&seller_id),
                     "label": "Primary",
                     "type": "warehouse",
                     fields::IS_DEFAULT: false,
@@ -712,9 +714,9 @@ mod tests {
             .db
             .upsert_document(
                 collections::PRODUCTS,
-                "prod_1",
+                &product_id,
                 json!({
-                    fields::SELLER_ID: "seller_1",
+                    fields::SELLER_ID: seller_id,
                     "warehouseIds": [warehouse_id.clone()],
                 }),
             )
@@ -723,9 +725,9 @@ mod tests {
 
         let err = delete_warehouse(
             State(state),
-            auth("seller_1", "user"),
+            auth(&seller_id, "user"),
             Json(DeleteWarehouseRequest {
-                user_id: "seller_1".into(),
+                user_id: seller_id.clone(),
                 warehouse_id,
             }),
         )
@@ -816,12 +818,14 @@ mod tests {
     async fn test_load_owned_warehouse_wrong_user() {
         let state = setup_state().await;
         let collection = warehouses_collection();
+        let seller_id = unique_seller_id();
+        let other_seller = unique_seller_id();
         let created = state
             .db
             .create_document(
                 &collection,
                 json!({
-                    "parent_id": warehouse_parent("seller_1"),
+                    "parent_id": warehouse_parent(&seller_id),
                     "label": "Test",
                     "type": "warehouse",
                     fields::IS_DEFAULT: false,
@@ -836,7 +840,7 @@ mod tests {
             .strip_prefix(&format!("{collection}:"))
             .unwrap();
 
-        let err = load_owned_warehouse(&state, "seller_2", wid).await;
+        let err = load_owned_warehouse(&state, &other_seller, wid).await;
         assert!(err.is_err());
         assert!(err.unwrap_err().to_string().contains("not found"));
     }
@@ -846,12 +850,13 @@ mod tests {
     async fn test_load_owned_warehouse_success() {
         let state = setup_state().await;
         let collection = warehouses_collection();
+        let seller_id = unique_seller_id();
         let created = state
             .db
             .create_document(
                 &collection,
                 json!({
-                    "parent_id": warehouse_parent("seller_1"),
+                    "parent_id": warehouse_parent(&seller_id),
                     "label": "Test",
                     "type": "warehouse",
                     fields::IS_DEFAULT: false,
@@ -866,7 +871,7 @@ mod tests {
             .strip_prefix(&format!("{collection}:"))
             .unwrap();
 
-        let result = load_owned_warehouse(&state, "seller_1", wid).await;
+        let result = load_owned_warehouse(&state, &seller_id, wid).await;
         assert!(result.is_ok());
     }
 
@@ -874,11 +879,12 @@ mod tests {
     #[tokio::test]
     async fn test_create_warehouse_not_default() {
         let state = setup_state().await;
+        let seller_id = unique_seller_id();
         let Json(resp) = create_warehouse(
             State(state),
-            auth("seller_1", "user"),
+            auth(&seller_id, "user"),
             Json(CreateWarehouseRequest {
-                user_id: "seller_1".into(),
+                user_id: seller_id.clone(),
                 label: "My Warehouse".into(),
                 warehouse_type: "personal".into(),
                 address: sample_address(),
@@ -897,12 +903,13 @@ mod tests {
     async fn test_update_warehouse_all_fields() {
         let state = setup_state().await;
         let collection = warehouses_collection();
+        let seller_id = unique_seller_id();
         let created = state
             .db
             .create_document(
                 &collection,
                 json!({
-                    "parent_id": warehouse_parent("seller_1"),
+                    "parent_id": warehouse_parent(&seller_id),
                     "label": "Primary",
                     "type": "warehouse",
                     fields::ADDRESS: sanitize_address(&sample_address()).unwrap(),
@@ -921,9 +928,9 @@ mod tests {
 
         let Json(resp) = update_warehouse(
             State(state),
-            auth("seller_1", "user"),
+            auth(&seller_id, "user"),
             Json(UpdateWarehouseRequest {
-                user_id: "seller_1".into(),
+                user_id: seller_id.clone(),
                 warehouse_id: warehouse_id.clone(),
                 label: Some("Updated Label".into()),
                 warehouse_type: Some("personal".into()),
@@ -943,12 +950,13 @@ mod tests {
     async fn test_update_warehouse_set_default_clears_others() {
         let state = setup_state().await;
         let collection = warehouses_collection();
+        let seller_id = unique_seller_id();
         let first = state
             .db
             .create_document(
                 &collection,
                 json!({
-                    "parent_id": warehouse_parent("seller_1"),
+                    "parent_id": warehouse_parent(&seller_id),
                     "label": "First",
                     "type": "warehouse",
                     fields::IS_DEFAULT: true,
@@ -962,7 +970,7 @@ mod tests {
             .create_document(
                 &collection,
                 json!({
-                    "parent_id": warehouse_parent("seller_1"),
+                    "parent_id": warehouse_parent(&seller_id),
                     "label": "Second",
                     "type": "warehouse",
                     fields::IS_DEFAULT: false,
@@ -980,9 +988,9 @@ mod tests {
 
         let Json(resp) = update_warehouse(
             State(state.clone()),
-            auth("seller_1", "user"),
+            auth(&seller_id, "user"),
             Json(UpdateWarehouseRequest {
-                user_id: "seller_1".into(),
+                user_id: seller_id.clone(),
                 warehouse_id: second_id.clone(),
                 label: None,
                 warehouse_type: None,
@@ -1013,12 +1021,13 @@ mod tests {
     async fn test_update_warehouse_label_only() {
         let state = setup_state().await;
         let collection = warehouses_collection();
+        let seller_id = unique_seller_id();
         let created = state
             .db
             .create_document(
                 &collection,
                 json!({
-                    "parent_id": warehouse_parent("seller_1"),
+                    "parent_id": warehouse_parent(&seller_id),
                     "label": "Old",
                     "type": "warehouse",
                     fields::IS_DEFAULT: false,
@@ -1036,9 +1045,9 @@ mod tests {
 
         let Json(resp) = update_warehouse(
             State(state),
-            auth("seller_1", "user"),
+            auth(&seller_id, "user"),
             Json(UpdateWarehouseRequest {
-                user_id: "seller_1".into(),
+                user_id: seller_id.clone(),
                 warehouse_id: warehouse_id.clone(),
                 label: Some("New Label".into()),
                 warehouse_type: None,
@@ -1058,12 +1067,13 @@ mod tests {
     async fn test_delete_default_warehouse_no_other_to_promote() {
         let state = setup_state().await;
         let collection = warehouses_collection();
+        let seller_id = unique_seller_id();
         let created = state
             .db
             .create_document(
                 &collection,
                 json!({
-                    "parent_id": warehouse_parent("seller_1"),
+                    "parent_id": warehouse_parent(&seller_id),
                     "label": "Only Default",
                     "type": "warehouse",
                     fields::IS_DEFAULT: true,
@@ -1081,9 +1091,9 @@ mod tests {
 
         let Json(resp) = delete_warehouse(
             State(state),
-            auth("seller_1", "user"),
+            auth(&seller_id, "user"),
             Json(DeleteWarehouseRequest {
-                user_id: "seller_1".into(),
+                user_id: seller_id.clone(),
                 warehouse_id: warehouse_id.clone(),
             }),
         )
@@ -1099,12 +1109,13 @@ mod tests {
     async fn test_list_warehouses_success() {
         let state = setup_state().await;
         let collection = warehouses_collection();
+        let seller_id = unique_seller_id();
         state
             .db
             .create_document(
                 &collection,
                 json!({
-                    "parent_id": warehouse_parent("seller_1"),
+                    "parent_id": warehouse_parent(&seller_id),
                     "label": "Warehouse A",
                     "type": "warehouse",
                     fields::IS_DEFAULT: true,
@@ -1118,7 +1129,7 @@ mod tests {
             .create_document(
                 &collection,
                 json!({
-                    "parent_id": warehouse_parent("seller_1"),
+                    "parent_id": warehouse_parent(&seller_id),
                     "label": "Warehouse B",
                     "type": "personal",
                     fields::IS_DEFAULT: false,
@@ -1130,9 +1141,9 @@ mod tests {
 
         let Json(resp) = list_warehouses(
             State(state),
-            auth("seller_1", "user"),
+            auth(&seller_id, "user"),
             Json(ListWarehousesRequest {
-                user_id: "seller_1".into(),
+                user_id: seller_id.clone(),
             }),
         )
         .await
@@ -1150,12 +1161,13 @@ mod tests {
     #[tokio::test]
     async fn test_list_warehouses_empty() {
         let state = setup_state().await;
+        let seller_id = unique_seller_id();
 
         let Json(resp) = list_warehouses(
             State(state),
-            auth("seller_no_warehouses", "user"),
+            auth(&seller_id, "user"),
             Json(ListWarehousesRequest {
-                user_id: "seller_no_warehouses".into(),
+                user_id: seller_id.clone(),
             }),
         )
         .await
