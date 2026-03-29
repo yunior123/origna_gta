@@ -172,9 +172,19 @@ fn sanitize_table_name(name: &str) -> AppResult<String> {
     Ok(name.to_string())
 }
 
-/// Serialize a JSONB Value to a string for sqlx binding.
+/// Serialize a JSONB Value to a string for sqlx binding (preserves JSON encoding).
 fn json_to_string(val: &Value) -> String {
     serde_json::to_string(val).unwrap_or_else(|_| "{}".to_string())
+}
+
+/// Extract raw text from a Value for `data->>` comparisons (no JSON quotes).
+/// `data->>` returns unquoted text, so binding `"\"hello\""` would fail to match `"hello"`.
+fn json_to_text(val: &Value) -> String {
+    match val {
+        Value::String(s) => s.clone(),
+        Value::Null => String::new(),
+        other => other.to_string(),
+    }
 }
 
 // ── SurrealDB → PostgreSQL Translation Layer ───────────────────────────────
@@ -1321,7 +1331,7 @@ impl DatabaseStore for PgDatabaseStore {
         self.ensure_table(collection).await?;
         let table = sanitize_table_name(collection)?;
         let limit_clause = limit.map_or(String::new(), |l| format!(" LIMIT {l}"));
-        let val_str = json_to_string(value);
+        let val_str = json_to_text(value);
 
         let rows = sqlx::query(&format!(
             "SELECT id, data::TEXT, created_at, updated_at FROM {table} WHERE data->>'{field}' {operator} $1{limit_clause}"
@@ -1350,7 +1360,7 @@ impl DatabaseStore for PgDatabaseStore {
 
         for (i, (field, operator, value)) in filters.iter().enumerate() {
             conditions.push(format!("data->>'{field}' {operator} ${}", i + 1));
-            bind_values.push(json_to_string(value));
+            bind_values.push(json_to_text(value));
         }
 
         let where_clause = if conditions.is_empty() {
@@ -1392,7 +1402,7 @@ impl DatabaseStore for PgDatabaseStore {
     ) -> AppResult<usize> {
         self.ensure_table(collection).await?;
         let table = sanitize_table_name(collection)?;
-        let val_str = json_to_string(value);
+        let val_str = json_to_text(value);
 
         let row = sqlx::query(&format!(
             "SELECT COUNT(*) as cnt FROM {table} WHERE data->>'{field}' {operator} $1"
@@ -1414,7 +1424,7 @@ impl DatabaseStore for PgDatabaseStore {
     ) -> AppResult<bool> {
         self.ensure_table(collection).await?;
         let table = sanitize_table_name(collection)?;
-        let val_str = json_to_string(value);
+        let val_str = json_to_text(value);
 
         let row = sqlx::query(&format!(
             "SELECT EXISTS(SELECT 1 FROM {table} WHERE data->>'{field}' = $1) as exists_flag"
@@ -1438,7 +1448,7 @@ impl DatabaseStore for PgDatabaseStore {
     ) -> AppResult<Vec<Value>> {
         self.ensure_table(collection).await?;
         let table = sanitize_table_name(collection)?;
-        let filter_str = json_to_string(field_value);
+        let filter_str = json_to_text(field_value);
         let data_str = json_to_string(&data);
 
         let rows = sqlx::query(&format!(
@@ -1464,7 +1474,7 @@ impl DatabaseStore for PgDatabaseStore {
     ) -> AppResult<usize> {
         self.ensure_table(collection).await?;
         let table = sanitize_table_name(collection)?;
-        let val_str = json_to_string(value);
+        let val_str = json_to_text(value);
 
         let result = sqlx::query(&format!(
             "DELETE FROM {table} WHERE data->>'{field}' {operator} $1"
