@@ -348,6 +348,10 @@ pub mod fields {
     pub const EMAIL_CONSENT: &str = "emailConsent";
     pub const LANGUAGE: &str = "preferredLanguage";
     pub const IS_PREMIUM: &str = "isPremium";
+    pub const DISPLAY_NAME: &str = "displayName";
+    pub const PHONE_NUMBER: &str = "phoneNumber";
+    pub const FIRST_NAME: &str = "firstName";
+    pub const LAST_NAME: &str = "lastName";
 
     // Product fields
     pub const PRODUCT_ID: &str = "productId";
@@ -370,6 +374,8 @@ pub mod fields {
     pub const ORDER_ID: &str = "orderId";
     pub const ORDER_STATUS: &str = "orderStatus";
     pub const RETURN_STATUS: &str = "returnStatus";
+    pub const RETURN_ID: &str = "returnId";
+    pub const RETURN_REASON: &str = "returnReason";
     pub const STATUS: &str = "status";
     pub const ITEMS: &str = "items";
     pub const TOTAL_AMOUNT_CENTS: &str = "totalAmountCents";
@@ -392,6 +398,12 @@ pub mod fields {
     pub const SHIPPING_ADDRESS: &str = "shippingAddress";
     pub const TRACKING_NUMBER: &str = "trackingNumber";
     pub const SHIPPING_CARRIER: &str = "shippingCarrier";
+
+    // Product Q&A fields
+    pub const QUESTION_ID: &str = "questionId";
+    pub const QUESTION_TEXT: &str = "questionText";
+    pub const ANSWER_TEXT: &str = "answerText";
+    pub const ANSWERED_AT: &str = "answeredAt";
 
     // Subscription fields
     pub const SUBSCRIPTION_ID: &str = "subscriptionId";
@@ -419,6 +431,8 @@ pub mod fields {
     pub const COUPON_ID: &str = "couponId";
     pub const CODE: &str = "code";
     pub const COUPON_TYPE: &str = "couponType";
+    pub const DISCOUNT_TYPE: &str = "discountType";
+    pub const COUPON_CODE: &str = "couponCode";
     pub const DISCOUNT_VALUE: &str = "discountValue";
     pub const MIN_ORDER_CENTS: &str = "minOrderCents";
     pub const MAX_USES: &str = "maxUsesTotal";
@@ -438,6 +452,11 @@ pub mod fields {
     pub const DISCOUNT_AMOUNT_CENTS: &str = "discountAmountCents";
     pub const FULFILLMENT_WAREHOUSE_ID: &str = "fulfillmentWarehouseId";
     pub const REQUESTED_AT: &str = "requestedAt";
+    pub const UNIT_PRICE_CENTS: &str = "unitPriceCents";
+    pub const SHIP_FROM_PROVINCE: &str = "shipFromProvince";
+    pub const SHIP_FROM_COUNTRY: &str = "shipFromCountry";
+    pub const IS_LOCAL_DELIVERY_ONLY: &str = "isLocalDeliveryOnly";
+    pub const DOWNLOAD_URL: &str = "downloadUrl";
 
     // License fields
     pub const LICENSE_KEY: &str = "licenseKey";
