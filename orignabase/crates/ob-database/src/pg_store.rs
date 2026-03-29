@@ -302,6 +302,9 @@ pub(crate) fn translate_surreal_raw(query: &str) -> String {
     // ── 5. Remove RETURN AFTER → RETURNING * ───────────────────────────
     q = q.replace("RETURN AFTER", "RETURNING id, data::TEXT, created_at, updated_at");
 
+    // ── 6. SurrealDB NONE → PostgreSQL IS NULL ────────────────────────
+    q = q.replace("= NONE", "IS NULL");
+
     q
 }
 
@@ -452,6 +455,7 @@ pub(crate) fn translate_surreal_to_pg(query: &str, binds: Value) -> AppResult<(S
     pg_query = pg_query.replace("RETURN AFTER", "RETURNING id, data::TEXT, created_at, updated_at");
     pg_query = pg_query.replace("time::now()", "now()");
 
+
     // Rewrite UPDATE table SET field1 = $p1, field2 = $p2 WHERE ...
     // → UPDATE table SET data = data || jsonb_build_object('field1', $p1, 'field2', $p2) WHERE ...
     if pg_query.to_uppercase().starts_with("UPDATE ") && pg_query.to_uppercase().contains(" SET ") {
@@ -561,6 +565,9 @@ pub(crate) fn translate_surreal_to_pg(query: &str, binds: Value) -> AppResult<(S
             pg_query = pg_query.replace(&placeholder, &pg_placeholder);
         }
     }
+
+    // SurrealDB NONE → PostgreSQL IS NULL (after field rewriting so data->> prefix is already applied)
+    pg_query = pg_query.replace("= NONE", "IS NULL");
 
     let values: Vec<Value> = pairs.into_iter().map(|(_, v)| v).collect();
     Ok((pg_query, values))

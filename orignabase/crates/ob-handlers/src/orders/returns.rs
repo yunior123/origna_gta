@@ -937,8 +937,14 @@ mod tests {
     use ob_core::Config;
     use ob_database::DatabaseClient;
     use std::sync::Arc;
+    use uuid::Uuid;
     use wiremock::matchers::{method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    /// Generate a unique ID per test invocation.
+    fn uid() -> String {
+        Uuid::new_v4().to_string()
+    }
 
     fn auth(user_id: &str, role: &str) -> Extension<AuthContext> {
         Extension(AuthContext {
@@ -1380,16 +1386,20 @@ mod tests {
     #[tokio::test]
     async fn test_create_return_request_rejects_duplicate_active_return() {
         let state = setup_state().await;
+        let order_id = uid();
+        let buyer_id = uid();
+        let product_id = uid();
+        let seller_id = uid();
         state
             .db
             .upsert_document(
                 collections::ORDERS,
-                "ord_1",
+                &order_id,
                 json!({
-                    "userId": "buyer_1",
+                    "userId": &buyer_id,
                     fields::ITEMS: [{
-                        fields::PRODUCT_ID: "prod_1",
-                        fields::SELLER_ID: "seller_1",
+                        fields::PRODUCT_ID: &product_id,
+                        fields::SELLER_ID: &seller_id,
                         fields::STATUS: "delivered",
                         "deliveredAt": Utc::now().to_rfc3339(),
                     }],
@@ -1402,9 +1412,9 @@ mod tests {
             .create_document(
                 collections::RETURN_REQUESTS,
                 json!({
-                    "orderId": "ord_1",
-                    "productId": "prod_1",
-                    "buyerId": "buyer_1",
+                    "orderId": &order_id,
+                    "productId": &product_id,
+                    "buyerId": &buyer_id,
                     "returnStatus": "requested",
                 }),
             )
@@ -1413,11 +1423,11 @@ mod tests {
 
         let err = create_return_request(
             State(state),
-            auth("buyer_1", "user"),
+            auth(&buyer_id, "user"),
             Json(CreateReturnRequest {
-                order_id: "ord_1".into(),
-                product_id: "prod_1".into(),
-                user_id: "buyer_1".into(),
+                order_id: order_id.clone(),
+                product_id: product_id.clone(),
+                user_id: buyer_id.clone(),
                 return_reason: "Damaged".into(),
             }),
         )
@@ -1429,15 +1439,18 @@ mod tests {
     #[tokio::test]
     async fn test_create_return_request_rejects_digital_item() {
         let state = setup_state().await;
+        let order_id = uid();
+        let buyer_id = uid();
+        let product_id = uid();
         state
             .db
             .upsert_document(
                 collections::ORDERS,
-                "ord_1",
+                &order_id,
                 json!({
-                    "userId": "buyer_1",
+                    "userId": &buyer_id,
                     fields::ITEMS: [{
-                        fields::PRODUCT_ID: "prod_1",
+                        fields::PRODUCT_ID: &product_id,
                         "isDigital": true,
                         fields::STATUS: "delivered",
                     }],
@@ -1448,11 +1461,11 @@ mod tests {
 
         let err = create_return_request(
             State(state),
-            auth("buyer_1", "user"),
+            auth(&buyer_id, "user"),
             Json(CreateReturnRequest {
-                order_id: "ord_1".into(),
-                product_id: "prod_1".into(),
-                user_id: "buyer_1".into(),
+                order_id: order_id.clone(),
+                product_id: product_id.clone(),
+                user_id: buyer_id.clone(),
                 return_reason: "No longer needed".into(),
             }),
         )
@@ -1467,16 +1480,20 @@ mod tests {
     #[tokio::test]
     async fn test_create_return_request_success() {
         let state = setup_state().await;
+        let order_id = uid();
+        let buyer_id = uid();
+        let product_id = uid();
+        let seller_id = uid();
         state
             .db
             .upsert_document(
                 collections::ORDERS,
-                "ord_1",
+                &order_id,
                 json!({
-                    "userId": "buyer_1",
+                    "userId": &buyer_id,
                     fields::ITEMS: [{
-                        fields::PRODUCT_ID: "prod_1",
-                        fields::SELLER_ID: "seller_1",
+                        fields::PRODUCT_ID: &product_id,
+                        fields::SELLER_ID: &seller_id,
                         fields::STATUS: "delivered",
                         "deliveredAt": Utc::now().to_rfc3339(),
                         "name": "Headphones",
@@ -1489,11 +1506,11 @@ mod tests {
 
         let Json(resp) = create_return_request(
             State(state.clone()),
-            auth("buyer_1", "user"),
+            auth(&buyer_id, "user"),
             Json(CreateReturnRequest {
-                order_id: "ord_1".into(),
-                product_id: "prod_1".into(),
-                user_id: "buyer_1".into(),
+                order_id: order_id.clone(),
+                product_id: product_id.clone(),
+                user_id: buyer_id.clone(),
                 return_reason: "Damaged".into(),
             }),
         )
@@ -1577,11 +1594,13 @@ mod tests {
     #[tokio::test]
     async fn test_approve_return_request_seller_can_approve_and_issue_label() {
         let state = setup_state().await;
+        let seller_id = uid();
+        let ret_id = uid();
         state
             .db
             .upsert_document(
                 collections::USERS,
-                "seller_1",
+                &seller_id,
                 json!({ fields::ROLES: ["seller"] }),
             )
             .await
@@ -1590,9 +1609,9 @@ mod tests {
             .db
             .upsert_document(
                 collections::RETURN_REQUESTS,
-                "ret_1",
+                &ret_id,
                 json!({
-                    "sellerId": "seller_1",
+                    "sellerId": &seller_id,
                     "returnStatus": "requested",
                 }),
             )
@@ -1601,10 +1620,10 @@ mod tests {
 
         let Json(resp) = approve_return_request(
             State(state.clone()),
-            auth("seller_1", "user"),
+            auth(&seller_id, "user"),
             Json(ApproveReturnReq {
-                return_id: "ret_1".into(),
-                user_id: "seller_1".into(),
+                return_id: ret_id.clone(),
+                user_id: seller_id.clone(),
                 action: "approve".into(),
                 return_tracking_number: Some("TRK-123".into()),
                 return_admin_note: Some("approved quickly".into()),
@@ -1618,7 +1637,7 @@ mod tests {
 
         let updated = state
             .db
-            .get_document(collections::RETURN_REQUESTS, "ret_1")
+            .get_document(collections::RETURN_REQUESTS, &ret_id)
             .await
             .unwrap();
         assert_eq!(updated["returnStatus"], "approved");
@@ -1627,10 +1646,10 @@ mod tests {
 
         let Json(resp2) = approve_return_request(
             State(state.clone()),
-            auth("seller_1", "user"),
+            auth(&seller_id, "user"),
             Json(ApproveReturnReq {
-                return_id: "ret_1".into(),
-                user_id: "seller_1".into(),
+                return_id: ret_id.clone(),
+                user_id: seller_id.clone(),
                 action: "issue_label".into(),
                 return_tracking_number: Some("TRK-456".into()),
                 return_admin_note: None,
@@ -1642,7 +1661,7 @@ mod tests {
         assert_eq!(resp2.new_status, "label_issued");
         let updated2 = state
             .db
-            .get_document(collections::RETURN_REQUESTS, "ret_1")
+            .get_document(collections::RETURN_REQUESTS, &ret_id)
             .await
             .unwrap();
         assert_eq!(updated2["returnStatus"], "label_issued");
@@ -1666,12 +1685,16 @@ mod tests {
             .values
             .insert("stripe_secret_key".to_string(), "STRIPE_SECRET_KEY_REDACTED".to_string());
         let state = setup_state_with_config(config, server.uri()).await;
+        let order_id = uid();
+        let product_id = uid();
+        let ret_id = uid();
+        let seller_id = uid();
 
         state
             .db
             .upsert_document(
                 collections::USERS,
-                "seller_1",
+                &seller_id,
                 json!({ fields::ROLES: ["seller"] }),
             )
             .await
@@ -1680,9 +1703,9 @@ mod tests {
             .db
             .upsert_document(
                 collections::PRODUCTS,
-                "prod_1",
+                &product_id,
                 json!({
-                    fields::PRODUCT_ID: "prod_1",
+                    fields::PRODUCT_ID: &product_id,
                     "stockQuantity": 5,
                 }),
             )
@@ -1692,15 +1715,15 @@ mod tests {
             .db
             .upsert_document(
                 collections::ORDERS,
-                "ord_1",
+                &order_id,
                 json!({
                     "paymentIntentId": "pi_123",
                     "subtotalCents": 5000,
                     fields::SHIPPING_COST_CENTS: 500,
                     "taxAmountCents": 650,
                     fields::ITEMS: [{
-                        fields::PRODUCT_ID: "prod_1",
-                        fields::SELLER_ID: "seller_1",
+                        fields::PRODUCT_ID: &product_id,
+                        fields::SELLER_ID: &seller_id,
                         "price": 50.0,
                         "quantity": 1,
                         "status": "delivered",
@@ -1713,11 +1736,11 @@ mod tests {
             .db
             .upsert_document(
                 collections::RETURN_REQUESTS,
-                "ret_1",
+                &ret_id,
                 json!({
-                    "sellerId": "seller_1",
-                    "orderId": "ord_1",
-                    "productId": "prod_1",
+                    "sellerId": &seller_id,
+                    "orderId": &order_id,
+                    "productId": &product_id,
                     "quantity": 1,
                     "returnStatus": "approved",
                 }),
@@ -1727,10 +1750,10 @@ mod tests {
 
         let Json(resp) = approve_return_request(
             State(state.clone()),
-            auth("seller_1", "user"),
+            auth(&seller_id, "user"),
             Json(ApproveReturnReq {
-                return_id: "ret_1".into(),
-                user_id: "seller_1".into(),
+                return_id: ret_id.clone(),
+                user_id: seller_id.clone(),
                 action: "mark_received".into(),
                 return_tracking_number: None,
                 return_admin_note: None,
@@ -1743,17 +1766,17 @@ mod tests {
 
         let return_doc = state
             .db
-            .get_document(collections::RETURN_REQUESTS, "ret_1")
+            .get_document(collections::RETURN_REQUESTS, &ret_id)
             .await
             .unwrap();
         let order = state
             .db
-            .get_document(collections::ORDERS, "ord_1")
+            .get_document(collections::ORDERS, &order_id)
             .await
             .unwrap();
         let product = state
             .db
-            .get_document(collections::PRODUCTS, "prod_1")
+            .get_document(collections::PRODUCTS, &product_id)
             .await
             .unwrap();
 
@@ -1815,13 +1838,18 @@ mod tests {
     #[tokio::test]
     async fn test_escalate_return_request_notifies_admins_and_creates_pending_push_records() {
         let state = setup_state().await;
+        let admin1_id = uid();
+        let admin2_id = uid();
+        let buyer_id = uid();
+        let order_id = uid();
+        let ret_id = uid();
         state
             .db
             .upsert_document(
                 collections::USERS,
-                "admin_1",
+                &admin1_id,
                 json!({
-                    fields::UID: "admin_1",
+                    fields::UID: &admin1_id,
                     fields::ROLES: ["admin"],
                 }),
             )
@@ -1831,9 +1859,9 @@ mod tests {
             .db
             .upsert_document(
                 collections::USERS,
-                "admin_2",
+                &admin2_id,
                 json!({
-                    fields::UID: "admin_2",
+                    fields::UID: &admin2_id,
                     fields::ROLES: ["admin"],
                 }),
             )
@@ -1841,22 +1869,28 @@ mod tests {
             .unwrap();
         state
             .db
-            .query_raw("CREATE _push_tokens CONTENT { user_id: 'admin_1', token: 'tok_1' }")
+            .create_document(
+                "_push_tokens",
+                json!({ "user_id": &admin1_id, "token": "tok_1" }),
+            )
             .await
             .unwrap();
         state
             .db
-            .query_raw("CREATE _push_tokens CONTENT { user_id: 'admin_2', token: 'tok_2' }")
+            .create_document(
+                "_push_tokens",
+                json!({ "user_id": &admin2_id, "token": "tok_2" }),
+            )
             .await
             .unwrap();
         state
             .db
             .upsert_document(
                 collections::RETURN_REQUESTS,
-                "ret_1",
+                &ret_id,
                 json!({
-                    "buyerId": "buyer_1",
-                    "orderId": "ord_1",
+                    "buyerId": &buyer_id,
+                    "orderId": &order_id,
                     "returnStatus": "requested",
                 }),
             )
@@ -1865,10 +1899,10 @@ mod tests {
 
         let Json(resp) = escalate_return_request(
             State(state.clone()),
-            auth("buyer_1", "user"),
+            auth(&buyer_id, "user"),
             Json(EscalateReturnReq {
-                return_id: "ret_1".into(),
-                user_id: "buyer_1".into(),
+                return_id: ret_id.clone(),
+                user_id: buyer_id.clone(),
                 escalation_reason: "seller unresponsive".into(),
             }),
         )
@@ -1880,23 +1914,23 @@ mod tests {
 
         let return_doc = state
             .db
-            .get_document(collections::RETURN_REQUESTS, "ret_1")
+            .get_document(collections::RETURN_REQUESTS, &ret_id)
             .await
             .unwrap();
         assert_eq!(return_doc["returnStatus"], "escalated");
 
+        // Filter notifications by return_id to isolate from other tests.
+        // The handler notifies ALL admin users in the DB, so count may be > 2
+        // if other tests created admin users. Assert at least our 2 admins were notified.
         let notifications = state
             .db
-            .list_documents(collections::NOTIFICATIONS, Some(20), None)
+            .query_raw(&format!(
+                "SELECT * FROM {} WHERE data->>'notificationType' = 'return_escalated_admin' AND data->'data'->>'returnId' = '{}'",
+                collections::NOTIFICATIONS, ret_id
+            ))
             .await
-            .unwrap()
-            .into_iter()
-            .filter(|doc| {
-                str_field(doc, fields::NOTIFICATION_TYPE) == "return_escalated_admin"
-                    || str_field(doc, "notificationType") == "return_escalated_admin"
-            })
-            .collect::<Vec<_>>();
-        assert_eq!(notifications.len(), 2);
+            .unwrap();
+        assert!(notifications.len() >= 2, "Expected at least 2 admin notifications, got {}", notifications.len());
     }
 
     // -----------------------------------------------------------------------
@@ -1974,15 +2008,18 @@ mod tests {
     #[tokio::test]
     async fn test_create_return_item_not_delivered() {
         let state = setup_state().await;
+        let buyer_id = uid();
+        let order_id = uid();
+        let product_id = uid();
         state
             .db
             .upsert_document(
                 collections::ORDERS,
-                "ord_1",
+                &order_id,
                 json!({
-                    "userId": "buyer_1",
+                    "userId": &buyer_id,
                     fields::ITEMS: [{
-                        fields::PRODUCT_ID: "prod_1",
+                        fields::PRODUCT_ID: &product_id,
                         fields::STATUS: "shipped",
                     }],
                 }),
@@ -1992,11 +2029,11 @@ mod tests {
 
         let err = create_return_request(
             State(state),
-            auth("buyer_1", "user"),
+            auth(&buyer_id, "user"),
             Json(CreateReturnRequest {
-                order_id: "ord_1".into(),
-                product_id: "prod_1".into(),
-                user_id: "buyer_1".into(),
+                order_id: order_id.clone(),
+                product_id: product_id.clone(),
+                user_id: buyer_id.clone(),
                 return_reason: "Broken".into(),
             }),
         )
@@ -2102,11 +2139,13 @@ mod tests {
     #[tokio::test]
     async fn test_approve_return_invalid_approve_transition() {
         let state = setup_state().await;
+        let ret_id = uid();
+        let seller_id = uid();
         state
             .db
             .upsert_document(
                 collections::USERS,
-                "seller_1",
+                &seller_id,
                 json!({ fields::ROLES: ["seller"] }),
             )
             .await
@@ -2115,9 +2154,9 @@ mod tests {
             .db
             .upsert_document(
                 collections::RETURN_REQUESTS,
-                "ret_1",
+                &ret_id,
                 json!({
-                    "sellerId": "seller_1",
+                    "sellerId": &seller_id,
                     "returnStatus": "received",
                 }),
             )
@@ -2126,10 +2165,10 @@ mod tests {
 
         let err = approve_return_request(
             State(state),
-            auth("seller_1", "user"),
+            auth(&seller_id, "user"),
             Json(ApproveReturnReq {
-                return_id: "ret_1".into(),
-                user_id: "seller_1".into(),
+                return_id: ret_id.clone(),
+                user_id: seller_id.clone(),
                 action: "approve".into(),
                 return_tracking_number: None,
                 return_admin_note: None,
@@ -2267,11 +2306,15 @@ mod tests {
     async fn test_approve_return_mark_received_no_payment_intent() {
         // When paymentIntentId is empty, stripe_refund should be skipped
         let state = setup_state().await;
+        let order_id = uid();
+        let product_id = uid();
+        let ret_id = uid();
+        let seller_id = uid();
         state
             .db
             .upsert_document(
                 collections::USERS,
-                "seller_1",
+                &seller_id,
                 json!({ fields::ROLES: ["seller"] }),
             )
             .await
@@ -2280,9 +2323,9 @@ mod tests {
             .db
             .upsert_document(
                 collections::PRODUCTS,
-                "prod_1",
+                &product_id,
                 json!({
-                    fields::PRODUCT_ID: "prod_1",
+                    fields::PRODUCT_ID: &product_id,
                     "stockQuantity": 10,
                 }),
             )
@@ -2292,15 +2335,15 @@ mod tests {
             .db
             .upsert_document(
                 collections::ORDERS,
-                "ord_1",
+                &order_id,
                 json!({
                     "paymentIntentId": "",
                     "subtotalCents": 5000,
                     fields::SHIPPING_COST_CENTS: 500,
                     "taxAmountCents": 650,
                     fields::ITEMS: [{
-                        fields::PRODUCT_ID: "prod_1",
-                        fields::SELLER_ID: "seller_1",
+                        fields::PRODUCT_ID: &product_id,
+                        fields::SELLER_ID: &seller_id,
                         "price": 50.0,
                         "quantity": 2,
                         "status": "delivered",
@@ -2313,11 +2356,11 @@ mod tests {
             .db
             .upsert_document(
                 collections::RETURN_REQUESTS,
-                "ret_1",
+                &ret_id,
                 json!({
-                    "sellerId": "seller_1",
-                    "orderId": "ord_1",
-                    "productId": "prod_1",
+                    "sellerId": &seller_id,
+                    "orderId": &order_id,
+                    "productId": &product_id,
                     "quantity": 2,
                     "returnStatus": "approved",
                 }),
@@ -2327,10 +2370,10 @@ mod tests {
 
         let Json(resp) = approve_return_request(
             State(state.clone()),
-            auth("seller_1", "user"),
+            auth(&seller_id, "user"),
             Json(ApproveReturnReq {
-                return_id: "ret_1".into(),
-                user_id: "seller_1".into(),
+                return_id: ret_id.clone(),
+                user_id: seller_id.clone(),
                 action: "mark_received".into(),
                 return_tracking_number: None,
                 return_admin_note: None,
@@ -2344,7 +2387,7 @@ mod tests {
         // Verify stock was restored
         let product = state
             .db
-            .get_document(collections::PRODUCTS, "prod_1")
+            .get_document(collections::PRODUCTS, &product_id)
             .await
             .unwrap();
         assert_eq!(product["stockQuantity"], 12);
@@ -2352,7 +2395,7 @@ mod tests {
         // Verify order item updated
         let order = state
             .db
-            .get_document(collections::ORDERS, "ord_1")
+            .get_document(collections::ORDERS, &order_id)
             .await
             .unwrap();
         assert_eq!(order[fields::ITEMS][0]["status"], "refunded");
@@ -2360,7 +2403,7 @@ mod tests {
         // Verify return request updated
         let ret = state
             .db
-            .get_document(collections::RETURN_REQUESTS, "ret_1")
+            .get_document(collections::RETURN_REQUESTS, &ret_id)
             .await
             .unwrap();
         assert_eq!(ret["returnStatus"], "refunded");
@@ -2381,11 +2424,13 @@ mod tests {
     #[tokio::test]
     async fn test_reject_return_invalid_status_transition() {
         let state = setup_state().await;
+        let ret_id = uid();
+        let seller_id = uid();
         state
             .db
             .upsert_document(
                 collections::USERS,
-                "seller_1",
+                &seller_id,
                 json!({ fields::ROLES: ["seller"] }),
             )
             .await
@@ -2394,9 +2439,9 @@ mod tests {
             .db
             .upsert_document(
                 collections::RETURN_REQUESTS,
-                "ret_1",
+                &ret_id,
                 json!({
-                    "sellerId": "seller_1",
+                    "sellerId": &seller_id,
                     "returnStatus": "refunded",
                 }),
             )
@@ -2405,10 +2450,10 @@ mod tests {
 
         let err = reject_return_request(
             State(state),
-            auth("seller_1", "user"),
+            auth(&seller_id, "user"),
             Json(RejectReturnReq {
-                return_id: "ret_1".into(),
-                user_id: "seller_1".into(),
+                return_id: ret_id.clone(),
+                user_id: seller_id.clone(),
                 reason: Some("No".into()),
             }),
         )
@@ -2562,16 +2607,20 @@ mod tests {
     #[tokio::test]
     async fn test_create_return_after_rejected_return_succeeds() {
         let state = setup_state().await;
+        let buyer_id = uid();
+        let order_id = uid();
+        let product_id = uid();
+        let seller_id = uid();
         state
             .db
             .upsert_document(
                 collections::ORDERS,
-                "ord_1",
+                &order_id,
                 json!({
-                    "userId": "buyer_1",
+                    "userId": &buyer_id,
                     fields::ITEMS: [{
-                        fields::PRODUCT_ID: "prod_1",
-                        fields::SELLER_ID: "seller_1",
+                        fields::PRODUCT_ID: &product_id,
+                        fields::SELLER_ID: &seller_id,
                         fields::STATUS: "delivered",
                         "deliveredAt": Utc::now().to_rfc3339(),
                         "name": "Widget",
@@ -2587,9 +2636,9 @@ mod tests {
             .create_document(
                 collections::RETURN_REQUESTS,
                 json!({
-                    "orderId": "ord_1",
-                    "productId": "prod_1",
-                    "buyerId": "buyer_1",
+                    "orderId": &order_id,
+                    "productId": &product_id,
+                    "buyerId": &buyer_id,
                     "returnStatus": "rejected",
                 }),
             )
@@ -2599,11 +2648,11 @@ mod tests {
         // Should succeed because existing return is rejected
         let Json(resp) = create_return_request(
             State(state.clone()),
-            auth("buyer_1", "user"),
+            auth(&buyer_id, "user"),
             Json(CreateReturnRequest {
-                order_id: "ord_1".into(),
-                product_id: "prod_1".into(),
-                user_id: "buyer_1".into(),
+                order_id: order_id.clone(),
+                product_id: product_id.clone(),
+                user_id: buyer_id.clone(),
                 return_reason: "Damaged on second look".into(),
             }),
         )
@@ -2617,16 +2666,20 @@ mod tests {
     #[tokio::test]
     async fn test_create_return_after_refunded_return_succeeds() {
         let state = setup_state().await;
+        let buyer_id = uid();
+        let order_id = uid();
+        let product_id = uid();
+        let seller_id = uid();
         state
             .db
             .upsert_document(
                 collections::ORDERS,
-                "ord_1",
+                &order_id,
                 json!({
-                    "userId": "buyer_1",
+                    "userId": &buyer_id,
                     fields::ITEMS: [{
-                        fields::PRODUCT_ID: "prod_1",
-                        fields::SELLER_ID: "seller_1",
+                        fields::PRODUCT_ID: &product_id,
+                        fields::SELLER_ID: &seller_id,
                         fields::STATUS: "delivered",
                         "deliveredAt": Utc::now().to_rfc3339(),
                         "name": "Widget",
@@ -2642,9 +2695,9 @@ mod tests {
             .create_document(
                 collections::RETURN_REQUESTS,
                 json!({
-                    "orderId": "ord_1",
-                    "productId": "prod_1",
-                    "buyerId": "buyer_1",
+                    "orderId": &order_id,
+                    "productId": &product_id,
+                    "buyerId": &buyer_id,
                     "returnStatus": "refunded",
                 }),
             )
@@ -2653,11 +2706,11 @@ mod tests {
 
         let Json(resp) = create_return_request(
             State(state.clone()),
-            auth("buyer_1", "user"),
+            auth(&buyer_id, "user"),
             Json(CreateReturnRequest {
-                order_id: "ord_1".into(),
-                product_id: "prod_1".into(),
-                user_id: "buyer_1".into(),
+                order_id: order_id.clone(),
+                product_id: product_id.clone(),
+                user_id: buyer_id.clone(),
                 return_reason: "Need another return".into(),
             }),
         )
@@ -2678,13 +2731,16 @@ mod tests {
         // Set FCM env vars to trigger the send_push path (Phase 2, lines 301-318)
         // Since send_push will fail (no real FCM), sent=false, push stays "pending"
         let state = setup_state().await;
+        let adm_id = uid();
+        let buyer_id = uid();
+        let ret_id = uid();
         state
             .db
             .upsert_document(
                 collections::USERS,
-                "adm_fcm1",
+                &adm_id,
                 json!({
-                    fields::UID: "adm_fcm1",
+                    fields::UID: &adm_id,
                     fields::ROLES: ["admin"],
                 }),
             )
@@ -2692,17 +2748,21 @@ mod tests {
             .unwrap();
         state
             .db
-            .query_raw("CREATE _push_tokens SET user_id = 'adm_fcm1', token = 'fcm_token_abc'")
+            .create_document(
+                "_push_tokens",
+                json!({ "user_id": &adm_id, "token": "fcm_token_abc" }),
+            )
             .await
             .unwrap();
+        let order_id_fcm = uid();
         state
             .db
             .upsert_document(
                 collections::RETURN_REQUESTS,
-                "ret_fcm1",
+                &ret_id,
                 json!({
-                    "buyerId": "buyer_fcm1",
-                    "orderId": "ord_fcm1",
+                    "buyerId": &buyer_id,
+                    "orderId": &order_id_fcm,
                     "returnStatus": "requested",
                 }),
             )
@@ -2720,10 +2780,10 @@ mod tests {
 
         let result = escalate_return_request(
             State(state.clone()),
-            auth("buyer_fcm1", "user"),
+            auth(&buyer_id, "user"),
             Json(EscalateReturnReq {
-                return_id: "ret_fcm1".into(),
-                user_id: "buyer_fcm1".into(),
+                return_id: ret_id.clone(),
+                user_id: buyer_id.clone(),
                 escalation_reason: "still waiting for response".into(),
             }),
         )
@@ -2742,26 +2802,28 @@ mod tests {
         assert!(resp.success);
         assert_eq!(resp.new_status, "escalated");
 
-        // Verify notification was created for the admin
+        // Verify notification was created for admins — filter by returnId for isolation.
+        // The handler notifies ALL admin users in DB, so count may be > 1.
         let notifications = state
             .db
-            .list_documents(collections::NOTIFICATIONS, Some(20), None)
+            .query_raw(&format!(
+                "SELECT * FROM {} WHERE data->>'notificationType' = 'return_escalated_admin' AND data->'data'->>'returnId' = '{}'",
+                collections::NOTIFICATIONS, ret_id
+            ))
             .await
-            .unwrap()
-            .into_iter()
-            .filter(|doc| {
-                str_field(doc, fields::NOTIFICATION_TYPE) == "return_escalated_admin"
-                    || str_field(doc, "notificationType") == "return_escalated_admin"
-            })
-            .collect::<Vec<_>>();
-        assert_eq!(notifications.len(), 1);
+            .unwrap();
+        assert!(notifications.len() >= 1, "Expected at least 1 admin notification, got {}", notifications.len());
     }
 
     #[tokio::test]
     async fn test_escalate_with_multiple_admins_multiple_tokens_covers_push_loops() {
         let state = setup_state().await;
+        let adm1_id = uid();
+        let adm2_id = uid();
+        let buyer_id = uid();
+        let ret_id = uid();
         // Two admins, each with 2 push tokens
-        for (admin_id, roles) in [("adm_m1", "admin"), ("adm_m2", "admin")] {
+        for (admin_id, roles) in [(&adm1_id, "admin"), (&adm2_id, "admin")] {
             state
                 .db
                 .upsert_document(
@@ -2777,28 +2839,38 @@ mod tests {
         }
         state
             .db
-            .query_raw("CREATE _push_tokens SET user_id = 'adm_m1', token = 'tok_m1a'")
+            .create_document(
+                "_push_tokens",
+                json!({ "user_id": &adm1_id, "token": "tok_m1a" }),
+            )
             .await
             .unwrap();
         state
             .db
-            .query_raw("CREATE _push_tokens SET user_id = 'adm_m1', token = 'tok_m1b'")
+            .create_document(
+                "_push_tokens",
+                json!({ "user_id": &adm1_id, "token": "tok_m1b" }),
+            )
             .await
             .unwrap();
         state
             .db
-            .query_raw("CREATE _push_tokens SET user_id = 'adm_m2', token = 'tok_m2a'")
+            .create_document(
+                "_push_tokens",
+                json!({ "user_id": &adm2_id, "token": "tok_m2a" }),
+            )
             .await
             .unwrap();
 
+        let order_id_multi = uid();
         state
             .db
             .upsert_document(
                 collections::RETURN_REQUESTS,
-                "ret_multi",
+                &ret_id,
                 json!({
-                    "buyerId": "buyer_multi",
-                    "orderId": "ord_multi",
+                    "buyerId": &buyer_id,
+                    "orderId": &order_id_multi,
                     "returnStatus": "requested",
                 }),
             )
@@ -2808,10 +2880,10 @@ mod tests {
         // Without FCM env vars, Phase 2 skips send_push (lines 317-318: sent=false)
         let Json(resp) = escalate_return_request(
             State(state.clone()),
-            auth("buyer_multi", "user"),
+            auth(&buyer_id, "user"),
             Json(EscalateReturnReq {
-                return_id: "ret_multi".into(),
-                user_id: "buyer_multi".into(),
+                return_id: ret_id.clone(),
+                user_id: buyer_id.clone(),
                 escalation_reason: "urgent matter".into(),
             }),
         )
@@ -2820,22 +2892,19 @@ mod tests {
 
         assert!(resp.success);
 
-        // Verify Phase 1 created notifications for both admins
+        // Verify Phase 1 created notifications — filter by returnId for isolation.
+        // The handler notifies ALL admin users in DB, so count may be > 2.
         let notifications = state
             .db
-            .list_documents(collections::NOTIFICATIONS, Some(20), None)
+            .query_raw(&format!(
+                "SELECT * FROM {} WHERE data->>'notificationType' = 'return_escalated_admin' AND data->'data'->>'returnId' = '{}'",
+                collections::NOTIFICATIONS, ret_id
+            ))
             .await
-            .unwrap()
-            .into_iter()
-            .filter(|doc| {
-                str_field(doc, fields::NOTIFICATION_TYPE) == "return_escalated_admin"
-                    || str_field(doc, "notificationType") == "return_escalated_admin"
-            })
-            .collect::<Vec<_>>();
-        assert_eq!(
-            notifications.len(),
-            2,
-            "Should have notification for each admin"
+            .unwrap();
+        assert!(
+            notifications.len() >= 2,
+            "Should have notification for each admin, got {}", notifications.len()
         );
     }
 

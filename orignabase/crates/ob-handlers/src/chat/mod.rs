@@ -359,7 +359,7 @@ async fn buyer_has_chat_eligible_order(
     product_id: &str,
 ) -> Result<bool, ob_core::Error> {
     let query = format!(
-        "SELECT * FROM {} WHERE userId = $buyer_id AND {} IN ['delivered', 'disputed'] LIMIT 50",
+        "SELECT * FROM {} WHERE userId = $buyer_id AND data->>'{}' IN ('delivered', 'disputed') LIMIT 50",
         collections::ORDERS,
         fields::ORDER_STATUS
     );
@@ -745,7 +745,7 @@ async fn mark_messages_read(
     // Mark messages read in batch
     let msg_collection = format!("{}__{}", collections::CHATS, collections::CHAT_MESSAGES);
     let query = format!(
-        "UPDATE {} SET read = true WHERE chatId = $chat_id AND senderId != $uid AND read = false",
+        "UPDATE {} SET data = data || '{{\"read\": true}}'::jsonb WHERE data->>'chatId' = $chat_id AND data->>'senderId' != $uid AND data @> '{{\"read\": false}}'::jsonb RETURNING id, data::TEXT, created_at, updated_at",
         msg_collection
     );
 
@@ -1031,10 +1031,11 @@ mod tests {
     #[tokio::test]
     async fn test_get_or_create_chat_full_flow() {
         let state = setup_state().await;
-        let buyer_id = "buyer_1";
-        let seller_id = "seller_1";
-        let product_id = "prod_1";
-        let auth = auth_ctx(buyer_id);
+        let buyer_id = uuid::Uuid::new_v4().to_string();
+        let seller_id = uuid::Uuid::new_v4().to_string();
+        let product_id = uuid::Uuid::new_v4().to_string();
+        let order_id = uuid::Uuid::new_v4().to_string();
+        let auth = auth_ctx(&buyer_id);
 
         // 1. Setup Data
         // Active premium subscription
@@ -1042,7 +1043,7 @@ mod tests {
             .db
             .upsert_document(
                 collections::SUBSCRIPTIONS,
-                buyer_id,
+                &buyer_id,
                 json!({ fields::STATUS: "active" }),
             )
             .await
@@ -1053,10 +1054,10 @@ mod tests {
             .db
             .upsert_document(
                 collections::PRODUCTS,
-                product_id,
+                &product_id,
                 json!({
                     fields::NAME: "Maple Syrup",
-                    fields::SELLER_ID: seller_id,
+                    fields::SELLER_ID: &seller_id,
                     fields::LIFECYCLE_STATUS: "ACTIVE",
                     fields::IMAGE_URLS: ["https://cdn.test/1.jpg"]
                 }),
@@ -1066,23 +1067,24 @@ mod tests {
 
         // 2. Test without eligible order (should fail)
         let req = GetOrCreateChatRequest {
-            other_user_id: seller_id.into(),
-            product_id: Some(product_id.into()),
+            other_user_id: seller_id.clone(),
+            product_id: Some(product_id.clone()),
         };
         let result =
             get_or_create_chat(State(state.clone()), Extension(auth.clone()), Json(req)).await;
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("delivered order"));
+        assert!(result.is_err(), "Expected error but got success");
+        let err_str = result.unwrap_err().to_string();
+        assert!(err_str.contains("delivered order"), "Expected 'delivered order' error, got: {err_str}");
 
         // 3. Add eligible order
         state
             .db
             .upsert_document(
                 collections::ORDERS,
-                "order_1",
+                &order_id,
                 json!({
-                    "userId": buyer_id,
-                    "productIds": [product_id],
+                    "userId": &buyer_id,
+                    "productIds": [&product_id],
                     fields::ORDER_STATUS: "delivered"
                 }),
             )
@@ -1091,8 +1093,8 @@ mod tests {
 
         // 4. Test success create
         let req = GetOrCreateChatRequest {
-            other_user_id: seller_id.into(),
-            product_id: Some(product_id.into()),
+            other_user_id: seller_id.clone(),
+            product_id: Some(product_id.clone()),
         };
         let result = get_or_create_chat(
             State(state.clone()),
@@ -1103,7 +1105,7 @@ mod tests {
         assert!(result.is_ok());
         let Json(resp) = result.unwrap();
         assert!(resp.is_new);
-        assert_eq!(resp.chat_id, format!("{product_id}_{buyer_id}"));
+        assert_eq!(resp.chat_id, format!("{}_{}", product_id, buyer_id));
 
         // 5. Test idempotency (should return existing)
         let result =
@@ -1116,9 +1118,10 @@ mod tests {
     #[tokio::test]
     async fn test_send_message_full_flow() {
         let state = setup_state().await;
-        let buyer_id = "buyer_1";
-        let seller_id = "seller_1";
-        let chat_id = "p1_b1";
+        let buyer_id = &uuid::Uuid::new_v4().to_string();
+        let seller_id = &uuid::Uuid::new_v4().to_string();
+        let chat_id_str = format!("chat_{}", &uuid::Uuid::new_v4().to_string()[..8]);
+        let chat_id = chat_id_str.as_str();
         let auth = auth_ctx(buyer_id);
 
         // Setup chat thread
@@ -1196,9 +1199,10 @@ mod tests {
     #[tokio::test]
     async fn test_mark_read_flow() {
         let state = setup_state().await;
-        let buyer_id = "buyer_1";
-        let seller_id = "seller_1";
-        let chat_id = "p1_b1";
+        let buyer_id = &uuid::Uuid::new_v4().to_string();
+        let seller_id = &uuid::Uuid::new_v4().to_string();
+        let chat_id_str = format!("mrf_{}", &uuid::Uuid::new_v4().to_string()[..8]);
+        let chat_id = chat_id_str.as_str();
         let auth = auth_ctx(buyer_id);
 
         // Setup chat
@@ -1218,11 +1222,13 @@ mod tests {
 
         // Setup unread messages from seller
         let msg_coll = format!("{}__{}", collections::CHATS, collections::CHAT_MESSAGES);
+        let m1 = uuid::Uuid::new_v4().to_string();
+        let m2 = uuid::Uuid::new_v4().to_string();
         state
             .db
             .upsert_document(
                 &msg_coll,
-                "m1",
+                &m1,
                 json!({
                     "chatId": chat_id,
                     fields::SENDER_ID: seller_id,
@@ -1235,7 +1241,7 @@ mod tests {
             .db
             .upsert_document(
                 &msg_coll,
-                "m2",
+                &m2,
                 json!({
                     "chatId": chat_id,
                     fields::SENDER_ID: seller_id,
@@ -1251,7 +1257,7 @@ mod tests {
         };
         let result =
             mark_messages_read(State(state.clone()), Extension(auth.clone()), Json(req)).await;
-        assert!(result.is_ok());
+        assert!(result.is_ok(), "mark_messages_read failed: {:?}", result.err());
         let Json(resp) = result.unwrap();
         assert_eq!(resp.count, 2);
 
@@ -1562,12 +1568,15 @@ mod tests {
     #[tokio::test]
     async fn test_get_or_create_chat_rejects_non_premium_buyer() {
         let state = setup_state().await;
+        let buyer_id = uuid::Uuid::new_v4().to_string();
+        let seller_id = uuid::Uuid::new_v4().to_string();
+        let product_id = uuid::Uuid::new_v4().to_string();
         let err = get_or_create_chat(
             State(state),
-            Extension(auth_ctx("buyer_1")),
+            Extension(auth_ctx(&buyer_id)),
             Json(GetOrCreateChatRequest {
-                other_user_id: "seller_1".into(),
-                product_id: Some("prod_1".into()),
+                other_user_id: seller_id,
+                product_id: Some(product_id),
             }),
         )
         .await
@@ -1611,14 +1620,16 @@ mod tests {
     #[tokio::test]
     async fn test_delete_message_already_deleted_is_idempotent() {
         let state = setup_state().await;
+        let uid = uuid::Uuid::new_v4().to_string();
+        let msg_id = uuid::Uuid::new_v4().to_string();
         let msg_coll = format!("{}__{}", collections::CHATS, collections::CHAT_MESSAGES);
         state
             .db
             .upsert_document(
                 &msg_coll,
-                "m1",
+                &msg_id,
                 json!({
-                    fields::SENDER_ID: "buyer_1",
+                    fields::SENDER_ID: &uid,
                     fields::DELETED: true,
                 }),
             )
@@ -1627,10 +1638,10 @@ mod tests {
 
         let result = delete_message(
             State(state),
-            Extension(auth_ctx("buyer_1")),
+            Extension(auth_ctx(&uid)),
             Json(DeleteMessageRequest {
                 chat_id: "c1".into(),
-                message_id: "m1".into(),
+                message_id: msg_id,
             }),
         )
         .await;
@@ -2091,9 +2102,10 @@ mod tests {
     #[tokio::test]
     async fn test_send_message_seller_first_reply_metrics() {
         let state = setup_state().await;
-        let buyer_id = "buyer_reply";
-        let seller_id = "seller_reply";
-        let chat_id = "chat_reply";
+        let buyer_id = &uuid::Uuid::new_v4().to_string();
+        let seller_id = &uuid::Uuid::new_v4().to_string();
+        let chat_id_str = format!("rply_{}", &uuid::Uuid::new_v4().to_string()[..8]);
+        let chat_id = chat_id_str.as_str();
 
         let earlier = (chrono::Utc::now() - chrono::Duration::hours(2)).to_rfc3339();
         state

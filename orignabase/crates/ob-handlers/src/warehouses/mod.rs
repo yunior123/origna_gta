@@ -171,7 +171,7 @@ async fn clear_other_defaults(
 ) -> ob_core::Result<()> {
     let collection = warehouses_collection();
     let query = format!(
-        "SELECT * FROM {} WHERE parent_id = '{}' AND isDefault = true",
+        "SELECT * FROM {} WHERE data->>'parent_id' = '{}' AND data->>'isDefault' = 'true'",
         collection,
         ob_core::escape_sql_string(&warehouse_parent(user_id))
     );
@@ -200,11 +200,11 @@ async fn load_owned_warehouse(
 ) -> ob_core::Result<Value> {
     let collection = warehouses_collection();
     let doc = state.db.get_document(&collection, warehouse_id).await?;
-    let parent_id = doc
+    let parent_id_val = doc
         .get("parent_id")
         .and_then(|v| v.as_str())
         .unwrap_or_default();
-    if parent_id != warehouse_parent(user_id) {
+    if parent_id_val != warehouse_parent(user_id) {
         return Err(ob_core::Error::NotFound("Warehouse not found".into()));
     }
     Ok(doc)
@@ -253,12 +253,13 @@ async fn create_warehouse(
         )
         .await?;
 
-    let id = created
+    let raw_id = created
         .get("id")
         .and_then(|v| v.as_str())
-        .ok_or_else(|| ob_core::Error::Database("Warehouse create returned no id".into()))?
+        .ok_or_else(|| ob_core::Error::Database("Warehouse create returned no id".into()))?;
+    let id = raw_id
         .strip_prefix(&format!("{collection}:"))
-        .unwrap_or_default()
+        .unwrap_or(raw_id)
         .to_string();
 
     Ok(Json(WarehouseMutationResponse {
@@ -350,11 +351,9 @@ async fn delete_warehouse(
     let existing = load_owned_warehouse(&state, &user_id, &req.warehouse_id).await?;
 
     let product_guard_query = format!(
-        "SELECT id FROM {} WHERE {} = '{}' AND {} CONTAINS '{}' LIMIT 1",
+        "SELECT id FROM {} WHERE data->>'sellerId' = '{}' AND data->'warehouseIds' @> '\"{}\"'::jsonb LIMIT 1",
         collections::PRODUCTS,
-        fields::SELLER_ID,
         ob_core::escape_sql_string(&user_id),
-        "warehouseIds",
         ob_core::escape_sql_string(&req.warehouse_id),
     );
     if !state.db.query_raw(&product_guard_query).await?.is_empty() {
@@ -370,10 +369,9 @@ async fn delete_warehouse(
     {
         let collection = warehouses_collection();
         let promote_query = format!(
-            "SELECT * FROM {} WHERE parent_id = '{}' AND id != type::thing('{}', '{}') ORDER BY createdAt ASC LIMIT 1",
+            "SELECT * FROM {} WHERE data->>'parent_id' = '{}' AND id != '{}' ORDER BY data->>'createdAt' ASC LIMIT 1",
             collection,
             ob_core::escape_sql_string(&warehouse_parent(&user_id)),
-            collection,
             ob_core::escape_sql_string(&req.warehouse_id),
         );
         if let Some(other) = state.db.query_raw(&promote_query).await?.into_iter().next()
@@ -407,7 +405,7 @@ async fn list_warehouses(
     let user_id = resolve_self_user_id(&auth, Some(req.user_id.as_str()), "userId")?;
     let collection = warehouses_collection();
     let query = format!(
-        "SELECT * FROM {} WHERE parent_id = '{}' ORDER BY isDefault DESC, createdAt ASC",
+        "SELECT * FROM {} WHERE data->>'parent_id' = '{}' ORDER BY data->>'isDefault' DESC, data->>'createdAt' ASC",
         collection,
         ob_core::escape_sql_string(&warehouse_parent(&user_id)),
     );
@@ -595,11 +593,10 @@ mod tests {
             )
             .await
             .unwrap();
-        let warehouse_id = created["id"]
-            .as_str()
-            .unwrap()
+        let raw_wid = created["id"].as_str().unwrap();
+        let warehouse_id = raw_wid
             .strip_prefix(&format!("{collection}:"))
-            .unwrap()
+            .unwrap_or(raw_wid)
             .to_string();
 
         let err = update_warehouse(
@@ -652,17 +649,15 @@ mod tests {
             )
             .await
             .unwrap();
-        let first_id = first["id"]
-            .as_str()
-            .unwrap()
+        let raw_first = first["id"].as_str().unwrap();
+        let first_id = raw_first
             .strip_prefix(&format!("{collection}:"))
-            .unwrap()
+            .unwrap_or(raw_first)
             .to_string();
-        let second_id = second["id"]
-            .as_str()
-            .unwrap()
+        let raw_second = second["id"].as_str().unwrap();
+        let second_id = raw_second
             .strip_prefix(&format!("{collection}:"))
-            .unwrap()
+            .unwrap_or(raw_second)
             .to_string();
 
         let _ = delete_warehouse(
@@ -704,11 +699,10 @@ mod tests {
             )
             .await
             .unwrap();
-        let warehouse_id = created["id"]
-            .as_str()
-            .unwrap()
+        let raw_wid = created["id"].as_str().unwrap();
+        let warehouse_id = raw_wid
             .strip_prefix(&format!("{collection}:"))
-            .unwrap()
+            .unwrap_or(raw_wid)
             .to_string();
         state
             .db
@@ -834,11 +828,10 @@ mod tests {
             )
             .await
             .unwrap();
-        let wid = created["id"]
-            .as_str()
-            .unwrap()
+        let raw_wid_ref = created["id"].as_str().unwrap();
+        let wid = raw_wid_ref
             .strip_prefix(&format!("{collection}:"))
-            .unwrap();
+            .unwrap_or(raw_wid_ref);
 
         let err = load_owned_warehouse(&state, &other_seller, wid).await;
         assert!(err.is_err());
@@ -865,11 +858,10 @@ mod tests {
             )
             .await
             .unwrap();
-        let wid = created["id"]
-            .as_str()
-            .unwrap()
+        let raw_wid_ref = created["id"].as_str().unwrap();
+        let wid = raw_wid_ref
             .strip_prefix(&format!("{collection}:"))
-            .unwrap();
+            .unwrap_or(raw_wid_ref);
 
         let result = load_owned_warehouse(&state, &seller_id, wid).await;
         assert!(result.is_ok());
@@ -919,11 +911,10 @@ mod tests {
             )
             .await
             .unwrap();
-        let warehouse_id = created["id"]
-            .as_str()
-            .unwrap()
+        let raw_wid = created["id"].as_str().unwrap();
+        let warehouse_id = raw_wid
             .strip_prefix(&format!("{collection}:"))
-            .unwrap()
+            .unwrap_or(raw_wid)
             .to_string();
 
         let Json(resp) = update_warehouse(
@@ -979,11 +970,10 @@ mod tests {
             )
             .await
             .unwrap();
-        let second_id = second["id"]
-            .as_str()
-            .unwrap()
+        let raw_sid = second["id"].as_str().unwrap();
+        let second_id = raw_sid
             .strip_prefix(&format!("{collection}:"))
-            .unwrap()
+            .unwrap_or(raw_sid)
             .to_string();
 
         let Json(resp) = update_warehouse(
@@ -1004,11 +994,10 @@ mod tests {
         assert!(resp.success);
 
         // Check only second is default now
-        let first_id = first["id"]
-            .as_str()
-            .unwrap()
+        let raw_fid = first["id"].as_str().unwrap();
+        let first_id = raw_fid
             .strip_prefix(&format!("{collection}:"))
-            .unwrap();
+            .unwrap_or(raw_fid);
         let first_doc = state.db.get_document(&collection, first_id).await.unwrap();
         assert_eq!(first_doc[fields::IS_DEFAULT], false);
     }
@@ -1036,11 +1025,10 @@ mod tests {
             )
             .await
             .unwrap();
-        let warehouse_id = created["id"]
-            .as_str()
-            .unwrap()
+        let raw_wid = created["id"].as_str().unwrap();
+        let warehouse_id = raw_wid
             .strip_prefix(&format!("{collection}:"))
-            .unwrap()
+            .unwrap_or(raw_wid)
             .to_string();
 
         let Json(resp) = update_warehouse(
@@ -1082,11 +1070,10 @@ mod tests {
             )
             .await
             .unwrap();
-        let warehouse_id = created["id"]
-            .as_str()
-            .unwrap()
+        let raw_wid = created["id"].as_str().unwrap();
+        let warehouse_id = raw_wid
             .strip_prefix(&format!("{collection}:"))
-            .unwrap()
+            .unwrap_or(raw_wid)
             .to_string();
 
         let Json(resp) = delete_warehouse(
@@ -1182,12 +1169,13 @@ mod tests {
     async fn test_list_warehouses_strips_collection_prefix() {
         let state = setup_state().await;
         let collection = warehouses_collection();
+        let seller_id = unique_seller_id();
         state
             .db
             .create_document(
                 &collection,
                 json!({
-                    "parent_id": warehouse_parent("seller_1"),
+                    "parent_id": warehouse_parent(&seller_id),
                     "label": "Test",
                     "type": "warehouse",
                     fields::IS_DEFAULT: false,
@@ -1199,9 +1187,9 @@ mod tests {
 
         let Json(resp) = list_warehouses(
             State(state),
-            auth("seller_1", "user"),
+            auth(&seller_id, "user"),
             Json(ListWarehousesRequest {
-                user_id: "seller_1".into(),
+                user_id: seller_id.clone(),
             }),
         )
         .await
@@ -1233,12 +1221,13 @@ mod tests {
     async fn test_delete_non_default_warehouse() {
         let state = setup_state().await;
         let collection = warehouses_collection();
+        let seller_id = unique_seller_id();
         let created = state
             .db
             .create_document(
                 &collection,
                 json!({
-                    "parent_id": warehouse_parent("seller_1"),
+                    "parent_id": warehouse_parent(&seller_id),
                     "label": "Not Default",
                     "type": "warehouse",
                     fields::IS_DEFAULT: false,
@@ -1247,18 +1236,17 @@ mod tests {
             )
             .await
             .unwrap();
-        let warehouse_id = created["id"]
-            .as_str()
-            .unwrap()
+        let raw_id = created["id"].as_str().unwrap();
+        let warehouse_id = raw_id
             .strip_prefix(&format!("{collection}:"))
-            .unwrap()
+            .unwrap_or(raw_id)
             .to_string();
 
         let Json(resp) = delete_warehouse(
             State(state),
-            auth("seller_1", "user"),
+            auth(&seller_id, "user"),
             Json(DeleteWarehouseRequest {
-                user_id: "seller_1".into(),
+                user_id: seller_id.clone(),
                 warehouse_id: warehouse_id.clone(),
             }),
         )
