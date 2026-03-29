@@ -3411,11 +3411,7 @@ mod tests {
             .unwrap();
         assert_eq!(order["payoutStatus"], "completed");
 
-        let payouts = state
-            .db
-            .query_raw(&format!("SELECT * FROM {}", collections::PAYOUTS))
-            .await
-            .unwrap();
+        let payouts = query_filtered(&state.db, collections::PAYOUTS, "orderId", &order_id).await;
         assert_eq!(payouts.len(), 2);
     }
 
@@ -3490,11 +3486,7 @@ mod tests {
 
         auto_capture_confirmed_receipts(&state).await;
 
-        let payouts = state
-            .db
-            .query_raw(&format!("SELECT * FROM {}", collections::PAYOUTS))
-            .await
-            .unwrap();
+        let payouts = query_filtered(&state.db, collections::PAYOUTS, "orderId", &order_id).await;
         assert_eq!(payouts.len(), 1);
         assert_eq!(payouts[0]["autoCaptured"], true);
     }
