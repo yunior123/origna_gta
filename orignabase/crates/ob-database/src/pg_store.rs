@@ -1307,6 +1307,175 @@ impl DatabaseStore for PgDatabaseStore {
             }
         }
     }
+
+    // ── Filter-based query methods ─────────────────────────────────────
+
+    async fn find_where(
+        &self,
+        collection: &str,
+        field: &str,
+        operator: &str,
+        value: &Value,
+        limit: Option<usize>,
+    ) -> AppResult<Vec<Value>> {
+        self.ensure_table(collection).await?;
+        let table = sanitize_table_name(collection)?;
+        let limit_clause = limit.map_or(String::new(), |l| format!(" LIMIT {l}"));
+        let val_str = json_to_string(value);
+
+        let rows = sqlx::query(&format!(
+            "SELECT id, data::TEXT, created_at, updated_at FROM {table} WHERE data->>'{field}' {operator} $1{limit_clause}"
+        ))
+        .bind(&val_str)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| ob_core::Error::Database(format!("find_where failed: {e}")))?;
+
+        rows_to_values(rows)
+    }
+
+    async fn find_where_multi(
+        &self,
+        collection: &str,
+        filters: &[(String, String, Value)],
+        order_by: Option<&str>,
+        order_dir: Option<&str>,
+        limit: Option<usize>,
+    ) -> AppResult<Vec<Value>> {
+        self.ensure_table(collection).await?;
+        let table = sanitize_table_name(collection)?;
+
+        let mut conditions = Vec::with_capacity(filters.len());
+        let mut bind_values = Vec::with_capacity(filters.len());
+
+        for (i, (field, operator, value)) in filters.iter().enumerate() {
+            conditions.push(format!("data->>'{field}' {operator} ${}", i + 1));
+            bind_values.push(json_to_string(value));
+        }
+
+        let where_clause = if conditions.is_empty() {
+            String::new()
+        } else {
+            format!(" WHERE {}", conditions.join(" AND "))
+        };
+
+        let order_clause = order_by.map_or(String::new(), |ob| {
+            let dir = order_dir.unwrap_or("ASC");
+            format!(" ORDER BY data->>'{ob}' {dir}")
+        });
+
+        let limit_clause = limit.map_or(String::new(), |l| format!(" LIMIT {l}"));
+
+        let query = format!(
+            "SELECT id, data::TEXT, created_at, updated_at FROM {table}{where_clause}{order_clause}{limit_clause}"
+        );
+
+        let mut q = sqlx::query(&query);
+        for val in &bind_values {
+            q = q.bind(val);
+        }
+
+        let rows = q
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| ob_core::Error::Database(format!("find_where_multi failed: {e}")))?;
+
+        rows_to_values(rows)
+    }
+
+    async fn count_where(
+        &self,
+        collection: &str,
+        field: &str,
+        operator: &str,
+        value: &Value,
+    ) -> AppResult<usize> {
+        self.ensure_table(collection).await?;
+        let table = sanitize_table_name(collection)?;
+        let val_str = json_to_string(value);
+
+        let row = sqlx::query(&format!(
+            "SELECT COUNT(*) as cnt FROM {table} WHERE data->>'{field}' {operator} $1"
+        ))
+        .bind(&val_str)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| ob_core::Error::Database(format!("count_where failed: {e}")))?;
+
+        let count: i64 = row.get("cnt");
+        Ok(count as usize)
+    }
+
+    async fn exists_where(
+        &self,
+        collection: &str,
+        field: &str,
+        value: &Value,
+    ) -> AppResult<bool> {
+        self.ensure_table(collection).await?;
+        let table = sanitize_table_name(collection)?;
+        let val_str = json_to_string(value);
+
+        let row = sqlx::query(&format!(
+            "SELECT EXISTS(SELECT 1 FROM {table} WHERE data->>'{field}' = $1) as exists_flag"
+        ))
+        .bind(&val_str)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| ob_core::Error::Database(format!("exists_where failed: {e}")))?;
+
+        let exists: bool = row.get("exists_flag");
+        Ok(exists)
+    }
+
+    async fn update_where(
+        &self,
+        collection: &str,
+        field: &str,
+        operator: &str,
+        field_value: &Value,
+        data: Value,
+    ) -> AppResult<Vec<Value>> {
+        self.ensure_table(collection).await?;
+        let table = sanitize_table_name(collection)?;
+        let filter_str = json_to_string(field_value);
+        let data_str = json_to_string(&data);
+
+        let rows = sqlx::query(&format!(
+            "UPDATE {table} SET data = data || $1::jsonb, updated_at = now() \
+             WHERE data->>'{field}' {operator} $2 \
+             RETURNING id, data::TEXT, created_at, updated_at"
+        ))
+        .bind(&data_str)
+        .bind(&filter_str)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| ob_core::Error::Database(format!("update_where failed: {e}")))?;
+
+        rows_to_values(rows)
+    }
+
+    async fn delete_where(
+        &self,
+        collection: &str,
+        field: &str,
+        operator: &str,
+        value: &Value,
+    ) -> AppResult<usize> {
+        self.ensure_table(collection).await?;
+        let table = sanitize_table_name(collection)?;
+        let val_str = json_to_string(value);
+
+        let result = sqlx::query(&format!(
+            "DELETE FROM {table} WHERE data->>'{field}' {operator} $1"
+        ))
+        .bind(&val_str)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| ob_core::Error::Database(format!("delete_where failed: {e}")))?;
+
+        Ok(result.rows_affected() as usize)
+    }
 }
 
 #[cfg(test)]

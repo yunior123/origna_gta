@@ -117,6 +117,76 @@ impl DatabaseClient {
         self.inner.update_document_cas(collection, id, data, check_field, check_value).await
     }
 
+    // ── Filter-based queries (hexagonal — no SQL in handlers) ───────
+
+    /// Find documents where field matches value with operator.
+    pub async fn find_where(
+        &self,
+        collection: &str,
+        field: &str,
+        operator: &str,
+        value: &Value,
+        limit: Option<usize>,
+    ) -> ob_core::Result<Vec<Value>> {
+        self.inner.find_where(collection, field, operator, value, limit).await
+    }
+
+    /// Find documents matching multiple field conditions (AND).
+    pub async fn find_where_multi(
+        &self,
+        collection: &str,
+        filters: &[(String, String, Value)],
+        order_by: Option<&str>,
+        order_dir: Option<&str>,
+        limit: Option<usize>,
+    ) -> ob_core::Result<Vec<Value>> {
+        self.inner.find_where_multi(collection, filters, order_by, order_dir, limit).await
+    }
+
+    /// Count documents matching a field condition.
+    pub async fn count_where(
+        &self,
+        collection: &str,
+        field: &str,
+        operator: &str,
+        value: &Value,
+    ) -> ob_core::Result<usize> {
+        self.inner.count_where(collection, field, operator, value).await
+    }
+
+    /// Check if any document exists matching a field condition.
+    pub async fn exists_where(
+        &self,
+        collection: &str,
+        field: &str,
+        value: &Value,
+    ) -> ob_core::Result<bool> {
+        self.inner.exists_where(collection, field, value).await
+    }
+
+    /// Update all documents matching a field condition.
+    pub async fn update_where(
+        &self,
+        collection: &str,
+        field: &str,
+        operator: &str,
+        field_value: &Value,
+        data: Value,
+    ) -> ob_core::Result<Vec<Value>> {
+        self.inner.update_where(collection, field, operator, field_value, data).await
+    }
+
+    /// Delete all documents matching a field condition.
+    pub async fn delete_where(
+        &self,
+        collection: &str,
+        field: &str,
+        operator: &str,
+        value: &Value,
+    ) -> ob_core::Result<usize> {
+        self.inner.delete_where(collection, field, operator, value).await
+    }
+
     /// Vector similarity search.
     pub async fn vector_search(
         &self,

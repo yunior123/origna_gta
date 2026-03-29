@@ -385,9 +385,10 @@ mod tests {
         let rows_after = state
             .db
             .query_raw(&format!(
-                "SELECT * FROM {} WHERE {} = 'prod_1' AND userId = 'buyer_1'",
+                "SELECT * FROM {} WHERE data->>'productId' = '{}' AND data->>'userId' = '{}'",
                 collections::STOCK_NOTIFICATIONS,
-                fields::PRODUCT_ID,
+                prod,
+                buyer,
             ))
             .await
             .unwrap();

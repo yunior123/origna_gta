@@ -1348,6 +1348,12 @@ mod tests {
             std::env::remove_var("OB_TEST_MODE");
         }
         let state = setup_state().await;
+        let u = uuid::Uuid::new_v4().to_string();
+        let prod_stock = format!("prod_stock_{u}");
+        let seller_1 = format!("seller_1_{u}");
+        let buyer_1 = format!("buyer_1_{u}");
+        let prod_restricted = format!("prod_restr_{u}");
+        let seller_2 = format!("seller_2_{u}");
         let shipping = ShippingAddress {
             street: "123 Main St".into(),
             city: "Toronto".into(),
@@ -1360,10 +1366,10 @@ mod tests {
             .db
             .upsert_document(
                 collections::PRODUCTS,
-                "prod_stock",
+                &prod_stock,
                 json!({
-                    fields::PRODUCT_ID: "prod_stock",
-                    fields::SELLER_ID: "seller_1",
+                    fields::PRODUCT_ID: prod_stock,
+                    fields::SELLER_ID: seller_1,
                     fields::LIFECYCLE_STATUS: "active",
                     fields::STOCK_QUANTITY: 1,
                     fields::PRICE_CENTS: 1000,
@@ -1377,9 +1383,9 @@ mod tests {
             .db
             .upsert_document(
                 collections::USERS,
-                "seller_1",
+                &seller_1,
                 json!({
-                    fields::UID: "seller_1",
+                    fields::UID: seller_1,
                     "suspended": false,
                     "onboardingCompleted": true,
                     "chargesEnabled": true,
@@ -1391,15 +1397,15 @@ mod tests {
 
         let insufficient = create_checkout_session(
             State(state.clone()),
-            Extension(auth("buyer_1")),
+            Extension(auth(&buyer_1)),
             Json(CreateCheckoutRequest {
                 turnstile_token: None,
                 items: vec![CartItem {
-                    product_id: "prod_stock".into(),
+                    product_id: prod_stock.clone(),
                     quantity: 2,
                 }],
                 shipping_address: shipping.clone(),
-                user_id: Some("buyer_1".to_string()),
+                user_id: Some(buyer_1.clone()),
                 subtotal_cents: 2000,
                 coupon_code: None,
                 eula_accepted: false,
@@ -1413,15 +1419,15 @@ mod tests {
 
         let self_purchase = create_checkout_session(
             State(state.clone()),
-            Extension(auth("seller_1")),
+            Extension(auth(&seller_1)),
             Json(CreateCheckoutRequest {
                 turnstile_token: None,
                 items: vec![CartItem {
-                    product_id: "prod_stock".into(),
+                    product_id: prod_stock.clone(),
                     quantity: 1,
                 }],
                 shipping_address: shipping.clone(),
-                user_id: Some("seller_1".to_string()),
+                user_id: Some(seller_1.clone()),
                 subtotal_cents: 1000,
                 coupon_code: None,
                 eula_accepted: false,
@@ -1441,10 +1447,10 @@ mod tests {
             .db
             .upsert_document(
                 collections::PRODUCTS,
-                "prod_restricted",
+                &prod_restricted,
                 json!({
-                    fields::PRODUCT_ID: "prod_restricted",
-                    fields::SELLER_ID: "seller_2",
+                    fields::PRODUCT_ID: prod_restricted,
+                    fields::SELLER_ID: seller_2,
                     fields::LIFECYCLE_STATUS: "active",
                     fields::STOCK_QUANTITY: 3,
                     fields::PRICE_CENTS: 2500,
@@ -1460,9 +1466,9 @@ mod tests {
             .db
             .upsert_document(
                 collections::USERS,
-                "seller_2",
+                &seller_2,
                 json!({
-                    fields::UID: "seller_2",
+                    fields::UID: seller_2,
                     "suspended": false,
                     "onboardingCompleted": true,
                     "chargesEnabled": true,
@@ -1474,15 +1480,15 @@ mod tests {
 
         let age_block = create_checkout_session(
             State(state.clone()),
-            Extension(auth("buyer_1")),
+            Extension(auth(&buyer_1)),
             Json(CreateCheckoutRequest {
                 turnstile_token: None,
                 items: vec![CartItem {
-                    product_id: "prod_restricted".into(),
+                    product_id: prod_restricted.clone(),
                     quantity: 1,
                 }],
                 shipping_address: shipping.clone(),
-                user_id: Some("buyer_1".to_string()),
+                user_id: Some(buyer_1.clone()),
                 subtotal_cents: 2500,
                 coupon_code: None,
                 eula_accepted: true,
@@ -1496,15 +1502,15 @@ mod tests {
 
         let eula_block = create_checkout_session(
             State(state.clone()),
-            Extension(auth("buyer_1")),
+            Extension(auth(&buyer_1)),
             Json(CreateCheckoutRequest {
                 turnstile_token: None,
                 items: vec![CartItem {
-                    product_id: "prod_restricted".into(),
+                    product_id: prod_restricted.clone(),
                     quantity: 1,
                 }],
                 shipping_address: shipping.clone(),
-                user_id: Some("buyer_1".to_string()),
+                user_id: Some(buyer_1.clone()),
                 subtotal_cents: 2500,
                 coupon_code: None,
                 eula_accepted: false,
@@ -1516,14 +1522,16 @@ mod tests {
         .unwrap_err();
         assert!(eula_block.to_string().contains("EULA acceptance required"));
 
+        let buyer_dup = format!("buyer_dup_{u}");
+        let existing_order = format!("existing_order_{u}");
         state
             .db
             .upsert_document(
                 collections::ORDERS,
-                "existing_order",
+                &existing_order,
                 json!({
-                    fields::ORDER_ID: "existing_order",
-                    fields::BUYER_ID: "buyer_dup",
+                    fields::ORDER_ID: existing_order,
+                    fields::BUYER_ID: buyer_dup,
                     fields::CREATED_AT: chrono::Utc::now().to_rfc3339(),
                 }),
             )
@@ -1532,15 +1540,15 @@ mod tests {
 
         let duplicate = create_checkout_session(
             State(state),
-            Extension(auth("buyer_dup")),
+            Extension(auth(&buyer_dup)),
             Json(CreateCheckoutRequest {
                 turnstile_token: None,
                 items: vec![CartItem {
-                    product_id: "prod_stock".into(),
+                    product_id: prod_stock.clone(),
                     quantity: 1,
                 }],
                 shipping_address: shipping,
-                user_id: Some("buyer_dup".to_string()),
+                user_id: Some(buyer_dup.clone()),
                 subtotal_cents: 1000,
                 coupon_code: None,
                 eula_accepted: false,
@@ -1564,6 +1572,10 @@ mod tests {
     async fn test_create_checkout_session_success_creates_order_and_reserves_stock() {
         let state = setup_state().await;
         let mock_server = MockServer::start().await;
+        let u = uuid::Uuid::new_v4().to_string();
+        let prod_physical = format!("prod_phys_{u}");
+        let seller_id = format!("seller_phys_{u}");
+        let buyer_id = format!("buyer_phys_{u}");
 
         Mock::given(method("POST"))
             .and(path("/checkout/sessions"))
@@ -1583,10 +1595,10 @@ mod tests {
             .db
             .upsert_document(
                 collections::PRODUCTS,
-                "prod_physical",
+                &prod_physical,
                 json!({
-                    fields::PRODUCT_ID: "prod_physical",
-                    fields::SELLER_ID: "seller_1",
+                    fields::PRODUCT_ID: prod_physical,
+                    fields::SELLER_ID: seller_id,
                     fields::LIFECYCLE_STATUS: "active",
                     fields::STOCK_QUANTITY: 5,
                     fields::PRICE_CENTS: 1500,
@@ -1601,9 +1613,9 @@ mod tests {
             .db
             .upsert_document(
                 collections::USERS,
-                "seller_1",
+                &seller_id,
                 json!({
-                    fields::UID: "seller_1",
+                    fields::UID: seller_id,
                     "suspended": false,
                     "onboardingCompleted": true,
                     "chargesEnabled": true,
@@ -1615,11 +1627,11 @@ mod tests {
 
         let Json(resp) = create_checkout_session(
             State(state.clone()),
-            Extension(auth("buyer_1")),
+            Extension(auth(&buyer_id)),
             Json(CreateCheckoutRequest {
                 turnstile_token: None,
                 items: vec![CartItem {
-                    product_id: "prod_physical".into(),
+                    product_id: prod_physical.clone(),
                     quantity: 2,
                 }],
                 shipping_address: ShippingAddress {
@@ -1629,7 +1641,7 @@ mod tests {
                     postal_code: "M5V2H1".into(),
                     country: "CA".into(),
                 },
-                user_id: Some("buyer_1".to_string()),
+                user_id: Some(buyer_id.clone()),
                 subtotal_cents: 3000,
                 coupon_code: None,
                 eula_accepted: false,
@@ -1662,7 +1674,7 @@ mod tests {
 
         let product = state
             .db
-            .get_document(collections::PRODUCTS, "prod_physical")
+            .get_document(collections::PRODUCTS, &prod_physical)
             .await
             .unwrap();
         assert_eq!(product[fields::STOCK_QUANTITY], 3);

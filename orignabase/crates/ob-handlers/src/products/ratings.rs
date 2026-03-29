@@ -826,17 +826,22 @@ mod tests {
     #[tokio::test]
     async fn test_submit_rating_rejects_duplicate_rating() {
         let state = setup_state().await;
+        let u = uuid::Uuid::new_v4().to_string();
+        let ord = format!("ord_dup_{u}");
+        let prod = format!("prod_dup_{u}");
+        let buyer = format!("buyer_dup_{u}");
+        let seller = format!("seller_dup_{u}");
         state
             .db
             .upsert_document(
                 collections::ORDERS,
-                "ord_1",
+                &ord,
                 serde_json::json!({
-                    fields::BUYER_ID: "buyer_1",
+                    fields::BUYER_ID: buyer,
                     fields::STATUS: "delivered",
                     fields::ITEMS: [{
-                        fields::PRODUCT_ID: "prod_1",
-                        fields::SELLER_ID: "seller_1",
+                        fields::PRODUCT_ID: prod,
+                        fields::SELLER_ID: seller,
                     }],
                 }),
             )
@@ -846,9 +851,9 @@ mod tests {
             .db
             .upsert_document(
                 collections::PRODUCTS,
-                "prod_1",
+                &prod,
                 serde_json::json!({
-                    fields::SELLER_ID: "seller_1",
+                    fields::SELLER_ID: seller,
                     fields::AVG_RATING: 4.0,
                     fields::TOTAL_REVIEWS: 1,
                 }),
@@ -860,8 +865,8 @@ mod tests {
             .create_document(
                 collections::PRODUCT_RATINGS,
                 serde_json::json!({
-                    fields::PRODUCT_ID: "prod_1",
-                    "userId": "buyer_1",
+                    fields::PRODUCT_ID: prod,
+                    "userId": buyer,
                 }),
             )
             .await
@@ -870,9 +875,9 @@ mod tests {
         let err = submit_rating(
             State(state),
             Json(SubmitRatingRequest {
-                product_id: "prod_1".into(),
-                user_id: "buyer_1".into(),
-                order_id: "ord_1".into(),
+                product_id: prod.clone(),
+                user_id: buyer.clone(),
+                order_id: ord.clone(),
                 rating: 5.0,
                 review_text: Some("great".into()),
                 review_image_urls: vec![],
@@ -886,17 +891,21 @@ mod tests {
     #[tokio::test]
     async fn test_submit_rating_rejects_self_rating() {
         let state = setup_state().await;
+        let u = uuid::Uuid::new_v4().to_string();
+        let ord = format!("ord_self_{u}");
+        let prod = format!("prod_self_{u}");
+        let seller = format!("seller_self_{u}");
         state
             .db
             .upsert_document(
                 collections::ORDERS,
-                "ord_1",
+                &ord,
                 serde_json::json!({
-                    fields::BUYER_ID: "seller_1",
+                    fields::BUYER_ID: seller,
                     fields::STATUS: "delivered",
                     fields::ITEMS: [{
-                        fields::PRODUCT_ID: "prod_1",
-                        fields::SELLER_ID: "seller_1",
+                        fields::PRODUCT_ID: prod,
+                        fields::SELLER_ID: seller,
                     }],
                 }),
             )
@@ -904,16 +913,16 @@ mod tests {
             .unwrap();
         state
             .db
-            .upsert_document(collections::PRODUCTS, "prod_1", serde_json::json!({}))
+            .upsert_document(collections::PRODUCTS, &prod, serde_json::json!({}))
             .await
             .unwrap();
 
         let err = submit_rating(
             State(state),
             Json(SubmitRatingRequest {
-                product_id: "prod_1".into(),
-                user_id: "seller_1".into(),
-                order_id: "ord_1".into(),
+                product_id: prod.clone(),
+                user_id: seller.clone(),
+                order_id: ord.clone(),
                 rating: 4.0,
                 review_text: None,
                 review_image_urls: vec![],
@@ -1157,15 +1166,19 @@ mod tests {
     #[tokio::test]
     async fn test_submit_rating_order_ownership_mismatch() {
         let state = setup_state().await;
+        let u = uuid::Uuid::new_v4().to_string();
+        let ord = format!("ord_own_{u}");
+        let prod = format!("prod_own_{u}");
+        let user = format!("user_own_{u}");
         state
             .db
             .upsert_document(
                 collections::ORDERS,
-                "ord_1",
+                &ord,
                 serde_json::json!({
                     fields::BUYER_ID: "other_user",
                     fields::STATUS: "delivered",
-                    fields::ITEMS: [{ fields::PRODUCT_ID: "prod_1" }],
+                    fields::ITEMS: [{ fields::PRODUCT_ID: prod }],
                 }),
             )
             .await
@@ -1174,9 +1187,9 @@ mod tests {
         let err = submit_rating(
             State(state),
             Json(SubmitRatingRequest {
-                product_id: "prod_1".into(),
-                user_id: "user_1".into(),
-                order_id: "ord_1".into(),
+                product_id: prod.clone(),
+                user_id: user.clone(),
+                order_id: ord.clone(),
                 rating: 4.0,
                 review_text: None,
                 review_image_urls: vec![],
@@ -1190,15 +1203,19 @@ mod tests {
     #[tokio::test]
     async fn test_submit_rating_order_not_ratable() {
         let state = setup_state().await;
+        let u = uuid::Uuid::new_v4().to_string();
+        let ord = format!("ord_nr_{u}");
+        let prod = format!("prod_nr_{u}");
+        let user = format!("user_nr_{u}");
         state
             .db
             .upsert_document(
                 collections::ORDERS,
-                "ord_1",
+                &ord,
                 serde_json::json!({
-                    fields::BUYER_ID: "user_1",
+                    fields::BUYER_ID: user,
                     fields::STATUS: "pending",
-                    fields::ITEMS: [{ fields::PRODUCT_ID: "prod_1" }],
+                    fields::ITEMS: [{ fields::PRODUCT_ID: prod }],
                 }),
             )
             .await
@@ -1207,9 +1224,9 @@ mod tests {
         let err = submit_rating(
             State(state),
             Json(SubmitRatingRequest {
-                product_id: "prod_1".into(),
-                user_id: "user_1".into(),
-                order_id: "ord_1".into(),
+                product_id: prod.clone(),
+                user_id: user.clone(),
+                order_id: ord.clone(),
                 rating: 4.0,
                 review_text: None,
                 review_image_urls: vec![],
@@ -1223,15 +1240,20 @@ mod tests {
     #[tokio::test]
     async fn test_submit_rating_product_not_in_order() {
         let state = setup_state().await;
+        let u = uuid::Uuid::new_v4().to_string();
+        let ord = format!("ord_nio_{u}");
+        let prod = format!("prod_nio_{u}");
+        let other_prod = format!("other_prod_{u}");
+        let user = format!("user_nio_{u}");
         state
             .db
             .upsert_document(
                 collections::ORDERS,
-                "ord_1",
+                &ord,
                 serde_json::json!({
-                    fields::BUYER_ID: "user_1",
+                    fields::BUYER_ID: user,
                     fields::STATUS: "delivered",
-                    fields::ITEMS: [{ fields::PRODUCT_ID: "other_prod" }],
+                    fields::ITEMS: [{ fields::PRODUCT_ID: other_prod }],
                 }),
             )
             .await
@@ -1240,9 +1262,9 @@ mod tests {
         let err = submit_rating(
             State(state),
             Json(SubmitRatingRequest {
-                product_id: "prod_1".into(),
-                user_id: "user_1".into(),
-                order_id: "ord_1".into(),
+                product_id: prod.clone(),
+                user_id: user.clone(),
+                order_id: ord.clone(),
                 rating: 4.0,
                 review_text: None,
                 review_image_urls: vec![],

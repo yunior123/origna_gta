@@ -99,4 +99,68 @@ impl DatabaseStore for DatabaseClient {
     ) -> AppResult<Option<Value>> {
         self.update_document_cas(collection, id, data, check_field, check_value).await
     }
+
+    // ── Filter-based queries ───────────────────────────────────────────
+
+    async fn find_where(
+        &self,
+        collection: &str,
+        field: &str,
+        operator: &str,
+        value: &Value,
+        limit: Option<usize>,
+    ) -> AppResult<Vec<Value>> {
+        self.find_where(collection, field, operator, value, limit).await
+    }
+
+    async fn find_where_multi(
+        &self,
+        collection: &str,
+        filters: &[(String, String, Value)],
+        order_by: Option<&str>,
+        order_dir: Option<&str>,
+        limit: Option<usize>,
+    ) -> AppResult<Vec<Value>> {
+        self.find_where_multi(collection, filters, order_by, order_dir, limit).await
+    }
+
+    async fn count_where(
+        &self,
+        collection: &str,
+        field: &str,
+        operator: &str,
+        value: &Value,
+    ) -> AppResult<usize> {
+        self.count_where(collection, field, operator, value).await
+    }
+
+    async fn exists_where(
+        &self,
+        collection: &str,
+        field: &str,
+        value: &Value,
+    ) -> AppResult<bool> {
+        self.exists_where(collection, field, value).await
+    }
+
+    async fn update_where(
+        &self,
+        collection: &str,
+        field: &str,
+        operator: &str,
+        field_value: &Value,
+        data: Value,
+    ) -> AppResult<Vec<Value>> {
+        self.update_where(collection, field, operator, field_value, data).await
+    }
+
+    async fn delete_where(
+        &self,
+        collection: &str,
+        field: &str,
+        operator: &str,
+        value: &Value,
+    ) -> AppResult<usize> {
+        self.delete_where(collection, field, operator, value).await
+    }
 }

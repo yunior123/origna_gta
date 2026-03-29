@@ -1613,14 +1613,18 @@ mod tests {
             .await;
 
         let state = stripe_state(&server).await;
-        seed_user(&state, "seller_1", &["seller"]).await;
+        let u = uuid::Uuid::new_v4().to_string();
+        let order_id = format!("order_ref_{u}");
+        let prod_id = format!("prod_ref_{u}");
+        let seller_id = format!("seller_ref_{u}");
+        seed_user(&state, &seller_id, &["seller"]).await;
         state
             .db
             .upsert_document(
                 collections::PRODUCTS,
-                "prod_1",
+                &prod_id,
                 json!({
-                    fields::PRODUCT_ID: "prod_1",
+                    fields::PRODUCT_ID: prod_id,
                     "stockQuantity": 5,
                 }),
             )
@@ -1630,9 +1634,9 @@ mod tests {
             .db
             .upsert_document(
                 collections::ORDERS,
-                "order_1",
+                &order_id,
                 json!({
-                    fields::ORDER_ID: "order_1",
+                    fields::ORDER_ID: order_id,
                     fields::PAYMENT_STATUS: "captured",
                     "paymentIntentId": "pi_refund_1",
                     "subtotalCents": 2000,
@@ -1641,8 +1645,8 @@ mod tests {
                     "totalAmountCents": 2600,
                     "cumulativeRefundedCents": 50,
                     fields::ITEMS: [{
-                        fields::PRODUCT_ID: "prod_1",
-                        fields::SELLER_ID: "seller_1",
+                        fields::PRODUCT_ID: prod_id,
+                        fields::SELLER_ID: seller_id,
                         "status": "delivered",
                         "deliveredAt": Utc::now().to_rfc3339(),
                         "priceCents": 1000,
@@ -1656,11 +1660,11 @@ mod tests {
 
         let Json(resp) = refund_order_item(
             State(state.clone()),
-            Extension(auth("seller_1", &[])),
+            Extension(auth(&seller_id, &[])),
             Json(RefundItemRequest {
-                order_id: "order_1".into(),
-                product_id: "prod_1".into(),
-                user_id: "seller_1".into(),
+                order_id: order_id.clone(),
+                product_id: prod_id.clone(),
+                user_id: seller_id.clone(),
                 reason: Some(" damaged <b>box</b> ".into()),
             }),
         )
@@ -1673,12 +1677,12 @@ mod tests {
 
         let order = state
             .db
-            .get_document(collections::ORDERS, "order_1")
+            .get_document(collections::ORDERS, &order_id)
             .await
             .unwrap();
         let product = state
             .db
-            .get_document(collections::PRODUCTS, "prod_1")
+            .get_document(collections::PRODUCTS, &prod_id)
             .await
             .unwrap();
         let item = &order[fields::ITEMS][0];
@@ -1692,12 +1696,12 @@ mod tests {
         let events = state
             .db
             .query_raw(
-                "SELECT * FROM events WHERE orderId = 'order_1' AND eventType = 'item_refunded'",
+                &format!("SELECT * FROM events WHERE data->>'orderId' = '{}' AND data->>'eventType' = 'item_refunded'", order_id),
             )
             .await
             .unwrap();
         assert_eq!(events.len(), 1);
-        assert_eq!(events[0]["metadata"]["productId"], "prod_1");
+        assert_eq!(events[0]["metadata"]["productId"], prod_id.as_str());
     }
 
     #[tokio::test]
@@ -1712,14 +1716,19 @@ mod tests {
             .await;
 
         let state = stripe_state(&server).await;
-        seed_user(&state, "seller_1", &["seller"]).await;
+        let u = uuid::Uuid::new_v4().to_string();
+        let seller_id = format!("seller_dig_{u}");
+        let ebook_id = format!("ebook_{u}");
+        let license_id = format!("license_{u}");
+        let order_id = format!("order_dig_{u}");
+        seed_user(&state, &seller_id, &["seller"]).await;
         state
             .db
             .upsert_document(
                 collections::PRODUCTS,
-                "ebook_1",
+                &ebook_id,
                 json!({
-                    fields::PRODUCT_ID: "ebook_1",
+                    fields::PRODUCT_ID: ebook_id,
                     "stockQuantity": 5,
                 }),
             )
@@ -1729,10 +1738,10 @@ mod tests {
             .db
             .upsert_document(
                 collections::LICENSES,
-                "license_1",
+                &license_id,
                 json!({
-                    "orderId": "order_digital",
-                    "productId": "ebook_1",
+                    "orderId": order_id,
+                    "productId": ebook_id,
                     "status": "active",
                 }),
             )
@@ -1742,9 +1751,9 @@ mod tests {
             .db
             .upsert_document(
                 collections::ORDERS,
-                "order_digital",
+                &order_id,
                 json!({
-                    fields::ORDER_ID: "order_digital",
+                    fields::ORDER_ID: order_id,
                     fields::PAYMENT_STATUS: "captured",
                     "paymentIntentId": "pi_digital_1",
                     "subtotalCents": 1500,
@@ -1752,8 +1761,8 @@ mod tests {
                     "taxAmountCents": 0,
                     "totalAmountCents": 1500,
                     fields::ITEMS: [{
-                        fields::PRODUCT_ID: "ebook_1",
-                        fields::SELLER_ID: "seller_1",
+                        fields::PRODUCT_ID: ebook_id,
+                        fields::SELLER_ID: seller_id,
                         "status": "delivered",
                         "deliveredAt": Utc::now().to_rfc3339(),
                         "priceCents": 1500,
@@ -1768,11 +1777,11 @@ mod tests {
 
         let Json(resp) = refund_order_item(
             State(state.clone()),
-            Extension(auth("seller_1", &[])),
+            Extension(auth(&seller_id, &[])),
             Json(RefundItemRequest {
-                order_id: "order_digital".into(),
-                product_id: "ebook_1".into(),
-                user_id: "seller_1".into(),
+                order_id: order_id.clone(),
+                product_id: ebook_id.clone(),
+                user_id: seller_id.clone(),
                 reason: None,
             }),
         )
@@ -1782,7 +1791,7 @@ mod tests {
         assert!(resp.success);
         let product = state
             .db
-            .get_document(collections::PRODUCTS, "ebook_1")
+            .get_document(collections::PRODUCTS, &ebook_id)
             .await
             .unwrap();
         assert_eq!(product["stockQuantity"], 5);
@@ -1790,7 +1799,7 @@ mod tests {
         let licenses = state
             .db
             .query_raw(
-                "SELECT * FROM licenses WHERE orderId = 'order_digital' AND productId = 'ebook_1'",
+                &format!("SELECT * FROM licenses WHERE data->>'orderId' = '{}' AND data->>'productId' = '{}'", order_id, ebook_id),
             )
             .await
             .unwrap();
@@ -2249,19 +2258,23 @@ mod tests {
     async fn test_refund_order_item_no_payment_intent() {
         let server = MockServer::start().await;
         let state = stripe_state(&server).await;
-        seed_user(&state, "seller_1", &["seller"]).await;
+        let u = uuid::Uuid::new_v4().to_string();
+        let seller_id = format!("seller_nopi_{u}");
+        let prod_id = format!("prod_nopi_{u}");
+        let order_id = format!("order_nopi_{u}");
+        seed_user(&state, &seller_id, &["seller"]).await;
         state
             .db
             .upsert_document(
                 collections::ORDERS,
-                "order_nopi",
+                &order_id,
                 json!({
                     fields::PAYMENT_STATUS: "captured",
                     "subtotalCents": 1000,
                     "totalAmountCents": 1000,
                     fields::ITEMS: [{
-                        fields::PRODUCT_ID: "prod_1",
-                        fields::SELLER_ID: "seller_1",
+                        fields::PRODUCT_ID: prod_id,
+                        fields::SELLER_ID: seller_id,
                         "status": "shipped",
                         "priceCents": 1000,
                         "quantity": 1
@@ -2273,11 +2286,11 @@ mod tests {
 
         let err = refund_order_item(
             State(state),
-            Extension(auth("seller_1", &[])),
+            Extension(auth(&seller_id, &[])),
             Json(RefundItemRequest {
-                order_id: "order_nopi".into(),
-                product_id: "prod_1".into(),
-                user_id: "seller_1".into(),
+                order_id: order_id.clone(),
+                product_id: prod_id.clone(),
+                user_id: seller_id.clone(),
                 reason: None,
             }),
         )

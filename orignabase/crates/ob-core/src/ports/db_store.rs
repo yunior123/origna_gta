@@ -123,4 +123,64 @@ pub trait DatabaseStore: Send + Sync {
         check_field: &str,
         check_value: &Value,
     ) -> impl std::future::Future<Output = AppResult<Option<Value>>> + Send;
+
+    // ── Filter-based queries (eliminates raw SQL from handlers) ────────
+
+    /// Find documents where a single field matches a value.
+    /// Operators: "=", "!=", "<", ">", "<=", ">=".
+    fn find_where(
+        &self,
+        collection: &str,
+        field: &str,
+        operator: &str,
+        value: &Value,
+        limit: Option<usize>,
+    ) -> impl std::future::Future<Output = AppResult<Vec<Value>>> + Send;
+
+    /// Find documents matching multiple field conditions (AND).
+    /// Each filter: (field, operator, value).
+    fn find_where_multi(
+        &self,
+        collection: &str,
+        filters: &[(String, String, Value)],
+        order_by: Option<&str>,
+        order_dir: Option<&str>,
+        limit: Option<usize>,
+    ) -> impl std::future::Future<Output = AppResult<Vec<Value>>> + Send;
+
+    /// Count documents matching a field condition.
+    fn count_where(
+        &self,
+        collection: &str,
+        field: &str,
+        operator: &str,
+        value: &Value,
+    ) -> impl std::future::Future<Output = AppResult<usize>> + Send;
+
+    /// Check if any document exists matching a field condition.
+    fn exists_where(
+        &self,
+        collection: &str,
+        field: &str,
+        value: &Value,
+    ) -> impl std::future::Future<Output = AppResult<bool>> + Send;
+
+    /// Update all documents matching a field condition.
+    fn update_where(
+        &self,
+        collection: &str,
+        field: &str,
+        operator: &str,
+        field_value: &Value,
+        data: Value,
+    ) -> impl std::future::Future<Output = AppResult<Vec<Value>>> + Send;
+
+    /// Delete all documents matching a field condition.
+    fn delete_where(
+        &self,
+        collection: &str,
+        field: &str,
+        operator: &str,
+        value: &Value,
+    ) -> impl std::future::Future<Output = AppResult<usize>> + Send;
 }

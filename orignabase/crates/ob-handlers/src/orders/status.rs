@@ -1668,15 +1668,19 @@ mod tests {
     #[tokio::test]
     async fn test_confirm_receipt_rejects_non_owner() {
         let state = setup_state().await;
+        let u = uuid::Uuid::new_v4().to_string();
+        let oid = format!("ord_no_{u}");
+        let buyer = format!("buyer_no_{u}");
+        let prod = format!("prod_no_{u}");
         state
             .db
             .upsert_document(
                 collections::ORDERS,
-                "ord_1",
+                &oid,
                 json!({
-                    "userId": "buyer_1",
+                    "userId": buyer,
                     fields::ITEMS: [{
-                        fields::PRODUCT_ID: "prod_1",
+                        fields::PRODUCT_ID: prod,
                         fields::SELLER_ID: "seller_1",
                         fields::STATUS: DeliveryStatus::Shipped.as_str(),
                     }],
@@ -1689,8 +1693,8 @@ mod tests {
             State(state),
             Extension(auth("buyer_2")),
             Json(ConfirmItemReceiptRequest {
-                order_id: "ord_1".into(),
-                product_id: "prod_1".into(),
+                order_id: oid.clone(),
+                product_id: prod.clone(),
             }),
         )
         .await
@@ -1743,11 +1747,14 @@ mod tests {
     #[tokio::test]
     async fn test_update_order_status_blocks_archived_orders() {
         let state = setup_state().await;
+        let u = uuid::Uuid::new_v4().to_string();
+        let sid = format!("seller_arch_{u}");
+        let oid = format!("ord_arch_{u}");
         state
             .db
             .upsert_document(
                 collections::USERS,
-                "seller_1",
+                &sid,
                 json!({ fields::ROLES: ["seller"] }),
             )
             .await
@@ -1756,11 +1763,11 @@ mod tests {
             .db
             .upsert_document(
                 collections::ORDERS,
-                "ord_1",
+                &oid,
                 json!({
                     fields::ORDER_STATUS: OrderStatus::Processing.as_str(),
                     "archived": true,
-                    fields::ITEMS: [{ fields::SELLER_ID: "seller_1" }],
+                    fields::ITEMS: [{ fields::SELLER_ID: sid }],
                 }),
             )
             .await
@@ -1768,9 +1775,9 @@ mod tests {
 
         let err = update_order_status(
             State(state),
-            Extension(auth("seller_1")),
+            Extension(auth(&sid)),
             Json(UpdateOrderStatusRequest {
-                order_id: "ord_1".into(),
+                order_id: oid.clone(),
                 new_status: OrderStatus::Shipped.as_str().into(),
                 tracking_number: Some("TN123".into()),
                 carrier: None,
@@ -1908,23 +1915,28 @@ mod tests {
     #[tokio::test]
     async fn test_confirm_receipt_promotes_order_when_last_item_delivered_and_payment_captured() {
         let state = setup_state().await;
+        let u = uuid::Uuid::new_v4().to_string();
+        let oid = format!("ord_promo_{u}");
+        let buyer = format!("buyer_promo_{u}");
+        let prod1 = format!("prod_promo1_{u}");
+        let prod2 = format!("prod_promo2_{u}");
         state
             .db
             .upsert_document(
                 collections::ORDERS,
-                "ord_1",
+                &oid,
                 json!({
-                    "userId": "buyer_1",
+                    "userId": buyer,
                     fields::PAYMENT_STATUS: PaymentStatus::Captured.as_str(),
                     fields::ORDER_STATUS: OrderStatus::Shipped.as_str(),
                     fields::ITEMS: [
                         {
-                            fields::PRODUCT_ID: "prod_1",
+                            fields::PRODUCT_ID: prod1,
                             fields::SELLER_ID: "seller_1",
                             fields::STATUS: DeliveryStatus::Delivered.as_str(),
                         },
                         {
-                            fields::PRODUCT_ID: "prod_2",
+                            fields::PRODUCT_ID: prod2,
                             fields::SELLER_ID: "seller_2",
                             fields::STATUS: DeliveryStatus::Shipped.as_str(),
                         }
@@ -1936,10 +1948,10 @@ mod tests {
 
         let Json(resp) = confirm_item_receipt(
             State(state.clone()),
-            Extension(auth("buyer_1")),
+            Extension(auth(&buyer)),
             Json(ConfirmItemReceiptRequest {
-                order_id: "ord_1".into(),
-                product_id: "prod_2".into(),
+                order_id: oid.clone(),
+                product_id: prod2.clone(),
             }),
         )
         .await
@@ -1950,7 +1962,7 @@ mod tests {
 
         let order = state
             .db
-            .get_document(collections::ORDERS, "ord_1")
+            .get_document(collections::ORDERS, &oid)
             .await
             .unwrap();
         assert_eq!(order[fields::ORDER_STATUS], OrderStatus::Delivered.as_str());
@@ -1964,17 +1976,21 @@ mod tests {
     #[tokio::test]
     async fn test_confirm_receipt_updates_item_without_promoting_when_payment_not_captured() {
         let state = setup_state().await;
+        let u = uuid::Uuid::new_v4().to_string();
+        let oid = format!("ord_ncap_{u}");
+        let buyer = format!("buyer_ncap_{u}");
+        let prod = format!("prod_ncap_{u}");
         state
             .db
             .upsert_document(
                 collections::ORDERS,
-                "ord_2",
+                &oid,
                 json!({
-                    "userId": "buyer_1",
+                    "userId": buyer,
                     fields::PAYMENT_STATUS: PaymentStatus::Authorized.as_str(),
                     fields::ORDER_STATUS: OrderStatus::Shipped.as_str(),
                     fields::ITEMS: [{
-                        fields::PRODUCT_ID: "prod_1",
+                        fields::PRODUCT_ID: prod,
                         fields::SELLER_ID: "seller_1",
                         fields::STATUS: DeliveryStatus::Shipped.as_str(),
                     }],
@@ -1985,10 +2001,10 @@ mod tests {
 
         let Json(resp) = confirm_item_receipt(
             State(state.clone()),
-            Extension(auth("buyer_1")),
+            Extension(auth(&buyer)),
             Json(ConfirmItemReceiptRequest {
-                order_id: "ord_2".into(),
-                product_id: "prod_1".into(),
+                order_id: oid.clone(),
+                product_id: prod.clone(),
             }),
         )
         .await
@@ -1997,7 +2013,7 @@ mod tests {
         assert!(resp.all_delivered);
         let order = state
             .db
-            .get_document(collections::ORDERS, "ord_2")
+            .get_document(collections::ORDERS, &oid)
             .await
             .unwrap();
         assert_eq!(order[fields::ORDER_STATUS], OrderStatus::Shipped.as_str());
@@ -2011,15 +2027,19 @@ mod tests {
     #[tokio::test]
     async fn test_confirm_receipt_rejects_missing_item_and_non_shipped_status() {
         let state = setup_state().await;
+        let u = uuid::Uuid::new_v4().to_string();
+        let oid = format!("ord_mis_{u}");
+        let buyer = format!("buyer_mis_{u}");
+        let prod = format!("prod_mis_{u}");
         state
             .db
             .upsert_document(
                 collections::ORDERS,
-                "ord_3",
+                &oid,
                 json!({
-                    "userId": "buyer_1",
+                    "userId": buyer,
                     fields::ITEMS: [{
-                        fields::PRODUCT_ID: "prod_1",
+                        fields::PRODUCT_ID: prod,
                         fields::SELLER_ID: "seller_1",
                         fields::STATUS: DeliveryStatus::Pending.as_str(),
                     }],
@@ -2030,9 +2050,9 @@ mod tests {
 
         let missing = confirm_item_receipt(
             State(state.clone()),
-            Extension(auth("buyer_1")),
+            Extension(auth(&buyer)),
             Json(ConfirmItemReceiptRequest {
-                order_id: "ord_3".into(),
+                order_id: oid.clone(),
                 product_id: "prod_missing".into(),
             }),
         )
@@ -2042,10 +2062,10 @@ mod tests {
 
         let wrong_status = confirm_item_receipt(
             State(state),
-            Extension(auth("buyer_1")),
+            Extension(auth(&buyer)),
             Json(ConfirmItemReceiptRequest {
-                order_id: "ord_3".into(),
-                product_id: "prod_1".into(),
+                order_id: oid.clone(),
+                product_id: prod.clone(),
             }),
         )
         .await
@@ -2056,12 +2076,15 @@ mod tests {
     #[tokio::test]
     async fn test_update_order_status_admin_can_deliver_and_cascade_items() {
         let state = setup_state().await;
-        seed_user(&state, "admin_1", &["admin"]).await;
+        let u = uuid::Uuid::new_v4().to_string();
+        let admin_id = format!("admin_del_{u}");
+        let oid = format!("ord_adel_{u}");
+        seed_user(&state, &admin_id, &["admin"]).await;
         state
             .db
             .upsert_document(
                 collections::ORDERS,
-                "ord_admin",
+                &oid,
                 json!({
                     fields::ORDER_STATUS: OrderStatus::Shipped.as_str(),
                     fields::ITEMS: [
@@ -2083,9 +2106,9 @@ mod tests {
 
         let Json(resp) = update_order_status(
             State(state.clone()),
-            Extension(auth("admin_1")),
+            Extension(auth(&admin_id)),
             Json(UpdateOrderStatusRequest {
-                order_id: "ord_admin".into(),
+                order_id: oid.clone(),
                 new_status: OrderStatus::Delivered.as_str().into(),
                 tracking_number: None,
                 carrier: None,
@@ -2097,7 +2120,7 @@ mod tests {
         assert_eq!(resp.new_status, OrderStatus::Delivered.as_str());
         let order = state
             .db
-            .get_document(collections::ORDERS, "ord_admin")
+            .get_document(collections::ORDERS, &oid)
             .await
             .unwrap();
         assert_eq!(order[fields::ORDER_STATUS], OrderStatus::Delivered.as_str());
@@ -2114,17 +2137,21 @@ mod tests {
     async fn test_update_item_status_seller_rejects_invalid_or_missing_item_and_requires_tracking()
     {
         let state = setup_state().await;
-        seed_user(&state, "seller_1", &["seller"]).await;
+        let u = uuid::Uuid::new_v4().to_string();
+        let sid = format!("seller_ir_{u}");
+        let oid = format!("ord_ir_{u}");
+        let prod = format!("prod_ir_{u}");
+        seed_user(&state, &sid, &["seller"]).await;
         state
             .db
             .upsert_document(
                 collections::ORDERS,
-                "ord_item_reject",
+                &oid,
                 json!({
                     fields::ORDER_STATUS: OrderStatus::Processing.as_str(),
                     fields::ITEMS: [{
-                        fields::PRODUCT_ID: "prod_1",
-                        fields::SELLER_ID: "seller_1",
+                        fields::PRODUCT_ID: prod,
+                        fields::SELLER_ID: sid,
                         fields::STATUS: DeliveryStatus::Pending.as_str(),
                     }],
                 }),
@@ -2134,9 +2161,9 @@ mod tests {
 
         let missing = update_item_status(
             State(state.clone()),
-            Extension(auth("seller_1")),
+            Extension(auth(&sid)),
             Json(UpdateItemStatusRequest {
-                order_id: "ord_item_reject".into(),
+                order_id: oid.clone(),
                 product_id: "prod_missing".into(),
                 new_status: "shipped".into(),
                 tracking_number: Some("TN".into()),
@@ -2149,10 +2176,10 @@ mod tests {
 
         let tracking_err = update_item_status(
             State(state.clone()),
-            Extension(auth("seller_1")),
+            Extension(auth(&sid)),
             Json(UpdateItemStatusRequest {
-                order_id: "ord_item_reject".into(),
-                product_id: "prod_1".into(),
+                order_id: oid.clone(),
+                product_id: prod.clone(),
                 new_status: "shipped".into(),
                 tracking_number: None,
                 carrier: None,
@@ -2168,10 +2195,10 @@ mod tests {
 
         let invalid = update_item_status(
             State(state),
-            Extension(auth("seller_1")),
+            Extension(auth(&sid)),
             Json(UpdateItemStatusRequest {
-                order_id: "ord_item_reject".into(),
-                product_id: "prod_1".into(),
+                order_id: oid.clone(),
+                product_id: prod.clone(),
                 new_status: "delivered".into(),
                 tracking_number: Some("TN".into()),
                 carrier: None,
@@ -2189,23 +2216,28 @@ mod tests {
     #[tokio::test]
     async fn test_update_item_status_promotes_order_to_delivered_when_all_items_complete() {
         let state = setup_state().await;
-        seed_user(&state, "admin_1", &["admin"]).await;
+        let u = uuid::Uuid::new_v4().to_string();
+        let admin_id = format!("admin_ia_{u}");
+        let oid = format!("ord_ia_{u}");
+        let prod1 = format!("prod_ia1_{u}");
+        let prod2 = format!("prod_ia2_{u}");
+        seed_user(&state, &admin_id, &["admin"]).await;
         state
             .db
             .upsert_document(
                 collections::ORDERS,
-                "ord_item_admin",
+                &oid,
                 json!({
                     fields::ORDER_STATUS: OrderStatus::Shipped.as_str(),
                     fields::PAYMENT_STATUS: PaymentStatus::Captured.as_str(),
                     fields::ITEMS: [
                         {
-                            fields::PRODUCT_ID: "prod_1",
+                            fields::PRODUCT_ID: prod1,
                             fields::SELLER_ID: "seller_1",
                             fields::STATUS: DeliveryStatus::Delivered.as_str(),
                         },
                         {
-                            fields::PRODUCT_ID: "prod_2",
+                            fields::PRODUCT_ID: prod2,
                             fields::SELLER_ID: "seller_2",
                             fields::STATUS: DeliveryStatus::Shipped.as_str(),
                         }
@@ -2217,10 +2249,10 @@ mod tests {
 
         let Json(resp) = update_item_status(
             State(state.clone()),
-            Extension(auth("admin_1")),
+            Extension(auth(&admin_id)),
             Json(UpdateItemStatusRequest {
-                order_id: "ord_item_admin".into(),
-                product_id: "prod_2".into(),
+                order_id: oid.clone(),
+                product_id: prod2.clone(),
                 new_status: "delivered".into(),
                 tracking_number: None,
                 carrier: None,
@@ -2232,7 +2264,7 @@ mod tests {
         assert!(resp.all_items_delivered);
         let order = state
             .db
-            .get_document(collections::ORDERS, "ord_item_admin")
+            .get_document(collections::ORDERS, &oid)
             .await
             .unwrap();
         assert_eq!(order[fields::ORDER_STATUS], OrderStatus::Delivered.as_str());
@@ -2245,16 +2277,20 @@ mod tests {
     #[tokio::test]
     async fn test_confirm_receipt_rejects_seller_confirming_own_item() {
         let state = setup_state().await;
+        let u = uuid::Uuid::new_v4().to_string();
+        let oid = format!("ord_self_{u}");
+        let seller = format!("seller_self_{u}");
+        let prod = format!("prod_self_{u}");
         state
             .db
             .upsert_document(
                 collections::ORDERS,
-                "ord_self",
+                &oid,
                 json!({
-                    "userId": "seller_1",
+                    "userId": seller,
                     fields::ITEMS: [{
-                        fields::PRODUCT_ID: "prod_1",
-                        fields::SELLER_ID: "seller_1",
+                        fields::PRODUCT_ID: prod,
+                        fields::SELLER_ID: seller,
                         fields::STATUS: DeliveryStatus::Shipped.as_str(),
                     }],
                 }),
@@ -2264,10 +2300,10 @@ mod tests {
 
         let err = confirm_item_receipt(
             State(state),
-            Extension(auth("seller_1")),
+            Extension(auth(&seller)),
             Json(ConfirmItemReceiptRequest {
-                order_id: "ord_self".into(),
-                product_id: "prod_1".into(),
+                order_id: oid.clone(),
+                product_id: prod.clone(),
             }),
         )
         .await
@@ -2282,15 +2318,19 @@ mod tests {
     #[tokio::test]
     async fn test_confirm_receipt_already_delivered_is_idempotent() {
         let state = setup_state().await;
+        let u = uuid::Uuid::new_v4().to_string();
+        let oid = format!("ord_idem_{u}");
+        let buyer = format!("buyer_idem_{u}");
+        let prod = format!("prod_idem_{u}");
         state
             .db
             .upsert_document(
                 collections::ORDERS,
-                "ord_idem",
+                &oid,
                 json!({
-                    "userId": "buyer_1",
+                    "userId": buyer,
                     fields::ITEMS: [{
-                        fields::PRODUCT_ID: "prod_1",
+                        fields::PRODUCT_ID: prod,
                         fields::SELLER_ID: "seller_1",
                         fields::STATUS: DeliveryStatus::Delivered.as_str(),
                     }],
@@ -2301,10 +2341,10 @@ mod tests {
 
         let Json(resp) = confirm_item_receipt(
             State(state),
-            Extension(auth("buyer_1")),
+            Extension(auth(&buyer)),
             Json(ConfirmItemReceiptRequest {
-                order_id: "ord_idem".into(),
-                product_id: "prod_1".into(),
+                order_id: oid.clone(),
+                product_id: prod.clone(),
             }),
         )
         .await

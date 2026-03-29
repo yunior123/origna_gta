@@ -2433,6 +2433,9 @@ mod tests {
 
         assert!(order.get("payoutStatus").is_none() || order["payoutStatus"].is_null());
         assert!(payouts.is_empty());
+
+        // Clean up: re-enable Stripe so subsequent tests are not affected
+        let _ = state.db.delete_document(collections::CONFIG, documents::PAYMENT_PROVIDERS).await;
     }
 
     #[tokio::test]
