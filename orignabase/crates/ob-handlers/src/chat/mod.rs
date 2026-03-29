@@ -1339,9 +1339,10 @@ mod tests {
     #[tokio::test]
     async fn test_send_message_accepts_https_image_urls() {
         let state = setup_state().await;
-        let buyer_id = "buyer_1";
-        let seller_id = "seller_1";
-        let chat_id = "p1_b1";
+        let buyer_id = &uuid::Uuid::new_v4().to_string();
+        let seller_id = &uuid::Uuid::new_v4().to_string();
+        let chat_id_str = format!("https_{}", &uuid::Uuid::new_v4().to_string()[..8]);
+        let chat_id = chat_id_str.as_str();
         let auth = auth_ctx(buyer_id);
 
         // Setup chat + premium
@@ -1396,9 +1397,10 @@ mod tests {
     #[tokio::test]
     async fn test_send_message_dedup_same_text_within_5s() {
         let state = setup_state().await;
-        let buyer_id = "buyer_1";
-        let seller_id = "seller_1";
-        let chat_id = "p1_b1";
+        let buyer_id = &uuid::Uuid::new_v4().to_string();
+        let seller_id = &uuid::Uuid::new_v4().to_string();
+        let chat_id_str = format!("dedup_{}", &uuid::Uuid::new_v4().to_string()[..8]);
+        let chat_id = chat_id_str.as_str();
         let auth = auth_ctx(buyer_id);
         let now = chrono::Utc::now().to_rfc3339();
 
@@ -1447,9 +1449,10 @@ mod tests {
     #[tokio::test]
     async fn test_send_message_dedup_allows_different_text() {
         let state = setup_state().await;
-        let buyer_id = "buyer_1";
-        let seller_id = "seller_1";
-        let chat_id = "p1_b1";
+        let buyer_id = &uuid::Uuid::new_v4().to_string();
+        let seller_id = &uuid::Uuid::new_v4().to_string();
+        let chat_id_str = format!("diff_{}", &uuid::Uuid::new_v4().to_string()[..8]);
+        let chat_id = chat_id_str.as_str();
         let now = chrono::Utc::now().to_rfc3339();
         let auth = auth_ctx(buyer_id);
 
@@ -1505,10 +1508,11 @@ mod tests {
     #[tokio::test]
     async fn test_report_message_flow() {
         let state = setup_state().await;
-        let buyer_id = "buyer_1";
-        let seller_id = "seller_1";
-        let chat_id = "p1_b1";
-        let msg_id = "m1";
+        let buyer_id = &uuid::Uuid::new_v4().to_string();
+        let seller_id = &uuid::Uuid::new_v4().to_string();
+        let chat_id_str = format!("rpt_{}", &uuid::Uuid::new_v4().to_string()[..8]);
+        let chat_id = chat_id_str.as_str();
+        let msg_id = &uuid::Uuid::new_v4().to_string();
         let auth = auth_ctx(buyer_id);
 
         state

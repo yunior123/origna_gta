@@ -206,8 +206,8 @@ mod tests {
             std::env::remove_var("OB_TEST_MODE");
         }
         let db = DatabaseClient::new_mem().await;
-        let user_id = "user_123";
-        let action = "test_action";
+        let user_id = &uuid::Uuid::new_v4().to_string();
+        let action = &format!("test_action_{}", uuid::Uuid::new_v4());
 
         // First 2 requests should be allowed
         assert!(
@@ -278,7 +278,8 @@ mod tests {
     async fn test_rate_limit_single_request_allowed() {
         let db = DatabaseClient::new_mem().await;
         // Single request with limit of 1 should pass
-        let result = check_user_rate_limit(&db, "user_single", "checkout", 1, 1).await;
+        let uid = uuid::Uuid::new_v4().to_string();
+        let result = check_user_rate_limit(&db, &uid, "checkout", 1, 1).await;
         assert!(result.is_ok());
     }
 

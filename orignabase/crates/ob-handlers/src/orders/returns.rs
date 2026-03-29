@@ -2500,14 +2500,16 @@ mod tests {
     #[tokio::test]
     async fn test_escalate_return_invalid_status() {
         let state = setup_state().await;
+        let ret_id = uid();
+        let buyer_id = uid();
         state
             .db
             .upsert_document(
                 collections::RETURN_REQUESTS,
-                "ret_1",
+                &ret_id,
                 json!({
-                    "buyerId": "buyer_1",
-                    "orderId": "ord_1",
+                    "buyerId": &buyer_id,
+                    "orderId": uid(),
                     "returnStatus": "refunded",
                 }),
             )
@@ -2516,10 +2518,10 @@ mod tests {
 
         let err = escalate_return_request(
             State(state),
-            auth("buyer_1", "user"),
+            auth(&buyer_id, "user"),
             Json(EscalateReturnReq {
-                return_id: "ret_1".into(),
-                user_id: "buyer_1".into(),
+                return_id: ret_id.clone(),
+                user_id: buyer_id.clone(),
                 escalation_reason: "Need help".into(),
             }),
         )

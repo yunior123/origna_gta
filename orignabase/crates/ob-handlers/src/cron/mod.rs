@@ -2330,7 +2330,9 @@ mod tests {
         // No MockServer needed — payout bookkeeping only, no Stripe Transfer call.
         // Funds already transferred via destination charge at checkout time.
         let state = setup_state().await;
-        let order_id = "order_1";
+        let order_id = format!("test_auto_capture_confirmed_receipts_flow_{}", uuid::Uuid::new_v4());
+        let seller_id = format!("test_auto_capture_confirmed_receipts_flow_{}", uuid::Uuid::new_v4());
+        let order_id = &order_id;
         let delivered_at = (Utc::now() - Duration::days(10)).to_rfc3339();
 
         state
@@ -2348,7 +2350,7 @@ mod tests {
                     fields::ITEMS: [
                         {
                             fields::STATUS: "delivered",
-                            fields::SELLER_ID: "seller_1",
+                            fields::SELLER_ID: &seller_id,
                             fields::PRICE_CENTS: 1000,
                             "quantity": 1
                         }
@@ -2375,6 +2377,7 @@ mod tests {
     #[tokio::test]
     async fn test_auto_capture_confirmed_receipts_skips_when_stripe_disabled() {
         let state = setup_state().await;
+        let seller_id = format!("test_auto_capture_confirmed_receipts_skips_when_stripe_disabled_{}", uuid::Uuid::new_v4());
         let delivered_at = (Utc::now() - Duration::days(10)).to_rfc3339();
 
         state
@@ -2407,7 +2410,7 @@ mod tests {
                     fields::PAYMENT_INTENT_ID: "pi_disabled",
                     fields::ITEMS: [{
                         fields::STATUS: "delivered",
-                        fields::SELLER_ID: "seller_1",
+                        fields::SELLER_ID: &seller_id,
                         fields::PRICE_CENTS: 1000,
                         "quantity": 1
                     }]
@@ -2432,6 +2435,7 @@ mod tests {
     #[tokio::test]
     async fn test_auto_capture_confirmed_receipts_skips_order_without_payment_intent() {
         let state = setup_state().await;
+        let seller_id = format!("test_auto_capture_confirmed_receipts_skips_order_without_payment_intent_{}", uuid::Uuid::new_v4());
         let delivered_at = (Utc::now() - Duration::days(10)).to_rfc3339();
 
         state
@@ -2445,7 +2449,7 @@ mod tests {
                     "deliveredAt": delivered_at,
                     fields::ITEMS: [{
                         fields::STATUS: "delivered",
-                        fields::SELLER_ID: "seller_1",
+                        fields::SELLER_ID: &seller_id,
                         fields::PRICE_CENTS: 1000,
                         "quantity": 1
                     }]
@@ -2469,6 +2473,8 @@ mod tests {
     #[tokio::test]
     async fn test_auto_capture_confirmed_receipts_skips_order_with_active_dispute() {
         let state = setup_state().await;
+        let alert_id = format!("test_auto_capture_confirmed_receipts_skips_order_with_active_dispute_{}", uuid::Uuid::new_v4());
+        let seller_id = format!("test_auto_capture_confirmed_receipts_skips_order_with_active_dispute_{}", uuid::Uuid::new_v4());
         let delivered_at = (Utc::now() - Duration::days(10)).to_rfc3339();
 
         state
@@ -2483,7 +2489,7 @@ mod tests {
                     fields::PAYMENT_INTENT_ID: "pi_dispute",
                     fields::ITEMS: [{
                         fields::STATUS: "delivered",
-                        fields::SELLER_ID: "seller_1",
+                        fields::SELLER_ID: &seller_id,
                         fields::PRICE_CENTS: 1000,
                         "quantity": 1
                     }]
@@ -2495,7 +2501,7 @@ mod tests {
             .db
             .upsert_document(
                 collections::SECURITY_ALERTS,
-                "alert_1",
+                &alert_id,
                 json!({
                     "type": "dispute_created",
                     "resolved": false,
@@ -2520,6 +2526,8 @@ mod tests {
     #[tokio::test]
     async fn test_auto_capture_confirmed_receipts_skips_order_with_active_return() {
         let state = setup_state().await;
+        let return_id = format!("test_auto_capture_confirmed_receipts_skips_order_with_active_return_{}", uuid::Uuid::new_v4());
+        let seller_id = format!("test_auto_capture_confirmed_receipts_skips_order_with_active_return_{}", uuid::Uuid::new_v4());
         let delivered_at = (Utc::now() - Duration::days(10)).to_rfc3339();
 
         state
@@ -2534,7 +2542,7 @@ mod tests {
                     fields::PAYMENT_INTENT_ID: "pi_return",
                     fields::ITEMS: [{
                         fields::STATUS: "delivered",
-                        fields::SELLER_ID: "seller_1",
+                        fields::SELLER_ID: &seller_id,
                         fields::PRICE_CENTS: 1000,
                         "quantity": 1
                     }]
@@ -2546,7 +2554,7 @@ mod tests {
             .db
             .upsert_document(
                 collections::RETURN_REQUESTS,
-                "return_1",
+                &return_id,
                 json!({
                     "orderId": "order_return",
                     "returnStatus": "approved",
@@ -2570,6 +2578,7 @@ mod tests {
     #[tokio::test]
     async fn test_auto_capture_confirmed_receipts_marks_failed_when_no_delivered_items_payable() {
         let state = setup_state().await;
+        let seller_id = format!("test_auto_capture_confirmed_receipts_marks_failed_when_no_delivered_items_payable_{}", uuid::Uuid::new_v4());
         let delivered_at = (Utc::now() - Duration::days(10)).to_rfc3339();
 
         state
@@ -2584,7 +2593,7 @@ mod tests {
                     fields::PAYMENT_INTENT_ID: "pi_failed",
                     fields::ITEMS: [{
                         fields::STATUS: "processing",
-                        fields::SELLER_ID: "seller_1",
+                        fields::SELLER_ID: &seller_id,
                         fields::PRICE_CENTS: 1000,
                         "quantity": 1
                     }]
@@ -2794,8 +2803,10 @@ mod tests {
     #[tokio::test]
     async fn test_retry_failed_meilisearch_syncs_flow() {
         let state = setup_state().await;
-        let failure_id = "fail_1";
-        let product_id = "prod_1";
+        let fail_id = format!("test_retry_failed_meilisearch_syncs_flow_{}", uuid::Uuid::new_v4());
+        let product_id = format!("test_retry_failed_meilisearch_syncs_flow_{}", uuid::Uuid::new_v4());
+        let failure_id = &fail_id;
+        let product_id = &product_id;
 
         state
             .db
@@ -2861,7 +2872,8 @@ mod tests {
     #[tokio::test]
     async fn test_compute_trending_products_flow() {
         let state = setup_state().await;
-        let product_id = "prod_1";
+        let product_id = format!("test_compute_trending_products_flow_{}", uuid::Uuid::new_v4());
+        let product_id = &product_id;
 
         state
             .db
@@ -2890,6 +2902,7 @@ mod tests {
     #[tokio::test]
     async fn test_check_low_stock_alerts_skips_without_email_consent() {
         let state = setup_state().await;
+        let seller_id = format!("test_check_low_stock_alerts_skips_without_email_consent_{}", uuid::Uuid::new_v4());
         state
             .db
             .upsert_document(
@@ -2897,7 +2910,7 @@ mod tests {
                 "prod_low_1",
                 json!({
                     fields::NAME: "Low Stock Product",
-                    fields::SELLER_ID: "seller_1",
+                    fields::SELLER_ID: &seller_id,
                     fields::STOCK_QUANTITY: 2,
                     "lifecycleStatus": "active",
                     "inventory": {
@@ -2912,7 +2925,7 @@ mod tests {
             .db
             .upsert_document(
                 collections::USERS,
-                "seller_1",
+                &seller_id,
                 json!({
                     fields::EMAIL: "seller@example.com",
                     fields::EMAIL_CONSENT: false,
@@ -2934,6 +2947,7 @@ mod tests {
     #[tokio::test]
     async fn test_check_low_stock_alerts_skips_when_cooldown_active() {
         let state = setup_state().await;
+        let seller_id = format!("test_check_low_stock_alerts_skips_when_cooldown_active_{}", uuid::Uuid::new_v4());
         state
             .db
             .upsert_document(
@@ -2941,7 +2955,7 @@ mod tests {
                 "prod_low_2",
                 json!({
                     fields::NAME: "Cooldown Product",
-                    fields::SELLER_ID: "seller_1",
+                    fields::SELLER_ID: &seller_id,
                     fields::STOCK_QUANTITY: 1,
                     "lifecycleStatus": "active",
                     "lastLowStockAlertAt": Utc::now().to_rfc3339(),
@@ -2957,7 +2971,7 @@ mod tests {
             .db
             .upsert_document(
                 collections::USERS,
-                "seller_1",
+                &seller_id,
                 json!({
                     fields::EMAIL: "seller@example.com",
                     fields::EMAIL_CONSENT: true,
@@ -3026,7 +3040,8 @@ mod tests {
     #[tokio::test]
     async fn test_sync_expired_subscriptions_flow() {
         let state = setup_state().await;
-        let uid = "user_1";
+        let user_id = format!("test_sync_expired_subscriptions_flow_{}", uuid::Uuid::new_v4());
+        let uid = &user_id;
         let period_end = (Utc::now() - Duration::days(1)).to_rfc3339();
 
         state
@@ -3068,7 +3083,8 @@ mod tests {
     #[tokio::test]
     async fn test_escalate_stale_return_requests_flow() {
         let state = setup_state().await;
-        let ret_id = "ret_1";
+        let ret_id = format!("test_escalate_stale_return_requests_flow_{}", uuid::Uuid::new_v4());
+        let ret_id = &ret_id;
         let requested_at = (Utc::now() - Duration::days(10)).to_rfc3339();
 
         state
@@ -3118,15 +3134,18 @@ mod tests {
             .values
             .insert("stripe_secret_key".to_string(), "STRIPE_SECRET_KEY_REDACTED".to_string());
         let state = setup_state_with_config(config, server.uri()).await;
+        let buyer_id = format!("test_check_expired_authorizations_cancels_order_restores_stock_and_logs_event_{}", uuid::Uuid::new_v4());
+        let order_id = format!("test_check_expired_authorizations_cancels_order_restores_stock_and_logs_event_{}", uuid::Uuid::new_v4());
+        let product_id = format!("test_check_expired_authorizations_cancels_order_restores_stock_and_logs_event_{}", uuid::Uuid::new_v4());
 
         let created_at = (Utc::now() - Duration::days(10)).to_rfc3339();
         state
             .db
             .upsert_document(
                 collections::PRODUCTS,
-                "prod_1",
+                &product_id,
                 json!({
-                    fields::PRODUCT_ID: "prod_1",
+                    fields::PRODUCT_ID: &product_id,
                     "stockQuantity": 2
                 }),
             )
@@ -3136,15 +3155,15 @@ mod tests {
             .db
             .upsert_document(
                 collections::ORDERS,
-                "order_1",
+                &order_id,
                 json!({
-                    "userId": "buyer_1",
+                    "userId": &buyer_id,
                     "createdAt": created_at,
                     "paymentStatus": "authorized",
                     "orderStatus": "pending",
                     "paymentIntentId": "pi_123",
                     "items": [{
-                        "productId": "prod_1",
+                        "productId": &product_id,
                         "quantity": 3,
                         "isDigital": false
                     }]
@@ -3157,12 +3176,12 @@ mod tests {
 
         let order = state
             .db
-            .get_document(collections::ORDERS, "order_1")
+            .get_document(collections::ORDERS, &order_id)
             .await
             .unwrap();
         let product = state
             .db
-            .get_document(collections::PRODUCTS, "prod_1")
+            .get_document(collections::PRODUCTS, &product_id)
             .await
             .unwrap();
         let events = state
@@ -3181,13 +3200,15 @@ mod tests {
     #[tokio::test]
     async fn test_retry_failed_meilisearch_syncs_resolves_max_retry_failures() {
         let state = setup_state().await;
+        let fail_id = format!("test_retry_failed_meilisearch_syncs_resolves_max_retry_failures_{}", uuid::Uuid::new_v4());
+        let product_id = format!("test_retry_failed_meilisearch_syncs_resolves_max_retry_failures_{}", uuid::Uuid::new_v4());
         state
             .db
             .upsert_document(
                 collections::MEILISEARCH_SYNC_FAILURES,
-                "fail_1",
+                &fail_id,
                 json!({
-                    fields::PRODUCT_ID: "prod_1",
+                    fields::PRODUCT_ID: &product_id,
                     "retryCount": business_rules::MEILISEARCH_DLQ_MAX_RETRIES,
                     "resolved": false
                 }),
@@ -3199,7 +3220,7 @@ mod tests {
 
         let failure = state
             .db
-            .get_document(collections::MEILISEARCH_SYNC_FAILURES, "fail_1")
+            .get_document(collections::MEILISEARCH_SYNC_FAILURES, &fail_id)
             .await
             .unwrap();
         assert_eq!(failure["resolved"], true);
@@ -3209,11 +3230,13 @@ mod tests {
     #[tokio::test]
     async fn test_retry_failed_meilisearch_syncs_resolves_active_product_for_reindex() {
         let state = setup_state().await;
+        let fail_id = format!("test_retry_failed_meilisearch_syncs_resolves_active_product_for_reindex_{}", uuid::Uuid::new_v4());
+        let product_id = format!("test_retry_failed_meilisearch_syncs_resolves_active_product_for_reindex_{}", uuid::Uuid::new_v4());
         state
             .db
             .upsert_document(
                 collections::PRODUCTS,
-                "prod_1",
+                &product_id,
                 json!({
                     fields::LIFECYCLE_STATUS: "active"
                 }),
@@ -3224,9 +3247,9 @@ mod tests {
             .db
             .upsert_document(
                 collections::MEILISEARCH_SYNC_FAILURES,
-                "fail_1",
+                &fail_id,
                 json!({
-                    fields::PRODUCT_ID: "prod_1",
+                    fields::PRODUCT_ID: &product_id,
                     "retryCount": 1,
                     "resolved": false
                 }),
@@ -3238,7 +3261,7 @@ mod tests {
 
         let failure = state
             .db
-            .get_document(collections::MEILISEARCH_SYNC_FAILURES, "fail_1")
+            .get_document(collections::MEILISEARCH_SYNC_FAILURES, &fail_id)
             .await
             .unwrap();
         assert_eq!(failure["resolved"], true);
@@ -6323,6 +6346,8 @@ mod tests {
     #[tokio::test]
     async fn test_co_purchase_recommendations_basic() {
         let state = setup_state().await;
+        let buyer_id = format!("test_co_purchase_recommendations_basic_{}", uuid::Uuid::new_v4());
+        let seller_id = format!("test_co_purchase_recommendations_basic_{}", uuid::Uuid::new_v4());
         let now = Utc::now().to_rfc3339();
 
         // Create 3 delivered orders with overlapping items
@@ -6349,8 +6374,8 @@ mod tests {
                         "status": "delivered",
                         "createdAt": &now,
                         "items": order_items,
-                        "buyerId": "buyer_1",
-                        "sellerId": "seller_1",
+                        "buyerId": &buyer_id,
+                        "sellerId": &seller_id,
                     }),
                 )
                 .await

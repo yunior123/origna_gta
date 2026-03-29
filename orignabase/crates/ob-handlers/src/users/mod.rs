@@ -1376,27 +1376,24 @@ mod tests {
     #[tokio::test]
     async fn test_create_profile_returns_existing_when_user_doc_exists() {
         let state = setup_state().await;
-        // Ensure clean state for user_1
-        let _ = state
-            .db
-            .query_raw("DELETE FROM users WHERE id = 'user_1'")
-            .await;
+        let user_id = uuid::Uuid::new_v4().to_string();
+        let email = format!("exist-{}@test.com", &uuid::Uuid::new_v4().to_string()[..8]);
         state
             .db
             .upsert_document(
                 collections::USERS,
-                "user_1",
-                json!({ fields::EMAIL: "existing@example.com" }),
+                &user_id,
+                json!({ fields::EMAIL: &email }),
             )
             .await
             .unwrap();
 
         let Json(resp) = create_profile(
             State(state),
-            Extension(auth("user_1")),
+            Extension(auth(&user_id)),
             Json(CreateProfileRequest {
-                user_id: Some("user_1".to_string()),
-                email: "user@example.com".into(),
+                user_id: Some(user_id.clone()),
+                email: format!("new-{}@test.com", &uuid::Uuid::new_v4().to_string()[..8]),
                 name: "Test".into(),
                 roles: None,
                 preferred_language: None,
@@ -1414,18 +1411,15 @@ mod tests {
     #[tokio::test]
     async fn test_create_profile_success_normalizes_defaults() {
         let state = setup_state().await;
-        // Clean up leftover user_1 from previous tests
-        let _ = state
-            .db
-            .query_raw("DELETE FROM users WHERE id = 'user_1'")
-            .await;
+        let user_id = uuid::Uuid::new_v4().to_string();
+        let email = format!("fb-{}@example.com", &uuid::Uuid::new_v4().to_string()[..8]);
 
         let Json(resp) = create_profile(
             State(state.clone()),
-            Extension(auth("user_1")),
+            Extension(auth(&user_id)),
             Json(CreateProfileRequest {
-                user_id: Some("user_1".to_string()),
-                email: "fallback@example.com".into(),
+                user_id: Some(user_id.clone()),
+                email: email.clone(),
                 name: "  ".into(),
                 roles: None,
                 preferred_language: Some("xx".into()),
@@ -1437,16 +1431,13 @@ mod tests {
         .unwrap();
 
         assert_eq!(resp.data["created"], true);
-        let users: Vec<serde_json::Value> = state
+        let user = state
             .db
-            .query_bind_value(
-                "SELECT * FROM users WHERE uid = $uid LIMIT 1",
-                json!({"uid": "user_1"}),
-            )
+            .get_document(collections::USERS, &user_id)
             .await
             .unwrap();
-        let user = users.first().unwrap();
-        assert_eq!(user[fields::NAME], "fallback");
+        let email_prefix = email.split('@').next().unwrap();
+        assert_eq!(user[fields::NAME], email_prefix);
         assert_eq!(user["preferredLanguage"], "en");
         assert_eq!(user[fields::ROLES], json!(["buyer"]));
         assert_eq!(user["consentMethod"], "signup_form");
@@ -1456,19 +1447,20 @@ mod tests {
     #[tokio::test]
     async fn test_update_profile_rejects_invalid_gst_number() {
         let state = setup_state().await;
+        let user_id = uuid::Uuid::new_v4().to_string();
         state
             .db
-            .upsert_document(collections::USERS, "user_1", json!({}))
+            .upsert_document(collections::USERS, &user_id, json!({}))
             .await
             .unwrap();
 
         let err = update_profile(
             State(state),
-            Extension(auth("user_1")),
+            Extension(auth(&user_id)),
             Json(UpdateProfileRequest {
                 terms_accepted_at: None,
                 terms_version: None,
-                user_id: Some("user_1".to_string()),
+                user_id: Some(user_id.clone()),
                 name: None,
                 address: None,
                 preferred_language: None,
@@ -1486,11 +1478,12 @@ mod tests {
     #[tokio::test]
     async fn test_update_profile_success_updates_name_language_and_tax() {
         let state = setup_state().await;
+        let user_id = uuid::Uuid::new_v4().to_string();
         state
             .db
             .upsert_document(
                 collections::USERS,
-                "user_1",
+                &user_id,
                 json!({ fields::EMAIL: "user@example.com" }),
             )
             .await
@@ -1498,11 +1491,11 @@ mod tests {
 
         let Json(resp) = update_profile(
             State(state.clone()),
-            Extension(auth("user_1")),
+            Extension(auth(&user_id)),
             Json(UpdateProfileRequest {
                 terms_accepted_at: None,
                 terms_version: None,
-                user_id: Some("user_1".to_string()),
+                user_id: Some(user_id.clone()),
                 name: Some(" Updated Name ".into()),
                 address: None,
                 preferred_language: Some("fr".into()),
@@ -1517,7 +1510,7 @@ mod tests {
         assert_eq!(resp.data["updated"], true);
         let user = state
             .db
-            .get_document(collections::USERS, "user_1")
+            .get_document(collections::USERS, &user_id)
             .await
             .unwrap();
         assert_eq!(user[fields::NAME], "Updated Name");
@@ -1563,21 +1556,18 @@ mod tests {
     #[tokio::test]
     async fn test_email_consent_success_sets_unsubscribe_method() {
         let state = setup_state().await;
-        let _ = state
-            .db
-            .query_raw("DELETE FROM users WHERE id = 'user_1'")
-            .await;
+        let user_id = uuid::Uuid::new_v4().to_string();
         state
             .db
-            .upsert_document(collections::USERS, "user_1", json!({}))
+            .upsert_document(collections::USERS, &user_id, json!({}))
             .await
             .unwrap();
 
         let Json(resp) = email_consent(
             State(state.clone()),
-            Extension(auth("user_1")),
+            Extension(auth(&user_id)),
             Json(EmailConsentRequest {
-                user_id: Some("user_1".to_string()),
+                user_id: Some(user_id.clone()),
                 consent: false,
             }),
         )
@@ -1587,7 +1577,7 @@ mod tests {
         assert_eq!(resp.data[fields::EMAIL_CONSENT], false);
         let user = state
             .db
-            .get_document(collections::USERS, "user_1")
+            .get_document(collections::USERS, &user_id)
             .await
             .unwrap();
         assert_eq!(user["consentMethod"], "unsubscribe");
@@ -1596,15 +1586,12 @@ mod tests {
     #[tokio::test]
     async fn test_notification_preferences_requires_premium() {
         let state = setup_state().await;
-        let _ = state
-            .db
-            .query_raw("DELETE FROM users WHERE id = 'user_1'")
-            .await;
+        let user_id = uuid::Uuid::new_v4().to_string();
         state
             .db
             .upsert_document(
                 collections::USERS,
-                "user_1",
+                &user_id,
                 json!({ fields::IS_PREMIUM: false }),
             )
             .await
@@ -1612,9 +1599,9 @@ mod tests {
 
         let err = notification_preferences(
             State(state),
-            Extension(auth("user_1")),
+            Extension(auth(&user_id)),
             Json(NotificationPrefsRequest {
-                user_id: Some("user_1".to_string()),
+                user_id: Some(user_id.clone()),
                 notify_new_products: Some(true),
                 notify_trending: None,
             }),
@@ -1628,15 +1615,12 @@ mod tests {
     #[tokio::test]
     async fn test_notification_preferences_requires_one_valid_field() {
         let state = setup_state().await;
-        let _ = state
-            .db
-            .query_raw("DELETE FROM users WHERE id = 'user_1'")
-            .await;
+        let user_id = uuid::Uuid::new_v4().to_string();
         state
             .db
             .upsert_document(
                 collections::USERS,
-                "user_1",
+                &user_id,
                 json!({ fields::IS_PREMIUM: true }),
             )
             .await
@@ -1644,9 +1628,9 @@ mod tests {
 
         let err = notification_preferences(
             State(state),
-            Extension(auth("user_1")),
+            Extension(auth(&user_id)),
             Json(NotificationPrefsRequest {
-                user_id: Some("user_1".to_string()),
+                user_id: Some(user_id.clone()),
                 notify_new_products: None,
                 notify_trending: None,
             }),
@@ -1663,15 +1647,12 @@ mod tests {
     #[tokio::test]
     async fn test_notification_preferences_success() {
         let state = setup_state().await;
-        let _ = state
-            .db
-            .query_raw("DELETE FROM users WHERE id = 'user_1'")
-            .await;
+        let user_id = uuid::Uuid::new_v4().to_string();
         state
             .db
             .upsert_document(
                 collections::USERS,
-                "user_1",
+                &user_id,
                 json!({ fields::IS_PREMIUM: true }),
             )
             .await
@@ -1679,9 +1660,9 @@ mod tests {
 
         let Json(resp) = notification_preferences(
             State(state.clone()),
-            Extension(auth("user_1")),
+            Extension(auth(&user_id)),
             Json(NotificationPrefsRequest {
-                user_id: Some("user_1".to_string()),
+                user_id: Some(user_id.clone()),
                 notify_new_products: Some(true),
                 notify_trending: Some(false),
             }),
@@ -1692,7 +1673,7 @@ mod tests {
         assert!(resp.success);
         let user = state
             .db
-            .get_document(collections::USERS, "user_1")
+            .get_document(collections::USERS, &user_id)
             .await
             .unwrap();
         assert_eq!(user["notifyNewProducts"], true);
@@ -1768,17 +1749,18 @@ mod tests {
     #[tokio::test]
     async fn test_add_buyer_address_creates_and_returns_id() {
         let state = setup_state().await;
+        let user_id = uuid::Uuid::new_v4().to_string();
         state
             .db
-            .upsert_document(collections::USERS, "user_1", json!({}))
+            .upsert_document(collections::USERS, &user_id, json!({}))
             .await
             .unwrap();
 
         let Json(resp) = add_buyer_address(
             State(state.clone()),
-            Extension(auth("user_1")),
+            Extension(auth(&user_id)),
             Json(AddBuyerAddressRequest {
-                user_id: Some("user_1".to_string()),
+                user_id: Some(user_id.clone()),
                 street: "1 Main St".into(),
                 city: "Toronto".into(),
                 province: "ON".into(),
@@ -1797,7 +1779,7 @@ mod tests {
             .get_document(collections::ADDRESSES, address_id)
             .await
             .unwrap();
-        assert_eq!(address["userId"], "user_1");
+        assert_eq!(address["userId"], user_id.as_str());
         assert_eq!(address["isDefault"], true);
         assert_eq!(address["address"][fields::POSTAL_CODE], "M5V2H1");
     }
@@ -1839,17 +1821,16 @@ mod tests {
     #[tokio::test]
     async fn test_delete_buyer_address_promotes_next_default() {
         let state = setup_state().await;
-        let _ = state
-            .db
-            .query_raw("DELETE FROM addresses WHERE id IN ('addr_1', 'addr_2')")
-            .await;
+        let user_id = uuid::Uuid::new_v4().to_string();
+        let addr1 = uuid::Uuid::new_v4().to_string();
+        let addr2 = uuid::Uuid::new_v4().to_string();
         state
             .db
             .upsert_document(
                 collections::ADDRESSES,
-                "addr_1",
+                &addr1,
                 json!({
-                    "userId": "user_1",
+                    "userId": &user_id,
                     "isDefault": true,
                     fields::CREATED_AT: "2026-01-01T00:00:00Z",
                 }),
@@ -1860,9 +1841,9 @@ mod tests {
             .db
             .upsert_document(
                 collections::ADDRESSES,
-                "addr_2",
+                &addr2,
                 json!({
-                    "userId": "user_1",
+                    "userId": &user_id,
                     "isDefault": false,
                     fields::CREATED_AT: "2026-01-02T00:00:00Z",
                 }),
@@ -1872,10 +1853,10 @@ mod tests {
 
         let Json(resp) = delete_buyer_address(
             State(state.clone()),
-            Extension(auth("user_1")),
+            Extension(auth(&user_id)),
             Json(DeleteBuyerAddressRequest {
-                user_id: Some("user_1".to_string()),
-                address_id: "addr_1".into(),
+                user_id: Some(user_id.clone()),
+                address_id: addr1.clone(),
             }),
         )
         .await
@@ -1884,7 +1865,7 @@ mod tests {
         assert_eq!(resp.data["deleted"], true);
         let promoted = state
             .db
-            .get_document(collections::ADDRESSES, "addr_2")
+            .get_document(collections::ADDRESSES, &addr2)
             .await
             .unwrap();
         assert_eq!(promoted["isDefault"], true);
@@ -2114,21 +2095,18 @@ mod tests {
     #[tokio::test]
     async fn test_email_consent_true_sets_user_preference_method() {
         let state = setup_state().await;
-        let _ = state
-            .db
-            .query_raw("DELETE FROM users WHERE id = 'user_1'")
-            .await;
+        let user_id = uuid::Uuid::new_v4().to_string();
         state
             .db
-            .upsert_document(collections::USERS, "user_1", json!({}))
+            .upsert_document(collections::USERS, &user_id, json!({}))
             .await
             .unwrap();
 
         let Json(resp) = email_consent(
             State(state.clone()),
-            Extension(auth("user_1")),
+            Extension(auth(&user_id)),
             Json(EmailConsentRequest {
-                user_id: Some("user_1".to_string()),
+                user_id: Some(user_id.clone()),
                 consent: true,
             }),
         )
@@ -2138,7 +2116,7 @@ mod tests {
         assert_eq!(resp.data[fields::EMAIL_CONSENT], true);
         let user = state
             .db
-            .get_document(collections::USERS, "user_1")
+            .get_document(collections::USERS, &user_id)
             .await
             .unwrap();
         assert_eq!(user["consentMethod"], "user_preference");
@@ -2310,9 +2288,11 @@ mod tests {
     #[tokio::test]
     async fn test_add_buyer_address_clears_existing_default() {
         let state = setup_state().await;
+        let user_id = uuid::Uuid::new_v4().to_string();
+        let existing_addr = uuid::Uuid::new_v4().to_string();
         state
             .db
-            .upsert_document(collections::USERS, "user_1", json!({}))
+            .upsert_document(collections::USERS, &user_id, json!({}))
             .await
             .unwrap();
         // Create an existing default address
@@ -2320,9 +2300,9 @@ mod tests {
             .db
             .upsert_document(
                 collections::ADDRESSES,
-                "existing_addr",
+                &existing_addr,
                 json!({
-                    "userId": "user_1",
+                    "userId": &user_id,
                     "isDefault": true,
                 }),
             )
@@ -2331,9 +2311,9 @@ mod tests {
 
         let Json(resp) = add_buyer_address(
             State(state.clone()),
-            Extension(auth("user_1")),
+            Extension(auth(&user_id)),
             Json(AddBuyerAddressRequest {
-                user_id: Some("user_1".to_string()),
+                user_id: Some(user_id.clone()),
                 street: "1 Main St".into(),
                 city: "Toronto".into(),
                 province: "ON".into(),
