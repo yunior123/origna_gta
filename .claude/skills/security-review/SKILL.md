@@ -108,6 +108,36 @@ cargo audit
 - [ ] No Firebase SDK imports (completely removed)
 - [ ] OrignaBase URLs from `EnvConfig`, never hardcoded
 
+### 11. OWASP 2025 Updates
+
+New in OWASP 2025 Top 10:
+- **A04:2025 — Insecure Design** expanded: includes missing threat modeling, insecure patterns
+- **A05:2025 — Security Misconfiguration** includes default credentials, unnecessary features
+- **A08:2025 — Software and Data Integrity** includes supply chain, deserialization
+- **A10:2025 — Mishandling Exceptional Conditions** — NEW: covers silent failures, swallowed errors
+
+### 12. GraphQL-Specific Security
+
+- [ ] Query depth limit enforced (prevent recursive type DoS)
+- [ ] Query complexity limit enforced
+- [ ] Introspection disabled in production
+- [ ] Batch query limit (max 10 per request)
+- [ ] No data leaks via error messages (use generic errors)
+
+### 13. WebSocket Security
+
+- [ ] JWT validated on connection establishment
+- [ ] Collection allowlist enforced (only subscribe to authorized collections)
+- [ ] Per-user connection limit (prevent connection exhaustion)
+- [ ] Message size limit (64KB max)
+- [ ] No sensitive data in WebSocket error messages
+
+### 14. SSRF Prevention
+
+- [ ] Image/product URLs validated against internal IPs (no 127.0.0.1, 169.254.x.x, 10.x.x.x)
+- [ ] No `file://` or `data:` protocol in URL fields
+- [ ] DNS rebinding protection for URL fetching
+
 ## Output Format
 
 ```

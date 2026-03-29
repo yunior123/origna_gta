@@ -60,6 +60,18 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash /Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/scripts/check-magic-strings.sh"
+          }
+        ],
+        "description": "Check for magic strings in modified Rust and Dart files"
+      }
     ]
   },
   "enableAllProjectMcpServers": true,

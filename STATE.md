@@ -1940,13 +1940,10 @@ products/crud, products/questions, products/ratings, products/stock,
 products/triggers, orders/refunds, orders/returns, orders/shipping,
 orders/status, users, warehouses, webhooks, subscriptions, providers, capture
 
-### Remaining (7 cron tests — all pass individually)
-- test_auto_capture_confirmed_receipts_flow
-- test_check_expired_authorizations (multiple variants)
-- test_compute_trending_sorted_scoring
-- test_retry_failed_meilisearch_syncs variants
-- test_sync_expired_subscriptions_flow
+### Remaining (1 cron test — down from 312)
+- test_auto_capture_confirmed_receipts_marks_failed_when_no_delivered_items_payable
 - Root cause: shared PostgreSQL data accumulation during concurrent test run
+- Agent actively fixing
 
 ### Architecture Grade: C+ → B+
 - 22 DatabaseStore trait methods (6 new: find_where, count_where, exists_where, update_where, delete_where, find_where_multi)
@@ -1965,7 +1962,6 @@ orders/status, users, warehouses, webhooks, subscriptions, providers, capture
 8. **P2**: Fix 2 Rust dead_code warnings in cron/mod.rs
 9. **P1**: Run 30+ agent audit across codebase (10 done, 20+ remaining)
 10. **P1**: Update STATE.md with verified audit findings
-| **When?** | **ASAP.** Every day on SurrealDB is a day where a power outage could corrupt payment data, a concurrent checkout could lose stock, or a transaction could partially commit without rollback. |
 
 ---
 

@@ -101,14 +101,46 @@ double total = 86.25;            // Float money
 
 Field names: `priceCents`, `subtotalCents`, `taxAmountCents`, `totalAmountCents`, `shippingCostCents`, `platformFeeTotalCents`.
 
-## Error Handling
+## Error Handling (See also: error-handling-expert skill)
 
-- `AppError` for all domain errors
+### Error Code System
+
+All errors use structured codes — never string matching:
+
+```
+AUTH_*     — Authentication errors (REQUIRED, EXPIRED, INVALID, MFA_REQUIRED)
+ORDER_*    — Order lifecycle (NOT_FOUND, INVALID_TRANS, ALREADY_PAID, CANCELLED)
+STOCK_*    — Inventory (INSUFFICIENT, LOCKED)
+PAY_*      — Payment (FAILED, AMOUNT_MISMATCH, IDEMPOTENT)
+VALID_*    — Validation (REQUIRED, INVALID_FORMAT, OUT_OF_RANGE)
+RATE_*     — Rate limiting
+INTERNAL_* — Server errors (ERROR, DB_ERROR)
+```
+
+### Dart Error Handling
+
+- `AppError` hierarchy — typed errors, no generic `Exception`
+- Repository: map SDK exceptions to domain errors via typed catch
+- ViewModel: `AsyncValue.guard()` — errors in state, never silent
+- UI: `.when(error:)` handles ALL error types — no `SizedBox()` in error branch
+- Never catch generic `Exception` — catch specific types
+- Never `catch (e) { if (e.toString().contains(...)) }` — use typed codes
+
+### Rust Error Handling
+
+- `Result<T, AppError>` on all handler functions
+- `map_err()` with context for error chaining
+- No `unwrap()` in production code (tests OK)
+- HTTP status codes: 400 validation, 401 auth, 403 forbidden, 404 not found, 409 conflict, 429 rate limited, 500 internal
+- Structured error responses: `{ "error": { "code": "...", "message": "..." } }`
+
+### Logging
+
 - `AppLogger` for logging (never `print()` or `debugPrint()`)
-- Every async action handles loading / error / success
 - Transient errors: `SnackBar`
 - Form errors: inline
 - Unexpected errors: log to Sentry via `SentryService`
+- No PII in logs (emails, addresses, tokens)
 
 ## Responsive Design
 
