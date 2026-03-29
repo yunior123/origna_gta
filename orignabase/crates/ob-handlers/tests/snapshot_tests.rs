@@ -305,9 +305,8 @@ fn snapshot_config_auth_defaults() {
 fn snapshot_config_database_defaults() {
     let config = Config::load(None).unwrap();
     let db_snapshot = json!({
-        "endpoint": config.database.endpoint,
-        "namespace": config.database.namespace,
-        "name": config.database.name,
+        "url": config.database.url,
+        "max_connections": config.database.max_connections,
     });
     insta::assert_json_snapshot!(db_snapshot);
 }

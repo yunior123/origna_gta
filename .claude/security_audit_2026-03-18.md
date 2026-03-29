@@ -104,10 +104,10 @@ pub async fn register(...) -> Result<...> {
 
 ## HIGH SEVERITY FINDINGS
 
-### 3. SurrealDB Query Injection Risk (HIGH)
+### 3. PostgreSQL Query Injection Risk (HIGH)
 **File**: `/Users/yuniorrodriguezosorio/Documents/GitHub/orignabase/crates/ob-handlers/src/payments/webhooks.rs` (lines 120-130, 150-160)  
 **Severity**: HIGH  
-**Description**: Event ID is escaped using `ob_core::escape_surreal_string()` but the query is built as a raw string format. While escaping is used, there's a risk of logic injection if the escape function is incomplete.
+**Description**: Event ID is escaped using `ob_core::escape_sql_string()` but the query is built as a raw string format. While escaping is used, there's a risk of logic injection if the escape function is incomplete.
 
 ```rust
 // Line 120-130
@@ -116,7 +116,7 @@ let existing = state
     .query_raw(&format!(
         "SELECT * FROM {} WHERE eventId = '{}'",
         collections::WEBHOOK_EVENTS,
-        ob_core::escape_surreal_string(event_id)  // ✓ Escaped, but raw format is risky
+        ob_core::escape_sql_string(event_id)  // ✓ Escaped, but raw format is risky
     ))
     .await;
 ```
@@ -360,7 +360,7 @@ if let Some(forwarded) = request.headers().get("x-forwarded-for") {
 - Expiry enforced on verification
 - Token revocation not explicitly implemented (no token blacklist)
 
-### SurrealDB Security Rules
+### PostgreSQL Security Rules
 - Security evaluator implemented (`ob-security` crate) with rule engine
 - Supports: `isAuthenticated()`, `hasRole()`, `isOwner()` functions
 - Rules apply OR semantics (any matching rule allows)
@@ -383,7 +383,7 @@ if let Some(forwarded) = request.headers().get("x-forwarded-for") {
 | Category | Status | Critical | High | Medium | Low |
 |----------|--------|----------|------|--------|-----|
 | Auth & JWT | ✓ Mostly Good | — | — | 1 | — |
-| SurrealDB Permissions | ✓ Good | — | 1 | — | — |
+| PostgreSQL Permissions | ✓ Good | — | 1 | — | — |
 | Input Validation | ✓ Good | — | — | — | — |
 | Stripe/Payments | ✓ Good | — | — | 1 | — |
 | CORS | ✗ Critical | 1 | — | — | — |
@@ -393,7 +393,7 @@ if let Some(forwarded) = request.headers().get("x-forwarded-for") {
 
 **Total Findings**: 14  
 - **Critical**: 2 (CORS wildcard, Missing Turnstile)
-- **High**: 1 (SurrealDB injection risk)
+- **High**: 1 (PostgreSQL injection risk)
 - **Medium**: 3 (JWT handling, Price tolerance, IP extraction)
 - **Low**: 1 (Proxy trust)
 - **Good/No Issues**: 7

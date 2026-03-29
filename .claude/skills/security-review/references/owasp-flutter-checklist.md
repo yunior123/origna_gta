@@ -29,7 +29,7 @@ Adapted from OWASP Mobile Top 10 (2024) for Flutter e-commerce apps with Rust ba
 - [ ] RS256 JWT with algorithm enforcement (no `alg: "none"`)
 - [ ] JWT expiry validated server-side on every request
 - [ ] User ID derived from JWT `sub`, never from request body
-- [ ] Row-level security in SurrealDB `PERMISSIONS` clauses
+- [ ] Row-level security in PostgreSQL `RLS` policies
 - [ ] Seller isolation: own products/orders/profile only
 - [ ] Admin actions require `admin` role + audit logging
 - [ ] Google Sign-In via server-side OAuth (not client `authenticate()`)
@@ -46,7 +46,7 @@ Adapted from OWASP Mobile Top 10 (2024) for Flutter e-commerce apps with Rust ba
 - [ ] Phone: E.164 (`+1XXXXXXXXXX`)
 - [ ] Prices: positive integer cents, max $100K CAD (10,000,000 cents)
 - [ ] Error responses never expose SQL, stack traces, or internal paths
-- [ ] SurrealDB queries always parameterized (no string concatenation)
+- [ ] PostgreSQL queries always parameterized (no string concatenation)
 
 ## M5: Insecure Communication
 
@@ -65,7 +65,7 @@ Adapted from OWASP Mobile Top 10 (2024) for Flutter e-commerce apps with Rust ba
 
 - [ ] No PII in logs (emails, phones, addresses, payment data)
 - [ ] Buyer addresses limited to shipping needs for sellers
-- [ ] Bank details in Stripe Connect only (never in SurrealDB)
+- [ ] Bank details in Stripe Connect only (never in PostgreSQL)
 - [ ] GDPR delete: full user data purge capability
 - [ ] Analytics/telemetry respects user consent
 - [ ] Sentry error reports scrub PII before sending

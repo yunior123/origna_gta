@@ -153,7 +153,7 @@ proptest! {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// CORE VALIDATION (SurrealDB identifiers, document IDs)
+// CORE VALIDATION (SQL identifiers, document IDs)
 // ═══════════════════════════════════════════════════════════════════
 
 proptest! {
@@ -182,7 +182,7 @@ proptest! {
 proptest! {
     #[test]
     fn prop_escape_never_panics(s in "\\PC*") {
-        let _ = validate::escape_surreal_string(&s);
+        let _ = validate::escape_sql_string(&s);
     }
 
     #[test]
@@ -202,8 +202,8 @@ proptest! {
 
 proptest! {
     #[test]
-    fn prop_escaped_string_safe_for_surreal(s in ".*") {
-        let escaped = validate::escape_surreal_string(&s);
+    fn prop_escaped_string_safe_for_sql(s in ".*") {
+        let escaped = validate::escape_sql_string(&s);
         let chars: Vec<char> = escaped.chars().collect();
         for (i, &c) in chars.iter().enumerate() {
             if c == '\'' {
@@ -293,8 +293,8 @@ fn sanity_validate_document_id_basic() {
 }
 
 #[test]
-fn sanity_escape_surreal_string_basic() {
-    assert_eq!(validate::escape_surreal_string("hello"), "hello");
-    assert_eq!(validate::escape_surreal_string("it's"), "it\\'s");
-    assert_eq!(validate::escape_surreal_string("a\\b"), "a\\\\b");
+fn sanity_escape_sql_string_basic() {
+    assert_eq!(validate::escape_sql_string("hello"), "hello");
+    assert_eq!(validate::escape_sql_string("it's"), "it\\'s");
+    assert_eq!(validate::escape_sql_string("a\\b"), "a\\\\b");
 }

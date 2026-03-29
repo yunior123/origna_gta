@@ -138,7 +138,7 @@ origna_gta/lib/models/generated/product_models.dart                             
 - [ ] `ProductSpec` has: `key` (String), `value` (dynamic/union), `type` (enum: text/number/boolean)
 - [ ] `ProductSpecs` is a list/collection of `ProductSpec`
 - [ ] Type enforcement: `number` type stores numeric value, `boolean` stores true/false
-- [ ] Serialization roundtrip: Dart -> JSON -> Rust -> SurrealDB -> Rust -> JSON -> Dart (no data loss)
+- [ ] Serialization roundtrip: Dart -> JSON -> Rust -> PostgreSQL -> Rust -> JSON -> Dart (no data loss)
 - [ ] Key is case-sensitive or normalized (pick one, be consistent)
 - [ ] Freezed model correctly handles the union/dynamic value type
 
@@ -277,7 +277,7 @@ orignabase/crates/ob-handlers/src/products/crud.rs   # bundledProductIds field o
 - [ ] Deleted bundled product: gracefully handled (skip, don't error)
 - [ ] Inactive bundled product: excluded from recommendations response
 - [ ] UI for seller to add/remove bundled products exists
-- [ ] IDs stored as SurrealDB record IDs (`products:xxx`)
+- [ ] IDs stored as PostgreSQL UUIDs
 
 **Grep for:** `bundledProductIds`, `max_bundles`, `5`, `seller_curated`, `manual_bundle`
 

@@ -1,7 +1,7 @@
 # AGENTS.md — OrignaGTA Coding Agent Guide
 
 > **Source of truth:** `CLAUDE.md` + `.claude/rules/` — read those for full context.
-> Firebase is GONE. Backend is OrignaBase (Rust VPS + SurrealDB + Meilisearch).
+> Firebase is GONE. Backend is OrignaBase (Rust VPS + PostgreSQL + Meilisearch).
 
 ## Build / Lint / Test Commands
 
@@ -114,7 +114,7 @@ flutter analyze --no-fatal-infos && flutter test --exclude-tags golden
 - All data, auth, search through OrignaBase SDK — never raw HTTP
 - Environments: emulator / dev / staging / production
 - Config: `lib/utils/env_config.dart` — never hardcode URLs
-- SurrealDB timestamp fields: orders use `createdAt`, products use `dateCreated`
+- PostgreSQL timestamp fields: orders use `createdAt`, products use `dateCreated`
 
 ## Key Files Reference
 | Purpose | Path |
@@ -170,7 +170,7 @@ flutter analyze --no-fatal-infos && flutter test --exclude-tags golden
 | Project | Stack | Path | Test Command |
 |---------|-------|------|-------------|
 | **origna_gta** | Flutter/Dart, OrignaBase (Rust), Riverpod, Freezed | `~/Documents/GitHub/origna_gta` | `flutter analyze --no-fatal-infos && flutter test` |
-| **orignabase** | Rust (axum, SurrealDB, tower), Docker, Caddy | `~/Documents/GitHub/orignabase` | `cargo clippy -D warnings && cargo test` |
+| **orignabase** | Rust (axum, PostgreSQL, tower), Docker, Caddy | `~/Documents/GitHub/orignabase` | `cargo clippy -D warnings && cargo test` |
 | **fxcleaner** | Swift/SwiftUI, macOS | `~/Documents/GitHub/fxcleaner` | `cd fxcleaner_swiftui && swift test` |
 | **viral-video-pipeline** | Python 3.12+, Playwright, Google GenAI | `~/Documents/GitHub/viral-video-pipeline` | `pytest` |
 | **aguara** | Go, security scanner (fork, OSS) | `~/Documents/GitHub/aguara` | `go test ./...` |

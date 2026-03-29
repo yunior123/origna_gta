@@ -38,7 +38,7 @@ You can override the API URL directly: `--dart-define=ORIGNABASE_URL=http://loca
 
 ## 3. Docker Compose (Full Local Stack)
 
-Starts SurrealDB, Meilisearch, OrignaBase, and Caddy in containers.
+Starts PostgreSQL, Meilisearch, OrignaBase, and Caddy in containers.
 
 ```bash
 colima start
@@ -51,7 +51,7 @@ docker compose up -d
 
 | Service | Host Port | Container Port | Memory Limit |
 |---------|-----------|---------------|-------------|
-| SurrealDB v2 | `127.0.0.1:8000` | 8000 | 512M |
+| PostgreSQL | `127.0.0.1:8000` | 8000 | 512M |
 | Meilisearch v1.12 | `127.0.0.1:7700` | 7700 | 256M |
 | OrignaBase | `127.0.0.1:8080` | 8080 | 512M |
 | Caddy 2.8 | `80`, `443` | 80, 443 | 128M |
@@ -60,7 +60,7 @@ docker compose up -d
 
 | Volume | Purpose |
 |--------|---------|
-| `surrealdb_data` | SurrealDB RocksDB persistence |
+| `postgresql_data` | PostgreSQL RocksDB persistence |
 | `meili_data` | Meilisearch index data |
 | `caddy_data` | TLS certificates (do NOT delete) |
 | `caddy_config` | Caddy runtime config |
@@ -68,22 +68,22 @@ docker compose up -d
 ### Health Checks
 
 All services have 30s-interval health checks with 3 retries and 40s start period:
-- SurrealDB: `curl http://localhost:8000/health`
+- PostgreSQL: `curl http://localhost:5432/health`
 - Meilisearch: `curl http://localhost:7700/health`
 - OrignaBase: `curl http://localhost:8080/health`
 - Caddy: `wget --spider http://localhost:80/`
 
-OrignaBase depends on both SurrealDB and Meilisearch being healthy before starting.
+OrignaBase depends on both PostgreSQL and Meilisearch being healthy before starting.
 
 ### GOTCHA: Docker Internal DNS
 
-Inside Docker, `OB_DATABASE__ENDPOINT` is `ws://surrealdb:8000` and `OB_SEARCH__URL` is `http://meilisearch:7700`. These use Docker DNS service names, NOT `localhost`. The `.env.dev` file has this set correctly. If you create a custom `.env`, use Docker service names for inter-container communication.
+Inside Docker, `OB_DATABASE__ENDPOINT` is `postgresql:5432` and `OB_SEARCH__URL` is `http://meilisearch:7700`. These use Docker DNS service names, NOT `localhost`. The `.env.dev` file has this set correctly. If you create a custom `.env`, use Docker service names for inter-container communication.
 
 ### Default Credentials (dev)
 
 | Service | Username | Password |
 |---------|----------|----------|
-| SurrealDB | `root` | `root` |
+| PostgreSQL | `root` | `root` |
 | Meilisearch | -- | `dev-meili-key-insecure` |
 | OrignaBase JWT | -- | `dev-jwt-secret-not-for-production` |
 
@@ -91,7 +91,7 @@ Inside Docker, `OB_DATABASE__ENDPOINT` is `ws://surrealdb:8000` and `OB_SEARCH__
 
 ## 4. Embedded OrignaBase (No Docker)
 
-Runs OrignaBase with an embedded SurrealDB (RocksDB on disk). Lighter weight, no containers needed.
+Runs OrignaBase with an embedded PostgreSQL (RocksDB on disk). Lighter weight, no containers needed.
 
 ```bash
 cd orignabase
@@ -105,7 +105,7 @@ host = "0.0.0.0"
 port = 8080
 
 [database]
-endpoint = "rocksdb://./local_test_data"
+endpoint = "postgresql://localhost:5432/orignabase_test"
 namespace = "orignabase"
 name = "main"
 
@@ -131,9 +131,9 @@ docker run -d --name meilisearch -p 7700:7700 \
   getmeili/meilisearch:v1.12
 ```
 
-### GOTCHA: SurrealDB ws:// Prefix
+### GOTCHA: PostgreSQL Connection
 
-When using the SurrealDB WebSocket client (not embedded RocksDB), use `host:port` format ONLY. Adding the `ws://` prefix causes a silent hang. The embedded `rocksdb://` prefix is correct and different.
+PostgreSQL uses standard connection strings: `postgresql://user:password@host:port/database`. No special prefix handling needed.
 
 ---
 
@@ -281,7 +281,7 @@ pkill -f "Google Chrome.*--headless" 2>/dev/null || true
 
 ## 8. Test Accounts (dev DB)
 
-| Role | Email | Password | SurrealDB ID |
+| Role | Email | Password | PostgreSQL ID |
 |------|-------|----------|-------------|
 | Admin | `e2e-admin@test.origna.ca` | `REDACTED_TEST_PASSWORD` | `users:jtcns172qplow96s2bjq` |
 | Seller | `e2e-seller@test.origna.ca` | `REDACTED_TEST_PASSWORD` | `users:7z9ggqkw83txgx5p9k8t` |
@@ -310,11 +310,11 @@ Accessible at `http://localhost:8100`. Not required for app development.
 | # | Gotcha | Impact | Fix |
 |---|--------|--------|-----|
 | 1 | `flutter widget-preview start` | Broken preview server | Always use `./start-preview.sh` |
-| 2 | SurrealDB `ws://` prefix in embedded mode | Silent hang, no error | Use `host:port` only (e.g., `surrealdb:8000`), never `ws://surrealdb:8000` |
+| 2 | PostgreSQL `` prefix in embedded mode | Silent hang, no error | Use `host:port` only (e.g., `postgresql:5432`), never `postgresql:5432` |
 | 3 | `#[ignore]` on Rust integration tests | Tests silently skipped with `cargo test` | Use `cargo test -- --ignored` with `OB_TEST_URL` set |
 | 4 | Missing `RUN_ORIGNABASE_LIVE_TESTS=true` | Flutter live tests silently skip | Add `--dart-define=RUN_ORIGNABASE_LIVE_TESTS=true` |
 | 5 | Docker compose needs `.env` copy | Compose fails with empty vars | `cp .env.dev .env` before `docker compose up` |
-| 6 | Docker internal DNS vs localhost | OrignaBase can't reach SurrealDB | Inside Docker: `ws://surrealdb:8000`. Outside Docker: `ws://localhost:8000` |
+| 6 | Docker internal DNS vs localhost | OrignaBase can't reach PostgreSQL | Inside Docker: `postgresql:5432`. Outside Docker: `localhost:5432` |
 | 7 | `cargo build --release` on 8GB RAM | OOM kill (full LTO + codegen-units=1) | Add 4GB swap first: `sudo dd if=/dev/zero of=/swapfile bs=1m count=4096 && sudo mkswap /swapfile && sudo swapon /swapfile` |
 | 8 | Sequential image compression | Slow uploads if done in a for loop | Use `Future.wait()` for parallel compression, not sequential `for` loops |
 | 9 | Deleting `caddy_data` volume | Loses TLS certificates, rate-limited by Let's Encrypt | Never `docker volume rm caddy_data` unless you understand the re-issuance delay |

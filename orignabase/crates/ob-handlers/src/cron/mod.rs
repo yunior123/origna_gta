@@ -6010,7 +6010,7 @@ mod tests {
         let period_end = (Utc::now() - Duration::days(1)).to_rfc3339();
 
         // Record ID is empty string after normalize → should continue
-        // SurrealDB won't allow empty-string ID, but normalize_record_id
+        // PostgreSQL won.*t allow empty-string ID, but normalize_record_id
         // of "subscriptions:x" → "x" which is non-empty. To test the
         // empty uid path, we'd need a record with id="" which isn't
         // possible. Instead test with valid past_due sub.

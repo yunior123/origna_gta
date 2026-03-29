@@ -1,5 +1,7 @@
 pub mod client;
 pub mod crud;
+pub mod db_store;
+pub mod pg_store;
 pub mod query;
 pub mod task_queue;
 pub mod transaction;

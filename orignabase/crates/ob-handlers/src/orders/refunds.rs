@@ -394,14 +394,14 @@ async fn refund_order_item(
     let refund_amount_cents = calculate_refund_amount_cents(&order, item)?;
 
     // SECURITY: Atomically reserve the refund amount before calling Stripe.
-    // This UPDATE ... WHERE pattern is a single atomic operation in SurrealDB — it
+    // This UPDATE ... WHERE pattern is a single atomic operation in PostgreSQL — it
     // only succeeds if cumulativeRefundedCents + amt <= totalAmountCents at the
     // moment of the write, closing the TOCTOU race between concurrent refund requests.
     let order_id_stripped = req
         .order_id
         .strip_prefix(&format!("{}:", collections::ORDERS))
         .unwrap_or(&req.order_id);
-    // `?? 0` is SurrealDB v2's NONE/null-coalescing operator for missing fields.
+    // `COALESCE` is PostgreSQL null-coalescing operator for missing fields.
     let reserve_sql = "UPDATE type::thing($table, $id) \
         SET cumulativeRefundedCents = ((cumulativeRefundedCents ?? 0) + $amt) \
         WHERE ((cumulativeRefundedCents ?? 0) + $amt) <= totalAmountCents \
@@ -464,7 +464,7 @@ async fn refund_order_item(
         Ok(id) => id,
         Err(stripe_err) => {
             let rollback_sql = "UPDATE type::thing($table, $id) \
-                SET cumulativeRefundedCents = ((cumulativeRefundedCents ?? $amt) - $amt) \
+                SET cumulativeRefundedCents = (COALESCE(cumulativeRefundedCents, 0) - $amt) \
                 RETURN AFTER";
             if let Err(rb_err) = state
                 .db

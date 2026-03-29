@@ -1,6 +1,6 @@
 //! Payment and checkout fixes live integration tests
 //!
-//! Tests critical payment/checkout fixes against dev SurrealDB:
+//! Tests critical payment/checkout fixes against dev PostgreSQL:
 //! - Platform fee calculation (5% of subtotal)
 //! - Order total includes tax + shipping
 //! - Free shipping threshold ($75 CAD = 7500 cents)

@@ -80,7 +80,7 @@
 **Methods**:
 - `signOut()` -- Signs user out via OrignaBase SDK
 - `isEmailVerified()` -- Checks email verification status
-- `ensureUserDocumentExists()` -- Creates user document in SurrealDB if missing
+- `ensureUserDocumentExists()` -- Creates user document in PostgreSQL if missing
 - `sendEmailVerification()` -- Sends verification email
 
 **Watches**: `userIdProvider`, `authRepositoryProvider`, `userProfileProvider`

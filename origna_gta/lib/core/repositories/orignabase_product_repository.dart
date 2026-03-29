@@ -18,7 +18,7 @@ import 'package:origna_gta/models/generated/models.dart';
 /// Recursively cast `Map<dynamic, dynamic>` to `Map<String, dynamic>` and
 /// normalize nanosecond-precision timestamps that Dart cannot parse.
 ///
-/// SurrealDB returns dynamic-keyed maps that Freezed's fromJson rejects,
+/// PostgreSQL returns dynamic-keyed maps that Freezed's fromJson rejects,
 /// and ISO-8601 timestamps with 9 fractional digits that [DateTime.parse]
 /// cannot handle. This function fixes both issues in a single pass.
 Map<String, dynamic> _deepCastMap(Map<dynamic, dynamic> source) {
@@ -113,7 +113,7 @@ class OrignaBaseProductRepository
     data[Fields.createdAt] ??=
         data[Fields.dateCreated] ?? DateTime.now().toIso8601String();
 
-    // Normalize timestamps: SurrealDB returns nanosecond-precision ISO strings
+    // Normalize timestamps: PostgreSQL returns nanosecond-precision ISO strings
     // (e.g. "2026-03-12T11:56:03.185238962+00:00") which Dart's DateTime.parse
     // cannot handle (only supports up to microseconds). Truncate to 6 decimal places.
     // Note: nested timestamps (e.g. inventory.lastLowStockAlertAt) are handled
@@ -161,7 +161,7 @@ class OrignaBaseProductRepository
         : doc.id;
 
     // Deep-cast nested maps from Map<dynamic, dynamic> to Map<String, dynamic>
-    // SurrealDB returns dynamic maps which Freezed's fromJson rejects.
+    // PostgreSQL returns dynamic maps which Freezed's fromJson rejects.
     return Product.fromJson(_deepCastMap(data));
   }
 

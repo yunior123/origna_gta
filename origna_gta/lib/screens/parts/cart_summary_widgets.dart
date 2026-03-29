@@ -76,14 +76,17 @@ class _CheckoutButton extends ConsumerWidget {
         final cartDetails = ref.read(cartWithDetailsProvider);
         cartDetails.whenData((itemsWithDetails) {
           if (itemsWithDetails.isEmpty) return;
-          final subtotal = itemsWithDetails.fold(
-            0.0,
-            (total, item) => total + (item.price * item.quantity),
+          final subtotalCents = itemsWithDetails.fold<int>(
+            0,
+            (total, item) => total + (item.priceCents * item.quantity),
           );
           Navigator.pushNamed(
             context,
             AppRoutes.checkout,
-            arguments: CheckoutArgs(items: itemsWithDetails, total: subtotal),
+            arguments: CheckoutArgs(
+              items: itemsWithDetails,
+              total: subtotalCents / 100.0,
+            ),
           );
         });
       },

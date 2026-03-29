@@ -217,9 +217,9 @@ async fn submit_rating(
         "SELECT * FROM {} WHERE {} = '{}' AND {} = '{}' LIMIT 1",
         collections::PRODUCT_RATINGS,
         fields::PRODUCT_ID,
-        ob_core::escape_surreal_string(&req.product_id),
+        ob_core::escape_sql_string(&req.product_id),
         "userId",
-        ob_core::escape_surreal_string(&req.user_id),
+        ob_core::escape_sql_string(&req.user_id),
     );
 
     let existing: Vec<Value> = state.db.query_raw(&dup_query).await.unwrap_or_default();
@@ -320,7 +320,7 @@ async fn get_ratings(
     let mut conditions = vec![format!(
         "{} = '{}'",
         fields::PRODUCT_ID,
-        ob_core::escape_surreal_string(&req.product_id)
+        ob_core::escape_sql_string(&req.product_id)
     )];
 
     if let Some(min) = req.min_rating {
@@ -399,8 +399,8 @@ async fn review_vote(
     let find_query = format!(
         "SELECT * FROM {} WHERE reviewId = '{}' AND userId = '{}' LIMIT 1",
         vote_col,
-        ob_core::escape_surreal_string(&req.review_id),
-        ob_core::escape_surreal_string(&user_id)
+        ob_core::escape_sql_string(&req.review_id),
+        ob_core::escape_sql_string(&user_id)
     );
     let existing: Vec<serde_json::Value> =
         state.db.query_raw(&find_query).await.unwrap_or_default();
@@ -440,7 +440,7 @@ async fn review_vote(
             let update_ratings_query = format!(
                 "UPDATE {}:{} SET helpfulVotes += {}, unhelpfulVotes += {}, {} = time::now()",
                 collections::PRODUCT_RATINGS,
-                ob_core::escape_surreal_string(&req.review_id),
+                ob_core::escape_sql_string(&req.review_id),
                 helpful_adj,
                 unhelpful_adj,
                 fields::UPDATED_AT
@@ -451,8 +451,8 @@ async fn review_vote(
         let create_vote_query = format!(
             "CREATE {} SET reviewId = '{}', userId = '{}', vote = '{}', createdAt = time::now(), {} = time::now()",
             vote_col,
-            ob_core::escape_surreal_string(&req.review_id),
-            ob_core::escape_surreal_string(&user_id),
+            ob_core::escape_sql_string(&req.review_id),
+            ob_core::escape_sql_string(&user_id),
             vote_str,
             fields::UPDATED_AT
         );
@@ -468,7 +468,7 @@ async fn review_vote(
             let update_ratings_query = format!(
                 "UPDATE {}:{} SET helpfulVotes += {}, unhelpfulVotes += {}, {} = time::now()",
                 collections::PRODUCT_RATINGS,
-                ob_core::escape_surreal_string(&req.review_id),
+                ob_core::escape_sql_string(&req.review_id),
                 helpful_adj,
                 unhelpful_adj,
                 fields::UPDATED_AT

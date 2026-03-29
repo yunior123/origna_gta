@@ -813,7 +813,7 @@
 **`OrignaBaseNotificationRepository`**
 > OrignaBase implementation of the notification repository.  Notifications are stored in the flat [Collections.notifications] collection with a [Fields.userId] field referencing the owner.
   Methods:
-  - `Future<void> markAllRead(String uid)` -- Marks all unread notifications as read using batch update.  Silently succeeds when the user has no notifications (list returns empty or 403 due to null resource context on the SurrealDB rule).
+  - `Future<void> markAllRead(String uid)` -- Marks all unread notifications as read using batch update.  Silently succeeds when the user has no notifications (list returns empty or 403 due to null resource context on the PostgreSQL rule).
   - `Future<void> markRead(String uid, String notificationId)` -- Marks a single notification as read.  Silently succeeds when the notification does not exist (non-fatal).
 
   Internal deps: `core/schema/schema_constants.dart`, `utils/utils.dart`

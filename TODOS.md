@@ -16,7 +16,7 @@
 19. audit auth system all over in backend and frontend
 20. improve local host test configuration and test system for stripe cli webhook forwarding, orignabase, meilisearch,flutter
 21. use delegation to document codebase like pro, search web for best practices. document so well that it will avoid going back and forth many times: ex: we were using for loop for images compression then future.wait then for loop again. document functions, clases, etc
-22. priority goes to live tests in rust first then flutter, increase coverage for tests running against localhost orignabase,surrealdb,meilisearch,flutter
+22. priority goes to live tests in rust first then flutter, increase coverage for tests running against localhost orignabase,postgresql,meilisearch,flutter
 23. u have limited tokens so u have to delegate a lot, u can try gemini,kilo,opencode,codex
 24. fix all, test in depth
 25. create delegation plan, ask me questions
@@ -31,7 +31,7 @@
 32. use 4 parallel reviewers to verify,  confidence scoring, and prioritized findings in state.md
 33. audit full codebase in depth with 70+ agents, add findings to state.md. use quorum agents to verify
 34. docs for classes, functions, etc, to avoid back and forth. search web for best practices
-35. localhost testing with surrealdb,meilisearch,stripe cli,flutter running can be prefered before deploying but ram has to be monitored, stale and zombie process have to be killed before running  to avoid memory issues.
+35. localhost testing with postgresql,meilisearch,stripe cli,flutter running can be prefered before deploying but ram has to be monitored, stale and zombie process have to be killed before running  to avoid memory issues.
 36. when working on issues always monitor agents and make sure to always use the time properly working, avoid wasting time
 37. avoid launching to many claude code in bash. why?:it consumes too many tokens, subagents are prefered.
 39. fix what remains "/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/STATE.md" , be careful not to destroy our code
@@ -69,6 +69,7 @@ begining, middle, end, or something like that for large views.
   delete dupes. is that screenshots are not taken correctly probably due to issues navigating the app
 
 55. e2e ai: give it navigation routes info + semantics from flutter + test users:yuniorrodriguezo460@gmail.com, yr62813@gmail.com, yuniorrodriguezo4601@yahoo.com + big prompt to make it cover all
+56. it should include env config in vps.make sure to improve the plan to cover everysingle detail, websockets, etc. search web and github extensibly. cover all features to be replaced in depth with examples and evidence. make sure the plan is pro.cover all references of postgresql to be replaced. right now we dont need to backup anything since we have not launched yet.
 
 EXAMPLES:
 EX1
@@ -120,3 +121,8 @@ BAD:
  SearchSyncer, but that's heavy. Instead, let me bulk-index a few products directly into Meilisearch:
 GOOD:
 u can re seed entirely
+
+
+
+1. run all live tests in backend and frontend. fix as needed. dont stop till done
+2. run e2e tests in orignabase rust and origna_gta flutter, all tests and phases. fix as needed.dont stop till done. 6. run all example apps tests and clean after done.15. run load tests, reliability tests, stress tests, benchmarks, example apps and tests . 9. make sure postgresql is gone from docs, code, readme, claude.md, etc, use grep postgresql.10. update vps for dev, staging, prod after all ok.

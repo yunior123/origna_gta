@@ -13,7 +13,7 @@ OrignaGTA is a **Canada-first multi-vendor e-commerce platform** — think Etsy 
 - **Digital products**: Software licenses and ebooks
 - **Local delivery**: 50km radius for same-day shipping
 - **Bilingual**: English + French (Quebec Bill 96 compliance)
-- **Modern stack**: Flutter + Rust (OrignaBase) + SurrealDB
+- **Modern stack**: Flutter + Rust (OrignaBase) + PostgreSQL
 
 ---
 

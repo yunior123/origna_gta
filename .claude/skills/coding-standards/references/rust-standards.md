@@ -20,7 +20,7 @@ pub enum AppError {
     Internal(String),
 
     #[error("Database error: {0}")]
-    Database(#[from] surrealdb::Error),
+    Database(#[from] sqlx::Error),
 }
 
 impl IntoResponse for AppError {
@@ -118,16 +118,17 @@ println!("Order confirmed: {}", order.id);   // Never println
 eprintln!("Error: {}", e);                    // Never eprintln
 ```
 
-## SurrealDB Queries (Parameterized Only)
+## PostgreSQL Queries (Parameterized Only)
 
 ```rust
 // CORRECT — parameterized
-let orders: Vec<Order> = state.db
-    .query("SELECT * FROM orders WHERE buyer_id = $buyer_id ORDER BY createdAt DESC LIMIT $limit")
-    .bind(("buyer_id", &user_id))
-    .bind(("limit", limit))
-    .await?
-    .take(0)?;
+let orders: Vec<Order> = sqlx::query_as(
+    "SELECT * FROM orders WHERE buyer_id = $1 ORDER BY createdAt DESC LIMIT $2"
+)
+.bind(&user_id)
+.bind(limit)
+.fetch_all(&pool)
+.await?;
 
 // FORBIDDEN — string concatenation (SQL injection risk)
 let query = format!("SELECT * FROM orders WHERE buyer_id = '{}'", user_id);
@@ -138,7 +139,7 @@ let query = format!("SELECT * FROM orders WHERE buyer_id = '{}'", user_id);
 ```rust
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Claims {
-    pub sub: String,        // Full SurrealDB ID: "users:abc123"
+    pub sub: String,        // User UUID
     pub uid: String,        // Short ID: "abc123"
     pub role: String,       // "buyer", "seller", "admin"
     pub exp: usize,

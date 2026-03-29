@@ -21,6 +21,9 @@ use crate::shared::validation::{sanitize_html, validate_uid};
 /// Threshold above which shipping cost increase requires buyer approval (20%).
 const SHIPPING_APPROVAL_THRESHOLD: f64 = 0.20;
 
+/// Basis points multiplier for max shipping: (1.0 + 0.20) * 100 = 120.
+const SHIPPING_APPROVAL_MULTIPLIER_BPS: i64 = 120;
+
 /// Absolute max shipping in cents ($500 CAD hard cap for free-shipping orders).
 const ABSOLUTE_MAX_SHIPPING_CENTS: i64 = 50_000;
 
@@ -107,7 +110,8 @@ fn max_allowed_shipping_cents(old_seller_cents: i64) -> i64 {
     if old_seller_cents == 0 {
         ABSOLUTE_MAX_SHIPPING_CENTS
     } else {
-        (old_seller_cents as f64 * (1.0 + SHIPPING_APPROVAL_THRESHOLD)).round() as i64
+        // Integer arithmetic: old * (1 + threshold) = (old * multiplier_bps + 50) / 100 (rounded)
+        (old_seller_cents * SHIPPING_APPROVAL_MULTIPLIER_BPS + 50) / 100
     }
 }
 
@@ -121,11 +125,7 @@ fn shipping_update_requires_approval(original_seller_cents: i64, new_shipping_ce
     }
 }
 
-fn shipping_tax_difference_cents(difference_cents: i64, province: &str) -> i64 {
-    (difference_cents as f64 * get_tax_rate(province)).round() as i64
-}
-
-/// Canadian tax rates by province (combined GST+HST or GST+PST).
+/// Canadian tax rates by province (combined GST+HST or GST+PST) as f64.
 fn get_tax_rate(province: &str) -> f64 {
     match province {
         "AB" | "NT" | "NU" | "YT" => 0.05, // GST only
@@ -137,6 +137,25 @@ fn get_tax_rate(province: &str) -> f64 {
         "NB" | "NL" | "NS" | "PE" => 0.15, // HST
         _ => 0.13,                         // Default to ON HST
     }
+}
+
+/// Canadian tax rates by province in basis points (integer arithmetic).
+#[allow(dead_code)]
+fn get_tax_rate_bps(province: &str) -> i64 {
+    match province {
+        "AB" | "NT" | "NU" | "YT" => 500,   // 5% GST only
+        "BC" => 1200,                        // 12%
+        "MB" => 1200,                        // 12%
+        "SK" => 1100,                        // 11%
+        "QC" => 14975,                       // 14.975%
+        "ON" => 1300,                        // 13% HST
+        "NB" | "NL" | "NS" | "PE" => 1500,  // 15% HST
+        _ => 1300,                           // Default to ON HST
+    }
+}
+
+fn shipping_tax_difference_cents(difference_cents: i64, province: &str) -> i64 {
+    (difference_cents as f64 * get_tax_rate(province)).round() as i64
 }
 
 async fn stripe_modify_pi(
@@ -1680,7 +1699,7 @@ mod tests {
     async fn test_approve_shipping_buyer_rejects_builds_rejection_data() {
         // The rejection path (lines 347-432) builds update_data, runs stock restore
         // via Transaction. We verify the code path is entered by checking the
-        // transaction attempts (SurrealDB mem DB has a MERGE $data serialization
+        // transaction attempts (PostgreSQL has a MERGE $data serialization
         // limitation, so we verify the error path on line 430-432 is covered).
         let state = setup_state().await;
         state
@@ -1728,7 +1747,7 @@ mod tests {
         .await;
 
         // The rejection path is entered (covering lines 349-432), transaction
-        // may fail in test env due to SurrealDB mem MERGE limitation
+        // may fail in test env due to limitations
         match result {
             Ok(Json(resp)) => {
                 assert!(!resp.approved);

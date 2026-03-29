@@ -143,7 +143,7 @@ async fn is_user_admin(state: &HandlersState, user_id: &str) -> Result<bool, ob_
 }
 
 async fn admin_user_ids(state: &HandlersState) -> Vec<String> {
-    // Use direct SurrealQL query instead of fetching all users + filtering in app
+    // Use direct SQL query instead of fetching all users + filtering in app
     // This reduces N+1 issues when querying push tokens later
     let results = state
         .db
@@ -1885,7 +1885,7 @@ mod tests {
 
         let notifications = state
             .db
-            .list_documents(collections::NOTIFICATIONS, Some(20))
+            .list_documents(collections::NOTIFICATIONS, Some(20), None)
             .await
             .unwrap()
             .into_iter()
@@ -2366,7 +2366,7 @@ mod tests {
         // Verify order event was created
         let events = state
             .db
-            .list_documents(collections::ORDER_EVENTS, Some(10))
+            .list_documents(collections::ORDER_EVENTS, Some(10), None)
             .await
             .unwrap();
         assert!(!events.is_empty());
@@ -2743,7 +2743,7 @@ mod tests {
         // Verify notification was created for the admin
         let notifications = state
             .db
-            .list_documents(collections::NOTIFICATIONS, Some(20))
+            .list_documents(collections::NOTIFICATIONS, Some(20), None)
             .await
             .unwrap()
             .into_iter()
@@ -2821,7 +2821,7 @@ mod tests {
         // Verify Phase 1 created notifications for both admins
         let notifications = state
             .db
-            .list_documents(collections::NOTIFICATIONS, Some(20))
+            .list_documents(collections::NOTIFICATIONS, Some(20), None)
             .await
             .unwrap()
             .into_iter()
@@ -2975,7 +2975,7 @@ mod tests {
         // Verify order event was created (lines 690-708)
         let events = state
             .db
-            .list_documents(collections::ORDER_EVENTS, Some(10))
+            .list_documents(collections::ORDER_EVENTS, Some(10), None)
             .await
             .unwrap();
         assert!(!events.is_empty());

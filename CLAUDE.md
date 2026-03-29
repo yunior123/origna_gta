@@ -62,7 +62,7 @@ cd e2e && ORIGNABASE_URL=http://127.0.0.1:8080 bun run lib/seed-dev.ts
 - MVVM: Screens → ViewModels → Services → OrignaBase SDK
 - State: Riverpod providers (`lib/providers/`), AsyncNotifier for async state
 - Models: `freezed` for all value types. Money = integer cents, never float.
-- Backend: OrignaBase SDK only — never raw HTTP to SurrealDB/Meilisearch
+- Backend: OrignaBase SDK only — never raw HTTP to PostgreSQL/Meilisearch
 
 ## Common Pitfalls (DO NOT)
 

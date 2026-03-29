@@ -6,10 +6,9 @@ host = "0.0.0.0"
 port = 8080
 
 [database]
-endpoint = "ws://surrealdb:8000"
-namespace = "orignabase"
-name = "main"
-username = "root"
+endpoint = "postgresql:5432"
+name = "orignabase"
+username = "orignabase"
 password = "${OB_DB_PASSWORD}"
 
 [auth]

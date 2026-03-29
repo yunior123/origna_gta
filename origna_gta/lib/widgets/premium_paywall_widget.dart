@@ -11,7 +11,11 @@ class PremiumPaywallWidget extends StatelessWidget {
   final String featureName;
   final String? description;
 
-  const PremiumPaywallWidget({super.key, required this.featureName, this.description});
+  const PremiumPaywallWidget({
+    super.key,
+    required this.featureName,
+    this.description,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -22,12 +26,18 @@ class PremiumPaywallWidget extends StatelessWidget {
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [DesignTokens.primary.withValues(alpha: 0.08), DesignTokens.secondary.withValues(alpha: 0.08)],
+          colors: [
+            DesignTokens.primary.withValues(alpha: 0.08),
+            DesignTokens.secondary.withValues(alpha: 0.08),
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: DesignTokens.primary.withValues(alpha: 0.2), width: 1.5),
+        border: Border.all(
+          color: DesignTokens.primary.withValues(alpha: 0.2),
+          width: 1.5,
+        ),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -37,20 +47,41 @@ class PremiumPaywallWidget extends StatelessWidget {
             height: 60,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: LinearGradient(colors: [DesignTokens.primary, DesignTokens.secondary], begin: Alignment.topLeft, end: Alignment.bottomRight),
+              gradient: LinearGradient(
+                colors: [DesignTokens.primary, DesignTokens.secondary],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
             ),
-            child: const Icon(Icons.workspace_premium, color: DesignTokens.white, size: 30),
+            child: const Icon(
+              Icons.workspace_premium,
+              color: DesignTokens.white,
+              size: 30,
+            ),
           ),
           const SizedBox(height: 16),
           Text(
             'subscription.premium_required'.tr(),
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary),
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: isDark
+                  ? DesignTokens.textOnDark
+                  : DesignTokens.textPrimary,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
-            description ?? 'subscription.premium_feature_description'.tr(namedArgs: {'featureName': featureName}),
+            description ??
+                'subscription.premium_feature_description'.tr(
+                  namedArgs: {'featureName': featureName},
+                ),
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 14, color: DesignTokens.textSecondary, height: 1.5),
+            style: TextStyle(
+              fontSize: 14,
+              color: DesignTokens.textSecondary,
+              height: 1.5,
+            ),
           ),
           const SizedBox(height: 20),
           Semantics(
@@ -59,8 +90,11 @@ class PremiumPaywallWidget extends StatelessWidget {
             child: ModernButton(
               key: const Key('paywall_upgrade_button'),
               label: 'subscription.upgrade_to_premium'.tr(),
-              onPressed: () => Navigator.pushNamed(context, AppRoutes.subscription),
+              onPressed: () =>
+                  Navigator.pushNamed(context, AppRoutes.subscription),
               icon: Icons.workspace_premium,
+              fullWidth: false,
+              width: 260,
             ),
           ),
         ],
@@ -69,51 +103,95 @@ class PremiumPaywallWidget extends StatelessWidget {
   }
 }
 
-
 // === Widget Previews ===
-
 
 // ═══ Widget Previews ═══
 
-@Preview(name: 'Paywall — Mobile Dark', group: 'Premium Paywall', size: Size(390, 844), brightness: Brightness.dark)
+@Preview(
+  name: 'Paywall — Mobile Dark',
+  group: 'Premium Paywall',
+  size: Size(390, 844),
+  brightness: Brightness.dark,
+)
 Widget previewPaywallMobile() => previewMobile(
-  child: const Center(child: PremiumPaywallWidget(featureName: 'Global Shipping Discounts')),
+  child: const Center(
+    child: PremiumPaywallWidget(featureName: 'Global Shipping Discounts'),
+  ),
 );
 
-@Preview(name: 'Paywall — Tablet Dark', group: 'Premium Paywall', size: Size(768, 1024), brightness: Brightness.dark)
+@Preview(
+  name: 'Paywall — Tablet Dark',
+  group: 'Premium Paywall',
+  size: Size(768, 1024),
+  brightness: Brightness.dark,
+)
 Widget previewPaywallTablet() => previewTablet(
-  child: const Center(child: PremiumPaywallWidget(featureName: 'Global Shipping Discounts')),
+  child: const Center(
+    child: PremiumPaywallWidget(featureName: 'Global Shipping Discounts'),
+  ),
 );
 
-@Preview(name: 'Paywall — Desktop Dark', group: 'Premium Paywall', size: Size(1280, 800), brightness: Brightness.dark)
+@Preview(
+  name: 'Paywall — Desktop Dark',
+  group: 'Premium Paywall',
+  size: Size(1280, 800),
+  brightness: Brightness.dark,
+)
 Widget previewPaywallDesktop() => previewDesktop(
-  child: const Center(child: PremiumPaywallWidget(featureName: 'Global Shipping Discounts')),
+  child: const Center(
+    child: PremiumPaywallWidget(featureName: 'Global Shipping Discounts'),
+  ),
 );
 
 @Preview(name: 'Premium Paywall — Variants', group: 'PremiumPaywall')
 Widget previewPaywallVariants() => previewGrid(
   children: [
     const PremiumPaywallWidget(featureName: 'Product Video Upload'),
-    const PremiumPaywallWidget(featureName: 'Advanced Analytics', description: 'Upgrade for detailed insights into your shop sales and visitor behavior.'),
+    const PremiumPaywallWidget(
+      featureName: 'Advanced Analytics',
+      description:
+          'Upgrade for detailed insights into your shop sales and visitor behavior.',
+    ),
   ],
 );
 
-@Preview(name: 'Paywall Light — Mobile', group: 'Premium Paywall', size: Size(390, 844), brightness: Brightness.light)
+@Preview(
+  name: 'Paywall Light — Mobile',
+  group: 'Premium Paywall',
+  size: Size(390, 844),
+  brightness: Brightness.light,
+)
 Widget previewPaywallLightMobile() => previewMobile(
   theme: previewLightTheme,
-  child: const Center(child: PremiumPaywallWidget(featureName: 'Global Shipping Discounts')),
+  child: const Center(
+    child: PremiumPaywallWidget(featureName: 'Global Shipping Discounts'),
+  ),
 );
 
-@Preview(name: 'Paywall Light — Tablet', group: 'Premium Paywall', size: Size(768, 1024), brightness: Brightness.light)
+@Preview(
+  name: 'Paywall Light — Tablet',
+  group: 'Premium Paywall',
+  size: Size(768, 1024),
+  brightness: Brightness.light,
+)
 Widget previewPaywallLightTablet() => previewTablet(
   theme: previewLightTheme,
-  child: const Center(child: PremiumPaywallWidget(featureName: 'Global Shipping Discounts')),
+  child: const Center(
+    child: PremiumPaywallWidget(featureName: 'Global Shipping Discounts'),
+  ),
 );
 
-@Preview(name: 'Paywall Light — Desktop', group: 'Premium Paywall', size: Size(1280, 800), brightness: Brightness.light)
+@Preview(
+  name: 'Paywall Light — Desktop',
+  group: 'Premium Paywall',
+  size: Size(1280, 800),
+  brightness: Brightness.light,
+)
 Widget previewPaywallLightDesktop() => previewDesktop(
   theme: previewLightTheme,
-  child: const Center(child: PremiumPaywallWidget(featureName: 'Global Shipping Discounts')),
+  child: const Center(
+    child: PremiumPaywallWidget(featureName: 'Global Shipping Discounts'),
+  ),
 );
 
 @Preview(name: 'Premium Paywall Light — Variants', group: 'PremiumPaywall')
@@ -121,7 +199,10 @@ Widget previewPaywallVariantsLight() => previewGrid(
   theme: previewLightTheme,
   children: [
     const PremiumPaywallWidget(featureName: 'Product Video Upload'),
-    const PremiumPaywallWidget(featureName: 'Advanced Analytics', description: 'Upgrade for detailed insights into your shop sales and visitor behavior.'),
+    const PremiumPaywallWidget(
+      featureName: 'Advanced Analytics',
+      description:
+          'Upgrade for detailed insights into your shop sales and visitor behavior.',
+    ),
   ],
 );
-

@@ -28,7 +28,7 @@ Adapted from [Trail of Bits claude-code-config](https://github.com/trailofbits/c
 
 ## Never Store or Log
 - Passwords or password hashes
-- API keys (Stripe, Meilisearch, SurrealDB, etc.)
+- API keys (Stripe, Meilisearch, PostgreSQL, etc.)
 - PII (emails, phone numbers, addresses) in logs or debug output
 - Card numbers, CVVs, or any payment card data
 - JWT tokens in committed code

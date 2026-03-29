@@ -1,15 +1,14 @@
 # OrignaBase Development Configuration
-# For local development against VPS SurrealDB
+# For local development against PostgreSQL
 
 host = "127.0.0.1"
 port = 8080
 
 [database]
-endpoint = "ws://localhost:8000"
-namespace = "orignabase"
-name = "dev"
-username = "root"
-password = "root"
+endpoint = "localhost:5432"
+name = "orignabase_dev"
+username = "orignabase"
+password = "orignabase"
 
 [auth]
 jwt_secret = "dev-secret-change-in-production"

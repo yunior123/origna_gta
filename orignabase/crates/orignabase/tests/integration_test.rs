@@ -1,9 +1,9 @@
 //! Comprehensive integration tests for OrignaBase.
 //!
-//! These tests require a running OrignaBase instance backed by SurrealDB.
+//! These tests require a running OrignaBase instance backed by PostgreSQL.
 //! Run with: `cargo test --test integration_test -- --ignored`
 //!
-//! To start SurrealDB + OrignaBase:
+//! To start PostgreSQL + OrignaBase:
 //!   surreal start --user root --pass root memory
 //!   cargo run -- serve
 //!
@@ -4902,7 +4902,7 @@ async fn test_120_orignagta_seller_dashboard() {
 // SECTION: Edge Cases & Security (tests 121–126)
 // =============================================================================
 
-/// Test SQL/SurrealQL injection attempts via GraphQL
+/// Test SQL injection attempts via GraphQL
 #[tokio::test]
 #[ignore = "requires running orignabase instance"]
 async fn test_121_injection_prevention_graphql() {

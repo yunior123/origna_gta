@@ -154,7 +154,7 @@ origna_gta/lib/core/schema/schema_constants.dart                     # Field nam
 **Premium status must flow correctly from Stripe -> OrignaBase -> Flutter.**
 
 **Check:**
-- [ ] Webhook updates `seller_profiles` record in SurrealDB
+- [ ] Webhook updates `seller_profiles` record in PostgreSQL
 - [ ] Flutter fetches seller profile on login and on foreground
 - [ ] Status values match between backend and frontend: `active`, `past_due`, `cancelled`, `paused`, `cancelling`
 - [ ] No enum mismatch (Dart enum vs. Rust string vs. Stripe status)

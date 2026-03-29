@@ -18,7 +18,7 @@ pub async fn search_products(state: McpState, params: &Value) -> McpResult<Value
     let limit = raw_limit.clamp(1, 100);
     let offset = params.get("offset").and_then(|v| v.as_u64()).unwrap_or(0);
 
-    // If Meilisearch is available, use it; otherwise fall back to SurrealDB
+    // If Meilisearch is available, use it; otherwise fall back to PostgreSQL
     if let Some(_search) = &state.search {
         // Build Meilisearch filter query
         let mut filters = Vec::new();
@@ -51,8 +51,8 @@ pub async fn search_products(state: McpState, params: &Value) -> McpResult<Value
         }));
     }
 
-    // Fallback: SurrealDB query
-    // NOTE: In production, construct SurrealDB query via state.db
+    // Fallback: PostgreSQL query
+    // NOTE: In production, construct PostgreSQL query via state.db
     Ok(json!({
         "results": [],
         "total": 0,
@@ -68,14 +68,14 @@ pub async fn get_product(_state: McpState, params: &Value) -> McpResult<Value> {
         .and_then(|v| v.as_str())
         .ok_or_else(|| McpError::InvalidParams("Missing 'product_id'".to_string()))?;
 
-    // Validate SurrealDB ID format
+    // Validate ID format
     if !product_id.contains(':') {
         return Err(McpError::ValidationError(
             "Invalid product ID format".to_string(),
         ));
     }
 
-    // Fetch from SurrealDB
+    // Fetch from PostgreSQL
     // NOTE: state.db.get_document("products", product_id)
     // For now, stub
     Ok(json!({
@@ -101,7 +101,7 @@ pub async fn check_inventory(_state: McpState, params: &Value) -> McpResult<Valu
         ));
     }
 
-    // Fetch stock from SurrealDB
+    // Fetch stock from PostgreSQL
     // NOTE: state.db.get_document("products", product_id)
     // and extract stockQuantity field
     Ok(json!({

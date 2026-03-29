@@ -257,7 +257,7 @@ async fn record_failed_login_attempt(db: &ob_database::DatabaseClient, email: &s
         .unwrap_or_default()
         .as_secs() as i64;
 
-    let _ = db
+    let result = db
         .create_document(
             "login_lockout",
             json!({
@@ -266,6 +266,7 @@ async fn record_failed_login_attempt(db: &ob_database::DatabaseClient, email: &s
             }),
         )
         .await;
+    let _ = result;
     Ok(())
 }
 
@@ -400,7 +401,7 @@ pub async fn delete_known_device(
         return Err(Error::NotFound("Device not found".into()));
     }
 
-    // Extract just the record key from the full SurrealDB id
+    // Extract just the record key from the full ID
     let record_id = devices[0]["id"].as_str().unwrap_or(&path.id);
 
     // Delete — use the collection + short id
@@ -678,7 +679,9 @@ mod tests {
     #[tokio::test]
     async fn test_check_suspicious_new_device() {
         let db = ob_database::DatabaseClient::new_mem().await;
-        let alert_type = check_suspicious(&db, "user1", "new_hash").await;
+        let uid = format!("user-{}", uuid::Uuid::new_v4());
+        let hash = format!("hash-{}", uuid::Uuid::new_v4());
+        let alert_type = check_suspicious(&db, &uid, &hash).await;
         assert_eq!(alert_type, Some("new_device".to_string()));
     }
 
@@ -764,14 +767,14 @@ mod tests {
         unsafe { std::env::remove_var("OB_TEST_MODE") };
 
         let db = ob_database::DatabaseClient::new_mem().await;
-        let email = "lockout-test@example.com";
+        let email = format!("lockout-test-{}@example.com", uuid::Uuid::new_v4());
 
         // 4 failures should NOT trigger lockout
         for _ in 0..4 {
-            record_failed_login_for_lockout(&db, email).await;
+            record_failed_login_for_lockout(&db, &email).await;
         }
 
-        let result = check_account_lockout(&db, email).await;
+        let result = check_account_lockout(&db, &email).await;
         assert!(
             result.is_ok(),
             "Account should NOT be locked after 4 failures"
@@ -783,14 +786,14 @@ mod tests {
         unsafe { std::env::remove_var("OB_TEST_MODE") };
 
         let db = ob_database::DatabaseClient::new_mem().await;
-        let email = "lockout-5@example.com";
+        let email = format!("lockout-5-{}@example.com", uuid::Uuid::new_v4());
 
         // 5 failures should trigger lockout
         for _ in 0..5 {
-            record_failed_login_for_lockout(&db, email).await;
+            record_failed_login_for_lockout(&db, &email).await;
         }
 
-        let result = check_account_lockout(&db, email).await;
+        let result = check_account_lockout(&db, &email).await;
         assert!(result.is_err(), "Account SHOULD be locked after 5 failures");
         let err_msg = result.unwrap_err().to_string();
         assert!(
@@ -804,14 +807,16 @@ mod tests {
         unsafe { std::env::remove_var("OB_TEST_MODE") };
 
         let db = ob_database::DatabaseClient::new_mem().await;
+        let locked_email = format!("locked-{}@example.com", uuid::Uuid::new_v4());
+        let unlocked_email = format!("unlocked-{}@example.com", uuid::Uuid::new_v4());
 
         // Lock out email_a
         for _ in 0..5 {
-            record_failed_login_for_lockout(&db, "locked@example.com").await;
+            record_failed_login_for_lockout(&db, &locked_email).await;
         }
 
         // email_b should still be fine
-        let result = check_account_lockout(&db, "unlocked@example.com").await;
+        let result = check_account_lockout(&db, &unlocked_email).await;
         assert!(result.is_ok(), "Different email should NOT be locked");
     }
 
@@ -820,7 +825,7 @@ mod tests {
         unsafe { std::env::remove_var("OB_TEST_MODE") };
 
         let db = ob_database::DatabaseClient::new_mem().await;
-        let email = "lockout-expire@example.com";
+        let email = format!("lockout-expire-{}@example.com", uuid::Uuid::new_v4());
 
         // Insert 5 failures with timestamps older than 15 minutes
         let old_timestamp = std::time::SystemTime::now()
@@ -842,7 +847,7 @@ mod tests {
         }
 
         // Should NOT be locked — all failures are outside the 15-min window
-        let result = check_account_lockout(&db, email).await;
+        let result = check_account_lockout(&db, &email).await;
         assert!(result.is_ok(), "Lockout should expire after 15 minutes");
     }
 
@@ -851,31 +856,32 @@ mod tests {
         unsafe { std::env::remove_var("OB_TEST_MODE") };
 
         let db = ob_database::DatabaseClient::new_mem().await;
-        let email = "lockout-exact@example.com";
+        let email = format!("lockout-exact-{}@example.com", uuid::Uuid::new_v4());
 
         // Exactly 5 failures should trigger lockout (threshold is >= 5)
         for _ in 0..5 {
-            record_failed_login_for_lockout(&db, email).await;
+            record_failed_login_for_lockout(&db, &email).await;
         }
-        let result = check_account_lockout(&db, email).await;
+        let result = check_account_lockout(&db, &email).await;
         assert!(result.is_err(), "Exactly 5 failures should trigger lockout");
 
         // 6 failures should also be locked
-        record_failed_login_for_lockout(&db, email).await;
-        let result = check_account_lockout(&db, email).await;
+        record_failed_login_for_lockout(&db, &email).await;
+        let result = check_account_lockout(&db, &email).await;
         assert!(result.is_err(), "6 failures should still be locked");
     }
 
     #[tokio::test]
     async fn test_record_failed_login_for_lockout_creates_document() {
         let db = ob_database::DatabaseClient::new_mem().await;
-        record_failed_login_for_lockout(&db, "record-test@example.com").await;
+        let email = format!("record-test-{}@example.com", uuid::Uuid::new_v4());
+        record_failed_login_for_lockout(&db, &email).await;
 
         // Verify the document was created
         let results = db
             .query_bind(
                 "SELECT * FROM login_lockout WHERE email = $email",
-                json!({ "email": "record-test@example.com" }),
+                json!({ "email": email }),
             )
             .await
             .unwrap();

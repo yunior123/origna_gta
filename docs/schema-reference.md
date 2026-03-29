@@ -1,6 +1,6 @@
 # OrignaGTA Database Schema Reference
 
-Complete reference for all SurrealDB collections, fields, types, and relationships in OrignaGTA.
+Complete reference for all PostgreSQL collections, fields, types, and relationships in OrignaGTA.
 
 ---
 
@@ -612,7 +612,7 @@ Display: `\$${cents / 100}`
 
 ### Foreign Keys
 
-Use full SurrealDB ID format: `users:abc123`, not just `abc123`
+Use full PostgreSQL ID format: `users:abc123`, not just `abc123`
 
 ### Arrays in Meilisearch
 
@@ -623,7 +623,7 @@ Use full SurrealDB ID format: `users:abc123`, not just `abc123`
 
 ## Indexing Strategy
 
-**SurrealDB Indexes** (for WHERE clauses):
+**PostgreSQL Indexes** (for WHERE clauses):
 ```sql
 DEFINE INDEX idx_orders_buyer ON orders COLUMNS buyerId;
 DEFINE INDEX idx_orders_status ON orders COLUMNS status;
@@ -660,4 +660,4 @@ DEFINE TABLE orders PERMISSIONS
 
 **Last Updated**: March 18, 2026  
 **Schema Version**: 1.0  
-**SurrealDB Version**: 2.0+
+**PostgreSQL Version**: 2.0+

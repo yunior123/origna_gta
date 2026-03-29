@@ -104,7 +104,7 @@ async fn test_01_concurrent_same_key_writes_five_parallel_puts() {
         set.spawn(async move {
             let resp = admin_put_config(&client, &key, json!({ "writer": idx })).await;
             let status = resp.status();
-            // Concurrent writes may cause 409 Conflict or 500 from SurrealDB write conflicts
+            // Concurrent writes may cause 409 Conflict or 500 from PostgreSQL write conflicts
             assert!(
                 status.is_success() || status.as_u16() == 409 || status.as_u16() == 500,
                 "parallel PUT should succeed or conflict, got {}",

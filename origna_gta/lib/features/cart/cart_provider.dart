@@ -121,7 +121,8 @@ final cartItemDetailProvider = FutureProvider.autoDispose
         price: ((productData[Fields.price] as num?) ?? 0).toDouble(),
         priceCents: productData[Fields.priceCents] != null
             ? (productData[Fields.priceCents] as num).toInt()
-            : ((productData[Fields.price] as num?) ?? 0).toDouble() * 100 ~/ 1,
+            : (((productData[Fields.price] as num?) ?? 0).toDouble() * 100)
+                  .round(),
         imageUrls: List<String>.from(
           productData[Fields.imageUrls] as Iterable? ?? [],
         ),
@@ -300,9 +301,9 @@ final cartWithDetailsProvider =
                   price: ((productData[Fields.price] as num?) ?? 0).toDouble(),
                   priceCents: productData[Fields.priceCents] != null
                       ? (productData[Fields.priceCents] as num).toInt()
-                      : ((productData[Fields.price] as num?) ?? 0).toDouble() *
-                            100 ~/
-                            1,
+                      : (((productData[Fields.price] as num?) ?? 0).toDouble() *
+                                100)
+                            .round(),
                   imageUrls: List<String>.from(
                     productData[Fields.imageUrls] as Iterable? ?? [],
                   ),

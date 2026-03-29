@@ -105,9 +105,9 @@ async fn subscribe(
         "SELECT * FROM {} WHERE {} = '{}' AND {} = '{}' AND notifiedAt = NONE LIMIT 1",
         collections::STOCK_NOTIFICATIONS,
         fields::PRODUCT_ID,
-        ob_core::escape_surreal_string(&req.product_id),
+        ob_core::escape_sql_string(&req.product_id),
         "userId",
-        ob_core::escape_surreal_string(&req.user_id),
+        ob_core::escape_sql_string(&req.user_id),
     );
 
     let existing: Vec<Value> = state
@@ -180,9 +180,9 @@ async fn unsubscribe(
         "DELETE FROM {} WHERE {} = '{}' AND {} = '{}' AND notifiedAt = NONE",
         collections::STOCK_NOTIFICATIONS,
         fields::PRODUCT_ID,
-        ob_core::escape_surreal_string(&req.product_id),
+        ob_core::escape_sql_string(&req.product_id),
         "userId",
-        ob_core::escape_surreal_string(&req.user_id),
+        ob_core::escape_sql_string(&req.user_id),
     );
 
     state

@@ -15,7 +15,7 @@ OrignaBase Proxy (no direct Anthropic calls from Flutter)
 Claude Agent SDK (claude-opus-4-6) + MCP Tools
      ↓ ↓ ↓ ↓
 get_customer  lookup_order  process_refund  escalate_to_human
-(SurrealDB)   (SurrealDB)   (Stripe)        (email)
+(PostgreSQL)   (PostgreSQL)   (Stripe)        (email)
 ```
 
 ## MCP Tools Spec
@@ -72,7 +72,7 @@ Response: { reply: string, conversationId: string, actions: [] }
 
 ## Implementation Plan
 1. **OrignaBase handler**: `ob-handlers/src/support.rs` — proxy to Anthropic API
-2. **MCP tools**: implement 4 tools in Rust with SurrealDB + Stripe access
+2. **MCP tools**: implement 4 tools in Rust with PostgreSQL + Stripe access
 3. **Flutter service**: `SupportAgentService` wraps OrignaBase `/support/chat`
 4. **Flutter UI**: `SupportChatScreen` — chat bubble UI, typing indicator
 5. **Route guard**: only authenticated users can access `/support`

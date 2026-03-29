@@ -35,14 +35,14 @@ Comprehensive security review adapted for origna_gta's Flutter/Dart + Rust (Orig
 - [ ] No Firebase Auth imports anywhere (Firebase is completely removed)
 - [ ] Google Sign-In uses server-side OAuth redirect, not client-side `authenticate()`
 
-### 3. Database Security (SurrealDB)
+### 3. Database Security (PostgreSQL)
 
-- [ ] All queries parameterized: `.bind(("param", value))` — never string concatenation/format!
-- [ ] Row-level security via `PERMISSIONS` clauses on all tables
+- [ ] All queries parameterized: `$1`, `$2` — never string concatenation/format!
+- [ ] Row-level security via `RLS` policies on all tables
 - [ ] Seller can only access own products/orders/profile
 - [ ] Buyer can only access own orders/profile
 - [ ] Admin actions logged with `adminUid` in audit trail
-- [ ] SurrealDB credentials never in source code
+- [ ] PostgreSQL credentials never in source code
 
 ### 4. Input Validation
 
@@ -84,7 +84,7 @@ API key patterns   — Long alphanumeric strings that look like keys
 
 - [ ] No PII logged in plaintext (emails, phones, addresses, payment info)
 - [ ] Buyer addresses not exposed to sellers beyond shipping needs
-- [ ] Bank details never stored in SurrealDB (Stripe Connect handles it)
+- [ ] Bank details never stored in PostgreSQL (Stripe Connect handles it)
 - [ ] GDPR delete support: purge all user records on request
 - [ ] Error responses never expose stack traces or SQL details
 

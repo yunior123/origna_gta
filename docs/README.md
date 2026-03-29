@@ -8,7 +8,7 @@ Complete documentation for the OrignaGTA e-commerce platform. Start with the gui
 
 - **[API Reference](./api-reference.md)** — Complete endpoint documentation with request/response schemas, error codes, and examples
 - **[Webhook Documentation](./webhooks.md)** — Stripe webhook handling, signature verification, event types, and retry policies
-- **[Schema Reference](./schema-reference.md)** — SurrealDB collection definitions, field types, relationships, and constraints
+- **[Schema Reference](./schema-reference.md)** — PostgreSQL collection definitions, field types, relationships, and constraints
 
 ### Quick Start
 
@@ -124,13 +124,13 @@ OrignaBase API (Rust, Axum)
         ↓
     ┌───┴────┬──────────┬─────────┐
     ↓        ↓          ↓         ↓
-SurrealDB  Meilisearch Stripe  Cloudflare R2
+PostgreSQL  Meilisearch Stripe  Cloudflare R2
 (NoSQL)    (Search)   (Payments) (CDN)
 ```
 
 ### Backend Stack
 - **Language**: Rust (Axum web framework)
-- **Database**: SurrealDB v2 (NoSQL, real-time)
+- **Database**: PostgreSQL v2 (NoSQL, real-time)
 - **Search**: Meilisearch v1.12 (full-text search)
 - **Payments**: Stripe API + Stripe Connect
 - **Storage**: Cloudflare R2 (S3-compatible)
@@ -152,7 +152,7 @@ SurrealDB  Meilisearch Stripe  Cloudflare R2
 
 ### Modify Database Schema
 
-1. Update SurrealDB migration in `crates/orignabase/migrations/`
+1. Update PostgreSQL migration in `crates/orignabase/migrations/`
 2. Update `DEFINE TABLE` and `DEFINE INDEX` statements
 3. Update Dart schema constants in `lib/core/schema/schema_constants.dart`
 4. Test with seed data
@@ -220,7 +220,7 @@ curl -X POST https://api.dev.orignagta.ca/auth/login \
 ### Database Query
 ```bash
 ssh root@204.168.137.16
-surreal sql
+psql
 SELECT * FROM products WHERE sellerId = 'users:seller_abc' LIMIT 10;
 ```
 
@@ -252,7 +252,7 @@ SELECT * FROM products WHERE sellerId = 'users:seller_abc' LIMIT 10;
 
 | Term | Definition |
 |---|---|
-| **SurrealDB** | NoSQL database with real-time subscriptions and row-level security |
+| **PostgreSQL** | NoSQL database with real-time subscriptions and row-level security |
 | **Meilisearch** | Full-text search engine for products and content |
 | **Stripe Connect** | Payment processor for seller payouts |
 | **Turnstile** | Cloudflare's bot protection (replaces reCAPTCHA) |

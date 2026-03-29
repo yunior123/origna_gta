@@ -1,18 +1,15 @@
+//! Transaction abstraction for PostgreSQL.
+//!
+//! Wraps multiple queries in a real ACID transaction using PostgreSQL's BEGIN/COMMIT.
+
 use crate::DatabaseClient;
+use crate::pg_store::{bind_json_value, translate_surreal_to_pg};
 use ob_core::{Error, Result};
 use serde_json::Value;
 
-/// A transactional batch of SurrealQL operations.
+/// A transactional batch of operations.
 ///
-/// Wraps multiple queries in `BEGIN TRANSACTION; ... COMMIT;` for atomicity.
-///
-/// # Example
-/// ```ignore
-/// let mut tx = Transaction::new();
-/// tx.add("UPDATE products:abc SET stock -= $qty", json!({"qty": 2}));
-/// tx.add("CREATE order_items CONTENT $data", json!({"data": {...}}));
-/// let results = tx.commit(&db).await?;
-/// ```
+/// PostgreSQL transactions use real BEGIN/COMMIT for full ACID guarantees.
 pub struct Transaction {
     queries: Vec<(String, Option<Value>)>,
 }
@@ -46,59 +43,55 @@ impl Transaction {
         self.queries.is_empty()
     }
 
-    /// Execute all operations in a single SurrealDB query call.
-    ///
-    /// SurrealDB executes multiple statements in one query() call sequentially.
-    /// Individual statements (like IF/THEN/ELSE THROW) are atomic at the statement level.
-    ///
-    /// Note: BEGIN TRANSACTION/COMMIT wrapping is intentionally NOT used because
-    /// SurrealDB does not support THROW inside BEGIN/COMMIT blocks (parse error).
-    /// The sequential execution within a single query() call provides sufficient
-    /// atomicity for our use cases (order creation + stock decrement).
+    /// Execute all operations in a single PostgreSQL transaction.
     pub async fn commit(self, db: &DatabaseClient) -> Result<Vec<Value>> {
         if self.queries.is_empty() {
             return Ok(vec![]);
         }
 
-        let mut full_query = String::new();
-        for (query, _) in &self.queries {
-            full_query.push_str(query);
-            full_query.push_str(";\n");
-        }
-
-        let mut q = db.inner().query(&full_query);
-
-        // Apply binds from each query — SurrealDB binds are global to the query call,
-        // so we flatten all bind objects into a single bind chain.
-        for (_query, binds) in &self.queries {
-            if let Some(binds) = binds
-                && let Some(obj) = binds.as_object()
-            {
-                for (key, val) in obj {
-                    q = q.bind((key.clone(), val.clone()));
-                }
-            }
-        }
-
-        let mut response = q
+        let mut pg_tx = db
+            .inner()
+            .pool()
+            .begin()
             .await
-            .map_err(|e| Error::Database(format!("Transaction failed: {e}")))?;
+            .map_err(|e| Error::Database(format!("Failed to begin transaction: {e}")))?;
 
-        // Collect results from each statement.
         let mut results = Vec::with_capacity(self.queries.len());
-        for i in 0..self.queries.len() {
-            let sval: surrealdb::Value = response.take(i).unwrap_or_default();
-            let json_val = serde_json::to_value(&sval).unwrap_or(Value::Null);
-            if let Some(arr) = json_val.as_array() {
-                if arr.len() == 1 {
-                    results.push(arr[0].clone());
-                } else {
-                    results.push(Value::Array(arr.clone()));
+
+        for (query, binds) in &self.queries {
+            if let Some(binds) = binds {
+                // Translate query to PostgreSQL and bind parameters
+                let (pg_query, bind_values) =
+                    translate_surreal_to_pg(query, binds.clone())
+                        .map_err(|e| Error::Database(format!("Transaction query translation failed: {e}")))?;
+
+                let mut q = sqlx::query(&pg_query);
+                for val in &bind_values {
+                    q = bind_json_value(q, val);
                 }
+
+                let result = q
+                    .execute(&mut *pg_tx)
+                    .await
+                    .map_err(|e| Error::Database(format!("Transaction query failed: {e}")))?;
+
+                let rows_affected = result.rows_affected();
+                results.push(serde_json::json!({"rows_affected": rows_affected}));
             } else {
-                results.push(json_val);
+                let result = sqlx::query(query)
+                    .execute(&mut *pg_tx)
+                    .await
+                    .map_err(|e| Error::Database(format!("Transaction query failed: {e}")))?;
+
+                let rows_affected = result.rows_affected();
+                results.push(serde_json::json!({"rows_affected": rows_affected}));
             }
         }
+
+        pg_tx
+            .commit()
+            .await
+            .map_err(|e| Error::Database(format!("Transaction commit failed: {e}")))?;
 
         Ok(results)
     }
@@ -124,8 +117,8 @@ mod tests {
     #[test]
     fn test_transaction_add_operations() {
         let mut tx = Transaction::new();
-        tx.add("SELECT * FROM users", None);
-        tx.add_raw("UPDATE users:1 SET active = true");
+        tx.add("SELECT 1", None);
+        tx.add_raw("SELECT 2");
         assert_eq!(tx.len(), 2);
         assert!(!tx.is_empty());
     }

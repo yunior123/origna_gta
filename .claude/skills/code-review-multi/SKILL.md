@@ -38,7 +38,7 @@ Spawn 4 agents simultaneously, each with a different focus:
 **Reviewer 2 — Security & Safety**
 - Input validation present?
 - No hardcoded secrets?
-- No SQL/SurrealQL injection risks?
+- No SQL injection risks?
 - Authentication/authorization correct?
 - No PII logging?
 

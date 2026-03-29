@@ -25,7 +25,7 @@ class OrignaBaseCartRepository implements CartRepository {
 
   /// Returns the cart subcollection reference for a specific user.
   ///
-  /// Normalizes the [userId] to its bare record ID to match the SurrealDB
+  /// Normalizes the [userId] to its bare record ID to match the PostgreSQL
   /// parent_id filter format (`users:<bareId>`).
   SubcollectionRef _cartRef(String userId) {
     final bareId = userId.contains(':') ? userId.split(':').last : userId;
@@ -68,7 +68,10 @@ class OrignaBaseCartRepository implements CartRepository {
   }) async {
     if (quantity < minCartItemQuantity) return;
 
-    // Verify product stock before mutating cart
+    final cartRef = _cartRef(userId);
+    final docId = variantId != null ? '${productId}_$variantId' : productId;
+
+    // Verify product exists
     final productDoc = await _ob
         .collection(Collections.products)
         .doc(productId)
@@ -76,24 +79,37 @@ class OrignaBaseCartRepository implements CartRepository {
     if (productDoc == null || !productDoc.exists) {
       throw NotFoundException('Product not found', statusCode: 404);
     }
-    final stockQuantity =
-        (productDoc.get<num>(Fields.stockQuantity))?.toInt() ?? 0;
-    if (stockQuantity < quantity) {
-      throw ConflictException(
-        stockQuantity == 0
-            ? 'This product is out of stock'
-            : 'Only $stockQuantity items available in stock',
-        statusCode: 409,
+
+    // Determine available stock (variant-level if applicable)
+    int availableStock;
+    if (variantId != null) {
+      final variants =
+          (productDoc.data[Fields.variants] as List?)?.cast<dynamic>() ?? [];
+      final matchingVariant = variants.cast<Map>().firstWhere(
+        (v) => v[Fields.variantId] == variantId,
+        orElse: () => {},
       );
+      if (matchingVariant.isEmpty) {
+        throw NotFoundException(
+          'Variant $variantId not found for product $productId',
+          statusCode: 404,
+        );
+      }
+      availableStock =
+          (matchingVariant[Fields.stockQuantity] as num?)?.toInt() ??
+          (productDoc.get<num>(Fields.stockQuantity))?.toInt() ??
+          0;
+    } else {
+      availableStock =
+          (productDoc.get<num>(Fields.stockQuantity))?.toInt() ?? 0;
     }
 
-    final cartRef = _cartRef(userId);
-    final docId = variantId != null ? '${productId}_$variantId' : productId;
     final imageUrls = List<String>.from(
       productDoc.data[Fields.imageUrls] as Iterable? ?? const <String>[],
     );
     final priceSnapshot = (productDoc.get<num>(Fields.priceCents))?.toInt();
 
+    // Read existing cart entry to compute total requested quantity
     // Read-then-write: OrignaBase does not have client-side transactions yet.
     // Use deterministic doc ID to avoid duplicates.
     final existing = await cartRef.doc(docId).get();
@@ -113,6 +129,20 @@ class OrignaBaseCartRepository implements CartRepository {
     final currentQty = hasValidExisting
         ? (existing.get<num>(Fields.quantity))?.toInt() ?? 0
         : 0;
+
+    // Stock check must account for quantity already in cart
+    final totalRequested = currentQty + quantity;
+    if (availableStock < totalRequested) {
+      throw ConflictException(
+        availableStock == 0
+            ? 'This product is out of stock'
+            : currentQty > 0
+            ? 'Only $availableStock items available (you already have $currentQty in your cart)'
+            : 'Only $availableStock items available in stock',
+        statusCode: 409,
+      );
+    }
+
     final newQty = (currentQty + quantity).clamp(
       minCartItemQuantity,
       maxCartItemQuantity,
@@ -221,14 +251,57 @@ class OrignaBaseCartRepository implements CartRepository {
     final cartItemRef = _cartRef(userId).doc(cartItemId);
     if (quantity < minCartItemQuantity) {
       await cartItemRef.delete();
-    } else {
-      await cartItemRef.update({
-        Fields.quantity: quantity.clamp(
-          minCartItemQuantity,
-          maxCartItemQuantity,
-        ),
-      });
+      return;
     }
+
+    // Read cart item to get product/variant info for stock check
+    final cartDoc = await cartItemRef.get();
+    if (cartDoc == null || !cartDoc.exists) return;
+
+    final productId =
+        cartDoc.get<String>(Fields.productId) ?? cartItemId.split('_').first;
+    final variantId = cartDoc.get<String>(Fields.variantId);
+
+    // Verify stock before updating quantity
+    final productDoc = await _ob
+        .collection(Collections.products)
+        .doc(productId)
+        .get();
+    if (productDoc != null && productDoc.exists) {
+      int availableStock;
+      if (variantId != null) {
+        final variants =
+            (productDoc.data[Fields.variants] as List?)?.cast<dynamic>() ?? [];
+        final matchingVariant = variants.cast<Map>().firstWhere(
+          (v) => v[Fields.variantId] == variantId,
+          orElse: () => {},
+        );
+        if (matchingVariant.isEmpty) {
+          throw NotFoundException(
+            'Variant $variantId not found for product $productId',
+            statusCode: 404,
+          );
+        }
+        availableStock =
+            (matchingVariant[Fields.stockQuantity] as num?)?.toInt() ??
+            (productDoc.get<num>(Fields.stockQuantity))?.toInt() ??
+            0;
+      } else {
+        availableStock =
+            (productDoc.get<num>(Fields.stockQuantity))?.toInt() ?? 0;
+      }
+
+      if (availableStock < quantity) {
+        throw ConflictException(
+          'Only $availableStock items available in stock',
+          statusCode: 409,
+        );
+      }
+    }
+
+    await cartItemRef.update({
+      Fields.quantity: quantity.clamp(minCartItemQuantity, maxCartItemQuantity),
+    });
   }
 
   /// Provides a real-time stream of the user\'s cart items.

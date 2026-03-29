@@ -633,7 +633,7 @@ result.match(
 
 ## Advanced: Custom Queries
 
-For complex filtering, use SurrealDB query syntax:
+For complex filtering, use PostgreSQL query syntax:
 
 ```dart
 final result = await OrignaBase.query('''

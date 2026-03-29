@@ -1,6 +1,6 @@
 # Origna GTA — Repo Map
 
-Last updated: 2026-03-25
+Last updated: 2026-03-29
 
 ## Working Directories (CRITICAL)
 
@@ -23,15 +23,16 @@ Unified monorepo for Origna GTA, a Canada-first multi-vendor e-commerce platform
 
 | Layer | Directory | Technology |
 |-------|-----------|-----------|
-| Mobile/Web frontend | `origna_gta/` | Flutter 3.x + Dart, Riverpod, Freezed |
-| Backend API | `orignabase/` | OrignaBase (Rust, hosted on VPS 204.168.137.16) |
-| Database | SurrealDB v2 (on VPS, via OrignaBase) |
+| Mobile/Web frontend | `origna_gta/` | Flutter 3.x + Dart (347 .dart files), Riverpod, Freezed |
+| Backend API | `orignabase/` | OrignaBase (Rust, 16 workspace crates, hosted on VPS 204.168.137.16). task_queue uses direct SQL for typed table operations; CRUD uses JSONB document storage. |
+| Database | PostgreSQL 18 (on VPS, via OrignaBase) |
 | Search | Meilisearch v1.12 (on VPS, via OrignaBase) |
 | Payments | Stripe (Checkout + Connect + webhooks) |
 | Bot protection | Cloudflare Turnstile |
 | Web reverse proxy | Caddy (on VPS) |
 | CI | GitHub Actions |
-| E2E | Playwright (TypeScript) + Bun agent-browser |
+| E2E | Playwright (TypeScript) + Bun agent-browser (116 specs across 7 phases) |
+| Tests | Flutter: 3,173+ passing. Rust: ~3,268 passing + 537 failing (ob-handlers SurrealDB→PG migration in progress). SDK: 531 passing. |
 
 No Firebase. No Cloud Functions. No Firestore. All backend is OrignaBase on the VPS.
 
@@ -70,6 +71,7 @@ origna_gta/                        # repo root (monorepo: frontend + backend)
 │   │   │   ├── qa/
 │   │   │   ├── seller/
 │   │   │   ├── subscription/
+│   │   │   ├── support/
 │   │   │   └── terms/
 │   │   ├── models/                # Freezed data models
 │   │   │   ├── models.dart        # barrel export
@@ -80,35 +82,35 @@ origna_gta/                        # repo root (monorepo: frontend + backend)
 │   │   ├── widgets/               # Shared widgets (see list below)
 │   │   └── utils/                 # Shared helpers, responsive layout
 │   ├── test/                      # Unit + widget + live tests
-│   │   ├── unit/                  # 131 unit test files
-│   │   ├── widget/                # 67 widget test files
-│   │   ├── screens/               # 23 screen test files
-│   │   ├── live/                  # 30 live/integration tests (gated)
-│   │   ├── golden/                # Golden tests (6 tests)
+│   │   ├── unit/                  # 149 unit test files
+│   │   ├── widget/                # 79 widget test files
+│   │   ├── screens/               # 26 screen test files
+│   │   ├── live/                  # 37 live/integration tests (gated)
+│   │   ├── golden/                # Golden tests (1 file, excluded from CI)
+│   │   ├── features/              # 5 feature provider tests
 │   │   └── helpers/               # Test utilities (EMPTY — planned)
 │   ├── integration_test/          # Flutter integration tests (7 files)
 │   └── pubspec.yaml
-├── e2e/                           # Playwright E2E (TypeScript + agent-browser)
+├── e2e/                           # Playwright E2E (TypeScript + Bun agent-browser)
 │   ├── specs/
-│   │   ├── phase1-api/            # 33 API smoke tests
+│   │   ├── phase1-api/            # 34 API smoke tests
 │   │   ├── phase2-smoke/          # 13 UI quality tests
 │   │   ├── phase3-auth-nav/       # 11 auth flow tests
 │   │   ├── phase4-product-flows/  # 21 product tests
 │   │   ├── phase5-complex-flows/  # 23 cart/order/seller tests
-│   │   └── phase6-stripe/         # 13 payment tests
+│   │   ├── phase6-stripe/         # 13 payment tests
+│   │   └── ai-comprehensive/      # 1 AI-powered comprehensive test
+│   ├── ai/                        # AI-powered audit tests
 │   ├── lib/
 │   │   └── config.ts              # Test accounts, Stripe tokens, URLs
+│   ├── load/                      # Stress tests (checkout-stress, auth-storm)
 │   └── run-tests.sh               # Parallel runner (4 browsers, 10 API)
-├── e2e-agent-browser/             # Bun-based agent browser E2E (mirrors e2e/)
-│   ├── specs/                     # Same 114 specs as e2e/
-│   ├── lib/config.ts
-│   └── run-tests.sh
 ├── orignabase/                    # Rust backend (OrignaBase BaaS)
 │   ├── Cargo.toml                 # Workspace manifest (16 crates)
 │   ├── crates/
 │   │   ├── orignabase/            # Binary entry point, CLI, server assembly
 │   │   ├── ob-core/               # Config, AppState, error types
-│   │   ├── ob-database/           # SurrealDB client, CRUD, query translator
+│   │   ├── ob-database/           # PostgreSQL client, CRUD, query translator
 │   │   ├── ob-auth/               # JWT, Argon2id, OAuth, MFA/TOTP
 │   │   ├── ob-graphql/            # Dynamic GraphQL schema + resolvers
 │   │   ├── ob-security/           # Rules DSL parser (pest) + evaluator
@@ -121,7 +123,13 @@ origna_gta/                        # repo root (monorepo: frontend + backend)
 │   │   ├── ob-notifications/      # FCM push proxy, device tokens
 │   │   ├── ob-handlers/           # Business logic (Stripe, orders, chat)
 │   │   └── ob-mcp/                # MCP server (JSON-RPC 2.0)
+│   ├── examples/
+│   │   ├── chat-app/              # Example chat app
+│   │   └── todo-app/              # Example todo app
+│   ├── load-tests/                # Load tests (auth-flow.js, crud-operations.js, stress-test.js, k6/)
+│   ├── reliability-tests/chaos/   # Chaos engineering tests
 │   └── sdks/flutter/orignabase/   # OrignaBase Flutter/Dart SDK
+│       └── example/               # Flutter SDK examples (auth, batch, ecommerce, migration, realtime, todo)
 ├── scripts/
 │   ├── deploy_web.sh              # VPS web deploy (staged releases)
 │   ├── run_quality_gate.sh        # 80% coverage threshold
@@ -234,21 +242,28 @@ origna_gta/                        # repo root (monorepo: frontend + backend)
 | `terms_screen.dart` | Generic terms screen |
 | `main_screen.dart` | Shell: bottom nav + tab routing |
 | `common_screens.dart` | Shared screen utilities |
+| `seller/seller_analytics_screen.dart` | Seller analytics dashboard |
+| `seller/bulk_upload_screen.dart` | Bulk CSV product upload |
+| `seller/seller_warehouses_screen.dart` | Warehouse management |
 
 ---
 
 ## Shared Widgets (`origna_gta/lib/widgets/`)
 
+41 files across 7 subdirectories + root. Key widgets:
+
 | File | Purpose |
 |------|---------|
-| `modern_button.dart` | `ModernButton` — primary/secondary buttons (use instead of ElevatedButton/TextButton) |
-| `modern_textfield.dart` | `ModernTextField` — dark-themed input (use instead of raw TextField) |
+| `modern_button.dart` | `ModernButton` — primary/secondary buttons |
+| `modern_textfield.dart` | `ModernTextField` — dark-themed input |
 | `modern_card.dart` | `ModernCard` — elevated card with dark theme |
 | `modern_appbar.dart` | `ModernAppBar` — dark gradient app bar |
 | `modern_loading_indicator.dart` | `ModernLoadingIndicator` — animated spinner |
 | `modern_product_card.dart` | Product card for grid/list display |
+| `modern_skeleton_loader.dart` | Skeleton loading placeholders |
+| `modern_snackbar.dart` | Styled snackbar |
 | `animations.dart` | `AnimatedListItem`, `TapScaleAnimation`, `FadeSlideIn` |
-| `order_widgets.dart` | Order status chip, package timeline, buy-again button |
+| `order_widgets.dart` | Order status chip, package timeline, buy-again |
 | `rating_dialog.dart` | Star rating dialog |
 | `rating_histogram.dart` | 5-star breakdown bar chart |
 | `premium_paywall_widget.dart` | Subscription gate overlay |
@@ -256,6 +271,15 @@ origna_gta/                        # repo root (monorepo: frontend + backend)
 | `env_preview_banner.dart` | Dev/staging environment banner |
 | `language_selector.dart` | EN/FR/ES language picker |
 | `legal_screen_body.dart` | Reusable body for Privacy/Terms screens |
+| `gradient_badge.dart` | Gradient badge widget |
+| `update_required_dialog.dart` | Force-update dialog |
+| `cart/` | `cart_total_display.dart`, `free_shipping_bar.dart` |
+| `checkout/` | `delivery_options_section.dart`, `order_review_sheet.dart` |
+| `mascot/` | Canadian moose mascot (5 files) |
+| `orders/` | Mark shipped/update shipping dialogs, status widgets |
+| `profile/` | Header card, menu items, theme toggle |
+| `promotions/` | `standalone_promo_widget.dart` |
+| `shared/` | `cart_badge.dart`, `filter_chip_widget.dart`, `quantity_button.dart`, `trending_badge.dart` |
 
 ---
 
@@ -302,9 +326,9 @@ Key classes:
 ### Architecture — 16 Workspace Crates
 
 ```
-orignabase (single binary, 16 workspace crates)
+orignabase (single binary, 15 workspace crates)
 ├── ob-core       — Config, AppState, error types, validation
-├── ob-database   — SurrealDB client, CRUD, query translator, transactions
+├── ob-database   — PostgreSQL client, CRUD, query translator, transactions
 ├── ob-auth       — JWT (RS256/HS256), Argon2id, OAuth, MFA/TOTP, email
 ├── ob-graphql    — Dynamic GraphQL schema + resolvers (async-graphql)
 ├── ob-security   — Rules DSL parser (pest) + evaluator
@@ -325,7 +349,7 @@ orignabase (single binary, 16 workspace crates)
 - **Host**: `204.168.137.16`
 - **API**: `https://api.dev.orignagta.ca` (dev), `https://api.orignagta.ca` (prod)
 - **Web**: `https://dev.orignagta.ca` (dev), `https://orignagta.ca` (prod)
-- **SurrealDB**: port 8000 (internal), namespace `orignabase`, db `production`
+- **PostgreSQL**: port 5432 (internal), database `orignabase`
 - **Meilisearch**: port 7700 (internal)
 - **Docker Compose**: `/opt/orignabase/` on VPS
 - **Config**: `orignabase.toml` + env var overrides
@@ -336,14 +360,14 @@ orignabase (single binary, 16 workspace crates)
 - Argon2id password hashing
 - MFA/TOTP with AES-256-GCM encrypted secrets
 - Rate limiting via `tower_governor` (10 req/60s auth, 100 req/60s API)
-- SurrealQL identifier validation
+- SQL identifier validation
 - Security rules DSL (25+ collections, default-deny)
 - Webhook deduplication (Stripe events)
 - CORS origin whitelist (no `Any`)
 
 ### Key Env Overrides
 
-- `OB_DATABASE__ENDPOINT` — SurrealDB endpoint
+- `OB_DATABASE__ENDPOINT` — PostgreSQL endpoint
 - `OB_SEARCH__ENDPOINT` — Meilisearch endpoint
 - `OB_AUTH__JWT_SECRET` — JWT signing secret
 - `OB_AUTH__TOTP_ENCRYPTION_KEY` — TOTP secret encryption (REQUIRED in prod)
@@ -474,7 +498,7 @@ Docker Compose at `/opt/orignabase/` on VPS. Binary built with `cargo build --re
 - **Flutter**: `flutter analyze --no-fatal-infos && flutter test --exclude-tags golden` (80% coverage via `run_quality_gate.sh`)
 - **Rust**: `cargo clippy -D warnings && cargo test && cargo audit` (CI)
 - **E2E**: `bun test specs/` with parallel execution
-- **Golden tests**: Excluded from normal runs, run separately via `flutter test test/golden/`
+- **Golden tests**: Excluded from normal runs (1 file, `--exclude-tags golden`). Golden tests skipped in CI (Ubuntu renders differently from macOS).
 
 ---
 
@@ -491,3 +515,9 @@ Docker Compose at `/opt/orignabase/` on VPS. Binary built with `cargo build --re
 | `.mcp.json` | 3 MCP servers |
 | `.github/copilot-skills.md` | 157 lines of learned patterns |
 | `.github/instructions/` | 5 file-pattern Copilot instructions |
+
+---
+
+## Known Issues
+
+- **537 ob-handler test failures** — SurrealDB→PostgreSQL query migration in progress. The `ob-handlers` crate tests use SurrealDB-specific query syntax (e.g., `RETURN AFTER`, `type::thing()`, `CREATE CONTENT`, `??` coalesce) that must be translated to PostgreSQL equivalents. See `HANDLER_MIGRATION_STRATEGY.md` for the full migration plan and translation patterns.

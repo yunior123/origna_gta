@@ -8,7 +8,7 @@ Origna GTA is a Canada-first multi-vendor e-commerce platform where buyers brows
 |-------|-----------|
 | Frontend | Flutter 3.x + Dart, Riverpod, Freezed |
 | Backend API | OrignaBase (Rust, VPS `204.168.137.16`) |
-| Database | SurrealDB v2 (via OrignaBase) |
+| Database | PostgreSQL (via OrignaBase) |
 | Search | Meilisearch v1.12 (via OrignaBase) |
 | Payments | Stripe (Checkout + Connect + webhooks) |
 | Bot protection | Cloudflare Turnstile |

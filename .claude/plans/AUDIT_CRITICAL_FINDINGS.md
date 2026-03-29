@@ -32,7 +32,7 @@ state.db.upsert_document(collections::ORDERS, &order_id, order_doc).await?;
 
 **Root Cause**: 
 - Line ~280-290: Stock check is done: `if stock < cart_item.quantity as i64 { return Err(...) }`
-- Line ~468: Stock decremented with raw UPDATE query (not atomic SurrealDB transaction)
+- Line ~468: Stock decremented with raw UPDATE query (not atomic PostgreSQL transaction)
 - Line ~487: Order persisted AFTER stock update
 
 **Race Window**: Between stock check (line 280) and stock decrement (line 468), another buyer's checkout can squeeze in:
@@ -49,7 +49,7 @@ state.db.upsert_document(collections::ORDERS, &order_id, order_doc).await?;
 - **Loss: $10,000+ in refunds + chargeback fees on launch day**
 
 **Fix Required**:
-Use SurrealDB transaction (BEGIN...COMMIT) or optimistic locking:
+Use PostgreSQL transaction (BEGIN...COMMIT) or optimistic locking:
 ```rust
 // OPTION 1: Transaction
 state.db.query_raw(&format!(
@@ -503,7 +503,7 @@ This is CORRECT — Stripe's `event.id` is globally unique. No issue here. ✓
 ## RECOMMENDED PRE-LAUNCH ACTIONS
 
 **MUST FIX (Block Launch)**:
-1. Stock race condition → use SurrealDB transactions
+1. Stock race condition → use PostgreSQL transactions
 2. Free shipping calculation → fix coupon interaction
 3. Refund amount validation → add bounds check
 4. Stock restoration → wrap in transaction

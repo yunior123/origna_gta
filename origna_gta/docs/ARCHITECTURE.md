@@ -11,7 +11,7 @@ OrignaGTA is a Canada-first multi-vendor e-commerce marketplace built with Flutt
 | Frontend | Flutter (Web, iOS, Android) |
 | State Management | Riverpod (StateNotifier + providers) |
 | Models | Freezed + json_serializable |
-| Backend | OrignaBase (Rust VPS — axum + SurrealDB + Meilisearch) |
+| Backend | OrignaBase (Rust VPS — axum + PostgreSQL + Meilisearch) |
 | Payments | Stripe (Connect for multi-seller payouts) |
 | Storage | Cloudflare R2 (presigned URLs) |
 | Error Tracking | Sentry |
@@ -53,8 +53,8 @@ OrignaGTA is a Canada-first multi-vendor e-commerce marketplace built with Flutt
 3. CartController calls CartRepository.addItem(userId, productId, quantity)
 4. CartRepository (OrignaBaseCartRepository) calls ob.request('POST', '/cart/add', body: {...})
 5. OrignaBase SDK sends authenticated HTTP request to Rust backend
-6. Backend validates, writes to SurrealDB, returns result
-7. StreamProvider (cartItemsProvider) auto-updates via SurrealDB subscription
+6. Backend validates, writes to PostgreSQL, returns result
+7. StreamProvider (cartItemsProvider) auto-updates via PostgreSQL subscription
 8. Screen rebuilds with new cart state
 ```
 

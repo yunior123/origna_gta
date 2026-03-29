@@ -376,7 +376,7 @@ Future<bool> confirmReceipt(String orderId, String itemKey)
 
 ### Gotchas
 1. **Transactions must be atomic**: Stock decrement happens inside the confirm transaction. Rollback restores stock.
-2. **Stock restoration on cancellation**: Uses SurrealDB `Increment(+quantity)` in transaction. Must also be atomic.
+2. **Stock restoration on cancellation**: Uses PostgreSQL `UPDATE SET quantity = quantity + $qty` in transaction. Must also be atomic.
 3. **Notifications are outside the transaction**: Sent after commit. If notification fails, order is still confirmed.
 4. **Per-item delivery tracking**: `confirmReceipt` accepts `product_id` to confirm individual items. `all_delivered` flag in response indicates when the entire order is complete.
 5. **Multi-seller orders are independent**: Each seller's order has its own state machine instance.
@@ -604,7 +604,7 @@ On refund:
 ## 8. Search & Meilisearch Synchronization: ID Sanitization and Real-Time Indexing
 
 ### Pattern Overview
-Meilisearch syncs products from SurrealDB via an event-driven `SearchSyncer`. SurrealDB IDs (`products:abc123`) are sanitized for Meilisearch document IDs. Original ID preserved in `record_id` field (not `origId`).
+Meilisearch syncs products from PostgreSQL via an event-driven `SearchSyncer`. Product IDs are used directly as Meilisearch document IDs.
 
 ### File Paths
 - **Search Syncer**: `orignabase/crates/ob-search/src/sync.rs` (struct `SearchSyncer`, `SearchSyncEvent`)
@@ -627,19 +627,19 @@ fn sanitize_document_id(document_id: &str) -> String {
 ```rust
 fn normalize_document_for_indexing(document_id: &str, data: &Value) -> Value {
     let search_id = sanitize_document_id(document_id);
-    // Inserts "id" (sanitized) and "record_id" (original SurrealDB ID)
+    // Inserts "id" (sanitized) and "record_id" (original PostgreSQL ID)
     // into the document for Meilisearch indexing
 }
 ```
 
-**IMPORTANT**: The field preserving the original SurrealDB ID is `record_id`, NOT `origId` as previously documented.
+**IMPORTANT**: The field preserving the original PostgreSQL ID is `record_id`, NOT `origId` as previously documented.
 
 ### Search Syncer Architecture (from `sync.rs`)
 ```rust
 pub struct SearchSyncEvent {
     pub action: SearchAction,   // Upsert | Delete
     pub index: String,          // e.g., "products"
-    pub document_id: String,    // SurrealDB ID
+    pub document_id: String,    // PostgreSQL ID
     pub data: Value,            // document content
 }
 
@@ -652,7 +652,7 @@ pub struct SearchSyncer {
 ```
 
 ### record_id Restoration (from `client.rs`)
-When search results come back, the client restores the original SurrealDB ID:
+When search results come back, the client restores the original PostgreSQL ID:
 ```rust
 // In search results, replace sanitized "id" with original "record_id"
 let record_id = hit.get("record_id").and_then(|v| v.as_str());
@@ -668,7 +668,7 @@ if let Some(record_id) = record_id {
 
 ### Data Flow
 ```
-Product created/updated in SurrealDB
+Product created/updated in PostgreSQL
   |
 Handler sends SearchSyncEvent via mpsc channel
   action: Upsert, document_id: "products:abc123", data: {...}
@@ -685,11 +685,11 @@ Search query returns hits with record_id
   |
 client restores: hit.id = hit.record_id ("products:abc123")
   |
-Full product fetched from SurrealDB using restored ID
+Full product fetched from PostgreSQL using restored ID
 ```
 
 ### Gotchas
-1. **record_id (not origId)**: The field storing the original SurrealDB ID is `record_id`. Code referencing `origId` is outdated.
+1. **record_id (not origId)**: The field storing the original PostgreSQL ID is `record_id`. Code referencing `origId` is outdated.
 2. **Sanitization is broader than colon**: Any non-alphanumeric, non-dash, non-underscore char becomes `_`.
 3. **Sync is async and eventual**: mpsc channel with 1024 capacity. Under heavy load, events may queue.
 4. **Delete uses sanitized ID**: `delete_document` also sanitizes the document_id before calling Meilisearch.

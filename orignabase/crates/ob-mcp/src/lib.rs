@@ -6,7 +6,7 @@
 //! Architecture:
 //! - Tools reuse existing ob-handlers, ob-database, ob-auth logic
 //! - All monetary values remain integer cents (no conversion)
-//! - SurrealDB IDs: collection:record_id format preserved
+//! - PostgreSQL IDs: UUID format
 //! - Authentication via JWT middleware
 //! - Safeguards: idempotency keys, confirmation tokens, spend limits
 

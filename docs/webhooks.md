@@ -138,7 +138,7 @@ A payment has been successfully captured.
 **Actions**:
 1. Check if webhook already processed (idempotency via `evt_abc123...`)
 2. Update order status: `pending` → `confirmed`
-3. Decrement product stock (atomic SurrealDB transaction)
+3. Decrement product stock (atomic PostgreSQL transaction)
 4. Send confirmation email to buyer
 5. Send "new order" alert to seller
 6. Record webhook event in `webhook_events` collection
@@ -532,7 +532,7 @@ tail -f /opt/orignabase/logs/webhook_*.log
 
 **Fix**:
 - Ensure `webhook_events` query runs before processing
-- Use SurrealDB transaction to atomically check-and-insert
+- Use PostgreSQL transaction to atomically check-and-insert
 - Set unique constraint on `(eventId, eventType)` if DB supports
 
 ### Issue: Webhook never received

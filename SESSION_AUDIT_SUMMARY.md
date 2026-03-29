@@ -83,7 +83,7 @@ This document summarizes the comprehensive audit work performed on the OrignaGTA
 | Double stock decrement myth | N/A | Verified FALSE POSITIVE — dead code path |
 | Refund double money conversion | `refunds.rs:120` | `i64_field(item, "priceCents")` |
 | Refund cumulative cap TOCTOU | `refunds.rs:384` | Atomic `WHERE` guard |
-| SurrealQL string interpolation | `crud.rs`, `cron/mod.rs` | `query_bind_value` with params |
+| SQL string interpolation | `crud.rs`, `cron/mod.rs` | `query_bind_value` with params |
 | N+1 admin user query | `returns.rs:146` | Single batch query |
 | Missing indexes | Multiple | 5 new indexes added |
 | Cron json! magic strings | `cron/mod.rs` | 140+ replacements |
@@ -261,7 +261,7 @@ This document summarizes the comprehensive audit work performed on the OrignaGTA
 
 | Blocker | Description | Status |
 |---------|-------------|--------|
-| Shared root DB session | SurrealDB PERMISSIONS not enforced | Requires schema migration |
+| Shared root DB session | PostgreSQL PERMISSIONS not enforced | Requires schema migration |
 | Mobile token persistence | No Keychain/Keystore (memory-only) | Deferred to mobile launch |
 | Reset page token verify | No verification on page load | UX improvement |
 

@@ -650,7 +650,7 @@ async fn get_book_redirect(
     let query = format!(
         "SELECT * FROM {} WHERE accessToken = '{}' LIMIT 1",
         collections::BOOK_ACCESS_TOKENS,
-        ob_core::escape_surreal_string(&req.t),
+        ob_core::escape_sql_string(&req.t),
     );
     let token_doc = state
         .db
@@ -677,7 +677,7 @@ async fn get_software_redirect(
     let query = format!(
         "SELECT * FROM {} WHERE accessToken = '{}' LIMIT 1",
         collections::SOFTWARE_ACCESS_TOKENS,
-        ob_core::escape_surreal_string(&req.t),
+        ob_core::escape_sql_string(&req.t),
     );
     let token_doc = state
         .db

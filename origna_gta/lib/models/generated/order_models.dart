@@ -14,7 +14,7 @@ part 'order_models.g.dart';
 
 /// Safely parses a dynamic database value (String, DateTime, int) to [DateTime?].
 ///
-/// Handles SurrealDB nanosecond-precision ISO strings by truncating to
+/// Handles PostgreSQL nanosecond-precision ISO strings by truncating to
 /// microsecond precision before parsing. See [truncateNanoseconds] in
 /// `lib/core/compat/timestamp.dart` for the full explanation.
 ///

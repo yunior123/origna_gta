@@ -46,7 +46,7 @@ class CollectionRef extends Query {
   /// Add a new document to the collection.
   Future<Document> add(Map<String, dynamic> data) async {
     final response = await client.graphql(
-      'mutation { create(collection: "$collectionName", data: ${toGraphQLValue(data)}) }',
+      'mutation { create(collection: "${escapeGraphQLId(collectionName)}", data: ${toGraphQLValue(data)}) }',
     );
 
     final result = response['data']?['create'];
@@ -77,7 +77,7 @@ class DocumentRef {
   Future<Document?> get() async {
     try {
       final response = await _client.graphql(
-        'query { get(collection: "$collection", id: "$id") }',
+        'query { get(collection: "${escapeGraphQLId(collection)}", id: "${escapeGraphQLId(id)}") }',
       );
 
       final result = response['data']?['get'];
@@ -111,7 +111,7 @@ class DocumentRef {
     // Use updateWithFieldValues mutation when FieldValue markers are present
     final mutation = hasFieldValues ? 'updateWithFieldValues' : 'update';
     final response = await _client.graphql(
-      'mutation { $mutation(collection: "$collection", id: "$id", data: ${toGraphQLValue(processed)}) }',
+      'mutation { $mutation(collection: "${escapeGraphQLId(collection)}", id: "${escapeGraphQLId(id)}", data: ${toGraphQLValue(processed)}) }',
     );
 
     final result = response['data']?[mutation];
@@ -124,7 +124,7 @@ class DocumentRef {
   /// Create or replace the document at this explicit ID.
   Future<Document?> set(Map<String, dynamic> data) async {
     final response = await _client.graphql(
-      'mutation { set(collection: "$collection", id: "$id", data: ${toGraphQLValue(data)}) }',
+      'mutation { set(collection: "${escapeGraphQLId(collection)}", id: "${escapeGraphQLId(id)}", data: ${toGraphQLValue(data)}) }',
     );
 
     final result = response['data']?['set'];
@@ -137,7 +137,7 @@ class DocumentRef {
   /// Delete the document.
   Future<void> delete() async {
     await _client.graphql(
-      'mutation { delete(collection: "$collection", id: "$id") }',
+      'mutation { delete(collection: "${escapeGraphQLId(collection)}", id: "${escapeGraphQLId(id)}") }',
     );
   }
 

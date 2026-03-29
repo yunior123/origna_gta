@@ -22,7 +22,7 @@
 | Project | Stack | Path | Test Command |
 |---------|-------|------|-------------|
 | **origna_gta** | Flutter/Dart, OrignaBase (Rust), Riverpod, Freezed | `~/Documents/GitHub/origna_gta` | `flutter analyze --no-fatal-infos && flutter test` |
-| **orignabase** | Rust (axum, SurrealDB, tower), Docker, Caddy | `~/Documents/GitHub/orignabase` | `cargo clippy -D warnings && cargo test` |
+| **orignabase** | Rust (axum, PostgreSQL, tower), Docker, Caddy | `~/Documents/GitHub/orignabase` | `cargo clippy -D warnings && cargo test` |
 | **fxcleaner** | Swift/SwiftUI, macOS | `~/Documents/GitHub/fxcleaner` | `cd fxcleaner_swiftui && swift test` |
 | **viral-video-pipeline** | Python 3.12+, Playwright, Google GenAI | `~/Documents/GitHub/viral-video-pipeline` | `pytest` |
 | **aguara** | Go, security scanner (fork, OSS) | `~/Documents/GitHub/aguara` | `go test ./...` |
@@ -137,4 +137,4 @@ cd e2e && ORIGNABASE_URL=http://127.0.0.1:8080 bun run lib/seed-dev.ts
 - MVVM: Screens → ViewModels → Services → OrignaBase SDK
 - State: Riverpod providers (`lib/providers/`), AsyncNotifier for async state
 - Models: `freezed` for all value types. Money = integer cents, never float.
-- Backend: OrignaBase SDK only — never raw HTTP to SurrealDB/Meilisearch
+- Backend: OrignaBase SDK only — never raw HTTP to PostgreSQL/Meilisearch

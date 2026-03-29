@@ -690,7 +690,7 @@ async fn send_message(
     let _recipient_id = if uid == buyer_id { seller_id } else { buyer_id };
     let _ = crate::push::send_push(
         &state.http_client,
-        &state.config.database.name, // Using DB name as project_id placeholder
+        "orignabase", // Project ID placeholder
         "",                          // Would need service account
         "",                          // Would need recipient token
         &format!("Message from {sender_name}"),

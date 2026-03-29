@@ -45,7 +45,7 @@ Map<String, dynamic> sanitizeProductData(
     final createdAt = data[Fields.createdAt];
     if (createdAt is String) {
       try {
-        // SurrealDB may return nanosecond-precision strings; truncate first.
+        // PostgreSQL may return nanosecond-precision strings; truncate first.
         data[Fields.createdAt] = DateTime.parse(
           truncateNanoseconds(createdAt),
         ).toIso8601String();
@@ -98,12 +98,12 @@ abstract class ProductRepository {
   /// Only the product's seller or an admin can delete.
   Future<void> deleteProduct(String productId);
 
-  /// Fetches a single product by its SurrealDB document ID. Returns null if not found.
+  /// Fetches a single product by its PostgreSQL document ID. Returns null if not found.
   Future<Product?> fetchProductById(String productId);
 
   /// Searches/lists products with optional filters and pagination.
   ///
-  /// Uses Meilisearch for keyword search, falls back to SurrealDB for
+  /// Uses Meilisearch for keyword search, falls back to PostgreSQL for
   /// category/price filtering when no search query is provided.
   Future<ProductQueryResult> fetchProducts({
     String? searchQuery,

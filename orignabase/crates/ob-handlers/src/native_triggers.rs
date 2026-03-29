@@ -744,7 +744,7 @@ impl NativeTriggerExecutor {
         body: &str,
         data: &Value,
     ) {
-        let escaped_user_id = ob_core::escape_surreal_string(user_id);
+        let escaped_user_id = ob_core::escape_sql_string(user_id);
         let tokens = self
             .state
             .db
@@ -1926,13 +1926,13 @@ mod tests {
         let notifications = executor
             .state
             .db
-            .list_documents(collections::NOTIFICATIONS, Some(20))
+            .list_documents(collections::NOTIFICATIONS, Some(20), None)
             .await
             .unwrap();
         let stock_watchers = executor
             .state
             .db
-            .list_documents(collections::STOCK_NOTIFICATIONS, Some(10))
+            .list_documents(collections::STOCK_NOTIFICATIONS, Some(10), None)
             .await;
 
         assert_eq!(notifications.len(), 3);
@@ -1977,7 +1977,7 @@ mod tests {
         let notifications = executor
             .state
             .db
-            .list_documents(collections::NOTIFICATIONS, Some(10))
+            .list_documents(collections::NOTIFICATIONS, Some(10), None)
             .await
             .unwrap();
         assert_eq!(notifications.len(), 1);
@@ -2030,7 +2030,7 @@ mod tests {
         let notifications = executor
             .state
             .db
-            .list_documents(collections::NOTIFICATIONS, Some(10))
+            .list_documents(collections::NOTIFICATIONS, Some(10), None)
             .await
             .unwrap();
         assert_eq!(notifications.len(), 2);
@@ -2077,7 +2077,7 @@ mod tests {
         let notifications = executor
             .state
             .db
-            .list_documents(collections::NOTIFICATIONS, Some(10))
+            .list_documents(collections::NOTIFICATIONS, Some(10), None)
             .await
             .unwrap();
         assert_eq!(notifications.len(), 2);
@@ -2141,7 +2141,7 @@ mod tests {
         let notifications = executor
             .state
             .db
-            .list_documents(collections::NOTIFICATIONS, Some(50))
+            .list_documents(collections::NOTIFICATIONS, Some(50), None)
             .await
             .unwrap();
 
@@ -2237,7 +2237,7 @@ mod tests {
         let notifications = executor
             .state
             .db
-            .list_documents(collections::NOTIFICATIONS, Some(20))
+            .list_documents(collections::NOTIFICATIONS, Some(20), None)
             .await
             .unwrap();
 
@@ -2296,7 +2296,7 @@ mod tests {
         let notifications = executor
             .state
             .db
-            .list_documents(collections::NOTIFICATIONS, Some(50))
+            .list_documents(collections::NOTIFICATIONS, Some(50), None)
             .await
             .unwrap();
 
@@ -2375,7 +2375,7 @@ mod tests {
         let notifications = executor
             .state
             .db
-            .list_documents(collections::NOTIFICATIONS, Some(20))
+            .list_documents(collections::NOTIFICATIONS, Some(20), None)
             .await
             .unwrap();
 
@@ -2400,7 +2400,7 @@ mod tests {
         let notifications = executor
             .state
             .db
-            .list_documents(collections::NOTIFICATIONS, Some(10))
+            .list_documents(collections::NOTIFICATIONS, Some(10), None)
             .await
             .unwrap();
         assert!(notifications.is_empty());
@@ -2424,7 +2424,7 @@ mod tests {
         let notifications = executor
             .state
             .db
-            .list_documents(collections::NOTIFICATIONS, Some(10))
+            .list_documents(collections::NOTIFICATIONS, Some(10), None)
             .await
             .unwrap();
         assert!(notifications.is_empty());
@@ -2499,13 +2499,13 @@ mod tests {
         let notifications = executor
             .state
             .db
-            .list_documents(collections::NOTIFICATIONS, Some(20))
+            .list_documents(collections::NOTIFICATIONS, Some(20), None)
             .await
             .unwrap();
         let webhook_claims = executor
             .state
             .db
-            .list_documents(collections::WEBHOOK_EVENTS, Some(20))
+            .list_documents(collections::WEBHOOK_EVENTS, Some(20), None)
             .await
             .unwrap();
 
@@ -2547,7 +2547,7 @@ mod tests {
         let mail_logs = executor
             .state
             .db
-            .list_documents(collections::MAIL_LOGS, Some(10))
+            .list_documents(collections::MAIL_LOGS, Some(10), None)
             .await
             .unwrap();
 
@@ -2604,7 +2604,7 @@ mod tests {
         let mail_logs = executor
             .state
             .db
-            .list_documents(collections::MAIL_LOGS, Some(10))
+            .list_documents(collections::MAIL_LOGS, Some(10), None)
             .await
             .unwrap();
         assert!(mail_logs.is_empty());
@@ -2877,7 +2877,7 @@ mod tests {
         let notifications = executor
             .state
             .db
-            .list_documents(collections::NOTIFICATIONS, Some(10))
+            .list_documents(collections::NOTIFICATIONS, Some(10), None)
             .await
             .unwrap();
         assert!(notifications.iter().any(|doc| doc["userId"] == "buyer_1"));
@@ -2912,7 +2912,7 @@ mod tests {
         let notifications = executor
             .state
             .db
-            .list_documents(collections::NOTIFICATIONS, Some(10))
+            .list_documents(collections::NOTIFICATIONS, Some(10), None)
             .await
             .unwrap();
         // Only seller gets notified
@@ -2959,7 +2959,7 @@ mod tests {
         let notifications = executor
             .state
             .db
-            .list_documents(collections::NOTIFICATIONS, Some(10))
+            .list_documents(collections::NOTIFICATIONS, Some(10), None)
             .await
             .unwrap();
         assert!(notifications.iter().all(|doc| doc["userId"] == "seller_1"));
@@ -2995,7 +2995,7 @@ mod tests {
         let notifications = executor
             .state
             .db
-            .list_documents(collections::NOTIFICATIONS, Some(10))
+            .list_documents(collections::NOTIFICATIONS, Some(10), None)
             .await
             .unwrap();
         // Only buyer gets notified, seller is skipped as last actor
@@ -3038,7 +3038,7 @@ mod tests {
         let notifications = executor
             .state
             .db
-            .list_documents(collections::NOTIFICATIONS, Some(20))
+            .list_documents(collections::NOTIFICATIONS, Some(20), None)
             .await
             .unwrap();
         // Should have buyer + seller notifications but no perishable urgent
@@ -3162,7 +3162,7 @@ mod tests {
         let notifications = executor
             .state
             .db
-            .list_documents(collections::NOTIFICATIONS, Some(10))
+            .list_documents(collections::NOTIFICATIONS, Some(10), None)
             .await
             .unwrap();
         assert!(notifications.is_empty());
@@ -3224,7 +3224,7 @@ mod tests {
         let remaining = executor
             .state
             .db
-            .list_documents(collections::STOCK_NOTIFICATIONS, Some(10))
+            .list_documents(collections::STOCK_NOTIFICATIONS, Some(10), None)
             .await
             .unwrap();
         assert_eq!(remaining.len(), 1);
@@ -4098,7 +4098,7 @@ mod tests {
         let notifications = executor
             .state
             .db
-            .list_documents(collections::NOTIFICATIONS, Some(10))
+            .list_documents(collections::NOTIFICATIONS, Some(10), None)
             .await
             .unwrap();
         assert_eq!(notifications.len(), 1);
@@ -4143,7 +4143,7 @@ mod tests {
         let notifications = executor
             .state
             .db
-            .list_documents(collections::NOTIFICATIONS, Some(10))
+            .list_documents(collections::NOTIFICATIONS, Some(10), None)
             .await
             .unwrap();
         assert_eq!(notifications.len(), 1);
@@ -4181,7 +4181,7 @@ mod tests {
         let notifications = executor
             .state
             .db
-            .list_documents(collections::NOTIFICATIONS, Some(10))
+            .list_documents(collections::NOTIFICATIONS, Some(10), None)
             .await
             .unwrap();
         assert_eq!(notifications.len(), 1);
@@ -4322,7 +4322,7 @@ mod tests {
         let remaining = executor
             .state
             .db
-            .list_documents(collections::STOCK_NOTIFICATIONS, Some(10))
+            .list_documents(collections::STOCK_NOTIFICATIONS, Some(10), None)
             .await
             .unwrap();
         assert!(remaining.is_empty());
@@ -4360,7 +4360,7 @@ mod tests {
         let notifications = executor
             .state
             .db
-            .list_documents(collections::NOTIFICATIONS, Some(10))
+            .list_documents(collections::NOTIFICATIONS, Some(10), None)
             .await
             .unwrap();
         assert!(notifications.iter().any(|doc| {
@@ -4408,7 +4408,7 @@ mod tests {
         let notifications = executor
             .state
             .db
-            .list_documents(collections::NOTIFICATIONS, Some(20))
+            .list_documents(collections::NOTIFICATIONS, Some(20), None)
             .await
             .unwrap();
         assert!(notifications.iter().any(|doc| {
@@ -4445,7 +4445,7 @@ mod tests {
         let notifications = executor
             .state
             .db
-            .list_documents(collections::NOTIFICATIONS, Some(10))
+            .list_documents(collections::NOTIFICATIONS, Some(10), None)
             .await
             .unwrap();
         assert!(
@@ -4487,7 +4487,7 @@ mod tests {
         let notifications = executor
             .state
             .db
-            .list_documents(collections::NOTIFICATIONS, Some(10))
+            .list_documents(collections::NOTIFICATIONS, Some(10), None)
             .await
             .unwrap();
         assert!(
@@ -4717,7 +4717,7 @@ mod tests {
         let mail_logs = executor
             .state
             .db
-            .list_documents(collections::MAIL_LOGS, Some(10))
+            .list_documents(collections::MAIL_LOGS, Some(10), None)
             .await
             .unwrap();
         assert!(!mail_logs.is_empty());
@@ -4869,7 +4869,7 @@ mod tests {
         let remaining = executor
             .state
             .db
-            .list_documents(collections::STOCK_NOTIFICATIONS, Some(10))
+            .list_documents(collections::STOCK_NOTIFICATIONS, Some(10), None)
             .await
             .unwrap();
         assert!(remaining.is_empty());

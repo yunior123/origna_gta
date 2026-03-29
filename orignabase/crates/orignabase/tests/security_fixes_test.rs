@@ -1,13 +1,13 @@
 //! Security fixes live integration tests
 //!
-//! Tests critical security fixes against dev SurrealDB:
+//! Tests critical security fixes against dev PostgreSQL:
 //! - Auth bypass prevention
 //! - CORS validation
 //! - Self-purchase prevention
 //! - Rate limiting
 //! - JWT expiry
 //! - Input validation
-//! - SurrealQL injection prevention
+//! - SQL injection prevention
 //!
 //! Run: cargo test --test security_fixes_test -- --ignored
 
@@ -399,7 +399,7 @@ mod security_fixes {
     }
 
     // ═══════════════════════════════════════════════════════════════════
-    // TEST 11: SurrealQL injection prevention in search
+    // TEST 11: SQL injection prevention in search
     // ═══════════════════════════════════════════════════════════════════
     #[tokio::test]
     #[ignore = "requires running orignabase instance"]

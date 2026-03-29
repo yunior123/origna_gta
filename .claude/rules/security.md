@@ -25,7 +25,7 @@
 - Buyers can only read their own orders and profile.
 - Admins have elevated access — all admin actions must be logged with `adminUid` in the event log.
 - Never trust `userId` sent from Flutter — always derive it from the verified JWT on the backend.
-- Row-level security enforced in SurrealDB via `PERMISSIONS` clauses on all tables.
+- Row-level security enforced in PostgreSQL via `RLS` policies on all tables.
 
 ## Rate Limiting
 - OrignaBase uses `tower_governor` for rate limiting — respect 429 responses.
@@ -54,7 +54,7 @@
 ## Data Privacy
 - PII (name, email, phone, address) never logged in plaintext.
 - Buyer addresses are never exposed to sellers beyond what is needed for shipping.
-- Seller bank account details never stored in SurrealDB — Stripe Connect handles it.
+- Seller bank account details never stored in PostgreSQL — Stripe Connect handles it.
 - User data deletion: OrignaBase must support GDPR delete request that purges all user records.
 
 ## Dependency Security

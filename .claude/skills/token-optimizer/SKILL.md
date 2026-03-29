@@ -57,7 +57,7 @@ Cache successful reasoning patterns to avoid re-deriving them.
 |---------|----------|--------|
 | "money calculation bug" | Check for float usage, verify cents arithmetic | `grep -r "double.*price\|double.*cost\|double.*amount"` |
 | "provider not updating" | Check `ref.watch` vs `ref.read`, verify `select()` usage | Run affected widget test |
-| "API 403 error" | Check JWT sub format (`users:xxx` vs `xxx`), verify RLS | Check SurrealDB PERMISSIONS |
+| "API 403 error" | Check JWT sub format, verify RLS | Check PostgreSQL RLS policies |
 | "Meilisearch not finding" | Check filterable/sortable attrs, verify `:` -> `_` sanitization | Query Meilisearch directly |
 | "widget overflow" | Check `Expanded`/`Flexible` wrapping, verify `ConstrainedBox` | Widget test with small screen |
 

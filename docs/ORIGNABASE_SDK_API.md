@@ -19,7 +19,7 @@
 - `offline.dart` — Offline cache with write queue
 - `subcollection.dart` — Firestore-style subcollections
 - `config.dart` — Remote Config
-- `aggregate.dart` — SurrealQL aggregates
+- `aggregate.dart` — SQL aggregates
 
 ---
 
@@ -99,7 +99,7 @@
 - `restoreSession({required String accessToken, String? refreshToken, String? email})` → `AuthState` — restore session from OAuth callback tokens (used after OAuth redirect). Synchronous, updates internal state and broadcasts.
 - `authStateChanges` (getter) → `Stream<AuthState>` — broadcast stream of auth state changes (authenticated ↔ unauthenticated). Emits current state on subscription.
 - `currentState` (getter) → `AuthState` — current auth snapshot (synchronous).
-- `currentUserId` (getter) → `String?` — extracts `sub` claim from JWT (SurrealDB record ID format `users:xxx`).
+- `currentUserId` (getter) → `String?` — extracts `sub` claim from JWT (user UUID).
 - `currentEmail` (getter) → `String?` — from JWT `email` claim or last known email.
 - `currentRoles` (getter) → `List<String>` — extracts `roles` array from JWT claims.
 - `isEmailVerified` (getter) → `bool` — checks `email_verified` claim from JWT.
@@ -283,7 +283,7 @@
 
 **Error Handling**:
 - If any mutation fails, exception thrown and remaining mutations not executed.
-- Partial results may exist in SurrealDB if earlier mutations succeeded.
+- Partial results may exist in PostgreSQL if earlier mutations succeeded.
 - Caller must handle cleanup/retry logic if batch partially fails.
 
 **Token Management**:
@@ -298,7 +298,7 @@
 - `FieldValue` — immutable sentinel with `_type` and optional `_value`.
 
 **Static Factory Methods**:
-- `FieldValue.serverTimestamp()` → `FieldValue` — sets field to server's current timestamp (SurrealDB `time::now()`).
+- `FieldValue.serverTimestamp()` → `FieldValue` — sets field to server's current timestamp (PostgreSQL `NOW()`).
 - `FieldValue.increment(num value)` → `FieldValue` — increments numeric field by value (can be negative for decrement). Example: `.increment(-5)` decrements by 5.
 - `FieldValue.arrayUnion(List<dynamic> elements)` → `FieldValue` — adds elements to array field (only if not already present). Idempotent across multiple calls.
 - `FieldValue.arrayRemove(List<dynamic> elements)` → `FieldValue` — removes elements from array field (no error if element not present).
@@ -504,7 +504,7 @@ doc.update({
 - `_SubcollectionQuery extends Query` (internal) — query wrapper that auto-injects parent filter.
 
 **Design Pattern**:
-- Firestore path `/users/{uid}/orders` → SurrealDB collection `users__orders` (double underscore separator).
+- Firestore path `/users/{uid}/orders` → PostgreSQL table `users__orders` (double underscore separator).
 - Parent document ID stored in `parent_id` field on each child document.
 - Example: orders for user `users:user123` have `parent_id: 'users:user123'`.
 
@@ -560,7 +560,7 @@ doc.update({
 ---
 
 ### aggregate.dart
-**Purpose**: Build SurrealQL aggregate queries (COUNT, SUM, AVG) with filtering.
+**Purpose**: Build SQL aggregate queries (COUNT, SUM, AVG) with filtering.
 
 **Classes**:
 - `AggregateQuery extends Query` — aggregate query builder.
@@ -571,7 +571,7 @@ doc.update({
 - `toAvgQuery(String field)` → `Map<String, dynamic>` — builds `SELECT math::mean(field) as average FROM collection WHERE ...` query. Returns query map.
 
 **Operator Mapping** (for WHERE clause):
-| Filter Operator | SurrealQL Operator |
+| Filter Operator | SQL Operator |
 |---|---|
 | `_eq` | `=` |
 | `_ne` | `!=` |
@@ -584,11 +584,11 @@ doc.update({
 | `_startswith` | `~` |
 
 **Internal Methods**:
-- `_filterToSurrealCondition(QueryFilter filter)` → `String` — converts QueryFilter to SurrealQL WHERE clause syntax (e.g., `field = value`, `field > 100`, `field IN [1, 2, 3]`).
+- `_filterToSqlCondition(QueryFilter filter)` → `String` — converts QueryFilter to SQL WHERE clause syntax (e.g., `field = value`, `field > 100`, `field IN [1, 2, 3]`).
 
 **Error Handling**:
-- Invalid field names → validation error from SurrealDB.
-- Type mismatches (e.g., SUM on non-numeric field) → SurrealDB error.
+- Invalid field names → validation error from PostgreSQL.
+- Type mismatches (e.g., SUM on non-numeric field) → PostgreSQL error.
 
 **Token Management**:
 - Query requests include JWT auth (Bearer token).

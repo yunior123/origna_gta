@@ -26,7 +26,7 @@ class OrignaBaseNotificationRepository {
   /// Queries for all unread notifications, then batch-updates them.
   /// Silently succeeds when:
   /// - The user has no notifications (empty result).
-  /// - The backend returns 403 (null resource context in SurrealDB rules).
+  /// - The backend returns 403 (null resource context in PostgreSQL rules).
   ///
   /// Throws on other errors (logged via [AppError]).
   Future<void> markAllRead(String uid) async {
@@ -83,7 +83,8 @@ class OrignaBaseNotificationRepository {
     } on OrignaBaseException catch (e) {
       if (e.statusCode == 403 || e.statusCode == 404) return;
       // Internal server error on nonexistent doc is also acceptable.
-      if (e.statusCode == null && e.message.contains('Internal server error')) return;
+      if (e.statusCode == null && e.message.contains('Internal server error'))
+        return;
       AppError.log(e, context: 'ob_notification.markRead');
       rethrow;
     }

@@ -9,7 +9,7 @@ use tracing::{info, warn};
 use crate::shared::schema::{collections, fields};
 
 /// Create all required database indexes.
-/// Idempotent: SurrealDB ignores if index already exists.
+/// Idempotent: PostgreSQL ignores if index already exists.
 pub async fn create_required_indexes(db: &DatabaseClient) -> Result<(), String> {
     // Products table indexes
     info!("Creating indexes for products table");

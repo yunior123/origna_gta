@@ -25,7 +25,7 @@ Use cases:
 | `payment-auditor` | Payments | Stripe, webhooks, refunds |
 | `security-auditor` | Security | Auth, secrets, rate limiting |
 | `schema-sync-checker` | Data integrity | Field name consistency |
-| `cross-stack-auditor` | Full stack | Dart ↔ SurrealDB schema sync |
+| `cross-stack-auditor` | Full stack | Dart ↔ PostgreSQL schema sync |
 | `order-lifecycle-auditor` | Orders | State machine, transitions |
 | `product-lifecycle-auditor` | Products | Status, stock, digital/perishable |
 | `search-discovery-auditor` | Search | Meilisearch config, filters |

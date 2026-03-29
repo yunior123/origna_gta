@@ -2533,6 +2533,1848 @@ async function seedComparisonLists(admin: AuthBundle, buyerIds: string[], produc
 }
 
 
+// ════════════════════════════════════════════════════════════════════
+// EDGE-CASE SEEDERS — fills UI gaps for empty/edge/view states
+// ════════════════════════════════════════════════════════════════════
+
+/** Empty seller — has seller profile + warehouse but ZERO products → triggers seller_products_screen empty state */
+async function seedEmptySeller(admin: AuthBundle) {
+  const sellerId = 'seed_seller_empty_products';
+  await writeDoc(`users/${sellerId}`, {
+    email: 'seed-seller-empty@test.origna.ca',
+    displayName: 'Empty Shelf Seller',
+    roles: ['buyer', 'seller'],
+    isPremium: true,
+    emailVerified: true,
+    suspended: false,
+    stripeOnboarded: true,
+    preferredLanguage: 'en',
+    createdAt: isoDaysAgo(30),
+    updatedAt: new Date().toISOString(),
+  }, admin.idToken, true);
+
+  await writeDoc(`seller_profiles/${sellerId}`, {
+    sellerId,
+    businessName: 'Empty Shelf Co.',
+    description: 'New seller — no products listed yet. Seeded for empty-state coverage.',
+    status: 'approved',
+    approvalStatus: 'approved',
+    verificationStatus: 'approved',
+    chargesEnabled: true,
+    payoutsEnabled: true,
+    detailsSubmitted: true,
+    onboardingCompleted: true,
+    pendingRequirements: [],
+    defaultCurrency: 'CAD',
+    defaultCountry: 'CA',
+    stripeAccountId: 'acct_seed_empty_seller',
+    createdAt: isoDaysAgo(30),
+    updatedAt: new Date().toISOString(),
+  }, admin.idToken, true);
+
+  await writeDoc(`users/${sellerId}/warehouses/wh_${sellerId}_main`, {
+    warehouseId: `wh_${sellerId}_main`,
+    label: 'Main Warehouse',
+    type: 'warehouse',
+    address: { street: '50 Empty Ave', city: 'Toronto', province: 'ON', postalCode: 'M5V 0A1', country: 'Canada' },
+    isDefault: true,
+    createdAt: isoDaysAgo(30),
+  }, admin.idToken, true);
+
+  await writeDoc(`seller_metrics/${sellerId}`, {
+    sellerId,
+    avgResponseTimeMinutes: 0,
+    positiveRatePct: 0,
+    totalReviews: 0,
+    totalSales: 0,
+    totalRevenueCents: 0,
+    shipOnTimePct: 0,
+    returnRatePct: 0,
+    accountAgeDays: 30,
+    lastActivityAt: isoDaysAgo(1),
+    createdAt: isoDaysAgo(30),
+    updatedAt: new Date().toISOString(),
+  }, admin.idToken, true);
+
+  console.log(`  ✓ empty seller seeded (${sellerId}) — 0 products, profile complete`);
+}
+
+/**
+ * Premium user with NO chat threads → triggers _ChatInboxBody empty state
+ * (chat_conversations_screen.dart line 88-93: "No conversations yet")
+ */
+async function seedPremiumUserNoChats(admin: AuthBundle) {
+  const userId = 'seed_premium_no_chats';
+  await writeDoc(`users/${userId}`, {
+    email: 'seed-premium-nochats@test.origna.ca',
+    displayName: 'Premium Lone Wolf',
+    roles: ['buyer'],
+    isPremium: true,
+    premiumSince: isoDaysAgo(45),
+    premiumExpiresAt: isoDaysAgo(-30),
+    emailVerified: true,
+    suspended: false,
+    stripeOnboarded: false,
+    preferredLanguage: 'en',
+    pushEnabled: true,
+    notifyNewProducts: true,
+    notifyTrending: false,
+    createdAt: isoDaysAgo(90),
+    updatedAt: new Date().toISOString(),
+  }, admin.idToken, true);
+
+  await writeDoc(`subscriptions/${userId}`, {
+    userId,
+    planType: 'premium_monthly',
+    status: 'active',
+    currentPeriodStart: isoDaysAgo(10),
+    currentPeriodEnd: isoDaysAgo(-20),
+    cancelAtPeriodEnd: false,
+    features: ['unlimited_listings', 'priority_support', 'analytics', 'chat_with_sellers'],
+    stripeSubscriptionId: `sub_seed_no_chats_${userId}`,
+    stripeCustomerId: `cus_seed_no_chats_${userId}`,
+    createdAt: isoDaysAgo(45),
+    updatedAt: new Date().toISOString(),
+  }, admin.idToken, true);
+
+  console.log(`  ✓ premium user with NO chats seeded (${userId})`);
+}
+
+/**
+ * Premium user with chat threads at 99+ unread → triggers "99+" overflow badge
+ * (chat_conversations_screen.dart line 228-249)
+ */
+async function seedHighUnreadChats(admin: AuthBundle, sellerIds: string[]) {
+  const buyerId = 'seed_buyer_high_unread';
+  await writeDoc(`users/${buyerId}`, {
+    email: 'seed-buyer-highunread@test.origna.ca',
+    displayName: 'Busy Buyer (99+ unread)',
+    roles: ['buyer'],
+    isPremium: true,
+    premiumSince: isoDaysAgo(60),
+    premiumExpiresAt: isoDaysAgo(-15),
+    emailVerified: true,
+    suspended: false,
+    preferredLanguage: 'en',
+    createdAt: isoDaysAgo(120),
+    updatedAt: new Date().toISOString(),
+  }, admin.idToken, true);
+
+  await writeDoc(`subscriptions/${buyerId}`, {
+    userId: buyerId,
+    planType: 'premium_monthly',
+    status: 'active',
+    currentPeriodStart: isoDaysAgo(5),
+    currentPeriodEnd: isoDaysAgo(-25),
+    cancelAtPeriodEnd: false,
+    features: ['unlimited_listings', 'priority_support', 'analytics', 'chat_with_sellers'],
+    stripeSubscriptionId: 'sub_seed_high_unread',
+    stripeCustomerId: 'cus_seed_high_unread',
+    createdAt: isoDaysAgo(60),
+    updatedAt: new Date().toISOString(),
+  }, admin.idToken, true);
+
+  // Create 3 chat threads — one with 120 unread (→ shows "99+"), one with 47, one with 0
+  const unreadCounts = [120, 47, 0];
+  const productNames = ['Vintage Camera', 'Organic Maple Syrup', 'Gaming Keyboard'];
+
+  for (let i = 0; i < 3; i++) {
+    const sellerId = sellerIds[i % sellerIds.length];
+    const chatId = `chat_high_unread_${i}`;
+    const msgCount = 5;
+
+    await writeDoc(`chats/${chatId}`, {
+      participants: [buyerId, sellerId],
+      productId: `mega_seed_product_${String(i + 1).padStart(4, '0')}`,
+      buyerId,
+      sellerId,
+      productTitle: productNames[i],
+      productImageUrl: sampleImageUrls(`chat-prod-${i}`, 1)[0],
+      lastMessage: `You have ${unreadCounts[i]} unread messages from this seller.`,
+      lastMessageAt: isoDaysAgo(i),
+      unreadCount: unreadCounts[i],
+      buyerUnreadCount: unreadCounts[i],
+      sellerUnreadCount: 0,
+      createdAt: isoDaysAgo(10 + i),
+      updatedAt: isoDaysAgo(i),
+    }, admin.idToken, true);
+
+    // Write messages (all from seller so buyer has unread count)
+    for (let j = 1; j <= Math.min(msgCount, 5); j++) {
+      await writeDoc(`chats/${chatId}/messages/msg_${j}`, {
+        chatId,
+        senderId: sellerId,
+        text: `Follow-up message ${j} about your order.`,
+        isRead: false,
+        createdAt: isoDaysAgo(i, j * 10),
+      }, admin.idToken, true);
+    }
+  }
+
+  console.log(`  ✓ high-unread chat threads seeded (${buyerId}) — unread: ${unreadCounts.join(', ')}`);
+}
+
+/**
+ * Orders with awaiting_payment + shippingApprovalStatus pending
+ * → triggers seller_orders_order_card authorization banner
+ * → triggers shipping_approval_screen flow
+ */
+async function seedAwaitingPaymentOrders(admin: AuthBundle, buyerIds: string[], sellerId: string, productIds: string[]) {
+  const orders = [
+    {
+      id: 'seed_order_awaiting_pay_01',
+      orderStatus: 'pending',
+      status: 'pending',
+      paymentStatus: 'awaiting_payment',
+      shippingApprovalStatus: 'pending',
+      label: 'Awaiting payment + shipping approval pending',
+    },
+    {
+      id: 'seed_order_awaiting_pay_02',
+      orderStatus: 'confirmed',
+      status: 'confirmed',
+      paymentStatus: 'awaiting_payment',
+      shippingApprovalStatus: 'approved',
+      label: 'Awaiting payment + shipping approved',
+    },
+    {
+      id: 'seed_order_payment_failed',
+      orderStatus: 'pending',
+      status: 'pending',
+      paymentStatus: 'failed',
+      shippingApprovalStatus: 'pending',
+      label: 'Payment failed',
+    },
+    {
+      id: 'seed_order_refunded_full',
+      orderStatus: 'cancelled',
+      status: 'cancelled',
+      paymentStatus: 'refunded',
+      shippingApprovalStatus: 'approved',
+      label: 'Fully refunded',
+    },
+  ];
+
+  for (let i = 0; i < orders.length; i++) {
+    const spec = orders[i];
+    const buyerId = buyerIds[i % buyerIds.length];
+    const productId = productIds[i % productIds.length];
+    const priceCents = 4999 + i * 2000;
+    const quantity = 1 + (i % 2);
+    const subtotalCents = priceCents * quantity;
+    const shippingCostCents = spec.paymentStatus === 'awaiting_payment' ? 0 : 899;
+
+    await writeDoc(`orders/${spec.id}`, {
+      orderId: spec.id,
+      orderStatus: spec.orderStatus,
+      status: spec.status,
+      paymentStatus: spec.paymentStatus,
+      buyerId,
+      userId: buyerId,
+      sellerId: userRef(sellerId),
+      sellerIds: [userRef(sellerId)],
+      items: [{
+        productId,
+        cartItemId: `${spec.id}_item_1`,
+        name: `Test Item — ${spec.label}`,
+        description: `Seeded order for edge-case testing: ${spec.label}`,
+        price: priceCents / 100,
+        quantity,
+        imageUrls: sampleImageUrls(`${productId}-order`, 1),
+        sellerId: userRef(sellerId),
+        status: spec.status,
+        isDigital: false,
+        isPerishable: false,
+        freeShipping: i === 0,
+      }],
+      subtotalCents,
+      shippingCostCents,
+      taxAmountCents: Math.round(subtotalCents * 0.13),
+      totalAmountCents: subtotalCents + Math.round(subtotalCents * 0.13) + shippingCostCents,
+      createdAt: isoDaysAgo(3 + i),
+      confirmedAt: spec.paymentStatus === 'awaiting_payment' && spec.orderStatus === 'confirmed' ? isoDaysAgo(2) : null,
+      deliveredAt: null,
+      shippedAt: null,
+      trackingNumber: null,
+      carrier: null,
+      shippingApprovalStatus: spec.shippingApprovalStatus,
+      shippingAddress: {
+        street: '123 Buyer Demo St',
+        city: 'Toronto',
+        province: 'ON',
+        postalCode: 'M5V 3A8',
+        country: 'Canada',
+      },
+      cancelledAt: spec.paymentStatus === 'refunded' ? isoDaysAgo(1) : null,
+      cancelledBy: spec.paymentStatus === 'refunded' ? buyerId : null,
+      refundAmountCents: spec.paymentStatus === 'refunded' ? subtotalCents + Math.round(subtotalCents * 0.13) + shippingCostCents : 0,
+    }, admin.idToken, true);
+  }
+
+  console.log(`  ✓ awaiting-payment/failed/refunded orders seeded (${orders.length})`);
+}
+
+/**
+ * Orders with delivery instructions
+ * → triggers delivery instructions banner in order detail / seller order card
+ */
+async function seedOrdersWithDeliveryInstructions(admin: AuthBundle, buyerIds: string[], sellerId: string, productIds: string[]) {
+  const instructions = [
+    'Please leave at the back door. Ring doorbell twice.',
+    'Fragile — handle with care. Do not stack.',
+    'Deliver to concierge at lobby. Unit 1412.',
+    'Gate code: #4521. Leave package at side porch.',
+    'Call upon arrival: 416-555-0199.',
+  ];
+
+  for (let i = 0; i < instructions.length; i++) {
+    const orderId = `seed_order_delinst_${String(i + 1).padStart(2, '0')}`;
+    const buyerId = buyerIds[i % buyerIds.length];
+    const productId = productIds[i % productIds.length];
+    const status = i < 2 ? 'shipped' : i < 4 ? 'delivered' : 'confirmed';
+    const priceCents = 2999 + i * 1500;
+
+    await writeDoc(`orders/${orderId}`, {
+      orderId,
+      orderStatus: status,
+      status,
+      paymentStatus: 'paid',
+      buyerId,
+      userId: buyerId,
+      sellerId: userRef(sellerId),
+      sellerIds: [userRef(sellerId)],
+      items: [{
+        productId,
+        cartItemId: `${orderId}_item_1`,
+        name: `Delivery Instructions Test Item ${i + 1}`,
+        description: 'Seeded order to test delivery instructions display.',
+        price: priceCents / 100,
+        quantity: 1,
+        imageUrls: sampleImageUrls(`${productId}-di`, 1),
+        sellerId: userRef(sellerId),
+        status,
+        isDigital: false,
+        isPerishable: false,
+        freeShipping: false,
+      }],
+      subtotalCents: priceCents,
+      shippingCostCents: 899,
+      taxAmountCents: Math.round(priceCents * 0.13),
+      totalAmountCents: priceCents + Math.round(priceCents * 0.13) + 899,
+      deliveryInstructions: instructions[i],
+      createdAt: isoDaysAgo(5 + i),
+      confirmedAt: isoDaysAgo(4 + i),
+      deliveredAt: status === 'delivered' ? isoDaysAgo(i + 1) : null,
+      shippedAt: status === 'shipped' || status === 'delivered' ? isoDaysAgo(2 + i) : null,
+      trackingNumber: status === 'shipped' || status === 'delivered' ? `TRK-DI-${1000 + i}` : null,
+      carrier: status === 'shipped' || status === 'delivered' ? 'canada_post' : null,
+      shippingApprovalStatus: 'approved',
+      shippingAddress: {
+        street: `${100 + i} Demo Lane`,
+        city: 'Toronto',
+        province: 'ON',
+        postalCode: 'M5V 3A8',
+        country: 'Canada',
+      },
+    }, admin.idToken, true);
+  }
+
+  console.log(`  ✓ orders with delivery instructions seeded (${instructions.length})`);
+}
+
+/**
+ * Age-restricted products → triggers age-gate text in checkout_screen.dart
+ */
+async function seedAgeRestrictedProducts(admin: AuthBundle, sellerId: string) {
+  const products = [
+    {
+      id: 'e2e_product_age_restricted_knife',
+      title: 'Professional Chef Knife Set — 8pc',
+      description: 'High-carbon stainless steel chef knife set. Age verification required at checkout.',
+      priceCents: 8999,
+      stockQuantity: 25,
+      categoryId: 4,
+      categoryName: 'Home & Kitchen',
+      subcategory: 'Cookware',
+    },
+    {
+      id: 'e2e_product_age_restricted_whisky',
+      title: 'Canadian Rye Whisky Infusion Kit',
+      description: 'DIY whisky aging kit with oak chips and botanicals. Must be 19+ to purchase in Ontario.',
+      priceCents: 5499,
+      stockQuantity: 18,
+      categoryId: 19,
+      categoryName: 'Groceries',
+      subcategory: 'Drinks',
+      isPerishable: false,
+    },
+  ];
+
+  for (const p of products) {
+    await writeDoc(`products/${p.id}`, {
+      productId: p.id,
+      sellerId: userRef(sellerId),
+      sellerSku: `SKU-AGE-${p.id.toUpperCase()}`,
+      name: p.title,
+      title: p.title,
+      slug: slugify(p.title),
+      description: p.description,
+      categoryId: p.categoryId,
+      categoryName: p.categoryName,
+      subcategory: p.subcategory,
+      price: p.priceCents / 100,
+      priceCents: p.priceCents,
+      compareAtPrice: Number(((p.priceCents + 500) / 100).toFixed(2)),
+      stockQuantity: p.stockQuantity,
+      lifecycleStatus: 'active',
+      sellerDashboardStatus: 'active',
+      isAgeRestricted: true,
+      isDigital: false,
+      isPerishable: p.isPerishable ?? false,
+      isLocalDeliveryOnly: false,
+      freeShipping: false,
+      hasVariants: false,
+      shipFromCountry: 'Canada',
+      shipFromProvince: 'ON',
+      shipFromCity: 'Toronto',
+      imageUrls: sampleImageUrls(p.id, 2, p.categoryName),
+      keywords: [p.categoryName.toLowerCase(), 'age_restricted', 'seeded'],
+      createdAt: isoDaysAgo(15),
+      updatedAt: new Date().toISOString(),
+      rating: 4.3,
+      ratingCount: 7,
+      isTrending: false,
+      trendingScore: 0,
+      viewCount: 200,
+      purchaseCount: 30,
+      estimatedShipDays: 3,
+      minimumOrderQuantity: 1,
+      weightKg: 1.2,
+      lengthCm: 30,
+      widthCm: 20,
+      heightCm: 10,
+      warehouseIds: [`wh_${sellerId}_main`],
+      warehouseStockMap: { [`wh_${sellerId}_main`]: p.stockQuantity },
+      variantOptions: [],
+      variants: [],
+    }, admin.idToken, true);
+  }
+
+  console.log(`  ✓ age-restricted products seeded (${products.length})`);
+}
+
+/**
+ * Cart with mixed available + unavailable items
+ * → triggers unavailable items warning banner in cart_screen.dart line 160-207
+ */
+async function seedMixedAvailabilityCart(admin: AuthBundle, buyerId: string, productIds: string[]) {
+  const cartItems = [
+    { productId: productIds[0], available: true, quantity: 2, label: 'Available item' },
+    { productId: productIds[1], available: true, quantity: 1, label: 'Available item' },
+    { productId: 'e2e_product_oos', available: false, quantity: 1, label: 'Out of stock item' },
+    { productId: productIds[2], available: true, quantity: 3, label: 'Available item' },
+    { productId: 'mega_seed_product_0005', available: false, quantity: 1, label: 'Paused product' },
+  ];
+
+  for (let i = 0; i < cartItems.length; i++) {
+    const item = cartItems[i];
+    await writeDoc(`users/${buyerId}/cart/mixed_cart_${i}`, {
+      userId: buyerId,
+      productId: item.productId,
+      quantity: item.quantity,
+      priceCents: 1999 + (i * 700),
+      imageUrl: sampleImageUrls(item.productId, 1)[0],
+      productName: item.label,
+      addedAt: isoDaysAgo(i + 1),
+      updatedAt: new Date().toISOString(),
+      availabilityStatus: item.available ? 'available' : 'unavailable',
+      isUnavailable: !item.available,
+      unavailableReason: !item.available ? (item.productId === 'e2e_product_oos' ? 'out_of_stock' : 'product_paused') : null,
+    }, admin.idToken, true);
+  }
+
+  const totalCents = cartItems.reduce((sum, item, i) => sum + (1999 + i * 700) * item.quantity, 0);
+  await writeDoc(`user_carts/${buyerId}`, {
+    userId: buyerId,
+    itemCount: cartItems.length,
+    totalCents,
+    unavailableItemCount: cartItems.filter(i => !i.available).length,
+    lastUpdated: new Date().toISOString(),
+  }, admin.idToken, true);
+
+  console.log(`  ✓ mixed availability cart seeded for ${buyerId} (${cartItems.length} items, ${cartItems.filter(i => !i.available).length} unavailable)`);
+}
+
+/**
+ * User with NO addresses → triggers checkout "add address" prompt
+ * (checkout_screen.dart line 185, 275: _NoAddressView)
+ */
+async function seedUserNoAddresses(admin: AuthBundle) {
+  const userId = 'seed_buyer_no_addresses';
+  await writeDoc(`users/${userId}`, {
+    email: 'seed-buyer-noaddr@test.origna.ca',
+    displayName: 'No Address Buyer',
+    roles: ['buyer'],
+    isPremium: false,
+    emailVerified: true,
+    suspended: false,
+    preferredLanguage: 'en',
+    createdAt: isoDaysAgo(10),
+    updatedAt: new Date().toISOString(),
+  }, admin.idToken, true);
+
+  // Add a few cart items so checkout is reachable
+  for (let i = 0; i < 2; i++) {
+    await writeDoc(`users/${userId}/cart/noaddr_cart_${i}`, {
+      userId,
+      productId: `mega_seed_product_${String(i + 10).padStart(4, '0')}`,
+      quantity: 1,
+      priceCents: 2999 + i * 1000,
+      imageUrl: sampleImageUrls(`noaddr-${i}`, 1)[0],
+      productName: `No-Address Test Item ${i + 1}`,
+      addedAt: isoDaysAgo(1),
+      updatedAt: new Date().toISOString(),
+      availabilityStatus: 'available',
+      isUnavailable: false,
+      unavailableReason: null,
+    }, admin.idToken, true);
+  }
+
+  // Intentionally NOT writing any addresses for this user
+  console.log(`  ✓ user with NO addresses seeded (${userId}) — checkout will show add-address prompt`);
+}
+
+/**
+ * Products with bundledProductIds → triggers bundle display in product detail
+ */
+async function seedBundleProducts(admin: AuthBundle, sellerId: string, productIds: string[]) {
+  const bundleId = 'e2e_product_bundle_starter';
+  const bundledIds = productIds.slice(0, 3);
+
+  await writeDoc(`products/${bundleId}`, {
+    productId: bundleId,
+    sellerId: userRef(sellerId),
+    sellerSku: 'SKU-BUNDLE-STARTER',
+    name: 'Starter Bundle — Desk Essentials',
+    title: 'Starter Bundle — Desk Essentials',
+    slug: 'starter-bundle-desk-essentials',
+    description: 'Curated bundle: keyboard + mouse + monitor light. Save 15% vs buying separately.',
+    categoryId: 2,
+    categoryName: 'Computers',
+    subcategory: 'Accessories',
+    price: 79.99,
+    priceCents: 7999,
+    compareAtPrice: 94.99,
+    stockQuantity: 30,
+    lifecycleStatus: 'active',
+    sellerDashboardStatus: 'active',
+    isDigital: false,
+    isPerishable: false,
+    isLocalDeliveryOnly: false,
+    freeShipping: true,
+    hasVariants: false,
+    isAgeRestricted: false,
+    shipFromCountry: 'Canada',
+    shipFromProvince: 'ON',
+    shipFromCity: 'Toronto',
+    imageUrls: sampleImageUrls(bundleId, 3, 'Computers'),
+    keywords: ['bundle', 'desk', 'starter', 'seeded'],
+    bundledProductIds: bundledIds,
+    createdAt: isoDaysAgo(10),
+    updatedAt: new Date().toISOString(),
+    rating: 4.5,
+    ratingCount: 12,
+    isTrending: true,
+    trendingScore: 320,
+    trendingAt: isoDaysAgo(2),
+    viewCount: 450,
+    purchaseCount: 60,
+    estimatedShipDays: 2,
+    minimumOrderQuantity: 1,
+    weightKg: 2.5,
+    lengthCm: 40,
+    widthCm: 30,
+    heightCm: 15,
+    warehouseIds: [`wh_${sellerId}_main`],
+    warehouseStockMap: { [`wh_${sellerId}_main`]: 30 },
+    variantOptions: [],
+    variants: [],
+  }, admin.idToken, true);
+
+  console.log(`  ✓ bundle product seeded (${bundleId}) — references ${bundledIds.length} child products`);
+}
+
+/**
+ * Premium user on cancelAtPeriodEnd → triggers subscription canceling state
+ * (subscription_status_section.dart line 241-315: "subscription ends on" + reactivate)
+ */
+async function seedCancelingSubscription(admin: AuthBundle) {
+  const userId = 'seed_buyer_canceling_sub';
+  await writeDoc(`users/${userId}`, {
+    email: 'seed-buyer-canceling@test.origna.ca',
+    displayName: 'Canceling Premium User',
+    roles: ['buyer'],
+    isPremium: true,
+    premiumSince: isoDaysAgo(90),
+    premiumExpiresAt: isoDaysAgo(-5),
+    emailVerified: true,
+    suspended: false,
+    preferredLanguage: 'en',
+    createdAt: isoDaysAgo(180),
+    updatedAt: new Date().toISOString(),
+  }, admin.idToken, true);
+
+  await writeDoc(`subscriptions/${userId}`, {
+    userId,
+    planType: 'premium_monthly',
+    status: 'active',
+    currentPeriodStart: isoDaysAgo(25),
+    currentPeriodEnd: isoDaysAgo(-5), // ends in 5 days
+    cancelAtPeriodEnd: true,
+    cancelledAt: isoDaysAgo(3),
+    features: ['unlimited_listings', 'priority_support', 'analytics', 'chat_with_sellers'],
+    stripeSubscriptionId: 'sub_seed_canceling_01',
+    stripeCustomerId: 'cus_seed_canceling_01',
+    createdAt: isoDaysAgo(90),
+    updatedAt: new Date().toISOString(),
+  }, admin.idToken, true);
+
+  console.log(`  ✓ canceling subscription seeded (${userId}) — cancelAtPeriodEnd=true`);
+}
+
+/**
+ * Products with compareAtPrice much higher → ensures sale badge is visible
+ * Also adds products with video for video player coverage
+ */
+async function seedSaleBadgeProducts(admin: AuthBundle, sellerId: string) {
+  const products = [
+    {
+      id: 'e2e_product_deep_sale',
+      title: 'Clearance — Wireless Earbuds Pro',
+      priceCents: 2999,
+      compareAtPriceCents: 12999, // 77% off
+      stockQuantity: 50,
+      subcategory: 'Audio',
+    },
+    {
+      id: 'e2e_product_moderate_sale',
+      title: 'Sale — Ergonomic Office Chair',
+      priceCents: 19999,
+      compareAtPriceCents: 29999, // 33% off
+      stockQuantity: 12,
+      subcategory: 'Desk',
+    },
+  ];
+
+  for (const p of products) {
+    await writeDoc(`products/${p.id}`, {
+      productId: p.id,
+      sellerId: userRef(sellerId),
+      sellerSku: `SKU-SALE-${p.id.toUpperCase()}`,
+      name: p.title,
+      title: p.title,
+      slug: slugify(p.title),
+      description: `${p.title} — seeded for sale-badge and compare-at-price UI coverage.`,
+      categoryId: 1,
+      categoryName: 'Electronics',
+      subcategory: p.subcategory,
+      price: p.priceCents / 100,
+      priceCents: p.priceCents,
+      compareAtPrice: p.compareAtPriceCents / 100,
+      stockQuantity: p.stockQuantity,
+      lifecycleStatus: 'active',
+      sellerDashboardStatus: 'active',
+      isDigital: false,
+      isPerishable: false,
+      isLocalDeliveryOnly: false,
+      freeShipping: false,
+      isAgeRestricted: false,
+      hasVariants: false,
+      shipFromCountry: 'Canada',
+      shipFromProvince: 'ON',
+      shipFromCity: 'Toronto',
+      imageUrls: sampleImageUrls(p.id, 2, 'Electronics'),
+      videoUrl: PRODUCT_VIDEO_URLS[0],
+      videoDurationSeconds: 5,
+      keywords: ['sale', 'clearance', 'seeded'],
+      createdAt: isoDaysAgo(7),
+      updatedAt: new Date().toISOString(),
+      rating: 4.1,
+      ratingCount: 23,
+      isTrending: false,
+      trendingScore: 0,
+      viewCount: 800,
+      purchaseCount: 95,
+      estimatedShipDays: 3,
+      minimumOrderQuantity: 1,
+      weightKg: 0.5,
+      lengthCm: 20,
+      widthCm: 15,
+      heightCm: 8,
+      warehouseIds: [`wh_${sellerId}_main`],
+      warehouseStockMap: { [`wh_${sellerId}_main`]: p.stockQuantity },
+      variantOptions: [],
+      variants: [],
+    }, admin.idToken, true);
+  }
+
+  console.log(`  ✓ sale-badge products seeded (${products.length}) — deep 77% and moderate 33% discounts`);
+}
+
+/**
+ * Seller with acceptsReturns=false → tests "seller does not accept returns" state
+ */
+async function seedNoReturnsSeller(admin: AuthBundle) {
+  const sellerId = 'seed_seller_no_returns';
+  await writeDoc(`users/${sellerId}`, {
+    email: 'seed-seller-noreturns@test.origna.ca',
+    displayName: 'No Returns Electronics',
+    roles: ['buyer', 'seller'],
+    isPremium: false,
+    emailVerified: true,
+    suspended: false,
+    stripeOnboarded: true,
+    preferredLanguage: 'en',
+    createdAt: isoDaysAgo(60),
+    updatedAt: new Date().toISOString(),
+  }, admin.idToken, true);
+
+  await writeDoc(`seller_profiles/${sellerId}`, {
+    sellerId,
+    businessName: 'No Returns Electronics',
+    description: 'Final sale only — no returns accepted. Seeded for return-policy edge case.',
+    status: 'approved',
+    approvalStatus: 'approved',
+    verificationStatus: 'approved',
+    chargesEnabled: true,
+    payoutsEnabled: true,
+    detailsSubmitted: true,
+    onboardingCompleted: true,
+    pendingRequirements: [],
+    acceptsReturns: false,
+    returnWindowDays: 0,
+    defaultCurrency: 'CAD',
+    defaultCountry: 'CA',
+    stripeAccountId: 'acct_seed_no_returns',
+    createdAt: isoDaysAgo(60),
+    updatedAt: new Date().toISOString(),
+  }, admin.idToken, true);
+
+  // Seed 2 products from this seller
+  for (let i = 0; i < 2; i++) {
+    const productId = `e2e_product_no_returns_${i}`;
+    await writeDoc(`products/${productId}`, {
+      productId,
+      sellerId: userRef(sellerId),
+      sellerSku: `SKU-NR-${i}`,
+      name: `Final Sale Item ${i + 1}`,
+      title: `Final Sale Item ${i + 1}`,
+      slug: slugify(`Final Sale Item ${i + 1}`),
+      description: 'All sales final — no returns accepted.',
+      categoryId: 1,
+      categoryName: 'Electronics',
+      subcategory: 'Accessories',
+      price: 19.99 + i * 10,
+      priceCents: 1999 + i * 1000,
+      compareAtPrice: 29.99 + i * 10,
+      stockQuantity: 20 + i * 5,
+      lifecycleStatus: 'active',
+      sellerDashboardStatus: 'active',
+      isDigital: false,
+      isPerishable: false,
+      isLocalDeliveryOnly: false,
+      freeShipping: false,
+      isAgeRestricted: false,
+      hasVariants: false,
+      shipFromCountry: 'Canada',
+      imageUrls: sampleImageUrls(productId, 1, 'Electronics'),
+      keywords: ['final_sale', 'no_returns', 'seeded'],
+      createdAt: isoDaysAgo(10),
+      updatedAt: new Date().toISOString(),
+      rating: 3.9,
+      ratingCount: 5,
+      isTrending: false,
+      trendingScore: 0,
+      viewCount: 100,
+      purchaseCount: 15,
+      estimatedShipDays: 3,
+      minimumOrderQuantity: 1,
+      weightKg: 0.3,
+      lengthCm: 15,
+      widthCm: 10,
+      heightCm: 5,
+      warehouseIds: [`wh_${sellerId}_main`],
+      warehouseStockMap: { [`wh_${sellerId}_main`]: 20 },
+      variantOptions: [],
+      variants: [],
+    }, admin.idToken, true);
+  }
+
+  await writeDoc(`seller_metrics/${sellerId}`, {
+    sellerId,
+    avgResponseTimeMinutes: 25,
+    positiveRatePct: 78,
+    totalReviews: 5,
+    totalSales: 15,
+    totalRevenueCents: 30000,
+    shipOnTimePct: 90,
+    returnRatePct: 0,
+    accountAgeDays: 60,
+    lastActivityAt: isoDaysAgo(1),
+    createdAt: isoDaysAgo(60),
+    updatedAt: new Date().toISOString(),
+  }, admin.idToken, true);
+
+  console.log(`  ✓ no-returns seller seeded (${sellerId}) — acceptsReturns=false`);
+}
+
+// ════════════════════════════════════════════════════════════════════
+// SECOND-PASS EDGE-CASE SEEDERS — deeper UI coverage
+// ════════════════════════════════════════════════════════════════════
+
+/**
+ * Orders with ALL 12 status values — covers every statusConfig branch
+ * in order_widgets.dart getOrderStatusConfig(): pending, confirmed, processing,
+ * shipped, inTransit, delivered, cancelled, failed, expired, disputed,
+ * refunded, partiallyRefunded
+ */
+async function seedAllStatusOrders(admin: AuthBundle, buyerIds: string[], sellerId: string, productIds: string[]) {
+  const allStatuses = [
+    { status: 'confirmed', paymentStatus: 'paid' },
+    { status: 'processing', paymentStatus: 'paid' },
+    { status: 'inTransit', paymentStatus: 'paid' },
+    { status: 'failed', paymentStatus: 'failed' },
+    { status: 'expired', paymentStatus: 'expired' },
+    { status: 'disputed', paymentStatus: 'disputed' },
+    { status: 'partiallyRefunded', paymentStatus: 'partially_refunded' },
+  ] as const;
+
+  for (let i = 0; i < allStatuses.length; i++) {
+    const { status, paymentStatus } = allStatuses[i];
+    const orderId = `seed_order_status_${status}`;
+    const buyerId = buyerIds[i % buyerIds.length];
+    const productId = productIds[i % productIds.length];
+    const priceCents = 3999 + i * 1200;
+    const subtotalCents = priceCents * 2;
+    const hasTracking = status === 'inTransit';
+    const isTerminal = ['failed', 'expired', 'disputed', 'partiallyRefunded', 'cancelled', 'refunded'].includes(status);
+
+    await writeDoc(`orders/${orderId}`, {
+      orderId,
+      orderStatus: status,
+      status,
+      paymentStatus,
+      buyerId,
+      userId: buyerId,
+      sellerId: userRef(sellerId),
+      sellerIds: [userRef(sellerId)],
+      items: [{
+        productId,
+        cartItemId: `${orderId}_item_1`,
+        name: `Status Test — ${status}`,
+        description: `Seeded order testing '${status}' status display.`,
+        price: priceCents / 100,
+        quantity: 2,
+        imageUrls: sampleImageUrls(`${productId}-status`, 1),
+        sellerId: userRef(sellerId),
+        status,
+        isDigital: false,
+        isPerishable: false,
+        freeShipping: false,
+        trackingNumber: hasTracking ? `TRK-INT-${10000 + i}` : null,
+        carrier: hasTracking ? 'canada_post' : null,
+        variantTitle: i % 2 === 0 ? 'Size: M' : null,
+        variantOptions: i % 2 === 0 ? { Size: 'M', Color: 'Navy' } : null,
+      }],
+      subtotalCents,
+      shippingCostCents: 899,
+      taxAmountCents: Math.round(subtotalCents * 0.13),
+      totalAmountCents: subtotalCents + Math.round(subtotalCents * 0.13) + 899,
+      createdAt: isoDaysAgo(20 + i),
+      confirmedAt: isoDaysAgo(19 + i),
+      shippedAt: hasTracking ? isoDaysAgo(5) : null,
+      deliveredAt: null,
+      trackingNumber: hasTracking ? `TRK-INT-${10000 + i}` : null,
+      carrier: hasTracking ? 'canada_post' : null,
+      shippingApprovalStatus: 'approved',
+      shippingAddress: {
+        street: '123 Status Test St',
+        city: 'Toronto',
+        province: 'ON',
+        postalCode: 'M5V 3A8',
+        country: 'Canada',
+      },
+      cancelledAt: status === 'failed' || status === 'expired' ? isoDaysAgo(2) : null,
+      refundAmountCents: paymentStatus === 'partially_refunded' ? Math.round(subtotalCents * 0.5) : 0,
+      disputeReason: status === 'disputed' ? 'not_as_described' : null,
+    }, admin.idToken, true);
+  }
+
+  console.log(`  ✓ all-status orders seeded (${allStatuses.length}) — ${allStatuses.map(s => s.status).join(', ')}`);
+}
+
+/**
+ * Delivered order PAST return window → "Request Return" button disappears
+ * + Delivered order WITHIN return window with mixed item eligibility
+ */
+async function seedReturnWindowOrders(admin: AuthBundle, buyerId: string, sellerId: string, productIds: string[]) {
+  // 1) Delivered 45 days ago → PAST 30-day return window
+  const pastOrderId = 'seed_order_return_expired';
+  await writeDoc(`orders/${pastOrderId}`, {
+    orderId: pastOrderId,
+    orderStatus: 'delivered',
+    status: 'delivered',
+    paymentStatus: 'paid',
+    buyerId,
+    userId: buyerId,
+    sellerId: userRef(sellerId),
+    sellerIds: [userRef(sellerId)],
+    items: [{
+      productId: productIds[0],
+      cartItemId: `${pastOrderId}_item_1`,
+      name: 'Return-Expired Item',
+      description: 'Delivered 45 days ago — return window closed.',
+      price: 29.99,
+      quantity: 1,
+      imageUrls: sampleImageUrls(productIds[0], 1),
+      sellerId: userRef(sellerId),
+      status: 'delivered',
+      isDigital: false,
+      isPerishable: false,
+      freeShipping: false,
+    }],
+    subtotalCents: 2999,
+    shippingCostCents: 899,
+    taxAmountCents: 390,
+    totalAmountCents: 4288,
+    createdAt: isoDaysAgo(60),
+    confirmedAt: isoDaysAgo(58),
+    shippedAt: isoDaysAgo(55),
+    deliveredAt: isoDaysAgo(45), // PAST 30-day window
+    trackingNumber: 'TRK-RETEXP-001',
+    carrier: 'canada_post',
+    shippingApprovalStatus: 'approved',
+    shippingAddress: { street: '123 Test St', city: 'Toronto', province: 'ON', postalCode: 'M5V 3A8', country: 'Canada' },
+  }, admin.idToken, true);
+
+  // 2) Delivered 3 days ago WITHIN return window — 3 items: 2 delivered, 1 still shipped
+  const mixedOrderId = 'seed_order_return_mixed';
+  await writeDoc(`orders/${mixedOrderId}`, {
+    orderId: mixedOrderId,
+    orderStatus: 'delivered', // overall status
+    status: 'delivered',
+    paymentStatus: 'paid',
+    buyerId,
+    userId: buyerId,
+    sellerId: userRef(sellerId),
+    sellerIds: [userRef(sellerId)],
+    items: [
+      {
+        productId: productIds[0],
+        cartItemId: `${mixedOrderId}_item_1`,
+        name: 'Delivered Item A',
+        description: 'Item within return window.',
+        price: 19.99,
+        quantity: 1,
+        imageUrls: sampleImageUrls(productIds[0], 1),
+        sellerId: userRef(sellerId),
+        status: 'delivered',
+        isDigital: false,
+        isPerishable: false,
+        freeShipping: false,
+      },
+      {
+        productId: productIds[1],
+        cartItemId: `${mixedOrderId}_item_2`,
+        name: 'Delivered Item B',
+        description: 'Also within return window.',
+        price: 34.99,
+        quantity: 2,
+        imageUrls: sampleImageUrls(productIds[1], 1),
+        sellerId: userRef(sellerId),
+        status: 'delivered',
+        isDigital: false,
+        isPerishable: false,
+        freeShipping: false,
+      },
+      {
+        productId: productIds[2],
+        cartItemId: `${mixedOrderId}_item_3`,
+        name: 'Still-Shipped Item C',
+        description: 'Not delivered yet — not return eligible.',
+        price: 14.99,
+        quantity: 1,
+        imageUrls: sampleImageUrls(productIds[2], 1),
+        sellerId: userRef(sellerId),
+        status: 'shipped',
+        isDigital: false,
+        isPerishable: false,
+        freeShipping: false,
+      },
+    ],
+    subtotalCents: 1999 + 6998 + 1499,
+    shippingCostCents: 0,
+    taxAmountCents: 1365,
+    totalAmountCents: 11861,
+    createdAt: isoDaysAgo(7),
+    confirmedAt: isoDaysAgo(6),
+    shippedAt: isoDaysAgo(4),
+    deliveredAt: isoDaysAgo(3), // WITHIN 30-day window
+    trackingNumber: 'TRK-RETMIX-001',
+    carrier: 'canada_post',
+    shippingApprovalStatus: 'approved',
+    shippingAddress: { street: '456 Mixed St', city: 'Toronto', province: 'ON', postalCode: 'M5V 3A8', country: 'Canada' },
+  }, admin.idToken, true);
+
+  console.log('  ✓ return-window orders seeded — 1 expired (45d), 1 mixed (3d, 2delivered+1shipped)');
+}
+
+/**
+ * Notifications with ALL 7 UI types + today/this-week/earlier grouping + read/unread mix
+ * notification types: orderConfirmation, shippingUpdate, paymentIssue, accountUpdate,
+ *                     chatMessage, stockAvailable, newOrder
+ */
+async function seedAllNotificationTypes(admin: AuthBundle, userId: string) {
+  const allTypes = [
+    { type: 'orderConfirmation', route: '/orders', title: 'Order confirmed' },
+    { type: 'shippingUpdate', route: '/orders', title: 'Your order shipped' },
+    { type: 'paymentIssue', route: '/orders', title: 'Payment issue detected' },
+    { type: 'accountUpdate', route: '/profile', title: 'Account security update' },
+    { type: 'chatMessage', route: '/chat/inbox', title: 'New message' },
+    { type: 'stockAvailable', route: '/notifications', title: 'Back in stock!' },
+    { type: 'newOrder', route: '/seller/orders', title: 'New order received' },
+  ];
+
+  const notifications: any[] = [];
+
+  // TODAY — 4 notifications, 3 unread
+  for (let i = 0; i < 4; i++) {
+    const t = allTypes[i % allTypes.length];
+    notifications.push({
+      id: `notif_all_today_${i}`,
+      userId,
+      type: t.type,
+      title: `${t.title} — today #${i + 1}`,
+      body: `This is a seeded ${t.type} notification from today.`,
+      isRead: i === 2, // only #3 is read
+      createdAt: isoDaysAgo(0, i * 60), // spread across today
+      route: t.route,
+      orderId: `seed_order_${String(i + 1).padStart(3, '0')}`,
+      productId: `mega_seed_product_${String(i + 1).padStart(4, '0')}`,
+      chatThreadId: t.type === 'chatMessage' ? 'chat_high_unread_0' : null,
+    });
+  }
+
+  // THIS WEEK — 5 notifications, 2 unread
+  for (let i = 0; i < 5; i++) {
+    const t = allTypes[(i + 2) % allTypes.length];
+    notifications.push({
+      id: `notif_all_week_${i}`,
+      userId,
+      type: t.type,
+      title: `${t.title} — this week #${i + 1}`,
+      body: `This is a seeded ${t.type} notification from this week.`,
+      isRead: i >= 2, // first 2 unread
+      createdAt: isoDaysAgo(1 + i, i * 30),
+      route: t.route,
+      orderId: `seed_order_${String(i + 5).padStart(3, '0')}`,
+      productId: `mega_seed_product_${String(i + 5).padStart(4, '0')}`,
+    });
+  }
+
+  // EARLIER — 6 notifications, all read
+  for (let i = 0; i < 6; i++) {
+    const t = allTypes[(i + 4) % allTypes.length];
+    notifications.push({
+      id: `notif_all_earlier_${i}`,
+      userId,
+      type: t.type,
+      title: `${t.title} — earlier #${i + 1}`,
+      body: `This is a seeded ${t.type} notification from earlier.`,
+      isRead: true,
+      createdAt: isoDaysAgo(8 + i * 2, i * 15),
+      route: t.route,
+      orderId: `seed_order_${String(i + 10).padStart(3, '0')}`,
+      productId: `mega_seed_product_${String(i + 10).padStart(4, '0')}`,
+    });
+  }
+
+  await writeMany(notifications, async notif => {
+    await writeDoc(`notifications/${notif.id}`, notif, admin.idToken, true);
+  }, 20);
+
+  console.log(`  ✓ all-notification-type seed (${notifications.length}) — 7 types, today(4)/week(5)/earlier(6), 5 unread`);
+}
+
+/**
+ * Admin products: under_review + rejected + low_stock
+ * → exercises admin_products_tab approval badge + stock filter chips
+ */
+async function seedAdminProducts(admin: AuthBundle, sellerId: string) {
+  const products = [
+    {
+      id: 'e2e_product_under_review_01',
+      title: 'Pending Review — Bluetooth Speaker',
+      lifecycleStatus: 'under_review',
+      stockQuantity: 15,
+      approvalRejectionReason: null,
+    },
+    {
+      id: 'e2e_product_under_review_02',
+      title: 'Pending Review — LED Strip Kit',
+      lifecycleStatus: 'under_review',
+      stockQuantity: 40,
+      approvalRejectionReason: null,
+    },
+    {
+      id: 'e2e_product_rejected_01',
+      title: 'Rejected — Suspicious Supplement',
+      lifecycleStatus: 'rejected',
+      stockQuantity: 0,
+      approvalRejectionReason: 'Product listing does not meet marketplace guidelines. Unverified health claims detected.',
+    },
+    {
+      id: 'e2e_product_low_stock_01',
+      title: 'Low Stock — Limited Edition Vinyl',
+      lifecycleStatus: 'active',
+      stockQuantity: 2,
+      approvalRejectionReason: null,
+    },
+    {
+      id: 'e2e_product_low_stock_02',
+      title: 'Low Stock — Rare Tea Sampler',
+      lifecycleStatus: 'active',
+      stockQuantity: 1,
+      approvalRejectionReason: null,
+    },
+  ];
+
+  for (const p of products) {
+    await writeDoc(`products/${p.id}`, {
+      productId: p.id,
+      sellerId: userRef(sellerId),
+      sellerSku: `SKU-ADMIN-${p.id.toUpperCase()}`,
+      name: p.title,
+      title: p.title,
+      slug: slugify(p.title),
+      description: `${p.title} — seeded for admin panel filter testing.`,
+      categoryId: 1,
+      categoryName: 'Electronics',
+      subcategory: 'Audio',
+      price: 24.99,
+      priceCents: 2499,
+      compareAtPrice: 39.99,
+      stockQuantity: p.stockQuantity,
+      lifecycleStatus: p.lifecycleStatus,
+      sellerDashboardStatus: p.lifecycleStatus === 'active' ? 'active' : p.lifecycleStatus === 'under_review' ? 'draft' : 'inactive',
+      isDigital: false,
+      isPerishable: false,
+      isLocalDeliveryOnly: false,
+      freeShipping: false,
+      isAgeRestricted: false,
+      hasVariants: false,
+      shipFromCountry: 'Canada',
+      shipFromProvince: 'ON',
+      shipFromCity: 'Toronto',
+      imageUrls: sampleImageUrls(p.id, 1, 'Electronics'),
+      keywords: ['admin_test', p.lifecycleStatus, 'seeded'],
+      createdAt: isoDaysAgo(5),
+      updatedAt: new Date().toISOString(),
+      rating: 0,
+      ratingCount: 0,
+      isTrending: false,
+      trendingScore: 0,
+      viewCount: 10,
+      purchaseCount: 0,
+      estimatedShipDays: 3,
+      minimumOrderQuantity: 1,
+      weightKg: 0.5,
+      lengthCm: 15,
+      widthCm: 10,
+      heightCm: 5,
+      warehouseIds: [`wh_${sellerId}_main`],
+      warehouseStockMap: { [`wh_${sellerId}_main`]: p.stockQuantity },
+      variantOptions: [],
+      variants: [],
+      approvalRejectionReason: p.approvalRejectionReason,
+    }, admin.idToken, true);
+  }
+
+  console.log(`  ✓ admin products seeded (${products.length}) — 2 under_review, 1 rejected, 2 low_stock`);
+}
+
+/**
+ * Admin flagged reviews + reviews with photos
+ * → exercises admin_reviews_tab flagged/photo filter chips
+ */
+async function seedAdminReviews(admin: AuthBundle, buyerIds: string[], sellerId: string, productIds: string[]) {
+  const reviews = [
+    {
+      id: 'review_admin_flagged_spam',
+      productId: productIds[0],
+      userId: buyerIds[0],
+      rating: 1,
+      review: 'This is spam content — fake fake fake. Buy now at scam dot com!!!',
+      isFlagged: true,
+      flagReason: 'spam',
+      reportCount: 8,
+      hasPhotos: false,
+    },
+    {
+      id: 'review_admin_flagged_photos',
+      productId: productIds[1],
+      userId: buyerIds[1],
+      rating: 1,
+      review: 'Terrible quality — see photos. Completely different from listing.',
+      isFlagged: true,
+      flagReason: 'inappropriate',
+      reportCount: 4,
+      hasPhotos: true,
+    },
+    {
+      id: 'review_admin_photos_only',
+      productId: productIds[2],
+      userId: buyerIds[2],
+      rating: 5,
+      review: 'Amazing product! Here are my photos showing the quality.',
+      isFlagged: false,
+      flagReason: null,
+      reportCount: 0,
+      hasPhotos: true,
+    },
+    {
+      id: 'review_admin_clean',
+      productId: productIds[3],
+      userId: buyerIds[3],
+      rating: 4,
+      review: 'Good product, minor issue with packaging.',
+      isFlagged: false,
+      flagReason: null,
+      reportCount: 0,
+      hasPhotos: false,
+    },
+  ];
+
+  for (const r of reviews) {
+    await writeDoc(`product_ratings/${r.id}`, {
+      productId: r.productId,
+      userId: r.userId,
+      sellerId,
+      rating: r.rating,
+      review: r.review,
+      createdAt: isoDaysAgo(3 + reviews.indexOf(r)),
+      hasPhotos: r.hasPhotos,
+      photoUrls: r.hasPhotos ? sampleImageUrls(r.id, 2) : [],
+      isFlagged: r.isFlagged,
+      flagged: r.isFlagged,
+      flagReason: r.flagReason,
+      reportCount: r.reportCount,
+      orderId: `seed_order_${String(reviews.indexOf(r) + 1).padStart(3, '0')}`,
+      verified: true,
+    }, admin.idToken, true);
+  }
+
+  console.log(`  ✓ admin reviews seeded (${reviews.length}) — 2 flagged (1 with photos), 1 photos-only, 1 clean`);
+}
+
+/**
+ * Digital delivered order with license key + download links
+ * → exercises DigitalItemActions, BookDownloadButton, SoftwareDownloadLinks
+ */
+async function seedDigitalDeliveredOrder(admin: AuthBundle, buyerId: string, sellerId: string) {
+  const orderId = 'seed_order_digital_delivered';
+  await writeDoc(`orders/${orderId}`, {
+    orderId,
+    orderStatus: 'delivered',
+    status: 'delivered',
+    paymentStatus: 'paid',
+    buyerId,
+    userId: buyerId,
+    sellerId: userRef(sellerId),
+    sellerIds: [userRef(sellerId)],
+    items: [
+      {
+        productId: 'e2e_product_test_seller',
+        cartItemId: `${orderId}_item_sw`,
+        name: 'Creator Power Pack',
+        description: 'Professional content creation toolkit.',
+        price: 49.99,
+        quantity: 1,
+        imageUrls: sampleImageUrls('e2e_product_test_seller', 1),
+        sellerId: userRef(sellerId),
+        status: 'delivered',
+        isDigital: true,
+        digitalType: 'software',
+        licenseKey: 'XXXX-YYYY-ZZZZ-1234-ABCD',
+        digitalBuilds: {
+          mac: 'https://example.com/download/creator-pack/mac.dmg',
+          windows: 'https://example.com/download/creator-pack/win.exe',
+          linux: 'https://example.com/download/creator-pack/linux.AppImage',
+        },
+        isPerishable: false,
+        freeShipping: true,
+      },
+      {
+        productId: 'mega_seed_product_0014', // Books category
+        cartItemId: `${orderId}_item_book`,
+        name: 'Digital Cookbook — 500 Recipes',
+        description: 'PDF cookbook with 500 recipes.',
+        price: 14.99,
+        quantity: 1,
+        imageUrls: sampleImageUrls('book-digital', 1),
+        sellerId: userRef(sellerId),
+        status: 'delivered',
+        isDigital: true,
+        digitalType: 'book',
+        licenseKey: 'BOOK-LIC-2026-0042',
+        digitalBuilds: {
+          pdf: 'https://example.com/download/cookbook.pdf',
+          epub: 'https://example.com/download/cookbook.epub',
+        },
+        isPerishable: false,
+        freeShipping: true,
+      },
+    ],
+    subtotalCents: 6498,
+    shippingCostCents: 0,
+    taxAmountCents: 845,
+    totalAmountCents: 7343,
+    createdAt: isoDaysAgo(10),
+    confirmedAt: isoDaysAgo(10),
+    shippedAt: null,
+    deliveredAt: isoDaysAgo(10), // instant digital delivery
+    trackingNumber: null,
+    carrier: null,
+    shippingApprovalStatus: 'approved',
+    shippingAddress: null, // digital-only, no address needed
+  }, admin.idToken, true);
+
+  console.log(`  ✓ digital delivered order seeded (${orderId}) — 1 software (license+3platforms) + 1 book (license+2formats)`);
+}
+
+/**
+ * Product with variants where 1 variant is out of stock
+ * → selecting that variant disables add-to-cart
+ */
+async function seedOosVariantProduct(admin: AuthBundle, sellerId: string) {
+  const productId = 'e2e_product_variant_partial_oos';
+  const sizes = ['S', 'M', 'L', 'XL'];
+  const stockBySize: Record<string, number> = { S: 15, M: 0, L: 8, XL: 3 }; // M is OOS
+
+  const variants = sizes.map(size => ({
+    variantId: `${productId}_${size.toLowerCase()}`,
+    title: size,
+    sku: `SKU-VPOOS-${size}`,
+    priceCents: 2499 + (sizes.indexOf(size) * 300),
+    stockQuantity: stockBySize[size],
+    imageUrls: sampleImageUrls(`${productId}-${size}`, 1),
+    options: { Size: size },
+  }));
+
+  await writeDoc(`products/${productId}`, {
+    productId,
+    sellerId: userRef(sellerId),
+    sellerSku: 'SKU-VPOOS-MAIN',
+    name: 'Variant Stock Test — T-Shirt',
+    title: 'Variant Stock Test — T-Shirt',
+    slug: 'variant-stock-test-tshirt',
+    description: 'T-Shirt with partial variant stock. Size M is out of stock.',
+    categoryId: 5,
+    categoryName: 'Fashion',
+    subcategory: 'Tops',
+    price: 24.99,
+    priceCents: 2499,
+    compareAtPrice: 34.99,
+    stockQuantity: 26, // total across variants
+    lifecycleStatus: 'active',
+    sellerDashboardStatus: 'active',
+    isDigital: false,
+    isPerishable: false,
+    isLocalDeliveryOnly: false,
+    freeShipping: false,
+    isAgeRestricted: false,
+    hasVariants: true,
+    variantOptions: [{ name: 'Size', values: sizes }],
+    variants,
+    shipFromCountry: 'Canada',
+    imageUrls: sampleImageUrls(productId, 3, 'Fashion'),
+    keywords: ['variant', 'stock', 'partial', 'seeded'],
+    createdAt: isoDaysAgo(5),
+    updatedAt: new Date().toISOString(),
+    rating: 4.2,
+    ratingCount: 9,
+    isTrending: false,
+    trendingScore: 0,
+    viewCount: 350,
+    purchaseCount: 45,
+    estimatedShipDays: 3,
+    minimumOrderQuantity: 1,
+    weightKg: 0.3,
+    lengthCm: 25,
+    widthCm: 20,
+    heightCm: 3,
+    warehouseIds: [`wh_${sellerId}_main`],
+    warehouseStockMap: { [`wh_${sellerId}_main`]: 26 },
+  }, admin.idToken, true);
+
+  console.log(`  ✓ partial-OOS variant product seeded (${productId}) — S:15, M:0, L:8, XL:3`);
+}
+
+/**
+ * Products with French translations (Bill 96)
+ * → exercises nameF/descriptionF in edit form + product detail
+ */
+async function seedBilingualProducts(admin: AuthBundle, sellerId: string) {
+  const products = [
+    {
+      id: 'e2e_product_bilingual_01',
+      title: 'Handcrafted Ceramic Mug',
+      nameF: 'Tasse en céramique artisanale',
+      descriptionF: 'Tasse en céramique faite à la main par des artisans canadiens. Parfait pour le café ou le thé.',
+      categoryId: 20,
+      categoryName: 'Art',
+      subcategory: 'Ceramics',
+    },
+    {
+      id: 'e2e_product_bilingual_02',
+      title: 'Organic Lavender Soap Bar',
+      nameF: 'Savon à la lavande biologique',
+      descriptionF: 'Savon naturel à la lavande biologique, fabriqué au Québec. Idéal pour les peaux sensibles.',
+      categoryId: 8,
+      categoryName: 'Beauty',
+      subcategory: 'Skincare',
+    },
+  ];
+
+  for (const p of products) {
+    await writeDoc(`products/${p.id}`, {
+      productId: p.id,
+      sellerId: userRef(sellerId),
+      sellerSku: `SKU-BI-${p.id.toUpperCase()}`,
+      name: p.title,
+      title: p.title,
+      nameF: p.nameF,
+      slug: slugify(p.title),
+      description: `${p.title} — high-quality Canadian-made product.`,
+      descriptionF: p.descriptionF,
+      categoryId: p.categoryId,
+      categoryName: p.categoryName,
+      subcategory: p.subcategory,
+      price: 18.99,
+      priceCents: 1899,
+      compareAtPrice: 24.99,
+      stockQuantity: 35,
+      lifecycleStatus: 'active',
+      sellerDashboardStatus: 'active',
+      isDigital: false,
+      isPerishable: false,
+      isLocalDeliveryOnly: false,
+      freeShipping: false,
+      isAgeRestricted: false,
+      hasVariants: false,
+      shipFromCountry: 'Canada',
+      imageUrls: sampleImageUrls(p.id, 2, p.categoryName),
+      keywords: ['bilingual', 'french', 'canadian', 'seeded'],
+      createdAt: isoDaysAgo(10),
+      updatedAt: new Date().toISOString(),
+      rating: 4.6,
+      ratingCount: 14,
+      isTrending: false,
+      trendingScore: 0,
+      viewCount: 200,
+      purchaseCount: 25,
+      estimatedShipDays: 3,
+      minimumOrderQuantity: 1,
+      weightKg: 0.4,
+      lengthCm: 12,
+      widthCm: 8,
+      heightCm: 8,
+      warehouseIds: [`wh_${sellerId}_main`],
+      warehouseStockMap: { [`wh_${sellerId}_main`]: 35 },
+      variantOptions: [],
+      variants: [],
+    }, admin.idToken, true);
+  }
+
+  console.log(`  ✓ bilingual products seeded (${products.length}) — nameF + descriptionF populated`);
+}
+
+/**
+ * Seller with unanswered Q&A → red badge on seller products/orders screens
+ */
+async function seedUnansweredQa(admin: AuthBundle, sellerId: string, buyerIds: string[], productIds: string[]) {
+  const questions = [
+    { q: 'Does this come with a warranty?', productId: productIds[0] },
+    { q: 'Can you ship internationally?', productId: productIds[1] },
+    { q: 'Is this compatible with USB-C?', productId: productIds[2] },
+    { q: 'What is the return policy?', productId: productIds[3] },
+  ];
+
+  for (let i = 0; i < questions.length; i++) {
+    await writeDoc(`product_questions/qa_unanswered_${i}`, {
+      questionId: `qa_unanswered_${i}`,
+      productId: questions[i].productId,
+      sellerId,
+      askerId: buyerIds[i % buyerIds.length],
+      question: questions[i].q,
+      answer: null,
+      answeredAt: null,
+      answeredBy: null,
+      isAnswered: false,
+      upvotes: i + 1,
+      createdAt: isoDaysAgo(i + 1),
+    }, admin.idToken, true);
+  }
+
+  console.log(`  ✓ unanswered Q&A seeded (${questions.length}) — triggers seller badge count`);
+}
+
+/**
+ * User with unverified email → triggers verification banner in profile
+ */
+async function seedUnverifiedUser(admin: AuthBundle) {
+  const userId = 'seed_buyer_unverified_email';
+  await writeDoc(`users/${userId}`, {
+    email: 'seed-buyer-unverified@test.origna.ca',
+    displayName: 'Unverified Email User',
+    roles: ['buyer'],
+    isPremium: false,
+    emailVerified: false,
+    suspended: false,
+    preferredLanguage: 'en',
+    createdAt: isoDaysAgo(5),
+    updatedAt: new Date().toISOString(),
+  }, admin.idToken, true);
+
+  console.log(`  ✓ unverified email user seeded (${userId})`);
+}
+
+// ════════════════════════════════════════════════════════════════════
+// THIRD-PASS EDGE-CASE SEEDERS — remaining high-value gaps
+// ════════════════════════════════════════════════════════════════════
+
+/**
+ * Security alerts — unacknowledged login alerts
+ * → exercises security_alerts_section.dart "Was this you?" flow
+ */
+async function seedSecurityAlerts(admin: AuthBundle, userIds: string[]) {
+  const alertTypes = [
+    { type: 'new_device_login', details: 'New login from Chrome on Windows in Montreal, QC' },
+    { type: 'new_device_login', details: 'New login from Safari on iPhone in Vancouver, BC' },
+    { type: 'password_changed', details: 'Password was changed from an unrecognized device' },
+    { type: 'failed_login_attempts', details: '5 failed login attempts detected from IP 203.0.113.42' },
+  ];
+
+  const targetUsers = userIds.slice(0, 3);
+  for (let i = 0; i < targetUsers.length; i++) {
+    const userId = targetUsers[i];
+    for (let j = 0; j < alertTypes.length; j++) {
+      const alert = alertTypes[j];
+      await writeDoc(`security_alerts/alert_${userId}_${j}`, {
+        userId,
+        type: alert.type,
+        details: alert.details,
+        acknowledged: false,
+        ipAddress: `203.0.113.${10 + j}`,
+        userAgent: j % 2 === 0 ? 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/131.0' : 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0) Safari/605.1',
+        createdAt: isoDaysAgo(j, i * 20),
+      }, admin.idToken, true);
+    }
+  }
+
+  console.log(`  ✓ security alerts seeded (${targetUsers.length} users × ${alertTypes.length} alerts)`);
+}
+
+/**
+ * Seller with incomplete/pending Stripe verification
+ * → exercises seller_setup_screen.dart _buildIncomplete + _buildPendingVerification
+ */
+async function seedSellerVerificationStates(admin: AuthBundle) {
+  // Incomplete — needs identity documents
+  const incompleteId = 'seed_seller_stripe_incomplete';
+  await writeDoc(`users/${incompleteId}`, {
+    email: 'seed-seller-incomplete@test.origna.ca',
+    displayName: 'Incomplete Stripe Seller',
+    roles: ['buyer', 'seller'],
+    isPremium: false,
+    emailVerified: true,
+    suspended: false,
+    stripeOnboarded: false,
+    preferredLanguage: 'en',
+    createdAt: isoDaysAgo(15),
+    updatedAt: new Date().toISOString(),
+  }, admin.idToken, true);
+
+  await writeDoc(`seller_profiles/${incompleteId}`, {
+    sellerId: incompleteId,
+    businessName: 'Incomplete Stripe Co.',
+    description: 'Stripe onboarding started but identity documents missing.',
+    status: 'pending',
+    approvalStatus: 'pending',
+    verificationStatus: 'pending',
+    chargesEnabled: false,
+    payoutsEnabled: false,
+    detailsSubmitted: false,
+    onboardingCompleted: false,
+    needsIdentityDocuments: true,
+    pendingRequirements: ['identity_document', 'business_verification'],
+    pendingRequirementsDescription: 'Please upload a government-issued photo ID and business registration documents.',
+    defaultCurrency: 'CAD',
+    defaultCountry: 'CA',
+    stripeAccountId: 'acct_seed_incomplete',
+    createdAt: isoDaysAgo(15),
+    updatedAt: new Date().toISOString(),
+  }, admin.idToken, true);
+
+  // Pending verification — Stripe reviewing docs
+  const pendingId = 'seed_seller_stripe_pending';
+  await writeDoc(`users/${pendingId}`, {
+    email: 'seed-seller-verification@test.origna.ca',
+    displayName: 'Pending Verification Seller',
+    roles: ['buyer', 'seller'],
+    isPremium: false,
+    emailVerified: true,
+    suspended: false,
+    stripeOnboarded: false,
+    preferredLanguage: 'fr',
+    createdAt: isoDaysAgo(8),
+    updatedAt: new Date().toISOString(),
+  }, admin.idToken, true);
+
+  await writeDoc(`seller_profiles/${pendingId}`, {
+    sellerId: pendingId,
+    businessName: 'Pending Verification Inc.',
+    description: 'Documents submitted — Stripe reviewing identity.',
+    status: 'pending',
+    approvalStatus: 'pending',
+    verificationStatus: 'pending',
+    chargesEnabled: false,
+    payoutsEnabled: false,
+    detailsSubmitted: true,
+    onboardingCompleted: false,
+    isPendingVerification: true,
+    pendingRequirements: [],
+    defaultCurrency: 'CAD',
+    defaultCountry: 'CA',
+    stripeAccountId: 'acct_seed_pending_verify',
+    documentsSubmittedAt: isoDaysAgo(3),
+    createdAt: isoDaysAgo(8),
+    updatedAt: new Date().toISOString(),
+  }, admin.idToken, true);
+
+  console.log(`  ✓ seller verification states seeded — 1 incomplete (needs docs), 1 pending (reviewing)`);
+}
+
+/**
+ * User at 10-address limit + addresses with phone numbers + custom labels
+ * → exercises addressmanagement_screen.dart limit_reached + phone display + custom labels
+ */
+async function seedMaxAddressesUser(admin: AuthBundle) {
+  const userId = 'seed_buyer_max_addresses';
+  await writeDoc(`users/${userId}`, {
+    email: 'seed-buyer-maxaddr@test.origna.ca',
+    displayName: '10-Address Buyer',
+    roles: ['buyer'],
+    isPremium: false,
+    emailVerified: true,
+    suspended: false,
+    preferredLanguage: 'en',
+    createdAt: isoDaysAgo(90),
+    updatedAt: new Date().toISOString(),
+  }, admin.idToken, true);
+
+  const cities = ['Toronto', 'Montreal', 'Vancouver', 'Calgary', 'Ottawa', 'Halifax', 'Winnipeg', 'Quebec City', 'Edmonton', 'Victoria'];
+  const provinces = ['ON', 'QC', 'BC', 'AB', 'ON', 'NS', 'MB', 'QC', 'AB', 'BC'];
+  const postalCodes = ['M5V 3A8', 'H2Y 1C6', 'V6B 1A1', 'T2P 1J9', 'K1P 1J1', 'B3J 2K9', 'R3C 1A5', 'G1R 4P5', 'T5J 0H3', 'V8W 1P6'];
+  const labels = ['Home', 'Work', 'Cottage', 'Parents', null, 'Office', null, 'Chalet', null, 'Beach House']; // null = auto "Address N"
+  const phones = ['416-555-0101', null, '604-555-0303', null, null, '902-555-0606', null, '418-555-0808', null, '250-555-1010'];
+
+  for (let i = 0; i < 10; i++) {
+    await writeDoc(`addresses/${userId}_addr_${i + 1}`, {
+      userId,
+      label: labels[i],
+      address: {
+        street: `${100 + i * 10} ${cities[i]} Main St`,
+        apartment: i % 3 === 0 ? `${i + 1}A` : '',
+        city: cities[i],
+        province: provinces[i],
+        postalCode: postalCodes[i],
+        country: 'Canada',
+      },
+      phoneNumber: phones[i],
+      isDefault: i === 0,
+      createdAt: isoDaysAgo(90 - i * 5),
+      updatedAt: new Date().toISOString(),
+    }, admin.idToken, true);
+  }
+
+  console.log(`  ✓ max-address user seeded (${userId}) — 10 addresses with phone numbers + custom labels`);
+}
+
+/**
+ * Perishable items in a "confirmed" (preparing) order
+ * → exercises perishable urgency banner in order timeline step 0
+ */
+async function seedPerishablePreparingOrder(admin: AuthBundle, buyerId: string, sellerId: string) {
+  const orderId = 'seed_order_perishable_preparing';
+  await writeDoc(`orders/${orderId}`, {
+    orderId,
+    orderStatus: 'confirmed',
+    status: 'confirmed',
+    paymentStatus: 'paid',
+    buyerId,
+    userId: buyerId,
+    sellerId: userRef(sellerId),
+    sellerIds: [userRef(sellerId)],
+    items: [
+      {
+        productId: 'e2e_food_strawberries',
+        cartItemId: `${orderId}_item_1`,
+        name: 'Fresh Ontario Strawberries — 1lb',
+        description: 'Perishable item — requires expedited handling.',
+        price: 8.99,
+        quantity: 2,
+        imageUrls: sampleImageUrls('e2e_food_strawberries', 1),
+        sellerId: userRef(sellerId),
+        status: 'confirmed',
+        isDigital: false,
+        isPerishable: true,
+        freeShipping: false,
+      },
+      {
+        productId: 'e2e_food_almond_butter',
+        cartItemId: `${orderId}_item_2`,
+        name: 'Natural Almond Butter 500g',
+        description: 'Non-perishable item in same order.',
+        price: 12.99,
+        quantity: 1,
+        imageUrls: sampleImageUrls('e2e_food_almond_butter', 1),
+        sellerId: userRef(sellerId),
+        status: 'confirmed',
+        isDigital: false,
+        isPerishable: false,
+        freeShipping: false,
+      },
+    ],
+    subtotalCents: 899 * 2 + 1299,
+    shippingCostCents: 1299, // perishable expedited
+    taxAmountCents: Math.round(3097 * 0.13),
+    totalAmountCents: 3097 + Math.round(3097 * 0.13) + 1299,
+    createdAt: isoDaysAgo(0, 30),
+    confirmedAt: isoDaysAgo(0, 25),
+    shippingApprovalStatus: 'approved',
+    shippingAddress: {
+      street: '123 Buyer Demo St',
+      city: 'Toronto',
+      province: 'ON',
+      postalCode: 'M5V 3A8',
+      country: 'Canada',
+    },
+    deliveryInstructions: 'Perishable — please keep refrigerated during transit.',
+  }, admin.idToken, true);
+
+  console.log(`  ✓ perishable preparing order seeded (${orderId}) — urgency banner for step-0 perishable`);
+}
+
+/**
+ * Delivered order where buyer has NOT confirmed receipt and NOT rated
+ * → exercises "Confirm Receipt" + "Rate" action buttons
+ */
+async function seedUnconfirmedDeliveredOrder(admin: AuthBundle, buyerId: string, sellerId: string, productIds: string[]) {
+  const orderId = 'seed_order_unconfirmed_delivered';
+  await writeDoc(`orders/${orderId}`, {
+    orderId,
+    orderStatus: 'delivered',
+    status: 'delivered',
+    paymentStatus: 'paid',
+    buyerId,
+    userId: buyerId,
+    sellerId: userRef(sellerId),
+    sellerIds: [userRef(sellerId)],
+    items: [{
+      productId: productIds[0],
+      cartItemId: `${orderId}_item_1`,
+      name: 'Unconfirmed Delivered Item',
+      description: 'Delivered but buyer has not confirmed receipt yet.',
+      price: 49.99,
+      quantity: 1,
+      imageUrls: sampleImageUrls(productIds[0], 1),
+      sellerId: userRef(sellerId),
+      status: 'delivered',
+      isDigital: false,
+      isPerishable: false,
+      freeShipping: false,
+    }],
+    subtotalCents: 4999,
+    shippingCostCents: 899,
+    taxAmountCents: 650,
+    totalAmountCents: 6548,
+    confirmedByClient: false, // NOT confirmed by buyer
+    isRated: false, // NOT rated
+    createdAt: isoDaysAgo(5),
+    confirmedAt: isoDaysAgo(4),
+    shippedAt: isoDaysAgo(3),
+    deliveredAt: isoDaysAgo(1), // delivered yesterday
+    trackingNumber: 'TRK-UNCONF-001',
+    carrier: 'canada_post',
+    shippingApprovalStatus: 'approved',
+    shippingAddress: {
+      street: '789 Unconfirmed Ave',
+      city: 'Toronto',
+      province: 'ON',
+      postalCode: 'M5V 3A8',
+      country: 'Canada',
+    },
+  }, admin.idToken, true);
+
+  console.log(`  ✓ unconfirmed/unrated delivered order seeded (${orderId}) — Confirm Receipt + Rate buttons`);
+}
+
+/**
+ * Cart items pointing to deleted/missing products with snapshot data
+ * → exercises cart_item_widget.dart "Currently Unavailable" overlay with snapshot
+ */
+async function seedDeletedProductCart(admin: AuthBundle, buyerId: string) {
+  const userId = buyerId;
+  const cartItems = [
+    {
+      cartId: `deleted_with_snapshot_1`,
+      productId: 'product_deleted_001', // does not exist in products
+      productName: 'Deleted Product — Vintage Camera (snapshot)',
+      imageUrl: 'https://origna-static.b-cdn.net/images/origna_logo.png',
+      priceCents: 8999,
+      quantity: 1,
+    },
+    {
+      cartId: `deleted_with_snapshot_2`,
+      productId: 'product_deleted_002', // does not exist in products
+      productName: 'Deleted Product — Wireless Headphones (snapshot)',
+      imageUrl: 'https://origna-static.b-cdn.net/images/origna_logo.png',
+      priceCents: 5499,
+      quantity: 2,
+    },
+  ];
+
+  for (const item of cartItems) {
+    await writeDoc(`users/${userId}/cart/${item.cartId}`, {
+      userId,
+      productId: item.productId,
+      quantity: item.quantity,
+      priceCents: item.priceCents,
+      imageUrl: item.imageUrl,
+      productName: item.productName,
+      addedAt: isoDaysAgo(14),
+      updatedAt: new Date().toISOString(),
+      availabilityStatus: 'unavailable',
+      isUnavailable: true,
+      unavailableReason: 'product_deleted',
+      hasSnapshot: true,
+    }, admin.idToken, true);
+  }
+
+  console.log(`  ✓ deleted-product cart items seeded (${cartItems.length}) — snapshot data available for unavailable overlay`);
+}
+
 async function main() {
   console.log(`🌱 Mega seeding ${process.env.ORIGNABASE_URL || 'default'} with ${PRODUCT_COUNT}+ products...`);
 
@@ -2745,6 +4587,68 @@ async function main() {
   await seedComparisonLists(admin, [ids.buyerId, ...ids.buyerPool.slice(0, 3)], productIds);
   console.log('  ✓ product comparison lists seeded (3)');
 
+  // ════════════════════════════════════════════════════════════════════
+  // EDGE-CASE SEEDERS — fills UI gaps for empty/edge/view states
+  // ════════════════════════════════════════════════════════════════════
+
+  await seedEmptySeller(admin);
+  await seedPremiumUserNoChats(admin);
+  await seedHighUnreadChats(admin, allSellerIds);
+  await seedAwaitingPaymentOrders(admin,
+    [ids.buyerId, ...ids.buyerPool.slice(0, 4)],
+    ids.sellerId,
+    productIds,
+  );
+  await seedOrdersWithDeliveryInstructions(admin,
+    [ids.buyerId, ...ids.buyerPool.slice(0, 4)],
+    ids.sellerId,
+    productIds,
+  );
+  await seedAgeRestrictedProducts(admin, ids.sellerId);
+  await seedMixedAvailabilityCart(admin, ids.buyerId, productIds);
+  await seedUserNoAddresses(admin);
+  await seedBundleProducts(admin, ids.sellerId, productIds);
+  await seedCancelingSubscription(admin);
+  await seedSaleBadgeProducts(admin, ids.sellerId);
+  await seedNoReturnsSeller(admin);
+
+  // ════════════════════════════════════════════════════════════════════
+  // SECOND-PASS EDGE-CASE SEEDERS — deeper UI coverage
+  // ════════════════════════════════════════════════════════════════════
+
+  await seedAllStatusOrders(admin,
+    [ids.buyerId, ...ids.buyerPool.slice(0, 6)],
+    ids.sellerId,
+    productIds,
+  );
+  await seedReturnWindowOrders(admin, ids.buyerId, ids.sellerId, productIds);
+  await seedAllNotificationTypes(admin, ids.buyerId);
+  await seedAdminProducts(admin, ids.sellerId);
+  await seedAdminReviews(admin,
+    [ids.buyerId, ...ids.buyerPool.slice(0, 3)],
+    ids.sellerId,
+    productIds,
+  );
+  await seedDigitalDeliveredOrder(admin, ids.buyerId, ids.sellerId);
+  await seedOosVariantProduct(admin, ids.sellerId);
+  await seedBilingualProducts(admin, ids.sellerId);
+  await seedUnansweredQa(admin, ids.sellerId,
+    [ids.buyerId, ...ids.buyerPool.slice(0, 3)],
+    productIds,
+  );
+  await seedUnverifiedUser(admin);
+
+  // ════════════════════════════════════════════════════════════════════
+  // THIRD-PASS EDGE-CASE SEEDERS — remaining high-value gaps
+  // ════════════════════════════════════════════════════════════════════
+
+  await seedSecurityAlerts(admin, [ids.buyerId, ...ids.buyerPool.slice(0, 2)]);
+  await seedSellerVerificationStates(admin);
+  await seedMaxAddressesUser(admin);
+  await seedPerishablePreparingOrder(admin, ids.buyerId, ids.sellerId);
+  await seedUnconfirmedDeliveredOrder(admin, ids.buyerId, ids.sellerId, productIds);
+  await seedDeletedProductCart(admin, ids.buyerId);
+
   await delay(1500);
   console.log('🌱 Mega seed complete.');
   console.log(`   Products: ${productIds.length}`);
@@ -2760,6 +4664,16 @@ async function main() {
   console.log(`     abandoned carts(5), audit logs(55), seller ratings(20), metrics(30d), imports(5), comparisons(3)`);
   console.log(`   All views and widgets now have populated non-empty state for demos.`);
   console.log(`   Canadian addresses & realistic names in ${syntheticUserCount} synthetic users.`);
+  console.log(`   Edge cases: empty seller, premium-no-chats, 99+ unread chats, awaiting-payment orders,`);
+  console.log(`     delivery instructions, age-restricted products, mixed cart, no-address user,`);
+  console.log(`     bundle products, canceling subscription, sale-badge products, no-returns seller`);
+  console.log(`   Deep coverage: all 12 order statuses, return-window expired/mixed, all 7 notification`);
+  console.log(`     types with time grouping, admin under_review/rejected/low_stock, flagged reviews`);
+  console.log(`     with photos, digital order with license+downloads, partial-OOS variants, bilingual`);
+  console.log(`     products (FR), unanswered Q&A badge, unverified email user`);
+  console.log(`   Third pass: security alerts, seller verification states (incomplete+pending),`);
+  console.log(`     10-address limit user, perishable preparing order, unconfirmed/unrated delivered,`);
+  console.log(`     deleted-product cart with snapshots`);
 }
 
 main().catch(err => {

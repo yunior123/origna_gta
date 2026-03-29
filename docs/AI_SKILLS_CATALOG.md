@@ -39,7 +39,7 @@
 | `/audit-security` | Run comprehensive security audit |
 | `/audit-workflow` | Deep logic audit on a specific workflow (checkout, orders, etc.) |
 | `/channels-setup` | Set up Telegram/Discord channels for Claude Code |
-| `/check-schema-sync` | Verify all schema layers are in sync (Dart, Rust, SurrealDB) |
+| `/check-schema-sync` | Verify all schema layers are in sync (Dart, Rust, PostgreSQL) |
 | `/clear-context` | Pre-clear checklist and context hygiene |
 | `/code-review` | Multi-agent code review (4 parallel reviewers) |
 | `/commit-push` | Commit and push changes with intelligent message |
@@ -194,7 +194,7 @@
 | `flutter-widget-previews` | Flutter Widget Previews: @Preview annotations, coverage, Riverpod/localization | Widget preview setup |
 | `order-lifecycle` | Order state transitions, stock management, notifications, returns, multi-seller | Order-related work |
 | `orignabase-dev` | OrignaBase Rust BaaS development (crate architecture, testing, GraphQL, SDK protocol) | Backend Rust development |
-| `orignabase-devops` | OrignaBase VPS deployment (server setup, SurrealDB, nginx, TLS, backups, monitoring) | DevOps/deployment tasks |
+| `orignabase-devops` | OrignaBase VPS deployment (server setup, PostgreSQL, nginx, TLS, backups, monitoring) | DevOps/deployment tasks |
 | `orignabase-flutter-sdk` | OrignaBase Flutter/Dart SDK (Firestore-compatible API, GraphQL, FieldValue, Query builder) | SDK integration work |
 | `ralph-loop` | Autonomous multi-hour coding loop with commits between iterations | Bulk implementation, overnight work |
 | `responsive-design` | Responsive layouts (breakpoints, grid systems, responsive text, spacing) | Layout/responsive work |
@@ -205,7 +205,7 @@
 | `security-review` | Security review for Flutter + Rust e-commerce (Stripe, JWT, queries, OWASP) | Before releases, after auth/payment changes |
 | `source-products` | Product sourcing for OrignaGTA — dropshipping research, product candidates | Product research |
 | `stripe-integration` | Stripe payments (Checkout Sessions, webhooks, Connect payouts, refunds, idempotency) | Payment-related work |
-| `surrealdb-patterns` | SurrealQL queries, SurrealDB v2 gotchas, transactions, FieldValue, parameterized safety | Database work |
+| `postgresql-patterns` | SQL queries, PostgreSQL gotchas, transactions, FieldValue, parameterized safety | Database work |
 | `swarm-orchestration` | Queen-led multi-agent hierarchy with task routing and consensus | Complex multi-file features |
 | `tdd-workflow` | Test-driven development for Flutter/Dart and Rust with coverage targets | Implementing features, fixing bugs |
 | `team-builder` | Interactive agent team composer — discover, pick up to 5, dispatch in parallel | Multi-perspective analysis |
@@ -236,7 +236,7 @@
 | `office-hours` | Problem framing through 6 forcing questions before any code |
 | `order-lifecycle` | Order state transitions, stock management, notifications, returns, multi-seller |
 | `orignabase-dev` | OrignaBase Rust BaaS development (crate architecture, testing, GraphQL, SDK protocol) |
-| `orignabase-devops` | OrignaBase VPS deployment (server setup, SurrealDB, nginx, TLS, backups, monitoring) |
+| `orignabase-devops` | OrignaBase VPS deployment (server setup, PostgreSQL, nginx, TLS, backups, monitoring) |
 | `orignabase-flutter-sdk` | OrignaBase Flutter/Dart SDK (Firestore-compatible API, GraphQL, FieldValue, Query builder) |
 | `ralph-loop` | Autonomous multi-hour coding loop with atomic commits |
 | `responsive-design` | Responsive layouts (breakpoints, grid systems, responsive text, spacing) |
@@ -246,7 +246,7 @@
 | `source-products` | Product sourcing — dropshipping research, product candidates |
 | `strategic-compact` | Context window management — when and how to compact to prevent quality degradation |
 | `stripe-integration` | Stripe payments (Checkout Sessions, webhooks, Connect payouts, refunds, idempotency) |
-| `surrealdb-patterns` | SurrealQL queries, SurrealDB v2 gotchas, transactions, FieldValue, parameterized safety |
+| `postgresql-patterns` | SQL queries, PostgreSQL gotchas, transactions, FieldValue, parameterized safety |
 | `swarm-orchestration` | Multi-agent swarm orchestration (queen-led hierarchy, task routing, consensus) |
 | `tdd-workflow` | Generic TDD workflow — auto-detects stack, applies appropriate test patterns |
 | `team-builder` | Interactive agent team composer — discover, pick, dispatch, synthesize |
@@ -298,7 +298,7 @@
 | `orchestrator-agent` | Master audit orchestrator — dispatches subagents, returns prioritized report | Cross-domain |
 | `rival-agent` | Competitive intelligence — compare against Amazon, Shopify, eBay, etc. | Business |
 | `security-auditor` | Security audit — JWT, Stripe HMAC, input sanitization, rate limiting, CORS | Security |
-| `cross-stack-auditor` | Cross-stack field name consistency (Dart vs Rust vs SurrealDB) | Schema |
+| `cross-stack-auditor` | Cross-stack field name consistency (Dart vs Rust vs PostgreSQL) | Schema |
 | `repomix-analyzer-agent` | Codebase structure analyzer — dependency maps, import graphs, dead code | Architecture |
 | `logic-auditor` | Business logic audit — money cents, shipping thresholds, platform fees | Business Logic |
 | `payment-auditor` | Stripe payment flow audit — webhooks, refunds, payouts, Connect | Payments |
@@ -321,7 +321,7 @@
 | `geminicli` | Delegate tasks to Google Gemini 3.1 Pro via headless CLI |
 | `concurrency-specialist` | Audit for race conditions, deadlocks, TOCTOU, channel misuse (via Codex) |
 | `crypto-reviewer` | Cryptography/auth review — JWT, TOTP/MFA, password hashing, HMAC (via Codex) |
-| `database-engineer` | Database audit — SQL/SurrealQL injection, query performance, transactions (via Codex) |
+| `database-engineer` | Database audit — SQL injection, query performance, transactions (via Codex) |
 | `perf-engineer` | Performance profiling — allocation hotspots, lock contention, async overhead (via Codex) |
 | `rust-senior-dev` | Senior Rust developer — idiomatic patterns, ownership, lifetimes, unsafe (via Codex) |
 | `security-auditor` | OWASP-style security review — injection, auth bypass, RLS/RBAC, crypto (via Codex) |
@@ -347,7 +347,7 @@
 | Rule | Enforces |
 |------|----------|
 | `flutter.md` | MVVM architecture, Riverpod patterns, Dart style, DesignTokens, Semantics, money as cents |
-| `backend.md` | OrignaBase as sole backend, environment URLs, auth via OrignaBase, schema timestamp fields, SurrealDB IDs |
+| `backend.md` | OrignaBase as sole backend, environment URLs, auth via OrignaBase, schema timestamp fields, PostgreSQL IDs |
 | `payments.md` | Integer cents everywhere, Stripe Checkout flow, webhook HMAC, idempotency, platform fee, Connect payouts |
 | `orders.md` | Order state machine (pending-confirmed-shipped-delivered), stock management, notifications, returns |
 | `testing.md` | No emulators (8GB RAM), unit/widget/E2E test patterns, coverage targets, forbidden test patterns |

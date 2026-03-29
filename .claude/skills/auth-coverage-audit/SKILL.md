@@ -62,7 +62,7 @@ orignabase/crates/ob-auth/tests/                   # Only 1 test file for 11 sou
 - [ ] Private key NEVER exposed outside OrignaBase process
 - [ ] Public key available for token verification (other services, middleware)
 - [ ] Token claims include: `sub` (user ID), `exp` (expiry), `iat` (issued at), `role`
-- [ ] `sub` format: full SurrealDB path `users:xxx` — verify consumers handle this
+- [ ] `sub` format: user UUID — verify consumers handle this
 - [ ] Short-lived access tokens (recommended: 15-60 minutes)
 - [ ] Refresh token stored securely (HttpOnly cookie or secure storage)
 - [ ] Refresh token rotation: old refresh token invalidated on use

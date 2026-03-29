@@ -878,7 +878,7 @@ async fn delete_product(
         "SELECT * FROM {} WHERE {} CONTAINS '{}' AND {} IN ['pending', 'processing', 'shipped'] LIMIT 5",
         collections::ORDERS,
         fields::SELLER_ID,
-        ob_core::escape_surreal_string(&user_id),
+        ob_core::escape_sql_string(&user_id),
         fields::STATUS,
     );
 
@@ -916,7 +916,7 @@ async fn delete_product(
         "DELETE FROM {} WHERE {} = '{}'",
         collections::STOCK_NOTIFICATIONS,
         fields::PRODUCT_ID,
-        ob_core::escape_surreal_string(&req.product_id),
+        ob_core::escape_sql_string(&req.product_id),
     );
     if let Err(e) = state.db.query_raw(&cleanup_query).await {
         warn!(product_id = %req.product_id, error = %e, "Failed to cleanup stock notifications");
@@ -961,7 +961,7 @@ async fn list_products(
         conditions.push(format!(
             "{} = '{}'",
             fields::CATEGORY,
-            ob_core::escape_surreal_string(category)
+            ob_core::escape_sql_string(category)
         ));
     }
 
@@ -969,7 +969,7 @@ async fn list_products(
         conditions.push(format!(
             "{} = '{}'",
             fields::SELLER_ID,
-            ob_core::escape_surreal_string(seller_id)
+            ob_core::escape_sql_string(seller_id)
         ));
     }
 
@@ -1036,7 +1036,7 @@ async fn seller_list(
     let mut conditions = vec![format!(
         "{} = '{}'",
         fields::SELLER_ID,
-        ob_core::escape_surreal_string(&req.seller_id)
+        ob_core::escape_sql_string(&req.seller_id)
     )];
 
     if !req.include_inactive {
@@ -1272,9 +1272,9 @@ async fn toggle_favorite(
         "SELECT * FROM {} WHERE {} = '{}' AND {} = '{}' LIMIT 1",
         collections::FAVORITES,
         fields::USER_ID,
-        ob_core::escape_surreal_string(&req.user_id),
+        ob_core::escape_sql_string(&req.user_id),
         fields::PRODUCT_ID,
-        ob_core::escape_surreal_string(&req.product_id),
+        ob_core::escape_sql_string(&req.product_id),
     );
     let existing = state.db.query_raw(&query).await.unwrap_or_default();
     let now = chrono::Utc::now().to_rfc3339();

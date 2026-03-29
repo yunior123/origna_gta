@@ -26,7 +26,7 @@ Grep changed files for:
 - API keys in Dart `--dart-define` that should be server-side
 
 ### 2. Injection Risks
-- **SurrealQL**: string concatenation in queries instead of parameterized
+- **SQL**: string concatenation in queries instead of parameterized
 - **Command injection**: unsanitized input in `Process.run()` or shell commands
 - **XSS**: rendering user HTML without sanitization
 - **Path traversal**: user input in file paths without validation
@@ -53,7 +53,7 @@ Grep changed files for:
 
 ### 6. origna_gta-Specific
 - Firebase imports (Firebase is GONE)
-- Direct SurrealDB/Meilisearch calls from Flutter (must use OrignaBase SDK)
+- Direct PostgreSQL/Meilisearch calls from Flutter (must use OrignaBase SDK)
 - Stripe API called from Flutter (must go through OrignaBase)
 - Missing Turnstile validation on auth/checkout endpoints
 - Webhook HMAC verification skipped or using non-constant-time comparison
@@ -70,7 +70,7 @@ CRITICAL:
 - [file:line] Hardcoded Stripe key found
 
 HIGH:
-- [file:line] SurrealQL string concatenation (injection risk)
+- [file:line] SQL string concatenation (injection risk)
 
 MEDIUM:
 - [file:line] Missing input validation on postal code field

@@ -21,7 +21,7 @@ pub async fn get_analytics(_state: McpState, params: &Value) -> McpResult<Value>
     }
 
     // Query aggregated analytics from orders/products/users
-    // NOTE: state.db.query(complex SurrealDB analytics query)
+    // NOTE: state.db.query(complex PostgreSQL analytics query)
     // - Total orders, total revenue, average order value
     // - Top sellers, top products
     // - Platform fees collected

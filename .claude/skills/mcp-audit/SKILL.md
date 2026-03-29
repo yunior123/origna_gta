@@ -37,7 +37,7 @@ orignabase/tests/mcp_integration_test.rs          # Integration tests
 
 ### 2. Tool Injection & Input Validation
 - [ ] Tool parameters sanitized before DB queries?
-- [ ] `search_products` query string: can it inject SurrealQL?
+- [ ] `search_products` query string: can it inject SQL?
 - [ ] `add_to_cart` quantity: can it be negative? Overflow?
 - [ ] `apply_coupon` code: can it access other users' coupons?
 - [ ] `create_checkout` — does it go through the same validation as REST checkout?
@@ -70,7 +70,7 @@ orignabase/tests/mcp_integration_test.rs          # Integration tests
 ### 6. Error Handling
 - [ ] Tool errors return user-friendly messages?
 - [ ] No internal errors leaked (stack traces, DB errors)?
-- [ ] SurrealDB errors handled gracefully?
+- [ ] PostgreSQL errors handled gracefully?
 - [ ] Stripe errors mapped to MCP error codes?
 
 ### 7. Data Leakage

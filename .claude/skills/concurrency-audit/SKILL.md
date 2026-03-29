@@ -1,6 +1,6 @@
 ---
 name: concurrency-audit
-description: "Concurrency & race condition audit for OrignaGTA. Detects TOCTOU, read-modify-write, non-atomic operations, isolation level issues, and distributed system failures. Covers SurrealDB atomic patterns, Riverpod disposal race conditions, stock overselling, and double-charge prevention. Use when asked to 'audit concurrency', 'find race conditions', 'check atomicity', 'isolation level review', or similar."
+description: "Concurrency & race condition audit for OrignaGTA. Detects TOCTOU, read-modify-write, non-atomic operations, isolation level issues, and distributed system failures. Covers PostgreSQL atomic patterns, Riverpod disposal race conditions, stock overselling, and double-charge prevention. Use when asked to 'audit concurrency', 'find race conditions', 'check atomicity', 'isolation level review', or similar."
 ---
 
 # Concurrency Audit — OrignaGTA
@@ -144,11 +144,11 @@ SAFE (atomic conditional update):
   // affected_rows == 0 means out of stock
 ```
 
-**Check for SurrealDB:**
-- [ ] Uses `query_bind()` with `$params` (not `format!()`)
+**Check for PostgreSQL:**
+- [ ] All queries parameterized (`$1`, `$2`) — never string concatenation/format!
 - [ ] Conditional update: `WHERE field >= $value`
 - [ ] Check `affected_rows` to detect failure
-- [ ] Multi-step operations wrapped in transactions
+- [ ] Multi-step operations wrapped in transactions (BEGIN/COMMIT)
 - [ ] No `SELECT` then `UPDATE` without transaction lock
 
 ### Step 3: Check Isolation Level
@@ -164,8 +164,8 @@ SAFE (atomic conditional update):
 | Dashboard stats | READ COMMITTED | Approximate counts acceptable |
 | Payment processing | SERIALIZABLE | Financial correctness required |
 
-**Check for SurrealDB:**
-- [ ] Is SurrealDB using transactions for multi-step operations?
+**Check for PostgreSQL:**
+- [ ] Is PostgreSQL using transactions for multi-step operations?
 - [ ] Is the transaction isolation level appropriate for the operation?
 - [ ] For flash-sale items: is there a queue or reservation system?
 

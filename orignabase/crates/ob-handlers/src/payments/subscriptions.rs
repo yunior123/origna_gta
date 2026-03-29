@@ -230,13 +230,13 @@ async fn get_user_subscription(
     }
 
     // Validate user ID format before querying
-    ob_core::validate_surreal_record_id(user_id)?;
+    ob_core::validate_record_id(user_id)?;
 
     let rows = state
         .db
         .query_raw(&format!(
             "SELECT * FROM subscriptions WHERE buyerId = '{}' ORDER BY createdAt DESC LIMIT 1",
-            ob_core::escape_surreal_string(user_id)
+            ob_core::escape_sql_string(user_id)
         ))
         .await?;
 
@@ -543,7 +543,7 @@ async fn create_subscription(
         fields::CREATED_AT: now,
         fields::UPDATED_AT: now,
     });
-    // Strip null values — SurrealDB CREATE rejects NONE in CONTENT
+    // Strip null values before inserting
     let sub_doc = if let Value::Object(map) = sub_doc {
         Value::Object(map.into_iter().filter(|(_, v)| !v.is_null()).collect())
     } else {
@@ -977,7 +977,7 @@ async fn find_user_by_customer_id(
         .db
         .query_raw(&format!(
             "SELECT * FROM users WHERE customerId = '{}' LIMIT 1",
-            ob_core::escape_surreal_string(customer_id)
+            ob_core::escape_sql_string(customer_id)
         ))
         .await?;
     Ok(rows.into_iter().next())

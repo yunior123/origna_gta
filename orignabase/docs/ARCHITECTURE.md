@@ -8,7 +8,7 @@ OrignaBase is a self-hosted Backend-as-a-Service (BaaS) written in Rust, designe
 - **Runtime:** Rust (edition 2024, rust-version 1.85) + Tokio async runtime
 - **Web Framework:** axum 0.8 with tower middleware stack
 - **GraphQL:** async-graphql 7 with depth/complexity limits
-- **Database:** SurrealDB v2 (embedded RocksDB for local dev, standalone for production)
+- **Database:** PostgreSQL v2 (embedded RocksDB for local dev, standalone for production)
 - **Search:** Meilisearch (optional — warns but starts without)
 - **Auth:** JWT (RS256 primary, HS256 fallback), Argon2 password hashing, TOTP MFA
 - **Payments:** Stripe API (Connect, Checkout, Refunds)
@@ -29,7 +29,7 @@ OrignaBase is a self-hosted Backend-as-a-Service (BaaS) written in Rust, designe
 ```
 orignabase (binary)
 ├── ob-core          (config, error, validation, tenant)
-├── ob-database      (SurrealDB client, CRUD, query translator)
+├── ob-database      (PostgreSQL client, CRUD, query translator)
 │   └── ob-core
 ├── ob-auth          (JWT, routes, MFA, email, middleware)
 │   ├── ob-core
@@ -84,7 +84,7 @@ orignabase (binary)
 **Modules:**
 - `config.rs` — `Config` struct with TOML loading + `OB_*` env var overrides
 - `error.rs` — `Error` enum and `Result<T>` type alias
-- `validate.rs` — `validate_identifier()`, `validate_document_id()`, `escape_surreal_string()`, `validate_known_collection()`
+- `validate.rs` — `validate_identifier()`, `validate_document_id()`, `escape_sql_string()`, `validate_known_collection()`
 - `tenant.rs` — `TenantContext`, `tenant_middleware` (header/subdomain extraction)
 - `state.rs` — Application state utilities
 - `server.rs` — Server lifecycle helpers
@@ -115,18 +115,18 @@ pub enum Error {
 
 ### ob-database
 
-**Purpose:** SurrealDB abstraction layer. All database access goes through this crate.
+**Purpose:** PostgreSQL abstraction layer. All database access goes through this crate.
 
 **Modules:**
 - `client.rs` — `DatabaseClient` (connect, query, health check)
 - `crud.rs` — CRUD operations, FieldValue operations, batch ops, vector search
-- `query.rs` — `QueryTranslator` (GraphQL filter → SurrealQL WHERE clause)
+- `query.rs` — `QueryTranslator` (GraphQL filter → SQL WHERE clause)
 - `transaction.rs` — `Transaction` wrapper for multi-statement atomicity
 - `task_queue.rs` — `Task`, `TaskQueue`, `TaskStatus`, `run_worker`
 
 **Key Types:**
 ```rust
-pub struct DatabaseClient { db: Surreal<Any> }
+pub struct DatabaseClient { db: PgPool }
 pub struct Record { id: RecordId, #[serde(flatten)] rest: HashMap<String, Value> }
 pub struct QueryTranslator;  // static methods
 pub struct Transaction { queries: Vec<(String, Option<Value>)> }
@@ -148,15 +148,8 @@ pub enum TaskStatus { Pending, Running, Completed, Failed, DeadLetter }
 - `vector_search(collection, field, embedding, top_k, threshold)`
 - `query_raw(query)`, `query_raw_value(query)`, `query_bind(query, binds)`
 
-**SurrealDB RecordId Pattern:**
-```rust
-struct Record {
-    id: RecordId,
-    #[serde(flatten)]
-    rest: HashMap<String, Value>,
-}
-```
-Converts `RecordId` to string format `collection:record_id` via `into_value()`.
+**PostgreSQL Record ID Pattern:**
+Records use standard UUID primary keys. The `collection:record_id` string format is used for API compatibility with the SDK client.
 
 **Query Translator:**
 Supports operators: `_eq`, `_neq`, `_gt`, `_gte`, `_lt`, `_lte`, `_in`, `_contains`, `_starts_with`.
@@ -165,7 +158,7 @@ Input format is OBJECT `{field: {_op: val}}` — NOT array. All field names vali
 **Task Queue:**
 Self-hosted replacement for Google Cloud Tasks. Tasks stored in `_task_queue` collection. Workers poll and process by `queue` name. Supports priority, retry with max_retries, scheduled execution, dead-lettering.
 
-**Dependencies:** ob-core, surrealdb (kv-rocksdb, protocol-http, protocol-ws)
+**Dependencies:** ob-core, sqlx (postgres), tokio
 
 ---
 
@@ -353,7 +346,7 @@ DB Change → change_tx → fan-out task → search_sync_tx → SearchSyncer →
 
 **Index Configuration:** Indexes defined in `orignabase.toml` under `[search.indexes.<name>]` with `searchable`, `filterable`, `sortable` field lists. Applied at startup via `ensure_indexes()`.
 
-**ID Sanitization:** SurrealDB IDs contain `:` (e.g., `products:abc123`) — sanitized to `_` for Meilisearch index keys.
+**ID Sanitization:** PostgreSQL IDs contain `:` (e.g., `products:abc123`) — sanitized to `_` for Meilisearch index keys.
 
 **Optional:** If `search` config section is absent, `SearchClient` operates in disabled mode (returns empty results, logs warnings). Server starts normally without Meilisearch.
 
@@ -511,7 +504,7 @@ pub struct HandlersState {
 - Base URL configurable (defaults to `https://api.stripe.com/v1`)
 - Operations: Checkout Session, PaymentIntent, Refund, Transfer (Connect), webhook signature verification
 
-**Rate Limiting:** `check_user_rate_limit()` uses SurrealDB-backed sliding window rate limiter per user + action.
+**Rate Limiting:** `check_user_rate_limit()` uses PostgreSQL-backed sliding window rate limiter per user + action.
 
 **Router Assembly:** `handlers_router(state)` merges all domain routers into a single axum Router with actor identity middleware.
 
@@ -569,7 +562,7 @@ pub struct McpState {
 | `codegen dart` | Generate Dart models from GraphQL introspection |
 
 **Server Assembly (serve function):**
-1. Connect to SurrealDB
+1. Connect to PostgreSQL
 2. Parse security rules file
 3. Initialize SubscriptionRegistry + ChangeDispatcher
 4. Initialize SearchClient + SearchSyncer
@@ -617,14 +610,14 @@ Router
 
 ## Decision Log
 
-### 1. SurrealDB v2 Required (Not v3)
-SurrealDB v3 has compatibility issues with the current SDK API. The codebase uses `surrealdb = { version = "2" }` with features `kv-rocksdb`, `protocol-http`, `protocol-ws`. The `connect_any()` API and `RecordId` type are v2-specific.
+### 1. PostgreSQL v2 Required (Not v14)
+PostgreSQL v14+ is required. The codebase uses `sqlx` with the `postgres` feature for connection pooling and query execution.
 
-### 2. SurrealDB WebSocket Format: `host:port` Only
-The SurrealDB client endpoint must be in `host:port` format (e.g., `localhost:8000`). Using `ws://` prefix causes a **silent hang** with no error message. This is a SurrealDB SDK quirk. For HTTP protocol, use `http://host:port`.
+### 2. PostgreSQL Connection: `host:port` Format
+The PostgreSQL client endpoint must be in `host:port` format (e.g., `localhost:5432`). Using incorrect format causes connection failures.
 
-### 3. SurrealDB RecordId: Use `Record` Wrapper with `#[serde(flatten)]`
-Direct deserialization of SurrealDB responses into `Value` loses the `id` field because `RecordId` doesn't serialize as a plain string. Solution:
+### 3. PostgreSQL RecordId: Use `Record` Wrapper with `#[serde(flatten)]`
+Direct deserialization of PostgreSQL responses into `Value` loses the `id` field because `RecordId` doesn't serialize as a plain string. Solution:
 ```rust
 struct Record {
     id: RecordId,
@@ -643,8 +636,8 @@ Server calls `filters.as_object()` expecting `{field: {_op: val}}`. Array format
 ### 6. Meilisearch Optional — Warns But Starts Without
 If `[search]` section is absent from config or Meilisearch is unreachable, the server logs a warning and continues. `SearchClient::is_enabled()` returns false. All search operations return empty results. This avoids a hard dependency on an external service.
 
-### 7. Embedded RocksDB for Local Dev
-`orignabase.toml` uses `endpoint = "rocksdb://./local_test_data"` for zero-dependency local development. No separate SurrealDB server needed. Production uses `protocol-http` or `protocol-ws` to a standalone SurrealDB instance.
+### 7. PostgreSQL for Local Dev and Production
+`orignabase.toml` uses `url = "postgres://orignabase:orignabase_dev@localhost:5432/orignabase"` for local development. Production uses a managed PostgreSQL instance.
 
 ### 8. Serde Aliases for Backward Compatibility
 Search result fields use multiple aliases for cross-version compatibility:
@@ -720,7 +713,7 @@ REST endpoints for marketplace operations under `/payments`, `/orders`, `/produc
 
 ### Unit Tests (per crate)
 - Run via `cargo test` (488+ across 13 crates)
-- Use in-memory SurrealDB (`DatabaseClient::new_mem()`) for database tests
+- Use in-memory PostgreSQL for database tests
 - Mock HTTP servers via `wiremock` for Stripe/external API tests
 - Each crate has `#[cfg(test)] mod tests` inline
 
@@ -766,7 +759,7 @@ cargo test && cargo clippy -- -D warnings
 ### VPS Configuration
 - **Server:** 204.168.137.16 (Hetzner)
 - **Reverse Proxy:** Caddy (TLS termination, rate limiting at edge)
-- **Database:** Standalone SurrealDB (HTTP protocol)
+- **Database:** Standalone PostgreSQL (HTTP protocol)
 - **Search:** Meilisearch instance
 - **Storage:** Local filesystem at `/var/lib/orignabase/storage`
 
@@ -774,7 +767,7 @@ cargo test && cargo clippy -- -D warnings
 | Variable | Purpose |
 |----------|---------|
 | `OB_AUTH__JWT_SECRET` | JWT signing secret (≥32 chars) |
-| `OB_DATABASE__ENDPOINT` | SurrealDB connection string |
+| `OB_DATABASE__ENDPOINT` | PostgreSQL connection string |
 | `OB_SECRETS__STRIPE_SECRET_KEY` | Stripe API key |
 | `OB_SEARCH__URL` | Meilisearch URL |
 | `OB_SEARCH__API_KEY` | Meilisearch API key |

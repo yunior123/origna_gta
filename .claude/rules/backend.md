@@ -4,7 +4,7 @@
 - All data, auth, search through OrignaBase SDK (`orignabase/sdks/flutter/orignabase`)
 - Firebase has been fully replaced — no Firestore, no Firebase Auth, no Firebase Storage, no Cloud Functions
 - Web hosting uses VPS (Caddy) — rsync to `204.168.137.16:/var/www/orignagta/{env}/current`
-- SurrealDB accessed only via OrignaBase (never directly from Flutter)
+- PostgreSQL accessed only via OrignaBase (never directly from Flutter)
 - Meilisearch accessed only via OrignaBase (never directly from Flutter)
 
 ## Environments
@@ -22,7 +22,7 @@
 - OrignaBase handles all auth: `/auth/register`, `/auth/login`, `/auth/google/start`
 - Never manually refresh tokens — SDK handles this
 - Logout: `OrignaBaseAuth.signOut()` — clears SDK state
-- Admin operations require `admin` role in `users` SurrealDB record
+- Admin operations require `admin` role in `users` PostgreSQL record
 
 ## Schema — Timestamp Fields (CRITICAL)
 | Collection | Timestamp field |
@@ -47,9 +47,9 @@ Mixing these up causes sort/query failures. Always use `schema_constants.dart`.
 - Images: Cloudflare R2 URLs (never Firebase Storage for products)
 - Stock: `stockQuantity` (integer); 0 = out of stock
 
-## SurrealDB IDs
-- Format: `collection:record_id` (e.g., `products:abc123`)
-- For Meilisearch: sanitize `:` → `_` in document ID (e.g., `products_abc123`), keep `origId` with original
+## PostgreSQL IDs
+- Format: standard UUID (e.g., `abc123-def456-...`)
+- For Meilisearch: use the record ID directly as document ID
 
 ## Search (Meilisearch config)
 - Filterable: `lifecycleStatus`, `categoryId`, `subcategory`, `priceCents`, `sellerId`, `isPerishable`
@@ -65,13 +65,13 @@ Mixing these up causes sort/query failures. Always use `schema_constants.dart`.
 ## OrignaBase VPS Info (for ops/debugging only)
 - IP: `204.168.137.16` | SSH: `ssh -i ~/.ssh/id_ed25519 root@204.168.137.16`
 - Docker Compose at `/opt/orignabase/`
-- SurrealDB creds: `root / orignabase_root_2026`, namespace: `orignabase`, db: `production`
+- PostgreSQL creds: stored in VPS `.env` files, database: `orignabase`
 - Meilisearch master key: `REDACTED_SECRET`
 
 ## Forbidden
 - ❌ Any Firebase SDK calls from Flutter (Firestore, Auth, Storage, Functions — all gone)
 - ❌ Hardcoded OrignaBase URLs — use `EnvConfig`
 - ❌ Float/double for money
-- ❌ Direct SurrealDB or Meilisearch connections from Flutter
+- ❌ Direct PostgreSQL or Meilisearch connections from Flutter
 - ❌ Bypassing OrignaBase SDK with raw HTTP calls
 - ❌ Storing Stripe card data anywhere

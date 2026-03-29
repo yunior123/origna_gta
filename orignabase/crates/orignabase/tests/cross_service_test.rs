@@ -1,5 +1,5 @@
 //! Cross-service integration tests for OrignaBase.
-//! Tests interactions between SurrealDB, Meilisearch, Auth, and WebSocket.
+//! Tests interactions between PostgreSQL, Meilisearch, Auth, and WebSocket.
 //!
 //! Run: cargo test -p orignabase --test cross_service_test -- --ignored
 

@@ -598,7 +598,7 @@ async fn cleanup_fcm_token(
     validate_string("token", &req.token, 512)?;
 
     // FCM tokens are stored as documents in a subcollection-like pattern.
-    // In SurrealDB we use a flat collection with userId + token fields.
+    // In PostgreSQL we use a flat table with userId + token fields.
     let query = format!(
         "SELECT * FROM {} WHERE {} = '{}' AND {} = '{}' LIMIT 1",
         collections::FCM_TOKENS,
@@ -670,7 +670,7 @@ async fn add_buyer_address(
             fields::UPDATED_AT,
             now,
             fields::USER_ID,
-            ob_core::escape_surreal_string(&user_id),
+            ob_core::escape_sql_string(&user_id),
         );
         let _ = state.db.query_raw(&clear_query).await;
     }
@@ -735,9 +735,9 @@ async fn update_buyer_address(
             fields::UPDATED_AT,
             now,
             fields::USER_ID,
-            ob_core::escape_surreal_string(&user_id),
+            ob_core::escape_sql_string(&user_id),
             collections::ADDRESSES,
-            ob_core::escape_surreal_string(&req.address_id),
+            ob_core::escape_sql_string(&req.address_id),
         );
         let _ = state.db.query_raw(&clear_query).await;
     }
@@ -793,7 +793,7 @@ async fn delete_buyer_address(
             "SELECT * FROM {} WHERE {} = '{}' ORDER BY {} DESC LIMIT 1",
             collections::ADDRESSES,
             fields::USER_ID,
-            ob_core::escape_surreal_string(&user_id),
+            ob_core::escape_sql_string(&user_id),
             fields::CREATED_AT,
         );
         if let Some(next_address) = state.db.query_raw(&query).await?.into_iter().next()
@@ -841,7 +841,7 @@ async fn set_default_buyer_address(
         fields::UPDATED_AT,
         now,
         fields::USER_ID,
-        ob_core::escape_surreal_string(&user_id),
+        ob_core::escape_sql_string(&user_id),
     );
     let _ = state.db.query_raw(&clear_query).await;
 

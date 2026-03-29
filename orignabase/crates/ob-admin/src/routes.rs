@@ -558,12 +558,12 @@ pub struct CreateIndexRequest {
 }
 
 impl CreateIndexRequest {
-    /// Generate the SurrealQL index name: `idx_{collection}_{fields_joined}`.
+    /// Generate the SQL index name: `idx_{collection}_{fields_joined}`.
     pub fn index_name(&self) -> String {
         format!("idx_{}_{}", self.collection, self.fields.join("_"))
     }
 
-    /// Generate the SurrealQL DEFINE INDEX statement.
+    /// Generate the SQL CREATE INDEX statement.
     pub fn to_surreal_query(&self) -> String {
         let unique_clause = if self.unique { " UNIQUE" } else { "" };
         format!(

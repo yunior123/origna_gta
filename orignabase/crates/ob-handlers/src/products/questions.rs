@@ -289,7 +289,7 @@ async fn list_questions(
     let mut conditions = vec![format!(
         "{} = '{}'",
         fields::PRODUCT_ID,
-        ob_core::escape_surreal_string(&req.product_id)
+        ob_core::escape_sql_string(&req.product_id)
     )];
 
     if req.answered_only {

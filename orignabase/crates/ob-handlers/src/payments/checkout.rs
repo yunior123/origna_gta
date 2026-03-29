@@ -20,7 +20,7 @@ use crate::shared::validation::{validate_string, validate_uid};
 /// Request body for POST /api/payments/checkout — creates a Stripe Checkout Session.
 ///
 /// Requires JWT auth. Validates: cart non-empty, items <= 30, quantity <= 100 per item,
-/// subtotal <= $100,000 CAD, valid Canadian province. Creates order records in SurrealDB
+/// subtotal <= $100,000 CAD, valid Canadian province. Creates order records in PostgreSQL
 /// and returns the Stripe session URL for redirect. Supports idempotency via [idempotency_key].
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -266,7 +266,7 @@ pub fn router(state: HandlersState) -> Router {
 ///   rules server-side; the client subtotal is advisory only.
 /// - Multi-seller carts are rejected because the current Stripe Connect flow can
 ///   route funds to only one destination account.
-/// - Stock reservation is finalized through a SurrealDB transaction after the
+/// - Stock reservation is finalized through a PostgreSQL transaction after the
 ///   Stripe session is created, so retries must reuse idempotency keys.
 async fn create_checkout_session(
     State(state): State<HandlersState>,
@@ -792,7 +792,7 @@ async fn create_checkout_session(
     // --- Atomic order creation with stock reservation ---
     // CRITICAL: Stock check and decrement must be atomic to prevent race conditions
     // where two concurrent buyers both pass validation on stock 2 and create negative stock.
-    // Use SurrealDB transaction to ensure all-or-nothing semantics.
+    // Use PostgreSQL transaction to ensure all-or-nothing semantics.
 
     // Build atomic transaction: create order + reserve stock for all physical items
     let mut tx = Transaction::new();
@@ -827,10 +827,14 @@ async fn create_checkout_session(
                 // UPDATE only succeeds if stockQuantity >= qty. If 0 rows affected, out of stock.
                 tx.add(
                     &format!(
-                        "UPDATE {}:{} SET stockQuantity -= {}, updatedAt = '{}' WHERE stockQuantity >= {}",
-                        collections::PRODUCTS, pid, qty, now, qty
+                        "UPDATE {} SET stockQuantity -= $qty, updatedAt = $now WHERE id = type::thing('{}', $pid) AND stockQuantity >= $qty",
+                        collections::PRODUCTS, collections::PRODUCTS
                     ),
-                    None,
+                    Some(serde_json::json!({
+                        "pid": pid,
+                        "qty": qty,
+                        "now": now,
+                    })),
                 );
                 stock_op_indices.push((idx, pid.to_string()));
             }

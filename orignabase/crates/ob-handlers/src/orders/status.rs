@@ -424,11 +424,26 @@ async fn confirm_item_receipt(
         }
     }
 
-    state
+    // CAS guard: only update if order hasn't been modified since we read it.
+    // Prevents TOCTOU where concurrent seller/buyer updates overwrite each other.
+    let expected_updated_at = order.get(fields::UPDATED_AT).cloned().unwrap_or(json!(""));
+    let updated = state
         .db
-        .update_document(collections::ORDERS, &req.order_id, update_data)
+        .update_document_cas(
+            collections::ORDERS,
+            &req.order_id,
+            update_data,
+            fields::UPDATED_AT,
+            &expected_updated_at,
+        )
         .await
         .map_err(|e| ob_core::Error::Database(format!("Failed to update order: {e}")))?;
+
+    if updated.is_none() {
+        return Err(ob_core::Error::Validation(
+            "Order was modified concurrently — please retry".into(),
+        ));
+    }
 
     info!(
         order_id = %req.order_id,
@@ -711,7 +726,7 @@ async fn update_order_status(
     // CAS guard: only write if orderStatus is still the value we read.
     // A concurrent webhook (e.g. payment confirmation, auto-delivery) could have
     // changed the status between our read and this write. The WHERE clause makes
-    // the update conditional and atomic in SurrealDB.
+    // the update conditional and atomic in PostgreSQL.
     let order_id_stripped = req
         .order_id
         .strip_prefix(&format!("{}:", collections::ORDERS))
@@ -956,11 +971,26 @@ async fn update_item_status(
         }
     }
 
-    state
+    // CAS guard: only update if order hasn't been modified since we read it.
+    // Prevents TOCTOU where concurrent seller updates overwrite each other.
+    let expected_updated_at = order.get(fields::UPDATED_AT).cloned().unwrap_or(json!(""));
+    let updated = state
         .db
-        .update_document(collections::ORDERS, &req.order_id, update_data)
+        .update_document_cas(
+            collections::ORDERS,
+            &req.order_id,
+            update_data,
+            fields::UPDATED_AT,
+            &expected_updated_at,
+        )
         .await
         .map_err(|e| ob_core::Error::Database(format!("Failed to update order: {e}")))?;
+
+    if updated.is_none() {
+        return Err(ob_core::Error::Validation(
+            "Order was modified concurrently — please retry".into(),
+        ));
+    }
 
     info!(
         order_id = %req.order_id,

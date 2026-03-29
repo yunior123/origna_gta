@@ -2,6 +2,7 @@ use crate::DatabaseClient;
 use ob_core::{Error, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use sqlx::Row;
 use std::sync::Arc;
 
 /// Task status lifecycle: pending → running → completed | failed | dead_letter
@@ -15,10 +16,10 @@ pub enum TaskStatus {
     DeadLetter,
 }
 
-/// A background task stored in SurrealDB.
+/// A background task stored in the _task_queue table.
 ///
 /// Replaces Google Cloud Tasks with a self-hosted alternative.
-/// Tasks are stored in `_task_queue` collection and processed by workers.
+/// Tasks are stored in `_task_queue` table and processed by workers.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Task {
     /// Task type / handler name (e.g. "send_email", "sync_search", "cleanup_expired")
@@ -75,14 +76,14 @@ pub struct EnqueueRequest {
     pub priority: i32,
 }
 
-/// Task queue backed by SurrealDB.
+/// Task queue backed by _task_queue table in PostgreSQL.
 ///
 /// ## Architecture
 ///
-/// - Tasks are stored in `_task_queue` collection
-/// - Workers poll for pending tasks using atomic claim (SELECT + UPDATE in one query)
+/// - Tasks are stored in `_task_queue` table with specific columns
+/// - Workers poll for pending tasks using atomic claim (SELECT + UPDATE)
 /// - Failed tasks are retried with exponential backoff
-/// - Dead-lettered tasks are moved to `_task_dead_letter` for inspection
+/// - Dead-lettered tasks are marked for inspection
 /// - Stale running tasks (no heartbeat for >5 min) are reclaimed
 ///
 /// ## Usage
@@ -115,8 +116,55 @@ impl TaskQueue {
         Self { db }
     }
 
+    /// Ensure the _task_queue table has all required columns.
+    /// Handles schema evolution for existing databases.
+    async fn ensure_schema(&self) -> Result<()> {
+        sqlx::query(
+            r#"ALTER TABLE _task_queue ADD COLUMN IF NOT EXISTS queue TEXT NOT NULL DEFAULT 'default'"#,
+        )
+        .execute(self.db.inner().pool())
+        .await
+        .map_err(|e| Error::Database(format!("Schema migration failed: {e}")))?;
+        Ok(())
+    }
+
+    /// Map a database row to a Task struct.
+    fn row_to_task(row: &sqlx::postgres::PgRow) -> Task {
+        Task {
+            task_type: row.get("job_name"),
+            payload: row
+                .try_get::<Value, _>("payload")
+                .unwrap_or(Value::Null),
+            status: {
+                let s: String = row.get("status");
+                serde_json::from_value(Value::String(s)).unwrap_or(TaskStatus::Pending)
+            },
+            queue: row.try_get("queue").unwrap_or_else(|_| "default".into()),
+            attempts: row.get::<i32, _>("retry_count") as u32,
+            max_retries: row.get::<i32, _>("max_retries") as u32,
+            scheduled_at: row
+                .try_get::<chrono::DateTime<chrono::Utc>, _>("scheduled_at")
+                .ok()
+                .map(|t| t.to_rfc3339()),
+            created_at: row
+                .get::<chrono::DateTime<chrono::Utc>, _>("created_at")
+                .to_rfc3339(),
+            started_at: row
+                .try_get::<chrono::DateTime<chrono::Utc>, _>("locked_at")
+                .ok()
+                .map(|t| t.to_rfc3339()),
+            finished_at: row
+                .try_get::<chrono::DateTime<chrono::Utc>, _>("completed_at")
+                .ok()
+                .map(|t| t.to_rfc3339()),
+            last_error: row.try_get("error_message").ok(),
+            priority: 0,
+        }
+    }
+
     /// Enqueue a new task for background processing.
     pub async fn enqueue(&self, req: EnqueueRequest) -> Result<Value> {
+        self.ensure_schema().await?;
         let now = chrono::Utc::now();
         let scheduled_at = if req.delay_secs > 0 {
             Some((now + chrono::Duration::seconds(req.delay_secs as i64)).to_rfc3339())
@@ -124,25 +172,27 @@ impl TaskQueue {
             None
         };
 
-        let task = Task {
-            task_type: req.task_type,
-            payload: req.payload,
-            status: TaskStatus::Pending,
-            queue: req.queue,
-            attempts: 0,
-            max_retries: req.max_retries,
-            scheduled_at,
-            created_at: now.to_rfc3339(),
-            started_at: None,
-            finished_at: None,
-            last_error: None,
-            priority: req.priority,
-        };
+        let payload_str = serde_json::to_string(&req.payload)
+            .map_err(|e| Error::Internal(format!("Payload serialization failed: {e}")))?;
 
-        let task_value = serde_json::to_value(&task)
-            .map_err(|e| Error::Internal(format!("Task serialization failed: {e}")))?;
+        let row = sqlx::query(
+            r#"INSERT INTO _task_queue (job_name, queue, status, payload, scheduled_at, retry_count, max_retries)
+               VALUES ($1, $2, 'pending', $3::jsonb, $4::timestamptz, 0, $5)
+               RETURNING id, job_name, queue, status, payload, scheduled_at, locked_at, locked_by,
+                         completed_at, error_message, retry_count, max_retries, created_at, updated_at"#,
+        )
+        .bind(&req.task_type)
+        .bind(&req.queue)
+        .bind(&payload_str)
+        .bind(scheduled_at.as_deref())
+        .bind(req.max_retries as i32)
+        .fetch_one(self.db.inner().pool())
+        .await
+        .map_err(|e| Error::Database(format!("Enqueue failed: {e}")))?;
 
-        self.db.create_document("_task_queue", task_value).await
+        let task = Self::row_to_task(&row);
+        serde_json::to_value(&task)
+            .map_err(|e| Error::Internal(format!("Task serialization failed: {e}")))
     }
 
     /// Enqueue multiple tasks in a batch.
@@ -157,54 +207,50 @@ impl TaskQueue {
     /// Atomically claim the next pending task from the given queue.
     /// Two-step: SELECT to find candidate, then UPDATE to claim it.
     pub async fn claim_next(&self, queue: &str) -> Result<Option<(String, Task)>> {
-        let now = chrono::Utc::now().to_rfc3339();
+        self.ensure_schema().await?;
+        let now = chrono::Utc::now();
 
         // Step 1: Find the next pending task
-        let candidates = self
-            .db
-            .query_bind(
-                "SELECT * FROM _task_queue \
-                 WHERE queue = $queue \
-                 AND status = 'pending' \
-                 AND (scheduled_at IS NONE OR scheduled_at <= $now) \
-                 ORDER BY priority ASC, created_at ASC \
-                 LIMIT 1",
-                serde_json::json!({ "queue": queue, "now": now }),
-            )
-            .await?;
+        let candidate = sqlx::query(
+            r#"SELECT id, job_name, queue, status, payload, scheduled_at, locked_at, locked_by,
+                      completed_at, error_message, retry_count, max_retries, created_at, updated_at
+               FROM _task_queue
+               WHERE queue = $1
+                 AND status = 'pending'
+                 AND (scheduled_at IS NULL OR scheduled_at <= $2)
+               ORDER BY created_at ASC
+               LIMIT 1"#,
+        )
+        .bind(queue)
+        .bind(now)
+        .fetch_optional(self.db.inner().pool())
+        .await
+        .map_err(|e| Error::Database(format!("Claim select failed: {e}")))?;
 
-        let Some(candidate) = candidates.first() else {
+        let Some(candidate) = candidate else {
             return Ok(None);
         };
 
-        let task_id = candidate["id"]
-            .as_str()
-            .map(|s| s.to_string())
-            .unwrap_or_else(|| candidate["id"].to_string());
+        let task_id: uuid::Uuid = candidate.get("id");
 
         // Step 2: Atomically claim it (only if still pending)
-        let results = self
-            .db
-            .query_bind(
-                &format!(
-                    "UPDATE {} SET status = 'running', started_at = $now, attempts = attempts + 1 \
-                     WHERE status = 'pending' RETURN AFTER",
-                    task_id
-                ),
-                serde_json::json!({ "now": now }),
-            )
-            .await?;
+        let updated = sqlx::query(
+            r#"UPDATE _task_queue
+               SET status = 'running', locked_at = $1, retry_count = retry_count + 1
+               WHERE id = $2 AND status = 'pending'
+               RETURNING id, job_name, queue, status, payload, scheduled_at, locked_at, locked_by,
+                         completed_at, error_message, retry_count, max_retries, created_at, updated_at"#,
+        )
+        .bind(now)
+        .bind(task_id)
+        .fetch_optional(self.db.inner().pool())
+        .await
+        .map_err(|e| Error::Database(format!("Claim update failed: {e}")))?;
 
-        if let Some(doc) = results.first() {
-            let id = doc["id"]
-                .as_str()
-                .map(|s| s.to_string())
-                .unwrap_or_else(|| doc["id"].to_string());
-
-            match serde_json::from_value::<Task>(doc.clone()) {
-                Ok(task) => Ok(Some((id, task))),
-                Err(_) => Ok(None),
-            }
+        if let Some(row) = updated {
+            let id: uuid::Uuid = row.get("id");
+            let task = Self::row_to_task(&row);
+            Ok(Some((id.to_string(), task)))
         } else {
             Ok(None)
         }
@@ -212,55 +258,73 @@ impl TaskQueue {
 
     /// Mark a task as completed.
     pub async fn complete(&self, task_id: &str) -> Result<()> {
-        let now = chrono::Utc::now().to_rfc3339();
-        self.db
-            .query_bind(
-                "UPDATE type::thing($tid) SET status = 'completed', finished_at = $now",
-                serde_json::json!({ "tid": task_id, "now": now }),
-            )
-            .await?;
+        let id = uuid::Uuid::parse_str(task_id)
+            .map_err(|e| Error::Database(format!("Invalid task ID: {e}")))?;
+
+        sqlx::query(
+            r#"UPDATE _task_queue SET status = 'completed', completed_at = $1 WHERE id = $2"#,
+        )
+        .bind(chrono::Utc::now())
+        .bind(id)
+        .execute(self.db.inner().pool())
+        .await
+        .map_err(|e| Error::Database(format!("Complete failed: {e}")))?;
+
         Ok(())
     }
 
     /// Mark a task as failed. If retries remain, requeue as pending with backoff.
     pub async fn fail(&self, task_id: &str, error: &str) -> Result<()> {
+        self.ensure_schema().await?;
+        let id = match uuid::Uuid::parse_str(task_id) {
+            Ok(id) => id,
+            Err(_) => return Ok(()), // Invalid ID format — nothing to fail
+        };
         let now = chrono::Utc::now();
 
         // Get current task to check retry count
-        let results = self
-            .db
-            .query_bind(
-                "SELECT * FROM type::thing($tid)",
-                serde_json::json!({ "tid": task_id }),
-            )
-            .await?;
+        let row = sqlx::query(
+            r#"SELECT id, job_name, queue, status, payload, scheduled_at, locked_at, locked_by,
+                      completed_at, error_message, retry_count, max_retries, created_at, updated_at
+               FROM _task_queue WHERE id = $1"#,
+        )
+        .bind(id)
+        .fetch_optional(self.db.inner().pool())
+        .await
+        .map_err(|e| Error::Database(format!("Fail select failed: {e}")))?;
 
-        let Some(doc) = results.first() else {
+        let Some(row) = row else {
             return Ok(());
         };
 
-        let attempts = doc["attempts"].as_u64().unwrap_or(1) as u32;
-        let max_retries = doc["max_retries"].as_u64().unwrap_or(3) as u32;
+        let retry_count: i32 = row.get("retry_count");
+        let max_retries: i32 = row.get("max_retries");
 
-        if attempts >= max_retries {
+        if retry_count >= max_retries {
             // Dead-letter the task
-            self.db
-                .query_bind(
-                    "UPDATE type::thing($tid) SET status = 'dead_letter', finished_at = $now, last_error = $error",
-                    serde_json::json!({ "tid": task_id, "now": now.to_rfc3339(), "error": error }),
-                )
-                .await?;
+            sqlx::query(
+                r#"UPDATE _task_queue SET status = 'dead_letter', completed_at = $1, error_message = $2 WHERE id = $3"#,
+            )
+            .bind(now)
+            .bind(error)
+            .bind(id)
+            .execute(self.db.inner().pool())
+            .await
+            .map_err(|e| Error::Database(format!("Dead-letter failed: {e}")))?;
         } else {
-            // Retry with exponential backoff: 2^attempts seconds (2s, 4s, 8s, 16s, ...)
-            let backoff_secs = 2i64.pow(attempts);
-            let retry_at = (now + chrono::Duration::seconds(backoff_secs)).to_rfc3339();
+            // Retry with exponential backoff: 2^retry_count seconds (2s, 4s, 8s, 16s, ...)
+            let backoff_secs = 2i64.pow(retry_count as u32);
+            let retry_at = now + chrono::Duration::seconds(backoff_secs);
 
-            self.db
-                .query_bind(
-                    "UPDATE type::thing($tid) SET status = 'pending', scheduled_at = $retry_at, last_error = $error, started_at = NONE",
-                    serde_json::json!({ "tid": task_id, "retry_at": retry_at, "error": error }),
-                )
-                .await?;
+            sqlx::query(
+                r#"UPDATE _task_queue SET status = 'pending', scheduled_at = $1, error_message = $2, locked_at = NULL WHERE id = $3"#,
+            )
+            .bind(retry_at)
+            .bind(error)
+            .bind(id)
+            .execute(self.db.inner().pool())
+            .await
+            .map_err(|e| Error::Database(format!("Retry update failed: {e}")))?;
         }
 
         Ok(())
@@ -269,37 +333,57 @@ impl TaskQueue {
     /// Reclaim stale running tasks (no completion after timeout).
     /// Call this periodically (e.g. every 60 seconds) to handle crashed workers.
     pub async fn reclaim_stale(&self, timeout_secs: u64) -> Result<u64> {
-        let cutoff =
-            (chrono::Utc::now() - chrono::Duration::seconds(timeout_secs as i64)).to_rfc3339();
+        self.ensure_schema().await?;
+        let cutoff = chrono::Utc::now() - chrono::Duration::seconds(timeout_secs as i64);
 
-        let results = self
-            .db
-            .query_bind(
-                "UPDATE _task_queue SET status = 'pending', started_at = NONE \
-                 WHERE status = 'running' AND started_at < $cutoff \
-                 RETURN AFTER",
-                serde_json::json!({ "cutoff": cutoff }),
-            )
-            .await?;
+        let result = sqlx::query(
+            r#"UPDATE _task_queue SET status = 'pending', locked_at = NULL
+               WHERE status = 'running' AND locked_at < $1"#,
+        )
+        .bind(cutoff)
+        .execute(self.db.inner().pool())
+        .await
+        .map_err(|e| Error::Database(format!("Reclaim failed: {e}")))?;
 
-        Ok(results.len() as u64)
+        Ok(result.rows_affected())
+    }
+
+    /// Reclaim stale running tasks for a specific queue.
+    pub async fn reclaim_stale_for_queue(&self, queue: &str, timeout_secs: u64) -> Result<u64> {
+        self.ensure_schema().await?;
+        let cutoff = chrono::Utc::now() - chrono::Duration::seconds(timeout_secs as i64);
+
+        let result = sqlx::query(
+            r#"UPDATE _task_queue SET status = 'pending', locked_at = NULL
+               WHERE queue = $1 AND status = 'running' AND locked_at < $2"#,
+        )
+        .bind(queue)
+        .bind(cutoff)
+        .execute(self.db.inner().pool())
+        .await
+        .map_err(|e| Error::Database(format!("Reclaim failed: {e}")))?;
+
+        Ok(result.rows_affected())
     }
 
     /// Get queue statistics.
     pub async fn stats(&self, queue: &str) -> Result<Value> {
-        let results = self
-            .db
-            .query_bind(
-                "SELECT status, count() AS count FROM _task_queue WHERE queue = $queue GROUP BY status",
-                serde_json::json!({ "queue": queue }),
-            )
-            .await?;
+        self.ensure_schema().await?;
+        let rows = sqlx::query(
+            r#"SELECT status, COUNT(*) AS count FROM _task_queue GROUP BY status"#,
+        )
+        .fetch_all(self.db.inner().pool())
+        .await
+        .map_err(|e| Error::Database(format!("Stats failed: {e}")))?;
 
         let mut stats = serde_json::Map::new();
         stats.insert("queue".into(), serde_json::json!(queue));
-        for r in &results {
-            if let (Some(status), Some(count)) = (r["status"].as_str(), r["count"].as_u64()) {
-                stats.insert(status.into(), serde_json::json!(count));
+        for row in &rows {
+            if let (Ok(status), Ok(count)) = (
+                row.try_get::<String, _>("status"),
+                row.try_get::<i64, _>("count"),
+            ) {
+                stats.insert(status, serde_json::json!(count as u64));
             }
         }
 
@@ -308,42 +392,68 @@ impl TaskQueue {
 
     /// Purge completed tasks older than the given duration.
     pub async fn purge_completed(&self, older_than_secs: u64) -> Result<u64> {
-        let cutoff =
-            (chrono::Utc::now() - chrono::Duration::seconds(older_than_secs as i64)).to_rfc3339();
+        self.ensure_schema().await?;
+        let cutoff = chrono::Utc::now() - chrono::Duration::seconds(older_than_secs as i64);
 
-        let results = self
-            .db
-            .query_bind(
-                "DELETE FROM _task_queue WHERE status = 'completed' AND finished_at < $cutoff RETURN BEFORE",
-                serde_json::json!({ "cutoff": cutoff }),
-            )
-            .await?;
+        let result = sqlx::query(
+            r#"DELETE FROM _task_queue WHERE status = 'completed' AND completed_at < $1"#,
+        )
+        .bind(cutoff)
+        .execute(self.db.inner().pool())
+        .await
+        .map_err(|e| Error::Database(format!("Purge failed: {e}")))?;
 
-        Ok(results.len() as u64)
+        Ok(result.rows_affected())
     }
 
     /// List dead-lettered tasks for inspection.
     pub async fn list_dead_letter(&self, queue: &str, limit: usize) -> Result<Vec<Value>> {
-        self.db
-            .query_bind(
-                &format!(
-                    "SELECT * FROM _task_queue WHERE queue = $queue AND status = 'dead_letter' \
-                     ORDER BY finished_at DESC LIMIT {limit}"
-                ),
-                serde_json::json!({ "queue": queue }),
-            )
-            .await
+        self.ensure_schema().await?;
+        let rows = sqlx::query(
+            r#"SELECT id, job_name, queue, status, payload, scheduled_at, locked_at, locked_by,
+                      completed_at, error_message, retry_count, max_retries, created_at, updated_at
+               FROM _task_queue
+               WHERE queue = $1 AND status = 'dead_letter'
+               ORDER BY completed_at DESC
+               LIMIT $2"#,
+        )
+        .bind(queue)
+        .bind(limit as i64)
+        .fetch_all(self.db.inner().pool())
+        .await
+        .map_err(|e| Error::Database(format!("List dead-letter failed: {e}")))?;
+
+        let mut results = Vec::with_capacity(rows.len());
+        for row in &rows {
+            let task = Self::row_to_task(row);
+            let mut val = serde_json::to_value(&task)
+                .map_err(|e| Error::Internal(format!("Task serialization failed: {e}")))?;
+            // Include the id
+            let id: uuid::Uuid = row.get("id");
+            if let Some(obj) = val.as_object_mut() {
+                obj.insert("id".into(), Value::String(id.to_string()));
+            }
+            results.push(val);
+        }
+        Ok(results)
     }
 
     /// Retry a dead-lettered task by resetting its status.
     pub async fn retry_dead_letter(&self, task_id: &str) -> Result<()> {
-        self.db
-            .query_bind(
-                "UPDATE type::thing($tid) SET status = 'pending', attempts = 0, \
-                 started_at = NONE, finished_at = NONE, last_error = NONE, scheduled_at = NONE",
-                serde_json::json!({ "tid": task_id }),
-            )
-            .await?;
+        self.ensure_schema().await?;
+        let id = uuid::Uuid::parse_str(task_id)
+            .map_err(|e| Error::Database(format!("Invalid task ID: {e}")))?;
+
+        sqlx::query(
+            r#"UPDATE _task_queue SET status = 'pending', retry_count = 0,
+               locked_at = NULL, completed_at = NULL, error_message = NULL, scheduled_at = NULL
+               WHERE id = $1"#,
+        )
+        .bind(id)
+        .execute(self.db.inner().pool())
+        .await
+        .map_err(|e| Error::Database(format!("Retry dead-letter failed: {e}")))?;
+
         Ok(())
     }
 }
@@ -448,6 +558,15 @@ where
 mod tests {
     use super::*;
     use serde_json::json;
+
+    fn unique_queue() -> String {
+        format!("test_q_{}", uuid::Uuid::new_v4().simple())
+    }
+
+    async fn create_test_queue() -> TaskQueue {
+        let db = DatabaseClient::new_mem().await;
+        TaskQueue::new(db)
+    }
 
     #[test]
     fn test_enqueue_request_default() {
@@ -651,19 +770,19 @@ mod tests {
 
     #[tokio::test]
     async fn test_task_queue_new() {
-        let db = DatabaseClient::new_mem().await;
-        let queue = TaskQueue::new(db);
+        let queue = create_test_queue().await;
         let _ = queue;
     }
 
     #[tokio::test]
     async fn test_enqueue_basic() {
-        let db = DatabaseClient::new_mem().await;
-        let queue = TaskQueue::new(db);
+        let queue = create_test_queue().await;
+        let q = unique_queue();
         let result = queue
             .enqueue(EnqueueRequest {
                 task_type: "send_email".into(),
                 payload: json!({"to": "test@test.com"}),
+                queue: q,
                 ..Default::default()
             })
             .await;
@@ -672,12 +791,13 @@ mod tests {
 
     #[tokio::test]
     async fn test_enqueue_with_delay() {
-        let db = DatabaseClient::new_mem().await;
-        let queue = TaskQueue::new(db);
+        let queue = create_test_queue().await;
+        let q = unique_queue();
         let result = queue
             .enqueue(EnqueueRequest {
                 task_type: "cleanup".into(),
                 payload: json!({}),
+                queue: q,
                 delay_secs: 60,
                 ..Default::default()
             })
@@ -687,12 +807,13 @@ mod tests {
 
     #[tokio::test]
     async fn test_enqueue_with_priority() {
-        let db = DatabaseClient::new_mem().await;
-        let queue = TaskQueue::new(db);
+        let queue = create_test_queue().await;
+        let q = unique_queue();
         let result = queue
             .enqueue(EnqueueRequest {
                 task_type: "high_priority".into(),
                 payload: json!({}),
+                queue: q,
                 priority: -10,
                 ..Default::default()
             })
@@ -702,22 +823,25 @@ mod tests {
 
     #[tokio::test]
     async fn test_enqueue_batch() {
-        let db = DatabaseClient::new_mem().await;
-        let queue = TaskQueue::new(db);
+        let queue = create_test_queue().await;
+        let q = unique_queue();
         let requests = vec![
             EnqueueRequest {
                 task_type: "task1".into(),
                 payload: json!({}),
+                queue: q.clone(),
                 ..Default::default()
             },
             EnqueueRequest {
                 task_type: "task2".into(),
                 payload: json!({}),
+                queue: q.clone(),
                 ..Default::default()
             },
             EnqueueRequest {
                 task_type: "task3".into(),
                 payload: json!({}),
+                queue: q,
                 ..Default::default()
             },
         ];
@@ -727,34 +851,34 @@ mod tests {
 
     #[tokio::test]
     async fn test_enqueue_batch_empty() {
-        let db = DatabaseClient::new_mem().await;
-        let queue = TaskQueue::new(db);
+        let queue = create_test_queue().await;
         let results = queue.enqueue_batch(vec![]).await.unwrap();
         assert!(results.is_empty());
     }
 
     #[tokio::test]
     async fn test_claim_next_empty_queue() {
-        let db = DatabaseClient::new_mem().await;
-        let queue = TaskQueue::new(db);
-        let result = queue.claim_next("default").await.unwrap();
+        let queue = create_test_queue().await;
+        let q = unique_queue();
+        let result = queue.claim_next(&q).await.unwrap();
         assert!(result.is_none());
     }
 
     #[tokio::test]
     async fn test_claim_next_with_task() {
-        let db = DatabaseClient::new_mem().await;
-        let queue = TaskQueue::new(db);
+        let queue = create_test_queue().await;
+        let q = unique_queue();
         let _ = queue
             .enqueue(EnqueueRequest {
                 task_type: "test".into(),
                 payload: json!({"key": "value"}),
+                queue: q.clone(),
                 ..Default::default()
             })
             .await
             .unwrap();
 
-        let result = queue.claim_next("default").await.unwrap();
+        let result = queue.claim_next(&q).await.unwrap();
         assert!(result.is_some());
         let (id, task) = result.unwrap();
         assert!(!id.is_empty());
@@ -764,8 +888,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_claim_next_wrong_queue() {
-        let db = DatabaseClient::new_mem().await;
-        let queue = TaskQueue::new(db);
+        let queue = create_test_queue().await;
         let _ = queue
             .enqueue(EnqueueRequest {
                 task_type: "test".into(),
@@ -782,115 +905,117 @@ mod tests {
 
     #[tokio::test]
     async fn test_complete_task() {
-        let db = DatabaseClient::new_mem().await;
-        let queue = TaskQueue::new(db);
+        let queue = create_test_queue().await;
+        let q = unique_queue();
         let _ = queue
             .enqueue(EnqueueRequest {
                 task_type: "test".into(),
                 payload: json!({}),
+                queue: q.clone(),
                 ..Default::default()
             })
             .await
             .unwrap();
 
-        let (task_id, _) = queue.claim_next("default").await.unwrap().unwrap();
+        let (task_id, _) = queue.claim_next(&q).await.unwrap().unwrap();
         let result = queue.complete(&task_id).await;
         assert!(result.is_ok());
     }
 
     #[tokio::test]
     async fn test_fail_task_with_retries() {
-        let db = DatabaseClient::new_mem().await;
-        let queue = TaskQueue::new(db);
+        let queue = create_test_queue().await;
+        let q = unique_queue();
         let _ = queue
             .enqueue(EnqueueRequest {
                 task_type: "test".into(),
                 payload: json!({}),
+                queue: q.clone(),
                 max_retries: 3,
                 ..Default::default()
             })
             .await
             .unwrap();
 
-        let (task_id, _) = queue.claim_next("default").await.unwrap().unwrap();
+        let (task_id, _) = queue.claim_next(&q).await.unwrap().unwrap();
         let result = queue.fail(&task_id, "Connection error").await;
         assert!(result.is_ok());
     }
 
     #[tokio::test]
     async fn test_fail_task_dead_letters_after_max_retries() {
-        let db = DatabaseClient::new_mem().await;
-        let queue = TaskQueue::new(db);
+        let queue = create_test_queue().await;
+        let q = unique_queue();
         let _ = queue
             .enqueue(EnqueueRequest {
                 task_type: "test".into(),
                 payload: json!({}),
+                queue: q.clone(),
                 max_retries: 1,
                 ..Default::default()
             })
             .await
             .unwrap();
 
-        let (task_id, _) = queue.claim_next("default").await.unwrap().unwrap();
+        let (task_id, _) = queue.claim_next(&q).await.unwrap().unwrap();
         let result = queue.fail(&task_id, "Final error").await;
         assert!(result.is_ok());
     }
 
     #[tokio::test]
     async fn test_fail_nonexistent_task() {
-        let db = DatabaseClient::new_mem().await;
-        let queue = TaskQueue::new(db);
+        let queue = create_test_queue().await;
         let result = queue.fail("nonexistent:123", "error").await;
         assert!(result.is_ok());
     }
 
     #[tokio::test]
     async fn test_reclaim_stale_empty() {
-        let db = DatabaseClient::new_mem().await;
-        let queue = TaskQueue::new(db);
-        let count = queue.reclaim_stale(300).await.unwrap();
+        let queue = create_test_queue().await;
+        let q = unique_queue();
+        let count = queue.reclaim_stale_for_queue(&q, 300).await.unwrap();
         assert_eq!(count, 0);
     }
 
     #[tokio::test]
     async fn test_stats_empty_queue() {
-        let db = DatabaseClient::new_mem().await;
-        let queue = TaskQueue::new(db);
-        let stats = queue.stats("default").await.unwrap();
-        assert_eq!(stats["queue"], "default");
+        let queue = create_test_queue().await;
+        let q = unique_queue();
+        let stats = queue.stats(&q).await.unwrap();
+        assert_eq!(stats["queue"], q);
     }
 
     #[tokio::test]
     async fn test_purge_completed_empty() {
-        let db = DatabaseClient::new_mem().await;
-        let queue = TaskQueue::new(db);
+        let queue = create_test_queue().await;
         let count = queue.purge_completed(3600).await.unwrap();
         assert_eq!(count, 0);
     }
 
     #[tokio::test]
     async fn test_list_dead_letter_empty() {
-        let db = DatabaseClient::new_mem().await;
-        let queue = TaskQueue::new(db);
-        let results = queue.list_dead_letter("default", 10).await.unwrap();
+        let queue = create_test_queue().await;
+        let q = unique_queue();
+        let results = queue.list_dead_letter(&q, 10).await.unwrap();
         assert!(results.is_empty());
     }
 
     #[tokio::test]
     async fn test_retry_dead_letter() {
-        let db = DatabaseClient::new_mem().await;
-        let queue = TaskQueue::new(db);
+        let queue = create_test_queue().await;
+        let q = unique_queue();
         let _ = queue
             .enqueue(EnqueueRequest {
                 task_type: "test".into(),
                 payload: json!({}),
+                queue: q.clone(),
                 max_retries: 1,
                 ..Default::default()
             })
             .await
             .unwrap();
 
-        let (task_id, _) = queue.claim_next("default").await.unwrap().unwrap();
+        let (task_id, _) = queue.claim_next(&q).await.unwrap().unwrap();
         let _ = queue.fail(&task_id, "error").await;
 
         let result = queue.retry_dead_letter(&task_id).await;
@@ -899,12 +1024,13 @@ mod tests {
 
     #[tokio::test]
     async fn test_multiple_tasks_claim_order() {
-        let db = DatabaseClient::new_mem().await;
-        let queue = TaskQueue::new(db);
+        let queue = create_test_queue().await;
+        let q = unique_queue();
         let _ = queue
             .enqueue(EnqueueRequest {
                 task_type: "first".into(),
                 payload: json!({}),
+                queue: q.clone(),
                 ..Default::default()
             })
             .await
@@ -913,45 +1039,48 @@ mod tests {
             .enqueue(EnqueueRequest {
                 task_type: "second".into(),
                 payload: json!({}),
+                queue: q.clone(),
                 ..Default::default()
             })
             .await
             .unwrap();
 
-        let (_, task1) = queue.claim_next("default").await.unwrap().unwrap();
-        let (_, task2) = queue.claim_next("default").await.unwrap().unwrap();
+        let (_, task1) = queue.claim_next(&q).await.unwrap().unwrap();
+        let (_, task2) = queue.claim_next(&q).await.unwrap().unwrap();
         assert_eq!(task1.task_type, "first");
         assert_eq!(task2.task_type, "second");
     }
 
     #[tokio::test]
     async fn test_claim_returns_none_after_all_claimed() {
-        let db = DatabaseClient::new_mem().await;
-        let queue = TaskQueue::new(db);
+        let queue = create_test_queue().await;
+        let q = unique_queue();
         let _ = queue
             .enqueue(EnqueueRequest {
                 task_type: "only_one".into(),
                 payload: json!({}),
+                queue: q.clone(),
                 ..Default::default()
             })
             .await
             .unwrap();
 
-        let first = queue.claim_next("default").await.unwrap();
+        let first = queue.claim_next(&q).await.unwrap();
         assert!(first.is_some());
-        let second = queue.claim_next("default").await.unwrap();
+        let second = queue.claim_next(&q).await.unwrap();
         assert!(second.is_none());
     }
 
     #[tokio::test]
     async fn test_enqueue_different_queues() {
-        let db = DatabaseClient::new_mem().await;
-        let queue = TaskQueue::new(db);
+        let queue = create_test_queue().await;
+        let q1 = unique_queue();
+        let q2 = unique_queue();
         let _ = queue
             .enqueue(EnqueueRequest {
                 task_type: "email".into(),
                 payload: json!({}),
-                queue: "emails".into(),
+                queue: q1.clone(),
                 ..Default::default()
             })
             .await
@@ -960,14 +1089,14 @@ mod tests {
             .enqueue(EnqueueRequest {
                 task_type: "sync".into(),
                 payload: json!({}),
-                queue: "sync".into(),
+                queue: q2.clone(),
                 ..Default::default()
             })
             .await
             .unwrap();
 
-        let email_task = queue.claim_next("emails").await.unwrap();
-        let sync_task = queue.claim_next("sync").await.unwrap();
+        let email_task = queue.claim_next(&q1).await.unwrap();
+        let sync_task = queue.claim_next(&q2).await.unwrap();
         let no_task = queue.claim_next("other").await.unwrap();
         assert!(email_task.is_some());
         assert!(sync_task.is_some());
@@ -976,19 +1105,20 @@ mod tests {
 
     #[tokio::test]
     async fn test_full_lifecycle_enqueue_claim_complete() {
-        let db = DatabaseClient::new_mem().await;
-        let queue = TaskQueue::new(db);
+        let queue = create_test_queue().await;
+        let q = unique_queue();
 
         let _ = queue
             .enqueue(EnqueueRequest {
                 task_type: "lifecycle_test".into(),
                 payload: json!({"data": 42}),
+                queue: q.clone(),
                 ..Default::default()
             })
             .await
             .unwrap();
 
-        let (task_id, task) = queue.claim_next("default").await.unwrap().unwrap();
+        let (task_id, task) = queue.claim_next(&q).await.unwrap().unwrap();
         assert_eq!(task.status, TaskStatus::Running);
         assert_eq!(task.attempts, 1);
 
@@ -997,60 +1127,63 @@ mod tests {
 
     #[tokio::test]
     async fn test_full_lifecycle_enqueue_claim_fail_retry() {
-        let db = DatabaseClient::new_mem().await;
-        let queue = TaskQueue::new(db);
+        let queue = create_test_queue().await;
+        let q = unique_queue();
 
         let _ = queue
             .enqueue(EnqueueRequest {
                 task_type: "retry_test".into(),
                 payload: json!({}),
+                queue: q.clone(),
                 max_retries: 3,
                 ..Default::default()
             })
             .await
             .unwrap();
 
-        let (task_id, _) = queue.claim_next("default").await.unwrap().unwrap();
+        let (task_id, _) = queue.claim_next(&q).await.unwrap().unwrap();
         queue.fail(&task_id, "Temporary failure").await.unwrap();
     }
 
     #[tokio::test]
     async fn test_full_lifecycle_dead_letter() {
-        let db = DatabaseClient::new_mem().await;
-        let queue = TaskQueue::new(db);
+        let queue = create_test_queue().await;
+        let q = unique_queue();
 
         let _ = queue
             .enqueue(EnqueueRequest {
                 task_type: "dl_test".into(),
                 payload: json!({}),
+                queue: q.clone(),
                 max_retries: 1,
                 ..Default::default()
             })
             .await
             .unwrap();
 
-        let (task_id, _) = queue.claim_next("default").await.unwrap().unwrap();
+        let (task_id, _) = queue.claim_next(&q).await.unwrap().unwrap();
         queue.fail(&task_id, "permanent error").await.unwrap();
 
-        let dl_tasks = queue.list_dead_letter("default", 10).await.unwrap();
+        let dl_tasks = queue.list_dead_letter(&q, 10).await.unwrap();
         assert_eq!(dl_tasks.len(), 1);
     }
 
     #[tokio::test]
     async fn test_stats_with_tasks() {
-        let db = DatabaseClient::new_mem().await;
-        let queue = TaskQueue::new(db);
+        let queue = create_test_queue().await;
+        let q = unique_queue();
 
         let _ = queue
             .enqueue(EnqueueRequest {
                 task_type: "t1".into(),
                 payload: json!({}),
+                queue: q.clone(),
                 ..Default::default()
             })
             .await
             .unwrap();
 
-        let (_, task) = queue.claim_next("default").await.unwrap().unwrap();
+        let (_, task) = queue.claim_next(&q).await.unwrap().unwrap();
         assert_eq!(task.status, TaskStatus::Running);
     }
 }

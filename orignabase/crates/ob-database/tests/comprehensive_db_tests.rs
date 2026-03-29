@@ -1,4 +1,4 @@
-use ob_core::{escape_surreal_string, validate_document_id, validate_identifier};
+use ob_core::{escape_sql_string, validate_document_id, validate_identifier};
 use serde_json::json;
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -318,7 +318,7 @@ mod validation_tests {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // escape_surreal_string: SQL injection prevention
+    // escape_sql_string: SQL injection prevention
     // ─────────────────────────────────────────────────────────────────────────
 
     struct EscapeCase {
@@ -328,7 +328,7 @@ mod validation_tests {
     }
 
     #[test]
-    fn test_escape_surreal_string_table_driven() {
+    fn test_escape_sql_string_table_driven() {
         let cases = vec![
             EscapeCase {
                 input: "hello",
@@ -398,7 +398,7 @@ mod validation_tests {
         ];
 
         for case in cases {
-            let result = escape_surreal_string(case.input);
+            let result = escape_sql_string(case.input);
             assert_eq!(
                 result, case.expected,
                 "Escape failed for {} ({}): expected '{}', got '{}'",
@@ -408,7 +408,7 @@ mod validation_tests {
     }
 
     #[test]
-    fn test_escape_surreal_string_injection_patterns() {
+    fn test_escape_sql_string_injection_patterns() {
         // These patterns remain data inside a quoted literal once single quotes are escaped.
         let patterns = vec![
             "; DROP TABLE users;",
@@ -424,7 +424,7 @@ mod validation_tests {
         ];
 
         for pattern in patterns {
-            let escaped = escape_surreal_string(pattern);
+            let escaped = escape_sql_string(pattern);
             let quoted_literal = format!("'{}'", escaped);
 
             // Any single quote inside the final literal should be escaped.
@@ -461,7 +461,7 @@ mod validation_tests {
         let inputs = vec!["hello", "it's", "a\\b", "'; DROP TABLE--"];
 
         for input in inputs {
-            let escaped = escape_surreal_string(input);
+            let escaped = escape_sql_string(input);
             // Escape can only add characters (\ before ' or \)
             assert!(
                 escaped.len() >= input.len(),
@@ -1261,13 +1261,13 @@ mod crud_tests {
     fn test_crud_escape_string_values_in_updates() {
         // When building update queries with string values
         let value = "O'Reilly";
-        let escaped = escape_surreal_string(value);
-        // The escaped value should be safe to use in SurrealQL string literals
+        let escaped = escape_sql_string(value);
+        // The escaped value should be safe to use in SQL string literals
         assert_eq!(escaped, "O\\'Reilly");
 
         // SQL injection attempt
         let injection = "'; DELETE FROM users;--";
-        let escaped_injection = escape_surreal_string(injection);
+        let escaped_injection = escape_sql_string(injection);
         assert!(escaped_injection.starts_with("\\'"));
         assert_eq!(escaped_injection.matches("\\'").count(), 1);
     }
@@ -1342,7 +1342,7 @@ mod edge_case_tests {
         ];
 
         for s in special_chars {
-            let escaped = escape_surreal_string(s);
+            let escaped = escape_sql_string(s);
             // Should not panic, should produce output
             assert!(!escaped.is_empty() || s.is_empty());
         }
@@ -1351,7 +1351,7 @@ mod edge_case_tests {
     #[test]
     fn test_very_long_strings() {
         let long_string = "a".repeat(10_000);
-        let escaped = escape_surreal_string(&long_string);
+        let escaped = escape_sql_string(&long_string);
         assert_eq!(escaped, long_string); // No special chars, should be unchanged
     }
 
@@ -1378,7 +1378,7 @@ mod edge_case_tests {
         let strings = vec!["'''''", "\\\\\\\\", "';'';'", "\\'\\'\\'"];
 
         for s in strings {
-            let escaped = escape_surreal_string(s);
+            let escaped = escape_sql_string(s);
             // Should handle gracefully
             assert!(!escaped.is_empty());
         }
@@ -1394,7 +1394,7 @@ mod edge_case_tests {
         ];
 
         for pattern in patterns {
-            let escaped = escape_surreal_string(pattern);
+            let escaped = escape_sql_string(pattern);
             // All single quotes should be escaped
             for (i, c) in escaped.chars().enumerate() {
                 if c == '\'' {
@@ -1449,7 +1449,7 @@ mod edge_case_tests {
     fn test_injection_across_all_operators() {
         // Test that injection attempts don't work for any operator
         let injection_value = "test' OR 1=1--";
-        let escaped = escape_surreal_string(injection_value);
+        let escaped = escape_sql_string(injection_value);
 
         // Ensure no unescaped single quotes
         for (i, c) in escaped.chars().enumerate() {

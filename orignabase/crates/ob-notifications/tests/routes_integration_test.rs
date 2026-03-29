@@ -74,7 +74,7 @@ async fn register_then_send_to_user_persists_pending_notification() {
     assert_eq!(payload["total_devices"], 1);
 
     let pending = db
-        .list_documents("_pending_notifications", None)
+        .list_documents("_pending_notifications", None, None)
         .await
         .unwrap();
     assert_eq!(pending.len(), 1);
@@ -179,7 +179,7 @@ async fn subscribe_send_and_unsubscribe_topic_uses_real_router_flow() {
     assert_eq!(second_send_payload["message"], "No devices found");
 
     let pending = db
-        .list_documents("_pending_notifications", None)
+        .list_documents("_pending_notifications", None, None)
         .await
         .unwrap();
     assert_eq!(pending.len(), 1);

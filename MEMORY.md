@@ -11,15 +11,15 @@
 
 ## Architecture Decisions (Why We Did Things)
 - **Money = integer cents** — never `double`/`float` for money. Display via `(cents / 100).toStringAsFixed(2)`. Migration done 2026-03-22.
-- **Firebase removed** — backend is OrignaBase (Rust VPS + SurrealDB + Meilisearch). Zero Firebase SDK calls remain.
+- **Firebase removed** — backend is OrignaBase (Rust VPS + PostgreSQL + Meilisearch). Zero Firebase SDK calls remain.
 - **setState → Riverpod** — 92 setState calls eliminated. Only 16 remain (animations/mascots/glassmorphism — acceptable).
 - **Freezed for all state classes** — 22 state classes use `@freezed`. Manual `copyWith` with sentinel pattern (migration pending).
 - **Release LTO OOMs on 8GB** — use debug/dev profile for local builds. Add 4GB swap for release builds.
-- **SurrealDB v2 required** — v3 has compatibility issues. Docker uses `surrealdb/surrealdb:v2`.
+- **PostgreSQL v2 required** — v3 has compatibility issues. Docker uses `postgresql/postgresql:v2`.
 
 ## Key Gotchas
-- **SurrealDB Ws format:** `host:port` only (no `ws://` prefix) — silent hang otherwise
-- **SurrealDB IDs contain `:`** — sanitize to `_` for Meilisearch document IDs
+- **PostgreSQL Ws format:** `host:port` only (no `ws://` prefix) — silent hang otherwise
+- **PostgreSQL IDs contain `:`** — sanitize to `_` for Meilisearch document IDs
 - **GraphQL filters:** OBJECT format `{field: {_op: val}}` NOT array — server calls `filters.as_object()`
 - **Auth refresh:** via `{"refresh_token": "..."}` body, NOT Bearer header
 - **8GB RAM constraint:** sequential heavy tasks. No parallel Flutter build + Playwright + tests. Chrome concurrency max 4.

@@ -177,7 +177,7 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
               .map(
                 (item) => {
                   Fields.productId: item.productId,
-                  Fields.price: item.price,
+                  Fields.priceCents: item.priceCents,
                   Fields.quantity: item.quantity,
                 },
               )
@@ -543,7 +543,7 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
               (item) => {
                 Fields.productId: item.productId,
                 Fields.name: item.name,
-                Fields.price: item.price,
+                Fields.priceCents: item.priceCents,
                 Fields.quantity: item.quantity,
                 Fields.sellerId: item.sellerId,
                 Fields.imageUrls: item.imageUrls,

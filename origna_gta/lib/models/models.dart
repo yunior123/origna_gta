@@ -283,7 +283,7 @@ class CartItemDetailModel {
           : ((map[Fields.price] as num?) ?? 0).toDouble(),
       priceCents: map[Fields.priceCents] != null
           ? (map[Fields.priceCents] as num).toInt()
-          : ((map[Fields.price] as num?) ?? 0).toDouble() * 100 ~/ 1,
+          : (((map[Fields.price] as num?) ?? 0).toDouble() * 100).round(),
       imageUrls: List<String>.from(map[Fields.imageUrls] as Iterable? ?? []),
       quantity: (map[Fields.quantity] as num?)?.toInt() ?? 0,
       createdAt: _parseDateTimeRequired(map[Fields.createdAt]),

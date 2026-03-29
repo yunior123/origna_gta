@@ -23,9 +23,9 @@ pub struct FieldDef {
     pub indexed: bool,
 }
 
-/// Create a SCHEMAFULL table in SurrealDB from a CollectionSchema.
+/// Create a table in PostgreSQL from a CollectionSchema.
 pub async fn create_collection(db: &DatabaseClient, schema: &CollectionSchema) -> Result<()> {
-    // Validate all identifiers to prevent SurrealQL injection
+    // Validate all identifiers to prevent SQL injection
     ob_core::validate_identifier(&schema.name)?;
     for field in &schema.fields {
         ob_core::validate_identifier(&field.name)?;
@@ -41,7 +41,7 @@ pub async fn create_collection(db: &DatabaseClient, schema: &CollectionSchema) -
             field.name, schema.name, surreal_type
         ));
         if !field.required {
-            // SurrealDB uses ASSERT for required fields
+            // PostgreSQL uses CHECK constraints for required fields
             // For optional: wrap in option
         }
         query.push_str(";\n");
@@ -206,16 +206,13 @@ mod tests {
     /// Test that drop_collection rejects invalid collection names (SQL injection prevention).
     /// The validation check requires only alphanumeric + underscore characters.
     #[tokio::test]
-    #[ignore = "requires running SurrealDB instance"]
+    #[ignore = "requires running PostgreSQL instance"]
     async fn test_drop_collection_rejects_invalid_names() {
         use ob_core::config::DatabaseConfig;
 
         let config = DatabaseConfig {
-            endpoint: "localhost:8000".to_string(),
-            username: Some("root".to_string()),
-            password: Some("root".to_string()),
-            namespace: "test".to_string(),
-            name: "test_admin".to_string(),
+            url: "postgres://orignabase:orignabase_dev@127.0.0.1:5432/orignabase".to_string(),
+            max_connections: 5,
         };
         let db = DatabaseClient::connect(&config).await.unwrap();
 

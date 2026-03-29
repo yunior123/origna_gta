@@ -276,9 +276,8 @@ async fn main() -> Result<()> {
                     "host": config.host,
                     "port": config.port,
                     "database": {
-                        "endpoint": config.database.endpoint,
-                        "namespace": config.database.namespace,
-                        "name": config.database.name,
+                        "url": config.database.url,
+                        "max_connections": config.database.max_connections,
                     },
                     "auth": {
                         "access_token_ttl_secs": config.auth.access_token_ttl_secs,
@@ -479,7 +478,7 @@ match /users/{userId} {
             )?;
             println!("Initialized OrignaBase project at {}", dir.display());
             println!("  Created: orignabase.toml, rules.ob, indexes.toml");
-            println!("  Next: start SurrealDB, then run `orignabase serve`");
+            println!("  Next: start PostgreSQL, then run `orignabase serve`");
             Ok(())
         }
         Commands::Schema { action } => {

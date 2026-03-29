@@ -632,7 +632,7 @@ Stripe-Signature: t=timestamp,v1=signature_hex
 
 **Side Effects** (per event):
 - Order status transitions
-- Stock updates (atomic with SurrealDB transaction)
+- Stock updates (atomic with PostgreSQL transaction)
 - Email notifications sent
 - Webhook event recorded in `webhook_events` with idempotency deduplication
 
@@ -833,7 +833,7 @@ Update product (seller or admin).
 - `409`: Product already confirmed (cannot edit after first sale)
 
 **Side Effects**:
-- Product updated in SurrealDB and Meilisearch
+- Product updated in PostgreSQL and Meilisearch
 - If price/stock changed: cart validation triggered
 - If status changed to `active`: indexed for search
 

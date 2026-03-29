@@ -3,7 +3,7 @@
 > Source of truth: [`CLAUDE.md`](../CLAUDE.md). Read it before any changes.
 
 **OrignaGTA** — E-commerce marketplace, Canadian buyers, worldwide sellers.
-Flutter/Riverpod + OrignaBase (Rust VPS) + SurrealDB + Stripe Connect.
+Flutter/Riverpod + OrignaBase (Rust VPS) + PostgreSQL + Stripe Connect.
 
 ## Rules
 - MVVM only — no business logic in screens

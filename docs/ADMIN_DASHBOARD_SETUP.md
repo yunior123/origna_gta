@@ -158,7 +158,7 @@ Returns JSON with system status, version, and timestamp:
 
 ### Collections Management
 
-- **List collections**: Fetch all SurrealDB collections with metadata
+- **List collections**: Fetch all PostgreSQL tables with metadata
 - **Create collection**: Define new collections with schema
 - **Drop collection**: Remove collections (admin only)
 
@@ -217,7 +217,7 @@ All endpoints are prefixed with `/_admin/` or `/admin/`:
 
 ### Authorization
 
-- User must have `admin` role in `users` SurrealDB collection
+- User must have `admin` role in `users` PostgreSQL table
 - All mutations (create, update, delete) require admin JWT
 - Read operations require JWT on production/staging; localhost bypass on dev
 
@@ -289,5 +289,5 @@ Colors:
 ## Related Documentation
 
 - OrignaBase API: See `orignabase/README.md`
-- SurrealDB schema: See `orignabase/crates/ob-database/README.md`
+- PostgreSQL schema: See `orignabase/crates/ob-database/README.md`
 - Authentication: See `orignabase/crates/ob-auth/README.md`

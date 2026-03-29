@@ -132,7 +132,7 @@
 | [Why Integer Cents?](./explanation/why-integer-cents.md) | Money handling rationale |
 | [Why Riverpod?](./explanation/why-riverpod.md) | State management choice explained |
 | [Why OrignaBase?](./explanation/why-orignabase.md) | Backend architecture decision |
-| [Why SurrealDB?](./explanation/why-surrealdb.md) | Database choice and trade-offs |
+| [Database Design](./explanation/database-design.md) | Database choice and trade-offs |
 
 ### Domain Concepts
 
@@ -337,7 +337,7 @@ Text('\$${(priceCents / 100).toStringAsFixed(2)}') // "$75.00"
 
 - [Flutter Documentation](https://docs.flutter.dev/)
 - [Riverpod Documentation](https://riverpod.dev/)
-- [SurrealDB Documentation](https://surrealdb.com/docs)
+- [PostgreSQL Documentation](https://www.postgresql.org/docs/)
 - [Stripe Documentation](https://stripe.com/docs)
 - [Canadian Tax Rates](https://www.canada.ca/en/revenue-agency/services/tax/businesses/topics/gst-hst-businesses/charge-gst/collecting/calculating-rates.html)
 

@@ -85,20 +85,19 @@ class RealtimeClient {
     // Explicit port to avoid Dart URI defaulting wss to port 0.
     final port =
         baseUri.hasPort ? baseUri.port : (baseUri.scheme == 'https' ? 443 : 80);
+    // Use query param auth (server expects ?token=<jwt>, not Authorization header)
     final wsUri = Uri(
       scheme: wsScheme,
       host: baseUri.host,
       port: port,
       path: '${baseUri.path}/realtime',
+      queryParameters: _client.auth.accessToken != null
+          ? {'token': _client.auth.accessToken!}
+          : null,
     );
 
-    final headers = <String, dynamic>{};
-    if (_client.auth.accessToken != null) {
-      headers['Authorization'] = 'Bearer ${_client.auth.accessToken!}';
-    }
-
     try {
-      _channel = IOWebSocketChannel.connect(wsUri, headers: headers);
+      _channel = IOWebSocketChannel.connect(wsUri);
       _listener = _channel!.stream.listen(
         _handleMessage,
         onDone: _scheduleReconnect,

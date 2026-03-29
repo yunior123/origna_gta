@@ -12,7 +12,7 @@ OrignaBase replaces all 114 Python Cloud Functions with native Rust handlers org
 |-------|---------|
 | `orignabase` | Entry point, Axum server setup, route composition, CLI (clap) |
 | `ob-core` | Config (TOML+env), error types (`AppError`), `TenantConfig` |
-| `ob-database` | SurrealDB client, CRUD (`crud.rs`), query translator (`query.rs`), transactions |
+| `ob-database` | PostgreSQL client, CRUD (`crud.rs`), query translator (`query.rs`), transactions |
 | `ob-auth` | JWT (RS256), auth routes, MFA/TOTP, email verification, middleware |
 | `ob-graphql` | Dynamic schema builder, CRUD resolvers, batch mutations |
 | `ob-handlers` | All business logic handlers (orders, payments, products, etc.) |
@@ -123,7 +123,7 @@ ReturnApproved -> Returned -> Refunded
 | POST | `/api/orders/refund-item` | `refund_order_item` | Refund a specific item (Stripe refund + stock restore) |
 | POST | `/api/orders/cancel` | `cancel_order` | Cancel an entire order |
 
-**Side effects:** Stripe refund API call, stock quantity restoration (atomic SurrealDB transaction), buyer/seller email notifications.
+**Side effects:** Stripe refund API call, stock quantity restoration (atomic PostgreSQL transaction), buyer/seller email notifications.
 
 ### returns.rs — Return Requests
 

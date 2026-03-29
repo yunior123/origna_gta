@@ -30,11 +30,11 @@ class Timestamp {
 }
 
 // =============================================================================
-// SurrealDB v2 -> Dart timestamp precision workaround
+// PostgreSQL -> Dart timestamp precision workaround
 // =============================================================================
 //
 // ## Problem
-// SurrealDB v2 stores timestamps with **nanosecond** precision (9 fractional
+// PostgreSQL stores timestamps with **nanosecond** precision (9 fractional
 // digits), e.g.:
 //
 //     2026-03-12T11:56:03.185238962+00:00
@@ -45,7 +45,7 @@ class Timestamp {
 // FormatException.
 //
 // ## Solution
-// Before any `DateTime.parse` call on a SurrealDB timestamp, truncate the
+// Before any `DateTime.parse` call on a PostgreSQL timestamp, truncate the
 // fractional digits from 9 to 6 using [truncateNanoseconds].
 //
 // This is a lossy conversion — the final 3 digits (nanoseconds) are
@@ -71,7 +71,7 @@ class Timestamp {
 
 /// Truncate subsecond precision from 7+ digits to exactly 6 (microseconds).
 ///
-/// SurrealDB v2 emits 9-digit fractional seconds; Dart only handles 6.
+/// PostgreSQL emits 9-digit fractional seconds; Dart only handles 6.
 /// The regex matches `.` followed by 6+ digits and keeps only the first 6.
 ///
 /// Safe to call on strings that already have <= 6 fractional digits — the
@@ -80,7 +80,7 @@ String truncateNanoseconds(String iso) {
   return iso.replaceAllMapped(RegExp(r'(\.\d{6})\d+'), (m) => m.group(1)!);
 }
 
-/// Parse a dynamic value to [DateTime], handling SurrealDB nanosecond strings.
+/// Parse a dynamic value to [DateTime], handling PostgreSQL nanosecond strings.
 ///
 /// Accepts:
 /// - `null` -> returns `null`

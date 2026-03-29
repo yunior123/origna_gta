@@ -95,14 +95,29 @@ impl SecretsConfig {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct DatabaseConfig {
-    #[serde(default = "default_db_endpoint")]
-    pub endpoint: String,
-    #[serde(default = "default_db_namespace")]
-    pub namespace: String,
-    #[serde(default = "default_db_name")]
-    pub name: String,
-    pub username: Option<String>,
-    pub password: Option<String>,
+    /// PostgreSQL connection URL (e.g., REDACTED_SECRET/dbname)
+    #[serde(default = "default_db_url")]
+    pub url: String,
+    /// Maximum connections in the pool
+    #[serde(default = "default_db_max_connections")]
+    pub max_connections: u32,
+}
+
+fn default_db_url() -> String {
+    "postgres://orignabase:orignabase_dev@localhost:5432/orignabase".to_string()
+}
+
+fn default_db_max_connections() -> u32 {
+    20
+}
+
+impl Default for DatabaseConfig {
+    fn default() -> Self {
+        Self {
+            url: default_db_url(),
+            max_connections: default_db_max_connections(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -237,18 +252,6 @@ fn default_port() -> u16 {
     8080
 }
 
-fn default_db_endpoint() -> String {
-    "localhost:8000".to_string()
-}
-
-fn default_db_namespace() -> String {
-    "orignabase".to_string()
-}
-
-fn default_db_name() -> String {
-    "main".to_string()
-}
-
 fn default_jwt_secret() -> String {
     "CHANGE_ME_IN_PRODUCTION".to_string()
 }
@@ -292,7 +295,7 @@ impl Config {
     /// Environment variables use the prefix `OB_` and double underscores for nesting:
     /// - `OB_HOST` → `host`
     /// - `OB_PORT` → `port`
-    /// - `OB_DATABASE__ENDPOINT` → `database.endpoint`
+    /// - `OB_DATABASE__URL` → `database.url`
     /// - `OB_AUTH__JWT_SECRET` → `auth.jwt_secret`
     pub fn load(path: Option<&Path>) -> crate::Result<Self> {
         let _ = dotenvy::dotenv();
@@ -318,7 +321,7 @@ impl Config {
             toml::from_str(
                 r#"
                 [database]
-                endpoint = "localhost:8000"
+                url = "postgres://orignabase:orignabase_dev@localhost:5432/orignabase"
                 "#,
             )
             .map_err(|e| crate::Error::Config(e.to_string()))?
@@ -335,14 +338,13 @@ impl Config {
                 .parse()
                 .map_err(|_| crate::Error::Config("OB_PORT must be a number".into()))?;
         }
-        if let Ok(v) = std::env::var("OB_DATABASE__ENDPOINT") {
-            config.database.endpoint = v;
+        if let Ok(v) = std::env::var("OB_DATABASE__URL") {
+            config.database.url = v;
         }
-        if let Ok(v) = std::env::var("OB_DATABASE__NAMESPACE") {
-            config.database.namespace = v;
-        }
-        if let Ok(v) = std::env::var("OB_DATABASE__NAME") {
-            config.database.name = v;
+        if let Ok(v) = std::env::var("OB_DATABASE__MAX_CONNECTIONS") {
+            config.database.max_connections = v.parse().map_err(|_| {
+                crate::Error::Config("OB_DATABASE__MAX_CONNECTIONS must be a number".into())
+            })?;
         }
         if let Ok(v) = std::env::var("OB_SEARCH__URL") {
             let search = config.search.get_or_insert(SearchConfig {
@@ -365,12 +367,6 @@ impl Config {
                 .filter(|origin| !origin.is_empty())
                 .map(ToOwned::to_owned)
                 .collect();
-        }
-        if let Ok(v) = std::env::var("OB_DATABASE__USERNAME") {
-            config.database.username = Some(v);
-        }
-        if let Ok(v) = std::env::var("OB_DATABASE__PASSWORD") {
-            config.database.password = Some(v);
         }
         if let Ok(v) = std::env::var("OB_AUTH__JWT_SECRET") {
             config.auth.jwt_secret = v;
@@ -468,11 +464,8 @@ mod tests {
         for key in &[
             "OB_HOST",
             "OB_PORT",
-            "OB_DATABASE__ENDPOINT",
-            "OB_DATABASE__NAMESPACE",
-            "OB_DATABASE__NAME",
-            "OB_DATABASE__USERNAME",
-            "OB_DATABASE__PASSWORD",
+            "OB_DATABASE__URL",
+            "OB_DATABASE__MAX_CONNECTIONS",
             "OB_AUTH__JWT_SECRET",
             "OB_AUTH__ACCESS_TOKEN_TTL_SECS",
             "OB_AUTH__REFRESH_TOKEN_TTL_SECS",
@@ -495,7 +488,10 @@ mod tests {
         let config = Config::load(None).unwrap();
         assert_eq!(config.host, "0.0.0.0");
         assert_eq!(config.port, 8080);
-        assert_eq!(config.database.endpoint, "localhost:8000");
+        assert_eq!(
+            config.database.url,
+            "postgres://orignabase:orignabase_dev@localhost:5432/orignabase"
+        );
         assert_eq!(config.auth.access_token_ttl_secs, 900);
     }
 
@@ -505,16 +501,17 @@ mod tests {
             host = "127.0.0.1"
             port = 9090
             [database]
-            endpoint = "db:8000"
-            namespace = "test"
-            name = "testdb"
+            url = "REDACTED_SECRET/testdb"
             [auth]
             jwt_secret = "supersecret"
         "#;
         let config: Config = toml::from_str(toml_str).unwrap();
         assert_eq!(config.host, "127.0.0.1");
         assert_eq!(config.port, 9090);
-        assert_eq!(config.database.namespace, "test");
+        assert_eq!(
+            config.database.url,
+            "REDACTED_SECRET/testdb"
+        );
         assert_eq!(config.auth.jwt_secret, "supersecret");
     }
 
@@ -547,7 +544,7 @@ mod tests {
         let config: Config = toml::from_str(
             r#"
             [database]
-            endpoint = "localhost:8000"
+            url = "postgres://localhost:5432/test"
             [search]
             url = "http://meili:7700"
             api_key = "masterKey"
@@ -565,7 +562,7 @@ mod tests {
         let config: Config = toml::from_str(
             r#"
             [database]
-            endpoint = "localhost:8000"
+            url = "postgres://localhost:5432/test"
             [cors]
             allowed_origins = ["https://one.example", "https://two.example"]
             "#,
@@ -589,11 +586,11 @@ mod tests {
             "#,
         )
         .unwrap();
-        assert_eq!(config.database.endpoint, "localhost:8000");
-        assert_eq!(config.database.namespace, "orignabase");
-        assert_eq!(config.database.name, "main");
-        assert!(config.database.username.is_none());
-        assert!(config.database.password.is_none());
+        assert_eq!(
+            config.database.url,
+            "postgres://orignabase:orignabase_dev@localhost:5432/orignabase"
+        );
+        assert_eq!(config.database.max_connections, 20);
     }
 
     #[test]
@@ -601,7 +598,7 @@ mod tests {
         let config: Config = toml::from_str(
             r#"
             [database]
-            endpoint = "x"
+            url = "postgres://x:5432/x"
             "#,
         )
         .unwrap();
@@ -618,7 +615,10 @@ mod tests {
         let config = Config::load(Some(Path::new("/tmp/__nonexistent_orignabase__.toml"))).unwrap();
         assert_eq!(config.host, "0.0.0.0");
         assert_eq!(config.port, 8080);
-        assert_eq!(config.database.endpoint, "localhost:8000");
+        assert_eq!(
+            config.database.url,
+            "postgres://orignabase:orignabase_dev@localhost:5432/orignabase"
+        );
     }
 
     // ── Cluster section from TOML ──
@@ -628,7 +628,7 @@ mod tests {
         let config: Config = toml::from_str(
             r#"
             [database]
-            endpoint = "localhost:8000"
+            url = "postgres://localhost:5432/test"
             [cluster]
             enabled = true
             nats_url = "nats://remote:4222"
@@ -689,42 +689,22 @@ mod tests {
         unsafe { std::env::set_var("OB_PORT", "not_a_number") };
         let result = Config::load(None);
         assert!(result.is_err());
-        assert!(
-            result
-                .unwrap_err()
-                .to_string()
-                .contains("OB_PORT must be a number")
-        );
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("OB_PORT must be a number"));
         clear_all_ob_env_vars();
 
-        // -- OB_DATABASE__ENDPOINT --
-        unsafe { std::env::set_var("OB_DATABASE__ENDPOINT", "remote:9000") };
+        // -- OB_DATABASE__URL --
+        unsafe { std::env::set_var("OB_DATABASE__URL", "postgres://remote:5432/mydb") };
         let config = Config::load(None).unwrap();
-        assert_eq!(config.database.endpoint, "remote:9000");
+        assert_eq!(config.database.url, "postgres://remote:5432/mydb");
         clear_all_ob_env_vars();
 
-        // -- OB_DATABASE__NAMESPACE --
-        unsafe { std::env::set_var("OB_DATABASE__NAMESPACE", "custom_ns") };
+        // -- OB_DATABASE__MAX_CONNECTIONS --
+        unsafe { std::env::set_var("OB_DATABASE__MAX_CONNECTIONS", "50") };
         let config = Config::load(None).unwrap();
-        assert_eq!(config.database.namespace, "custom_ns");
-        clear_all_ob_env_vars();
-
-        // -- OB_DATABASE__NAME --
-        unsafe { std::env::set_var("OB_DATABASE__NAME", "mydb") };
-        let config = Config::load(None).unwrap();
-        assert_eq!(config.database.name, "mydb");
-        clear_all_ob_env_vars();
-
-        // -- OB_DATABASE__USERNAME --
-        unsafe { std::env::set_var("OB_DATABASE__USERNAME", "admin") };
-        let config = Config::load(None).unwrap();
-        assert_eq!(config.database.username.as_deref(), Some("admin"));
-        clear_all_ob_env_vars();
-
-        // -- OB_DATABASE__PASSWORD --
-        unsafe { std::env::set_var("OB_DATABASE__PASSWORD", "s3cret") };
-        let config = Config::load(None).unwrap();
-        assert_eq!(config.database.password.as_deref(), Some("s3cret"));
+        assert_eq!(config.database.max_connections, 50);
         clear_all_ob_env_vars();
 
         // -- OB_AUTH__JWT_SECRET --
@@ -743,12 +723,10 @@ mod tests {
         unsafe { std::env::set_var("OB_AUTH__ACCESS_TOKEN_TTL_SECS", "abc") };
         let result = Config::load(None);
         assert!(result.is_err());
-        assert!(
-            result
-                .unwrap_err()
-                .to_string()
-                .contains("Invalid access token TTL")
-        );
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Invalid access token TTL"));
         clear_all_ob_env_vars();
 
         // -- OB_AUTH__REFRESH_TOKEN_TTL_SECS (valid) --
@@ -761,12 +739,10 @@ mod tests {
         unsafe { std::env::set_var("OB_AUTH__REFRESH_TOKEN_TTL_SECS", "xyz") };
         let result = Config::load(None);
         assert!(result.is_err());
-        assert!(
-            result
-                .unwrap_err()
-                .to_string()
-                .contains("Invalid refresh token TTL")
-        );
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Invalid refresh token TTL"));
         clear_all_ob_env_vars();
 
         // -- OB_SECURITY__RULES_PATH --

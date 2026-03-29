@@ -11,7 +11,7 @@ Origna GTA is a Canada-first multi-vendor e-commerce platform. The stack consist
 | Layer | Technology | Location |
 |-------|-----------|----------|
 | **Frontend** | Flutter 3.x (Dart), Riverpod, Freezed, GoRouter | `origna_gta/` |
-| **Backend** | OrignaBase (Rust), SurrealDB v2, Meilisearch v1.12 | `orignabase/` |
+| **Backend** | OrignaBase (Rust), PostgreSQL, Meilisearch v1.12 | `orignabase/` |
 | **Payments** | Stripe Checkout + Stripe Connect + webhooks | Backend-only |
 | **Storage** | Cloudflare R2 (images/videos) | Via OrignaBase signed URLs |
 | **Bot Protection** | Cloudflare Turnstile | Server-side validation |
@@ -28,9 +28,9 @@ Flutter App (Web/Mobile)
 OrignaBase SDK (Dart)  ----REST/GraphQL---->  OrignaBase (Rust binary)
                                                   |
                                    +--------------+---------------+
-                                   |              |               |
-                                SurrealDB    Meilisearch    Cloudflare R2
-                                (port 8000)  (port 7700)     (S3-compat)
+                                    |              |               |
+                                 PostgreSQL   Meilisearch    Cloudflare R2
+                                 (port 5432)  (port 7700)     (S3-compat)
                                    |
                               Stripe API
                           (Checkout + Connect + Webhooks)
@@ -49,7 +49,7 @@ sequenceDiagram
     participant CN as OrignaBaseCheckoutNotifier
     participant OR as OrderRepository
     participant OB as OrignaBase (Rust)
-    participant DB as SurrealDB
+    participant DB as PostgreSQL
     participant S as Stripe
 
     U->>CS: Tap "Place Order"
@@ -127,7 +127,7 @@ sequenceDiagram
     participant F as Flutter App
     participant SDK as OrignaBase SDK
     participant OB as OrignaBase (Rust)
-    participant DB as SurrealDB
+    participant DB as PostgreSQL
 
     alt Email/Password Register
         U->>F: Submit email + password
@@ -181,9 +181,9 @@ The backend is a single Rust binary assembled from 15 workspace crates at `orign
 |-------|---------|-----------|
 | **orignabase** | Binary entry point, CLI, server assembly. Wires all crates into an Axum server. | `main()`, CLI args |
 | **ob-core** | Shared config (`AppState`), error types, validation utilities. Every other crate depends on this. | `AppState`, `AppConfig`, `ObError` |
-| **ob-database** | SurrealDB client wrapper. CRUD operations, query translator (GraphQL -> SurrealQL), transactions. | `DatabaseClient`, `Transaction` |
+| **ob-database** | PostgreSQL client wrapper. CRUD operations, query translator (GraphQL -> SQL), transactions. | `DatabaseClient`, `Transaction` |
 | **ob-auth** | Authentication: JWT (RS256/HS256), Argon2id password hashing, OAuth providers, MFA/TOTP, email verification. | `AuthService`, `JwtManager` |
-| **ob-graphql** | Dynamic GraphQL schema generation from SurrealDB tables. Auto-generates queries/mutations. | `build_schema()` |
+| **ob-graphql** | Dynamic GraphQL schema generation from PostgreSQL tables. Auto-generates queries/mutations. | `build_schema()` |
 | **ob-security** | Security rules DSL parser (pest grammar) + evaluator. Default-deny across 25+ collections. | `RulesEngine`, `evaluate_rule()` |
 | **ob-realtime** | WebSocket subscriptions with change dispatch and presence tracking. | `WebSocketHandler`, `ChangeDispatcher` |
 | **ob-storage** | File storage abstraction: local filesystem, S3/R2 compatible. HMAC-signed upload/download URLs. | `StorageBackend`, `SignedUrl` |
@@ -313,7 +313,7 @@ All monetary values use integer cents throughout the entire stack. No `double` f
 
 | Layer | Field Names | Example |
 |-------|-------------|---------|
-| SurrealDB | `priceCents`, `subtotalCents`, `taxAmountCents`, `totalAmountCents`, `shippingCostCents`, `platformFeeTotalCents` | `7500` = $75.00 |
+| PostgreSQL | `priceCents`, `subtotalCents`, `taxAmountCents`, `totalAmountCents`, `shippingCostCents`, `platformFeeTotalCents` | `7500` = $75.00 |
 | Dart models | Same field names via Freezed | `product.priceCents` |
 | Stripe API | `amount` (also integer cents) | Passed directly, no conversion |
 | Display layer | Division by 100 at render time | `'\$${(cents / 100).toStringAsFixed(2)}'` |
@@ -370,7 +370,7 @@ The `ORIGNABASE_URL` dart-define can override the API URL for any environment.
 
 Three OrignaBase instances run via Docker Compose at `/opt/orignabase/`:
 
-| Instance | Port | Env File | SurrealDB Database |
+| Instance | Port | Env File | PostgreSQL Database |
 |----------|------|----------|--------------------|
 | Production | 8080 | `.env.prod` | `main` |
 | Dev | 8081 | `.env.dev` | `dev` |

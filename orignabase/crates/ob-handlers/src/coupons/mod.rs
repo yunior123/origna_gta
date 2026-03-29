@@ -180,21 +180,17 @@ async fn apply_coupon(
                 collections::COUPONS,
                 fields::CODE
             );
-            let results = state
+            let docs = state
                 .db
-                .inner()
-                .query(&query)
-                .bind(("code", code.clone()))
+                .query_bind(
+                    &query,
+                    serde_json::json!({"code": code.clone()}),
+                )
                 .await
                 .map_err(|e| {
                     error!("Coupon lookup query failed: {e}");
                     ob_core::Error::NotFound("Coupon invalid or unavailable".into())
                 })?;
-            let mut results = results;
-            let docs: Vec<serde_json::Value> = results.take(0).map_err(|e| {
-                error!("Coupon lookup extraction failed: {e}");
-                ob_core::Error::NotFound("Coupon invalid or unavailable".into())
-            })?;
             docs.into_iter()
                 .next()
                 .ok_or_else(|| ob_core::Error::NotFound("Coupon invalid or unavailable".into()))?

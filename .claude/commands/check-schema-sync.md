@@ -7,7 +7,7 @@ All field names and data types are consistent between:
 1. `lib/core/schema/schema_constants.dart` (Dart constants)
 2. Freezed model definitions (`lib/models/`)
 3. OrignaBase API response shapes
-4. SurrealDB collection fields
+4. PostgreSQL table fields
 
 ## Critical Timestamp Rules
 | Collection | Field | NOT |

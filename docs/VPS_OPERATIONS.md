@@ -22,7 +22,7 @@ All services run as Docker containers managed by `docker compose` in `/opt/orign
 | orignabase-prod | 8080 | .env.prod | main | 512M |
 | orignabase-dev | 8081 | .env.dev | dev | 256M |
 | orignabase-staging | 8082 | .env.staging | staging | 256M |
-| surrealdb | 8000 | — | all (namespaced) | — |
+| postgresql | 8000 | — | all (namespaced) | — |
 | meilisearch | 7700 | — | — | — |
 | caddy | 80/443 | Caddyfile | — | — |
 
@@ -110,7 +110,7 @@ The `current/` directory is the live symlink target. Caddy serves directly from 
 
 ## 6. Database Access
 
-### SurrealDB Credentials
+### PostgreSQL Credentials
 
 | Property | Value |
 |----------|-------|
@@ -124,23 +124,11 @@ The `current/` directory is the live symlink target. Caddy serves directly from 
 ### Access via Docker
 
 ```bash
-# Interactive SurrealDB shell
-docker exec -it surrealdb /surreal sql \
-  --endpoint http://localhost:8000 \
-  --username root \
-  --password orignabase_root_2026 \
-  --namespace orignabase \
-  --database dev
+# Interactive PostgreSQL shell
+docker exec -it postgresql psql -U orignabase -d orignabase
 
 # Quick query
-docker exec surrealdb /surreal sql \
-  --endpoint http://localhost:8000 \
-  --username root \
-  --password orignabase_root_2026 \
-  --namespace orignabase \
-  --database dev \
-  --json \
-  "SELECT count() FROM users GROUP ALL;"
+docker exec postgresql psql -U orignabase -d orignabase -c "SELECT count(*) FROM users;"
 ```
 
 ### Meilisearch
@@ -202,13 +190,8 @@ docker compose restart orignabase-staging
 ### Wipe Dev Database
 
 ```bash
-docker exec surrealdb /surreal sql \
-  --endpoint http://localhost:8000 \
-  --username root \
-  --password orignabase_root_2026 \
-  --namespace orignabase \
-  --database dev \
-  "REMOVE DATABASE dev;"
+# Wipe dev database
+docker exec postgresql psql -U orignabase -d orignabase -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
 
 # Then restart dev to re-initialize schema
 docker compose restart orignabase-dev
@@ -224,14 +207,8 @@ docker compose restart orignabase-dev
 # Backup script location
 /opt/orignabase/scripts/backup.sh
 
-# Manual SurrealDB export
-docker exec surrealdb /surreal export \
-  --endpoint http://localhost:8000 \
-  --username root \
-  --password orignabase_root_2026 \
-  --namespace orignabase \
-  --database main \
-  > /opt/orignabase/backups/main-$(date +%Y%m%d).surql
+# Manual PostgreSQL export
+docker exec postgresql pg_dump -U orignabase orignabase > /opt/orignabase/backups/main-$(date +%Y%m%d).sql
 ```
 
 ### Cron Schedule
@@ -243,13 +220,7 @@ docker exec surrealdb /surreal export \
 ### Restore
 
 ```bash
-docker exec -i surrealdb /surreal import \
-  --endpoint http://localhost:8000 \
-  --username root \
-  --password orignabase_root_2026 \
-  --namespace orignabase \
-  --database main \
-  < /opt/orignabase/backups/main-20260323.surql
+docker exec -i postgresql psql -U orignabase orignabase < /opt/orignabase/backups/main-20260323.sql
 ```
 
 ---
@@ -283,7 +254,7 @@ Located at `/opt/orignabase/.env.{prod,dev,staging}` with `chmod 600` (root-only
 
 Contents include:
 - `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET`
-- `SURREALDB_URL` / `SURREALDB_USER` / `SURREALDB_PASS`
+- `POSTGRESQL_URL` / `POSTGRESQL_USER` / `POSTGRESQL_PASS`
 - `MEILISEARCH_URL` / `MEILISEARCH_KEY`
 - `MAILJET_API_KEY` / `MAILJET_SECRET_KEY`
 - `JWT_PRIVATE_KEY_PATH` / `JWT_PUBLIC_KEY_PATH`
@@ -325,7 +296,7 @@ Keychain file: `~/.secrets/vault.keychain-db` (never access directly).
 443/tcp   ALLOW    # HTTPS
 ```
 
-All other ports are blocked. SurrealDB (8000) and Meilisearch (7700) are internal only.
+All other ports are blocked. PostgreSQL (8000) and Meilisearch (7700) are internal only.
 
 ### TLS
 
@@ -361,14 +332,14 @@ Enforced by `tower_governor` in OrignaBase. Dev environment has rate limits disa
 | OrignaBase Prod | `https://api.orignagta.ca/health` |
 | OrignaBase Dev | `https://api.dev.orignagta.ca/health` |
 | OrignaBase Staging | `https://api.staging.orignagta.ca/health` |
-| SurrealDB | `http://localhost:8000/health` (internal) |
+| PostgreSQL | `http://localhost:5432/health` (internal) |
 | Meilisearch | `http://localhost:7700/health` (internal) |
 
 ### Docker Healthchecks
 
 Each service in `docker-compose.yml` has a `healthcheck` directive:
 - OrignaBase: `curl -f http://localhost:{port}/health`
-- SurrealDB: `curl -f http://localhost:8000/health`
+- PostgreSQL: `curl -f http://localhost:5432/health`
 - Meilisearch: `curl -f http://localhost:7700/health`
 
 Unhealthy containers are automatically restarted by Docker.

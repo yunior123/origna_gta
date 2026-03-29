@@ -173,7 +173,7 @@ async fn clear_other_defaults(
     let query = format!(
         "SELECT * FROM {} WHERE parent_id = '{}' AND isDefault = true",
         collection,
-        ob_core::escape_surreal_string(&warehouse_parent(user_id))
+        ob_core::escape_sql_string(&warehouse_parent(user_id))
     );
     let docs = state.db.query_raw(&query).await?;
     for doc in docs {
@@ -353,9 +353,9 @@ async fn delete_warehouse(
         "SELECT id FROM {} WHERE {} = '{}' AND {} CONTAINS '{}' LIMIT 1",
         collections::PRODUCTS,
         fields::SELLER_ID,
-        ob_core::escape_surreal_string(&user_id),
+        ob_core::escape_sql_string(&user_id),
         "warehouseIds",
-        ob_core::escape_surreal_string(&req.warehouse_id),
+        ob_core::escape_sql_string(&req.warehouse_id),
     );
     if !state.db.query_raw(&product_guard_query).await?.is_empty() {
         return Err(ob_core::Error::Validation(
@@ -372,9 +372,9 @@ async fn delete_warehouse(
         let promote_query = format!(
             "SELECT * FROM {} WHERE parent_id = '{}' AND id != type::thing('{}', '{}') ORDER BY createdAt ASC LIMIT 1",
             collection,
-            ob_core::escape_surreal_string(&warehouse_parent(&user_id)),
+            ob_core::escape_sql_string(&warehouse_parent(&user_id)),
             collection,
-            ob_core::escape_surreal_string(&req.warehouse_id),
+            ob_core::escape_sql_string(&req.warehouse_id),
         );
         if let Some(other) = state.db.query_raw(&promote_query).await?.into_iter().next()
             && let Some(id) = other.get("id").and_then(|v| v.as_str())
@@ -409,7 +409,7 @@ async fn list_warehouses(
     let query = format!(
         "SELECT * FROM {} WHERE parent_id = '{}' ORDER BY isDefault DESC, createdAt ASC",
         collection,
-        ob_core::escape_surreal_string(&warehouse_parent(&user_id)),
+        ob_core::escape_sql_string(&warehouse_parent(&user_id)),
     );
     let rows = state.db.query_raw(&query).await?;
     let warehouses = rows
@@ -555,7 +555,7 @@ mod tests {
             .query_raw(&format!(
                 "SELECT * FROM {} WHERE parent_id = '{}'",
                 collection,
-                ob_core::escape_surreal_string(&warehouse_parent("seller_1"))
+                ob_core::escape_sql_string(&warehouse_parent("seller_1"))
             ))
             .await
             .unwrap();

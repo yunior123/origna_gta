@@ -231,7 +231,7 @@ impl QueryRoot {
         Ok(Value::Object(map))
     }
 
-    /// Vector similarity search using SurrealDB's native vector functions.
+    /// Vector similarity search using PostgreSQL.
     ///
     /// Searches for documents where `vector_field` is most similar to `embedding`
     /// using cosine similarity. Returns results ordered by similarity score.

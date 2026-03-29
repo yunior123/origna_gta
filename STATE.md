@@ -1366,3 +1366,544 @@ _(Agent completed scan of auth/registration, email templates, translations, term
 - `/tmp/cargo-test-ob-handlers-lib.txt`
 - `/tmp/cargo-clippy-final.txt`
 - `/tmp/cargo-test-final.txt`
+
+---
+
+## Deep Codebase Audit — 2026-03-28 (6 Parallel Agents, Full Exploration)
+
+**Scope:** Checkout/payment, cart/orders/refunds, auth/seller/products, Rust handlers, SDK/repository layer, scripts/config.
+**Total new findings: 96 (7 P0, 25 P1, 40 P2, 24 P3)**
+
+---
+
+### 🔴 P0 — CRITICAL (7 findings — fix immediately)
+
+#### P0-1. SQL Injection via `format!` in Stock Decrement Query
+- **Location:** `orignabase/crates/ob-handlers/src/payments/checkout.rs:829-831`
+- **Issue:** `pid`, `qty`, `now` interpolated directly into SurrealQL via `format!` instead of `query_bind_value`. While `pid` is validated by `validate_document_id`, the pattern is fundamentally unsafe. `qty` is a `u64` from user input. `now` is an RFC 3339 string.
+- **Impact:** If `validate_document_id` ever has a gap, this is exploitable for SQL injection.
+- **Fix:** Replace with parameterized `$binds` using `query_bind_value`.
+- [ ] UNFIXED
+
+#### P0-2. Payment Failure Does NOT Restore Reserved Stock
+- **Location:** `orignabase/crates/ob-handlers/src/payments/webhooks.rs:751-794`
+- **Issue:** Stock is decremented atomically at checkout time. When `checkout.session.expired` fires, stock IS restored. But when `payment_intent.payment_failed` fires, stock is **never restored**. Failed payments permanently reduce product stock.
+- **Impact:** Phantom inventory depletion — products show as out of stock when they shouldn't be. Lost sales.
+- **Fix:** Add `restore_stock_for_order()` call in `handle_payment_intent_failed` when order status is `PendingPayment`.
+- [ ] UNFIXED
+
+#### P0-3. Rollback SQL Uses Invalid SurrealDB `??` Syntax
+- **Location:** `orignabase/crates/ob-handlers/src/orders/refunds.rs:466-468`
+- **Issue:** `cumulativeRefundedCents ?? $amt` — SurrealDB v2 `??` operator semantics may differ from JavaScript. If the rollback silently fails, the refund cap is permanently reduced.
+- **Impact:** Cumulative refund cap permanently corrupted after a failed refund rollback.
+- **Fix:** Use `IF cumulativeRefundedCents THEN cumulativeRefundedCents - $amt ELSE 0 END` instead of `??`.
+- [ ] UNFIXED
+
+#### P0-4. TOCTOU Race: `update_item_status` Has No CAS Guard
+- **Location:** `orignabase/crates/ob-handlers/src/orders/status.rs:959-963`
+- **Issue:** `update_order_status` uses CAS guard (`WHERE orderStatus = $expected`), but `update_item_status` uses plain `update_document` with no precondition. Two concurrent sellers updating different items can overwrite each other's changes.
+- **Impact:** Data loss — seller A's shipping update overwritten by seller B's concurrent update.
+- **Fix:** Add CAS guard or use array-element update instead of full document overwrite.
+- [ ] UNFIXED
+
+#### P0-5. TOCTOU Race: `confirm_item_receipt` Has No CAS Guard
+- **Location:** `orignabase/crates/ob-handlers/src/orders/status.rs:427-431`
+- **Issue:** Handler reads order, checks item status, modifies items array, then writes back with `update_document`. No CAS guard. A concurrent seller call can change items between read and write.
+- **Impact:** Buyer confirmation overwrites seller's concurrent status update.
+- **Fix:** Same as P0-4 — add CAS guard or use atomic array update.
+- [ ] UNFIXED
+
+#### P0-6. GraphQL Injection via Unescaped Collection/Doc IDs in SDK
+- **Location:** `orignabase/sdks/flutter/orignabase/lib/src/collection.dart:49,80,114,127,140`
+- **Issue:** `collectionName` and `id` are interpolated directly into GraphQL strings with zero escaping. `toGraphQLValue` properly escapes strings but is only applied to `data` — never to `collectionName` or `id`. Any SurrealDB ID containing `"` breaks the query.
+- **Impact:** Malformed or malicious document IDs corrupt GraphQL queries.
+- **Fix:** Escape `collectionName` and `id` through `_escapeString()` before interpolation.
+- [ ] UNFIXED
+
+#### P0-7. WebSocket Auth Uses Wrong Mechanism in SDK
+- **Location:** `orignabase/sdks/flutter/orignabase/lib/src/realtime.dart:96-98`
+- **Impact:** Realtime subscriptions (chat, order updates, notifications) completely non-functional.
+- **Fix:** Append `?token=${_client.auth.accessToken}` to `wsUri`, remove Authorization header.
+- [ ] UNFIXED
+
+---
+
+### 🟠 P1 — HIGH (25 findings)
+
+#### Checkout & Payment
+
+##### P1-1. Double Checkout Race Condition on Rapid Button Taps
+- **Location:** `origna_gta/lib/screens/parts/checkout_payment_section.dart:136-149`
+- **Issue:** The "Place Order" button opens a review sheet. User can rapidly tap "Confirm" before `isProcessing` is set. The guard at line 481 is inside the async method — a second tap during the brief async gap starts a second checkout.
+- **Impact:** Double order creation, double Stripe session, potential double charge.
+- **Fix:** Set `isProcessing = true` synchronously before the async call, or add debounce.
+- [ ] UNFIXED
+
+##### P1-2. Price Verification Sends `item.price` (double dollars) Instead of `priceCents`
+- **Location:** `origna_gta/lib/features/checkout/orignabase_checkout_provider.dart:176-184`
+- **Issue:** `verifyCartPrices()` sends `Fields.price: item.price` (double dollars) to the server. If the server stores prices in cents, this sends wrong values. Also at `startCheckout` line 546.
+- **Impact:** Server may reject correct prices or accept incorrect ones due to float mismatch.
+- **Fix:** Send `Fields.priceCents: item.priceCents` (integer cents).
+- [ ] UNFIXED
+
+##### P1-3. Dual Subtotal Representation — `double` vs `int` Cents Can Disagree
+- **Location:** `origna_gta/lib/screens/checkout_screen.dart:150-152` + `checkout_items_section.dart:75`
+- **Issue:** `CheckoutScreen.total` is `double` dollars. `cartSubtotalProvider` is `int` cents. The UI displays `item.price * item.quantity` (double arithmetic) while the provider uses `priceCents * quantity`. These can differ by 1 cent due to floating-point.
+- **Impact:** User sees $49.98 but is charged $49.99 — support complaints.
+- **Fix:** Use `priceCents` throughout, convert to display only at the formatting layer.
+- [ ] UNFIXED
+
+##### P1-4. `CartItemDetailModel.fromMap` Uses `~/ 1` Truncation Instead of `.round()`
+- **Location:** `origna_gta/lib/models/generated/models.dart:286` + `cart_provider.dart:124`
+- **Issue:** `(price * 100) ~/ 1` truncates (floors). For `19.99`, floating-point gives `1998.999...`, `~/ 1` yields `1998` instead of `1999`. The constructor at line 273 uses `.round()` but `fromMap` uses `~/`.
+- **Impact:** Off-by-one-cent pricing error depending on which code path constructs the model.
+- **Fix:** Use `.round()` consistently in both constructor and `fromMap`.
+- [ ] UNFIXED
+
+##### P1-5. Biometric Guard Bypassed When Device Doesn't Support Biometrics
+- **Location:** `origna_gta/lib/features/checkout/orignabase_checkout_provider.dart:523-528`
+- **Issue:** If device doesn't support biometrics (old devices, web), transactions >= $100 can never complete. No fallback to PIN/password. User hits a dead-end.
+- **Impact:** Users on unsupported devices cannot complete any order >= $100.
+- **Fix:** Add PIN/password fallback when biometric is unavailable.
+- [ ] UNFIXED
+
+#### Cart & Stock
+
+##### P1-6. `updateQuantity` Skips Stock Validation — Overselling
+- **Location:** `origna_gta/lib/core/repositories/orignabase_cart_repository.dart:216-232`
+- **Issue:** `addToCart` checks stock before writing, but `updateQuantity` blindly writes the clamped quantity. User can add 1 (stock check passes), then increment to 99 in cart UI — bypassing stock entirely.
+- **Impact:** Overselling at checkout — products sold beyond available stock.
+- **Fix:** `updateQuantity` should fetch product doc and verify `stockQuantity >= quantity` before writing.
+- [ ] UNFIXED
+
+##### P1-7. `addToCart` Stock Check Doesn't Account for Existing Cart Quantity
+- **Location:** `origna_gta/lib/core/repositories/orignabase_cart_repository.dart:79-88`
+- **Issue:** Check validates `stockQuantity < quantity` (the increment), but resulting cart quantity is `currentQty + quantity`. User with 5 in cart + stock of 6 can add 2 (passes: 6 >= 2), resulting in cart quantity 7 > stock.
+- **Impact:** Overselling.
+- **Fix:** Check `stockQuantity < (currentQty + quantity)`.
+- [ ] UNFIXED
+
+##### P1-8. Variant Stock Not Checked — Only Product-Level Stock
+- **Location:** `origna_gta/lib/core/repositories/orignabase_cart_repository.dart:79-88`
+- **Issue:** When `variantId` is provided, code checks product-level `stockQuantity`, not variant's own `stockQuantity`. Product with 100 total stock but variant "Red-Large" with 0 stock passes the check.
+- **Impact:** Out-of-stock variants can be added to cart and checked out.
+- **Fix:** When `variantId` is present, fetch and check variant-level stock.
+- [ ] UNFIXED
+
+##### P1-9. Order State Machine Missing `delivered` → Refund Transitions
+- **Location:** `origna_gta/lib/utils/order_state_machine.dart:10`
+- **Issue:** `OrderStatus.delivered: []` — zero valid transitions. `refunded` and `partiallyRefunded` are unreachable via the state machine. Client-side validation blocks legitimate refund flows.
+- **Impact:** Refund button may be disabled for delivered orders if state machine is checked.
+- **Fix:** Add `refunded, partiallyRefunded` to `delivered`'s transitions. Add refund transitions to `confirmed`, `processing`, `shipped`, `inTransit`.
+- [ ] UNFIXED
+
+#### Rust Backend
+
+##### P1-10. Transaction Not Truly Atomic — `BEGIN/COMMIT` Not Used
+- **Location:** `orignabase/crates/ob-database/src/transaction.rs:54-57`
+- **Issue:** Comment explicitly states `BEGIN TRANSACTION/COMMIT` is NOT used because SurrealDB doesn't support THROW inside blocks. Statements are concatenated with `;`. If statement 3 fails, statements 1-2 are NOT rolled back.
+- **Impact:** Order could be created without stock decremented, or vice versa. False sense of atomicity.
+- **Fix:** Investigate SurrealDB v2 transaction support or implement compensating transactions.
+- [ ] UNFIXED
+
+##### P1-11. Missing Auth on Shipping Calc Endpoint
+- **Location:** `orignabase/crates/ob-handlers/src/shipping_calc/mod.rs:196-199`
+- **Issue:** `/api/shipping/calculate` has NO `Extension(auth)` parameter. Any anonymous user can call it, triggering DB lookups and Geoapify API calls.
+- **Impact:** API cost amplification, seller warehouse location disclosure.
+- **Fix:** Add `Extension(auth)` and verify user is authenticated.
+- [ ] UNFIXED
+
+##### P1-12. `mark_coupon_redeemed` Swallows DB Errors
+- **Location:** `orignabase/crates/ob-handlers/src/payments/webhooks.rs:604-605`
+- **Issue:** `.unwrap_or_default()` on the UPDATE query result. If the DB write fails, the function returns `Ok(())` — the caller believes the coupon was marked redeemed when it wasn't.
+- **Impact:** Coupon can be reused after payment — revenue loss.
+- **Fix:** Propagate the error instead of `unwrap_or_default()`.
+- [ ] UNFIXED
+
+##### P1-13. Float Arithmetic on Money in Shipping/Tax Calculations
+- **Location:** `orignabase/crates/ob-handlers/src/orders/shipping.rs:110,117,125`
+- **Issue:** `SHIPPING_APPROVAL_THRESHOLD` is `f64 = 0.20`. Tax rates use `f64`. Float arithmetic on money violates the integer-cents mandate.
+- **Impact:** Rounding errors in shipping approval thresholds and tax calculations.
+- **Fix:** Use basis points: `(cents * 120 + 50) / 100`.
+- [ ] UNFIXED
+
+##### P1-14. Fallback Speed Multiplier Inverted — `same_day` Cheaper Than `express`
+- **Location:** `orignabase/crates/ob-handlers/src/shipping_calc/mod.rs:322-328`
+- **Issue:** In fallback mode, `same_day` gets 2.0x multiplier while `express` gets 1.8x. This is inverted — same_day should always be the most expensive option.
+- **Impact:** Same-day delivery underpriced in fallback scenarios — seller loses money.
+- **Fix:** Swap multipliers or use the same tiered logic as the primary path.
+- [ ] UNFIXED
+
+#### Auth & Session
+
+##### P1-15. `deleteAccount()` Silently No-Ops When No User
+- **Location:** `origna_gta/lib/core/repositories/orignabase_auth_repository.dart:497-498`
+- **Issue:** If no current user, method silently returns. Caller believes the account was deleted.
+- **Impact:** User thinks they deleted their account but nothing happened.
+- **Fix:** Throw `OrignaBaseAuthException(code: 'no-current-user')`.
+- [ ] UNFIXED
+
+##### P1-16. Session Timeout Swallows Sign-Out Failure — User in Limbo
+- **Location:** `origna_gta/lib/services/session_timeout_service.dart:120-143`
+- **Issue:** If `_signOutCallback` throws (network error), catch block is empty. Timer already fired and was cancelled. User stays logged in with expired session but no future timeout will fire.
+- **Impact:** User authenticated with expired session — potential security issue.
+- [ ] UNFIXED
+
+##### P1-17. `sendPasswordResetEmail` Swallows ALL Errors Matching "not found"
+- **Location:** `origna_gta/lib/core/repositories/orignabase_auth_repository.dart:443-454`
+- **Issue:** Any error whose message contains "not found" is silently swallowed — including server errors like "resource_not_found", "endpoint_not_found".
+- **Impact:** User sees success when backend is broken. No error feedback.
+- [ ] UNFIXED
+
+##### P1-18. Password Not Trimmed — Leading Spaces Create Login Mismatches
+- **Location:** `origna_gta/lib/screens/login_screen.dart:93` + `login_viewmodel.dart:401-422`
+- **Issue:** Password not trimmed before validation or submission. User can register with `" Password1!"` (leading space). Later typing `"Password1!"` without space fails login.
+- **Impact:** Users locked out of accounts due to whitespace mismatch.
+- **Fix:** Trim passwords at input or reject leading/trailing whitespace in strength validator.
+- [ ] UNFIXED
+
+##### P1-19. `_rethrowAsAuthException()` Maps Any "account" Error to `user-disabled`
+- **Location:** `origna_gta/lib/core/repositories/orignabase_auth_repository.dart:822`
+- **Issue:** Any exception containing the word "account" (e.g., "account_link", "account_balance", "insufficient_funds_in_account") is mapped to `user-disabled`.
+- **Impact:** Users see "account disabled" for unrelated errors.
+- [ ] UNFIXED
+
+#### Product & Upload
+
+##### P1-20. Video Uploaded Into Memory Before PUT — OOM Risk
+- **Location:** `origna_gta/lib/core/repositories/orignabase_product_repository.dart:463-464`
+- **Issue:** Entire video file read into `Uint8List` in memory, then sent via HTTP PUT. A 100MB video = 100MB+ heap allocation. On 8GB machines or mobile, this triggers OOM.
+- **Impact:** App crash on video upload for large files.
+- **Fix:** Use streaming upload or chunked transfer.
+- [ ] UNFIXED
+
+##### P1-21. Edit Mode Reads Video Into Memory Just to Check Size
+- **Location:** `origna_gta/lib/features/products/edit_product_viewmodel.dart:508-509`
+- **Issue:** `state.videoFile!.readAsBytes()` reads entire video into memory just to check `bytes.length`. The add path correctly uses `videoFile.length()` at line 286.
+- **Impact:** Same OOM risk as P1-20.
+- **Fix:** Use `videoFile.length()` instead.
+- [ ] UNFIXED
+
+##### P1-22. Image Upload Partial Failure Silently Drops Failed Images
+- **Location:** `origna_gta/lib/features/products/edit_product_viewmodel.dart:521-527`
+- **Issue:** If `uploadImages` returns a partial list (some succeed, some fail), product is updated with only successful URLs. Failed images silently dropped — no error to user.
+- **Impact:** Product ends up with fewer images than expected.
+- [ ] UNFIXED
+
+#### SDK
+
+##### P1-23. WebSocket Reconnect Leaks Old Listener/Channel
+- **Location:** `orignabase/sdks/flutter/orignabase/lib/src/realtime.dart:79-122`
+- **Issue:** `_doConnect()` never cancels `_listener` or closes `_channel.sink` before creating a new connection. Old listener remains active on stale channel.
+- **Impact:** Memory leak on every reconnect. Duplicate message delivery.
+- **Fix:** Cancel `_listener` and close `_channel.sink` before creating new connection.
+- [ ] UNFIXED
+
+##### P1-24. `snapshots()` StreamController Never Closed — Memory Leak
+- **Location:** `orignabase/sdks/flutter/orignabase/lib/src/collection.dart:35-44,151-159`
+- **Issue:** `StreamController.broadcast()` created with no `onCancel` callback. When caller cancels subscription, controller is never closed and inner stream subscription keeps running.
+- **Impact:** Memory leak per `snapshots()` call.
+- **Fix:** Add `onCancel` that cancels inner subscription and closes controller.
+- [ ] UNFIXED
+
+##### P1-25. Infinite Polling With No Timeout — `watchPaidOrderBySession`
+- **Location:** `origna_gta/lib/core/repositories/order_query_helpers.dart:165-200`
+- **Issue:** 3-second polling timer has no maximum duration or attempt limit. If Stripe webhook is delayed, timer runs indefinitely. A 30-minute wait makes 600 server requests.
+- **Impact:** Battery drain, excessive server load, leaked timer.
+- **Fix:** Add max attempts (e.g., 100 = 5 minutes) or exponential backoff.
+- [ ] UNFIXED
+
+---
+
+### 🟡 P2 — MEDIUM (40 findings)
+
+#### Checkout/UI
+- [ ] UNFIXED — **P2-1.** `checkout_screen.dart:150-153` — Constructor param named `total` but used as `subtotal` internally. Confusing for callers.
+- [ ] UNFIXED — **P2-2.** `orignabase_checkout_provider.dart:699` — `calculateShipping` called before `calculateTaxes` completes. User sees brief flash of wrong tax.
+- [ ] UNFIXED — **P2-3.** `orignabase_checkout_provider.dart:690-692` — `updateAddress()` doesn't trigger shipping/tax recalculation. Caller must manually call `calculateShipping`.
+- [ ] UNFIXED — **P2-4.** `orignabase_checkout_provider.dart:275-276` — Coupon discount > subtotal produces negative post-coupon subtotal (no client-side clamp).
+- [ ] UNFIXED — **P2-5.** `checkout_items_section.dart:75` — Display uses `item.price * item.quantity` (double) instead of `priceCents * quantity`.
+- [ ] UNFIXED — **P2-6.** `orignabase_checkout_provider.dart:733-746` — `_checkLocalDelivery` returns false if ANY item lacks coordinates. Should be per-item.
+- [ ] UNFIXED — **P2-7.** `payment_screens.dart:312-324` — Race between timeout and order arrival at exact same frame.
+- [ ] UNFIXED — **P2-8.** `checkout_screen.dart:188-191` — Digital items fallback province not validated against `ProvinceCodeValues.all`.
+
+#### Cart/Orders
+- [ ] UNFIXED — **P2-9.** `cart_provider.dart:585-591` — `CartController.updateQuantity` has no try/catch. Exception propagates uncaught, crashes widget tree.
+- [ ] UNFIXED — **P2-10.** `cart_provider.dart:553-567` — `saveForLater` non-atomic: `toggleFavorite` succeeds but `removeFromCart` throws → item in both places. On retry, `toggleFavorite` toggles back.
+- [ ] UNFIXED — **P2-11.** `cart_provider.dart:421-432` — `_cartProductsBatchProvider` swallows fetch errors silently. All cart items appear "unavailable".
+- [ ] UNFIXED — **P2-12.** `return_request_screen.dart:262-278` + `456-474` — Return window not enforced on submit. `_canSubmit` doesn't check `daysLeft > 0`.
+- [ ] UNFIXED — **P2-13.** `return_request_screen.dart:315` — `cartItemId ?? productId` mixed in same array. Backend receives mix of cart item IDs and product IDs.
+- [ ] UNFIXED — **P2-14.** `order_state_machine.dart:5` — No `pending → processing` transition. `processing` state is orphaned.
+- [ ] UNFIXED — **P2-15.** `order_widgets.dart:46-132` — `getItemStatusConfig` mixes `OrderStatusValues` and `DeliveryStatusValues` inconsistently.
+- [ ] UNFIXED — **P2-16.** `order_widgets.dart:2319-2350` — `_reorderItems` sequential add with no partial failure reporting. Failed items silently skipped.
+- [ ] UNFIXED — **P2-17.** `models.dart:288` vs `cart_provider.dart:128` — Quantity defaults: `CartItemModel` defaults to 0, `CartItemDetailModel` defaults to 1. Inconsistent.
+- [ ] UNFIXED — **P2-18.** `seller_orders_viewmodel.dart:76-91` — `updateShippingAndCapture` silently drops tracking write failure. Seller sees "success" but tracking never saved.
+
+#### Auth/Seller
+- [ ] UNFIXED — **P2-19.** `orignabase_auth_repository.dart:413-420` — `isEmailVerified()` returns `false` on expired/invalid session instead of surfacing re-auth need.
+- [ ] UNFIXED — **P2-20.** `orignabase_auth_repository.dart:525-526` — `ensureUserDocumentExists()` silently returns on null token. No recovery attempted.
+- [ ] UNFIXED — **P2-21.** `orignabase_auth_repository.dart:577-586` — `validateCurrentUser()` uses fragile string-matching instead of typed exceptions. SDK wording changes break detection.
+- [ ] UNFIXED — **P2-22.** `orignabase_auth_repository.dart:587-589` — `validateCurrentUser()` returns `true` on unrecognized errors. User treated as authenticated when they shouldn't be.
+- [ ] UNFIXED — **P2-23.** `orignabase_seller_registration_view_model.dart:109-123` — `refreshAccountStatus()` discards API response. State never updates. Method is a no-op.
+- [ ] UNFIXED — **P2-24.** `orignabase_seller_registration_view_model.dart:174-175` — `_continueOnboarding()` rate-limit path leaves `_isOperationInProgress = true` permanently, blocking all future operations.
+- [ ] UNFIXED — **P2-25.** `add_product_validation.dart:36` vs `edit_product_viewmodel.dart:377` — Add rejects price <= $0.99, edit allows price = $0.01. Inconsistent validation.
+
+#### SDK
+- [ ] UNFIXED — **P2-26.** `query.dart:81-86` + `product_search_helpers.dart:84-86` — Second `orderBy()` silently discards first. **`SortOption.priceLowToHigh` and `priceHighToLow` are broken** — products only sorted by `createdAt`.
+- [ ] UNFIXED — **P2-27.** `product_search_helpers.dart:141-196` — `fetchProductsByIdsImpl` fetches chunks sequentially instead of in parallel. 4x slower than necessary.
+- [ ] UNFIXED — **P2-28.** `realtime.dart:163-164` — Subscription ID generated from `DateTime.now().millisecondsSinceEpoch`. Two rapid calls in same millisecond produce duplicate IDs.
+- [ ] UNFIXED — **P2-29.** `batch.dart:124-131` — Batch deletes ignore server response. All IDs reported as `deleted: true` regardless of actual result.
+- [ ] UNFIXED — **P2-30.** `providers.dart:113-139` — `authStateProvider` stream never cancelled on dispose. Memory leak.
+- [ ] UNFIXED — **P2-31.** `order_query_helpers.dart:83` vs `orignabase_user_repository.dart:41` — `normalizeId` (takes last segment) vs `_bareId` (takes after first colon) produce different results for multi-colon IDs.
+
+#### Scripts/Config
+- [ ] UNFIXED — **P2-32.** `scripts/deploy_web.sh:23` — Hardcodes production API URL for all environments. Dev deploys hit production data.
+- [ ] UNFIXED — **P2-33.** `analysis_options.yaml:35-37` — No custom lint rules enabled. AGENTS.md mandates `avoid_print`, `always_use_package_imports`, `prefer_const_constructors` — none enforced.
+- [ ] UNFIXED — **P2-34.** `lib/utils/env_config.dart:79-82` — Defaults to production if `ENVIRONMENT` is misspelled. No warning for unrecognized values.
+- [ ] UNFIXED — **P2-35.** `scripts/run_quality_gate.sh:58,63` — Integration test failures are warnings, not gate failures. Quality gate can PASS while tests fail.
+- [ ] UNFIXED — **P2-36.** `lib/utils/constants.dart:111` — `DeliverySpeed.baseSurcharge` uses `double` instead of integer cents.
+- [ ] UNFIXED — **P2-37.** `orignabase/crates/ob-handlers/src/orders/refunds.rs:174-185` — Duplicate transition pairs. Missing transitions compared to `status.rs`.
+- [ ] UNFIXED — **P2-38.** `orignabase/crates/ob-handlers/src/orders/refunds.rs:672` — `buyer_cancellable` array has duplicate entries (`"pending", "pending", "confirmed", "confirmed"`).
+- [ ] UNFIXED — **P2-39.** `orignabase/crates/ob-handlers/src/orders/status.rs:945-949` — `update_item_status` can set item to "delivered" without payment capture check.
+- [ ] UNFIXED — **P2-40.** `orignabase/crates/ob-handlers/src/payments/webhooks.rs:1175-1177` — Fragile stock restore interaction between `checkout.session.expired` and `payment_intent.payment_failed`.
+
+---
+
+### 🟢 P3 — LOW (24 findings)
+
+#### Checkout/UI
+- [ ] UNFIXED — **P3-1.** `orignabase_checkout_provider.dart:497` — Biometric threshold on subtotal, not total charge. $99.99 + $10 shipping = $109.99 doesn't trigger.
+- [ ] UNFIXED — **P3-2.** `orignabase_checkout_provider.dart:602-613` — Doc comment says "fails open" but code actually fails closed. Misleading documentation.
+- [ ] UNFIXED — **P3-3.** `ordersuccess_screen.dart:84-88` — Confetti animation `repeat()` runs forever. Wastes GPU on long-lived screens.
+- [ ] UNFIXED — **P3-4.** `ordersuccess_screen.dart:210-237` — `_logPurchaseIfPaymentConfirmed` fire-and-forget with no retry. Analytics undercounted.
+
+#### Cart/Orders
+- [ ] UNFIXED — **P3-5.** `cart_summary_widgets.dart:97-127` — `CartItemDetailModel.copyWith` extension is missing ~15 fields. Silent field drops.
+- [ ] UNFIXED — **P3-6.** `cart_provider.dart:585-591` — `updateQuantity` clamps silently. User types 150, cart shows 99, no explanation.
+
+#### Auth
+- [ ] UNFIXED — **P3-7.** `orignabase_auth_repository.dart:500-504` — Re-authentication window only 60 seconds. Industry standard is 5 minutes.
+- [ ] UNFIXED — **P3-8.** `orignabase_auth_repository.dart:59` — `_lastReAuthenticatedAt` is in-memory only. App restart = must re-auth.
+- [ ] UNFIXED — **P3-9.** `orignabase_auth_repository.dart:168-173` — MFA required uses exception for control flow. Every caller must inspect `code` field.
+
+#### Product
+- [ ] UNFIXED — **P3-10.** `addproduct_submit_section.dart:231` — `double.tryParse(...) ?? 0` defaults price to 0 on parse failure. Error message is "please enter price" not "invalid format".
+- [ ] UNFIXED — **P3-11.** `addproduct_submit_section.dart:238` — `int.tryParse(...) ?? 0` defaults categoryId to 0 on parse failure.
+- [ ] UNFIXED — **P3-12.** `editproduct_submit_section.dart:72-80` — Same-day delivery option missing `quantityDiscounts`/`additionalItemCostCents`. Editing strips these fields.
+
+#### SDK
+- [ ] UNFIXED — **P3-13.** `collection.dart:77-91` — `DocumentRef.get()` returns `null` for both "not found" and "server error". Ambiguous.
+- [ ] UNFIXED — **P3-14.** `collection.dart:138-142` — `DocumentRef.delete()` swallows all response data.
+- [ ] UNFIXED — **P3-15.** `collection.dart:57` — `collection.add()` returns dummy Document with empty ID on unexpected response.
+- [ ] UNFIXED — **P3-16.** `auth.dart:455-467` — `_decodeClaims` silently swallows all JWT errors. Returns empty map.
+- [ ] UNFIXED — **P3-17.** `auth.dart` — No JWT expiry pre-check. Every expired-token request makes a round-trip just to fail.
+- [ ] UNFIXED — **P3-18.** `client.dart:167-168` — `jsonDecode` on 200 response can throw uncaught `FormatException` for non-JSON bodies.
+
+#### Rust
+- [ ] UNFIXED — **P3-19.** `orignabase/crates/ob-handlers/src/orders/refunds.rs:174-185` — `is_valid_order_transition` is dead code. Never called.
+- [ ] UNFIXED — **P3-20.** `orignabase/crates/ob-handlers/src/payments/webhooks.rs:741-745` — Log message says "stock decremented" but stock was already decremented at checkout. Misleading.
+- [ ] UNFIXED — **P3-21.** `orignabase/crates/ob-handlers/src/payments/checkout.rs:97` — Unknown provinces silently get 5% GST instead of failing.
+
+#### Scripts/Config
+- [ ] UNFIXED — **P3-22.** `scripts/deploy_web.sh:38` — `sed -i ''` is macOS-only. Will fail on Linux CI.
+- [ ] UNFIXED — **P3-23.** `scripts/run_quality_gate.sh` — Uses raw `cd`/`cd ..` instead of `pushd`/`popd`.
+- [ ] UNFIXED — **P3-24.** `lib/utils/env_config.dart:152-158` — Dead code: `orignabaseUrlFor()` is exhaustive switch, `isEmpty` check can never trigger.
+
+---
+
+### Audit Summary — 2026-03-28
+
+| Severity | Count | Fixed | Unfixed |
+|----------|-------|-------|---------|
+| P0 — CRITICAL | 7 | 0 | 7 |
+| P1 — HIGH | 25 | 0 | 25 |
+| P2 — MEDIUM | 40 | 0 | 40 |
+| P3 — LOW | 24 | 0 | 24 |
+| **TOTAL** | **96** | **0** | **96** |
+
+### Top 10 Priority Fixes
+
+| # | Finding | Category | Impact |
+|---|---------|----------|--------|
+| 1 | P0-2: Payment failure doesn't restore stock | Rust/Stock | Phantom inventory depletion |
+| 2 | P0-1: SQL injection via `format!` in stock decrement | Rust/Security | Query injection |
+| 3 | P0-4/5: TOCTOU in `update_item_status`/`confirm_item_receipt` | Rust/Concurrency | Data loss |
+| 4 | P0-7: WebSocket auth wrong mechanism | SDK | Realtime completely broken |
+| 5 | P1-1: Double checkout race condition | Flutter/Checkout | Double charge risk |
+| 6 | P1-6/7/8: Stock checks skipped on quantity update + variants | Flutter/Cart | Overselling |
+| 7 | P1-4: `~/ 1` truncation on price fallback | Flutter/Money | Off-by-one-cent pricing |
+| 8 | P2-26: `orderBy` overwrite — price sort broken | SDK/UX | Products not sorted by price |
+| 9 | P1-10: Transaction not truly atomic | Rust/Data | Partial writes on failure |
+| 10 | P1-20/21: Video loaded into memory — OOM | Flutter/Crash | App crash on video upload |
+
+---
+
+## SurrealDB E-Commerce Fitness Audit — 2026-03-28
+
+**Verdict: MIGRATE TO PostgreSQL. SurrealDB is NOT suitable for production e-commerce.**
+
+### Scope
+
+Full audit of SurrealDB's limitations for e-commerce, cross-referenced with:
+- GitHub issues (surrealdb/surrealdb, 32K stars, 3,400+ issues)
+- Reddit community reports (r/surrealdb, r/rust)
+- Blog posts from independent auditors
+- OrignaGTA's actual SurrealDB usage (60 collections, 1,462 queries)
+
+---
+
+### 🔴 CRITICAL — Showstoppers for E-Commerce
+
+#### SDB-1. Transactions Are Fundamentally Broken
+- **Source:** Our codebase (`ob-database/src/transaction.rs:54-57`) + GitHub issue #4278 + #3404
+- **Finding:** `BEGIN TRANSACTION` / `COMMIT` blocks do NOT support `THROW` inside them in SurrealDB. This is a documented limitation. Our workaround (concatenating statements without BEGIN/COMMIT) means **there is no rollback**. If statement 3 of 5 fails, statements 1-2 are permanently committed.
+- **E-Commerce Impact:** An order creation that inserts the order doc (statement 1) and decrements stock (statement 2) but fails on coupon redemption (statement 3) leaves the system in an inconsistent state: order exists, stock decremented, coupon not applied.
+- **PostgreSQL:** Full ACID transactions with SAVEPOINT, ROLLBACK, and error handling via `EXCEPTION` blocks.
+- **Severity:** CRITICAL — This alone justifies migration for any system handling money.
+
+#### SDB-2. Data Durability Is Opt-In (Defaults to Unsafe)
+- **Source:** Blog post by ChillFish8 (Aug 2025) + GitHub discussions #6004
+- **Finding:** `SURREAL_SYNC_DATA` defaults to `false`. Without it, RocksDB/SurrealKV backends do NOT call `fsync`/`fdatasync` after writes. Data lives in OS page cache only. Power outage = potential total data corruption.
+- **E-Commerce Impact:** Payment records, order data, stock levels — all could vanish on crash. Multiple users reported DB corruption after power outages with zero response from SurrealDB team.
+- **PostgreSQL:** `fsync=on` by default. 30+ years of durability engineering. WAL (Write-Ahead Logging) guarantees crash recovery.
+- **Severity:** CRITICAL — Acceptable for a blog. Unacceptable for a payment system.
+
+#### SDB-3. Transaction Read Conflicts Under Concurrency
+- **Source:** GitHub issues #5273, #1620, #4898, #7072
+- **Finding:** SurrealDB's snapshot isolation has known bugs. Concurrent reads/writes to the same table cause "Transaction read conflict" errors. `LIVE SELECT` across connections triggers conflicts. Index compaction causes conflicts even on in-memory backend (v3.0.3).
+- **E-Commerce Impact:** Two users buying the last item simultaneously → transaction conflict → one user gets an error instead of "out of stock". Checkout under load → random transaction failures.
+- **PostgreSQL:** MVCC with proven snapshot isolation. No read conflicts on concurrent access. Decades of battle-testing under e-commerce load (Shopify, Stripe, WooCommerce all run on Postgres).
+- **Severity:** CRITICAL — Directly impacts checkout reliability.
+
+---
+
+### 🟠 HIGH — Significant Limitations
+
+#### SDB-4. ORDER BY Performance Is Severely Degraded
+- **Source:** GitHub issues #3746 (open since Mar 2024), #7030, #5943, #5588, #5735
+- **Finding:** ORDER BY causes major performance degradation. Mixed ASC/DESC cannot use compound indexes. 2-column index breaks ORDER BY with LIMIT. "No Iterator has been found" errors when using indexes with ORDER BY.
+- **E-Commerce Impact:** "Sort by price low-to-high" is a core e-commerce feature. With SurrealDB, this either doesn't use indexes (full table scan) or crashes. Product catalog browsing is unusable at scale.
+- **PostgreSQL:** B-tree indexes natively support ASC/DESC ordering. `ORDER BY price ASC LIMIT 20` is O(log n) with an index. Decades of query planner optimization.
+- **Severity:** HIGH — Broken product sorting is a dealbreaker for marketplace UX.
+
+#### SDB-5. No Real Schema Enforcement or Migration System
+- **Source:** Our codebase — no `.surql` files, no migration versioning
+- **Finding:** SurrealDB's `SCHEMAFULL` mode exists but there's no standard migration tooling. Schema is applied programmatically at runtime. No rollback capability. No version tracking.
+- **E-Commerce Impact:** Schema changes (adding a field, changing a type) require manual coordination. No way to safely roll back a bad migration. Risk of data inconsistency across environments.
+- **PostgreSQL:** Mature migration tools (diesel, sqlx-migrate, sea-orm). Versioned migrations with up/down. Rollback support. Industry standard.
+- **Severity:** HIGH — Operational risk grows with team size and deployment frequency.
+
+#### SDB-6. Maturity and Stability Concerns
+- **Source:** Reddit (r/surrealdb, r/rust), GitHub issue #5199
+- **Finding:** SurrealDB is ~3 years old (v1.0: Sep 2023, v3.0: Feb 2026). Community sentiment: "not prod ready" (Reddit Sep 2024), "extremely buggy" (Reddit Aug 2025), "wasted months" (Reddit Sep 2024). Multiple "SurrealDB Exhibits High Instability" issues. v3.0 has regressions (#7037: "Big SELECT query takes forever").
+- **E-Commerce Impact:** Running a payment system on a database with known instability. No battle-tested production deployments at scale. Limited community support for debugging production issues.
+- **PostgreSQL:** 35+ years. Runs Shopify ($200B+ GMV), Stripe ($1T+ processed), thousands of e-commerce platforms. Massive community, extensive documentation, proven at any scale.
+- **Severity:** HIGH — Risk assessment for a system handling real money.
+
+#### SDB-7. Slow Authentication Queries
+- **Source:** GitHub issue #5829 (open)
+- **Finding:** Auth to SurrealDB server can take >5 seconds. Login latency directly impacts user experience.
+- **E-Commerce Impact:** Users waiting 5+ seconds for login. Cart abandonment increases with each second of latency.
+- **Severity:** HIGH — Directly impacts conversion rates.
+
+---
+
+### 🟡 MEDIUM — Workable But Suboptimal
+
+#### SDB-8. No Error Handling Inside Transactions
+- **Source:** GitHub issues #2888, #4456
+- **Finding:** No TRY-CATCH in SurrealQL. `THROW` error messages don't return from transaction scope. Errors from inner queries are swallowed.
+- **E-Commerce Impact:** Cannot implement proper error recovery in complex multi-step operations (checkout, refund). Errors are opaque.
+- **Severity:** MEDIUM — Workaround exists but adds complexity.
+
+#### SDB-9. SDK Quality Issues
+- **Source:** Reddit community reports, our own findings (P0-6, P0-7)
+- **Finding:** Flutter SDK has GraphQL injection vulnerability, WebSocket auth broken, memory leaks in snapshots/reconnect. Community reports "half-baked SDKs".
+- **E-Commerce Impact:** SDK bugs directly translate to security vulnerabilities and data integrity issues.
+- **Severity:** MEDIUM — SDK can be fixed, but indicates broader quality issues.
+
+#### SDB-10. No Native Full-Text Search (Requires Meilisearch Sidecar)
+- **Source:** Our architecture (ob-search crate syncs to Meilisearch)
+- **Finding:** SurrealDB has no built-in full-text search. We maintain a separate Meilisearch instance with a sync pipeline. This adds operational complexity and a failure mode (sync lag, sync failures).
+- **PostgreSQL:** `tsvector`/`tsquery` for built-in FTS. Or pg_trgm for fuzzy search. Optional: pgvector for semantic search.
+- **Severity:** MEDIUM — Operational overhead, not a blocker.
+
+---
+
+### Migration Difficulty Assessment
+
+#### What OrignaGTA Actually Uses from SurrealDB
+
+| Feature | Used? | Migration Complexity |
+|---------|-------|---------------------|
+| Flat document collections | YES (60) | LOW — direct SQL table mapping |
+| Graph relationships (RELATE) | NO | N/A |
+| LIVE SELECT | NO | N/A — custom WebSocket used |
+| Events/Triggers | NO | N/A |
+| Functions/Stored Procs | NO | N/A |
+| Analyzers/FTS | NO | N/A — Meilisearch used |
+| Vector search | YES (1 location) | LOW — pgvector or drop |
+| Scopes/Permissions | NO | N/A |
+| Transactions (real) | NO (broken) | N/A — will gain real transactions |
+| Parameterized queries | YES | LOW — SQL $1, $2 syntax |
+| type::thing() | YES | MEDIUM — replace with table.id syntax |
+| FieldValue ops | YES | MEDIUM — implement in Rust layer |
+
+#### Files to Rewrite
+
+| File | Lines | Effort |
+|------|-------|--------|
+| `ob-database/src/client.rs` | 83 | LOW — replace with sqlx/diesel |
+| `ob-database/src/crud.rs` | 1,077 | MEDIUM — core abstraction layer |
+| `ob-database/src/query.rs` | 486 | MEDIUM — query translator |
+| `ob-database/src/transaction.rs` | 147 | LOW — real transactions now available |
+| `ob-database/src/task_queue.rs` | 1,056 | MEDIUM — job queue pattern |
+| Handler files (query_raw) | ~30 files | MEDIUM — rewrite ~200 raw queries |
+| `ob-admin/src/schema.rs` | ~200 | LOW — migration files replace this |
+| `ob-handlers/src/shared/indexes.rs` | ~50 | LOW — CREATE INDEX statements |
+| **Dart SDK (`collection.dart`, `query.dart`, `realtime.dart`, `auth.dart`)** | ~2,000 | HIGH — rewrite or use postgres-compatible abstraction |
+
+#### Estimated Total Effort
+- **Rust backend:** ~5,000 lines to rewrite across ~35 files
+- **Dart SDK:** ~2,000 lines to rewrite (or replace with a Postgres-compatible client)
+- **Schema migration:** 60 tables + 13 indexes
+- **Testing:** Re-run all 9,078 tests
+- **Estimated time:** 2-3 weeks with a focused team
+
+---
+
+### Recommended Migration Path
+
+**Target: PostgreSQL 18 + sqlx (Rust)**
+
+| Phase | Scope | Duration |
+|-------|-------|----------|
+| 1 | Schema migration (60 tables, indexes, constraints) | 2-3 days |
+| 2 | `ob-database` crate rewrite (client, crud, query, transaction) | 3-5 days |
+| 3 | Handler query rewrites (~200 raw queries) | 3-5 days |
+| 4 | Task queue migration | 1-2 days |
+| 5 | Dart SDK replacement (use HTTP REST to backend, not direct DB) | 2-3 days |
+| 6 | Integration testing + live test migration | 2-3 days |
+| 7 | Staged rollout + monitoring | 1-2 days |
+| **Total** | | **~3 weeks** |
+
+**Why PostgreSQL 18 specifically:**
+- Full ACID with real transactions (SAVEPOINT, ROLLBACK)
+- Crash-safe by default (WAL, fsync)
+- ORDER BY uses indexes natively
+- 35+ years of production hardening (v18.3 released Feb 2026)
+- sqlx for Rust: compile-time checked queries, async, connection pooling
+- pgvector available if vector search is needed later
+- Improved query planner, incremental backup, JSON improvements in v17+
+- Massive ecosystem: migration tools, ORMs, monitoring, backup solutions
+- Runs Shopify, Stripe, thousands of e-commerce platforms at scale
+
+---
+
+### Final Verdict
+
+| Question | Answer |
+|----------|--------|
+| **Can SurrealDB handle e-commerce?** | **NO.** Not in its current state. Broken transactions, opt-in durability, ORDER BY performance issues, and stability concerns make it fundamentally unsuitable for a system handling real money. |
+| **Should we migrate?** | **YES.** Migrate to PostgreSQL. The migration surface area is manageable (flat documents, no graph features, well-abstracted query layer). The risks of staying on SurrealDB (data loss, transaction inconsistency, checkout failures) far outweigh the migration effort (~3 weeks). |
+| **When?** | **ASAP.** Every day on SurrealDB is a day where a power outage could corrupt payment data, a concurrent checkout could lose stock, or a transaction could partially commit without rollback. |

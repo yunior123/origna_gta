@@ -67,7 +67,7 @@ Well-organized files use section headers:
 **Example** (`timestamp.dart:32-34`):
 ```dart
 // =============================================================================
-// SurrealDB v2 -> Dart timestamp precision workaround
+// PostgreSQL -> Dart timestamp precision workaround
 // =============================================================================
 ```
 
@@ -103,12 +103,12 @@ Non-obvious solutions are documented with problem/solution:
 **Example** (`timestamp.dart:36-69`):
 ```dart
 // ## Problem
-// SurrealDB v2 stores timestamps with nanosecond precision (9 fractional digits).
-// Dart's [DateTime.parse] only supports up to microsecond precision (6 digits).
+// PostgreSQL stores timestamps with microsecond precision (6 fractional digits).
+// Dart's [DateTime.parse] supports up to microsecond precision (6 digits).
 //
 // ## Solution
-// Before any `DateTime.parse` call on a SurrealDB timestamp, truncate the
-// fractional digits from 9 to 6 using [truncateNanoseconds].
+// Before any `DateTime.parse` call on a PostgreSQL timestamp, truncate the
+// fractional digits to 6 using [truncateNanoseconds].
 //
 // ## Where this is applied
 // - [OrignaBaseProductRepository.docToProduct] — product timestamps

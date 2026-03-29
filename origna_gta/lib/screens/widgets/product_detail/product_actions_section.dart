@@ -506,14 +506,17 @@ class _AddToCartButtonState extends ConsumerState<AddToCartButton> {
       if (!context.mounted) return;
       if (cartDetails.isEmpty) return;
 
-      final subtotal = cartDetails.fold(
-        0.0,
-        (total, item) => total + (item.price * item.quantity),
+      final subtotalCents = cartDetails.fold<int>(
+        0,
+        (total, item) => total + (item.priceCents * item.quantity),
       );
       Navigator.pushNamed(
         context,
         AppRoutes.checkout,
-        arguments: CheckoutArgs(items: cartDetails, total: subtotal),
+        arguments: CheckoutArgs(
+          items: cartDetails,
+          total: subtotalCents / 100.0,
+        ),
       );
     } finally {
       if (mounted) ref.read(_isBuyingNowProvider.notifier).state = false;

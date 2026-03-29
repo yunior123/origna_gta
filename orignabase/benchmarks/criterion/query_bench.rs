@@ -2,7 +2,7 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use serde_json::json;
 
 /// Benchmark GraphQL filter translation (the logic that converts
-/// `{field: {_eq: value}}` style filters into SurrealQL WHERE clauses).
+/// `{field: {_eq: value}}` style filters into SQL WHERE clauses).
 ///
 /// This benchmarks the core hot path of every database query.
 fn bench_filter_translation(c: &mut Criterion) {

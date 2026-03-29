@@ -2,7 +2,7 @@
 //! Ported from: functions/handlers/products.py (on_product_created, on_product_updated, on_product_deleted)
 //!
 //! These are NOT HTTP routes. They are called from the ob-functions trigger system
-//! when product documents are created/updated/deleted in SurrealDB.
+//! when product documents are created/updated/deleted in PostgreSQL.
 
 use ob_database::DatabaseClient;
 use serde_json::Value;

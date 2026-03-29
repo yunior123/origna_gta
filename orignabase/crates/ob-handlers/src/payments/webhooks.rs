@@ -262,7 +262,7 @@ async fn is_duplicate_webhook(
     state: &HandlersState,
     event_id: &str,
 ) -> Result<bool, ob_core::Error> {
-    // Stripe event IDs are "evt_xxx" format, not SurrealDB record IDs.
+    // Stripe event IDs are "evt_xxx" format
     // Just validate non-empty and reasonable length.
     if event_id.is_empty() || event_id.len() > 512 {
         return Err(ob_core::Error::Validation(
@@ -328,7 +328,7 @@ async fn try_store_webhook_event_atomic(
         ));
     }
 
-    // Try CREATE — SurrealDB errors on duplicate ID
+    // Try CREATE — errors on duplicate ID
     let result = state
         .db
         .create_document(
@@ -601,8 +601,7 @@ async fn mark_coupon_redeemed(
                 "now": now,
             }),
         )
-        .await
-        .unwrap_or_default();
+        .await?;
 
     if !rows.is_empty() {
         info!(order_id = %order_id, coupon_code = %coupon_code, "Coupon marked as redeemed");
@@ -791,6 +790,9 @@ async fn handle_payment_intent_failed(
             OrderStatus::Cancelled.as_str(),
         )
         .await?;
+
+        // Restore stock for cancelled order (stock was decremented at checkout)
+        restore_stock_for_order(state, &order).await?;
     }
 
     // Release coupon reservation (unmark as used)
@@ -799,7 +801,7 @@ async fn handle_payment_intent_failed(
     warn!(
         order_id = %order_id,
         payment_intent_id = %pi_id,
-        "Payment intent failed: order cancelled, coupon released"
+        "Payment intent failed: order cancelled, stock restored, coupon released"
     );
 
     Ok(())
@@ -848,6 +850,9 @@ async fn handle_payment_intent_canceled(
             OrderStatus::Cancelled.as_str(),
         )
         .await?;
+
+        // Restore stock for cancelled order (stock was decremented at checkout)
+        restore_stock_for_order(state, &order).await?;
     }
 
     // Release coupon reservation
@@ -856,7 +861,7 @@ async fn handle_payment_intent_canceled(
     info!(
         order_id = %order_id,
         payment_intent_id = %pi_id,
-        "Payment intent cancelled: order cancelled, coupon released"
+        "Payment intent cancelled: order cancelled, stock restored, coupon released"
     );
 
     Ok(())

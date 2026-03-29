@@ -1,6 +1,6 @@
 ---
 name: flow-audit
-description: "Deep audit of OrignaGTA e-commerce flows. Traces the real data path (Screen → ref.read(notifier) → ViewModel → Repository → OrignaBase SDK → GraphQL → SurrealDB → back) for 12 critical flows. Grounded in Stripe docs, OWASP e-commerce top 10, and real production bugs (double checkout, stock race conditions, webhook idempotency failures, amount miscalculation, Riverpod race conditions). Finds logic bugs, race conditions, missing error handling, and security gaps. Use when asked to 'audit a flow', 'deep logic audit', 'trace checkout', 'find bugs', 'review orders', or similar."
+description: "Deep audit of OrignaGTA e-commerce flows. Traces the real data path (Screen → ref.read(notifier) → ViewModel → Repository → OrignaBase SDK → GraphQL → PostgreSQL → back) for 12 critical flows. Grounded in Stripe docs, OWASP e-commerce top 10, and real production bugs (double checkout, stock race conditions, webhook idempotency failures, amount miscalculation, Riverpod race conditions). Finds logic bugs, race conditions, missing error handling, and security gaps. Use when asked to 'audit a flow', 'deep logic audit', 'trace checkout', 'find bugs', 'review orders', or similar."
 ---
 
 # Flow Audit — OrignaGTA
@@ -88,11 +88,11 @@ Every audit traces this exact path. At each step, check the specific criteria be
 5. Server (Rust axum handlers)
    └─ normalize_data() — parses double-encoded JSON string
    └─ Resolver: validation, auth check (Extension<User>), ownership check
-   └─ SurrealDB: query_bind() with $params — NEVER format!() (injection risk)
+    └─ PostgreSQL: query_bind() with $params — NEVER format!() (injection risk)
 
-6. SurrealDB
-   └─ Atomic operations (UPDATE SET field -= $qty WHERE field >= $qty)
-   └─ Transactions for multi-step operations
+6. PostgreSQL
+   └─ Atomic operations (UPDATE SET field = field - $qty WHERE field >= $qty)
+   └─ Transactions (BEGIN/COMMIT) for multi-step operations
    └─ query_raw_value for aggregates (no id field in GROUP ALL)
 
 7. Response path (reverse)
@@ -134,7 +134,7 @@ LAYER 1: API Idempotency Key
 LAYER 2: Database Constraint
   - UNIQUE constraint on (orderId, eventType) or (orderId, status)
   - Even if idempotency cache fails, DB rejects duplicate
-  - SurrealDB: upsert or UNIQUE index pattern
+   - PostgreSQL: upsert (INSERT ... ON CONFLICT DO UPDATE) or UNIQUE constraint
   - Safety net if application logic has a bug
 
 LAYER 3: Application Logic
@@ -221,12 +221,12 @@ BUG PATTERN (Production e-commerce, Feb 2026):
   // Result: stock = -1
 
 SAFE PATTERN (atomic conditional decrement):
-  // SurrealDB: single query, check + update atomically
+  // PostgreSQL: single query, check + update atomically
   await db.query("
-    UPDATE type::thing('products', $id) 
-    SET stockQuantity -= $qty 
-    WHERE stockQuantity >= $qty
-  ").bind(("id", productId)).bind(("qty", quantity)).await?;
+    UPDATE products
+    SET stockQuantity = stockQuantity - $1
+    WHERE id = $2 AND stockQuantity >= $1
+  ", [quantity, productId]).await?;
   // If 0 rows affected → out of stock
 ```
 
@@ -241,16 +241,16 @@ SAFE PATTERN (atomic conditional decrement):
 
 **Key insight from research:** The atomic `UPDATE ... WHERE` pattern is sufficient for 99% of cases. SERIALIZABLE is only needed when multiple related tables must be consistent (e.g., stock + order + payment in one transaction).
 
-**For SurrealDB specifically:**
-- [ ] Does SurrealDB support transactions? Use `BEGIN` / `COMMIT` for multi-step
-- [ ] Is `query_bind()` used for ALL parameters? (No `format!()` — injection risk)
+**For PostgreSQL specifically:**
+- [ ] Does PostgreSQL support transactions? Use `BEGIN` / `COMMIT` for multi-step
+- [ ] Are all queries parameterized? (No `format!()` — injection risk)
 - [ ] Is `affected_rows` checked after atomic update? (0 = out of stock)
 - [ ] For flash-sale items: is there a reservation queue or token system?```
 
 **Audit questions:**
 - [ ] Does `addToCart()` in `orignabase_cart_repository.dart` check stock AT ALL?
 - [ ] Is stock check atomic or read-then-write?
-- [ ] If read-then-write: is there a SurrealDB transaction wrapping the check + decrement?
+- [ ] If read-then-write: is there a PostgreSQL transaction wrapping the check + decrement?
 - [ ] What happens if stock goes to 0 between the check and the cart write?
 - [ ] Does quantity accumulation (`addToCart` with existing item) validate stock for the NEW total?
 - [ ] Is stock decrement on `addToCart` or on payment confirmation? (Should be on confirmation)
@@ -568,7 +568,7 @@ BUG PATTERN:
 
 **Audit questions:**
 - [ ] Is there a `webhook_events` collection tracking processed event IDs?
-- [ ] Is the idempotency check ATOMIC with business logic? (SurrealDB transaction)
+- [ ] Is the idempotency check ATOMIC with business logic? (PostgreSQL transaction)
 - [ ] If the app crashes between idempotency check and business logic, what happens on retry?
 - [ ] Does the idempotency check use `event.id` (Stripe's unique ID)?
 - [ ] What timestamp field does `webhook_events` use? (Should be `timestamp` or `createdAt`)

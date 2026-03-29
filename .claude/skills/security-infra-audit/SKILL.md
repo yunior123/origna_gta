@@ -4,7 +4,7 @@
 Use when asked to 'audit security infra', 'check latest threats', 'security news audit', 'real-world vulnerability check', or before any release/deploy.
 
 ## What It Does
-1. Searches latest security news for attack patterns affecting our stack (e-commerce, Rust, Flutter, SurrealDB, Stripe, Cloudflare, axum)
+1. Searches latest security news for attack patterns affecting our stack (e-commerce, Rust, Flutter, PostgreSQL, Stripe, Cloudflare, axum)
 2. Cross-references real-world incidents against our codebase
 3. Reports ONLY critical issues with evidence — zero false positives
 4. Uses quorum verification (3-agent consensus) for any P0/P1 finding
@@ -16,7 +16,7 @@ Use when asked to 'audit security infra', 'check latest threats', 'security news
 Search queries (run all):
 - "e-commerce vulnerability 2026" site:bleepingcomputer.com OR site:thehackernews.com
 - "Rust axum security vulnerability" -tutorial
-- "SurrealDB CVE" OR "SurrealDB security"
+- "PostgreSQL CVE" OR "PostgreSQL security"
 - "Stripe payment bypass 2026"
 - "Flutter web vulnerability XSS"
 - "supply chain attack npm bun cargo 2026"

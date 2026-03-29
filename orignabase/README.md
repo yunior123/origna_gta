@@ -13,7 +13,7 @@ A lightweight, blazingly fast, self-hosted Backend-as-a-Service. Firebase/Supaba
 - **Serverless Functions** — WASM runtime (wasmi) with fuel metering
 - **Analytics** — Privacy-first event tracking (hashed IPs, no cookies)
 - **Admin API** — Schema management, user management
-- **SurrealDB** — Multi-model database (document + graph), LIVE queries
+- **PostgreSQL** — ACID-compliant relational database with full transaction support
 - **Single Binary** — One process, all services, <30MB Docker image
 
 ## Quick Start
@@ -30,7 +30,7 @@ OrignaBase runs at `http://localhost:8080`. GraphiQL playground at `http://local
 ### From Source
 
 ```bash
-# Prerequisites: Rust 1.85+, SurrealDB v2 running on localhost:8000
+# Prerequisites: Rust 1.85+, PostgreSQL running on localhost:5432
 
 source ./scripts/cargo-target-dir.sh
 export_orignabase_cargo_target_dir dev
@@ -76,9 +76,10 @@ Configure via `orignabase.toml` or environment variables:
 ```bash
 OB_HOST=0.0.0.0
 OB_PORT=8080
-OB_DATABASE__ENDPOINT=localhost:8000
-OB_DATABASE__USERNAME=root
-OB_DATABASE__PASSWORD=root
+OB_DATABASE__ENDPOINT=localhost:5432
+OB_DATABASE__USERNAME=orignabase
+OB_DATABASE__PASSWORD=orignabase
+OB_DATABASE__NAME=orignabase
 OB_AUTH__JWT_SECRET=your-secret-here
 OB_SECRETS__STRIPE_SECRET_KEY=sk_test_...
 OB_SECRETS__STRIPE_WEBHOOK_SECRET=whsec_...
@@ -212,7 +213,7 @@ Covers: query translation, security rules evaluation, rule parsing, Argon2id has
 ```
 orignabase (single binary)
 ├── ob-core       — Config, AppState, server assembly
-├── ob-database   — SurrealDB client, CRUD, query translator
+├── ob-database   — PostgreSQL client, CRUD, query translator
 ├── ob-auth       — JWT, Argon2id, email/password auth
 ├── ob-graphql    — Dynamic GraphQL schema + resolvers
 ├── ob-security   — Rules DSL parser (pest) + evaluator
@@ -252,19 +253,17 @@ See `sdks/flutter/orignabase/` for the full SDK.
 
 ## Horizontal Scaling
 
-### TiKV Backend
+### PostgreSQL Connection Pooling
 
-Replace embedded RocksDB with TiKV for horizontal database scaling:
+Use PgBouncer for connection pooling and horizontal scaling:
 
 ```bash
-# Start SurrealDB with TiKV backend
-surreal start --user root --pass root tikv://pd:2379
+# Start PgBouncer in front of PostgreSQL
+pgbouncer /etc/pgbouncer/pgbouncer.ini
 
-# Point OrignaBase to TiKV-backed SurrealDB
-OB_DATABASE__ENDPOINT=ws://surrealdb:8000 orignabase serve
+# Point OrignaBase to PgBouncer
+OB_DATABASE__ENDPOINT=pgbouncer:6432 orignabase serve
 ```
-
-No code changes needed — SurrealDB abstracts the storage engine. Just change the connection target.
 
 ### Multi-Node Clustering (NATS JetStream)
 

@@ -21,7 +21,7 @@ Never skip states. Never reverse. `delivered` and `cancelled` are terminal.
 
 ## Stock Management
 - Decrement stock on `confirmed` (at Stripe payment webhook)
-- Restore stock on `cancelled` (if was `confirmed` or later) via SurrealDB `Increment()` in transaction
+- Restore stock on `cancelled` (if was `confirmed` or later) via PostgreSQL transaction
 - Restore stock on return approved
 - Always atomic — never read-then-write (race condition risk)
 
@@ -48,7 +48,7 @@ Never skip states. Never reverse. `delivered` and `cancelled` are terminal.
 - Shipping calculated per seller warehouse address
 - Stripe Connect payout per seller after delivery
 
-## Schema (SurrealDB `orders` collection)
+## Schema (PostgreSQL `orders` table)
 - Timestamp field: `createdAt` (Unix timestamp, integer)
 - Key fields: `buyerId`, `sellerId`, `status`, `items[]`, `totalAmountCents`, `subtotalCents`, `taxAmountCents`, `shippingCostCents`
 - Items: `[{ productId, name, quantity, unitPriceCents, imageUrl }]` — snapshot at creation
@@ -69,7 +69,7 @@ Never skip states. Never reverse. `delivered` and `cancelled` are terminal.
 
 ## Forbidden
 - ❌ State jumps (e.g., `pending` → `delivered`)
-- ❌ Restoring stock without a SurrealDB transaction
+- ❌ Restoring stock without a PostgreSQL transaction
 - ❌ Issuing refunds without updating order status
 - ❌ Modifying `items[]` after creation
 - ❌ Changing `totalAmountCents` after payment captured

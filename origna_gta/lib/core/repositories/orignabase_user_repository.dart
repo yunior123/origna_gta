@@ -34,7 +34,7 @@ class OrignaBaseUserRepository implements UserRepository {
     return _ob.auth.currentUserId;
   }
 
-  /// Strip SurrealDB collection prefix from an ID so it can be used as a
+  /// Strip PostgreSQL collection prefix from an ID so it can be used as a
   /// document key in a *different* collection.
   ///
   /// `"users:abc123"` → `"abc123"`;  `"abc123"` → `"abc123"`.
@@ -277,7 +277,7 @@ class OrignaBaseUserRepository implements UserRepository {
   /// stripping and nested address field normalization.
   Address _parseAddressDocument(Map<String, dynamic> doc, {String? docId}) {
     // Strip collection prefix from docId (e.g., "addresses:abc123" → "abc123")
-    // and backticks that SurrealDB adds around UUIDs (e.g., "`abc-123`" → "abc-123").
+    // and backticks that PostgreSQL adds around UUIDs (e.g., "`abc-123`" → "abc-123").
     final bareDocId = docId != null ? _bareId(docId).replaceAll('`', '') : null;
 
     final rawAddress = doc[Fields.address];

@@ -5,7 +5,7 @@ Run a full architecture scan of this monorepo (Flutter frontend in `origna_gta/`
 Produce:
 1. File inventory by language and type
 2. Module map with purpose and dependencies
-3. Layer diagram (Screens → ViewModels → Services → OrignaBase SDK → SurrealDB/Meilisearch/Stripe)
+3. Layer diagram (Screens → ViewModels → Services → OrignaBase SDK → PostgreSQL/Meilisearch/Stripe)
 4. Dependency graph with critical paths
 5. Circular dependency check
 6. Guided tour for a new developer joining this project

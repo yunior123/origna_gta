@@ -4,7 +4,7 @@ Use when asked to "run full audit", "codex audit", "audit everything before depl
 
 ## Instructions for Codex
 
-You are auditing the OrignaGTA monorepo — a Canadian multi-vendor e-commerce marketplace. Flutter frontend + Rust/OrignaBase backend + SurrealDB + Meilisearch + Stripe payments.
+You are auditing the OrignaGTA monorepo — a Canadian multi-vendor e-commerce marketplace. Flutter frontend + Rust/OrignaBase backend + PostgreSQL + Meilisearch + Stripe payments.
 
 **REAL MONEY IS AT STAKE.** Stripe processes live payments. Any bug in checkout, webhooks, refunds, or platform fees = financial loss. Be ruthlessly critical on payment flows.
 
@@ -103,7 +103,7 @@ You are auditing the OrignaGTA monorepo — a Canadian multi-vendor e-commerce m
 - [ ] Turnstile validation on register + login + checkout (not skippable)
 - [ ] OAuth state parameter for CSRF protection
 - [ ] No `userId` from client trusted — always derive from JWT
-- [ ] Row-level security in SurrealDB PERMISSIONS clauses
+- [ ] Row-level security in PostgreSQL RLS policies
 - [ ] Admin actions logged with `adminUid`
 - [ ] No PII (emails, phones, addresses) in logs
 

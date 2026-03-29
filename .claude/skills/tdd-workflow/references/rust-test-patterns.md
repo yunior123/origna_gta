@@ -8,12 +8,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_sanitize_surrealdb_id_for_meilisearch() {
+    fn test_sanitize_record_id_for_meilisearch() {
         // Arrange
-        let surreal_id = "products:abc123";
+        let record_id = "products_abc123";
 
         // Act
-        let meili_id = sanitize_id(surreal_id);
+        let meili_id = sanitize_id(record_id);
 
         // Assert
         assert_eq!(meili_id, "products_abc123");
@@ -133,29 +133,29 @@ mod tests {
 }
 ```
 
-## Testing with SurrealDB (Integration)
+## Testing with PostgreSQL (Integration)
 
 ```rust
 #[cfg(test)]
 mod tests {
-    use surrealdb::engine::local::Mem;
-    use surrealdb::Surreal;
+    use sqlx::PgPool;
 
-    async fn setup_test_db() -> Surreal<surrealdb::engine::local::Db> {
-        let db = Surreal::new::<Mem>(()).await.unwrap();
-        db.use_ns("test").use_db("test").await.unwrap();
+    async fn setup_test_db() -> PgPool {
+        let pool = PgPool::connect("postgresql://localhost:5432/test_db")
+            .await
+            .unwrap();
         // Run schema migrations
-        db.query(include_str!("../schema/orders.surql")).await.unwrap();
-        db
+        sqlx::migrate!("../migrations").run(&pool).await.unwrap();
+        pool
     }
 
     #[tokio::test]
     async fn test_create_order() {
         // Arrange
-        let db = setup_test_db().await;
+        let pool = setup_test_db().await;
         let order = Order {
-            buyer_id: "users:buyer1".into(),
-            seller_id: "users:seller1".into(),
+            buyer_id: "buyer1".into(),
+            seller_id: "seller1".into(),
             status: OrderStatus::Pending,
             total_amount_cents: 5000,
             items: vec![],

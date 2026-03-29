@@ -1,7 +1,7 @@
-use ob_core::{escape_surreal_string, validate_identifier};
+use ob_core::{escape_sql_string, validate_identifier};
 use serde_json::Value;
 
-/// Translates GraphQL-style filter operators into SurrealQL WHERE clauses.
+/// Translates GraphQL-style filter operators into SQL WHERE clauses.
 ///
 /// Supported operators:
 /// - `_eq`: equals
@@ -13,7 +13,7 @@ use serde_json::Value;
 pub struct QueryTranslator;
 
 impl QueryTranslator {
-    /// Convert a filter map `{ field: { _op: value } }` to a SurrealQL WHERE clause.
+    /// Convert a filter map to a SQL WHERE clause.
     pub fn filters_to_where(filters: &Value) -> String {
         let Some(obj) = filters.as_object() else {
             return String::new();
@@ -39,7 +39,7 @@ impl QueryTranslator {
     }
 
     fn translate_op(field: &str, op: &str, value: &Value) -> Option<String> {
-        // Validate field name to prevent SurrealQL injection
+        // Validate field name to prevent SQL injection
         if validate_identifier(field).is_err() {
             tracing::warn!("Rejected invalid field name in filter: {field}");
             return None;
@@ -61,12 +61,9 @@ impl QueryTranslator {
                 }
             }
             "_contains" => Some(format!("{field} CONTAINS {val_str}")),
-            "_starts_with" => value.as_str().map(|s| {
-                format!(
-                    "string::startsWith({field}, '{}')",
-                    escape_surreal_string(s)
-                )
-            }),
+            "_starts_with" => value
+                .as_str()
+                .map(|s| format!("string::startsWith({field}, '{}')", escape_sql_string(s))),
             _ => {
                 tracing::warn!("Unknown filter operator: {op}");
                 None
@@ -76,7 +73,7 @@ impl QueryTranslator {
 
     fn value_to_surreal(value: &Value) -> String {
         match value {
-            Value::String(s) => format!("'{}'", escape_surreal_string(s)),
+            Value::String(s) => format!("'{}'", escape_sql_string(s)),
             Value::Number(n) => n.to_string(),
             Value::Bool(b) => b.to_string(),
             Value::Null => "NONE".to_string(),
@@ -157,7 +154,7 @@ impl QueryTranslator {
 
         // Cursor-based pagination: startAfter
         if let Some(cursor_id) = start_after {
-            let safe_cursor = escape_surreal_string(cursor_id);
+            let safe_cursor = escape_sql_string(cursor_id);
             let order_field = order_by.unwrap_or("id");
             // Validate the order field used in cursor comparison
             if validate_identifier(order_field).is_ok() {
@@ -175,7 +172,7 @@ impl QueryTranslator {
         }
 
         if let Some(field) = order_by {
-            // Validate order_by field to prevent SurrealQL injection
+            // Validate order_by field to prevent SQL injection
             if validate_identifier(field).is_ok() {
                 let dir = if descending { "DESC" } else { "ASC" };
                 query.push_str(&format!(" ORDER BY {field} {dir}"));

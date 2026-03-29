@@ -87,7 +87,7 @@ Each pass is an independent agent. Run all 5 in parallel for maximum speed.
 **Focus:** OWASP, auth, payment security
 **Checks:**
 - Broken Access Control (OWASP A01): IDOR, privilege escalation
-- Injection (OWASP A03): SurrealQL injection, XSS
+- Injection (OWASP A03): SQL injection, XSS
 - Authentication (OWASP A07): session fixation, MFA bypass
 - SSRF (OWASP A10): image URL validation
 - Mishandling Exceptional Conditions (OWASP A10 2025)

@@ -77,7 +77,7 @@ mixin OrderQueryHelpers {
     }
   }
 
-  /// Strips the `collection:` prefix from a SurrealDB record ID for comparison.
+  /// Strips the `collection:` prefix from a PostgreSQL record ID for comparison.
   ///
   /// Example: `"users:abc123"` → `"abc123"`.
   static String normalizeId(String id) =>

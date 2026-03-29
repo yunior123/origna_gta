@@ -42,7 +42,7 @@
 
 ## Bugs Resolved (2026-03-27)
 1. [x] Flutter red assertion on Edit Product — Riverpod initState fix (Future.microtask)
-2. [x] Product detail load failure — SurrealDB nanosecond timestamps + sellerAddress province->state
+2. [x] Product detail load failure — PostgreSQL timestamp precision + sellerAddress province->state
 3. [ ] Home still shows old placeholder products first — needs reseed
 4. [x] E2E Phase 1: 464 pass, 0 fail
 5. [ ] E2E Phase 2-6: Codex B8 still running
@@ -61,7 +61,7 @@
 - [x] Codex model guardrail hook (blocks <gpt-5.4)
 
 ## Blockers for Discussion
-- [ ] **P1 Architectural**: Shared root DB session — SurrealDB PERMISSIONS not enforced
+- [ ] **P1 Architectural**: Shared root DB session — PostgreSQL RLS policies not enforced
 - [ ] **P2**: Mobile token persistence — no Keychain/Keystore (deferred to mobile launch)
 - [ ] **P2**: Reset page no token verify on load — UX improvement
 - [ ] **P2**: Schema creation no PERMISSIONS clauses — admin-only path
@@ -90,7 +90,7 @@
 | P1 | ob-auth/routes.rs:1218 | Password reset doesn't revoke existing refresh tokens/sessions |
 | P1 | orignabase SDK auth.dart:373 | Flutter logout is local-only — never calls /auth/logout |
 | P1 | orignabase SDK client.dart:203 | No auto-refresh on 401 — requests fail immediately on expiry |
-| P1 | ob-database/client.rs:23 | App uses shared root DB session — SurrealDB PERMISSIONS not enforced |
+| P1 | ob-database/client.rs:23 | App uses shared root DB session — PostgreSQL RLS policies not enforced |
 | P2 | config/prod.toml:18 | Refresh token 7 days vs documented 6 days |
 | P2 | ob-auth/routes.rs:1123 | forgot_password doesn't reset reset_token_used flag |
 | P2 | ob-auth/routes.rs:1566 | MFA lock flag written but never enforced |
@@ -156,7 +156,7 @@
 - [ ] **C1.** Rust backend coverage: measure with `cargo tarpaulin`, identify gaps, write tests to reach 95%+ — priority: live integration tests, NOT mocks
 - [ ] **C2.** Coverage gaps to close (from previous audit): ob-storage/s3.rs (55%), ob-notifications/routes.rs (58%), ob-storage/routes.rs (67%), ob-search/client.rs (70%), ob-mcp/transport.rs (74%), ob-realtime/websocket.rs (75%) — write real integration tests, not mocked stubs
 - [ ] **C3.** Flutter app coverage: `flutter test --coverage`, identify gaps, write tests to reach 95%+ — priority: live tests against localhost/dev
-- [ ] **C4.** Priority for live tests hitting real OrignaBase+SurrealDB+Meilisearch, unit tests secondary
+- [ ] **C4.** Priority for live tests hitting real OrignaBase+PostgreSQL+Meilisearch, unit tests secondary
 - [ ] **C5.** Fix ALL `test.skip` — implement the test properly or fix the infrastructure
 
 ### Phase D: Cleanup & Hygiene
@@ -171,7 +171,7 @@
 - [ ] **E2.** Use quorum verification (3+ agents agree) to eliminate false positives — only validated findings in STATE.md
 - [ ] **E3.** Run `/code-review` (4 parallel reviewers: correctness, security, performance, standards) — score >=9 blocks commit
 - [ ] **E4.** Audit all 10+ user flows: registration -> login -> browse -> search -> add-to-cart -> checkout -> payment -> order-tracking -> delivery -> return. Use `.claude/skills/flow-audit/SKILL.md`
-- [ ] **E5.** Auth system audit: backend JWT lifecycle, token refresh, Google OAuth, MFA TOTP, session management, admin role enforcement, row-level security in SurrealDB
+- [ ] **E5.** Auth system audit: backend JWT lifecycle, token refresh, Google OAuth, MFA TOTP, session management, admin role enforcement, row-level security in PostgreSQL
 - [ ] **E6.** Audit Stripe webhook endpoints: test ALL webhooks (payment_intent.succeeded, checkout.session.completed/expired, charge.dispute.created, account.updated, etc.) using Stripe CLI forwarding — both test and live mode verification
 - [ ] **E7.** Security infrastructure skill: search latest hacker news/CVEs/attack patterns, audit code against real-world findings, critical issues only, no false positives
 - [ ] **E8.** Add ALL audit findings to STATE.md with severity (P0/P1/P2), file:line, and fix status
@@ -180,7 +180,7 @@
 - [ ] **E11.** Audit ALL GoRouter routes: missing redirects, unprotected admin routes, deep link handling, 404 fallback
 - [ ] **E12.** Audit ALL form validations: client-side validators match backend constraints (email regex, postal code, phone E.164, price range, stock limits)
 - [ ] **E13.** Audit ALL image handling: CachedNetworkImage usage, missing placeholders, missing error widgets, R2 URL patterns, image dimensions
-- [ ] **E14.** Audit ALL SurrealDB queries in Rust: SQL injection risks, missing parameterized queries, N+1 patterns, missing indexes, transaction safety
+- [ ] **E14.** Audit ALL PostgreSQL queries in Rust: SQL injection risks, missing parameterized queries, N+1 patterns, missing indexes, transaction safety
 - [ ] **E15.** Audit ALL error messages: user-facing vs internal (no stack traces leaked), i18n readiness (en/fr), consistent error codes
 - [ ] **E16.** Audit ALL API endpoints in Rust: missing auth middleware, missing rate limiting, missing input validation, missing response sanitization
 - [ ] **E17.** Audit ALL Dart imports: no relative imports (../), no unused imports, no circular imports, package:origna_gta/ everywhere
@@ -206,7 +206,7 @@
 ### Phase F: Documentation — Pro Level
 - [ ] **F1.** Document ALL functions and classes with proper doc comments (/// for Dart, /// for Rust) — search web for best practices first
 - [ ] **F2.** Focus on complex logic that causes back-and-forth confusion (e.g., image compression flow: for loop -> Future.wait -> for loop pattern)
-- [ ] **F3.** Document data flows: UI -> ViewModel -> Service -> OrignaBase SDK -> SurrealDB — per feature
+- [ ] **F3.** Document data flows: UI -> ViewModel -> Service -> OrignaBase SDK -> PostgreSQL — per feature
 - [ ] **F4.** Document environment handling: how localhost/dev/staging/prod are configured, `OB_TEST_MODE`, rate limiting differences
 - [ ] **F5.** Use delegation (codex/gemini) for bulk documentation — too much for one agent
 
@@ -218,7 +218,7 @@
 - [ ] **G5.** Pipe all results to `/tmp/load-test-results/` directory
 
 ### Phase H: Infrastructure & Local Testing
-- [ ] **H1.** Improve localhost test config: Stripe CLI webhook forwarding (`stripe listen --forward-to localhost:8080/stripe/webhook`), OrignaBase local, SurrealDB local, Meilisearch local, Flutter web
+- [ ] **H1.** Improve localhost test config: Stripe CLI webhook forwarding (`stripe listen --forward-to localhost:8080/stripe/webhook`), OrignaBase local, PostgreSQL local, Meilisearch local, Flutter web
 - [ ] **H2.** Audit environment handling in main.rs: `OB_TEST_MODE` for localhost/dev/staging/prod — search web + GitHub for best practices (reference: current code at main.rs:1009)
 - [ ] **H3.** Monitor RAM when running local stack — kill stale/zombie processes before starting
 - [ ] **H4.** Verify staging + prod environments: health endpoints, email delivery, Stripe webhooks, Meilisearch sync
@@ -294,7 +294,7 @@
   - `origna_gta/lib/features/checkout/orignabase_checkout_provider.dart`
     - removed premature `cartItemsProvider` invalidation on checkout session creation
     - cart now remains until payment-confirmation webhook cleanup
-- SurrealDB field-value update hardening in:
+- PostgreSQL field-value update hardening in:
   - `orignabase/crates/ob-database/src/crud.rs`
     - value payloads now use bound parameters instead of interpolated `format!()` values
     - field names remain interpolated only after identifier validation

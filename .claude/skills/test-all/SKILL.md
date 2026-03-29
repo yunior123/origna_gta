@@ -83,7 +83,7 @@ OB_TEST_URL=https://api.dev.orignagta.ca cargo test -p orignabase -- --ignored
 | `stock_notifications_test.rs` | 5+ | Stock alerts |
 | `new_features_test.rs` | 10+ | Subscriptions, coupons, digital |
 | `miscellaneous_handlers_test.rs` | 10+ | Edge cases, idempotency |
-| `cross_service_test.rs` | 12 | SurrealDB+Meilisearch+Auth+WS |
+| `cross_service_test.rs` | 12 | PostgreSQL+Meilisearch+Auth+WS |
 | `smoke_test.rs` | 5+ | Health, config, startup |
 | `stress_test.rs` | 9 | Concurrent writes, bursts, large docs |
 | `reliability_test.rs` | 15 | Pool exhaustion, graceful shutdown, recovery |
@@ -178,7 +178,7 @@ echo "RAM: $(vm_stat 2>/dev/null | awk '/Pages free/ {printf "%.0f MB free\n", $
 echo ""
 
 # === LOCAL SERVICES MANAGEMENT ===
-# Start SurrealDB, Meilisearch, OrignaBase, Stripe CLI if not running
+# Start PostgreSQL, Meilisearch, OrignaBase, Stripe CLI if not running
 # These are needed for live/integration/E2E tests (Phases 7-12)
 
 echo "=== PHASE 0b: Local services ==="
@@ -194,18 +194,18 @@ if [ "$USE_LOCALHOST" = "1" ]; then
     sleep 3
   fi
 
-  # Start SurrealDB + Meilisearch via docker-compose
-  if ! curl -s http://localhost:8000/health &>/dev/null; then
-    echo "Starting SurrealDB + Meilisearch..."
+  # Start PostgreSQL + Meilisearch via docker-compose
+  if ! curl -s http://localhost:5432/health &>/dev/null; then
+    echo "Starting PostgreSQL + Meilisearch..."
     cd $PROJECT/orignabase/docker
-    docker compose up -d surrealdb meilisearch 2>&1
-    echo "Waiting for SurrealDB..."
+    docker compose up -d postgresql meilisearch 2>&1
+    echo "Waiting for PostgreSQL..."
     for i in $(seq 1 30); do
-      curl -s http://localhost:8000/health &>/dev/null && break
+      curl -s http://localhost:5432/health &>/dev/null && break
       sleep 1
     done
   fi
-  echo "  SurrealDB: $(curl -s -o /dev/null -w '%{http_code}' http://localhost:8000/health)"
+  echo "  PostgreSQL: $(curl -s -o /dev/null -w '%{http_code}' http://localhost:5432/health)"
   echo "  Meilisearch: $(curl -s -o /dev/null -w '%{http_code}' http://localhost:7700/health)"
 
   # Start OrignaBase
@@ -258,7 +258,7 @@ if [ "$USE_LOCALHOST" = "1" ]; then
   fi
 else
   echo "Using remote dev server: $OB_URL"
-  echo "(Set USE_LOCALHOST=1 to start local SurrealDB/Meilisearch/OrignaBase/Stripe)"
+  echo "(Set USE_LOCALHOST=1 to start local PostgreSQL/Meilisearch/OrignaBase/Stripe)"
 fi
 echo ""
 
@@ -370,7 +370,7 @@ if [ "$USE_LOCALHOST" = "1" ]; then
   echo "=== Stopping local services ==="
   [ -n "${ORIGNABASE_PID:-}" ] && kill $ORIGNABASE_PID 2>/dev/null && echo "  Stopped OrignaBase ($ORIGNABASE_PID)"
   [ -n "${STRIPE_PID:-}" ] && kill $STRIPE_PID 2>/dev/null && echo "  Stopped Stripe CLI ($STRIPE_PID)"
-  cd $PROJECT/orignabase/docker && docker compose down 2>/dev/null && echo "  Stopped SurrealDB + Meilisearch"
+  cd $PROJECT/orignabase/docker && docker compose down 2>/dev/null && echo "  Stopped PostgreSQL + Meilisearch"
 fi
 
 # Clean Rust build artifacts to free disk

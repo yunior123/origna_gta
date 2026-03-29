@@ -90,7 +90,7 @@ LAYER 1: API Idempotency Key
 LAYER 2: Database Constraint
   - Unique constraint on (orderId, status) or (orderId, eventType)
   - Even if idempotency cache fails, DB rejects duplicate
-  - SurrealDB: UNIQUE constraint or upsert pattern
+  - PostgreSQL: UNIQUE constraint or upsert (INSERT ... ON CONFLICT DO UPDATE)
 
 LAYER 3: Application Logic
   - Check if order already confirmed before processing

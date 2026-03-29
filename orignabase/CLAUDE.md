@@ -4,7 +4,7 @@
 # OrignaBase — Project Rules
 
 OrignaBase is a Rust BaaS (Backend as a Service) running on VPS at api.orignagta.ca.
-Tech stack: Rust (axum), SurrealDB, async-graphql, tower, JWT auth, Stripe, FCM.
+Tech stack: Rust (axum), PostgreSQL, async-graphql, tower, JWT auth, Stripe, FCM.
 
 ## Key Rules
 
@@ -14,7 +14,7 @@ Tech stack: Rust (axum), SurrealDB, async-graphql, tower, JWT auth, Stripe, FCM.
 4. GraphQL filters: OBJECT `{field: {_op: val}}` NOT array — server calls `filters.as_object()`
 5. WebSocket `/realtime` requires `?token=<jwt>` query param
 6. Storage: 2-step presigned URL — POST `/storage/presign/upload` → PUT to signed URL
-7. SurrealDB IDs contain `:` (e.g. `products:abc123`) — sanitize to `_` for Meilisearch
+7. PostgreSQL IDs use standard `UUID` format — sanitize to `_` for Meilisearch
 
 ## Testing
 
@@ -40,7 +40,7 @@ cargo build --release               # release build (needs extra swap on 8GB)
 
 ## Critical Rust Patterns (from LEARNED.md)
 
-- SurrealDB v2 Ws: `host:port` format only (no `ws://` prefix) — silent hang otherwise
-- SurrealDB RecordId: use `Record` wrapper struct with `#[serde(flatten)]`, not plain `Value`
+- PostgreSQL: use parameterized queries (`$1`, `$2`) — never string interpolation in SQL
+- PostgreSQL: use `sqlx::PgPool` for connection pooling with proper transaction handling
 - tower_governor behind Docker/Caddy: use `PeerIpKeyExtractor` not `SmartIpKeyExtractor`
 - Full LTO + codegen-units=1 OOMs on 8GB → add 4GB swap before release build
