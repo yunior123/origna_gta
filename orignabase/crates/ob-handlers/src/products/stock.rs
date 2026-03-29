@@ -207,6 +207,7 @@ mod tests {
     use std::sync::Arc;
 
     async fn setup_state() -> HandlersState {
+        unsafe { std::env::set_var("OB_TEST_MODE", "1") };
         HandlersState {
             config: Arc::new(Config::load(None).unwrap()),
             db: DatabaseClient::new_mem().await,

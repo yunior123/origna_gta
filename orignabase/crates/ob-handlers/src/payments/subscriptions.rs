@@ -1689,11 +1689,12 @@ mod tests {
     #[tokio::test]
     async fn test_reactivate_subscription_rejects_expired_subscription() {
         let state = setup_state().await;
+        let uid = format!("u_expired_{}", uuid::Uuid::new_v4().simple());
         state
             .db
             .upsert_document(
                 collections::SUBSCRIPTIONS,
-                "user_1",
+                &uid,
                 json!({
                     fields::STRIPE_SUBSCRIPTION_ID: "sub_123",
                     fields::STATUS: SubscriptionStatus::Expired.as_str(),
@@ -1705,9 +1706,9 @@ mod tests {
 
         let err = reactivate_subscription(
             State(state),
-            Extension(auth("users:user_1")),
+            Extension(auth(&format!("users:{uid}"))),
             Json(ReactivateSubscriptionRequest {
-                user_id: Some("users:user_1".to_string()),
+                user_id: Some(format!("users:{uid}")),
             }),
         )
         .await
@@ -2044,7 +2045,7 @@ mod tests {
 
         let user = state
             .db
-            .get_document(collections::USERS, "user_1")
+            .get_document(collections::USERS, &uid)
             .await
             .unwrap();
         assert_eq!(user[fields::CUSTOMER_ID], "cus_123");
@@ -2072,13 +2073,14 @@ mod tests {
             .values
             .insert("stripe_secret_key".to_string(), "STRIPE_SECRET_KEY_REDACTED".to_string());
         let state = setup_state_with_config(config, server.uri()).await;
+        let uid = format!("u_canurl_{}", uuid::Uuid::new_v4().simple());
         state
             .db
             .upsert_document(
                 collections::SUBSCRIPTIONS,
-                "user_1",
+                &uid,
                 json!({
-                    fields::BUYER_ID: "users:user_1",
+                    fields::BUYER_ID: format!("users:{uid}"),
                     fields::STRIPE_SUBSCRIPTION_ID: "sub_123",
                     fields::STATUS: SubscriptionStatus::Active.as_str(),
                     fields::SUBSCRIPTION_STATUS: SubscriptionStatus::Active.as_str(),
@@ -2089,9 +2091,9 @@ mod tests {
 
         let Json(resp) = cancel_subscription(
             State(state.clone()),
-            Extension(auth("users:user_1")),
+            Extension(auth(&format!("users:{uid}"))),
             Json(CancelSubscriptionRequest {
-                user_id: Some("users:user_1".to_string()),
+                user_id: Some(format!("users:{uid}")),
             }),
         )
         .await
@@ -2102,7 +2104,7 @@ mod tests {
 
         let sub = state
             .db
-            .get_document(collections::SUBSCRIPTIONS, "user_1")
+            .get_document(collections::SUBSCRIPTIONS, &uid)
             .await
             .unwrap();
         assert_eq!(
@@ -2130,13 +2132,14 @@ mod tests {
             .values
             .insert("stripe_secret_key".to_string(), "STRIPE_SECRET_KEY_REDACTED".to_string());
         let state = setup_state_with_config(config, server.uri()).await;
+        let uid = format!("u_react_{}", uuid::Uuid::new_v4().simple());
         state
             .db
             .upsert_document(
                 collections::SUBSCRIPTIONS,
-                "user_1",
+                &uid,
                 json!({
-                    fields::BUYER_ID: "users:user_1",
+                    fields::BUYER_ID: format!("users:{uid}"),
                     fields::STRIPE_SUBSCRIPTION_ID: "sub_123",
                     fields::STATUS: SubscriptionStatus::CancelPending.as_str(),
                     fields::SUBSCRIPTION_STATUS: SubscriptionStatus::CancelPending.as_str(),
@@ -2149,9 +2152,9 @@ mod tests {
             .db
             .upsert_document(
                 collections::USERS,
-                "user_1",
+                &uid,
                 json!({
-                    fields::UID: "users:user_1",
+                    fields::UID: format!("users:{uid}"),
                     fields::IS_PREMIUM: false,
                 }),
             )
@@ -2160,9 +2163,9 @@ mod tests {
 
         let Json(resp) = reactivate_subscription(
             State(state.clone()),
-            Extension(auth("users:user_1")),
+            Extension(auth(&format!("users:{uid}"))),
             Json(ReactivateSubscriptionRequest {
-                user_id: Some("users:user_1".to_string()),
+                user_id: Some(format!("users:{uid}")),
             }),
         )
         .await
@@ -2173,12 +2176,12 @@ mod tests {
 
         let sub = state
             .db
-            .get_document(collections::SUBSCRIPTIONS, "user_1")
+            .get_document(collections::SUBSCRIPTIONS, &uid)
             .await
             .unwrap();
         let user = state
             .db
-            .get_document(collections::USERS, "user_1")
+            .get_document(collections::USERS, &uid)
             .await
             .unwrap();
         assert_eq!(sub[fields::STATUS], SubscriptionStatus::Active.as_str());

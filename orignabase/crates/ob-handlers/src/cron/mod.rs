@@ -2145,9 +2145,9 @@ mod tests {
             stripe_base_url: "https://api.stripe.com/v1".into(),
             turnstile_secret_key: None,
         };
-        // Clear all cron locks to prevent interference from stale locks in shared DB
+        // Delete all cron locks to prevent interference from stale locks in shared DB
         let _ = state.db.query_raw(&format!(
-            "UPDATE {} SET data = data || '{{\"status\":\"completed\",\"lockedAt\":\"2000-01-01T00:00:00Z\"}}'::jsonb",
+            "DELETE FROM {} WHERE true",
             collections::CRON_LOCKS
         )).await;
         state

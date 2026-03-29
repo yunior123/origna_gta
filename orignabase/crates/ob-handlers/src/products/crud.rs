@@ -1347,6 +1347,7 @@ mod tests {
     use std::sync::Arc;
 
     async fn setup_state() -> HandlersState {
+        unsafe { std::env::set_var("OB_TEST_MODE", "1") };
         HandlersState {
             config: Arc::new(Config::load(None).unwrap()),
             db: DatabaseClient::new_mem().await,
@@ -1792,12 +1793,15 @@ mod tests {
     #[tokio::test]
     async fn test_delete_product_soft_deletes_product() {
         let state = setup_state().await;
+        let u = uuid::Uuid::new_v4().to_string();
+        let seller = format!("seller_del_{u}");
+        let prod = format!("prod_del_{u}");
         state
             .db
             .upsert_document(
                 collections::PRODUCTS,
-                "prod_1",
-                serde_json::json!({ fields::SELLER_ID: "seller_1" }),
+                &prod,
+                serde_json::json!({ fields::SELLER_ID: seller }),
             )
             .await
             .unwrap();
@@ -1805,7 +1809,7 @@ mod tests {
             .db
             .upsert_document(
                 collections::USERS,
-                "seller_1",
+                &seller,
                 serde_json::json!({ fields::ROLES: ["seller"] }),
             )
             .await
@@ -1813,10 +1817,10 @@ mod tests {
 
         let Json(resp) = delete_product(
             State(state.clone()),
-            Extension(auth("seller_1", &["seller"])),
+            Extension(auth(&seller, &["seller"])),
             Json(DeleteProductRequest {
-                product_id: "prod_1".into(),
-                user_id: "seller_1".into(),
+                product_id: prod.clone(),
+                user_id: seller.clone(),
             }),
         )
         .await
@@ -1824,11 +1828,11 @@ mod tests {
         assert!(resp.success);
         let product = state
             .db
-            .get_document(collections::PRODUCTS, "prod_1")
+            .get_document(collections::PRODUCTS, &prod)
             .await
             .unwrap();
         assert_eq!(product[fields::LIFECYCLE_STATUS], "archived");
-        assert_eq!(product[fields::DELETED_BY], "seller_1");
+        assert_eq!(product[fields::DELETED_BY], seller.as_str());
         assert!(product.get(fields::DELETED_AT).is_some());
     }
 
