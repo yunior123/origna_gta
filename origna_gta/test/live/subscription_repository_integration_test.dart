@@ -29,8 +29,15 @@ void main() {
       container = ProviderContainer();
       ob = container.read(orignabaseProvider);
 
-      // Sign in as buyer
-      await ob.auth.signInWithEmail('e2e-buyer@test.origna.ca', 'REDACTED_TEST_PASSWORD');
+      // Sign in as buyer — may fail if dev server is unreachable
+      try {
+        await ob.auth.signInWithEmail(
+          'e2e-buyer@test.origna.ca',
+          'REDACTED_TEST_PASSWORD',
+        );
+      } catch (_) {
+        // Can't reach dev server — tests will be skipped via runLive guard
+      }
     });
 
     tearDownAll(() async {

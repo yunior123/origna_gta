@@ -892,6 +892,25 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
             child: _buildPriceBreakdown(order, isDark),
           ),
 
+          // ─── CANCEL ORDER (pending / confirmed only) ─────────
+          if (order.orderStatus == OrderStatus.pending || order.orderStatus == OrderStatus.confirmed)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+              child: SizedBox(
+                width: double.infinity,
+                child: Semantics(
+                  button: true,
+                  label: 'btn-cancel-order',
+                  child: _actionButton(
+                    icon: Icons.cancel_outlined,
+                    label: 'orders.cancel_order'.tr(),
+                    color: DesignTokens.error,
+                    onTap: () => _confirmCancelOrder(context, order),
+                  ),
+                ),
+              ),
+            ),
+
           // ─── BUY AGAIN (delivered orders only) ──────────────
           if (order.orderStatus == OrderStatus.delivered)
             Padding(
@@ -2312,6 +2331,63 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
                 color: DesignTokens.primary.withValues(alpha: 0.5),
                 size: 28,
               ),
+      ),
+    );
+  }
+
+  void _confirmCancelOrder(BuildContext context, Order order) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius20)),
+        backgroundColor: isDark ? DesignTokens.darkSurface : Colors.white,
+        title: Row(
+          children: [
+            Icon(Icons.warning_rounded, color: DesignTokens.warning, size: 28),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'orders.cancel_order_title'.tr(),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: isDark ? Colors.white : DesignTokens.textPrimary),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'orders.cancel_order_body'.tr(),
+          style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13, height: 1.6),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text('common.go_back'.tr(), style: TextStyle(color: DesignTokens.textSecondary)),
+          ),
+          Semantics(
+            button: true,
+            label: 'btn-confirm-cancel-order',
+            child: TextButton(
+              onPressed: () async {
+                Navigator.pop(dialogContext);
+                final messenger = ScaffoldMessenger.of(context);
+                final success = await ref.read(buyerOrdersViewModelProvider.notifier).cancelOrder(order.orderId);
+                if (!mounted) return;
+                messenger.showSnackBar(
+                  SnackBar(
+                    content: Text(success ? 'orders.order_cancelled'.tr() : 'orders.cancel_failed'.tr()),
+                    backgroundColor: success ? DesignTokens.success : DesignTokens.error,
+                  ),
+                );
+              },
+              style: TextButton.styleFrom(
+                backgroundColor: DesignTokens.error,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius12)),
+              ),
+              child: Text('orders.yes_cancel_order'.tr(), style: const TextStyle(fontWeight: FontWeight.w600)),
+            ),
+          ),
+        ],
       ),
     );
   }

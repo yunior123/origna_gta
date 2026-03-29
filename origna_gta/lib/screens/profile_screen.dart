@@ -1,6 +1,5 @@
 import 'package:flutter/widget_previews.dart';
 import 'package:origna_gta/utils/preview_helpers.dart';
-import 'package:origna_gta/models/models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
@@ -122,7 +121,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 }
 
 /// User profile: name, email, avatar, preferences, seller status, logout.Layout
-
 
 // ═══ Widget Previews ═══
 
@@ -337,4 +335,3 @@ Widget previewProfileLoadingMobile() =>
 )
 Widget previewProfileLoadingDesktop() =>
     previewDesktop(theme: previewDarkTheme, child: _profileLoading());
-

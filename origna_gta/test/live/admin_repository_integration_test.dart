@@ -40,8 +40,15 @@ void main() {
       ob = container.read(orignabaseProvider);
       adminRepo = OrignaBaseAdminRepository(ob);
 
-      // Sign in as admin
-      await ob.auth.signInWithEmail('e2e-admin@test.origna.ca', 'REDACTED_TEST_PASSWORD');
+      // Sign in as admin — may fail if dev server is unreachable
+      try {
+        await ob.auth.signInWithEmail(
+          'e2e-admin@test.origna.ca',
+          'REDACTED_TEST_PASSWORD',
+        );
+      } catch (_) {
+        // Can't reach dev server — tests will be skipped via runLive guard
+      }
     });
 
     tearDownAll(() async {
@@ -176,24 +183,20 @@ void main() {
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
-    test(
-      'updateUserRoles succeeds',
-      () async {
-        const testUserId = 'test_user_id';
+    test('updateUserRoles succeeds', () async {
+      const testUserId = 'test_user_id';
 
-        // Should not throw even if user doesn't exist
-        try {
-          await adminRepo.updateUserRoles(
-            testUserId,
-            add: ['moderator'],
-            reason: 'Integration test',
-          );
-        } catch (e) {
-          if (!_isExpectedError(e)) fail('Unexpected error updating roles: $e');
-        }
-      },
-      timeout: const Timeout(Duration(minutes: 2)),
-    );
+      // Should not throw even if user doesn't exist
+      try {
+        await adminRepo.updateUserRoles(
+          testUserId,
+          add: ['moderator'],
+          reason: 'Integration test',
+        );
+      } catch (e) {
+        if (!_isExpectedError(e)) fail('Unexpected error updating roles: $e');
+      }
+    }, timeout: const Timeout(Duration(minutes: 2)));
 
     test(
       'enableAdminMfa returns MFA setup info',
@@ -228,36 +231,28 @@ void main() {
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
-    test(
-      'approveProduct succeeds',
-      () async {
-        // Try with a nonexistent product ID
-        try {
-          await adminRepo.approveProduct('nonexistent_product_id');
-        } catch (e) {
-          if (!_isExpectedError(e)) {
-            fail('Unexpected error approving product: $e');
-          }
+    test('approveProduct succeeds', () async {
+      // Try with a nonexistent product ID
+      try {
+        await adminRepo.approveProduct('nonexistent_product_id');
+      } catch (e) {
+        if (!_isExpectedError(e)) {
+          fail('Unexpected error approving product: $e');
         }
-      },
-      timeout: const Timeout(Duration(minutes: 2)),
-    );
+      }
+    }, timeout: const Timeout(Duration(minutes: 2)));
 
-    test(
-      'rejectProduct requires reason',
-      () async {
-        try {
-          await adminRepo.rejectProduct(
-            'nonexistent_product_id',
-            'Quality issues',
-          );
-        } catch (e) {
-          if (!_isExpectedError(e)) {
-            fail('Unexpected error rejecting product: $e');
-          }
+    test('rejectProduct requires reason', () async {
+      try {
+        await adminRepo.rejectProduct(
+          'nonexistent_product_id',
+          'Quality issues',
+        );
+      } catch (e) {
+        if (!_isExpectedError(e)) {
+          fail('Unexpected error rejecting product: $e');
         }
-      },
-      timeout: const Timeout(Duration(minutes: 2)),
-    );
+      }
+    }, timeout: const Timeout(Duration(minutes: 2)));
   });
 }

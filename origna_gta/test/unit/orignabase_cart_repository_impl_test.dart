@@ -351,7 +351,12 @@ void main() {
         'prod_1',
         _FakeDocumentRef(
           id: 'prod_1',
-          doc: _FakeDocument('prod_1', {Fields.stockQuantity: 100}),
+          doc: _FakeDocument('prod_1', {
+            Fields.stockQuantity: 100,
+            Fields.variants: [
+              {Fields.variantId: 'red', Fields.stockQuantity: 50},
+            ],
+          }),
         ),
       );
       await repository.addToCart('user_1', 'prod_1', 1, variantId: 'red');
@@ -365,7 +370,12 @@ void main() {
         'prod_1',
         _FakeDocumentRef(
           id: 'prod_1',
-          doc: _FakeDocument('prod_1', {Fields.stockQuantity: 100}),
+          doc: _FakeDocument('prod_1', {
+            Fields.stockQuantity: 100,
+            Fields.variants: [
+              {Fields.variantId: 'red', Fields.stockQuantity: 50},
+            ],
+          }),
         ),
       );
       await repository.addToCart(
@@ -558,8 +568,19 @@ void main() {
   group('OrignaBaseCartRepository - updateQuantity', () {
     test('updates quantity when valid', () async {
       final cartRef = fakeOb.usersCollection.cartSubcollection;
-      final docRef = _FakeDocumentRef(id: 'prod_1');
+      final cartDoc = _FakeDocument('prod_1', {
+        Fields.productId: 'prod_1',
+        Fields.quantity: 2,
+      });
+      final docRef = _FakeDocumentRef(id: 'prod_1', doc: cartDoc);
       cartRef.setDoc('prod_1', docRef);
+      fakeOb.productsCollection.setDoc(
+        'prod_1',
+        _FakeDocumentRef(
+          id: 'prod_1',
+          doc: _FakeDocument('prod_1', {Fields.stockQuantity: 100}),
+        ),
+      );
 
       await repository.updateQuantity('user_1', 'prod_1', 5);
 
@@ -568,8 +589,19 @@ void main() {
 
     test('clamps to maxCartItemQuantity', () async {
       final cartRef = fakeOb.usersCollection.cartSubcollection;
-      final docRef = _FakeDocumentRef(id: 'prod_1');
+      final cartDoc = _FakeDocument('prod_1', {
+        Fields.productId: 'prod_1',
+        Fields.quantity: 2,
+      });
+      final docRef = _FakeDocumentRef(id: 'prod_1', doc: cartDoc);
       cartRef.setDoc('prod_1', docRef);
+      fakeOb.productsCollection.setDoc(
+        'prod_1',
+        _FakeDocumentRef(
+          id: 'prod_1',
+          doc: _FakeDocument('prod_1', {Fields.stockQuantity: 200}),
+        ),
+      );
 
       await repository.updateQuantity('user_1', 'prod_1', 150);
 

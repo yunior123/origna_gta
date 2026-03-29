@@ -48,6 +48,15 @@ class OrignaBaseOrderRepository
   /// [orderId]: the order ID.
   /// [approved]: whether the buyer approves the new shipping cost.
   @override
+  Future<void> cancelOrder(String orderId) async {
+    await _ob.request(
+      'POST',
+      ApiEndpoints.ordersCancelOrder,
+      body: {Fields.orderId: orderId},
+    );
+  }
+
+  @override
   Future<void> approveShippingCost(String orderId, bool approved) async {
     await _ob.request(
       'POST',

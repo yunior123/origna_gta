@@ -36,6 +36,8 @@ class _FakeOrderRepository implements OrderRepository {
 
   // Stubs for other OrderRepository methods — not used in this test
   @override
+  Future<void> cancelOrder(String orderId) async {}
+  @override
   Future<void> approveShippingCost(String orderId, bool approved) async {}
   @override
   Future<void> capturePayment(String orderId) async {}

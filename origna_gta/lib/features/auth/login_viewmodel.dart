@@ -41,6 +41,8 @@ String _friendlyAuthError(OrignaBaseAuthException e) {
       return 'auth.errors.weak_password'.tr();
     case 'operation-not-allowed':
       return 'auth.errors.operation_not_allowed'.tr();
+    case 'mfa-required':
+      return 'mfa.challenge_title'.tr();
     case 'network-request-failed':
       return 'auth.errors.network_error'.tr();
     case 'account-exists-with-different-credential':
@@ -238,6 +240,15 @@ class LoginViewModel extends StateNotifier<LoginState> {
         );
         return;
       }
+      if (e.code == 'mfa-required' && e.challengeToken != null) {
+        state = state.copyWith(
+          isLoading: false,
+          mfaRequired: true,
+          challengeToken: e.challengeToken,
+          errorMessage: null,
+        );
+        return;
+      }
       state = state.copyWith(
         isLoading: false,
         errorMessage: _friendlyAuthError(e),
@@ -300,7 +311,7 @@ class LoginViewModel extends StateNotifier<LoginState> {
     }
   }
 
-/// Sends a password reset email to [email].
+  /// Sends a password reset email to [email].
   ///
   /// Delegates to [AuthRepository.sendPasswordResetEmail]. Errors are not caught —
   /// callers should wrap in try/catch and show a snackbar.

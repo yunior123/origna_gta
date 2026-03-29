@@ -85,9 +85,9 @@ class OrignaBaseCartRepository implements CartRepository {
     if (variantId != null) {
       final variants =
           (productDoc.data[Fields.variants] as List?)?.cast<dynamic>() ?? [];
-      final matchingVariant = variants.cast<Map>().firstWhere(
+      final matchingVariant = variants.cast<Map<String, dynamic>>().firstWhere(
         (v) => v[Fields.variantId] == variantId,
-        orElse: () => {},
+        orElse: () => <String, dynamic>{},
       );
       if (matchingVariant.isEmpty) {
         throw NotFoundException(
@@ -272,10 +272,12 @@ class OrignaBaseCartRepository implements CartRepository {
       if (variantId != null) {
         final variants =
             (productDoc.data[Fields.variants] as List?)?.cast<dynamic>() ?? [];
-        final matchingVariant = variants.cast<Map>().firstWhere(
-          (v) => v[Fields.variantId] == variantId,
-          orElse: () => {},
-        );
+        final matchingVariant = variants
+            .cast<Map<String, dynamic>>()
+            .firstWhere(
+              (v) => v[Fields.variantId] == variantId,
+              orElse: () => <String, dynamic>{},
+            );
         if (matchingVariant.isEmpty) {
           throw NotFoundException(
             'Variant $variantId not found for product $productId',

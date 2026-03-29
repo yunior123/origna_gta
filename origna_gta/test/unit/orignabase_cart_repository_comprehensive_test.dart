@@ -509,8 +509,19 @@ void main() {
 
     test('clamps to maximum quantity', () async {
       final cartRef = fakeOb.usersCollection.cartSubcollection;
-      final docRef = _FakeDocumentRef(id: 'prod_1');
+      final cartDoc = _FakeDocument('prod_1', {
+        Fields.productId: 'prod_1',
+        Fields.quantity: 2,
+      });
+      final docRef = _FakeDocumentRef(id: 'prod_1', doc: cartDoc);
       cartRef.setDoc('prod_1', docRef);
+      fakeOb.productsCollection.setDoc(
+        'prod_1',
+        _FakeDocumentRef(
+          id: 'prod_1',
+          doc: _FakeDocument('prod_1', {Fields.stockQuantity: 300}),
+        ),
+      );
 
       await repository.updateQuantity('user_1', 'prod_1', 200);
 
@@ -519,8 +530,19 @@ void main() {
 
     test('sets quantity to minimum when at boundary', () async {
       final cartRef = fakeOb.usersCollection.cartSubcollection;
-      final docRef = _FakeDocumentRef(id: 'prod_1');
+      final cartDoc = _FakeDocument('prod_1', {
+        Fields.productId: 'prod_1',
+        Fields.quantity: 5,
+      });
+      final docRef = _FakeDocumentRef(id: 'prod_1', doc: cartDoc);
       cartRef.setDoc('prod_1', docRef);
+      fakeOb.productsCollection.setDoc(
+        'prod_1',
+        _FakeDocumentRef(
+          id: 'prod_1',
+          doc: _FakeDocument('prod_1', {Fields.stockQuantity: 100}),
+        ),
+      );
 
       await repository.updateQuantity('user_1', 'prod_1', 1);
 

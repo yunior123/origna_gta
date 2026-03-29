@@ -83,8 +83,9 @@ class OrignaBaseNotificationRepository {
     } on OrignaBaseException catch (e) {
       if (e.statusCode == 403 || e.statusCode == 404) return;
       // Internal server error on nonexistent doc is also acceptable.
-      if (e.statusCode == null && e.message.contains('Internal server error'))
+      if (e.statusCode == null && e.message.contains('Internal server error')) {
         return;
+      }
       AppError.log(e, context: 'ob_notification.markRead');
       rethrow;
     }

@@ -51,6 +51,26 @@ class BuyerOrdersViewModel extends StateNotifier<BuyerOrdersState> {
 
   BuyerOrdersViewModel(this._ref) : super(const BuyerOrdersState());
 
+  Future<bool> cancelOrder(String orderId) async {
+    if (state.isLoading) return false;
+    state = state.copyWith(
+      isLoading: true,
+      isSuccess: false,
+      errorMessage: null,
+    );
+    try {
+      await _ref.read(orderRepositoryProvider).cancelOrder(orderId);
+      state = state.copyWith(isLoading: false, isSuccess: true);
+      return true;
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: AppError.getMessage(e, 'Failed to cancel order'),
+      );
+      return false;
+    }
+  }
+
   /// Confirms the buyer's receipt of a delivered order item.
   ///
   /// [orderId] — the order document ID.

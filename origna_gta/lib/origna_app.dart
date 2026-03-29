@@ -28,6 +28,9 @@ import 'package:origna_gta/screens/editproduct_screen.dart'
     deferred as edit_product;
 import 'package:origna_gta/screens/favorites_screen.dart';
 import 'package:origna_gta/screens/login_screen.dart';
+import 'package:origna_gta/screens/mfa_challenge_screen.dart';
+import 'package:origna_gta/screens/mfa_setup_screen.dart';
+import 'package:origna_gta/screens/security_settings_screen.dart';
 import 'package:origna_gta/screens/notifications_screen.dart';
 import 'package:origna_gta/features/support/support_screen.dart'
     deferred as support_chat;
@@ -366,6 +369,37 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
   // Login screen
   if (uri.path == AppRoutes.login) {
     return SlidePageRoute(settings: settings, page: const LoginScreen());
+  }
+
+  // MFA Challenge screen
+  if (uri.path == AppRoutes.mfaChallenge) {
+    final args = settings.arguments as MfaChallengeArgs?;
+    if (args == null) {
+      return SlidePageRoute(
+        settings: const RouteSettings(name: '/'),
+        page: const AuthWrapper(),
+      );
+    }
+    return SlidePageRoute(
+      settings: settings,
+      page: MfaChallengeScreen(challengeToken: args.challengeToken),
+    );
+  }
+
+  // MFA Setup screen
+  if (uri.path == AppRoutes.mfaSetup) {
+    return SlidePageRoute(
+      settings: settings,
+      page: const AuthRequiredGate(child: MfaSetupScreen()),
+    );
+  }
+
+  // Security Settings screen
+  if (uri.path == AppRoutes.securitySettings) {
+    return SlidePageRoute(
+      settings: settings,
+      page: const AuthRequiredGate(child: SecuritySettingsScreen()),
+    );
   }
 
   // Cart screen

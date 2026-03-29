@@ -485,6 +485,9 @@ abstract final class Collections {
   static const productRecommendations = 'product_recommendations';
   static const userRecommendations = 'user_recommendations';
 
+  // Security audit
+  static const loginEvents = 'login_events'; // Login audit log (success/fail, email, timestamp)
+
   // Financial audit (backend-only)
   static const platformDebt =
       'platform_debt'; // A-05/F-139: debt records when seller reversal fails due to zero balance
@@ -2643,6 +2646,7 @@ abstract final class ApiEndpoints {
   static const ordersConfirmReceipt = '/api/orders/confirm-receipt';
   static const ordersUpdateItemStatus = '/api/orders/update-item-status';
   static const ordersUpdateShipping = '/api/orders/update-shipping';
+  static const ordersCancelOrder = '/api/orders/cancel';
   static const ordersRefundsItem = '/api/orders/refunds/item';
   static const ordersCreateReturn = '/api/orders/returns/create';
   static const ordersListReturns = '/api/orders/returns/list';

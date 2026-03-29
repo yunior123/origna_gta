@@ -180,6 +180,15 @@ class OrignaBaseAuthRepository implements AuthRepository {
           consentMethod: ConsentMethodValues.signupForm,
         );
       }
+
+      // Handle MFA challenge — preserve challengeToken so UI can proceed
+      if (authState.mfaRequired && authState.challengeToken != null) {
+        throw OrignaBaseAuthException(
+          code: 'mfa-required',
+          message: 'Multi-factor authentication required',
+          challengeToken: authState.challengeToken,
+        );
+      }
     } catch (e) {
       _rethrowAsAuthException(e);
     }

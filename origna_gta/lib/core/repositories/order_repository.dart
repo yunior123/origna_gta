@@ -13,6 +13,9 @@ import 'package:origna_gta/models/generated/models.dart' as models;
 /// - Return requests
 /// - Realtime order watching (buyer and seller views)
 abstract class OrderRepository {
+  /// Cancels an order. Only allowed when order is in `pending` or `confirmed` state.
+  Future<void> cancelOrder(String orderId);
+
   /// Approves or rejects a seller-submitted shipping cost update for [orderId].
   Future<void> approveShippingCost(String orderId, bool approved);
 

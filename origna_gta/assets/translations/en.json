@@ -1151,6 +1151,320 @@
         "name": "International Express",
         "time": "7-15 business days"
       }
+    },
+    "chat": {
+        "title": "Chat",
+        "message_copied": "Message copied",
+        "empty_state_no_messages": "No messages yet. Say hello! 👋",
+        "send_message_cta": "Send a message",
+        "own_product_title": "Your Product",
+        "own_product_body": "You cannot message yourself about your own product.",
+        "copy_message": "Copy message",
+        "delete_message": "Delete message",
+        "message_deleted": "Message deleted",
+        "delete_failed": "Failed to delete message. Please try again.",
+        "inbox_title": "My Messages",
+        "inbox_subtitle": "Premium chat conversations",
+        "inbox_empty": "No conversations yet",
+        "inbox_empty_desc": "Chat with sellers about products to start a conversation",
+        "unread_badge": "{count}",
+        "last_seen": "{time} ago",
+        "tap_to_chat": "Tap to open conversation",
+        "type_a_message": "Type a message..."
+    },
+    "seller_integration": {
+        "title": "Developer Integration Guide",
+        "how_licensing_works": "How licensing works on Origna",
+        "intro_p1": "When a buyer purchases your software on Origna, a unique license key (format: XXXX-XXXX-XXXX-XXXX) is automatically generated and emailed to them.",
+        "intro_p2": "Your app calls two public endpoints — no API key, no Firebase SDK, no login required. Just a plain HTTPS POST from anywhere: Swift, Python, Electron, Unity.",
+        "step_1": "Buyer enters their license key in your app",
+        "step_2": "Your app calls POST /activate_license",
+        "step_3": "Origna verifies key, registers the device, returns product info",
+        "step_4": "Your app unlocks Pro features",
+        "activation_vs_verification": "Activation vs Verification",
+        "activate_title": "activate_license — call on first run or when user enters key",
+        "activate_desc": "Registers the device (deviceId) against the license. Respects the device limit the seller configured. Idempotent — safe to call multiple times from the same device.",
+        "verify_title": "verify_license — call periodically (e.g. on app launch)",
+        "verify_desc": "Re-validates that the license is still active and not revoked (e.g. after a refund). Same request/response shape as activate. Recommended: call once per app launch, cache result for 24 h offline grace.",
+        "api_endpoints": "API Endpoints",
+        "activate_register": "Activate / register device",
+        "verify_launch": "Verify on app launch",
+        "request_body": "Request body (JSON)",
+        "success_response": "Success response (HTTP 200)",
+        "swift_integration": "Swift / macOS Integration",
+        "swift_desc": "Paste this into your app. Uses IOKit to get the hardware UUID as a stable device identifier.",
+        "swift_info": "No Firebase SDK or CocoaPods required — plain URLSession",
+        "python_integration": "Python / Windows / Linux Integration",
+        "python_desc": "Works for any Python app on macOS, Windows, or Linux.",
+        "python_info": "Only dependency: requests  (pip install requests)",
+        "books_title": "Books — no integration needed",
+        "books_p1": "Book downloads are fully managed by Origna. When a buyer taps \"Download\" in the app, Origna generates a 15-minute single-use secure link and redirects them to your PDF/EPUB URL — your URL is never exposed to the buyer.",
+        "books_p2": "As a book seller, you only need to provide your download URL when listing the product. Origna handles access control, token expiry, and single-use enforcement.",
+        "books_step_1": "Buyer taps Download in their Origna order",
+        "books_step_2": "Origna backend creates a 15-min token, URL stays server-side",
+        "books_step_3": "Browser is redirected — buyer downloads directly",
+        "books_step_4": "Link expires and cannot be reused",
+        "error_codes": "Error codes",
+        "error_404_desc": "Key does not exist — buyer entered wrong key",
+        "error_403_revoked_desc": "License revoked (refund issued)",
+        "error_403_limit_desc": "Too many devices activated for this key",
+        "error_403_platform_desc": "Platform not included in this product",
+        "error_400_format_desc": "Key format wrong — validate before calling",
+        "security": "Security recommendations",
+        "security_1": "Use hardware UUID (IOKit / WMI) as deviceId — not a random UUID stored on disk",
+        "security_2": "Cache the activation result locally; re-verify on launch, not on every action",
+        "security_3": "If verify_license returns \"revoked\", disable Pro features immediately",
+        "security_4": "Set your device limit to 2–3 in the product listing to limit key sharing",
+        "security_5": "Never hardcode keys in your source — the buyer provides their own at runtime",
+        "book_title": "Books — no integration needed",
+        "book_p1": "Book downloads are fully managed by Origna. When a buyer taps \"Download\" in the app, Origna generates a 15-minute single-use secure link and redirects them to your PDF/EPUB URL — your URL is never exposed to the buyer.",
+        "book_p2": "No SDK or API integration is required on your end.",
+        "book_step1": "Buyer taps Download in their Origna order",
+        "book_step2": "Origna backend creates a 15-min token, URL stays server-side",
+        "book_step3": "Browser is redirected — buyer downloads directly",
+        "book_step4": "Link expires and cannot be reused",
+        "endpoints_title": "API Endpoints",
+        "endpoints_activate_label": "Activate / register device",
+        "endpoints_verify_label": "Verify on app launch",
+        "endpoints_req_title": "Request body (JSON)",
+        "endpoints_res_title": "Success response (HTTP 200)",
+        "error_title": "Error codes",
+        "error_404": "Key does not exist — buyer entered wrong key",
+        "error_revoked": "License revoked (refund issued)",
+        "error_limit": "Too many devices activated for this key",
+        "error_platform": "Platform not included in this product",
+        "error_format": "Key format wrong — validate before calling",
+        "how_it_works_title": "Activation vs Verification",
+        "how_it_works_act_title": "activate_license — call on first run or when user enters key",
+        "how_it_works_act_desc": "Registers the device (deviceId) against the license. Respects the device limit the seller configured. Idempotent — safe to call multiple times from the same device.",
+        "how_it_works_ver_title": "verify_license — call periodically (e.g. on app launch)",
+        "how_it_works_ver_desc": "Re-validates that the license is still active and not revoked (e.g. after a refund). Same request/response shape as activate. Recommended: call once per app launch, cache result for 24 h offline grace.",
+        "intro_title": "How licensing works on Origna",
+        "intro_step1": "Buyer enters their license key in your app",
+        "intro_step2": "Your app calls POST /activate_license",
+        "intro_step3": "Origna verifies key, registers the device, returns product info",
+        "intro_step4": "Your app unlocks Pro features",
+        "python_title": "Python / Windows / Linux Integration",
+        "python_chip": "pip install requests",
+        "security_title": "Security recommendations",
+        "security_step1": "Use hardware UUID (IOKit / WMI) as deviceId — not a random UUID stored on disk",
+        "security_step2": "Cache the activation result locally; re-verify on launch, not on every action",
+        "security_step3": "If verify_license returns \"revoked\", disable Pro features immediately",
+        "security_step4": "Set your device limit to 2–3 in the product listing to limit key sharing",
+        "security_step5": "Never hardcode keys in your source — the buyer provides their own at runtime",
+        "swift_title": "Swift / macOS Integration",
+        "swift_chip": "No Firebase SDK or CocoaPods required — plain URLSession"
+    },
+    "supplier": {
+        "aliexpress": {
+            "display_name": "AliExpress",
+            "region": "Asia",
+            "country": "China",
+            "description": "Global retail marketplace"
+        },
+        "alibaba": {
+            "display_name": "Alibaba",
+            "region": "Asia",
+            "country": "China",
+            "description": "B2B wholesale marketplace"
+        },
+        "1688": {
+            "display_name": "1688",
+            "region": "Asia",
+            "country": "China",
+            "description": "Chinese domestic B2B platform"
+        },
+        "dhgate": {
+            "display_name": "DHgate",
+            "region": "Asia",
+            "country": "China",
+            "description": "Cross-border e-commerce platform"
+        },
+        "temu": {
+            "display_name": "Temu",
+            "region": "Asia",
+            "country": "China",
+            "description": "Fast shipping marketplace"
+        },
+        "made_in_china": {
+            "display_name": "Made-in-China",
+            "region": "Asia",
+            "country": "China",
+            "description": "B2B sourcing platform"
+        },
+        "global_sources": {
+            "display_name": "Global Sources",
+            "region": "Asia",
+            "country": "China/Hong Kong",
+            "description": "Asia-based B2B platform"
+        },
+        "cjdropshipping": {
+            "display_name": "CJ Dropshipping",
+            "region": "Global",
+            "country": "China (warehouses worldwide)",
+            "description": "Dropshipping & fulfillment service"
+        },
+        "spocket": {
+            "display_name": "Spocket",
+            "region": "US/EU",
+            "country": "USA/Europe",
+            "description": "US/EU dropshipping suppliers"
+        },
+        "printful": {
+            "display_name": "Printful",
+            "region": "Global",
+            "country": "USA/EU/Mexico",
+            "description": "Print-on-demand fulfillment"
+        },
+        "printify": {
+            "display_name": "Printify",
+            "region": "Global",
+            "country": "Various",
+            "description": "Print-on-demand platform"
+        },
+        "gmarket": {
+            "display_name": "Gmarket",
+            "region": "Asia",
+            "country": "South Korea",
+            "description": "Korean e-commerce platform"
+        },
+        "coupang": {
+            "display_name": "Coupang",
+            "region": "Asia",
+            "country": "South Korea",
+            "description": "Korean rocket delivery"
+        },
+        "rakuten": {
+            "display_name": "Rakuten",
+            "region": "Asia",
+            "country": "Japan",
+            "description": "Japanese e-commerce giant"
+        },
+        "amazon_japan": {
+            "display_name": "Amazon Japan",
+            "region": "Asia",
+            "country": "Japan",
+            "description": "Amazon Japan marketplace"
+        },
+        "indiamart": {
+            "display_name": "IndiaMart",
+            "region": "Asia",
+            "country": "India",
+            "description": "Indian B2B marketplace"
+        },
+        "tradeindia": {
+            "display_name": "TradeIndia",
+            "region": "Asia",
+            "country": "India",
+            "description": "Indian B2B platform"
+        },
+        "faire": {
+            "display_name": "Faire",
+            "region": "US/EU",
+            "country": "USA/Europe",
+            "description": "Wholesale marketplace"
+        },
+        "amazon_europe": {
+            "display_name": "Amazon Europe",
+            "region": "Europe",
+            "country": "Germany/UK/France",
+            "description": "Amazon European marketplaces"
+        },
+        "amazon_usa": {
+            "display_name": "Amazon USA",
+            "region": "North America",
+            "country": "USA",
+            "description": "Amazon US marketplace"
+        },
+        "walmart": {
+            "display_name": "Walmart",
+            "region": "North America",
+            "country": "USA",
+            "description": "US retail giant"
+        },
+        "costco": {
+            "display_name": "Costco Business",
+            "region": "North America",
+            "country": "USA/Canada",
+            "description": "Wholesale club"
+        },
+        "local": {
+            "display_name": "Local Canadian Supplier",
+            "region": "Canada",
+            "country": "Canada",
+            "description": "Canadian-based supplier"
+        },
+        "etsy_wholesale": {
+            "display_name": "Etsy Wholesale",
+            "region": "Global",
+            "country": "Various",
+            "description": "Handmade & vintage items"
+        },
+        "custom": {
+            "display_name": "Custom Supplier",
+            "region": "Custom",
+            "country": "Specify",
+            "description": "Add your own supplier details"
+        },
+        "other": {
+            "display_name": "Other",
+            "region": "Various",
+            "country": "Various",
+            "description": "Other supplier not listed"
+        }
+    },
+    "security": {
+        "title": "Security",
+        "subtitle": "Manage your account security",
+        "description": "Two-factor authentication adds an extra layer of security to your account. You'll need to enter a code from your authenticator app when signing in.",
+        "mfa_enabled": "MFA Enabled",
+        "mfa_disabled": "MFA Disabled",
+        "enable_mfa": "Enable MFA",
+        "disable_mfa": "Disable MFA",
+        "disable_mfa_title": "Disable Two-Factor Authentication",
+        "disable_mfa_desc": "Enter your current authenticator code to disable MFA. This will make your account less secure.",
+        "totp_code": "Authenticator code",
+        "mfa_disabled_success": "Two-factor authentication has been disabled",
+        "mfa_enabled_success": "Two-factor authentication is now active",
+        "login_history": "Login History",
+        "known_devices": "Known Devices",
+        "security_alerts": "Security Alerts",
+        "was_this_you": "Was this you?",
+        "yes_it_was_me": "Yes, it was me",
+        "remove_device": "Remove device",
+        "device_removed": "Device removed",
+        "no_login_history": "No login history",
+        "no_devices": "No known devices",
+        "ip_address": "IP Address"
+    },
+    "mfa": {
+        "challenge_title": "Two-Factor Authentication",
+        "enter_code": "Enter the 6-digit code from your authenticator app",
+        "use_recovery_code": "Use a recovery code instead",
+        "use_totp_code": "Use authenticator code instead",
+        "enter_recovery_code": "Enter your recovery code",
+        "submit": "Verify",
+        "invalid_code": "Invalid code. Please try again.",
+        "too_many_attempts": "Too many attempts. Please sign in again.",
+        "attempts_remaining": "attempts remaining",
+        "back_to_login": "Back to Sign In",
+        "setup_title": "Set Up Two-Factor Authentication",
+        "step1_scan": "Step 1: Scan QR Code",
+        "step1_desc": "Scan this QR code with your authenticator app (Google Authenticator, Authy, or iOS Passwords).",
+        "step2_verify": "Step 2: Verify Code",
+        "step2_desc": "Enter the 6-digit code from your authenticator app to confirm setup.",
+        "step3_backup": "Step 3: Save Recovery Codes",
+        "step3_desc": "Save these recovery codes in a safe place. You can use them to sign in if you lose access to your authenticator app.",
+        "copy_manual_key": "Or enter this key manually:",
+        "manual_key_copied": "Manual key copied to clipboard",
+        "save_codes_warning": "These codes will only be shown once. Save them now!",
+        "confirm_saved": "I have saved these recovery codes",
+        "setup_complete": "Two-factor authentication is now active!",
+        "next": "Next",
+        "verify": "Verify",
+        "done": "Done",
+        "copy_all_codes": "Copy All Codes",
+        "codes_copied": "Recovery codes copied to clipboard"
     }
   },
   "orders": {

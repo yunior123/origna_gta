@@ -102,6 +102,12 @@ class ProductDetailsArgs {
   const ProductDetailsArgs({required this.productId, this.product});
 }
 
+/// Arguments for [AppRoutes.mfaChallenge].
+class MfaChallengeArgs {
+  final String challengeToken;
+  const MfaChallengeArgs({required this.challengeToken});
+}
+
 /// Arguments for [AppRoutes.productBySlug].
 class ProductSlugArgs {
   final String slug;
