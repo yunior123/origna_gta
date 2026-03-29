@@ -2782,7 +2782,7 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "cleanup_stale_rate_limits", cleanup_stale_rate_limits);
+        cleanup_stale_rate_limits(&state).await;
 
         let doc = state
             .db
@@ -3371,7 +3371,7 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "auto_capture_confirmed_receipts", auto_capture_confirmed_receipts);
+        auto_capture_confirmed_receipts(&state).await;
         // No crash = pass; lock prevented execution
     }
 
@@ -3542,7 +3542,7 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "check_expired_authorizations", check_expired_authorizations);
+        check_expired_authorizations(&state).await;
     }
 
     // -----------------------------------------------------------------------
@@ -3702,7 +3702,7 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "auto_archive_old_orders", auto_archive_old_orders);
+        auto_archive_old_orders(&state).await;
     }
 
     // -----------------------------------------------------------------------
@@ -3851,7 +3851,7 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "cleanup_orphaned_r2_images", cleanup_orphaned_r2_images);
+        cleanup_orphaned_r2_images(&state).await;
     }
 
     // -----------------------------------------------------------------------
@@ -3911,7 +3911,7 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "cleanup_stale_webhook_events", cleanup_stale_webhook_events);
+        cleanup_stale_webhook_events(&state).await;
     }
 
     // -----------------------------------------------------------------------
@@ -3973,7 +3973,7 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "cleanup_stale_security_alerts", cleanup_stale_security_alerts);
+        cleanup_stale_security_alerts(&state).await;
     }
 
     // -----------------------------------------------------------------------
@@ -3996,7 +3996,7 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "retry_failed_meilisearch_syncs", retry_failed_meilisearch_syncs);
+        retry_failed_meilisearch_syncs(&state).await;
     }
 
     // -----------------------------------------------------------------------
@@ -4093,7 +4093,7 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "check_low_stock_alerts", check_low_stock_alerts);
+        check_low_stock_alerts(&state).await;
     }
 
     // -----------------------------------------------------------------------
@@ -4346,7 +4346,7 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "send_abandoned_cart_emails", send_abandoned_cart_emails);
+        send_abandoned_cart_emails(&state).await;
     }
 
     // -----------------------------------------------------------------------
@@ -4614,7 +4614,7 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "compute_seller_metrics", compute_seller_metrics);
+        compute_seller_metrics(&state).await;
     }
 
     // -----------------------------------------------------------------------
@@ -4775,7 +4775,7 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "compute_trending_products", compute_trending_products);
+        compute_trending_products(&state).await;
     }
 
     // -----------------------------------------------------------------------
@@ -4891,7 +4891,7 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "sync_expired_subscriptions", sync_expired_subscriptions);
+        sync_expired_subscriptions(&state).await;
     }
 
     // -----------------------------------------------------------------------
@@ -4957,7 +4957,7 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "escalate_stale_return_requests", escalate_stale_return_requests);
+        escalate_stale_return_requests(&state).await;
     }
 
     // -----------------------------------------------------------------------
@@ -5029,7 +5029,7 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "send_premium_renewal_reminders", send_premium_renewal_reminders);
+        send_premium_renewal_reminders(&state).await;
     }
 
     // -----------------------------------------------------------------------
@@ -5290,7 +5290,7 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "drain_pending_notifications", drain_pending_notifications);
+        drain_pending_notifications(&state).await;
     }
 
     // -----------------------------------------------------------------------
@@ -6519,7 +6519,7 @@ mod tests {
             .unwrap();
 
         // Should skip due to held lock
-        run_cron_with_retry!(&state, "compute_co_purchase_recommendations", compute_co_purchase_recommendations);
+        compute_co_purchase_recommendations(&state).await;
     }
 
     #[test]
