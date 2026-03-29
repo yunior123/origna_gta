@@ -427,15 +427,13 @@ async fn approve_shipping_cost(
             }
         }
 
-        let mut tx = ob_database::Transaction::new();
-        tx.add(
-            &format!("UPDATE {}:$order_id MERGE $data", collections::ORDERS,),
-            Some(json!({"order_id": req.order_id, "data": update_data})),
-        );
+        // Update order with rejection data
+        state.db.update_document(collections::ORDERS, &req.order_id, update_data).await
+            .map_err(|e| ob_core::Error::Database(format!("Failed to reject shipping and restore stock: {e}")))?;
 
         // Restore stock for all physical items
         let items = items_array(&order);
-        for (idx, item) in items.iter().enumerate() {
+        for item in items.iter() {
             if item
                 .get(fields::IS_DIGITAL)
                 .and_then(|v| v.as_bool())
@@ -446,26 +444,18 @@ async fn approve_shipping_cost(
             let pid = str_field(item, fields::PRODUCT_ID);
             let qty = item.get("quantity").and_then(|v| v.as_i64()).unwrap_or(1);
             if !pid.is_empty() && qty > 0 {
-                let pid_key = format!("pid_{idx}");
-                let qty_key = format!("qty_{idx}");
-                let ts_key = format!("ts_{idx}");
-                tx.add(
-                    &format!(
-                        "UPDATE {}:${pid_key} SET stockQuantity += ${qty_key}, updatedAt = ${ts_key}",
-                        collections::PRODUCTS,
-                    ),
-                    Some(json!({
-                        pid_key: pid,
-                        qty_key: qty,
-                        ts_key: now,
-                    })),
-                );
+                let cur_product = state.db.get_document(collections::PRODUCTS, &pid).await.unwrap_or_default();
+                let cur_stock = cur_product.get("stockQuantity").and_then(|v| v.as_i64()).unwrap_or(0);
+                let _ = state.db.update_document(
+                    collections::PRODUCTS,
+                    &pid,
+                    json!({
+                        "stockQuantity": cur_stock + qty,
+                        "updatedAt": now,
+                    }),
+                ).await;
             }
         }
-
-        tx.commit(&state.db).await.map_err(|e| {
-            ob_core::Error::Database(format!("Failed to reject shipping and restore stock: {e}"))
-        })?;
     }
 
     info!(
@@ -700,6 +690,7 @@ mod tests {
     }
 
     async fn setup_state() -> HandlersState {
+        unsafe { std::env::set_var("OB_TEST_MODE", "1") };
         let db = DatabaseClient::new_mem().await;
         let mut config = Config::load(None).unwrap();
         config
@@ -1325,6 +1316,7 @@ mod tests {
     // -----------------------------------------------------------------------
 
     async fn setup_state_with_mock(stripe_base_url: String) -> HandlersState {
+        unsafe { std::env::set_var("OB_TEST_MODE", "1") };
         let db = DatabaseClient::new_mem().await;
         let mut config = Config::load(None).unwrap();
         config

@@ -402,7 +402,7 @@ pub async fn check_expired_authorizations(state: &HandlersState) {
                                 && let Err(e) = state
                                     .db
                                     .query_bind(
-                                        &format!("UPDATE {} SET data = jsonb_set(jsonb_set(data, '{{stockQuantity}}', ((COALESCE((data->>'stockQuantity')::int, 0) + $quantity)::text)::jsonb), '{{updatedAt}}', to_jsonb($updatedAt::text)) WHERE id = $product_id RETURNING id, data::TEXT, created_at, updated_at", collections::PRODUCTS),
+                                        &format!("UPDATE {} SET data = jsonb_set(jsonb_set(data, '{{stockQuantity}}', ((COALESCE((data->>'stockQuantity')::int, 0) + $quantity::int)::text)::jsonb), '{{updatedAt}}', to_jsonb($updatedAt::text)) WHERE id = $product_id RETURNING id, data::TEXT, created_at, updated_at", collections::PRODUCTS),
                                         json!({
                                             "product_id": pid,
                                             "quantity": qty,
@@ -766,7 +766,7 @@ pub async fn retry_failed_meilisearch_syncs(state: &HandlersState) {
 
     let result = async {
         let sql = format!(
-            "SELECT * FROM {} WHERE (data->>'resolved')::boolean = false LIMIT 50",
+            "SELECT * FROM {} WHERE data->>'resolved' = 'false' LIMIT 50",
             collections::MEILISEARCH_SYNC_FAILURES
         );
 
@@ -1071,7 +1071,7 @@ pub async fn send_abandoned_cart_emails(state: &HandlersState) {
         let checkout_cutoff = now - Duration::hours(business_rules::ABANDONED_CART_HOURS as i64);
 
         let sql = format!(
-            "SELECT * FROM {} WHERE (data->>'marketingOptIn')::boolean = true LIMIT 500",
+            "SELECT * FROM {} WHERE data->>'marketingOptIn' = 'true' LIMIT 500",
             collections::USERS,
         );
 
@@ -2145,11 +2145,18 @@ mod tests {
             stripe_base_url: "https://api.stripe.com/v1".into(),
             turnstile_secret_key: None,
         };
-        // Delete all cron locks to prevent interference from stale locks in shared DB
-        let _ = state.db.query_raw(&format!(
-            "DELETE FROM {} WHERE true",
-            collections::CRON_LOCKS
-        )).await;
+        // Clear all cron locks to prevent interference from stale locks in shared DB
+        if let Ok(locks) = state.db.list_documents(collections::CRON_LOCKS, Some(100usize), Some(0usize)).await {
+            for lock in &locks {
+                if let Some(id) = lock.get("id").and_then(|v| v.as_str()) {
+                    let _ = state.db.update_document(
+                        collections::CRON_LOCKS,
+                        id,
+                        json!({"status": "completed", "lockedAt": "2000-01-01T00:00:00Z"}),
+                    ).await;
+                }
+            }
+        }
         state
     }
 
@@ -2207,7 +2214,7 @@ mod tests {
             turnstile_secret_key: None,
         };
         let _ = state.db.query_raw(&format!(
-            "UPDATE {} SET data = data || '{{\"status\":\"completed\",\"lockedAt\":\"2000-01-01T00:00:00Z\"}}'::jsonb",
+            "DELETE FROM {} WHERE true",
             collections::CRON_LOCKS
         )).await;
         state
@@ -2791,6 +2798,10 @@ mod tests {
             .await
             .unwrap();
 
+        // Verify the document was stored correctly
+        let before = state.db.get_document(collections::MEILISEARCH_SYNC_FAILURES, failure_id).await.unwrap();
+        assert_eq!(before["resolved"], false, "resolved should be false before cron runs");
+
         // Product not found, should resolve
         retry_failed_meilisearch_syncs(&state).await;
 
@@ -2799,7 +2810,7 @@ mod tests {
             .get_document(collections::MEILISEARCH_SYNC_FAILURES, failure_id)
             .await
             .unwrap();
-        assert_eq!(failure["resolved"], true);
+        assert_eq!(failure["resolved"], true, "resolved should be true after cron resolves it: {:?}", failure);
     }
 
     #[tokio::test]

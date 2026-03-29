@@ -147,9 +147,8 @@ async fn admin_user_ids(state: &HandlersState) -> Vec<String> {
     // This reduces N+1 issues when querying push tokens later
     let results = state
         .db
-        .query_bind(
-            "SELECT id FROM users WHERE roles CONTAINS 'admin' LIMIT 100",
-            json!({}),
+        .query_raw(
+            "SELECT * FROM users WHERE data->'roles' @> '\"admin\"'::jsonb LIMIT 100",
         )
         .await
         .unwrap_or_default();
@@ -335,11 +334,11 @@ async fn notify_admins_of_return_escalation(
                 let delivered_at = Utc::now().to_rfc3339();
                 let _ = state
                     .db
-                    .query_bind(
-                        "UPDATE type::thing($table, $id) SET status = 'delivered', delivered_at = $delivered_at, updated_at = $updated_at",
+                    .update_document(
+                        "_pending_notifications",
+                        &pending_id,
                         json!({
-                            "table": "_pending_notifications",
-                            "id": pending_id,
+                            "status": "delivered",
                             "delivered_at": delivered_at,
                             "updated_at": delivered_at,
                         }),
@@ -675,16 +674,17 @@ async fn approve_return_request(
             }
 
             if !product_id.is_empty() && qty > 0 {
+                let cur_product = state.db.get_document(collections::PRODUCTS, product_id).await.unwrap_or_default();
+                let cur_stock = cur_product.get("stockQuantity").and_then(|v| v.as_i64()).unwrap_or(0);
                 state
                     .db
-                    .query_bind(
-                        "UPDATE type::thing($table, $product_id) SET stockQuantity += $quantity, updatedAt = $updatedAt",
+                    .update_document(
+                        collections::PRODUCTS,
+                        product_id,
                         json!({
-                            "table": collections::PRODUCTS,
-                            "product_id": product_id,
-                            "quantity": qty,
+                            "stockQuantity": cur_stock + qty as i64,
                             "updatedAt": now
-                        })
+                        }),
                     )
                     .await
                     .map_err(|e| {
@@ -951,6 +951,7 @@ mod tests {
     }
 
     async fn setup_state() -> HandlersState {
+        unsafe { std::env::set_var("OB_TEST_MODE", "1") };
         HandlersState {
             config: Arc::new(Config::load(None).unwrap()),
             db: DatabaseClient::new_mem().await,
@@ -962,6 +963,7 @@ mod tests {
     }
 
     async fn setup_state_with_config(config: Config, stripe_base_url: String) -> HandlersState {
+        unsafe { std::env::set_var("OB_TEST_MODE", "1") };
         HandlersState {
             config: Arc::new(config),
             db: DatabaseClient::new_mem().await,

@@ -1952,7 +1952,7 @@ mod tests {
         .unwrap();
 
         assert_eq!(resp.total_fetched, 1);
-        assert_eq!(resp.products[0]["id"], format!("{}:{}", collections::PRODUCTS, id1));
+        assert_eq!(resp.products[0]["id"], id1.as_str());
     }
 
     #[tokio::test]
@@ -1992,7 +1992,7 @@ mod tests {
         .unwrap();
 
         assert_eq!(resp.total_fetched, 1);
-        assert_eq!(resp.products[0]["id"], format!("{}:{}", collections::PRODUCTS, id1));
+        assert_eq!(resp.products[0]["id"], id1.as_str());
     }
 
     #[tokio::test]

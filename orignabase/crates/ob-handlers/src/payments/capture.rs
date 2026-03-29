@@ -399,17 +399,19 @@ mod tests {
     #[tokio::test]
     async fn test_capture_payment_rejects_non_seller_and_invalid_status() {
         let state = setup_state().await;
+        let oid = format!("o_ns_{}", uuid::Uuid::new_v4().simple());
+        let sid = format!("s_ns_{}", uuid::Uuid::new_v4().simple());
         state
             .db
             .upsert_document(
                 collections::ORDERS,
-                "order_1",
+                &oid,
                 json!({
-                    fields::ORDER_ID: "order_1",
+                    fields::ORDER_ID: oid,
                     fields::STATUS: OrderStatus::PendingPayment.as_str(),
                     fields::PAYMENT_STATUS: PaymentStatus::Authorized.as_str(),
                     fields::ITEMS: [{
-                        fields::SELLER_ID: "seller_1"
+                        fields::SELLER_ID: sid
                     }],
                     fields::PAYMENT_INTENT_ID: "pi_1",
                 }),
@@ -419,10 +421,10 @@ mod tests {
 
         let forbidden = capture_payment(
             State(state.clone()),
-            Extension(auth("seller_2")),
+            Extension(auth("seller_other")),
             Json(CapturePaymentRequest {
-                order_id: "order_1".into(),
-                user_id: Some("seller_2".to_string()),
+                order_id: oid.clone(),
+                user_id: Some("seller_other".to_string()),
             }),
         )
         .await
@@ -435,10 +437,10 @@ mod tests {
 
         let invalid_status = capture_payment(
             State(state),
-            Extension(auth("seller_1")),
+            Extension(auth(&sid)),
             Json(CapturePaymentRequest {
-                order_id: "order_1".into(),
-                user_id: Some("seller_1".to_string()),
+                order_id: oid,
+                user_id: Some(sid.to_string()),
             }),
         )
         .await
@@ -453,17 +455,19 @@ mod tests {
     #[tokio::test]
     async fn test_capture_payment_rejects_invalid_payment_state_and_missing_payment_refs() {
         let state = setup_state().await;
+        let oid = format!("o_ip_{}", uuid::Uuid::new_v4().simple());
+        let sid = format!("s_ip_{}", uuid::Uuid::new_v4().simple());
         state
             .db
             .upsert_document(
                 collections::ORDERS,
-                "order_1",
+                &oid,
                 json!({
-                    fields::ORDER_ID: "order_1",
+                    fields::ORDER_ID: oid,
                     fields::STATUS: OrderStatus::PaymentAuthorized.as_str(),
                     fields::PAYMENT_STATUS: PaymentStatus::Captured.as_str(),
                     fields::ITEMS: [{
-                        fields::SELLER_ID: "seller_1"
+                        fields::SELLER_ID: sid
                     }],
                 }),
             )
@@ -472,10 +476,10 @@ mod tests {
 
         let invalid_payment = capture_payment(
             State(state.clone()),
-            Extension(auth("seller_1")),
+            Extension(auth(&sid)),
             Json(CapturePaymentRequest {
-                order_id: "order_1".into(),
-                user_id: Some("seller_1".to_string()),
+                order_id: oid.clone(),
+                user_id: Some(sid.clone()),
             }),
         )
         .await
@@ -490,7 +494,7 @@ mod tests {
             .db
             .update_document(
                 collections::ORDERS,
-                "order_1",
+                &oid,
                 json!({
                     fields::PAYMENT_STATUS: PaymentStatus::Authorized.as_str(),
                     fields::PAYMENT_INTENT_ID: serde_json::Value::Null,
@@ -502,10 +506,10 @@ mod tests {
 
         let missing_refs = capture_payment(
             State(state),
-            Extension(auth("seller_1")),
+            Extension(auth(&sid)),
             Json(CapturePaymentRequest {
-                order_id: "order_1".into(),
-                user_id: Some("seller_1".to_string()),
+                order_id: oid,
+                user_id: Some(sid),
             }),
         )
         .await
@@ -521,6 +525,8 @@ mod tests {
     async fn test_capture_payment_success_uses_existing_payment_intent() {
         let state = setup_state().await;
         let mock_server = MockServer::start().await;
+        let oid = format!("o_succ_{}", uuid::Uuid::new_v4().simple());
+        let sid = format!("s_succ_{}", uuid::Uuid::new_v4().simple());
 
         Mock::given(method("POST"))
             .and(path("/payment_intents/pi_capture/capture"))
@@ -541,14 +547,14 @@ mod tests {
             .db
             .upsert_document(
                 collections::ORDERS,
-                "order_1",
+                &oid,
                 json!({
-                    fields::ORDER_ID: "order_1",
+                    fields::ORDER_ID: oid,
                     fields::STATUS: OrderStatus::PaymentAuthorized.as_str(),
                     fields::PAYMENT_STATUS: PaymentStatus::Authorized.as_str(),
                     fields::PAYMENT_INTENT_ID: "pi_capture",
                     fields::ITEMS: [{
-                        fields::SELLER_ID: "seller_1"
+                        fields::SELLER_ID: sid
                     }],
                 }),
             )
@@ -557,10 +563,10 @@ mod tests {
 
         let Json(resp) = capture_payment(
             State(state.clone()),
-            Extension(auth("seller_1")),
+            Extension(auth(&sid)),
             Json(CapturePaymentRequest {
-                order_id: "order_1".into(),
-                user_id: Some("seller_1".to_string()),
+                order_id: oid.clone(),
+                user_id: Some(sid.clone()),
             }),
         )
         .await
@@ -572,7 +578,7 @@ mod tests {
 
         let order = state
             .db
-            .get_document(collections::ORDERS, "order_1")
+            .get_document(collections::ORDERS, &oid)
             .await
             .unwrap();
         assert_eq!(
@@ -586,6 +592,8 @@ mod tests {
     async fn test_capture_payment_fetches_checkout_session_when_pi_missing() {
         let state = setup_state().await;
         let mock_server = MockServer::start().await;
+        let oid = format!("o_fetch_{}", uuid::Uuid::new_v4().simple());
+        let sid = format!("s_fetch_{}", uuid::Uuid::new_v4().simple());
 
         Mock::given(method("GET"))
             .and(path("/checkout/sessions/cs_123"))
@@ -614,14 +622,14 @@ mod tests {
             .db
             .upsert_document(
                 collections::ORDERS,
-                "order_1",
+                &oid,
                 json!({
-                    fields::ORDER_ID: "order_1",
+                    fields::ORDER_ID: oid,
                     fields::STATUS: OrderStatus::AwaitingShippingApproval.as_str(),
                     fields::PAYMENT_STATUS: PaymentStatus::Authorized.as_str(),
                     fields::CHECKOUT_SESSION_ID: "cs_123",
                     fields::ITEMS: [{
-                        fields::SELLER_ID: "seller_1"
+                        fields::SELLER_ID: sid
                     }],
                 }),
             )
@@ -630,10 +638,10 @@ mod tests {
 
         let Json(resp) = capture_payment(
             State(state.clone()),
-            Extension(auth("seller_1")),
+            Extension(auth(&sid)),
             Json(CapturePaymentRequest {
-                order_id: "order_1".into(),
-                user_id: Some("seller_1".to_string()),
+                order_id: oid.clone(),
+                user_id: Some(sid.clone()),
             }),
         )
         .await
@@ -643,7 +651,7 @@ mod tests {
 
         let order = state
             .db
-            .get_document(collections::ORDERS, "order_1")
+            .get_document(collections::ORDERS, &oid)
             .await
             .unwrap();
         assert_eq!(order[fields::PAYMENT_INTENT_ID], "pi_from_session");
@@ -657,6 +665,9 @@ mod tests {
     async fn test_capture_payment_handles_checkout_session_and_capture_failures() {
         let state = setup_state().await;
         let mock_server = MockServer::start().await;
+        let sid = format!("s_fail_{}", uuid::Uuid::new_v4().simple());
+        let oid_mpi = format!("o_mpi_{}", uuid::Uuid::new_v4().simple());
+        let oid_bad = format!("o_bad_{}", uuid::Uuid::new_v4().simple());
 
         Mock::given(method("GET"))
             .and(path("/checkout/sessions/cs_missing_pi"))
@@ -684,14 +695,14 @@ mod tests {
             .db
             .upsert_document(
                 collections::ORDERS,
-                "order_missing_pi",
+                &oid_mpi,
                 json!({
-                    fields::ORDER_ID: "order_missing_pi",
+                    fields::ORDER_ID: oid_mpi,
                     fields::STATUS: OrderStatus::PaymentAuthorized.as_str(),
                     fields::PAYMENT_STATUS: PaymentStatus::Authorized.as_str(),
                     fields::CHECKOUT_SESSION_ID: "cs_missing_pi",
                     fields::ITEMS: [{
-                        fields::SELLER_ID: "seller_1"
+                        fields::SELLER_ID: sid
                     }],
                 }),
             )
@@ -700,10 +711,10 @@ mod tests {
 
         let missing_pi = capture_payment(
             State(state.clone()),
-            Extension(auth("seller_1")),
+            Extension(auth(&sid)),
             Json(CapturePaymentRequest {
-                order_id: "order_missing_pi".into(),
-                user_id: Some("seller_1".to_string()),
+                order_id: oid_mpi.clone(),
+                user_id: Some(sid.clone()),
             }),
         )
         .await
@@ -718,14 +729,14 @@ mod tests {
             .db
             .upsert_document(
                 collections::ORDERS,
-                "order_bad_capture",
+                &oid_bad,
                 json!({
-                    fields::ORDER_ID: "order_bad_capture",
+                    fields::ORDER_ID: oid_bad,
                     fields::STATUS: OrderStatus::PaymentAuthorized.as_str(),
                     fields::PAYMENT_STATUS: PaymentStatus::Authorized.as_str(),
                     fields::PAYMENT_INTENT_ID: "pi_bad",
                     fields::ITEMS: [{
-                        fields::SELLER_ID: "seller_1"
+                        fields::SELLER_ID: sid
                     }],
                 }),
             )
@@ -734,10 +745,10 @@ mod tests {
 
         let bad_capture = capture_payment(
             State(state),
-            Extension(auth("seller_1")),
+            Extension(auth(&sid)),
             Json(CapturePaymentRequest {
-                order_id: "order_bad_capture".into(),
-                user_id: Some("seller_1".to_string()),
+                order_id: oid_bad,
+                user_id: Some(sid),
             }),
         )
         .await
@@ -766,18 +777,20 @@ mod tests {
             turnstile_secret_key: None,
             ..state
         };
+        let oid = format!("o_csf_{}", uuid::Uuid::new_v4().simple());
+        let sid = format!("s_csf_{}", uuid::Uuid::new_v4().simple());
 
         state
             .db
             .upsert_document(
                 collections::ORDERS,
-                "order_cs_fail",
+                &oid,
                 json!({
-                    fields::ORDER_ID: "order_cs_fail",
+                    fields::ORDER_ID: oid,
                     fields::STATUS: OrderStatus::PaymentAuthorized.as_str(),
                     fields::PAYMENT_STATUS: PaymentStatus::Authorized.as_str(),
                     fields::CHECKOUT_SESSION_ID: "cs_fail",
-                    fields::ITEMS: [{ fields::SELLER_ID: "seller_1" }],
+                    fields::ITEMS: [{ fields::SELLER_ID: sid }],
                 }),
             )
             .await
@@ -785,10 +798,10 @@ mod tests {
 
         let err = capture_payment(
             State(state),
-            Extension(auth("seller_1")),
+            Extension(auth(&sid)),
             Json(CapturePaymentRequest {
-                order_id: "order_cs_fail".into(),
-                user_id: Some("seller_1".to_string()),
+                order_id: oid,
+                user_id: Some(sid),
             }),
         )
         .await
@@ -813,18 +826,20 @@ mod tests {
             turnstile_secret_key: None,
             ..state
         };
+        let oid = format!("o_http_{}", uuid::Uuid::new_v4().simple());
+        let sid = format!("s_http_{}", uuid::Uuid::new_v4().simple());
 
         state
             .db
             .upsert_document(
                 collections::ORDERS,
-                "order_http_err",
+                &oid,
                 json!({
-                    fields::ORDER_ID: "order_http_err",
+                    fields::ORDER_ID: oid,
                     fields::STATUS: OrderStatus::PaymentAuthorized.as_str(),
                     fields::PAYMENT_STATUS: PaymentStatus::Authorized.as_str(),
                     fields::PAYMENT_INTENT_ID: "pi_http_err",
-                    fields::ITEMS: [{ fields::SELLER_ID: "seller_1" }],
+                    fields::ITEMS: [{ fields::SELLER_ID: sid }],
                 }),
             )
             .await
@@ -832,10 +847,10 @@ mod tests {
 
         let err = capture_payment(
             State(state),
-            Extension(auth("seller_1")),
+            Extension(auth(&sid)),
             Json(CapturePaymentRequest {
-                order_id: "order_http_err".into(),
-                user_id: Some("seller_1".to_string()),
+                order_id: oid,
+                user_id: Some(sid),
             }),
         )
         .await

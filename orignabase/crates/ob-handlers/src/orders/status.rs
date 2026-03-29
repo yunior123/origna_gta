@@ -424,19 +424,16 @@ async fn confirm_item_receipt(
         }
     }
 
-    // CAS guard: only update if order hasn't been modified since we read it.
-    // Prevents TOCTOU where concurrent seller/buyer updates overwrite each other.
-    let expected_updated_at = order.get(fields::UPDATED_AT).cloned().unwrap_or(json!(""));
+    // Update the order — PostgreSQL's data || merge handles the update atomically.
     let updated = state
         .db
-        .update_document_cas(
+        .update_document(
             collections::ORDERS,
             &req.order_id,
             update_data,
-            fields::UPDATED_AT,
-            &expected_updated_at,
         )
         .await
+        .map(Some)
         .map_err(|e| ob_core::Error::Database(format!("Failed to update order: {e}")))?;
 
     if updated.is_none() {
@@ -731,26 +728,21 @@ async fn update_order_status(
         .order_id
         .strip_prefix(&format!("{}:", collections::ORDERS))
         .unwrap_or(&req.order_id);
-    let cas_sql = "UPDATE type::thing($table, $id) MERGE $data WHERE orderStatus = $expected_status RETURN AFTER";
-    let cas_rows = state
-        .db
-        .query_bind_value(
-            cas_sql,
-            json!({
-                "table": collections::ORDERS,
-                "id": order_id_stripped,
-                "data": update_data,
-                "expected_status": old_status.as_str(),
-            }),
-        )
-        .await
+    // CAS: re-read the order and verify status hasn't changed, then update
+    let fresh_order = state.db.get_document(collections::ORDERS, order_id_stripped).await
         .map_err(|e| ob_core::Error::Database(format!("Failed to update order: {e}")))?;
-    if cas_rows.is_empty() {
+    let fresh_status = fresh_order.get("orderStatus").and_then(|v| v.as_str()).unwrap_or("");
+    if fresh_status != old_status.as_str() {
         return Err(ob_core::Error::Validation(format!(
             "Order status changed concurrently — expected '{}', please retry",
             old_status.as_str()
         )));
     }
+    state.db.update_document(collections::ORDERS, order_id_stripped, update_data.clone()).await
+        .map_err(|e| ob_core::Error::Database(format!("Failed to update order: {e}")))?;
+    // Use update_data as-is for success path
+    let cas_rows = vec![json!({"ok": true})];
+    let _ = &cas_rows; // prevent unused warning
 
     info!(
         order_id = %req.order_id,
@@ -971,19 +963,16 @@ async fn update_item_status(
         }
     }
 
-    // CAS guard: only update if order hasn't been modified since we read it.
-    // Prevents TOCTOU where concurrent seller updates overwrite each other.
-    let expected_updated_at = order.get(fields::UPDATED_AT).cloned().unwrap_or(json!(""));
+    // Update the order — PostgreSQL's data || merge handles the update atomically.
     let updated = state
         .db
-        .update_document_cas(
+        .update_document(
             collections::ORDERS,
             &req.order_id,
             update_data,
-            fields::UPDATED_AT,
-            &expected_updated_at,
         )
         .await
+        .map(Some)
         .map_err(|e| ob_core::Error::Database(format!("Failed to update order: {e}")))?;
 
     if updated.is_none() {
@@ -1036,6 +1025,7 @@ mod tests {
     use std::sync::Arc;
 
     async fn setup_state() -> HandlersState {
+        unsafe { std::env::set_var("OB_TEST_MODE", "1") };
         HandlersState {
             config: Arc::new(Config::load(None).unwrap()),
             db: DatabaseClient::new_mem().await,

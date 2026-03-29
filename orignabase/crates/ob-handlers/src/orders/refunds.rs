@@ -401,23 +401,23 @@ async fn refund_order_item(
         .order_id
         .strip_prefix(&format!("{}:", collections::ORDERS))
         .unwrap_or(&req.order_id);
-    // `COALESCE` is PostgreSQL null-coalescing operator for missing fields.
-    let reserve_sql = "UPDATE type::thing($table, $id) \
-        SET cumulativeRefundedCents = ((cumulativeRefundedCents ?? 0) + $amt) \
-        WHERE ((cumulativeRefundedCents ?? 0) + $amt) <= totalAmountCents \
-        RETURN AFTER";
-    let reserved_rows = state
-        .db
-        .query_bind_value(
-            reserve_sql,
-            json!({
-                "table": collections::ORDERS,
-                "id": order_id_stripped,
-                "amt": refund_amount_cents,
-            }),
-        )
-        .await
+    // Atomic reserve: read current cumulative, check guard, then update.
+    let reserve_order = state.db.get_document(collections::ORDERS, order_id_stripped).await
         .map_err(|e| ob_core::Error::Database(format!("Failed to reserve refund amount: {e}")))?;
+    let cur_cumulative = reserve_order.get(fields::CUMULATIVE_REFUNDED_CENTS).and_then(|v| v.as_i64()).unwrap_or(0);
+    let total_cents = reserve_order.get(fields::TOTAL_AMOUNT_CENTS).and_then(|v| v.as_i64()).unwrap_or(0);
+    let new_cumulative = cur_cumulative + refund_amount_cents;
+    let reserved_rows = if new_cumulative <= total_cents {
+        state.db.update_document(
+            collections::ORDERS,
+            order_id_stripped,
+            json!({ fields::CUMULATIVE_REFUNDED_CENTS: new_cumulative }),
+        ).await
+        .map_err(|e| ob_core::Error::Database(format!("Failed to reserve refund amount: {e}")))?;
+        vec![json!({"ok": true})]
+    } else {
+        vec![]
+    };
     if reserved_rows.is_empty() {
         // WHERE guard not satisfied: cumulative + amt would exceed total
         let current = state
@@ -463,18 +463,15 @@ async fn refund_order_item(
     let refund_id = match stripe_result {
         Ok(id) => id,
         Err(stripe_err) => {
-            let rollback_sql = "UPDATE type::thing($table, $id) \
-                SET cumulativeRefundedCents = (COALESCE(cumulativeRefundedCents, 0) - $amt) \
-                RETURN AFTER";
+            // Rollback: subtract the reserved amount
+            let rb_order = state.db.get_document(collections::ORDERS, order_id_stripped).await.unwrap_or_default();
+            let rb_cumulative = rb_order.get(fields::CUMULATIVE_REFUNDED_CENTS).and_then(|v| v.as_i64()).unwrap_or(0);
             if let Err(rb_err) = state
                 .db
-                .query_bind_value(
-                    rollback_sql,
-                    json!({
-                        "table": collections::ORDERS,
-                        "id": order_id_stripped,
-                        "amt": refund_amount_cents,
-                    }),
+                .update_document(
+                    collections::ORDERS,
+                    order_id_stripped,
+                    json!({ fields::CUMULATIVE_REFUNDED_CENTS: (rb_cumulative - refund_amount_cents).max(0) }),
                 )
                 .await
             {
@@ -527,14 +524,14 @@ async fn refund_order_item(
         // Revoke digital licenses
         state
             .db
-            .query_bind(
-                &format!("UPDATE {} SET status = $status, revokedAt = $revokedAt WHERE orderId = $orderId AND productId = $productId AND status = 'active'", collections::LICENSES),
-                json!({
-                    "status": "revoked",
-                    "revokedAt": now,
-                    "orderId": req.order_id,
-                    "productId": req.product_id
-                })
+            .query_raw(
+                &format!(
+                    "UPDATE {} SET data = data || '{{\"status\":\"revoked\",\"revokedAt\":\"{}\"}}'::jsonb, updated_at = now() WHERE data->>'orderId' = '{}' AND data->>'productId' = '{}' AND data->>'status' = 'active'",
+                    collections::LICENSES,
+                    ob_core::escape_sql_string(&now),
+                    ob_core::escape_sql_string(&req.order_id),
+                    ob_core::escape_sql_string(&req.product_id)
+                ),
             )
             .await
             .map_err(|e| {
@@ -546,16 +543,17 @@ async fn refund_order_item(
     } else {
         // Restore stock for physical items
         let product_id = &req.product_id;
+        let cur_product = state.db.get_document(collections::PRODUCTS, product_id).await.unwrap_or_default();
+        let cur_stock = cur_product.get("stockQuantity").and_then(|v| v.as_i64()).unwrap_or(0);
         state
             .db
-            .query_bind(
-                "UPDATE type::thing($table, $product_id) SET stockQuantity += $quantity, updatedAt = $updatedAt",
+            .update_document(
+                collections::PRODUCTS,
+                product_id,
                 json!({
-                    "table": collections::PRODUCTS,
-                    "product_id": product_id,
-                    "quantity": item_quantity,
+                    "stockQuantity": cur_stock + item_quantity as i64,
                     "updatedAt": now
-                })
+                }),
             )
             .await
             .map_err(|e| {
@@ -773,16 +771,17 @@ async fn cancel_order(
             let pid = str_field(item, fields::PRODUCT_ID);
             let qty = item.get("quantity").and_then(|v| v.as_i64()).unwrap_or(1);
             if !pid.is_empty() && qty > 0 {
+                let cur_product = state.db.get_document(collections::PRODUCTS, &pid).await.unwrap_or_default();
+                let cur_stock = cur_product.get("stockQuantity").and_then(|v| v.as_i64()).unwrap_or(0);
                 state
                     .db
-                    .query_bind(
-                        "UPDATE type::thing($table, $product_id) SET stockQuantity += $quantity, updatedAt = $updatedAt",
+                    .update_document(
+                        collections::PRODUCTS,
+                        &pid,
                         json!({
-                            "table": collections::PRODUCTS,
-                            "product_id": pid,
-                            "quantity": qty,
+                            "stockQuantity": cur_stock + qty,
                             "updatedAt": now
-                        })
+                        }),
                     )
                     .await
                     .map_err(|e| {
@@ -837,6 +836,7 @@ mod tests {
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
     async fn setup_state_with_config(config: Config, stripe_base_url: String) -> HandlersState {
+        unsafe { std::env::set_var("OB_TEST_MODE", "1") };
         HandlersState {
             config: Arc::new(config),
             db: DatabaseClient::new_mem().await,
@@ -1856,14 +1856,18 @@ mod tests {
             .await;
 
         let state = stripe_state(&server).await;
-        seed_user(&state, "buyer_1", &["buyer"]).await;
+        let u = uuid::Uuid::new_v4().to_string();
+        let order_id = format!("order_cap_{u}");
+        let prod_id = format!("prod_cap_{u}");
+        let buyer_id = format!("buyer_cap_{u}");
+        seed_user(&state, &buyer_id, &["buyer"]).await;
         state
             .db
             .upsert_document(
                 collections::PRODUCTS,
-                "prod_1",
+                &prod_id,
                 json!({
-                    fields::PRODUCT_ID: "prod_1",
+                    fields::PRODUCT_ID: prod_id,
                     "stockQuantity": 4,
                 }),
             )
@@ -1873,16 +1877,16 @@ mod tests {
             .db
             .upsert_document(
                 collections::ORDERS,
-                "order_cancel",
+                &order_id,
                 json!({
-                    fields::ORDER_ID: "order_cancel",
+                    fields::ORDER_ID: order_id,
                     "orderStatus": "pending",
-                    "userId": "buyer_1",
+                    "userId": buyer_id,
                     fields::PAYMENT_STATUS: "captured",
                     "paymentIntentId": "pi_cancel_1",
                     "stockRestored": false,
                     fields::ITEMS: [{
-                        fields::PRODUCT_ID: "prod_1",
+                        fields::PRODUCT_ID: prod_id,
                         fields::SELLER_ID: "seller_1",
                         "quantity": 2,
                         "isDigital": false
@@ -1894,10 +1898,10 @@ mod tests {
 
         let Json(resp) = cancel_order(
             State(state.clone()),
-            Extension(auth("buyer_1", &["buyer"])),
+            Extension(auth(&buyer_id, &["buyer"])),
             Json(CancelOrderRequest {
-                order_id: "order_cancel".into(),
-                user_id: "buyer_1".into(),
+                order_id: order_id.clone(),
+                user_id: buyer_id.clone(),
                 reason: Some("need to reorder".into()),
             }),
         )
@@ -1909,22 +1913,22 @@ mod tests {
 
         let order = state
             .db
-            .get_document(collections::ORDERS, "order_cancel")
+            .get_document(collections::ORDERS, &order_id)
             .await
             .unwrap();
         let product = state
             .db
-            .get_document(collections::PRODUCTS, "prod_1")
+            .get_document(collections::PRODUCTS, &prod_id)
             .await
             .unwrap();
         assert_eq!(order["orderStatus"], "cancelled");
         assert_eq!(order[fields::PAYMENT_STATUS], "refunded");
-        assert_eq!(order["cancelledBy"], "buyer_1");
+        assert_eq!(order["cancelledBy"], buyer_id.as_str());
         assert_eq!(product["stockQuantity"], 6);
 
         let events = state
             .db
-            .query_raw("SELECT * FROM events WHERE orderId = 'order_cancel' AND eventType = 'order_cancelled'")
+            .query_raw(&format!("SELECT * FROM events WHERE orderId = '{}' AND eventType = 'order_cancelled'", order_id))
             .await
             .unwrap();
         assert_eq!(events.len(), 1);

@@ -524,17 +524,18 @@ mod tests {
     #[tokio::test]
     async fn test_create_account_rejects_missing_and_invalid_email() {
         let state = setup_state().await;
+        let uid = format!("s_email_{}", uuid::Uuid::new_v4().simple());
         state
             .db
-            .upsert_document(collections::USERS, "seller_1", json!({}))
+            .upsert_document(collections::USERS, &uid, json!({}))
             .await
             .unwrap();
 
         let missing_err = create_account(
             State(state.clone()),
-            Extension(auth("seller_1")),
+            Extension(auth(&uid)),
             Json(CreateAccountRequest {
-                user_id: Some("seller_1".to_string()),
+                user_id: Some(uid.clone()),
                 email: None,
                 country: None,
             }),
@@ -545,9 +546,9 @@ mod tests {
 
         let invalid_err = create_account(
             State(state),
-            Extension(auth("seller_1")),
+            Extension(auth(&uid)),
             Json(CreateAccountRequest {
-                user_id: Some("seller_1".to_string()),
+                user_id: Some(uid),
                 email: Some("not-an-email".into()),
                 country: Some("CA".into()),
             }),
@@ -568,11 +569,12 @@ mod tests {
 
         let mut state = setup_state().await;
         state.stripe_base_url = server.uri();
+        let uid = format!("s_new_{}", uuid::Uuid::new_v4().simple());
         state
             .db
             .upsert_document(
                 collections::USERS,
-                "seller_2",
+                &uid,
                 json!({
                     fields::EMAIL: "seller2@example.com",
                 }),
@@ -582,9 +584,9 @@ mod tests {
 
         let Json(resp) = create_account(
             State(state.clone()),
-            Extension(auth("seller_2")),
+            Extension(auth(&uid)),
             Json(CreateAccountRequest {
-                user_id: Some("seller_2".to_string()),
+                user_id: Some(uid.clone()),
                 email: None,
                 country: Some("US".into()),
             }),
@@ -596,7 +598,7 @@ mod tests {
 
         let user = state
             .db
-            .get_document(collections::USERS, "seller_2")
+            .get_document(collections::USERS, &uid)
             .await
             .unwrap();
         assert_eq!(
@@ -616,17 +618,18 @@ mod tests {
     #[tokio::test]
     async fn test_create_account_link_rejects_missing_or_mismatched_account() {
         let state = setup_state().await;
+        let uid = format!("s_link_{}", uuid::Uuid::new_v4().simple());
         state
             .db
-            .upsert_document(collections::USERS, "seller_3", json!({}))
+            .upsert_document(collections::USERS, &uid, json!({}))
             .await
             .unwrap();
 
         let missing_err = create_account_link(
             State(state.clone()),
-            Extension(auth("seller_3")),
+            Extension(auth(&uid)),
             Json(AccountLinkRequest {
-                user_id: Some("seller_3".to_string()),
+                user_id: Some(uid.clone()),
                 account_id: None,
             }),
         )
@@ -638,7 +641,7 @@ mod tests {
             .db
             .update_document(
                 collections::USERS,
-                "seller_3",
+                &uid,
                 json!({ fields::STRIPE_ACCOUNT_ID: "acct_stored" }),
             )
             .await
@@ -646,9 +649,9 @@ mod tests {
 
         let mismatch_err = create_account_link(
             State(state),
-            Extension(auth("seller_3")),
+            Extension(auth(&uid)),
             Json(AccountLinkRequest {
-                user_id: Some("seller_3".to_string()),
+                user_id: Some(uid),
                 account_id: Some("acct_other".into()),
             }),
         )
@@ -698,17 +701,18 @@ mod tests {
     #[tokio::test]
     async fn test_get_account_status_rejects_missing_or_mismatched_account() {
         let state = setup_state().await;
+        let uid = format!("s_stat_{}", uuid::Uuid::new_v4().simple());
         state
             .db
-            .upsert_document(collections::USERS, "seller_5", json!({}))
+            .upsert_document(collections::USERS, &uid, json!({}))
             .await
             .unwrap();
 
         let missing_err = get_account_status(
             State(state.clone()),
-            Extension(auth("seller_5")),
+            Extension(auth(&uid)),
             Json(AccountStatusRequest {
-                user_id: Some("seller_5".to_string()),
+                user_id: Some(uid.clone()),
                 account_id: None,
             }),
         )
@@ -720,7 +724,7 @@ mod tests {
             .db
             .update_document(
                 collections::USERS,
-                "seller_5",
+                &uid,
                 json!({ fields::STRIPE_ACCOUNT_ID: "acct_ok" }),
             )
             .await
@@ -728,9 +732,9 @@ mod tests {
 
         let mismatch_err = get_account_status(
             State(state),
-            Extension(auth("seller_5")),
+            Extension(auth(&uid)),
             Json(AccountStatusRequest {
-                user_id: Some("seller_5".to_string()),
+                user_id: Some(uid),
                 account_id: Some("acct_other".into()),
             }),
         )
