@@ -14,8 +14,9 @@ pub struct DatabaseClient {
 }
 
 impl DatabaseClient {
-    /// Create an in-memory database client for testing.
-    /// Uses the local PostgreSQL instance with a test database.
+    /// Create a database client for testing.
+    /// Uses the local PostgreSQL instance.
+    /// Tests should use unique IDs (e.g., uuid::Uuid::new_v4()) to avoid collisions.
     pub async fn new_mem() -> Self {
         let url = std::env::var("OB_TEST_DATABASE_URL")
             .unwrap_or_else(|_| "postgres://orignabase:orignabase_dev@127.0.0.1:5432/orignabase".to_string());

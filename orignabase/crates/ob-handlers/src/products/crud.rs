@@ -875,7 +875,7 @@ async fn delete_product(
     // Check for pending orders containing this product
     // Uses validated user_id from JWT (not client-supplied req.user_id)
     let pending_query = format!(
-        "SELECT * FROM {} WHERE {} CONTAINS '{}' AND {} IN ['pending', 'processing', 'shipped'] LIMIT 5",
+        "SELECT * FROM {} WHERE data->>'{}' = '{}' AND data->>'{}' IN ('pending', 'processing', 'shipped') LIMIT 5",
         collections::ORDERS,
         fields::SELLER_ID,
         ob_core::escape_sql_string(&user_id),
@@ -913,7 +913,7 @@ async fn delete_product(
 
     // Clean up stock notifications
     let cleanup_query = format!(
-        "DELETE FROM {} WHERE {} = '{}'",
+        "DELETE FROM {} WHERE data->>'{}' = '{}'",
         collections::STOCK_NOTIFICATIONS,
         fields::PRODUCT_ID,
         ob_core::escape_sql_string(&req.product_id),
@@ -955,11 +955,11 @@ async fn list_products(
     }
 
     // Build query — always filter for active products in public API
-    let mut conditions = vec![format!("{} = 'active'", fields::LIFECYCLE_STATUS)];
+    let mut conditions = vec![format!("data->>'{}' = 'active'", fields::LIFECYCLE_STATUS)];
 
     if let Some(ref category) = req.category {
         conditions.push(format!(
-            "{} = '{}'",
+            "data->>'{}' = '{}'",
             fields::CATEGORY,
             ob_core::escape_sql_string(category)
         ));
@@ -967,7 +967,7 @@ async fn list_products(
 
     if let Some(ref seller_id) = req.seller_id {
         conditions.push(format!(
-            "{} = '{}'",
+            "data->>'{}' = '{}'",
             fields::SELLER_ID,
             ob_core::escape_sql_string(seller_id)
         ));
@@ -988,7 +988,7 @@ async fn list_products(
     // Fetch limit+1 to detect hasMore
     let fetch_limit = limit + 1;
     let query = format!(
-        "SELECT * FROM {}{} ORDER BY {} {} LIMIT {}",
+        "SELECT * FROM {}{} ORDER BY data->>'{}' {} LIMIT {}",
         collections::PRODUCTS,
         where_clause,
         order_by,
@@ -1034,20 +1034,20 @@ async fn seller_list(
     let limit = req.limit.min(MAX_PAGE_SIZE);
 
     let mut conditions = vec![format!(
-        "{} = '{}'",
+        "data->>'{}' = '{}'",
         fields::SELLER_ID,
         ob_core::escape_sql_string(&req.seller_id)
     )];
 
     if !req.include_inactive {
-        conditions.push(format!("{} = 'active'", fields::LIFECYCLE_STATUS));
+        conditions.push(format!("data->>'{}' = 'active'", fields::LIFECYCLE_STATUS));
     }
 
     let where_clause = format!(" WHERE {}", conditions.join(" AND "));
     let fetch_limit = limit + 1;
 
     let query = format!(
-        "SELECT * FROM {}{} ORDER BY {} DESC LIMIT {}",
+        "SELECT * FROM {}{} ORDER BY data->>'{}' DESC LIMIT {}",
         collections::PRODUCTS,
         where_clause,
         fields::CREATED_AT,
@@ -1902,11 +1902,19 @@ mod tests {
     #[tokio::test]
     async fn test_list_products_filters_category_and_seller() {
         let state = setup_state().await;
+        let u = uuid::Uuid::new_v4().to_string();
+        let s1 = format!("seller_cs1_{u}");
+        let s2 = format!("seller_cs2_{u}");
+        let cat = format!("fruit_{u}");
+        let id1 = format!("p_cs1_{u}");
+        let id2 = format!("p_cs2_{u}");
+        let id3 = format!("p_cs3_{u}");
+        let id4 = format!("p_cs4_{u}");
         for (id, category, seller_id, status) in [
-            ("p1", "fruit", "seller_1", "active"),
-            ("p2", "fruit", "seller_2", "active"),
-            ("p3", "veg", "seller_1", "active"),
-            ("p4", "fruit", "seller_1", "archived"),
+            (id1.as_str(), cat.as_str(), s1.as_str(), "active"),
+            (id2.as_str(), cat.as_str(), s2.as_str(), "active"),
+            (id3.as_str(), "veg", s1.as_str(), "active"),
+            (id4.as_str(), cat.as_str(), s1.as_str(), "archived"),
         ] {
             state
                 .db
@@ -1929,8 +1937,8 @@ mod tests {
             Json(ListProductsRequest {
                 page: 1,
                 limit: 10,
-                category: Some("fruit".into()),
-                seller_id: Some("seller_1".into()),
+                category: Some(cat.clone()),
+                seller_id: Some(s1.clone()),
                 order_by: Some(fields::CREATED_AT.into()),
                 order_direction: "desc".into(),
                 start_after: None,
@@ -1940,20 +1948,24 @@ mod tests {
         .unwrap();
 
         assert_eq!(resp.total_fetched, 1);
-        assert_eq!(resp.products[0]["id"], "products:p1");
+        assert_eq!(resp.products[0]["id"], format!("{}:{}", collections::PRODUCTS, id1));
     }
 
     #[tokio::test]
     async fn test_seller_list_excludes_inactive_by_default() {
         let state = setup_state().await;
-        for (id, status) in [("p1", "active"), ("p2", "archived")] {
+        let u = uuid::Uuid::new_v4().to_string();
+        let seller = format!("seller_excl_{u}");
+        let id1 = format!("p_excl1_{u}");
+        let id2 = format!("p_excl2_{u}");
+        for (id, status) in [(id1.as_str(), "active"), (id2.as_str(), "archived")] {
             state
                 .db
                 .upsert_document(
                     collections::PRODUCTS,
                     id,
                     serde_json::json!({
-                        fields::SELLER_ID: "seller_1",
+                        fields::SELLER_ID: seller,
                         fields::LIFECYCLE_STATUS: status,
                         fields::CREATED_AT: "2026-01-01T00:00:00Z",
                     }),
@@ -1965,7 +1977,7 @@ mod tests {
         let Json(resp) = seller_list(
             State(state),
             Json(SellerListRequest {
-                seller_id: "seller_1".into(),
+                seller_id: seller.clone(),
                 page: 1,
                 limit: 10,
                 start_after: None,
@@ -1976,20 +1988,24 @@ mod tests {
         .unwrap();
 
         assert_eq!(resp.total_fetched, 1);
-        assert_eq!(resp.products[0]["id"], "products:p1");
+        assert_eq!(resp.products[0]["id"], format!("{}:{}", collections::PRODUCTS, id1));
     }
 
     #[tokio::test]
     async fn test_seller_list_can_include_inactive() {
         let state = setup_state().await;
-        for (id, status) in [("p1", "active"), ("p2", "archived")] {
+        let u = uuid::Uuid::new_v4().to_string();
+        let seller = format!("seller_incl_{u}");
+        let id1 = format!("p_incl1_{u}");
+        let id2 = format!("p_incl2_{u}");
+        for (id, status) in [(id1.as_str(), "active"), (id2.as_str(), "archived")] {
             state
                 .db
                 .upsert_document(
                     collections::PRODUCTS,
                     id,
                     serde_json::json!({
-                        fields::SELLER_ID: "seller_1",
+                        fields::SELLER_ID: seller,
                         fields::LIFECYCLE_STATUS: status,
                         fields::CREATED_AT: "2026-01-01T00:00:00Z",
                     }),
@@ -2001,7 +2017,7 @@ mod tests {
         let Json(resp) = seller_list(
             State(state),
             Json(SellerListRequest {
-                seller_id: "seller_1".into(),
+                seller_id: seller.clone(),
                 page: 1,
                 limit: 10,
                 start_after: None,
@@ -2453,13 +2469,14 @@ mod tests {
     #[tokio::test]
     async fn test_list_products_asc_direction() {
         let state = setup_state().await;
+        let unique_seller = format!("seller_asc_{}", uuid::Uuid::new_v4());
         for (id, status, created_at) in [
-            ("p1", "active", "2026-01-01T00:00:00Z"),
-            ("p2", "active", "2026-01-02T00:00:00Z"),
+            (&format!("p_asc_{}", uuid::Uuid::new_v4()), "active", "2026-01-01T00:00:00Z"),
+            (&format!("p_asc_{}", uuid::Uuid::new_v4()), "active", "2026-01-02T00:00:00Z"),
         ] {
             state.db.upsert_document(
                 collections::PRODUCTS, id,
-                serde_json::json!({ fields::LIFECYCLE_STATUS: status, fields::CREATED_AT: created_at }),
+                serde_json::json!({ fields::LIFECYCLE_STATUS: status, fields::CREATED_AT: created_at, fields::SELLER_ID: unique_seller }),
             ).await.unwrap();
         }
 
@@ -2469,7 +2486,7 @@ mod tests {
                 page: 1,
                 limit: 10,
                 category: None,
-                seller_id: None,
+                seller_id: Some(unique_seller),
                 order_by: None,
                 order_direction: "asc".into(),
                 start_after: None,
@@ -2485,18 +2502,21 @@ mod tests {
     #[tokio::test]
     async fn test_seller_list_pagination_has_more() {
         let state = setup_state().await;
-        for (id, created_at) in [
-            ("p1", "2026-01-03T00:00:00Z"),
-            ("p2", "2026-01-02T00:00:00Z"),
-            ("p3", "2026-01-01T00:00:00Z"),
+        let u = uuid::Uuid::new_v4().to_string();
+        let seller = format!("seller_pag_{u}");
+        for (suffix, created_at) in [
+            ("1", "2026-01-03T00:00:00Z"),
+            ("2", "2026-01-02T00:00:00Z"),
+            ("3", "2026-01-01T00:00:00Z"),
         ] {
+            let id = format!("p_pag{suffix}_{u}");
             state
                 .db
                 .upsert_document(
                     collections::PRODUCTS,
-                    id,
+                    &id,
                     serde_json::json!({
-                        fields::SELLER_ID: "seller_1",
+                        fields::SELLER_ID: seller,
                         fields::LIFECYCLE_STATUS: "active",
                         fields::CREATED_AT: created_at,
                     }),
@@ -2508,7 +2528,7 @@ mod tests {
         let Json(resp) = seller_list(
             State(state),
             Json(SellerListRequest {
-                seller_id: "seller_1".into(),
+                seller_id: seller.clone(),
                 page: 1,
                 limit: 2,
                 start_after: None,

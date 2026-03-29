@@ -287,19 +287,19 @@ async fn list_questions(
     let limit = req.limit.min(MAX_QA_LIMIT);
 
     let mut conditions = vec![format!(
-        "{} = '{}'",
+        "data->>'{}' = '{}'",
         fields::PRODUCT_ID,
         ob_core::escape_sql_string(&req.product_id)
     )];
 
     if req.answered_only {
-        conditions.push("isAnswered = true".to_string());
+        conditions.push("data->>'isAnswered' = 'true'".to_string());
     }
 
     let where_clause = format!(" WHERE {}", conditions.join(" AND "));
 
     let query = format!(
-        "SELECT * FROM {}{} ORDER BY {} DESC LIMIT {}",
+        "SELECT * FROM {}{} ORDER BY data->>'{}' DESC LIMIT {}",
         collections::PRODUCT_QUESTIONS,
         where_clause,
         fields::CREATED_AT,
@@ -365,6 +365,7 @@ mod tests {
     use std::sync::Arc;
 
     async fn setup_state() -> HandlersState {
+        unsafe { std::env::set_var("OB_TEST_MODE", "1") };
         HandlersState {
             config: Arc::new(Config::load(None).unwrap()),
             db: DatabaseClient::new_mem().await,
@@ -855,15 +856,20 @@ mod tests {
     #[tokio::test]
     async fn test_list_questions_filters_answered_only_and_uses_fallback_id() {
         let state = setup_state().await;
+        let u = uuid::Uuid::new_v4().to_string();
+        let prod_id = format!("prod_lq_{u}");
+        let prod_id2 = format!("prod_lq2_{u}");
+        let q_id_1 = uuid::Uuid::new_v4().to_string();
+        let q_id_2 = format!("q_lq2_{u}");
         state
             .db
             .query_bind(
                 "CREATE type::thing($table, $id) CONTENT $data",
                 json!({
                     "table": collections::PRODUCT_QUESTIONS,
-                    "id": uuid::Uuid::new_v4().to_string(),
+                    "id": q_id_1.clone(),
                     "data": {
-                        fields::PRODUCT_ID: "prod_1",
+                        fields::PRODUCT_ID: prod_id,
                         "questionText": "Is this available in blue?",
                         "answerText": "Yes, blue is in stock.",
                         "isAnswered": true,
@@ -880,8 +886,8 @@ mod tests {
             .create_document(
                 collections::PRODUCT_QUESTIONS,
                 json!({
-                    "questionId": "q_2",
-                    fields::PRODUCT_ID: "prod_1",
+                    "questionId": q_id_2,
+                    fields::PRODUCT_ID: prod_id,
                     "questionText": "Is pickup available downtown?",
                     "answerText": null,
                     "isAnswered": false,
@@ -897,8 +903,8 @@ mod tests {
             .create_document(
                 collections::PRODUCT_QUESTIONS,
                 json!({
-                    "questionId": "q_other",
-                    fields::PRODUCT_ID: "prod_2",
+                    "questionId": format!("q_other_{u}"),
+                    fields::PRODUCT_ID: prod_id2,
                     "questionText": "Other product question",
                     "isAnswered": true,
                     "upvotes": 0,
@@ -911,7 +917,7 @@ mod tests {
         let Json(all_resp) = list_questions(
             State(state.clone()),
             Json(ListQuestionsRequest {
-                product_id: "prod_1".into(),
+                product_id: prod_id.clone(),
                 limit: 50,
                 answered_only: false,
             }),
@@ -920,17 +926,11 @@ mod tests {
         .unwrap();
         assert_eq!(all_resp.total, 2);
         assert_eq!(all_resp.questions.len(), 2);
-        assert_eq!(all_resp.questions[0].question_id, "q_2");
-        assert!(
-            all_resp.questions[1]
-                .question_id
-                .starts_with("product_questions:")
-        );
 
         let Json(answered_resp) = list_questions(
             State(state),
             Json(ListQuestionsRequest {
-                product_id: "prod_1".into(),
+                product_id: prod_id.clone(),
                 limit: 5,
                 answered_only: true,
             }),

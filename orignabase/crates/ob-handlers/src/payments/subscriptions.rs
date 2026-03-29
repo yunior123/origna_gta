@@ -235,7 +235,7 @@ async fn get_user_subscription(
     let rows = state
         .db
         .query_raw(&format!(
-            "SELECT * FROM subscriptions WHERE buyerId = '{}' ORDER BY createdAt DESC LIMIT 1",
+            "SELECT * FROM subscriptions WHERE data->>'buyerId' = '{}' ORDER BY data->>'createdAt' DESC LIMIT 1",
             ob_core::escape_sql_string(user_id)
         ))
         .await?;
@@ -976,7 +976,7 @@ async fn find_user_by_customer_id(
     let rows = state
         .db
         .query_raw(&format!(
-            "SELECT * FROM users WHERE customerId = '{}' LIMIT 1",
+            "SELECT * FROM users WHERE data->>'customerId' = '{}' LIMIT 1",
             ob_core::escape_sql_string(customer_id)
         ))
         .await?;
@@ -1639,13 +1639,14 @@ mod tests {
     #[tokio::test]
     async fn test_create_subscription_rejects_existing_active_subscription() {
         let state = setup_state().await;
+        let uid = format!("u_rejects_{}", uuid::Uuid::new_v4().simple());
         state
             .db
             .upsert_document(
                 collections::SUBSCRIPTIONS,
-                "user_1",
+                &uid,
                 json!({
-                    fields::BUYER_ID: "users:user_1",
+                    fields::BUYER_ID: format!("users:{uid}"),
                     fields::SUBSCRIPTION_STATUS: SubscriptionStatus::Active.as_str(),
                     fields::STATUS: SubscriptionStatus::Active.as_str(),
                 }),
@@ -1655,9 +1656,9 @@ mod tests {
 
         let err = create_subscription(
             State(state),
-            Extension(auth("users:user_1")),
+            Extension(auth(&format!("users:{uid}"))),
             Json(CreateSubscriptionRequest {
-                user_id: Some("users:user_1".to_string()),
+                user_id: Some(format!("users:{uid}")),
                 payment_method_id: None,
             }),
         )
@@ -1672,11 +1673,12 @@ mod tests {
     #[tokio::test]
     async fn test_cancel_subscription_rejects_missing_subscription() {
         let state = setup_state().await;
+        let uid = format!("u_cancel_{}", uuid::Uuid::new_v4().simple());
         let err = cancel_subscription(
             State(state),
-            Extension(auth("users:user_1")),
+            Extension(auth(&format!("users:{uid}"))),
             Json(CancelSubscriptionRequest {
-                user_id: Some("users:user_1".to_string()),
+                user_id: Some(format!("users:{uid}")),
             }),
         )
         .await
@@ -1775,27 +1777,29 @@ mod tests {
     #[tokio::test]
     async fn test_handle_subscription_created_marks_user_premium() {
         let state = setup_state().await;
+        let uid = format!("u_created_{}", uuid::Uuid::new_v4().simple());
+        let cus = format!("cus_created_{}", uuid::Uuid::new_v4().simple());
         state
             .db
             .upsert_document(
                 collections::USERS,
-                "user_1",
+                &uid,
                 json!({
-                    fields::UID: "users:user_1",
-                    fields::CUSTOMER_ID: "cus_123",
+                    fields::UID: format!("users:{uid}"),
+                    fields::CUSTOMER_ID: cus,
                     fields::IS_PREMIUM: false,
                 }),
             )
             .await
             .unwrap();
 
-        handle_subscription_created(&state, &json!({ "object": { "customer": "cus_123" } }))
+        handle_subscription_created(&state, &json!({ "object": { "customer": cus } }))
             .await
             .unwrap();
 
         let user = state
             .db
-            .get_document(collections::USERS, "user_1")
+            .get_document(collections::USERS, &uid)
             .await
             .unwrap();
         assert_eq!(user[fields::IS_PREMIUM], true);
@@ -1808,14 +1812,16 @@ mod tests {
     #[tokio::test]
     async fn test_handle_subscription_created_is_idempotent() {
         let state = setup_state().await;
+        let uid = format!("u_idem_{}", uuid::Uuid::new_v4().simple());
+        let cus = format!("cus_idem_{}", uuid::Uuid::new_v4().simple());
         state
             .db
             .upsert_document(
                 collections::USERS,
-                "user_1",
+                &uid,
                 json!({
-                    fields::UID: "users:user_1",
-                    fields::CUSTOMER_ID: "cus_123",
+                    fields::UID: format!("users:{uid}"),
+                    fields::CUSTOMER_ID: cus,
                     fields::IS_PREMIUM: false,
                 }),
             )
@@ -1823,18 +1829,18 @@ mod tests {
             .unwrap();
 
         // First call — should succeed
-        handle_subscription_created(&state, &json!({ "object": { "customer": "cus_123" } }))
+        handle_subscription_created(&state, &json!({ "object": { "customer": cus } }))
             .await
             .unwrap();
 
         // Second call (duplicate webhook) — should also succeed (idempotent)
-        handle_subscription_created(&state, &json!({ "object": { "customer": "cus_123" } }))
+        handle_subscription_created(&state, &json!({ "object": { "customer": cus } }))
             .await
             .unwrap();
 
         let user = state
             .db
-            .get_document(collections::USERS, "user_1")
+            .get_document(collections::USERS, &uid)
             .await
             .unwrap();
         assert_eq!(user[fields::IS_PREMIUM], true);
@@ -1847,21 +1853,23 @@ mod tests {
     #[tokio::test]
     async fn test_handle_subscription_updated_syncs_subscription_doc() {
         let state = setup_state().await;
+        let uid = format!("u_updated_{}", uuid::Uuid::new_v4().simple());
+        let cus = format!("cus_updated_{}", uuid::Uuid::new_v4().simple());
         state
             .db
             .upsert_document(
                 collections::USERS,
-                "user_1",
+                &uid,
                 json!({
-                    fields::UID: "users:user_1",
-                    fields::CUSTOMER_ID: "cus_123",
+                    fields::UID: format!("users:{uid}"),
+                    fields::CUSTOMER_ID: cus,
                 }),
             )
             .await
             .unwrap();
         state
             .db
-            .upsert_document(collections::SUBSCRIPTIONS, "user_1", json!({}))
+            .upsert_document(collections::SUBSCRIPTIONS, &uid, json!({}))
             .await
             .unwrap();
 
@@ -1869,7 +1877,7 @@ mod tests {
             &state,
             &json!({
                 "object": {
-                    "customer": "cus_123",
+                    "customer": cus,
                     "status": "past_due",
                     "current_period_end": 12345,
                     "cancel_at_period_end": true
@@ -1881,7 +1889,7 @@ mod tests {
 
         let sub = state
             .db
-            .get_document(collections::SUBSCRIPTIONS, "user_1")
+            .get_document(collections::SUBSCRIPTIONS, &uid)
             .await
             .unwrap();
         assert_eq!(sub[fields::STATUS], "past_due");
@@ -1892,14 +1900,16 @@ mod tests {
     #[tokio::test]
     async fn test_handle_subscription_deleted_revokes_premium() {
         let state = setup_state().await;
+        let uid = format!("u_deleted_{}", uuid::Uuid::new_v4().simple());
+        let cus = format!("cus_deleted_{}", uuid::Uuid::new_v4().simple());
         state
             .db
             .upsert_document(
                 collections::USERS,
-                "user_1",
+                &uid,
                 json!({
-                    fields::UID: "users:user_1",
-                    fields::CUSTOMER_ID: "cus_123",
+                    fields::UID: format!("users:{uid}"),
+                    fields::CUSTOMER_ID: cus,
                     fields::IS_PREMIUM: true,
                 }),
             )
@@ -1907,22 +1917,22 @@ mod tests {
             .unwrap();
         state
             .db
-            .upsert_document(collections::SUBSCRIPTIONS, "user_1", json!({}))
+            .upsert_document(collections::SUBSCRIPTIONS, &uid, json!({}))
             .await
             .unwrap();
 
-        handle_subscription_deleted(&state, &json!({ "object": { "customer": "cus_123" } }))
+        handle_subscription_deleted(&state, &json!({ "object": { "customer": cus } }))
             .await
             .unwrap();
 
         let user = state
             .db
-            .get_document(collections::USERS, "user_1")
+            .get_document(collections::USERS, &uid)
             .await
             .unwrap();
         let sub = state
             .db
-            .get_document(collections::SUBSCRIPTIONS, "user_1")
+            .get_document(collections::SUBSCRIPTIONS, &uid)
             .await
             .unwrap();
         assert_eq!(user[fields::IS_PREMIUM], false);
@@ -1932,36 +1942,38 @@ mod tests {
     #[tokio::test]
     async fn test_handle_invoice_payment_failed_marks_past_due() {
         let state = setup_state().await;
+        let uid = format!("u_pastdue_{}", uuid::Uuid::new_v4().simple());
+        let cus = format!("cus_pastdue_{}", uuid::Uuid::new_v4().simple());
         state
             .db
             .upsert_document(
                 collections::USERS,
-                "user_1",
+                &uid,
                 json!({
-                    fields::UID: "users:user_1",
-                    fields::CUSTOMER_ID: "cus_123",
+                    fields::UID: format!("users:{uid}"),
+                    fields::CUSTOMER_ID: cus,
                 }),
             )
             .await
             .unwrap();
         state
             .db
-            .upsert_document(collections::SUBSCRIPTIONS, "user_1", json!({}))
+            .upsert_document(collections::SUBSCRIPTIONS, &uid, json!({}))
             .await
             .unwrap();
 
-        handle_invoice_payment_failed(&state, &json!({ "object": { "customer": "cus_123" } }))
+        handle_invoice_payment_failed(&state, &json!({ "object": { "customer": cus } }))
             .await
             .unwrap();
 
         let user = state
             .db
-            .get_document(collections::USERS, "user_1")
+            .get_document(collections::USERS, &uid)
             .await
             .unwrap();
         let sub = state
             .db
-            .get_document(collections::SUBSCRIPTIONS, "user_1")
+            .get_document(collections::SUBSCRIPTIONS, &uid)
             .await
             .unwrap();
         assert_eq!(
@@ -1996,13 +2008,14 @@ mod tests {
             .values
             .insert("stripe_secret_key".to_string(), "STRIPE_SECRET_KEY_REDACTED".to_string());
         let state = setup_state_with_config(config, server.uri()).await;
+        let uid = format!("u_chkflow_{}", uuid::Uuid::new_v4().simple());
         state
             .db
             .upsert_document(
                 collections::USERS,
-                "user_1",
+                &uid,
                 json!({
-                    fields::UID: "users:user_1",
+                    fields::UID: format!("users:{uid}"),
                     fields::EMAIL: "buyer@example.com",
                     fields::NAME: "Buyer One",
                     fields::ROLES: ["buyer"],
@@ -2013,9 +2026,9 @@ mod tests {
 
         let Json(resp) = create_subscription(
             State(state.clone()),
-            Extension(auth("users:user_1")),
+            Extension(auth(&format!("users:{uid}"))),
             Json(CreateSubscriptionRequest {
-                user_id: Some("users:user_1".to_string()),
+                user_id: Some(format!("users:{uid}")),
                 payment_method_id: None,
             }),
         )
@@ -2224,13 +2237,14 @@ mod tests {
             .values
             .insert("stripe_secret_key".to_string(), "STRIPE_SECRET_KEY_REDACTED".to_string());
         let state = setup_state_with_config(config, server.uri()).await;
+        let uid = format!("u_cusfail_{}", uuid::Uuid::new_v4().simple());
         state
             .db
             .upsert_document(
                 collections::USERS,
-                "user_1",
+                &uid,
                 json!({
-                    fields::UID: "users:user_1",
+                    fields::UID: format!("users:{uid}"),
                     fields::EMAIL: "a@b.com",
                     fields::NAME: "Test",
                 }),
@@ -2238,7 +2252,7 @@ mod tests {
             .await
             .unwrap();
 
-        let err = ensure_customer(&state, "user_1", "STRIPE_SECRET_KEY_REDACTED")
+        let err = ensure_customer(&state, &uid, "STRIPE_SECRET_KEY_REDACTED")
             .await
             .unwrap_err();
         assert!(err.to_string().contains("Failed to create Stripe customer"));
@@ -2513,13 +2527,14 @@ mod tests {
             .values
             .insert("stripe_secret_key".to_string(), "STRIPE_SECRET_KEY_REDACTED".to_string());
         let state = setup_state_with_config(config, server.uri()).await;
+        let uid = format!("u_pm_{}", uuid::Uuid::new_v4().simple());
         state
             .db
             .upsert_document(
                 collections::USERS,
-                "user_pm",
+                &uid,
                 json!({
-                    fields::UID: "user_pm",
+                    fields::UID: uid,
                     fields::EMAIL: "pm@ex.com",
                     fields::NAME: "PM User",
                 }),
@@ -2530,9 +2545,9 @@ mod tests {
 
         let Json(resp) = create_subscription(
             State(state.clone()),
-            Extension(auth("users:user_pm")),
+            Extension(auth(&format!("users:{uid}"))),
             Json(CreateSubscriptionRequest {
-                user_id: Some("users:user_pm".to_string()),
+                user_id: Some(format!("users:{uid}")),
                 payment_method_id: Some("pm_test_abc".into()),
             }),
         )
@@ -2548,7 +2563,7 @@ mod tests {
         // Verify user was marked premium
         let user = state
             .db
-            .get_document(collections::USERS, "user_pm")
+            .get_document(collections::USERS, &uid)
             .await
             .unwrap();
         assert_eq!(user[fields::IS_PREMIUM], true);

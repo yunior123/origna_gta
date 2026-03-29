@@ -214,11 +214,10 @@ async fn submit_rating(
 
     // Check for duplicate rating (one per user per product)
     let dup_query = format!(
-        "SELECT * FROM {} WHERE {} = '{}' AND {} = '{}' LIMIT 1",
+        "SELECT * FROM {} WHERE data->>'{}' = '{}' AND data->>'userId' = '{}' LIMIT 1",
         collections::PRODUCT_RATINGS,
         fields::PRODUCT_ID,
         ob_core::escape_sql_string(&req.product_id),
-        "userId",
         ob_core::escape_sql_string(&req.user_id),
     );
 
@@ -318,20 +317,20 @@ async fn get_ratings(
     }
 
     let mut conditions = vec![format!(
-        "{} = '{}'",
+        "data->>'{}' = '{}'",
         fields::PRODUCT_ID,
         ob_core::escape_sql_string(&req.product_id)
     )];
 
     if let Some(min) = req.min_rating {
-        conditions.push(format!("{} >= {}", fields::RATING, min));
+        conditions.push(format!("CAST(data->>'{}' AS DOUBLE PRECISION) >= {}", fields::RATING, min));
     }
 
     let where_clause = format!(" WHERE {}", conditions.join(" AND "));
     let fetch_limit = limit + 1;
 
     let query = format!(
-        "SELECT * FROM {}{} ORDER BY {} DESC LIMIT {}",
+        "SELECT * FROM {}{} ORDER BY data->>'{}' DESC LIMIT {}",
         collections::PRODUCT_RATINGS,
         where_clause,
         fields::CREATED_AT,
@@ -397,7 +396,7 @@ async fn review_vote(
 
     let vote_col = collections::REVIEW_VOTES;
     let find_query = format!(
-        "SELECT * FROM {} WHERE reviewId = '{}' AND userId = '{}' LIMIT 1",
+        "SELECT * FROM {} WHERE data->>'reviewId' = '{}' AND data->>'userId' = '{}' LIMIT 1",
         vote_col,
         ob_core::escape_sql_string(&req.review_id),
         ob_core::escape_sql_string(&user_id)
@@ -417,13 +416,19 @@ async fn review_vote(
 
         let record_id = record.get("id").and_then(|v| v.as_str()).unwrap_or("");
 
-        let update_vote_query = format!(
-            "UPDATE {} SET vote = '{}', {} = time::now()",
-            record_id,
-            vote_str,
-            fields::UPDATED_AT
-        );
-        state.db.query_raw(&update_vote_query).await?;
+        // Update vote via CRUD method (avoids SurrealDB UPDATE id SET syntax)
+        let now = chrono::Utc::now().to_rfc3339();
+        state
+            .db
+            .update_document(
+                vote_col,
+                record_id,
+                serde_json::json!({
+                    "vote": vote_str,
+                    fields::UPDATED_AT: now,
+                }),
+            )
+            .await?;
 
         // Determine adjustments based on old and new vote
         let (helpful_adj, unhelpful_adj) = match (old_vote, vote_str) {
@@ -437,26 +442,33 @@ async fn review_vote(
         };
 
         if helpful_adj != 0 || unhelpful_adj != 0 {
-            let update_ratings_query = format!(
-                "UPDATE {}:{} SET helpfulVotes += {}, unhelpfulVotes += {}, {} = time::now()",
+            // Read current review, adjust counts, update via CRUD
+            let review = state.db.get_document(collections::PRODUCT_RATINGS, &req.review_id).await.unwrap_or_default();
+            let cur_helpful = review.get("helpfulVotes").and_then(|v| v.as_i64()).unwrap_or(0);
+            let cur_unhelpful = review.get("unhelpfulVotes").and_then(|v| v.as_i64()).unwrap_or(0);
+            let now_ts = chrono::Utc::now().to_rfc3339();
+            state.db.update_document(
                 collections::PRODUCT_RATINGS,
-                ob_core::escape_sql_string(&req.review_id),
-                helpful_adj,
-                unhelpful_adj,
-                fields::UPDATED_AT
-            );
-            state.db.query_raw(&update_ratings_query).await?;
+                &req.review_id,
+                serde_json::json!({
+                    "helpfulVotes": cur_helpful + helpful_adj as i64,
+                    "unhelpfulVotes": cur_unhelpful + unhelpful_adj as i64,
+                    fields::UPDATED_AT: now_ts,
+                }),
+            ).await?;
         }
     } else {
-        let create_vote_query = format!(
-            "CREATE {} SET reviewId = '{}', userId = '{}', vote = '{}', createdAt = time::now(), {} = time::now()",
+        let now_ts = chrono::Utc::now().to_rfc3339();
+        state.db.create_document(
             vote_col,
-            ob_core::escape_sql_string(&req.review_id),
-            ob_core::escape_sql_string(&user_id),
-            vote_str,
-            fields::UPDATED_AT
-        );
-        state.db.query_raw(&create_vote_query).await?;
+            serde_json::json!({
+                "reviewId": req.review_id,
+                "userId": user_id,
+                "vote": vote_str,
+                fields::CREATED_AT: now_ts,
+                fields::UPDATED_AT: now_ts,
+            }),
+        ).await?;
 
         let (helpful_adj, unhelpful_adj) = match vote_str {
             "helpful" => (1, 0),
@@ -465,15 +477,18 @@ async fn review_vote(
         };
 
         if helpful_adj != 0 || unhelpful_adj != 0 {
-            let update_ratings_query = format!(
-                "UPDATE {}:{} SET helpfulVotes += {}, unhelpfulVotes += {}, {} = time::now()",
+            let review = state.db.get_document(collections::PRODUCT_RATINGS, &req.review_id).await.unwrap_or_default();
+            let cur_helpful = review.get("helpfulVotes").and_then(|v| v.as_i64()).unwrap_or(0);
+            let cur_unhelpful = review.get("unhelpfulVotes").and_then(|v| v.as_i64()).unwrap_or(0);
+            state.db.update_document(
                 collections::PRODUCT_RATINGS,
-                ob_core::escape_sql_string(&req.review_id),
-                helpful_adj,
-                unhelpful_adj,
-                fields::UPDATED_AT
-            );
-            state.db.query_raw(&update_ratings_query).await?;
+                &req.review_id,
+                serde_json::json!({
+                    "helpfulVotes": cur_helpful + helpful_adj as i64,
+                    "unhelpfulVotes": cur_unhelpful + unhelpful_adj as i64,
+                    fields::UPDATED_AT: now_ts,
+                }),
+            ).await?;
         }
     }
 
@@ -578,6 +593,8 @@ mod tests {
     use std::sync::Arc;
 
     async fn setup_state() -> HandlersState {
+        // Skip rate limiting in handler tests to avoid cross-test collisions in shared PG
+        unsafe { std::env::set_var("OB_TEST_MODE", "1") };
         HandlersState {
             config: Arc::new(Config::load(None).unwrap()),
             db: DatabaseClient::new_mem().await,
@@ -966,16 +983,20 @@ mod tests {
     #[tokio::test]
     async fn test_get_ratings_filters_and_paginates() {
         let state = setup_state().await;
-        for (id, rating, product, created_at) in [
-            ("r1", 5.0, "prod_1", "2026-01-03T00:00:00Z"),
-            ("r2", 4.0, "prod_1", "2026-01-02T00:00:00Z"),
-            ("r3", 5.0, "prod_2", "2026-01-01T00:00:00Z"),
+        let u = uuid::Uuid::new_v4().to_string();
+        let prod1 = format!("prod_fp1_{u}");
+        let prod2 = format!("prod_fp2_{u}");
+        for (suffix, rating, product, created_at) in [
+            ("1", 5.0, prod1.as_str(), "2026-01-03T00:00:00Z"),
+            ("2", 4.0, prod1.as_str(), "2026-01-02T00:00:00Z"),
+            ("3", 5.0, prod2.as_str(), "2026-01-01T00:00:00Z"),
         ] {
+            let id = format!("r_fp{suffix}_{u}");
             state
                 .db
                 .upsert_document(
                     collections::PRODUCT_RATINGS,
-                    id,
+                    &id,
                     serde_json::json!({
                         fields::PRODUCT_ID: product,
                         fields::RATING: rating,
@@ -989,7 +1010,7 @@ mod tests {
         let Json(resp) = get_ratings(
             State(state),
             Json(GetRatingsRequest {
-                product_id: "prod_1".into(),
+                product_id: prod1.clone(),
                 limit: 1,
                 start_after: None,
                 min_rating: None,
@@ -1277,14 +1298,17 @@ mod tests {
     #[tokio::test]
     async fn test_get_ratings_with_min_rating_filter() {
         let state = setup_state().await;
-        for (id, rating) in [("r1", 5.0), ("r2", 2.0), ("r3", 4.0)] {
+        let u = uuid::Uuid::new_v4().to_string();
+        let prod = format!("prod_minr_{u}");
+        for (suffix, rating) in [("1", 5.0), ("2", 2.0), ("3", 4.0)] {
+            let id = format!("r_minr{suffix}_{u}");
             state
                 .db
                 .upsert_document(
                     collections::PRODUCT_RATINGS,
-                    id,
+                    &id,
                     serde_json::json!({
-                        fields::PRODUCT_ID: "prod_1",
+                        fields::PRODUCT_ID: prod,
                         fields::RATING: rating,
                         fields::CREATED_AT: "2026-01-01T00:00:00Z",
                     }),
@@ -1296,7 +1320,7 @@ mod tests {
         let Json(resp) = get_ratings(
             State(state),
             Json(GetRatingsRequest {
-                product_id: "prod_1".into(),
+                product_id: prod.clone(),
                 limit: 10,
                 start_after: None,
                 min_rating: Some(4.0),

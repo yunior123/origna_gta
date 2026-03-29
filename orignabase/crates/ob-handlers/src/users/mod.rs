@@ -600,14 +600,16 @@ async fn cleanup_fcm_token(
     // FCM tokens are stored as documents in a subcollection-like pattern.
     // In PostgreSQL we use a flat table with userId + token fields.
     let query = format!(
-        "SELECT * FROM {} WHERE {} = '{}' AND {} = '{}' LIMIT 1",
+        "SELECT * FROM {} WHERE {} = $uid AND {} = $token LIMIT 1",
         collections::FCM_TOKENS,
         fields::UID,
-        user_id,
         fields::TOKEN,
-        req.token.replace('\'', ""),
     );
-    let results = state.db.query_raw(&query).await.unwrap_or_default();
+    let results = state
+        .db
+        .query_bind_value(&query, json!({"uid": user_id, "token": req.token}))
+        .await
+        .unwrap_or_default();
 
     if results.is_empty() {
         // Idempotent — token already gone
@@ -665,14 +667,15 @@ async fn add_buyer_address(
 
     if req.is_default {
         let clear_query = format!(
-            "UPDATE {} SET isDefault = false, {} = '{}' WHERE {} = '{}'",
+            "UPDATE {} SET isDefault = false, {} = $now WHERE {} = $user_id",
             collections::ADDRESSES,
             fields::UPDATED_AT,
-            now,
             fields::USER_ID,
-            ob_core::escape_sql_string(&user_id),
         );
-        let _ = state.db.query_raw(&clear_query).await;
+        let _ = state
+            .db
+            .query_bind_value(&clear_query, json!({"now": now, "user_id": user_id}))
+            .await;
     }
 
     let created = state
@@ -730,16 +733,18 @@ async fn update_buyer_address(
 
     if req.is_default {
         let clear_query = format!(
-            "UPDATE {} SET isDefault = false, {} = '{}' WHERE {} = '{}' AND id != type::thing('{}', '{}')",
+            "UPDATE {} SET isDefault = false, {} = $now WHERE {} = $user_id AND id != $address_id",
             collections::ADDRESSES,
             fields::UPDATED_AT,
-            now,
             fields::USER_ID,
-            ob_core::escape_sql_string(&user_id),
-            collections::ADDRESSES,
-            ob_core::escape_sql_string(&req.address_id),
         );
-        let _ = state.db.query_raw(&clear_query).await;
+        let _ = state
+            .db
+            .query_bind_value(
+                &clear_query,
+                json!({"now": now, "user_id": user_id, "address_id": req.address_id}),
+            )
+            .await;
     }
 
     state
@@ -790,13 +795,16 @@ async fn delete_buyer_address(
 
     if was_default {
         let query = format!(
-            "SELECT * FROM {} WHERE {} = '{}' ORDER BY {} DESC LIMIT 1",
+            "SELECT * FROM {} WHERE {} = $user_id ORDER BY data->>'createdAt' DESC LIMIT 1",
             collections::ADDRESSES,
             fields::USER_ID,
-            ob_core::escape_sql_string(&user_id),
-            fields::CREATED_AT,
         );
-        if let Some(next_address) = state.db.query_raw(&query).await?.into_iter().next()
+        if let Some(next_address) = state
+            .db
+            .query_bind_value(&query, json!({"user_id": user_id}))
+            .await?
+            .into_iter()
+            .next()
             && let Some(raw_id) = next_address.get("id").and_then(|v| v.as_str())
         {
             let next_id = strip_record_prefix(collections::ADDRESSES, raw_id);
@@ -836,14 +844,15 @@ async fn set_default_buyer_address(
 
     let now = Utc::now().to_rfc3339();
     let clear_query = format!(
-        "UPDATE {} SET isDefault = false, {} = '{}' WHERE {} = '{}'",
+        "UPDATE {} SET isDefault = false, {} = $now WHERE {} = $user_id",
         collections::ADDRESSES,
         fields::UPDATED_AT,
-        now,
         fields::USER_ID,
-        ob_core::escape_sql_string(&user_id),
     );
-    let _ = state.db.query_raw(&clear_query).await;
+    let _ = state
+        .db
+        .query_bind_value(&clear_query, json!({"now": now, "user_id": user_id}))
+        .await;
 
     state
         .db
@@ -1367,6 +1376,11 @@ mod tests {
     #[tokio::test]
     async fn test_create_profile_returns_existing_when_user_doc_exists() {
         let state = setup_state().await;
+        // Ensure clean state for user_1
+        let _ = state
+            .db
+            .query_raw("DELETE FROM users WHERE id = 'user_1'")
+            .await;
         state
             .db
             .upsert_document(
@@ -1400,6 +1414,11 @@ mod tests {
     #[tokio::test]
     async fn test_create_profile_success_normalizes_defaults() {
         let state = setup_state().await;
+        // Clean up leftover user_1 from previous tests
+        let _ = state
+            .db
+            .query_raw("DELETE FROM users WHERE id = 'user_1'")
+            .await;
 
         let Json(resp) = create_profile(
             State(state.clone()),
@@ -1420,7 +1439,10 @@ mod tests {
         assert_eq!(resp.data["created"], true);
         let users: Vec<serde_json::Value> = state
             .db
-            .query_raw("SELECT * FROM users WHERE uid = 'user_1' LIMIT 1")
+            .query_bind_value(
+                "SELECT * FROM users WHERE uid = $uid LIMIT 1",
+                json!({"uid": "user_1"}),
+            )
             .await
             .unwrap();
         let user = users.first().unwrap();
@@ -1506,6 +1528,10 @@ mod tests {
     #[tokio::test]
     async fn test_get_profile_success() {
         let state = setup_state().await;
+        let _ = state
+            .db
+            .query_raw("DELETE FROM users WHERE id = 'user_1'")
+            .await;
         state
             .db
             .upsert_document(
@@ -1537,6 +1563,10 @@ mod tests {
     #[tokio::test]
     async fn test_email_consent_success_sets_unsubscribe_method() {
         let state = setup_state().await;
+        let _ = state
+            .db
+            .query_raw("DELETE FROM users WHERE id = 'user_1'")
+            .await;
         state
             .db
             .upsert_document(collections::USERS, "user_1", json!({}))
@@ -1566,6 +1596,10 @@ mod tests {
     #[tokio::test]
     async fn test_notification_preferences_requires_premium() {
         let state = setup_state().await;
+        let _ = state
+            .db
+            .query_raw("DELETE FROM users WHERE id = 'user_1'")
+            .await;
         state
             .db
             .upsert_document(
@@ -1594,6 +1628,10 @@ mod tests {
     #[tokio::test]
     async fn test_notification_preferences_requires_one_valid_field() {
         let state = setup_state().await;
+        let _ = state
+            .db
+            .query_raw("DELETE FROM users WHERE id = 'user_1'")
+            .await;
         state
             .db
             .upsert_document(
@@ -1625,6 +1663,10 @@ mod tests {
     #[tokio::test]
     async fn test_notification_preferences_success() {
         let state = setup_state().await;
+        let _ = state
+            .db
+            .query_raw("DELETE FROM users WHERE id = 'user_1'")
+            .await;
         state
             .db
             .upsert_document(
@@ -1660,6 +1702,11 @@ mod tests {
     #[tokio::test]
     async fn test_cleanup_fcm_token_idempotent_when_missing() {
         let state = setup_state().await;
+        // Ensure token doesn't exist
+        let _ = state
+            .db
+            .query_raw("DELETE FROM fcm_tokens WHERE id = 'tok_doc'")
+            .await;
 
         let Json(resp) = cleanup_fcm_token(
             State(state),
@@ -1678,6 +1725,10 @@ mod tests {
     #[tokio::test]
     async fn test_cleanup_fcm_token_deletes_existing_token() {
         let state = setup_state().await;
+        let _ = state
+            .db
+            .query_raw("DELETE FROM fcm_tokens WHERE id = 'tok_doc'")
+            .await;
         state
             .db
             .upsert_document(
@@ -1701,12 +1752,16 @@ mod tests {
 
         assert_eq!(resp.data["deleted"], true);
         let query = format!(
-            "SELECT * FROM {} WHERE {} = 'user_1' AND {} = 'tok_1'",
+            "SELECT * FROM {} WHERE {} = $uid AND {} = $token",
             collections::FCM_TOKENS,
             fields::UID,
             fields::TOKEN,
         );
-        let remaining: Vec<serde_json::Value> = state.db.query_raw(&query).await.unwrap();
+        let remaining: Vec<serde_json::Value> = state
+            .db
+            .query_bind_value(&query, json!({"uid": "user_1", "token": "tok_1"}))
+            .await
+            .unwrap();
         assert!(remaining.is_empty());
     }
 
@@ -1784,6 +1839,10 @@ mod tests {
     #[tokio::test]
     async fn test_delete_buyer_address_promotes_next_default() {
         let state = setup_state().await;
+        let _ = state
+            .db
+            .query_raw("DELETE FROM addresses WHERE id IN ('addr_1', 'addr_2')")
+            .await;
         state
             .db
             .upsert_document(
@@ -1834,6 +1893,10 @@ mod tests {
     #[tokio::test]
     async fn test_set_default_buyer_address_updates_requested_address() {
         let state = setup_state().await;
+        let _ = state
+            .db
+            .query_raw("DELETE FROM addresses WHERE id IN ('addr_1', 'addr_2')")
+            .await;
         for (id, is_default) in [("addr_1", true), ("addr_2", false)] {
             state
                 .db
@@ -2051,6 +2114,10 @@ mod tests {
     #[tokio::test]
     async fn test_email_consent_true_sets_user_preference_method() {
         let state = setup_state().await;
+        let _ = state
+            .db
+            .query_raw("DELETE FROM users WHERE id = 'user_1'")
+            .await;
         state
             .db
             .upsert_document(collections::USERS, "user_1", json!({}))
@@ -2087,6 +2154,10 @@ mod tests {
     #[tokio::test]
     async fn test_update_buyer_address_success_path() {
         let state = setup_state().await;
+        let _ = state
+            .db
+            .query_raw("DELETE FROM addresses WHERE id = 'addr_upd'")
+            .await;
         state
             .db
             .upsert_document(
@@ -2285,6 +2356,10 @@ mod tests {
     #[tokio::test]
     async fn test_delete_buyer_address_non_default_no_promotion() {
         let state = setup_state().await;
+        let _ = state
+            .db
+            .query_raw("DELETE FROM addresses WHERE id = 'addr_1'")
+            .await;
         state
             .db
             .upsert_document(

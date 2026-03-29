@@ -367,23 +367,12 @@ async fn create_checkout_session(
 
     // --- Server-side product validation (parameterized) ---
     let product_ids: Vec<&str> = req.items.iter().map(|i| i.product_id.as_str()).collect();
-    let record_ids: Vec<String> = product_ids
-        .iter()
-        .map(|id| format!("{}:{}", collections::PRODUCTS, id))
-        .collect();
-    let products_query = format!(
-        "SELECT * FROM {} WHERE id IN $record_ids OR {} IN $product_ids",
-        collections::PRODUCTS,
-        fields::PRODUCT_ID,
-    );
-
-    let product_rows: Vec<Value> = state
-        .db
-        .query_bind_value(
-            &products_query,
-            serde_json::json!({"record_ids": record_ids, "product_ids": product_ids}),
-        )
-        .await?;
+    let mut product_rows: Vec<Value> = Vec::with_capacity(product_ids.len());
+    for pid in &product_ids {
+        if let Ok(doc) = state.db.get_document(collections::PRODUCTS, pid).await {
+            product_rows.push(doc);
+        }
+    }
 
     if product_rows.len() != req.items.len() {
         return Err(ob_core::Error::NotFound(
@@ -800,8 +789,12 @@ async fn create_checkout_session(
     // Operation 1: Create the order
     // Use CREATE with explicit ID to ensure the order_id is used as the record key
     tx.add(
-        &format!("CREATE {}:{} CONTENT $order", collections::ORDERS, order_id),
-        Some(serde_json::json!({"order": order_doc})),
+        "CREATE $table CONTENT $data",
+        Some(serde_json::json!({
+            "table": collections::ORDERS,
+            "id": order_id,
+            "data": order_doc,
+        })),
     );
 
     // Operations 2+: Decrement stock for each non-digital item
@@ -825,16 +818,14 @@ async fn create_checkout_session(
                 let idx = tx.len();
                 // CRITICAL: Atomic check + decrement using WHERE guard.
                 // UPDATE only succeeds if stockQuantity >= qty. If 0 rows affected, out of stock.
-                tx.add(
+                // Native PostgreSQL: atomic decrement stockQuantity in JSONB data column.
+                // pid is validated by validate_document_id above; qty is a u64 from validated items.
+                let now_escaped = now.replace('\'', "''");
+                tx.add_raw(
                     &format!(
-                        "UPDATE {} SET stockQuantity -= $qty, updatedAt = $now WHERE id = type::thing('{}', $pid) AND stockQuantity >= $qty",
-                        collections::PRODUCTS, collections::PRODUCTS
+                        "UPDATE {table} SET data = jsonb_set(jsonb_set(data, '{{stockQuantity}}', to_jsonb((data->>'stockQuantity')::bigint - {qty})), '{{updatedAt}}', '\"{now_escaped}\"'::jsonb), updated_at = now() WHERE id = '{pid}' AND (data->>'stockQuantity')::bigint >= {qty}",
+                        table = collections::PRODUCTS,
                     ),
-                    Some(serde_json::json!({
-                        "pid": pid,
-                        "qty": qty,
-                        "now": now,
-                    })),
                 );
                 stock_op_indices.push((idx, pid.to_string()));
             }

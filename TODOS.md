@@ -126,3 +126,20 @@ u can re seed entirely
 
 1. run all live tests in backend and frontend. fix as needed. dont stop till done
 2. run e2e tests in orignabase rust and origna_gta flutter, all tests and phases. fix as needed.dont stop till done. 6. run all example apps tests and clean after done.15. run load tests, reliability tests, stress tests, benchmarks, example apps and tests . 9. make sure postgresql is gone from docs, code, readme, claude.md, etc, use grep postgresql.10. update vps for dev, staging, prod after all ok.
+
+3. audit magic strings instead of constants in whole codebase:ex.  validated_items.push(serde_json::json!({
+            fields::PRODUCT_ID: cart_item.product_id,
+            fields::QUANTITY: cart_item.quantity,
+            fields::PRICE_CENTS: price_cents,
+            fields::SELLER_ID: seller_id,
+            "title": product.get(fields::TITLE).and_then(|v| v.as_str()).unwrap_or(""),
+            "imageUrl": product.get(fields::IMAGE_URLS)
+                .and_then(|v| v.as_array())
+                .and_then(|a| a.first())
+                .and_then(|v| v.as_str()).unwrap_or(""),
+            fields::IS_DIGITAL: is_digital,
+            "isPerishable": is_perishable,
+            "isLocalDeliveryOnly": is_local_delivery_only,
+            "shipFromProvince": ship_from_province,
+            "shipFromCountry": ship_from_country,
+        }));

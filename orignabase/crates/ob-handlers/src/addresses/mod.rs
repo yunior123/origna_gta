@@ -726,6 +726,13 @@ mod tests {
         let state = setup_state().await;
         // First create an address
         let address_id = "addr_test123";
+        // Clean up any leftover from previous test runs
+        let _ = state
+            .db
+            .query_raw(&format!(
+                "DELETE FROM buyer_addresses WHERE id = '{address_id}'"
+            ))
+            .await;
         state
             .db
             .create_document(
@@ -792,6 +799,13 @@ mod tests {
     async fn test_delete_buyer_address_success() {
         let state = setup_state().await;
         let address_id = "addr_del123";
+        // Clean up any leftover from previous test runs
+        let _ = state
+            .db
+            .query_raw(&format!(
+                "DELETE FROM buyer_addresses WHERE id = '{address_id}'"
+            ))
+            .await;
         state
             .db
             .create_document(
@@ -848,6 +862,11 @@ mod tests {
     #[tokio::test]
     async fn test_set_default_buyer_address_success() {
         let state = setup_state().await;
+        // Clean up any leftover from previous test runs
+        let _ = state
+            .db
+            .query_raw("DELETE FROM users WHERE id = 'user_1'")
+            .await;
         // Create user doc
         state
             .db

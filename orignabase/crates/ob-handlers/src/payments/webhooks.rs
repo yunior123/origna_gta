@@ -328,20 +328,26 @@ async fn try_store_webhook_event_atomic(
         ));
     }
 
-    // Try CREATE — errors on duplicate ID
+    // Strict INSERT (no ON CONFLICT) — fails on duplicate ID for atomic dedup.
+    // This eliminates the TOCTOU race between is_duplicate_webhook + store_webhook_event.
+    let event_data = serde_json::json!({
+        "id": event.id,
+        "type": event.r#type,
+        "timestamp": timestamp,
+        "timestamp_iso": timestamp_rfc3339,
+        "processed": true,
+        "data": event.data,
+    });
+    let data_str = serde_json::to_string(&event_data).unwrap_or_default();
+    let event_id_escaped = event.id.replace('\'', "''");
+    let data_escaped = data_str.replace('\'', "''");
+
     let result = state
         .db
-        .create_document(
-            collections::WEBHOOK_EVENTS,
-            serde_json::json!({
-                "id": event.id,
-                "type": event.r#type,
-                "timestamp": timestamp,
-                "timestamp_iso": timestamp_rfc3339,
-                "processed": true,
-                "data": event.data,
-            }),
-        )
+        .query_raw(&format!(
+            "INSERT INTO {table} (id, data) VALUES ('{event_id_escaped}', '{data_escaped}'::jsonb) RETURNING id, data::TEXT, created_at, updated_at",
+            table = collections::WEBHOOK_EVENTS,
+        ))
         .await;
 
     match result {
@@ -350,6 +356,7 @@ async fn try_store_webhook_event_atomic(
             let err_str = e.to_string();
             if err_str.contains("already exists")
                 || err_str.contains("duplicate")
+                || err_str.contains("unique constraint")
                 || err_str.contains("RecordIdAlreadyExists")
             {
                 Ok(false) // Duplicate, skip
@@ -2044,8 +2051,9 @@ mod tests {
     #[tokio::test]
     async fn test_try_store_webhook_event_atomic_is_idempotent_for_duplicate_event_ids() {
         let state = setup_state().await;
+        let unique_id = format!("evt_atomic_idem_{}", uuid::Uuid::new_v4().simple());
         let event = StripeWebhookEvent {
-            id: "evt_atomic_idem_001".to_string(),
+            id: unique_id,
             r#type: "payment_intent.succeeded".to_string(),
             data: json!({"object": {"id": "pi_atomic_001"}}),
             created: 1_614_556_800,
@@ -2081,8 +2089,9 @@ mod tests {
     async fn test_handle_stripe_webhook_returns_duplicate_for_same_event_id() {
         let secret = "STRIPE_WEBHOOK_SECRET_REDACTED";
         let state = setup_state_with_webhook_secret(secret).await;
+        let unique_evt_id = format!("evt_dup_full_{}", uuid::Uuid::new_v4().simple());
         let body = serde_json::to_vec(&json!({
-            "id": "evt_duplicate_full_handler",
+            "id": unique_evt_id,
             "type": "charge.succeeded",
             "data": {"object": {"id": "ch_test_duplicate"}},
             "created": 1_714_567_800_i64,
@@ -2171,14 +2180,15 @@ mod tests {
         let state = setup_state().await;
         state
             .db
-            .query_raw(
-                "CREATE orders:upd_precondition CONTENT {
-                    id: orders:upd_precondition,
-                    orderId: 'upd_precondition',
-                    orderStatus: 'confirmed',
-                    totalAmountCents: 3000,
-                    items: [{productId: 'prod_001', quantity: 1}]
-                }",
+            .upsert_document(
+                collections::ORDERS,
+                "upd_precondition",
+                json!({
+                    "orderId": "upd_precondition",
+                    "orderStatus": "confirmed",
+                    "totalAmountCents": 3000,
+                    "items": [{"productId": "prod_001", "quantity": 1}]
+                }),
             )
             .await
             .unwrap();
@@ -2890,14 +2900,15 @@ mod tests {
         let state = setup_state().await;
         state
             .db
-            .query_raw(
-                "CREATE orders:coupon_order CONTENT {
-                    id: orders:coupon_order,
-                    orderId: 'coupon_order',
-                    orderStatus: 'pending_payment',
-                    paymentStatus: 'awaiting_payment',
-                    items: []
-                }",
+            .upsert_document(
+                collections::ORDERS,
+                "coupon_order",
+                json!({
+                    "orderId": "coupon_order",
+                    "orderStatus": "pending_payment",
+                    "paymentStatus": "awaiting_payment",
+                    "items": []
+                }),
             )
             .await
             .unwrap();

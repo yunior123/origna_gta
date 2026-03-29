@@ -154,9 +154,8 @@ async fn run_auto_capture(state: &HandlersState) -> std::result::Result<(), Stri
     let orders = state
         .db
         .query_bind(
-            "SELECT * FROM type::table($table) WHERE orderStatus = 'delivered' AND paymentStatus IN ['captured','authorized'] AND deliveredAt <= $cutoff LIMIT 250",
+            &format!("SELECT * FROM {} WHERE data->>'orderStatus' = 'delivered' AND data->>'paymentStatus' IN ('captured','authorized') AND data->>'deliveredAt' <= $cutoff LIMIT 250", collections::ORDERS),
             json!({
-                "table": collections::ORDERS,
                 "cutoff": cutoff_str
             }),
         )
@@ -180,9 +179,8 @@ async fn run_auto_capture(state: &HandlersState) -> std::result::Result<(), Stri
         let disputes = state
             .db
             .query_bind(
-                "SELECT * FROM type::table($table) WHERE type = 'dispute_created' AND resolved = false AND orderId = $order_id LIMIT 1",
+                &format!("SELECT * FROM {} WHERE data->>'type' = 'dispute_created' AND (data->>'resolved')::boolean = false AND data->>'orderId' = $order_id LIMIT 1", collections::SECURITY_ALERTS),
                 json!({
-                    "table": collections::SECURITY_ALERTS,
                     "order_id": order_id
                 }),
             )
@@ -201,9 +199,8 @@ async fn run_auto_capture(state: &HandlersState) -> std::result::Result<(), Stri
         let returns = state
             .db
             .query_bind(
-                "SELECT * FROM type::table($table) WHERE orderId = $order_id AND returnStatus IN ['requested','approved','label_issued','received','escalated'] LIMIT 1",
+                &format!("SELECT * FROM {} WHERE data->>'orderId' = $order_id AND data->>'returnStatus' IN ('requested','approved','label_issued','received','escalated') LIMIT 1", collections::RETURN_REQUESTS),
                 json!({
-                    "table": collections::RETURN_REQUESTS,
                     "order_id": order_id
                 }),
             )
@@ -356,7 +353,7 @@ pub async fn check_expired_authorizations(state: &HandlersState) {
 
     let cutoff = Utc::now() - Duration::days(business_rules::AUTHORIZATION_EXPIRY_DAYS as i64);
     let sql = format!(
-        "SELECT * FROM {} WHERE paymentStatus IN ['authorized','awaiting_payment'] AND orderStatus IN ['pending','confirmed'] AND createdAt <= $cutoff LIMIT 100",
+        "SELECT * FROM {} WHERE data->>'paymentStatus' IN ('authorized','awaiting_payment') AND data->>'orderStatus' IN ('pending','confirmed') AND data->>'createdAt' <= $cutoff LIMIT 100",
         collections::ORDERS
     );
 
@@ -405,9 +402,8 @@ pub async fn check_expired_authorizations(state: &HandlersState) {
                                 && let Err(e) = state
                                     .db
                                     .query_bind(
-                                        "UPDATE type::thing($table, $product_id) SET stockQuantity += $quantity, updatedAt = $updatedAt",
+                                        &format!("UPDATE {} SET data = jsonb_set(jsonb_set(data, '{{stockQuantity}}', ((COALESCE((data->>'stockQuantity')::int, 0) + $quantity)::text)::jsonb), '{{updatedAt}}', to_jsonb($updatedAt::text)) WHERE id = $product_id RETURNING id, data::TEXT, created_at, updated_at", collections::PRODUCTS),
                                         json!({
-                                            "table": collections::PRODUCTS,
                                             "product_id": pid,
                                             "quantity": qty,
                                             "updatedAt": now_str
@@ -484,7 +480,7 @@ pub async fn auto_archive_old_orders(state: &HandlersState) {
     let result = async {
         let cutoff = Utc::now() - Duration::days(business_rules::AUTO_ARCHIVE_DAYS as i64);
         let sql = format!(
-            "SELECT * FROM {} WHERE orderStatus IN ['delivered','cancelled','expired','failed','disputed'] AND updatedAt <= $cutoff AND (archived = false OR archived = NONE) LIMIT 200",
+            "SELECT * FROM {} WHERE data->>'orderStatus' IN ('delivered','cancelled','expired','failed','disputed') AND data->>'updatedAt' <= $cutoff AND ((data->>'archived')::boolean IS NOT TRUE) LIMIT 200",
             collections::ORDERS
         );
 
@@ -530,7 +526,7 @@ pub async fn monitor_meilisearch_sync(state: &HandlersState) {
     let result = async {
         // Count active products in DB
         let sql = format!(
-            "SELECT count() AS total FROM {} WHERE lifecycleStatus = 'active' GROUP ALL",
+            "SELECT COUNT(*) AS total FROM {} WHERE data->>'lifecycleStatus' = 'active'",
             collections::PRODUCTS
         );
         let counts = state.db.query_raw(&sql).await.map_err(|e| e.to_string())?;
@@ -573,7 +569,7 @@ pub async fn cleanup_stale_rate_limits(state: &HandlersState) {
     let result = async {
         let cutoff = Utc::now() - Duration::hours(business_rules::RATE_LIMIT_STALE_HOURS as i64);
         let sql = format!(
-            "SELECT * FROM {} WHERE lastRequest <= $cutoff LIMIT 500",
+            "SELECT * FROM {} WHERE data->>'lastRequest' <= $cutoff LIMIT 500",
             collections::RATE_LIMITS
         );
 
@@ -619,7 +615,7 @@ pub async fn cleanup_orphaned_r2_images(state: &HandlersState) {
         // Collect all referenced image URLs from products
         let products = state
             .db
-            .query_bind("SELECT imageUrls FROM products LIMIT 5000", json!({}))
+            .query_bind("SELECT * FROM products LIMIT 5000", json!({}))
             .await
             .map_err(|e| e.to_string())?;
 
@@ -671,7 +667,7 @@ pub async fn cleanup_stale_webhook_events(state: &HandlersState) {
         let cutoff =
             Utc::now() - Duration::days(business_rules::WEBHOOK_EVENT_RETENTION_DAYS as i64);
         let sql = format!(
-            "SELECT * FROM {} WHERE timestamp <= $cutoff LIMIT 500",
+            "SELECT * FROM {} WHERE data->>'timestamp' <= $cutoff LIMIT 500",
             collections::WEBHOOK_EVENTS
         );
 
@@ -720,7 +716,7 @@ pub async fn cleanup_stale_security_alerts(state: &HandlersState) {
         let cutoff =
             Utc::now() - Duration::days(business_rules::SECURITY_ALERT_ARCHIVE_DAYS as i64);
         let sql = format!(
-            "SELECT * FROM {} WHERE resolved = true AND timestamp <= $cutoff LIMIT 500",
+            "SELECT * FROM {} WHERE (data->>'resolved')::boolean = true AND data->>'timestamp' <= $cutoff LIMIT 500",
             collections::SECURITY_ALERTS
         );
 
@@ -770,7 +766,7 @@ pub async fn retry_failed_meilisearch_syncs(state: &HandlersState) {
 
     let result = async {
         let sql = format!(
-            "SELECT * FROM {} WHERE resolved = false LIMIT 50",
+            "SELECT * FROM {} WHERE (data->>'resolved')::boolean = false LIMIT 50",
             collections::MEILISEARCH_SYNC_FAILURES
         );
 
@@ -913,7 +909,7 @@ pub async fn check_low_stock_alerts(state: &HandlersState) {
         let cooldown = Duration::hours(business_rules::LOW_STOCK_ALERT_COOLDOWN_HOURS as i64);
 
         let sql = format!(
-            "SELECT * FROM {} WHERE lifecycleStatus = 'active' LIMIT 1000",
+            "SELECT * FROM {} WHERE data->>'lifecycleStatus' = 'active' LIMIT 1000",
             collections::PRODUCTS,
         );
 
@@ -1075,7 +1071,7 @@ pub async fn send_abandoned_cart_emails(state: &HandlersState) {
         let checkout_cutoff = now - Duration::hours(business_rules::ABANDONED_CART_HOURS as i64);
 
         let sql = format!(
-            "SELECT * FROM {} WHERE marketingOptIn = true LIMIT 500",
+            "SELECT * FROM {} WHERE (data->>'marketingOptIn')::boolean = true LIMIT 500",
             collections::USERS,
         );
 
@@ -1121,7 +1117,7 @@ pub async fn send_abandoned_cart_emails(state: &HandlersState) {
             if let Ok(cart_items) = state
                 .db
                 .query_bind(
-                    "SELECT * FROM cart WHERE userId = $user_id LIMIT 10",
+                    "SELECT * FROM cart WHERE data->>'userId' = $user_id LIMIT 10",
                     json!({"user_id": user_id}),
                 )
                 .await
@@ -1217,7 +1213,7 @@ pub async fn compute_seller_metrics(state: &HandlersState) {
 
         // Bulk fetch orders from window
         let orders_sql = format!(
-            "SELECT * FROM {} WHERE createdAt >= $window_start LIMIT 2000",
+            "SELECT * FROM {} WHERE data->>'createdAt' >= $window_start LIMIT 2000",
             collections::ORDERS
         );
         let orders = state
@@ -1383,7 +1379,7 @@ pub async fn compute_trending_products(state: &HandlersState) {
         let window_start = now - Duration::hours(business_rules::TRENDING_WINDOW_HOURS as i64);
 
         let sql = format!(
-            "SELECT * FROM {} WHERE lifecycleStatus = 'active' AND updatedAt >= $window_start LIMIT 5000",
+            "SELECT * FROM {} WHERE data->>'lifecycleStatus' = 'active' AND data->>'updatedAt' >= $window_start LIMIT 5000",
             collections::PRODUCTS
         );
 
@@ -1498,7 +1494,7 @@ pub async fn sync_expired_subscriptions(state: &HandlersState) {
 
         // Find subscriptions past their period end that are still active
         let sql = format!(
-            "SELECT * FROM {} WHERE currentPeriodEnd < $now AND status IN ['active','past_due'] LIMIT 50",
+            "SELECT * FROM {} WHERE data->>'currentPeriodEnd' < $now AND data->>'status' IN ('active','past_due') LIMIT 50",
             collections::SUBSCRIPTIONS
         );
 
@@ -1571,7 +1567,7 @@ pub async fn escalate_stale_return_requests(state: &HandlersState) {
         let cutoff = now - Duration::days(business_rules::RETURN_ESCALATION_DAYS as i64);
 
         let sql = format!(
-            "SELECT * FROM {} WHERE returnStatus = 'requested' AND requestedAt < $cutoff LIMIT 200",
+            "SELECT * FROM {} WHERE data->>'returnStatus' = 'requested' AND data->>'requestedAt' < $cutoff LIMIT 200",
             collections::RETURN_REQUESTS
         );
 
@@ -1635,7 +1631,7 @@ pub async fn send_premium_renewal_reminders(state: &HandlersState) {
             let dedup_field = format!("renewalReminderSentDays{days_ahead}");
 
             let sql = format!(
-                "SELECT * FROM {} WHERE currentPeriodEnd >= $window_start AND currentPeriodEnd <= $window_end AND status IN ['active','past_due'] LIMIT 200",
+                "SELECT * FROM {} WHERE data->>'currentPeriodEnd' >= $window_start AND data->>'currentPeriodEnd' <= $window_end AND data->>'status' IN ('active','past_due') LIMIT 200",
                 collections::SUBSCRIPTIONS
             );
 
@@ -1780,7 +1776,7 @@ pub async fn drain_pending_notifications(state: &HandlersState) {
         let pending: Vec<Value> = state
             .db
             .query_bind(
-                "SELECT * FROM _pending_notifications WHERE status = 'pending' AND created_at < time::now() - 30s LIMIT 100",
+                "SELECT * FROM _pending_notifications WHERE data->>'status' = 'pending' AND created_at < now() - interval '30 seconds' LIMIT 100",
                 json!({}),
             )
             .await
@@ -1841,12 +1837,13 @@ pub async fn drain_pending_notifications(state: &HandlersState) {
             if send_result.is_ok() {
                 let _ = state
                     .db
-                    .query_bind(
-                        "UPDATE type::thing($table, $id) SET status = 'delivered', delivered_at = $now, updated_at = $now",
+                    .update_document(
+                        "_pending_notifications",
+                        &record_id,
                         json!({
-                            "table": "_pending_notifications",
-                            "id": record_id,
-                            "now": now,
+                            "status": "delivered",
+                            "delivered_at": &now,
+                            "updated_at": &now,
                         }),
                     )
                     .await;
@@ -1856,13 +1853,13 @@ pub async fn drain_pending_notifications(state: &HandlersState) {
                 if new_attempts >= 3 {
                     let _ = state
                         .db
-                        .query_bind(
-                            "UPDATE type::thing($table, $id) SET status = 'failed', attempts = $attempts, updated_at = $now",
+                        .update_document(
+                            "_pending_notifications",
+                            &record_id,
                             json!({
-                                "table": "_pending_notifications",
-                                "id": record_id,
+                                "status": "failed",
                                 "attempts": new_attempts,
-                                "now": now,
+                                "updated_at": &now,
                             }),
                         )
                         .await;
@@ -1870,13 +1867,12 @@ pub async fn drain_pending_notifications(state: &HandlersState) {
                 } else {
                     let _ = state
                         .db
-                        .query_bind(
-                            "UPDATE type::thing($table, $id) SET attempts = $attempts, updated_at = $now",
+                        .update_document(
+                            "_pending_notifications",
+                            &record_id,
                             json!({
-                                "table": "_pending_notifications",
-                                "id": record_id,
                                 "attempts": new_attempts,
-                                "now": now,
+                                "updated_at": &now,
                             }),
                         )
                         .await;
@@ -1922,7 +1918,7 @@ pub async fn compute_co_purchase_recommendations(state: &HandlersState) {
             .db
             .query_bind_value(
                 &format!(
-                    "SELECT items FROM {} WHERE {} = $status AND {} > $cutoff",
+                    "SELECT * FROM {} WHERE data->>'{}' = $status AND data->>'{}' > $cutoff",
                     collections::ORDERS,
                     fields::STATUS,
                     fields::CREATED_AT,
@@ -2141,25 +2137,80 @@ mod tests {
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
     async fn setup_state() -> HandlersState {
-        HandlersState {
+        let state = HandlersState {
             config: Arc::new(Config::load(None).unwrap()),
             db: DatabaseClient::new_mem().await,
             http_client: reqwest::Client::new(),
             stripe_client: None,
             stripe_base_url: "https://api.stripe.com/v1".into(),
             turnstile_secret_key: None,
-        }
+        };
+        // Clear all cron locks to prevent interference from stale locks in shared DB
+        let _ = state.db.query_raw(&format!(
+            "UPDATE {} SET data = data || '{{\"status\":\"completed\",\"lockedAt\":\"2000-01-01T00:00:00Z\"}}'::jsonb",
+            collections::CRON_LOCKS
+        )).await;
+        state
+    }
+
+    /// Helper: pre-release a cron lock to avoid interference from stale locks.
+    async fn pre_release_lock(state: &HandlersState, lock_name: &str) {
+        let _ = state
+            .db
+            .upsert_document(
+                collections::CRON_LOCKS,
+                lock_name,
+                json!({
+                    "lockedAt": "2000-01-01T00:00:00Z",
+                    "status": "completed",
+                }),
+            )
+            .await;
+    }
+
+    /// Helper: query rows from a table filtered by a JSONB field.
+    async fn query_filtered(
+        db: &DatabaseClient,
+        table: &str,
+        field: &str,
+        value: &str,
+    ) -> Vec<Value> {
+        db.query_raw(&format!(
+            "SELECT * FROM {} WHERE data->>'{}' = '{}'",
+            table, field, value
+        ))
+        .await
+        .unwrap_or_default()
+    }
+
+    /// Helper: query rows from a table filtered by id prefix.
+    async fn query_by_id_prefix(
+        db: &DatabaseClient,
+        table: &str,
+        prefix: &str,
+    ) -> Vec<Value> {
+        db.query_raw(&format!(
+            "SELECT * FROM {} WHERE id LIKE '{}%'",
+            table, prefix
+        ))
+        .await
+        .unwrap_or_default()
     }
 
     async fn setup_state_with_config(config: Config, stripe_base_url: String) -> HandlersState {
-        HandlersState {
+        let state = HandlersState {
             config: Arc::new(config),
             db: DatabaseClient::new_mem().await,
             http_client: reqwest::Client::new(),
             stripe_client: None,
             stripe_base_url,
             turnstile_secret_key: None,
-        }
+        };
+        let _ = state.db.query_raw(&format!(
+            "UPDATE {} SET data = data || '{{\"status\":\"completed\",\"lockedAt\":\"2000-01-01T00:00:00Z\"}}'::jsonb",
+            collections::CRON_LOCKS
+        )).await;
+        state
     }
 
     #[test]
@@ -2198,7 +2249,7 @@ mod tests {
     #[tokio::test]
     async fn test_cron_lock_logic() {
         let state = setup_state().await;
-        let job = "test_job";
+        let job = &format!("test_job_{}", uuid::Uuid::new_v4());
 
         // Acquire
         assert!(acquire_cron_lock(&state, job, 10).await);
@@ -2239,15 +2290,19 @@ mod tests {
     #[tokio::test]
     async fn test_alert_cron_failure() {
         let state = setup_state().await;
-        alert_cron_failure(&state, "test_job", "some error").await;
+        let unique_job = format!("test_job_{}", uuid::Uuid::new_v4());
+        alert_cron_failure(&state, &unique_job, "some error").await;
 
         let failures = state
             .db
-            .query_raw(&format!("SELECT * FROM {}", collections::CRON_FAILURES))
+            .query_raw(&format!(
+                "SELECT * FROM {} WHERE data->>'jobName' = '{}'",
+                collections::CRON_FAILURES, unique_job
+            ))
             .await
             .unwrap();
         assert_eq!(failures.len(), 1);
-        assert_eq!(failures[0]["jobName"], "test_job");
+        assert_eq!(failures[0]["jobName"], unique_job.as_str());
     }
 
     #[tokio::test]
@@ -2292,11 +2347,7 @@ mod tests {
             .unwrap();
         assert_eq!(order["payoutStatus"], "completed");
 
-        let payouts = state
-            .db
-            .query_raw(&format!("SELECT * FROM {}", collections::PAYOUTS))
-            .await
-            .unwrap();
+        let payouts = query_filtered(&state.db, collections::PAYOUTS, "orderId", order_id).await;
         assert_eq!(payouts.len(), 1);
         assert_eq!(payouts[0][fields::STATUS], "completed");
     }
@@ -2352,13 +2403,9 @@ mod tests {
             .get_document(collections::ORDERS, "order_disabled")
             .await
             .unwrap();
-        let payouts = state
-            .db
-            .query_raw(&format!("SELECT * FROM {}", collections::PAYOUTS))
-            .await
-            .unwrap();
+        let payouts = query_filtered(&state.db, collections::PAYOUTS, "orderId", "order_disabled").await;
 
-        assert!(order.get("payoutStatus").is_none());
+        assert!(order.get("payoutStatus").is_none() || order["payoutStatus"].is_null());
         assert!(payouts.is_empty());
     }
 
@@ -2394,12 +2441,8 @@ mod tests {
             .get_document(collections::ORDERS, "order_no_pi")
             .await
             .unwrap();
-        let payouts = state
-            .db
-            .query_raw(&format!("SELECT * FROM {}", collections::PAYOUTS))
-            .await
-            .unwrap();
-        assert!(order.get("payoutStatus").is_none());
+        let payouts = query_filtered(&state.db, collections::PAYOUTS, "orderId", "order_no_pi").await;
+        assert!(order.get("payoutStatus").is_none() || order["payoutStatus"].is_null());
         assert!(payouts.is_empty());
     }
 
@@ -2449,12 +2492,8 @@ mod tests {
             .get_document(collections::ORDERS, "order_dispute")
             .await
             .unwrap();
-        let payouts = state
-            .db
-            .query_raw(&format!("SELECT * FROM {}", collections::PAYOUTS))
-            .await
-            .unwrap();
-        assert!(order.get("payoutStatus").is_none());
+        let payouts = query_filtered(&state.db, collections::PAYOUTS, "orderId", "order_dispute").await;
+        assert!(order.get("payoutStatus").is_none() || order["payoutStatus"].is_null());
         assert!(payouts.is_empty());
     }
 
@@ -2503,12 +2542,8 @@ mod tests {
             .get_document(collections::ORDERS, "order_return")
             .await
             .unwrap();
-        let payouts = state
-            .db
-            .query_raw(&format!("SELECT * FROM {}", collections::PAYOUTS))
-            .await
-            .unwrap();
-        assert!(order.get("payoutStatus").is_none());
+        let payouts = query_filtered(&state.db, collections::PAYOUTS, "orderId", "order_return").await;
+        assert!(order.get("payoutStatus").is_none() || order["payoutStatus"].is_null());
         assert!(payouts.is_empty());
     }
 
@@ -2628,12 +2663,9 @@ mod tests {
 
         cleanup_stale_rate_limits(&state).await;
 
-        let docs = state
-            .db
-            .query_raw(&format!("SELECT * FROM {}", collections::RATE_LIMITS))
-            .await
-            .unwrap();
-        assert!(docs.is_empty());
+        // Verify the specific document was deleted
+        let doc = state.db.get_document(collections::RATE_LIMITS, limit_id).await;
+        assert!(doc.is_err(), "Stale rate limit doc should have been deleted");
     }
 
     #[tokio::test]
@@ -2710,12 +2742,8 @@ mod tests {
 
         cleanup_stale_webhook_events(&state).await;
 
-        let docs = state
-            .db
-            .query_raw(&format!("SELECT * FROM {}", collections::WEBHOOK_EVENTS))
-            .await
-            .unwrap();
-        assert!(docs.is_empty());
+        let doc = state.db.get_document(collections::WEBHOOK_EVENTS, ev_id).await;
+        assert!(doc.is_err(), "Stale webhook event should have been deleted");
     }
 
     #[tokio::test]
@@ -2739,12 +2767,8 @@ mod tests {
 
         cleanup_stale_security_alerts(&state).await;
 
-        let docs = state
-            .db
-            .query_raw(&format!("SELECT * FROM {}", collections::SECURITY_ALERTS))
-            .await
-            .unwrap();
-        assert!(docs.is_empty());
+        let doc = state.db.get_document(collections::SECURITY_ALERTS, alert_id).await;
+        assert!(doc.is_err(), "Stale security alert should have been deleted");
     }
 
     #[tokio::test]
@@ -2781,21 +2805,21 @@ mod tests {
     #[tokio::test]
     async fn test_compute_seller_metrics_flow() {
         let state = setup_state().await;
-        let order_id = "order_1";
-        let seller_id = "seller_1";
+        let seller_id = format!("seller_metrics_{}", uuid::Uuid::new_v4());
+        let order_id = format!("order_metrics_{}", uuid::Uuid::new_v4());
 
         state
             .db
             .upsert_document(
                 collections::ORDERS,
-                order_id,
+                &order_id,
                 json!({
                     "createdAt": Utc::now().to_rfc3339(),
                     "hasDispute": true,
                     "orderStatus": "delivered",
                     fields::ITEMS: [
                         {
-                            fields::SELLER_ID: seller_id,
+                            fields::SELLER_ID: &seller_id,
                             fields::STATUS: "delivered"
                         }
                     ]
@@ -2808,7 +2832,7 @@ mod tests {
 
         let metrics = state
             .db
-            .get_document(collections::SELLER_METRICS, seller_id)
+            .get_document(collections::SELLER_METRICS, &seller_id)
             .await
             .unwrap();
         assert_eq!(metrics["disputeRate"], 1.0);

@@ -102,11 +102,10 @@ async fn subscribe(
 
     // Check for existing active subscription (idempotent)
     let existing_query = format!(
-        "SELECT * FROM {} WHERE {} = '{}' AND {} = '{}' AND notifiedAt = NONE LIMIT 1",
+        "SELECT * FROM {} WHERE data->>'{}' = '{}' AND data->>'userId' = '{}' AND (data->>'notifiedAt') IS NULL LIMIT 1",
         collections::STOCK_NOTIFICATIONS,
         fields::PRODUCT_ID,
         ob_core::escape_sql_string(&req.product_id),
-        "userId",
         ob_core::escape_sql_string(&req.user_id),
     );
 
@@ -177,11 +176,10 @@ async fn unsubscribe(
 
     // Delete active subscriptions for this product+user
     let delete_query = format!(
-        "DELETE FROM {} WHERE {} = '{}' AND {} = '{}' AND notifiedAt = NONE",
+        "DELETE FROM {} WHERE data->>'{}' = '{}' AND data->>'userId' = '{}' AND (data->>'notifiedAt') IS NULL",
         collections::STOCK_NOTIFICATIONS,
         fields::PRODUCT_ID,
         ob_core::escape_sql_string(&req.product_id),
-        "userId",
         ob_core::escape_sql_string(&req.user_id),
     );
 
