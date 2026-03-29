@@ -755,6 +755,7 @@ mod tests {
     use axum::response::IntoResponse;
     use ob_auth::middleware::AuthContext;
     use serde_json::json;
+    use uuid::Uuid;
 
     fn auth(user_id: &str, role: &str) -> Extension<AuthContext> {
         Extension(AuthContext {
@@ -764,6 +765,24 @@ mod tests {
             email_verified: true,
             custom_claims: serde_json::Value::Null,
         })
+    }
+
+    /// Generate a unique valid license key (XXXX-XXXX-XXXX-XXXX uppercase alphanumeric).
+    fn unique_license_key() -> String {
+        let hex = Uuid::new_v4().simple().to_string().to_uppercase();
+        // Take first 16 hex chars (all uppercase alphanumeric) and split into 4 groups
+        format!(
+            "{}-{}-{}-{}",
+            &hex[0..4],
+            &hex[4..8],
+            &hex[8..12],
+            &hex[12..16]
+        )
+    }
+
+    /// Generate a unique user ID.
+    fn unique_user_id() -> String {
+        Uuid::new_v4().to_string()
     }
 
     #[test]
@@ -1157,12 +1176,13 @@ mod tests {
             turnstile_secret_key: None,
         };
 
-        let license_key = "REDACTED_SECRET";
-        let user_id = "user_1";
+        let license_key = unique_license_key();
+        let user_id = unique_user_id();
+        let device_id = Uuid::new_v4().to_string();
 
         db.upsert_document(
             collections::LICENSES,
-            license_key,
+            &license_key,
             json!({
                 "status": "active",
                 "userId": user_id,
@@ -1174,13 +1194,13 @@ mod tests {
         .unwrap();
 
         let req = ActivateLicenseRequest {
-            license_key: license_key.to_string(),
-            device_id: "dev_1".to_string(),
-            user_id: user_id.to_string(),
+            license_key: license_key.clone(),
+            device_id: device_id.clone(),
+            user_id: user_id.clone(),
             platform: Some("macos".to_string()),
         };
 
-        let result = activate_license(State(state), auth(user_id, "user"), Json(req)).await;
+        let result = activate_license(State(state), auth(&user_id, "user"), Json(req)).await;
         assert!(result.is_ok());
         let Json(resp) = result.unwrap();
         assert!(resp.approved);
@@ -1188,12 +1208,12 @@ mod tests {
 
         // Verify in DB
         let license = db
-            .get_document(collections::LICENSES, license_key)
+            .get_document(collections::LICENSES, &license_key)
             .await
             .unwrap();
         let activations = license["activations"].as_array().unwrap();
         assert_eq!(activations.len(), 1);
-        assert_eq!(activations[0][fields::DEVICE_ID], "dev_1");
+        assert_eq!(activations[0][fields::DEVICE_ID], device_id);
     }
 
     #[tokio::test]
@@ -1212,13 +1232,13 @@ mod tests {
             turnstile_secret_key: None,
         };
 
-        let license_key = "REDACTED_SECRET";
-        let user_id = "user_1";
-        let device_id = "dev_1";
+        let license_key = unique_license_key();
+        let user_id = unique_user_id();
+        let device_id = Uuid::new_v4().to_string();
 
         db.upsert_document(
             collections::LICENSES,
-            license_key,
+            &license_key,
             json!({
                 "status": "active",
                 "userId": user_id,
@@ -1233,13 +1253,13 @@ mod tests {
         .unwrap();
 
         let req = ActivateLicenseRequest {
-            license_key: license_key.to_string(),
-            device_id: device_id.to_string(),
-            user_id: user_id.to_string(),
+            license_key: license_key.clone(),
+            device_id: device_id.clone(),
+            user_id: user_id.clone(),
             platform: None,
         };
 
-        let result = activate_license(State(state), auth(user_id, "user"), Json(req)).await;
+        let result = activate_license(State(state), auth(&user_id, "user"), Json(req)).await;
         assert!(result.is_ok());
         let Json(resp) = result.unwrap();
         assert!(resp.approved);
@@ -1262,13 +1282,13 @@ mod tests {
             turnstile_secret_key: None,
         };
 
-        let license_key = "REDACTED_SECRET";
-        let user_id = "user_1";
-        let device_id = "dev_1";
+        let license_key = unique_license_key();
+        let user_id = unique_user_id();
+        let device_id = Uuid::new_v4().to_string();
 
         db.upsert_document(
             collections::LICENSES,
-            license_key,
+            &license_key,
             json!({
                 "userId": user_id,
                 "activations": [{ fields::DEVICE_ID: device_id }]
@@ -1278,12 +1298,12 @@ mod tests {
         .unwrap();
 
         let req = DeactivateLicenseRequest {
-            license_key: license_key.to_string(),
-            device_id: device_id.to_string(),
-            user_id: user_id.to_string(),
+            license_key: license_key.clone(),
+            device_id: device_id.clone(),
+            user_id: user_id.clone(),
         };
 
-        let result = deactivate_license(State(state), auth(user_id, "user"), Json(req)).await;
+        let result = deactivate_license(State(state), auth(&user_id, "user"), Json(req)).await;
         assert!(result.is_ok());
         let Json(resp) = result.unwrap();
         assert!(resp.deactivated);
@@ -1306,12 +1326,13 @@ mod tests {
             turnstile_secret_key: None,
         };
 
-        let license_key = "REDACTED_SECRET";
-        let user_id = "user_1";
+        let license_key = unique_license_key();
+        let user_id = unique_user_id();
+        let product_id = Uuid::new_v4().to_string();
 
         db.upsert_document(
             collections::LICENSES,
-            license_key,
+            &license_key,
             json!({
                 "status": "active",
                 "userId": user_id,
@@ -1323,12 +1344,12 @@ mod tests {
         .unwrap();
 
         let req = DownloadRequest {
-            product_id: "p1".to_string(),
-            user_id: user_id.to_string(),
-            license_key: Some(license_key.to_string()),
+            product_id,
+            user_id: user_id.clone(),
+            license_key: Some(license_key.clone()),
         };
 
-        let result = download_book(State(state), auth(user_id, "user"), Json(req)).await;
+        let result = download_book(State(state), auth(&user_id, "user"), Json(req)).await;
         assert!(result.is_ok());
         let Json(resp) = result.unwrap();
         assert!(resp.download_url.starts_with("/dl?t=tok_"));
@@ -1350,10 +1371,10 @@ mod tests {
             turnstile_secret_key: None,
         };
 
-        let license_key = "REDACTED_SECRET";
+        let license_key = unique_license_key();
         db.upsert_document(
             collections::LICENSES,
-            license_key,
+            &license_key,
             json!({
                 "status": "active",
                 "productName": "Test Product"
@@ -1363,7 +1384,7 @@ mod tests {
         .unwrap();
 
         let req = VerifyLicenseRequest {
-            license_key: license_key.to_string(),
+            license_key: license_key.clone(),
             device_id: None,
             platform: None,
         };
@@ -1391,15 +1412,16 @@ mod tests {
             turnstile_secret_key: None,
         };
 
-        let license_key = "REDACTED_SECRET";
+        let license_key = unique_license_key();
+        let device_id = Uuid::new_v4().to_string();
         db.upsert_document(
             collections::LICENSES,
-            license_key,
+            &license_key,
             json!({
                 "status": "active",
                 "productName": "Verifier",
                 "activations": [{
-                    fields::DEVICE_ID: "dev_1",
+                    fields::DEVICE_ID: device_id,
                     "activatedAt": "2026-01-01T00:00:00Z"
                 }]
             }),
@@ -1410,8 +1432,8 @@ mod tests {
         let Json(resp) = verify_license(
             State(state.clone()),
             Json(VerifyLicenseRequest {
-                license_key: license_key.to_string(),
-                device_id: Some("dev_1".into()),
+                license_key: license_key.clone(),
+                device_id: Some(device_id.clone()),
                 platform: None,
             }),
         )
@@ -1420,7 +1442,7 @@ mod tests {
 
         assert!(resp.valid);
         let license = db
-            .get_document(collections::LICENSES, license_key)
+            .get_document(collections::LICENSES, &license_key)
             .await
             .unwrap();
         assert!(license["activations"][0].get("lastVerifiedAt").is_some());
@@ -1442,13 +1464,15 @@ mod tests {
             turnstile_secret_key: None,
         };
 
-        let license_key = "REDACTED_SECRET";
+        let license_key = unique_license_key();
+        let user_id = unique_user_id();
+        let product_id = Uuid::new_v4().to_string();
         db.upsert_document(
             collections::LICENSES,
-            license_key,
+            &license_key,
             json!({
                 "status": "active",
-                "userId": "user_1",
+                "userId": user_id,
                 "digitalType": "software",
                 "downloadUrl": "https://downloads.local/app.zip"
             }),
@@ -1458,19 +1482,24 @@ mod tests {
 
         let Json(resp) = download_software(
             State(state.clone()),
-            auth("user_1", "user"),
+            auth(&user_id, "user"),
             Json(DownloadRequest {
-                product_id: "p1".into(),
-                user_id: "user_1".into(),
-                license_key: Some(license_key.into()),
+                product_id,
+                user_id: user_id.clone(),
+                license_key: Some(license_key.clone()),
             }),
         )
         .await
         .unwrap();
 
         assert!(resp.download_url.starts_with("/sdl?t=tok_"));
+        // Extract token from URL and verify it was stored
+        let token_value = resp.download_url.strip_prefix("/sdl?t=").unwrap();
         let tokens = db
-            .query_bind("SELECT * FROM software_access_tokens", json!({}))
+            .query_bind(
+                &format!("SELECT * FROM software_access_tokens WHERE data->>'accessToken' = '{}'", ob_core::escape_sql_string(token_value)),
+                json!({}),
+            )
             .await
             .unwrap();
         assert_eq!(tokens.len(), 1);
@@ -1496,11 +1525,14 @@ mod tests {
             turnstile_secret_key: None,
         };
 
+        let tok_doc_id = Uuid::new_v4().to_string();
+        let access_token = format!("tok_book_{}", Uuid::new_v4().simple());
+
         db.upsert_document(
             collections::BOOK_ACCESS_TOKENS,
-            "tok_doc_1",
+            &tok_doc_id,
             json!({
-                "accessToken": "tok_book_1",
+                "accessToken": access_token,
                 "bookSourceUrl": "https://books.local/file.pdf",
                 "expiresAt": (chrono::Utc::now() + chrono::Duration::minutes(10)).to_rfc3339(),
                 "used": false,
@@ -1512,7 +1544,7 @@ mod tests {
         let redirect = get_book_redirect(
             State(state.clone()),
             Query(RedirectTokenQuery {
-                t: "tok_book_1".into(),
+                t: access_token.clone(),
             }),
         )
         .await
@@ -1526,7 +1558,7 @@ mod tests {
         );
 
         let token_doc = db
-            .get_document(collections::BOOK_ACCESS_TOKENS, "tok_doc_1")
+            .get_document(collections::BOOK_ACCESS_TOKENS, &tok_doc_id)
             .await
             .unwrap();
         assert_eq!(token_doc["used"], true);
@@ -1548,11 +1580,14 @@ mod tests {
             turnstile_secret_key: None,
         };
 
+        let tok_doc_id = Uuid::new_v4().to_string();
+        let access_token = format!("tok_soft_{}", Uuid::new_v4().simple());
+
         db.upsert_document(
             collections::SOFTWARE_ACCESS_TOKENS,
-            "tok_doc_2",
+            &tok_doc_id,
             json!({
-                "accessToken": "tok_soft_1",
+                "accessToken": access_token,
                 "softwareSourceUrl": "https://downloads.local/app.dmg",
                 "expiresAt": (chrono::Utc::now() + chrono::Duration::minutes(10)).to_rfc3339(),
                 "used": false,
@@ -1564,7 +1599,7 @@ mod tests {
         let redirect = get_software_redirect(
             State(state.clone()),
             Query(RedirectTokenQuery {
-                t: "tok_soft_1".into(),
+                t: access_token.clone(),
             }),
         )
         .await
@@ -1578,7 +1613,7 @@ mod tests {
         );
 
         let token_doc = db
-            .get_document(collections::SOFTWARE_ACCESS_TOKENS, "tok_doc_2")
+            .get_document(collections::SOFTWARE_ACCESS_TOKENS, &tok_doc_id)
             .await
             .unwrap();
         assert_eq!(token_doc["used"], true);
@@ -1608,14 +1643,15 @@ mod tests {
     #[tokio::test]
     async fn test_activate_license_rejects_invalid_key_format() {
         let (state, _db) = setup_state().await;
+        let user_id = unique_user_id();
 
         let err = activate_license(
             State(state),
-            auth("user_1", "user"),
+            auth(&user_id, "user"),
             Json(ActivateLicenseRequest {
                 license_key: "bad-key".into(),
-                device_id: "dev_1".into(),
-                user_id: "user_1".into(),
+                device_id: Uuid::new_v4().to_string(),
+                user_id: user_id.clone(),
                 platform: None,
             }),
         )
@@ -1630,14 +1666,16 @@ mod tests {
     #[tokio::test]
     async fn test_activate_license_rejects_empty_device_id() {
         let (state, _db) = setup_state().await;
+        let user_id = unique_user_id();
+        let license_key = unique_license_key();
 
         let err = activate_license(
             State(state),
-            auth("user_1", "user"),
+            auth(&user_id, "user"),
             Json(ActivateLicenseRequest {
-                license_key: "REDACTED_SECRET".into(),
+                license_key,
                 device_id: "  ".into(), // blank after trim
-                user_id: "user_1".into(),
+                user_id: user_id.clone(),
                 platform: None,
             }),
         )
@@ -1652,13 +1690,15 @@ mod tests {
     #[tokio::test]
     async fn test_activate_license_rejects_revoked_license() {
         let (state, db) = setup_state().await;
+        let license_key = unique_license_key();
+        let user_id = unique_user_id();
 
         db.upsert_document(
             collections::LICENSES,
-            "REDACTED_SECRET",
+            &license_key,
             json!({
                 "status": "revoked",
-                "userId": "user_1",
+                "userId": user_id,
                 "activations": []
             }),
         )
@@ -1667,11 +1707,11 @@ mod tests {
 
         let err = activate_license(
             State(state),
-            auth("user_1", "user"),
+            auth(&user_id, "user"),
             Json(ActivateLicenseRequest {
-                license_key: "REDACTED_SECRET".into(),
-                device_id: "dev_1".into(),
-                user_id: "user_1".into(),
+                license_key,
+                device_id: Uuid::new_v4().to_string(),
+                user_id: user_id.clone(),
                 platform: None,
             }),
         )
@@ -1686,13 +1726,16 @@ mod tests {
     #[tokio::test]
     async fn test_activate_license_rejects_wrong_owner() {
         let (state, db) = setup_state().await;
+        let license_key = unique_license_key();
+        let actual_owner = unique_user_id();
+        let attacker = unique_user_id();
 
         db.upsert_document(
             collections::LICENSES,
-            "REDACTED_SECRET",
+            &license_key,
             json!({
                 "status": "active",
-                "userId": "actual_owner",
+                "userId": actual_owner,
                 "activations": []
             }),
         )
@@ -1701,11 +1744,11 @@ mod tests {
 
         let err = activate_license(
             State(state),
-            auth("attacker", "user"),
+            auth(&attacker, "user"),
             Json(ActivateLicenseRequest {
-                license_key: "REDACTED_SECRET".into(),
-                device_id: "dev_1".into(),
-                user_id: "attacker".into(),
+                license_key,
+                device_id: Uuid::new_v4().to_string(),
+                user_id: attacker.clone(),
                 platform: None,
             }),
         )
@@ -1720,15 +1763,17 @@ mod tests {
     #[tokio::test]
     async fn test_activate_license_rejects_at_device_limit() {
         let (state, db) = setup_state().await;
+        let license_key = unique_license_key();
+        let user_id = unique_user_id();
 
         db.upsert_document(
             collections::LICENSES,
-            "REDACTED_SECRET",
+            &license_key,
             json!({
                 "status": "active",
-                "userId": "user_1",
+                "userId": user_id,
                 "deviceLimit": 1,
-                "activations": [{ fields::DEVICE_ID: "dev_existing", "platform": "linux" }]
+                "activations": [{ fields::DEVICE_ID: Uuid::new_v4().to_string(), "platform": "linux" }]
             }),
         )
         .await
@@ -1736,11 +1781,11 @@ mod tests {
 
         let err = activate_license(
             State(state),
-            auth("user_1", "user"),
+            auth(&user_id, "user"),
             Json(ActivateLicenseRequest {
-                license_key: "REDACTED_SECRET".into(),
-                device_id: "dev_new".into(),
-                user_id: "user_1".into(),
+                license_key,
+                device_id: Uuid::new_v4().to_string(),
+                user_id: user_id.clone(),
                 platform: None,
             }),
         )
@@ -1755,14 +1800,15 @@ mod tests {
     #[tokio::test]
     async fn test_deactivate_license_rejects_invalid_key_format() {
         let (state, _db) = setup_state().await;
+        let user_id = unique_user_id();
 
         let err = deactivate_license(
             State(state),
-            auth("user_1", "user"),
+            auth(&user_id, "user"),
             Json(DeactivateLicenseRequest {
                 license_key: "bad".into(),
-                device_id: "dev_1".into(),
-                user_id: "user_1".into(),
+                device_id: Uuid::new_v4().to_string(),
+                user_id: user_id.clone(),
             }),
         )
         .await
@@ -1776,14 +1822,16 @@ mod tests {
     #[tokio::test]
     async fn test_deactivate_license_rejects_empty_device_id() {
         let (state, _db) = setup_state().await;
+        let user_id = unique_user_id();
+        let license_key = unique_license_key();
 
         let err = deactivate_license(
             State(state),
-            auth("user_1", "user"),
+            auth(&user_id, "user"),
             Json(DeactivateLicenseRequest {
-                license_key: "REDACTED_SECRET".into(),
+                license_key,
                 device_id: "".into(),
-                user_id: "user_1".into(),
+                user_id: user_id.clone(),
             }),
         )
         .await
@@ -1797,13 +1845,17 @@ mod tests {
     #[tokio::test]
     async fn test_deactivate_license_rejects_wrong_owner() {
         let (state, db) = setup_state().await;
+        let license_key = unique_license_key();
+        let actual_owner = unique_user_id();
+        let attacker = unique_user_id();
+        let device_id = Uuid::new_v4().to_string();
 
         db.upsert_document(
             collections::LICENSES,
-            "REDACTED_SECRET",
+            &license_key,
             json!({
-                "userId": "actual_owner",
-                "activations": [{ fields::DEVICE_ID: "dev_1" }]
+                "userId": actual_owner,
+                "activations": [{ fields::DEVICE_ID: device_id }]
             }),
         )
         .await
@@ -1811,11 +1863,11 @@ mod tests {
 
         let err = deactivate_license(
             State(state),
-            auth("attacker", "user"),
+            auth(&attacker, "user"),
             Json(DeactivateLicenseRequest {
-                license_key: "REDACTED_SECRET".into(),
-                device_id: "dev_1".into(),
-                user_id: "attacker".into(),
+                license_key,
+                device_id,
+                user_id: attacker.clone(),
             }),
         )
         .await
@@ -1829,13 +1881,14 @@ mod tests {
     #[tokio::test]
     async fn test_download_book_rejects_empty_license_key() {
         let (state, _db) = setup_state().await;
+        let user_id = unique_user_id();
 
         let err = download_book(
             State(state),
-            auth("user_1", "user"),
+            auth(&user_id, "user"),
             Json(DownloadRequest {
-                product_id: "p1".into(),
-                user_id: "user_1".into(),
+                product_id: Uuid::new_v4().to_string(),
+                user_id: user_id.clone(),
                 license_key: Some("".into()),
             }),
         )
@@ -1850,13 +1903,14 @@ mod tests {
     #[tokio::test]
     async fn test_download_book_rejects_invalid_license_key_format() {
         let (state, _db) = setup_state().await;
+        let user_id = unique_user_id();
 
         let err = download_book(
             State(state),
-            auth("user_1", "user"),
+            auth(&user_id, "user"),
             Json(DownloadRequest {
-                product_id: "p1".into(),
-                user_id: "user_1".into(),
+                product_id: Uuid::new_v4().to_string(),
+                user_id: user_id.clone(),
                 license_key: Some("bad-format".into()),
             }),
         )
@@ -1871,13 +1925,16 @@ mod tests {
     #[tokio::test]
     async fn test_download_book_rejects_wrong_owner() {
         let (state, db) = setup_state().await;
+        let license_key = unique_license_key();
+        let real_owner = unique_user_id();
+        let attacker = unique_user_id();
 
         db.upsert_document(
             collections::LICENSES,
-            "REDACTED_SECRET",
+            &license_key,
             json!({
                 "status": "active",
-                "userId": "real_owner",
+                "userId": real_owner,
                 "digitalType": "book"
             }),
         )
@@ -1886,11 +1943,11 @@ mod tests {
 
         let err = download_book(
             State(state),
-            auth("attacker", "user"),
+            auth(&attacker, "user"),
             Json(DownloadRequest {
-                product_id: "p1".into(),
-                user_id: "attacker".into(),
-                license_key: Some("REDACTED_SECRET".into()),
+                product_id: Uuid::new_v4().to_string(),
+                user_id: attacker.clone(),
+                license_key: Some(license_key),
             }),
         )
         .await
@@ -1904,13 +1961,15 @@ mod tests {
     #[tokio::test]
     async fn test_download_book_rejects_revoked_license() {
         let (state, db) = setup_state().await;
+        let license_key = unique_license_key();
+        let user_id = unique_user_id();
 
         db.upsert_document(
             collections::LICENSES,
-            "REDACTED_SECRET",
+            &license_key,
             json!({
                 "status": "revoked",
-                "userId": "user_1",
+                "userId": user_id,
                 "digitalType": "book"
             }),
         )
@@ -1919,11 +1978,11 @@ mod tests {
 
         let err = download_book(
             State(state),
-            auth("user_1", "user"),
+            auth(&user_id, "user"),
             Json(DownloadRequest {
-                product_id: "p1".into(),
-                user_id: "user_1".into(),
-                license_key: Some("REDACTED_SECRET".into()),
+                product_id: Uuid::new_v4().to_string(),
+                user_id: user_id.clone(),
+                license_key: Some(license_key),
             }),
         )
         .await
@@ -1937,13 +1996,15 @@ mod tests {
     #[tokio::test]
     async fn test_download_book_rejects_software_license() {
         let (state, db) = setup_state().await;
+        let license_key = unique_license_key();
+        let user_id = unique_user_id();
 
         db.upsert_document(
             collections::LICENSES,
-            "REDACTED_SECRET",
+            &license_key,
             json!({
                 "status": "active",
-                "userId": "user_1",
+                "userId": user_id,
                 "digitalType": "software"
             }),
         )
@@ -1952,11 +2013,11 @@ mod tests {
 
         let err = download_book(
             State(state),
-            auth("user_1", "user"),
+            auth(&user_id, "user"),
             Json(DownloadRequest {
-                product_id: "p1".into(),
-                user_id: "user_1".into(),
-                license_key: Some("REDACTED_SECRET".into()),
+                product_id: Uuid::new_v4().to_string(),
+                user_id: user_id.clone(),
+                license_key: Some(license_key),
             }),
         )
         .await
@@ -1970,13 +2031,14 @@ mod tests {
     #[tokio::test]
     async fn test_download_software_rejects_empty_license_key() {
         let (state, _db) = setup_state().await;
+        let user_id = unique_user_id();
 
         let err = download_software(
             State(state),
-            auth("user_1", "user"),
+            auth(&user_id, "user"),
             Json(DownloadRequest {
-                product_id: "p1".into(),
-                user_id: "user_1".into(),
+                product_id: Uuid::new_v4().to_string(),
+                user_id: user_id.clone(),
                 license_key: Some("".into()),
             }),
         )
@@ -1991,13 +2053,14 @@ mod tests {
     #[tokio::test]
     async fn test_download_software_rejects_invalid_license_key() {
         let (state, _db) = setup_state().await;
+        let user_id = unique_user_id();
 
         let err = download_software(
             State(state),
-            auth("user_1", "user"),
+            auth(&user_id, "user"),
             Json(DownloadRequest {
-                product_id: "p1".into(),
-                user_id: "user_1".into(),
+                product_id: Uuid::new_v4().to_string(),
+                user_id: user_id.clone(),
                 license_key: Some("bad".into()),
             }),
         )
@@ -2012,13 +2075,16 @@ mod tests {
     #[tokio::test]
     async fn test_download_software_rejects_wrong_owner() {
         let (state, db) = setup_state().await;
+        let license_key = unique_license_key();
+        let real_owner = unique_user_id();
+        let attacker = unique_user_id();
 
         db.upsert_document(
             collections::LICENSES,
-            "REDACTED_SECRET",
+            &license_key,
             json!({
                 "status": "active",
-                "userId": "real_owner",
+                "userId": real_owner,
                 "digitalType": "software"
             }),
         )
@@ -2027,11 +2093,11 @@ mod tests {
 
         let err = download_software(
             State(state),
-            auth("attacker", "user"),
+            auth(&attacker, "user"),
             Json(DownloadRequest {
-                product_id: "p1".into(),
-                user_id: "attacker".into(),
-                license_key: Some("REDACTED_SECRET".into()),
+                product_id: Uuid::new_v4().to_string(),
+                user_id: attacker.clone(),
+                license_key: Some(license_key),
             }),
         )
         .await
@@ -2045,13 +2111,15 @@ mod tests {
     #[tokio::test]
     async fn test_download_software_rejects_revoked_license() {
         let (state, db) = setup_state().await;
+        let license_key = unique_license_key();
+        let user_id = unique_user_id();
 
         db.upsert_document(
             collections::LICENSES,
-            "REDACTED_SECRET",
+            &license_key,
             json!({
                 "status": "revoked",
-                "userId": "user_1",
+                "userId": user_id,
                 "digitalType": "software"
             }),
         )
@@ -2060,11 +2128,11 @@ mod tests {
 
         let err = download_software(
             State(state),
-            auth("user_1", "user"),
+            auth(&user_id, "user"),
             Json(DownloadRequest {
-                product_id: "p1".into(),
-                user_id: "user_1".into(),
-                license_key: Some("REDACTED_SECRET".into()),
+                product_id: Uuid::new_v4().to_string(),
+                user_id: user_id.clone(),
+                license_key: Some(license_key),
             }),
         )
         .await
@@ -2078,13 +2146,15 @@ mod tests {
     #[tokio::test]
     async fn test_download_software_rejects_book_license() {
         let (state, db) = setup_state().await;
+        let license_key = unique_license_key();
+        let user_id = unique_user_id();
 
         db.upsert_document(
             collections::LICENSES,
-            "REDACTED_SECRET",
+            &license_key,
             json!({
                 "status": "active",
-                "userId": "user_1",
+                "userId": user_id,
                 "digitalType": "book"
             }),
         )
@@ -2093,11 +2163,11 @@ mod tests {
 
         let err = download_software(
             State(state),
-            auth("user_1", "user"),
+            auth(&user_id, "user"),
             Json(DownloadRequest {
-                product_id: "p1".into(),
-                user_id: "user_1".into(),
-                license_key: Some("REDACTED_SECRET".into()),
+                product_id: Uuid::new_v4().to_string(),
+                user_id: user_id.clone(),
+                license_key: Some(license_key),
             }),
         )
         .await
@@ -2115,7 +2185,7 @@ mod tests {
         let err = verify_license(
             State(state),
             Json(VerifyLicenseRequest {
-                license_key: "bad".into(),
+                license_key: "bad-key-format".into(),
                 device_id: None,
                 platform: None,
             }),
@@ -2131,11 +2201,12 @@ mod tests {
     #[tokio::test]
     async fn test_verify_license_not_found() {
         let (state, _db) = setup_state().await;
+        let license_key = unique_license_key();
 
         let err = verify_license(
             State(state),
             Json(VerifyLicenseRequest {
-                license_key: "REDACTED_SECRET".into(),
+                license_key,
                 device_id: None,
                 platform: None,
             }),
@@ -2151,13 +2222,14 @@ mod tests {
     #[tokio::test]
     async fn test_download_book_rejects_none_license_key() {
         let (state, _db) = setup_state().await;
+        let user_id = unique_user_id();
 
         let err = download_book(
             State(state),
-            auth("user_1", "user"),
+            auth(&user_id, "user"),
             Json(DownloadRequest {
-                product_id: "p1".into(),
-                user_id: "user_1".into(),
+                product_id: Uuid::new_v4().to_string(),
+                user_id: user_id.clone(),
                 license_key: None,
             }),
         )
@@ -2170,13 +2242,14 @@ mod tests {
     #[tokio::test]
     async fn test_download_software_rejects_none_license_key() {
         let (state, _db) = setup_state().await;
+        let user_id = unique_user_id();
 
         let err = download_software(
             State(state),
-            auth("user_1", "user"),
+            auth(&user_id, "user"),
             Json(DownloadRequest {
-                product_id: "p1".into(),
-                user_id: "user_1".into(),
+                product_id: Uuid::new_v4().to_string(),
+                user_id: user_id.clone(),
                 license_key: None,
             }),
         )
@@ -2191,14 +2264,16 @@ mod tests {
     #[tokio::test]
     async fn test_activate_license_not_found() {
         let (state, _db) = setup_state().await;
+        let user_id = unique_user_id();
+        let license_key = unique_license_key();
 
         let err = activate_license(
             State(state),
-            auth("user_1", "user"),
+            auth(&user_id, "user"),
             Json(ActivateLicenseRequest {
-                license_key: "REDACTED_SECRET".into(),
-                device_id: "dev_1".into(),
-                user_id: "user_1".into(),
+                license_key,
+                device_id: Uuid::new_v4().to_string(),
+                user_id: user_id.clone(),
                 platform: None,
             }),
         )
@@ -2213,14 +2288,16 @@ mod tests {
     #[tokio::test]
     async fn test_deactivate_license_not_found() {
         let (state, _db) = setup_state().await;
+        let user_id = unique_user_id();
+        let license_key = unique_license_key();
 
         let err = deactivate_license(
             State(state),
-            auth("user_1", "user"),
+            auth(&user_id, "user"),
             Json(DeactivateLicenseRequest {
-                license_key: "REDACTED_SECRET".into(),
-                device_id: "dev_1".into(),
-                user_id: "user_1".into(),
+                license_key,
+                device_id: Uuid::new_v4().to_string(),
+                user_id: user_id.clone(),
             }),
         )
         .await
@@ -2234,14 +2311,16 @@ mod tests {
     #[tokio::test]
     async fn test_download_book_license_not_found() {
         let (state, _db) = setup_state().await;
+        let user_id = unique_user_id();
+        let license_key = unique_license_key();
 
         let err = download_book(
             State(state),
-            auth("user_1", "user"),
+            auth(&user_id, "user"),
             Json(DownloadRequest {
-                product_id: "p1".into(),
-                user_id: "user_1".into(),
-                license_key: Some("REDACTED_SECRET".into()),
+                product_id: Uuid::new_v4().to_string(),
+                user_id: user_id.clone(),
+                license_key: Some(license_key),
             }),
         )
         .await
@@ -2255,14 +2334,16 @@ mod tests {
     #[tokio::test]
     async fn test_download_software_license_not_found() {
         let (state, _db) = setup_state().await;
+        let user_id = unique_user_id();
+        let license_key = unique_license_key();
 
         let err = download_software(
             State(state),
-            auth("user_1", "user"),
+            auth(&user_id, "user"),
             Json(DownloadRequest {
-                product_id: "p1".into(),
-                user_id: "user_1".into(),
-                license_key: Some("REDACTED_SECRET".into()),
+                product_id: Uuid::new_v4().to_string(),
+                user_id: user_id.clone(),
+                license_key: Some(license_key),
             }),
         )
         .await
@@ -2278,14 +2359,15 @@ mod tests {
     #[tokio::test]
     async fn test_verify_license_with_nonmatching_device_no_update() {
         let (state, db) = setup_state().await;
+        let license_key = unique_license_key();
 
         db.upsert_document(
             collections::LICENSES,
-            "REDACTED_SECRET",
+            &license_key,
             json!({
                 "status": "active",
                 "productName": "Test",
-                "activations": [{ fields::DEVICE_ID: "dev_1" }]
+                "activations": [{ fields::DEVICE_ID: Uuid::new_v4().to_string() }]
             }),
         )
         .await
@@ -2294,8 +2376,8 @@ mod tests {
         let Json(resp) = verify_license(
             State(state),
             Json(VerifyLicenseRequest {
-                license_key: "REDACTED_SECRET".into(),
-                device_id: Some("dev_nonexistent".into()),
+                license_key,
+                device_id: Some(Uuid::new_v4().to_string()),
                 platform: None,
             }),
         )

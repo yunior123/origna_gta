@@ -442,6 +442,7 @@ mod tests {
     use ob_core::Config;
     use ob_database::DatabaseClient;
     use std::sync::Arc;
+    use uuid::Uuid;
 
     fn auth(user_id: &str, role: &str) -> Extension<AuthContext> {
         Extension(AuthContext {
@@ -451,6 +452,11 @@ mod tests {
             email_verified: true,
             custom_claims: serde_json::Value::Null,
         })
+    }
+
+    /// Generate a unique seller ID per test.
+    fn unique_seller_id() -> String {
+        Uuid::new_v4().to_string()
     }
 
     async fn setup_state() -> HandlersState {
@@ -521,12 +527,13 @@ mod tests {
     async fn test_create_warehouse_default_true_clears_existing_default() {
         let state = setup_state().await;
         let collection = warehouses_collection();
+        let seller_id = unique_seller_id();
         state
             .db
             .create_document(
                 &collection,
                 json!({
-                    "parent_id": warehouse_parent("seller_1"),
+                    "parent_id": warehouse_parent(&seller_id),
                     "label": "Old Default",
                     "type": "warehouse",
                     fields::IS_DEFAULT: true,
@@ -538,9 +545,9 @@ mod tests {
 
         let Json(resp) = create_warehouse(
             State(state.clone()),
-            auth("seller_1", "user"),
+            auth(&seller_id, "user"),
             Json(CreateWarehouseRequest {
-                user_id: "seller_1".into(),
+                user_id: seller_id.clone(),
                 label: "New Default".into(),
                 warehouse_type: "warehouse".into(),
                 address: sample_address(),
@@ -555,7 +562,7 @@ mod tests {
             .query_raw(&format!(
                 "SELECT * FROM {} WHERE parent_id = '{}'",
                 collection,
-                ob_core::escape_sql_string(&warehouse_parent("seller_1"))
+                ob_core::escape_sql_string(&warehouse_parent(&seller_id))
             ))
             .await
             .unwrap();
@@ -572,12 +579,13 @@ mod tests {
     async fn test_update_warehouse_requires_at_least_one_field() {
         let state = setup_state().await;
         let collection = warehouses_collection();
+        let seller_id = unique_seller_id();
         let created = state
             .db
             .create_document(
                 &collection,
                 json!({
-                    "parent_id": warehouse_parent("seller_1"),
+                    "parent_id": warehouse_parent(&seller_id),
                     "label": "Primary",
                     "type": "warehouse",
                     fields::ADDRESS: sanitize_address(&sample_address()).unwrap(),
@@ -596,9 +604,9 @@ mod tests {
 
         let err = update_warehouse(
             State(state),
-            auth("seller_1", "user"),
+            auth(&seller_id, "user"),
             Json(UpdateWarehouseRequest {
-                user_id: "seller_1".into(),
+                user_id: seller_id.clone(),
                 warehouse_id,
                 label: None,
                 warehouse_type: None,
@@ -615,12 +623,13 @@ mod tests {
     async fn test_delete_default_warehouse_promotes_oldest_remaining() {
         let state = setup_state().await;
         let collection = warehouses_collection();
+        let seller_id = unique_seller_id();
         let first = state
             .db
             .create_document(
                 &collection,
                 json!({
-                    "parent_id": warehouse_parent("seller_1"),
+                    "parent_id": warehouse_parent(&seller_id),
                     "label": "Default",
                     "type": "warehouse",
                     fields::IS_DEFAULT: true,
@@ -634,7 +643,7 @@ mod tests {
             .create_document(
                 &collection,
                 json!({
-                    "parent_id": warehouse_parent("seller_1"),
+                    "parent_id": warehouse_parent(&seller_id),
                     "label": "Backup",
                     "type": "warehouse",
                     fields::IS_DEFAULT: false,
@@ -658,9 +667,9 @@ mod tests {
 
         let _ = delete_warehouse(
             State(state.clone()),
-            auth("seller_1", "user"),
+            auth(&seller_id, "user"),
             Json(DeleteWarehouseRequest {
-                user_id: "seller_1".into(),
+                user_id: seller_id.clone(),
                 warehouse_id: first_id,
             }),
         )
