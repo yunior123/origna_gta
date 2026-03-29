@@ -28,23 +28,30 @@ impl DatabaseClient {
 
         // Truncate all tables once per test process to clear stale data.
         // This runs exactly once (the first new_mem() call), not per-test.
-        TRUNCATE_ONCE.call_once(|| {
-            let pool = inner.pool().clone();
-            // Spawn a blocking task since call_once is synchronous
-            std::thread::spawn(move || {
-                let rt = tokio::runtime::Runtime::new().unwrap();
-                rt.block_on(async {
-                    let _ = sqlx::query(
-                        "DO $$ DECLARE r RECORD; BEGIN \
-                         FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename NOT LIKE 'pg_%') LOOP \
-                         EXECUTE 'TRUNCATE TABLE ' || quote_ident(r.tablename) || ' CASCADE'; \
-                         END LOOP; END $$;"
-                    )
-                    .execute(&pool)
-                    .await;
-                });
-            }).join().ok();
-        });
+        // Uses a separate thread+runtime because call_once is synchronous
+        // but we need to await async database operations.
+        {
+            use std::sync::atomic::{AtomicBool, Ordering};
+            static DID_TRUNCATE: AtomicBool = AtomicBool::new(false);
+            if !DID_TRUNCATE.swap(true, Ordering::SeqCst) {
+                // First call — truncate all tables
+                let tables_result = sqlx::query_as::<_, (String,)>(
+                    "SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename NOT LIKE 'pg_%' AND tablename NOT LIKE '_sqlx%'"
+                )
+                .fetch_all(inner.pool())
+                .await;
+
+                if let Ok(rows) = tables_result {
+                    for (table,) in &rows {
+                        let sql = format!("TRUNCATE TABLE \"{}\" CASCADE", table);
+                        let _ = sqlx::query(&sql).execute(inner.pool()).await;
+                    }
+                    eprintln!("[test-setup] Truncated {} tables", rows.len());
+                } else {
+                    eprintln!("[test-setup] Failed to list tables for truncation");
+                }
+            }
+        }
 
         Self { inner }
     }
