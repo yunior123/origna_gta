@@ -2,7 +2,6 @@ use ob_core::Error;
 use ob_core::config::DatabaseConfig;
 use ob_core::ports::db_store::DatabaseStore;
 use crate::pg_store::PgDatabaseStore;
-use std::sync::Once;
 
 /// Database client wrapping the PostgreSQL adapter.
 ///
@@ -13,9 +12,6 @@ use std::sync::Once;
 pub struct DatabaseClient {
     pub(crate) inner: PgDatabaseStore,
 }
-
-/// One-time truncation guard: clears all tables at the start of a test run.
-static TRUNCATE_ONCE: Once = Once::new();
 
 impl DatabaseClient {
     /// Create a database client for testing.

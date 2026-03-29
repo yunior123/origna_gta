@@ -444,11 +444,11 @@ async fn approve_shipping_cost(
             let pid = str_field(item, fields::PRODUCT_ID);
             let qty = item.get("quantity").and_then(|v| v.as_i64()).unwrap_or(1);
             if !pid.is_empty() && qty > 0 {
-                let cur_product = state.db.get_document(collections::PRODUCTS, &pid).await.unwrap_or_default();
+                let cur_product = state.db.get_document(collections::PRODUCTS, pid).await.unwrap_or_default();
                 let cur_stock = cur_product.get("stockQuantity").and_then(|v| v.as_i64()).unwrap_or(0);
                 let _ = state.db.update_document(
                     collections::PRODUCTS,
-                    &pid,
+                    pid,
                     json!({
                         "stockQuantity": cur_stock + qty,
                         "updatedAt": now,
