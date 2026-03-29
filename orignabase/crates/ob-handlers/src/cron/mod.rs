@@ -4559,7 +4559,7 @@ mod tests {
                 "cart",
                 &cart_id,
                 json!({
-                    "userId": "users:user_cart_fr",
+                    "userId": &user_id,
                     fields::NAME: "Belles Chaussures",
                 }),
             )
