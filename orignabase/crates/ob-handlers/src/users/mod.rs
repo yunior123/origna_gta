@@ -1431,11 +1431,15 @@ mod tests {
         .unwrap();
 
         assert_eq!(resp.data["created"], true);
-        let user = state
+        let users: Vec<serde_json::Value> = state
             .db
-            .get_document(collections::USERS, &user_id)
+            .query_bind_value(
+                "SELECT * FROM users WHERE uid = $uid LIMIT 1",
+                json!({"uid": &user_id}),
+            )
             .await
             .unwrap();
+        let user = users.first().unwrap();
         let email_prefix = email.split('@').next().unwrap();
         assert_eq!(user[fields::NAME], email_prefix);
         assert_eq!(user["preferredLanguage"], "en");
@@ -1683,18 +1687,15 @@ mod tests {
     #[tokio::test]
     async fn test_cleanup_fcm_token_idempotent_when_missing() {
         let state = setup_state().await;
-        // Ensure token doesn't exist
-        let _ = state
-            .db
-            .query_raw("DELETE FROM fcm_tokens WHERE id = 'tok_doc'")
-            .await;
+        let user_id = uuid::Uuid::new_v4().to_string();
+        let token = uuid::Uuid::new_v4().to_string();
 
         let Json(resp) = cleanup_fcm_token(
             State(state),
-            Extension(auth("user_1")),
+            Extension(auth(&user_id)),
             Json(CleanupFcmTokenRequest {
-                user_id: Some("user_1".to_string()),
-                token: "tok_1".into(),
+                user_id: Some(user_id.clone()),
+                token,
             }),
         )
         .await
@@ -1706,26 +1707,25 @@ mod tests {
     #[tokio::test]
     async fn test_cleanup_fcm_token_deletes_existing_token() {
         let state = setup_state().await;
-        let _ = state
-            .db
-            .query_raw("DELETE FROM fcm_tokens WHERE id = 'tok_doc'")
-            .await;
+        let user_id = uuid::Uuid::new_v4().to_string();
+        let token = uuid::Uuid::new_v4().to_string();
+        let tok_doc_id = uuid::Uuid::new_v4().to_string();
         state
             .db
             .upsert_document(
                 collections::FCM_TOKENS,
-                "tok_doc",
-                json!({ fields::UID: "user_1", fields::TOKEN: "tok_1" }),
+                &tok_doc_id,
+                json!({ fields::UID: &user_id, fields::TOKEN: &token }),
             )
             .await
             .unwrap();
 
         let Json(resp) = cleanup_fcm_token(
             State(state.clone()),
-            Extension(auth("user_1")),
+            Extension(auth(&user_id)),
             Json(CleanupFcmTokenRequest {
-                user_id: Some("user_1".to_string()),
-                token: "tok_1".into(),
+                user_id: Some(user_id.clone()),
+                token: token.clone(),
             }),
         )
         .await
@@ -1740,7 +1740,7 @@ mod tests {
         );
         let remaining: Vec<serde_json::Value> = state
             .db
-            .query_bind_value(&query, json!({"uid": "user_1", "token": "tok_1"}))
+            .query_bind_value(&query, json!({"uid": &user_id, "token": &token}))
             .await
             .unwrap();
         assert!(remaining.is_empty());
@@ -1921,19 +1921,20 @@ mod tests {
     #[tokio::test]
     async fn test_update_profile_rejects_name_too_short() {
         let state = setup_state().await;
+        let user_id = uuid::Uuid::new_v4().to_string();
         state
             .db
-            .upsert_document(collections::USERS, "user_1", json!({}))
+            .upsert_document(collections::USERS, &user_id, json!({}))
             .await
             .unwrap();
 
         let err = update_profile(
             State(state),
-            Extension(auth("user_1")),
+            Extension(auth(&user_id)),
             Json(UpdateProfileRequest {
                 terms_accepted_at: None,
                 terms_version: None,
-                user_id: Some("user_1".to_string()),
+                user_id: Some(user_id.clone()),
                 name: Some("".into()), // empty after trim → 0 < MIN_NAME_LENGTH
                 address: None,
                 preferred_language: None,
@@ -1949,20 +1950,21 @@ mod tests {
     #[tokio::test]
     async fn test_update_profile_rejects_name_too_long() {
         let state = setup_state().await;
+        let user_id = uuid::Uuid::new_v4().to_string();
         state
             .db
-            .upsert_document(collections::USERS, "user_1", json!({}))
+            .upsert_document(collections::USERS, &user_id, json!({}))
             .await
             .unwrap();
 
         let long_name = "A".repeat(MAX_NAME_LENGTH + 1);
         let err = update_profile(
             State(state),
-            Extension(auth("user_1")),
+            Extension(auth(&user_id)),
             Json(UpdateProfileRequest {
                 terms_accepted_at: None,
                 terms_version: None,
-                user_id: Some("user_1".to_string()),
+                user_id: Some(user_id.clone()),
                 name: Some(long_name),
                 address: None,
                 preferred_language: None,
@@ -1980,19 +1982,20 @@ mod tests {
     #[tokio::test]
     async fn test_update_profile_rejects_non_canada_address() {
         let state = setup_state().await;
+        let user_id = uuid::Uuid::new_v4().to_string();
         state
             .db
-            .upsert_document(collections::USERS, "user_1", json!({}))
+            .upsert_document(collections::USERS, &user_id, json!({}))
             .await
             .unwrap();
 
         let err = update_profile(
             State(state),
-            Extension(auth("user_1")),
+            Extension(auth(&user_id)),
             Json(UpdateProfileRequest {
                 terms_accepted_at: None,
                 terms_version: None,
-                user_id: Some("user_1".to_string()),
+                user_id: Some(user_id.clone()),
                 name: None,
                 address: Some(AddressInput {
                     street: "123 Main".into(),
@@ -2014,19 +2017,20 @@ mod tests {
     #[tokio::test]
     async fn test_update_profile_with_valid_address() {
         let state = setup_state().await;
+        let user_id = uuid::Uuid::new_v4().to_string();
         state
             .db
-            .upsert_document(collections::USERS, "user_1", json!({}))
+            .upsert_document(collections::USERS, &user_id, json!({}))
             .await
             .unwrap();
 
         let Json(resp) = update_profile(
             State(state.clone()),
-            Extension(auth("user_1")),
+            Extension(auth(&user_id)),
             Json(UpdateProfileRequest {
                 terms_accepted_at: None,
                 terms_version: None,
-                user_id: Some("user_1".to_string()),
+                user_id: Some(user_id.clone()),
                 name: None,
                 address: Some(AddressInput {
                     street: "123 Main St".into(),
@@ -2048,7 +2052,7 @@ mod tests {
 
         let user = state
             .db
-            .get_document(collections::USERS, "user_1")
+            .get_document(collections::USERS, &user_id)
             .await
             .unwrap();
         assert_eq!(user[fields::ADDRESS][fields::POSTAL_CODE], "M5V 1A1");
@@ -2060,20 +2064,21 @@ mod tests {
     #[tokio::test]
     async fn test_update_profile_with_empty_gst_number() {
         let state = setup_state().await;
+        let user_id = uuid::Uuid::new_v4().to_string();
         state
             .db
-            .upsert_document(collections::USERS, "user_1", json!({}))
+            .upsert_document(collections::USERS, &user_id, json!({}))
             .await
             .unwrap();
 
         // Empty GST number should skip validation and succeed
         let Json(resp) = update_profile(
             State(state.clone()),
-            Extension(auth("user_1")),
+            Extension(auth(&user_id)),
             Json(UpdateProfileRequest {
                 terms_accepted_at: None,
                 terms_version: None,
-                user_id: Some("user_1".to_string()),
+                user_id: Some(user_id.clone()),
                 name: None,
                 address: None,
                 preferred_language: None,
@@ -2228,11 +2233,13 @@ mod tests {
     #[tokio::test]
     async fn test_delete_buyer_address_rejects_ownership_mismatch() {
         let state = setup_state().await;
+        let addr_id = uuid::Uuid::new_v4().to_string();
+        let user_id = uuid::Uuid::new_v4().to_string();
         state
             .db
             .upsert_document(
                 collections::ADDRESSES,
-                "addr_1",
+                &addr_id,
                 json!({ "userId": "other_user" }),
             )
             .await
@@ -2240,10 +2247,10 @@ mod tests {
 
         let err = delete_buyer_address(
             State(state),
-            Extension(auth("test")),
+            Extension(auth(&user_id)),
             Json(DeleteBuyerAddressRequest {
-                user_id: Some("test".to_string()),
-                address_id: "addr_1".into(),
+                user_id: Some(user_id.clone()),
+                address_id: addr_id,
             }),
         )
         .await
@@ -2257,11 +2264,13 @@ mod tests {
     #[tokio::test]
     async fn test_set_default_buyer_address_rejects_ownership_mismatch() {
         let state = setup_state().await;
+        let addr_id = uuid::Uuid::new_v4().to_string();
+        let user_id = uuid::Uuid::new_v4().to_string();
         state
             .db
             .upsert_document(
                 collections::ADDRESSES,
-                "addr_1",
+                &addr_id,
                 json!({ "userId": "other_user" }),
             )
             .await
@@ -2269,10 +2278,10 @@ mod tests {
 
         let err = set_default_buyer_address(
             State(state),
-            Extension(auth("test")),
+            Extension(auth(&user_id)),
             Json(SetDefaultBuyerAddressRequest {
-                user_id: Some("test".to_string()),
-                address_id: "addr_1".into(),
+                user_id: Some(user_id.clone()),
+                address_id: addr_id,
             }),
         )
         .await

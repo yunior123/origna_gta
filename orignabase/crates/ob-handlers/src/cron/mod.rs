@@ -2330,6 +2330,7 @@ mod tests {
         // No MockServer needed — payout bookkeeping only, no Stripe Transfer call.
         // Funds already transferred via destination charge at checkout time.
         let state = setup_state().await;
+        pre_release_lock(&state, "auto_capture_confirmed_receipts").await;
         let order_id = format!("test_auto_capture_confirmed_receipts_flow_{}", uuid::Uuid::new_v4());
         let seller_id = format!("test_auto_capture_confirmed_receipts_flow_{}", uuid::Uuid::new_v4());
         let order_id = &order_id;
@@ -2377,6 +2378,8 @@ mod tests {
     #[tokio::test]
     async fn test_auto_capture_confirmed_receipts_skips_when_stripe_disabled() {
         let state = setup_state().await;
+        pre_release_lock(&state, "auto_capture_confirmed_receipts").await;
+        let order_id = format!("test_auto_capture_confirmed_receipts_skips_when_stripe_disabled_{}", uuid::Uuid::new_v4());
         let seller_id = format!("test_auto_capture_confirmed_receipts_skips_when_stripe_disabled_{}", uuid::Uuid::new_v4());
         let delivered_at = (Utc::now() - Duration::days(10)).to_rfc3339();
 
@@ -2402,7 +2405,7 @@ mod tests {
             .db
             .upsert_document(
                 collections::ORDERS,
-                "order_disabled",
+                &order_id,
                 json!({
                     fields::ORDER_STATUS: "delivered",
                     fields::PAYMENT_STATUS: "captured",
@@ -2423,10 +2426,10 @@ mod tests {
 
         let order = state
             .db
-            .get_document(collections::ORDERS, "order_disabled")
+            .get_document(collections::ORDERS, &order_id)
             .await
             .unwrap();
-        let payouts = query_filtered(&state.db, collections::PAYOUTS, "orderId", "order_disabled").await;
+        let payouts = query_filtered(&state.db, collections::PAYOUTS, "orderId", &order_id).await;
 
         assert!(order.get("payoutStatus").is_none() || order["payoutStatus"].is_null());
         assert!(payouts.is_empty());
@@ -2435,6 +2438,7 @@ mod tests {
     #[tokio::test]
     async fn test_auto_capture_confirmed_receipts_skips_order_without_payment_intent() {
         let state = setup_state().await;
+        pre_release_lock(&state, "auto_capture_confirmed_receipts").await;
         let seller_id = format!("test_auto_capture_confirmed_receipts_skips_order_without_payment_intent_{}", uuid::Uuid::new_v4());
         let delivered_at = (Utc::now() - Duration::days(10)).to_rfc3339();
 
@@ -2473,6 +2477,7 @@ mod tests {
     #[tokio::test]
     async fn test_auto_capture_confirmed_receipts_skips_order_with_active_dispute() {
         let state = setup_state().await;
+        pre_release_lock(&state, "auto_capture_confirmed_receipts").await;
         let alert_id = format!("test_auto_capture_confirmed_receipts_skips_order_with_active_dispute_{}", uuid::Uuid::new_v4());
         let seller_id = format!("test_auto_capture_confirmed_receipts_skips_order_with_active_dispute_{}", uuid::Uuid::new_v4());
         let delivered_at = (Utc::now() - Duration::days(10)).to_rfc3339();
@@ -2526,6 +2531,7 @@ mod tests {
     #[tokio::test]
     async fn test_auto_capture_confirmed_receipts_skips_order_with_active_return() {
         let state = setup_state().await;
+        pre_release_lock(&state, "auto_capture_confirmed_receipts").await;
         let return_id = format!("test_auto_capture_confirmed_receipts_skips_order_with_active_return_{}", uuid::Uuid::new_v4());
         let seller_id = format!("test_auto_capture_confirmed_receipts_skips_order_with_active_return_{}", uuid::Uuid::new_v4());
         let delivered_at = (Utc::now() - Duration::days(10)).to_rfc3339();
@@ -2578,6 +2584,7 @@ mod tests {
     #[tokio::test]
     async fn test_auto_capture_confirmed_receipts_marks_failed_when_no_delivered_items_payable() {
         let state = setup_state().await;
+        pre_release_lock(&state, "auto_capture_confirmed_receipts").await;
         let seller_id = format!("test_auto_capture_confirmed_receipts_marks_failed_when_no_delivered_items_payable_{}", uuid::Uuid::new_v4());
         let delivered_at = (Utc::now() - Duration::days(10)).to_rfc3339();
 
@@ -2615,6 +2622,7 @@ mod tests {
     #[tokio::test]
     async fn test_auto_archive_old_orders_flow() {
         let state = setup_state().await;
+        pre_release_lock(&state, "auto_archive_old_orders").await;
         let order_id = "old_order";
         let updated_at = (Utc::now() - Duration::days(40)).to_rfc3339();
 
@@ -2645,6 +2653,7 @@ mod tests {
     #[tokio::test]
     async fn test_auto_archive_old_orders_skips_already_archived_docs() {
         let state = setup_state().await;
+        pre_release_lock(&state, "auto_archive_old_orders").await;
         let updated_at = (Utc::now() - Duration::days(40)).to_rfc3339();
 
         state
@@ -2675,6 +2684,7 @@ mod tests {
     #[tokio::test]
     async fn test_cleanup_stale_rate_limits_flow() {
         let state = setup_state().await;
+        pre_release_lock(&state, "cleanup_stale_rate_limits").await;
         let limit_id = "stale_limit";
         let last_request = (Utc::now() - Duration::hours(5)).to_rfc3339();
 
@@ -2742,18 +2752,21 @@ mod tests {
     #[tokio::test]
     async fn test_monitor_meilisearch_sync_runs() {
         let state = setup_state().await;
+        pre_release_lock(&state, "monitor_meilisearch_sync").await;
         monitor_meilisearch_sync(&state).await;
     }
 
     #[tokio::test]
     async fn test_cleanup_orphaned_r2_images_runs() {
         let state = setup_state().await;
+        pre_release_lock(&state, "cleanup_orphaned_r2_images").await;
         cleanup_orphaned_r2_images(&state).await;
     }
 
     #[tokio::test]
     async fn test_cleanup_stale_webhook_events_flow() {
         let state = setup_state().await;
+        pre_release_lock(&state, "cleanup_stale_webhook_events").await;
         let ev_id = "old_event";
         let ts = (Utc::now() - Duration::days(10)).to_rfc3339();
 
@@ -2778,6 +2791,7 @@ mod tests {
     #[tokio::test]
     async fn test_cleanup_stale_security_alerts_flow() {
         let state = setup_state().await;
+        pre_release_lock(&state, "cleanup_stale_security_alerts").await;
         let alert_id = "old_alert";
         let ts = (Utc::now() - Duration::days(100)).to_rfc3339();
 
@@ -2803,6 +2817,7 @@ mod tests {
     #[tokio::test]
     async fn test_retry_failed_meilisearch_syncs_flow() {
         let state = setup_state().await;
+        pre_release_lock(&state, "retry_failed_meilisearch_syncs").await;
         let fail_id = format!("test_retry_failed_meilisearch_syncs_flow_{}", uuid::Uuid::new_v4());
         let product_id = format!("test_retry_failed_meilisearch_syncs_flow_{}", uuid::Uuid::new_v4());
         let failure_id = &fail_id;
@@ -2836,6 +2851,7 @@ mod tests {
     #[tokio::test]
     async fn test_compute_seller_metrics_flow() {
         let state = setup_state().await;
+        pre_release_lock(&state, "compute_seller_metrics").await;
         let seller_id = format!("seller_metrics_{}", uuid::Uuid::new_v4());
         let order_id = format!("order_metrics_{}", uuid::Uuid::new_v4());
 
@@ -2872,6 +2888,7 @@ mod tests {
     #[tokio::test]
     async fn test_compute_trending_products_flow() {
         let state = setup_state().await;
+        pre_release_lock(&state, "compute_trending_products").await;
         let product_id = format!("test_compute_trending_products_flow_{}", uuid::Uuid::new_v4());
         let product_id = &product_id;
 
@@ -2902,12 +2919,14 @@ mod tests {
     #[tokio::test]
     async fn test_check_low_stock_alerts_skips_without_email_consent() {
         let state = setup_state().await;
+        pre_release_lock(&state, "check_low_stock_alerts").await;
+        let product_id = format!("test_check_low_stock_alerts_skips_without_email_consent_{}", uuid::Uuid::new_v4());
         let seller_id = format!("test_check_low_stock_alerts_skips_without_email_consent_{}", uuid::Uuid::new_v4());
         state
             .db
             .upsert_document(
                 collections::PRODUCTS,
-                "prod_low_1",
+                &product_id,
                 json!({
                     fields::NAME: "Low Stock Product",
                     fields::SELLER_ID: &seller_id,
@@ -2938,7 +2957,7 @@ mod tests {
 
         let product = state
             .db
-            .get_document(collections::PRODUCTS, "prod_low_1")
+            .get_document(collections::PRODUCTS, &product_id)
             .await
             .unwrap();
         assert!(product.get("lastLowStockAlertAt").is_none());
@@ -2947,6 +2966,7 @@ mod tests {
     #[tokio::test]
     async fn test_check_low_stock_alerts_skips_when_cooldown_active() {
         let state = setup_state().await;
+        pre_release_lock(&state, "check_low_stock_alerts").await;
         let seller_id = format!("test_check_low_stock_alerts_skips_when_cooldown_active_{}", uuid::Uuid::new_v4());
         state
             .db
@@ -2993,6 +3013,7 @@ mod tests {
     #[tokio::test]
     async fn test_send_abandoned_cart_emails_skips_recent_checkout_and_empty_cart() {
         let state = setup_state().await;
+        pre_release_lock(&state, "send_abandoned_cart_emails").await;
         state
             .db
             .upsert_document(
@@ -3040,6 +3061,7 @@ mod tests {
     #[tokio::test]
     async fn test_sync_expired_subscriptions_flow() {
         let state = setup_state().await;
+        pre_release_lock(&state, "sync_expired_subscriptions").await;
         let user_id = format!("test_sync_expired_subscriptions_flow_{}", uuid::Uuid::new_v4());
         let uid = &user_id;
         let period_end = (Utc::now() - Duration::days(1)).to_rfc3339();
@@ -3083,6 +3105,7 @@ mod tests {
     #[tokio::test]
     async fn test_escalate_stale_return_requests_flow() {
         let state = setup_state().await;
+        pre_release_lock(&state, "escalate_stale_return_requests").await;
         let ret_id = format!("test_escalate_stale_return_requests_flow_{}", uuid::Uuid::new_v4());
         let ret_id = &ret_id;
         let requested_at = (Utc::now() - Duration::days(10)).to_rfc3339();
@@ -3113,6 +3136,7 @@ mod tests {
     #[tokio::test]
     async fn test_send_premium_renewal_reminders_runs() {
         let state = setup_state().await;
+        pre_release_lock(&state, "send_premium_renewal_reminders").await;
         send_premium_renewal_reminders(&state).await;
     }
 
@@ -3200,6 +3224,7 @@ mod tests {
     #[tokio::test]
     async fn test_retry_failed_meilisearch_syncs_resolves_max_retry_failures() {
         let state = setup_state().await;
+        pre_release_lock(&state, "retry_failed_meilisearch_syncs").await;
         let fail_id = format!("test_retry_failed_meilisearch_syncs_resolves_max_retry_failures_{}", uuid::Uuid::new_v4());
         let product_id = format!("test_retry_failed_meilisearch_syncs_resolves_max_retry_failures_{}", uuid::Uuid::new_v4());
         state
@@ -3230,6 +3255,7 @@ mod tests {
     #[tokio::test]
     async fn test_retry_failed_meilisearch_syncs_resolves_active_product_for_reindex() {
         let state = setup_state().await;
+        pre_release_lock(&state, "retry_failed_meilisearch_syncs").await;
         let fail_id = format!("test_retry_failed_meilisearch_syncs_resolves_active_product_for_reindex_{}", uuid::Uuid::new_v4());
         let product_id = format!("test_retry_failed_meilisearch_syncs_resolves_active_product_for_reindex_{}", uuid::Uuid::new_v4());
         state
@@ -3322,6 +3348,7 @@ mod tests {
     #[tokio::test]
     async fn test_auto_capture_alert_on_error() {
         let state = setup_state().await;
+        pre_release_lock(&state, "auto_capture_confirmed_receipts").await;
         // Stripe enabled (default), but query returns empty = no error.
         // To trigger error path, we need run_auto_capture to fail.
         // We can't easily make query_raw fail with in-memory DB.
@@ -3338,13 +3365,17 @@ mod tests {
         // No MockServer needed — no Stripe Transfer call, funds already
         // routed via destination charge at checkout.
         let state = setup_state().await;
+        pre_release_lock(&state, "auto_capture_confirmed_receipts").await;
+        let order_id = format!("test_auto_capture_partial_payout_{}", uuid::Uuid::new_v4());
+        let seller_a_id = format!("test_auto_capture_partial_payout_{}", uuid::Uuid::new_v4());
+        let seller_b_id = format!("test_auto_capture_partial_payout_{}", uuid::Uuid::new_v4());
         let delivered_at = (Utc::now() - Duration::days(10)).to_rfc3339();
 
         state
             .db
             .upsert_document(
                 collections::ORDERS,
-                "order_partial",
+                &order_id,
                 json!({
                     fields::ORDER_STATUS: "delivered",
                     fields::PAYMENT_STATUS: "captured",
@@ -3355,13 +3386,13 @@ mod tests {
                     fields::ITEMS: [
                         {
                             fields::STATUS: "delivered",
-                            fields::SELLER_ID: "seller_a",
+                            fields::SELLER_ID: &seller_a_id,
                             fields::PRICE_CENTS: 1000,
                             "quantity": 2
                         },
                         {
                             fields::STATUS: "delivered",
-                            fields::SELLER_ID: "seller_b",
+                            fields::SELLER_ID: &seller_b_id,
                             fields::PRICE_CENTS: 500,
                             "quantity": 1
                         }
@@ -3375,7 +3406,7 @@ mod tests {
 
         let order = state
             .db
-            .get_document(collections::ORDERS, "order_partial")
+            .get_document(collections::ORDERS, &order_id)
             .await
             .unwrap();
         assert_eq!(order["payoutStatus"], "completed");
@@ -3394,6 +3425,7 @@ mod tests {
     #[tokio::test]
     async fn test_auto_capture_order_without_items_array() {
         let state = setup_state().await;
+        pre_release_lock(&state, "auto_capture_confirmed_receipts").await;
         let delivered_at = (Utc::now() - Duration::days(10)).to_rfc3339();
 
         state
@@ -3427,13 +3459,16 @@ mod tests {
     #[tokio::test]
     async fn test_auto_capture_with_custom_platform_fee() {
         let state = setup_state().await;
+        pre_release_lock(&state, "auto_capture_confirmed_receipts").await;
+        let order_id = format!("test_auto_capture_with_custom_platform_fee_{}", uuid::Uuid::new_v4());
+        let seller_id = format!("test_auto_capture_with_custom_platform_fee_{}", uuid::Uuid::new_v4());
         let delivered_at = (Utc::now() - Duration::days(10)).to_rfc3339();
 
         state
             .db
             .upsert_document(
                 collections::ORDERS,
-                "order_fee",
+                &order_id,
                 json!({
                     fields::ORDER_STATUS: "delivered",
                     fields::PAYMENT_STATUS: "captured",
@@ -3443,7 +3478,7 @@ mod tests {
                     fields::ITEMS: [
                         {
                             fields::STATUS: "delivered",
-                            fields::SELLER_ID: "seller_fee",
+                            fields::SELLER_ID: &seller_id,
                             fields::PRICE_CENTS: 2000,
                             "quantity": 3
                         }
@@ -3493,6 +3528,7 @@ mod tests {
     #[tokio::test]
     async fn test_check_expired_auth_digital_items_skip_stock_restore() {
         let state = setup_state().await;
+        pre_release_lock(&state, "check_expired_authorizations").await;
         let created_at = (Utc::now() - Duration::days(10)).to_rfc3339();
 
         state
@@ -3531,6 +3567,7 @@ mod tests {
     #[tokio::test]
     async fn test_check_expired_auth_no_payment_intent() {
         let state = setup_state().await;
+        pre_release_lock(&state, "check_expired_authorizations").await;
         let created_at = (Utc::now() - Duration::days(10)).to_rfc3339();
 
         state
@@ -3589,6 +3626,7 @@ mod tests {
     #[tokio::test]
     async fn test_check_expired_auth_empty_items_order() {
         let state = setup_state().await;
+        pre_release_lock(&state, "check_expired_authorizations").await;
         let created_at = (Utc::now() - Duration::days(10)).to_rfc3339();
 
         state
@@ -3646,6 +3684,7 @@ mod tests {
     #[tokio::test]
     async fn test_monitor_meilisearch_sync_with_products() {
         let state = setup_state().await;
+        pre_release_lock(&state, "monitor_meilisearch_sync").await;
         state
             .db
             .upsert_document(
@@ -3678,6 +3717,7 @@ mod tests {
     #[tokio::test]
     async fn test_monitor_meilisearch_sync_no_products() {
         let state = setup_state().await;
+        pre_release_lock(&state, "monitor_meilisearch_sync").await;
         monitor_meilisearch_sync(&state).await;
     }
 
@@ -3687,6 +3727,7 @@ mod tests {
     #[tokio::test]
     async fn test_cleanup_stale_rate_limits_deletes_multiple() {
         let state = setup_state().await;
+        pre_release_lock(&state, "cleanup_stale_rate_limits").await;
         let stale = (Utc::now() - Duration::hours(5)).to_rfc3339();
 
         state
@@ -3724,6 +3765,7 @@ mod tests {
     #[tokio::test]
     async fn test_cleanup_orphaned_r2_images_with_products() {
         let state = setup_state().await;
+        pre_release_lock(&state, "cleanup_orphaned_r2_images").await;
         state
             .db
             .upsert_document(
@@ -3795,6 +3837,7 @@ mod tests {
     #[tokio::test]
     async fn test_cleanup_stale_webhook_events_multiple() {
         let state = setup_state().await;
+        pre_release_lock(&state, "cleanup_stale_webhook_events").await;
         let old_ts = (Utc::now() - Duration::days(10)).to_rfc3339();
 
         state
@@ -3855,6 +3898,7 @@ mod tests {
     #[tokio::test]
     async fn test_cleanup_stale_security_alerts_multiple() {
         let state = setup_state().await;
+        pre_release_lock(&state, "cleanup_stale_security_alerts").await;
         let old_ts = (Utc::now() - Duration::days(100)).to_rfc3339();
 
         state
@@ -3940,6 +3984,7 @@ mod tests {
     #[tokio::test]
     async fn test_retry_meilisearch_empty_product_id() {
         let state = setup_state().await;
+        pre_release_lock(&state, "retry_failed_meilisearch_syncs").await;
         state
             .db
             .upsert_document(
@@ -3970,6 +4015,7 @@ mod tests {
     #[tokio::test]
     async fn test_retry_meilisearch_inactive_product() {
         let state = setup_state().await;
+        pre_release_lock(&state, "retry_failed_meilisearch_syncs").await;
         state
             .db
             .upsert_document(
@@ -4034,6 +4080,7 @@ mod tests {
     #[tokio::test]
     async fn test_check_low_stock_skips_zero_threshold() {
         let state = setup_state().await;
+        pre_release_lock(&state, "check_low_stock_alerts").await;
         state
             .db
             .upsert_document(
@@ -4062,6 +4109,7 @@ mod tests {
     #[tokio::test]
     async fn test_check_low_stock_skips_high_stock() {
         let state = setup_state().await;
+        pre_release_lock(&state, "check_low_stock_alerts").await;
         state
             .db
             .upsert_document(
@@ -4090,6 +4138,7 @@ mod tests {
     #[tokio::test]
     async fn test_check_low_stock_skips_empty_seller() {
         let state = setup_state().await;
+        pre_release_lock(&state, "check_low_stock_alerts").await;
         state
             .db
             .upsert_document(
@@ -4117,6 +4166,7 @@ mod tests {
     #[tokio::test]
     async fn test_check_low_stock_seller_not_found() {
         let state = setup_state().await;
+        pre_release_lock(&state, "check_low_stock_alerts").await;
         state
             .db
             .upsert_document(
@@ -4217,6 +4267,7 @@ mod tests {
     #[tokio::test]
     async fn test_check_low_stock_no_consent() {
         let state = setup_state().await;
+        pre_release_lock(&state, "check_low_stock_alerts").await;
         state
             .db
             .upsert_document(
@@ -4287,6 +4338,7 @@ mod tests {
     #[tokio::test]
     async fn test_send_abandoned_cart_skips_no_email() {
         let state = setup_state().await;
+        pre_release_lock(&state, "send_abandoned_cart_emails").await;
         state
             .db
             .upsert_document(
@@ -4309,6 +4361,7 @@ mod tests {
     #[tokio::test]
     async fn test_send_abandoned_cart_skips_recent_cooldown() {
         let state = setup_state().await;
+        pre_release_lock(&state, "send_abandoned_cart_emails").await;
         state
             .db
             .upsert_document(
@@ -4333,6 +4386,7 @@ mod tests {
     #[tokio::test]
     async fn test_send_abandoned_cart_empty_cart() {
         let state = setup_state().await;
+        pre_release_lock(&state, "send_abandoned_cart_emails").await;
         state
             .db
             .upsert_document(
@@ -4356,6 +4410,7 @@ mod tests {
     #[tokio::test]
     async fn test_send_abandoned_cart_items_without_name() {
         let state = setup_state().await;
+        pre_release_lock(&state, "send_abandoned_cart_emails").await;
         state
             .db
             .upsert_document(
@@ -4415,12 +4470,14 @@ mod tests {
             .values
             .insert("mailjet_secret_key".to_string(), "mj_secret".to_string());
         let state = setup_state_with_config(config, server.uri()).await;
+        let user_id = format!("test_send_abandoned_cart_full_flow_en_{}", uuid::Uuid::new_v4());
+        let cart_id = format!("test_send_abandoned_cart_full_flow_en_{}", uuid::Uuid::new_v4());
 
         state
             .db
             .upsert_document(
                 collections::USERS,
-                "user_cart_en",
+                &user_id,
                 json!({
                     fields::EMAIL: "cart_en@example.com",
                     fields::EMAIL_CONSENT: true,
@@ -4435,7 +4492,7 @@ mod tests {
             .db
             .upsert_document(
                 "cart",
-                "cart_en_1",
+                &cart_id,
                 json!({
                     "userId": "users:user_cart_en",
                     fields::NAME: "Cool Sneakers",
@@ -4448,7 +4505,7 @@ mod tests {
 
         let user = state
             .db
-            .get_document(collections::USERS, "user_cart_en")
+            .get_document(collections::USERS, &user_id)
             .await
             .unwrap();
         assert!(user.get("lastCartAbandonEmailAt").is_some());
@@ -4483,12 +4540,14 @@ mod tests {
             .values
             .insert("mailjet_secret_key".to_string(), "mj_secret".to_string());
         let state = setup_state_with_config(config, server.uri()).await;
+        let user_id = format!("test_send_abandoned_cart_full_flow_fr_{}", uuid::Uuid::new_v4());
+        let cart_id = format!("test_send_abandoned_cart_full_flow_fr_{}", uuid::Uuid::new_v4());
 
         state
             .db
             .upsert_document(
                 collections::USERS,
-                "user_cart_fr",
+                &user_id,
                 json!({
                     fields::EMAIL: "cart_fr@example.com",
                     fields::EMAIL_CONSENT: true,
@@ -4503,7 +4562,7 @@ mod tests {
             .db
             .upsert_document(
                 "cart",
-                "cart_fr_1",
+                &cart_id,
                 json!({
                     "userId": "users:user_cart_fr",
                     fields::NAME: "Belles Chaussures",
@@ -4516,7 +4575,7 @@ mod tests {
 
         let user = state
             .db
-            .get_document(collections::USERS, "user_cart_fr")
+            .get_document(collections::USERS, &user_id)
             .await
             .unwrap();
         assert!(user.get("lastCartAbandonEmailAt").is_some());
@@ -4551,11 +4610,13 @@ mod tests {
     #[tokio::test]
     async fn test_compute_seller_metrics_empty_seller_id() {
         let state = setup_state().await;
+        pre_release_lock(&state, "compute_seller_metrics").await;
+        let order_id = format!("test_compute_seller_metrics_empty_seller_id_{}", uuid::Uuid::new_v4());
         state
             .db
             .upsert_document(
                 collections::ORDERS,
-                "order_noseller",
+                &order_id,
                 json!({
                     "createdAt": Utc::now().to_rfc3339(),
                     "hasDispute": false,
@@ -4585,6 +4646,7 @@ mod tests {
     #[tokio::test]
     async fn test_compute_seller_metrics_refunded_and_cancelled() {
         let state = setup_state().await;
+        pre_release_lock(&state, "compute_seller_metrics").await;
         state
             .db
             .upsert_document(
@@ -4627,6 +4689,7 @@ mod tests {
     #[tokio::test]
     async fn test_compute_seller_metrics_empty_window() {
         let state = setup_state().await;
+        pre_release_lock(&state, "compute_seller_metrics").await;
         // No orders in the window
         compute_seller_metrics(&state).await;
     }
@@ -4637,6 +4700,7 @@ mod tests {
     #[tokio::test]
     async fn test_compute_seller_metrics_all_breaches() {
         let state = setup_state().await;
+        pre_release_lock(&state, "compute_seller_metrics").await;
         // Create many orders that trigger all 3 breaches for a seller
         for i in 0..10 {
             state
@@ -4706,6 +4770,7 @@ mod tests {
     #[tokio::test]
     async fn test_compute_trending_clears_old_trending() {
         let state = setup_state().await;
+        pre_release_lock(&state, "compute_trending_products").await;
 
         // Create an old trending product with 0 score
         state
@@ -4765,6 +4830,7 @@ mod tests {
     #[tokio::test]
     async fn test_compute_trending_zero_score_skipped() {
         let state = setup_state().await;
+        pre_release_lock(&state, "compute_trending_products").await;
         state
             .db
             .upsert_document(
@@ -4820,6 +4886,7 @@ mod tests {
     #[tokio::test]
     async fn test_sync_expired_subscriptions_past_due() {
         let state = setup_state().await;
+        pre_release_lock(&state, "sync_expired_subscriptions").await;
         let period_end = (Utc::now() - Duration::days(1)).to_rfc3339();
 
         state
@@ -4886,6 +4953,7 @@ mod tests {
     #[tokio::test]
     async fn test_escalate_returns_multiple() {
         let state = setup_state().await;
+        pre_release_lock(&state, "escalate_stale_return_requests").await;
         let old_ts = (Utc::now() - Duration::days(10)).to_rfc3339();
 
         state
@@ -5090,6 +5158,7 @@ mod tests {
     #[tokio::test]
     async fn test_premium_renewal_skip_cancelled() {
         let state = setup_state().await;
+        pre_release_lock(&state, "send_premium_renewal_reminders").await;
         let now = Utc::now();
         let renewal_date = now + Duration::days(7);
 
@@ -5123,6 +5192,7 @@ mod tests {
     #[tokio::test]
     async fn test_premium_renewal_skip_already_sent() {
         let state = setup_state().await;
+        pre_release_lock(&state, "send_premium_renewal_reminders").await;
         let now = Utc::now();
         let renewal_date = now + Duration::days(7);
 
@@ -5150,6 +5220,7 @@ mod tests {
     #[tokio::test]
     async fn test_premium_renewal_skip_empty_email() {
         let state = setup_state().await;
+        pre_release_lock(&state, "send_premium_renewal_reminders").await;
         let now = Utc::now();
         let renewal_date = now + Duration::days(7);
 
@@ -5219,6 +5290,7 @@ mod tests {
     #[tokio::test]
     async fn test_drain_notifications_empty() {
         let state = setup_state().await;
+        pre_release_lock(&state, "drain_pending_notifications").await;
         drain_pending_notifications(&state).await;
     }
 
@@ -5228,6 +5300,7 @@ mod tests {
     #[tokio::test]
     async fn test_drain_notifications_missing_env_vars() {
         let state = setup_state().await;
+        pre_release_lock(&state, "drain_pending_notifications").await;
 
         // Insert a pending notification that's old enough
         let notif_id = format!("notif_{}", uuid::Uuid::new_v4());
@@ -5273,6 +5346,7 @@ mod tests {
             .await;
 
         let state = setup_state().await;
+        pre_release_lock(&state, "drain_pending_notifications").await;
 
         // Set env vars for FCM
         let sa_json = json!({
@@ -5389,6 +5463,7 @@ mod tests {
     #[tokio::test]
     async fn test_check_expired_auth_multiple_orders() {
         let state = setup_state().await;
+        pre_release_lock(&state, "check_expired_authorizations").await;
         let created_at = (Utc::now() - Duration::days(10)).to_rfc3339();
 
         // Multiple orders with various configs
@@ -5490,6 +5565,7 @@ mod tests {
     #[tokio::test]
     async fn test_check_low_stock_track_quantity_false() {
         let state = setup_state().await;
+        pre_release_lock(&state, "check_low_stock_alerts").await;
         state
             .db
             .upsert_document(
@@ -5518,6 +5594,7 @@ mod tests {
     #[tokio::test]
     async fn test_check_low_stock_seller_empty_email() {
         let state = setup_state().await;
+        pre_release_lock(&state, "check_low_stock_alerts").await;
         state
             .db
             .upsert_document(
@@ -5558,6 +5635,7 @@ mod tests {
     #[tokio::test]
     async fn test_compute_seller_metrics_refund_breach_only() {
         let state = setup_state().await;
+        pre_release_lock(&state, "compute_seller_metrics").await;
         // 1 refunded out of 1 total = 100% refund rate, 0% dispute, 0% cancel
         state
             .db
@@ -5593,6 +5671,7 @@ mod tests {
     #[tokio::test]
     async fn test_compute_seller_metrics_cancel_breach_only() {
         let state = setup_state().await;
+        pre_release_lock(&state, "compute_seller_metrics").await;
         state
             .db
             .upsert_document(
@@ -5627,6 +5706,8 @@ mod tests {
     #[tokio::test]
     async fn test_premium_renewal_no_mailjet_keys() {
         let state = setup_state().await;
+        pre_release_lock(&state, "send_premium_renewal_reminders").await;
+        let user_id = format!("test_premium_renewal_no_mailjet_keys_{}", uuid::Uuid::new_v4());
         let now = Utc::now();
         let renewal_date = now + Duration::days(7);
 
@@ -5634,7 +5715,7 @@ mod tests {
             .db
             .upsert_document(
                 collections::SUBSCRIPTIONS,
-                "user_nokeys",
+                &user_id,
                 json!({
                     "currentPeriodEnd": renewal_date.to_rfc3339(),
                     fields::STATUS: "active",
@@ -5647,7 +5728,7 @@ mod tests {
             .db
             .upsert_document(
                 collections::USERS,
-                "user_nokeys",
+                &user_id,
                 json!({
                     fields::EMAIL: "nokeys@example.com",
                     fields::LANGUAGE: "en",
@@ -5660,7 +5741,7 @@ mod tests {
 
         let sub = state
             .db
-            .get_document(collections::SUBSCRIPTIONS, "user_nokeys")
+            .get_document(collections::SUBSCRIPTIONS, &user_id)
             .await
             .unwrap();
         assert!(sub.get("renewalReminderSentDays7").is_none());
@@ -5736,6 +5817,7 @@ mod tests {
     async fn test_auto_capture_mixed_item_statuses() {
         // No MockServer needed — no Stripe Transfer call.
         let state = setup_state().await;
+        pre_release_lock(&state, "auto_capture_confirmed_receipts").await;
         let delivered_at = (Utc::now() - Duration::days(10)).to_rfc3339();
 
         state
@@ -5786,6 +5868,7 @@ mod tests {
     #[tokio::test]
     async fn test_auto_archive_multiple_orders() {
         let state = setup_state().await;
+        pre_release_lock(&state, "auto_archive_old_orders").await;
         let old = (Utc::now() - Duration::days(40)).to_rfc3339();
 
         for status in &["delivered", "cancelled", "expired", "failed", "disputed"] {
@@ -5822,6 +5905,7 @@ mod tests {
     #[tokio::test]
     async fn test_cleanup_rate_limits_empty_id_skipped() {
         let state = setup_state().await;
+        pre_release_lock(&state, "cleanup_stale_rate_limits").await;
         // This just tests the normal path more thoroughly
         cleanup_stale_rate_limits(&state).await;
     }
@@ -5832,6 +5916,7 @@ mod tests {
     #[tokio::test]
     async fn test_cleanup_r2_images_empty() {
         let state = setup_state().await;
+        pre_release_lock(&state, "cleanup_orphaned_r2_images").await;
         cleanup_orphaned_r2_images(&state).await;
     }
 
@@ -5841,6 +5926,7 @@ mod tests {
     #[tokio::test]
     async fn test_cleanup_webhook_events_empty() {
         let state = setup_state().await;
+        pre_release_lock(&state, "cleanup_stale_webhook_events").await;
         cleanup_stale_webhook_events(&state).await;
     }
 
@@ -5850,6 +5936,7 @@ mod tests {
     #[tokio::test]
     async fn test_cleanup_security_alerts_empty() {
         let state = setup_state().await;
+        pre_release_lock(&state, "cleanup_stale_security_alerts").await;
         cleanup_stale_security_alerts(&state).await;
     }
 
@@ -5859,6 +5946,7 @@ mod tests {
     #[tokio::test]
     async fn test_retry_meilisearch_empty() {
         let state = setup_state().await;
+        pre_release_lock(&state, "retry_failed_meilisearch_syncs").await;
         retry_failed_meilisearch_syncs(&state).await;
     }
 
@@ -5868,6 +5956,7 @@ mod tests {
     #[tokio::test]
     async fn test_check_low_stock_empty() {
         let state = setup_state().await;
+        pre_release_lock(&state, "check_low_stock_alerts").await;
         check_low_stock_alerts(&state).await;
     }
 
@@ -5877,6 +5966,7 @@ mod tests {
     #[tokio::test]
     async fn test_send_abandoned_cart_empty() {
         let state = setup_state().await;
+        pre_release_lock(&state, "send_abandoned_cart_emails").await;
         send_abandoned_cart_emails(&state).await;
     }
 
@@ -5886,6 +5976,7 @@ mod tests {
     #[tokio::test]
     async fn test_compute_seller_metrics_empty() {
         let state = setup_state().await;
+        pre_release_lock(&state, "compute_seller_metrics").await;
         compute_seller_metrics(&state).await;
     }
 
@@ -5895,6 +5986,7 @@ mod tests {
     #[tokio::test]
     async fn test_compute_trending_empty() {
         let state = setup_state().await;
+        pre_release_lock(&state, "compute_trending_products").await;
         compute_trending_products(&state).await;
     }
 
@@ -5904,6 +5996,7 @@ mod tests {
     #[tokio::test]
     async fn test_sync_expired_subscriptions_empty() {
         let state = setup_state().await;
+        pre_release_lock(&state, "sync_expired_subscriptions").await;
         sync_expired_subscriptions(&state).await;
     }
 
@@ -5913,6 +6006,7 @@ mod tests {
     #[tokio::test]
     async fn test_escalate_returns_empty() {
         let state = setup_state().await;
+        pre_release_lock(&state, "escalate_stale_return_requests").await;
         escalate_stale_return_requests(&state).await;
     }
 
@@ -5922,6 +6016,7 @@ mod tests {
     #[tokio::test]
     async fn test_premium_renewal_empty() {
         let state = setup_state().await;
+        pre_release_lock(&state, "send_premium_renewal_reminders").await;
         send_premium_renewal_reminders(&state).await;
     }
 
@@ -5932,6 +6027,7 @@ mod tests {
     #[tokio::test]
     async fn test_drain_notifications_retry_branch() {
         let state = setup_state().await;
+        pre_release_lock(&state, "drain_pending_notifications").await;
 
         // Insert pending notification old enough
         insert_old_notification(&state.db, json!({
@@ -5959,6 +6055,7 @@ mod tests {
     #[tokio::test]
     async fn test_drain_notifications_failed_branch() {
         let state = setup_state().await;
+        pre_release_lock(&state, "drain_pending_notifications").await;
 
         insert_old_notification(&state.db, json!({
             "status": "pending", "token": "fail_tok", "title": "Fail", "body": "Body", "attempts": 2
@@ -5983,6 +6080,7 @@ mod tests {
     #[tokio::test]
     async fn test_drain_notifications_record_missing_token() {
         let state = setup_state().await;
+        pre_release_lock(&state, "drain_pending_notifications").await;
 
         // Record with no token field → continue at line 1738-1739
         insert_old_notification(&state.db, json!({
@@ -6008,6 +6106,7 @@ mod tests {
     #[tokio::test]
     async fn test_drain_notifications_with_data_payload() {
         let state = setup_state().await;
+        pre_release_lock(&state, "drain_pending_notifications").await;
 
         insert_old_notification(&state.db, json!({
             "status": "pending", "token": "data_tok", "title": "Data", "body": "Body",
@@ -6033,6 +6132,7 @@ mod tests {
     #[tokio::test]
     async fn test_drain_notifications_multiple_records_mixed() {
         let state = setup_state().await;
+        pre_release_lock(&state, "drain_pending_notifications").await;
 
         // Record with attempts=0 → retry
         insert_old_notification(&state.db, json!({
@@ -6066,6 +6166,7 @@ mod tests {
     #[tokio::test]
     async fn test_sync_expired_subscriptions_skips_empty_uid() {
         let state = setup_state().await;
+        pre_release_lock(&state, "sync_expired_subscriptions").await;
         let period_end = (Utc::now() - Duration::days(1)).to_rfc3339();
 
         // Record ID is empty string after normalize → should continue
@@ -6233,11 +6334,13 @@ mod tests {
     #[tokio::test]
     async fn test_compute_seller_metrics_order_no_items_field() {
         let state = setup_state().await;
+        pre_release_lock(&state, "compute_seller_metrics").await;
+        let order_id = format!("test_compute_seller_metrics_order_no_items_field_{}", uuid::Uuid::new_v4());
         state
             .db
             .upsert_document(
                 collections::ORDERS,
-                "order_noitems_metrics",
+                &order_id,
                 json!({
                     "createdAt": Utc::now().to_rfc3339(),
                     "hasDispute": false,
@@ -6264,6 +6367,7 @@ mod tests {
     #[tokio::test]
     async fn test_compute_trending_sorted_scoring() {
         let state = setup_state().await;
+        pre_release_lock(&state, "compute_trending_products").await;
         let now_str = Utc::now().to_rfc3339();
 
         // Create 3 products with different scores
@@ -6346,6 +6450,7 @@ mod tests {
     #[tokio::test]
     async fn test_co_purchase_recommendations_basic() {
         let state = setup_state().await;
+        pre_release_lock(&state, "compute_co_purchase_recommendations").await;
         let buyer_id = format!("test_co_purchase_recommendations_basic_{}", uuid::Uuid::new_v4());
         let seller_id = format!("test_co_purchase_recommendations_basic_{}", uuid::Uuid::new_v4());
         let now = Utc::now().to_rfc3339();
@@ -6405,6 +6510,7 @@ mod tests {
     #[tokio::test]
     async fn test_co_purchase_recommendations_empty_orders() {
         let state = setup_state().await;
+        pre_release_lock(&state, "compute_co_purchase_recommendations").await;
         // No orders in DB — should complete without error
         compute_co_purchase_recommendations(&state).await;
     }
