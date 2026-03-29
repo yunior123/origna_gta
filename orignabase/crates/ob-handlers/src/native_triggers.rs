@@ -3299,21 +3299,26 @@ mod tests {
     #[tokio::test]
     async fn dispatch_push_token_row_without_token_field_skipped() {
         let executor = setup_executor().await;
+        let uid = uuid::Uuid::new_v4().to_string();
 
         let _ = executor
             .state
             .db
-            .query_raw("CREATE _push_tokens SET user_id = 'buyer_1'")
+            .create_document("_push_tokens", json!({"user_id": &uid}))
             .await;
 
         executor
-            .dispatch_push("notif_push_2", "buyer_1", "Title", "Body", &json!({}))
+            .dispatch_push(&format!("notif_push_{uid}"), &uid, "Title", "Body", &json!({}))
             .await;
 
+        // Check that no notification was created for THIS user (no valid token)
         let pending = executor
             .state
             .db
-            .query_raw("SELECT * FROM _pending_notifications")
+            .query_bind(
+                &format!("SELECT * FROM _pending_notifications WHERE data->>'userId' = $uid"),
+                json!({"uid": &uid}),
+            )
             .await
             .unwrap();
         assert!(pending.is_empty());

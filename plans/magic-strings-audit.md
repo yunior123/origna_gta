@@ -225,3 +225,162 @@ These files likely use magic strings but don't import `fields`:
 - `crates/ob-mcp/src/tools/orders.rs`
 - `crates/ob-mcp/src/tools/shopping.rs`
 - `crates/ob-realtime/src/dispatcher.rs`
+
+---
+
+## What Remains (unexecuted)
+
+### Step 0: Current state
+- Codebase is **clean** (reverted to pre-attempt state)
+- Phase 1 constants were also reverted — need to re-apply
+- No changes are staged; everything must be redone
+
+### Step 1: Re-add 17 missing constants to schema.rs
+
+Exact edits on `crates/ob-handlers/src/shared/schema.rs`:
+
+```rust
+// After IS_PREMIUM (line 350), add:
+pub const DISPLAY_NAME: &str = "displayName";
+pub const PHONE_NUMBER: &str = "phoneNumber";
+pub const FIRST_NAME: &str = "firstName";
+pub const LAST_NAME: &str = "lastName";
+
+// After RETURN_STATUS (line 372), add:
+pub const RETURN_ID: &str = "returnId";
+pub const RETURN_REASON: &str = "returnReason";
+
+// After COUPON_TYPE (line 421), add:
+pub const DISCOUNT_TYPE: &str = "discountType";
+pub const COUPON_CODE: &str = "couponCode";
+
+// After REQUESTED_AT (line 440), add:
+pub const UNIT_PRICE_CENTS: &str = "unitPriceCents";
+pub const SHIP_FROM_PROVINCE: &str = "shipFromProvince";
+pub const SHIP_FROM_COUNTRY: &str = "shipFromCountry";
+pub const IS_LOCAL_DELIVERY_ONLY: &str = "isLocalDeliveryOnly";
+pub const DOWNLOAD_URL: &str = "downloadUrl";
+
+// After SHIPPING_CARRIER (line 394), add new section:
+pub const QUESTION_ID: &str = "questionId";
+pub const QUESTION_TEXT: &str = "questionText";
+pub const ANSWER_TEXT: &str = "answerText";
+pub const ANSWERED_AT: &str = "answeredAt";
+```
+
+### Step 2: Build the replacement tool
+
+Need a Python script (not sed) that:
+
+1. **Walks** `crates/ob-handlers/src/` and `crates/ob-mcp/src/` and `crates/ob-realtime/src/`
+2. **Skips** `schema.rs` and `tests/` directories
+3. **For each file**, applies replacements only in these 6 patterns:
+   - `"field":` → `fields::CONSTANT:` (json!() key)
+   - `.get("field")` → `.get(fields::CONSTANT)`
+   - `.get("field",` → `.get(fields::CONSTANT,`
+   - `["field"]` → `[fields::CONSTANT]`
+   - `.insert("field",` → `.insert(fields::CONSTANT,`
+   - `"field".to_string(),` → `fields::CONSTANT.to_string(),`
+4. **Skips** these 18 generic strings (too risky):
+   - `"name"`, `"code"`, `"text"`, `"read"`, `"status"`, `"email"`, `"token"`, `"address"`, `"deleted"`, `"resolved"`, `"roles"`, `"platform"`, `"uid"`, `"state"`, `"label"`, `"apartment"`, `"latitude"`, `"longitude"`
+5. **After replacement**, checks if file uses `fields::` but doesn't import it:
+   - If existing `use crate::shared::schema::{...};` → append `, fields` to the group
+   - If no schema import → add `use crate::shared::schema::fields;` after first `use` block
+
+### Step 3: Run replacement in batches, verify each
+
+```
+Batch 1: Top 5 unambiguous fields (productId, userId, orderId, sellerId, buyerId)
+  → cargo check
+Batch 2: Money fields (priceCents, subtotalCents, taxAmountCents, totalAmountCents, shippingCostCents, amountCents, netAmountCents, discountAmountCents, refundAmountCents, cumulativeRefundedCents, partialRefundAmountCents, unitPriceCents, platformFeeCents)
+  → cargo check
+Batch 3: Status/lifecycle (orderStatus, returnStatus, lifecycleStatus, paymentStatus, subscriptionStatus)
+  → cargo check
+Batch 4: Boolean flags (isDigital, isPerishable, isAgeRestricted, isActive, isPremium, isTrending, isLocalDeliveryOnly, hasDispute, autoCaptured, trackQuantity, marketingOptIn, cancelAtPeriodEnd, maxRetriesExceeded, stockRestored, resolved [skipped], deleted [skipped], suspended)
+  → cargo check
+Batch 5: Timestamps (createdAt, updatedAt, deliveredAt, expiresAt, lockedAt, completedAt, requestedAt, refundedAt, archivedAt, savedAt, deletedAt, escalatedAt, trendingAt, answeredAt, computedAt→completedAt, lockedBy, lastCheckoutTimestamp, lastCheckoutSession)
+  → cargo check
+Batch 6: IDs (couponId, chatId, subscriptionId, stripeSubscriptionId, stripeAccountId, customerId, paymentIntentId, checkoutSessionId→stripeSessionId, cartItemId, refundId, returnId, questionId, fulfillmentWarehouseId, deviceId, lastActorId, fcmToken, licenseKey)
+  → cargo check
+Batch 7: Shipping (trackingNumber, shippingCarrier, shippingAddress, shipFromProvince, shipFromCountry)
+  → cargo check
+Batch 8: Product fields (stockQuantity, imageUrls, categoryId, avgRating, totalReviews, description, productType, deliverySpeed)
+  → cargo check
+Batch 9: Coupon fields (couponType, discountType, discountValue, minOrderCents, maxUsesTotal→maxUses, usedCount, couponCode)
+  → cargo check
+Batch 10: User fields (email, preferredLanguage, sellerProfile, businessAddress, payoutsEnabled, chargesEnabled, onboardingCompleted, mfaEnabled, emailConsent, commissionRateBps, suspendedAt, suspendedBy, suspensionReason, isPremium, displayName, phoneNumber, firstName, lastName)
+  → cargo check
+  ⚠️ "email", "displayName", "firstName", "lastName" are semi-generic — verify manually
+Batch 11: Order item fields (items, quantity, discountAmountCents, deliveredAt, refundedAt, refundReason, refundAmountCents, refundId)
+  → cargo check
+Batch 12: Chat fields (participants, lastMessage, lastMessageAt, buyerUnreadCount, sellerUnreadCount, senderId)
+  → cargo check
+  ⚠️ "participants" is semi-generic — verify
+Batch 13: Rating fields (rating, reviewText, helpfulCount)
+  → cargo check
+  ⚠️ "rating" is semi-generic
+Batch 14: Cron-specific (payoutStatus, payoutDate, trendingScore, trendingAt, favoriteCount, viewCount, purchaseCount, premiumSince, premiumExpiresAt, disputeRate, refundRate, cancellationRate, escalatedAt, escalationReason, lowStockThreshold, stripeTransferId, eventType, failureReason, benefitsActiveAt, earlyCancelCount, cancelsAt, jobName, errorMessage, retryCount, lastLowStockAlertAt, lastCartAbandonEmailAt)
+  → cargo check
+Batch 15: Notification (notificationType, token, platform, fcmToken)
+  → cargo check
+  ⚠️ "token" and "platform" are very generic — may need to skip
+Batch 16: Digital (downloadUrl, licenseKey, deviceId, maxDevices, activatedDevices)
+  → cargo check
+Batch 17: Q&A (questionId, questionText, answerText, answeredAt)
+  → cargo check
+```
+
+### Step 4: Full verification
+
+```bash
+cargo clippy -- -D warnings
+cargo test
+```
+
+### Step 5: Phase 3 — Test code sweep
+
+Same replacement tool, but pointed at `crates/orignabase/tests/` and `crates/ob-handlers/tests/`.
+Add `use ob_handlers::shared::schema::fields;` imports where needed (different path for external test crates).
+
+### Step 6: Phase 4 — Collection names
+
+Separate pass for `collections::` constants. Same pattern-matching approach but targeting:
+- `"products"` → `collections::PRODUCTS`
+- `"users"` → `collections::USERS`
+- `"orders"` → `collections::ORDERS`
+- `"return_requests"` → `collections::RETURN_REQUESTS`
+- `"cart"` → `collections::CART`
+- `"coupons"` → `collections::COUPONS`
+- `"notifications"` → `collections::NOTIFICATIONS`
+
+⚠️ `"cart"` is semi-generic (could be variable name). `"users"` and `"products"` could appear in URL paths or doc comments. Must target same JSON patterns only.
+
+### Step 7: Final commit
+
+```bash
+git add -A
+git commit -m "refactor: replace magic strings with fields:: and collections:: constants"
+```
+
+### Fields to SKIP entirely (too generic, high false-positive risk)
+
+| String | Why risky |
+|--------|-----------|
+| `"name"` | Variable names, struct fields, HashMap keys, comments |
+| `"code"` | HTTP status codes, error codes, coupon codes |
+| `"text"` | Chat messages, log text, error text |
+| `"read"` | Read operations, IO |
+| `"status"` | HTTP status, generic status vars |
+| `"email"` | Display strings, SMTP config |
+| `"token"` | JWT tokens, FCM tokens, CSRF tokens |
+| `"address"` | Memory addresses, email addresses |
+| `"deleted"` | Boolean ops, soft-delete checks |
+| `"resolved"` | Promise/future, DNS, dispute resolution |
+| `"roles"` | Auth roles, RBAC |
+| `"platform"` | Device platform, OS platform |
+| `"uid"` | Generic ID variable |
+| `"state"` | State machine, US state, app state |
+| `"label"` | UI labels, form labels |
+| `"apartment"` | Address parsing |
+| `"latitude"` | Geo calculations |
+| `"longitude"` | Geo calculations |
