@@ -297,12 +297,12 @@ async fn store_webhook_event(
         .create_document(
             collections::WEBHOOK_EVENTS,
             serde_json::json!({
-                "id": event.id,
-                "type": event.r#type,
-                "timestamp": timestamp,
-                "timestamp_iso": timestamp_rfc3339,
-                "processed": true,
-                "data": event.data,
+                fields::ID: event.id,
+                fields::TYPE: event.r#type,
+                fields::TIMESTAMP: timestamp,
+                fields::TIMESTAMP_ISO: timestamp_rfc3339,
+                fields::PROCESSED: true,
+                fields::DATA: event.data,
             }),
         )
         .await?;
@@ -331,12 +331,12 @@ async fn try_store_webhook_event_atomic(
     // Strict INSERT (no ON CONFLICT) — fails on duplicate ID for atomic dedup.
     // This eliminates the TOCTOU race between is_duplicate_webhook + store_webhook_event.
     let event_data = serde_json::json!({
-        "id": event.id,
-        "type": event.r#type,
-        "timestamp": timestamp,
-        "timestamp_iso": timestamp_rfc3339,
-        "processed": true,
-        "data": event.data,
+        fields::ID: event.id,
+        fields::TYPE: event.r#type,
+        fields::TIMESTAMP: timestamp,
+        fields::TIMESTAMP_ISO: timestamp_rfc3339,
+        fields::PROCESSED: true,
+        fields::DATA: event.data,
     });
     let data_str = serde_json::to_string(&event_data).unwrap_or_default();
     let event_id_escaped = event.id.replace('\'', "''");
@@ -1331,16 +1331,16 @@ async fn handle_charge_dispute_created(
         .create_document(
             collections::DISPUTES,
             serde_json::json!({
-                "disputeId": dispute_id,
-                "chargeId": charge_id,
+                fields::DISPUTE_ID: dispute_id,
+                fields::CHARGE_ID: charge_id,
                 fields::PAYMENT_INTENT_ID: payment_intent_id,
                 fields::ORDER_ID: order_id,
-                "reason": reason,
-                "amountCents": amount,
-                "currency": currency,
+                fields::REASON: reason,
+                fields::AMOUNT_CENTS: amount,
+                fields::CURRENCY: currency,
                 fields::STATUS: "needs_response",
                 fields::CREATED_AT: now.timestamp(),
-                "createdAtIso": now.to_rfc3339(),
+                fields::CREATED_AT_ISO: now.to_rfc3339(),
             }),
         )
         .await?;
@@ -1551,9 +1551,9 @@ async fn handle_payout_failed(
                 collections::NOTIFICATIONS,
                 serde_json::json!({
                     fields::USER_ID: seller_id,
-                    "type": "payout_failed",
-                    "title": "Payout Failed",
-                    "message": format!(
+                    fields::TYPE: "payout_failed",
+                    fields::NOTIFICATION_TITLE: "Payout Failed",
+                    fields::NOTIFICATION_BODY: format!(
                         "Your payout of {}{}.{:02} has failed. Reason: {}. Please update your bank details.",
                         if currency == "cad" { "$" } else { "" },
                         amount / 100,
@@ -1562,7 +1562,7 @@ async fn handle_payout_failed(
                     ),
                     fields::READ: false,
                     fields::CREATED_AT: now.timestamp(),
-                    "createdAtIso": now.to_rfc3339(),
+                    fields::CREATED_AT_ISO: now.to_rfc3339(),
                 }),
             )
             .await;

@@ -166,7 +166,7 @@ async fn add_buyer_address(
     let address_id = format!("addr_{}", uuid::Uuid::new_v4().simple());
     let mut address_doc = json!(req.address);
     address_doc[fields::UID] = req.user_id.clone().into();
-    address_doc["id"] = address_id.clone().into();
+    address_doc[fields::ID] = address_id.clone().into();
     address_doc[fields::CREATED_AT] = chrono::Utc::now().to_rfc3339().into();
 
     state
@@ -243,7 +243,7 @@ async fn set_default_buyer_address(
             collections::USERS,
             &req.user_id,
             json!({
-                "defaultAddressId": req.address_id
+                fields::DEFAULT_ADDRESS_ID: req.address_id
             }),
         )
         .await?;

@@ -713,7 +713,7 @@ async fn cancel_subscription(
                 fields::STATUS: SubscriptionStatus::CancelPending.as_str(),
                 fields::SUBSCRIPTION_STATUS: SubscriptionStatus::CancelPending.as_str(),
                 fields::CANCEL_AT_PERIOD_END: true,
-                "cancelledAt": now,
+                fields::CANCELLED_AT: now,
                 fields::CANCELS_AT: period_end,
                 fields::UPDATED_AT: now,
             }),
@@ -934,10 +934,10 @@ async fn update_notification_preferences(
     let now = chrono::Utc::now().to_rfc3339();
     let mut update = serde_json::Map::new();
     if let Some(v) = req.notify_new_products {
-        update.insert("notifyNewProducts".to_string(), json!(v));
+        update.insert(fields::NOTIFY_NEW_PRODUCTS.to_string(), json!(v));
     }
     if let Some(v) = req.notify_trending {
-        update.insert("notifyTrending".to_string(), json!(v));
+        update.insert(fields::NOTIFY_TRENDING.to_string(), json!(v));
     }
     update.insert(fields::UPDATED_AT.to_string(), json!(now));
 
@@ -1035,7 +1035,7 @@ async fn handle_subscription_created(
             json!({
                 fields::IS_PREMIUM: true,
                 fields::SUBSCRIPTION_STATUS: SubscriptionStatus::Active.as_str(),
-                "premiumSince": now,
+                fields::PREMIUM_SINCE: now,
                 fields::UPDATED_AT: now,
             }),
         )
@@ -1143,7 +1143,7 @@ async fn handle_subscription_deleted(
             json!({
                 fields::IS_PREMIUM: false,
                 fields::SUBSCRIPTION_STATUS: SubscriptionStatus::Cancelled.as_str(),
-                "premiumExpiresAt": now,
+                fields::PREMIUM_EXPIRES_AT: now,
                 fields::UPDATED_AT: now,
             }),
         )
@@ -1229,8 +1229,8 @@ async fn handle_invoice_payment_failed(
                 fields::BUYER_ID: uid_short,
                 fields::NOTIFICATION_TYPE: "payment_failed",
                 fields::STATUS: "unread",
-                "title": "Payment Failed",
-                "body": "Your subscription payment failed. Please update your payment method to keep Premium access.",
+                fields::NOTIFICATION_TITLE: "Payment Failed",
+                fields::NOTIFICATION_BODY: "Your subscription payment failed. Please update your payment method to keep Premium access.",
                 fields::CREATED_AT: now,
                 fields::UPDATED_AT: now,
             }),

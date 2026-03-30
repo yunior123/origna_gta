@@ -413,13 +413,13 @@ async fn get_profile(
         fields::EMAIL: user_doc.get(fields::EMAIL),
         fields::NAME: user_doc.get(fields::NAME),
         fields::ADDRESS: user_doc.get(fields::ADDRESS),
-        "taxExemption": user_doc.get("taxExemption"),
+        fields::TAX_EXEMPTION: user_doc.get(fields::TAX_EXEMPTION),
         fields::ROLES: user_doc.get(fields::ROLES),
         fields::CREATED_AT: user_doc.get(fields::CREATED_AT),
         fields::UPDATED_AT: user_doc.get(fields::UPDATED_AT),
         fields::SUSPENDED: user_doc.get(fields::SUSPENDED).and_then(|v| v.as_bool()).unwrap_or(false),
-        "termsVersion": user_doc.get("termsVersion"),
-        "privacyPolicyVersion": user_doc.get("privacyPolicyVersion"),
+        fields::TERMS_VERSION: user_doc.get(fields::TERMS_VERSION),
+        fields::PRIVACY_POLICY_VERSION: user_doc.get(fields::PRIVACY_POLICY_VERSION),
     })))
 }
 
@@ -449,8 +449,8 @@ async fn email_consent(
             &user_id,
             json!({
                 fields::EMAIL_CONSENT: req.consent,
-                "consentTimestamp": now,
-                "consentMethod": consent_method,
+                fields::CONSENT_TIMESTAMP: now,
+                fields::CONSENT_METHOD: consent_method,
                 fields::UPDATED_AT: now,
             }),
         )
@@ -570,16 +570,16 @@ async fn create_profile(
                 fields::CREATED_AT: now,
                 fields::LANGUAGE: lang,
                 // Legal compliance (CASL / PIPEDA / Law 25)
-                "dataProcessingConsent": true,
+                fields::DATA_PROCESSING_CONSENT: true,
                 fields::EMAIL_CONSENT: true,
-                "marketingOptIn": marketing_opt_in,
-                "consentTimestamp": now,
-                "termsAcceptedAt": now,
-                "privacyAcceptedAt": now,
-                "consentMethod": consent_method,
-                "privacyPolicyVersion": "1.0",
-                "termsVersion": "1.0",
-                "pushEnabled": true,
+                fields::MARKETING_OPT_IN: marketing_opt_in,
+                fields::CONSENT_TIMESTAMP: now,
+                fields::TERMS_ACCEPTED_AT: now,
+                fields::PRIVACY_ACCEPTED_AT: now,
+                fields::CONSENT_METHOD: consent_method,
+                fields::PRIVACY_POLICY_VERSION: "1.0",
+                fields::TERMS_VERSION: "1.0",
+                fields::PUSH_ENABLED: true,
             }),
         )
         .await?;
@@ -684,9 +684,9 @@ async fn add_buyer_address(
             collections::ADDRESSES,
             json!({
                 fields::USER_ID: user_id,
-                "label": req.label.as_deref().unwrap_or(""),
+                fields::LABEL: req.label.as_deref().unwrap_or(""),
                 fields::IS_DEFAULT: req.is_default,
-                "address": address,
+                fields::ADDRESS: address,
                 fields::CREATED_AT: now,
                 fields::UPDATED_AT: now,
             }),
@@ -753,9 +753,9 @@ async fn update_buyer_address(
             collections::ADDRESSES,
             &req.address_id,
             json!({
-                "label": req.label.as_deref().unwrap_or(""),
+                fields::LABEL: req.label.as_deref().unwrap_or(""),
                 fields::IS_DEFAULT: req.is_default,
-                "address": address,
+                fields::ADDRESS: address,
                 fields::UPDATED_AT: now,
             }),
         )
@@ -917,7 +917,7 @@ async fn suspend_seller(
                 fields::SUSPENDED: true,
                 fields::SUSPENDED_AT: now,
                 fields::SUSPENDED_BY: admin_id,
-                "suspendReason": reason,
+                fields::SUSPEND_REASON: reason,
                 fields::UPDATED_AT: now,
             }),
         )
@@ -953,7 +953,7 @@ async fn unsuspend_seller(
                 fields::SUSPENDED: false,
                 fields::SUSPENDED_AT: serde_json::Value::Null,
                 fields::SUSPENDED_BY: serde_json::Value::Null,
-                "suspendReason": serde_json::Value::Null,
+                fields::SUSPEND_REASON: serde_json::Value::Null,
                 fields::UPDATED_AT: now,
             }),
         )

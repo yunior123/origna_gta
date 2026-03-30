@@ -581,6 +581,56 @@ pub mod fields {
     pub const CANCELS_AT: &str = "cancelsAt";
     pub const SHIPPED_AT: &str = "shippedAt";
     pub const CANCELLED_AT: &str = "cancelledAt";
+
+    // Legal / Consent fields
+    pub const TAX_EXEMPTION: &str = "taxExemption";
+    pub const TERMS_VERSION: &str = "termsVersion";
+    pub const PRIVACY_POLICY_VERSION: &str = "privacyPolicyVersion";
+    pub const CONSENT_TIMESTAMP: &str = "consentTimestamp";
+    pub const CONSENT_METHOD: &str = "consentMethod";
+    pub const DATA_PROCESSING_CONSENT: &str = "dataProcessingConsent";
+    pub const TERMS_ACCEPTED_AT: &str = "termsAcceptedAt";
+    pub const PRIVACY_ACCEPTED_AT: &str = "privacyAcceptedAt";
+    pub const PUSH_ENABLED: &str = "pushEnabled";
+    pub const SUSPEND_REASON: &str = "suspendReason";
+
+    // Notification fields
+    pub const NOTIFICATION_TITLE: &str = "title";
+    pub const NOTIFICATION_BODY: &str = "body";
+    pub const NOTIFY_NEW_PRODUCTS: &str = "notifyNewProducts";
+    pub const NOTIFY_TRENDING: &str = "notifyTrending";
+
+    // Webhook event fields
+    pub const TYPE: &str = "type";
+    pub const TIMESTAMP: &str = "timestamp";
+    pub const TIMESTAMP_ISO: &str = "timestamp_iso";
+    pub const PROCESSED: &str = "processed";
+    pub const DATA: &str = "data";
+    pub const CREATED_AT_ISO: &str = "createdAtIso";
+
+    // Dispute fields
+    pub const DISPUTE_ID: &str = "disputeId";
+    pub const CHARGE_ID: &str = "chargeId";
+    pub const REASON: &str = "reason";
+    pub const CURRENCY: &str = "currency";
+
+    // Payout notification fields (MESSAGE kept for backward compat / other uses)
+    pub const MESSAGE: &str = "message";
+
+    // Mail log fields
+    pub const SENT_AT: &str = "sentAt";
+    pub const ERROR: &str = "error";
+
+    // Pending notification fields
+    pub const PENDING_SENT_AT: &str = "sent_at";
+    pub const PENDING_UPDATED_AT: &str = "updated_at";
+
+    // Order confirmation fields
+    pub const CONFIRMED_BY_CLIENT: &str = "confirmedByClient";
+    pub const AUTO_CONFIRMED: &str = "autoConfirmed";
+
+    // Address management fields
+    pub const DEFAULT_ADDRESS_ID: &str = "defaultAddressId";
 }
 
 // =============================================================================

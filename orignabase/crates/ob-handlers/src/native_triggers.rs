@@ -726,10 +726,10 @@ impl NativeTriggerExecutor {
                     "table": collections::MAIL_LOGS,
                     "id": mail_log_id,
                     "data": {
-                        "status": status,
-                        "error": error_message,
+                        fields::STATUS: status,
+                        fields::ERROR: error_message,
                         fields::UPDATED_AT: chrono::Utc::now().to_rfc3339(),
-                        "sentAt": if sent { json!(chrono::Utc::now().to_rfc3339()) } else { Value::Null },
+                        fields::SENT_AT: if sent { json!(chrono::Utc::now().to_rfc3339()) } else { Value::Null },
                     }
                 }),
             )
@@ -818,9 +818,9 @@ impl NativeTriggerExecutor {
                         "table": "_pending_notifications",
                         "id": pending_id,
                         "data": {
-                            "status": if sent { "sent" } else { "pending" },
-                            "updated_at": chrono::Utc::now().to_rfc3339(),
-                            "sent_at": if sent { json!(chrono::Utc::now().to_rfc3339()) } else { Value::Null },
+                            fields::STATUS: if sent { "sent" } else { "pending" },
+                            fields::PENDING_UPDATED_AT: chrono::Utc::now().to_rfc3339(),
+                            fields::PENDING_SENT_AT: if sent { json!(chrono::Utc::now().to_rfc3339()) } else { Value::Null },
                         }
                     }),
                 )
