@@ -1940,10 +1940,11 @@ products/crud, products/questions, products/ratings, products/stock,
 products/triggers, orders/refunds, orders/returns, orders/shipping,
 orders/status, users, warehouses, webhooks, subscriptions, providers, capture
 
-### Remaining (1 cron test — down from 312)
-- test_auto_capture_confirmed_receipts_marks_failed_when_no_delivered_items_payable
-- Root cause: shared PostgreSQL data accumulation during concurrent test run
-- Agent actively fixing
+### Test Status: 1749/1749 PASS (0 failures)
+- `cargo test -p ob-handlers --lib -- --test-threads=1`: ALL PASS
+- `cargo clippy -D warnings`: 0 errors, 0 warnings
+- `flutter analyze`: No issues found
+- Migration: 312 → 0 failures (100% fixed)
 
 ### Architecture Grade: C+ → B+
 - 22 DatabaseStore trait methods (6 new: find_where, count_where, exists_where, update_where, delete_where, find_where_multi)
@@ -1951,17 +1952,20 @@ orders/status, users, warehouses, webhooks, subscriptions, providers, capture
 - Future DB swap: implement 22 methods → zero handler changes
 - To reach A: refactor 103 query_bind/query_raw calls to use new trait methods
 
-### Remaining Tasks (prioritized)
-1. **P0**: Fix remaining 7 cron test isolation failures
-2. **P1**: Magic strings audit — replace bare string literals with fields::* constants across Rust + Flutter
-3. **P1**: Create PostToolUse hook for magic string detection
-4. **P1**: Refactor 103 handler query_bind/query_raw calls to use new trait methods (C+ → A)
-5. **P1**: Increase test coverage to 95%+ (live tests priority)
-6. **P2**: Fix 6 Flutter cart repository test failures
-7. **P2**: Fix 4 pre-existing Flutter warnings/info
-8. **P2**: Fix 2 Rust dead_code warnings in cron/mod.rs
-9. **P1**: Run 30+ agent audit across codebase (10 done, 20+ remaining)
-10. **P1**: Update STATE.md with verified audit findings
+### Completed Tasks (2026-03-29 → 2026-03-30)
+- [x] P0: All 312 test failures fixed (1749/1749 pass)
+- [x] P1: Magic strings replaced with fields::* constants (19 handler files)
+- [x] P1: PostToolUse hook for magic string detection (scripts/check-magic-strings.sh)
+- [x] P2: Flutter cart test failures fixed (62/62 pass)
+- [x] P2: Flutter warnings fixed (0 issues)
+- [x] P2: Rust dead_code warnings fixed
+- [x] P1: 6 new DatabaseStore filter/aggregate trait methods
+- [x] P1: json_to_text fix for data->> comparisons
+
+### Remaining Tasks
+1. **P1**: Refactor remaining ~80 handler query_bind/query_raw calls to use trait methods (B+ → A)
+2. **P1**: Increase test coverage to 95%+ (live tests priority)
+3. **P2**: Run 30+ agent audit across codebase (10 done, 20+ remaining)
 
 ---
 
