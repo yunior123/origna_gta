@@ -61,6 +61,28 @@
         ]
       }
     ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash /Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/scripts/check-magic-strings-per-file.sh"
+          }
+        ],
+        "description": "Check edited file for magic string keys in json!({}) blocks"
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash /Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/scripts/check-magic-strings-per-file.sh"
+          }
+        ],
+        "description": "Check written file for magic string keys in json!({}) blocks"
+      }
+    ],
     "Stop": [
       {
         "matcher": "*",
@@ -70,7 +92,7 @@
             "command": "bash /Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/scripts/check-magic-strings.sh"
           }
         ],
-        "description": "Check for magic strings in modified Rust and Dart files"
+        "description": "Check all modified files for magic strings at end of turn"
       }
     ]
   },
