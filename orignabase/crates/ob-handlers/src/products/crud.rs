@@ -177,7 +177,7 @@ fn validate_and_process_nutrition(
 fn validate_and_denormalize_specs(
     obj: &mut serde_json::Map<String, Value>,
 ) -> Result<(), ob_core::Error> {
-    if let Some(specs_val) = obj.get("specs").cloned()
+    if let Some(specs_val) = obj.get(fields::SPECS).cloned()
         && !specs_val.is_null()
     {
         let specs: crate::shared::specs::ProductSpecs = serde_json::from_value(specs_val)
@@ -186,19 +186,19 @@ fn validate_and_denormalize_specs(
         // Denormalize brand/color/material to top-level for Meilisearch
         if let Some(ref brand) = specs.brand {
             obj.insert(
-                "brand".to_string(),
+                fields::SPEC_BRAND.to_string(),
                 serde_json::Value::String(brand.clone()),
             );
         }
         if let Some(ref color) = specs.color {
             obj.insert(
-                "color".to_string(),
+                fields::SPEC_COLOR.to_string(),
                 serde_json::Value::String(color.clone()),
             );
         }
         if let Some(ref material) = specs.material {
             obj.insert(
-                "material".to_string(),
+                fields::SPEC_MATERIAL.to_string(),
                 serde_json::Value::String(material.clone()),
             );
         }

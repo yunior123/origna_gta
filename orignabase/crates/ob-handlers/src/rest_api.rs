@@ -130,7 +130,7 @@ async fn get_product_recommendations(
         .await;
 
     if let Ok(rec_doc) = &rec_result
-        && let Some(recs) = rec_doc.get("recommendations")
+        && let Some(recs) = rec_doc.get(fields::RECOMMENDATIONS)
         && recs.as_array().is_some_and(|a| !a.is_empty())
     {
         return Ok(Json(
@@ -145,7 +145,7 @@ async fn get_product_recommendations(
         .await
         .map_err(|_| ob_core::Error::NotFound("Product not found".into()))?;
 
-    if let Some(bundled) = product.get("bundledProductIds")
+    if let Some(bundled) = product.get(fields::BUNDLED_PRODUCT_IDS)
         && bundled.as_array().is_some_and(|a| !a.is_empty())
     {
         return Ok(Json(
@@ -268,7 +268,7 @@ async fn create_product(
         .expect("already validated as object");
     product_obj.insert(fields::SELLER_ID.into(), json!(user_id));
     // Products use dateCreated (not createdAt) per schema
-    product_obj.insert("dateCreated".into(), json!(chrono::Utc::now().to_rfc3339()));
+    product_obj.insert(fields::DATE_CREATED.into(), json!(chrono::Utc::now().to_rfc3339()));
     product_obj.insert(
         fields::UPDATED_AT.into(),
         json!(chrono::Utc::now().to_rfc3339()),
@@ -303,6 +303,7 @@ async fn get_user_profile(
     // Strip sensitive fields
     let mut profile = doc;
     if let Some(obj) = profile.as_object_mut() {
+        // ignore-magic: security-sensitive field names stripped before API response
         obj.remove("passwordHash");
         obj.remove("password_hash");
         obj.remove("mfaSecret");
@@ -335,7 +336,7 @@ async fn get_cart(
         .await
         .map_err(|_| ob_core::Error::NotFound("User not found".into()))?;
 
-    let cart = user.get("cart").cloned().unwrap_or_else(|| json!([]));
+    let cart = user.get(collections::CART).cloned().unwrap_or_else(|| json!([]));
 
     Ok(Json(cart))
 }

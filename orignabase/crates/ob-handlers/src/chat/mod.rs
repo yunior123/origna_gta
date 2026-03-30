@@ -371,7 +371,7 @@ async fn buyer_has_chat_eligible_order(
 
     Ok(orders.iter().any(|order| {
         order
-            .get("productIds")
+            .get(fields::PRODUCT_IDS)
             .and_then(|v| v.as_array())
             .map(|ids| ids.iter().any(|id| id.as_str() == Some(product_id)))
             .unwrap_or(false)
@@ -476,11 +476,11 @@ async fn get_or_create_chat(
         fields::PRODUCT_ID: product_id,
         fields::BUYER_ID: buyer_id,
         fields::SELLER_ID: seller_id,
-        "productTitle": product_name,
-        "productImageUrl": product_image,
+        fields::PRODUCT_TITLE: product_name,
+        fields::PRODUCT_IMAGE_URL: product_image,
         fields::BUYER_UNREAD_COUNT: 0,
         fields::SELLER_UNREAD_COUNT: 0,
-        "messageCount": 0,
+        fields::MESSAGE_COUNT: 0,
         fields::CREATED_AT: now,
         fields::UPDATED_AT: now,
     });
@@ -572,7 +572,7 @@ async fn send_message(
     }
 
     // Deduplication guard
-    let last_text = chat.get("lastMessageText").and_then(|v| v.as_str());
+    let last_text = chat.get(fields::LAST_MESSAGE_TEXT).and_then(|v| v.as_str());
     let last_update = chat
         .get(fields::UPDATED_AT)
         .and_then(|v| v.as_str())
@@ -587,7 +587,7 @@ async fn send_message(
 
     // Thread capacity check
     let msg_count = chat
-        .get("messageCount")
+        .get(fields::MESSAGE_COUNT)
         .and_then(|v| v.as_i64())
         .unwrap_or(0);
     if msg_count >= MAX_MESSAGES_PER_THREAD {
@@ -636,11 +636,11 @@ async fn send_message(
         .unwrap_or("Someone");
 
     let msg_doc = json!({
-        "chatId": req.chat_id,
+        fields::CHAT_ID: req.chat_id,
         fields::SENDER_ID: uid,
-        "senderDisplayName": sender_name,
+        fields::SENDER_DISPLAY_NAME: sender_name,
         fields::MESSAGE_TEXT: text,
-        "imageUrls": image_urls.cloned().unwrap_or_default(),
+        fields::IMAGE_URLS: image_urls.cloned().unwrap_or_default(),
         fields::CREATED_AT: now,
         fields::READ: false,
         fields::DELETED: false,
@@ -659,26 +659,26 @@ async fn send_message(
     };
     let mut thread_update = json!({
         fields::LAST_MESSAGE: if text.len() > 100 { &text[..100] } else { &text },
-        "lastMessageText": text,
+        fields::LAST_MESSAGE_TEXT: text,
         fields::LAST_MESSAGE_AT: now,
         fields::UPDATED_AT: now,
-        "messageCount": msg_count + 1,
+        fields::MESSAGE_COUNT: msg_count + 1,
         target_unread: chat.get(target_unread).and_then(|v| v.as_i64()).unwrap_or(0) + 1,
     });
 
     // Metrics
-    if uid == buyer_id && chat.get("firstBuyerMessageAt").is_none() {
-        thread_update["firstBuyerMessageAt"] = json!(now);
+    if uid == buyer_id && chat.get(fields::FIRST_BUYER_MESSAGE_AT).is_none() {
+        thread_update[fields::FIRST_BUYER_MESSAGE_AT] = json!(now);
     } else if uid == seller_id
-        && chat.get("firstSellerReplyAt").is_none()
+        && chat.get(fields::FIRST_SELLER_REPLY_AT).is_none()
         && let Some(first_buyer_at) = chat
-            .get("firstBuyerMessageAt")
+            .get(fields::FIRST_BUYER_MESSAGE_AT)
             .and_then(|v| v.as_str())
             .and_then(parse_rfc3339)
     {
         let hours = (chrono::Utc::now() - first_buyer_at).num_minutes() as f64 / 60.0;
-        thread_update["firstSellerReplyAt"] = json!(now);
-        thread_update["firstReplyHours"] = json!(hours);
+        thread_update[fields::FIRST_SELLER_REPLY_AT] = json!(now);
+        thread_update[fields::FIRST_REPLY_HOURS] = json!(hours);
     }
 
     state
@@ -827,7 +827,7 @@ async fn delete_message(
             json!({
                 fields::DELETED: true,
                 fields::MESSAGE_TEXT: "",
-                "imageUrls": Vec::<String>::new(),
+                fields::IMAGE_URLS: Vec::<String>::new(),
                 fields::UPDATED_AT: chrono::Utc::now().to_rfc3339(),
             }),
         )
@@ -886,11 +886,11 @@ async fn report_message(
 
     let report_id = uuid::Uuid::new_v4().to_string();
     let report_data = json!({
-        "reportId": report_id,
-        "chatId": req.chat_id,
-        "messageId": req.message_id,
-        "reporterId": uid,
-        "reason": req.reason.unwrap_or_else(|| "Inappropriate content".into()),
+        fields::REPORT_ID: report_id,
+        fields::CHAT_ID: req.chat_id,
+        fields::MESSAGE_ID: req.message_id,
+        fields::REPORTER_ID: uid,
+        fields::REASON: req.reason.unwrap_or_else(|| "Inappropriate content".into()),
         fields::MESSAGE_TEXT: msg.get(fields::MESSAGE_TEXT).and_then(|v| v.as_str()).unwrap_or(""),
         fields::SENDER_ID: msg.get(fields::SENDER_ID).and_then(|v| v.as_str()).unwrap_or(""),
         fields::STATUS: "pending",

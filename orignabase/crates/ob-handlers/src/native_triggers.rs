@@ -32,11 +32,11 @@ impl NativeTriggerExecutor {
 
     async fn handle_event(&self, event: ChangeEvent) -> Result<(), ob_core::Error> {
         match (event.collection.as_str(), &event.action) {
-            ("products", ChangeAction::Create) => self.handle_product_create(&event).await,
-            ("products", ChangeAction::Update) => self.handle_product_update(&event).await,
-            ("products", ChangeAction::Delete) => self.handle_product_delete(&event).await,
-            ("orders", ChangeAction::Update) => self.handle_order_update(&event).await,
-            ("return_requests", ChangeAction::Update) => self.handle_return_update(&event).await,
+            (collections::PRODUCTS, ChangeAction::Create) => self.handle_product_create(&event).await,
+            (collections::PRODUCTS, ChangeAction::Update) => self.handle_product_update(&event).await,
+            (collections::PRODUCTS, ChangeAction::Delete) => self.handle_product_delete(&event).await,
+            (collections::ORDERS, ChangeAction::Update) => self.handle_order_update(&event).await,
+            (collections::RETURN_REQUESTS, ChangeAction::Update) => self.handle_return_update(&event).await,
             _ => Ok(()),
         }
     }
@@ -137,7 +137,7 @@ impl NativeTriggerExecutor {
             let (title, body) = return_buyer_message(new_status, order_id, return_id, &lang);
             let payload = json!({
                 fields::ORDER_ID: order_id,
-                "returnId": return_id,
+                fields::RETURN_ID: return_id,
                 fields::RETURN_STATUS: new_status,
             });
             self.create_notification_once(
@@ -160,7 +160,7 @@ impl NativeTriggerExecutor {
             let (title, body) = return_seller_message(new_status, order_id, return_id, &lang);
             let payload = json!({
                 fields::ORDER_ID: order_id,
-                "returnId": return_id,
+                fields::RETURN_ID: return_id,
                 fields::RETURN_STATUS: new_status,
             });
             self.create_notification_once(
@@ -259,7 +259,7 @@ impl NativeTriggerExecutor {
                     let payload = json!({
                         fields::ORDER_ID: order_record_id,
                         fields::SELLER_ID: seller_id,
-                        "itemIds": item_batch_ids(&perishable_items),
+                        fields::ITEM_IDS: item_batch_ids(&perishable_items),
                     });
                     self.create_notification_once(
                         &claim_key("perishable_order_urgent", &[order_record_id, &seller_id]),
@@ -376,7 +376,7 @@ impl NativeTriggerExecutor {
             if normalized == "shipped" {
                 if !skip_full_order_shipped
                     && !item
-                        .get("isDigital")
+                        .get(fields::IS_DIGITAL)
                         .and_then(|v| v.as_bool())
                         .unwrap_or(false)
                 {
@@ -412,7 +412,7 @@ impl NativeTriggerExecutor {
                 &body,
                 json!({
                     fields::ORDER_ID: record_id(order_id),
-                    "itemIds": item_batch_ids(&shipped_items),
+                    fields::ITEM_IDS: item_batch_ids(&shipped_items),
                     fields::STATUS: OrderStatus::Shipped.as_str(),
                 }),
             )
@@ -444,7 +444,7 @@ impl NativeTriggerExecutor {
                 &body,
                 json!({
                     fields::ORDER_ID: record_id(order_id),
-                    "itemIds": item_batch_ids(&delivered_items),
+                    fields::ITEM_IDS: item_batch_ids(&delivered_items),
                     fields::STATUS: OrderStatus::Delivered.as_str(),
                 }),
             )
@@ -500,7 +500,7 @@ impl NativeTriggerExecutor {
             }
 
             let variant_key = item
-                .get("variantKey")
+                .get(fields::VARIANT_KEY)
                 .and_then(|v| v.as_str())
                 .unwrap_or("");
 
@@ -521,7 +521,7 @@ impl NativeTriggerExecutor {
                 .unwrap_or_default();
 
             for row in rows {
-                let row_variant = row.get("variantKey").and_then(|v| v.as_str()).unwrap_or("");
+                let row_variant = row.get(fields::VARIANT_KEY).and_then(|v| v.as_str()).unwrap_or("");
                 if row_variant != variant_key {
                     continue;
                 }
@@ -749,7 +749,7 @@ impl NativeTriggerExecutor {
             .state
             .db
             .query_bind_value(
-                "SELECT token FROM _push_tokens WHERE user_id = $user_id",
+                &format!("SELECT token FROM {} WHERE user_id = $user_id", collections::PUSH_TOKENS),
                 json!({"user_id": escaped_user_id}),
             )
             .await
@@ -763,7 +763,7 @@ impl NativeTriggerExecutor {
         let REDACTED_SECRET = std::env::var("OB_FCM_SERVICE_ACCOUNT").ok();
 
         for row in tokens {
-            let Some(token) = row.get("token").and_then(|v| v.as_str()) else {
+            let Some(token) = row.get(fields::TOKEN).and_then(|v| v.as_str()) else {
                 continue;
             };
             let pending_id = pending_push_record_id(notification_id, token);
@@ -775,17 +775,17 @@ impl NativeTriggerExecutor {
                 .query_bind(
                     "UPSERT type::thing($table, $id) CONTENT $data RETURN AFTER",
                     json!({
-                        "table": "_pending_notifications",
+                        "table": collections::PENDING_NOTIFICATIONS,
                         "id": pending_id,
                         "data": {
-                            "notificationId": notification_id,
-                            "token": token,
-                            "title": title,
-                            "body": body,
-                            "data": data,
-                            "status": "pending",
-                            "created_at": now,
-                            "updated_at": now,
+                            fields::NOTIFICATION_ID: notification_id,
+                            fields::TOKEN: token,
+                            fields::NOTIFICATION_TITLE: title,
+                            fields::NOTIFICATION_BODY: body,
+                            fields::DATA: data,
+                            fields::STATUS: "pending",
+                            fields::PENDING_SENT_AT: Value::Null,
+                            fields::PENDING_UPDATED_AT: now,
                         }
                     }),
                 )
@@ -815,7 +815,7 @@ impl NativeTriggerExecutor {
                 .query_bind(
                     "UPDATE type::thing($table, $id) MERGE $data RETURN AFTER",
                     json!({
-                        "table": "_pending_notifications",
+                        "table": collections::PENDING_NOTIFICATIONS,
                         "id": pending_id,
                         "data": {
                             fields::STATUS: if sent { "sent" } else { "pending" },
@@ -1106,11 +1106,11 @@ fn buyer_order_status_message(
         ),
         ("delivered", "fr")
             if order
-                .get("confirmedByClient")
+                .get(fields::CONFIRMED_BY_CLIENT)
                 .and_then(|v| v.as_bool())
                 .unwrap_or(false)
                 || order
-                    .get("autoConfirmed")
+                    .get(fields::AUTO_CONFIRMED)
                     .and_then(|v| v.as_bool())
                     .unwrap_or(false) =>
         {
@@ -1121,11 +1121,11 @@ fn buyer_order_status_message(
         }
         ("delivered", _)
             if order
-                .get("confirmedByClient")
+                .get(fields::CONFIRMED_BY_CLIENT)
                 .and_then(|v| v.as_bool())
                 .unwrap_or(false)
                 || order
-                    .get("autoConfirmed")
+                    .get(fields::AUTO_CONFIRMED)
                     .and_then(|v| v.as_bool())
                     .unwrap_or(false) =>
         {
@@ -3349,7 +3349,7 @@ mod tests {
         executor
             .state
             .db
-            .create_document("_push_tokens", json!({"user_id": &uid, "token": "fcm_token_abc123"}))
+            .create_document(collections::PUSH_TOKENS, json!({"user_id": &uid, "token": "fcm_token_abc123"}))
             .await
             .unwrap();
 
@@ -3376,7 +3376,7 @@ mod tests {
         let _ = executor
             .state
             .db
-            .create_document("_push_tokens", json!({"user_id": &uid}))
+            .create_document(collections::PUSH_TOKENS, json!({"user_id": &uid}))
             .await;
 
         executor
@@ -4862,7 +4862,7 @@ mod tests {
         executor
             .state
             .db
-            .query_raw("CREATE _push_tokens SET user_id = 'buyer_fcm', token = 'fcm_token_xyz'")
+            .query_raw(&format!("CREATE {} SET user_id = 'buyer_fcm', token = 'fcm_token_xyz'", collections::PUSH_TOKENS))
             .await
             .unwrap();
 
@@ -4901,13 +4901,13 @@ mod tests {
         executor
             .state
             .db
-            .query_raw("CREATE _push_tokens SET user_id = 'buyer_multi', token = 'tok_1'")
+            .query_raw(&format!("CREATE {} SET user_id = 'buyer_multi', token = 'tok_1'", collections::PUSH_TOKENS))
             .await
             .unwrap();
         executor
             .state
             .db
-            .query_raw("CREATE _push_tokens SET user_id = 'buyer_multi', token = 'tok_2'")
+            .query_raw(&format!("CREATE {} SET user_id = 'buyer_multi', token = 'tok_2'", collections::PUSH_TOKENS))
             .await
             .unwrap();
 

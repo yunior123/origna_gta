@@ -274,6 +274,7 @@ fn build_redirect_with_fragment(base: &str, fragment: &str) -> Redirect {
 }
 
 fn ensure_user_not_disabled(user: &serde_json::Value) -> Result<()> {
+    // ignore-magic: ob-auth has no access to ob-handlers schema constants
     if user["disabled"].as_bool().unwrap_or(false) {
         return Err(Error::Auth("Account is disabled".into()));
     }
@@ -338,6 +339,7 @@ pub async fn register(
     // Hash password
     let password_hash = password::hash_password(&body.password)?;
 
+    // ignore-magic: ob-auth has no access to ob-handlers schema constants
     // Create user document
     let user_data = json!({
         "email": body.email,
@@ -453,6 +455,7 @@ pub async fn login(
         }
     };
 
+    // ignore-magic: ob-auth has no access to ob-handlers schema constants
     // Verify password
     let hash = user["password_hash"]
         .as_str()
@@ -675,6 +678,7 @@ async fn record_session(
     user_id: &str,
     method: &str,
 ) -> Result<()> {
+    // ignore-magic: ob-auth has no access to ob-handlers schema constants
     let session_data = json!({
         "user_id": user_id,
         "method": method,
@@ -978,6 +982,7 @@ async fn oauth_find_or_create_user(
 ) -> Result<Json<AuthResponse>> {
     let provider = info.provider.to_string();
 
+    // ignore-magic: ob-auth has no access to ob-handlers schema constants
     // Look up by provider + provider_id
     let existing = state
         .db
@@ -1126,6 +1131,7 @@ pub async fn forgot_password(
     // Generate a short-lived reset token (1 hour)
     let reset_token = jwt::issue_reset_token(&user_id, &state.jwt_keys)?;
 
+    // ignore-magic: ob-auth has no access to ob-handlers schema constants
     // Store the reset token hash in the user record
     let token_hash = hash_token(&reset_token);
     state
@@ -1204,6 +1210,7 @@ pub async fn reset_password(
         .first()
         .ok_or_else(|| Error::Auth("User not found".into()))?;
 
+    // ignore-magic: ob-auth has no access to ob-handlers schema constants
     let stored_hash = user["reset_token_hash"]
         .as_str()
         .ok_or_else(|| Error::Auth("No reset token pending".into()))?;
@@ -1231,6 +1238,7 @@ pub async fn reset_password(
     let new_hash = password::hash_password(&body.new_password)?;
     let user_id = claims.sub;
 
+    // ignore-magic: ob-auth has no access to ob-handlers schema constants
     // CRITICAL FIX: Mark token as USED BEFORE updating password (atomic operation)
     // Also set password_changed_at so existing refresh tokens are invalidated —
     // the refresh endpoint rejects tokens issued before this timestamp.

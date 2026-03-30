@@ -255,13 +255,13 @@ async fn submit_rating(
     let now = chrono::Utc::now().to_rfc3339();
     let rating_doc = serde_json::json!({
         fields::PRODUCT_ID: req.product_id,
-        "userId": req.user_id,
-        "orderId": req.order_id,
+        fields::USER_ID: req.user_id,
+        fields::ORDER_ID: req.order_id,
         fields::RATING: req.rating,
         fields::REVIEW_TEXT: review,
-        "reviewImageUrls": req.review_image_urls,
+        fields::REVIEW_IMAGE_URLS: req.review_image_urls,
         fields::HELPFUL_COUNT: 0,
-        "verifiedPurchase": true,
+        fields::VERIFIED_PURCHASE: true,
         fields::CREATED_AT: now,
     });
 
@@ -405,7 +405,7 @@ async fn review_vote(
         state.db.query_raw(&find_query).await.unwrap_or_default();
 
     if let Some(record) = existing.first() {
-        let old_vote = record.get("vote").and_then(|v| v.as_str()).unwrap_or("");
+        let old_vote = record.get(fields::VOTE).and_then(|v| v.as_str()).unwrap_or("");
         if old_vote == vote_str {
             // Unchanged, idempotent
             return Ok(Json(serde_json::json!({
@@ -414,7 +414,7 @@ async fn review_vote(
             })));
         }
 
-        let record_id = record.get("id").and_then(|v| v.as_str()).unwrap_or("");
+        let record_id = record.get(fields::ID).and_then(|v| v.as_str()).unwrap_or("");
 
         // Update vote via CRUD method (avoids SurrealDB UPDATE id SET syntax)
         let now = chrono::Utc::now().to_rfc3339();
@@ -424,7 +424,7 @@ async fn review_vote(
                 vote_col,
                 record_id,
                 serde_json::json!({
-                    "vote": vote_str,
+                    fields::VOTE: vote_str,
                     fields::UPDATED_AT: now,
                 }),
             )
@@ -444,15 +444,15 @@ async fn review_vote(
         if helpful_adj != 0 || unhelpful_adj != 0 {
             // Read current review, adjust counts, update via CRUD
             let review = state.db.get_document(collections::PRODUCT_RATINGS, &req.review_id).await.unwrap_or_default();
-            let cur_helpful = review.get("helpfulVotes").and_then(|v| v.as_i64()).unwrap_or(0);
-            let cur_unhelpful = review.get("unhelpfulVotes").and_then(|v| v.as_i64()).unwrap_or(0);
+            let cur_helpful = review.get(fields::HELPFUL_VOTES).and_then(|v| v.as_i64()).unwrap_or(0);
+            let cur_unhelpful = review.get(fields::UNHELPFUL_VOTES).and_then(|v| v.as_i64()).unwrap_or(0);
             let now_ts = chrono::Utc::now().to_rfc3339();
             state.db.update_document(
                 collections::PRODUCT_RATINGS,
                 &req.review_id,
                 serde_json::json!({
-                    "helpfulVotes": cur_helpful + helpful_adj as i64,
-                    "unhelpfulVotes": cur_unhelpful + unhelpful_adj as i64,
+                    fields::HELPFUL_VOTES: cur_helpful + helpful_adj as i64,
+                    fields::UNHELPFUL_VOTES: cur_unhelpful + unhelpful_adj as i64,
                     fields::UPDATED_AT: now_ts,
                 }),
             ).await?;
@@ -462,9 +462,9 @@ async fn review_vote(
         state.db.create_document(
             vote_col,
             serde_json::json!({
-                "reviewId": req.review_id,
-                "userId": user_id,
-                "vote": vote_str,
+                fields::REVIEW_ID: req.review_id,
+                fields::USER_ID: user_id,
+                fields::VOTE: vote_str,
                 fields::CREATED_AT: now_ts,
                 fields::UPDATED_AT: now_ts,
             }),
@@ -478,14 +478,14 @@ async fn review_vote(
 
         if helpful_adj != 0 || unhelpful_adj != 0 {
             let review = state.db.get_document(collections::PRODUCT_RATINGS, &req.review_id).await.unwrap_or_default();
-            let cur_helpful = review.get("helpfulVotes").and_then(|v| v.as_i64()).unwrap_or(0);
-            let cur_unhelpful = review.get("unhelpfulVotes").and_then(|v| v.as_i64()).unwrap_or(0);
+            let cur_helpful = review.get(fields::HELPFUL_VOTES).and_then(|v| v.as_i64()).unwrap_or(0);
+            let cur_unhelpful = review.get(fields::UNHELPFUL_VOTES).and_then(|v| v.as_i64()).unwrap_or(0);
             state.db.update_document(
                 collections::PRODUCT_RATINGS,
                 &req.review_id,
                 serde_json::json!({
-                    "helpfulVotes": cur_helpful + helpful_adj as i64,
-                    "unhelpfulVotes": cur_unhelpful + unhelpful_adj as i64,
+                    fields::HELPFUL_VOTES: cur_helpful + helpful_adj as i64,
+                    fields::UNHELPFUL_VOTES: cur_unhelpful + unhelpful_adj as i64,
                     fields::UPDATED_AT: now_ts,
                 }),
             ).await?;
@@ -574,8 +574,8 @@ async fn answer_review(
             collections::PRODUCT_RATINGS,
             &req.review_id,
             serde_json::json!({
-                "sellerResponse": response_text,
-                "sellerRespondedAt": now,
+                fields::SELLER_RESPONSE: response_text,
+                fields::SELLER_RESPONDED_AT: now,
                 fields::UPDATED_AT: now,
             }),
         )

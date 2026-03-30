@@ -185,6 +185,7 @@ async fn register_token(
     }
     let now = chrono::Utc::now().to_rfc3339();
 
+    // ignore-magic: ob-notifications has no access to ob-handlers schema constants
     // Upsert: if this token already exists, update user_id and platform
     state
         .db
@@ -200,7 +201,7 @@ async fn register_token(
         )
         .await?;
 
-    Ok(Json(json!({ "registered": true })))
+    Ok(Json(json!({ "registered": true }))) // ignore-magic: API response
 }
 
 /// DELETE /push/register — Unregister a device token.
@@ -209,7 +210,7 @@ async fn unregister_token(
     Json(body): Json<Value>,
 ) -> Result<Json<Value>> {
     let token = body
-        .get("token")
+        .get("token") // ignore-magic: ob-notifications has no access to ob-handlers schema constants
         .and_then(|v| v.as_str())
         .ok_or_else(|| Error::Validation("Missing 'token' field".into()))?;
 
@@ -234,6 +235,7 @@ async fn send_notification(
     State(state): State<NotificationsState>,
     Json(body): Json<SendNotificationRequest>,
 ) -> Result<Json<Value>> {
+    // ignore-magic: ob-notifications has no access to ob-handlers schema constants
     let tokens = match body.target_type.as_str() {
         "user" => {
             // Get all device tokens for this user
@@ -329,6 +331,7 @@ async fn send_notification(
             }
         }
     } else {
+        // ignore-magic: ob-notifications has no access to ob-handlers schema constants
         // No FCM configured — store as pending notifications
         for token in &tokens {
             let notif = json!({
@@ -368,6 +371,7 @@ async fn subscribe_topic(
     if body.topic.len() > 256 {
         return Err(Error::Validation("Topic name too long".into()));
     }
+    // ignore-magic: ob-notifications has no access to ob-handlers schema constants
     state
         .db
         .upsert_document(

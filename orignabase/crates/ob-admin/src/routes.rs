@@ -117,6 +117,7 @@ async fn delete_user(
         json!({ "admin_id": auth.user_id, "target_id": id }),
     ).await;
 
+    // ignore-magic: ob-admin has no access to ob-handlers schema constants
     state.db.delete_document("users", &id).await?;
     Ok(Json(json!({ "deleted": id })))
 }
@@ -127,6 +128,7 @@ async fn update_roles(
     axum::extract::Path(id): axum::extract::Path<String>,
     Json(body): Json<Value>,
 ) -> Result<Json<Value>> {
+    // ignore-magic: ob-admin has no access to ob-handlers schema constants
     let roles = body
         .get("roles")
         .ok_or_else(|| Error::Validation("Missing 'roles' field".into()))?;
@@ -438,6 +440,7 @@ async fn create_link(
             s
         });
 
+    // ignore-magic: ob-admin has no access to ob-handlers schema constants
     let link_data = json!({
         "slug": slug,
         "target_url": target_url,
@@ -520,6 +523,7 @@ async fn record_metric(
         .get("value")
         .ok_or_else(|| Error::Validation("Missing 'value' field".into()))?;
 
+    // ignore-magic: ob-admin has no access to ob-handlers schema constants
     let metric = json!({
         "name": name,
         "value": value,

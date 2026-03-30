@@ -434,9 +434,10 @@ async fn update_order_status(
         .db
         .query_bind_value(
             &format!(
-                "UPDATE {} SET {} = $status, updatedAt = $now WHERE id = $order_id AND {} = $expected",
+                "UPDATE {} SET {} = $status, {} = $now WHERE id = $order_id AND {} = $expected",
                 collections::ORDERS,
                 fields::ORDER_STATUS,
+                fields::UPDATED_AT,
                 fields::ORDER_STATUS
             ),
             serde_json::json!({
@@ -491,7 +492,7 @@ async fn restore_stock_for_order(
             .and_then(|v| v.as_str())
             .unwrap_or("");
 
-        let quantity = item.get("quantity").and_then(|v| v.as_i64()).unwrap_or(1);
+        let quantity = item.get(fields::QUANTITY).and_then(|v| v.as_i64()).unwrap_or(1);
 
         if !product_id.is_empty() && quantity > 0 {
             // Build product record ID: "products:productId"
@@ -551,7 +552,7 @@ async fn decrement_stock_for_order(
             .and_then(|v| v.as_str())
             .unwrap_or("");
 
-        let quantity = item.get("quantity").and_then(|v| v.as_i64()).unwrap_or(1);
+        let quantity = item.get(fields::QUANTITY).and_then(|v| v.as_i64()).unwrap_or(1);
 
         if !product_id.is_empty() && quantity > 0 {
             // Build product record ID: "products:productId"
@@ -599,8 +600,11 @@ async fn mark_coupon_redeemed(
         .db
         .query_bind_value(
             &format!(
-                "UPDATE {} SET redeemedAt = $now WHERE orderId = $order_id AND couponCode = $code",
-                collections::COUPON_USES
+                "UPDATE {} SET {} = $now WHERE {} = $order_id AND {} = $code",
+                collections::COUPON_USES,
+                fields::REDEEMED_AT,
+                fields::ORDER_ID,
+                fields::COUPON_CODE
             ),
             serde_json::json!({
                 "order_id": order_id,
@@ -627,8 +631,10 @@ async fn release_coupon_reservation(
         .db
         .query_bind_value(
             &format!(
-                "DELETE FROM {} WHERE orderId = $order_id AND redeemedAt IS NULL",
-                collections::COUPON_USES
+                "DELETE FROM {} WHERE {} = $order_id AND {} IS NULL",
+                collections::COUPON_USES,
+                fields::ORDER_ID,
+                fields::REDEEMED_AT
             ),
             serde_json::json!({"order_id": order_id}),
         )
@@ -952,7 +958,7 @@ async fn handle_charge_refunded(
         .ok_or_else(|| ob_core::Error::Validation("Order missing id".into()))?;
 
     let total_amount_cents = order
-        .get("totalAmountCents")
+        .get(fields::TOTAL_AMOUNT_CENTS)
         .and_then(|v| v.as_i64())
         .unwrap_or(0);
 
@@ -966,7 +972,7 @@ async fn handle_charge_refunded(
 
     // Only restore stock on FULL refunds, and ensure we haven't already restored
     let stock_restored = order
-        .get("stockRestored")
+        .get(fields::STOCK_RESTORED)
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
 
@@ -989,8 +995,11 @@ async fn handle_charge_refunded(
         .db
         .query_bind_value(
             &format!(
-                "UPDATE {} SET refundedAmountCents = $refunded, refundedAt = $now, stockRestored = $stock_restored WHERE id = $order_id",
-                collections::ORDERS
+                "UPDATE {} SET {} = $refunded, {} = $now, {} = $stock_restored WHERE id = $order_id",
+                collections::ORDERS,
+                fields::REFUNDED_AMOUNT_CENTS,
+                fields::REFUNDED_AT,
+                fields::STOCK_RESTORED
             ),
             serde_json::json!({
                 "order_id": order_id,
@@ -1090,10 +1099,11 @@ async fn handle_checkout_session_completed(
         .db
         .query_bind_value(
             &format!(
-                "UPDATE {} SET {} = $pi_id, {} = $session_id, updatedAt = $now WHERE id = $order_id",
+                "UPDATE {} SET {} = $pi_id, {} = $session_id, {} = $now WHERE id = $order_id",
                 collections::ORDERS,
                 fields::PAYMENT_INTENT_ID,
-                fields::CHECKOUT_SESSION_ID
+                fields::CHECKOUT_SESSION_ID,
+                fields::UPDATED_AT
             ),
             serde_json::json!({
                 "order_id": order_id,
@@ -1391,8 +1401,12 @@ async fn handle_charge_dispute_closed(
         .db
         .query_bind_value(
             &format!(
-                "UPDATE {} SET disputeStatus = $resolution, closedAt = $now, stripeStatus = $status WHERE disputeId = $dispute_id",
-                collections::DISPUTES
+                "UPDATE {} SET {} = $resolution, {} = $now, {} = $status WHERE {} = $dispute_id",
+                collections::DISPUTES,
+                fields::DISPUTE_STATUS,
+                fields::CLOSED_AT,
+                fields::STRIPE_STATUS,
+                fields::DISPUTE_ID
             ),
             serde_json::json!({
                 "dispute_id": dispute_id,
@@ -1493,8 +1507,9 @@ async fn handle_payout_failed(
         .db
         .query_bind_value(
             &format!(
-                "SELECT * FROM {} WHERE payoutId = $payout_id",
-                collections::ORDERS
+                "SELECT * FROM {} WHERE {} = $payout_id",
+                collections::ORDERS,
+                fields::PAYOUT_ID
             ),
             serde_json::json!({"payout_id": payout_id}),
         )
@@ -1506,8 +1521,13 @@ async fn handle_payout_failed(
         .db
         .query_bind_value(
             &format!(
-                "UPDATE {} SET status = 'failed', failureCode = $code, failureMessage = $msg, updatedAt = $now WHERE payoutId = $payout_id",
-                collections::PAYOUTS
+                "UPDATE {} SET {} = 'failed', {} = $code, {} = $msg, {} = $now WHERE {} = $payout_id",
+                collections::PAYOUTS,
+                fields::STATUS,
+                fields::FAILURE_CODE,
+                fields::FAILURE_MESSAGE,
+                fields::UPDATED_AT,
+                fields::PAYOUT_ID
             ),
             serde_json::json!({
                 "payout_id": payout_id,
@@ -1525,8 +1545,9 @@ async fn handle_payout_failed(
             .db
             .query_bind_value(
                 &format!(
-                    "SELECT * FROM {} WHERE stripeAccountId = $acct_id LIMIT 1",
-                    collections::SELLER_PROFILES
+                    "SELECT * FROM {} WHERE {} = $acct_id LIMIT 1",
+                    collections::SELLER_PROFILES,
+                    fields::STRIPE_ACCOUNT_ID
                 ),
                 serde_json::json!({"acct_id": destination}),
             )

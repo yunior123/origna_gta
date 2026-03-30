@@ -205,7 +205,7 @@ async fn apply_coupon(
 
     // Active check
     let is_active = coupon
-        .get("isActive")
+        .get(fields::IS_ACTIVE)
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
 
@@ -262,7 +262,7 @@ async fn apply_coupon(
         .and_then(|v| v.as_i64())
         .unwrap_or(0);
     let max_per_user = coupon
-        .get("maxUsesPerUser")
+        .get(fields::MAX_USES_PER_USER)
         .and_then(|v| v.as_i64())
         .unwrap_or(1);
     if user_use_count >= max_per_user {
@@ -293,7 +293,7 @@ async fn apply_coupon(
     // Compute discount
     let discount_type = coupon
         .get(fields::COUPON_TYPE)
-        .or_else(|| coupon.get("discountType"))
+        .or_else(|| coupon.get(fields::DISCOUNT_TYPE))
         .and_then(|v| v.as_str())
         .unwrap_or("");
 
@@ -449,13 +449,13 @@ async fn create_coupon(
         fields::DISCOUNT_VALUE: req.discount_value,
         fields::MIN_ORDER_CENTS: req.min_order_cents,
         fields::MAX_USES: req.max_uses_total,
-        "maxUsesPerUser": req.max_uses_per_user.unwrap_or(1),
+        fields::MAX_USES_PER_USER: req.max_uses_per_user.unwrap_or(1),
         fields::USED_COUNT: 0,
         fields::EXPIRES_AT: expires_at,
-        "isActive": req.is_active,
+        fields::IS_ACTIVE: req.is_active,
         fields::SELLER_ID: req.seller_id,
         fields::CREATED_AT: now,
-        "createdByAdminId": user_id,
+        fields::CREATED_BY_ADMIN_ID: user_id,
     });
 
     state
@@ -548,7 +548,7 @@ async fn redeem_coupon(
                     &code,
                     serde_json::json!({
                         fields::USED_COUNT: current_used + 1,
-                        "updatedAt": now,
+                        fields::UPDATED_AT: now,
                     }),
                     fields::USED_COUNT,
                     &serde_json::json!(current_used),
@@ -572,7 +572,7 @@ async fn redeem_coupon(
                 &code,
                 serde_json::json!({
                     fields::USED_COUNT: current_used + 1,
-                    "updatedAt": now,
+                    fields::UPDATED_AT: now,
                 }),
             )
             .await
@@ -594,10 +594,10 @@ async fn redeem_coupon(
         .create_document(
             collections::COUPON_USES,
             serde_json::json!({
-                "couponId": code,
-                "userId": user_id,
-                "orderId": req.order_id,
-                "redeemedAt": now,
+                fields::COUPON_ID: code,
+                fields::USER_ID: user_id,
+                fields::ORDER_ID: req.order_id,
+                fields::REDEEMED_AT: now,
             }),
         )
         .await

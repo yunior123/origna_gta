@@ -351,19 +351,19 @@ async fn update_profile(
     // Handle language update
     if let Some(ref lang) = req.preferred_language {
         validate_language(lang)?;
-        update_data.insert("preferredLanguage".to_string(), json!(lang));
+        update_data.insert(fields::PREFERRED_LANGUAGE.to_string(), json!(lang));
         // CASL compliance: record consent method for language preference
-        update_data.insert("consentMethod".to_string(), json!("user_preference"));
-        update_data.insert("consentTimestamp".to_string(), json!(now));
-        updated_fields.push("preferredLanguage".to_string());
+        update_data.insert(fields::CONSENT_METHOD.to_string(), json!("user_preference"));
+        update_data.insert(fields::CONSENT_TIMESTAMP.to_string(), json!(now));
+        updated_fields.push(fields::PREFERRED_LANGUAGE.to_string());
     }
 
     // Handle terms version acceptance
     if let Some(ref version) = req.terms_version {
         validate_string("termsVersion", version, 20)?;
-        update_data.insert("termsVersion".to_string(), json!(version));
-        update_data.insert("termsAcceptedAt".to_string(), json!(now));
-        updated_fields.push("termsVersion".to_string());
+        update_data.insert(fields::TERMS_VERSION.to_string(), json!(version));
+        update_data.insert(fields::TERMS_ACCEPTED_AT.to_string(), json!(now));
+        updated_fields.push(fields::TERMS_VERSION.to_string());
     }
 
     // Handle tax exemption
@@ -373,13 +373,13 @@ async fn update_profile(
             validate_gst_number(&gst)?;
         }
         update_data.insert(
-            "taxExemption".to_string(),
+            fields::TAX_EXEMPTION.to_string(),
             json!({
-                "gstNumber": gst,
+                fields::GST_NUMBER: gst,
                 fields::UPDATED_AT: now,
             }),
         );
-        updated_fields.push("taxExemption".to_string());
+        updated_fields.push(fields::TAX_EXEMPTION.to_string());
     }
 
     state
@@ -489,10 +489,10 @@ async fn notification_preferences(
     update.insert(fields::UPDATED_AT.to_string(), json!(now));
 
     if let Some(v) = req.notify_new_products {
-        update.insert("notifyNewProducts".to_string(), json!(v));
+        update.insert(fields::NOTIFY_NEW_PRODUCTS.to_string(), json!(v));
     }
     if let Some(v) = req.notify_trending {
-        update.insert("notifyTrending".to_string(), json!(v));
+        update.insert(fields::NOTIFY_TRENDING.to_string(), json!(v));
     }
 
     if update.len() <= 1 {

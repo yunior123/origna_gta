@@ -35,11 +35,11 @@ pub fn order_items(order: &Value) -> Vec<Value> {
 }
 
 pub fn item_quantity(item: &Value) -> u32 {
-    item.get("quantity")
+    item.get(fields::QUANTITY)
         .and_then(|v| v.as_u64())
         .map(|v| v.min(u32::MAX as u64) as u32)
         .or_else(|| {
-            item.get("quantity")
+            item.get(fields::QUANTITY)
                 .and_then(|v| v.as_i64())
                 .map(|v| v.max(0).min(u32::MAX as i64) as u32)
         })
@@ -49,7 +49,7 @@ pub fn item_quantity(item: &Value) -> u32 {
 pub fn item_price_cents(item: &Value) -> i64 {
     item.get(fields::PRICE_CENTS)
         .and_then(|v| v.as_i64())
-        .or_else(|| item.get("price").and_then(|v| v.as_i64()))
+        .or_else(|| item.get(fields::PRICE).and_then(|v| v.as_i64()))
         .unwrap_or(0)
 }
 
@@ -234,9 +234,9 @@ pub async fn resolve_seller_contact(
         .and_then(|profile| {
             profile
                 .get(fields::NAME)
-                .or_else(|| profile.get("businessName"))
-                .or_else(|| profile.get("storeName"))
-                .or_else(|| profile.get("displayName"))
+                .or_else(|| profile.get(fields::BUSINESS_NAME))
+                .or_else(|| profile.get(fields::STORE_NAME))
+                .or_else(|| profile.get(fields::DISPLAY_NAME))
                 .and_then(|v| v.as_str())
         })
         .filter(|v| !v.trim().is_empty())

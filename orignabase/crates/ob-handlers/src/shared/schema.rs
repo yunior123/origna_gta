@@ -58,6 +58,8 @@ pub mod collections {
     pub const DISPUTES: &str = "disputes";
     pub const PRODUCT_RECOMMENDATIONS: &str = "product_recommendations";
     pub const USER_RECOMMENDATIONS: &str = "user_recommendations";
+    pub const PENDING_NOTIFICATIONS: &str = "_pending_notifications";
+    pub const PUSH_TOKENS: &str = "_push_tokens";
 }
 
 pub mod documents {
@@ -316,6 +318,7 @@ pub mod fields {
     // Common timestamps
     pub const SAVED_AT: &str = "savedAt";
     pub const CREATED_AT: &str = "createdAt";
+    pub const DATE_CREATED: &str = "dateCreated";
     pub const UPDATED_AT: &str = "updatedAt";
     pub const VERSION: &str = "version";
     pub const DELETED_AT: &str = "deletedAt";
@@ -324,6 +327,9 @@ pub mod fields {
 
     // Common record fields
     pub const ID: &str = "id";
+
+    // Common / misc fields
+    pub const ACTION: &str = "action";
 
     // User fields
     pub const USER_ID: &str = "userId";
@@ -352,9 +358,13 @@ pub mod fields {
     pub const PHONE_NUMBER: &str = "phoneNumber";
     pub const FIRST_NAME: &str = "firstName";
     pub const LAST_NAME: &str = "lastName";
+    pub const BUSINESS_NAME: &str = "businessName";
+    pub const STORE_NAME: &str = "storeName";
+    pub const PRICE: &str = "price";
 
     // Product fields
     pub const PRODUCT_ID: &str = "productId";
+    pub const PRODUCT_IDS: &str = "productIds";
     pub const SELLER_ID: &str = "sellerId";
     pub const BUYER_ID: &str = "buyerId";
     pub const TITLE: &str = "name";
@@ -362,6 +372,7 @@ pub mod fields {
     pub const PRICE_CENTS: &str = "priceCents";
     pub const STOCK_QUANTITY: &str = "stockQuantity";
     pub const IMAGE_URLS: &str = "imageUrls";
+    pub const IMAGE_URL: &str = "imageUrl";
     pub const CATEGORY: &str = "categoryId";
     pub const IS_ACTIVE: &str = "isActive";
     pub const LIFECYCLE_STATUS: &str = "lifecycleStatus";
@@ -398,6 +409,7 @@ pub mod fields {
     pub const SHIPPING_ADDRESS: &str = "shippingAddress";
     pub const TRACKING_NUMBER: &str = "trackingNumber";
     pub const SHIPPING_CARRIER: &str = "shippingCarrier";
+    pub const ITEM_SHIPPING_CENTS: &str = "itemShippingCents";
 
     // Product Q&A fields
     pub const QUESTION_ID: &str = "questionId";
@@ -421,6 +433,17 @@ pub mod fields {
     pub const MESSAGE_TEXT: &str = "text";
     pub const SENDER_ID: &str = "senderId";
     pub const READ: &str = "read";
+    pub const PRODUCT_TITLE: &str = "productTitle";
+    pub const PRODUCT_IMAGE_URL: &str = "productImageUrl";
+    pub const MESSAGE_COUNT: &str = "messageCount";
+    pub const LAST_MESSAGE_TEXT: &str = "lastMessageText";
+    pub const SENDER_DISPLAY_NAME: &str = "senderDisplayName";
+    pub const FIRST_BUYER_MESSAGE_AT: &str = "firstBuyerMessageAt";
+    pub const FIRST_SELLER_REPLY_AT: &str = "firstSellerReplyAt";
+    pub const FIRST_REPLY_HOURS: &str = "firstReplyHours";
+    pub const MESSAGE_ID: &str = "messageId";
+    pub const REPORTER_ID: &str = "reporterId";
+    pub const REPORT_ID: &str = "reportId";
 
     // Rating fields
     pub const RATING: &str = "rating";
@@ -438,6 +461,9 @@ pub mod fields {
     pub const MAX_USES: &str = "maxUsesTotal";
     pub const USED_COUNT: &str = "usedCount";
     pub const EXPIRES_AT: &str = "expiresAt";
+    pub const REDEEMED_AT: &str = "redeemedAt";
+    pub const MAX_USES_PER_USER: &str = "maxUsesPerUser";
+    pub const CREATED_BY_ADMIN_ID: &str = "createdByAdminId";
 
     // Item / product detail fields
     pub const IS_DIGITAL: &str = "isDigital";
@@ -547,6 +573,9 @@ pub mod fields {
     pub const MARKETING_OPT_IN: &str = "marketingOptIn";
     pub const PAYOUT_STATUS: &str = "payoutStatus";
     pub const PAYOUT_DATE: &str = "payoutDate";
+    pub const PAYOUT_ID: &str = "payoutId";
+    pub const FAILURE_CODE: &str = "failureCode";
+    pub const FAILURE_MESSAGE: &str = "failureMessage";
     pub const COMPUTED_AT: &str = "computedAt";
     pub const TRENDING_SCORE: &str = "trendingScore";
     pub const TRENDING_AT: &str = "trendingAt";
@@ -561,6 +590,7 @@ pub mod fields {
     pub const HAS_DISPUTE: &str = "hasDispute";
     pub const NET_AMOUNT_CENTS: &str = "netAmountCents";
     pub const AMOUNT_CENTS: &str = "amountCents";
+    pub const REFUNDED_AMOUNT_CENTS: &str = "refundedAmountCents";
     pub const STOCK_RESTORED: &str = "stockRestored";
     pub const ESCALATED_AT: &str = "escalatedAt";
     pub const ESCALATION_REASON: &str = "escalationReason";
@@ -575,7 +605,10 @@ pub mod fields {
     pub const FAILURE_REASON: &str = "failureReason";
     pub const LAST_CHECKOUT_SESSION: &str = "lastCheckoutSession";
     pub const LAST_CHECKOUT_TIMESTAMP: &str = "lastCheckoutTimestamp";
+    pub const ARCHIVED: &str = "archived";
     pub const ARCHIVED_AT: &str = "archivedAt";
+    pub const CANCELLED_BY: &str = "cancelledBy";
+    pub const REQUIRES_MANUAL_REVIEW: &str = "requiresManualReview";
     pub const BENEFITS_ACTIVE_AT: &str = "benefitsActiveAt";
     pub const EARLY_CANCEL_COUNT: &str = "earlyCancelCount";
     pub const CANCELS_AT: &str = "cancelsAt";
@@ -590,6 +623,7 @@ pub mod fields {
     pub const CONSENT_METHOD: &str = "consentMethod";
     pub const DATA_PROCESSING_CONSENT: &str = "dataProcessingConsent";
     pub const TERMS_ACCEPTED_AT: &str = "termsAcceptedAt";
+    pub const GST_NUMBER: &str = "gstNumber";
     pub const PRIVACY_ACCEPTED_AT: &str = "privacyAcceptedAt";
     pub const PUSH_ENABLED: &str = "pushEnabled";
     pub const SUSPEND_REASON: &str = "suspendReason";
@@ -610,9 +644,12 @@ pub mod fields {
 
     // Dispute fields
     pub const DISPUTE_ID: &str = "disputeId";
+    pub const DISPUTE_STATUS: &str = "disputeStatus";
     pub const CHARGE_ID: &str = "chargeId";
     pub const REASON: &str = "reason";
     pub const CURRENCY: &str = "currency";
+    pub const CLOSED_AT: &str = "closedAt";
+    pub const STRIPE_STATUS: &str = "stripeStatus";
 
     // Payout notification fields (MESSAGE kept for backward compat / other uses)
     pub const MESSAGE: &str = "message";
@@ -631,6 +668,50 @@ pub mod fields {
 
     // Address management fields
     pub const DEFAULT_ADDRESS_ID: &str = "defaultAddressId";
+
+    // Digital product fields
+    pub const ACTIVATIONS: &str = "activations";
+    pub const ACTIVATED_AT: &str = "activatedAt";
+    pub const LAST_VERIFIED_AT: &str = "lastVerifiedAt";
+    pub const PRODUCT_NAME: &str = "productName";
+    pub const DEVICE_LIMIT: &str = "deviceLimit";
+    pub const DIGITAL_TYPE: &str = "digitalType";
+    pub const ACCESS_TOKEN: &str = "accessToken";
+    pub const BOOK_SOURCE_URL: &str = "bookSourceUrl";
+    pub const SOFTWARE_SOURCE_URL: &str = "softwareSourceUrl";
+    pub const USED: &str = "used";
+
+    // Notification / push fields (pending)
+    pub const NOTIFICATION_ID: &str = "notificationId";
+    pub const ATTEMPTS: &str = "attempts";
+    pub const DELIVERED_AT_PENDING: &str = "delivered_at";
+
+    // Item / batch fields
+    pub const ITEM_IDS: &str = "itemIds";
+    pub const VARIANT_KEY: &str = "variantKey";
+
+    // Seller metrics fields
+    pub const TOTAL_ITEMS_30D: &str = "totalItems30d";
+    pub const BREACHES: &str = "breaches";
+    pub const SEVERITY: &str = "severity";
+
+    // Stock notification fields
+    pub const NOTIFIED_AT: &str = "notifiedAt";
+
+    // Review fields
+    pub const REVIEW_IMAGE_URLS: &str = "reviewImageUrls";
+    pub const VERIFIED_PURCHASE: &str = "verifiedPurchase";
+    pub const REVIEW_ID: &str = "reviewId";
+    pub const VOTE: &str = "vote";
+    pub const HELPFUL_VOTES: &str = "helpfulVotes";
+    pub const UNHELPFUL_VOTES: &str = "unhelpfulVotes";
+    pub const SELLER_RESPONSE: &str = "sellerResponse";
+    pub const SELLER_RESPONDED_AT: &str = "sellerRespondedAt";
+
+    // Subcollection / parent fields
+    pub const PARENT_ID: &str = "parent_id";
+    pub const PARENT_COLLECTION: &str = "parent_collection";
+    pub const WAREHOUSE_ID: &str = "warehouseId";
 }
 
 // =============================================================================

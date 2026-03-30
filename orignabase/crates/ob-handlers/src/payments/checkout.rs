@@ -130,7 +130,7 @@ fn calculate_shipping_cost_cents(
 ) -> Result<i64, ob_core::Error> {
     // All-digital order: no shipping
     let all_digital = items.iter().all(|item| {
-        item.get("isDigital")
+        item.get(fields::IS_DIGITAL)
             .and_then(|v| v.as_bool())
             .unwrap_or(false)
     });
@@ -141,17 +141,17 @@ fn calculate_shipping_cost_cents(
     // Perishable / local-delivery-only enforcement
     for item in items {
         let is_perishable = item
-            .get("isPerishable")
+            .get(fields::IS_PERISHABLE)
             .and_then(|v| v.as_bool())
             .unwrap_or(false);
         let is_local_delivery_only = item
-            .get("isLocalDeliveryOnly")
+            .get(fields::IS_LOCAL_DELIVERY_ONLY)
             .and_then(|v| v.as_bool())
             .unwrap_or(false);
 
         if is_perishable || is_local_delivery_only {
             let seller_prov = item
-                .get("shipFromProvince")
+                .get(fields::SHIP_FROM_PROVINCE)
                 .and_then(|v| v.as_str())
                 .unwrap_or("");
             if !seller_prov.is_empty() && seller_prov != buyer_province {
@@ -176,11 +176,11 @@ fn calculate_shipping_cost_cents(
     // Check if any item ships from a different province or a non-Canadian country
     let has_cross_province = items.iter().any(|item| {
         let seller_prov = item
-            .get("shipFromProvince")
+            .get(fields::SHIP_FROM_PROVINCE)
             .and_then(|v| v.as_str())
             .unwrap_or("");
         let seller_country = item
-            .get("shipFromCountry")
+            .get(fields::SHIP_FROM_COUNTRY)
             .and_then(|v| v.as_str())
             .unwrap_or("");
         let seller_country_upper = seller_country.trim().to_uppercase();
@@ -458,7 +458,7 @@ async fn create_checkout_session(
         }
 
         let is_digital = product
-            .get("isDigital")
+            .get(fields::IS_DIGITAL)
             .and_then(|v| v.as_bool())
             .unwrap_or(false);
 
@@ -474,18 +474,18 @@ async fn create_checkout_session(
             .unwrap_or(false);
 
         let is_local_delivery_only = product
-            .get("isLocalDeliveryOnly")
+            .get(fields::IS_LOCAL_DELIVERY_ONLY)
             .and_then(|v| v.as_bool())
             .unwrap_or(false);
 
         let ship_from_province = product
-            .get("shipFromProvince")
+            .get(fields::SHIP_FROM_PROVINCE)
             .and_then(|v| v.as_str())
             .unwrap_or("")
             .to_string();
 
         let ship_from_country = product
-            .get("shipFromCountry")
+            .get(fields::SHIP_FROM_COUNTRY)
             .and_then(|v| v.as_str())
             .unwrap_or("")
             .to_string();
@@ -495,16 +495,16 @@ async fn create_checkout_session(
             fields::QUANTITY: cart_item.quantity,
             fields::PRICE_CENTS: price_cents,
             fields::SELLER_ID: seller_id,
-            "title": product.get(fields::TITLE).and_then(|v| v.as_str()).unwrap_or(""),
-            "imageUrl": product.get(fields::IMAGE_URLS)
+            fields::TITLE: product.get(fields::TITLE).and_then(|v| v.as_str()).unwrap_or(""),
+            fields::IMAGE_URL: product.get(fields::IMAGE_URLS)
                 .and_then(|v| v.as_array())
                 .and_then(|a| a.first())
                 .and_then(|v| v.as_str()).unwrap_or(""),
             fields::IS_DIGITAL: is_digital,
-            "isPerishable": is_perishable,
-            "isLocalDeliveryOnly": is_local_delivery_only,
-            "shipFromProvince": ship_from_province,
-            "shipFromCountry": ship_from_country,
+            fields::IS_PERISHABLE: is_perishable,
+            fields::IS_LOCAL_DELIVERY_ONLY: is_local_delivery_only,
+            fields::SHIP_FROM_PROVINCE: ship_from_province,
+            fields::SHIP_FROM_COUNTRY: ship_from_country,
         }));
     }
 
@@ -550,7 +550,7 @@ async fn create_checkout_session(
     for seller_id in &unique_seller_ids {
         if let Ok(seller) = state.db.get_document(collections::USERS, seller_id).await {
             let suspended = seller
-                .get("suspended")
+                .get(fields::SUSPENDED)
                 .and_then(|v| v.as_bool())
                 .unwrap_or(false);
             if suspended {
@@ -589,7 +589,7 @@ async fn create_checkout_session(
         }
 
         // Cache seller_profiles for Connect account lookup later
-        if let Ok(profile) = state.db.get_document("seller_profiles", seller_id).await {
+        if let Ok(profile) = state.db.get_document(collections::SELLER_PROFILES, seller_id).await {
             seller_profiles_cache.insert(seller_id.clone(), profile);
         }
     }
@@ -667,7 +667,7 @@ async fn create_checkout_session(
         let mut has_connect_account = false;
         for sid in &unique_seller_ids {
             if let Some(profile) = seller_profiles_cache.get(sid)
-                && let Some(acct_id) = profile.get("stripeAccountId").and_then(|v| v.as_str())
+                && let Some(acct_id) = profile.get(fields::STRIPE_ACCOUNT_ID).and_then(|v| v.as_str())
                 && acct_id.starts_with("acct_")
             {
                 has_connect_account = true;
@@ -692,9 +692,9 @@ async fn create_checkout_session(
     }
 
     for (i, item) in validated_items.iter().enumerate() {
-        let price_cents = item["priceCents"].as_i64().unwrap_or(0);
+        let price_cents = item[fields::PRICE_CENTS].as_i64().unwrap_or(0);
         let name = item[fields::TITLE].as_str().unwrap_or("Item");
-        let qty = item["quantity"].as_u64().unwrap_or(1);
+        let qty = item[fields::QUANTITY].as_u64().unwrap_or(1);
 
         form_data.push((
             format!("line_items[{}][price_data][currency]", i),
@@ -1386,10 +1386,10 @@ mod tests {
                 &seller_1,
                 json!({
                     fields::UID: seller_1,
-                    "suspended": false,
-                    "onboardingCompleted": true,
-                    "chargesEnabled": true,
-                    "payoutsEnabled": true,
+                    fields::SUSPENDED: false,
+                    fields::ONBOARDING_COMPLETED: true,
+                    fields::CHARGES_ENABLED: true,
+                    fields::PAYOUTS_ENABLED: true,
                 }),
             )
             .await
@@ -1455,7 +1455,7 @@ mod tests {
                     fields::STOCK_QUANTITY: 3,
                     fields::PRICE_CENTS: 2500,
                     fields::IS_AGE_RESTRICTED: true,
-                    "isDigital": true,
+                    fields::IS_DIGITAL: true,
                     fields::TITLE: "Restricted Digital",
                     fields::IMAGE_URLS: [],
                 }),
@@ -1469,10 +1469,10 @@ mod tests {
                 &seller_2,
                 json!({
                     fields::UID: seller_2,
-                    "suspended": false,
-                    "onboardingCompleted": true,
-                    "chargesEnabled": true,
-                    "payoutsEnabled": true,
+                    fields::SUSPENDED: false,
+                    fields::ONBOARDING_COMPLETED: true,
+                    fields::CHARGES_ENABLED: true,
+                    fields::PAYOUTS_ENABLED: true,
                 }),
             )
             .await
@@ -1604,7 +1604,7 @@ mod tests {
                     fields::PRICE_CENTS: 1500,
                     fields::TITLE: "Physical Widget",
                     fields::IMAGE_URLS: ["https://example.com/widget.png"],
-                    "isDigital": false,
+                    fields::IS_DIGITAL: false,
                 }),
             )
             .await
@@ -1616,10 +1616,10 @@ mod tests {
                 &seller_id,
                 json!({
                     fields::UID: seller_id,
-                    "suspended": false,
-                    "onboardingCompleted": true,
-                    "chargesEnabled": true,
-                    "payoutsEnabled": true,
+                    fields::SUSPENDED: false,
+                    fields::ONBOARDING_COMPLETED: true,
+                    fields::CHARGES_ENABLED: true,
+                    fields::PAYOUTS_ENABLED: true,
                 }),
             )
             .await
@@ -1707,10 +1707,10 @@ mod tests {
                 "seller_negative",
                 json!({
                     fields::UID: "seller_negative",
-                    "suspended": false,
-                    "onboardingCompleted": true,
-                    "chargesEnabled": true,
-                    "payoutsEnabled": true,
+                    fields::SUSPENDED: false,
+                    fields::ONBOARDING_COMPLETED: true,
+                    fields::CHARGES_ENABLED: true,
+                    fields::PAYOUTS_ENABLED: true,
                 }),
             )
             .await
@@ -1773,10 +1773,10 @@ mod tests {
                 "seller_1",
                 json!({
                     fields::UID: "seller_1",
-                    "suspended": false,
-                    "onboardingCompleted": true,
-                    "chargesEnabled": true,
-                    "payoutsEnabled": true,
+                    fields::SUSPENDED: false,
+                    fields::ONBOARDING_COMPLETED: true,
+                    fields::CHARGES_ENABLED: true,
+                    fields::PAYOUTS_ENABLED: true,
                 }),
             )
             .await
@@ -2477,7 +2477,7 @@ mod tests {
 
     #[test]
     fn test_shipping_free_above_threshold() {
-        let items = vec![json!({"isDigital": false, "shipFromProvince": "ON"})];
+        let items = vec![json!({fields::IS_DIGITAL: false, fields::SHIP_FROM_PROVINCE: "ON"})];
         // $75.00 subtotal → free shipping
         assert_eq!(
             calculate_shipping_cost_cents(7500, "ON", &items).unwrap(),
@@ -2492,7 +2492,7 @@ mod tests {
 
     #[test]
     fn test_shipping_standard_below_threshold() {
-        let items = vec![json!({"isDigital": false, "shipFromProvince": "ON"})];
+        let items = vec![json!({fields::IS_DIGITAL: false, fields::SHIP_FROM_PROVINCE: "ON"})];
         // $50.00 subtotal, same province → standard rate
         assert_eq!(
             calculate_shipping_cost_cents(5000, "ON", &items).unwrap(),
@@ -2502,7 +2502,7 @@ mod tests {
 
     #[test]
     fn test_shipping_cross_province() {
-        let items = vec![json!({"isDigital": false, "shipFromProvince": "BC"})];
+        let items = vec![json!({fields::IS_DIGITAL: false, fields::SHIP_FROM_PROVINCE: "BC"})];
         // $50.00 subtotal, seller in BC, buyer in ON → cross-province rate
         assert_eq!(
             calculate_shipping_cost_cents(5000, "ON", &items).unwrap(),
@@ -2512,7 +2512,7 @@ mod tests {
 
     #[test]
     fn test_shipping_digital_items_free() {
-        let items = vec![json!({"isDigital": true, "shipFromProvince": "ON"})];
+        let items = vec![json!({fields::IS_DIGITAL: true, fields::SHIP_FROM_PROVINCE: "ON"})];
         // All digital → no shipping regardless of subtotal
         assert_eq!(
             calculate_shipping_cost_cents(1000, "ON", &items).unwrap(),
@@ -2523,8 +2523,8 @@ mod tests {
     #[test]
     fn test_shipping_mixed_digital_physical() {
         let items = vec![
-            json!({"isDigital": true, "shipFromProvince": "ON"}),
-            json!({"isDigital": false, "shipFromProvince": "ON"}),
+            json!({fields::IS_DIGITAL: true, fields::SHIP_FROM_PROVINCE: "ON"}),
+            json!({fields::IS_DIGITAL: false, fields::SHIP_FROM_PROVINCE: "ON"}),
         ];
         // Mixed: physical items present → standard rate applies
         assert_eq!(
@@ -2535,7 +2535,7 @@ mod tests {
 
     #[test]
     fn test_shipping_empty_ship_from_province_not_cross() {
-        let items = vec![json!({"isDigital": false, "shipFromProvince": ""})];
+        let items = vec![json!({fields::IS_DIGITAL: false, fields::SHIP_FROM_PROVINCE: ""})];
         // Empty shipFromProvince → not cross-province → standard rate
         assert_eq!(
             calculate_shipping_cost_cents(3000, "ON", &items).unwrap(),
@@ -2546,7 +2546,7 @@ mod tests {
     #[test]
     fn test_shipping_international_seller() {
         let items =
-            vec![json!({"isDigital": false, "shipFromProvince": "", "shipFromCountry": "China"})];
+            vec![json!({fields::IS_DIGITAL: false, fields::SHIP_FROM_PROVINCE: "", fields::SHIP_FROM_COUNTRY: "China"})];
         // International seller → cross-province/intl rate
         assert_eq!(
             calculate_shipping_cost_cents(3000, "ON", &items).unwrap(),
@@ -2557,7 +2557,7 @@ mod tests {
     #[test]
     fn test_shipping_canadian_seller_country_not_cross() {
         let items = vec![
-            json!({"isDigital": false, "shipFromProvince": "ON", "shipFromCountry": "Canada"}),
+            json!({fields::IS_DIGITAL: false, fields::SHIP_FROM_PROVINCE: "ON", fields::SHIP_FROM_COUNTRY: "Canada"}),
         ];
         // Canadian seller, same province → standard rate
         assert_eq!(

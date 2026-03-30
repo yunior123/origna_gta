@@ -184,7 +184,7 @@ async fn activate_license(
 
     // Check existing activations
     let activations = license
-        .get("activations")
+        .get(fields::ACTIVATIONS)
         .and_then(|v| v.as_array())
         .cloned()
         .unwrap_or_default();
@@ -195,12 +195,12 @@ async fn activate_license(
     for act in &activations {
         if act.get(fields::DEVICE_ID).and_then(|v| v.as_str()) == Some(&device_id) {
             let activated_at = act
-                .get("activatedAt")
+                .get(fields::ACTIVATED_AT)
                 .and_then(|v| v.as_str())
                 .unwrap_or(&now);
 
             let product_name = license
-                .get("productName")
+                .get(fields::PRODUCT_NAME)
                 .and_then(|v| v.as_str())
                 .unwrap_or("")
                 .to_string();
@@ -212,11 +212,11 @@ async fn activate_license(
                 .find(|a| a.get(fields::DEVICE_ID).and_then(|v| v.as_str()) == Some(&device_id))
                 && let Some(obj) = existing.as_object_mut()
             {
-                obj.insert("lastVerifiedAt".into(), serde_json::json!(now));
+                obj.insert(fields::LAST_VERIFIED_AT.into(), serde_json::json!(now));
             }
 
             let update = serde_json::json!({
-                "activations": updated_activations,
+                fields::ACTIVATIONS: updated_activations,
                 fields::UPDATED_AT: now,
             });
             state
@@ -236,7 +236,7 @@ async fn activate_license(
 
     // Check device limit
     let device_limit = license
-        .get("deviceLimit")
+        .get(fields::DEVICE_LIMIT)
         .and_then(|v| v.as_u64())
         .unwrap_or(business_rules::MAX_DEVICES_PER_LICENSE as u64);
 
@@ -250,13 +250,13 @@ async fn activate_license(
     let mut new_activations = activations;
     new_activations.push(serde_json::json!({
         fields::DEVICE_ID: device_id,
-        "platform": req.platform.unwrap_or_default(),
-        "activatedAt": now,
-        "lastVerifiedAt": now,
+        fields::PLATFORM: req.platform.unwrap_or_default(),
+        fields::ACTIVATED_AT: now,
+        fields::LAST_VERIFIED_AT: now,
     }));
 
     let update = serde_json::json!({
-        "activations": new_activations,
+        fields::ACTIVATIONS: new_activations,
         fields::UPDATED_AT: now,
     });
 
@@ -267,7 +267,7 @@ async fn activate_license(
         .map_err(|e| ob_core::Error::Database(format!("Failed to activate license: {e}")))?;
 
     let product_name = license
-        .get("productName")
+        .get(fields::PRODUCT_NAME)
         .and_then(|v| v.as_str())
         .unwrap_or("")
         .to_string();
@@ -333,7 +333,7 @@ async fn deactivate_license(
 
     // Remove device from activations
     let activations = license
-        .get("activations")
+        .get(fields::ACTIVATIONS)
         .and_then(|v| v.as_array())
         .cloned()
         .unwrap_or_default();
@@ -347,7 +347,7 @@ async fn deactivate_license(
     let now = chrono::Utc::now().to_rfc3339();
 
     let update = serde_json::json!({
-        "activations": remaining,
+        fields::ACTIVATIONS: remaining,
         fields::UPDATED_AT: now,
     });
 
@@ -423,7 +423,7 @@ async fn download_book(
     }
 
     let digital_type = license
-        .get("digitalType")
+        .get(fields::DIGITAL_TYPE)
         .and_then(|v| v.as_str())
         .unwrap_or("");
     if digital_type != "book" {
@@ -436,19 +436,19 @@ async fn download_book(
     let expires_at = now + chrono::Duration::minutes(business_rules::DOWNLOAD_TOKEN_MINUTES as i64);
 
     let book_source_url = license
-        .get("bookSourceUrl")
+        .get(fields::BOOK_SOURCE_URL)
         .and_then(|v| v.as_str())
         .unwrap_or("")
         .to_string();
 
     let token_doc = serde_json::json!({
-        "accessToken": token,
+        fields::ACCESS_TOKEN: token,
         fields::LICENSE_KEY: license_key,
-        "userId": user_id,
+        fields::USER_ID: user_id,
         fields::PRODUCT_ID: req.product_id,
-        "bookSourceUrl": book_source_url,
-        "expiresAt": expires_at.to_rfc3339(),
-        "used": false,
+        fields::BOOK_SOURCE_URL: book_source_url,
+        fields::EXPIRES_AT: expires_at.to_rfc3339(),
+        fields::USED: false,
         fields::CREATED_AT: now.to_rfc3339(),
     });
 
@@ -523,7 +523,7 @@ async fn download_software(
     }
 
     let digital_type = license
-        .get("digitalType")
+        .get(fields::DIGITAL_TYPE)
         .and_then(|v| v.as_str())
         .unwrap_or("");
     if digital_type != "software" {
@@ -536,17 +536,17 @@ async fn download_software(
     let expires_at = now + chrono::Duration::minutes(business_rules::DOWNLOAD_TOKEN_MINUTES as i64);
 
     let token_doc = serde_json::json!({
-        "accessToken": token,
+        fields::ACCESS_TOKEN: token,
         fields::LICENSE_KEY: license_key,
-        "userId": user_id,
+        fields::USER_ID: user_id,
         fields::PRODUCT_ID: req.product_id,
-        "softwareSourceUrl": license
-            .get("softwareSourceUrl")
-            .or_else(|| license.get("downloadUrl"))
+        fields::SOFTWARE_SOURCE_URL: license
+            .get(fields::SOFTWARE_SOURCE_URL)
+            .or_else(|| license.get(fields::DOWNLOAD_URL))
             .cloned()
             .unwrap_or(serde_json::json!("")),
-        "expiresAt": expires_at.to_rfc3339(),
-        "used": false,
+        fields::EXPIRES_AT: expires_at.to_rfc3339(),
+        fields::USED: false,
         fields::CREATED_AT: now.to_rfc3339(),
     });
 
@@ -593,7 +593,7 @@ async fn verify_license(
         .to_string();
 
     let product_name = license
-        .get("productName")
+        .get(fields::PRODUCT_NAME)
         .and_then(|v| v.as_str())
         .unwrap_or("")
         .to_string();
@@ -603,7 +603,7 @@ async fn verify_license(
     // If device_id provided, update lastVerifiedAt for that device
     if let Some(ref device_id) = req.device_id {
         let activations = license
-            .get("activations")
+            .get(fields::ACTIVATIONS)
             .and_then(|v| v.as_array())
             .cloned()
             .unwrap_or_default();
@@ -619,7 +619,7 @@ async fn verify_license(
                 if act.get(fields::DEVICE_ID).and_then(|v| v.as_str()) == Some(device_id.as_str())
                     && let Some(obj) = act.as_object_mut()
                 {
-                    obj.insert("lastVerifiedAt".into(), serde_json::json!(now));
+                    obj.insert(fields::LAST_VERIFIED_AT.into(), serde_json::json!(now));
                 }
             }
             let update = serde_json::json!({
@@ -662,7 +662,7 @@ async fn get_book_redirect(
 
     validate_redirect_token_state(&token_doc)?;
     let source_url = token_doc
-        .get("bookSourceUrl")
+        .get(fields::BOOK_SOURCE_URL)
         .and_then(|v| v.as_str())
         .ok_or_else(|| ob_core::Error::NotFound("Download URL not found".into()))?;
     mark_download_token_used(&state, collections::BOOK_ACCESS_TOKENS, &token_doc).await;
@@ -1445,7 +1445,7 @@ mod tests {
             .get_document(collections::LICENSES, &license_key)
             .await
             .unwrap();
-        assert!(license["activations"][0].get("lastVerifiedAt").is_some());
+        assert!(license["activations"][0].get(fields::LAST_VERIFIED_AT).is_some());
     }
 
     #[tokio::test]

@@ -165,7 +165,7 @@ async fn run_auto_capture(state: &HandlersState) -> std::result::Result<(), Stri
     let mut failed_count = 0u32;
 
     for order in &orders {
-        let order_id = normalize_record_id(order.get("id").and_then(|v| v.as_str()).unwrap_or(""));
+        let order_id = normalize_record_id(order.get(fields::ID).and_then(|v| v.as_str()).unwrap_or(""));
         let payment_intent_id = order
             .get(fields::PAYMENT_INTENT_ID)
             .and_then(|v| v.as_str())
@@ -277,11 +277,11 @@ async fn run_auto_capture(state: &HandlersState) -> std::result::Result<(), Stri
                     collections::PAYOUTS,
                     &payout_id,
                     json!({
-                        "id": payout_id,
+                        fields::ID: payout_id,
                         fields::ORDER_ID: order_id,
                         fields::SELLER_ID: seller_id,
                         fields::AMOUNT_CENTS: amount_cents,
-                        "platformFeeTotalCents": fee_cents,
+                        fields::PLATFORM_FEE_CENTS: fee_cents,
                         fields::NET_AMOUNT_CENTS: net_cents,
                         fields::STATUS: "pending",
                         fields::AUTO_CAPTURED: true,
@@ -440,7 +440,7 @@ pub async fn check_expired_authorizations(state: &HandlersState) {
                             fields::ORDER_ID: id,
                             fields::USER_ID: buyer_id,
                             fields::EVENT_TYPE: "authorization_expired",
-                            "message": "Payment authorization expired after 7 days. Order cancelled and stock restored.",
+                            fields::MESSAGE: "Payment authorization expired after 7 days. Order cancelled and stock restored.",
                             fields::CREATED_AT: now_str,
                         }),
                     )
@@ -488,14 +488,14 @@ pub async fn auto_archive_old_orders(state: &HandlersState) {
         let mut archived = 0u32;
 
         for order in &orders {
-            let id = order.get("id").and_then(|v| v.as_str()).unwrap_or("");
+            let id = order.get(fields::ID).and_then(|v| v.as_str()).unwrap_or("");
             let _ = state
                 .db
                 .update_document(
                     collections::ORDERS,
                     id,
                     json!({
-                        "archived": true,
+                        fields::ARCHIVED: true,
                         fields::ARCHIVED_AT: Utc::now().to_rfc3339(),
                         fields::UPDATED_AT: Utc::now().to_rfc3339(),
                     }),
@@ -581,7 +581,7 @@ pub async fn cleanup_stale_rate_limits(state: &HandlersState) {
         let mut deleted = 0u32;
 
         for doc in &docs {
-            let id = doc.get("id").and_then(|v| v.as_str()).unwrap_or("");
+            let id = doc.get(fields::ID).and_then(|v| v.as_str()).unwrap_or("");
             if !id.is_empty() {
                 let _ = state.db.delete_document(collections::RATE_LIMITS, id).await;
                 deleted += 1;
@@ -615,7 +615,7 @@ pub async fn cleanup_orphaned_r2_images(state: &HandlersState) {
         // Collect all referenced image URLs from products
         let products = state
             .db
-            .query_bind("SELECT * FROM products LIMIT 5000", json!({}))
+            .query_bind(&format!("SELECT * FROM {} LIMIT 5000", collections::PRODUCTS), json!({}))
             .await
             .map_err(|e| e.to_string())?;
 
@@ -679,7 +679,7 @@ pub async fn cleanup_stale_webhook_events(state: &HandlersState) {
         let mut deleted = 0u32;
 
         for doc in &docs {
-            let id = doc.get("id").and_then(|v| v.as_str()).unwrap_or("");
+            let id = doc.get(fields::ID).and_then(|v| v.as_str()).unwrap_or("");
             if !id.is_empty() {
                 let _ = state
                     .db
@@ -728,7 +728,7 @@ pub async fn cleanup_stale_security_alerts(state: &HandlersState) {
         let mut deleted = 0u32;
 
         for doc in &docs {
-            let id = doc.get("id").and_then(|v| v.as_str()).unwrap_or("");
+            let id = doc.get(fields::ID).and_then(|v| v.as_str()).unwrap_or("");
             if !id.is_empty() {
                 let _ = state
                     .db
@@ -776,7 +776,7 @@ pub async fn retry_failed_meilisearch_syncs(state: &HandlersState) {
         let max_retries = business_rules::MEILISEARCH_DLQ_MAX_RETRIES;
 
         for failure in &failures {
-            let failure_id = failure.get("id").and_then(|v| v.as_str()).unwrap_or("");
+            let failure_id = failure.get(fields::ID).and_then(|v| v.as_str()).unwrap_or("");
             let product_id = failure
                 .get(fields::PRODUCT_ID)
                 .and_then(|v| v.as_str())
@@ -1007,7 +1007,7 @@ pub async fn check_low_stock_alerts(state: &HandlersState) {
                 .get(fields::NAME)
                 .and_then(|v| v.as_str())
                 .unwrap_or("Your product");
-            let product_id = product.get("id").and_then(|v| v.as_str()).unwrap_or("");
+            let product_id = product.get(fields::ID).and_then(|v| v.as_str()).unwrap_or("");
 
             // Generate and send low stock email
             if let Some(api_key) = state.config.secret("mailjet_api_key")
@@ -1079,7 +1079,7 @@ pub async fn send_abandoned_cart_emails(state: &HandlersState) {
         let mut sent = 0u32;
 
         for user in &users {
-            let user_id = user.get("id").and_then(|v| v.as_str()).unwrap_or("");
+            let user_id = user.get(fields::ID).and_then(|v| v.as_str()).unwrap_or("");
             let email = user
                 .get(fields::EMAIL)
                 .and_then(|v| v.as_str())
@@ -1302,7 +1302,7 @@ pub async fn compute_seller_metrics(state: &HandlersState) {
                         fields::DISPUTE_RATE: (dispute_rate * 10000.0).round() / 10000.0,
                         fields::REFUND_RATE: (refund_rate * 10000.0).round() / 10000.0,
                         fields::CANCELLATION_RATE: (cancel_rate * 10000.0).round() / 10000.0,
-                        "totalItems30d": stats.total_items,
+                        fields::TOTAL_ITEMS_30D: stats.total_items,
                         fields::COMPUTED_AT: now.to_rfc3339(),
                     }),
                 )
@@ -1327,10 +1327,10 @@ pub async fn compute_seller_metrics(state: &HandlersState) {
                     .create_document(
                         collections::SECURITY_ALERTS,
                         json!({
-                            "type": "seller_metrics_breach",
+                            fields::TYPE: "seller_metrics_breach",
                             fields::SELLER_ID: seller_id,
-                            "breaches": breaches,
-                            "severity": "high",
+                            fields::BREACHES: breaches,
+                            fields::SEVERITY: "high",
                             fields::CREATED_AT: now.to_rfc3339(),
                             fields::RESOLVED: false,
                         }),
@@ -1389,7 +1389,7 @@ pub async fn compute_trending_products(state: &HandlersState) {
         let mut old_trending: std::collections::HashSet<String> = std::collections::HashSet::new();
 
         for prod in &products {
-            let prod_id = prod.get("id").and_then(|v| v.as_str()).unwrap_or("");
+            let prod_id = prod.get(fields::ID).and_then(|v| v.as_str()).unwrap_or("");
             let name = prod
                 .get(fields::NAME)
                 .and_then(|v| v.as_str())
@@ -1502,7 +1502,7 @@ pub async fn sync_expired_subscriptions(state: &HandlersState) {
         let mut synced = 0u32;
 
         for sub in &subs {
-            let uid = normalize_record_id(sub.get("id").and_then(|v| v.as_str()).unwrap_or(""));
+            let uid = normalize_record_id(sub.get(fields::ID).and_then(|v| v.as_str()).unwrap_or(""));
             if uid.is_empty() {
                 continue;
             }
@@ -1529,7 +1529,7 @@ pub async fn sync_expired_subscriptions(state: &HandlersState) {
                     json!({
                         fields::IS_PREMIUM: false,
                         fields::PREMIUM_EXPIRES_AT: null,
-                        "stripeSubscriptionId": null,
+                        fields::STRIPE_SUBSCRIPTION_ID: null,
                         fields::PREMIUM_SINCE: null,
                         fields::UPDATED_AT: now.to_rfc3339(),
                     }),
@@ -1579,14 +1579,14 @@ pub async fn escalate_stale_return_requests(state: &HandlersState) {
         let mut escalated = 0u32;
 
         for ret in &returns {
-            let return_id = ret.get("id").and_then(|v| v.as_str()).unwrap_or("");
+            let return_id = ret.get(fields::ID).and_then(|v| v.as_str()).unwrap_or("");
             let _ = state
                 .db
                 .update_document(
                     collections::RETURN_REQUESTS,
                     return_id,
                     json!({
-                        "returnStatus": "escalated",
+                        fields::RETURN_STATUS: "escalated",
                         fields::UPDATED_AT: now.to_rfc3339(),
                         fields::ESCALATED_AT: now.to_rfc3339(),
                         fields::ESCALATION_REASON: format!(
@@ -1639,7 +1639,7 @@ pub async fn send_premium_renewal_reminders(state: &HandlersState) {
             let mut sent = 0u32;
 
             for sub in &subs {
-                let raw_id = sub.get("id").and_then(|v| v.as_str()).unwrap_or("");
+                let raw_id = sub.get(fields::ID).and_then(|v| v.as_str()).unwrap_or("");
                 let uid = normalize_record_id(raw_id);
 
                 // Skip if cancelled at period end
@@ -1776,7 +1776,7 @@ pub async fn drain_pending_notifications(state: &HandlersState) {
         let pending: Vec<Value> = state
             .db
             .query_bind(
-                "SELECT * FROM _pending_notifications WHERE data->>'status' = 'pending' AND created_at < now() - interval '30 seconds' LIMIT 100",
+                &format!("SELECT * FROM {} WHERE data->>'status' = 'pending' AND created_at < now() - interval '30 seconds' LIMIT 100", collections::PENDING_NOTIFICATIONS),
                 json!({}),
             )
             .await
@@ -1797,25 +1797,25 @@ pub async fn drain_pending_notifications(state: &HandlersState) {
 
         for record in &pending {
             let Some(record_id) = record
-                .get("id")
+                .get(fields::ID)
                 .and_then(|v| v.as_str())
                 .map(|id| id.split(':').next_back().unwrap_or(id).to_string())
             else {
                 continue;
             };
-            let Some(token) = record.get("token").and_then(|v| v.as_str()) else {
+            let Some(token) = record.get(fields::TOKEN).and_then(|v| v.as_str()) else {
                 continue;
             };
-            let title = record.get("title").and_then(|v| v.as_str()).unwrap_or("");
-            let body = record.get("body").and_then(|v| v.as_str()).unwrap_or("");
+            let title = record.get(fields::NOTIFICATION_TITLE).and_then(|v| v.as_str()).unwrap_or("");
+            let body = record.get(fields::NOTIFICATION_BODY).and_then(|v| v.as_str()).unwrap_or("");
             let attempts = record
-                .get("attempts")
+                .get(fields::ATTEMPTS)
                 .and_then(|v| v.as_i64())
                 .unwrap_or(0);
 
             // Build optional data payload from stored JSON.
             let push_data: Option<std::collections::HashMap<String, String>> =
-                record.get("data").and_then(|v| v.as_object()).map(|obj| {
+                record.get(fields::DATA).and_then(|v| v.as_object()).map(|obj| {
                     obj.iter()
                         .filter_map(|(k, v)| v.as_str().map(|s| (k.clone(), s.to_string())))
                         .collect()
@@ -1838,12 +1838,12 @@ pub async fn drain_pending_notifications(state: &HandlersState) {
                 let _ = state
                     .db
                     .update_document(
-                        "_pending_notifications",
+                        collections::PENDING_NOTIFICATIONS,
                         &record_id,
                         json!({
-                            "status": "delivered",
-                            "delivered_at": &now,
-                            "updated_at": &now,
+                            fields::STATUS: "delivered",
+                            fields::DELIVERED_AT_PENDING: &now,
+                            fields::PENDING_UPDATED_AT: &now,
                         }),
                     )
                     .await;
@@ -1854,12 +1854,12 @@ pub async fn drain_pending_notifications(state: &HandlersState) {
                     let _ = state
                         .db
                         .update_document(
-                            "_pending_notifications",
+                            collections::PENDING_NOTIFICATIONS,
                             &record_id,
                             json!({
-                                "status": "failed",
-                                "attempts": new_attempts,
-                                "updated_at": &now,
+                                fields::STATUS: "failed",
+                                fields::ATTEMPTS: new_attempts,
+                                fields::PENDING_UPDATED_AT: &now,
                             }),
                         )
                         .await;
@@ -1868,11 +1868,11 @@ pub async fn drain_pending_notifications(state: &HandlersState) {
                     let _ = state
                         .db
                         .update_document(
-                            "_pending_notifications",
+                            collections::PENDING_NOTIFICATIONS,
                             &record_id,
                             json!({
-                                "attempts": new_attempts,
-                                "updated_at": &now,
+                                fields::ATTEMPTS: new_attempts,
+                                fields::PENDING_UPDATED_AT: &now,
                             }),
                         )
                         .await;
@@ -1937,14 +1937,14 @@ pub async fn compute_co_purchase_recommendations(state: &HandlersState) {
         for order in &orders {
             let empty_vec = vec![];
             let items = order
-                .get("items")
+                .get(fields::ITEMS)
                 .and_then(|v| v.as_array())
                 .unwrap_or(&empty_vec);
 
             let product_ids: Vec<String> = items
                 .iter()
                 .filter_map(|item| {
-                    item.get("productId")
+                    item.get(fields::PRODUCT_ID)
                         .and_then(|v| v.as_str())
                         .map(String::from)
                 })
@@ -1979,9 +1979,9 @@ pub async fn compute_co_purchase_recommendations(state: &HandlersState) {
                 .take(10)
                 .map(|(pid, score)| {
                     json!({
-                        "productId": pid,
-                        "score": score,
-                        "type": "co_purchase"
+                        fields::PRODUCT_ID: pid,
+                        fields::SCORE: score,
+                        fields::TYPE: "co_purchase"
                     })
                 })
                 .collect();
@@ -1992,8 +1992,8 @@ pub async fn compute_co_purchase_recommendations(state: &HandlersState) {
                     collections::PRODUCT_RECOMMENDATIONS,
                     &product_id.replace(':', "_"),
                     json!({
-                        "productId": product_id,
-                        "recommendations": top10,
+                        fields::PRODUCT_ID: product_id,
+                        fields::RECOMMENDATIONS: top10,
                         fields::COMPUTED_AT: &now,
                     }),
                 )
@@ -2148,7 +2148,7 @@ mod tests {
         // Clear all cron locks to prevent interference from stale locks in shared DB
         if let Ok(locks) = state.db.list_documents(collections::CRON_LOCKS, Some(100usize), Some(0usize)).await {
             for lock in &locks {
-                if let Some(id) = lock.get("id").and_then(|v| v.as_str()) {
+                if let Some(id) = lock.get(fields::ID).and_then(|v| v.as_str()) {
                     let _ = state.db.update_document(
                         collections::CRON_LOCKS,
                         id,
@@ -2168,7 +2168,7 @@ mod tests {
         // Use raw INSERT to set created_at to an old timestamp
         let escaped = data_str.replace('\'', "''");
         let _ = db.query_raw(&format!(
-            "INSERT INTO _pending_notifications (id, data, created_at) VALUES ('{id}', '{escaped}'::jsonb, '{old_ts}'::timestamptz) ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, created_at = EXCLUDED.created_at"
+            "INSERT INTO {} (id, data, created_at) VALUES ('{id}', '{escaped}'::jsonb, '{old_ts}'::timestamptz) ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, created_at = EXCLUDED.created_at", collections::PENDING_NOTIFICATIONS
         )).await;
         id
     }
@@ -2268,7 +2268,7 @@ mod tests {
         // to avoid destroying locks held by other concurrent tests.
         if let Ok(locks) = state.db.list_documents(collections::CRON_LOCKS, Some(100usize), Some(0usize)).await {
             for lock in &locks {
-                if let Some(id) = lock.get("id").and_then(|v| v.as_str()) {
+                if let Some(id) = lock.get(fields::ID).and_then(|v| v.as_str()) {
                     let _ = state.db.update_document(
                         collections::CRON_LOCKS,
                         id,

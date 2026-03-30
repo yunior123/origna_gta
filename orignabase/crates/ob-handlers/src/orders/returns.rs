@@ -483,17 +483,17 @@ async fn create_return_request(
     let return_id = uuid::Uuid::new_v4().to_string();
 
     let return_doc = json!({
-        "returnId": return_id,
-        "orderId": req.order_id,
-        "buyerId": user_id,
-        "sellerId": str_field(item, fields::SELLER_ID),
-        "productId": req.product_id,
-        "productName": str_field(item, fields::NAME),
-        "quantity": item.get("quantity").and_then(|v| v.as_i64()).unwrap_or(1),
-        "fulfillmentWarehouseId": str_field(item, fields::FULFILLMENT_WAREHOUSE_ID),
-        "returnStatus": "requested",
-        "returnReason": return_reason,
-        "requestedAt": now,
+        fields::RETURN_ID: return_id,
+        fields::ORDER_ID: req.order_id,
+        fields::BUYER_ID: user_id,
+        fields::SELLER_ID: str_field(item, fields::SELLER_ID),
+        fields::PRODUCT_ID: req.product_id,
+        fields::TITLE: str_field(item, fields::NAME),
+        fields::QUANTITY: item.get(fields::QUANTITY).and_then(|v| v.as_i64()).unwrap_or(1),
+        fields::FULFILLMENT_WAREHOUSE_ID: str_field(item, fields::FULFILLMENT_WAREHOUSE_ID),
+        fields::RETURN_STATUS: "requested",
+        fields::RETURN_REASON: return_reason,
+        fields::REQUESTED_AT: now,
         fields::UPDATED_AT: now,
     });
 

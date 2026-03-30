@@ -152,15 +152,15 @@ fn sanitize_address(address: &WarehouseAddressInput) -> ob_core::Result<Value> {
 
     Ok(json!({
         fields::STREET: sanitize_html(address.street.trim()),
-        "apartment": sanitize_html(address.apartment.as_deref().unwrap_or("").trim()),
+        fields::APARTMENT: sanitize_html(address.apartment.as_deref().unwrap_or("").trim()),
         fields::CITY: sanitize_html(address.city.trim()),
-        "state": sanitize_html(address.state.trim()),
+        fields::PROVINCE: sanitize_html(address.state.trim()),
         fields::POSTAL_CODE: address.postal_code.trim().to_uppercase(),
         fields::COUNTRY: address.country.trim(),
-        "phoneNumber": address.phone_number.as_deref().map(|s| sanitize_html(s.trim())),
+        fields::PHONE_NUMBER: address.phone_number.as_deref().map(|s| sanitize_html(s.trim())),
         fields::LATITUDE: address.latitude,
         fields::LONGITUDE: address.longitude,
-        "label": address.label.as_deref().map(|s| sanitize_html(s.trim())),
+        fields::LABEL: address.label.as_deref().map(|s| sanitize_html(s.trim())),
     }))
 }
 
@@ -201,7 +201,7 @@ async fn load_owned_warehouse(
     let collection = warehouses_collection();
     let doc = state.db.get_document(&collection, warehouse_id).await?;
     let parent_id_val = doc
-        .get("parent_id")
+        .get(fields::PARENT_ID)
         .and_then(|v| v.as_str())
         .unwrap_or_default();
     if parent_id_val != warehouse_parent(user_id) {
@@ -242,10 +242,10 @@ async fn create_warehouse(
         .create_document(
             &collection,
             json!({
-                "parent_id": warehouse_parent(&user_id),
-                "parent_collection": collections::USERS,
-                "label": label,
-                "type": warehouse_type,
+                fields::PARENT_ID: warehouse_parent(&user_id),
+                fields::PARENT_COLLECTION: collections::USERS,
+                fields::LABEL: label,
+                fields::TYPE: warehouse_type,
                 fields::ADDRESS: address,
                 fields::IS_DEFAULT: req.is_default,
                 fields::CREATED_AT: now,
@@ -290,10 +290,10 @@ async fn update_warehouse(
 
     let mut patch = serde_json::Map::new();
     if let Some(label) = req.label.as_deref() {
-        patch.insert("label".to_string(), json!(sanitize_label(label)?));
+        patch.insert(fields::LABEL.to_string(), json!(sanitize_label(label)?));
     }
     if let Some(warehouse_type) = req.warehouse_type.as_deref() {
-        patch.insert("type".to_string(), json!(sanitize_type(warehouse_type)?));
+        patch.insert(fields::TYPE.to_string(), json!(sanitize_type(warehouse_type)?));
     }
     if let Some(address) = req.address.as_ref() {
         patch.insert(fields::ADDRESS.to_string(), sanitize_address(address)?);
@@ -419,7 +419,7 @@ async fn list_warehouses(
                     .unwrap_or(id)
                     .to_string();
                 if let Some(obj) = row.as_object_mut() {
-                    obj.insert("warehouseId".to_string(), json!(raw_id));
+                    obj.insert(fields::WAREHOUSE_ID.to_string(), json!(raw_id));
                 }
             }
             row

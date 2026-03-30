@@ -102,11 +102,13 @@ async fn subscribe(
 
     // Check for existing active subscription (idempotent)
     let existing_query = format!(
-        "SELECT * FROM {} WHERE data->>'{}' = '{}' AND data->>'userId' = '{}' AND (data->>'notifiedAt') IS NULL LIMIT 1",
+        "SELECT * FROM {} WHERE data->>'{}' = '{}' AND data->>'{}' = '{}' AND (data->>'{}') IS NULL LIMIT 1",
         collections::STOCK_NOTIFICATIONS,
         fields::PRODUCT_ID,
         ob_core::escape_sql_string(&req.product_id),
+        fields::USER_ID,
         ob_core::escape_sql_string(&req.user_id),
+        fields::NOTIFIED_AT,
     );
 
     let existing: Vec<Value> = state
@@ -146,10 +148,10 @@ async fn subscribe(
     let now = chrono::Utc::now().to_rfc3339();
     let doc = serde_json::json!({
         fields::PRODUCT_ID: req.product_id,
-        "userId": req.user_id,
+        fields::USER_ID: req.user_id,
         fields::EMAIL: user_email,
-        "productName": product_name,
-        "notifiedAt": null,
+        fields::PRODUCT_NAME: product_name,
+        fields::NOTIFIED_AT: null,
         fields::CREATED_AT: now,
     });
 
@@ -176,11 +178,13 @@ async fn unsubscribe(
 
     // Delete active subscriptions for this product+user
     let delete_query = format!(
-        "DELETE FROM {} WHERE data->>'{}' = '{}' AND data->>'userId' = '{}' AND (data->>'notifiedAt') IS NULL",
+        "DELETE FROM {} WHERE data->>'{}' = '{}' AND data->>'{}' = '{}' AND (data->>'{}') IS NULL",
         collections::STOCK_NOTIFICATIONS,
         fields::PRODUCT_ID,
         ob_core::escape_sql_string(&req.product_id),
+        fields::USER_ID,
         ob_core::escape_sql_string(&req.user_id),
+        fields::NOTIFIED_AT,
     );
 
     state
@@ -362,14 +366,14 @@ mod tests {
         let rows = state
             .db
             .query_raw(
-                &format!("SELECT * FROM stock_notifications WHERE productId = '{}' AND userId = '{}'", prod, buyer),
+                &format!("SELECT * FROM {} WHERE productId = '{}' AND userId = '{}'", collections::STOCK_NOTIFICATIONS, prod, buyer),
             )
             .await
             .unwrap();
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0][fields::EMAIL], "buyer@example.com");
-        assert_eq!(rows[0]["productName"], "Blue Widget");
-        assert!(rows[0]["notifiedAt"].is_null());
+        assert_eq!(rows[0][fields::PRODUCT_NAME], "Blue Widget");
+        assert!(rows[0][fields::NOTIFIED_AT].is_null());
 
         let Json(idempotent) = subscribe(
             State(state.clone()),
@@ -586,11 +590,11 @@ mod tests {
         let rows = state
             .db
             .query_raw(
-                &format!("SELECT * FROM stock_notifications WHERE productId = '{}' AND userId = '{}'", prod, buyer),
+                &format!("SELECT * FROM {} WHERE productId = '{}' AND userId = '{}'", collections::STOCK_NOTIFICATIONS, prod, buyer),
             )
             .await
             .unwrap();
         assert_eq!(rows.len(), 1);
-        assert_eq!(rows[0]["notifiedAt"], "2026-03-10T10:00:00Z");
+        assert_eq!(rows[0][fields::NOTIFIED_AT], "2026-03-10T10:00:00Z");
     }
 }

@@ -141,7 +141,7 @@ pub(crate) fn calculate_refund_amount_cents(
         ));
     }
 
-    let item_shipping_snapshot = item.get("itemShippingCents").and_then(|v| v.as_i64());
+    let item_shipping_snapshot = item.get(fields::ITEM_SHIPPING_CENTS).and_then(|v| v.as_i64());
     let shipping_refund_cents = if let Some(snap) = item_shipping_snapshot {
         snap
     } else {
@@ -357,7 +357,7 @@ async fn refund_order_item(
     }
 
     // Payout processing race condition check
-    let payout_status = str_field(&order, "payoutStatus");
+    let payout_status = str_field(&order, fields::PAYOUT_STATUS);
     if payout_status == "processing" {
         return Err(ob_core::Error::Validation(
             "Cannot refund item while payout is currently processing. Please try again later."
@@ -544,15 +544,15 @@ async fn refund_order_item(
         // Restore stock for physical items
         let product_id = &req.product_id;
         let cur_product = state.db.get_document(collections::PRODUCTS, product_id).await.unwrap_or_default();
-        let cur_stock = cur_product.get("stockQuantity").and_then(|v| v.as_i64()).unwrap_or(0);
+        let cur_stock = cur_product.get(fields::STOCK_QUANTITY).and_then(|v| v.as_i64()).unwrap_or(0);
         state
             .db
             .update_document(
                 collections::PRODUCTS,
                 product_id,
                 json!({
-                    "stockQuantity": cur_stock + item_quantity as i64,
-                    "updatedAt": now
+                    fields::STOCK_QUANTITY: cur_stock + item_quantity as i64,
+                    fields::UPDATED_AT: now
                 }),
             )
             .await
@@ -570,8 +570,8 @@ async fn refund_order_item(
                 fields::ORDER_ID: req.order_id,
                 fields::USER_ID: user_id,
                 fields::EVENT_TYPE: "item_refunded",
-                "message": format!("Item {} refunded for {} cents", req.product_id, refund_amount_cents),
-                "metadata": { fields::PRODUCT_ID: req.product_id, "refundAmountCents": refund_amount_cents },
+                fields::MESSAGE: format!("Item {} refunded for {} cents", req.product_id, refund_amount_cents),
+                fields::DATA: { fields::PRODUCT_ID: req.product_id, fields::REFUND_AMOUNT_CENTS: refund_amount_cents },
                 fields::CREATED_AT: now,
             }),
         )
@@ -629,7 +629,7 @@ async fn cancel_order(
         .await
         .map_err(|_| ob_core::Error::NotFound("Order not found".into()))?;
 
-    if bool_field(&order, "archived") {
+    if bool_field(&order, fields::ARCHIVED) {
         return Err(ob_core::Error::Validation(
             "Cannot cancel archived order".into(),
         ));
@@ -707,7 +707,7 @@ async fn cancel_order(
                         &req.order_id,
                         json!({
                             fields::PAYMENT_STATUS: "CANCEL_FAILED",
-                            "requiresManualReview": true,
+                            fields::REQUIRES_MANUAL_REVIEW: true,
                             fields::UPDATED_AT: now,
                         }),
                     )
@@ -728,7 +728,7 @@ async fn cancel_order(
                         &req.order_id,
                         json!({
                             fields::PAYMENT_STATUS: "CANCEL_FAILED",
-                            "requiresManualReview": true,
+                            fields::REQUIRES_MANUAL_REVIEW: true,
                             fields::UPDATED_AT: now,
                         }),
                     )
@@ -749,9 +749,9 @@ async fn cancel_order(
             json!({
                 fields::ORDER_STATUS: "cancelled",
                 fields::PAYMENT_STATUS: new_payment_status,
-                "cancelledBy": req.user_id,
-                "cancelledAt": now,
-                "cancellationReason": reason,
+                fields::CANCELLED_BY: req.user_id,
+                fields::CANCELLED_AT: now,
+                fields::CANCELLATION_REASON: reason,
                 fields::STOCK_RESTORED: true,
                 fields::UPDATED_AT: now,
             }),
@@ -760,7 +760,7 @@ async fn cancel_order(
         .map_err(|e| ob_core::Error::Database(format!("Failed to update cancelled order: {e}")))?;
 
     // Restore stock for all physical items (guard against double-restore).
-    let stock_restored = bool_field(&order, "stockRestored");
+    let stock_restored = bool_field(&order, fields::STOCK_RESTORED);
     if stock_restored {
         info!(order_id = %req.order_id, "Stock already restored, skipping");
     } else {
@@ -769,18 +769,18 @@ async fn cancel_order(
                 continue;
             }
             let pid = str_field(item, fields::PRODUCT_ID);
-            let qty = item.get("quantity").and_then(|v| v.as_i64()).unwrap_or(1);
+            let qty = item.get(fields::QUANTITY).and_then(|v| v.as_i64()).unwrap_or(1);
             if !pid.is_empty() && qty > 0 {
                 let cur_product = state.db.get_document(collections::PRODUCTS, pid).await.unwrap_or_default();
-                let cur_stock = cur_product.get("stockQuantity").and_then(|v| v.as_i64()).unwrap_or(0);
+                let cur_stock = cur_product.get(fields::STOCK_QUANTITY).and_then(|v| v.as_i64()).unwrap_or(0);
                 state
                     .db
                     .update_document(
                         collections::PRODUCTS,
                         pid,
                         json!({
-                            "stockQuantity": cur_stock + qty,
-                            "updatedAt": now
+                            fields::STOCK_QUANTITY: cur_stock + qty,
+                            fields::UPDATED_AT: now
                         }),
                     )
                     .await
@@ -801,8 +801,8 @@ async fn cancel_order(
                 fields::ORDER_ID: req.order_id,
                 fields::USER_ID: req.user_id,
                 fields::EVENT_TYPE: "order_cancelled",
-                "message": format!("Order cancelled. Refunded: {}", refunded),
-                "metadata": { "refunded": refunded },
+                fields::MESSAGE: format!("Order cancelled. Refunded: {}", refunded),
+                fields::DATA: { "refunded": refunded },
                 fields::CREATED_AT: now,
             }),
         )
@@ -982,15 +982,15 @@ mod tests {
     #[test]
     fn test_refund_amount_prefers_item_shipping_snapshot() {
         let order = json!({
-            "subtotalCents": 4000,
-            "discountAmountCents": 400,
+            fields::SUBTOTAL_CENTS: 4000,
+            fields::DISCOUNT_AMOUNT_CENTS: 400,
             fields::SHIPPING_COST_CENTS: 1000,
-            "taxAmountCents": 390,
+            fields::TAX_AMOUNT_CENTS: 390,
         });
         let item = json!({
-            "priceCents": 2000,
-            "quantity": 1,
-            "itemShippingCents": 250,
+            fields::PRICE_CENTS: 2000,
+            fields::QUANTITY: 1,
+            fields::ITEM_SHIPPING_CENTS: 250,
         });
 
         let refund = calculate_refund_amount_cents(&order, &item).unwrap();
@@ -1003,14 +1003,14 @@ mod tests {
     #[test]
     fn test_refund_amount_zero_subtotal_is_rejected() {
         let order = json!({
-            "subtotalCents": 0,
+            fields::SUBTOTAL_CENTS: 0,
             fields::SHIPPING_COST_CENTS: 200,
-            "taxAmountCents": 100,
+            fields::TAX_AMOUNT_CENTS: 100,
         });
         let item = json!({
-            "priceCents": 1000,
-            "quantity": 1,
-            "itemShippingCents": 50,
+            fields::PRICE_CENTS: 1000,
+            fields::QUANTITY: 1,
+            fields::ITEM_SHIPPING_CENTS: 50,
         });
 
         let err = calculate_refund_amount_cents(&order, &item).unwrap_err();
@@ -1020,13 +1020,13 @@ mod tests {
     #[test]
     fn test_refund_amount_with_proportional_shipping_and_tax() {
         let order = json!({
-            "subtotalCents": 10000,
+            fields::SUBTOTAL_CENTS: 10000,
             fields::SHIPPING_COST_CENTS: 1000,
-            "taxAmountCents": 1300,
+            fields::TAX_AMOUNT_CENTS: 1300,
         });
         let item = json!({
-            "priceCents": 5000,
-            "quantity": 1,
+            fields::PRICE_CENTS: 5000,
+            fields::QUANTITY: 1,
         });
 
         let refund = calculate_refund_amount_cents(&order, &item).unwrap();
@@ -1040,13 +1040,13 @@ mod tests {
     #[test]
     fn test_refund_amount_multi_quantity() {
         let order = json!({
-            "subtotalCents": 10000,
+            fields::SUBTOTAL_CENTS: 10000,
             fields::SHIPPING_COST_CENTS: 500,
-            "taxAmountCents": 1300,
+            fields::TAX_AMOUNT_CENTS: 1300,
         });
         let item = json!({
-            "priceCents": 2500,  // $25 each
-            "quantity": 2,       // 2 items = $50 subtotal = 50% of order
+            fields::PRICE_CENTS: 2500,  // $25 each
+            fields::QUANTITY: 2,       // 2 items = $50 subtotal = 50% of order
         });
 
         let refund = calculate_refund_amount_cents(&order, &item).unwrap();
@@ -1059,13 +1059,13 @@ mod tests {
     #[test]
     fn test_refund_amount_single_item_gets_full_shipping_and_tax() {
         let order = json!({
-            "subtotalCents": 5000,
+            fields::SUBTOTAL_CENTS: 5000,
             fields::SHIPPING_COST_CENTS: 800,
-            "taxAmountCents": 650,
+            fields::TAX_AMOUNT_CENTS: 650,
         });
         let item = json!({
-            "priceCents": 5000,
-            "quantity": 1,
+            fields::PRICE_CENTS: 5000,
+            fields::QUANTITY: 1,
         });
 
         let refund = calculate_refund_amount_cents(&order, &item).unwrap();
@@ -1076,14 +1076,14 @@ mod tests {
     #[test]
     fn test_refund_amount_with_100_percent_discount() {
         let order = json!({
-            "subtotalCents": 5000,
-            "discountAmountCents": 5000,  // 100% discount
+            fields::SUBTOTAL_CENTS: 5000,
+            fields::DISCOUNT_AMOUNT_CENTS: 5000,  // 100% discount
             fields::SHIPPING_COST_CENTS: 500,
-            "taxAmountCents": 0,
+            fields::TAX_AMOUNT_CENTS: 0,
         });
         let item = json!({
-            "priceCents": 5000,
-            "quantity": 1,
+            fields::PRICE_CENTS: 5000,
+            fields::QUANTITY: 1,
         });
 
         // After discount: item_subtotal = round(5000 * 0.0) = 0
@@ -1096,13 +1096,13 @@ mod tests {
     #[test]
     fn test_refund_amount_no_discount_no_shipping() {
         let order = json!({
-            "subtotalCents": 3000,
+            fields::SUBTOTAL_CENTS: 3000,
             fields::SHIPPING_COST_CENTS: 0,
-            "taxAmountCents": 390,
+            fields::TAX_AMOUNT_CENTS: 390,
         });
         let item = json!({
-            "priceCents": 3000,
-            "quantity": 1,
+            fields::PRICE_CENTS: 3000,
+            fields::QUANTITY: 1,
         });
 
         let refund = calculate_refund_amount_cents(&order, &item).unwrap();
@@ -1113,13 +1113,13 @@ mod tests {
     #[test]
     fn test_refund_amount_zero_tax() {
         let order = json!({
-            "subtotalCents": 5000,
+            fields::SUBTOTAL_CENTS: 5000,
             fields::SHIPPING_COST_CENTS: 1000,
-            "taxAmountCents": 0,
+            fields::TAX_AMOUNT_CENTS: 0,
         });
         let item = json!({
-            "priceCents": 2500,
-            "quantity": 1,
+            fields::PRICE_CENTS: 2500,
+            fields::QUANTITY: 1,
         });
 
         let refund = calculate_refund_amount_cents(&order, &item).unwrap();
@@ -1131,13 +1131,13 @@ mod tests {
     fn test_refund_amount_rounding_precision() {
         // Scenario with values that produce fractional cents
         let order = json!({
-            "subtotalCents": 3333,
+            fields::SUBTOTAL_CENTS: 3333,
             fields::SHIPPING_COST_CENTS: 999,
-            "taxAmountCents": 433,
+            fields::TAX_AMOUNT_CENTS: 433,
         });
         let item = json!({
-            "priceCents": 1111,
-            "quantity": 1,
+            fields::PRICE_CENTS: 1111,
+            fields::QUANTITY: 1,
         });
 
         let refund = calculate_refund_amount_cents(&order, &item);
@@ -1148,13 +1148,13 @@ mod tests {
     #[test]
     fn test_refund_amount_zero_price_item() {
         let order = json!({
-            "subtotalCents": 5000,
+            fields::SUBTOTAL_CENTS: 5000,
             fields::SHIPPING_COST_CENTS: 500,
-            "taxAmountCents": 650,
+            fields::TAX_AMOUNT_CENTS: 650,
         });
         let item = json!({
-            "priceCents": 0,
-            "quantity": 1,
+            fields::PRICE_CENTS: 0,
+            fields::QUANTITY: 1,
         });
 
         let refund = calculate_refund_amount_cents(&order, &item).unwrap();
@@ -1164,9 +1164,9 @@ mod tests {
     #[test]
     fn test_refund_amount_missing_item_fields_defaults() {
         let order = json!({
-            "subtotalCents": 5000,
+            fields::SUBTOTAL_CENTS: 5000,
             fields::SHIPPING_COST_CENTS: 500,
-            "taxAmountCents": 650,
+            fields::TAX_AMOUNT_CENTS: 650,
         });
         // Missing price and quantity — should default to 0 and 1
         let item = json!({});
@@ -1358,38 +1358,38 @@ mod tests {
 
     #[test]
     fn test_stock_restored_guard_detects_true() {
-        let order = json!({"stockRestored": true});
+        let order = json!({fields::STOCK_RESTORED: true});
         assert!(bool_field(&order, "stockRestored"));
     }
 
     #[test]
     fn test_stock_restored_guard_defaults_false() {
-        let order = json!({"orderStatus": "cancelled"});
+        let order = json!({fields::ORDER_STATUS: "cancelled"});
         assert!(!bool_field(&order, "stockRestored"));
     }
 
     #[test]
     fn test_stock_restored_guard_handles_non_bool() {
-        let order = json!({"stockRestored": "yes"});
+        let order = json!({fields::STOCK_RESTORED: "yes"});
         assert!(!bool_field(&order, "stockRestored"));
     }
 
     #[test]
     fn test_payout_processing_blocks_refund() {
-        let order = json!({"payoutStatus": "processing"});
-        assert_eq!(str_field(&order, "payoutStatus"), "processing");
+        let order = json!({fields::PAYOUT_STATUS: "processing"});
+        assert_eq!(str_field(&order, fields::PAYOUT_STATUS), "processing");
     }
 
     #[test]
     fn test_payout_completed_allows_refund() {
-        let order = json!({"payoutStatus": "COMPLETED"});
-        assert_ne!(str_field(&order, "payoutStatus"), "processing");
+        let order = json!({fields::PAYOUT_STATUS: "COMPLETED"});
+        assert_ne!(str_field(&order, fields::PAYOUT_STATUS), "processing");
     }
 
     #[test]
     fn test_payout_missing_allows_refund() {
-        let order = json!({"orderStatus": "confirmed"});
-        assert_ne!(str_field(&order, "payoutStatus"), "processing");
+        let order = json!({fields::ORDER_STATUS: "confirmed"});
+        assert_ne!(str_field(&order, fields::PAYOUT_STATUS), "processing");
     }
 
     #[test]
@@ -1402,42 +1402,42 @@ mod tests {
 
     #[test]
     fn test_cumulative_refunded_cents_defaults_zero() {
-        let order = json!({"orderStatus": "confirmed"});
+        let order = json!({fields::ORDER_STATUS: "confirmed"});
         assert_eq!(i64_field(&order, "cumulativeRefundedCents"), 0);
     }
 
     #[test]
     fn test_digital_license_revocation_by_is_digital() {
-        let item = json!({"isDigital": true, "productType": "physical"});
+        let item = json!({fields::IS_DIGITAL: true, fields::PRODUCT_TYPE: "physical"});
         assert!(bool_field(&item, "isDigital"));
     }
 
     #[test]
     fn test_digital_license_revocation_by_product_type_software() {
-        let item = json!({"isDigital": false, "productType": "software"});
-        let item_type = str_field(&item, "productType");
+        let item = json!({fields::IS_DIGITAL: false, fields::PRODUCT_TYPE: "software"});
+        let item_type = str_field(&item, fields::PRODUCT_TYPE);
         assert!(matches!(item_type, "software" | "book" | "digital"));
     }
 
     #[test]
     fn test_digital_license_revocation_by_product_type_book() {
-        let item = json!({"productType": "book"});
-        let item_type = str_field(&item, "productType");
+        let item = json!({fields::PRODUCT_TYPE: "book"});
+        let item_type = str_field(&item, fields::PRODUCT_TYPE);
         assert!(matches!(item_type, "software" | "book" | "digital"));
     }
 
     #[test]
     fn test_digital_license_revocation_by_product_type_digital() {
-        let item = json!({"productType": "digital"});
-        let item_type = str_field(&item, "productType");
+        let item = json!({fields::PRODUCT_TYPE: "digital"});
+        let item_type = str_field(&item, fields::PRODUCT_TYPE);
         assert!(matches!(item_type, "software" | "book" | "digital"));
     }
 
     #[test]
     fn test_physical_item_not_flagged_as_digital() {
-        let item = json!({"isDigital": false, "productType": "clothing"});
+        let item = json!({fields::IS_DIGITAL: false, fields::PRODUCT_TYPE: "clothing"});
         let is_digital = bool_field(&item, "isDigital");
-        let item_type = str_field(&item, "productType");
+        let item_type = str_field(&item, fields::PRODUCT_TYPE);
         let is_digital_by_type = matches!(item_type, "software" | "book" | "digital");
         assert!(!is_digital && !is_digital_by_type);
     }
@@ -1446,11 +1446,11 @@ mod tests {
     fn test_cancel_failed_quarantine_fields() {
         // Verify the quarantine payload shape
         let payload = json!({
-            "paymentStatus": "CANCEL_FAILED",
-            "requiresManualReview": true,
+            fields::PAYMENT_STATUS: "CANCEL_FAILED",
+            fields::REQUIRES_MANUAL_REVIEW: true,
         });
-        assert_eq!(str_field(&payload, "paymentStatus"), "CANCEL_FAILED");
-        assert!(bool_field(&payload, "requiresManualReview"));
+        assert_eq!(str_field(&payload, fields::PAYMENT_STATUS), "CANCEL_FAILED");
+        assert!(bool_field(&payload, fields::REQUIRES_MANUAL_REVIEW));
     }
 
     #[tokio::test]
@@ -1555,16 +1555,16 @@ mod tests {
                 collections::ORDERS,
                 "order_1",
                 json!({
-                    "orderStatus": "pending",
+                    fields::ORDER_STATUS: "pending",
                     "userId": "buyer_1",
                     fields::PAYMENT_STATUS: "authorized",
-                    "paymentIntentId": "pi_123",
-                    "stockRestored": false,
+                    fields::PAYMENT_INTENT_ID: "pi_123",
+                    fields::STOCK_RESTORED: false,
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: "prod_1",
                         fields::SELLER_ID: "seller_1",
-                        "quantity": 2,
-                        "isDigital": false
+                        fields::QUANTITY: 2,
+                        fields::IS_DIGITAL: false
                     }]
                 }),
             )
@@ -1638,20 +1638,20 @@ mod tests {
                 json!({
                     fields::ORDER_ID: order_id,
                     fields::PAYMENT_STATUS: "captured",
-                    "paymentIntentId": "pi_refund_1",
-                    "subtotalCents": 2000,
+                    fields::PAYMENT_INTENT_ID: "pi_refund_1",
+                    fields::SUBTOTAL_CENTS: 2000,
                     "shippingCostCents": 300,
-                    "taxAmountCents": 200,
-                    "totalAmountCents": 2600,
+                    fields::TAX_AMOUNT_CENTS: 200,
+                    fields::TOTAL_AMOUNT_CENTS: 2600,
                     "cumulativeRefundedCents": 50,
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: prod_id,
                         fields::SELLER_ID: seller_id,
                         "status": "delivered",
                         "deliveredAt": Utc::now().to_rfc3339(),
-                        "priceCents": 1000,
-                        "quantity": 2,
-                        "isDigital": false
+                        fields::PRICE_CENTS: 1000,
+                        fields::QUANTITY: 2,
+                        fields::IS_DIGITAL: false
                     }]
                 }),
             )
@@ -1701,7 +1701,7 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(events.len(), 1);
-        assert_eq!(events[0]["metadata"]["productId"], prod_id.as_str());
+        assert_eq!(events[0][fields::DATA][fields::PRODUCT_ID], prod_id.as_str());
     }
 
     #[tokio::test]
@@ -1740,9 +1740,9 @@ mod tests {
                 collections::LICENSES,
                 &license_id,
                 json!({
-                    "orderId": order_id,
-                    "productId": ebook_id,
-                    "status": "active",
+                    fields::ORDER_ID: order_id,
+                    fields::PRODUCT_ID: ebook_id,
+                    fields::STATUS: "active",
                 }),
             )
             .await
@@ -1755,20 +1755,20 @@ mod tests {
                 json!({
                     fields::ORDER_ID: order_id,
                     fields::PAYMENT_STATUS: "captured",
-                    "paymentIntentId": "pi_digital_1",
-                    "subtotalCents": 1500,
+                    fields::PAYMENT_INTENT_ID: "pi_digital_1",
+                    fields::SUBTOTAL_CENTS: 1500,
                     "shippingCostCents": 0,
-                    "taxAmountCents": 0,
-                    "totalAmountCents": 1500,
+                    fields::TAX_AMOUNT_CENTS: 0,
+                    fields::TOTAL_AMOUNT_CENTS: 1500,
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: ebook_id,
                         fields::SELLER_ID: seller_id,
                         "status": "delivered",
                         "deliveredAt": Utc::now().to_rfc3339(),
-                        "priceCents": 1500,
-                        "quantity": 1,
-                        "isDigital": true,
-                        "productType": "digital"
+                        fields::PRICE_CENTS: 1500,
+                        fields::QUANTITY: 1,
+                        fields::IS_DIGITAL: true,
+                        fields::PRODUCT_TYPE: "digital"
                     }]
                 }),
             )
@@ -1820,15 +1820,15 @@ mod tests {
                 "order_already",
                 json!({
                     fields::PAYMENT_STATUS: "captured",
-                    "paymentIntentId": "pi_existing",
-                    "subtotalCents": 1000,
-                    "totalAmountCents": 1000,
+                    fields::PAYMENT_INTENT_ID: "pi_existing",
+                    fields::SUBTOTAL_CENTS: 1000,
+                    fields::TOTAL_AMOUNT_CENTS: 1000,
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: "prod_1",
                         fields::SELLER_ID: "seller_1",
                         "status": "refunded",
-                        "priceCents": 1000,
-                        "quantity": 1
+                        fields::PRICE_CENTS: 1000,
+                        fields::QUANTITY: 1
                     }]
                 }),
             )
@@ -1889,16 +1889,16 @@ mod tests {
                 &order_id,
                 json!({
                     fields::ORDER_ID: order_id,
-                    "orderStatus": "pending",
+                    fields::ORDER_STATUS: "pending",
                     "userId": buyer_id,
                     fields::PAYMENT_STATUS: "captured",
-                    "paymentIntentId": "pi_cancel_1",
-                    "stockRestored": false,
+                    fields::PAYMENT_INTENT_ID: "pi_cancel_1",
+                    fields::STOCK_RESTORED: false,
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: prod_id,
                         fields::SELLER_ID: "seller_1",
-                        "quantity": 2,
-                        "isDigital": false
+                        fields::QUANTITY: 2,
+                        fields::IS_DIGITAL: false
                     }]
                 }),
             )
@@ -1941,7 +1941,7 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(events.len(), 1);
-        assert_eq!(events[0]["metadata"]["refunded"], true);
+        assert_eq!(events[0][fields::DATA]["refunded"], true);
     }
 
     #[tokio::test]
@@ -1961,10 +1961,10 @@ mod tests {
                 collections::ORDERS,
                 "order_quarantine",
                 json!({
-                    "orderStatus": "pending",
+                    fields::ORDER_STATUS: "pending",
                     "userId": "buyer_1",
                     fields::PAYMENT_STATUS: "captured",
-                    "paymentIntentId": "pi_quarantine",
+                    fields::PAYMENT_INTENT_ID: "pi_quarantine",
                     fields::ITEMS: []
                 }),
             )
@@ -2036,14 +2036,14 @@ mod tests {
                 "order_nf",
                 json!({
                     fields::PAYMENT_STATUS: "captured",
-                    "paymentIntentId": "pi_1",
-                    "subtotalCents": 1000,
+                    fields::PAYMENT_INTENT_ID: "pi_1",
+                    fields::SUBTOTAL_CENTS: 1000,
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: "other_prod",
                         fields::SELLER_ID: "seller_1",
                         "status": "delivered",
-                        "priceCents": 1000,
-                        "quantity": 1
+                        fields::PRICE_CENTS: 1000,
+                        fields::QUANTITY: 1
                     }]
                 }),
             )
@@ -2081,14 +2081,14 @@ mod tests {
                 "order_perm",
                 json!({
                     fields::PAYMENT_STATUS: "captured",
-                    "paymentIntentId": "pi_1",
-                    "subtotalCents": 1000,
+                    fields::PAYMENT_INTENT_ID: "pi_1",
+                    fields::SUBTOTAL_CENTS: 1000,
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: "prod_1",
                         fields::SELLER_ID: "seller_1",
                         "status": "delivered",
-                        "priceCents": 1000,
-                        "quantity": 1
+                        fields::PRICE_CENTS: 1000,
+                        fields::QUANTITY: 1
                     }]
                 }),
             )
@@ -2126,14 +2126,14 @@ mod tests {
                 "order_uncap",
                 json!({
                     fields::PAYMENT_STATUS: "authorized",
-                    "paymentIntentId": "pi_1",
-                    "subtotalCents": 1000,
+                    fields::PAYMENT_INTENT_ID: "pi_1",
+                    fields::SUBTOTAL_CENTS: 1000,
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: "prod_1",
                         fields::SELLER_ID: "seller_1",
                         "status": "delivered",
-                        "priceCents": 1000,
-                        "quantity": 1
+                        fields::PRICE_CENTS: 1000,
+                        fields::QUANTITY: 1
                     }]
                 }),
             )
@@ -2171,15 +2171,15 @@ mod tests {
                 "order_payout",
                 json!({
                     fields::PAYMENT_STATUS: "captured",
-                    "payoutStatus": "processing",
-                    "paymentIntentId": "pi_1",
-                    "subtotalCents": 1000,
+                    fields::PAYOUT_STATUS: "processing",
+                    fields::PAYMENT_INTENT_ID: "pi_1",
+                    fields::SUBTOTAL_CENTS: 1000,
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: "prod_1",
                         fields::SELLER_ID: "seller_1",
                         "status": "delivered",
-                        "priceCents": 1000,
-                        "quantity": 1
+                        fields::PRICE_CENTS: 1000,
+                        fields::QUANTITY: 1
                     }]
                 }),
             )
@@ -2220,15 +2220,15 @@ mod tests {
                 "order_expired",
                 json!({
                     fields::PAYMENT_STATUS: "captured",
-                    "paymentIntentId": "pi_1",
-                    "subtotalCents": 1000,
+                    fields::PAYMENT_INTENT_ID: "pi_1",
+                    fields::SUBTOTAL_CENTS: 1000,
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: "prod_1",
                         fields::SELLER_ID: "seller_1",
                         "status": "delivered",
                         "deliveredAt": old_date,
-                        "priceCents": 1000,
-                        "quantity": 1
+                        fields::PRICE_CENTS: 1000,
+                        fields::QUANTITY: 1
                     }]
                 }),
             )
@@ -2270,14 +2270,14 @@ mod tests {
                 &order_id,
                 json!({
                     fields::PAYMENT_STATUS: "captured",
-                    "subtotalCents": 1000,
-                    "totalAmountCents": 1000,
+                    fields::SUBTOTAL_CENTS: 1000,
+                    fields::TOTAL_AMOUNT_CENTS: 1000,
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: prod_id,
                         fields::SELLER_ID: seller_id,
                         "status": "shipped",
-                        "priceCents": 1000,
-                        "quantity": 1
+                        fields::PRICE_CENTS: 1000,
+                        fields::QUANTITY: 1
                     }]
                 }),
             )
@@ -2314,9 +2314,9 @@ mod tests {
                 collections::ORDERS,
                 "order_arch",
                 json!({
-                    "orderStatus": "pending",
-                    "userId": "buyer_1",
-                    "archived": true,
+                    fields::ORDER_STATUS: "pending",
+                    fields::USER_ID: "buyer_1",
+                    fields::ARCHIVED: true,
                     fields::ITEMS: []
                 }),
             )
@@ -2352,7 +2352,7 @@ mod tests {
                 collections::ORDERS,
                 "order_noauth",
                 json!({
-                    "orderStatus": "pending",
+                    fields::ORDER_STATUS: "pending",
                     "userId": "buyer_1",
                     fields::ITEMS: [{
                         fields::SELLER_ID: "seller_1",
@@ -2391,7 +2391,7 @@ mod tests {
                 collections::ORDERS,
                 "order_multi",
                 json!({
-                    "orderStatus": "pending",
+                    fields::ORDER_STATUS: "pending",
                     "userId": "buyer_1",
                     fields::ITEMS: [
                         { fields::SELLER_ID: "seller_1" },
@@ -2434,7 +2434,7 @@ mod tests {
                 collections::ORDERS,
                 "order_shipped",
                 json!({
-                    "orderStatus": "shipped",
+                    fields::ORDER_STATUS: "shipped",
                     "userId": "buyer_1",
                     fields::ITEMS: []
                 }),
@@ -2471,7 +2471,7 @@ mod tests {
                 collections::ORDERS,
                 "order_proc",
                 json!({
-                    "orderStatus": "processing",
+                    fields::ORDER_STATUS: "processing",
                     "userId": "buyer_1",
                     fields::ITEMS: []
                 }),
@@ -2517,10 +2517,10 @@ mod tests {
                 collections::ORDERS,
                 "order_pi_fail",
                 json!({
-                    "orderStatus": "pending",
+                    fields::ORDER_STATUS: "pending",
                     "userId": "buyer_1",
                     fields::PAYMENT_STATUS: "authorized",
-                    "paymentIntentId": "pi_fail",
+                    fields::PAYMENT_INTENT_ID: "pi_fail",
                     fields::ITEMS: []
                 }),
             )
@@ -2568,15 +2568,15 @@ mod tests {
                 collections::ORDERS,
                 "order_nopay",
                 json!({
-                    "orderStatus": "pending",
+                    fields::ORDER_STATUS: "pending",
                     "userId": "buyer_1",
                     fields::PAYMENT_STATUS: "awaiting_payment",
-                    "stockRestored": true,
+                    fields::STOCK_RESTORED: true,
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: "prod_1",
                         fields::SELLER_ID: "seller_1",
-                        "quantity": 1,
-                        "isDigital": false
+                        fields::QUANTITY: 1,
+                        fields::IS_DIGITAL: false
                     }]
                 }),
             )
@@ -2619,22 +2619,22 @@ mod tests {
                 collections::ORDERS,
                 "order_dig_cancel",
                 json!({
-                    "orderStatus": "pending",
+                    fields::ORDER_STATUS: "pending",
                     "userId": "buyer_1",
                     fields::PAYMENT_STATUS: "awaiting_payment",
-                    "stockRestored": false,
+                    fields::STOCK_RESTORED: false,
                     fields::ITEMS: [
                         {
                             fields::PRODUCT_ID: "dig_1",
                             fields::SELLER_ID: "seller_1",
-                            "quantity": 1,
-                            "isDigital": true
+                            fields::QUANTITY: 1,
+                            fields::IS_DIGITAL: true
                         },
                         {
                             fields::PRODUCT_ID: "phys_1",
                             fields::SELLER_ID: "seller_1",
-                            "quantity": 3,
-                            "isDigital": false
+                            fields::QUANTITY: 3,
+                            fields::IS_DIGITAL: false
                         }
                     ]
                 }),

@@ -7,7 +7,7 @@ use std::num::NonZeroU32;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::shared::schema::collections;
+use crate::shared::schema::{collections, fields};
 use ob_database::DatabaseClient;
 
 const TRUSTED_PROXY_IP: &str = "127.0.0.1";
@@ -114,9 +114,9 @@ pub async fn check_user_rate_limit(
         .create_document(
             collections::RATE_LIMITS,
             serde_json::json!({
-                "userId": user_id,
-                "action": action,
-                "createdAt": now_secs,
+                fields::USER_ID: user_id,
+                fields::ACTION: action,
+                fields::CREATED_AT: now_secs,
             }),
         )
         .await;
