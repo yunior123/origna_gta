@@ -1990,13 +1990,13 @@ mod tests {
 
     #[test]
     fn test_str_field_present() {
-        let val = serde_json::json!({"name": "Alice", "age": 30});
+        let val = serde_json::json!({fields::TITLE: "Alice", "age": 30});
         assert_eq!(str_field(&val, "name"), "Alice");
     }
 
     #[test]
     fn test_str_field_missing() {
-        let val = serde_json::json!({"name": "Alice"});
+        let val = serde_json::json!({fields::TITLE: "Alice"});
         assert_eq!(str_field(&val, "email"), "");
     }
 
@@ -2008,7 +2008,7 @@ mod tests {
 
     #[test]
     fn test_str_field_null_value() {
-        let val = serde_json::json!({"name": null});
+        let val = serde_json::json!({fields::TITLE: null});
         assert_eq!(str_field(&val, "name"), "");
     }
 
@@ -2107,7 +2107,7 @@ mod tests {
         let Json(first) = handle_stripe_webhook(State(state.clone()), first_request)
             .await
             .unwrap();
-        assert_eq!(first["status"], "ok");
+        assert_eq!(first[fields::STATUS], "ok");
 
         let second_request = axum::http::Request::builder()
             .uri("/api/webhooks/stripe")
@@ -2117,7 +2117,7 @@ mod tests {
         let Json(second) = handle_stripe_webhook(State(state), second_request)
             .await
             .unwrap();
-        assert_eq!(second["status"], "duplicate");
+        assert_eq!(second[fields::STATUS], "duplicate");
     }
 
     // -----------------------------------------------------------------------
@@ -2156,9 +2156,9 @@ mod tests {
                 collections::ORDERS,
                 json!({
                     "id": "upd001",
-                    "orderStatus": "pending",
-                    "totalAmountCents": 3000,
-                    "items": [{"productId": "prod_001", "quantity": 1}]
+                    fields::ORDER_STATUS: "pending",
+                    fields::TOTAL_AMOUNT_CENTS: 3000,
+                    fields::ITEMS: [{fields::PRODUCT_ID: "prod_001", fields::QUANTITY: 1}]
                 }),
             )
             .await
@@ -2184,10 +2184,10 @@ mod tests {
                 collections::ORDERS,
                 "upd_precondition",
                 json!({
-                    "orderId": "upd_precondition",
-                    "orderStatus": "confirmed",
-                    "totalAmountCents": 3000,
-                    "items": [{"productId": "prod_001", "quantity": 1}]
+                    fields::ORDER_ID: "upd_precondition",
+                    fields::ORDER_STATUS: "confirmed",
+                    fields::TOTAL_AMOUNT_CENTS: 3000,
+                    fields::ITEMS: [{fields::PRODUCT_ID: "prod_001", fields::QUANTITY: 1}]
                 }),
             )
             .await
@@ -2225,15 +2225,15 @@ mod tests {
                 collections::PRODUCTS,
                 json!({
                     "id": "prod_001",
-                    "stockQuantity": 10,
-                    "name": "Test Product"
+                    fields::STOCK_QUANTITY: 10,
+                    fields::TITLE: "Test Product"
                 }),
             )
             .await
             .unwrap();
         let order = json!({
             "id": "orders:restore_001",
-            "items": [{"productId": "prod_001", "quantity": 2}]
+            fields::ITEMS: [{fields::PRODUCT_ID: "prod_001", fields::QUANTITY: 2}]
         });
         let result = restore_stock_for_order(&state, &order).await;
         assert!(result.is_ok());
@@ -2244,7 +2244,7 @@ mod tests {
         let state = setup_state().await;
         let order = json!({
             "id": "orders:restore_002",
-            "items": []
+            fields::ITEMS: []
         });
         let result = restore_stock_for_order(&state, &order).await;
         assert!(result.is_ok());
@@ -2261,7 +2261,7 @@ mod tests {
     #[tokio::test]
     async fn test_restore_stock_for_order_missing_id() {
         let state = setup_state().await;
-        let order = json!({"items": [{"productId": "prod_001", "quantity": 1}]});
+        let order = json!({fields::ITEMS: [{fields::PRODUCT_ID: "prod_001", fields::QUANTITY: 1}]});
         let result = restore_stock_for_order(&state, &order).await;
         assert!(result.is_err());
     }
@@ -2271,7 +2271,7 @@ mod tests {
         let state = setup_state().await;
         let order = json!({
             "id": "orders:restore_004",
-            "items": [{"productId": "", "quantity": 1}]
+            fields::ITEMS: [{fields::PRODUCT_ID: "", fields::QUANTITY: 1}]
         });
         let result = restore_stock_for_order(&state, &order).await;
         assert!(result.is_ok());
@@ -2282,7 +2282,7 @@ mod tests {
         let state = setup_state().await;
         let order = json!({
             "id": "orders:restore_005",
-            "items": [{"productId": "prod_001", "quantity": 0}]
+            fields::ITEMS: [{fields::PRODUCT_ID: "prod_001", fields::QUANTITY: 0}]
         });
         let result = restore_stock_for_order(&state, &order).await;
         assert!(result.is_ok());
@@ -2301,15 +2301,15 @@ mod tests {
                 collections::PRODUCTS,
                 json!({
                     "id": "prod_002",
-                    "stockQuantity": 10,
-                    "name": "Test Product 2"
+                    fields::STOCK_QUANTITY: 10,
+                    fields::TITLE: "Test Product 2"
                 }),
             )
             .await
             .unwrap();
         let order = json!({
             "id": "orders:decrement_001",
-            "items": [{"productId": "prod_002", "quantity": 3}]
+            fields::ITEMS: [{fields::PRODUCT_ID: "prod_002", fields::QUANTITY: 3}]
         });
         let result = decrement_stock_for_order(&state, &order).await;
         assert!(result.is_ok());
@@ -2320,7 +2320,7 @@ mod tests {
         let state = setup_state().await;
         let order = json!({
             "id": "orders:decrement_002",
-            "items": []
+            fields::ITEMS: []
         });
         let result = decrement_stock_for_order(&state, &order).await;
         assert!(result.is_ok());
@@ -2329,7 +2329,7 @@ mod tests {
     #[tokio::test]
     async fn test_decrement_stock_for_order_missing_id() {
         let state = setup_state().await;
-        let order = json!({"items": [{"productId": "prod_001", "quantity": 1}]});
+        let order = json!({fields::ITEMS: [{fields::PRODUCT_ID: "prod_001", fields::QUANTITY: 1}]});
         let result = decrement_stock_for_order(&state, &order).await;
         assert!(result.is_err());
     }
@@ -2339,7 +2339,7 @@ mod tests {
         let state = setup_state().await;
         let order = json!({
             "id": "orders:decrement_003",
-            "items": [{"productId": "", "quantity": 1}]
+            fields::ITEMS: [{fields::PRODUCT_ID: "", fields::QUANTITY: 1}]
         });
         let result = decrement_stock_for_order(&state, &order).await;
         assert!(result.is_ok());
@@ -2372,9 +2372,9 @@ mod tests {
             .create_document(
                 collections::COUPON_USES,
                 json!({
-                    "orderId": "orders:coupon_002",
-                    "couponCode": "SAVE10",
-                    "redeemedAt": null
+                    fields::ORDER_ID: "orders:coupon_002",
+                    fields::COUPON_CODE: "SAVE10",
+                    fields::REFUNDED_AT: null
                 }),
             )
             .await
@@ -2402,9 +2402,9 @@ mod tests {
             .create_document(
                 collections::COUPON_USES,
                 json!({
-                    "orderId": "orders:release_001",
-                    "couponCode": "SAVE10",
-                    "redeemedAt": null
+                    fields::ORDER_ID: "orders:release_001",
+                    fields::COUPON_CODE: "SAVE10",
+                    fields::REFUNDED_AT: null
                 }),
             )
             .await
@@ -2830,8 +2830,8 @@ mod tests {
         let state = setup_state().await;
         let order = json!({
             "id": "orders:email_001",
-            "buyerId": "buyer_001",
-            "sellerId": "seller_001"
+            fields::BUYER_ID: "buyer_001",
+            fields::SELLER_ID: "seller_001"
         });
         let result = send_payment_authorized_emails(&state, &order).await;
         assert!(result.is_ok());
@@ -2904,10 +2904,10 @@ mod tests {
                 collections::ORDERS,
                 "coupon_order",
                 json!({
-                    "orderId": "coupon_order",
-                    "orderStatus": "pending_payment",
-                    "paymentStatus": "awaiting_payment",
-                    "items": []
+                    fields::ORDER_ID: "coupon_order",
+                    fields::ORDER_STATUS: "pending_payment",
+                    fields::PAYMENT_STATUS: "awaiting_payment",
+                    fields::ITEMS: []
                 }),
             )
             .await
@@ -2917,10 +2917,10 @@ mod tests {
             .create_document(
                 collections::COUPON_USES,
                 json!({
-                    "orderId": "coupon_order",
-                    "couponCode": "SAVE10",
-                    "userId": "buyer_coupon",
-                    "redeemedAt": Value::Null,
+                    fields::ORDER_ID: "coupon_order",
+                    fields::COUPON_CODE: "SAVE10",
+                    fields::USER_ID: "buyer_coupon",
+                    fields::REFUNDED_AT: Value::Null,
                 }),
             )
             .await
@@ -2956,7 +2956,7 @@ mod tests {
         assert_eq!(coupon_rows.len(), 1);
         assert!(
             coupon_rows[0]
-                .get("couponCode")
+                .get(fields::COUPON_CODE)
                 .and_then(|value| value.as_str())
                 == Some("SAVE10"),
             "checkout.session.completed should preserve the reserved coupon usage record"

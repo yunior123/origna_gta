@@ -339,9 +339,9 @@ async fn confirm_item_receipt(
     Json(req): Json<ConfirmItemReceiptRequest>,
 ) -> Result<Json<ConfirmItemReceiptResponse>, ob_core::Error> {
     let user_id = &auth.user_id;
-    validate_uid("orderId", &req.order_id)?;
-    validate_uid("productId", &req.product_id)?;
-    validate_uid("userId", user_id)?;
+    validate_uid(fields::ORDER_ID, &req.order_id)?;
+    validate_uid(fields::PRODUCT_ID, &req.product_id)?;
+    validate_uid(fields::USER_ID, user_id)?;
 
     crate::shared::rate_limiter::check_user_rate_limit(
         &state.db,
@@ -404,8 +404,8 @@ async fn confirm_item_receipt(
 
     // Update item
     let now = Utc::now().to_rfc3339();
-    items[idx]["status"] = json!("delivered");
-    items[idx]["deliveredAt"] = json!(now);
+    items[idx][fields::STATUS] = json!("delivered");
+    items[idx][fields::DELIVERED_AT] = json!(now);
     items[idx]["confirmedByBuyer"] = json!(true);
 
     let all_delivered = all_items_delivered(&items);
@@ -418,7 +418,7 @@ async fn confirm_item_receipt(
     if all_delivered {
         let payment_status_str = str_field(&order, fields::PAYMENT_STATUS);
         if should_promote_order_to_delivered(payment_status_str, all_delivered) {
-            update_data["orderStatus"] = json!(OrderStatus::Delivered.as_str());
+            update_data[fields::ORDER_STATUS] = json!(OrderStatus::Delivered.as_str());
             update_data["confirmedAt"] = json!(now);
             update_data["confirmedByClient"] = json!(true);
         }
@@ -478,8 +478,8 @@ async fn update_order_status(
     Json(req): Json<UpdateOrderStatusRequest>,
 ) -> Result<Json<UpdateOrderStatusResponse>, ob_core::Error> {
     let user_id = &auth.user_id;
-    validate_uid("orderId", &req.order_id)?;
-    validate_uid("userId", user_id)?;
+    validate_uid(fields::ORDER_ID, &req.order_id)?;
+    validate_uid(fields::USER_ID, user_id)?;
     validate_string("newStatus", &req.new_status, 50)?;
 
     crate::shared::rate_limiter::check_user_rate_limit(
@@ -609,10 +609,10 @@ async fn update_order_status(
 
         for item in updated_items.iter_mut() {
             if str_field(item, fields::SELLER_ID) == user_id.as_str() {
-                item["status"] = json!("shipped");
-                item["shippedAt"] = json!(now);
+                item[fields::STATUS] = json!("shipped");
+                item[fields::SHIPPED_AT] = json!(now);
                 if let Some(ref tn) = tracking_number {
-                    item["trackingNumber"] = json!(tn);
+                    item[fields::TRACKING_NUMBER] = json!(tn);
                     item[fields::SHIPPING_CARRIER] = json!(carrier.as_deref().unwrap_or(""));
                 }
                 any_updated = true;
@@ -633,12 +633,12 @@ async fn update_order_status(
         let mut update_data = json!({
             fields::ITEMS: updated_items.clone(),
             fields::UPDATED_AT: now.clone(),
-            "lastActorId": user_id.as_str(),
+            fields::LAST_ACTOR_ID: user_id.as_str(),
         });
 
         if all_shipped {
             update_data[fields::ORDER_STATUS] = json!(OrderStatus::Shipped.as_str());
-            update_data["shippedAt"] = json!(now.clone());
+            update_data[fields::SHIPPED_AT] = json!(now.clone());
             if let Some(ref tn) = tracking_number {
                 update_data[fields::TRACKING_NUMBER] = json!(tn);
                 update_data[fields::SHIPPING_CARRIER] = json!(carrier.as_deref().unwrap_or(""));
@@ -655,7 +655,7 @@ async fn update_order_status(
             let mut email_order = order.clone();
             email_order[fields::ITEMS] = json!(updated_items);
             email_order[fields::ORDER_STATUS] = json!(OrderStatus::Shipped.as_str());
-            email_order["shippedAt"] = json!(now.clone());
+            email_order[fields::SHIPPED_AT] = json!(now.clone());
             if let Some(ref tn) = tracking_number {
                 email_order[fields::TRACKING_NUMBER] = json!(tn);
             }
@@ -692,16 +692,16 @@ async fn update_order_status(
         for item in updated_items.iter_mut() {
             let s = str_field(item, fields::STATUS);
             if s != DeliveryStatus::Delivered.as_str() && s != DeliveryStatus::Refunded.as_str() {
-                item["status"] = json!("shipped");
-                item["shippedAt"] = json!(now);
+                item[fields::STATUS] = json!("shipped");
+                item[fields::SHIPPED_AT] = json!(now);
                 if let Some(ref tn) = tracking_number {
-                    item["trackingNumber"] = json!(tn);
+                    item[fields::TRACKING_NUMBER] = json!(tn);
                     item[fields::SHIPPING_CARRIER] = json!(carrier.as_deref().unwrap_or(""));
                 }
             }
         }
         update_data[fields::ITEMS] = json!(updated_items);
-        update_data["shippedAt"] = json!(now);
+        update_data[fields::SHIPPED_AT] = json!(now);
         if let Some(ref tn) = tracking_number {
             update_data[fields::TRACKING_NUMBER] = json!(tn);
             update_data[fields::SHIPPING_CARRIER] = json!(carrier.as_deref().unwrap_or(""));
@@ -712,8 +712,8 @@ async fn update_order_status(
     if is_admin && new_status == OrderStatus::Delivered {
         let mut updated_items = items.clone();
         for item in updated_items.iter_mut() {
-            item["status"] = json!("delivered");
-            item["deliveredAt"] = json!(now);
+            item[fields::STATUS] = json!("delivered");
+            item[fields::DELIVERED_AT] = json!(now);
         }
         update_data[fields::ITEMS] = json!(updated_items);
     }
@@ -731,7 +731,7 @@ async fn update_order_status(
     // CAS: re-read the order and verify status hasn't changed, then update
     let fresh_order = state.db.get_document(collections::ORDERS, order_id_stripped).await
         .map_err(|e| ob_core::Error::Database(format!("Failed to update order: {e}")))?;
-    let fresh_status = fresh_order.get("orderStatus").and_then(|v| v.as_str()).unwrap_or("");
+    let fresh_status = fresh_order.get(fields::ORDER_STATUS).and_then(|v| v.as_str()).unwrap_or("");
     if fresh_status != old_status.as_str() {
         return Err(ob_core::Error::Validation(format!(
             "Order status changed concurrently — expected '{}', please retry",
@@ -816,9 +816,9 @@ async fn update_item_status(
     Json(req): Json<UpdateItemStatusRequest>,
 ) -> Result<Json<UpdateItemStatusResponse>, ob_core::Error> {
     let user_id = &auth.user_id;
-    validate_uid("orderId", &req.order_id)?;
-    validate_uid("productId", &req.product_id)?;
-    validate_uid("userId", user_id)?;
+    validate_uid(fields::ORDER_ID, &req.order_id)?;
+    validate_uid(fields::PRODUCT_ID, &req.product_id)?;
+    validate_uid(fields::USER_ID, user_id)?;
     validate_string("newStatus", &req.new_status, 20)?;
 
     crate::shared::rate_limiter::check_user_rate_limit(
@@ -916,20 +916,20 @@ async fn update_item_status(
 
     // Apply update
     let now = Utc::now().to_rfc3339();
-    items[idx]["status"] = json!(new_delivery.as_str());
+    items[idx][fields::STATUS] = json!(new_delivery.as_str());
 
     match new_delivery {
         DeliveryStatus::Shipped => {
-            items[idx]["shippedAt"] = json!(now);
+            items[idx][fields::SHIPPED_AT] = json!(now);
             if let Some(ref tn) = tracking_number {
-                items[idx]["trackingNumber"] = json!(tn);
+                items[idx][fields::TRACKING_NUMBER] = json!(tn);
             }
             if let Some(ref c) = carrier {
                 items[idx][fields::SHIPPING_CARRIER] = json!(c);
             }
         }
         DeliveryStatus::Delivered => {
-            items[idx]["deliveredAt"] = json!(now);
+            items[idx][fields::DELIVERED_AT] = json!(now);
         }
         _ => {}
     }
@@ -952,14 +952,14 @@ async fn update_item_status(
     if all_delivered && current_order_status_str != OrderStatus::Delivered.as_str() {
         let payment_status_str = str_field(&order, fields::PAYMENT_STATUS);
         if payment_status_str == PaymentStatus::Captured.as_str() {
-            update_data["orderStatus"] = json!(OrderStatus::Delivered.as_str());
+            update_data[fields::ORDER_STATUS] = json!(OrderStatus::Delivered.as_str());
         }
     } else if all_shipped && !all_delivered {
         // Promote to SHIPPED if still in a pre-ship status
         if let Some(os) = parse_order_status(current_order_status_str)
             && matches!(os, OrderStatus::Processing | OrderStatus::PaymentAuthorized)
         {
-            update_data["orderStatus"] = json!(OrderStatus::Shipped.as_str());
+            update_data[fields::ORDER_STATUS] = json!(OrderStatus::Shipped.as_str());
         }
     }
 
@@ -1175,7 +1175,7 @@ mod tests {
 
     #[test]
     fn test_str_field_helper() {
-        let v = json!({"name": "test", "count": 5});
+        let v = json!({fields::TITLE: "test", "count": 5});
         assert_eq!(str_field(&v, "name"), "test");
         assert_eq!(str_field(&v, "missing"), "");
         assert_eq!(str_field(&v, "count"), ""); // not a string
@@ -1183,7 +1183,7 @@ mod tests {
 
     #[test]
     fn test_bool_field_helper() {
-        let v = json!({"active": true, "name": "test"});
+        let v = json!({"active": true, fields::TITLE: "test"});
         assert!(bool_field(&v, "active"));
         assert!(!bool_field(&v, "missing"));
         assert!(!bool_field(&v, "name")); // not a bool
@@ -1544,10 +1544,10 @@ mod tests {
     #[test]
     fn test_items_array_missing_and_empty() {
         assert!(items_array(&json!({})).is_empty());
-        assert!(items_array(&json!({"items": null})).is_empty());
-        assert!(items_array(&json!({"items": "not_array"})).is_empty());
-        assert_eq!(items_array(&json!({"items": []})).len(), 0);
-        assert_eq!(items_array(&json!({"items": [{"id": 1}]})).len(), 1);
+        assert!(items_array(&json!({fields::ITEMS: null})).is_empty());
+        assert!(items_array(&json!({fields::ITEMS: "not_array"})).is_empty());
+        assert_eq!(items_array(&json!({fields::ITEMS: []})).len(), 0);
+        assert_eq!(items_array(&json!({fields::ITEMS: [{"id": 1}]})).len(), 1);
     }
 
     #[test]
@@ -1678,7 +1678,7 @@ mod tests {
                 collections::ORDERS,
                 &oid,
                 json!({
-                    "userId": buyer,
+                    fields::USER_ID: buyer,
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: prod,
                         fields::SELLER_ID: "seller_1",
@@ -1802,7 +1802,7 @@ mod tests {
                 &oid,
                 json!({
                     fields::ORDER_STATUS: OrderStatus::Processing.as_str(),
-                    "shippingApproval": { "status": "pending" },
+                    "shippingApproval": { fields::STATUS: "pending" },
                     fields::ITEMS: [{
                         fields::SELLER_ID: sid,
                         fields::STATUS: DeliveryStatus::Pending.as_str(),
@@ -1909,7 +1909,7 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(order[fields::ORDER_STATUS], OrderStatus::Shipped.as_str());
-        assert_eq!(order["trackingNumber"], "TN123");
+        assert_eq!(order[fields::TRACKING_NUMBER], "TN123");
     }
 
     #[tokio::test]
@@ -1926,7 +1926,7 @@ mod tests {
                 collections::ORDERS,
                 &oid,
                 json!({
-                    "userId": buyer,
+                    fields::USER_ID: buyer,
                     fields::PAYMENT_STATUS: PaymentStatus::Captured.as_str(),
                     fields::ORDER_STATUS: OrderStatus::Shipped.as_str(),
                     fields::ITEMS: [
@@ -1968,7 +1968,7 @@ mod tests {
         assert_eq!(order[fields::ORDER_STATUS], OrderStatus::Delivered.as_str());
         assert_eq!(order["confirmedByClient"], true);
         assert_eq!(
-            order["items"][1][fields::STATUS],
+            order[fields::ITEMS][1][fields::STATUS],
             DeliveryStatus::Delivered.as_str()
         );
     }
@@ -1986,7 +1986,7 @@ mod tests {
                 collections::ORDERS,
                 &oid,
                 json!({
-                    "userId": buyer,
+                    fields::USER_ID: buyer,
                     fields::PAYMENT_STATUS: PaymentStatus::Authorized.as_str(),
                     fields::ORDER_STATUS: OrderStatus::Shipped.as_str(),
                     fields::ITEMS: [{
@@ -2019,7 +2019,7 @@ mod tests {
         assert_eq!(order[fields::ORDER_STATUS], OrderStatus::Shipped.as_str());
         assert!(order.get("confirmedByClient").is_none());
         assert_eq!(
-            order["items"][0][fields::STATUS],
+            order[fields::ITEMS][0][fields::STATUS],
             DeliveryStatus::Delivered.as_str()
         );
     }
@@ -2037,7 +2037,7 @@ mod tests {
                 collections::ORDERS,
                 &oid,
                 json!({
-                    "userId": buyer,
+                    fields::USER_ID: buyer,
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: prod,
                         fields::SELLER_ID: "seller_1",
@@ -2125,7 +2125,7 @@ mod tests {
             .unwrap();
         assert_eq!(order[fields::ORDER_STATUS], OrderStatus::Delivered.as_str());
         assert!(
-            order["items"]
+            order[fields::ITEMS]
                 .as_array()
                 .unwrap()
                 .iter()
@@ -2287,7 +2287,7 @@ mod tests {
                 collections::ORDERS,
                 &oid,
                 json!({
-                    "userId": seller,
+                    fields::USER_ID: seller,
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: prod,
                         fields::SELLER_ID: seller,
@@ -2328,7 +2328,7 @@ mod tests {
                 collections::ORDERS,
                 &oid,
                 json!({
-                    "userId": buyer,
+                    fields::USER_ID: buyer,
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: prod,
                         fields::SELLER_ID: "seller_1",
@@ -2407,7 +2407,7 @@ mod tests {
                 collections::ORDERS,
                 "ord_bad_stored",
                 json!({
-                    "orderStatus": "GARBAGE_STATUS",
+                    fields::ORDER_STATUS: "GARBAGE_STATUS",
                     fields::ITEMS: [],
                 }),
             )
@@ -2522,7 +2522,7 @@ mod tests {
                     fields::ITEMS: [{
                         fields::SELLER_ID: "seller_1",
                         fields::STATUS: DeliveryStatus::Pending.as_str(),
-                        "isDigital": true,
+                        fields::IS_DIGITAL: true,
                     }],
                 }),
             )
@@ -2562,7 +2562,7 @@ mod tests {
                 "ord_rej",
                 json!({
                     fields::ORDER_STATUS: OrderStatus::Processing.as_str(),
-                    "shippingApproval": { "status": "rejected" },
+                    "shippingApproval": { fields::STATUS: "rejected" },
                     fields::ITEMS: [{
                         fields::SELLER_ID: "seller_1",
                         fields::STATUS: DeliveryStatus::Pending.as_str(),
@@ -2763,7 +2763,7 @@ mod tests {
             .get_document(collections::ORDERS, "ord_track")
             .await
             .unwrap();
-        assert_eq!(order["trackingNumber"], "TN999");
+        assert_eq!(order[fields::TRACKING_NUMBER], "TN999");
         assert_eq!(order[fields::SHIPPING_CARRIER], "FedEx");
     }
 
@@ -2848,17 +2848,17 @@ mod tests {
             .get_document(collections::ORDERS, "ord_adm_ship")
             .await
             .unwrap();
-        let items = order["items"].as_array().unwrap();
+        let items = order[fields::ITEMS].as_array().unwrap();
         // p1 was pending → should be shipped with tracking
-        assert_eq!(items[0]["status"], "shipped");
-        assert_eq!(items[0]["trackingNumber"], "TRACK_ADM");
+        assert_eq!(items[0][fields::STATUS], "shipped");
+        assert_eq!(items[0][fields::TRACKING_NUMBER], "TRACK_ADM");
         assert_eq!(items[0][fields::SHIPPING_CARRIER], "DHL");
         // p2 was delivered → stays delivered (no tracking added)
-        assert_eq!(items[1]["status"], "delivered");
+        assert_eq!(items[1][fields::STATUS], "delivered");
         // p3 was refunded → stays refunded
-        assert_eq!(items[2]["status"], "refunded");
+        assert_eq!(items[2][fields::STATUS], "refunded");
         // Order-level tracking
-        assert_eq!(order["trackingNumber"], "TRACK_ADM");
+        assert_eq!(order[fields::TRACKING_NUMBER], "TRACK_ADM");
         assert_eq!(order[fields::SHIPPING_CARRIER], "DHL");
     }
 
@@ -2903,7 +2903,7 @@ mod tests {
             .get_document(collections::ORDERS, "ord_adm_notrack")
             .await
             .unwrap();
-        assert_eq!(order["items"][0]["status"], "shipped");
+        assert_eq!(order[fields::ITEMS][0][fields::STATUS], "shipped");
     }
 
     // -----------------------------------------------------------------------
@@ -3087,7 +3087,7 @@ mod tests {
                 "ord_pickup",
                 json!({
                     fields::ORDER_STATUS: OrderStatus::Processing.as_str(),
-                    "deliverySpeed": "pickup",
+                    fields::DELIVERY_SPEED: "pickup",
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: "p1",
                         fields::SELLER_ID: "seller_1",
@@ -3159,8 +3159,8 @@ mod tests {
             .get_document(collections::ORDERS, "ord_ship_track")
             .await
             .unwrap();
-        assert_eq!(order["items"][0]["trackingNumber"], "TRACK1");
-        assert_eq!(order["items"][0][fields::SHIPPING_CARRIER], "UPS");
+        assert_eq!(order[fields::ITEMS][0][fields::TRACKING_NUMBER], "TRACK1");
+        assert_eq!(order[fields::ITEMS][0][fields::SHIPPING_CARRIER], "UPS");
     }
 
     // -----------------------------------------------------------------------
@@ -3313,7 +3313,7 @@ mod tests {
             .get_document(collections::ORDERS, "ord_refund_arm")
             .await
             .unwrap();
-        assert_eq!(order["items"][0]["status"], "refunded");
+        assert_eq!(order[fields::ITEMS][0][fields::STATUS], "refunded");
     }
 
     // -----------------------------------------------------------------------

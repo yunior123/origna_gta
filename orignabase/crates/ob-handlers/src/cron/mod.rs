@@ -2152,7 +2152,7 @@ mod tests {
                     let _ = state.db.update_document(
                         collections::CRON_LOCKS,
                         id,
-                        json!({"status": "completed", "lockedAt": "2000-01-01T00:00:00Z"}),
+                        json!({fields::STATUS: "completed", fields::LOCKED_AT: "2000-01-01T00:00:00Z"}),
                     ).await;
                 }
             }
@@ -2181,8 +2181,8 @@ mod tests {
                 collections::CRON_LOCKS,
                 lock_name,
                 json!({
-                    "lockedAt": "2000-01-01T00:00:00Z",
-                    "status": "completed",
+                    fields::LOCKED_AT: "2000-01-01T00:00:00Z",
+                    fields::STATUS: "completed",
                 }),
             )
             .await;
@@ -2200,7 +2200,7 @@ mod tests {
                 // Wait up to 5s for any running lock to complete
                 for _wait in 0..50u32 {
                     if let Ok(lock) = $state.db.get_document(collections::CRON_LOCKS, $lock_name).await {
-                        if lock.get("status").and_then(|v| v.as_str()) != Some("running") {
+                        if lock.get(fields::STATUS).and_then(|v| v.as_str()) != Some("running") {
                             break;
                         }
                     } else {
@@ -2212,7 +2212,7 @@ mod tests {
                 $cron_fn($state).await;
                 // Verify the cron actually ran (lock should be "completed" now)
                 if let Ok(lock) = $state.db.get_document(collections::CRON_LOCKS, $lock_name).await {
-                    if lock.get("status").and_then(|v| v.as_str()) == Some("completed") {
+                    if lock.get(fields::STATUS).and_then(|v| v.as_str()) == Some("completed") {
                         _ran = true;
                         break;
                     }
@@ -2272,7 +2272,7 @@ mod tests {
                     let _ = state.db.update_document(
                         collections::CRON_LOCKS,
                         id,
-                        json!({"status": "completed", "lockedAt": "2000-01-01T00:00:00Z"}),
+                        json!({fields::STATUS: "completed", fields::LOCKED_AT: "2000-01-01T00:00:00Z"}),
                     ).await;
                 }
             }
@@ -2343,9 +2343,9 @@ mod tests {
                 collections::CRON_LOCKS,
                 job,
                 json!({
-                    "lockedAt": stale_locked_at,
-                    "lockedBy": "old_runner",
-                    "status": "running",
+                    fields::LOCKED_AT: stale_locked_at,
+                    fields::LOCKED_BY: "old_runner",
+                    fields::STATUS: "running",
                 }),
             )
             .await
@@ -2369,7 +2369,7 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(failures.len(), 1);
-        assert_eq!(failures[0]["jobName"], unique_job.as_str());
+        assert_eq!(failures[0][fields::JOB_NAME], unique_job.as_str());
     }
 
     #[tokio::test]
@@ -2390,7 +2390,7 @@ mod tests {
                 json!({
                     fields::ORDER_STATUS: "delivered",
                     fields::PAYMENT_STATUS: "captured",
-                    "deliveredAt": delivered_at,
+                    fields::DELIVERED_AT: delivered_at,
                     fields::PAYMENT_INTENT_ID: &pi_id,
                     fields::SUBTOTAL_CENTS: 1000,
                     fields::PLATFORM_FEE_CENTS: 25,
@@ -2399,7 +2399,7 @@ mod tests {
                             fields::STATUS: "delivered",
                             fields::SELLER_ID: &seller_id,
                             fields::PRICE_CENTS: 1000,
-                            "quantity": 1
+                            fields::QUANTITY: 1
                         }
                     ]
                 }),
@@ -2414,7 +2414,7 @@ mod tests {
             .get_document(collections::ORDERS, &order_id)
             .await
             .unwrap();
-        assert_eq!(order["payoutStatus"], "completed");
+        assert_eq!(order[fields::PAYOUT_STATUS], "completed");
 
         let payouts = query_filtered(&state.db, collections::PAYOUTS, "orderId", &order_id).await;
         assert_eq!(payouts.len(), 1);
@@ -2436,7 +2436,7 @@ mod tests {
                 documents::PAYMENT_PROVIDERS,
                 json!({
                     "providers": [{
-                        "name": "stripe",
+                        fields::TITLE: "stripe",
                         "enabled": false,
                         "mode": "test",
                         "supportedCurrencies": ["cad"],
@@ -2455,13 +2455,13 @@ mod tests {
                 json!({
                     fields::ORDER_STATUS: "delivered",
                     fields::PAYMENT_STATUS: "captured",
-                    "deliveredAt": delivered_at,
+                    fields::DELIVERED_AT: delivered_at,
                     fields::PAYMENT_INTENT_ID: &pi_id,
                     fields::ITEMS: [{
                         fields::STATUS: "delivered",
                         fields::SELLER_ID: &seller_id,
                         fields::PRICE_CENTS: 1000,
-                        "quantity": 1
+                        fields::QUANTITY: 1
                     }]
                 }),
             )
@@ -2477,7 +2477,7 @@ mod tests {
             .unwrap();
         let payouts = query_filtered(&state.db, collections::PAYOUTS, "orderId", &order_id).await;
 
-        assert!(order.get("payoutStatus").is_none() || order["payoutStatus"].is_null());
+        assert!(order.get(fields::PAYOUT_STATUS).is_none() || order[fields::PAYOUT_STATUS].is_null());
         assert!(payouts.is_empty());
 
         // Clean up: re-enable Stripe so subsequent tests are not affected
@@ -2499,12 +2499,12 @@ mod tests {
                 json!({
                     fields::ORDER_STATUS: "delivered",
                     fields::PAYMENT_STATUS: "captured",
-                    "deliveredAt": delivered_at,
+                    fields::DELIVERED_AT: delivered_at,
                     fields::ITEMS: [{
                         fields::STATUS: "delivered",
                         fields::SELLER_ID: &seller_id,
                         fields::PRICE_CENTS: 1000,
-                        "quantity": 1
+                        fields::QUANTITY: 1
                     }]
                 }),
             )
@@ -2519,7 +2519,7 @@ mod tests {
             .await
             .unwrap();
         let payouts = query_filtered(&state.db, collections::PAYOUTS, "orderId", &order_id).await;
-        assert!(order.get("payoutStatus").is_none() || order["payoutStatus"].is_null());
+        assert!(order.get(fields::PAYOUT_STATUS).is_none() || order[fields::PAYOUT_STATUS].is_null());
         assert!(payouts.is_empty());
     }
 
@@ -2540,13 +2540,13 @@ mod tests {
                 json!({
                     fields::ORDER_STATUS: "delivered",
                     fields::PAYMENT_STATUS: "captured",
-                    "deliveredAt": delivered_at,
+                    fields::DELIVERED_AT: delivered_at,
                     fields::PAYMENT_INTENT_ID: &pi_id,
                     fields::ITEMS: [{
                         fields::STATUS: "delivered",
                         fields::SELLER_ID: &seller_id,
                         fields::PRICE_CENTS: 1000,
-                        "quantity": 1
+                        fields::QUANTITY: 1
                     }]
                 }),
             )
@@ -2559,8 +2559,8 @@ mod tests {
                 &alert_id,
                 json!({
                     "type": "dispute_created",
-                    "resolved": false,
-                    "orderId": &order_id,
+                    fields::RESOLVED: false,
+                    fields::ORDER_ID: &order_id,
                 }),
             )
             .await
@@ -2574,7 +2574,7 @@ mod tests {
             .await
             .unwrap();
         let payouts = query_filtered(&state.db, collections::PAYOUTS, "orderId", &order_id).await;
-        assert!(order.get("payoutStatus").is_none() || order["payoutStatus"].is_null());
+        assert!(order.get(fields::PAYOUT_STATUS).is_none() || order[fields::PAYOUT_STATUS].is_null());
         assert!(payouts.is_empty());
     }
 
@@ -2595,13 +2595,13 @@ mod tests {
                 json!({
                     fields::ORDER_STATUS: "delivered",
                     fields::PAYMENT_STATUS: "captured",
-                    "deliveredAt": delivered_at,
+                    fields::DELIVERED_AT: delivered_at,
                     fields::PAYMENT_INTENT_ID: &pi_id,
                     fields::ITEMS: [{
                         fields::STATUS: "delivered",
                         fields::SELLER_ID: &seller_id,
                         fields::PRICE_CENTS: 1000,
-                        "quantity": 1
+                        fields::QUANTITY: 1
                     }]
                 }),
             )
@@ -2613,8 +2613,8 @@ mod tests {
                 collections::RETURN_REQUESTS,
                 &return_id,
                 json!({
-                    "orderId": &order_id,
-                    "returnStatus": "approved",
+                    fields::ORDER_ID: &order_id,
+                    fields::RETURN_STATUS: "approved",
                 }),
             )
             .await
@@ -2628,7 +2628,7 @@ mod tests {
             .await
             .unwrap();
         let payouts = query_filtered(&state.db, collections::PAYOUTS, "orderId", &order_id).await;
-        assert!(order.get("payoutStatus").is_none() || order["payoutStatus"].is_null());
+        assert!(order.get(fields::PAYOUT_STATUS).is_none() || order[fields::PAYOUT_STATUS].is_null());
         assert!(payouts.is_empty());
     }
 
@@ -2648,13 +2648,13 @@ mod tests {
                 json!({
                     fields::ORDER_STATUS: "delivered",
                     fields::PAYMENT_STATUS: "captured",
-                    "deliveredAt": delivered_at,
+                    fields::DELIVERED_AT: delivered_at,
                     fields::PAYMENT_INTENT_ID: &pi_id,
                     fields::ITEMS: [{
                         fields::STATUS: "processing",
                         fields::SELLER_ID: &seller_id,
                         fields::PRICE_CENTS: 1000,
-                        "quantity": 1
+                        fields::QUANTITY: 1
                     }]
                 }),
             )
@@ -2668,7 +2668,7 @@ mod tests {
             .get_document(collections::ORDERS, &order_id)
             .await
             .unwrap();
-        assert_eq!(order["payoutStatus"], "failed");
+        assert_eq!(order[fields::PAYOUT_STATUS], "failed");
     }
 
     #[tokio::test]
@@ -2683,7 +2683,7 @@ mod tests {
                 collections::ORDERS,
                 &order_id,
                 json!({
-                    "orderStatus": "delivered",
+                    fields::ORDER_STATUS: "delivered",
                     fields::UPDATED_AT: updated_at,
                     "archived": false
                 }),
@@ -2712,7 +2712,7 @@ mod tests {
                 collections::ORDERS,
                 "already_archived",
                 json!({
-                    "orderStatus": "delivered",
+                    fields::ORDER_STATUS: "delivered",
                     fields::UPDATED_AT: updated_at,
                     "archived": true
                 }),
@@ -2728,7 +2728,7 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(order["archived"], true);
-        assert!(order.get("archivedAt").is_none());
+        assert!(order.get(fields::ARCHIVED_AT).is_none());
     }
 
     #[tokio::test]
@@ -2782,9 +2782,9 @@ mod tests {
                 collections::CRON_LOCKS,
                 "cleanup_stale_rate_limits",
                 json!({
-                    "lockedAt": Utc::now().to_rfc3339(),
-                    "lockedBy": "test_runner",
-                    "status": "running",
+                    fields::LOCKED_AT: Utc::now().to_rfc3339(),
+                    fields::LOCKED_BY: "test_runner",
+                    fields::STATUS: "running",
                 }),
             )
             .await
@@ -2848,7 +2848,7 @@ mod tests {
                 collections::SECURITY_ALERTS,
                 &alert_id,
                 json!({
-                    "resolved": true,
+                    fields::RESOLVED: true,
                     "timestamp": ts
                 }),
             )
@@ -2876,8 +2876,8 @@ mod tests {
                 failure_id,
                 json!({
                     fields::PRODUCT_ID: product_id,
-                    "retryCount": 0,
-                    "resolved": false
+                    fields::RETRY_COUNT: 0,
+                    fields::RESOLVED: false
                 }),
             )
             .await
@@ -2891,7 +2891,7 @@ mod tests {
             .get_document(collections::MEILISEARCH_SYNC_FAILURES, failure_id)
             .await
             .unwrap();
-        assert_eq!(failure["resolved"], true);
+        assert_eq!(failure[fields::RESOLVED], true);
     }
 
     #[tokio::test]
@@ -2906,9 +2906,9 @@ mod tests {
                 collections::ORDERS,
                 &order_id,
                 json!({
-                    "createdAt": Utc::now().to_rfc3339(),
-                    "hasDispute": true,
-                    "orderStatus": "delivered",
+                    fields::CREATED_AT: Utc::now().to_rfc3339(),
+                    fields::HAS_DISPUTE: true,
+                    fields::ORDER_STATUS: "delivered",
                     fields::ITEMS: [
                         {
                             fields::SELLER_ID: &seller_id,
@@ -2927,7 +2927,7 @@ mod tests {
             .get_document(collections::SELLER_METRICS, &seller_id)
             .await
             .unwrap();
-        assert_eq!(metrics["disputeRate"], 1.0);
+        assert_eq!(metrics[fields::DISPUTE_RATE], 1.0);
     }
 
     #[tokio::test]
@@ -2942,10 +2942,10 @@ mod tests {
                 collections::PRODUCTS,
                 product_id,
                 json!({
-                    "lifecycleStatus": "active",
-                    "updatedAt": Utc::now().to_rfc3339(),
-                    "viewCount": 999999,
-                    "purchaseCount": 999999
+                    fields::LIFECYCLE_STATUS: "active",
+                    fields::UPDATED_AT: Utc::now().to_rfc3339(),
+                    fields::VIEW_COUNT: 999999,
+                    fields::PURCHASE_COUNT: 999999
                 }),
             )
             .await
@@ -2958,7 +2958,7 @@ mod tests {
             .get_document(collections::PRODUCTS, product_id)
             .await
             .unwrap();
-        assert_eq!(product["isTrending"], true);
+        assert_eq!(product[fields::IS_TRENDING], true);
     }
 
     #[tokio::test]
@@ -2975,10 +2975,10 @@ mod tests {
                     fields::NAME: "Low Stock Product",
                     fields::SELLER_ID: &seller_id,
                     fields::STOCK_QUANTITY: 2,
-                    "lifecycleStatus": "active",
+                    fields::LIFECYCLE_STATUS: "active",
                     "inventory": {
-                        "lowStockThreshold": 3,
-                        "trackQuantity": true
+                        fields::LOW_STOCK_THRESHOLD: 3,
+                        fields::TRACK_QUANTITY: true
                     }
                 }),
             )
@@ -3004,7 +3004,7 @@ mod tests {
             .get_document(collections::PRODUCTS, &product_id)
             .await
             .unwrap();
-        assert!(product.get("lastLowStockAlertAt").is_none());
+        assert!(product.get(fields::LAST_LOW_STOCK_ALERT_AT).is_none());
     }
 
     #[tokio::test]
@@ -3021,11 +3021,11 @@ mod tests {
                     fields::NAME: "Cooldown Product",
                     fields::SELLER_ID: &seller_id,
                     fields::STOCK_QUANTITY: 1,
-                    "lifecycleStatus": "active",
-                    "lastLowStockAlertAt": Utc::now().to_rfc3339(),
+                    fields::LIFECYCLE_STATUS: "active",
+                    fields::LAST_LOW_STOCK_ALERT_AT: Utc::now().to_rfc3339(),
                     "inventory": {
-                        "lowStockThreshold": 3,
-                        "trackQuantity": true
+                        fields::LOW_STOCK_THRESHOLD: 3,
+                        fields::TRACK_QUANTITY: true
                     }
                 }),
             )
@@ -3051,7 +3051,7 @@ mod tests {
             .get_document(collections::PRODUCTS, &product_id)
             .await
             .unwrap();
-        assert!(product.get("lastLowStockAlertAt").is_some());
+        assert!(product.get(fields::LAST_LOW_STOCK_ALERT_AT).is_some());
     }
 
     #[tokio::test]
@@ -3067,8 +3067,8 @@ mod tests {
                 json!({
                     fields::EMAIL: "recent@example.com",
                     fields::EMAIL_CONSENT: true,
-                    "marketingOptIn": true,
-                    "lastCheckoutTimestamp": Utc::now().to_rfc3339(),
+                    fields::MARKETING_OPT_IN: true,
+                    fields::LAST_CHECKOUT_TIMESTAMP: Utc::now().to_rfc3339(),
                 }),
             )
             .await
@@ -3081,7 +3081,7 @@ mod tests {
                 json!({
                     fields::EMAIL: "empty@example.com",
                     fields::EMAIL_CONSENT: true,
-                    "marketingOptIn": true,
+                    fields::MARKETING_OPT_IN: true,
                 }),
             )
             .await
@@ -3099,8 +3099,8 @@ mod tests {
             .get_document(collections::USERS, &user_empty_id)
             .await
             .unwrap();
-        assert!(recent.get("lastCartAbandonEmailAt").is_none());
-        assert!(empty.get("lastCartAbandonEmailAt").is_none());
+        assert!(recent.get(fields::LAST_CART_ABANDON_EMAIL_AT).is_none());
+        assert!(empty.get(fields::LAST_CART_ABANDON_EMAIL_AT).is_none());
     }
 
     #[tokio::test]
@@ -3116,7 +3116,7 @@ mod tests {
                 collections::SUBSCRIPTIONS,
                 uid,
                 json!({
-                    "currentPeriodEnd": period_end,
+                    fields::CURRENT_PERIOD_END: period_end,
                     fields::STATUS: "active"
                 }),
             )
@@ -3159,8 +3159,8 @@ mod tests {
                 collections::RETURN_REQUESTS,
                 ret_id,
                 json!({
-                    "returnStatus": "requested",
-                    "requestedAt": requested_at
+                    fields::RETURN_STATUS: "requested",
+                    fields::REQUESTED_AT: requested_at
                 }),
             )
             .await
@@ -3173,7 +3173,7 @@ mod tests {
             .get_document(collections::RETURN_REQUESTS, ret_id)
             .await
             .unwrap();
-        assert_eq!(ret["returnStatus"], "escalated");
+        assert_eq!(ret[fields::RETURN_STATUS], "escalated");
     }
 
     #[tokio::test]
@@ -3190,7 +3190,7 @@ mod tests {
             .and(path(format!("/payment_intents/{pi_id}/cancel")))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!({
                 "id": &pi_id,
-                "status": "canceled"
+                fields::STATUS: "canceled"
             })))
             .mount(&server)
             .await;
@@ -3213,7 +3213,7 @@ mod tests {
                 &product_id,
                 json!({
                     fields::PRODUCT_ID: &product_id,
-                    "stockQuantity": 2
+                    fields::STOCK_QUANTITY: 2
                 }),
             )
             .await
@@ -3224,15 +3224,15 @@ mod tests {
                 collections::ORDERS,
                 &order_id,
                 json!({
-                    "userId": &buyer_id,
-                    "createdAt": created_at,
-                    "paymentStatus": "authorized",
-                    "orderStatus": "pending",
-                    "paymentIntentId": &pi_id,
-                    "items": [{
-                        "productId": &product_id,
-                        "quantity": 3,
-                        "isDigital": false
+                    fields::USER_ID: &buyer_id,
+                    fields::CREATED_AT: created_at,
+                    fields::PAYMENT_STATUS: "authorized",
+                    fields::ORDER_STATUS: "pending",
+                    fields::PAYMENT_INTENT_ID: &pi_id,
+                    fields::ITEMS: [{
+                        fields::PRODUCT_ID: &product_id,
+                        fields::QUANTITY: 3,
+                        fields::IS_DIGITAL: false
                     }]
                 }),
             )
@@ -3260,10 +3260,10 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(order["orderStatus"], "expired");
-        assert_eq!(order["paymentStatus"], "cancelled");
-        assert_eq!(order["stockRestored"], true);
-        assert_eq!(product["stockQuantity"], 5);
+        assert_eq!(order[fields::ORDER_STATUS], "expired");
+        assert_eq!(order[fields::PAYMENT_STATUS], "cancelled");
+        assert_eq!(order[fields::STOCK_RESTORED], true);
+        assert_eq!(product[fields::STOCK_QUANTITY], 5);
         assert_eq!(events.len(), 1);
     }
 
@@ -3279,8 +3279,8 @@ mod tests {
                 &fail_id,
                 json!({
                     fields::PRODUCT_ID: &product_id,
-                    "retryCount": business_rules::MEILISEARCH_DLQ_MAX_RETRIES,
-                    "resolved": false
+                    fields::RETRY_COUNT: business_rules::MEILISEARCH_DLQ_MAX_RETRIES,
+                    fields::RESOLVED: false
                 }),
             )
             .await
@@ -3293,8 +3293,8 @@ mod tests {
             .get_document(collections::MEILISEARCH_SYNC_FAILURES, &fail_id)
             .await
             .unwrap();
-        assert_eq!(failure["resolved"], true);
-        assert_eq!(failure["maxRetriesExceeded"], true);
+        assert_eq!(failure[fields::RESOLVED], true);
+        assert_eq!(failure[fields::MAX_RETRIES_EXCEEDED], true);
     }
 
     #[tokio::test]
@@ -3320,8 +3320,8 @@ mod tests {
                 &fail_id,
                 json!({
                     fields::PRODUCT_ID: &product_id,
-                    "retryCount": 1,
-                    "resolved": false
+                    fields::RETRY_COUNT: 1,
+                    fields::RESOLVED: false
                 }),
             )
             .await
@@ -3334,7 +3334,7 @@ mod tests {
             .get_document(collections::MEILISEARCH_SYNC_FAILURES, &fail_id)
             .await
             .unwrap();
-        assert_eq!(failure["resolved"], true);
+        assert_eq!(failure[fields::RESOLVED], true);
     }
 
     #[test]
@@ -3374,9 +3374,9 @@ mod tests {
                 collections::CRON_LOCKS,
                 "auto_capture_confirmed_receipts",
                 json!({
-                    "lockedAt": Utc::now().to_rfc3339(),
-                    "lockedBy": "other",
-                    "status": "running",
+                    fields::LOCKED_AT: Utc::now().to_rfc3339(),
+                    fields::LOCKED_BY: "other",
+                    fields::STATUS: "running",
                 }),
             )
             .await
@@ -3422,7 +3422,7 @@ mod tests {
                 json!({
                     fields::ORDER_STATUS: "delivered",
                     fields::PAYMENT_STATUS: "captured",
-                    "deliveredAt": delivered_at,
+                    fields::DELIVERED_AT: delivered_at,
                     fields::PAYMENT_INTENT_ID: &pi_id,
                     fields::SUBTOTAL_CENTS: 2500,
                     fields::PLATFORM_FEE_CENTS: 63,
@@ -3431,13 +3431,13 @@ mod tests {
                             fields::STATUS: "delivered",
                             fields::SELLER_ID: &seller_a_id,
                             fields::PRICE_CENTS: 1000,
-                            "quantity": 2
+                            fields::QUANTITY: 2
                         },
                         {
                             fields::STATUS: "delivered",
                             fields::SELLER_ID: &seller_b_id,
                             fields::PRICE_CENTS: 500,
-                            "quantity": 1
+                            fields::QUANTITY: 1
                         }
                     ]
                 }),
@@ -3452,7 +3452,7 @@ mod tests {
             .get_document(collections::ORDERS, &order_id)
             .await
             .unwrap();
-        assert_eq!(order["payoutStatus"], "completed");
+        assert_eq!(order[fields::PAYOUT_STATUS], "completed");
 
         let payouts = query_filtered(&state.db, collections::PAYOUTS, "orderId", &order_id).await;
         assert_eq!(payouts.len(), 2);
@@ -3476,7 +3476,7 @@ mod tests {
                 json!({
                     fields::ORDER_STATUS: "delivered",
                     fields::PAYMENT_STATUS: "captured",
-                    "deliveredAt": delivered_at,
+                    fields::DELIVERED_AT: delivered_at,
                     fields::PAYMENT_INTENT_ID: &pi_id,
                 }),
             )
@@ -3490,7 +3490,7 @@ mod tests {
             .get_document(collections::ORDERS, &order_id)
             .await
             .unwrap();
-        assert_eq!(order["payoutStatus"], "failed");
+        assert_eq!(order[fields::PAYOUT_STATUS], "failed");
     }
 
     // -----------------------------------------------------------------------
@@ -3512,7 +3512,7 @@ mod tests {
                 json!({
                     fields::ORDER_STATUS: "delivered",
                     fields::PAYMENT_STATUS: "captured",
-                    "deliveredAt": delivered_at,
+                    fields::DELIVERED_AT: delivered_at,
                     fields::PAYMENT_INTENT_ID: &pi_id,
                     "platformFeeRatio": 0.05,
                     fields::ITEMS: [
@@ -3520,7 +3520,7 @@ mod tests {
                             fields::STATUS: "delivered",
                             fields::SELLER_ID: &seller_id,
                             fields::PRICE_CENTS: 2000,
-                            "quantity": 3
+                            fields::QUANTITY: 3
                         }
                     ]
                 }),
@@ -3532,7 +3532,7 @@ mod tests {
 
         let payouts = query_filtered(&state.db, collections::PAYOUTS, "orderId", &order_id).await;
         assert_eq!(payouts.len(), 1);
-        assert_eq!(payouts[0]["autoCaptured"], true);
+        assert_eq!(payouts[0][fields::AUTO_CAPTURED], true);
     }
 
     // -----------------------------------------------------------------------
@@ -3547,9 +3547,9 @@ mod tests {
                 collections::CRON_LOCKS,
                 "check_expired_authorizations",
                 json!({
-                    "lockedAt": Utc::now().to_rfc3339(),
-                    "lockedBy": "other",
-                    "status": "running",
+                    fields::LOCKED_AT: Utc::now().to_rfc3339(),
+                    fields::LOCKED_BY: "other",
+                    fields::STATUS: "running",
                 }),
             )
             .await
@@ -3574,14 +3574,14 @@ mod tests {
                 collections::ORDERS,
                 &order_id,
                 json!({
-                    "userId": &buyer_id,
-                    "createdAt": created_at,
-                    "paymentStatus": "authorized",
-                    "orderStatus": "pending",
-                    "items": [{
-                        "productId": format!("dprod_{}", uuid::Uuid::new_v4()),
-                        "quantity": 1,
-                        "isDigital": true
+                    fields::USER_ID: &buyer_id,
+                    fields::CREATED_AT: created_at,
+                    fields::PAYMENT_STATUS: "authorized",
+                    fields::ORDER_STATUS: "pending",
+                    fields::ITEMS: [{
+                        fields::PRODUCT_ID: format!("dprod_{}", uuid::Uuid::new_v4()),
+                        fields::QUANTITY: 1,
+                        fields::IS_DIGITAL: true
                     }]
                 }),
             )
@@ -3595,7 +3595,7 @@ mod tests {
             .get_document(collections::ORDERS, &order_id)
             .await
             .unwrap();
-        assert_eq!(order["orderStatus"], "expired");
+        assert_eq!(order[fields::ORDER_STATUS], "expired");
     }
 
     // -----------------------------------------------------------------------
@@ -3615,7 +3615,7 @@ mod tests {
                 collections::PRODUCTS,
                 &product_id,
                 json!({
-                    "stockQuantity": 5
+                    fields::STOCK_QUANTITY: 5
                 }),
             )
             .await
@@ -3627,14 +3627,14 @@ mod tests {
                 collections::ORDERS,
                 &order_id,
                 json!({
-                    "userId": &buyer_id,
-                    "createdAt": created_at,
-                    "paymentStatus": "awaiting_payment",
-                    "orderStatus": "pending",
-                    "items": [{
-                        "productId": &product_id,
-                        "quantity": 2,
-                        "isDigital": false
+                    fields::USER_ID: &buyer_id,
+                    fields::CREATED_AT: created_at,
+                    fields::PAYMENT_STATUS: "awaiting_payment",
+                    fields::ORDER_STATUS: "pending",
+                    fields::ITEMS: [{
+                        fields::PRODUCT_ID: &product_id,
+                        fields::QUANTITY: 2,
+                        fields::IS_DIGITAL: false
                     }]
                 }),
             )
@@ -3648,15 +3648,15 @@ mod tests {
             .get_document(collections::ORDERS, &order_id)
             .await
             .unwrap();
-        assert_eq!(order["orderStatus"], "expired");
-        assert_eq!(order["stockRestored"], true);
+        assert_eq!(order[fields::ORDER_STATUS], "expired");
+        assert_eq!(order[fields::STOCK_RESTORED], true);
 
         let product = state
             .db
             .get_document(collections::PRODUCTS, &product_id)
             .await
             .unwrap();
-        assert_eq!(product["stockQuantity"], 7);
+        assert_eq!(product[fields::STOCK_QUANTITY], 7);
     }
 
     // -----------------------------------------------------------------------
@@ -3675,11 +3675,11 @@ mod tests {
                 collections::ORDERS,
                 &order_id,
                 json!({
-                    "userId": &buyer_id,
-                    "createdAt": created_at,
-                    "paymentStatus": "authorized",
-                    "orderStatus": "confirmed",
-                    "items": []
+                    fields::USER_ID: &buyer_id,
+                    fields::CREATED_AT: created_at,
+                    fields::PAYMENT_STATUS: "authorized",
+                    fields::ORDER_STATUS: "confirmed",
+                    fields::ITEMS: []
                 }),
             )
             .await
@@ -3692,7 +3692,7 @@ mod tests {
             .get_document(collections::ORDERS, &order_id)
             .await
             .unwrap();
-        assert_eq!(order["orderStatus"], "expired");
+        assert_eq!(order[fields::ORDER_STATUS], "expired");
     }
 
     // -----------------------------------------------------------------------
@@ -3707,9 +3707,9 @@ mod tests {
                 collections::CRON_LOCKS,
                 "auto_archive_old_orders",
                 json!({
-                    "lockedAt": Utc::now().to_rfc3339(),
-                    "lockedBy": "other",
-                    "status": "running",
+                    fields::LOCKED_AT: Utc::now().to_rfc3339(),
+                    fields::LOCKED_BY: "other",
+                    fields::STATUS: "running",
                 }),
             )
             .await
@@ -3732,7 +3732,7 @@ mod tests {
                 collections::PRODUCTS,
                 &prod_id1,
                 json!({
-                    "lifecycleStatus": "active"
+                    fields::LIFECYCLE_STATUS: "active"
                 }),
             )
             .await
@@ -3743,7 +3743,7 @@ mod tests {
                 collections::PRODUCTS,
                 &prod_id2,
                 json!({
-                    "lifecycleStatus": "active"
+                    fields::LIFECYCLE_STATUS: "active"
                 }),
             )
             .await
@@ -3863,9 +3863,9 @@ mod tests {
                 collections::CRON_LOCKS,
                 "cleanup_orphaned_r2_images",
                 json!({
-                    "lockedAt": Utc::now().to_rfc3339(),
-                    "lockedBy": "other",
-                    "status": "running",
+                    fields::LOCKED_AT: Utc::now().to_rfc3339(),
+                    fields::LOCKED_BY: "other",
+                    fields::STATUS: "running",
                 }),
             )
             .await
@@ -3925,9 +3925,9 @@ mod tests {
                 collections::CRON_LOCKS,
                 "cleanup_stale_webhook_events",
                 json!({
-                    "lockedAt": Utc::now().to_rfc3339(),
-                    "lockedBy": "other",
-                    "status": "running",
+                    fields::LOCKED_AT: Utc::now().to_rfc3339(),
+                    fields::LOCKED_BY: "other",
+                    fields::STATUS: "running",
                 }),
             )
             .await
@@ -3952,7 +3952,7 @@ mod tests {
                 collections::SECURITY_ALERTS,
                 &sa1,
                 json!({
-                    "resolved": true,
+                    fields::RESOLVED: true,
                     "timestamp": old_ts
                 }),
             )
@@ -3964,7 +3964,7 @@ mod tests {
                 collections::SECURITY_ALERTS,
                 &sa2,
                 json!({
-                    "resolved": true,
+                    fields::RESOLVED: true,
                     "timestamp": old_ts
                 }),
             )
@@ -3989,9 +3989,9 @@ mod tests {
                 collections::CRON_LOCKS,
                 "cleanup_stale_security_alerts",
                 json!({
-                    "lockedAt": Utc::now().to_rfc3339(),
-                    "lockedBy": "other",
-                    "status": "running",
+                    fields::LOCKED_AT: Utc::now().to_rfc3339(),
+                    fields::LOCKED_BY: "other",
+                    fields::STATUS: "running",
                 }),
             )
             .await
@@ -4012,9 +4012,9 @@ mod tests {
                 collections::CRON_LOCKS,
                 "retry_failed_meilisearch_syncs",
                 json!({
-                    "lockedAt": Utc::now().to_rfc3339(),
-                    "lockedBy": "other",
-                    "status": "running",
+                    fields::LOCKED_AT: Utc::now().to_rfc3339(),
+                    fields::LOCKED_BY: "other",
+                    fields::STATUS: "running",
                 }),
             )
             .await
@@ -4037,8 +4037,8 @@ mod tests {
                 &fail_id,
                 json!({
                     fields::PRODUCT_ID: "",
-                    "retryCount": 0,
-                    "resolved": false
+                    fields::RETRY_COUNT: 0,
+                    fields::RESOLVED: false
                 }),
             )
             .await
@@ -4051,7 +4051,7 @@ mod tests {
             .get_document(collections::MEILISEARCH_SYNC_FAILURES, &fail_id)
             .await
             .unwrap();
-        assert_eq!(failure["resolved"], true);
+        assert_eq!(failure[fields::RESOLVED], true);
     }
 
     // -----------------------------------------------------------------------
@@ -4080,8 +4080,8 @@ mod tests {
                 &fail_id,
                 json!({
                     fields::PRODUCT_ID: &product_id,
-                    "retryCount": 1,
-                    "resolved": false
+                    fields::RETRY_COUNT: 1,
+                    fields::RESOLVED: false
                 }),
             )
             .await
@@ -4094,7 +4094,7 @@ mod tests {
             .get_document(collections::MEILISEARCH_SYNC_FAILURES, &fail_id)
             .await
             .unwrap();
-        assert_eq!(failure["resolved"], true);
+        assert_eq!(failure[fields::RESOLVED], true);
     }
 
     // -----------------------------------------------------------------------
@@ -4109,9 +4109,9 @@ mod tests {
                 collections::CRON_LOCKS,
                 "check_low_stock_alerts",
                 json!({
-                    "lockedAt": Utc::now().to_rfc3339(),
-                    "lockedBy": "other",
-                    "status": "running",
+                    fields::LOCKED_AT: Utc::now().to_rfc3339(),
+                    fields::LOCKED_BY: "other",
+                    fields::STATUS: "running",
                 }),
             )
             .await
@@ -4137,10 +4137,10 @@ mod tests {
                     fields::NAME: "No Threshold",
                     fields::SELLER_ID: &seller_id,
                     fields::STOCK_QUANTITY: 1,
-                    "lifecycleStatus": "active",
+                    fields::LIFECYCLE_STATUS: "active",
                     "inventory": {
-                        "lowStockThreshold": 0,
-                        "trackQuantity": true
+                        fields::LOW_STOCK_THRESHOLD: 0,
+                        fields::TRACK_QUANTITY: true
                     }
                 }),
             )
@@ -4167,10 +4167,10 @@ mod tests {
                     fields::NAME: "High Stock",
                     fields::SELLER_ID: &seller_id,
                     fields::STOCK_QUANTITY: 100,
-                    "lifecycleStatus": "active",
+                    fields::LIFECYCLE_STATUS: "active",
                     "inventory": {
-                        "lowStockThreshold": 5,
-                        "trackQuantity": true
+                        fields::LOW_STOCK_THRESHOLD: 5,
+                        fields::TRACK_QUANTITY: true
                     }
                 }),
             )
@@ -4195,10 +4195,10 @@ mod tests {
                 json!({
                     fields::NAME: "No Seller",
                     fields::STOCK_QUANTITY: 1,
-                    "lifecycleStatus": "active",
+                    fields::LIFECYCLE_STATUS: "active",
                     "inventory": {
-                        "lowStockThreshold": 5,
-                        "trackQuantity": true
+                        fields::LOW_STOCK_THRESHOLD: 5,
+                        fields::TRACK_QUANTITY: true
                     }
                 }),
             )
@@ -4225,10 +4225,10 @@ mod tests {
                     fields::NAME: "Missing Seller Prod",
                     fields::SELLER_ID: &seller_id,
                     fields::STOCK_QUANTITY: 1,
-                    "lifecycleStatus": "active",
+                    fields::LIFECYCLE_STATUS: "active",
                     "inventory": {
-                        "lowStockThreshold": 5,
-                        "trackQuantity": true
+                        fields::LOW_STOCK_THRESHOLD: 5,
+                        fields::TRACK_QUANTITY: true
                     }
                 }),
             )
@@ -4279,10 +4279,10 @@ mod tests {
                     fields::NAME: "Low Stock Email Prod",
                     fields::SELLER_ID: &seller_id,
                     fields::STOCK_QUANTITY: 1,
-                    "lifecycleStatus": "active",
+                    fields::LIFECYCLE_STATUS: "active",
                     "inventory": {
-                        "lowStockThreshold": 5,
-                        "trackQuantity": true
+                        fields::LOW_STOCK_THRESHOLD: 5,
+                        fields::TRACK_QUANTITY: true
                     }
                 }),
             )
@@ -4309,7 +4309,7 @@ mod tests {
             .get_document(collections::PRODUCTS, &product_id)
             .await
             .unwrap();
-        assert!(product.get("lastLowStockAlertAt").is_some());
+        assert!(product.get(fields::LAST_LOW_STOCK_ALERT_AT).is_some());
     }
 
     // -----------------------------------------------------------------------
@@ -4329,10 +4329,10 @@ mod tests {
                     fields::NAME: "No Consent Prod",
                     fields::SELLER_ID: &seller_id,
                     fields::STOCK_QUANTITY: 1,
-                    "lifecycleStatus": "active",
+                    fields::LIFECYCLE_STATUS: "active",
                     "inventory": {
-                        "lowStockThreshold": 5,
-                        "trackQuantity": true
+                        fields::LOW_STOCK_THRESHOLD: 5,
+                        fields::TRACK_QUANTITY: true
                     }
                 }),
             )
@@ -4358,7 +4358,7 @@ mod tests {
             .get_document(collections::PRODUCTS, &product_id)
             .await
             .unwrap();
-        assert!(product.get("lastLowStockAlertAt").is_none());
+        assert!(product.get(fields::LAST_LOW_STOCK_ALERT_AT).is_none());
     }
 
     // -----------------------------------------------------------------------
@@ -4373,9 +4373,9 @@ mod tests {
                 collections::CRON_LOCKS,
                 "send_abandoned_cart_emails",
                 json!({
-                    "lockedAt": Utc::now().to_rfc3339(),
-                    "lockedBy": "other",
-                    "status": "running",
+                    fields::LOCKED_AT: Utc::now().to_rfc3339(),
+                    fields::LOCKED_BY: "other",
+                    fields::STATUS: "running",
                 }),
             )
             .await
@@ -4398,7 +4398,7 @@ mod tests {
                 &user_id,
                 json!({
                     fields::EMAIL_CONSENT: true,
-                    "marketingOptIn": true,
+                    fields::MARKETING_OPT_IN: true,
                 }),
             )
             .await
@@ -4422,8 +4422,8 @@ mod tests {
                 json!({
                     fields::EMAIL: "cool@example.com",
                     fields::EMAIL_CONSENT: true,
-                    "marketingOptIn": true,
-                    "lastCartAbandonEmailAt": Utc::now().to_rfc3339(),
+                    fields::MARKETING_OPT_IN: true,
+                    fields::LAST_CART_ABANDON_EMAIL_AT: Utc::now().to_rfc3339(),
                 }),
             )
             .await
@@ -4447,7 +4447,7 @@ mod tests {
                 json!({
                     fields::EMAIL: "empty@example.com",
                     fields::EMAIL_CONSENT: true,
-                    "marketingOptIn": true,
+                    fields::MARKETING_OPT_IN: true,
                 }),
             )
             .await
@@ -4472,7 +4472,7 @@ mod tests {
                 json!({
                     fields::EMAIL: "noname@example.com",
                     fields::EMAIL_CONSENT: true,
-                    "marketingOptIn": true,
+                    fields::MARKETING_OPT_IN: true,
                 }),
             )
             .await
@@ -4481,11 +4481,11 @@ mod tests {
         state
             .db
             .upsert_document(
-                "cart",
+                collections::CART,
                 &cart_id,
                 json!({
-                    "userId": &user_id,
-                    "productId": "some_prod",
+                    fields::USER_ID: &user_id,
+                    fields::PRODUCT_ID: "some_prod",
                 }),
             )
             .await
@@ -4536,7 +4536,7 @@ mod tests {
                     fields::EMAIL_CONSENT: true,
                     fields::NAME: "Alice",
                     fields::LANGUAGE: "en",
-                    "marketingOptIn": true,
+                    fields::MARKETING_OPT_IN: true,
                 }),
             )
             .await
@@ -4544,10 +4544,10 @@ mod tests {
         state
             .db
             .upsert_document(
-                "cart",
+                collections::CART,
                 &cart_id,
                 json!({
-                    "userId": &user_id,
+                    fields::USER_ID: &user_id,
                     fields::NAME: "Cool Sneakers",
                 }),
             )
@@ -4561,7 +4561,7 @@ mod tests {
             .get_document(collections::USERS, &user_id)
             .await
             .unwrap();
-        assert!(user.get("lastCartAbandonEmailAt").is_some());
+        assert!(user.get(fields::LAST_CART_ABANDON_EMAIL_AT).is_some());
     }
 
     // -----------------------------------------------------------------------
@@ -4606,7 +4606,7 @@ mod tests {
                     fields::EMAIL_CONSENT: true,
                     fields::NAME: "Jean",
                     fields::LANGUAGE: "fr",
-                    "marketingOptIn": true,
+                    fields::MARKETING_OPT_IN: true,
                 }),
             )
             .await
@@ -4614,10 +4614,10 @@ mod tests {
         state
             .db
             .upsert_document(
-                "cart",
+                collections::CART,
                 &cart_id,
                 json!({
-                    "userId": &user_id,
+                    fields::USER_ID: &user_id,
                     fields::NAME: "Belles Chaussures",
                 }),
             )
@@ -4631,7 +4631,7 @@ mod tests {
             .get_document(collections::USERS, &user_id)
             .await
             .unwrap();
-        assert!(user.get("lastCartAbandonEmailAt").is_some());
+        assert!(user.get(fields::LAST_CART_ABANDON_EMAIL_AT).is_some());
     }
 
     // -----------------------------------------------------------------------
@@ -4646,9 +4646,9 @@ mod tests {
                 collections::CRON_LOCKS,
                 "compute_seller_metrics",
                 json!({
-                    "lockedAt": Utc::now().to_rfc3339(),
-                    "lockedBy": "other",
-                    "status": "running",
+                    fields::LOCKED_AT: Utc::now().to_rfc3339(),
+                    fields::LOCKED_BY: "other",
+                    fields::STATUS: "running",
                 }),
             )
             .await
@@ -4670,9 +4670,9 @@ mod tests {
                 collections::ORDERS,
                 &order_id,
                 json!({
-                    "createdAt": Utc::now().to_rfc3339(),
-                    "hasDispute": false,
-                    "orderStatus": "delivered",
+                    fields::CREATED_AT: Utc::now().to_rfc3339(),
+                    fields::HAS_DISPUTE: false,
+                    fields::ORDER_STATUS: "delivered",
                     fields::ITEMS: [{
                         fields::SELLER_ID: "",
                         fields::STATUS: "delivered"
@@ -4711,9 +4711,9 @@ mod tests {
                 collections::ORDERS,
                 &order_id,
                 json!({
-                    "createdAt": Utc::now().to_rfc3339(),
-                    "hasDispute": false,
-                    "orderStatus": "cancelled",
+                    fields::CREATED_AT: Utc::now().to_rfc3339(),
+                    fields::HAS_DISPUTE: false,
+                    fields::ORDER_STATUS: "cancelled",
                     fields::ITEMS: [
                         {
                             fields::SELLER_ID: &seller_id,
@@ -4737,8 +4737,8 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(metrics["totalItems30d"], 2);
-        assert!(metrics["refundRate"].as_f64().unwrap() > 0.0);
-        assert!(metrics["cancellationRate"].as_f64().unwrap() > 0.0);
+        assert!(metrics[fields::REFUND_RATE].as_f64().unwrap() > 0.0);
+        assert!(metrics[fields::CANCELLATION_RATE].as_f64().unwrap() > 0.0);
     }
 
     // -----------------------------------------------------------------------
@@ -4767,9 +4767,9 @@ mod tests {
                     collections::ORDERS,
                     &order_id,
                     json!({
-                        "createdAt": Utc::now().to_rfc3339(),
-                        "hasDispute": true,
-                        "orderStatus": "cancelled",
+                        fields::CREATED_AT: Utc::now().to_rfc3339(),
+                        fields::HAS_DISPUTE: true,
+                        fields::ORDER_STATUS: "cancelled",
                         fields::ITEMS: [{
                             fields::SELLER_ID: &seller_id,
                             fields::STATUS: "refunded"
@@ -4787,9 +4787,9 @@ mod tests {
             .get_document(collections::SELLER_METRICS, &seller_id)
             .await
             .unwrap();
-        assert_eq!(metrics["disputeRate"], 1.0);
-        assert_eq!(metrics["refundRate"], 1.0);
-        assert_eq!(metrics["cancellationRate"], 1.0);
+        assert_eq!(metrics[fields::DISPUTE_RATE], 1.0);
+        assert_eq!(metrics[fields::REFUND_RATE], 1.0);
+        assert_eq!(metrics[fields::CANCELLATION_RATE], 1.0);
 
         let alerts = state
             .db
@@ -4811,9 +4811,9 @@ mod tests {
                 collections::CRON_LOCKS,
                 "compute_trending_products",
                 json!({
-                    "lockedAt": Utc::now().to_rfc3339(),
-                    "lockedBy": "other",
-                    "status": "running",
+                    fields::LOCKED_AT: Utc::now().to_rfc3339(),
+                    fields::LOCKED_BY: "other",
+                    fields::STATUS: "running",
                 }),
             )
             .await
@@ -4838,12 +4838,12 @@ mod tests {
                 collections::PRODUCTS,
                 &old_id,
                 json!({
-                    "lifecycleStatus": "active",
-                    "updatedAt": Utc::now().to_rfc3339(),
-                    "isTrending": true,
-                    "viewCount": 0,
-                    "purchaseCount": 0,
-                    "favoriteCount": 0
+                    fields::LIFECYCLE_STATUS: "active",
+                    fields::UPDATED_AT: Utc::now().to_rfc3339(),
+                    fields::IS_TRENDING: true,
+                    fields::VIEW_COUNT: 0,
+                    fields::PURCHASE_COUNT: 0,
+                    fields::FAVORITE_COUNT: 0
                 }),
             )
             .await
@@ -4856,11 +4856,11 @@ mod tests {
                 collections::PRODUCTS,
                 &new_id,
                 json!({
-                    "lifecycleStatus": "active",
-                    "updatedAt": Utc::now().to_rfc3339(),
-                    "viewCount": 999999,
-                    "purchaseCount": 999999,
-                    "favoriteCount": 999999
+                    fields::LIFECYCLE_STATUS: "active",
+                    fields::UPDATED_AT: Utc::now().to_rfc3339(),
+                    fields::VIEW_COUNT: 999999,
+                    fields::PURCHASE_COUNT: 999999,
+                    fields::FAVORITE_COUNT: 999999
                 }),
             )
             .await
@@ -4873,14 +4873,14 @@ mod tests {
             .get_document(collections::PRODUCTS, &old_id)
             .await
             .unwrap();
-        assert_eq!(old["isTrending"], false);
+        assert_eq!(old[fields::IS_TRENDING], false);
 
         let new = state
             .db
             .get_document(collections::PRODUCTS, &new_id)
             .await
             .unwrap();
-        assert_eq!(new["isTrending"], true);
+        assert_eq!(new[fields::IS_TRENDING], true);
     }
 
     // -----------------------------------------------------------------------
@@ -4896,11 +4896,11 @@ mod tests {
                 collections::PRODUCTS,
                 &product_id,
                 json!({
-                    "lifecycleStatus": "active",
-                    "updatedAt": Utc::now().to_rfc3339(),
-                    "viewCount": 0,
-                    "purchaseCount": 0,
-                    "favoriteCount": 0
+                    fields::LIFECYCLE_STATUS: "active",
+                    fields::UPDATED_AT: Utc::now().to_rfc3339(),
+                    fields::VIEW_COUNT: 0,
+                    fields::PURCHASE_COUNT: 0,
+                    fields::FAVORITE_COUNT: 0
                 }),
             )
             .await
@@ -4913,7 +4913,7 @@ mod tests {
             .get_document(collections::PRODUCTS, &product_id)
             .await
             .unwrap();
-        assert!(prod.get("trendingScore").is_none());
+        assert!(prod.get(fields::TRENDING_SCORE).is_none());
     }
 
     // -----------------------------------------------------------------------
@@ -4928,9 +4928,9 @@ mod tests {
                 collections::CRON_LOCKS,
                 "sync_expired_subscriptions",
                 json!({
-                    "lockedAt": Utc::now().to_rfc3339(),
-                    "lockedBy": "other",
-                    "status": "running",
+                    fields::LOCKED_AT: Utc::now().to_rfc3339(),
+                    fields::LOCKED_BY: "other",
+                    fields::STATUS: "running",
                 }),
             )
             .await
@@ -4954,7 +4954,7 @@ mod tests {
                 collections::SUBSCRIPTIONS,
                 &user_id,
                 json!({
-                    "currentPeriodEnd": period_end,
+                    fields::CURRENT_PERIOD_END: period_end,
                     fields::STATUS: "past_due"
                 }),
             )
@@ -4995,9 +4995,9 @@ mod tests {
                 collections::CRON_LOCKS,
                 "escalate_stale_return_requests",
                 json!({
-                    "lockedAt": Utc::now().to_rfc3339(),
-                    "lockedBy": "other",
-                    "status": "running",
+                    fields::LOCKED_AT: Utc::now().to_rfc3339(),
+                    fields::LOCKED_BY: "other",
+                    fields::STATUS: "running",
                 }),
             )
             .await
@@ -5022,8 +5022,8 @@ mod tests {
                 collections::RETURN_REQUESTS,
                 &ret_a,
                 json!({
-                    "returnStatus": "requested",
-                    "requestedAt": old_ts
+                    fields::RETURN_STATUS: "requested",
+                    fields::REQUESTED_AT: old_ts
                 }),
             )
             .await
@@ -5034,8 +5034,8 @@ mod tests {
                 collections::RETURN_REQUESTS,
                 &ret_b,
                 json!({
-                    "returnStatus": "requested",
-                    "requestedAt": old_ts
+                    fields::RETURN_STATUS: "requested",
+                    fields::REQUESTED_AT: old_ts
                 }),
             )
             .await
@@ -5053,8 +5053,8 @@ mod tests {
             .get_document(collections::RETURN_REQUESTS, &ret_b)
             .await
             .unwrap();
-        assert_eq!(a["returnStatus"], "escalated");
-        assert_eq!(b["returnStatus"], "escalated");
+        assert_eq!(a[fields::RETURN_STATUS], "escalated");
+        assert_eq!(b[fields::RETURN_STATUS], "escalated");
     }
 
     // -----------------------------------------------------------------------
@@ -5069,9 +5069,9 @@ mod tests {
                 collections::CRON_LOCKS,
                 "send_premium_renewal_reminders",
                 json!({
-                    "lockedAt": Utc::now().to_rfc3339(),
-                    "lockedBy": "other",
-                    "status": "running",
+                    fields::LOCKED_AT: Utc::now().to_rfc3339(),
+                    fields::LOCKED_BY: "other",
+                    fields::STATUS: "running",
                 }),
             )
             .await
@@ -5120,9 +5120,9 @@ mod tests {
                 collections::SUBSCRIPTIONS,
                 &user_id,
                 json!({
-                    "currentPeriodEnd": renewal_date.to_rfc3339(),
+                    fields::CURRENT_PERIOD_END: renewal_date.to_rfc3339(),
                     fields::STATUS: "active",
-                    "cancelAtPeriodEnd": false,
+                    fields::CANCEL_AT_PERIOD_END: false,
                 }),
             )
             .await
@@ -5189,9 +5189,9 @@ mod tests {
                 collections::SUBSCRIPTIONS,
                 &user_id,
                 json!({
-                    "currentPeriodEnd": renewal_date.to_rfc3339(),
+                    fields::CURRENT_PERIOD_END: renewal_date.to_rfc3339(),
                     fields::STATUS: "active",
-                    "cancelAtPeriodEnd": false,
+                    fields::CANCEL_AT_PERIOD_END: false,
                 }),
             )
             .await
@@ -5230,9 +5230,9 @@ mod tests {
                 collections::SUBSCRIPTIONS,
                 &user_id,
                 json!({
-                    "currentPeriodEnd": renewal_date.to_rfc3339(),
+                    fields::CURRENT_PERIOD_END: renewal_date.to_rfc3339(),
                     fields::STATUS: "active",
-                    "cancelAtPeriodEnd": true,
+                    fields::CANCEL_AT_PERIOD_END: true,
                 }),
             )
             .await
@@ -5264,9 +5264,9 @@ mod tests {
                 collections::SUBSCRIPTIONS,
                 &user_id,
                 json!({
-                    "currentPeriodEnd": renewal_date.to_rfc3339(),
+                    fields::CURRENT_PERIOD_END: renewal_date.to_rfc3339(),
                     fields::STATUS: "active",
-                    "cancelAtPeriodEnd": false,
+                    fields::CANCEL_AT_PERIOD_END: false,
                     "renewalReminderSentDays7": true,
                 }),
             )
@@ -5292,9 +5292,9 @@ mod tests {
                 collections::SUBSCRIPTIONS,
                 &user_id,
                 json!({
-                    "currentPeriodEnd": renewal_date.to_rfc3339(),
+                    fields::CURRENT_PERIOD_END: renewal_date.to_rfc3339(),
                     fields::STATUS: "active",
-                    "cancelAtPeriodEnd": false,
+                    fields::CANCEL_AT_PERIOD_END: false,
                 }),
             )
             .await
@@ -5335,9 +5335,9 @@ mod tests {
                 collections::CRON_LOCKS,
                 "drain_pending_notifications",
                 json!({
-                    "lockedAt": Utc::now().to_rfc3339(),
-                    "lockedBy": "other",
-                    "status": "running",
+                    fields::LOCKED_AT: Utc::now().to_rfc3339(),
+                    fields::LOCKED_BY: "other",
+                    fields::STATUS: "running",
                 }),
             )
             .await
@@ -5368,7 +5368,7 @@ mod tests {
             "_pending_notifications",
             &notif_id,
             json!({
-                "status": "pending",
+                fields::STATUS: "pending",
                 "token": "tok",
                 "title": "T",
                 "body": "B",
@@ -5507,7 +5507,7 @@ mod tests {
                 collections::CONFIG,
                 documents::PAYMENT_PROVIDERS,
                 json!({
-                    "providers": [{"name": "stripe"}]
+                    "providers": [{fields::TITLE: "stripe"}]
                 }),
             )
             .await
@@ -5538,14 +5538,14 @@ mod tests {
                 collections::ORDERS,
                 &ord_id_1,
                 json!({
-                    "userId": &buyer_id_1,
-                    "createdAt": created_at,
-                    "paymentStatus": "authorized",
-                    "orderStatus": "confirmed",
-                    "items": [{
-                        "productId": &prod_id_1,
-                        "quantity": 1,
-                        "isDigital": false
+                    fields::USER_ID: &buyer_id_1,
+                    fields::CREATED_AT: created_at,
+                    fields::PAYMENT_STATUS: "authorized",
+                    fields::ORDER_STATUS: "confirmed",
+                    fields::ITEMS: [{
+                        fields::PRODUCT_ID: &prod_id_1,
+                        fields::QUANTITY: 1,
+                        fields::IS_DIGITAL: false
                     }]
                 }),
             )
@@ -5557,7 +5557,7 @@ mod tests {
                 collections::PRODUCTS,
                 &prod_id_1,
                 json!({
-                    "stockQuantity": 10
+                    fields::STOCK_QUANTITY: 10
                 }),
             )
             .await
@@ -5569,15 +5569,15 @@ mod tests {
                 collections::ORDERS,
                 &ord_id_2,
                 json!({
-                    "userId": &buyer_id_2,
-                    "createdAt": created_at,
-                    "paymentStatus": "awaiting_payment",
-                    "orderStatus": "pending",
-                    "paymentIntentId": format!("pi_{}", uuid::Uuid::new_v4()),
-                    "items": [{
-                        "productId": &prod_id_2,
-                        "quantity": 5,
-                        "isDigital": false
+                    fields::USER_ID: &buyer_id_2,
+                    fields::CREATED_AT: created_at,
+                    fields::PAYMENT_STATUS: "awaiting_payment",
+                    fields::ORDER_STATUS: "pending",
+                    fields::PAYMENT_INTENT_ID: format!("pi_{}", uuid::Uuid::new_v4()),
+                    fields::ITEMS: [{
+                        fields::PRODUCT_ID: &prod_id_2,
+                        fields::QUANTITY: 5,
+                        fields::IS_DIGITAL: false
                     }]
                 }),
             )
@@ -5589,7 +5589,7 @@ mod tests {
                 collections::PRODUCTS,
                 &prod_id_2,
                 json!({
-                    "stockQuantity": 0
+                    fields::STOCK_QUANTITY: 0
                 }),
             )
             .await
@@ -5607,8 +5607,8 @@ mod tests {
             .get_document(collections::ORDERS, &ord_id_2)
             .await
             .unwrap();
-        assert_eq!(ord1["orderStatus"], "expired");
-        assert_eq!(ord2["orderStatus"], "expired");
+        assert_eq!(ord1[fields::ORDER_STATUS], "expired");
+        assert_eq!(ord2[fields::ORDER_STATUS], "expired");
 
         let prod1 = state
             .db
@@ -5620,8 +5620,8 @@ mod tests {
             .get_document(collections::PRODUCTS, &prod_id_2)
             .await
             .unwrap();
-        assert_eq!(prod1["stockQuantity"], 11);
-        assert_eq!(prod2["stockQuantity"], 5);
+        assert_eq!(prod1[fields::STOCK_QUANTITY], 11);
+        assert_eq!(prod2[fields::STOCK_QUANTITY], 5);
     }
 
     // -----------------------------------------------------------------------
@@ -5641,10 +5641,10 @@ mod tests {
                     fields::NAME: "No Track",
                     fields::SELLER_ID: &seller_id,
                     fields::STOCK_QUANTITY: 1,
-                    "lifecycleStatus": "active",
+                    fields::LIFECYCLE_STATUS: "active",
                     "inventory": {
-                        "lowStockThreshold": 10,
-                        "trackQuantity": false
+                        fields::LOW_STOCK_THRESHOLD: 10,
+                        fields::TRACK_QUANTITY: false
                     }
                 }),
             )
@@ -5671,10 +5671,10 @@ mod tests {
                     fields::NAME: "Empty Email Prod",
                     fields::SELLER_ID: &seller_id,
                     fields::STOCK_QUANTITY: 1,
-                    "lifecycleStatus": "active",
+                    fields::LIFECYCLE_STATUS: "active",
                     "inventory": {
-                        "lowStockThreshold": 5,
-                        "trackQuantity": true
+                        fields::LOW_STOCK_THRESHOLD: 5,
+                        fields::TRACK_QUANTITY: true
                     }
                 }),
             )
@@ -5711,9 +5711,9 @@ mod tests {
                 collections::ORDERS,
                 &order_id,
                 json!({
-                    "createdAt": Utc::now().to_rfc3339(),
-                    "hasDispute": false,
-                    "orderStatus": "delivered",
+                    fields::CREATED_AT: Utc::now().to_rfc3339(),
+                    fields::HAS_DISPUTE: false,
+                    fields::ORDER_STATUS: "delivered",
                     fields::ITEMS: [{
                         fields::SELLER_ID: &seller_id,
                         fields::STATUS: "refunded"
@@ -5730,7 +5730,7 @@ mod tests {
             .get_document(collections::SELLER_METRICS, &seller_id)
             .await
             .unwrap();
-        assert!(metrics["refundRate"].as_f64().unwrap() > 0.10);
+        assert!(metrics[fields::REFUND_RATE].as_f64().unwrap() > 0.10);
     }
 
     // -----------------------------------------------------------------------
@@ -5747,9 +5747,9 @@ mod tests {
                 collections::ORDERS,
                 &order_id,
                 json!({
-                    "createdAt": Utc::now().to_rfc3339(),
-                    "hasDispute": false,
-                    "orderStatus": "cancelled",
+                    fields::CREATED_AT: Utc::now().to_rfc3339(),
+                    fields::HAS_DISPUTE: false,
+                    fields::ORDER_STATUS: "cancelled",
                     fields::ITEMS: [{
                         fields::SELLER_ID: &seller_id,
                         fields::STATUS: "delivered"
@@ -5766,7 +5766,7 @@ mod tests {
             .get_document(collections::SELLER_METRICS, &seller_id)
             .await
             .unwrap();
-        assert!(metrics["cancellationRate"].as_f64().unwrap() > 0.15);
+        assert!(metrics[fields::CANCELLATION_RATE].as_f64().unwrap() > 0.15);
     }
 
     // -----------------------------------------------------------------------
@@ -5788,9 +5788,9 @@ mod tests {
                 collections::SUBSCRIPTIONS,
                 &user_id,
                 json!({
-                    "currentPeriodEnd": renewal_date.to_rfc3339(),
+                    fields::CURRENT_PERIOD_END: renewal_date.to_rfc3339(),
                     fields::STATUS: "active",
-                    "cancelAtPeriodEnd": false,
+                    fields::CANCEL_AT_PERIOD_END: false,
                 }),
             )
             .await
@@ -5854,9 +5854,9 @@ mod tests {
                 collections::SUBSCRIPTIONS,
                 &user_id,
                 json!({
-                    "currentPeriodEnd": renewal_date.to_rfc3339(),
+                    fields::CURRENT_PERIOD_END: renewal_date.to_rfc3339(),
                     fields::STATUS: "active",
-                    "cancelAtPeriodEnd": false,
+                    fields::CANCEL_AT_PERIOD_END: false,
                 }),
             )
             .await
@@ -5898,7 +5898,7 @@ mod tests {
                 json!({
                     fields::ORDER_STATUS: "delivered",
                     fields::PAYMENT_STATUS: "authorized",
-                    "deliveredAt": delivered_at,
+                    fields::DELIVERED_AT: delivered_at,
                     fields::PAYMENT_INTENT_ID: &pi_id,
                     fields::SUBTOTAL_CENTS: 1500,
                     fields::PLATFORM_FEE_CENTS: 38,
@@ -5907,13 +5907,13 @@ mod tests {
                             fields::STATUS: "delivered",
                             fields::SELLER_ID: &seller_id,
                             fields::PRICE_CENTS: 1000,
-                            "quantity": 1
+                            fields::QUANTITY: 1
                         },
                         {
                             fields::STATUS: "processing",
                             fields::SELLER_ID: &seller_id,
                             fields::PRICE_CENTS: 500,
-                            "quantity": 1
+                            fields::QUANTITY: 1
                         }
                     ]
                 }),
@@ -5928,7 +5928,7 @@ mod tests {
             .get_document(collections::ORDERS, &order_id)
             .await
             .unwrap();
-        assert_eq!(order["payoutStatus"], "completed");
+        assert_eq!(order[fields::PAYOUT_STATUS], "completed");
     }
 
     // -----------------------------------------------------------------------
@@ -5948,7 +5948,7 @@ mod tests {
                     collections::ORDERS,
                     &format!("arch_{status}_{suffix}"),
                     json!({
-                        "orderStatus": status,
+                        fields::ORDER_STATUS: status,
                         fields::UPDATED_AT: old,
                         "archived": false
                     }),
@@ -6088,7 +6088,7 @@ mod tests {
 
         // Insert pending notification old enough
         insert_old_notification(&state.db, json!({
-            "status": "pending", "token": "retry_tok", "title": "Retry Title", "body": "Retry Body", "attempts": 0
+            fields::STATUS: "pending", "token": "retry_tok", "title": "Retry Title", "body": "Retry Body", "attempts": 0
         })).await;
 
         // Set env vars with invalid SA so send_push fails
@@ -6114,7 +6114,7 @@ mod tests {
         let state = setup_state().await;
 
         insert_old_notification(&state.db, json!({
-            "status": "pending", "token": "fail_tok", "title": "Fail", "body": "Body", "attempts": 2
+            fields::STATUS: "pending", "token": "fail_tok", "title": "Fail", "body": "Body", "attempts": 2
         })).await;
 
         unsafe {
@@ -6139,7 +6139,7 @@ mod tests {
 
         // Record with no token field → continue at line 1738-1739
         insert_old_notification(&state.db, json!({
-            "status": "pending", "title": "NoTok", "body": "Body"
+            fields::STATUS: "pending", "title": "NoTok", "body": "Body"
         })).await;
 
         unsafe {
@@ -6163,8 +6163,8 @@ mod tests {
         let state = setup_state().await;
 
         insert_old_notification(&state.db, json!({
-            "status": "pending", "token": "data_tok", "title": "Data", "body": "Body",
-            "data": {"screen": "orders", "orderId": "ord_1"}, "attempts": 1
+            fields::STATUS: "pending", "token": "data_tok", "title": "Data", "body": "Body",
+            "data": {"screen": "orders", fields::ORDER_ID: "ord_1"}, "attempts": 1
         })).await;
 
         unsafe {
@@ -6189,15 +6189,15 @@ mod tests {
 
         // Record with attempts=0 → retry
         insert_old_notification(&state.db, json!({
-            "status": "pending", "token": "mix_tok1", "title": "A", "body": "B", "attempts": 0
+            fields::STATUS: "pending", "token": "mix_tok1", "title": "A", "body": "B", "attempts": 0
         })).await;
         // Record with attempts=2 → fail (becomes 3)
         insert_old_notification(&state.db, json!({
-            "status": "pending", "token": "mix_tok2", "title": "C", "body": "D", "attempts": 2
+            fields::STATUS: "pending", "token": "mix_tok2", "title": "C", "body": "D", "attempts": 2
         })).await;
         // Record with attempts=5 → fail (already exceeded)
         insert_old_notification(&state.db, json!({
-            "status": "pending", "token": "mix_tok3", "title": "E", "body": "F", "attempts": 5
+            fields::STATUS: "pending", "token": "mix_tok3", "title": "E", "body": "F", "attempts": 5
         })).await;
 
         unsafe {
@@ -6233,7 +6233,7 @@ mod tests {
                 collections::SUBSCRIPTIONS,
                 &sub_id,
                 json!({
-                    "currentPeriodEnd": period_end,
+                    fields::CURRENT_PERIOD_END: period_end,
                     fields::STATUS: "past_due",
                 }),
             )
@@ -6294,9 +6294,9 @@ mod tests {
                 collections::SUBSCRIPTIONS,
                 "renew_valid",
                 json!({
-                    "currentPeriodEnd": renewal_7d.to_rfc3339(),
+                    fields::CURRENT_PERIOD_END: renewal_7d.to_rfc3339(),
                     fields::STATUS: "active",
-                    "cancelAtPeriodEnd": false,
+                    fields::CANCEL_AT_PERIOD_END: false,
                 }),
             )
             .await
@@ -6357,9 +6357,9 @@ mod tests {
                 collections::SUBSCRIPTIONS,
                 "renew_fr1d",
                 json!({
-                    "currentPeriodEnd": renewal_1d.to_rfc3339(),
+                    fields::CURRENT_PERIOD_END: renewal_1d.to_rfc3339(),
                     fields::STATUS: "active",
-                    "cancelAtPeriodEnd": false,
+                    fields::CANCEL_AT_PERIOD_END: false,
                 }),
             )
             .await
@@ -6394,9 +6394,9 @@ mod tests {
                 collections::ORDERS,
                 &order_id,
                 json!({
-                    "createdAt": Utc::now().to_rfc3339(),
-                    "hasDispute": false,
-                    "orderStatus": "delivered",
+                    fields::CREATED_AT: Utc::now().to_rfc3339(),
+                    fields::HAS_DISPUTE: false,
+                    fields::ORDER_STATUS: "delivered",
                 }),
             )
             .await
@@ -6430,11 +6430,11 @@ mod tests {
                 collections::PRODUCTS,
                 &low_id,
                 json!({
-                    "lifecycleStatus": "active",
-                    "updatedAt": now_str,
-                    "viewCount": 100000,
-                    "purchaseCount": 0,
-                    "favoriteCount": 0,
+                    fields::LIFECYCLE_STATUS: "active",
+                    fields::UPDATED_AT: now_str,
+                    fields::VIEW_COUNT: 100000,
+                    fields::PURCHASE_COUNT: 0,
+                    fields::FAVORITE_COUNT: 0,
                 }),
             )
             .await
@@ -6446,11 +6446,11 @@ mod tests {
                 collections::PRODUCTS,
                 &high_id,
                 json!({
-                    "lifecycleStatus": "active",
-                    "updatedAt": now_str,
-                    "viewCount": 900000,
-                    "purchaseCount": 500000,
-                    "favoriteCount": 300000,
+                    fields::LIFECYCLE_STATUS: "active",
+                    fields::UPDATED_AT: now_str,
+                    fields::VIEW_COUNT: 900000,
+                    fields::PURCHASE_COUNT: 500000,
+                    fields::FAVORITE_COUNT: 300000,
                 }),
             )
             .await
@@ -6462,12 +6462,12 @@ mod tests {
                 collections::PRODUCTS,
                 &mid_id,
                 json!({
-                    "lifecycleStatus": "active",
-                    "updatedAt": now_str,
-                    "viewCount": 500000,
-                    "purchaseCount": 100000,
-                    "favoriteCount": 50000,
-                    "isTrending": true, // old trending that should stay
+                    fields::LIFECYCLE_STATUS: "active",
+                    fields::UPDATED_AT: now_str,
+                    fields::VIEW_COUNT: 500000,
+                    fields::PURCHASE_COUNT: 100000,
+                    fields::FAVORITE_COUNT: 50000,
+                    fields::IS_TRENDING: true, // old trending that should stay
                 }),
             )
             .await
@@ -6491,9 +6491,9 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(high["isTrending"], true);
-        assert_eq!(mid["isTrending"], true);
-        assert_eq!(low["isTrending"], true);
+        assert_eq!(high[fields::IS_TRENDING], true);
+        assert_eq!(mid[fields::IS_TRENDING], true);
+        assert_eq!(low[fields::IS_TRENDING], true);
     }
 
     // -----------------------------------------------------------------------
@@ -6520,7 +6520,7 @@ mod tests {
         {
             let order_items: Vec<Value> = items
                 .iter()
-                .map(|pid| json!({"productId": pid, "name": "Test", "quantity": 1}))
+                .map(|pid| json!({fields::PRODUCT_ID: pid, fields::TITLE: "Test", fields::QUANTITY: 1}))
                 .collect();
             state
                 .db
@@ -6528,11 +6528,11 @@ mod tests {
                     collections::ORDERS,
                     json!({
                         "id": format!("orders:order_{i}"),
-                        "status": "delivered",
-                        "createdAt": &now,
-                        "items": order_items,
-                        "buyerId": &buyer_id,
-                        "sellerId": &seller_id,
+                        fields::STATUS: "delivered",
+                        fields::CREATED_AT: &now,
+                        fields::ITEMS: order_items,
+                        fields::BUYER_ID: &buyer_id,
+                        fields::SELLER_ID: &seller_id,
                     }),
                 )
                 .await
@@ -6549,7 +6549,7 @@ mod tests {
         assert!(rec_a.is_ok(), "prodA should have recommendations");
         if let Ok(doc) = rec_a {
             let recs = doc
-                .get("recommendations")
+                .get(fields::RECOMMENDATIONS)
                 .and_then(|v| v.as_array())
                 .expect("recommendations should be an array");
             assert!(
@@ -6575,9 +6575,9 @@ mod tests {
                 collections::CRON_LOCKS,
                 "compute_co_purchase_recommendations",
                 json!({
-                    "lockedAt": Utc::now().to_rfc3339(),
-                    "lockedBy": "other",
-                    "status": "running",
+                    fields::LOCKED_AT: Utc::now().to_rfc3339(),
+                    fields::LOCKED_BY: "other",
+                    fields::STATUS: "running",
                 }),
             )
             .await

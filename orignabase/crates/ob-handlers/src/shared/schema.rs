@@ -579,6 +579,8 @@ pub mod fields {
     pub const BENEFITS_ACTIVE_AT: &str = "benefitsActiveAt";
     pub const EARLY_CANCEL_COUNT: &str = "earlyCancelCount";
     pub const CANCELS_AT: &str = "cancelsAt";
+    pub const SHIPPED_AT: &str = "shippedAt";
+    pub const CANCELLED_AT: &str = "cancelledAt";
 }
 
 // =============================================================================

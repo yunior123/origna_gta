@@ -1018,20 +1018,20 @@ mod tests {
     #[test]
     fn test_return_window_within() {
         let recent = Utc::now().to_rfc3339();
-        let item = json!({"deliveredAt": recent, "status": "delivered"});
+        let item = json!({fields::DELIVERED_AT: recent, fields::STATUS: "delivered"});
         assert!(assert_within_return_window(&item).is_ok());
     }
 
     #[test]
     fn test_return_window_expired() {
         let old = (Utc::now() - chrono::Duration::days(31)).to_rfc3339();
-        let item = json!({"deliveredAt": old, "status": "delivered"});
+        let item = json!({fields::DELIVERED_AT: old, fields::STATUS: "delivered"});
         assert!(assert_within_return_window(&item).is_err());
     }
 
     #[test]
     fn test_return_window_no_date() {
-        let item = json!({"status": "delivered"});
+        let item = json!({fields::STATUS: "delivered"});
         // No delivered date => pass (lenient)
         assert!(assert_within_return_window(&item).is_ok());
     }
@@ -1039,9 +1039,9 @@ mod tests {
     #[test]
     fn test_helpers_extract_fields_and_items() {
         let order = json!({
-            "userId": "u1",
+            fields::USER_ID: "u1",
             "flag": true,
-            fields::ITEMS: [{ "productId": "p1" }],
+            fields::ITEMS: [{ fields::PRODUCT_ID: "p1" }],
         });
 
         assert_eq!(str_field(&order, "userId"), "u1");
@@ -1084,7 +1084,7 @@ mod tests {
             return_id: "ret_123".to_string(),
         };
         let json = serde_json::to_value(&resp).unwrap();
-        assert_eq!(json["returnId"], "ret_123");
+        assert_eq!(json[fields::RETURN_ID], "ret_123");
     }
 
     #[test]
@@ -1097,15 +1097,15 @@ mod tests {
         };
         let json = serde_json::to_value(&resp).unwrap();
         assert_eq!(json["newStatus"], "escalated");
-        assert_eq!(json["returnStatus"], "escalated");
-        assert_eq!(json["returnId"], "ret_123");
+        assert_eq!(json[fields::RETURN_STATUS], "escalated");
+        assert_eq!(json[fields::RETURN_ID], "ret_123");
     }
 
     #[test]
     fn test_return_window_boundary() {
         // Exactly 30 days ago => still valid
         let boundary = (Utc::now() - chrono::Duration::days(30)).to_rfc3339();
-        let item = json!({"deliveredAt": boundary, "status": "delivered"});
+        let item = json!({fields::DELIVERED_AT: boundary, fields::STATUS: "delivered"});
         assert!(assert_within_return_window(&item).is_ok());
     }
 
@@ -1136,8 +1136,8 @@ mod tests {
         let json = serde_json::to_value(&resp).unwrap();
         assert_eq!(json["success"], true);
         assert_eq!(json["newStatus"], "escalated");
-        assert_eq!(json["returnStatus"], "escalated");
-        assert_eq!(json["returnId"], "ret_xyz");
+        assert_eq!(json[fields::RETURN_STATUS], "escalated");
+        assert_eq!(json[fields::RETURN_ID], "ret_xyz");
 
         // Roundtrip: serialize -> string -> deserialize back as Value
         let s = serde_json::to_string(&resp).unwrap();
@@ -1211,7 +1211,7 @@ mod tests {
     #[test]
     fn test_return_window_exactly_30_days() {
         let exactly_30 = (Utc::now() - chrono::Duration::days(30)).to_rfc3339();
-        let item = json!({"deliveredAt": exactly_30});
+        let item = json!({fields::DELIVERED_AT: exactly_30});
         // 30 days = boundary, should be valid (> not >=)
         assert!(assert_within_return_window(&item).is_ok());
     }
@@ -1219,40 +1219,40 @@ mod tests {
     #[test]
     fn test_return_window_31_days_expired() {
         let over_31 = (Utc::now() - chrono::Duration::days(31)).to_rfc3339();
-        let item = json!({"deliveredAt": over_31});
+        let item = json!({fields::DELIVERED_AT: over_31});
         assert!(assert_within_return_window(&item).is_err());
     }
 
     #[test]
     fn test_return_window_1_day_ago_valid() {
         let yesterday = (Utc::now() - chrono::Duration::days(1)).to_rfc3339();
-        let item = json!({"deliveredAt": yesterday});
+        let item = json!({fields::DELIVERED_AT: yesterday});
         assert!(assert_within_return_window(&item).is_ok());
     }
 
     #[test]
     fn test_return_window_today_valid() {
         let today = Utc::now().to_rfc3339();
-        let item = json!({"deliveredAt": today});
+        let item = json!({fields::DELIVERED_AT: today});
         assert!(assert_within_return_window(&item).is_ok());
     }
 
     #[test]
     fn test_return_window_invalid_date_format_passes() {
         // Non-RFC3339 date strings should pass (lenient — no date = no rejection)
-        let item = json!({"deliveredAt": "2026-01-01"});
+        let item = json!({fields::DELIVERED_AT: "2026-01-01"});
         assert!(assert_within_return_window(&item).is_ok());
     }
 
     #[test]
     fn test_return_window_null_delivered_at_passes() {
-        let item = json!({"deliveredAt": null});
+        let item = json!({fields::DELIVERED_AT: null});
         assert!(assert_within_return_window(&item).is_ok());
     }
 
     #[test]
     fn test_return_window_numeric_delivered_at_passes() {
-        let item = json!({"deliveredAt": 1234567890});
+        let item = json!({fields::DELIVERED_AT: 1234567890});
         assert!(assert_within_return_window(&item).is_ok());
     }
 
@@ -1352,7 +1352,7 @@ mod tests {
 
     #[test]
     fn test_bool_field_with_falsy_values() {
-        let v = json!({"active": false, "count": 0, "name": ""});
+        let v = json!({"active": false, "count": 0, fields::TITLE: ""});
         assert!(!bool_field(&v, "active"));
         assert!(!bool_field(&v, "count")); // not a bool
         assert!(!bool_field(&v, "name")); // not a bool
@@ -1361,23 +1361,23 @@ mod tests {
 
     #[test]
     fn test_items_array_with_non_array() {
-        let order = json!({"items": "not_an_array"});
+        let order = json!({fields::ITEMS: "not_an_array"});
         assert!(items_array(&order).is_empty());
     }
 
     #[test]
     fn test_items_array_with_null() {
-        let order = json!({"items": null});
+        let order = json!({fields::ITEMS: null});
         assert!(items_array(&order).is_empty());
     }
 
     #[test]
     fn test_items_array_with_multiple_items() {
         let order = json!({
-            "items": [
-                {"productId": "p1"},
-                {"productId": "p2"},
-                {"productId": "p3"},
+            fields::ITEMS: [
+                {fields::PRODUCT_ID: "p1"},
+                {fields::PRODUCT_ID: "p2"},
+                {fields::PRODUCT_ID: "p3"},
             ]
         });
         assert_eq!(items_array(&order).len(), 3);
@@ -1396,12 +1396,12 @@ mod tests {
                 collections::ORDERS,
                 &order_id,
                 json!({
-                    "userId": &buyer_id,
+                    fields::USER_ID: &buyer_id,
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: &product_id,
                         fields::SELLER_ID: &seller_id,
                         fields::STATUS: "delivered",
-                        "deliveredAt": Utc::now().to_rfc3339(),
+                        fields::DELIVERED_AT: Utc::now().to_rfc3339(),
                     }],
                 }),
             )
@@ -1412,10 +1412,10 @@ mod tests {
             .create_document(
                 collections::RETURN_REQUESTS,
                 json!({
-                    "orderId": &order_id,
-                    "productId": &product_id,
-                    "buyerId": &buyer_id,
-                    "returnStatus": "requested",
+                    fields::ORDER_ID: &order_id,
+                    fields::PRODUCT_ID: &product_id,
+                    fields::BUYER_ID: &buyer_id,
+                    fields::RETURN_STATUS: "requested",
                 }),
             )
             .await
@@ -1448,10 +1448,10 @@ mod tests {
                 collections::ORDERS,
                 &order_id,
                 json!({
-                    "userId": &buyer_id,
+                    fields::USER_ID: &buyer_id,
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: &product_id,
-                        "isDigital": true,
+                        fields::IS_DIGITAL: true,
                         fields::STATUS: "delivered",
                     }],
                 }),
@@ -1490,14 +1490,14 @@ mod tests {
                 collections::ORDERS,
                 &order_id,
                 json!({
-                    "userId": &buyer_id,
+                    fields::USER_ID: &buyer_id,
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: &product_id,
                         fields::SELLER_ID: &seller_id,
                         fields::STATUS: "delivered",
-                        "deliveredAt": Utc::now().to_rfc3339(),
-                        "name": "Headphones",
-                        "quantity": 1,
+                        fields::DELIVERED_AT: Utc::now().to_rfc3339(),
+                        fields::TITLE: "Headphones",
+                        fields::QUANTITY: 1,
                     }],
                 }),
             )
@@ -1539,8 +1539,8 @@ mod tests {
                 collections::RETURN_REQUESTS,
                 "ret_1",
                 json!({
-                    "sellerId": "seller_1",
-                    "returnStatus": "requested",
+                    fields::SELLER_ID: "seller_1",
+                    fields::RETURN_STATUS: "requested",
                 }),
             )
             .await
@@ -1569,9 +1569,9 @@ mod tests {
                 collections::RETURN_REQUESTS,
                 "ret_1",
                 json!({
-                    "buyerId": "buyer_1",
-                    "orderId": "ord_1",
-                    "returnStatus": "requested",
+                    fields::BUYER_ID: "buyer_1",
+                    fields::ORDER_ID: "ord_1",
+                    fields::RETURN_STATUS: "requested",
                 }),
             )
             .await
@@ -1611,8 +1611,8 @@ mod tests {
                 collections::RETURN_REQUESTS,
                 &ret_id,
                 json!({
-                    "sellerId": &seller_id,
-                    "returnStatus": "requested",
+                    fields::SELLER_ID: &seller_id,
+                    fields::RETURN_STATUS: "requested",
                 }),
             )
             .await
@@ -1640,7 +1640,7 @@ mod tests {
             .get_document(collections::RETURN_REQUESTS, &ret_id)
             .await
             .unwrap();
-        assert_eq!(updated["returnStatus"], "approved");
+        assert_eq!(updated[fields::RETURN_STATUS], "approved");
         assert_eq!(updated["returnTrackingNumber"], "TRK-123");
         assert_eq!(updated["returnAdminNote"], "approved quickly");
 
@@ -1664,7 +1664,7 @@ mod tests {
             .get_document(collections::RETURN_REQUESTS, &ret_id)
             .await
             .unwrap();
-        assert_eq!(updated2["returnStatus"], "label_issued");
+        assert_eq!(updated2[fields::RETURN_STATUS], "label_issued");
         assert_eq!(updated2["returnTrackingNumber"], "TRK-456");
     }
 
@@ -1706,7 +1706,7 @@ mod tests {
                 &product_id,
                 json!({
                     fields::PRODUCT_ID: &product_id,
-                    "stockQuantity": 5,
+                    fields::STOCK_QUANTITY: 5,
                 }),
             )
             .await
@@ -1717,16 +1717,16 @@ mod tests {
                 collections::ORDERS,
                 &order_id,
                 json!({
-                    "paymentIntentId": "pi_123",
-                    "subtotalCents": 5000,
+                    fields::PAYMENT_INTENT_ID: "pi_123",
+                    fields::SUBTOTAL_CENTS: 5000,
                     fields::SHIPPING_COST_CENTS: 500,
-                    "taxAmountCents": 650,
+                    fields::TAX_AMOUNT_CENTS: 650,
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: &product_id,
                         fields::SELLER_ID: &seller_id,
                         "price": 50.0,
-                        "quantity": 1,
-                        "status": "delivered",
+                        fields::QUANTITY: 1,
+                        fields::STATUS: "delivered",
                     }],
                 }),
             )
@@ -1738,11 +1738,11 @@ mod tests {
                 collections::RETURN_REQUESTS,
                 &ret_id,
                 json!({
-                    "sellerId": &seller_id,
-                    "orderId": &order_id,
-                    "productId": &product_id,
-                    "quantity": 1,
-                    "returnStatus": "approved",
+                    fields::SELLER_ID: &seller_id,
+                    fields::ORDER_ID: &order_id,
+                    fields::PRODUCT_ID: &product_id,
+                    fields::QUANTITY: 1,
+                    fields::RETURN_STATUS: "approved",
                 }),
             )
             .await
@@ -1780,10 +1780,10 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(return_doc["returnStatus"], "refunded");
-        assert_eq!(order[fields::ITEMS][0]["status"], "refunded");
-        assert_eq!(order[fields::ITEMS][0]["refundId"], "re_123");
-        assert_eq!(product["stockQuantity"], 6);
+        assert_eq!(return_doc[fields::RETURN_STATUS], "refunded");
+        assert_eq!(order[fields::ITEMS][0][fields::STATUS], "refunded");
+        assert_eq!(order[fields::ITEMS][0][fields::REFUND_ID], "re_123");
+        assert_eq!(product[fields::STOCK_QUANTITY], 6);
     }
 
     #[tokio::test]
@@ -1804,8 +1804,8 @@ mod tests {
                 collections::RETURN_REQUESTS,
                 "ret_1",
                 json!({
-                    "sellerId": "seller_1",
-                    "returnStatus": "requested",
+                    fields::SELLER_ID: "seller_1",
+                    fields::RETURN_STATUS: "requested",
                 }),
             )
             .await
@@ -1831,7 +1831,7 @@ mod tests {
             .get_document(collections::RETURN_REQUESTS, "ret_1")
             .await
             .unwrap();
-        assert_eq!(updated["returnStatus"], "rejected");
+        assert_eq!(updated[fields::RETURN_STATUS], "rejected");
         assert_eq!(updated["rejectionReason"], "Not eligible");
     }
 
@@ -1889,9 +1889,9 @@ mod tests {
                 collections::RETURN_REQUESTS,
                 &ret_id,
                 json!({
-                    "buyerId": &buyer_id,
-                    "orderId": &order_id,
-                    "returnStatus": "requested",
+                    fields::BUYER_ID: &buyer_id,
+                    fields::ORDER_ID: &order_id,
+                    fields::RETURN_STATUS: "requested",
                 }),
             )
             .await
@@ -1917,7 +1917,7 @@ mod tests {
             .get_document(collections::RETURN_REQUESTS, &ret_id)
             .await
             .unwrap();
-        assert_eq!(return_doc["returnStatus"], "escalated");
+        assert_eq!(return_doc[fields::RETURN_STATUS], "escalated");
 
         // Filter notifications by return_id to isolate from other tests.
         // The handler notifies ALL admin users in the DB, so count may be > 2
@@ -1946,7 +1946,7 @@ mod tests {
                 collections::ORDERS,
                 "ord_1",
                 json!({
-                    "userId": "buyer_1",
+                    fields::USER_ID: "buyer_1",
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: "prod_1",
                         fields::STATUS: "delivered",
@@ -1980,7 +1980,7 @@ mod tests {
                 collections::ORDERS,
                 "ord_1",
                 json!({
-                    "userId": "buyer_1",
+                    fields::USER_ID: "buyer_1",
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: "prod_1",
                         fields::STATUS: "delivered",
@@ -2017,7 +2017,7 @@ mod tests {
                 collections::ORDERS,
                 &order_id,
                 json!({
-                    "userId": &buyer_id,
+                    fields::USER_ID: &buyer_id,
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: &product_id,
                         fields::STATUS: "shipped",
@@ -2051,12 +2051,12 @@ mod tests {
                 collections::ORDERS,
                 "ord_1",
                 json!({
-                    "userId": "buyer_1",
+                    fields::USER_ID: "buyer_1",
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: "prod_1",
                         fields::SELLER_ID: "seller_1",
                         fields::STATUS: "delivered",
-                        "deliveredAt": Utc::now().to_rfc3339(),
+                        fields::DELIVERED_AT: Utc::now().to_rfc3339(),
                     }],
                 }),
             )
@@ -2067,10 +2067,10 @@ mod tests {
             .create_document(
                 collections::RETURN_REQUESTS,
                 json!({
-                    "orderId": "ord_1",
-                    "productId": "prod_1",
-                    "buyerId": "buyer_1",
-                    "returnStatus": "approved",
+                    fields::ORDER_ID: "ord_1",
+                    fields::PRODUCT_ID: "prod_1",
+                    fields::BUYER_ID: "buyer_1",
+                    fields::RETURN_STATUS: "approved",
                 }),
             )
             .await
@@ -2113,8 +2113,8 @@ mod tests {
                 collections::RETURN_REQUESTS,
                 "ret_1",
                 json!({
-                    "sellerId": "seller_1",
-                    "returnStatus": "requested",
+                    fields::SELLER_ID: "seller_1",
+                    fields::RETURN_STATUS: "requested",
                 }),
             )
             .await
@@ -2156,8 +2156,8 @@ mod tests {
                 collections::RETURN_REQUESTS,
                 &ret_id,
                 json!({
-                    "sellerId": &seller_id,
-                    "returnStatus": "received",
+                    fields::SELLER_ID: &seller_id,
+                    fields::RETURN_STATUS: "received",
                 }),
             )
             .await
@@ -2197,8 +2197,8 @@ mod tests {
                 collections::RETURN_REQUESTS,
                 "ret_1",
                 json!({
-                    "sellerId": "seller_1",
-                    "returnStatus": "requested",
+                    fields::SELLER_ID: "seller_1",
+                    fields::RETURN_STATUS: "requested",
                 }),
             )
             .await
@@ -2238,8 +2238,8 @@ mod tests {
                 collections::RETURN_REQUESTS,
                 "ret_1",
                 json!({
-                    "sellerId": "seller_1",
-                    "returnStatus": "requested",
+                    fields::SELLER_ID: "seller_1",
+                    fields::RETURN_STATUS: "requested",
                 }),
             )
             .await
@@ -2279,8 +2279,8 @@ mod tests {
                 collections::RETURN_REQUESTS,
                 "ret_1",
                 json!({
-                    "sellerId": "seller_1",
-                    "returnStatus": "requested",
+                    fields::SELLER_ID: "seller_1",
+                    fields::RETURN_STATUS: "requested",
                 }),
             )
             .await
@@ -2326,7 +2326,7 @@ mod tests {
                 &product_id,
                 json!({
                     fields::PRODUCT_ID: &product_id,
-                    "stockQuantity": 10,
+                    fields::STOCK_QUANTITY: 10,
                 }),
             )
             .await
@@ -2337,16 +2337,16 @@ mod tests {
                 collections::ORDERS,
                 &order_id,
                 json!({
-                    "paymentIntentId": "",
-                    "subtotalCents": 5000,
+                    fields::PAYMENT_INTENT_ID: "",
+                    fields::SUBTOTAL_CENTS: 5000,
                     fields::SHIPPING_COST_CENTS: 500,
-                    "taxAmountCents": 650,
+                    fields::TAX_AMOUNT_CENTS: 650,
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: &product_id,
                         fields::SELLER_ID: &seller_id,
                         "price": 50.0,
-                        "quantity": 2,
-                        "status": "delivered",
+                        fields::QUANTITY: 2,
+                        fields::STATUS: "delivered",
                     }],
                 }),
             )
@@ -2358,11 +2358,11 @@ mod tests {
                 collections::RETURN_REQUESTS,
                 &ret_id,
                 json!({
-                    "sellerId": &seller_id,
-                    "orderId": &order_id,
-                    "productId": &product_id,
-                    "quantity": 2,
-                    "returnStatus": "approved",
+                    fields::SELLER_ID: &seller_id,
+                    fields::ORDER_ID: &order_id,
+                    fields::PRODUCT_ID: &product_id,
+                    fields::QUANTITY: 2,
+                    fields::RETURN_STATUS: "approved",
                 }),
             )
             .await
@@ -2390,7 +2390,7 @@ mod tests {
             .get_document(collections::PRODUCTS, &product_id)
             .await
             .unwrap();
-        assert_eq!(product["stockQuantity"], 12);
+        assert_eq!(product[fields::STOCK_QUANTITY], 12);
 
         // Verify order item updated
         let order = state
@@ -2398,7 +2398,7 @@ mod tests {
             .get_document(collections::ORDERS, &order_id)
             .await
             .unwrap();
-        assert_eq!(order[fields::ITEMS][0]["status"], "refunded");
+        assert_eq!(order[fields::ITEMS][0][fields::STATUS], "refunded");
 
         // Verify return request updated
         let ret = state
@@ -2406,7 +2406,7 @@ mod tests {
             .get_document(collections::RETURN_REQUESTS, &ret_id)
             .await
             .unwrap();
-        assert_eq!(ret["returnStatus"], "refunded");
+        assert_eq!(ret[fields::RETURN_STATUS], "refunded");
 
         // Verify order event was created
         let events = state
@@ -2441,8 +2441,8 @@ mod tests {
                 collections::RETURN_REQUESTS,
                 &ret_id,
                 json!({
-                    "sellerId": &seller_id,
-                    "returnStatus": "refunded",
+                    fields::SELLER_ID: &seller_id,
+                    fields::RETURN_STATUS: "refunded",
                 }),
             )
             .await
@@ -2475,9 +2475,9 @@ mod tests {
                 collections::RETURN_REQUESTS,
                 "ret_1",
                 json!({
-                    "buyerId": "buyer_1",
-                    "orderId": "ord_1",
-                    "returnStatus": "requested",
+                    fields::BUYER_ID: "buyer_1",
+                    fields::ORDER_ID: "ord_1",
+                    fields::RETURN_STATUS: "requested",
                 }),
             )
             .await
@@ -2508,9 +2508,9 @@ mod tests {
                 collections::RETURN_REQUESTS,
                 &ret_id,
                 json!({
-                    "buyerId": &buyer_id,
-                    "orderId": uid(),
-                    "returnStatus": "refunded",
+                    fields::BUYER_ID: &buyer_id,
+                    fields::ORDER_ID: uid(),
+                    fields::RETURN_STATUS: "refunded",
                 }),
             )
             .await
@@ -2567,9 +2567,9 @@ mod tests {
                 collections::RETURN_REQUESTS,
                 "ret_e1",
                 json!({
-                    "buyerId": "buyer_1",
-                    "orderId": "ord_1",
-                    "returnStatus": "approved",
+                    fields::BUYER_ID: "buyer_1",
+                    fields::ORDER_ID: "ord_1",
+                    fields::RETURN_STATUS: "approved",
                 }),
             )
             .await
@@ -2597,8 +2597,8 @@ mod tests {
             .get_document(collections::RETURN_REQUESTS, "ret_e1")
             .await
             .unwrap();
-        assert_eq!(ret["returnStatus"], "escalated");
-        assert!(!ret["escalationReason"].as_str().unwrap_or("").is_empty());
+        assert_eq!(ret[fields::RETURN_STATUS], "escalated");
+        assert!(!ret[fields::ESCALATION_REASON].as_str().unwrap_or("").is_empty());
     }
 
     // -----------------------------------------------------------------------
@@ -2619,14 +2619,14 @@ mod tests {
                 collections::ORDERS,
                 &order_id,
                 json!({
-                    "userId": &buyer_id,
+                    fields::USER_ID: &buyer_id,
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: &product_id,
                         fields::SELLER_ID: &seller_id,
                         fields::STATUS: "delivered",
-                        "deliveredAt": Utc::now().to_rfc3339(),
-                        "name": "Widget",
-                        "quantity": 1,
+                        fields::DELIVERED_AT: Utc::now().to_rfc3339(),
+                        fields::TITLE: "Widget",
+                        fields::QUANTITY: 1,
                     }],
                 }),
             )
@@ -2638,10 +2638,10 @@ mod tests {
             .create_document(
                 collections::RETURN_REQUESTS,
                 json!({
-                    "orderId": &order_id,
-                    "productId": &product_id,
-                    "buyerId": &buyer_id,
-                    "returnStatus": "rejected",
+                    fields::ORDER_ID: &order_id,
+                    fields::PRODUCT_ID: &product_id,
+                    fields::BUYER_ID: &buyer_id,
+                    fields::RETURN_STATUS: "rejected",
                 }),
             )
             .await
@@ -2678,14 +2678,14 @@ mod tests {
                 collections::ORDERS,
                 &order_id,
                 json!({
-                    "userId": &buyer_id,
+                    fields::USER_ID: &buyer_id,
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: &product_id,
                         fields::SELLER_ID: &seller_id,
                         fields::STATUS: "delivered",
-                        "deliveredAt": Utc::now().to_rfc3339(),
-                        "name": "Widget",
-                        "quantity": 1,
+                        fields::DELIVERED_AT: Utc::now().to_rfc3339(),
+                        fields::TITLE: "Widget",
+                        fields::QUANTITY: 1,
                     }],
                 }),
             )
@@ -2697,10 +2697,10 @@ mod tests {
             .create_document(
                 collections::RETURN_REQUESTS,
                 json!({
-                    "orderId": &order_id,
-                    "productId": &product_id,
-                    "buyerId": &buyer_id,
-                    "returnStatus": "refunded",
+                    fields::ORDER_ID: &order_id,
+                    fields::PRODUCT_ID: &product_id,
+                    fields::BUYER_ID: &buyer_id,
+                    fields::RETURN_STATUS: "refunded",
                 }),
             )
             .await
@@ -2763,9 +2763,9 @@ mod tests {
                 collections::RETURN_REQUESTS,
                 &ret_id,
                 json!({
-                    "buyerId": &buyer_id,
-                    "orderId": &order_id_fcm,
-                    "returnStatus": "requested",
+                    fields::BUYER_ID: &buyer_id,
+                    fields::ORDER_ID: &order_id_fcm,
+                    fields::RETURN_STATUS: "requested",
                 }),
             )
             .await
@@ -2871,9 +2871,9 @@ mod tests {
                 collections::RETURN_REQUESTS,
                 &ret_id,
                 json!({
-                    "buyerId": &buyer_id,
-                    "orderId": &order_id_multi,
-                    "returnStatus": "requested",
+                    fields::BUYER_ID: &buyer_id,
+                    fields::ORDER_ID: &order_id_multi,
+                    fields::RETURN_STATUS: "requested",
                 }),
             )
             .await
@@ -2950,7 +2950,7 @@ mod tests {
                 "prod_mr",
                 json!({
                     fields::PRODUCT_ID: "prod_mr",
-                    "stockQuantity": 3,
+                    fields::STOCK_QUANTITY: 3,
                 }),
             )
             .await
@@ -2961,24 +2961,24 @@ mod tests {
                 collections::ORDERS,
                 "ord_mr",
                 json!({
-                    "paymentIntentId": "pi_mr",
-                    "subtotalCents": 10000,
+                    fields::PAYMENT_INTENT_ID: "pi_mr",
+                    fields::SUBTOTAL_CENTS: 10000,
                     fields::SHIPPING_COST_CENTS: 1000,
-                    "taxAmountCents": 1300,
+                    fields::TAX_AMOUNT_CENTS: 1300,
                     fields::ITEMS: [
                         {
                             fields::PRODUCT_ID: "prod_mr",
                             fields::SELLER_ID: "seller_mr",
                             "price": 100.0,
-                            "quantity": 3,
-                            "status": "delivered",
+                            fields::QUANTITY: 3,
+                            fields::STATUS: "delivered",
                         },
                         {
                             fields::PRODUCT_ID: "prod_other",
                             fields::SELLER_ID: "seller_mr",
                             "price": 25.0,
-                            "quantity": 1,
-                            "status": "delivered",
+                            fields::QUANTITY: 1,
+                            fields::STATUS: "delivered",
                         },
                     ],
                 }),
@@ -2991,11 +2991,11 @@ mod tests {
                 collections::RETURN_REQUESTS,
                 "ret_mr",
                 json!({
-                    "sellerId": "seller_mr",
-                    "orderId": "ord_mr",
-                    "productId": "prod_mr",
-                    "quantity": 3,
-                    "returnStatus": "approved",
+                    fields::SELLER_ID: "seller_mr",
+                    fields::ORDER_ID: "ord_mr",
+                    fields::PRODUCT_ID: "prod_mr",
+                    fields::QUANTITY: 3,
+                    fields::RETURN_STATUS: "approved",
                 }),
             )
             .await
@@ -3023,7 +3023,7 @@ mod tests {
             .get_document(collections::PRODUCTS, "prod_mr")
             .await
             .unwrap();
-        assert_eq!(product["stockQuantity"], 6); // 3 + 3
+        assert_eq!(product[fields::STOCK_QUANTITY], 6); // 3 + 3
 
         // Verify return request updated (lines 654-671)
         let ret = state
@@ -3031,7 +3031,7 @@ mod tests {
             .get_document(collections::RETURN_REQUESTS, "ret_mr")
             .await
             .unwrap();
-        assert_eq!(ret["returnStatus"], "refunded");
+        assert_eq!(ret[fields::RETURN_STATUS], "refunded");
         assert!(ret.get("resolvedAt").is_some());
 
         // Verify order items updated (lines 673-688)
@@ -3040,10 +3040,10 @@ mod tests {
             .get_document(collections::ORDERS, "ord_mr")
             .await
             .unwrap();
-        assert_eq!(order[fields::ITEMS][0]["status"], "refunded");
-        assert_eq!(order[fields::ITEMS][0]["refundId"], "re_456");
+        assert_eq!(order[fields::ITEMS][0][fields::STATUS], "refunded");
+        assert_eq!(order[fields::ITEMS][0][fields::REFUND_ID], "re_456");
         // Other item should be unchanged
-        assert_eq!(order[fields::ITEMS][1]["status"], "delivered");
+        assert_eq!(order[fields::ITEMS][1][fields::STATUS], "delivered");
 
         // Verify order event was created (lines 690-708)
         let events = state
@@ -3055,7 +3055,7 @@ mod tests {
         let event = &events[0];
         assert_eq!(
             event
-                .get("eventType")
+                .get(fields::EVENT_TYPE)
                 .and_then(|v| v.as_str())
                 .unwrap_or(""),
             "return_received_and_refunded"
