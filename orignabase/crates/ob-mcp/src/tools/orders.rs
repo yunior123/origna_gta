@@ -3,13 +3,14 @@
 use crate::McpState;
 use crate::errors::{McpError, McpResult};
 use crate::safeguards::SpendLimit;
+use ob_core::constants::mcp_params as p;
 use serde_json::{Value, json};
 
 /// List orders for user
 pub async fn list_orders(_state: McpState, user_id: &str, params: &Value) -> McpResult<Value> {
-    let _status = params.get("status").and_then(|v| v.as_str());
-    let limit = params.get("limit").and_then(|v| v.as_u64()).unwrap_or(20);
-    let offset = params.get("offset").and_then(|v| v.as_u64()).unwrap_or(0);
+    let _status = params.get(p::STATUS).and_then(|v| v.as_str());
+    let limit = params.get(p::LIMIT).and_then(|v| v.as_u64()).unwrap_or(20);
+    let offset = params.get(p::OFFSET).and_then(|v| v.as_u64()).unwrap_or(0);
 
     if limit > 100 {
         return Err(McpError::ValidationError(
@@ -34,7 +35,7 @@ pub async fn list_orders(_state: McpState, user_id: &str, params: &Value) -> Mcp
 /// Get order details
 pub async fn get_order(_state: McpState, user_id: &str, params: &Value) -> McpResult<Value> {
     let order_id = params
-        .get("order_id")
+        .get(p::ORDER_ID)
         .and_then(|v| v.as_str())
         .ok_or_else(|| McpError::InvalidParams("Missing 'order_id'".to_string()))?;
 
@@ -67,12 +68,12 @@ pub async fn get_order(_state: McpState, user_id: &str, params: &Value) -> McpRe
 /// Request a return for an order
 pub async fn request_return(_state: McpState, user_id: &str, params: &Value) -> McpResult<Value> {
     let order_id = params
-        .get("order_id")
+        .get(p::ORDER_ID)
         .and_then(|v| v.as_str())
         .ok_or_else(|| McpError::InvalidParams("Missing 'order_id'".to_string()))?;
 
     let reason = params
-        .get("reason")
+        .get(p::REASON)
         .and_then(|v| v.as_str())
         .ok_or_else(|| McpError::InvalidParams("Missing 'reason'".to_string()))?;
 
@@ -105,7 +106,7 @@ pub async fn create_checkout(
     spend_limit: Option<&SpendLimit>,
 ) -> McpResult<Value> {
     let items = params
-        .get("items")
+        .get(p::ITEMS)
         .and_then(|v| v.as_array())
         .ok_or_else(|| McpError::InvalidParams("Missing 'items' array".to_string()))?;
 
@@ -116,27 +117,27 @@ pub async fn create_checkout(
     }
 
     let _shipping_address = params
-        .get("shipping_address")
+        .get(p::SHIPPING_ADDRESS)
         .ok_or_else(|| McpError::InvalidParams("Missing 'shipping_address'".to_string()))?;
 
-    let _idempotency_key = params.get("idempotency_key").and_then(|v| v.as_str());
+    let _idempotency_key = params.get(p::IDEMPOTENCY_KEY).and_then(|v| v.as_str());
 
     // Validate each item and calculate total for spend limit check
     let mut total_cents: u64 = 0;
     for item in items {
         let _product_id = item
-            .get("product_id")
+            .get(p::PRODUCT_ID)
             .and_then(|v| v.as_str())
             .ok_or_else(|| McpError::InvalidParams("Item missing 'product_id'".to_string()))?;
 
         let quantity = item
-            .get("quantity")
+            .get(p::QUANTITY)
             .and_then(|v| v.as_u64())
             .ok_or_else(|| McpError::InvalidParams("Item missing 'quantity'".to_string()))?;
 
         // In production, fetch product price from DB; here use price_cents from item if provided
         let price_cents = item
-            .get("price_cents")
+            .get(p::PRICE_CENTS)
             .and_then(|v| v.as_u64())
             .unwrap_or(0);
         total_cents = total_cents.saturating_add(price_cents.saturating_mul(quantity));

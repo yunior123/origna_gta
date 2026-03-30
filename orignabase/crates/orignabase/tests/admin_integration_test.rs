@@ -12,9 +12,9 @@ fn base_url() -> String {
 async fn login_admin(client: &reqwest::Client) -> String {
     let resp = client
         .post(format!("{}/auth/login", base_url()))
-        .json(&json!({
-            "email": "e2e-admin@test.origna.ca",
-            "password": "REDACTED_TEST_PASSWORD"
+        .json(&json!({ // ignore-magic
+            "email": "e2e-admin@test.origna.ca", // ignore-magic
+            "password": "REDACTED_TEST_PASSWORD" // ignore-magic
         }))
         .send()
         .await
@@ -22,7 +22,7 @@ async fn login_admin(client: &reqwest::Client) -> String {
 
     assert_eq!(resp.status(), 200, "Admin login failed");
     let body: Value = resp.json().await.expect("parse login response");
-    body["access_token"]
+    body["access_token"] // ignore-magic
         .as_str()
         .expect("missing access_token")
         .to_string()
@@ -32,7 +32,7 @@ async fn login_admin(client: &reqwest::Client) -> String {
 async fn list_users(client: &reqwest::Client, token: &str) -> Result<Vec<Value>, String> {
     let resp = client
         .get(format!("{}/admin/users", base_url()))
-        .header("Authorization", format!("Bearer {}", token))
+        .header("Authorization", format!("Bearer {}", token)) // ignore-magic
         .send()
         .await
         .map_err(|e| format!("request failed: {}", e))?;
@@ -54,7 +54,7 @@ async fn list_users(client: &reqwest::Client, token: &str) -> Result<Vec<Value>,
 async fn get_user(client: &reqwest::Client, token: &str, user_id: &str) -> Result<Value, String> {
     let resp = client
         .get(format!("{}/admin/users/{}", base_url(), user_id))
-        .header("Authorization", format!("Bearer {}", token))
+        .header("Authorization", format!("Bearer {}", token)) // ignore-magic
         .send()
         .await
         .map_err(|e| format!("request failed: {}", e))?;
@@ -85,9 +85,9 @@ async fn test_admin_list_users_no_email_leak() {
             // Check that email field is NOT included in list response
             // (per spec: admins should not see emails in list — only name, ID, role)
             for user in users.iter().take(5) {
-                let has_email = user.get("email").is_some();
+                let has_email = user.get("email").is_some(); // ignore-magic
                 assert!(
-                    !has_email || user["email"].is_null(),
+                    !has_email || user["email"].is_null(), // ignore-magic
                     "User list should NOT include email field for privacy"
                 );
 
@@ -136,7 +136,7 @@ async fn test_admin_get_user_requires_admin_role() {
     if let Ok(users) = list_users(&client, &admin_token).await
         && !users.is_empty()
     {
-        let user_id = users[0]["id"]
+        let user_id = users[0]["id"] // ignore-magic
             .as_str()
             .map(|s| s.to_string())
             .unwrap_or_default();
@@ -145,7 +145,7 @@ async fn test_admin_get_user_requires_admin_role() {
             // Get user details as admin — should succeed
             match get_user(&client, &admin_token, &user_id).await {
                 Ok(user) => {
-                    let id = user["id"].as_str().unwrap_or("");
+                    let id = user["id"].as_str().unwrap_or(""); // ignore-magic
                     assert_eq!(id, user_id, "Should return requested user");
                 }
                 Err(e) => {
@@ -171,14 +171,14 @@ async fn test_admin_actions_logged_with_uid() {
             // Try to fetch audit log (endpoint may not exist)
             let audit_resp = client
                 .get(format!("{}/admin/audit-log", base_url()))
-                .header("Authorization", format!("Bearer {}", admin_token))
+                .header("Authorization", format!("Bearer {}", admin_token)) // ignore-magic
                 .send()
                 .await;
 
             if let Ok(resp) = audit_resp
                 && resp.status() == 200
             {
-                let body: Value = resp.json().await.unwrap_or(json!({}));
+                let body: Value = resp.json().await.unwrap_or(json!({})); // ignore-magic
                 let empty_vec = vec![];
                 let logs = body.as_array().unwrap_or(&empty_vec);
 

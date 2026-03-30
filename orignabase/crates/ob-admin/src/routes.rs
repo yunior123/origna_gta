@@ -4,6 +4,7 @@ use axum::http::header;
 use axum::middleware::Next;
 use axum::response::{Html, IntoResponse, Response};
 use ob_auth::middleware::AuthContext;
+use ob_core::constants::fields as f;
 use ob_core::{Error, Result};
 use ob_database::DatabaseClient;
 use serde::{Deserialize, Serialize};
@@ -44,7 +45,7 @@ async fn list_collections(State(state): State<AdminState>) -> Result<Json<Value>
     let info = schema::list_collections(&state.db).await?;
     // Extract table names from INFO FOR DB response
     let tables = info
-        .get("tables")
+        .get("tables") // ignore-magic: SurrealDB INFO FOR DB response key
         .and_then(|t| t.as_object())
         .map(|obj| obj.keys().cloned().collect::<Vec<_>>())
         .unwrap_or_default()
@@ -79,13 +80,13 @@ async fn list_users(
 ) -> Result<Json<Value>> {
     // FIX 3: Parse and validate limit/offset parameters with bounds checking
     let limit = params
-        .get("limit")
+        .get("limit") // ignore-magic: HTTP query parameter
         .and_then(|s| s.parse::<i32>().ok())
         .unwrap_or(20)
         .clamp(1, 100) as usize;
 
     let offset = params
-        .get("offset")
+        .get("offset") // ignore-magic: HTTP query parameter
         .and_then(|s| s.parse::<i32>().ok())
         .unwrap_or(0)
         .max(0) as usize;
@@ -128,9 +129,8 @@ async fn update_roles(
     axum::extract::Path(id): axum::extract::Path<String>,
     Json(body): Json<Value>,
 ) -> Result<Json<Value>> {
-    // ignore-magic: ob-admin has no access to ob-handlers schema constants
     let roles = body
-        .get("roles")
+        .get(f::ROLES)
         .ok_or_else(|| Error::Validation("Missing 'roles' field".into()))?;
 
     let updated = state
@@ -290,11 +290,11 @@ async fn config_get_all(
     let map: serde_json::Map<String, Value> = configs
         .iter()
         .filter_map(|c| {
-            let key = c.get("key")?.as_str()?;
+            let key = c.get(f::KEY)?.as_str()?;
             if !PUBLIC_CONFIG_KEYS.contains(&key) {
                 return None;
             }
-            let value = c.get("value")?;
+            let value = c.get(f::VALUE)?;
             Some((key.to_string(), value.clone()))
         })
         .collect();
@@ -325,12 +325,12 @@ async fn config_get(
     let value = rows
         .first()
         .filter(|item| {
-            item.get("key")
+            item.get(f::KEY)
                 .and_then(|v| v.as_str())
                 .map(|cfg_key| PUBLIC_CONFIG_KEYS.contains(&cfg_key))
                 .unwrap_or(false)
         })
-        .and_then(|item| item.get("value"))
+        .and_then(|item| item.get(f::VALUE))
         .cloned()
         .unwrap_or(Value::Null);
 
@@ -361,11 +361,11 @@ async fn config_set(
     Json(body): Json<Value>,
 ) -> Result<Json<Value>> {
     let value = body
-        .get("value")
+        .get(f::VALUE)
         .ok_or_else(|| Error::Validation("Missing 'value' field".into()))?;
 
     let value_type = body
-        .get("type")
+        .get(f::TYPE)
         .and_then(|v| v.as_str())
         .unwrap_or(match value {
             Value::Bool(_) => "boolean",
@@ -375,7 +375,7 @@ async fn config_set(
         });
 
     let description = body
-        .get("description")
+        .get(f::DESCRIPTION)
         .and_then(|v| v.as_str())
         .unwrap_or("");
 
@@ -421,12 +421,12 @@ async fn create_link(
     Json(body): Json<Value>,
 ) -> Result<Json<Value>> {
     let target_url = body
-        .get("url")
+        .get("url") // ignore-magic: link creation API parameter
         .and_then(|v| v.as_str())
         .ok_or_else(|| Error::Validation("Missing 'url' field".into()))?;
 
     let slug = body
-        .get("slug")
+        .get("slug") // ignore-magic: link creation API parameter
         .and_then(|v| v.as_str())
         .map(String::from)
         .unwrap_or_else(|| {
@@ -444,8 +444,8 @@ async fn create_link(
     let link_data = json!({
         "slug": slug,
         "target_url": target_url,
-        "title": body.get("title").and_then(|v| v.as_str()).unwrap_or(""),
-        "description": body.get("description").and_then(|v| v.as_str()).unwrap_or(""),
+        "title": body.get("title").and_then(|v| v.as_str()).unwrap_or(""), // ignore-magic: link metadata
+        "description": body.get(f::DESCRIPTION).and_then(|v| v.as_str()).unwrap_or(""),
         "clicks": 0,
         "created_at": chrono::Utc::now().to_rfc3339(),
     });
@@ -480,7 +480,7 @@ async fn redirect_link(
 
     let target = results
         .first()
-        .and_then(|item| item.get("target_url"))
+        .and_then(|item| item.get(f::TARGET_URL))
         .and_then(|v| v.as_str())
         .ok_or_else(|| (axum::http::StatusCode::NOT_FOUND, "Link not found").into_response())?;
 
@@ -516,18 +516,17 @@ async fn record_metric(
     Json(body): Json<Value>,
 ) -> Result<Json<Value>> {
     let name = body
-        .get("name")
+        .get(f::NAME)
         .and_then(|v| v.as_str())
         .ok_or_else(|| Error::Validation("Missing 'name' field".into()))?;
     let value = body
-        .get("value")
+        .get(f::VALUE)
         .ok_or_else(|| Error::Validation("Missing 'value' field".into()))?;
 
-    // ignore-magic: ob-admin has no access to ob-handlers schema constants
     let metric = json!({
         "name": name,
         "value": value,
-        "tags": body.get("tags").cloned().unwrap_or(json!({})),
+        "tags": body.get(f::TAGS).cloned().unwrap_or(json!({})),
         "timestamp": chrono::Utc::now().to_rfc3339(),
     });
 
@@ -625,7 +624,7 @@ async fn list_indexes(State(state): State<AdminState>) -> Result<Json<Value>> {
     let info = state.db.query_raw_value("INFO FOR DB").await?;
     // INFO FOR DB returns an object with "tables", "indexes", etc.
     // Extract index info from the response
-    let indexes = info.get("indexes").cloned().unwrap_or(json!({}));
+    let indexes = info.get("indexes").cloned().unwrap_or(json!({})); // ignore-magic: SurrealDB INFO FOR DB response key
     Ok(Json(json!({ "indexes": indexes })))
 }
 
@@ -698,7 +697,7 @@ async fn usage_dashboard(State(state): State<AdminState>) -> Result<Json<Value>>
         .await
         .unwrap_or(json!(null));
     let total_users = user_count
-        .get("total")
+        .get("total") // ignore-magic: SurrealDB aggregate alias
         .or_else(|| {
             user_count
                 .as_array()
@@ -711,7 +710,7 @@ async fn usage_dashboard(State(state): State<AdminState>) -> Result<Json<Value>>
     // Collections info
     let info = schema::list_collections(&state.db).await?;
     let tables = info
-        .get("tables")
+        .get("tables") // ignore-magic: SurrealDB INFO FOR DB response key
         .and_then(|t| t.as_object())
         .map(|obj| obj.keys().cloned().collect::<Vec<_>>())
         .unwrap_or_default()
@@ -752,7 +751,7 @@ async fn usage_dashboard(State(state): State<AdminState>) -> Result<Json<Value>>
         .await
         .unwrap_or(json!(null));
     let functions_count = functions_val
-        .get("total")
+        .get("total") // ignore-magic: SurrealDB aggregate alias
         .or_else(|| {
             functions_val
                 .as_array()
@@ -783,7 +782,7 @@ async fn system_alerts(State(state): State<AdminState>) -> Result<Json<Value>> {
         .await
         .unwrap_or(json!(null));
     let total_users = user_count_val
-        .get("total")
+        .get("total") // ignore-magic: SurrealDB aggregate alias
         .or_else(|| {
             user_count_val
                 .as_array()
@@ -804,7 +803,7 @@ async fn system_alerts(State(state): State<AdminState>) -> Result<Json<Value>> {
     // Check collection sizes
     let info = schema::list_collections(&state.db).await?;
     let tables = info
-        .get("tables")
+        .get("tables") // ignore-magic: SurrealDB INFO FOR DB response key
         .and_then(|t| t.as_object())
         .map(|obj| obj.keys().cloned().collect::<Vec<_>>())
         .unwrap_or_default()

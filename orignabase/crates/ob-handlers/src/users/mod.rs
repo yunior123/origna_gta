@@ -1032,7 +1032,7 @@ mod tests {
 
     #[test]
     fn test_create_profile_request_deser() {
-        let json_str = r#"{"userId":"u1","email":"a@b.com","name":"Test","roles":["buyer"]}"#;
+        let json_str = r#"{"userId":"u1","email":"a@b.com","name":"Test","roles":["buyer"]}"#;  // ignore-magic
         let req: CreateProfileRequest = serde_json::from_str(json_str).unwrap();
         assert_eq!(req.user_id, Some("u1".to_string()));
         assert_eq!(req.email, "a@b.com");
@@ -1063,14 +1063,14 @@ mod tests {
     #[test]
     fn test_address_input_default_country() {
         let json_str =
-            r#"{"street":"123 Main","city":"Toronto","state":"ON","postalCode":"M5V 1A1"}"#;
+            r#"{"street":"123 Main","city":"Toronto","state":"ON","postalCode":"M5V 1A1"}"#; // ignore-magic
         let addr: AddressInput = serde_json::from_str(json_str).unwrap();
         assert_eq!(addr.country, COUNTRY_CANADA);
     }
 
     #[test]
     fn test_email_consent_request_deser() {
-        let json_str = r#"{"userId":"u1","consent":false}"#;
+        let json_str = r#"{"userId":"u1","consent":false}"#;  // ignore-magic
         let req: EmailConsentRequest = serde_json::from_str(json_str).unwrap();
         assert_eq!(req.user_id, Some("u1".to_string()));
         assert!(!req.consent);
@@ -1078,7 +1078,7 @@ mod tests {
 
     #[test]
     fn test_notification_prefs_partial() {
-        let json_str = r#"{"userId":"u1","notifyNewProducts":true}"#;
+        let json_str = r#"{"userId":"u1","notifyNewProducts":true}"#;  // ignore-magic
         let req: NotificationPrefsRequest = serde_json::from_str(json_str).unwrap();
         assert_eq!(req.notify_new_products, Some(true));
         assert_eq!(req.notify_trending, None);
@@ -1128,7 +1128,7 @@ mod tests {
         assert!(result.is_ok());
         let addr = result.unwrap();
         // postal code is uppercased
-        assert_eq!(addr["postalCode"], "M5V 1A1");
+        assert_eq!(addr[fields::POSTAL_CODE], "M5V 1A1");
     }
 
     #[test]
@@ -1151,9 +1151,9 @@ mod tests {
         );
         assert!(result.is_ok());
         let addr = result.unwrap();
-        let street = addr["street"].as_str().unwrap();
+        let street = addr[fields::STREET].as_str().unwrap();
         assert!(!street.contains("<script>"));
-        let city = addr["city"].as_str().unwrap();
+        let city = addr[fields::CITY].as_str().unwrap();
         assert!(!city.contains("<b>"));
     }
 
@@ -1224,15 +1224,7 @@ mod tests {
 
     #[test]
     fn test_add_buyer_address_request_deser() {
-        let json = r#"{
-            "userId": "u1",
-            "street": "123 Main",
-            "city": "Toronto",
-            "state": "ON",
-            "postalCode": "M5V 1A1",
-            "label": "Home",
-            "isDefault": true
-        }"#;
+        let json = r#"{"userId":"u1","street":"123 Main","city":"Toronto","state":"ON","postalCode":"M5V 1A1","label":"Home","isDefault":true}"#; // ignore-magic
         let req: AddBuyerAddressRequest = serde_json::from_str(json).unwrap();
         assert_eq!(req.user_id, Some("u1".to_string()));
         assert_eq!(req.country, COUNTRY_CANADA); // default
@@ -1242,7 +1234,7 @@ mod tests {
 
     #[test]
     fn test_add_buyer_address_request_defaults() {
-        let json = r#"{"userId":"u1","street":"A","city":"B","state":"C","postalCode":"D"}"#;
+        let json = r#"{"userId":"u1","street":"A","city":"B","state":"C","postalCode":"D"}"#;  // ignore-magic
         let req: AddBuyerAddressRequest = serde_json::from_str(json).unwrap();
         assert_eq!(req.country, COUNTRY_CANADA);
         assert!(req.label.is_none());
@@ -1251,11 +1243,7 @@ mod tests {
 
     #[test]
     fn test_update_buyer_address_request_deser() {
-        let json = r#"{
-            "userId":"u1","addressId":"addr1",
-            "street":"456 Oak","city":"Montreal","state":"QC","postalCode":"H1A 1A1",
-            "isDefault":false
-        }"#;
+        let json = r#"{"userId":"u1","addressId":"addr1","street":"456 Oak","city":"Montreal","state":"QC","postalCode":"H1A 1A1","isDefault":false}"#; // ignore-magic
         let req: UpdateBuyerAddressRequest = serde_json::from_str(json).unwrap();
         assert_eq!(req.address_id, "addr1");
         assert_eq!(req.country, COUNTRY_CANADA);
@@ -1263,34 +1251,28 @@ mod tests {
 
     #[test]
     fn test_delete_buyer_address_request_deser() {
-        let json = r#"{"userId":"u1","addressId":"addr99"}"#;
+        let json = r#"{"userId":"u1","addressId":"addr99"}"#;  // ignore-magic
         let req: DeleteBuyerAddressRequest = serde_json::from_str(json).unwrap();
         assert_eq!(req.address_id, "addr99");
     }
 
     #[test]
     fn test_set_default_buyer_address_request_deser() {
-        let json = r#"{"userId":"u1","addressId":"addr42"}"#;
+        let json = r#"{"userId":"u1","addressId":"addr42"}"#;  // ignore-magic
         let req: SetDefaultBuyerAddressRequest = serde_json::from_str(json).unwrap();
         assert_eq!(req.address_id, "addr42");
     }
 
     #[test]
     fn test_tax_exemption_input_deser() {
-        let json = r#"{"gstNumber":"123456789RT0001"}"#;
+        let json = r#"{"gstNumber":"123456789RT0001"}"#;  // ignore-magic
         let tax: TaxExemptionInput = serde_json::from_str(json).unwrap();
         assert_eq!(tax.gst_number, "123456789RT0001");
     }
 
     #[test]
     fn test_update_profile_request_all_fields() {
-        let json = r#"{
-            "userId": "u1",
-            "name": "New Name",
-            "address": {"street":"1 A","city":"B","state":"C","postalCode":"D"},
-            "preferredLanguage": "fr",
-            "taxExemption": {"gstNumber":"123456789RT0001"}
-        }"#;
+        let json = r#"{"userId":"u1","name":"New Name","address":{"street":"1 A","city":"B","state":"C","postalCode":"D"},"preferredLanguage":"fr","taxExemption":{"gstNumber":"123456789RT0001"}}"#; // ignore-magic
         let req: UpdateProfileRequest = serde_json::from_str(json).unwrap();
         assert!(req.name.is_some());
         assert!(req.address.is_some());
@@ -1300,7 +1282,7 @@ mod tests {
 
     #[test]
     fn test_update_profile_request_minimal() {
-        let json = r#"{"userId":"u1"}"#;
+        let json = r#"{"userId":"u1"}"#;  // ignore-magic
         let req: UpdateProfileRequest = serde_json::from_str(json).unwrap();
         assert!(req.name.is_none());
         assert!(req.address.is_none());
@@ -1310,7 +1292,7 @@ mod tests {
 
     #[test]
     fn test_create_profile_request_with_roles() {
-        let json = r#"{"userId":"u1","email":"a@b.com","name":"X","roles":["buyer","seller"]}"#;
+        let json = r#"{"userId":"u1","email":"a@b.com","name":"X","roles":["buyer","seller"]}"#;  // ignore-magic
         let req: CreateProfileRequest = serde_json::from_str(json).unwrap();
         let roles = req.roles.unwrap();
         assert_eq!(roles.len(), 2);
@@ -1318,7 +1300,7 @@ mod tests {
 
     #[test]
     fn test_create_profile_request_with_consent() {
-        let json = r#"{"userId":"u1","email":"a@b.com","name":"X","consentMethod":"google_oauth","marketingOptIn":true}"#;
+        let json = r#"{"userId":"u1","email":"a@b.com","name":"X","consentMethod":"google_oauth","marketingOptIn":true}"#;  // ignore-magic
         let req: CreateProfileRequest = serde_json::from_str(json).unwrap();
         assert_eq!(req.consent_method.as_deref(), Some("google_oauth"));
         assert_eq!(req.marketing_opt_in, Some(true));
@@ -1326,7 +1308,7 @@ mod tests {
 
     #[test]
     fn test_cleanup_fcm_token_request_deser() {
-        let json = r#"{"userId":"u1","token":"fcm_token_abc123"}"#;
+        let json = r#"{"userId":"u1","token":"fcm_token_abc123"}"#;  // ignore-magic
         let req: CleanupFcmTokenRequest = serde_json::from_str(json).unwrap();
         assert_eq!(req.token, "fcm_token_abc123");
     }
@@ -1367,7 +1349,7 @@ mod tests {
 
     #[test]
     fn test_notification_prefs_both_fields() {
-        let json = r#"{"userId":"u1","notifyNewProducts":false,"notifyTrending":true}"#;
+        let json = r#"{"userId":"u1","notifyNewProducts":false,"notifyTrending":true}"#;  // ignore-magic
         let req: NotificationPrefsRequest = serde_json::from_str(json).unwrap();
         assert_eq!(req.notify_new_products, Some(false));
         assert_eq!(req.notify_trending, Some(true));
@@ -1435,17 +1417,17 @@ mod tests {
             .db
             .query_bind_value(
                 "SELECT * FROM users WHERE uid = $uid LIMIT 1",
-                json!({"uid": &user_id}),
+                json!({fields::UID: &user_id}),
             )
             .await
             .unwrap();
         let user = users.first().unwrap();
         let email_prefix = email.split('@').next().unwrap();
         assert_eq!(user[fields::NAME], email_prefix);
-        assert_eq!(user["preferredLanguage"], "en");
+        assert_eq!(user[fields::PREFERRED_LANGUAGE], "en");
         assert_eq!(user[fields::ROLES], json!(["buyer"]));
         assert_eq!(user["consentMethod"], "signup_form");
-        assert_eq!(user["marketingOptIn"], true);
+        assert_eq!(user[fields::MARKETING_OPT_IN], true);
     }
 
     #[tokio::test]
@@ -1518,7 +1500,7 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(user[fields::NAME], "Updated Name");
-        assert_eq!(user["preferredLanguage"], "fr");
+        assert_eq!(user[fields::PREFERRED_LANGUAGE], "fr");
         assert_eq!(user["taxExemption"]["gstNumber"], "123456789RT0001");
     }
 
@@ -1740,7 +1722,7 @@ mod tests {
         );
         let remaining: Vec<serde_json::Value> = state
             .db
-            .query_bind_value(&query, json!({"uid": &user_id, "token": &token}))
+            .query_bind_value(&query, json!({fields::UID: &user_id, "token": &token}))
             .await
             .unwrap();
         assert!(remaining.is_empty());
@@ -2176,7 +2158,7 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(addr["address"][fields::CITY], "Ottawa");
-        assert_eq!(addr["label"], "Work");
+        assert_eq!(addr[fields::LABEL], "Work");
     }
 
     #[tokio::test]

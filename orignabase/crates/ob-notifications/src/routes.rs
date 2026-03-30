@@ -1,4 +1,5 @@
 use axum::{Json, extract::State};
+use ob_core::constants::fields as f;
 use ob_core::{Error, Result};
 use ob_database::DatabaseClient;
 use serde::{Deserialize, Serialize};
@@ -66,10 +67,10 @@ impl NotificationsState {
         let sa: Value = serde_json::from_str(sa_json)
             .map_err(|e| format!("Invalid service account JSON: {e}"))?;
 
-        let client_email = sa["client_email"]
+        let client_email = sa["client_email"] // ignore-magic: Google service account JSON field
             .as_str()
             .ok_or("Missing client_email in service account")?;
-        let private_key_pem = sa["private_key"]
+        let private_key_pem = sa["private_key"] // ignore-magic: Google service account JSON field
             .as_str()
             .ok_or("Missing private_key in service account")?;
 
@@ -111,12 +112,12 @@ impl NotificationsState {
             .await
             .map_err(|e| format!("Invalid OAuth2 response: {e}"))?;
 
-        let access_token = token_resp["access_token"]
+        let access_token = token_resp["access_token"] // ignore-magic: Google OAuth2 response field
             .as_str()
             .ok_or("Missing access_token in OAuth2 response")?
             .to_string();
 
-        let expires_in = token_resp["expires_in"].as_i64().unwrap_or(3600);
+        let expires_in = token_resp["expires_in"].as_i64().unwrap_or(3600); // ignore-magic: Google OAuth2 response field
 
         // Update cache
         {
@@ -210,7 +211,7 @@ async fn unregister_token(
     Json(body): Json<Value>,
 ) -> Result<Json<Value>> {
     let token = body
-        .get("token") // ignore-magic: ob-notifications has no access to ob-handlers schema constants
+        .get(f::TOKEN)
         .and_then(|v| v.as_str())
         .ok_or_else(|| Error::Validation("Missing 'token' field".into()))?;
 
@@ -235,7 +236,6 @@ async fn send_notification(
     State(state): State<NotificationsState>,
     Json(body): Json<SendNotificationRequest>,
 ) -> Result<Json<Value>> {
-    // ignore-magic: ob-notifications has no access to ob-handlers schema constants
     let tokens = match body.target_type.as_str() {
         "user" => {
             // Get all device tokens for this user
@@ -248,7 +248,7 @@ async fn send_notification(
                 .await?;
             results
                 .iter()
-                .filter_map(|r| r.get("token").and_then(|v| v.as_str()).map(String::from))
+                .filter_map(|r| r.get(f::TOKEN).and_then(|v| v.as_str()).map(String::from))
                 .collect::<Vec<_>>()
         }
         "token" => vec![body.to.clone()],
@@ -263,7 +263,7 @@ async fn send_notification(
                 .await?;
             results
                 .iter()
-                .filter_map(|r| r.get("token").and_then(|v| v.as_str()).map(String::from))
+                .filter_map(|r| r.get(f::TOKEN).and_then(|v| v.as_str()).map(String::from))
                 .collect::<Vec<_>>()
         }
         _ => {

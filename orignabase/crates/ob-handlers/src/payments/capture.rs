@@ -295,7 +295,7 @@ mod tests {
 
     #[test]
     fn test_capture_request_deser() {
-        let json = r#"{"orderId": "order-abc-123", "userId": "seller-xyz"}"#;
+        let json = r#"{"orderId": "order-abc-123", "userId": "seller-xyz"}"#;  // ignore-magic
         let req: CapturePaymentRequest = serde_json::from_str(json).unwrap();
         assert_eq!(req.order_id, "order-abc-123");
         assert_eq!(req.user_id, Some("seller-xyz".to_string()));
@@ -311,14 +311,14 @@ mod tests {
         };
         let json = serde_json::to_value(&resp).unwrap();
         assert_eq!(json["success"], true);
-        assert_eq!(json["orderId"], "order-1");
-        assert_eq!(json["paymentStatus"], "captured");
-        assert_eq!(json["orderStatus"], "processing");
+        assert_eq!(json[fields::ORDER_ID], "order-1");
+        assert_eq!(json[fields::PAYMENT_STATUS], "captured");
+        assert_eq!(json[fields::ORDER_STATUS], "processing");
     }
 
     #[test]
     fn test_capture_request_missing_user_id_defaults_to_none() {
-        let json = r#"{"orderId": "order-1"}"#;
+        let json = r#"{"orderId": "order-1"}"#;  // ignore-magic
         let req: CapturePaymentRequest = serde_json::from_str(json).unwrap();
         assert_eq!(req.order_id, "order-1");
         assert!(
@@ -341,21 +341,21 @@ mod tests {
 
     #[test]
     fn test_capture_request_empty_order_id() {
-        let json = r#"{"orderId": "", "userId": "seller-1"}"#;
+        let json = r#"{"orderId": "", "userId": "seller-1"}"#;  // ignore-magic
         let req: CapturePaymentRequest = serde_json::from_str(json).unwrap();
         assert!(req.order_id.is_empty());
     }
 
     #[test]
     fn test_capture_request_missing_order_id_fails() {
-        let json = r#"{"userId": "seller-1"}"#;
+        let json = r#"{"userId": "seller-1"}"#;  // ignore-magic
         let result: std::result::Result<CapturePaymentRequest, _> = serde_json::from_str(json);
         assert!(result.is_err());
     }
 
     #[test]
     fn test_capture_request_missing_user_id_succeeds_with_none() {
-        let json = r#"{"orderId": "order-1"}"#;
+        let json = r#"{"orderId": "order-1"}"#;  // ignore-magic
         let req: CapturePaymentRequest = serde_json::from_str(json).unwrap();
         assert!(req.user_id.is_none());
     }
@@ -370,7 +370,7 @@ mod tests {
         };
         let json = serde_json::to_value(&resp).unwrap();
         assert_eq!(json["success"], false);
-        assert_eq!(json["paymentStatus"], "failed");
+        assert_eq!(json[fields::PAYMENT_STATUS], "failed");
     }
 
     #[test]
@@ -532,7 +532,7 @@ mod tests {
             .and(path("/payment_intents/pi_capture/capture"))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!({
                 "id": "pi_capture",
-                "status": "succeeded"
+                fields::STATUS: "succeeded"
             })))
             .mount(&mock_server)
             .await;
@@ -607,7 +607,7 @@ mod tests {
             .and(path("/payment_intents/pi_from_session/capture"))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!({
                 "id": "pi_from_session",
-                "status": "succeeded"
+                fields::STATUS: "succeeded"
             })))
             .mount(&mock_server)
             .await;
@@ -680,7 +680,7 @@ mod tests {
             .and(path("/payment_intents/pi_bad/capture"))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!({
                 "id": "pi_bad",
-                "status": "requires_capture"
+                fields::STATUS: "requires_capture"
             })))
             .mount(&mock_server)
             .await;

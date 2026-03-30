@@ -119,6 +119,7 @@ cd e2e && ORIGNABASE_URL=http://127.0.0.1:8080 bun run lib/seed-dev.ts
 - use sleep monitor technique to always keep mimo,gemini,codex, etc busy doing audit based on real evidence and no false positive, creating more tests, documenting, fixing issues, searching web for common bugs on github or internet for ecommerce stores and see how we can prevent those in our app, use the harness loop constatntly. in the case of mimo alternate opencode, kilo, openrouter. Search web on how to better always keep working non stop on a project, like infinite work, non stop, always on. check gstack for ideas, skills catalog, etc.
 Make them audit full codebase in depth. Use all agents and skills for it.
 - fix stale data issues, resseed db if needed
+- always monitor disk space in my mac:256gb
 
 ## MCP
 

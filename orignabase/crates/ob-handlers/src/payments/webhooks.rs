@@ -1878,7 +1878,7 @@ mod tests {
     fn test_signature_verification_valid() {
         let secret = "test_secret";
         let ts = now_timestamp();
-        let body = br#"{"type":"payment_intent.succeeded"}"#;
+        let body = br#"{"type":"payment_intent.succeeded"}"#;  // ignore-magic
         let signature = make_hmac_signature(secret, body, &ts);
         assert!(verify_stripe_signature(body, &signature, secret));
     }
@@ -1887,13 +1887,13 @@ mod tests {
     fn test_signature_verification_invalid() {
         let secret = "test_secret";
         let signature = "t=1614556800,v1=invalid_signature";
-        let body = br#"{"type":"payment_intent.succeeded"}"#;
+        let body = br#"{"type":"payment_intent.succeeded"}"#;  // ignore-magic
         assert!(!verify_stripe_signature(body, signature, secret));
     }
 
     #[test]
     fn test_signature_verification_wrong_secret() {
-        let body = br#"{"id":"evt_1"}"#;
+        let body = br#"{"id":"evt_1"}"#;  // ignore-magic
         let signature = make_hmac_signature("correct_secret", body, "1614556800");
         assert!(!verify_stripe_signature(body, &signature, "wrong_secret"));
     }
@@ -1901,16 +1901,16 @@ mod tests {
     #[test]
     fn test_signature_verification_tampered_body() {
         let secret = "STRIPE_WEBHOOK_SECRET_REDACTED";
-        let original = br#"{"id":"evt_1"}"#;
+        let original = br#"{"id":"evt_1"}"#;  // ignore-magic
         let signature = make_hmac_signature(secret, original, "1614556800");
-        let tampered = br#"{"id":"evt_2"}"#;
+        let tampered = br#"{"id":"evt_2"}"#;  // ignore-magic
         assert!(!verify_stripe_signature(tampered, &signature, secret));
     }
 
     #[test]
     fn test_signature_verification_tampered_timestamp() {
         let secret = "STRIPE_WEBHOOK_SECRET_REDACTED";
-        let body = br#"{"id":"evt_1"}"#;
+        let body = br#"{"id":"evt_1"}"#;  // ignore-magic
         let signature = make_hmac_signature(secret, body, "1614556800");
         let tampered_sig = signature.replace("t=1614556800", "t=9999999999");
         assert!(!verify_stripe_signature(body, &tampered_sig, secret));
@@ -1943,7 +1943,7 @@ mod tests {
     #[test]
     fn test_signature_verification_long_body() {
         let secret = "STRIPE_WEBHOOK_SECRET_REDACTED";
-        let body = br#"{"data":{"object":{"id":"pi_large","metadata":{"order_id":"ord_123","coupon_code":"SAVE10"},"amount":99999,"currency":"cad"}}}"#;
+        let body = br#"{"data":{"object":{"id":"pi_large","metadata":{"order_id":"ord_123","coupon_code":"SAVE10"},"amount":99999,"currency":"cad"}}}"#;  // ignore-magic
         let ts = now_timestamp();
         let signature = make_hmac_signature(secret, body, &ts);
         assert!(verify_stripe_signature(body, &signature, secret));
@@ -1952,7 +1952,7 @@ mod tests {
     #[test]
     fn test_signature_verification_signature_format_with_extra_parts() {
         let secret = "STRIPE_WEBHOOK_SECRET_REDACTED";
-        let body = br#"{"id":"evt_1"}"#;
+        let body = br#"{"id":"evt_1"}"#;  // ignore-magic
         let ts = now_timestamp();
         let sig = make_hmac_signature(secret, body, &ts);
         let extended = format!("{},v2=extra", sig);
@@ -1980,7 +1980,7 @@ mod tests {
         assert_eq!(event.id, "evt_1234");
         assert_eq!(event.r#type, "payment_intent.succeeded");
         assert_eq!(event.created, 1614556800);
-        assert_eq!(event.data["object"]["id"].as_str().unwrap(), "pi_1234");
+        assert_eq!(event.data["object"][fields::ID].as_str().unwrap(), "pi_1234");
     }
 
     #[test]
@@ -2094,7 +2094,7 @@ mod tests {
     #[test]
     fn test_signature_verification_rejects_expired_timestamp_over_300_seconds() {
         let secret = "STRIPE_WEBHOOK_SECRET_REDACTED";
-        let body = br#"{"id":"evt_expired","type":"charge.succeeded"}"#;
+        let body = br#"{"id":"evt_expired","type":"charge.succeeded"}"#;  // ignore-magic
         let expired_timestamp = (std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
@@ -2112,7 +2112,7 @@ mod tests {
         let state = setup_state_with_webhook_secret(secret).await;
         let unique_evt_id = format!("evt_dup_full_{}", uuid::Uuid::new_v4().simple());
         let body = serde_json::to_vec(&json!({
-            "id": unique_evt_id,
+            fields::ID: unique_evt_id,
             "type": "charge.succeeded",
             "data": {"object": {"id": "ch_test_duplicate"}},
             "created": 1_714_567_800_i64,

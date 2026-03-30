@@ -11,7 +11,7 @@ use tokio_tungstenite::{connect_async, tungstenite::Message};
 use uuid::Uuid;
 
 fn base_url() -> String {
-    std::env::var("OB_TEST_URL").unwrap_or_else(|_| "http://localhost:8080".to_string())
+    std::env::var("OB_TEST_URL").unwrap_or_else(|_| "http://localhost:8080".to_string()) // ignore-magic
 }
 
 fn ws_url() -> String {
@@ -22,17 +22,17 @@ fn ws_url() -> String {
 
 /// Register a test user and return (access_token, user_id).
 async fn register_test_user(client: &reqwest::Client) -> (String, String) {
-    let email = format!("test_{}@example.com", Uuid::new_v4());
+    let email = format!("test_{}@example.com", Uuid::new_v4()); // ignore-magic
     let resp = client
         .post(format!("{}/auth/register", base_url()))
-        .json(&json!({ "email": email, "password": "TestPassword123!" }))
+        .json(&json!({ "email": email, "password": "TestPassword123!" })) // ignore-magic
         .send()
         .await
         .expect("register failed");
     assert_eq!(resp.status(), 200);
     let body: Value = resp.json().await.unwrap();
-    let token = body["access_token"].as_str().unwrap().to_string();
-    let user_id = body["user"]["id"].as_str().unwrap().to_string();
+    let token = body["access_token"].as_str().unwrap().to_string(); // ignore-magic
+    let user_id = body["user"]["id"].as_str().unwrap().to_string(); // ignore-magic
     (token, user_id)
 }
 
@@ -97,7 +97,7 @@ async fn test_ws_ping_pong() {
     let (mut write, mut read) = ws_stream.split();
 
     // Send Ping message
-    let ping_msg = json!({"type": "ping"});
+    let ping_msg = json!({"type": "ping"}); // ignore-magic
     write
         .send(Message::Text(ping_msg.to_string().into()))
         .await
@@ -108,8 +108,8 @@ async fn test_ws_ping_pong() {
 
     assert!(response.is_ok(), "Should receive pong within timeout");
     if let Ok(Some(Ok(Message::Text(text)))) = response {
-        let msg: Value = serde_json::from_str(&text).unwrap_or(json!({}));
-        assert_eq!(msg["type"], "pong", "Should receive pong response");
+        let msg: Value = serde_json::from_str(&text).unwrap_or(json!({})); // ignore-magic
+        assert_eq!(msg["type"], "pong", "Should receive pong response"); // ignore-magic
     }
 }
 
@@ -128,10 +128,10 @@ async fn test_ws_subscribe_collection() {
     let (mut write, mut read) = ws_stream.split();
 
     let sub_id = format!("sub_{}", Uuid::new_v4());
-    let subscribe_msg = json!({
+    let subscribe_msg = json!({ // ignore-magic
         "type": "subscribe",
         "id": sub_id,
-        "collection": "products"
+        "collection": "products" // ignore-magic
     });
 
     write
@@ -144,12 +144,12 @@ async fn test_ws_subscribe_collection() {
 
     assert!(response.is_ok(), "Should receive subscribed confirmation");
     if let Ok(Some(Ok(Message::Text(text)))) = response {
-        let msg: Value = serde_json::from_str(&text).unwrap_or(json!({}));
+        let msg: Value = serde_json::from_str(&text).unwrap_or(json!({})); // ignore-magic
         assert_eq!(
-            msg["type"], "subscribed",
+            msg["type"], "subscribed", // ignore-magic
             "Should confirm subscription: {msg:?}"
         );
-        assert_eq!(msg["id"], sub_id);
+        assert_eq!(msg["id"], sub_id); // ignore-magic
     }
 }
 
@@ -168,7 +168,7 @@ async fn test_ws_unsubscribe() {
     // Subscribe first
     write
         .send(Message::Text(
-            json!({"type": "subscribe", "id": sub_id, "collection": "products"})
+            json!({"type": "subscribe", "id": sub_id, "collection": "products"}) // ignore-magic
                 .to_string()
                 .into(),
         ))
@@ -181,7 +181,7 @@ async fn test_ws_unsubscribe() {
     // Unsubscribe
     write
         .send(Message::Text(
-            json!({"type": "unsubscribe", "id": sub_id})
+            json!({"type": "unsubscribe", "id": sub_id}) // ignore-magic
                 .to_string()
                 .into(),
         ))
@@ -191,9 +191,9 @@ async fn test_ws_unsubscribe() {
     // Should receive "unsubscribed" confirmation
     let response = tokio::time::timeout(std::time::Duration::from_secs(5), read.next()).await;
     if let Ok(Some(Ok(Message::Text(text)))) = response {
-        let msg: Value = serde_json::from_str(&text).unwrap_or(json!({}));
+        let msg: Value = serde_json::from_str(&text).unwrap_or(json!({})); // ignore-magic
         assert_eq!(
-            msg["type"], "unsubscribed",
+            msg["type"], "unsubscribed", // ignore-magic
             "Should confirm unsubscription: {msg:?}"
         );
     }
@@ -214,9 +214,9 @@ async fn test_ws_presence_update() {
     let (mut write, mut read) = ws_stream.split();
 
     // Send presence update
-    let presence_msg = json!({
+    let presence_msg = json!({ // ignore-magic
         "type": "presence",
-        "metadata": { "status": "online", "page": "/products" }
+        "metadata": { "status": "online", "page": "/products" } // ignore-magic
     });
 
     write
@@ -229,12 +229,12 @@ async fn test_ws_presence_update() {
 
     // Server may or may not respond to presence immediately depending on config
     if let Ok(Some(Ok(Message::Text(text)))) = response {
-        let msg: Value = serde_json::from_str(&text).unwrap_or(json!({}));
+        let msg: Value = serde_json::from_str(&text).unwrap_or(json!({})); // ignore-magic
         assert_eq!(
-            msg["type"], "presence_update",
+            msg["type"], "presence_update", // ignore-magic
             "Should get presence_update: {msg:?}"
         );
-        assert!(msg["online"].is_array(), "Should include online users list");
+        assert!(msg["online"].is_array(), "Should include online users list"); // ignore-magic
     }
     // Timeout is acceptable — presence updates may be batched or delayed
 }
@@ -263,9 +263,9 @@ async fn test_ws_invalid_message_returns_error() {
     let response = tokio::time::timeout(std::time::Duration::from_secs(5), read.next()).await;
 
     if let Ok(Some(Ok(Message::Text(text)))) = response {
-        let msg: Value = serde_json::from_str(&text).unwrap_or(json!({}));
+        let msg: Value = serde_json::from_str(&text).unwrap_or(json!({})); // ignore-magic
         assert_eq!(
-            msg["type"], "error",
+            msg["type"], "error", // ignore-magic
             "Should return error for invalid message: {msg:?}"
         );
     }
@@ -282,10 +282,10 @@ async fn test_ws_subscribe_to_specific_document() {
     let (mut write, mut read) = ws_stream.split();
 
     let sub_id = format!("doc_sub_{}", Uuid::new_v4());
-    let subscribe_msg = json!({
+    let subscribe_msg = json!({ // ignore-magic
         "type": "subscribe",
         "id": sub_id,
-        "collection": "products",
+        "collection": "products", // ignore-magic
         "document_id": "products:some_id"
     });
 
@@ -296,11 +296,11 @@ async fn test_ws_subscribe_to_specific_document() {
 
     let response = tokio::time::timeout(std::time::Duration::from_secs(5), read.next()).await;
     if let Ok(Some(Ok(Message::Text(text)))) = response {
-        let msg: Value = serde_json::from_str(&text).unwrap_or(json!({}));
+        let msg: Value = serde_json::from_str(&text).unwrap_or(json!({})); // ignore-magic
         assert_eq!(
-            msg["type"], "subscribed",
+            msg["type"], "subscribed", // ignore-magic
             "Should confirm doc subscription: {msg:?}"
         );
-        assert_eq!(msg["id"], sub_id);
+        assert_eq!(msg["id"], sub_id); // ignore-magic
     }
 }

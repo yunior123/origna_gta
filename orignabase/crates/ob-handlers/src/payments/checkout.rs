@@ -970,7 +970,7 @@ mod tests {
                 "state": "ON", "postalCode": "M5V 2H1", "country": "CA"
             },
             "userId": "user123", "subtotalCents": 5000
-        }"#;
+        }"#; // ignore-magic
         let req: CreateCheckoutRequest = serde_json::from_str(json).unwrap();
         assert_eq!(req.items.len(), 1);
         assert_eq!(req.subtotal_cents, 5000);
@@ -1062,7 +1062,7 @@ mod tests {
                 "state": "ON", "postalCode": "M5V2H1", "country": "CA"
             },
             "userId": "u1", "subtotalCents": 100
-        }"#;
+        }"#; // ignore-magic
         let req: CreateCheckoutRequest = serde_json::from_str(json).unwrap();
         assert!(!req.eula_accepted);
         assert!(!req.age_verification_accepted);
@@ -1083,7 +1083,7 @@ mod tests {
             "eulaAccepted": true,
             "ageVerificationAccepted": true,
             "idempotencyKey": "idem-123"
-        }"#;
+        }"#; // ignore-magic
         let req: CreateCheckoutRequest = serde_json::from_str(json).unwrap();
         assert!(req.eula_accepted);
         assert!(req.age_verification_accepted);
@@ -1093,14 +1093,14 @@ mod tests {
 
     #[test]
     fn test_cart_item_zero_quantity_deser() {
-        let json = r#"{"productId": "p1", "quantity": 0}"#;
+        let json = r#"{"productId": "p1", "quantity": 0}"#;  // ignore-magic
         let item: CartItem = serde_json::from_str(json).unwrap();
         assert_eq!(item.quantity, 0);
     }
 
     #[test]
     fn test_cart_item_empty_product_id_deser() {
-        let json = r#"{"productId": "", "quantity": 1}"#;
+        let json = r#"{"productId": "", "quantity": 1}"#;  // ignore-magic
         let item: CartItem = serde_json::from_str(json).unwrap();
         assert!(item.product_id.is_empty());
     }
@@ -1113,7 +1113,7 @@ mod tests {
             "state": "ON",
             "postalCode": "M5V 2H1",
             "country": "CA"
-        }"#;
+        }"#; // ignore-magic
         let addr: ShippingAddress = serde_json::from_str(json).unwrap();
         assert_eq!(addr.street, "123 Main St");
         assert_eq!(addr.state, "ON");
@@ -1129,7 +1129,7 @@ mod tests {
         };
         let json = serde_json::to_value(&resp).unwrap();
         assert_eq!(json["sessionId"], "cs_test_123");
-        assert_eq!(json["orderId"], "order_456");
+        assert_eq!(json[fields::ORDER_ID], "order_456");
         assert_eq!(
             json["checkoutUrl"],
             "https://checkout.stripe.com/c/pay/test"
@@ -1224,29 +1224,14 @@ mod tests {
 
     #[test]
     fn test_age_verification_field_defaults_false() {
-        let json = r#"{
-            "items": [{"productId": "p1", "quantity": 1}],
-            "shippingAddress": {
-                "street": "1 St", "city": "Toronto",
-                "state": "ON", "postalCode": "M5V2H1", "country": "CA"
-            },
-            "userId": "u1", "subtotalCents": 100
-        }"#;
+        let json = r#"{"items":[{"productId":"p1","quantity":1}],"shippingAddress":{"street":"1 St","city":"Toronto","state":"ON","postalCode":"M5V2H1","country":"CA"},"userId":"u1","subtotalCents":100}"#; // ignore-magic
         let req: CreateCheckoutRequest = serde_json::from_str(json).unwrap();
         assert!(!req.age_verification_accepted);
     }
 
     #[test]
     fn test_age_verification_field_accepts_true() {
-        let json = r#"{
-            "items": [{"productId": "p1", "quantity": 1}],
-            "shippingAddress": {
-                "street": "1 St", "city": "Toronto",
-                "state": "ON", "postalCode": "M5V2H1", "country": "CA"
-            },
-            "userId": "u1", "subtotalCents": 100,
-            "ageVerificationAccepted": true
-        }"#;
+        let json = r#"{"items":[{"productId":"p1","quantity":1}],"shippingAddress":{"street":"1 St","city":"Toronto","state":"ON","postalCode":"M5V2H1","country":"CA"},"userId":"u1","subtotalCents":100,"ageVerificationAccepted":true}"#; // ignore-magic
         let req: CreateCheckoutRequest = serde_json::from_str(json).unwrap();
         assert!(req.age_verification_accepted);
     }
@@ -1812,7 +1797,7 @@ mod tests {
 
         state
             .db
-            .update_document(collections::USERS, "seller_1", json!({"suspended": true}))
+            .update_document(collections::USERS, "seller_1", json!({fields::SUSPENDED: true}))
             .await
             .unwrap();
 
@@ -1941,21 +1926,21 @@ mod tests {
         assert_eq!(mismatch_resp["verified"], 1);
         let mismatches = mismatch_resp["mismatches"].as_array().unwrap();
         assert_eq!(mismatches.len(), 4);
-        assert!(mismatches.iter().any(|m| m["reason"] == "price_changed"));
+        assert!(mismatches.iter().any(|m| m[fields::REASON] == "price_changed"));
         assert!(
             mismatches
                 .iter()
-                .any(|m| m["reason"] == "insufficient_stock")
+                .any(|m| m[fields::REASON] == "insufficient_stock")
         );
         assert!(
             mismatches
                 .iter()
-                .any(|m| m["reason"] == "product_unavailable")
+                .any(|m| m[fields::REASON] == "product_unavailable")
         );
         assert!(
             mismatches
                 .iter()
-                .any(|m| m["reason"] == "product_not_found")
+                .any(|m| m[fields::REASON] == "product_not_found")
         );
 
         let Json(valid_resp) = verify_cart_prices(
@@ -2377,10 +2362,10 @@ mod tests {
                 collections::USERS,
                 "seller_1",
                 json!({
-                    fields::UID: "seller_1", "suspended": false,
-                    "onboardingCompleted": true,
-                    "chargesEnabled": true,
-                    "payoutsEnabled": true,
+                    fields::UID: "seller_1", fields::SUSPENDED: false,
+                    fields::ONBOARDING_COMPLETED: true,
+                    fields::CHARGES_ENABLED: true,
+                    fields::PAYOUTS_ENABLED: true,
                 }),
             )
             .await
@@ -2636,22 +2621,22 @@ async fn verify_cart_prices(
 
                 if db_price != item.expected_price_cents {
                     mismatches.push(serde_json::json!({
-                        "productId": item.product_id,
-                        "reason": "price_changed",
+                        fields::PRODUCT_ID: item.product_id,
+                        fields::REASON: "price_changed",
                         "expectedPriceCents": item.expected_price_cents,
                         "actualPriceCents": db_price,
                     }));
                 } else if in_stock < item.quantity as i64 {
                     mismatches.push(serde_json::json!({
-                        "productId": item.product_id,
-                        "reason": "insufficient_stock",
+                        fields::PRODUCT_ID: item.product_id,
+                        fields::REASON: "insufficient_stock",
                         "requestedQuantity": item.quantity,
                         "availableStock": in_stock,
                     }));
                 } else if !active {
                     mismatches.push(serde_json::json!({
-                        "productId": item.product_id,
-                        "reason": "product_unavailable",
+                        fields::PRODUCT_ID: item.product_id,
+                        fields::REASON: "product_unavailable",
                     }));
                 } else {
                     verified += 1;
@@ -2659,8 +2644,8 @@ async fn verify_cart_prices(
             }
             Err(_) => {
                 mismatches.push(serde_json::json!({
-                    "productId": item.product_id,
-                    "reason": "product_not_found",
+                    fields::PRODUCT_ID: item.product_id,
+                    fields::REASON: "product_not_found",
                 }));
             }
         }

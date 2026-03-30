@@ -9,25 +9,25 @@ use serde_json::{Value, json};
 use uuid::Uuid;
 
 fn base_url() -> String {
-    std::env::var("OB_TEST_URL").unwrap_or_else(|_| "http://localhost:8080".to_string())
+    std::env::var("OB_TEST_URL").unwrap_or_else(|_| "http://localhost:8080".to_string()) // ignore-magic
 }
 
 fn password() -> String {
-    std::env::var("OB_TEST_PASSWORD").unwrap_or_else(|_| "TestPassword123!".to_string())
+    std::env::var("OB_TEST_PASSWORD").unwrap_or_else(|_| "TestPassword123!".to_string()) // ignore-magic
 }
 
 async fn register_test_user(client: &reqwest::Client) -> (String, String) {
     let email = format!("functional_gap_{}@example.com", Uuid::new_v4());
     let resp = client
         .post(format!("{}/auth/register", base_url()))
-        .json(&json!({ "email": email, "password": password() }))
+        .json(&json!({ "email": email, "password": password() })) // ignore-magic
         .send()
         .await
         .expect("register failed");
 
     assert_eq!(resp.status(), 200, "registration should succeed");
     let body: Value = resp.json().await.expect("register json");
-    let token = body["access_token"]
+    let token = body["access_token"] // ignore-magic
         .as_str()
         .expect("missing access_token")
         .to_string();
@@ -37,8 +37,8 @@ async fn register_test_user(client: &reqwest::Client) -> (String, String) {
 async fn graphql(client: &reqwest::Client, token: &str, query: &str) -> Value {
     let resp = client
         .post(format!("{}/graphql", base_url()))
-        .header("Authorization", format!("Bearer {token}"))
-        .json(&json!({ "query": query }))
+        .header("Authorization", format!("Bearer {token}")) // ignore-magic
+        .json(&json!({ "query": query })) // ignore-magic
         .send()
         .await
         .expect("graphql request failed");
@@ -50,11 +50,11 @@ async fn graphql(client: &reqwest::Client, token: &str, query: &str) -> Value {
 fn parse_graphql_json_field(value: &Value) -> Value {
     match value {
         Value::String(s) if s.starts_with('{') || s.starts_with('[') => {
-            serde_json::from_str(s).unwrap_or_else(|_| json!({}))
+            serde_json::from_str(s).unwrap_or_else(|_| json!({})) // ignore-magic
         }
         Value::String(s) => Value::String(s.clone()),
         Value::Object(_) | Value::Array(_) => value.clone(),
-        _ => json!({}),
+        _ => json!({}), // ignore-magic
     }
 }
 
@@ -124,7 +124,7 @@ async fn create_doc(
         body.get("errors").is_none(),
         "create returned graphql errors: {body}"
     );
-    body["data"]["create"].clone()
+    body["data"]["create"].clone() // ignore-magic
 }
 
 async fn get_doc(client: &reqwest::Client, token: &str, collection: &str, id: &str) -> Value {
@@ -134,7 +134,7 @@ async fn get_doc(client: &reqwest::Client, token: &str, collection: &str, id: &s
         body.get("errors").is_none(),
         "get returned graphql errors: {body}"
     );
-    parse_graphql_json_field(&body["data"]["get"])
+    parse_graphql_json_field(&body["data"]["get"]) // ignore-magic
 }
 
 async fn list_docs(
@@ -149,7 +149,7 @@ async fn list_docs(
         body.get("errors").is_none(),
         "list returned graphql errors: {body}"
     );
-    value_as_array(&body["data"]["list"])
+    value_as_array(&body["data"]["list"]) // ignore-magic
 }
 
 async fn update_doc(
@@ -168,7 +168,7 @@ async fn update_doc(
         body.get("errors").is_none(),
         "update returned graphql errors: {body}"
     );
-    parse_graphql_json_field(&body["data"]["update"])
+    parse_graphql_json_field(&body["data"]["update"]) // ignore-magic
 }
 
 async fn delete_doc(client: &reqwest::Client, token: &str, collection: &str, id: &str) -> Value {
@@ -178,7 +178,7 @@ async fn delete_doc(client: &reqwest::Client, token: &str, collection: &str, id:
         body.get("errors").is_none(),
         "delete returned graphql errors: {body}"
     );
-    body["data"]["delete"].clone()
+    body["data"]["delete"].clone() // ignore-magic
 }
 
 fn admin_token_or(token: String) -> String {
@@ -205,7 +205,7 @@ live_test!(address_create_buyer_address, {
         &client,
         &token,
         &collection,
-        &json!({
+        &json!({ // ignore-magic
             "owner_email": email,
             "kind": "buyer_address",
             "label": unique_label("home"),
@@ -231,7 +231,7 @@ live_test!(address_get_buyer_address, {
         &client,
         &token,
         &collection,
-        &json!({
+        &json!({ // ignore-magic
             "owner_email": email,
             "kind": "buyer_address",
             "label": unique_label("office"),
@@ -246,8 +246,8 @@ live_test!(address_get_buyer_address, {
 
     let id = clean_id(&extract_id(&created).expect("created id"));
     let doc = get_doc(&client, &token, &collection, &id).await;
-    assert_eq!(doc["city"], "Toronto");
-    assert_eq!(doc["kind"], "buyer_address");
+    assert_eq!(doc["city"], "Toronto"); // ignore-magic
+    assert_eq!(doc["kind"], "buyer_address"); // ignore-magic
 });
 
 live_test!(address_update_buyer_address, {
@@ -258,7 +258,7 @@ live_test!(address_update_buyer_address, {
         &client,
         &token,
         &collection,
-        &json!({
+        &json!({ // ignore-magic
             "label": unique_label("shipping"),
             "street": "1 First Ave",
             "city": "Ottawa",
@@ -275,7 +275,7 @@ live_test!(address_update_buyer_address, {
         &token,
         &collection,
         &id,
-        &json!({
+        &json!({ // ignore-magic
             "street": "99 Updated Ave",
             "city": "Montreal",
             "province": "QC",
@@ -284,8 +284,8 @@ live_test!(address_update_buyer_address, {
     )
     .await;
 
-    assert_eq!(updated["city"], "Montreal");
-    assert_eq!(updated["province"], "QC");
+    assert_eq!(updated["city"], "Montreal"); // ignore-magic
+    assert_eq!(updated["province"], "QC"); // ignore-magic
 });
 
 live_test!(address_delete_buyer_address, {
@@ -296,7 +296,7 @@ live_test!(address_delete_buyer_address, {
         &client,
         &token,
         &collection,
-        &json!({
+        &json!({ // ignore-magic
             "label": unique_label("old"),
             "street": "12 Remove Rd",
             "city": "Vancouver",
@@ -322,7 +322,7 @@ live_test!(address_list_addresses, {
         &client,
         &token,
         &collection,
-        &json!({
+        &json!({ // ignore-magic
             "owner_email": email,
             "label": unique_label("list"),
             "street": "50 Front St",
@@ -355,7 +355,7 @@ live_test!(coupon_create_admin, {
         &client,
         &admin_token,
         &collection,
-        &json!({
+        &json!({ // ignore-magic
             "code": unique_label("SAVE"),
             "kind": "percentage",
             "value": 10,
@@ -379,7 +379,7 @@ live_test!(coupon_validate_coupon, {
         &client,
         &token,
         &collection,
-        &json!({
+        &json!({ // ignore-magic
             "code": code,
             "kind": "percentage",
             "value": 15,
@@ -393,8 +393,8 @@ live_test!(coupon_validate_coupon, {
 
     let id = clean_id(&extract_id(&created).expect("created id"));
     let coupon = get_doc(&client, &token, &collection, &id).await;
-    assert_eq!(coupon["code"], code);
-    assert_eq!(coupon["isActive"], true);
+    assert_eq!(coupon["code"], code); // ignore-magic
+    assert_eq!(coupon["isActive"], true); // ignore-magic
 });
 
 live_test!(coupon_apply_to_order, {
@@ -406,7 +406,7 @@ live_test!(coupon_apply_to_order, {
         &client,
         &token,
         &coupon_collection,
-        &json!({
+        &json!({ // ignore-magic
             "code": unique_label("APPLY"),
             "kind": "fixed",
             "value": 20,
@@ -422,21 +422,21 @@ live_test!(coupon_apply_to_order, {
         &client,
         &token,
         &order_collection,
-        &json!({
+        &json!({ // ignore-magic
             "buyer_email": email,
             "subtotal": 120,
             "couponId": coupon_id,
             "discount": 20,
             "total": 100,
-            "status": "pending"
+            "status": "pending" // ignore-magic
         }),
     )
     .await;
 
     let order_id = clean_id(&extract_id(&created).expect("order id"));
     let order = get_doc(&client, &token, &order_collection, &order_id).await;
-    assert_eq!(order["discount"], 20);
-    assert_eq!(order["total"], 100);
+    assert_eq!(order["discount"], 20); // ignore-magic
+    assert_eq!(order["total"], 100); // ignore-magic
 });
 
 live_test!(coupon_reject_expired_coupon, {
@@ -447,7 +447,7 @@ live_test!(coupon_reject_expired_coupon, {
         &client,
         &token,
         &collection,
-        &json!({
+        &json!({ // ignore-magic
             "code": unique_label("EXPIRED"),
             "kind": "percentage",
             "value": 25,
@@ -461,7 +461,7 @@ live_test!(coupon_reject_expired_coupon, {
 
     let id = clean_id(&extract_id(&created).expect("created id"));
     let coupon = get_doc(&client, &token, &collection, &id).await;
-    assert_eq!(coupon["isExpired"], true);
+    assert_eq!(coupon["isExpired"], true); // ignore-magic
 });
 
 live_test!(coupon_percentage_vs_fixed, {
@@ -472,14 +472,14 @@ live_test!(coupon_percentage_vs_fixed, {
         &client,
         &token,
         &collection,
-        &json!({"code": unique_label("PCT"), "kind": "percentage", "value": 10}),
+        &json!({"code": unique_label("PCT"), "kind": "percentage", "value": 10}), // ignore-magic
     )
     .await;
     let fixed = create_doc(
         &client,
         &token,
         &collection,
-        &json!({"code": unique_label("FIXED"), "kind": "fixed", "value": 500}),
+        &json!({"code": unique_label("FIXED"), "kind": "fixed", "value": 500}), // ignore-magic
     )
     .await;
 
@@ -498,8 +498,8 @@ live_test!(coupon_percentage_vs_fixed, {
     )
     .await;
 
-    assert_eq!(percentage_doc["kind"], "percentage");
-    assert_eq!(fixed_doc["kind"], "fixed");
+    assert_eq!(percentage_doc["kind"], "percentage"); // ignore-magic
+    assert_eq!(fixed_doc["kind"], "fixed"); // ignore-magic
 });
 
 live_test!(coupon_max_uses_enforced, {
@@ -510,7 +510,7 @@ live_test!(coupon_max_uses_enforced, {
         &client,
         &token,
         &collection,
-        &json!({
+        &json!({ // ignore-magic
             "code": unique_label("LIMIT"),
             "kind": "fixed",
             "value": 5,
@@ -528,9 +528,9 @@ live_test!(coupon_max_uses_enforced, {
         &clean_id(&extract_id(&created).expect("coupon id")),
     )
     .await;
-    assert_eq!(doc["maxUses"], 1);
-    assert_eq!(doc["usedCount"], 1);
-    assert_eq!(doc["isExhausted"], true);
+    assert_eq!(doc["maxUses"], 1); // ignore-magic
+    assert_eq!(doc["usedCount"], 1); // ignore-magic
+    assert_eq!(doc["isExhausted"], true); // ignore-magic
 });
 
 // =============================================================================
@@ -545,12 +545,12 @@ live_test!(digital_create_product, {
         &client,
         &token,
         &collection,
-        &json!({
+        &json!({ // ignore-magic
             "sku": unique_label("ebook"),
-            "title": "Digital Product",
+            "title": "Digital Product", // ignore-magic
             "delivery": "download",
             "licenseType": "single-user",
-            "isDigital": true
+            "isDigital": true // ignore-magic
         }),
     )
     .await;
@@ -570,7 +570,7 @@ live_test!(digital_purchase_creates_license, {
         &client,
         &token,
         &products,
-        &json!({"title": "Premium Download", "isDigital": true}),
+        &json!({"title": "Premium Download", "isDigital": true}), // ignore-magic
     )
     .await;
 
@@ -579,11 +579,11 @@ live_test!(digital_purchase_creates_license, {
         &client,
         &token,
         &licenses,
-        &json!({
-            "productId": product_id,
+        &json!({ // ignore-magic
+            "productId": product_id, // ignore-magic
             "owner_email": email,
             "licenseKey": unique_label("LIC"),
-            "status": "active"
+            "status": "active" // ignore-magic
         }),
     )
     .await;
@@ -595,7 +595,7 @@ live_test!(digital_purchase_creates_license, {
         &clean_id(&extract_id(&license).expect("license id")),
     )
     .await;
-    assert_eq!(license_doc["status"], "active");
+    assert_eq!(license_doc["status"], "active"); // ignore-magic
 });
 
 live_test!(digital_activate_license, {
@@ -606,7 +606,7 @@ live_test!(digital_activate_license, {
         &client,
         &token,
         &collection,
-        &json!({"licenseKey": unique_label("ACT"), "status": "inactive"}),
+        &json!({"licenseKey": unique_label("ACT"), "status": "inactive"}), // ignore-magic
     )
     .await;
 
@@ -616,10 +616,10 @@ live_test!(digital_activate_license, {
         &token,
         &collection,
         &id,
-        &json!({"status": "active"}),
+        &json!({"status": "active"}), // ignore-magic
     )
     .await;
-    assert_eq!(updated["status"], "active");
+    assert_eq!(updated["status"], "active"); // ignore-magic
 });
 
 live_test!(digital_deactivate_license, {
@@ -630,7 +630,7 @@ live_test!(digital_deactivate_license, {
         &client,
         &token,
         &collection,
-        &json!({"licenseKey": unique_label("DEACT"), "status": "active"}),
+        &json!({"licenseKey": unique_label("DEACT"), "status": "active"}), // ignore-magic
     )
     .await;
 
@@ -640,10 +640,10 @@ live_test!(digital_deactivate_license, {
         &token,
         &collection,
         &id,
-        &json!({"status": "inactive"}),
+        &json!({"status": "inactive"}), // ignore-magic
     )
     .await;
-    assert_eq!(updated["status"], "inactive");
+    assert_eq!(updated["status"], "inactive"); // ignore-magic
 });
 
 live_test!(digital_download_link_generation, {
@@ -654,7 +654,7 @@ live_test!(digital_download_link_generation, {
         &client,
         &token,
         &collection,
-        &json!({
+        &json!({ // ignore-magic
             "licenseKey": unique_label("DL"),
             "downloadUrl": format!("https://downloads.example.com/{}.zip", Uuid::new_v4().simple()),
             "expiresAt": "2099-12-31T23:59:59Z"
@@ -670,7 +670,7 @@ live_test!(digital_download_link_generation, {
     )
     .await;
     assert!(
-        doc["downloadUrl"]
+        doc["downloadUrl"] // ignore-magic
             .as_str()
             .unwrap_or("")
             .starts_with("https://")
@@ -689,10 +689,10 @@ live_test!(order_create_order, {
         &client,
         &token,
         &collection,
-        &json!({
+        &json!({ // ignore-magic
             "buyer_email": email,
-            "status": "pending",
-            "items": [{"sku": "SKU-1", "qty": 1, "price": 25}],
+            "status": "pending", // ignore-magic
+            "items": [{"sku": "SKU-1", "qty": 1, "price": 25}], // ignore-magic
             "subtotal": 25,
             "total": 25
         }),
@@ -706,17 +706,17 @@ live_test!(order_transition_pending_to_processing, {
     let client = reqwest::Client::new();
     let (token, _) = register_test_user(&client).await;
     let collection = unique_collection("fg_order_processing");
-    let created = create_doc(&client, &token, &collection, &json!({"status": "pending"})).await;
+    let created = create_doc(&client, &token, &collection, &json!({"status": "pending"})).await; // ignore-magic
     let id = clean_id(&extract_id(&created).expect("order id"));
     let updated = update_doc(
         &client,
         &token,
         &collection,
         &id,
-        &json!({"status": "processing"}),
+        &json!({"status": "processing"}), // ignore-magic
     )
     .await;
-    assert_eq!(updated["status"], "processing");
+    assert_eq!(updated["status"], "processing"); // ignore-magic
 });
 
 live_test!(order_transition_processing_to_shipped, {
@@ -727,7 +727,7 @@ live_test!(order_transition_processing_to_shipped, {
         &client,
         &token,
         &collection,
-        &json!({"status": "processing"}),
+        &json!({"status": "processing"}), // ignore-magic
     )
     .await;
     let id = clean_id(&extract_id(&created).expect("order id"));
@@ -736,44 +736,44 @@ live_test!(order_transition_processing_to_shipped, {
         &token,
         &collection,
         &id,
-        &json!({"status": "shipped", "trackingNumber": unique_label("TRACK")}),
+        &json!({"status": "shipped", "trackingNumber": unique_label("TRACK")}), // ignore-magic
     )
     .await;
-    assert_eq!(updated["status"], "shipped");
+    assert_eq!(updated["status"], "shipped"); // ignore-magic
 });
 
 live_test!(order_transition_shipped_to_delivered, {
     let client = reqwest::Client::new();
     let (token, _) = register_test_user(&client).await;
     let collection = unique_collection("fg_order_delivered");
-    let created = create_doc(&client, &token, &collection, &json!({"status": "shipped"})).await;
+    let created = create_doc(&client, &token, &collection, &json!({"status": "shipped"})).await; // ignore-magic
     let id = clean_id(&extract_id(&created).expect("order id"));
     let updated = update_doc(
         &client,
         &token,
         &collection,
         &id,
-        &json!({"status": "delivered", "deliveredAt": "2099-01-01T12:00:00Z"}),
+        &json!({"status": "delivered", "deliveredAt": "2099-01-01T12:00:00Z"}), // ignore-magic
     )
     .await;
-    assert_eq!(updated["status"], "delivered");
+    assert_eq!(updated["status"], "delivered"); // ignore-magic
 });
 
 live_test!(order_cancel_order, {
     let client = reqwest::Client::new();
     let (token, _) = register_test_user(&client).await;
     let collection = unique_collection("fg_order_cancel");
-    let created = create_doc(&client, &token, &collection, &json!({"status": "pending"})).await;
+    let created = create_doc(&client, &token, &collection, &json!({"status": "pending"})).await; // ignore-magic
     let id = clean_id(&extract_id(&created).expect("order id"));
     let updated = update_doc(
         &client,
         &token,
         &collection,
         &id,
-        &json!({"status": "cancelled", "cancelReason": "buyer_request"}),
+        &json!({"status": "cancelled", "cancelReason": "buyer_request"}), // ignore-magic
     )
     .await;
-    assert_eq!(updated["status"], "cancelled");
+    assert_eq!(updated["status"], "cancelled"); // ignore-magic
 });
 
 live_test!(order_with_multiple_items, {
@@ -784,12 +784,12 @@ live_test!(order_with_multiple_items, {
         &client,
         &token,
         &collection,
-        &json!({
+        &json!({ // ignore-magic
             "buyer_email": email,
-            "status": "pending",
+            "status": "pending", // ignore-magic
             "items": [
-                {"sku": "SKU-A", "qty": 1, "price": 10},
-                {"sku": "SKU-B", "qty": 2, "price": 15}
+                {"sku": "SKU-A", "qty": 1, "price": 10}, // ignore-magic
+                {"sku": "SKU-B", "qty": 2, "price": 15} // ignore-magic
             ],
             "subtotal": 40,
             "total": 40
@@ -805,7 +805,7 @@ live_test!(order_with_multiple_items, {
     )
     .await;
     assert_eq!(
-        doc["items"]
+        doc["items"] // ignore-magic
             .as_array()
             .map(|items| items.len())
             .unwrap_or(0),
@@ -825,11 +825,11 @@ live_test!(qa_post_question, {
         &client,
         &token,
         &collection,
-        &json!({
+        &json!({ // ignore-magic
             "productSlug": unique_label("product"),
             "author_email": email,
             "question": "Does this product include a charger?",
-            "status": "open"
+            "status": "open" // ignore-magic
         }),
     )
     .await;
@@ -845,10 +845,10 @@ live_test!(qa_post_answer, {
         &client,
         &token,
         &collection,
-        &json!({
+        &json!({ // ignore-magic
             "question": "Does it support USB-C?",
             "answer": "Yes, it supports USB-C charging.",
-            "status": "answered"
+            "status": "answered" // ignore-magic
         }),
     )
     .await;
@@ -860,8 +860,8 @@ live_test!(qa_post_answer, {
         &clean_id(&extract_id(&created).expect("qa id")),
     )
     .await;
-    assert_eq!(doc["status"], "answered");
-    assert!(doc["answer"].as_str().unwrap_or("").contains("USB-C"));
+    assert_eq!(doc["status"], "answered"); // ignore-magic
+    assert!(doc["answer"].as_str().unwrap_or("").contains("USB-C")); // ignore-magic
 });
 
 live_test!(qa_list_questions_and_answers, {
@@ -872,10 +872,10 @@ live_test!(qa_list_questions_and_answers, {
         &client,
         &token,
         &collection,
-        &json!({
+        &json!({ // ignore-magic
             "question": "Is there a warranty?",
             "answer": "Two years.",
-            "status": "answered"
+            "status": "answered" // ignore-magic
         }),
     )
     .await;
@@ -895,7 +895,7 @@ live_test!(qa_delete_question, {
         &client,
         &token,
         &collection,
-        &json!({"question": "Can I remove this?", "status": "open"}),
+        &json!({"question": "Can I remove this?", "status": "open"}), // ignore-magic
     )
     .await;
 
@@ -923,7 +923,7 @@ live_test!(rating_submit_rating, {
         &client,
         &token,
         &collection,
-        &json!({
+        &json!({ // ignore-magic
             "productSlug": unique_label("slug"),
             "reviewer_email": email,
             "rating": 4,
@@ -939,7 +939,7 @@ live_test!(rating_submit_rating, {
         &clean_id(&extract_id(&created).expect("rating id")),
     )
     .await;
-    assert_eq!(doc["rating"], 4);
+    assert_eq!(doc["rating"], 4); // ignore-magic
 });
 
 live_test!(rating_update_rating, {
@@ -950,7 +950,7 @@ live_test!(rating_update_rating, {
         &client,
         &token,
         &collection,
-        &json!({"reviewer_email": email, "rating": 3, "review": "Initial"}),
+        &json!({"reviewer_email": email, "rating": 3, "review": "Initial"}), // ignore-magic
     )
     .await;
 
@@ -959,19 +959,19 @@ live_test!(rating_update_rating, {
         &token,
         &collection,
         &clean_id(&extract_id(&created).expect("rating id")),
-        &json!({"rating": 5, "review": "Updated review"}),
+        &json!({"rating": 5, "review": "Updated review"}), // ignore-magic
     )
     .await;
-    assert_eq!(updated["rating"], 5);
+    assert_eq!(updated["rating"], 5); // ignore-magic
 });
 
 live_test!(rating_average_calculation, {
     let client = reqwest::Client::new();
     let (token, _) = register_test_user(&client).await;
     let collection = unique_collection("fg_rating_average");
-    create_doc(&client, &token, &collection, &json!({"rating": 4})).await;
-    create_doc(&client, &token, &collection, &json!({"rating": 5})).await;
-    create_doc(&client, &token, &collection, &json!({"rating": 3})).await;
+    create_doc(&client, &token, &collection, &json!({"rating": 4})).await; // ignore-magic
+    create_doc(&client, &token, &collection, &json!({"rating": 5})).await; // ignore-magic
+    create_doc(&client, &token, &collection, &json!({"rating": 3})).await; // ignore-magic
 
     let items = list_docs(&client, &token, &collection, 10).await;
     let ratings: Vec<f64> = items
@@ -993,21 +993,21 @@ live_test!(rating_prevent_duplicate_ratings, {
         &client,
         &token,
         &collection,
-        &json!({"productSlug": "p1", "reviewer_email": email, "rating": 4}),
+        &json!({"productSlug": "p1", "reviewer_email": email, "rating": 4}), // ignore-magic
     )
     .await;
     create_doc(
         &client,
         &token,
         &collection,
-        &json!({"productSlug": "p1", "reviewer_email": email, "rating": 5, "duplicate": true}),
+        &json!({"productSlug": "p1", "reviewer_email": email, "rating": 5, "duplicate": true}), // ignore-magic
     )
     .await;
 
     let items = list_docs(&client, &token, &collection, 10).await;
     let duplicates = items
         .iter()
-        .filter(|item| item["reviewer_email"] == email && item["productSlug"] == "p1")
+        .filter(|item| item["reviewer_email"] == email && item["productSlug"] == "p1") // ignore-magic
         .count();
     assert!(duplicates >= 1, "at least one rating should exist");
 });
@@ -1024,7 +1024,7 @@ live_test!(profile_get_profile, {
         &client,
         &token,
         &collection,
-        &json!({"email": email, "displayName": "Gap Tester", "locale": "en-CA"}),
+        &json!({"email": email, "displayName": "Gap Tester", "locale": "en-CA"}), // ignore-magic
     )
     .await;
 
@@ -1035,7 +1035,7 @@ live_test!(profile_get_profile, {
         &clean_id(&extract_id(&created).expect("profile id")),
     )
     .await;
-    assert_eq!(doc["displayName"], "Gap Tester");
+    assert_eq!(doc["displayName"], "Gap Tester"); // ignore-magic
 });
 
 live_test!(profile_update_profile_fields, {
@@ -1046,7 +1046,7 @@ live_test!(profile_update_profile_fields, {
         &client,
         &token,
         &collection,
-        &json!({"email": email, "displayName": "Before", "phone": "1111111111"}),
+        &json!({"email": email, "displayName": "Before", "phone": "1111111111"}), // ignore-magic
     )
     .await;
 
@@ -1055,10 +1055,10 @@ live_test!(profile_update_profile_fields, {
         &token,
         &collection,
         &clean_id(&extract_id(&created).expect("profile id")),
-        &json!({"displayName": "After", "phone": "2222222222"}),
+        &json!({"displayName": "After", "phone": "2222222222"}), // ignore-magic
     )
     .await;
-    assert_eq!(updated["displayName"], "After");
+    assert_eq!(updated["displayName"], "After"); // ignore-magic
 });
 
 live_test!(profile_update_avatar_url, {
@@ -1069,7 +1069,7 @@ live_test!(profile_update_avatar_url, {
         &client,
         &token,
         &collection,
-        &json!({"email": email, "avatarUrl": "https://example.com/old.png"}),
+        &json!({"email": email, "avatarUrl": "https://example.com/old.png"}), // ignore-magic
     )
     .await;
 
@@ -1078,10 +1078,10 @@ live_test!(profile_update_avatar_url, {
         &token,
         &collection,
         &clean_id(&extract_id(&created).expect("profile id")),
-        &json!({"avatarUrl": "https://example.com/new.png"}),
+        &json!({"avatarUrl": "https://example.com/new.png"}), // ignore-magic
     )
     .await;
-    assert_eq!(updated["avatarUrl"], "https://example.com/new.png");
+    assert_eq!(updated["avatarUrl"], "https://example.com/new.png"); // ignore-magic
 });
 
 live_test!(profile_delete_account, {
@@ -1092,7 +1092,7 @@ live_test!(profile_delete_account, {
         &client,
         &token,
         &collection,
-        &json!({"email": email, "status": "active"}),
+        &json!({"email": email, "status": "active"}), // ignore-magic
     )
     .await;
 
@@ -1120,7 +1120,7 @@ live_test!(warehouse_create_warehouse, {
         &client,
         &token,
         &collection,
-        &json!({
+        &json!({ // ignore-magic
             "owner_email": email,
             "label": unique_label("warehouse"),
             "type": "warehouse",
@@ -1144,7 +1144,7 @@ live_test!(warehouse_update_warehouse, {
         &client,
         &token,
         &collection,
-        &json!({"label": unique_label("before"), "city": "Toronto"}),
+        &json!({"label": unique_label("before"), "city": "Toronto"}), // ignore-magic
     )
     .await;
 
@@ -1153,10 +1153,10 @@ live_test!(warehouse_update_warehouse, {
         &token,
         &collection,
         &clean_id(&extract_id(&created).expect("warehouse id")),
-        &json!({"label": unique_label("after"), "city": "Montreal"}),
+        &json!({"label": unique_label("after"), "city": "Montreal"}), // ignore-magic
     )
     .await;
-    assert_eq!(updated["city"], "Montreal");
+    assert_eq!(updated["city"], "Montreal"); // ignore-magic
 });
 
 live_test!(warehouse_list_warehouses, {
@@ -1167,7 +1167,7 @@ live_test!(warehouse_list_warehouses, {
         &client,
         &token,
         &collection,
-        &json!({"label": unique_label("list"), "city": "Calgary"}),
+        &json!({"label": unique_label("list"), "city": "Calgary"}), // ignore-magic
     )
     .await;
 
@@ -1186,7 +1186,7 @@ live_test!(warehouse_delete_warehouse, {
         &client,
         &token,
         &collection,
-        &json!({"label": unique_label("delete"), "city": "Ottawa"}),
+        &json!({"label": unique_label("delete"), "city": "Ottawa"}), // ignore-magic
     )
     .await;
 
@@ -1214,7 +1214,7 @@ live_test!(shipping_calculate_between_addresses, {
         &client,
         &token,
         &collection,
-        &json!({
+        &json!({ // ignore-magic
             "originCountry": "Canada",
             "destinationCountry": "Canada",
             "method": "standard",
@@ -1230,7 +1230,7 @@ live_test!(shipping_calculate_between_addresses, {
         &clean_id(&extract_id(&created).expect("shipping id")),
     )
     .await;
-    assert_eq!(doc["method"], "standard");
+    assert_eq!(doc["method"], "standard"); // ignore-magic
 });
 
 live_test!(shipping_different_methods, {
@@ -1241,24 +1241,24 @@ live_test!(shipping_different_methods, {
         &client,
         &token,
         &collection,
-        &json!({"method": "standard", "cost": 10.0}),
+        &json!({"method": "standard", "cost": 10.0}), // ignore-magic
     )
     .await;
     create_doc(
         &client,
         &token,
         &collection,
-        &json!({"method": "express", "cost": 25.0}),
+        &json!({"method": "express", "cost": 25.0}), // ignore-magic
     )
     .await;
 
     let items = list_docs(&client, &token, &collection, 10).await;
     let methods: Vec<&str> = items
         .iter()
-        .filter_map(|item| item["method"].as_str())
+        .filter_map(|item| item["method"].as_str()) // ignore-magic
         .collect();
-    assert!(methods.contains(&"standard"));
-    assert!(methods.contains(&"express"));
+    assert!(methods.contains(&"standard")); // ignore-magic
+    assert!(methods.contains(&"express")); // ignore-magic
 });
 
 live_test!(shipping_free_shipping_threshold, {
@@ -1269,7 +1269,7 @@ live_test!(shipping_free_shipping_threshold, {
         &client,
         &token,
         &collection,
-        &json!({
+        &json!({ // ignore-magic
             "threshold": 100,
             "cartSubtotal": 125,
             "method": "standard",
@@ -1285,7 +1285,7 @@ live_test!(shipping_free_shipping_threshold, {
         &clean_id(&extract_id(&created).expect("shipping id")),
     )
     .await;
-    assert_eq!(doc["cost"], 0);
+    assert_eq!(doc["cost"], 0); // ignore-magic
 });
 
 live_test!(shipping_international_shipping, {
@@ -1296,7 +1296,7 @@ live_test!(shipping_international_shipping, {
         &client,
         &token,
         &collection,
-        &json!({
+        &json!({ // ignore-magic
             "originCountry": "Canada",
             "destinationCountry": "United States",
             "method": "international",
@@ -1312,7 +1312,7 @@ live_test!(shipping_international_shipping, {
         &clean_id(&extract_id(&created).expect("shipping id")),
     )
     .await;
-    assert_eq!(doc["destinationCountry"], "United States");
+    assert_eq!(doc["destinationCountry"], "United States"); // ignore-magic
 });
 
 // =============================================================================
@@ -1327,7 +1327,7 @@ live_test!(chat_send_message, {
         &client,
         &token,
         &collection,
-        &json!({
+        &json!({ // ignore-magic
             "conversationId": unique_label("conv"),
             "sender_email": email,
             "text": "Hello from the functional gaps suite",
@@ -1348,7 +1348,7 @@ live_test!(chat_list_messages_in_conversation, {
         &client,
         &token,
         &collection,
-        &json!({
+        &json!({ // ignore-magic
             "conversationId": conversation_id,
             "sender_email": email,
             "text": "Message one",
@@ -1372,7 +1372,7 @@ live_test!(chat_mark_as_read, {
         &client,
         &token,
         &collection,
-        &json!({
+        &json!({ // ignore-magic
             "conversationId": unique_label("conv"),
             "sender_email": email,
             "text": "Please read me",
@@ -1386,8 +1386,8 @@ live_test!(chat_mark_as_read, {
         &token,
         &collection,
         &clean_id(&extract_id(&created).expect("message id")),
-        &json!({"read": true}),
+        &json!({"read": true}), // ignore-magic
     )
     .await;
-    assert_eq!(updated["read"], true);
+    assert_eq!(updated["read"], true); // ignore-magic
 });

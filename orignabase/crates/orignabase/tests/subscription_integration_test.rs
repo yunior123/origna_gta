@@ -12,9 +12,9 @@ fn base_url() -> String {
 async fn login_buyer(client: &reqwest::Client) -> (String, String) {
     let resp = client
         .post(format!("{}/auth/login", base_url()))
-        .json(&json!({
-            "email": "e2e-buyer@test.origna.ca",
-            "password": "REDACTED_TEST_PASSWORD"
+        .json(&json!({ // ignore-magic
+            "email": "e2e-buyer@test.origna.ca", // ignore-magic
+            "password": "REDACTED_TEST_PASSWORD" // ignore-magic
         }))
         .send()
         .await
@@ -22,11 +22,11 @@ async fn login_buyer(client: &reqwest::Client) -> (String, String) {
 
     assert_eq!(resp.status(), 200, "Buyer login failed");
     let body: Value = resp.json().await.expect("parse login response");
-    let token = body["access_token"]
+    let token = body["access_token"] // ignore-magic
         .as_str()
         .expect("missing access_token")
         .to_string();
-    let user_id = body["user"]["id"]
+    let user_id = body["user"]["id"] // ignore-magic
         .as_str()
         .map(|s| s.to_string())
         .unwrap_or_default();
@@ -41,8 +41,8 @@ async fn create_subscription(
 ) -> Result<Value, String> {
     let resp = client
         .post(format!("{}/subscriptions/create", base_url()))
-        .header("Authorization", format!("Bearer {}", token))
-        .json(&json!({
+        .header("Authorization", format!("Bearer {}", token)) // ignore-magic
+        .json(&json!({ // ignore-magic
             "tier": subscription_tier,
             "paymentMethodId": "pm_test_visa"  // Test payment method
         }))
@@ -70,7 +70,7 @@ async fn create_subscription(
 async fn get_subscription_status(client: &reqwest::Client, token: &str) -> Result<Value, String> {
     let resp = client
         .get(format!("{}/subscriptions/status", base_url()))
-        .header("Authorization", format!("Bearer {}", token))
+        .header("Authorization", format!("Bearer {}", token)) // ignore-magic
         .send()
         .await
         .map_err(|e| format!("request failed: {}", e))?;
@@ -102,8 +102,8 @@ async fn test_subscription_benefits_delay_48h() {
             // Immediately check subscription status
             match get_subscription_status(&client, &buyer_token).await {
                 Ok(status) => {
-                    let benefits_active = status["benefitsActive"].as_bool().unwrap_or(false);
-                    let activation_time = status["benefitsActivateAt"].as_str();
+                    let benefits_active = status["benefitsActive"].as_bool().unwrap_or(false); // ignore-magic
+                    let activation_time = status["benefitsActivateAt"].as_str(); // ignore-magic
 
                     // According to spec, benefits should NOT be active immediately
                     // They activate 48 hours after creation
@@ -140,7 +140,7 @@ async fn test_subscription_early_cancel_tracking() {
 
     // Create subscription
     if let Ok(sub) = create_subscription(&client, &buyer_token, "premium").await {
-        let subscription_id = sub["id"]
+        let subscription_id = sub["id"] // ignore-magic
             .as_str()
             .map(|s| s.to_string())
             .unwrap_or_default();
@@ -157,17 +157,17 @@ async fn test_subscription_early_cancel_tracking() {
                 base_url(),
                 subscription_id
             ))
-            .header("Authorization", format!("Bearer {}", buyer_token))
-            .json(&json!({}))
+            .header("Authorization", format!("Bearer {}", buyer_token)) // ignore-magic
+            .json(&json!({})) // ignore-magic
             .send()
             .await;
 
         if let Ok(resp) = cancel_resp
             && resp.status() == 200
         {
-            let body: Value = resp.json().await.unwrap_or(json!({}));
+            let body: Value = resp.json().await.unwrap_or(json!({})); // ignore-magic
 
-            let was_early_cancel = body["wasEarlyCancel"].as_bool().unwrap_or(false);
+            let was_early_cancel = body["wasEarlyCancel"].as_bool().unwrap_or(false); // ignore-magic
             assert!(
                 was_early_cancel,
                 "Immediate cancellation should be marked as early cancel"
@@ -175,7 +175,7 @@ async fn test_subscription_early_cancel_tracking() {
 
             // Check subscription status again
             if let Ok(status) = get_subscription_status(&client, &buyer_token).await {
-                let early_cancel_count = status["earlyCancelCount"].as_i64().unwrap_or(0);
+                let early_cancel_count = status["earlyCancelCount"].as_i64().unwrap_or(0); // ignore-magic
                 assert!(
                     early_cancel_count >= 1,
                     "early_cancel_count should increment after early cancel"

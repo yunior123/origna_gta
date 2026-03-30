@@ -65,7 +65,7 @@ go ahead, delegate all that to codex, make sure to use gpt5.4 non mini ok, the g
   view and not just the top or some specific parts, u might need to take screenshots in scroll
 begining, middle, end, or something like that for large views.
 
-52. audit images screenshots  vs names. delegate to codex that. there are many inconsistencies.the idea of this: 3. Name audit (queued) — check all 305 filenames vs content, rename mismatches,
+52. audit images screenshots  vs names. delegate. there are many inconsistencies.the idea of this: 3. Name audit (queued) — check all 305 filenames vs content, rename mismatches,
   delete dupes. is that screenshots are not taken correctly probably due to issues navigating the app
 
 55. e2e ai: give it navigation routes info + semantics from flutter + test users:yuniorrodriguezo460@gmail.com, yr62813@gmail.com, yuniorrodriguezo4601@yahoo.com + big prompt to make it cover all

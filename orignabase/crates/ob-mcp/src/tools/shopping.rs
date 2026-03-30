@@ -2,6 +2,7 @@
 
 use crate::McpState;
 use crate::errors::{McpError, McpResult};
+use ob_core::constants::mcp_params as p;
 use serde_json::{Value, json};
 
 /// Get user's cart
@@ -27,12 +28,12 @@ pub async fn get_cart(_state: McpState, user_id: &str, _params: &Value) -> McpRe
 /// Add item to cart
 pub async fn add_to_cart(_state: McpState, user_id: &str, params: &Value) -> McpResult<Value> {
     let product_id = params
-        .get("product_id")
+        .get(p::PRODUCT_ID)
         .and_then(|v| v.as_str())
         .ok_or_else(|| McpError::InvalidParams("Missing 'product_id'".to_string()))?;
 
     let quantity = params
-        .get("quantity")
+        .get(p::QUANTITY)
         .and_then(|v| v.as_u64())
         .ok_or_else(|| McpError::InvalidParams("Missing 'quantity'".to_string()))?;
 
@@ -48,7 +49,7 @@ pub async fn add_to_cart(_state: McpState, user_id: &str, params: &Value) -> Mcp
     }
 
     // Check idempotency key if provided
-    let _idempotency_key = params.get("idempotency_key").and_then(|v| v.as_str());
+    let _idempotency_key = params.get(p::IDEMPOTENCY_KEY).and_then(|v| v.as_str());
     // NOTE: Check idempotency tracker for duplicate add_to_cart calls
 
     // Validate product exists and get price
@@ -66,7 +67,7 @@ pub async fn add_to_cart(_state: McpState, user_id: &str, params: &Value) -> Mcp
 /// Remove item from cart
 pub async fn remove_from_cart(_state: McpState, user_id: &str, params: &Value) -> McpResult<Value> {
     let product_id = params
-        .get("product_id")
+        .get(p::PRODUCT_ID)
         .and_then(|v| v.as_str())
         .ok_or_else(|| McpError::InvalidParams("Missing 'product_id'".to_string()))?;
 
@@ -82,7 +83,7 @@ pub async fn remove_from_cart(_state: McpState, user_id: &str, params: &Value) -
 /// Apply coupon to cart
 pub async fn apply_coupon(_state: McpState, user_id: &str, params: &Value) -> McpResult<Value> {
     let code = params
-        .get("code")
+        .get(p::CODE)
         .and_then(|v| v.as_str())
         .ok_or_else(|| McpError::InvalidParams("Missing 'code'".to_string()))?;
 

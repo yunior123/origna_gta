@@ -2,21 +2,22 @@
 
 use crate::McpState;
 use crate::errors::{McpError, McpResult};
+use ob_core::constants::mcp_params as p;
 use serde_json::{Value, json};
 
 /// Search products by query, category, price range
 pub async fn search_products(state: McpState, params: &Value) -> McpResult<Value> {
     let _query = params
-        .get("query")
+        .get(p::QUERY)
         .and_then(|v| v.as_str())
         .ok_or_else(|| McpError::InvalidParams("Missing 'query' parameter".to_string()))?;
 
-    let category = params.get("category").and_then(|v| v.as_str());
-    let min_price = params.get("min_price").and_then(|v| v.as_u64());
-    let max_price = params.get("max_price").and_then(|v| v.as_u64());
-    let raw_limit = params.get("limit").and_then(|v| v.as_u64()).unwrap_or(20);
+    let category = params.get(p::CATEGORY).and_then(|v| v.as_str());
+    let min_price = params.get(p::MIN_PRICE).and_then(|v| v.as_u64());
+    let max_price = params.get(p::MAX_PRICE).and_then(|v| v.as_u64());
+    let raw_limit = params.get(p::LIMIT).and_then(|v| v.as_u64()).unwrap_or(20);
     let limit = raw_limit.clamp(1, 100);
-    let offset = params.get("offset").and_then(|v| v.as_u64()).unwrap_or(0);
+    let offset = params.get(p::OFFSET).and_then(|v| v.as_u64()).unwrap_or(0);
 
     // If Meilisearch is available, use it; otherwise fall back to PostgreSQL
     if let Some(_search) = &state.search {
@@ -64,7 +65,7 @@ pub async fn search_products(state: McpState, params: &Value) -> McpResult<Value
 /// Get product by ID
 pub async fn get_product(_state: McpState, params: &Value) -> McpResult<Value> {
     let product_id = params
-        .get("product_id")
+        .get(p::PRODUCT_ID)
         .and_then(|v| v.as_str())
         .ok_or_else(|| McpError::InvalidParams("Missing 'product_id'".to_string()))?;
 
@@ -91,7 +92,7 @@ pub async fn get_product(_state: McpState, params: &Value) -> McpResult<Value> {
 /// Check inventory for a product
 pub async fn check_inventory(_state: McpState, params: &Value) -> McpResult<Value> {
     let product_id = params
-        .get("product_id")
+        .get(p::PRODUCT_ID)
         .and_then(|v| v.as_str())
         .ok_or_else(|| McpError::InvalidParams("Missing 'product_id'".to_string()))?;
 

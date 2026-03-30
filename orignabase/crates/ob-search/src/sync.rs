@@ -1,4 +1,5 @@
 use crate::SearchClient;
+use ob_core::constants::fields as f;
 use serde_json::{Value, json};
 use tokio::sync::mpsc;
 
@@ -118,34 +119,34 @@ fn sanitize_document_id(document_id: &str) -> String {
 /// Only these fields are safe to index in Meilisearch.
 /// PII and sensitive fields (email, phone, address, passwordHash, etc.) are excluded.
 const SAFE_SEARCH_FIELDS: &[&str] = &[
-    "name",
-    "description",
-    "keywords",
-    "priceCents",
-    "categoryId",
-    "subcategory",
-    "sellerId",
-    "lifecycleStatus",
-    "isPerishable",
-    "imageUrls",
-    "stockQuantity",
-    "avgRating",
-    "totalReviews",
-    "isDigital",
-    "slug",
-    "compareAtPriceCents",
-    "isLocalDeliveryOnly",
+    f::NAME,
+    f::DESCRIPTION,
+    f::KEYWORDS,
+    f::PRICE_CENTS,
+    f::CATEGORY_ID,
+    f::SUBCATEGORY,
+    f::SELLER_ID,
+    f::LIFECYCLE_STATUS,
+    f::IS_PERISHABLE,
+    f::IMAGE_URLS,
+    f::STOCK_QUANTITY,
+    f::AVG_RATING,
+    f::TOTAL_REVIEWS,
+    f::IS_DIGITAL,
+    f::SLUG,
+    f::COMPARE_AT_PRICE_CENTS,
+    f::IS_LOCAL_DELIVERY_ONLY,
     // Food & Nutrition fields (filterable for dietary/allergen queries)
-    "dietaryBadges",
-    "allergens",
-    "mayContainAllergens",
-    "fopHighSodium",
-    "fopHighSugars",
-    "fopHighSaturatedFat",
+    f::DIETARY_BADGES,
+    f::ALLERGENS,
+    f::MAY_CONTAIN_ALLERGENS,
+    f::FOP_HIGH_SODIUM,
+    f::FOP_HIGH_SUGARS,
+    f::FOP_HIGH_SATURATED_FAT,
     // Product specifications (denormalized from specs for filtering)
-    "brand",
-    "color",
-    "material",
+    f::BRAND,
+    f::COLOR,
+    f::MATERIAL,
 ];
 
 fn normalize_document_for_indexing(document_id: &str, data: &Value) -> Value {
@@ -158,14 +159,14 @@ fn normalize_document_for_indexing(document_id: &str, data: &Value) -> Value {
                     safe_doc.insert(field.to_string(), val.clone());
                 }
             }
-            safe_doc.insert("id".to_string(), Value::String(search_id));
-            safe_doc.insert("origId".to_string(), Value::String(document_id.to_string()));
+            safe_doc.insert(f::ID.to_string(), Value::String(search_id));
+            safe_doc.insert(f::ORIG_ID.to_string(), Value::String(document_id.to_string()));
             Value::Object(safe_doc)
         }
         _ => json!({
-            "id": search_id,
-            "origId": document_id,
-            "value": data,
+            f::ID: search_id,
+            f::ORIG_ID: document_id,
+            f::VALUE: data,
         }),
     }
 }

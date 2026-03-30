@@ -11,25 +11,25 @@ use serde_json::{Value, json};
 use uuid::Uuid;
 
 fn base_url() -> String {
-    std::env::var("OB_TEST_URL").unwrap_or_else(|_| "http://localhost:8080".to_string())
+    std::env::var("OB_TEST_URL").unwrap_or_else(|_| "http://localhost:8080".to_string()) // ignore-magic
 }
 
 async fn register_test_user(client: &Client) -> (String, String) {
-    let email = format!("test_stock_{}@test.origna.ca", Uuid::new_v4());
+    let email = format!("test_stock_{}@test.origna.ca", Uuid::new_v4()); // ignore-magic
     let resp = client
         .post(format!("{}/auth/register", base_url()))
-        .json(&json!({ "email": email, "password": "REDACTED_TEST_PASSWORD" }))
+        .json(&json!({ "email": email, "password": "REDACTED_TEST_PASSWORD" })) // ignore-magic
         .send()
         .await
         .expect("register failed");
 
     assert_eq!(resp.status(), 200);
     let body: Value = resp.json().await.unwrap();
-    let token = body["access_token"]
+    let token = body["access_token"] // ignore-magic
         .as_str()
         .expect("missing access_token")
         .to_string();
-    let user_id = body["user"]["id"].as_str().unwrap_or("").to_string();
+    let user_id = body["user"]["id"].as_str().unwrap_or("").to_string(); // ignore-magic
     (token, user_id)
 }
 
@@ -42,33 +42,33 @@ async fn create_product(
     stock: i64,
 ) -> Option<String> {
     let query = format!(
-        r#"mutation {{ create(collection: "products", data: {{name: "{}", priceCents: {}, stockQuantity: {}, lifecycleStatus: "active", isDigital: false, isPerishable: false}}) }}"#,
+        r#"mutation {{ create(collection: "products", data: {{name: "{}", priceCents: {}, stockQuantity: {}, lifecycleStatus: "active", isDigital: false, isPerishable: false}}) }}"#, // ignore-magic
         name, price_cents, stock
     );
     let resp = client
         .post(format!("{}/graphql", base_url()))
-        .header("Authorization", format!("Bearer {}", token))
-        .json(&json!({"query": query}))
+        .header("Authorization", format!("Bearer {}", token)) // ignore-magic
+        .json(&json!({"query": query})) // ignore-magic
         .send()
         .await
         .expect("graphql request failed");
 
-    let body: Value = resp.json().await.unwrap_or(json!({}));
-    body["data"]["create"]["id"].as_str().map(|s| s.to_string())
+    let body: Value = resp.json().await.unwrap_or(json!({})); // ignore-magic
+    body["data"]["create"]["id"].as_str().map(|s| s.to_string()) // ignore-magic
 }
 
 /// POST to a REST endpoint, returning (status, body). Handles 404 gracefully.
 async fn api_post(client: &Client, path: &str, token: &str, body: Value) -> (u16, Value) {
     let resp = client
         .post(format!("{}{}", base_url(), path))
-        .header("Authorization", format!("Bearer {}", token))
+        .header("Authorization", format!("Bearer {}", token)) // ignore-magic
         .json(&body)
         .send()
         .await
         .expect("request failed");
 
     let status = resp.status().as_u16();
-    let b: Value = resp.json().await.unwrap_or(json!({}));
+    let b: Value = resp.json().await.unwrap_or(json!({})); // ignore-magic
     (status, b)
 }
 
@@ -92,9 +92,9 @@ async fn test_subscribe_to_stock_notification() {
     // Buyer subscribes to stock notification
     let (status, _subscribe_resp) = api_post(
         &client,
-        "/api/products/stock-notify/subscribe",
+        "/api/products/stock-notify/subscribe", // ignore-magic
         &buyer_token,
-        json!({ "productId": product_id, "userId": buyer_id }),
+        json!({ "productId": product_id, "userId": buyer_id }), // ignore-magic
     )
     .await;
 
@@ -125,18 +125,18 @@ async fn test_subscribe_idempotent() {
     // Subscribe first time
     let (status1, _) = api_post(
         &client,
-        "/api/products/stock-notify/subscribe",
+        "/api/products/stock-notify/subscribe", // ignore-magic
         &buyer_token,
-        json!({ "productId": product_id, "userId": buyer_id }),
+        json!({ "productId": product_id, "userId": buyer_id }), // ignore-magic
     )
     .await;
 
     // Subscribe again (should be idempotent)
     let (status2, _) = api_post(
         &client,
-        "/api/products/stock-notify/subscribe",
+        "/api/products/stock-notify/subscribe", // ignore-magic
         &buyer_token,
-        json!({ "productId": product_id, "userId": buyer_id }),
+        json!({ "productId": product_id, "userId": buyer_id }), // ignore-magic
     )
     .await;
 
@@ -168,18 +168,18 @@ async fn test_unsubscribe_stock_notification() {
     // Subscribe
     api_post(
         &client,
-        "/api/products/stock-notify/subscribe",
+        "/api/products/stock-notify/subscribe", // ignore-magic
         &buyer_token,
-        json!({ "productId": product_id, "userId": buyer_id }),
+        json!({ "productId": product_id, "userId": buyer_id }), // ignore-magic
     )
     .await;
 
     // Unsubscribe
     let (status, _unsub_resp) = api_post(
         &client,
-        "/api/products/stock-notify/unsubscribe",
+        "/api/products/stock-notify/unsubscribe", // ignore-magic
         &buyer_token,
-        json!({ "productId": product_id, "userId": buyer_id }),
+        json!({ "productId": product_id, "userId": buyer_id }), // ignore-magic
     )
     .await;
 
@@ -208,9 +208,9 @@ async fn test_cannot_subscribe_to_own_product() {
     // Seller tries to subscribe to own product
     let (status, _) = api_post(
         &client,
-        "/api/products/stock-notify/subscribe",
+        "/api/products/stock-notify/subscribe", // ignore-magic
         &seller_token,
-        json!({ "productId": product_id, "userId": seller_id }),
+        json!({ "productId": product_id, "userId": seller_id }), // ignore-magic
     )
     .await;
 
@@ -241,9 +241,9 @@ async fn test_subscribe_to_in_stock_product() {
 
     let (status, _) = api_post(
         &client,
-        "/api/products/stock-notify/subscribe",
+        "/api/products/stock-notify/subscribe", // ignore-magic
         &buyer_token,
-        json!({ "productId": product_id, "userId": buyer_id }),
+        json!({ "productId": product_id, "userId": buyer_id }), // ignore-magic
     )
     .await;
 
@@ -274,9 +274,9 @@ async fn test_unsubscribe_not_subscribed() {
     // Unsubscribe without subscribing first
     let (status, _) = api_post(
         &client,
-        "/api/products/stock-notify/unsubscribe",
+        "/api/products/stock-notify/unsubscribe", // ignore-magic
         &buyer_token,
-        json!({ "productId": product_id, "userId": buyer_id }),
+        json!({ "productId": product_id, "userId": buyer_id }), // ignore-magic
     )
     .await;
 
@@ -306,16 +306,16 @@ async fn test_stock_notification_response_structure() {
 
     let (status, subscribe_resp) = api_post(
         &client,
-        "/api/products/stock-notify/subscribe",
+        "/api/products/stock-notify/subscribe", // ignore-magic
         &buyer_token,
-        json!({ "productId": product_id, "userId": buyer_id }),
+        json!({ "productId": product_id, "userId": buyer_id }), // ignore-magic
     )
     .await;
 
     if status == 200 {
         // Verify response has required fields
         assert!(
-            subscribe_resp.get("success").is_some(),
+            subscribe_resp.get("success").is_some(), // ignore-magic
             "Response should have success field"
         );
         assert!(
@@ -346,18 +346,18 @@ async fn test_multiple_users_subscribe_same_product() {
     // Buyer 1 subscribes
     let (status1, _) = api_post(
         &client,
-        "/api/products/stock-notify/subscribe",
+        "/api/products/stock-notify/subscribe", // ignore-magic
         &buyer1_token,
-        json!({ "productId": product_id, "userId": buyer1_id }),
+        json!({ "productId": product_id, "userId": buyer1_id }), // ignore-magic
     )
     .await;
 
     // Buyer 2 subscribes
     let (status2, _) = api_post(
         &client,
-        "/api/products/stock-notify/subscribe",
+        "/api/products/stock-notify/subscribe", // ignore-magic
         &buyer2_token,
-        json!({ "productId": product_id, "userId": buyer2_id }),
+        json!({ "productId": product_id, "userId": buyer2_id }), // ignore-magic
     )
     .await;
 

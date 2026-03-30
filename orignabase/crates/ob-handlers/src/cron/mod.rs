@@ -2824,7 +2824,7 @@ mod tests {
                 collections::WEBHOOK_EVENTS,
                 &ev_id,
                 json!({
-                    "timestamp": ts
+                    fields::TIMESTAMP: ts
                 }),
             )
             .await
@@ -2849,7 +2849,7 @@ mod tests {
                 &alert_id,
                 json!({
                     fields::RESOLVED: true,
-                    "timestamp": ts
+                    fields::TIMESTAMP: ts
                 }),
             )
             .await
@@ -3189,7 +3189,7 @@ mod tests {
         Mock::given(method("POST"))
             .and(path(format!("/payment_intents/{pi_id}/cancel")))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!({
-                "id": &pi_id,
+                fields::ID: &pi_id,
                 fields::STATUS: "canceled"
             })))
             .mount(&server)
@@ -3890,7 +3890,7 @@ mod tests {
                 collections::WEBHOOK_EVENTS,
                 &we1,
                 json!({
-                    "timestamp": old_ts
+                    fields::TIMESTAMP: old_ts
                 }),
             )
             .await
@@ -3901,7 +3901,7 @@ mod tests {
                 collections::WEBHOOK_EVENTS,
                 &we2,
                 json!({
-                    "timestamp": old_ts
+                    fields::TIMESTAMP: old_ts
                 }),
             )
             .await
@@ -3953,7 +3953,7 @@ mod tests {
                 &sa1,
                 json!({
                     fields::RESOLVED: true,
-                    "timestamp": old_ts
+                    fields::TIMESTAMP: old_ts
                 }),
             )
             .await
@@ -3965,7 +3965,7 @@ mod tests {
                 &sa2,
                 json!({
                     fields::RESOLVED: true,
-                    "timestamp": old_ts
+                    fields::TIMESTAMP: old_ts
                 }),
             )
             .await
@@ -5370,8 +5370,8 @@ mod tests {
             json!({
                 fields::STATUS: "pending",
                 "token": "tok",
-                "title": "T",
-                "body": "B",
+                fields::NOTIFICATION_TITLE: "T",
+                fields::NOTIFICATION_BODY: "B",
             }),
         ).await.unwrap();
 
@@ -6088,7 +6088,7 @@ mod tests {
 
         // Insert pending notification old enough
         insert_old_notification(&state.db, json!({
-            fields::STATUS: "pending", "token": "retry_tok", "title": "Retry Title", "body": "Retry Body", "attempts": 0
+            fields::STATUS: "pending", "token": "retry_tok", fields::NOTIFICATION_TITLE: "Retry Title", fields::NOTIFICATION_BODY: "Retry Body", "attempts": 0
         })).await;
 
         // Set env vars with invalid SA so send_push fails
@@ -6114,7 +6114,7 @@ mod tests {
         let state = setup_state().await;
 
         insert_old_notification(&state.db, json!({
-            fields::STATUS: "pending", "token": "fail_tok", "title": "Fail", "body": "Body", "attempts": 2
+            fields::STATUS: "pending", "token": "fail_tok", fields::NOTIFICATION_TITLE: "Fail", fields::NOTIFICATION_BODY: "Body", "attempts": 2
         })).await;
 
         unsafe {
@@ -6139,7 +6139,7 @@ mod tests {
 
         // Record with no token field → continue at line 1738-1739
         insert_old_notification(&state.db, json!({
-            fields::STATUS: "pending", "title": "NoTok", "body": "Body"
+            fields::STATUS: "pending", fields::NOTIFICATION_TITLE: "NoTok", fields::NOTIFICATION_BODY: "Body"
         })).await;
 
         unsafe {
@@ -6163,7 +6163,7 @@ mod tests {
         let state = setup_state().await;
 
         insert_old_notification(&state.db, json!({
-            fields::STATUS: "pending", "token": "data_tok", "title": "Data", "body": "Body",
+            fields::STATUS: "pending", "token": "data_tok", fields::NOTIFICATION_TITLE: "Data", fields::NOTIFICATION_BODY: "Body",
             "data": {"screen": "orders", fields::ORDER_ID: "ord_1"}, "attempts": 1
         })).await;
 
@@ -6189,15 +6189,15 @@ mod tests {
 
         // Record with attempts=0 → retry
         insert_old_notification(&state.db, json!({
-            fields::STATUS: "pending", "token": "mix_tok1", "title": "A", "body": "B", "attempts": 0
+            fields::STATUS: "pending", "token": "mix_tok1", fields::NOTIFICATION_TITLE: "A", fields::NOTIFICATION_BODY: "B", "attempts": 0
         })).await;
         // Record with attempts=2 → fail (becomes 3)
         insert_old_notification(&state.db, json!({
-            fields::STATUS: "pending", "token": "mix_tok2", "title": "C", "body": "D", "attempts": 2
+            fields::STATUS: "pending", "token": "mix_tok2", fields::NOTIFICATION_TITLE: "C", fields::NOTIFICATION_BODY: "D", "attempts": 2
         })).await;
         // Record with attempts=5 → fail (already exceeded)
         insert_old_notification(&state.db, json!({
-            fields::STATUS: "pending", "token": "mix_tok3", "title": "E", "body": "F", "attempts": 5
+            fields::STATUS: "pending", "token": "mix_tok3", fields::NOTIFICATION_TITLE: "E", fields::NOTIFICATION_BODY: "F", "attempts": 5
         })).await;
 
         unsafe {

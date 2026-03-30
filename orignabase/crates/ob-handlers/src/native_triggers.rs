@@ -1908,7 +1908,7 @@ mod tests {
             .db
             .query_bind(
                 "SELECT * FROM notifications WHERE userId = $uid",
-                json!({"uid": &buyer_id}),
+                json!({fields::UID: &buyer_id}),
             )
             .await
             .unwrap();
@@ -1917,7 +1917,7 @@ mod tests {
             .db
             .query_bind(
                 "SELECT * FROM notifications WHERE userId = $uid",
-                json!({"uid": &seller_id}),
+                json!({fields::UID: &seller_id}),
             )
             .await
             .unwrap();
@@ -1926,7 +1926,7 @@ mod tests {
             .db
             .query_bind(
                 "SELECT * FROM stock_notifications WHERE userId = $uid",
-                json!({"uid": &buyer_id}),
+                json!({fields::UID: &buyer_id}),
             )
             .await
             .unwrap();
@@ -1967,7 +1967,7 @@ mod tests {
             .db
             .query_bind(
                 "SELECT * FROM notifications WHERE userId = $uid",
-                json!({"uid": &buyer_id}),
+                json!({fields::UID: &buyer_id}),
             )
             .await
             .unwrap();
@@ -2013,7 +2013,7 @@ mod tests {
             .db
             .query_bind(
                 "SELECT * FROM notifications WHERE userId = $uid",
-                json!({"uid": &buyer_id}),
+                json!({fields::UID: &buyer_id}),
             )
             .await
             .unwrap();
@@ -2021,12 +2021,12 @@ mod tests {
         assert!(
             notifications
                 .iter()
-                .any(|doc| doc["title"].as_str().unwrap_or("").contains("shipped"))
+                .any(|doc| doc[fields::NOTIFICATION_TITLE].as_str().unwrap_or("").contains("shipped"))
         );
         assert!(
             notifications
                 .iter()
-                .any(|doc| doc["title"].as_str().unwrap_or("").contains("delivered"))
+                .any(|doc| doc[fields::NOTIFICATION_TITLE].as_str().unwrap_or("").contains("delivered"))
         );
     }
 
@@ -2067,7 +2067,7 @@ mod tests {
             .db
             .query_bind(
                 "SELECT * FROM notifications WHERE userId = $uid",
-                json!({"uid": &buyer_id}),
+                json!({fields::UID: &buyer_id}),
             )
             .await
             .unwrap();
@@ -2076,7 +2076,7 @@ mod tests {
             .db
             .query_bind(
                 "SELECT * FROM notifications WHERE userId = $uid",
-                json!({"uid": &seller_id}),
+                json!({fields::UID: &seller_id}),
             )
             .await
             .unwrap();
@@ -2145,13 +2145,13 @@ mod tests {
             .db
             .query_bind(
                 "SELECT * FROM notifications WHERE userId = $uid",
-                json!({"uid": &buyer_id}),
+                json!({fields::UID: &buyer_id}),
             )
             .await
             .unwrap();
 
         assert!(buyer_notifications.iter().any(|doc| {
-            doc["body"]
+            doc[fields::NOTIFICATION_BODY]
                 .as_str()
                 .unwrap_or("")
                 .contains("ready for pickup")
@@ -2159,22 +2159,22 @@ mod tests {
         assert!(
             buyer_notifications
                 .iter()
-                .any(|doc| doc["body"].as_str().unwrap_or("").contains("in transit"))
+                .any(|doc| doc[fields::NOTIFICATION_BODY].as_str().unwrap_or("").contains("in transit"))
         );
         assert!(buyer_notifications.iter().any(|doc| {
-            doc["body"]
+            doc[fields::NOTIFICATION_BODY]
                 .as_str()
                 .unwrap_or("")
                 .contains("has been delivered")
         }));
         assert!(buyer_notifications.iter().any(|doc| {
-            doc["body"]
+            doc[fields::NOTIFICATION_BODY]
                 .as_str()
                 .unwrap_or("")
                 .contains("has been cancelled")
         }));
         assert!(buyer_notifications.iter().any(|doc| {
-            doc["body"]
+            doc[fields::NOTIFICATION_BODY]
                 .as_str()
                 .unwrap_or("")
                 .contains("could not be processed")
@@ -2182,10 +2182,10 @@ mod tests {
         assert!(
             buyer_notifications
                 .iter()
-                .any(|doc| doc["body"].as_str().unwrap_or("").contains("has expired"))
+                .any(|doc| doc[fields::NOTIFICATION_BODY].as_str().unwrap_or("").contains("has expired"))
         );
         assert!(buyer_notifications.iter().any(|doc| {
-            doc["body"]
+            doc[fields::NOTIFICATION_BODY]
                 .as_str()
                 .unwrap_or("")
                 .contains("dispute has been opened")
@@ -2243,14 +2243,14 @@ mod tests {
             .db
             .query_bind(
                 "SELECT * FROM notifications WHERE userId = $uid",
-                json!({"uid": &buyer_id}),
+                json!({fields::UID: &buyer_id}),
             )
             .await
             .unwrap();
 
         let buyer_bodies = notifications
             .iter()
-            .filter_map(|doc| doc["body"].as_str())
+            .filter_map(|doc| doc[fields::NOTIFICATION_BODY].as_str())
             .collect::<Vec<_>>();
 
         assert!(
@@ -2307,7 +2307,7 @@ mod tests {
             .db
             .query_bind(
                 "SELECT * FROM notifications WHERE userId = $uid",
-                json!({"uid": &buyer_id}),
+                json!({fields::UID: &buyer_id}),
             )
             .await
             .unwrap();
@@ -2316,43 +2316,43 @@ mod tests {
             .db
             .query_bind(
                 "SELECT * FROM notifications WHERE userId = $uid",
-                json!({"uid": &seller_id}),
+                json!({fields::UID: &seller_id}),
             )
             .await
             .unwrap();
 
         assert!(seller_notifs.iter().any(|doc| {
-            doc["title"]
+            doc[fields::NOTIFICATION_TITLE]
                 .as_str()
                 .unwrap_or("")
                 .contains("New return request")
         }));
         assert!(buyer_notifs.iter().any(|doc| {
-            doc["title"]
+            doc[fields::NOTIFICATION_TITLE]
                 .as_str()
                 .unwrap_or("")
                 .contains("Return approved")
         }));
         assert!(buyer_notifs.iter().any(|doc| {
-            doc["title"]
+            doc[fields::NOTIFICATION_TITLE]
                 .as_str()
                 .unwrap_or("")
                 .contains("Return rejected")
         }));
         assert!(buyer_notifs.iter().any(|doc| {
-            doc["title"]
+            doc[fields::NOTIFICATION_TITLE]
                 .as_str()
                 .unwrap_or("")
                 .contains("Return label ready")
         }));
         assert!(buyer_notifs.iter().any(|doc| {
-            doc["title"]
+            doc[fields::NOTIFICATION_TITLE]
                 .as_str()
                 .unwrap_or("")
                 .contains("Return refunded")
         }));
         assert!(buyer_notifs.iter().any(|doc| {
-            doc["title"]
+            doc[fields::NOTIFICATION_TITLE]
                 .as_str()
                 .unwrap_or("")
                 .contains("Return escalated")
@@ -2394,7 +2394,7 @@ mod tests {
             .db
             .query_bind(
                 "SELECT * FROM notifications WHERE userId = $uid",
-                json!({"uid": &buyer_id}),
+                json!({fields::UID: &buyer_id}),
             )
             .await
             .unwrap();
@@ -2499,7 +2499,7 @@ mod tests {
             .db
             .query_bind(
                 "SELECT * FROM notifications WHERE userId = $uid",
-                json!({"uid": &buyer_id}),
+                json!({fields::UID: &buyer_id}),
             )
             .await
             .unwrap();
@@ -2560,7 +2560,7 @@ mod tests {
                 .contains("Commande confirmee")
         );
         assert!(
-            mail_logs[0]["error"]
+            mail_logs[0][fields::ERROR]
                 .as_str()
                 .unwrap_or("")
                 .contains("credentials")
@@ -2894,7 +2894,7 @@ mod tests {
             .db
             .query_bind(
                 "SELECT * FROM notifications WHERE userId = $uid",
-                json!({"uid": &buyer_id}),
+                json!({fields::UID: &buyer_id}),
             )
             .await
             .unwrap();
@@ -2935,7 +2935,7 @@ mod tests {
             .db
             .query_bind(
                 "SELECT * FROM notifications WHERE userId = $uid",
-                json!({"uid": &seller_id}),
+                json!({fields::UID: &seller_id}),
             )
             .await
             .unwrap();
@@ -2987,7 +2987,7 @@ mod tests {
             .db
             .query_bind(
                 "SELECT * FROM notifications WHERE userId = $uid",
-                json!({"uid": &seller_id}),
+                json!({fields::UID: &seller_id}),
             )
             .await
             .unwrap();
@@ -3029,7 +3029,7 @@ mod tests {
             .db
             .query_bind(
                 "SELECT * FROM notifications WHERE userId = $uid",
-                json!({"uid": &buyer_id}),
+                json!({fields::UID: &buyer_id}),
             )
             .await
             .unwrap();
@@ -3038,7 +3038,7 @@ mod tests {
             .db
             .query_bind(
                 "SELECT * FROM notifications WHERE userId = $uid",
-                json!({"uid": &seller_id}),
+                json!({fields::UID: &seller_id}),
             )
             .await
             .unwrap();
@@ -3088,7 +3088,7 @@ mod tests {
             .db
             .query_bind(
                 "SELECT * FROM notifications WHERE userId = $uid",
-                json!({"uid": &buyer_id}),
+                json!({fields::UID: &buyer_id}),
             )
             .await
             .unwrap();
@@ -3097,7 +3097,7 @@ mod tests {
             .db
             .query_bind(
                 "SELECT * FROM notifications WHERE userId = $uid",
-                json!({"uid": &seller_id}),
+                json!({fields::UID: &seller_id}),
             )
             .await
             .unwrap();
@@ -3107,7 +3107,7 @@ mod tests {
         assert!(
             !all_notifs
                 .iter()
-                .any(|doc| { doc["title"].as_str().unwrap_or("").contains("URGENT") })
+                .any(|doc| { doc[fields::NOTIFICATION_TITLE].as_str().unwrap_or("").contains("URGENT") })
         );
     }
 
@@ -3227,7 +3227,7 @@ mod tests {
             .db
             .query_bind(
                 "SELECT * FROM notifications WHERE userId = $uid",
-                json!({"uid": &buyer_id}),
+                json!({fields::UID: &buyer_id}),
             )
             .await
             .unwrap();
@@ -3294,7 +3294,7 @@ mod tests {
             .db
             .query_bind(
                 "SELECT * FROM stock_notifications WHERE userId = $uid",
-                json!({"uid": &buyer_id}),
+                json!({fields::UID: &buyer_id}),
             )
             .await
             .unwrap();
@@ -3389,7 +3389,7 @@ mod tests {
             .db
             .query_bind(
                 &format!("SELECT * FROM _pending_notifications WHERE data->>'userId' = $uid"),
-                json!({"uid": &uid}),
+                json!({fields::UID: &uid}),
             )
             .await
             .unwrap();
@@ -4179,13 +4179,13 @@ mod tests {
             .db
             .query_bind(
                 "SELECT * FROM notifications WHERE userId = $uid",
-                json!({"uid": &buyer_id}),
+                json!({fields::UID: &buyer_id}),
             )
             .await
             .unwrap();
         assert_eq!(notifications.len(), 1);
         assert!(
-            notifications[0]["body"]
+            notifications[0][fields::NOTIFICATION_BODY]
                 .as_str()
                 .unwrap_or("")
                 .contains("pickup")
@@ -4229,13 +4229,13 @@ mod tests {
             .db
             .query_bind(
                 "SELECT * FROM notifications WHERE userId = $uid",
-                json!({"uid": &buyer_id}),
+                json!({fields::UID: &buyer_id}),
             )
             .await
             .unwrap();
         assert_eq!(notifications.len(), 1);
         assert!(
-            notifications[0]["title"]
+            notifications[0][fields::NOTIFICATION_TITLE]
                 .as_str()
                 .unwrap_or("")
                 .contains("delivered")
@@ -4272,7 +4272,7 @@ mod tests {
             .db
             .query_bind(
                 "SELECT * FROM notifications WHERE userId = $uid",
-                json!({"uid": &buyer_id}),
+                json!({fields::UID: &buyer_id}),
             )
             .await
             .unwrap();
@@ -4419,7 +4419,7 @@ mod tests {
             .db
             .query_bind(
                 "SELECT * FROM stock_notifications WHERE userId = $uid",
-                json!({"uid": &buyer_id}),
+                json!({fields::UID: &buyer_id}),
             )
             .await
             .unwrap();
@@ -4464,12 +4464,12 @@ mod tests {
             .db
             .query_bind(
                 "SELECT * FROM notifications WHERE userId = $uid",
-                json!({"uid": &buyer_id}),
+                json!({fields::UID: &buyer_id}),
             )
             .await
             .unwrap();
         assert!(notifications.iter().any(|doc| {
-            doc["title"]
+            doc[fields::NOTIFICATION_TITLE]
                 .as_str()
                 .unwrap_or("")
                 .contains("Retour demandé")
@@ -4517,7 +4517,7 @@ mod tests {
             .db
             .query_bind(
                 "SELECT * FROM notifications WHERE userId = $uid",
-                json!({"uid": &buyer_id}),
+                json!({fields::UID: &buyer_id}),
             )
             .await
             .unwrap();
@@ -4526,15 +4526,15 @@ mod tests {
             .db
             .query_bind(
                 "SELECT * FROM notifications WHERE userId = $uid",
-                json!({"uid": &seller_id}),
+                json!({fields::UID: &seller_id}),
             )
             .await
             .unwrap();
         assert!(buyer_notifs.iter().any(|doc| {
-            doc["title"].as_str().unwrap_or("").contains("confirmée")
+            doc[fields::NOTIFICATION_TITLE].as_str().unwrap_or("").contains("confirmée")
         }));
         assert!(seller_notifs.iter().any(|doc| {
-            doc["title"].as_str().unwrap_or("").contains("URGENT")
+            doc[fields::NOTIFICATION_TITLE].as_str().unwrap_or("").contains("URGENT")
         }));
     }
 
@@ -4568,12 +4568,12 @@ mod tests {
             .db
             .query_bind(
                 "SELECT * FROM notifications WHERE userId = $uid",
-                json!({"uid": &buyer_id}),
+                json!({fields::UID: &buyer_id}),
             )
             .await
             .unwrap();
         assert!(
-            notifications[0]["title"]
+            notifications[0][fields::NOTIFICATION_TITLE]
                 .as_str()
                 .unwrap_or("")
                 .contains("Remboursement")
@@ -4615,12 +4615,12 @@ mod tests {
             .db
             .query_bind(
                 "SELECT * FROM notifications WHERE userId = $uid",
-                json!({"uid": &buyer_id}),
+                json!({fields::UID: &buyer_id}),
             )
             .await
             .unwrap();
         assert!(
-            notifications[0]["title"]
+            notifications[0][fields::NOTIFICATION_TITLE]
                 .as_str()
                 .unwrap_or("")
                 .contains("expédié")
@@ -4999,7 +4999,7 @@ mod tests {
             .db
             .query_bind(
                 "SELECT * FROM stock_notifications WHERE userId = $uid",
-                json!({"uid": &buyer_id}),
+                json!({fields::UID: &buyer_id}),
             )
             .await
             .unwrap();

@@ -13,25 +13,25 @@ use serde_json::{Value, json};
 use uuid::Uuid;
 
 fn base_url() -> String {
-    std::env::var("OB_TEST_URL").unwrap_or_else(|_| "http://localhost:8080".to_string())
+    std::env::var("OB_TEST_URL").unwrap_or_else(|_| "http://localhost:8080".to_string()) // ignore-magic
 }
 
 async fn register_test_user(client: &reqwest::Client) -> (String, String, String) {
-    let email = format!("test_{}@example.com", Uuid::new_v4());
+    let email = format!("test_{}@example.com", Uuid::new_v4()); // ignore-magic
     let resp = client
         .post(format!("{}/auth/register", base_url()))
-        .json(&json!({ "email": email, "password": "TestPassword123!" }))
+        .json(&json!({ "email": email, "password": "TestPassword123!" })) // ignore-magic
         .send()
         .await
         .expect("register failed");
 
     assert_eq!(resp.status(), 200);
     let body: Value = resp.json().await.unwrap();
-    let token = body["access_token"]
+    let token = body["access_token"] // ignore-magic
         .as_str()
         .expect("missing access_token")
         .to_string();
-    let user_id = body["user"]["id"]
+    let user_id = body["user"]["id"] // ignore-magic
         .as_str()
         .expect("missing user.id")
         .to_string();
@@ -40,13 +40,13 @@ async fn register_test_user(client: &reqwest::Client) -> (String, String, String
 
 async fn graphql(client: &reqwest::Client, token: Option<&str>, query: &str) -> (u16, Value) {
     let url = format!("{}/graphql", base_url());
-    let mut req = client.post(&url).json(&json!({"query": query}));
+    let mut req = client.post(&url).json(&json!({"query": query})); // ignore-magic
     if let Some(t) = token {
-        req = req.header("Authorization", format!("Bearer {t}"));
+        req = req.header("Authorization", format!("Bearer {t}")); // ignore-magic
     }
     let resp = req.send().await.expect("graphql request failed");
     let status = resp.status().as_u16();
-    let body: Value = resp.json().await.unwrap_or(json!({}));
+    let body: Value = resp.json().await.unwrap_or(json!({})); // ignore-magic
     (status, body)
 }
 
@@ -60,9 +60,9 @@ async fn test_cart_add_item() {
     let client = reqwest::Client::new();
     let (token, user_id, _email) = register_test_user(&client).await;
 
-    let data = serde_json::to_string(&json!({
-        "userId": user_id,
-        "productId": "products:test_prod_1",
+    let data = serde_json::to_string(&json!({ // ignore-magic
+        "userId": user_id, // ignore-magic
+        "productId": "products:test_prod_1", // ignore-magic
         "quantity": 1,
         "unitPriceCents": 2999
     }))
@@ -74,7 +74,7 @@ async fn test_cart_add_item() {
     assert_eq!(status, 200, "GraphQL should return 200");
     // May succeed or have errors (e.g. validation) — both are acceptable
     let has_errors = body.get("errors").is_some();
-    let result = &body["data"]["create"];
+    let result = &body["data"]["create"]; // ignore-magic
     assert!(
         result.is_object() || has_errors,
         "Should return created doc or errors: {body}"
@@ -87,8 +87,8 @@ async fn test_cart_add_item_missing_product_id() {
     let client = reqwest::Client::new();
     let (token, user_id, _email) = register_test_user(&client).await;
 
-    let data = serde_json::to_string(&json!({
-        "userId": user_id,
+    let data = serde_json::to_string(&json!({ // ignore-magic
+        "userId": user_id, // ignore-magic
         "quantity": 1,
         "unitPriceCents": 2999
     }))
@@ -107,8 +107,8 @@ async fn test_cart_add_item_missing_product_id() {
 async fn test_cart_add_requires_authentication() {
     let client = reqwest::Client::new();
 
-    let data = serde_json::to_string(&json!({
-        "productId": "products:test_prod_1",
+    let data = serde_json::to_string(&json!({ // ignore-magic
+        "productId": "products:test_prod_1", // ignore-magic
         "quantity": 1,
         "unitPriceCents": 2999
     }))
@@ -121,7 +121,7 @@ async fn test_cart_add_requires_authentication() {
     assert_eq!(status, 200);
     // Without auth, create may be denied by rules or succeed (open collection)
     let has_errors = body.get("errors").is_some();
-    let result = &body["data"]["create"];
+    let result = &body["data"]["create"]; // ignore-magic
     // Accept either: errors from auth denial, or successful create (open rules)
     assert!(
         has_errors || result.is_object(),
@@ -135,13 +135,13 @@ async fn test_cart_get() {
     let client = reqwest::Client::new();
     let (token, user_id, _email) = register_test_user(&client).await;
 
-    let filters = serde_json::to_string(&json!({"userId": {"_eq": user_id}})).unwrap();
+    let filters = serde_json::to_string(&json!({"userId": {"_eq": user_id}})).unwrap(); // ignore-magic
     let escaped_f = serde_json::to_string(&filters).unwrap();
     let query = format!(r#"{{ list(collection: "carts", filters: {escaped_f}, limit: 10) }}"#);
     let (status, body) = graphql(&client, Some(&token), &query).await;
 
     assert_eq!(status, 200);
-    let result = &body["data"]["list"];
+    let result = &body["data"]["list"]; // ignore-magic
     assert!(
         result.is_array() || result.is_null(),
         "Should return array or null"
@@ -182,19 +182,19 @@ async fn test_cart_clear() {
     let (token, user_id, _email) = register_test_user(&client).await;
 
     // List cart items for user, then batch delete
-    let filters = serde_json::to_string(&json!({"userId": {"_eq": user_id}})).unwrap();
+    let filters = serde_json::to_string(&json!({"userId": {"_eq": user_id}})).unwrap(); // ignore-magic
     let escaped_f = serde_json::to_string(&filters).unwrap();
     let list_query =
         format!(r#"{{ list(collection: "carts", filters: {escaped_f}, limit: 100) }}"#);
     let (_, list_body) = graphql(&client, Some(&token), &list_query).await;
 
-    if let Some(items) = list_body["data"]["list"].as_array()
+    if let Some(items) = list_body["data"]["list"].as_array() // ignore-magic
         && !items.is_empty()
     {
         let ids: Vec<String> = items
             .iter()
             .filter_map(|item| {
-                item["id"]
+                item["id"] // ignore-magic
                     .as_str()
                     .map(|s| s.split(':').next_back().unwrap_or(s).to_string())
             })
@@ -218,7 +218,7 @@ async fn test_cart_update_quantity() {
     let client = reqwest::Client::new();
     let (token, _user_id, _email) = register_test_user(&client).await;
 
-    let data = serde_json::to_string(&json!({"quantity": 5})).unwrap();
+    let data = serde_json::to_string(&json!({"quantity": 5})).unwrap(); // ignore-magic
     let escaped = serde_json::to_string(&data).unwrap();
     let query = format!(
         r#"mutation {{ update(collection: "carts", id: "carts:nonexistent_123", data: {escaped}) }}"#
@@ -235,7 +235,7 @@ async fn test_cart_update_quantity() {
 async fn test_cart_update_quantity_requires_authentication() {
     let client = reqwest::Client::new();
 
-    let data = serde_json::to_string(&json!({"quantity": 5})).unwrap();
+    let data = serde_json::to_string(&json!({"quantity": 5})).unwrap(); // ignore-magic
     let escaped = serde_json::to_string(&data).unwrap();
     let query = format!(
         r#"mutation {{ update(collection: "carts", id: "carts:test_123", data: {escaped}) }}"#

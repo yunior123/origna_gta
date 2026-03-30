@@ -9,25 +9,25 @@ use serde_json::{Value, json};
 use uuid::Uuid;
 
 fn base_url() -> String {
-    std::env::var("OB_TEST_URL").unwrap_or_else(|_| "http://localhost:8080".to_string())
+    std::env::var("OB_TEST_URL").unwrap_or_else(|_| "http://localhost:8080".to_string()) // ignore-magic
 }
 
 /// Register a test user and return (access_token, user_id, email).
 async fn register_test_user(client: &reqwest::Client) -> (String, String, String) {
-    let email = format!("test_{}@example.com", Uuid::new_v4());
+    let email = format!("test_{}@example.com", Uuid::new_v4()); // ignore-magic
     let resp = client
         .post(format!("{}/auth/register", base_url()))
-        .json(&json!({ "email": email, "password": "TestPassword123!" }))
+        .json(&json!({ "email": email, "password": "TestPassword123!" })) // ignore-magic
         .send()
         .await
         .expect("register failed");
     assert_eq!(resp.status(), 200, "Registration should succeed");
     let body: Value = resp.json().await.unwrap();
-    let token = body["access_token"]
+    let token = body["access_token"] // ignore-magic
         .as_str()
         .expect("missing access_token")
         .to_string();
-    let user_id = body["user"]["id"]
+    let user_id = body["user"]["id"] // ignore-magic
         .as_str()
         .expect("missing user.id")
         .to_string();
@@ -47,8 +47,8 @@ async fn test_storage_presign_upload_single_path() {
     let path = format!("users/{}/test_{}.jpg", user_id, Uuid::new_v4());
     let resp = client
         .post(format!("{}/storage/presign/upload", base_url()))
-        .header("Authorization", format!("Bearer {token}"))
-        .json(&json!({
+        .header("Authorization", format!("Bearer {token}")) // ignore-magic
+        .json(&json!({ // ignore-magic
             "paths": [path],
             "ttl_secs": 3600
         }))
@@ -57,13 +57,13 @@ async fn test_storage_presign_upload_single_path() {
         .expect("presign upload request failed");
 
     let status = resp.status().as_u16();
-    let body: Value = resp.json().await.unwrap_or(json!({}));
+    let body: Value = resp.json().await.unwrap_or(json!({})); // ignore-magic
 
     assert_eq!(status, 200, "Presign upload should succeed: {body:?}");
-    let urls = body["urls"].as_array().expect("should return urls array");
+    let urls = body["urls"].as_array().expect("should return urls array"); // ignore-magic
     assert_eq!(urls.len(), 1);
     assert!(
-        urls[0]["upload_url"].as_str().is_some(),
+        urls[0]["upload_url"].as_str().is_some(), // ignore-magic
         "Should include upload_url"
     );
 }
@@ -80,8 +80,8 @@ async fn test_storage_presign_upload_multiple_paths() {
 
     let resp = client
         .post(format!("{}/storage/presign/upload", base_url()))
-        .header("Authorization", format!("Bearer {token}"))
-        .json(&json!({
+        .header("Authorization", format!("Bearer {token}")) // ignore-magic
+        .json(&json!({ // ignore-magic
             "paths": paths,
             "ttl_secs": 7200
         }))
@@ -90,10 +90,10 @@ async fn test_storage_presign_upload_multiple_paths() {
         .expect("presign upload request failed");
 
     let status = resp.status().as_u16();
-    let body: Value = resp.json().await.unwrap_or(json!({}));
+    let body: Value = resp.json().await.unwrap_or(json!({})); // ignore-magic
 
     assert_eq!(status, 200, "Batch presign upload should succeed: {body:?}");
-    let urls = body["urls"].as_array().expect("should return urls array");
+    let urls = body["urls"].as_array().expect("should return urls array"); // ignore-magic
     assert_eq!(urls.len(), 3, "Should return 3 presigned URLs");
 }
 
@@ -105,8 +105,8 @@ async fn test_storage_presign_upload_empty_paths_rejected() {
 
     let resp = client
         .post(format!("{}/storage/presign/upload", base_url()))
-        .header("Authorization", format!("Bearer {token}"))
-        .json(&json!({
+        .header("Authorization", format!("Bearer {token}")) // ignore-magic
+        .json(&json!({ // ignore-magic
             "paths": [],
             "ttl_secs": 3600
         }))
@@ -129,8 +129,8 @@ async fn test_storage_presign_upload_directory_traversal_rejected() {
 
     let resp = client
         .post(format!("{}/storage/presign/upload", base_url()))
-        .header("Authorization", format!("Bearer {token}"))
-        .json(&json!({
+        .header("Authorization", format!("Bearer {token}")) // ignore-magic
+        .json(&json!({ // ignore-magic
             "paths": ["../../etc/passwd"],
             "ttl_secs": 3600
         }))
@@ -159,8 +159,8 @@ async fn test_storage_presign_download_single_path() {
     let path = format!("users/{}/download_test_{}.jpg", user_id, Uuid::new_v4());
     let resp = client
         .post(format!("{}/storage/presign/download", base_url()))
-        .header("Authorization", format!("Bearer {token}"))
-        .json(&json!({
+        .header("Authorization", format!("Bearer {token}")) // ignore-magic
+        .json(&json!({ // ignore-magic
             "paths": [path],
             "ttl_secs": 3600
         }))
@@ -169,13 +169,13 @@ async fn test_storage_presign_download_single_path() {
         .expect("presign download request failed");
 
     let status = resp.status().as_u16();
-    let body: Value = resp.json().await.unwrap_or(json!({}));
+    let body: Value = resp.json().await.unwrap_or(json!({})); // ignore-magic
 
     assert_eq!(status, 200, "Presign download should succeed: {body:?}");
-    let urls = body["urls"].as_array().expect("should return urls array");
+    let urls = body["urls"].as_array().expect("should return urls array"); // ignore-magic
     assert_eq!(urls.len(), 1);
     assert!(
-        urls[0]["download_url"].as_str().is_some(),
+        urls[0]["download_url"].as_str().is_some(), // ignore-magic
         "Should include download_url"
     );
 }
@@ -189,8 +189,8 @@ async fn test_storage_presign_download_default_ttl() {
     let path = format!("users/{}/ttl_test_{}.jpg", user_id, Uuid::new_v4());
     let resp = client
         .post(format!("{}/storage/presign/download", base_url()))
-        .header("Authorization", format!("Bearer {token}"))
-        .json(&json!({
+        .header("Authorization", format!("Bearer {token}")) // ignore-magic
+        .json(&json!({ // ignore-magic
             "paths": [path]
         }))
         .send()
@@ -211,21 +211,21 @@ async fn test_storage_upload_and_download_roundtrip() {
     let client = reqwest::Client::new();
     let (token, user_id, _) = register_test_user(&client).await;
 
-    let filename = format!("test_{}.bin", Uuid::new_v4());
+    let filename = format!("test_{}.bin", Uuid::new_v4()); // ignore-magic
     let path = format!("users/{}/{}", user_id, filename);
 
     // Step 1: Get presigned upload URL
     let presign_resp = client
         .post(format!("{}/storage/presign/upload", base_url()))
-        .header("Authorization", format!("Bearer {token}"))
-        .json(&json!({ "paths": [&path] }))
+        .header("Authorization", format!("Bearer {token}")) // ignore-magic
+        .json(&json!({ "paths": [&path] })) // ignore-magic
         .send()
         .await
         .expect("presign upload failed");
 
     assert_eq!(presign_resp.status(), 200);
     let presign_body: Value = presign_resp.json().await.unwrap();
-    let upload_url = presign_body["urls"][0]["upload_url"]
+    let upload_url = presign_body["urls"][0]["upload_url"] // ignore-magic
         .as_str()
         .expect("missing upload_url");
 
@@ -233,7 +233,7 @@ async fn test_storage_upload_and_download_roundtrip() {
     let file_content = b"Hello, OrignaBase Storage!";
     let upload_resp = client
         .put(upload_url)
-        .header("Content-Type", "application/octet-stream")
+        .header("Content-Type", "application/octet-stream") // ignore-magic
         .body(file_content.to_vec())
         .send()
         .await
@@ -245,15 +245,15 @@ async fn test_storage_upload_and_download_roundtrip() {
     // Step 3: Get presigned download URL
     let download_presign = client
         .post(format!("{}/storage/presign/download", base_url()))
-        .header("Authorization", format!("Bearer {token}"))
-        .json(&json!({ "paths": [&path] }))
+        .header("Authorization", format!("Bearer {token}")) // ignore-magic
+        .json(&json!({ "paths": [&path] })) // ignore-magic
         .send()
         .await
         .expect("presign download failed");
 
     assert_eq!(download_presign.status(), 200);
     let dl_body: Value = download_presign.json().await.unwrap();
-    let download_url = dl_body["urls"][0]["download_url"]
+    let download_url = dl_body["urls"][0]["download_url"] // ignore-magic
         .as_str()
         .expect("missing download_url");
 
@@ -290,18 +290,18 @@ async fn test_storage_batch_delete() {
 
     let presign_resp = client
         .post(format!("{}/storage/presign/upload", base_url()))
-        .header("Authorization", format!("Bearer {token}"))
-        .json(&json!({ "paths": [&path] }))
+        .header("Authorization", format!("Bearer {token}")) // ignore-magic
+        .json(&json!({ "paths": [&path] })) // ignore-magic
         .send()
         .await
         .unwrap();
     assert_eq!(presign_resp.status(), 200);
     let presign_body: Value = presign_resp.json().await.unwrap();
-    let upload_url = presign_body["urls"][0]["upload_url"].as_str().unwrap();
+    let upload_url = presign_body["urls"][0]["upload_url"].as_str().unwrap(); // ignore-magic
 
     let _ = client
         .put(upload_url)
-        .header("Content-Type", "application/octet-stream")
+        .header("Content-Type", "application/octet-stream") // ignore-magic
         .body(b"to be deleted".to_vec())
         .send()
         .await
@@ -310,8 +310,8 @@ async fn test_storage_batch_delete() {
     // Batch delete the uploaded file
     let del_resp = client
         .post(format!("{}/storage/batch-delete", base_url()))
-        .header("Authorization", format!("Bearer {token}"))
-        .json(&json!({ "paths": [&path] }))
+        .header("Authorization", format!("Bearer {token}")) // ignore-magic
+        .json(&json!({ "paths": [&path] })) // ignore-magic
         .send()
         .await
         .expect("batch delete failed");
@@ -333,8 +333,8 @@ async fn test_storage_resumable_upload_init() {
     let path = format!("users/{}/resumable_{}.bin", user_id, Uuid::new_v4());
     let resp = client
         .post(format!("{}/storage/upload/resumable", base_url()))
-        .header("Authorization", format!("Bearer {token}"))
-        .json(&json!({
+        .header("Authorization", format!("Bearer {token}")) // ignore-magic
+        .json(&json!({ // ignore-magic
             "path": path,
             "content_type": "application/octet-stream",
             "total_size": 1024
@@ -344,10 +344,10 @@ async fn test_storage_resumable_upload_init() {
         .expect("resumable init failed");
 
     let status = resp.status().as_u16();
-    let body: Value = resp.json().await.unwrap_or(json!({}));
+    let body: Value = resp.json().await.unwrap_or(json!({})); // ignore-magic
 
     assert_eq!(status, 200, "Resumable init should succeed: {body:?}");
-    assert!(body["id"].as_str().is_some(), "Should return session ID");
+    assert!(body["id"].as_str().is_some(), "Should return session ID"); // ignore-magic
 }
 
 #[tokio::test]
@@ -359,8 +359,8 @@ async fn test_storage_resumable_upload_exceeds_limit() {
     let path = format!("users/{}/huge_{}.bin", user_id, Uuid::new_v4());
     let resp = client
         .post(format!("{}/storage/upload/resumable", base_url()))
-        .header("Authorization", format!("Bearer {token}"))
-        .json(&json!({
+        .header("Authorization", format!("Bearer {token}")) // ignore-magic
+        .json(&json!({ // ignore-magic
             "path": path,
             "content_type": "application/octet-stream",
             "total_size": 6_000_000_000_u64  // 6GB > 5GB limit
@@ -388,7 +388,7 @@ async fn test_storage_presign_upload_no_auth() {
     let resp = client
         .post(format!("{}/storage/presign/upload", base_url()))
         // No Authorization header
-        .json(&json!({
+        .json(&json!({ // ignore-magic
             "paths": ["products/test.jpg"]
         }))
         .send()

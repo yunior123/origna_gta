@@ -6,6 +6,7 @@ use axum::{
 };
 use chrono::Utc;
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
+use ob_core::constants::fields as f;
 use ob_core::{Error, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -342,13 +343,13 @@ pub async fn register(
     // ignore-magic: ob-auth has no access to ob-handlers schema constants
     // Create user document
     let user_data = json!({
-        "email": body.email,
-        "password_hash": password_hash,
-        "display_name": body.display_name.unwrap_or_default(),
-        "roles": ["user"],
-        "email_verified": false,
-        "mfa_enabled": false,
-        "created_at": chrono::Utc::now().to_rfc3339(),
+        (f::EMAIL): body.email,
+        "password_hash": password_hash, // ignore-magic: internal auth field, not in schema constants
+        "display_name": body.display_name.unwrap_or_default(), // ignore-magic: user registration field
+        (f::ROLES): ["user"],
+        (f::EMAIL_VERIFIED): false,
+        (f::MFA_ENABLED): false,
+        (f::CREATED_AT): chrono::Utc::now().to_rfc3339(),
     });
 
     let user = state.db.create_document("users", user_data).await?;
@@ -486,7 +487,7 @@ pub async fn login(
         .unwrap_or_default();
 
     // Check email verification requirement
-    let email_verified = user["email_verified"].as_bool().unwrap_or(false);
+    let email_verified = user[f::EMAIL_VERIFIED].as_bool().unwrap_or(false);
     if state.require_email_verification && !email_verified {
         return Err(Error::Auth(
             "Email not verified. Please check your inbox.".into(),
@@ -508,7 +509,7 @@ pub async fn login(
     }
 
     let custom_claims = user
-        .get("custom_claims")
+        .get(f::CUSTOM_CLAIMS)
         .cloned()
         .unwrap_or(serde_json::Value::Null);
 
@@ -608,9 +609,9 @@ pub async fn refresh(
         })
         .unwrap_or_default();
 
-    let email_verified = user["email_verified"].as_bool().unwrap_or(false);
+    let email_verified = user[f::EMAIL_VERIFIED].as_bool().unwrap_or(false);
     let custom_claims = user
-        .get("custom_claims")
+        .get(f::CUSTOM_CLAIMS)
         .cloned()
         .unwrap_or(serde_json::Value::Null);
 
@@ -1062,7 +1063,7 @@ async fn oauth_find_or_create_user(
         .unwrap_or_default();
 
     // OAuth users are considered email-verified (provider already verified)
-    let email_verified = user["email_verified"].as_bool().unwrap_or(true);
+    let email_verified = user[f::EMAIL_VERIFIED].as_bool().unwrap_or(true);
 
     let access_token = jwt::issue_access_token(
         &user_id,
@@ -1306,7 +1307,7 @@ pub async fn verify_email(
 
     state
         .db
-        .update_document("users", &claims.sub, json!({ "email_verified": true }))
+        .update_document("users", &claims.sub, json!({ (f::EMAIL_VERIFIED): true }))
         .await?;
 
     Ok(Json(json!({ "message": "Email verified successfully" })))
@@ -1337,7 +1338,7 @@ pub async fn send_verification(
         ));
     };
 
-    if user["email_verified"].as_bool().unwrap_or(false) {
+    if user[f::EMAIL_VERIFIED].as_bool().unwrap_or(false) {
         return Ok(Json(json!({ "message": "Email is already verified" })));
     }
 
@@ -1523,13 +1524,13 @@ pub async fn mfa_verify_setup(
             "users",
             &auth.user_id,
             json!({
-                "mfa_enabled": true,
-                "mfa_secret": permanent_encrypted,
-                "mfa_recovery_codes": hashed_codes,
-                "mfa_last_used_step": null,
-                "mfa_pending_secret": null,
-                "mfa_pending_at": null,
-                "mfa_enabled_at": chrono::Utc::now().to_rfc3339(),
+                (f::MFA_ENABLED): true,
+                (f::MFA_SECRET): permanent_encrypted,
+                (f::MFA_RECOVERY_CODES): hashed_codes,
+                (f::MFA_LAST_USED_STEP): null,
+                "mfa_pending_secret": null, // ignore-magic: transient MFA setup field
+                "mfa_pending_at": null, // ignore-magic: transient MFA setup field
+                "mfa_enabled_at": chrono::Utc::now().to_rfc3339(), // ignore-magic: MFA audit timestamp
             }),
         )
         .await?;
@@ -1661,7 +1662,7 @@ pub async fn mfa_challenge(
         }
     };
 
-    let last_used_step = user["mfa_last_used_step"].as_u64();
+    let last_used_step = user[f::MFA_LAST_USED_STEP].as_u64();
 
     // Verify TOTP
     let step = totp::verify_totp(&secret, &body.code, last_used_step)?;
@@ -1669,7 +1670,7 @@ pub async fn mfa_challenge(
     // Update last used step
     state
         .db
-        .update_document("users", &claims.sub, json!({ "mfa_last_used_step": step }))
+        .update_document("users", &claims.sub, json!({ (f::MFA_LAST_USED_STEP): step }))
         .await?;
 
     // Issue real tokens
@@ -1682,9 +1683,9 @@ pub async fn mfa_challenge(
         })
         .unwrap_or_default();
 
-    let email_verified = user["email_verified"].as_bool().unwrap_or(false);
+    let email_verified = user[f::EMAIL_VERIFIED].as_bool().unwrap_or(false);
     let custom_claims = user
-        .get("custom_claims")
+        .get(f::CUSTOM_CLAIMS)
         .cloned()
         .unwrap_or(serde_json::Value::Null);
 
@@ -1705,7 +1706,7 @@ pub async fn mfa_challenge(
     if let Some(obj) = safe_user.as_object_mut() {
         obj.remove("password_hash");
         obj.remove("mfa_secret");
-        obj.remove("mfa_recovery_codes");
+        obj.remove(f::MFA_RECOVERY_CODES);
         obj.remove("mfa_pending_secret");
     }
 
@@ -1757,7 +1758,7 @@ pub async fn mfa_recovery(
         .first()
         .ok_or_else(|| Error::Auth("User not found".into()))?;
 
-    let hashed_codes: Vec<String> = user["mfa_recovery_codes"]
+    let hashed_codes: Vec<String> = user[f::MFA_RECOVERY_CODES]
         .as_array()
         .map(|arr| {
             arr.iter()
@@ -1786,7 +1787,7 @@ pub async fn mfa_recovery(
         .update_document(
             "users",
             &claims.sub,
-            json!({ "mfa_recovery_codes": remaining_codes }),
+            json!({ (f::MFA_RECOVERY_CODES): remaining_codes }),
         )
         .await?;
 
@@ -1800,9 +1801,9 @@ pub async fn mfa_recovery(
         })
         .unwrap_or_default();
 
-    let email_verified = user["email_verified"].as_bool().unwrap_or(false);
+    let email_verified = user[f::EMAIL_VERIFIED].as_bool().unwrap_or(false);
     let custom_claims = user
-        .get("custom_claims")
+        .get(f::CUSTOM_CLAIMS)
         .cloned()
         .unwrap_or(serde_json::Value::Null);
 
@@ -1822,7 +1823,7 @@ pub async fn mfa_recovery(
     if let Some(obj) = safe_user.as_object_mut() {
         obj.remove("password_hash");
         obj.remove("mfa_secret");
-        obj.remove("mfa_recovery_codes");
+        obj.remove(f::MFA_RECOVERY_CODES);
     }
 
     Ok(Json(AuthResponse {
@@ -1904,11 +1905,11 @@ pub async fn mfa_disable(
             "users",
             &auth.user_id,
             json!({
-                "mfa_enabled": false,
-                "mfa_secret": null,
-                "mfa_recovery_codes": null,
-                "mfa_last_used_step": null,
-                "mfa_pending_secret": null,
+                (f::MFA_ENABLED): false,
+                (f::MFA_SECRET): null,
+                (f::MFA_RECOVERY_CODES): null,
+                (f::MFA_LAST_USED_STEP): null,
+                "mfa_pending_secret": null, // ignore-magic: transient MFA setup field
             }),
         )
         .await?;
@@ -1973,12 +1974,12 @@ pub async fn admin_list_users(
         .query_raw_value("SELECT count() AS count FROM users GROUP ALL")
         .await?;
     let total = count_result
-        .get("count")
+        .get(f::COUNT)
         .or_else(|| {
             count_result
                 .as_array()
                 .and_then(|items| items.first())
-                .and_then(|item| item.get("count"))
+                .and_then(|item| item.get(f::COUNT))
         })
         .and_then(|v| v.as_u64())
         .unwrap_or(0);
@@ -2041,7 +2042,7 @@ pub async fn admin_set_claims(
         .update_document(
             "users",
             &path.user_id,
-            json!({ "custom_claims": body.custom_claims }),
+            json!({ (f::CUSTOM_CLAIMS): body.custom_claims }),
         )
         .await?;
 
@@ -2079,13 +2080,13 @@ pub async fn admin_update_user(
         updates.insert("display_name".into(), json!(name));
     }
     if let Some(roles) = body.roles {
-        updates.insert("roles".into(), json!(roles));
+        updates.insert(f::ROLES.into(), json!(roles));
     }
     if let Some(verified) = body.email_verified {
-        updates.insert("email_verified".into(), json!(verified));
+        updates.insert(f::EMAIL_VERIFIED.into(), json!(verified));
     }
     if let Some(disabled) = body.disabled {
-        updates.insert("disabled".into(), json!(disabled));
+        updates.insert("disabled".into(), json!(disabled)); // ignore-magic: admin user management field
     }
 
     if updates.is_empty() {
@@ -2279,14 +2280,14 @@ pub async fn admin_create_user(
     let roles = body.roles.unwrap_or_else(|| vec!["user".to_string()]);
 
     let user_data = json!({
-        "email": body.email,
-        "password_hash": password_hash,
-        "display_name": body.display_name.unwrap_or_default(),
-        "roles": roles,
-        "email_verified": body.email_verified.unwrap_or(false),
-        "mfa_enabled": false,
-        "custom_claims": body.custom_claims.unwrap_or(json!({})),
-        "created_at": chrono::Utc::now().to_rfc3339(),
+        (f::EMAIL): body.email,
+        "password_hash": password_hash, // ignore-magic: internal auth field
+        "display_name": body.display_name.unwrap_or_default(), // ignore-magic: admin user creation field
+        (f::ROLES): roles,
+        (f::EMAIL_VERIFIED): body.email_verified.unwrap_or(false),
+        (f::MFA_ENABLED): false,
+        (f::CUSTOM_CLAIMS): body.custom_claims.unwrap_or(json!({})),
+        (f::CREATED_AT): chrono::Utc::now().to_rfc3339(),
     });
 
     let user = state.db.create_document("users", user_data).await?;
@@ -2390,14 +2391,14 @@ pub async fn anonymous_sign_in(State(state): State<AuthState>) -> Result<Json<Au
     let now = chrono::Utc::now().to_rfc3339();
 
     let user_data = json!({
-        "email": null,
-        "password_hash": null,
-        "display_name": format!("Anonymous {}", &anon_id[..8]),
-        "roles": ["anonymous"],
-        "email_verified": false,
-        "mfa_enabled": false,
-        "is_anonymous": true,
-        "created_at": now,
+        (f::EMAIL): null,
+        "password_hash": null, // ignore-magic: internal auth field
+        "display_name": format!("Anonymous {}", &anon_id[..8]), // ignore-magic: user creation field
+        (f::ROLES): ["anonymous"],
+        (f::EMAIL_VERIFIED): false,
+        (f::MFA_ENABLED): false,
+        "is_anonymous": true, // ignore-magic: anonymous auth field
+        (f::CREATED_AT): now,
     });
 
     let user = state.db.create_document("users", user_data).await?;
@@ -2649,14 +2650,14 @@ pub async fn verify_magic_link(
         // Create new user (passwordless account)
         let now = chrono::Utc::now().to_rfc3339();
         let user_data = json!({
-            "email": email,
-            "password_hash": null,
-            "display_name": email.split('@').next().unwrap_or("User"),
-            "roles": ["user"],
-            "email_verified": true,
-            "mfa_enabled": false,
-            "is_anonymous": false,
-            "created_at": now,
+            (f::EMAIL): email,
+            "password_hash": null, // ignore-magic: internal auth field
+            "display_name": email.split('@').next().unwrap_or("User"), // ignore-magic: user creation field
+            (f::ROLES): ["user"],
+            (f::EMAIL_VERIFIED): true,
+            (f::MFA_ENABLED): false,
+            "is_anonymous": false, // ignore-magic: magic link auth field
+            (f::CREATED_AT): now,
         });
 
         let user = state.db.create_document("users", user_data).await?;
@@ -2675,7 +2676,7 @@ pub async fn verify_magic_link(
 
     // Get custom claims
     let custom_claims = user
-        .get("custom_claims")
+        .get(f::CUSTOM_CLAIMS)
         .cloned()
         .unwrap_or(serde_json::Value::Null);
 

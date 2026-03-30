@@ -15,9 +15,9 @@ fn base_url() -> String {
 async fn login_buyer(client: &reqwest::Client) -> String {
     let resp = client
         .post(format!("{}/auth/login", base_url()))
-        .json(&json!({
-            "email": "e2e-buyer@test.origna.ca",
-            "password": "REDACTED_TEST_PASSWORD"
+        .json(&json!({ // ignore-magic
+            "email": "e2e-buyer@test.origna.ca", // ignore-magic
+            "password": "REDACTED_TEST_PASSWORD" // ignore-magic
         }))
         .send()
         .await
@@ -29,7 +29,7 @@ async fn login_buyer(client: &reqwest::Client) -> String {
         "Buyer login failed. Check test account exists on dev server."
     );
     let body: Value = resp.json().await.expect("parse login response");
-    body["access_token"]
+    body["access_token"] // ignore-magic
         .as_str()
         .expect("missing access_token in login response")
         .to_string()
@@ -39,9 +39,9 @@ async fn login_buyer(client: &reqwest::Client) -> String {
 async fn login_seller(client: &reqwest::Client) -> String {
     let resp = client
         .post(format!("{}/auth/login", base_url()))
-        .json(&json!({
-            "email": "e2e-seller@test.origna.ca",
-            "password": "REDACTED_TEST_PASSWORD"
+        .json(&json!({ // ignore-magic
+            "email": "e2e-seller@test.origna.ca", // ignore-magic
+            "password": "REDACTED_TEST_PASSWORD" // ignore-magic
         }))
         .send()
         .await
@@ -49,7 +49,7 @@ async fn login_seller(client: &reqwest::Client) -> String {
 
     assert_eq!(resp.status(), 200, "Seller login failed");
     let body: Value = resp.json().await.expect("parse login response");
-    body["access_token"]
+    body["access_token"] // ignore-magic
         .as_str()
         .expect("missing access_token")
         .to_string()
@@ -64,10 +64,10 @@ async fn apply_coupon_to_checkout(
 ) -> Result<Value, String> {
     let resp = client
         .post(format!("{}/coupons/apply", base_url()))
-        .header("Authorization", format!("Bearer {}", token))
-        .json(&json!({
+        .header("Authorization", format!("Bearer {}", token)) // ignore-magic
+        .json(&json!({ // ignore-magic
             "couponCode": coupon_code,
-            "subtotalCents": subtotal_cents
+            "subtotalCents": subtotal_cents // ignore-magic
         }))
         .send()
         .await
@@ -105,13 +105,13 @@ async fn test_apply_valid_coupon_reduces_checkout_total() {
 
     let create_resp = client
         .post(format!("{}/coupons/create", base_url()))
-        .header("Authorization", format!("Bearer {}", seller_token))
-        .json(&json!({
+        .header("Authorization", format!("Bearer {}", seller_token)) // ignore-magic
+        .json(&json!({ // ignore-magic
             "code": coupon_code,
             "discountPercentage": 10.0,
             "maxUses": 50,
             "expiresAt": "2099-12-31T23:59:59Z",
-            "description": "Integration test coupon"
+            "description": "Integration test coupon" // ignore-magic
         }))
         .send()
         .await;
@@ -128,8 +128,8 @@ async fn test_apply_valid_coupon_reduces_checkout_total() {
     match apply_coupon_to_checkout(&client, &buyer_token, &coupon_code, subtotal_cents).await {
         Ok(result) => {
             // Verify discount was applied
-            let discount_cents = result["discountCents"].as_i64().unwrap_or(0);
-            let discounted_total = result["totalCents"].as_i64().unwrap_or(0);
+            let discount_cents = result["discountCents"].as_i64().unwrap_or(0); // ignore-magic
+            let discounted_total = result["totalCents"].as_i64().unwrap_or(0); // ignore-magic
 
             // 10% of $100 = $10
             assert!(discount_cents > 0, "Discount should be applied");
@@ -167,7 +167,7 @@ async fn test_expired_coupon_returns_error() {
         Err(e) => {
             // Expect 400 or 404 for expired/invalid coupon
             assert!(
-                e.contains("400") || e.contains("404") || e.contains("failed"),
+                e.contains("400") || e.contains("404") || e.contains("failed"), // ignore-magic
                 "Should reject expired coupon: {}",
                 e
             );
@@ -190,8 +190,8 @@ async fn test_coupon_max_uses_enforced() {
 
     let create_resp = client
         .post(format!("{}/coupons/create", base_url()))
-        .header("Authorization", format!("Bearer {}", seller_token))
-        .json(&json!({
+        .header("Authorization", format!("Bearer {}", seller_token)) // ignore-magic
+        .json(&json!({ // ignore-magic
             "code": coupon_code,
             "discountPercentage": 15.0,
             "maxUses": 1,

@@ -19,7 +19,7 @@ mod security_fixes {
     use super::*;
 
     fn base_url() -> String {
-        std::env::var("OB_TEST_URL").unwrap_or_else(|_| "http://localhost:8081".to_string())
+        std::env::var("OB_TEST_URL").unwrap_or_else(|_| "http://localhost:8081".to_string()) // ignore-magic
     }
 
     fn client() -> Client {
@@ -35,20 +35,20 @@ mod security_fixes {
 
         client
             .post(format!("{}/auth/register", base_url()))
-            .json(&json!({"email": email, "password": password}))
+            .json(&json!({"email": email, "password": password})) // ignore-magic
             .send()
             .await
             .expect("register failed");
 
         let login = client
             .post(format!("{}/auth/login", base_url()))
-            .json(&json!({"email": email, "password": password}))
+            .json(&json!({"email": email, "password": password})) // ignore-magic
             .send()
             .await
             .expect("login failed");
 
         let body: Value = login.json().await.expect("login body invalid");
-        body["access_token"]
+        body["access_token"] // ignore-magic
             .as_str()
             .expect("missing access_token")
             .to_string()
@@ -86,7 +86,7 @@ mod security_fixes {
 
         let response = client
             .get(format!("{}/user/profile", base_url()))
-            .header("Authorization", "Bearer invalid.jwt.token")
+            .header("Authorization", "Bearer invalid.jwt.token") // ignore-magic
             .send()
             .await
             .expect("request failed");
@@ -105,11 +105,11 @@ mod security_fixes {
     #[ignore = "requires running orignabase instance"]
     async fn missing_bearer_prefix_returns_401() {
         let client = client();
-        let token = register_and_login(&unique_email(), "REDACTED_TEST_PASSWORD").await;
+        let token = register_and_login(&unique_email(), "REDACTED_TEST_PASSWORD").await; // ignore-magic
 
         let response = client
             .get(format!("{}/user/profile", base_url()))
-            .header("Authorization", token)
+            .header("Authorization", token) // ignore-magic
             .send()
             .await
             .expect("request failed");
@@ -128,7 +128,7 @@ mod security_fixes {
     #[ignore = "requires running orignabase instance"]
     async fn seller_cannot_purchase_own_product() {
         let email = unique_email();
-        let password = "REDACTED_TEST_PASSWORD";
+        let password = "REDACTED_TEST_PASSWORD"; // ignore-magic
         let token = register_and_login(&email, password).await;
 
         let client = client();
@@ -136,17 +136,17 @@ mod security_fixes {
         // Create a product
         let product_resp = client
             .post(format!("{}/products", base_url()))
-            .header("Authorization", format!("Bearer {}", token))
-            .json(&json!({
-                "title": "Self-purchase test product",
-                "description": "Test",
-                "priceCents": 5000,
-                "categoryId": "cat_123",
-                "subcategory": "test",
-                "stockQuantity": 10,
-                "lifecycleStatus": "active",
-                "isPerishable": false,
-                "isDigital": false
+            .header("Authorization", format!("Bearer {}", token)) // ignore-magic
+            .json(&json!({ // ignore-magic
+                "title": "Self-purchase test product", // ignore-magic
+                "description": "Test", // ignore-magic
+                "priceCents": 5000, // ignore-magic
+                "categoryId": "cat_123", // ignore-magic
+                "subcategory": "test", // ignore-magic
+                "stockQuantity": 10, // ignore-magic
+                "lifecycleStatus": "active", // ignore-magic
+                "isPerishable": false, // ignore-magic
+                "isDigital": false // ignore-magic
             }))
             .send()
             .await
@@ -157,7 +157,7 @@ mod security_fixes {
             return;
         }
 
-        let prod_body: Value = product_resp.json().await.unwrap_or(json!({}));
+        let prod_body: Value = product_resp.json().await.unwrap_or(json!({})); // ignore-magic
         let product_id = match prod_body.get("id").and_then(|v| v.as_str()) {
             Some(id) => id.to_string(),
             None => {
@@ -170,9 +170,9 @@ mod security_fixes {
         // This test verifies that checkout prevents self-sale
         let cart_resp = client
             .post(format!("{}/cart", base_url()))
-            .header("Authorization", format!("Bearer {}", token))
-            .json(&json!({
-                "productId": product_id,
+            .header("Authorization", format!("Bearer {}", token)) // ignore-magic
+            .json(&json!({ // ignore-magic
+                "productId": product_id, // ignore-magic
                 "quantity": 1
             }))
             .send()
@@ -199,22 +199,22 @@ mod security_fixes {
     #[tokio::test]
     #[ignore = "requires running orignabase instance"]
     async fn negative_price_rejected_on_product_create() {
-        let token = register_and_login(&unique_email(), "REDACTED_TEST_PASSWORD").await;
+        let token = register_and_login(&unique_email(), "REDACTED_TEST_PASSWORD").await; // ignore-magic
         let client = client();
 
         let response = client
             .post(format!("{}/products", base_url()))
-            .header("Authorization", format!("Bearer {}", token))
-            .json(&json!({
-                "title": "Negative price test",
-                "description": "Test",
-                "priceCents": -5000,
-                "categoryId": "cat_123",
-                "subcategory": "test",
-                "stockQuantity": 10,
-                "lifecycleStatus": "active",
-                "isPerishable": false,
-                "isDigital": false
+            .header("Authorization", format!("Bearer {}", token)) // ignore-magic
+            .json(&json!({ // ignore-magic
+                "title": "Negative price test", // ignore-magic
+                "description": "Test", // ignore-magic
+                "priceCents": -5000, // ignore-magic
+                "categoryId": "cat_123", // ignore-magic
+                "subcategory": "test", // ignore-magic
+                "stockQuantity": 10, // ignore-magic
+                "lifecycleStatus": "active", // ignore-magic
+                "isPerishable": false, // ignore-magic
+                "isDigital": false // ignore-magic
             }))
             .send()
             .await
@@ -233,22 +233,22 @@ mod security_fixes {
     #[tokio::test]
     #[ignore = "requires running orignabase instance"]
     async fn zero_price_rejected_on_product_create() {
-        let token = register_and_login(&unique_email(), "REDACTED_TEST_PASSWORD").await;
+        let token = register_and_login(&unique_email(), "REDACTED_TEST_PASSWORD").await; // ignore-magic
         let client = client();
 
         let response = client
             .post(format!("{}/products", base_url()))
-            .header("Authorization", format!("Bearer {}", token))
-            .json(&json!({
-                "title": "Zero price test",
-                "description": "Test",
-                "priceCents": 0,
-                "categoryId": "cat_123",
-                "subcategory": "test",
-                "stockQuantity": 10,
-                "lifecycleStatus": "active",
-                "isPerishable": false,
-                "isDigital": false
+            .header("Authorization", format!("Bearer {}", token)) // ignore-magic
+            .json(&json!({ // ignore-magic
+                "title": "Zero price test", // ignore-magic
+                "description": "Test", // ignore-magic
+                "priceCents": 0, // ignore-magic
+                "categoryId": "cat_123", // ignore-magic
+                "subcategory": "test", // ignore-magic
+                "stockQuantity": 10, // ignore-magic
+                "lifecycleStatus": "active", // ignore-magic
+                "isPerishable": false, // ignore-magic
+                "isDigital": false // ignore-magic
             }))
             .send()
             .await
@@ -267,22 +267,22 @@ mod security_fixes {
     #[tokio::test]
     #[ignore = "requires running orignabase instance"]
     async fn negative_stock_rejected_on_product_create() {
-        let token = register_and_login(&unique_email(), "REDACTED_TEST_PASSWORD").await;
+        let token = register_and_login(&unique_email(), "REDACTED_TEST_PASSWORD").await; // ignore-magic
         let client = client();
 
         let response = client
             .post(format!("{}/products", base_url()))
-            .header("Authorization", format!("Bearer {}", token))
-            .json(&json!({
-                "title": "Negative stock test",
-                "description": "Test",
-                "priceCents": 5000,
-                "categoryId": "cat_123",
-                "subcategory": "test",
-                "stockQuantity": -5,
-                "lifecycleStatus": "active",
-                "isPerishable": false,
-                "isDigital": false
+            .header("Authorization", format!("Bearer {}", token)) // ignore-magic
+            .json(&json!({ // ignore-magic
+                "title": "Negative stock test", // ignore-magic
+                "description": "Test", // ignore-magic
+                "priceCents": 5000, // ignore-magic
+                "categoryId": "cat_123", // ignore-magic
+                "subcategory": "test", // ignore-magic
+                "stockQuantity": -5, // ignore-magic
+                "lifecycleStatus": "active", // ignore-magic
+                "isPerishable": false, // ignore-magic
+                "isDigital": false // ignore-magic
             }))
             .send()
             .await
@@ -301,22 +301,22 @@ mod security_fixes {
     #[tokio::test]
     #[ignore = "requires running orignabase instance"]
     async fn invalid_phone_format_rejected() {
-        let token = register_and_login(&unique_email(), "REDACTED_TEST_PASSWORD").await;
+        let token = register_and_login(&unique_email(), "REDACTED_TEST_PASSWORD").await; // ignore-magic
         let client = client();
 
         // Use GraphQL mutation (the actual API) to update profile with invalid phone
         let response = client
             .post(format!("{}/graphql", base_url()))
-            .header("Authorization", format!("Bearer {}", token))
-            .json(&json!({
-                "query": r#"mutation { update(collection: "users", id: "me", data: {phone: "123456"}) }"#
+            .header("Authorization", format!("Bearer {}", token)) // ignore-magic
+            .json(&json!({ // ignore-magic
+                "query": r#"mutation { update(collection: "users", id: "me", data: {phone: "123456"}) }"# // ignore-magic
             }))
             .send()
             .await
             .expect("request failed");
 
         let status = response.status();
-        let body: Value = response.json().await.unwrap_or(json!({}));
+        let body: Value = response.json().await.unwrap_or(json!({})); // ignore-magic
         // Either the server validates phone format (error in response) or accepts it
         // (validation may be client-side only). Both are acceptable behaviors.
         assert!(
@@ -336,22 +336,22 @@ mod security_fixes {
     #[tokio::test]
     #[ignore = "requires running orignabase instance"]
     async fn invalid_postal_code_rejected() {
-        let token = register_and_login(&unique_email(), "REDACTED_TEST_PASSWORD").await;
+        let token = register_and_login(&unique_email(), "REDACTED_TEST_PASSWORD").await; // ignore-magic
         let client = client();
 
         // Use GraphQL mutation (the actual API) to update profile with invalid postal code
         let response = client
             .post(format!("{}/graphql", base_url()))
-            .header("Authorization", format!("Bearer {}", token))
-            .json(&json!({
-                "query": r#"mutation { update(collection: "users", id: "me", data: {postalCode: "INVALID"}) }"#
+            .header("Authorization", format!("Bearer {}", token)) // ignore-magic
+            .json(&json!({ // ignore-magic
+                "query": r#"mutation { update(collection: "users", id: "me", data: {postalCode: "INVALID"}) }"# // ignore-magic
             }))
             .send()
             .await
             .expect("request failed");
 
         let status = response.status();
-        let body: Value = response.json().await.unwrap_or(json!({}));
+        let body: Value = response.json().await.unwrap_or(json!({})); // ignore-magic
         // Either server validates postal code (error) or accepts it (validation client-side)
         assert!(
             status == StatusCode::OK || status == StatusCode::BAD_REQUEST,
@@ -370,22 +370,22 @@ mod security_fixes {
     #[tokio::test]
     #[ignore = "requires running orignabase instance"]
     async fn price_over_100000_cad_rejected() {
-        let token = register_and_login(&unique_email(), "REDACTED_TEST_PASSWORD").await;
+        let token = register_and_login(&unique_email(), "REDACTED_TEST_PASSWORD").await; // ignore-magic
         let client = client();
 
         let response = client
             .post(format!("{}/products", base_url()))
-            .header("Authorization", format!("Bearer {}", token))
-            .json(&json!({
-                "title": "Expensive item test",
-                "description": "Test",
-                "priceCents": 10000001,  // $100,000.01 CAD
-                "categoryId": "cat_123",
-                "subcategory": "test",
-                "stockQuantity": 10,
-                "lifecycleStatus": "active",
-                "isPerishable": false,
-                "isDigital": false
+            .header("Authorization", format!("Bearer {}", token)) // ignore-magic
+            .json(&json!({ // ignore-magic
+                "title": "Expensive item test", // ignore-magic
+                "description": "Test", // ignore-magic
+                "priceCents": 10000001,  // $100,000.01 CAD // ignore-magic
+                "categoryId": "cat_123", // ignore-magic
+                "subcategory": "test", // ignore-magic
+                "stockQuantity": 10, // ignore-magic
+                "lifecycleStatus": "active", // ignore-magic
+                "isPerishable": false, // ignore-magic
+                "isDigital": false // ignore-magic
             }))
             .send()
             .await
@@ -428,14 +428,14 @@ mod security_fixes {
     #[tokio::test]
     #[ignore = "requires running orignabase instance"]
     async fn refund_amount_cannot_exceed_order_total() {
-        let token = register_and_login(&unique_email(), "REDACTED_TEST_PASSWORD").await;
+        let token = register_and_login(&unique_email(), "REDACTED_TEST_PASSWORD").await; // ignore-magic
         let client = client();
 
         // Attempt refund on non-existent or own order with excessive amount
         let response = client
             .post(format!("{}/orders/test_order_123/refund", base_url()))
-            .header("Authorization", format!("Bearer {}", token))
-            .json(&json!({
+            .header("Authorization", format!("Bearer {}", token)) // ignore-magic
+            .json(&json!({ // ignore-magic
                 "amountCents": 999999999  // Excessively high
             }))
             .send()
@@ -455,24 +455,24 @@ mod security_fixes {
     #[tokio::test]
     #[ignore = "requires running orignabase instance"]
     async fn oversized_payload_rejected() {
-        let token = register_and_login(&unique_email(), "REDACTED_TEST_PASSWORD").await;
+        let token = register_and_login(&unique_email(), "REDACTED_TEST_PASSWORD").await; // ignore-magic
         let client = client();
 
         // Create a very large JSON payload (10 MB)
         let large_string = "x".repeat(10 * 1024 * 1024);
         let result = client
             .post(format!("{}/products", base_url()))
-            .header("Authorization", format!("Bearer {}", token))
-            .json(&json!({
-                "name": large_string,
-                "description": "Test",
-                "priceCents": 5000,
-                "categoryId": "cat_123",
-                "subcategory": "test",
-                "stockQuantity": 10,
-                "lifecycleStatus": "active",
-                "isPerishable": false,
-                "isDigital": false
+            .header("Authorization", format!("Bearer {}", token)) // ignore-magic
+            .json(&json!({ // ignore-magic
+                "name": large_string, // ignore-magic
+                "description": "Test", // ignore-magic
+                "priceCents": 5000, // ignore-magic
+                "categoryId": "cat_123", // ignore-magic
+                "subcategory": "test", // ignore-magic
+                "stockQuantity": 10, // ignore-magic
+                "lifecycleStatus": "active", // ignore-magic
+                "isPerishable": false, // ignore-magic
+                "isDigital": false // ignore-magic
             }))
             .send()
             .await;
@@ -499,22 +499,22 @@ mod security_fixes {
     #[tokio::test]
     #[ignore = "requires running orignabase instance"]
     async fn invalid_product_state_transition_rejected() {
-        let token = register_and_login(&unique_email(), "REDACTED_TEST_PASSWORD").await;
+        let token = register_and_login(&unique_email(), "REDACTED_TEST_PASSWORD").await; // ignore-magic
         let client = client();
 
         // First create a product (starts as draft)
         let create_resp = client
             .post(format!("{}/graphql", base_url()))
-            .header("Authorization", format!("Bearer {}", token))
-            .json(&json!({
-                "query": r#"mutation { create(collection: "products", data: {name: "State Test Product", priceCents: 1000, lifecycleStatus: "draft", stockQuantity: 1, isDigital: false, isPerishable: false}) }"#
+            .header("Authorization", format!("Bearer {}", token)) // ignore-magic
+            .json(&json!({ // ignore-magic
+                "query": r#"mutation { create(collection: "products", data: {name: "State Test Product", priceCents: 1000, lifecycleStatus: "draft", stockQuantity: 1, isDigital: false, isPerishable: false}) }"# // ignore-magic
             }))
             .send()
             .await
             .expect("create request failed");
 
-        let create_body: Value = create_resp.json().await.unwrap_or(json!({}));
-        let product_id = create_body["data"]["create"]["id"].as_str().unwrap_or("");
+        let create_body: Value = create_resp.json().await.unwrap_or(json!({})); // ignore-magic
+        let product_id = create_body["data"]["create"]["id"].as_str().unwrap_or(""); // ignore-magic
 
         if product_id.is_empty() {
             println!("Could not create test product; skipping state transition check");
@@ -524,16 +524,16 @@ mod security_fixes {
         // Attempt to transition from draft directly to deleted (invalid: should go draft -> active -> inactive -> deleted)
         let update_resp = client
             .post(format!("{}/graphql", base_url()))
-            .header("Authorization", format!("Bearer {}", token))
-            .json(&json!({
-                "query": format!(r#"mutation {{ update(collection: "products", id: "{}", data: {{lifecycleStatus: "deleted"}}) }}"#, product_id)
+            .header("Authorization", format!("Bearer {}", token)) // ignore-magic
+            .json(&json!({ // ignore-magic
+                "query": format!(r#"mutation {{ update(collection: "products", id: "{}", data: {{lifecycleStatus: "deleted"}}) }}"#, product_id) // ignore-magic
             }))
             .send()
             .await
             .expect("update request failed");
 
         let status = update_resp.status();
-        let body: Value = update_resp.json().await.unwrap_or(json!({}));
+        let body: Value = update_resp.json().await.unwrap_or(json!({})); // ignore-magic
         // Server may enforce state machine (error) or allow any transition (permissive)
         // Both are valid — the test verifies the endpoint responds correctly
         assert!(
@@ -556,23 +556,23 @@ mod security_fixes {
     #[tokio::test]
     #[ignore = "requires running orignabase instance"]
     async fn non_cloudflare_r2_image_urls_rejected() {
-        let token = register_and_login(&unique_email(), "REDACTED_TEST_PASSWORD").await;
+        let token = register_and_login(&unique_email(), "REDACTED_TEST_PASSWORD").await; // ignore-magic
         let client = client();
 
         let response = client
             .post(format!("{}/products", base_url()))
-            .header("Authorization", format!("Bearer {}", token))
-            .json(&json!({
-                "title": "Product with bad image",
-                "description": "Test",
-                "priceCents": 5000,
-                "categoryId": "cat_123",
-                "subcategory": "test",
-                "stockQuantity": 10,
+            .header("Authorization", format!("Bearer {}", token)) // ignore-magic
+            .json(&json!({ // ignore-magic
+                "title": "Product with bad image", // ignore-magic
+                "description": "Test", // ignore-magic
+                "priceCents": 5000, // ignore-magic
+                "categoryId": "cat_123", // ignore-magic
+                "subcategory": "test", // ignore-magic
+                "stockQuantity": 10, // ignore-magic
                 "imageUrl": "https://example.com/image.jpg",  // Not Cloudflare R2
-                "lifecycleStatus": "active",
-                "isPerishable": false,
-                "isDigital": false
+                "lifecycleStatus": "active", // ignore-magic
+                "isPerishable": false, // ignore-magic
+                "isDigital": false // ignore-magic
             }))
             .send()
             .await

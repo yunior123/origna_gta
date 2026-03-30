@@ -14,18 +14,18 @@ use tokio::time::Instant;
 use uuid::Uuid;
 
 fn base_url() -> String {
-    std::env::var("OB_TEST_URL").unwrap_or_else(|_| "http://localhost:8080".to_string())
+    std::env::var("OB_TEST_URL").unwrap_or_else(|_| "http://localhost:8080".to_string()) // ignore-magic
 }
 
 fn password() -> String {
-    std::env::var("OB_TEST_PASSWORD").unwrap_or_else(|_| "TestPassword123!".to_string())
+    std::env::var("OB_TEST_PASSWORD").unwrap_or_else(|_| "TestPassword123!".to_string()) // ignore-magic
 }
 
 async fn register_test_user(client: &reqwest::Client) -> (String, String) {
     let email = format!("stress_{}@example.com", Uuid::new_v4());
     let resp = client
         .post(format!("{}/auth/register", base_url()))
-        .json(&json!({ "email": email, "password": password() }))
+        .json(&json!({ "email": email, "password": password() })) // ignore-magic
         .send()
         .await
         .expect("register failed");
@@ -33,7 +33,7 @@ async fn register_test_user(client: &reqwest::Client) -> (String, String) {
     assert_eq!(resp.status(), StatusCode::OK, "registration should succeed");
     let body: Value = resp.json().await.expect("register json");
     (
-        body["access_token"]
+        body["access_token"] // ignore-magic
             .as_str()
             .expect("missing access_token")
             .to_string(),
@@ -44,8 +44,8 @@ async fn register_test_user(client: &reqwest::Client) -> (String, String) {
 async fn graphql(client: &reqwest::Client, token: &str, query: &str) -> Value {
     let resp = client
         .post(format!("{}/graphql", base_url()))
-        .header("Authorization", format!("Bearer {token}"))
-        .json(&json!({ "query": query }))
+        .header("Authorization", format!("Bearer {token}")) // ignore-magic
+        .json(&json!({ "query": query })) // ignore-magic
         .send()
         .await
         .expect("graphql request failed");
@@ -64,10 +64,10 @@ async fn create_doc(
     let escaped = serde_json::to_string(&data_str).expect("escape data");
     let query = format!(r#"mutation {{ create(collection: "{collection}", data: {escaped}) }}"#);
     let body = graphql(client, token, &query).await;
-    body["data"]["create"]["id"]
+    body["data"]["create"]["id"] // ignore-magic
         .as_str()
-        .or_else(|| body["data"]["create"]["_id"].as_str())
-        .or_else(|| body["data"]["create"].as_str())
+        .or_else(|| body["data"]["create"]["_id"].as_str()) // ignore-magic
+        .or_else(|| body["data"]["create"].as_str()) // ignore-magic
         .unwrap_or_default()
         .to_string()
 }
@@ -85,7 +85,7 @@ async fn list_collection(
 async fn admin_put_config(client: &reqwest::Client, key: &str, value: Value) -> reqwest::Response {
     client
         .put(format!("{}/_admin/config/{key}", base_url()))
-        .json(&json!({ "value": value }))
+        .json(&json!({ "value": value })) // ignore-magic
         .send()
         .await
         .expect("admin put failed")
@@ -102,7 +102,7 @@ async fn test_01_concurrent_same_key_writes_five_parallel_puts() {
         let client = Arc::clone(&client);
         let key = key.clone();
         set.spawn(async move {
-            let resp = admin_put_config(&client, &key, json!({ "writer": idx })).await;
+            let resp = admin_put_config(&client, &key, json!({ "writer": idx })).await; // ignore-magic
             let status = resp.status();
             // Concurrent writes may cause 409 Conflict or 500 from PostgreSQL write conflicts
             assert!(
@@ -137,14 +137,14 @@ async fn test_02_rapid_sequential_creates_hundred_docs() {
             &client,
             &token,
             &collection,
-            &json!({ "idx": idx, "kind": "rapid-sequential" }),
+            &json!({ "idx": idx, "kind": "rapid-sequential" }), // ignore-magic
         )
         .await;
         assert!(!doc_id.is_empty(), "document {idx} should be created");
     }
 
     let body = list_collection(&client, &token, &collection, 150).await;
-    let len = body["data"]["list"]
+    let len = body["data"]["list"] // ignore-magic
         .as_array()
         .map(|items| items.len())
         .unwrap_or(0);
@@ -162,7 +162,7 @@ async fn test_03_large_collection_listing_under_load() {
     let collection = format!("stress_large_list_{}", Uuid::new_v4().simple());
 
     for idx in 0..250 {
-        let _ = create_doc(&client, &token, &collection, &json!({ "idx": idx })).await;
+        let _ = create_doc(&client, &token, &collection, &json!({ "idx": idx })).await; // ignore-magic
     }
 
     let start = Instant::now();
@@ -172,7 +172,7 @@ async fn test_03_large_collection_listing_under_load() {
         "large listing took too long"
     );
     assert!(
-        body["data"]["list"].is_array() || body.get("errors").is_some(),
+        body["data"]["list"].is_array() || body.get("errors").is_some(), // ignore-magic
         "unexpected list result: {body}"
     );
 }
@@ -250,7 +250,7 @@ async fn test_06_parallel_create_and_list_mix() {
                 &client,
                 token.as_str(),
                 collection.as_str(),
-                &json!({ "idx": idx, "mode": "mixed" }),
+                &json!({ "idx": idx, "mode": "mixed" }), // ignore-magic
             )
             .await;
         });
@@ -263,7 +263,7 @@ async fn test_06_parallel_create_and_list_mix() {
         set.spawn(async move {
             let body = list_collection(&client, token.as_str(), collection.as_str(), 50).await;
             assert!(
-                body["data"]["list"].is_array() || body.get("errors").is_some(),
+                body["data"]["list"].is_array() || body.get("errors").is_some(), // ignore-magic
                 "unexpected mixed list body: {body}"
             );
         });
@@ -281,14 +281,14 @@ async fn test_07_large_document_create_is_handled_gracefully() {
     let (token, _) = register_test_user(&client).await;
     let collection = format!("stress_large_doc_{}", Uuid::new_v4().simple());
     let large_value = "x".repeat(1_000_000);
-    let data = serde_json::to_string(&json!({ "blob": large_value })).expect("serialize");
+    let data = serde_json::to_string(&json!({ "blob": large_value })).expect("serialize"); // ignore-magic
     let escaped = serde_json::to_string(&data).expect("escape");
     let query = format!(r#"mutation {{ create(collection: "{collection}", data: {escaped}) }}"#);
 
     let resp = client
         .post(format!("{}/graphql", base_url()))
-        .header("Authorization", format!("Bearer {token}"))
-        .json(&json!({ "query": query }))
+        .header("Authorization", format!("Bearer {token}")) // ignore-magic
+        .json(&json!({ "query": query })) // ignore-magic
         .send()
         .await
         .expect("large create failed");
@@ -313,7 +313,7 @@ async fn test_08_five_parallel_updates_same_document() {
         &client,
         token.as_str(),
         collection.as_str(),
-        &json!({ "version": 0, "status": "initial" }),
+        &json!({ "version": 0, "status": "initial" }), // ignore-magic
     )
     .await;
     let clean_id = doc_id
@@ -329,7 +329,7 @@ async fn test_08_five_parallel_updates_same_document() {
         let collection = Arc::clone(&collection);
         let clean_id = clean_id.clone();
         set.spawn(async move {
-            let data = serde_json::to_string(&json!({ "version": idx, "status": "updated" }))
+            let data = serde_json::to_string(&json!({ "version": idx, "status": "updated" })) // ignore-magic
                 .expect("serialize");
             let escaped = serde_json::to_string(&data).expect("escape");
             let query = format!(
@@ -337,8 +337,8 @@ async fn test_08_five_parallel_updates_same_document() {
             );
             let body = graphql(&client, token.as_str(), &query).await;
             assert!(
-                body["data"]["update"].is_object()
-                    || body["data"]["update"].is_string()
+                body["data"]["update"].is_object() // ignore-magic
+                    || body["data"]["update"].is_string() // ignore-magic
                     || body.get("errors").is_some(),
                 "unexpected update body: {body}"
             );
@@ -368,7 +368,7 @@ async fn test_09_burst_of_authenticated_graphql_requests() {
                 &client,
                 token.as_str(),
                 collection.as_str(),
-                &json!({ "idx": idx, "burst": true }),
+                &json!({ "idx": idx, "burst": true }), // ignore-magic
             )
             .await;
         });

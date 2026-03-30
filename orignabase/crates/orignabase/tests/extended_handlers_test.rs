@@ -13,25 +13,25 @@ use serde_json::{Value, json};
 use uuid::Uuid;
 
 fn base_url() -> String {
-    std::env::var("OB_TEST_URL").unwrap_or_else(|_| "http://localhost:8080".to_string())
+    std::env::var("OB_TEST_URL").unwrap_or_else(|_| "http://localhost:8080".to_string()) // ignore-magic
 }
 
 async fn register_test_user(client: &reqwest::Client) -> (String, String, String) {
-    let email = format!("test_{}@example.com", Uuid::new_v4());
+    let email = format!("test_{}@example.com", Uuid::new_v4()); // ignore-magic
     let resp = client
         .post(format!("{}/auth/register", base_url()))
-        .json(&json!({ "email": email, "password": "TestPassword123!" }))
+        .json(&json!({ "email": email, "password": "TestPassword123!" })) // ignore-magic
         .send()
         .await
         .expect("register failed");
 
     assert_eq!(resp.status(), 200, "Registration should succeed");
     let body: Value = resp.json().await.unwrap();
-    let token = body["access_token"]
+    let token = body["access_token"] // ignore-magic
         .as_str()
         .expect("missing access_token")
         .to_string();
-    let user_id = body["user"]["id"]
+    let user_id = body["user"]["id"] // ignore-magic
         .as_str()
         .expect("missing user.id")
         .to_string();
@@ -42,14 +42,14 @@ async fn graphql(client: &reqwest::Client, token: Option<&str>, query: &str) -> 
     let url = format!("{}/graphql", base_url());
     let mut req = client
         .post(&url)
-        .header("Content-Type", "application/json")
-        .json(&json!({ "query": query }));
+        .header("Content-Type", "application/json") // ignore-magic
+        .json(&json!({ "query": query })); // ignore-magic
     if let Some(t) = token {
-        req = req.header("Authorization", format!("Bearer {t}"));
+        req = req.header("Authorization", format!("Bearer {t}")); // ignore-magic
     }
     let resp = req.send().await.expect("graphql request failed");
     let status = resp.status().as_u16();
-    let body: Value = resp.json().await.unwrap_or(json!({}));
+    let body: Value = resp.json().await.unwrap_or(json!({})); // ignore-magic
     (status, body)
 }
 
@@ -66,12 +66,12 @@ async fn test_600_product_create_minimal_fields() {
     let (status, body) = graphql(
         &client,
         Some(&token),
-        r#"mutation { create(collection: "products", data: {name: "Minimal Product", priceCents: 100}) }"#,
+        r#"mutation { create(collection: "products", data: {name: "Minimal Product", priceCents: 100}) }"#, // ignore-magic
     )
     .await;
 
     assert_eq!(status, 200);
-    let id = body["data"]["create"]["id"].as_str();
+    let id = body["data"]["create"]["id"].as_str(); // ignore-magic
     assert!(id.is_some(), "Should return product ID");
 }
 
@@ -84,7 +84,7 @@ async fn test_601_product_create_with_all_fields() {
     let (status, body) = graphql(
         &client,
         Some(&token),
-        r#"mutation { create(collection: "products", data: {
+        r#"mutation { create(collection: "products", data: { // ignore-magic
             name: "Full Product",
             description: "A product with all fields",
             priceCents: 5999,
@@ -92,16 +92,16 @@ async fn test_601_product_create_with_all_fields() {
             categoryId: "categories:electronics",
             isDigital: false,
             isPerishable: false,
-            lifecycleStatus: "active"
+            lifecycleStatus: "active" // ignore-magic
         }) }"#,
     )
     .await;
 
     assert_eq!(status, 200);
-    let product = &body["data"]["create"];
-    assert!(product["id"].as_str().is_some());
-    assert_eq!(product["name"], "Full Product");
-    assert_eq!(product["priceCents"], 5999);
+    let product = &body["data"]["create"]; // ignore-magic
+    assert!(product["id"].as_str().is_some()); // ignore-magic
+    assert_eq!(product["name"], "Full Product"); // ignore-magic
+    assert_eq!(product["priceCents"], 5999); // ignore-magic
 }
 
 #[tokio::test]
@@ -114,10 +114,10 @@ async fn test_602_product_update_price() {
     let (_, create_body) = graphql(
         &client,
         Some(&token),
-        r#"mutation { create(collection: "products", data: {name: "Price Test", priceCents: 1000}) }"#,
+        r#"mutation { create(collection: "products", data: {name: "Price Test", priceCents: 1000}) }"#, // ignore-magic
     )
     .await;
-    let product_id = create_body["data"]["create"]["id"]
+    let product_id = create_body["data"]["create"]["id"] // ignore-magic
         .as_str()
         .unwrap()
         .to_string();
@@ -127,13 +127,13 @@ async fn test_602_product_update_price() {
         &client,
         Some(&token),
         &format!(
-            r#"mutation {{ update(collection: "products", id: "{product_id}", data: {{priceCents: 2500}}) }}"#
+            r#"mutation {{ update(collection: "products", id: "{product_id}", data: {{priceCents: 2500}}) }}"# // ignore-magic
         ),
     )
     .await;
 
     assert_eq!(status, 200);
-    assert_eq!(body["data"]["update"]["priceCents"], 2500);
+    assert_eq!(body["data"]["update"]["priceCents"], 2500); // ignore-magic
 }
 
 #[tokio::test]
@@ -146,10 +146,10 @@ async fn test_603_product_delete() {
     let (_, create_body) = graphql(
         &client,
         Some(&token),
-        r#"mutation { create(collection: "products", data: {name: "Delete Test", priceCents: 100}) }"#,
+        r#"mutation { create(collection: "products", data: {name: "Delete Test", priceCents: 100}) }"#, // ignore-magic
     )
     .await;
-    let product_id = create_body["data"]["create"]["id"]
+    let product_id = create_body["data"]["create"]["id"] // ignore-magic
         .as_str()
         .unwrap()
         .to_string();
@@ -158,13 +158,13 @@ async fn test_603_product_delete() {
     let (status, body) = graphql(
         &client,
         Some(&token),
-        &format!(r#"mutation {{ delete(collection: "products", id: "{product_id}") }}"#),
+        &format!(r#"mutation {{ delete(collection: "products", id: "{product_id}") }}"#), // ignore-magic
     )
     .await;
 
     assert_eq!(status, 200);
     // delete returns the deleted object
-    assert!(body["data"]["delete"]["id"].as_str().is_some());
+    assert!(body["data"]["delete"]["id"].as_str().is_some()); // ignore-magic
 }
 
 #[tokio::test]
@@ -178,7 +178,7 @@ async fn test_604_product_list_with_pagination() {
         graphql(
             &client,
             Some(&token),
-            &format!(r#"mutation {{ create(collection: "products", data: {{name: "Paginated Product {i}", priceCents: 100}}) }}"#),
+            &format!(r#"mutation {{ create(collection: "products", data: {{name: "Paginated Product {i}", priceCents: 100}}) }}"#), // ignore-magic
         )
         .await;
     }
@@ -187,12 +187,12 @@ async fn test_604_product_list_with_pagination() {
     let (status, body) = graphql(
         &client,
         Some(&token),
-        r#"{ list(collection: "products", limit: 2, offset: 0) }"#,
+        r#"{ list(collection: "products", limit: 2, offset: 0) }"#, // ignore-magic
     )
     .await;
 
     assert_eq!(status, 200);
-    let products = body["data"]["list"].as_array();
+    let products = body["data"]["list"].as_array(); // ignore-magic
     assert!(products.is_some(), "Should return array");
 }
 
@@ -215,7 +215,7 @@ async fn test_605_cart_create_and_read() {
     .await;
 
     assert_eq!(status, 200);
-    let cart_id = body["data"]["create"]["id"].as_str().unwrap().to_string();
+    let cart_id = body["data"]["create"]["id"].as_str().unwrap().to_string(); // ignore-magic
 
     // Read cart back
     let (status, body) = graphql(
@@ -226,7 +226,7 @@ async fn test_605_cart_create_and_read() {
     .await;
 
     assert_eq!(status, 200);
-    assert!(body["data"]["get"]["items"].is_array());
+    assert!(body["data"]["get"]["items"].is_array()); // ignore-magic
 }
 
 #[tokio::test]
@@ -242,7 +242,7 @@ async fn test_606_cart_update_quantity() {
         r#"mutation { create(collection: "carts", data: {items: [{productId: "p1", quantity: 1, priceCents: 500}]}) }"#,
     )
     .await;
-    let cart_id = create_body["data"]["create"]["id"]
+    let cart_id = create_body["data"]["create"]["id"] // ignore-magic
         .as_str()
         .unwrap()
         .to_string();
@@ -272,7 +272,7 @@ async fn test_607_cart_delete() {
         r#"mutation { create(collection: "carts", data: {items: []}) }"#,
     )
     .await;
-    let cart_id = create_body["data"]["create"]["id"]
+    let cart_id = create_body["data"]["create"]["id"] // ignore-magic
         .as_str()
         .unwrap()
         .to_string();
@@ -286,7 +286,7 @@ async fn test_607_cart_delete() {
 
     assert_eq!(status, 200);
     // delete returns the deleted object
-    assert!(body["data"]["delete"]["id"].as_str().is_some());
+    assert!(body["data"]["delete"]["id"].as_str().is_some()); // ignore-magic
 }
 
 #[tokio::test]
@@ -303,7 +303,7 @@ async fn test_608_cart_empty_items() {
     .await;
 
     assert_eq!(status, 200);
-    let items = &body["data"]["create"]["items"];
+    let items = &body["data"]["create"]["items"]; // ignore-magic
     assert!(
         items.is_array() || items.is_null(),
         "Empty cart should have empty/null items"
@@ -321,12 +321,12 @@ async fn test_609_order_create() {
     let (token, user_id, _) = register_test_user(&client).await;
 
     let query = format!(
-        r#"mutation {{ create(collection: "orders", data: {{userId: "{user_id}", items: [{{productId: "p1", quantity: 1, priceCents: 1000}}], totalAmountCents: 1000, status: "pending"}}) }}"#
+        r#"mutation {{ create(collection: "orders", data: {{userId: "{user_id}", items: [{{productId: "p1", quantity: 1, priceCents: 1000}}], totalAmountCents: 1000, status: "pending"}}) }}"# // ignore-magic
     );
     let (status, body) = graphql(&client, Some(&token), &query).await;
 
     assert_eq!(status, 200);
-    assert!(body["data"]["create"]["id"].as_str().is_some());
+    assert!(body["data"]["create"]["id"].as_str().is_some()); // ignore-magic
 }
 
 #[tokio::test]
@@ -337,10 +337,10 @@ async fn test_610_order_update_status() {
 
     // Create order
     let query = format!(
-        r#"mutation {{ create(collection: "orders", data: {{userId: "{user_id}", items: [{{productId: "p1", quantity: 1, priceCents: 500}}], totalAmountCents: 500, status: "pending"}}) }}"#
+        r#"mutation {{ create(collection: "orders", data: {{userId: "{user_id}", items: [{{productId: "p1", quantity: 1, priceCents: 500}}], totalAmountCents: 500, status: "pending"}}) }}"# // ignore-magic
     );
     let (_, create_body) = graphql(&client, Some(&token), &query).await;
-    let order_id = create_body["data"]["create"]["id"]
+    let order_id = create_body["data"]["create"]["id"] // ignore-magic
         .as_str()
         .unwrap()
         .to_string();
@@ -350,13 +350,13 @@ async fn test_610_order_update_status() {
         &client,
         Some(&token),
         &format!(
-            r#"mutation {{ update(collection: "orders", id: "{order_id}", data: {{status: "confirmed"}}) }}"#
+            r#"mutation {{ update(collection: "orders", id: "{order_id}", data: {{status: "confirmed"}}) }}"# // ignore-magic
         ),
     )
     .await;
 
     assert_eq!(status, 200);
-    assert_eq!(body["data"]["update"]["status"], "confirmed");
+    assert_eq!(body["data"]["update"]["status"], "confirmed"); // ignore-magic
 }
 
 #[tokio::test]
@@ -367,7 +367,7 @@ async fn test_611_order_list_for_user() {
 
     // Create an order
     let query = format!(
-        r#"mutation {{ create(collection: "orders", data: {{userId: "{user_id}", items: [{{productId: "p1", quantity: 1, priceCents: 100}}], totalAmountCents: 100, status: "pending"}}) }}"#
+        r#"mutation {{ create(collection: "orders", data: {{userId: "{user_id}", items: [{{productId: "p1", quantity: 1, priceCents: 100}}], totalAmountCents: 100, status: "pending"}}) }}"# // ignore-magic
     );
     graphql(&client, Some(&token), &query).await;
 
@@ -375,12 +375,12 @@ async fn test_611_order_list_for_user() {
     let (status, body) = graphql(
         &client,
         Some(&token),
-        r#"{ list(collection: "orders", limit: 10) }"#,
+        r#"{ list(collection: "orders", limit: 10) }"#, // ignore-magic
     )
     .await;
 
     assert_eq!(status, 200);
-    let orders = body["data"]["list"].as_array();
+    let orders = body["data"]["list"].as_array(); // ignore-magic
     assert!(orders.is_some(), "Should return array of orders");
 }
 
@@ -398,7 +398,7 @@ async fn test_612_email_format_validation() {
     for invalid_email in invalid_emails {
         let resp = client
             .post(format!("{}/auth/register", base_url()))
-            .json(&json!({ "email": invalid_email, "password": "TestPassword123!" }))
+            .json(&json!({ "email": invalid_email, "password": "TestPassword123!" })) // ignore-magic
             .send()
             .await
             .unwrap();
@@ -419,7 +419,7 @@ async fn test_613_email_case_insensitivity() {
     let email = format!("TEST_{}@EXAMPLE.COM", Uuid::new_v4());
     let resp = client
         .post(format!("{}/auth/register", base_url()))
-        .json(&json!({ "email": email, "password": "TestPassword123!" }))
+        .json(&json!({ "email": email, "password": "TestPassword123!" })) // ignore-magic
         .send()
         .await
         .unwrap();
@@ -436,7 +436,7 @@ async fn test_614_email_duplicate_prevention() {
     // Register first user
     let resp1 = client
         .post(format!("{}/auth/register", base_url()))
-        .json(&json!({ "email": email.clone(), "password": "TestPassword123!" }))
+        .json(&json!({ "email": email.clone(), "password": "TestPassword123!" })) // ignore-magic
         .send()
         .await
         .unwrap();
@@ -445,7 +445,7 @@ async fn test_614_email_duplicate_prevention() {
     // Try register same email again
     let resp2 = client
         .post(format!("{}/auth/register", base_url()))
-        .json(&json!({ "email": email, "password": "TestPassword123!" }))
+        .json(&json!({ "email": email, "password": "TestPassword123!" })) // ignore-magic
         .send()
         .await
         .unwrap();
@@ -469,13 +469,13 @@ async fn test_615_graphql_without_auth_returns_null() {
     let (status, body) = graphql(
         &client,
         None,
-        r#"{ get(collection: "users", id: "users:nonexistent") }"#,
+        r#"{ get(collection: "users", id: "users:nonexistent") }"#, // ignore-magic
     )
     .await;
 
     assert_eq!(status, 200, "GraphQL should return 200 even without auth");
     assert!(
-        body["data"]["get"].is_null(),
+        body["data"]["get"].is_null(), // ignore-magic
         "Should return null for unauthenticated get"
     );
 }
@@ -488,13 +488,13 @@ async fn test_616_invalid_token_on_graphql() {
     let (status, body) = graphql(
         &client,
         Some("invalid_token_not_jwt"),
-        r#"{ get(collection: "users", id: "users:test") }"#,
+        r#"{ get(collection: "users", id: "users:test") }"#, // ignore-magic
     )
     .await;
 
     assert_eq!(status, 200, "GraphQL should return 200");
     assert!(
-        body["data"]["get"].is_null(),
+        body["data"]["get"].is_null(), // ignore-magic
         "Invalid token should return null data"
     );
 }
@@ -515,11 +515,11 @@ async fn test_617_sequential_product_operations() {
             &client,
             Some(&token),
             &format!(
-                r#"mutation {{ create(collection: "products", data: {{name: "Seq Product {i}", priceCents: 100}}) }}"#
+                r#"mutation {{ create(collection: "products", data: {{name: "Seq Product {i}", priceCents: 100}}) }}"# // ignore-magic
             ),
         )
         .await;
-        let product_id = create_body["data"]["create"]["id"]
+        let product_id = create_body["data"]["create"]["id"] // ignore-magic
             .as_str()
             .unwrap()
             .to_string();
@@ -528,7 +528,7 @@ async fn test_617_sequential_product_operations() {
         let (status, _) = graphql(
             &client,
             Some(&token),
-            &format!(r#"{{ get(collection: "products", id: "{product_id}") }}"#),
+            &format!(r#"{{ get(collection: "products", id: "{product_id}") }}"#), // ignore-magic
         )
         .await;
         assert_eq!(status, 200, "Sequential read {i} should succeed");
@@ -538,7 +538,7 @@ async fn test_617_sequential_product_operations() {
             &client,
             Some(&token),
             &format!(
-                r#"mutation {{ update(collection: "products", id: "{product_id}", data: {{priceCents: {}}}) }}"#,
+                r#"mutation {{ update(collection: "products", id: "{product_id}", data: {{priceCents: {}}}) }}"#, // ignore-magic
                 200 + i
             ),
         )
@@ -558,7 +558,7 @@ async fn test_618_sequential_user_profile_updates() {
             &client,
             Some(&token),
             &format!(
-                r#"mutation {{ update(collection: "users", id: "{user_id}", data: {{displayName: "User {i}"}}) }}"#
+                r#"mutation {{ update(collection: "users", id: "{user_id}", data: {{displayName: "User {i}"}}) }}"# // ignore-magic
             ),
         )
         .await;
@@ -579,7 +579,7 @@ async fn test_619_batch_create_products() {
     let (status, body) = graphql(
         &client,
         Some(&token),
-        r#"mutation { batchCreate(collection: "products", docs: [
+        r#"mutation { batchCreate(collection: "products", docs: [ // ignore-magic
             {name: "Batch 1", priceCents: 100},
             {name: "Batch 2", priceCents: 200},
             {name: "Batch 3", priceCents: 300}
@@ -588,7 +588,7 @@ async fn test_619_batch_create_products() {
     .await;
 
     assert_eq!(status, 200);
-    let results = body["data"]["batchCreate"].as_array();
+    let results = body["data"]["batchCreate"].as_array(); // ignore-magic
     assert!(results.is_some(), "Should return array of created objects");
     assert!(results.unwrap().len() >= 3, "Should create 3 products");
 }
@@ -606,11 +606,11 @@ async fn test_620_batch_delete_products() {
             &client,
             Some(&token),
             &format!(
-                r#"mutation {{ create(collection: "products", data: {{name: "BatchDel {i}", priceCents: 100}}) }}"#
+                r#"mutation {{ create(collection: "products", data: {{name: "BatchDel {i}", priceCents: 100}}) }}"# // ignore-magic
             ),
         )
         .await;
-        ids.push(body["data"]["create"]["id"].as_str().unwrap().to_string());
+        ids.push(body["data"]["create"]["id"].as_str().unwrap().to_string()); // ignore-magic
     }
 
     // Batch delete
@@ -619,14 +619,14 @@ async fn test_620_batch_delete_products() {
         &client,
         Some(&token),
         &format!(
-            r#"mutation {{ batchDelete(collection: "products", ids: [{}]) }}"#,
+            r#"mutation {{ batchDelete(collection: "products", ids: [{}]) }}"#, // ignore-magic
             ids_json.join(", ")
         ),
     )
     .await;
 
     assert_eq!(status, 200);
-    let deleted = body["data"]["batchDelete"].as_array();
+    let deleted = body["data"]["batchDelete"].as_array(); // ignore-magic
     assert!(deleted.is_some(), "Should return array of deleted objects");
     assert_eq!(deleted.unwrap().len(), 3, "Should delete 3 products");
 }

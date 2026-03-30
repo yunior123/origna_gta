@@ -12,22 +12,22 @@ use serde_json::{Value, json};
 use uuid::Uuid;
 
 fn base_url() -> String {
-    std::env::var("OB_TEST_URL").unwrap_or_else(|_| "http://localhost:8080".to_string())
+    std::env::var("OB_TEST_URL").unwrap_or_else(|_| "http://localhost:8080".to_string()) // ignore-magic
 }
 
 /// Register a test user and return (access_token, user_id).
 async fn register_test_user(client: &reqwest::Client) -> (String, String) {
-    let email = format!("test_{}@example.com", Uuid::new_v4());
+    let email = format!("test_{}@example.com", Uuid::new_v4()); // ignore-magic
     let resp = client
         .post(format!("{}/auth/register", base_url()))
-        .json(&json!({ "email": email, "password": "TestPassword123!" }))
+        .json(&json!({ "email": email, "password": "TestPassword123!" })) // ignore-magic
         .send()
         .await
         .expect("register failed");
     assert_eq!(resp.status(), 200);
     let body: Value = resp.json().await.unwrap();
-    let token = body["access_token"].as_str().unwrap().to_string();
-    let user_id = body["user"]["id"].as_str().unwrap().to_string();
+    let token = body["access_token"].as_str().unwrap().to_string(); // ignore-magic
+    let user_id = body["user"]["id"].as_str().unwrap().to_string(); // ignore-magic
     (token, user_id)
 }
 
@@ -57,17 +57,17 @@ async fn test_mcp_list_tools() {
         .expect("list tools failed");
 
     let status = resp.status().as_u16();
-    let body: Value = resp.json().await.unwrap_or(json!({}));
+    let body: Value = resp.json().await.unwrap_or(json!({})); // ignore-magic
 
     assert_eq!(status, 200, "List tools should succeed: {body:?}");
-    let tools = body["tools"].as_array().expect("should return tools array");
+    let tools = body["tools"].as_array().expect("should return tools array"); // ignore-magic
     assert!(
         tools.len() >= 10,
         "Should have at least 10 tools, got {}",
         tools.len()
     );
 
-    let tool_names: Vec<&str> = tools.iter().filter_map(|t| t["name"].as_str()).collect();
+    let tool_names: Vec<&str> = tools.iter().filter_map(|t| t["name"].as_str()).collect(); // ignore-magic
     assert!(
         tool_names.contains(&"search_products"),
         "Should include search_products"
@@ -95,15 +95,15 @@ async fn test_mcp_list_tools_has_descriptions() {
 
     assert_eq!(resp.status(), 200);
     let body: Value = resp.json().await.unwrap();
-    let tools = body["tools"].as_array().unwrap();
+    let tools = body["tools"].as_array().unwrap(); // ignore-magic
 
     for tool in tools {
         assert!(
-            tool["name"].as_str().is_some(),
+            tool["name"].as_str().is_some(), // ignore-magic
             "Each tool should have a name"
         );
         assert!(
-            tool["description"].as_str().is_some(),
+            tool["description"].as_str().is_some(), // ignore-magic
             "Each tool should have a description: {tool:?}"
         );
     }
@@ -124,10 +124,10 @@ async fn test_mcp_rpc_search_products_anonymous() {
 
     let resp = client
         .post(format!("{}/mcp/rpc", base_url()))
-        .json(&json!({
+        .json(&json!({ // ignore-magic
             "jsonrpc": "2.0",
             "method": "search_products",
-            "params": { "query": "laptop" },
+            "params": { "query": "laptop" }, // ignore-magic
             "id": 1
         }))
         .send()
@@ -135,11 +135,11 @@ async fn test_mcp_rpc_search_products_anonymous() {
         .expect("rpc request failed");
 
     let status = resp.status().as_u16();
-    let body: Value = resp.json().await.unwrap_or(json!({}));
+    let body: Value = resp.json().await.unwrap_or(json!({})); // ignore-magic
 
     assert_eq!(status, 200, "RPC should return 200: {body:?}");
-    assert_eq!(body["jsonrpc"], "2.0");
-    assert_eq!(body["id"], 1);
+    assert_eq!(body["jsonrpc"], "2.0"); // ignore-magic
+    assert_eq!(body["id"], 1); // ignore-magic
 }
 
 #[tokio::test]
@@ -155,11 +155,11 @@ async fn test_mcp_rpc_search_products_authenticated() {
 
     let resp = client
         .post(format!("{}/mcp/rpc", base_url()))
-        .header("Authorization", format!("Bearer {token}"))
-        .json(&json!({
+        .header("Authorization", format!("Bearer {token}")) // ignore-magic
+        .json(&json!({ // ignore-magic
             "jsonrpc": "2.0",
             "method": "search_products",
-            "params": { "query": "phone" },
+            "params": { "query": "phone" }, // ignore-magic
             "id": 42
         }))
         .send()
@@ -167,10 +167,10 @@ async fn test_mcp_rpc_search_products_authenticated() {
         .expect("rpc request failed");
 
     let status = resp.status().as_u16();
-    let body: Value = resp.json().await.unwrap_or(json!({}));
+    let body: Value = resp.json().await.unwrap_or(json!({})); // ignore-magic
 
     assert_eq!(status, 200, "Authenticated RPC should succeed: {body:?}");
-    assert_eq!(body["id"], 42);
+    assert_eq!(body["id"], 42); // ignore-magic
 }
 
 #[tokio::test]
@@ -184,7 +184,7 @@ async fn test_mcp_rpc_invalid_method() {
 
     let resp = client
         .post(format!("{}/mcp/rpc", base_url()))
-        .json(&json!({
+        .json(&json!({ // ignore-magic
             "jsonrpc": "2.0",
             "method": "nonexistent_method",
             "params": {},
@@ -195,18 +195,18 @@ async fn test_mcp_rpc_invalid_method() {
         .expect("rpc request failed");
 
     let status = resp.status().as_u16();
-    let body: Value = resp.json().await.unwrap_or(json!({}));
+    let body: Value = resp.json().await.unwrap_or(json!({})); // ignore-magic
 
     assert_eq!(
         status, 200,
         "Should return 200 with JSON-RPC error: {body:?}"
     );
     assert!(
-        body["error"].is_object(),
+        body["error"].is_object(), // ignore-magic
         "Should have error field for unknown method"
     );
     assert_eq!(
-        body["error"]["code"], -32601,
+        body["error"]["code"], -32601, // ignore-magic
         "Should be method not found error"
     );
 }
@@ -222,7 +222,7 @@ async fn test_mcp_rpc_get_product_by_id() {
 
     let resp = client
         .post(format!("{}/mcp/rpc", base_url()))
-        .json(&json!({
+        .json(&json!({ // ignore-magic
             "jsonrpc": "2.0",
             "method": "get_product",
             "params": { "id": "products:nonexistent_test" },
@@ -233,13 +233,13 @@ async fn test_mcp_rpc_get_product_by_id() {
         .expect("rpc request failed");
 
     let status = resp.status().as_u16();
-    let body: Value = resp.json().await.unwrap_or(json!({}));
+    let body: Value = resp.json().await.unwrap_or(json!({})); // ignore-magic
 
     assert_eq!(
         status, 200,
         "Should return valid JSON-RPC response: {body:?}"
     );
-    assert_eq!(body["jsonrpc"], "2.0");
+    assert_eq!(body["jsonrpc"], "2.0"); // ignore-magic
 }
 
 #[tokio::test]
@@ -253,7 +253,7 @@ async fn test_mcp_rpc_check_inventory() {
 
     let resp = client
         .post(format!("{}/mcp/rpc", base_url()))
-        .json(&json!({
+        .json(&json!({ // ignore-magic
             "jsonrpc": "2.0",
             "method": "check_inventory",
             "params": { "product_id": "products:test_123" },
@@ -264,13 +264,13 @@ async fn test_mcp_rpc_check_inventory() {
         .expect("rpc request failed");
 
     let status = resp.status().as_u16();
-    let body: Value = resp.json().await.unwrap_or(json!({}));
+    let body: Value = resp.json().await.unwrap_or(json!({})); // ignore-magic
 
     assert_eq!(
         status, 200,
         "Check inventory should return valid response: {body:?}"
     );
-    assert_eq!(body["jsonrpc"], "2.0");
+    assert_eq!(body["jsonrpc"], "2.0"); // ignore-magic
 }
 
 #[tokio::test]
@@ -284,7 +284,7 @@ async fn test_mcp_rpc_get_cart_requires_auth() {
 
     let resp = client
         .post(format!("{}/mcp/rpc", base_url()))
-        .json(&json!({
+        .json(&json!({ // ignore-magic
             "jsonrpc": "2.0",
             "method": "get_cart",
             "params": {},
@@ -295,11 +295,11 @@ async fn test_mcp_rpc_get_cart_requires_auth() {
         .expect("rpc request failed");
 
     let status = resp.status().as_u16();
-    let body: Value = resp.json().await.unwrap_or(json!({}));
+    let body: Value = resp.json().await.unwrap_or(json!({})); // ignore-magic
 
     assert_eq!(status, 200, "Should return 200 with error: {body:?}");
     assert!(
-        body["error"].is_object() || body["result"].is_object() || body["result"].is_null(),
+        body["error"].is_object() || body["result"].is_object() || body["result"].is_null(), // ignore-magic
         "Should handle unauthenticated cart request: {body:?}"
     );
 }
@@ -315,10 +315,10 @@ async fn test_mcp_rpc_string_id() {
 
     let resp = client
         .post(format!("{}/mcp/rpc", base_url()))
-        .json(&json!({
+        .json(&json!({ // ignore-magic
             "jsonrpc": "2.0",
             "method": "search_products",
-            "params": { "query": "test" },
+            "params": { "query": "test" }, // ignore-magic
             "id": "request-abc-123"
         }))
         .send()
@@ -326,11 +326,11 @@ async fn test_mcp_rpc_string_id() {
         .expect("rpc request failed");
 
     let status = resp.status().as_u16();
-    let body: Value = resp.json().await.unwrap_or(json!({}));
+    let body: Value = resp.json().await.unwrap_or(json!({})); // ignore-magic
 
     assert_eq!(status, 200);
     assert_eq!(
-        body["id"], "request-abc-123",
+        body["id"], "request-abc-123", // ignore-magic
         "String ID should be preserved in response"
     );
 }

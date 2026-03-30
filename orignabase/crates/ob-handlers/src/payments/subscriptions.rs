@@ -1332,7 +1332,7 @@ mod tests {
 
     #[test]
     fn test_create_request_deser() {
-        let json = r#"{"userId": "u1"}"#;
+        let json = r#"{"userId": "u1"}"#;  // ignore-magic
         let req: CreateSubscriptionRequest = serde_json::from_str(json).unwrap();
         assert_eq!(req.user_id, Some("u1".to_string()));
         assert!(req.payment_method_id.is_none());
@@ -1348,18 +1348,18 @@ mod tests {
             status: "active".to_string(),
         };
         let json = serde_json::to_value(&resp).unwrap();
-        assert_eq!(json["subscriptionId"], "sub_123");
+        assert_eq!(json[fields::SUBSCRIPTION_ID], "sub_123");
         assert_eq!(
             json["checkoutUrl"],
             "https://checkout.stripe.com/c/pay/cs_test"
         );
         assert_eq!(json["clientSecret"], "pi_xxx_secret_yyy");
-        assert_eq!(json["status"], "active");
+        assert_eq!(json[fields::STATUS], "active");
     }
 
     #[test]
     fn test_cancel_request_deser() {
-        let json = r#"{"userId": "user-99"}"#;
+        let json = r#"{"userId": "user-99"}"#;  // ignore-magic
         let req: CancelSubscriptionRequest = serde_json::from_str(json).unwrap();
         assert_eq!(req.user_id, Some("user-99".to_string()));
     }
@@ -1374,14 +1374,14 @@ mod tests {
             stripe_subscription_id: None,
         };
         let json = serde_json::to_value(&resp).unwrap();
-        assert_eq!(json["isPremium"], false);
-        assert_eq!(json["status"], "none");
-        assert!(json["currentPeriodEnd"].is_null());
+        assert_eq!(json[fields::IS_PREMIUM], false);
+        assert_eq!(json[fields::STATUS], "none");
+        assert!(json[fields::CURRENT_PERIOD_END].is_null());
     }
 
     #[test]
     fn test_reactivate_request_deser() {
-        let json = r#"{"userId": "u42"}"#;
+        let json = r#"{"userId": "u42"}"#;  // ignore-magic
         let req: ReactivateSubscriptionRequest = serde_json::from_str(json).unwrap();
         assert_eq!(req.user_id, Some("u42".to_string()));
     }
@@ -1397,7 +1397,7 @@ mod tests {
 
     #[test]
     fn test_notification_prefs_request_deser() {
-        let json = r#"{"userId":"u1","notifyNewProducts":true}"#;
+        let json = r#"{"userId":"u1","notifyNewProducts":true}"#;  // ignore-magic
         let req: SubscriptionNotificationPrefsRequest = serde_json::from_str(json).unwrap();
         assert_eq!(req.user_id, Some("u1".to_string()));
         assert_eq!(req.notify_new_products, Some(true));
@@ -1408,7 +1408,7 @@ mod tests {
 
     #[test]
     fn test_create_request_with_payment_method() {
-        let json = r#"{"userId":"u1","paymentMethodId":"pm_123abc"}"#;
+        let json = r#"{"userId":"u1","paymentMethodId":"pm_123abc"}"#;  // ignore-magic
         let req: CreateSubscriptionRequest = serde_json::from_str(json).unwrap();
         assert_eq!(req.payment_method_id.as_deref(), Some("pm_123abc"));
     }
@@ -1424,11 +1424,11 @@ mod tests {
         };
         let json = serde_json::to_value(&resp).unwrap();
         // skip_serializing_if on subscription_id and checkout_url
-        assert!(json.get("subscriptionId").is_none());
+        assert!(json.get(fields::SUBSCRIPTION_ID).is_none());
         assert!(json.get("checkoutUrl").is_none());
         // client_secret is NOT skip_serializing_if — so it's null
         assert!(json.get("clientSecret").is_some());
-        assert_eq!(json["status"], "checkout_pending");
+        assert_eq!(json[fields::STATUS], "checkout_pending");
     }
 
     #[test]
@@ -1441,7 +1441,7 @@ mod tests {
             status: "checkout_pending".to_string(),
         };
         let json = serde_json::to_value(&resp).unwrap();
-        assert_eq!(json["subscriptionId"], "cs_test_123");
+        assert_eq!(json[fields::SUBSCRIPTION_ID], "cs_test_123");
         assert_eq!(
             json["checkoutUrl"],
             "https://checkout.stripe.com/c/pay/cs_test"
@@ -1456,7 +1456,7 @@ mod tests {
         };
         let json = serde_json::to_value(&resp).unwrap();
         assert_eq!(json["success"], true);
-        assert_eq!(json["status"], "cancelled");
+        assert_eq!(json[fields::STATUS], "cancelled");
     }
 
     #[test]
@@ -1469,10 +1469,10 @@ mod tests {
             stripe_subscription_id: Some("sub_abc123".to_string()),
         };
         let json = serde_json::to_value(&resp).unwrap();
-        assert_eq!(json["isPremium"], true);
-        assert_eq!(json["status"], "active");
-        assert_eq!(json["currentPeriodEnd"], "2026-04-10T00:00:00+00:00");
-        assert_eq!(json["stripeSubscriptionId"], "sub_abc123");
+        assert_eq!(json[fields::IS_PREMIUM], true);
+        assert_eq!(json[fields::STATUS], "active");
+        assert_eq!(json[fields::CURRENT_PERIOD_END], "2026-04-10T00:00:00+00:00");
+        assert_eq!(json[fields::STRIPE_SUBSCRIPTION_ID], "sub_abc123");
     }
 
     #[test]
@@ -1482,7 +1482,7 @@ mod tests {
             status: SubscriptionStatus::Active.as_str().to_string(),
         };
         let json = serde_json::to_value(&resp).unwrap();
-        assert_eq!(json["status"], "active");
+        assert_eq!(json[fields::STATUS], "active");
     }
 
     #[test]
@@ -1510,7 +1510,7 @@ mod tests {
 
     #[test]
     fn test_notification_prefs_both_fields() {
-        let json = r#"{"userId":"u1","notifyNewProducts":false,"notifyTrending":true}"#;
+        let json = r#"{"userId":"u1","notifyNewProducts":false,"notifyTrending":true}"#;  // ignore-magic
         let req: SubscriptionNotificationPrefsRequest = serde_json::from_str(json).unwrap();
         assert_eq!(req.notify_new_products, Some(false));
         assert_eq!(req.notify_trending, Some(true));
@@ -1518,7 +1518,7 @@ mod tests {
 
     #[test]
     fn test_notification_prefs_empty() {
-        let json = r#"{"userId":"u1"}"#;
+        let json = r#"{"userId":"u1"}"#;  // ignore-magic
         let req: SubscriptionNotificationPrefsRequest = serde_json::from_str(json).unwrap();
         assert!(req.notify_new_products.is_none());
         assert!(req.notify_trending.is_none());
@@ -1526,7 +1526,7 @@ mod tests {
 
     #[test]
     fn test_status_request_deser() {
-        let json = r#"{"userId":"user-42"}"#;
+        let json = r#"{"userId":"user-42"}"#;  // ignore-magic
         let req: SubscriptionStatusRequest = serde_json::from_str(json).unwrap();
         assert_eq!(req.user_id, Some("user-42".to_string()));
     }
@@ -1549,7 +1549,7 @@ mod tests {
             status: SubscriptionStatus::CancelPending.as_str().to_string(),
         };
         let json = serde_json::to_value(&resp).unwrap();
-        assert_eq!(json["status"], "cancel_pending");
+        assert_eq!(json[fields::STATUS], "cancel_pending");
     }
 
     // --- Webhook helpers ---
@@ -1559,7 +1559,7 @@ mod tests {
         let event = json!({
             "object": {
                 "customer": "cus_abc123",
-                "status": "active"
+                fields::STATUS: "active"
             }
         });
         assert_eq!(extract_customer_id(&event), Some("cus_abc123"));
@@ -1576,21 +1576,21 @@ mod tests {
 
     #[test]
     fn test_extract_uid_from_user() {
-        let user = json!({ "uid": "user-1", "email": "a@b.com" });
+        let user = json!({ fields::UID: "user-1", fields::EMAIL: "a@b.com" });
         assert_eq!(extract_uid(&user), Some("user-1"));
 
         // fallback to "id"
-        let user2 = json!({ "id": "user-2" });
+        let user2 = json!({ fields::ID: "user-2" });
         assert_eq!(extract_uid(&user2), Some("user-2"));
 
         // uid takes precedence over id
-        let user3 = json!({ "uid": "user-3", "id": "user-4" });
+        let user3 = json!({ fields::UID: "user-3", fields::ID: "user-4" });
         assert_eq!(extract_uid(&user3), Some("user-3"));
     }
 
     #[test]
     fn test_extract_uid_missing() {
-        let user = json!({ "email": "a@b.com" });
+        let user = json!({ fields::EMAIL: "a@b.com" });
         assert_eq!(extract_uid(&user), None);
     }
 
@@ -1879,7 +1879,7 @@ mod tests {
             &json!({
                 "object": {
                     "customer": cus,
-                    "status": "past_due",
+                    fields::STATUS: "past_due",
                     "current_period_end": 12345,
                     "cancel_at_period_end": true
                 }
@@ -1894,7 +1894,7 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(sub[fields::STATUS], "past_due");
-        assert_eq!(sub["cancelAtPeriodEnd"], true);
+        assert_eq!(sub[fields::CANCEL_AT_PERIOD_END], true);
         assert_eq!(sub[fields::CURRENT_PERIOD_END], 12345);
     }
 
@@ -2111,7 +2111,7 @@ mod tests {
             sub[fields::STATUS],
             SubscriptionStatus::CancelPending.as_str()
         );
-        assert_eq!(sub["cancelAtPeriodEnd"], true);
+        assert_eq!(sub[fields::CANCEL_AT_PERIOD_END], true);
     }
 
     #[tokio::test]
@@ -2143,7 +2143,7 @@ mod tests {
                     fields::STRIPE_SUBSCRIPTION_ID: "sub_123",
                     fields::STATUS: SubscriptionStatus::CancelPending.as_str(),
                     fields::SUBSCRIPTION_STATUS: SubscriptionStatus::CancelPending.as_str(),
-                    "cancelAtPeriodEnd": true,
+                    fields::CANCEL_AT_PERIOD_END: true,
                 }),
             )
             .await
@@ -2185,7 +2185,7 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(sub[fields::STATUS], SubscriptionStatus::Active.as_str());
-        assert_eq!(sub["cancelAtPeriodEnd"], false);
+        assert_eq!(sub[fields::CANCEL_AT_PERIOD_END], false);
         assert_eq!(user[fields::IS_PREMIUM], true);
     }
 
@@ -2513,7 +2513,7 @@ mod tests {
             .and(path("/subscriptions"))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!({
                 "id": "sub_pm_123",
-                "status": "active",
+                fields::STATUS: "active",
                 "current_period_end": 1800000000i64,
                 "latest_invoice": {
                     "payment_intent": {
@@ -2656,7 +2656,7 @@ mod tests {
             .and(path("/subscriptions"))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!({
                 "id": "sub_aa",
-                "status": "incomplete",
+                fields::STATUS: "incomplete",
                 "current_period_end": 0,
                 "latest_invoice": {
                     "payment_intent": {
@@ -3179,7 +3179,7 @@ mod tests {
             &json!({
                 "object": {
                     "customer": "cus_whu",
-                    "status": "active",
+                    fields::STATUS: "active",
                     "current_period_end": 9999,
                     "cancel_at_period_end": false
                 }

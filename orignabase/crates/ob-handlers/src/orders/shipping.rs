@@ -721,7 +721,7 @@ mod tests {
 
     #[test]
     fn test_approve_request_deserialize() {
-        let s = r#"{"orderId":"o1","userId":"u1","approved":true,"expectedCostCents":1500}"#;
+        let s = r#"{"orderId":"o1","userId":"u1","approved":true,"expectedCostCents":1500}"#;  // ignore-magic
         let req: ApproveShippingRequest = serde_json::from_str(s).unwrap();
         assert!(req.approved);
         assert_eq!(req.expected_cost_cents, Some(1500));
@@ -729,7 +729,7 @@ mod tests {
 
     #[test]
     fn test_approve_request_without_expected_cost() {
-        let s = r#"{"orderId":"o1","userId":"u1","approved":false}"#;
+        let s = r#"{"orderId":"o1","userId":"u1","approved":false}"#;  // ignore-magic
         let req: ApproveShippingRequest = serde_json::from_str(s).unwrap();
         assert!(!req.approved);
         assert!(req.expected_cost_cents.is_none());
@@ -737,7 +737,7 @@ mod tests {
 
     #[test]
     fn test_update_shipping_request_deserialize() {
-        let s = r#"{"orderId":"o1","userId":"u1","newShippingCost":15.99,"reason":"heavier"}"#;
+        let s = r#"{"orderId":"o1","userId":"u1","newShippingCost":15.99,"reason":"heavier"}"#;  // ignore-magic
         let req: UpdateShippingCostRequest = serde_json::from_str(s).unwrap();
         assert!((req.new_shipping_cost - 15.99).abs() < 0.001);
         assert_eq!(req.reason, Some("heavier".to_string()));
@@ -839,15 +839,15 @@ mod tests {
                 json!({
                     "userId": "buyer_1",
                     "shippingApproval": {
-                        "status": "pending",
+                        fields::STATUS: "pending",
                         "newCostCents": 1250,
                         "actualCost": 12.50,
                         "requestedBy": "seller_1"
                     },
                     fields::SHIPPING_COST_CENTS: 1000,
                     "sellerShippingCosts": { "seller_1": 1000 },
-                    "taxAmountCents": 130,
-                    "totalAmountCents": 1130,
+                    fields::TAX_AMOUNT_CENTS: 130,
+                    fields::TOTAL_AMOUNT_CENTS: 1130,
                     fields::PAYMENT_STATUS: "awaiting_payment",
                 }),
             )
@@ -894,18 +894,18 @@ mod tests {
                 json!({
                     "userId": "buyer_2",
                     "shippingApproval": {
-                        "status": "pending",
+                        fields::STATUS: "pending",
                         "newCostCents": 1150,
                         "actualCost": 11.50,
                         "requestedBy": "seller_2"
                     },
                     fields::SHIPPING_COST_CENTS: 1000,
                     "sellerShippingCosts": { "seller_2": 1000 },
-                    "taxAmountCents": 130,
-                    "totalAmountCents": 1130,
-                    "shippingAddress": { "state": "ON" },
+                    fields::TAX_AMOUNT_CENTS: 130,
+                    fields::TOTAL_AMOUNT_CENTS: 1130,
+                    fields::SHIPPING_ADDRESS: { fields::PROVINCE: "ON" },
                     fields::PAYMENT_STATUS: "authorized",
-                    "paymentIntentId": "pi_123",
+                    fields::PAYMENT_INTENT_ID: "pi_123",
                 }),
             )
             .await
@@ -937,14 +937,14 @@ mod tests {
             Some(1150)
         );
         assert_eq!(
-            order.get("taxAmountCents").and_then(|v| v.as_i64()),
+            order.get(fields::TAX_AMOUNT_CENTS).and_then(|v| v.as_i64()),
             Some(150)
         );
         assert_eq!(
-            order.get("totalAmountCents").and_then(|v| v.as_i64()),
+            order.get(fields::TOTAL_AMOUNT_CENTS).and_then(|v| v.as_i64()),
             Some(1300)
         );
-        assert_eq!(order["shippingApproval"]["status"], "approved");
+        assert_eq!(order["shippingApproval"][fields::STATUS], "approved");
         assert_eq!(
             order.get("requiresManualReview").and_then(|v| v.as_bool()),
             Some(true)
@@ -960,7 +960,7 @@ mod tests {
                 collections::ORDERS,
                 "ord_3",
                 json!({
-                    "orderStatus": "confirmed",
+                    fields::ORDER_STATUS: "confirmed",
                     fields::PAYMENT_STATUS: "authorized",
                     fields::ITEMS: [
                         { fields::SELLER_ID: "seller_a", fields::PRODUCT_ID: "prod_1" }
@@ -1005,9 +1005,9 @@ mod tests {
             .get_document(collections::ORDERS, "ord_3")
             .await
             .unwrap();
-        assert_eq!(order["shippingApproval"]["status"], "pending");
+        assert_eq!(order["shippingApproval"][fields::STATUS], "pending");
         assert_eq!(order["shippingApproval"]["newCostCents"], 900);
-        assert_eq!(order["shippingApproval"]["reason"], "heavy");
+        assert_eq!(order["shippingApproval"][fields::REASON], "heavy");
         assert_eq!(
             order
                 .get("shippingApprovalRequired")
@@ -1025,16 +1025,16 @@ mod tests {
                 collections::ORDERS,
                 "ord_4",
                 json!({
-                    "orderStatus": "processing",
+                    fields::ORDER_STATUS: "processing",
                     fields::PAYMENT_STATUS: "captured",
-                    "paymentIntentId": "pi_locked",
+                    fields::PAYMENT_INTENT_ID: "pi_locked",
                     fields::ITEMS: [
                         { fields::SELLER_ID: "seller_c", fields::PRODUCT_ID: "prod_2" }
                     ],
-                    "shippingAddress": { "state": "ON" },
+                    fields::SHIPPING_ADDRESS: { fields::PROVINCE: "ON" },
                     fields::SHIPPING_COST_CENTS: 500,
-                    "taxAmountCents": 65,
-                    "totalAmountCents": 565,
+                    fields::TAX_AMOUNT_CENTS: 65,
+                    fields::TOTAL_AMOUNT_CENTS: 565,
                     "sellerShippingCosts": { "seller_c": 500 }
                 }),
             )
@@ -1072,7 +1072,7 @@ mod tests {
         );
         assert_eq!(order.get("taxDiffCents").and_then(|v| v.as_i64()), Some(7));
         assert_eq!(
-            order.get("totalAmountCents").and_then(|v| v.as_i64()),
+            order.get(fields::TOTAL_AMOUNT_CENTS).and_then(|v| v.as_i64()),
             Some(565)
         );
         assert_eq!(
@@ -1193,13 +1193,13 @@ mod tests {
 
     #[test]
     fn test_approve_request_missing_required_fields() {
-        let s = r#"{"orderId":"o1"}"#;
+        let s = r#"{"orderId":"o1"}"#;  // ignore-magic
         assert!(serde_json::from_str::<ApproveShippingRequest>(s).is_err());
     }
 
     #[test]
     fn test_update_shipping_request_missing_reason() {
-        let s = r#"{"orderId":"o1","userId":"u1","newShippingCost":5.0}"#;
+        let s = r#"{"orderId":"o1","userId":"u1","newShippingCost":5.0}"#;  // ignore-magic
         let req: UpdateShippingCostRequest = serde_json::from_str(s).unwrap();
         assert!(req.reason.is_none());
     }
@@ -1207,13 +1207,13 @@ mod tests {
     #[test]
     fn test_update_shipping_request_missing_required_fields() {
         // Missing newShippingCost
-        let s = r#"{"orderId":"o1","userId":"u1"}"#;
+        let s = r#"{"orderId":"o1","userId":"u1"}"#;  // ignore-magic
         assert!(serde_json::from_str::<UpdateShippingCostRequest>(s).is_err());
     }
 
     #[test]
     fn test_update_shipping_request_zero_cost() {
-        let s = r#"{"orderId":"o1","userId":"u1","newShippingCost":0.0}"#;
+        let s = r#"{"orderId":"o1","userId":"u1","newShippingCost":0.0}"#;  // ignore-magic
         let req: UpdateShippingCostRequest = serde_json::from_str(s).unwrap();
         assert!((req.new_shipping_cost).abs() < f64::EPSILON);
     }
@@ -1285,7 +1285,7 @@ mod tests {
 
     #[test]
     fn test_expiry_check_missing_field() {
-        let order = json!({ "orderStatus": "confirmed" });
+        let order = json!({ fields::ORDER_STATUS: "confirmed" });
         let expires_at = order.get("expiresAt").and_then(|v| v.as_str());
         assert!(
             expires_at.is_none(),
@@ -1407,7 +1407,7 @@ mod tests {
                 json!({
                     "userId": "buyer_1",
                     "expiresAt": past,
-                    "shippingApproval": { "status": "pending" },
+                    "shippingApproval": { fields::STATUS: "pending" },
                     fields::PAYMENT_STATUS: "awaiting_payment",
                 }),
             )
@@ -1439,7 +1439,7 @@ mod tests {
                 "ord_np",
                 json!({
                     "userId": "buyer_1",
-                    "shippingApproval": { "status": "approved" },
+                    "shippingApproval": { fields::STATUS: "approved" },
                     fields::PAYMENT_STATUS: "awaiting_payment",
                 }),
             )
@@ -1472,15 +1472,15 @@ mod tests {
                 json!({
                     "userId": "buyer_1",
                     "shippingApproval": {
-                        "status": "pending",
+                        fields::STATUS: "pending",
                         "newCostCents": 2000,
                         "actualCost": 20.00,
                         "requestedBy": "seller_1"
                     },
                     fields::SHIPPING_COST_CENTS: 1000,
                     "sellerShippingCosts": { "seller_1": 1000 },
-                    "taxAmountCents": 130,
-                    "totalAmountCents": 1130,
+                    fields::TAX_AMOUNT_CENTS: 130,
+                    fields::TOTAL_AMOUNT_CENTS: 1130,
                     fields::PAYMENT_STATUS: "awaiting_payment",
                 }),
             )
@@ -1527,18 +1527,18 @@ mod tests {
                 json!({
                     "userId": "buyer_1",
                     "shippingApproval": {
-                        "status": "pending",
+                        fields::STATUS: "pending",
                         "newCostCents": 1100,
                         "actualCost": 11.00,
                         "requestedBy": "seller_1"
                     },
                     fields::SHIPPING_COST_CENTS: 1000,
                     "sellerShippingCosts": { "seller_1": 1000 },
-                    "taxAmountCents": 130,
-                    "totalAmountCents": 1130,
-                    "shippingAddress": { "state": "ON" },
+                    fields::TAX_AMOUNT_CENTS: 130,
+                    fields::TOTAL_AMOUNT_CENTS: 1130,
+                    fields::SHIPPING_ADDRESS: { fields::PROVINCE: "ON" },
                     fields::PAYMENT_STATUS: "awaiting_payment",
-                    "paymentIntentId": "pi_mod",
+                    fields::PAYMENT_INTENT_ID: "pi_mod",
                 }),
             )
             .await
@@ -1588,18 +1588,18 @@ mod tests {
                 json!({
                     "userId": "buyer_1",
                     "shippingApproval": {
-                        "status": "pending",
+                        fields::STATUS: "pending",
                         "newCostCents": 1100,
                         "actualCost": 11.00,
                         "requestedBy": "seller_1"
                     },
                     fields::SHIPPING_COST_CENTS: 1000,
                     "sellerShippingCosts": { "seller_1": 1000 },
-                    "taxAmountCents": 130,
-                    "totalAmountCents": 1130,
-                    "shippingAddress": { "state": "ON" },
+                    fields::TAX_AMOUNT_CENTS: 130,
+                    fields::TOTAL_AMOUNT_CENTS: 1130,
+                    fields::SHIPPING_ADDRESS: { fields::PROVINCE: "ON" },
                     fields::PAYMENT_STATUS: "awaiting_payment",
-                    "paymentIntentId": "pi_broken",
+                    fields::PAYMENT_INTENT_ID: "pi_broken",
                 }),
             )
             .await
@@ -1641,18 +1641,18 @@ mod tests {
                 json!({
                     "userId": "buyer_1",
                     "shippingApproval": {
-                        "status": "pending",
+                        fields::STATUS: "pending",
                         "newCostCents": 1100,
                         "actualCost": 11.00,
                         "requestedBy": "seller_1"
                     },
                     fields::SHIPPING_COST_CENTS: 1000,
                     "sellerShippingCosts": { "seller_1": 1000 },
-                    "taxAmountCents": 130,
-                    "totalAmountCents": 1130,
-                    "shippingAddress": { "state": "ON" },
+                    fields::TAX_AMOUNT_CENTS: 130,
+                    fields::TOTAL_AMOUNT_CENTS: 1130,
+                    fields::SHIPPING_ADDRESS: { fields::PROVINCE: "ON" },
                     fields::PAYMENT_STATUS: "captured",
-                    "paymentIntentId": "pi_locked",
+                    fields::PAYMENT_INTENT_ID: "pi_locked",
                 }),
             )
             .await
@@ -1702,7 +1702,7 @@ mod tests {
                 json!({
                     "userId": "buyer_1",
                     "shippingApproval": {
-                        "status": "pending",
+                        fields::STATUS: "pending",
                         "newCostCents": 2000,
                         "actualCost": 20.00,
                         "requestedBy": "seller_1"
@@ -1710,7 +1710,7 @@ mod tests {
                     fields::SHIPPING_COST_CENTS: 1000,
                     fields::PAYMENT_STATUS: "awaiting_payment",
                     fields::ITEMS: [
-                        { fields::PRODUCT_ID: "prod_1", "quantity": 2 },
+                        { fields::PRODUCT_ID: "prod_1", fields::QUANTITY: 2 },
                     ],
                 }),
             )
@@ -1721,7 +1721,7 @@ mod tests {
             .upsert_document(
                 collections::PRODUCTS,
                 "prod_1",
-                json!({ "stockQuantity": 5 }),
+                json!({ fields::STOCK_QUANTITY: 5 }),
             )
             .await
             .unwrap();
@@ -1774,16 +1774,16 @@ mod tests {
                 json!({
                     "userId": "buyer_1",
                     "shippingApproval": {
-                        "status": "pending",
+                        fields::STATUS: "pending",
                         "newCostCents": 2000,
                         "actualCost": 20.00,
                         "requestedBy": "seller_1"
                     },
                     fields::SHIPPING_COST_CENTS: 1000,
                     fields::PAYMENT_STATUS: "captured",
-                    "paymentIntentId": "pi_captured",
+                    fields::PAYMENT_INTENT_ID: "pi_captured",
                     fields::ITEMS: [
-                        { fields::PRODUCT_ID: "prod_2", "quantity": 1 },
+                        { fields::PRODUCT_ID: "prod_2", fields::QUANTITY: 1 },
                     ],
                 }),
             )
@@ -1794,7 +1794,7 @@ mod tests {
             .upsert_document(
                 collections::PRODUCTS,
                 "prod_2",
-                json!({ "stockQuantity": 3 }),
+                json!({ fields::STOCK_QUANTITY: 3 }),
             )
             .await
             .unwrap();
@@ -1841,16 +1841,16 @@ mod tests {
                 json!({
                     "userId": "buyer_1",
                     "shippingApproval": {
-                        "status": "pending",
+                        fields::STATUS: "pending",
                         "newCostCents": 2000,
                         "actualCost": 20.00,
                         "requestedBy": "seller_1"
                     },
                     fields::SHIPPING_COST_CENTS: 1000,
                     fields::PAYMENT_STATUS: "captured",
-                    "paymentIntentId": "pi_fail",
+                    fields::PAYMENT_INTENT_ID: "pi_fail",
                     fields::ITEMS: [
-                        { fields::PRODUCT_ID: "prod_3", "quantity": 1 },
+                        { fields::PRODUCT_ID: "prod_3", fields::QUANTITY: 1 },
                     ],
                 }),
             )
@@ -1861,7 +1861,7 @@ mod tests {
             .upsert_document(
                 collections::PRODUCTS,
                 "prod_3",
-                json!({ "stockQuantity": 5 }),
+                json!({ fields::STOCK_QUANTITY: 5 }),
             )
             .await
             .unwrap();
@@ -1895,7 +1895,7 @@ mod tests {
             .upsert_document(
                 collections::PRODUCTS,
                 "prod_phys",
-                json!({ "stockQuantity": 2 }),
+                json!({ fields::STOCK_QUANTITY: 2 }),
             )
             .await
             .unwrap();
@@ -1906,12 +1906,12 @@ mod tests {
                 "ord_dig",
                 json!({
                     "userId": "buyer_1",
-                    "shippingApproval": { "status": "pending" },
+                    "shippingApproval": { fields::STATUS: "pending" },
                     fields::SHIPPING_COST_CENTS: 500,
                     fields::PAYMENT_STATUS: "awaiting_payment",
                     fields::ITEMS: [
-                        { fields::PRODUCT_ID: "prod_phys", "quantity": 1 },
-                        { fields::PRODUCT_ID: "prod_dig", "quantity": 1, "isDigital": true },
+                        { fields::PRODUCT_ID: "prod_phys", fields::QUANTITY: 1 },
+                        { fields::PRODUCT_ID: "prod_dig", fields::QUANTITY: 1, fields::IS_DIGITAL: true },
                     ],
                 }),
             )
@@ -1970,7 +1970,7 @@ mod tests {
                 collections::ORDERS,
                 "ord_bad",
                 json!({
-                    "orderStatus": "delivered",
+                    fields::ORDER_STATUS: "delivered",
                     fields::PAYMENT_STATUS: "captured",
                     fields::ITEMS: [
                         { fields::SELLER_ID: "seller_1", fields::PRODUCT_ID: "p1" }
@@ -2004,7 +2004,7 @@ mod tests {
                 collections::ORDERS,
                 "ord_pay",
                 json!({
-                    "orderStatus": "confirmed",
+                    fields::ORDER_STATUS: "confirmed",
                     fields::PAYMENT_STATUS: "refunded",
                     fields::ITEMS: [
                         { fields::SELLER_ID: "seller_1", fields::PRODUCT_ID: "p1" }
@@ -2054,17 +2054,17 @@ mod tests {
                 collections::ORDERS,
                 "ord_auto",
                 json!({
-                    "orderStatus": "confirmed",
+                    fields::ORDER_STATUS: "confirmed",
                     fields::PAYMENT_STATUS: "authorized",
-                    "paymentIntentId": "pi_auto",
+                    fields::PAYMENT_INTENT_ID: "pi_auto",
                     fields::ITEMS: [
                         { fields::SELLER_ID: "seller_1", fields::PRODUCT_ID: "p1" }
                     ],
                     fields::SHIPPING_COST_CENTS: 1000,
                     "sellerShippingCosts": { "seller_1": 1000 },
-                    "taxAmountCents": 130,
-                    "totalAmountCents": 1130,
-                    "shippingAddress": { "state": "BC" },
+                    fields::TAX_AMOUNT_CENTS: 130,
+                    fields::TOTAL_AMOUNT_CENTS: 1130,
+                    fields::SHIPPING_ADDRESS: { fields::PROVINCE: "BC" },
                 }),
             )
             .await
@@ -2107,17 +2107,17 @@ mod tests {
                 collections::ORDERS,
                 "ord_aub",
                 json!({
-                    "orderStatus": "confirmed",
+                    fields::ORDER_STATUS: "confirmed",
                     fields::PAYMENT_STATUS: "authorized",
-                    "paymentIntentId": "pi_auth",
+                    fields::PAYMENT_INTENT_ID: "pi_auth",
                     fields::ITEMS: [
                         { fields::SELLER_ID: "seller_1", fields::PRODUCT_ID: "p1" }
                     ],
                     fields::SHIPPING_COST_CENTS: 1000,
                     "sellerShippingCosts": { "seller_1": 1000 },
-                    "taxAmountCents": 130,
-                    "totalAmountCents": 1130,
-                    "shippingAddress": { "state": "ON" },
+                    fields::TAX_AMOUNT_CENTS: 130,
+                    fields::TOTAL_AMOUNT_CENTS: 1130,
+                    fields::SHIPPING_ADDRESS: { fields::PROVINCE: "ON" },
                 }),
             )
             .await

@@ -1,6 +1,7 @@
 use crate::registry::{
     ChangeAction, ChangeEvent, RealtimeMessage, Subscription, SubscriptionRegistry,
 };
+use ob_core::constants::fields as f;
 use std::sync::Arc;
 use tokio::sync::mpsc;
 
@@ -84,8 +85,8 @@ fn filter_by_ownership(
     match collection {
         "orders" => {
             // Orders visible to both buyer and seller
-            let buyer_id = data.get("buyerId").and_then(|v| v.as_str());
-            let seller_id = data.get("sellerId").and_then(|v| v.as_str());
+            let buyer_id = data.get(f::BUYER_ID).and_then(|v| v.as_str());
+            let seller_id = data.get(f::SELLER_ID).and_then(|v| v.as_str());
             subscribers.retain(|sub| {
                 match sub.user_id.as_deref() {
                     None => true, // Anonymous/system subscriptions pass through
@@ -95,7 +96,7 @@ fn filter_by_ownership(
         }
         "cart" | "notifications" | "subscriptions" => {
             // Single-owner collections
-            let owner_id = data.get("userId").and_then(|v| v.as_str());
+            let owner_id = data.get(f::USER_ID).and_then(|v| v.as_str());
             subscribers.retain(|sub| match sub.user_id.as_deref() {
                 None => true,
                 Some(uid) => Some(uid) == owner_id,
@@ -103,8 +104,8 @@ fn filter_by_ownership(
         }
         "return_requests" => {
             // Visible to buyer and seller
-            let buyer_id = data.get("buyerId").and_then(|v| v.as_str());
-            let seller_id = data.get("sellerId").and_then(|v| v.as_str());
+            let buyer_id = data.get(f::BUYER_ID).and_then(|v| v.as_str());
+            let seller_id = data.get(f::SELLER_ID).and_then(|v| v.as_str());
             subscribers.retain(|sub| match sub.user_id.as_deref() {
                 None => true,
                 Some(uid) => Some(uid) == buyer_id || Some(uid) == seller_id,
@@ -112,8 +113,8 @@ fn filter_by_ownership(
         }
         "chat_messages" | "chat_threads" => {
             // Chat visible to both participants
-            let buyer_id = data.get("buyerId").and_then(|v| v.as_str());
-            let seller_id = data.get("sellerId").and_then(|v| v.as_str());
+            let buyer_id = data.get(f::BUYER_ID).and_then(|v| v.as_str());
+            let seller_id = data.get(f::SELLER_ID).and_then(|v| v.as_str());
             subscribers.retain(|sub| match sub.user_id.as_deref() {
                 None => true,
                 Some(uid) => Some(uid) == buyer_id || Some(uid) == seller_id,
@@ -122,9 +123,9 @@ fn filter_by_ownership(
         "seller_profiles" | "warehouses" => {
             // Seller-owned — check sellerId or parent_id for subcollections
             let seller_id = data
-                .get("sellerId")
+                .get(f::SELLER_ID)
                 .and_then(|v| v.as_str())
-                .or_else(|| data.get("parent_id").and_then(|v| v.as_str()));
+                .or_else(|| data.get(f::PARENT_ID).and_then(|v| v.as_str()));
             subscribers.retain(|sub| match sub.user_id.as_deref() {
                 None => true,
                 Some(uid) => Some(uid) == seller_id,

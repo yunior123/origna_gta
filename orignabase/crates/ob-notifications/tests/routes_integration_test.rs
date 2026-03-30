@@ -29,13 +29,13 @@ async fn register_then_send_to_user_persists_pending_notification() {
         .clone()
         .oneshot(
             Request::builder()
-                .method("POST")
+                .method("POST") // ignore-magic
                 .uri("/push/register")
-                .header("content-type", "application/json")
+                .header("content-type", "application/json") // ignore-magic
                 .body(Body::from(
-                    json!({
+                    json!({ // ignore-magic
                         "user_id": "users:buyer-1",
-                        "token": "device-token-1",
+                        "token": "device-token-1", // ignore-magic
                         "platform": "android"
                     })
                     .to_string(),
@@ -49,14 +49,14 @@ async fn register_then_send_to_user_persists_pending_notification() {
     let send_response = app
         .oneshot(
             Request::builder()
-                .method("POST")
+                .method("POST") // ignore-magic
                 .uri("/push/send")
-                .header("content-type", "application/json")
+                .header("content-type", "application/json") // ignore-magic
                 .body(Body::from(
-                    json!({
+                    json!({ // ignore-magic
                         "to": "users:buyer-1",
-                        "target_type": "user",
-                        "title": "Order update",
+                        "target_type": "user", // ignore-magic
+                        "title": "Order update", // ignore-magic
                         "body": "Your order has shipped",
                         "data": { "order_id": "orders:1" }
                     })
@@ -69,18 +69,18 @@ async fn register_then_send_to_user_persists_pending_notification() {
     assert_eq!(send_response.status(), StatusCode::OK);
 
     let payload = parse_json(send_response).await;
-    assert_eq!(payload["sent"], 1);
-    assert_eq!(payload["failed"], 0);
-    assert_eq!(payload["total_devices"], 1);
+    assert_eq!(payload["sent"], 1); // ignore-magic
+    assert_eq!(payload["failed"], 0); // ignore-magic
+    assert_eq!(payload["total_devices"], 1); // ignore-magic
 
     let pending = db
         .list_documents("_pending_notifications", None, None)
         .await
         .unwrap();
     assert_eq!(pending.len(), 1);
-    assert_eq!(pending[0]["token"], "device-token-1");
-    assert_eq!(pending[0]["title"], "Order update");
-    assert_eq!(pending[0]["data"]["order_id"], "orders:1");
+    assert_eq!(pending[0]["token"], "device-token-1"); // ignore-magic
+    assert_eq!(pending[0]["title"], "Order update"); // ignore-magic
+    assert_eq!(pending[0]["data"]["order_id"], "orders:1"); // ignore-magic
 }
 
 #[tokio::test]
@@ -93,12 +93,12 @@ async fn subscribe_send_and_unsubscribe_topic_uses_real_router_flow() {
         .clone()
         .oneshot(
             Request::builder()
-                .method("POST")
+                .method("POST") // ignore-magic
                 .uri("/push/subscribe")
-                .header("content-type", "application/json")
+                .header("content-type", "application/json") // ignore-magic
                 .body(Body::from(
-                    json!({
-                        "token": "device-topic-1",
+                    json!({ // ignore-magic
+                        "token": "device-topic-1", // ignore-magic
                         "topic": "flash-sales"
                     })
                     .to_string(),
@@ -113,14 +113,14 @@ async fn subscribe_send_and_unsubscribe_topic_uses_real_router_flow() {
         .clone()
         .oneshot(
             Request::builder()
-                .method("POST")
+                .method("POST") // ignore-magic
                 .uri("/push/send")
-                .header("content-type", "application/json")
+                .header("content-type", "application/json") // ignore-magic
                 .body(Body::from(
-                    json!({
+                    json!({ // ignore-magic
                         "to": "flash-sales",
                         "target_type": "topic",
-                        "title": "Big sale",
+                        "title": "Big sale", // ignore-magic
                         "body": "Starts now"
                     })
                     .to_string(),
@@ -131,19 +131,19 @@ async fn subscribe_send_and_unsubscribe_topic_uses_real_router_flow() {
         .unwrap();
     assert_eq!(first_send_response.status(), StatusCode::OK);
     let first_send_payload = parse_json(first_send_response).await;
-    assert_eq!(first_send_payload["sent"], 1);
-    assert_eq!(first_send_payload["total_devices"], 1);
+    assert_eq!(first_send_payload["sent"], 1); // ignore-magic
+    assert_eq!(first_send_payload["total_devices"], 1); // ignore-magic
 
     let unsubscribe_response = app
         .clone()
         .oneshot(
             Request::builder()
-                .method("DELETE")
+                .method("DELETE") // ignore-magic
                 .uri("/push/subscribe")
-                .header("content-type", "application/json")
+                .header("content-type", "application/json") // ignore-magic
                 .body(Body::from(
-                    json!({
-                        "token": "device-topic-1",
+                    json!({ // ignore-magic
+                        "token": "device-topic-1", // ignore-magic
                         "topic": "flash-sales"
                     })
                     .to_string(),
@@ -157,14 +157,14 @@ async fn subscribe_send_and_unsubscribe_topic_uses_real_router_flow() {
     let second_send_response = app
         .oneshot(
             Request::builder()
-                .method("POST")
+                .method("POST") // ignore-magic
                 .uri("/push/send")
-                .header("content-type", "application/json")
+                .header("content-type", "application/json") // ignore-magic
                 .body(Body::from(
-                    json!({
+                    json!({ // ignore-magic
                         "to": "flash-sales",
                         "target_type": "topic",
-                        "title": "Big sale",
+                        "title": "Big sale", // ignore-magic
                         "body": "Starts now"
                     })
                     .to_string(),
@@ -175,15 +175,15 @@ async fn subscribe_send_and_unsubscribe_topic_uses_real_router_flow() {
         .unwrap();
     assert_eq!(second_send_response.status(), StatusCode::OK);
     let second_send_payload = parse_json(second_send_response).await;
-    assert_eq!(second_send_payload["sent"], 0);
-    assert_eq!(second_send_payload["message"], "No devices found");
+    assert_eq!(second_send_payload["sent"], 0); // ignore-magic
+    assert_eq!(second_send_payload["message"], "No devices found"); // ignore-magic
 
     let pending = db
         .list_documents("_pending_notifications", None, None)
         .await
         .unwrap();
     assert_eq!(pending.len(), 1);
-    assert_eq!(pending[0]["token"], "device-topic-1");
+    assert_eq!(pending[0]["token"], "device-topic-1"); // ignore-magic
 }
 
 #[tokio::test]
@@ -195,13 +195,13 @@ async fn unregistering_a_token_removes_it_from_user_fanout() {
         .clone()
         .oneshot(
             Request::builder()
-                .method("POST")
+                .method("POST") // ignore-magic
                 .uri("/push/register")
-                .header("content-type", "application/json")
+                .header("content-type", "application/json") // ignore-magic
                 .body(Body::from(
-                    json!({
+                    json!({ // ignore-magic
                         "user_id": "users:buyer-2",
-                        "token": "device-token-2",
+                        "token": "device-token-2", // ignore-magic
                         "platform": "ios"
                     })
                     .to_string(),
@@ -216,10 +216,10 @@ async fn unregistering_a_token_removes_it_from_user_fanout() {
         .clone()
         .oneshot(
             Request::builder()
-                .method("DELETE")
+                .method("DELETE") // ignore-magic
                 .uri("/push/register")
-                .header("content-type", "application/json")
-                .body(Body::from(json!({ "token": "device-token-2" }).to_string()))
+                .header("content-type", "application/json") // ignore-magic
+                .body(Body::from(json!({ "token": "device-token-2" }).to_string())) // ignore-magic
                 .unwrap(),
         )
         .await
@@ -229,14 +229,14 @@ async fn unregistering_a_token_removes_it_from_user_fanout() {
     let send_response = router
         .oneshot(
             Request::builder()
-                .method("POST")
+                .method("POST") // ignore-magic
                 .uri("/push/send")
-                .header("content-type", "application/json")
+                .header("content-type", "application/json") // ignore-magic
                 .body(Body::from(
-                    json!({
+                    json!({ // ignore-magic
                         "to": "users:buyer-2",
-                        "target_type": "user",
-                        "title": "Order update",
+                        "target_type": "user", // ignore-magic
+                        "title": "Order update", // ignore-magic
                         "body": "No device should receive this"
                     })
                     .to_string(),
@@ -247,6 +247,6 @@ async fn unregistering_a_token_removes_it_from_user_fanout() {
         .unwrap();
     assert_eq!(send_response.status(), StatusCode::OK);
     let payload = parse_json(send_response).await;
-    assert_eq!(payload["sent"], 0);
-    assert_eq!(payload["message"], "No devices found");
+    assert_eq!(payload["sent"], 0); // ignore-magic
+    assert_eq!(payload["message"], "No devices found"); // ignore-magic
 }

@@ -15,7 +15,7 @@ use tokio_tungstenite::tungstenite::Message;
 use uuid::Uuid;
 
 fn base_url() -> String {
-    std::env::var("OB_TEST_URL").unwrap_or_else(|_| "http://localhost:8080".to_string())
+    std::env::var("OB_TEST_URL").unwrap_or_else(|_| "http://localhost:8080".to_string()) // ignore-magic
 }
 
 fn ws_url() -> String {
@@ -25,7 +25,7 @@ fn ws_url() -> String {
 }
 
 fn password() -> String {
-    std::env::var("OB_TEST_PASSWORD").unwrap_or_else(|_| "TestPassword123!".to_string())
+    std::env::var("OB_TEST_PASSWORD").unwrap_or_else(|_| "TestPassword123!".to_string()) // ignore-magic
 }
 
 fn expect_db_down() -> bool {
@@ -44,7 +44,7 @@ async fn register_test_user(client: &reqwest::Client) -> (String, String) {
     let email = format!("reliability_{}@example.com", Uuid::new_v4());
     let resp = client
         .post(format!("{}/auth/register", base_url()))
-        .json(&json!({ "email": email, "password": password() }))
+        .json(&json!({ "email": email, "password": password() })) // ignore-magic
         .send()
         .await
         .expect("register failed");
@@ -52,7 +52,7 @@ async fn register_test_user(client: &reqwest::Client) -> (String, String) {
     assert_eq!(resp.status(), StatusCode::OK);
     let body: Value = resp.json().await.expect("register json");
     (
-        body["access_token"]
+        body["access_token"] // ignore-magic
             .as_str()
             .expect("missing access_token")
             .to_string(),
@@ -63,8 +63,8 @@ async fn register_test_user(client: &reqwest::Client) -> (String, String) {
 async fn graphql(client: &reqwest::Client, token: &str, query: &str) -> reqwest::Response {
     client
         .post(format!("{}/graphql", base_url()))
-        .header("Authorization", format!("Bearer {token}"))
-        .json(&json!({ "query": query }))
+        .header("Authorization", format!("Bearer {token}")) // ignore-magic
+        .json(&json!({ "query": query })) // ignore-magic
         .send()
         .await
         .expect("graphql request failed")
@@ -81,10 +81,10 @@ async fn create_doc(
     let query = format!(r#"mutation {{ create(collection: "{collection}", data: {escaped}) }}"#);
     let resp = graphql(client, token, &query).await;
     let body: Value = resp.json().await.expect("create json");
-    body["data"]["create"]["id"]
+    body["data"]["create"]["id"] // ignore-magic
         .as_str()
-        .or_else(|| body["data"]["create"]["_id"].as_str())
-        .or_else(|| body["data"]["create"].as_str())
+        .or_else(|| body["data"]["create"]["_id"].as_str()) // ignore-magic
+        .or_else(|| body["data"]["create"].as_str()) // ignore-magic
         .unwrap_or_default()
         .to_string()
 }
@@ -99,7 +99,7 @@ async fn test_01_health_endpoint_stays_up_during_dependency_trouble() {
         .await
         .expect("health failed");
     assert_eq!(resp.status(), StatusCode::OK);
-    assert_eq!(resp.text().await.expect("health text"), "ok");
+    assert_eq!(resp.text().await.expect("health text"), "ok"); // ignore-magic
 }
 
 #[tokio::test]
@@ -113,7 +113,7 @@ async fn test_02_admin_health_returns_structured_json() {
         .expect("admin health failed");
     assert_eq!(resp.status(), StatusCode::OK);
     let body: Value = resp.json().await.expect("admin health json");
-    assert_eq!(body["status"], "ok");
+    assert_eq!(body["status"], "ok"); // ignore-magic
 }
 
 #[tokio::test]
@@ -215,7 +215,7 @@ async fn test_07_websocket_auto_reconnect_after_brief_outage() {
     let (mut second, _) = connect_async(&url).await.expect("second websocket connect");
     second
         .send(Message::Text(
-            json!({ "type": "subscribe", "collection": "reliability_ws" })
+            json!({ "type": "subscribe", "collection": "reliability_ws" }) // ignore-magic
                 .to_string()
                 .into(),
         ))
@@ -238,7 +238,7 @@ async fn test_08_meilisearch_failure_does_not_block_crud_create() {
         &client,
         &token,
         &collection,
-        &json!({ "title": "degraded" }),
+        &json!({ "title": "degraded" }), // ignore-magic
     )
     .await;
     assert!(!doc_id.is_empty(), "crud create should keep working");
@@ -258,7 +258,7 @@ async fn test_09_meilisearch_failure_does_not_block_crud_list() {
         &client,
         &token,
         &collection,
-        &json!({ "title": "degraded-list" }),
+        &json!({ "title": "degraded-list" }), // ignore-magic
     )
     .await;
     let resp = graphql(
@@ -282,7 +282,7 @@ async fn test_10_meilisearch_failure_search_response_is_graceful() {
     let resp = graphql(
         &client,
         &token,
-        r#"{ search(collection: "products", query: "degraded", limit: 5) }"#,
+        r#"{ search(collection: "products", query: "degraded", limit: 5) }"#, // ignore-magic
     )
     .await;
     let status = resp.status();
@@ -340,7 +340,7 @@ async fn test_12_connection_pool_exhaustion_100_concurrent_requests() {
         let token = std::sync::Arc::clone(&token);
         let collection = std::sync::Arc::clone(&collection);
         set.spawn(async move {
-            let data = serde_json::to_string(&serde_json::json!({
+            let data = serde_json::to_string(&serde_json::json!({ // ignore-magic
                 "idx": idx,
                 "purpose": "pool_exhaustion_test"
             }))
@@ -497,8 +497,8 @@ async fn test_15_mixed_valid_invalid_requests_under_load() {
                 // Invalid: malformed GraphQL
                 let resp = client
                     .post(format!("{}/graphql", base_url()))
-                    .header("Authorization", format!("Bearer {token}"))
-                    .json(&serde_json::json!({ "query": "{ this is not valid graphql !!!" }))
+                    .header("Authorization", format!("Bearer {token}")) // ignore-magic
+                    .json(&serde_json::json!({ "query": "{ this is not valid graphql !!!" })) // ignore-magic
                     .send()
                     .await
                     .expect("malformed graphql failed");

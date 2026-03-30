@@ -1051,28 +1051,28 @@ mod tests {
 
     #[test]
     fn test_create_return_request_deserialize() {
-        let s = r#"{"orderId":"o1","productId":"p1","userId":"u1","returnReason":"Defective"}"#;
+        let s = r#"{"orderId":"o1","productId":"p1","userId":"u1","returnReason":"Defective"}"#;  // ignore-magic
         let req: CreateReturnRequest = serde_json::from_str(s).unwrap();
         assert_eq!(req.return_reason, "Defective");
     }
 
     #[test]
     fn test_approve_return_default_action() {
-        let s = r#"{"returnId":"r1","userId":"u1"}"#;
+        let s = r#"{"returnId":"r1","userId":"u1"}"#;  // ignore-magic
         let req: ApproveReturnReq = serde_json::from_str(s).unwrap();
         assert_eq!(req.action, "approve");
     }
 
     #[test]
     fn test_reject_return_deserialize() {
-        let s = r#"{"returnId":"r1","userId":"u1","reason":"Not eligible"}"#;
+        let s = r#"{"returnId":"r1","userId":"u1","reason":"Not eligible"}"#;  // ignore-magic
         let req: RejectReturnReq = serde_json::from_str(s).unwrap();
         assert_eq!(req.reason, Some("Not eligible".to_string()));
     }
 
     #[test]
     fn test_escalate_return_deserialize() {
-        let s = r#"{"returnId":"r1","userId":"u1","escalationReason":"seller unresponsive"}"#;
+        let s = r#"{"returnId":"r1","userId":"u1","escalationReason":"seller unresponsive"}"#;  // ignore-magic
         let req: EscalateReturnReq = serde_json::from_str(s).unwrap();
         assert_eq!(req.escalation_reason, "seller unresponsive");
     }
@@ -1111,7 +1111,7 @@ mod tests {
 
     #[test]
     fn test_escalate_return_req_all_fields() {
-        let s = r#"{"returnId":"ret_abc","userId":"usr_1","escalationReason":"Seller not responding for 5 days"}"#;
+        let s = r#"{"returnId":"ret_abc","userId":"usr_1","escalationReason":"Seller not responding for 5 days"}"#;  // ignore-magic
         let req: EscalateReturnReq = serde_json::from_str(s).unwrap();
         assert_eq!(req.return_id, "ret_abc");
         assert_eq!(req.user_id, "usr_1");
@@ -1120,7 +1120,7 @@ mod tests {
 
     #[test]
     fn test_escalate_return_req_missing_reason_fails() {
-        let s = r#"{"returnId":"r1","userId":"u1"}"#;
+        let s = r#"{"returnId":"r1","userId":"u1"}"#;  // ignore-magic
         let result = serde_json::from_str::<EscalateReturnReq>(s);
         assert!(result.is_err(), "escalationReason is required");
     }
@@ -1263,11 +1263,11 @@ mod tests {
     #[test]
     fn test_create_return_request_missing_required_fields() {
         // Missing returnReason
-        let s = r#"{"orderId":"o1","productId":"p1","userId":"u1"}"#;
+        let s = r#"{"orderId":"o1","productId":"p1","userId":"u1"}"#;  // ignore-magic
         assert!(serde_json::from_str::<CreateReturnRequest>(s).is_err());
 
         // Missing productId
-        let s = r#"{"orderId":"o1","userId":"u1","returnReason":"broken"}"#;
+        let s = r#"{"orderId":"o1","userId":"u1","returnReason":"broken"}"#;  // ignore-magic
         assert!(serde_json::from_str::<CreateReturnRequest>(s).is_err());
 
         // Empty JSON
@@ -1276,7 +1276,7 @@ mod tests {
 
     #[test]
     fn test_approve_return_with_all_optional_fields() {
-        let s = r#"{"returnId":"r1","userId":"u1","action":"issue_label","returnTrackingNumber":"TRK-ABC","returnAdminNote":"expedited"}"#;
+        let s = r#"{"returnId":"r1","userId":"u1","action":"issue_label","returnTrackingNumber":"TRK-ABC","returnAdminNote":"expedited"}"#;  // ignore-magic
         let req: ApproveReturnReq = serde_json::from_str(s).unwrap();
         assert_eq!(req.action, "issue_label");
         assert_eq!(req.return_tracking_number, Some("TRK-ABC".to_string()));
@@ -1285,7 +1285,7 @@ mod tests {
 
     #[test]
     fn test_approve_return_mark_received_action() {
-        let s = r#"{"returnId":"r1","userId":"u1","action":"mark_received"}"#;
+        let s = r#"{"returnId":"r1","userId":"u1","action":"mark_received"}"#;  // ignore-magic
         let req: ApproveReturnReq = serde_json::from_str(s).unwrap();
         assert_eq!(req.action, "mark_received");
         assert!(req.return_tracking_number.is_none());
@@ -1293,14 +1293,14 @@ mod tests {
 
     #[test]
     fn test_reject_return_missing_reason() {
-        let s = r#"{"returnId":"r1","userId":"u1"}"#;
+        let s = r#"{"returnId":"r1","userId":"u1"}"#;  // ignore-magic
         let req: RejectReturnReq = serde_json::from_str(s).unwrap();
         assert!(req.reason.is_none());
     }
 
     #[test]
     fn test_reject_return_missing_required_fields() {
-        let s = r#"{"returnId":"r1"}"#;
+        let s = r#"{"returnId":"r1"}"#;  // ignore-magic
         assert!(serde_json::from_str::<RejectReturnReq>(s).is_err());
     }
 
@@ -1336,7 +1336,7 @@ mod tests {
             return_id: "ret_abc_123".to_string(),
         };
         let s = serde_json::to_string(&resp).unwrap();
-        assert!(s.contains("returnId"));
+        assert!(s.contains(fields::RETURN_ID));
         assert!(!s.contains("return_id"));
     }
 

@@ -883,7 +883,7 @@ mod tests {
 
     #[test]
     fn test_refund_request_deserialize() {
-        let s = r#"{"orderId":"o1","productId":"p1","userId":"u1","reason":"defective"}"#;
+        let s = r#"{"orderId":"o1","productId":"p1","userId":"u1","reason":"defective"}"#;  // ignore-magic
         let req: RefundItemRequest = serde_json::from_str(s).unwrap();
         assert_eq!(req.order_id, "o1");
         assert_eq!(req.reason, Some("defective".to_string()));
@@ -891,7 +891,7 @@ mod tests {
 
     #[test]
     fn test_cancel_request_deserialize() {
-        let s = r#"{"orderId":"o1","userId":"u1"}"#;
+        let s = r#"{"orderId":"o1","userId":"u1"}"#;  // ignore-magic
         let req: CancelOrderRequest = serde_json::from_str(s).unwrap();
         assert_eq!(req.order_id, "o1");
         assert!(req.reason.is_none());
@@ -906,8 +906,8 @@ mod tests {
             already_refunded: None,
         };
         let json = serde_json::to_value(&resp).unwrap();
-        assert_eq!(json["refundAmountCents"], 1500);
-        assert_eq!(json["refundId"], "re_123");
+        assert_eq!(json[fields::REFUND_AMOUNT_CENTS], 1500);
+        assert_eq!(json[fields::REFUND_ID], "re_123");
         assert!(json.get("alreadyRefunded").is_none());
     }
 
@@ -1271,7 +1271,7 @@ mod tests {
 
     #[test]
     fn test_refund_request_missing_optional_reason() {
-        let s = r#"{"orderId":"o1","productId":"p1","userId":"u1"}"#;
+        let s = r#"{"orderId":"o1","productId":"p1","userId":"u1"}"#;  // ignore-magic
         let req: RefundItemRequest = serde_json::from_str(s).unwrap();
         assert!(req.reason.is_none());
     }
@@ -1279,32 +1279,32 @@ mod tests {
     #[test]
     fn test_refund_request_missing_required_fields() {
         // Missing productId
-        let s = r#"{"orderId":"o1","userId":"u1"}"#;
+        let s = r#"{"orderId":"o1","userId":"u1"}"#;  // ignore-magic
         assert!(serde_json::from_str::<RefundItemRequest>(s).is_err());
 
         // Missing orderId
-        let s = r#"{"productId":"p1","userId":"u1"}"#;
+        let s = r#"{"productId":"p1","userId":"u1"}"#;  // ignore-magic
         assert!(serde_json::from_str::<RefundItemRequest>(s).is_err());
 
         // Missing userId
-        let s = r#"{"orderId":"o1","productId":"p1"}"#;
+        let s = r#"{"orderId":"o1","productId":"p1"}"#;  // ignore-magic
         assert!(serde_json::from_str::<RefundItemRequest>(s).is_err());
 
         // Empty object
-        let s = r#"{}"#;
+        let s = r#"{}"#;  // ignore-magic
         assert!(serde_json::from_str::<RefundItemRequest>(s).is_err());
     }
 
     #[test]
     fn test_cancel_request_with_reason() {
-        let s = r#"{"orderId":"o1","userId":"u1","reason":"changed my mind"}"#;
+        let s = r#"{"orderId":"o1","userId":"u1","reason":"changed my mind"}"#;  // ignore-magic
         let req: CancelOrderRequest = serde_json::from_str(s).unwrap();
         assert_eq!(req.reason, Some("changed my mind".to_string()));
     }
 
     #[test]
     fn test_cancel_request_missing_required_fields() {
-        let s = r#"{"orderId":"o1"}"#;
+        let s = r#"{"orderId":"o1"}"#;  // ignore-magic
         assert!(serde_json::from_str::<CancelOrderRequest>(s).is_err());
     }
 
@@ -1317,8 +1317,8 @@ mod tests {
             already_refunded: Some(true),
         };
         let json = serde_json::to_value(&resp).unwrap();
-        assert_eq!(json["refundAmountCents"], 0);
-        assert!(json.get("refundId").is_none());
+        assert_eq!(json[fields::REFUND_AMOUNT_CENTS], 0);
+        assert!(json.get(fields::REFUND_ID).is_none());
         assert_eq!(json["alreadyRefunded"], true);
     }
 
@@ -1331,7 +1331,7 @@ mod tests {
             already_refunded: None,
         };
         let json = serde_json::to_value(&resp).unwrap();
-        assert!(json.get("refundId").is_none());
+        assert!(json.get(fields::REFUND_ID).is_none());
         assert!(json.get("alreadyRefunded").is_none());
     }
 
@@ -1341,7 +1341,7 @@ mod tests {
 
     #[test]
     fn test_i64_field_missing_and_non_numeric() {
-        let v = json!({"amount": 100, "name": "test"});
+        let v = json!({"amount": 100, fields::NAME: "test"});
         assert_eq!(i64_field(&v, "amount"), 100);
         assert_eq!(i64_field(&v, "missing"), 0);
         assert_eq!(i64_field(&v, "name"), 0); // string, not i64
@@ -1394,7 +1394,7 @@ mod tests {
 
     #[test]
     fn test_cumulative_refunded_cents_tracking() {
-        let order = json!({"cumulativeRefundedCents": 1500});
+        let order = json!({fields::CUMULATIVE_REFUNDED_CENTS: 1500});
         let existing = i64_field(&order, "cumulativeRefundedCents");
         let new_refund = 750_i64;
         assert_eq!(existing + new_refund, 2250);
@@ -1492,7 +1492,7 @@ mod tests {
             .and(path("/payment_intents/pi_123/cancel"))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!({
                 "id": "pi_123",
-                "status": "canceled"
+                fields::STATUS: "canceled"
             })))
             .mount(&server)
             .await;
@@ -1514,7 +1514,7 @@ mod tests {
             .and(path("/payment_intents/pi_123/cancel"))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!({
                 "id": "pi_123",
-                "status": "canceled"
+                fields::STATUS: "canceled"
             })))
             .mount(&server)
             .await;
@@ -1544,7 +1544,7 @@ mod tests {
                 "prod_1",
                 json!({
                     fields::PRODUCT_ID: "prod_1",
-                    "stockQuantity": 5,
+                    fields::STOCK_QUANTITY: 5,
                 }),
             )
             .await
@@ -1596,9 +1596,9 @@ mod tests {
             .get_document(collections::PRODUCTS, "prod_1")
             .await
             .unwrap();
-        assert_eq!(order["orderStatus"], "cancelled");
+        assert_eq!(order[fields::ORDER_STATUS], "cancelled");
         assert_eq!(order[fields::PAYMENT_STATUS], "cancelled");
-        assert_eq!(product["stockQuantity"], 7);
+        assert_eq!(product[fields::STOCK_QUANTITY], 7);
     }
 
     #[tokio::test]
@@ -1625,7 +1625,7 @@ mod tests {
                 &prod_id,
                 json!({
                     fields::PRODUCT_ID: prod_id,
-                    "stockQuantity": 5,
+                    fields::STOCK_QUANTITY: 5,
                 }),
             )
             .await
@@ -1640,15 +1640,15 @@ mod tests {
                     fields::PAYMENT_STATUS: "captured",
                     fields::PAYMENT_INTENT_ID: "pi_refund_1",
                     fields::SUBTOTAL_CENTS: 2000,
-                    "shippingCostCents": 300,
+                    fields::SHIPPING_COST_CENTS: 300,
                     fields::TAX_AMOUNT_CENTS: 200,
                     fields::TOTAL_AMOUNT_CENTS: 2600,
-                    "cumulativeRefundedCents": 50,
+                    fields::CUMULATIVE_REFUNDED_CENTS: 50,
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: prod_id,
                         fields::SELLER_ID: seller_id,
-                        "status": "delivered",
-                        "deliveredAt": Utc::now().to_rfc3339(),
+                        fields::STATUS: "delivered",
+                        fields::DELIVERED_AT: Utc::now().to_rfc3339(),
                         fields::PRICE_CENTS: 1000,
                         fields::QUANTITY: 2,
                         fields::IS_DIGITAL: false
@@ -1686,12 +1686,12 @@ mod tests {
             .await
             .unwrap();
         let item = &order[fields::ITEMS][0];
-        assert_eq!(item["status"], "refunded");
-        assert_eq!(item["refundAmountCents"], 2500);
-        assert_eq!(item["refundId"], "re_live_1");
-        assert_eq!(item["refundReason"], " damaged box ");
-        assert_eq!(order["cumulativeRefundedCents"], 2550);
-        assert_eq!(product["stockQuantity"], 7);
+        assert_eq!(item[fields::STATUS], "refunded");
+        assert_eq!(item[fields::REFUND_AMOUNT_CENTS], 2500);
+        assert_eq!(item[fields::REFUND_ID], "re_live_1");
+        assert_eq!(item[fields::REFUND_REASON], " damaged box ");
+        assert_eq!(order[fields::CUMULATIVE_REFUNDED_CENTS], 2550);
+        assert_eq!(product[fields::STOCK_QUANTITY], 7);
 
         let events = state
             .db
@@ -1729,7 +1729,7 @@ mod tests {
                 &ebook_id,
                 json!({
                     fields::PRODUCT_ID: ebook_id,
-                    "stockQuantity": 5,
+                    fields::STOCK_QUANTITY: 5,
                 }),
             )
             .await
@@ -1757,14 +1757,14 @@ mod tests {
                     fields::PAYMENT_STATUS: "captured",
                     fields::PAYMENT_INTENT_ID: "pi_digital_1",
                     fields::SUBTOTAL_CENTS: 1500,
-                    "shippingCostCents": 0,
+                    fields::SHIPPING_COST_CENTS: 0,
                     fields::TAX_AMOUNT_CENTS: 0,
                     fields::TOTAL_AMOUNT_CENTS: 1500,
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: ebook_id,
                         fields::SELLER_ID: seller_id,
-                        "status": "delivered",
-                        "deliveredAt": Utc::now().to_rfc3339(),
+                        fields::STATUS: "delivered",
+                        fields::DELIVERED_AT: Utc::now().to_rfc3339(),
                         fields::PRICE_CENTS: 1500,
                         fields::QUANTITY: 1,
                         fields::IS_DIGITAL: true,
@@ -1794,7 +1794,7 @@ mod tests {
             .get_document(collections::PRODUCTS, &ebook_id)
             .await
             .unwrap();
-        assert_eq!(product["stockQuantity"], 5);
+        assert_eq!(product[fields::STOCK_QUANTITY], 5);
 
         let licenses = state
             .db
@@ -1804,7 +1804,7 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(licenses.len(), 1);
-        assert_eq!(licenses[0]["status"], "revoked");
+        assert_eq!(licenses[0][fields::STATUS], "revoked");
         assert!(licenses[0].get("revokedAt").is_some());
     }
 
@@ -1826,7 +1826,7 @@ mod tests {
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: "prod_1",
                         fields::SELLER_ID: "seller_1",
-                        "status": "refunded",
+                        fields::STATUS: "refunded",
                         fields::PRICE_CENTS: 1000,
                         fields::QUANTITY: 1
                     }]
@@ -1877,7 +1877,7 @@ mod tests {
                 &prod_id,
                 json!({
                     fields::PRODUCT_ID: prod_id,
-                    "stockQuantity": 4,
+                    fields::STOCK_QUANTITY: 4,
                 }),
             )
             .await
@@ -1930,10 +1930,10 @@ mod tests {
             .get_document(collections::PRODUCTS, &prod_id)
             .await
             .unwrap();
-        assert_eq!(order["orderStatus"], "cancelled");
+        assert_eq!(order[fields::ORDER_STATUS], "cancelled");
         assert_eq!(order[fields::PAYMENT_STATUS], "refunded");
         assert_eq!(order["cancelledBy"], buyer_id.as_str());
-        assert_eq!(product["stockQuantity"], 6);
+        assert_eq!(product[fields::STOCK_QUANTITY], 6);
 
         let events = state
             .db
@@ -2041,7 +2041,7 @@ mod tests {
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: "other_prod",
                         fields::SELLER_ID: "seller_1",
-                        "status": "delivered",
+                        fields::STATUS: "delivered",
                         fields::PRICE_CENTS: 1000,
                         fields::QUANTITY: 1
                     }]
@@ -2086,7 +2086,7 @@ mod tests {
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: "prod_1",
                         fields::SELLER_ID: "seller_1",
-                        "status": "delivered",
+                        fields::STATUS: "delivered",
                         fields::PRICE_CENTS: 1000,
                         fields::QUANTITY: 1
                     }]
@@ -2131,7 +2131,7 @@ mod tests {
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: "prod_1",
                         fields::SELLER_ID: "seller_1",
-                        "status": "delivered",
+                        fields::STATUS: "delivered",
                         fields::PRICE_CENTS: 1000,
                         fields::QUANTITY: 1
                     }]
@@ -2177,7 +2177,7 @@ mod tests {
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: "prod_1",
                         fields::SELLER_ID: "seller_1",
-                        "status": "delivered",
+                        fields::STATUS: "delivered",
                         fields::PRICE_CENTS: 1000,
                         fields::QUANTITY: 1
                     }]
@@ -2225,8 +2225,8 @@ mod tests {
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: "prod_1",
                         fields::SELLER_ID: "seller_1",
-                        "status": "delivered",
-                        "deliveredAt": old_date,
+                        fields::STATUS: "delivered",
+                        fields::DELIVERED_AT: old_date,
                         fields::PRICE_CENTS: 1000,
                         fields::QUANTITY: 1
                     }]
@@ -2275,7 +2275,7 @@ mod tests {
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: prod_id,
                         fields::SELLER_ID: seller_id,
-                        "status": "shipped",
+                        fields::STATUS: "shipped",
                         fields::PRICE_CENTS: 1000,
                         fields::QUANTITY: 1
                     }]
@@ -2609,7 +2609,7 @@ mod tests {
             .upsert_document(
                 collections::PRODUCTS,
                 "phys_1",
-                json!({ fields::PRODUCT_ID: "phys_1", "stockQuantity": 5 }),
+                json!({ fields::PRODUCT_ID: "phys_1", fields::STOCK_QUANTITY: 5 }),
             )
             .await
             .unwrap();
@@ -2660,6 +2660,6 @@ mod tests {
             .get_document(collections::PRODUCTS, "phys_1")
             .await
             .unwrap();
-        assert_eq!(product["stockQuantity"], 8); // 5 + 3
+        assert_eq!(product[fields::STOCK_QUANTITY], 8); // 5 + 3
     }
 }
