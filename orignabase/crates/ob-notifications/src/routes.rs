@@ -186,17 +186,16 @@ async fn register_token(
     let now = chrono::Utc::now().to_rfc3339();
 
     // Upsert: if this token already exists, update user_id and platform
-    // Use UPSERT with explicit record ID for reliable in-memory behavior
     state
         .db
-        .query_bind(
-            "UPSERT type::thing('_push_tokens', $push_token) SET user_id = $user_id, \
-             token = $push_token, platform = $platform, updated_at = $now",
+        .upsert_document(
+            "_push_tokens",
+            &body.token,
             json!({
                 "user_id": body.user_id,
-                "push_token": body.token,
+                "token": body.token,
                 "platform": body.platform,
-                "now": now,
+                "updated_at": now,
             }),
         )
         .await?;
@@ -371,10 +370,14 @@ async fn subscribe_topic(
     }
     state
         .db
-        .query_bind(
-            "UPSERT type::thing('_push_subscriptions', $sub_id) SET token = $push_token, topic = $topic, \
-             created_at = time::now()",
-            json!({ "sub_id": format!("{}_{}", body.token, body.topic), "push_token": body.token, "topic": body.topic }),
+        .upsert_document(
+            "_push_subscriptions",
+            &format!("{}_{}", body.token, body.topic),
+            json!({
+                "token": body.token,
+                "topic": body.topic,
+                "created_at": chrono::Utc::now().to_rfc3339(),
+            }),
         )
         .await?;
 

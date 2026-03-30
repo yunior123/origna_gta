@@ -362,20 +362,20 @@ fn snapshot_jwt_claims_access_token() {
     };
 
     let json = serde_json::to_value(&claims).unwrap();
-    insta::assert_json_snapshot!(json, @r###"
+    insta::assert_json_snapshot!(json, @r#"
     {
-      "sub": "user_12345",
-      "iat": 1700000000,
+      "email_verified": true,
       "exp": 1700000900,
+      "iat": 1700000000,
+      "mfa_required": false,
       "roles": [
         "buyer",
         "verified"
       ],
-      "typ": "access",
-      "email_verified": true,
-      "mfa_required": false
+      "sub": "user_12345",
+      "typ": "access"
     }
-    "###);
+    "#);
 }
 
 #[test]
@@ -395,17 +395,17 @@ fn snapshot_jwt_claims_refresh_token() {
     };
 
     let json = serde_json::to_value(&claims).unwrap();
-    insta::assert_json_snapshot!(json, @r###"
+    insta::assert_json_snapshot!(json, @r#"
     {
-      "sub": "user_67890",
-      "iat": 1700000000,
-      "exp": 1700604800,
-      "roles": [],
-      "typ": "refresh",
       "email_verified": false,
-      "mfa_required": false
+      "exp": 1700604800,
+      "iat": 1700000000,
+      "mfa_required": false,
+      "roles": [],
+      "sub": "user_67890",
+      "typ": "refresh"
     }
-    "###);
+    "#);
 }
 
 #[test]
@@ -469,17 +469,17 @@ fn snapshot_jwt_claims_mfa_challenge() {
     };
 
     let json = serde_json::to_value(&claims).unwrap();
-    insta::assert_json_snapshot!(json, @r###"
+    insta::assert_json_snapshot!(json, @r#"
     {
-      "sub": "user_mfa",
-      "iat": 1700000000,
-      "exp": 1700000300,
-      "roles": [],
-      "typ": "mfa_challenge",
       "email_verified": false,
-      "mfa_required": true
+      "exp": 1700000300,
+      "iat": 1700000000,
+      "mfa_required": true,
+      "roles": [],
+      "sub": "user_mfa",
+      "typ": "mfa_challenge"
     }
-    "###);
+    "#);
 }
 
 #[test]
@@ -499,17 +499,17 @@ fn snapshot_jwt_claims_verification_token() {
     };
 
     let json = serde_json::to_value(&claims).unwrap();
-    insta::assert_json_snapshot!(json, @r###"
+    insta::assert_json_snapshot!(json, @r#"
     {
-      "sub": "user_verify",
-      "iat": 1700000000,
-      "exp": 1700086400,
-      "roles": [],
-      "typ": "email_verify",
       "email_verified": false,
-      "mfa_required": false
+      "exp": 1700086400,
+      "iat": 1700000000,
+      "mfa_required": false,
+      "roles": [],
+      "sub": "user_verify",
+      "typ": "email_verify"
     }
-    "###);
+    "#);
 }
 
 #[test]
@@ -529,17 +529,17 @@ fn snapshot_jwt_claims_password_reset_token() {
     };
 
     let json = serde_json::to_value(&claims).unwrap();
-    insta::assert_json_snapshot!(json, @r###"
+    insta::assert_json_snapshot!(json, @r#"
     {
-      "sub": "user_reset",
-      "iat": 1700000000,
-      "exp": 1700003600,
-      "roles": [],
-      "typ": "password_reset",
       "email_verified": false,
-      "mfa_required": false
+      "exp": 1700003600,
+      "iat": 1700000000,
+      "mfa_required": false,
+      "roles": [],
+      "sub": "user_reset",
+      "typ": "password_reset"
     }
-    "###);
+    "#);
 }
 
 #[test]
@@ -559,17 +559,17 @@ fn snapshot_jwt_claims_magic_link_token() {
     };
 
     let json = serde_json::to_value(&claims).unwrap();
-    insta::assert_json_snapshot!(json, @r###"
+    insta::assert_json_snapshot!(json, @r#"
     {
-      "sub": "user_magic",
-      "iat": 1700000000,
-      "exp": 1700000900,
-      "roles": [],
-      "typ": "magic_link",
       "email_verified": false,
-      "mfa_required": false
+      "exp": 1700000900,
+      "iat": 1700000000,
+      "mfa_required": false,
+      "roles": [],
+      "sub": "user_magic",
+      "typ": "magic_link"
     }
-    "###);
+    "#);
 }
 
 // =============================================================================
