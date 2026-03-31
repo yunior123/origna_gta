@@ -470,8 +470,29 @@ async fn confirm_item_receipt(
 // update_order_status
 // ---------------------------------------------------------------------------
 
-/// Updates the top-level order status for seller or admin actors while
-/// enforcing the allowed transition graph and required shipping metadata.
+/// Updates the top-level order status for a seller or admin actor.
+///
+/// Enforces the allowed transition graph defined in [`is_valid_order_transition`]:
+/// e.g. `Processing -> Shipped` requires tracking info, `Shipped -> Delivered`
+/// is buyer-only via [`confirm_item_receipt`].  Admin callers can force any
+/// transition that the graph allows without ownership checks.
+///
+/// # Flow
+/// 1. Validate inputs (order_id, user_id, newStatus).
+/// 2. Rate-limit per user (20 calls / minute).
+/// 3. Fetch order from DB, verify caller is the order's seller or an admin.
+/// 4. Parse current and requested [`OrderStatus`]; reject invalid transitions.
+/// 5. For `Processing -> Shipped`: require `tracking_number` and `carrier`.
+/// 6. Write status + metadata atomically via CAS guard
+///    (`WHERE orderStatus = $expected`).
+/// 7. Fire notifications (buyer email, push) and trigger native event hooks.
+///
+/// # Errors
+/// - `Validation` if order_id, user_id, or newStatus are malformed.
+/// - `NotFound` if the order does not exist.
+/// - `Forbidden` if the caller is neither the seller nor an admin.
+/// - `Validation` if the transition is not in the allowed graph.
+/// - `Validation` if shipping metadata is missing for the `Shipped` transition.
 async fn update_order_status(
     State(state): State<HandlersState>,
     Extension(auth): Extension<AuthContext>,

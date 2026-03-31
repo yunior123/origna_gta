@@ -338,17 +338,16 @@ async fn try_store_webhook_event_atomic(
         fields::PROCESSED: true,
         fields::DATA: event.data,
     });
-    let data_str = serde_json::to_string(&event_data).unwrap_or_default();
-    let event_id_escaped = event.id.replace('\'', "''");
-    let data_escaped = data_str.replace('\'', "''");
-
+    // P0 FIX: Check-then-create with parameterized queries — no SQL interpolation.
+    // First check if event already exists (idempotency).
+    if state.db.get_document(collections::WEBHOOK_EVENTS, &event.id).await.is_ok() {
+        return Ok(false); // Duplicate — caller returns "duplicate" response
+    }
     let result = state
         .db
-        .query_raw(&format!(
-            "INSERT INTO {table} (id, data) VALUES ('{event_id_escaped}', '{data_escaped}'::jsonb) RETURNING id, data::TEXT, created_at, updated_at",
-            table = collections::WEBHOOK_EVENTS,
-        ))
-        .await;
+        .create_document(collections::WEBHOOK_EVENTS, event_data.clone())
+        .await
+        .map(|v| vec![v]);
 
     match result {
         Ok(_) => Ok(true), // New event, proceed

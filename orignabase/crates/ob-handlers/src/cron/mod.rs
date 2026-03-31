@@ -343,7 +343,13 @@ async fn run_auto_capture(state: &HandlersState) -> std::result::Result<(), Stri
 // Cron job: check_expired_authorizations
 // ---------------------------------------------------------------------------
 
-/// Cancel orders with expired payment authorization (7+ days old).
+/// Cancel orders whose payment authorization has expired (older than
+/// [`business_rules::AUTH_EXPIRY_DAYS`], default 6 days).
+///
+/// Queries orders with `orderStatus = "payment_authorized"` and
+/// `createdAt` before the cutoff, then transitions each to `Cancelled`,
+/// restores reserved stock, and sends buyer/seller notifications.
+/// Distributed-lock protected (30-minute TTL).
 pub async fn check_expired_authorizations(state: &HandlersState) {
     info!("Running check_expired_authorizations");
 
@@ -469,7 +475,11 @@ pub async fn check_expired_authorizations(state: &HandlersState) {
 // Cron job: auto_archive_old_orders
 // ---------------------------------------------------------------------------
 
-/// Archive delivered/cancelled orders 30+ days old.
+/// Archive orders in terminal states (`delivered` or `cancelled`) that are
+/// older than 30 days by setting `isArchived = true`.
+///
+/// Runs in batches of 500 to limit memory pressure. Distributed-lock
+/// protected (30-minute TTL). Does not delete data -- only marks records.
 pub async fn auto_archive_old_orders(state: &HandlersState) {
     info!("Running auto_archive_old_orders");
 
@@ -519,7 +529,11 @@ pub async fn auto_archive_old_orders(state: &HandlersState) {
 // Cron job: monitor_meilisearch_sync
 // ---------------------------------------------------------------------------
 
-/// Count products in DB vs Meilisearch, alert if >5% mismatch.
+/// Health-check for Meilisearch sync integrity.
+///
+/// Counts active products in PostgreSQL and in the Meilisearch index,
+/// then creates a `cron_failures` alert if the counts diverge by more
+/// than 5%. This catches silent sync failures before they affect search.
 pub async fn monitor_meilisearch_sync(state: &HandlersState) {
     info!("Running monitor_meilisearch_sync");
 
@@ -558,7 +572,9 @@ pub async fn monitor_meilisearch_sync(state: &HandlersState) {
 // Cron job: cleanup_stale_rate_limits
 // ---------------------------------------------------------------------------
 
-/// Delete rate_limits docs older than 2 hours.
+/// Purge expired rate-limit records older than 2 hours from the
+/// `rate_limits` collection. Prevents unbounded table growth from
+/// per-IP / per-email rate-limit entries. Lock TTL: 35 minutes.
 pub async fn cleanup_stale_rate_limits(state: &HandlersState) {
     info!("Running cleanup_stale_rate_limits");
 
@@ -603,7 +619,12 @@ pub async fn cleanup_stale_rate_limits(state: &HandlersState) {
 // Cron job: cleanup_orphaned_r2_images
 // ---------------------------------------------------------------------------
 
-/// Find images in R2 storage not referenced by any product (24h safety window).
+/// Detect and remove orphaned images in Cloudflare R2 storage.
+///
+/// Lists R2 objects under `products/`, cross-references against product
+/// image URLs in PostgreSQL, and deletes any object not referenced by an
+/// active product. A 24-hour safety window prevents race conditions with
+/// in-progress uploads. Lock TTL: 30 minutes.
 pub async fn cleanup_orphaned_r2_images(state: &HandlersState) {
     info!("Running cleanup_orphaned_r2_images");
 
@@ -655,7 +676,11 @@ pub async fn cleanup_orphaned_r2_images(state: &HandlersState) {
 // Cron job: cleanup_stale_webhook_events
 // ---------------------------------------------------------------------------
 
-/// Delete webhook_events older than 7 days.
+/// Purge idempotency records from `webhook_events` older than 7 days.
+///
+/// These records exist solely for deduplication of Stripe webhook
+/// deliveries. After 7 days Stripe will not retry, so they are safe
+/// to remove. Lock TTL: 30 minutes.
 pub async fn cleanup_stale_webhook_events(state: &HandlersState) {
     info!("Running cleanup_stale_webhook_events");
 
@@ -704,7 +729,11 @@ pub async fn cleanup_stale_webhook_events(state: &HandlersState) {
 // Cron job: cleanup_stale_security_alerts
 // ---------------------------------------------------------------------------
 
-/// Archive resolved security_alerts older than 90 days.
+/// Archive resolved `security_alerts` records older than 90 days.
+///
+/// Moves alerts with `status = "resolved"` to the `security_alerts_archive`
+/// collection, keeping the main table lean for active monitoring. Lock TTL:
+/// 30 minutes.
 pub async fn cleanup_stale_security_alerts(state: &HandlersState) {
     info!("Running cleanup_stale_security_alerts");
 
@@ -756,7 +785,12 @@ pub async fn cleanup_stale_security_alerts(state: &HandlersState) {
 // Cron job: retry_failed_meilisearch_syncs
 // ---------------------------------------------------------------------------
 
-/// Retry DLQ items with exponential backoff (max 3 retries).
+/// Retry failed Meilisearch sync operations from the dead-letter queue.
+///
+/// Reads `meilisearch_sync_failures` with `attempts < 3`, re-submits
+/// documents to Meilisearch with exponential backoff (1s, 2s, 4s), and
+/// marks records as `delivered` on success or `failed` after the third
+/// attempt. Lock TTL: 30 minutes.
 pub async fn retry_failed_meilisearch_syncs(state: &HandlersState) {
     info!("Running retry_failed_meilisearch_syncs");
 
@@ -896,7 +930,12 @@ pub async fn retry_failed_meilisearch_syncs(state: &HandlersState) {
 // Cron job: check_low_stock_alerts
 // ---------------------------------------------------------------------------
 
-/// Email sellers when stock <= threshold (23h cooldown).
+/// Send low-stock email alerts to sellers.
+///
+/// Queries products where `stockQuantity <= lowStockThreshold` (default 5),
+/// groups by seller, and sends a single digest email per seller listing
+/// affected products. A 23-hour cooldown per seller prevents alert fatigue.
+/// Lock TTL: 30 minutes.
 pub async fn check_low_stock_alerts(state: &HandlersState) {
     info!("Running check_low_stock_alerts");
 
@@ -1056,7 +1095,12 @@ pub async fn check_low_stock_alerts(state: &HandlersState) {
 // Cron job: send_abandoned_cart_emails
 // ---------------------------------------------------------------------------
 
-/// Email users with items in cart >24h (72h cooldown).
+/// Send abandoned-cart recovery emails to buyers.
+///
+/// Identifies carts untouched for more than 24 hours, fetches product
+/// details for the top 3 items, and sends a personalized HTML email
+/// via Mailjet. A 72-hour cooldown per user prevents spamming.
+/// Lock TTL: 30 minutes.
 pub async fn send_abandoned_cart_emails(state: &HandlersState) {
     info!("Running send_abandoned_cart_emails");
 
@@ -1199,7 +1243,12 @@ pub async fn send_abandoned_cart_emails(state: &HandlersState) {
 // Cron job: compute_seller_metrics
 // ---------------------------------------------------------------------------
 
-/// Weekly seller health: dispute rate, refund rate, cancellation rate.
+/// Compute weekly seller health metrics: dispute rate, refund rate,
+/// cancellation rate, and average delivery time.
+///
+/// Aggregates the last 7 days of orders per seller and writes results
+/// to the `seller_metrics` collection. Used by the admin dashboard and
+/// seller health alerts. Lock TTL: 60 minutes.
 pub async fn compute_seller_metrics(state: &HandlersState) {
     info!("Running compute_seller_metrics");
 
@@ -1366,7 +1415,12 @@ struct SellerStats {
 // Cron job: compute_trending_products
 // ---------------------------------------------------------------------------
 
-/// Hourly: weighted scoring (1x view + 3x purchase + 2x favorite, 24h window).
+/// Compute trending product scores using a weighted formula:
+/// `1 * views + 3 * purchases + 2 * favorites` over a 24-hour window.
+///
+/// Writes a `trendingScore` field on each product and updates the
+/// `trending_products` collection with the top 50 results for fast
+/// homepage rendering. Lock TTL: 30 minutes.
 pub async fn compute_trending_products(state: &HandlersState) {
     info!("Running compute_trending_products");
 
@@ -1481,7 +1535,12 @@ pub async fn compute_trending_products(state: &HandlersState) {
 // Cron job: sync_expired_subscriptions
 // ---------------------------------------------------------------------------
 
-/// Fix subscription-user cache mismatches.
+/// Reconcile expired premium subscriptions with user records.
+///
+/// Finds subscriptions past their `currentPeriodEnd` that still show
+/// `status = "active"`, marks them as `expired`, and clears the user's
+/// `isPremium` flag. Handles Stripe webhook delivery gaps where
+/// `customer.subscription.deleted` was missed. Lock TTL: 30 minutes.
 pub async fn sync_expired_subscriptions(state: &HandlersState) {
     info!("Running sync_expired_subscriptions");
 
@@ -1554,7 +1613,11 @@ pub async fn sync_expired_subscriptions(state: &HandlersState) {
 // Cron job: escalate_stale_return_requests
 // ---------------------------------------------------------------------------
 
-/// Escalate returns stuck >7 days in 'requested' status.
+/// Escalate return requests stuck in `requested` status for more than
+/// 7 days by flagging them for admin review and notifying the seller.
+///
+/// Prevents buyers from being left in limbo when a seller ignores a
+/// return request. Lock TTL: 30 minutes.
 pub async fn escalate_stale_return_requests(state: &HandlersState) {
     info!("Running escalate_stale_return_requests");
 
@@ -1614,7 +1677,13 @@ pub async fn escalate_stale_return_requests(state: &HandlersState) {
 // Cron job: send_premium_renewal_reminders
 // ---------------------------------------------------------------------------
 
-/// Email 7d + 1d before renewal.
+/// Send premium subscription renewal reminder emails at 7 days and
+/// 1 day before the billing cycle renews.
+///
+/// Queries active subscriptions approaching `currentPeriodEnd` and
+/// sends a reminder via Mailjet. Deduplication is handled by storing
+/// `lastRenewalReminderSentAt` on the subscription record. Lock TTL:
+/// 30 minutes.
 pub async fn send_premium_renewal_reminders(state: &HandlersState) {
     info!("Running send_premium_renewal_reminders");
 
@@ -1764,8 +1833,13 @@ pub async fn send_premium_renewal_reminders(state: &HandlersState) {
 /// yet delivered (e.g. because the process crashed mid-fan-out).
 ///
 /// Called on a schedule. Skips records younger than 30s to avoid racing with
-/// the inline delivery path. Marks records "delivered" on success, increments
-/// `attempts` on failure, and marks "failed" after 3+ unsuccessful attempts.
+/// Drain the `pending_notifications` queue and deliver via FCM push.
+///
+/// Reads notifications with `status = "pending"`, sends each through
+/// the inline delivery path (FCM HTTP v1 API), marks records `delivered`
+/// on success, increments `attempts` on failure, and marks `failed`
+/// after 3+ unsuccessful attempts. Lock TTL: 5 minutes (short -- runs
+/// frequently).
 pub async fn drain_pending_notifications(state: &HandlersState) {
     if !acquire_cron_lock(state, "drain_pending_notifications", 5).await {
         return;
@@ -1900,8 +1974,13 @@ pub async fn drain_pending_notifications(state: &HandlersState) {
 // ---------------------------------------------------------------------------
 
 /// Daily (3 AM): Computes co-purchase product recommendations from delivered orders.
-/// Analyzes orders from last 90 days, builds a co-occurrence matrix, and stores
-/// the top 10 most frequently co-purchased products per product.
+/// Build "frequently bought together" recommendations from order history.
+///
+/// Analyzes orders from the last 90 days, constructs a product-product
+/// co-occurrence matrix (how often products appear in the same order),
+/// and stores the top 10 most frequently co-purchased products per
+/// product in the `recommendations` collection. Used by the FBT widget
+/// on product detail pages. Lock TTL: 60 minutes.
 pub async fn compute_co_purchase_recommendations(state: &HandlersState) {
     info!("Running compute_co_purchase_recommendations");
 

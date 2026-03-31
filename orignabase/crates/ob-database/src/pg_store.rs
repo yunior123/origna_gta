@@ -318,8 +318,30 @@ pub(crate) fn translate_surreal_raw(query: &str) -> String {
     q
 }
 
-/// Translate a SurrealDB query with named bind params to PostgreSQL with positional params.
-/// Returns (translated_query, ordered_values).
+/// Translate a SurrealDB-style query with named bind parameters into
+/// PostgreSQL-compatible SQL with positional `$1, $2, ...` parameters.
+///
+/// This is the core compatibility layer that lets existing handler code
+/// written for SurrealDB run against PostgreSQL without rewriting every
+/// query. It handles:
+///
+/// - Named `$param` → positional `$N` rewriting
+/// - `type::thing('table', $id)` → bare `$id`
+/// - `CREATE ... CONTENT $data` → `INSERT INTO ... (id, data) VALUES (...)`
+/// - `UPSERT` → `INSERT ... ON CONFLICT DO UPDATE`
+/// - `UPDATE ... MERGE $data` → `UPDATE ... SET data = data || $data::jsonb`
+/// - `= NONE` → `IS NULL`
+/// - Bare field references → `data->>'field'` JSONB extraction
+///
+/// # Arguments
+/// - `query`: SurrealQL string with `$named` placeholders.
+/// - `binds`: JSON object mapping parameter names to values.
+///
+/// # Returns
+/// `(translated_sql, ordered_values)` ready for `sqlx::query` binding.
+///
+/// # Errors
+/// Returns `Error::Database` if `binds` is not a JSON object.
 pub(crate) fn translate_surreal_to_pg(query: &str, binds: Value) -> AppResult<(String, Vec<Value>)> {
     let obj = binds
         .as_object()
@@ -1320,6 +1342,12 @@ impl DatabaseStore for PgDatabaseStore {
 
     // ── Filter-based query methods ─────────────────────────────────────
 
+    /// Find documents in `collection` where `field` matches `value`
+    /// using the given SQL `operator` (`=`, `!=`, `<`, `>`, `<=`, `>=`).
+    ///
+    /// Field comparison uses JSONB text extraction (`data->>'field'`),
+    /// so all values are compared as text. Returns up to `limit`
+    /// documents (unlimited when `None`).
     async fn find_where(
         &self,
         collection: &str,
@@ -1344,6 +1372,11 @@ impl DatabaseStore for PgDatabaseStore {
         rows_to_values(rows)
     }
 
+    /// Find documents matching multiple field conditions combined with AND.
+    ///
+    /// Each filter is a `(field, operator, value)` tuple. Results can be
+    /// sorted via `order_by` / `order_dir` and capped with `limit`.
+    /// All comparisons use JSONB text extraction (`data->>'field'`).
     async fn find_where_multi(
         &self,
         collection: &str,
