@@ -280,8 +280,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                 automaticallyImplyLeading: false,
                 pinned: true,
                 floating: true,
-                expandedHeight: (MediaQuery.sizeOf(context).height * 0.40)
-                    .clamp(280.0, 420.0),
+                expandedHeight: (MediaQuery.sizeOf(context).height * 0.45)
+                    .clamp(320.0, 480.0),
                 backgroundColor: isDark
                     ? DesignTokens.darkSurface
                     : DesignTokens.white,
@@ -290,7 +290,10 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                   background: Stack(
                     fit: StackFit.expand,
                     children: [
-                      buildImageGallery(height: 340),
+                      buildImageGallery(
+                        height: (MediaQuery.sizeOf(context).height * 0.45)
+                            .clamp(320.0, 480.0),
+                      ),
                       Positioned(
                         top: MediaQuery.of(context).padding.top + 8,
                         left: 12,
