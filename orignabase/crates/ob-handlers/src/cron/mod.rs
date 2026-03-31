@@ -14,7 +14,7 @@ use serde_json::{Value, json};
 use tracing::{error, info, warn};
 
 use crate::HandlersState;
-use crate::shared::schema::{business_rules, collections, documents, email_config, fields};
+use crate::shared::schema::{business_rules, collections, documents, fields};
 
 // ---------------------------------------------------------------------------
 // Field extraction helpers (local to cron module)
@@ -1006,8 +1006,8 @@ pub async fn check_low_stock_alerts(state: &HandlersState) {
             products_needing_alert.push((product, stock, threshold));
         }
 
-        // Batch-fetch seller docs
-        let mut seller_emails: std::collections::HashMap<String, (String, bool)> =
+        // Batch-fetch seller docs (email, consent, preferredLanguage)
+        let mut seller_emails: std::collections::HashMap<String, (String, bool, String)> =
             std::collections::HashMap::new();
         for sid in &seller_ids {
             if let Ok(seller) = state.db.get_document(collections::USERS, sid).await {
@@ -1020,8 +1020,13 @@ pub async fn check_low_stock_alerts(state: &HandlersState) {
                     .get(fields::EMAIL_CONSENT)
                     .and_then(|v| v.as_bool())
                     .unwrap_or(false);
+                let lang = seller
+                    .get(fields::PREFERRED_LANGUAGE)
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("en")
+                    .to_string();
                 if !email.is_empty() {
-                    seller_emails.insert(sid.clone(), (email, consent));
+                    seller_emails.insert(sid.clone(), (email, consent, lang));
                 }
             }
         }
@@ -1032,7 +1037,7 @@ pub async fn check_low_stock_alerts(state: &HandlersState) {
                 .get(fields::SELLER_ID)
                 .and_then(|v| v.as_str())
                 .unwrap_or("");
-            let (email, consent) = match seller_emails.get(seller_id) {
+            let (email, consent, lang) = match seller_emails.get(seller_id) {
                 Some(e) => e,
                 None => continue,
             };
@@ -1052,8 +1057,12 @@ pub async fn check_low_stock_alerts(state: &HandlersState) {
             if let Some(api_key) = state.config.secret("mailjet_api_key")
                 && let Some(secret_key) = state.config.secret("mailjet_secret_key")
             {
-                let html = crate::email::low_stock_alert_html(product_name, *stock as u32);
-                let subject = format!("[Origna] Low stock alert: {product_name}");
+                let html = crate::email::low_stock_alert_html(product_name, *stock as u32, lang);
+                let subject = if lang == "fr" {
+                    format!("[Origna] Alerte de stock bas : {product_name}")
+                } else {
+                    format!("[Origna] Low stock alert: {product_name}")
+                };
                 let _ = crate::email::send_email(
                     &state.http_client,
                     api_key,
@@ -1761,25 +1770,15 @@ pub async fn send_premium_renewal_reminders(state: &HandlersState) {
                         state.config.secret("mailjet_secret_key"),
                     ) {
                         let price = business_rules::PREMIUM_SUBSCRIPTION_PRICE_CAD;
-                        let body_text = if lang == "fr" {
-                            format!(
-                                "Votre abonnement Premium ({:.2}$/mois) se renouvelle bientôt.",
-                                price
-                            )
-                        } else {
-                            format!(
-                                "Your Premium subscription (${:.2}/month) is renewing soon.",
-                                price
-                            )
-                        };
-                        let html = format!(
-                            r#"<div style="font-family:Arial;max-width:600px;margin:0 auto;padding:20px;">
-                                <h2 style="color:#1a1a2e;">Premium Renewal Reminder</h2>
-                                <p>{body_text}</p>
-                                <p style="color:#888;font-size:12px;">{addr}</p>
-                            </div>"#,
-                            body_text = body_text,
-                            addr = email_config::PHYSICAL_ADDRESS,
+                        let buyer_name = user
+                            .get(fields::NAME)
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("there");
+                        let html = crate::email::subscription_renewal_html(
+                            buyer_name,
+                            price,
+                            days_ahead as u32,
+                            lang,
                         );
 
                         let _ = crate::email::send_email(

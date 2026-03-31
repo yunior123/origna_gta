@@ -82,6 +82,58 @@ pub(crate) fn t(key: &str, lang: &str) -> &'static str {
             "Vous avez des articles dans votre panier qui sont encore disponibles :",
         ][l],
         "cart.cta" => ["Complete your purchase", "Compléter mon achat"][l],
+        "stock.hero" => ["Low Stock Alert", "Alerte de stock bas"][l],
+        "stock.body" => {
+            // Returns format-ready label; caller must supply product_name + stock
+            ["is running low on stock", "a un stock bas"][l]
+        }
+        "stock.remaining" => ["remaining", "restant(s)"][l],
+        "stock.restock" => [
+            "Please restock soon to avoid missing sales.",
+            "Veuillez réapprovisionner bientôt pour ne pas manquer de ventes.",
+        ][l],
+        "stock.manage" => ["Manage Inventory", "Gérer l'inventaire"][l],
+        "stock.consent_notice" => [
+            "You are receiving this because you enabled low stock alerts for this product.",
+            "Vous recevez ceci car vous avez activé les alertes de stock bas pour ce produit.",
+        ][l],
+        "sub.created" => [
+            "Your Premium Subscription Is Active!",
+            "Votre abonnement Premium est actif !",
+        ][l],
+        "sub.created.body" => [
+            "Welcome to Origna Premium! You now have access to all premium features.",
+            "Bienvenue dans Origna Premium ! Vous avez maintenant accès à toutes les fonctionnalités premium.",
+        ][l],
+        "sub.renewal" => [
+            "Premium Renewal Reminder",
+            "Rappel de renouvellement Premium",
+        ][l],
+        "sub.cancelled" => [
+            "Your Premium Subscription Has Been Cancelled",
+            "Votre abonnement Premium a été annulé",
+        ][l],
+        "sub.cancelled.body" => [
+            "Your Premium subscription has been cancelled. You will retain access until the end of your current billing period.",
+            "Votre abonnement Premium a été annulé. Vous conserverez l'accès jusqu'à la fin de votre période de facturation actuelle.",
+        ][l],
+        "sub.trial_ending" => [
+            "Your Premium Trial Is Ending Soon",
+            "Votre essai Premium se termine bientôt",
+        ][l],
+        "sub.trial_ending.body" => [
+            "Your free trial ends soon. Subscribe now to keep your premium features.",
+            "Votre essai gratuit se termine bientôt. Abonnez-vous maintenant pour conserver vos fonctionnalités premium.",
+        ][l],
+        "payout.scheduled" => ["Payout Scheduled", "Paiement programmé"][l],
+        "payout.delivered" => [
+            "has been marked as delivered. Your payout has been scheduled for the next payout run.",
+            "a été marquée comme livrée. Votre paiement a été programmé pour le prochain cycle de paiement.",
+        ][l],
+        "payout.dashboard" => [
+            "You can review payout status from your seller dashboard.",
+            "Vous pouvez consulter le statut du paiement depuis votre tableau de bord vendeur.",
+        ][l],
         _ => "",
     }
 }
@@ -318,9 +370,9 @@ pub fn order_confirmation_html(order: &OrderSummary, _buyer_name: &str, lang: &s
     email_wrapper(t("confirm.hero_h", l), &content, true, l)
 }
 
-/// Generate seller notification HTML.
-pub fn seller_notification_html(order: &OrderSummary, seller_name: &str) -> String {
-    let lang = "en"; // Seller emails default to English
+/// Generate seller notification HTML (bilingual EN/FR).
+pub fn seller_notification_html(order: &OrderSummary, seller_name: &str, lang: &str) -> String {
+    let lang = if lang == "fr" { "fr" } else { "en" };
     let short_id = if order.order_id.len() > 8 {
         &order.order_id[..8]
     } else {
@@ -371,36 +423,52 @@ pub fn seller_notification_html(order: &OrderSummary, seller_name: &str) -> Stri
     email_wrapper(t("seller.hero_h", lang), &content, false, lang)
 }
 
-/// Generate low stock alert HTML.
-pub fn low_stock_alert_html(product_name: &str, current_stock: u32) -> String {
-    let units = if current_stock == 1 { "unit" } else { "units" };
+/// Generate low stock alert HTML (bilingual EN/FR).
+pub fn low_stock_alert_html(product_name: &str, current_stock: u32, lang: &str) -> String {
+    let l = if lang == "fr" { "fr" } else { "en" };
+    let units = if l == "fr" {
+        if current_stock == 1 { "unité" } else { "unités" }
+    } else if current_stock == 1 {
+        "unit"
+    } else {
+        "units"
+    };
+    let current_stock_label = if l == "fr" { "Stock actuel" } else { "Current stock" };
     let content = format!(
         r##"<tr><td style="padding:32px 40px;">
-            <h2 style="color:#E53E3E;">Low Stock Alert</h2>
-            <p>Your product <strong>{name}</strong> is running low on stock.</p>
+            <h2 style="color:#E53E3E;">{hero}</h2>
+            <p>{body_prefix} <strong>{name}</strong> {body_suffix}.</p>
             <table style="width:100%;border-collapse:collapse;margin:16px 0;">
-                <tr><td style="padding:6px 0;color:#666;width:160px;">Current stock</td>
-                    <td style="font-weight:bold;color:#E53E3E;">{stock} {units} remaining</td></tr>
+                <tr><td style="padding:6px 0;color:#666;width:160px;">{stock_label}</td>
+                    <td style="font-weight:bold;color:#E53E3E;">{stock} {units} {remaining}</td></tr>
             </table>
-            <p>Please restock soon to avoid missing sales.</p>
+            <p>{restock}</p>
             <div style="margin-top:20px;">
                 <a href="{url}/seller/products" style="background:#5B30F6;color:#fff;padding:10px 22px;border-radius:6px;text-decoration:none;font-weight:bold;">
-                    Manage Inventory
+                    {manage}
                 </a>
             </div>
             <p style="color:#999;font-size:12px;margin-top:20px;">
-                You are receiving this because you enabled low stock alerts for this product.<br>
+                {consent}<br>
                 Origna Ventures Inc. — {addr}
             </p>
         </td></tr>"##,
+        hero = t("stock.hero", l),
+        body_prefix = if l == "fr" { "Votre produit" } else { "Your product" },
         name = html_escape(product_name),
+        body_suffix = t("stock.body", l),
+        stock_label = current_stock_label,
         stock = current_stock,
         units = units,
+        remaining = t("stock.remaining", l),
+        restock = t("stock.restock", l),
         url = email_config::URL_PROD,
+        manage = t("stock.manage", l),
+        consent = t("stock.consent_notice", l),
         addr = email_config::PHYSICAL_ADDRESS,
     );
 
-    email_wrapper("Low Stock Alert", &content, false, "en")
+    email_wrapper(t("stock.hero", l), &content, false, l)
 }
 
 /// Generate abandoned cart HTML (bilingual EN/FR).
@@ -460,6 +528,208 @@ pub fn abandoned_cart_html(items: &[CartItem], buyer_name: &str, lang: &str) -> 
 
     let title = t("cart.hero_h", l);
     email_wrapper(title, &content, false, l)
+}
+
+// ---------------------------------------------------------------------------
+// Subscription email templates (bilingual EN/FR)
+// ---------------------------------------------------------------------------
+
+/// Generate subscription-created email HTML.
+pub fn subscription_created_html(buyer_name: &str, price_cad: f64, lang: &str) -> String {
+    let l = if lang == "fr" { "fr" } else { "en" };
+    let hi = if l == "fr" {
+        format!("Bonjour {},", html_escape(buyer_name))
+    } else {
+        format!("Hi {},", html_escape(buyer_name))
+    };
+    let content = format!(
+        r##"<tr><td style="padding:32px 40px 24px 40px;">
+            <h1 style="color:#1a1a2e;margin-top:0;font-size:22px;">{hero}</h1>
+            <p style="color:#555;font-size:15px;">{hi}</p>
+            <p style="color:#555;font-size:15px;">{body} (${price:.2}/month).</p>
+            <div style="margin-top:24px;text-align:center;">
+                <a href="{url}/account" style="background:linear-gradient(135deg,#667EEA,#764BA2);color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:700;display:inline-block;">
+                    {cta}
+                </a>
+            </div>
+        </td></tr>"##,
+        hero = t("sub.created", l),
+        hi = hi,
+        body = t("sub.created.body", l),
+        price = price_cad,
+        url = email_config::URL_PROD,
+        cta = if l == "fr" { "Mon compte" } else { "My Account" },
+    );
+    email_wrapper(t("sub.created", l), &content, true, l)
+}
+
+/// Generate subscription renewal reminder email HTML.
+pub fn subscription_renewal_html(
+    buyer_name: &str,
+    price_cad: f64,
+    days_remaining: u32,
+    lang: &str,
+) -> String {
+    let l = if lang == "fr" { "fr" } else { "en" };
+    let hi = if l == "fr" {
+        format!("Bonjour {},", html_escape(buyer_name))
+    } else {
+        format!("Hi {},", html_escape(buyer_name))
+    };
+    let body = if l == "fr" {
+        format!(
+            "Votre abonnement Premium (${price:.2}/mois) se renouvelle dans {days} jour{s}.",
+            price = price_cad,
+            days = days_remaining,
+            s = if days_remaining > 1 { "s" } else { "" },
+        )
+    } else {
+        format!(
+            "Your Premium subscription (${price:.2}/month) is renewing in {days} day{s}.",
+            price = price_cad,
+            days = days_remaining,
+            s = if days_remaining > 1 { "s" } else { "" },
+        )
+    };
+    let content = format!(
+        r##"<tr><td style="padding:32px 40px 24px 40px;">
+            <h1 style="color:#1a1a2e;margin-top:0;font-size:22px;">{hero}</h1>
+            <p style="color:#555;font-size:15px;">{hi}</p>
+            <p style="color:#555;font-size:15px;">{body}</p>
+            <div style="margin-top:24px;text-align:center;">
+                <a href="{url}/account/subscription" style="background:linear-gradient(135deg,#667EEA,#764BA2);color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:700;display:inline-block;">
+                    {cta}
+                </a>
+            </div>
+        </td></tr>"##,
+        hero = t("sub.renewal", l),
+        hi = hi,
+        body = body,
+        url = email_config::URL_PROD,
+        cta = if l == "fr" {
+            "Gérer mon abonnement"
+        } else {
+            "Manage Subscription"
+        },
+    );
+    email_wrapper(t("sub.renewal", l), &content, true, l)
+}
+
+/// Generate subscription-cancelled email HTML.
+pub fn subscription_cancelled_html(buyer_name: &str, lang: &str) -> String {
+    let l = if lang == "fr" { "fr" } else { "en" };
+    let hi = if l == "fr" {
+        format!("Bonjour {},", html_escape(buyer_name))
+    } else {
+        format!("Hi {},", html_escape(buyer_name))
+    };
+    let content = format!(
+        r##"<tr><td style="padding:32px 40px 24px 40px;">
+            <h1 style="color:#1a1a2e;margin-top:0;font-size:22px;">{hero}</h1>
+            <p style="color:#555;font-size:15px;">{hi}</p>
+            <p style="color:#555;font-size:15px;">{body}</p>
+            <div style="margin-top:24px;text-align:center;">
+                <a href="{url}/account/subscription" style="background:linear-gradient(135deg,#667EEA,#764BA2);color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:700;display:inline-block;">
+                    {cta}
+                </a>
+            </div>
+        </td></tr>"##,
+        hero = t("sub.cancelled", l),
+        hi = hi,
+        body = t("sub.cancelled.body", l),
+        url = email_config::URL_PROD,
+        cta = if l == "fr" {
+            "Se réabonner"
+        } else {
+            "Resubscribe"
+        },
+    );
+    email_wrapper(t("sub.cancelled", l), &content, true, l)
+}
+
+/// Generate trial-ending email HTML.
+pub fn subscription_trial_ending_html(buyer_name: &str, days_remaining: u32, lang: &str) -> String {
+    let l = if lang == "fr" { "fr" } else { "en" };
+    let hi = if l == "fr" {
+        format!("Bonjour {},", html_escape(buyer_name))
+    } else {
+        format!("Hi {},", html_escape(buyer_name))
+    };
+    let detail = if l == "fr" {
+        format!(
+            "Votre essai gratuit se termine dans {days} jour{s}.",
+            days = days_remaining,
+            s = if days_remaining > 1 { "s" } else { "" },
+        )
+    } else {
+        format!(
+            "Your free trial ends in {days} day{s}.",
+            days = days_remaining,
+            s = if days_remaining > 1 { "s" } else { "" },
+        )
+    };
+    let content = format!(
+        r##"<tr><td style="padding:32px 40px 24px 40px;">
+            <h1 style="color:#1a1a2e;margin-top:0;font-size:22px;">{hero}</h1>
+            <p style="color:#555;font-size:15px;">{hi}</p>
+            <p style="color:#555;font-size:15px;">{detail}</p>
+            <p style="color:#555;font-size:15px;">{body}</p>
+            <div style="margin-top:24px;text-align:center;">
+                <a href="{url}/account/subscription" style="background:linear-gradient(135deg,#667EEA,#764BA2);color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:700;display:inline-block;">
+                    {cta}
+                </a>
+            </div>
+        </td></tr>"##,
+        hero = t("sub.trial_ending", l),
+        hi = hi,
+        detail = detail,
+        body = t("sub.trial_ending.body", l),
+        url = email_config::URL_PROD,
+        cta = if l == "fr" {
+            "S'abonner maintenant"
+        } else {
+            "Subscribe Now"
+        },
+    );
+    email_wrapper(t("sub.trial_ending", l), &content, true, l)
+}
+
+/// Generate payout scheduled email HTML (bilingual EN/FR).
+pub fn payout_scheduled_html(order_id: &str, seller_name: &str, lang: &str) -> String {
+    let l = if lang == "fr" { "fr" } else { "en" };
+    let safe_seller = html_escape(seller_name);
+    let safe_order = html_escape(order_id);
+    let hi = if l == "fr" {
+        format!("Bonjour {},", safe_seller)
+    } else {
+        format!("Hi {},", safe_seller)
+    };
+    let content = format!(
+        r##"<tr><td style="padding:32px 40px 24px 40px;">
+            <h1 style="color:#1a1a2e;margin-top:0;font-size:22px;">{hero}</h1>
+            <p style="color:#555;font-size:15px;">{hi}</p>
+            <p style="color:#555;font-size:15px;">{order_label} <strong>#{order_id}</strong> {delivered}</p>
+            <p style="color:#555;font-size:15px;">{dashboard}</p>
+            <div style="margin-top:24px;text-align:center;">
+                <a href="{url}/seller/payouts" style="background:linear-gradient(135deg,#667EEA,#764BA2);color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:700;display:inline-block;">
+                    {cta}
+                </a>
+            </div>
+        </td></tr>"##,
+        hero = t("payout.scheduled", l),
+        hi = hi,
+        order_label = if l == "fr" { "Commande" } else { "Order" },
+        order_id = safe_order,
+        delivered = t("payout.delivered", l),
+        dashboard = t("payout.dashboard", l),
+        url = email_config::URL_PROD,
+        cta = if l == "fr" {
+            "Voir mes paiements"
+        } else {
+            "View Payouts"
+        },
+    );
+    email_wrapper(t("payout.scheduled", l), &content, false, l)
 }
 
 // ---------------------------------------------------------------------------
@@ -584,7 +854,7 @@ mod tests {
             tax_amount_cents: 975,
             total_amount_cents: 8475,
         };
-        let html = seller_notification_html(&order, "Bob");
+        let html = seller_notification_html(&order, "Bob", "en");
         assert!(html.contains("New Order Received!"));
         assert!(html.contains("ACTION REQUIRED"));
         assert!(html.contains("sell1234")); // short ID
@@ -593,10 +863,10 @@ mod tests {
 
     #[test]
     fn test_low_stock_alert_html() {
-        let html = low_stock_alert_html("Maple Syrup", 3);
+        let html = low_stock_alert_html("Maple Syrup", 3, "en");
         assert!(html.contains("Low Stock Alert"));
         assert!(html.contains("Maple Syrup"));
-        assert!(html.contains("3 units remaining"));
+        assert!(html.contains("3 units"));
         assert!(html.contains(email_config::PHYSICAL_ADDRESS));
     }
 
@@ -656,8 +926,8 @@ mod tests {
 
     #[test]
     fn test_low_stock_alert_singular() {
-        let html = low_stock_alert_html("Milk", 1);
-        assert!(html.contains("1 unit remaining"));
+        let html = low_stock_alert_html("Milk", 1, "en");
+        assert!(html.contains("1 unit"));
     }
 
     #[tokio::test]
@@ -828,7 +1098,7 @@ mod tests {
             tax_amount_cents: 130,
             total_amount_cents: 1130,
         };
-        let html = seller_notification_html(&order, "<img src=x onerror=alert(1)>");
+        let html = seller_notification_html(&order, "<img src=x onerror=alert(1)>", "en");
         // The angle brackets must be escaped so the browser won't parse it as a tag
         assert!(!html.contains("<img"), "Raw <img tag must be escaped");
         assert!(
@@ -840,8 +1110,8 @@ mod tests {
 
     #[test]
     fn test_low_stock_alert_zero_stock() {
-        let html = low_stock_alert_html("Out of Stock Item", 0);
-        assert!(html.contains("0 units remaining"));
+        let html = low_stock_alert_html("Out of Stock Item", 0, "en");
+        assert!(html.contains("0 units"));
     }
 
     #[test]
@@ -953,7 +1223,7 @@ mod tests {
             tax_amount_cents: 65,
             total_amount_cents: 565,
         };
-        let html = seller_notification_html(&order, "Seller");
+        let html = seller_notification_html(&order, "Seller", "en");
         assert!(html.contains("short1"), "Full short order ID should appear");
     }
 

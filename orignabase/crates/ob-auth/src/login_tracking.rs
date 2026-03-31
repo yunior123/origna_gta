@@ -156,16 +156,44 @@ pub async fn upsert_known_device(
 
 // ── Helper: extract IP and User-Agent from headers ───────────────────
 
-/// Extract client IP from headers (X-Forwarded-For > X-Real-IP > "unknown").
+/// Extract client IP from headers, respecting X-Forwarded-For/X-Real-IP only
+/// when the peer address is 127.0.0.1 (Caddy proxy). When called without
+/// peer info (e.g., from login tracking which only has headers), falls back
+/// to peer_ip parameter.
+///
+/// SECURITY: Without a trusted-proxy check, any client can spoof
+/// X-Forwarded-For to impersonate arbitrary IPs in login history.
+pub fn extract_ip_with_peer(headers: &HeaderMap, peer_ip: Option<std::net::IpAddr>) -> String {
+    let trusted_proxy = std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST);
+    let peer = peer_ip.unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED));
+
+    // Only trust forwarded headers when peer is the trusted Caddy proxy (127.0.0.1)
+    if peer == trusted_proxy {
+        if let Some(forwarded) = headers
+            .get("x-forwarded-for")
+            .and_then(|v| v.to_str().ok())
+            .and_then(|v| v.split(',').next())
+        {
+            return forwarded.trim().to_string();
+        }
+        if let Some(real_ip) = headers.get("x-real-ip").and_then(|v| v.to_str().ok()) {
+            return real_ip.trim().to_string();
+        }
+    }
+
+    // Not from trusted proxy — use peer IP directly
+    if peer.is_unspecified() {
+        "unknown".to_string()
+    } else {
+        peer.to_string()
+    }
+}
+
+/// Legacy extract_ip for callers that don't have ConnectInfo.
+/// Defaults to untrusted (peer_ip = None), which means forwarded headers
+/// are NOT trusted. This is the safe default.
 pub fn extract_ip(headers: &HeaderMap) -> String {
-    headers
-        .get("x-forwarded-for")
-        .and_then(|v| v.to_str().ok())
-        .and_then(|v| v.split(',').next())
-        .or_else(|| headers.get("x-real-ip").and_then(|v| v.to_str().ok()))
-        .unwrap_or("unknown")
-        .trim()
-        .to_string()
+    extract_ip_with_peer(headers, None)
 }
 
 /// Extract User-Agent from headers.
@@ -207,7 +235,7 @@ pub async fn on_login_success(
     user_id: &str,
     headers: &HeaderMap,
 ) {
-    let ip = extract_ip(headers);
+    let ip = extract_ip_with_peer(headers, None);
     let ua = extract_user_agent(headers);
     let device_hash = compute_device_hash(&ua);
     let device_name = short_device_name(&ua);
@@ -231,7 +259,7 @@ pub async fn on_login_failure(
     user_id: &str,
     headers: &HeaderMap,
 ) {
-    let ip = extract_ip(headers);
+    let ip = extract_ip_with_peer(headers, None);
     let ua = extract_user_agent(headers);
     let _ = record_login(db, user_id, &ip, &ua, "failed").await;
 }
@@ -548,20 +576,35 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_ip_from_x_forwarded_for() {
+    fn test_extract_ip_from_x_forwarded_for_trusted_proxy() {
+        // X-Forwarded-For trusted only when peer is 127.0.0.1 (Caddy)
         let mut headers = HeaderMap::new();
         headers.insert(
             "x-forwarded-for",
             HeaderValue::from_static("1.2.3.4, 5.6.7.8"),
         );
-        assert_eq!(extract_ip(&headers), "1.2.3.4");
+        let trusted = Some(std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST));
+        assert_eq!(extract_ip_with_peer(&headers, trusted), "1.2.3.4");
     }
 
     #[test]
-    fn test_extract_ip_from_x_real_ip() {
+    fn test_extract_ip_from_x_forwarded_for_untrusted_peer() {
+        // X-Forwarded-For NOT trusted when peer is not localhost
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            "x-forwarded-for",
+            HeaderValue::from_static("1.2.3.4, 5.6.7.8"),
+        );
+        let untrusted = Some("203.0.113.50".parse::<std::net::IpAddr>().unwrap());
+        assert_eq!(extract_ip_with_peer(&headers, untrusted), "203.0.113.50");
+    }
+
+    #[test]
+    fn test_extract_ip_from_x_real_ip_trusted() {
         let mut headers = HeaderMap::new();
         headers.insert("x-real-ip", HeaderValue::from_static("10.0.0.1"));
-        assert_eq!(extract_ip(&headers), "10.0.0.1");
+        let trusted = Some(std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST));
+        assert_eq!(extract_ip_with_peer(&headers, trusted), "10.0.0.1");
     }
 
     #[test]
@@ -569,7 +612,8 @@ mod tests {
         let mut headers = HeaderMap::new();
         headers.insert("x-forwarded-for", HeaderValue::from_static("1.1.1.1"));
         headers.insert("x-real-ip", HeaderValue::from_static("2.2.2.2"));
-        assert_eq!(extract_ip(&headers), "1.1.1.1");
+        let trusted = Some(std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST));
+        assert_eq!(extract_ip_with_peer(&headers, trusted), "1.1.1.1");
     }
 
     #[test]
@@ -582,7 +626,16 @@ mod tests {
     fn test_extract_ip_trims_whitespace() {
         let mut headers = HeaderMap::new();
         headers.insert("x-real-ip", HeaderValue::from_static("  10.0.0.1  "));
-        assert_eq!(extract_ip(&headers), "10.0.0.1");
+        let trusted = Some(std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST));
+        assert_eq!(extract_ip_with_peer(&headers, trusted), "10.0.0.1");
+    }
+
+    #[test]
+    fn test_extract_ip_no_peer_ignores_forwarded_headers() {
+        // Without peer info, forwarded headers are NOT trusted (safe default)
+        let mut headers = HeaderMap::new();
+        headers.insert("x-forwarded-for", HeaderValue::from_static("1.2.3.4"));
+        assert_eq!(extract_ip(&headers), "unknown");
     }
 
     #[test]

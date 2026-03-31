@@ -198,7 +198,7 @@ pub async fn resolve_buyer_contact(
 pub async fn resolve_seller_contact(
     state: &HandlersState,
     seller_id: &str,
-) -> Option<(String, String)> {
+) -> Option<(String, String, String)> {
     if seller_id.is_empty() {
         return None;
     }
@@ -250,7 +250,16 @@ pub async fn resolve_seller_contact(
         .unwrap_or(seller_id)
         .to_string();
 
-    Some((email, seller_name))
+    let lang = user_doc
+        .as_ref()
+        .and_then(|doc| {
+            doc.get(fields::PREFERRED_LANGUAGE)
+                .and_then(|v| v.as_str())
+        })
+        .unwrap_or("en")
+        .to_string();
+
+    Some((email, seller_name, lang))
 }
 
 fn mailjet_credentials(
@@ -320,7 +329,8 @@ pub async fn send_order_confirmation_emails(
     }
 
     for seller_id in seller_ids {
-        let Some((seller_email, seller_name)) = resolve_seller_contact(state, &seller_id).await
+        let Some((seller_email, seller_name, seller_lang)) =
+            resolve_seller_contact(state, &seller_id).await
         else {
             warn!(order_id = %order_id, seller_id = %seller_id, "Seller email unavailable; skipping seller notification email");
             continue;
@@ -328,8 +338,12 @@ pub async fn send_order_confirmation_emails(
         let Some(seller_summary) = build_seller_order_summary(order, &seller_id) else {
             continue;
         };
-        let subject = format!("[Origna] New order received #{order_id}");
-        let html = seller_notification_html(&seller_summary, &seller_name);
+        let subject = if seller_lang == "fr" {
+            format!("[Origna] Nouvelle commande reçue #{order_id}")
+        } else {
+            format!("[Origna] New order received #{order_id}")
+        };
+        let html = seller_notification_html(&seller_summary, &seller_name, &seller_lang);
         if let Err(err) = send_email(
             &state.http_client,
             &api_key,
@@ -993,9 +1007,10 @@ mod tests {
 
         let result = resolve_seller_contact(&state, "seller2").await;
         assert!(result.is_some());
-        let (email, name) = result.unwrap();
+        let (email, name, lang) = result.unwrap();
         assert_eq!(email, "seller2@test.com");
         assert_eq!(name, "Seller Two");
+        assert_eq!(lang, "en"); // default when preferredLanguage not set
     }
 
     #[tokio::test]
@@ -1041,7 +1056,7 @@ mod tests {
 
         let result = resolve_seller_contact(&state, "seller_fn").await;
         assert!(result.is_some());
-        let (_, name) = result.unwrap();
+        let (_, name, _) = result.unwrap();
         assert_eq!(name, "seller_fn");
     }
 

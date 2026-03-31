@@ -1023,9 +1023,29 @@ fn json_to_string_map(data: &Value) -> std::collections::HashMap<String, String>
 }
 
 fn generic_email_html(title: &str, body: &str, lang: &str) -> String {
+    let safe_title = crate::email::html_escape(title);
+    let safe_body = crate::email::html_escape(body);
     let greeting = if lang == "fr" { "Bonjour," } else { "Hello," };
+    let unsub_label = if lang == "fr" {
+        "Se désabonner"
+    } else {
+        "Unsubscribe"
+    };
+    let casl_line = if lang == "fr" {
+        "Ce message a été envoyé conformément à la LCAP (Loi canadienne anti-pourriel)."
+    } else {
+        "This message was sent in compliance with CASL (Canada's Anti-Spam Legislation)."
+    };
     format!(
-        "<!DOCTYPE html><html><body style=\"font-family:Arial,sans-serif;background:#f5f7fb;padding:24px;\"><div style=\"max-width:640px;margin:0 auto;background:#fff;padding:32px;border-radius:12px;\"><h2>{title}</h2><p>{greeting}</p><p>{body}</p></div></body></html>"
+        "<!DOCTYPE html><html><body style=\"font-family:Arial,sans-serif;background:#f5f7fb;padding:24px;\">\
+         <div style=\"max-width:640px;margin:0 auto;background:#fff;padding:32px;border-radius:12px;\">\
+         <h2>{safe_title}</h2><p>{greeting}</p><p>{safe_body}</p>\
+         <div style=\"margin-top:32px;padding-top:16px;border-top:1px solid #eee;font-size:12px;color:#666;\">\
+         <p>Origna Ventures Inc. | Montréal, QC, Canada</p>\
+         <p><a href=\"https://orignagta.ca/unsubscribe\">{unsub_label} / Se désabonner</a> | \
+         <a href=\"mailto:support@orignagta.ca\">support@orignagta.ca</a></p>\
+         <p>{casl_line}</p>\
+         </div></div></body></html>"
     )
 }
 

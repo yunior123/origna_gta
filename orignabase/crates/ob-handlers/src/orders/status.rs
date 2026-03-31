@@ -218,24 +218,6 @@ fn mailjet_credentials(state: &HandlersState, order_id: &str) -> Option<(String,
     }
 }
 
-fn html_escape_fragment(value: &str) -> String {
-    value
-        .replace('&', "&amp;")
-        .replace('<', "&lt;")
-        .replace('>', "&gt;")
-        .replace('"', "&quot;")
-}
-
-fn payout_scheduled_html(order_id: &str, seller_name: &str) -> String {
-    let safe_seller_name = html_escape_fragment(seller_name);
-    let safe_order_id = html_escape_fragment(order_id);
-    format!(
-        "<!DOCTYPE html><html><body style=\"font-family:Arial,Helvetica,sans-serif;background:#f4f4f8;padding:24px;\"><div style=\"max-width:640px;margin:0 auto;background:#fff;padding:32px;border-radius:12px;\"><h2 style=\"margin-top:0;color:#1a1a2e;\">Payout scheduled</h2><p style=\"color:#555;font-size:15px;\">Hi {seller_name},</p><p style=\"color:#555;font-size:15px;\">Order <strong>#{order_id}</strong> has been marked as delivered. Your payout has been scheduled for the next payout run.</p><p style=\"color:#555;font-size:15px;\">You can review payout status from your seller dashboard.</p></div></body></html>",
-        seller_name = safe_seller_name,
-        order_id = safe_order_id,
-    )
-}
-
 async fn send_payout_scheduled_notifications(state: &HandlersState, order: &Value) {
     let order_id = order
         .get("id")
@@ -255,13 +237,18 @@ async fn send_payout_scheduled_notifications(state: &HandlersState, order: &Valu
     }
 
     for seller_id in seller_ids {
-        let Some((seller_email, seller_name)) = resolve_seller_contact(state, &seller_id).await
+        let Some((seller_email, seller_name, seller_lang)) =
+            resolve_seller_contact(state, &seller_id).await
         else {
             warn!(order_id = %order_id, seller_id = %seller_id, "Seller email unavailable; skipping payout scheduled email");
             continue;
         };
-        let html = payout_scheduled_html(order_id, &seller_name);
-        let subject = format!("Payout scheduled for order #{order_id} — Origna");
+        let html = email::payout_scheduled_html(order_id, &seller_name, &seller_lang);
+        let subject = if seller_lang == "fr" {
+            format!("Paiement programmé pour commande #{order_id} — Origna")
+        } else {
+            format!("Payout scheduled for order #{order_id} — Origna")
+        };
         if let Err(err) = email::send_email(
             &state.http_client,
             &api_key,

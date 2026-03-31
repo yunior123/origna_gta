@@ -144,3 +144,38 @@ u can re seed entirely
             "shipFromCountry": ship_from_country,
         }));
 60. /harness-loop find magic strings and fix, go file by file in rust and dart
+
+
+
+
+52. audit images screenshots  vs
+names. delegate. there are many inconsistencies.the idea of this: 3. Name audit (queued)
+ — check all 305 filenames vs content, rename mismatches,
+  delete dupes. is that screenshots are not taken correctly probably due to issues navigating the app
+50. /harness-loop use agent browser  and dont stop till u audit and fix
+    all design entirely, every single view and widget, variants and states,all
+      layouts.save all screenshots to desktop, make sure to deploy all first to dev before using agent browser. delegate.
+1. "/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/STATE.md" fix all here, resume state.md when done or compress
+it since the file is too large, mark as done as u finish. 15. run load tests, reliability tests, stress tests, benchmarks,
+example apps and tests
+16. audit webhook stripe endpoints: stripe vs orignabase. all webhooks:test and live using cli. Create big plan. 1. run all
+ live tests in backend and frontend. fix as needed. dont stop till done
+2. run e2e tests in orignabase rust and origna_gta flutter, all tests and phases. fix as needed.dont stop till done.3.
+improve dev seed, all of them with some sample image and video. 2.make sure to seed db for all variants and states so that
+we can see all views with non empty state: ex: favorites view with favorited products ex1:seller dashboard full ex2:admin
+dashboard full ex3:addresses etc, all, search the missing gaps. the mega seed already exist, just improve. test users
+should include:yuniorrodriguezo460@gmail.com, yr62813@gmail.com, yuniorrodriguezo4601@yahoo.com.4. coverage for orignabase
+rust and origna_gta should be 95+ for tests. increase coverage, test all. priority for live tests, unit tests are
+secondary.fix all warnings too.19. audit auth system all over in backend and frontend.18. audit full codebase with 30+
+agents, use delegation. findings should be added to state.md. findings should be validated in depth to avoid false
+positives.21. use delegation to document codebase like pro, search web for best practices. document so well that it will
+avoid going back and forth many times: ex: we were using for loop for images compression then future.wait then for loop
+again. document functions, clases, etc
+22. priority goes to live tests in rust first then flutter, increase coverage for tests running against localhost
+orignabase,postgresql,meilisearch,flutter.26. do not skip, be a pro. ex:Right — skipping application_fee_amount in test
+mode is a workaround, not a proper fix. The pro fix: check the seller's
+  actual Stripe Connect account. Let me do it properly by extracting the seller ID from the validated items
+27. audit all 10+ flows of app. @.claude/skills/flow-audit/SKILL.md  use the skill to audit in depth, add findings to
+state.md
+28. u can reseed db as many times as needed if there are issues with data34. docs for classes, functions, etc, to avoid
+back and forth. search web for best practices

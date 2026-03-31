@@ -25,13 +25,33 @@ use std::collections::HashMap;
 //   {{ .UserName }}     — display name (if available)
 //   {{ .ExpiresIn }}    — human-readable expiry (e.g. "24 hours")
 
-/// Well-known template names.
+/// Well-known template names (English).
 pub const TEMPLATE_VERIFY_EMAIL: &str = "verify_email";
 pub const TEMPLATE_RESET_PASSWORD: &str = "reset_password";
 pub const TEMPLATE_MFA_ALERT: &str = "mfa_alert";
 pub const TEMPLATE_MAGIC_LINK: &str = "magic_link";
 pub const TEMPLATE_EMAIL_CHANGE: &str = "email_change";
 pub const TEMPLATE_WELCOME: &str = "welcome";
+
+/// Well-known template names (French — Bill 96 / Quebec compliance).
+pub const TEMPLATE_VERIFY_EMAIL_FR: &str = "verify_email_fr";
+pub const TEMPLATE_RESET_PASSWORD_FR: &str = "reset_password_fr";
+pub const TEMPLATE_MFA_ALERT_FR: &str = "mfa_alert_fr";
+pub const TEMPLATE_MAGIC_LINK_FR: &str = "magic_link_fr";
+pub const TEMPLATE_EMAIL_CHANGE_FR: &str = "email_change_fr";
+pub const TEMPLATE_WELCOME_FR: &str = "welcome_fr";
+
+/// CASL-compliant footer appended to all auth emails (bilingual).
+const CASL_FOOTER_HTML: &str = r#"
+<div style="margin-top:32px;padding-top:16px;border-top:1px solid #eee;font-size:12px;color:#666;text-align:center;">
+  <p>Origna Ventures Inc. | Montréal, QC, Canada</p>
+  <p><a href="https://orignagta.ca/unsubscribe" style="color:#2563eb;">Unsubscribe / Se désabonner</a> |
+     <a href="mailto:support@orignagta.ca" style="color:#2563eb;">support@orignagta.ca</a></p>
+  <p>This message was sent in compliance with CASL (Canada's Anti-Spam Legislation).<br>
+     Ce message a été envoyé conformément à la LCAP (Loi canadienne anti-pourriel).</p>
+</div>"#;
+
+const CASL_FOOTER_TEXT: &str = "\n\n---\nOrigna Ventures Inc. | Montréal, QC, Canada\nUnsubscribe / Se désabonner: https://orignagta.ca/unsubscribe\nsupport@orignagta.ca\nThis message was sent in compliance with CASL. / Ce message a été envoyé conformément à la LCAP.";
 
 /// An email template with subject, HTML body, and plain text body.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -70,6 +90,46 @@ fn replace_vars(template: &str, vars: &HashMap<String, String>) -> String {
     result
 }
 
+/// Insert the CASL footer just before the closing `</body>` tag.
+/// Falls back to appending at the end if no `</body>` is found.
+fn append_casl_footer_html(html: &str) -> String {
+    if let Some(pos) = html.rfind("</body>") {
+        let mut result = String::with_capacity(html.len() + CASL_FOOTER_HTML.len());
+        result.push_str(&html[..pos]);
+        result.push_str(CASL_FOOTER_HTML);
+        result.push_str(&html[pos..]);
+        result
+    } else {
+        [html, CASL_FOOTER_HTML].concat()
+    }
+}
+
+/// Resolve the template name for the user's preferred language.
+/// Returns the French variant if `lang == "fr"` and a French template exists.
+pub fn template_for_lang<'a>(base_name: &'a str, lang: &str) -> &'a str {
+    if lang == "fr" {
+        match base_name {
+            TEMPLATE_VERIFY_EMAIL => TEMPLATE_VERIFY_EMAIL_FR,
+            TEMPLATE_RESET_PASSWORD => TEMPLATE_RESET_PASSWORD_FR,
+            TEMPLATE_MFA_ALERT => TEMPLATE_MFA_ALERT_FR,
+            TEMPLATE_MAGIC_LINK => TEMPLATE_MAGIC_LINK_FR,
+            TEMPLATE_EMAIL_CHANGE => TEMPLATE_EMAIL_CHANGE_FR,
+            TEMPLATE_WELCOME => TEMPLATE_WELCOME_FR,
+            _ => base_name,
+        }
+    } else {
+        match base_name {
+            TEMPLATE_VERIFY_EMAIL => TEMPLATE_VERIFY_EMAIL,
+            TEMPLATE_RESET_PASSWORD => TEMPLATE_RESET_PASSWORD,
+            TEMPLATE_MFA_ALERT => TEMPLATE_MFA_ALERT,
+            TEMPLATE_MAGIC_LINK => TEMPLATE_MAGIC_LINK,
+            TEMPLATE_EMAIL_CHANGE => TEMPLATE_EMAIL_CHANGE,
+            TEMPLATE_WELCOME => TEMPLATE_WELCOME,
+            _ => base_name,
+        }
+    }
+}
+
 // ── Default Templates ──────────────────────────────────────────────
 
 pub fn default_templates() -> Vec<EmailTemplate> {
@@ -80,6 +140,13 @@ pub fn default_templates() -> Vec<EmailTemplate> {
         default_magic_link(),
         default_email_change(),
         default_welcome(),
+        // French (Bill 96 / Quebec compliance)
+        default_verify_email_fr(),
+        default_reset_password_fr(),
+        default_mfa_alert_fr(),
+        default_magic_link_fr(),
+        default_email_change_fr(),
+        default_welcome_fr(),
     ]
 }
 
@@ -267,6 +334,62 @@ fn default_welcome() -> EmailTemplate {
     }
 }
 
+// ── French Templates (Bill 96 / Quebec compliance) ─────────────────
+
+fn default_verify_email_fr() -> EmailTemplate {
+    EmailTemplate {
+        name: TEMPLATE_VERIFY_EMAIL_FR.into(),
+        subject: "Vérifiez votre courriel — {{ .AppName }}".into(),
+        text: "Bienvenue sur {{ .AppName }} !\n\nVeuillez vérifier votre courriel :\n\n{{ .ActionURL }}\n\nCe lien expire dans {{ .ExpiresIn }}.".into(),
+        html: r#"<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"></head><body style="font-family:sans-serif;margin:0;padding:0;background:#f5f5f5"><table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 0"><tr><td align="center"><table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:8px;padding:40px;border:1px solid #e0e0e0"><tr><td><h2 style="margin:0 0 20px;color:#1a1a1a">Vérifiez votre courriel</h2><p style="color:#333;line-height:1.6;margin:0 0 24px">Cliquez ci-dessous pour vérifier votre adresse courriel.</p><p style="margin:0 0 24px"><a href="{{ .ActionURL }}" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600">Vérifier</a></p><p style="color:#999;font-size:13px">Ce lien expire dans {{ .ExpiresIn }}.</p></td></tr></table></td></tr></table></body></html>"#.into(),
+    }
+}
+
+fn default_reset_password_fr() -> EmailTemplate {
+    EmailTemplate {
+        name: TEMPLATE_RESET_PASSWORD_FR.into(),
+        subject: "Réinitialiser votre mot de passe — {{ .AppName }}".into(),
+        text: "Réinitialisez votre mot de passe :\n\n{{ .ActionURL }}\n\nCe lien expire dans {{ .ExpiresIn }}.".into(),
+        html: r#"<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"></head><body style="font-family:sans-serif;margin:0;padding:0;background:#f5f5f5"><table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 0"><tr><td align="center"><table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:8px;padding:40px;border:1px solid #e0e0e0"><tr><td><h2 style="margin:0 0 20px;color:#1a1a1a">Réinitialiser le mot de passe</h2><p style="color:#333;line-height:1.6;margin:0 0 24px">Cliquez ci-dessous pour réinitialiser votre mot de passe.</p><p style="margin:0 0 24px"><a href="{{ .ActionURL }}" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600">Réinitialiser</a></p><p style="color:#999;font-size:13px">Ce lien expire dans {{ .ExpiresIn }}.</p></td></tr></table></td></tr></table></body></html>"#.into(),
+    }
+}
+
+fn default_mfa_alert_fr() -> EmailTemplate {
+    EmailTemplate {
+        name: TEMPLATE_MFA_ALERT_FR.into(),
+        subject: "Alerte de sécurité — {{ .AppName }}".into(),
+        text: "Un changement MFA a été détecté sur votre compte {{ .AppName }}.\n\nSi ce n'était pas vous, sécurisez votre compte immédiatement.".into(),
+        html: r#"<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"></head><body style="font-family:sans-serif;margin:0;padding:0;background:#f5f5f5"><table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 0"><tr><td align="center"><table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:8px;padding:40px;border:1px solid #e0e0e0"><tr><td><h2 style="margin:0 0 20px;color:#c0392b">Alerte de sécurité</h2><p style="color:#333;line-height:1.6;margin:0 0 24px">Un changement MFA a été détecté sur votre compte.</p><p style="color:#999;font-size:13px">Si ce n'était pas vous, sécurisez votre compte immédiatement.</p></td></tr></table></td></tr></table></body></html>"#.into(),
+    }
+}
+
+fn default_magic_link_fr() -> EmailTemplate {
+    EmailTemplate {
+        name: TEMPLATE_MAGIC_LINK_FR.into(),
+        subject: "Votre lien de connexion — {{ .AppName }}".into(),
+        text: "Connectez-vous à {{ .AppName }} :\n\n{{ .ActionURL }}\n\nCe lien expire dans {{ .ExpiresIn }}.".into(),
+        html: r#"<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"></head><body style="font-family:sans-serif;margin:0;padding:0;background:#f5f5f5"><table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 0"><tr><td align="center"><table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:8px;padding:40px;border:1px solid #e0e0e0"><tr><td><h2 style="margin:0 0 20px;color:#1a1a1a">Lien de connexion</h2><p style="color:#333;line-height:1.6;margin:0 0 24px">Cliquez ci-dessous pour vous connecter.</p><p style="margin:0 0 24px"><a href="{{ .ActionURL }}" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600">Se connecter</a></p><p style="color:#999;font-size:13px">Ce lien expire dans {{ .ExpiresIn }}.</p></td></tr></table></td></tr></table></body></html>"#.into(),
+    }
+}
+
+fn default_email_change_fr() -> EmailTemplate {
+    EmailTemplate {
+        name: TEMPLATE_EMAIL_CHANGE_FR.into(),
+        subject: "Confirmez le changement de courriel — {{ .AppName }}".into(),
+        text: "Confirmez le changement de courriel :\n\n{{ .ActionURL }}\n\nCe lien expire dans {{ .ExpiresIn }}.".into(),
+        html: r#"<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"></head><body style="font-family:sans-serif;margin:0;padding:0;background:#f5f5f5"><table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 0"><tr><td align="center"><table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:8px;padding:40px;border:1px solid #e0e0e0"><tr><td><h2 style="margin:0 0 20px;color:#1a1a1a">Changement de courriel</h2><p style="color:#333;line-height:1.6;margin:0 0 24px">Confirmez votre nouvelle adresse courriel.</p><p style="margin:0 0 24px"><a href="{{ .ActionURL }}" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600">Confirmer</a></p><p style="color:#999;font-size:13px">Ce lien expire dans {{ .ExpiresIn }}.</p></td></tr></table></td></tr></table></body></html>"#.into(),
+    }
+}
+
+fn default_welcome_fr() -> EmailTemplate {
+    EmailTemplate {
+        name: TEMPLATE_WELCOME_FR.into(),
+        subject: "Bienvenue sur {{ .AppName }} !".into(),
+        text: "Bienvenue sur {{ .AppName }}, {{ .UserName }} !\n\nVotre compte a été créé.\n\nCommencez : {{ .SiteURL }}".into(),
+        html: r#"<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"></head><body style="font-family:sans-serif;margin:0;padding:0;background:#f5f5f5"><table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 0"><tr><td align="center"><table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:8px;padding:40px;border:1px solid #e0e0e0"><tr><td><h2 style="margin:0 0 20px;color:#1a1a1a">Bienvenue sur {{ .AppName }} !</h2><p style="color:#333;line-height:1.6;margin:0 0 24px">Bonjour {{ .UserName }}, votre compte a été créé.</p><p style="margin:0 0 24px"><a href="{{ .SiteURL }}" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600">Commencer</a></p></td></tr></table></td></tr></table></body></html>"#.into(),
+    }
+}
+
 // ── Email Config ───────────────────────────────────────────────────
 
 /// Configuration for the email service.
@@ -440,13 +563,16 @@ impl EmailService {
     }
 
     /// Send a verification email with a token link.
+    /// Uses French template if `lang == "fr"` (Bill 96 compliance).
     pub async fn send_verification_email(
         &self,
         to: &str,
         token: &str,
         base_url: &str,
+        lang: &str,
     ) -> Result<()> {
-        let template = self.get_template(TEMPLATE_VERIFY_EMAIL).await;
+        let tpl_name = template_for_lang(TEMPLATE_VERIFY_EMAIL, lang);
+        let template = self.get_template(tpl_name).await;
         let mut vars = self.base_vars();
         vars.insert(
             "ActionURL".into(),
@@ -454,7 +580,8 @@ impl EmailService {
         );
         vars.insert("Token".into(), token.into());
         vars.insert("Email".into(), to.into());
-        vars.insert("ExpiresIn".into(), "24 hours".into());
+        let expires = if lang == "fr" { "24 heures" } else { "24 hours" };
+        vars.insert("ExpiresIn".into(), expires.into());
         vars.insert("SiteURL".into(), base_url.into());
 
         let rendered = template.render(&vars);
@@ -463,8 +590,16 @@ impl EmailService {
     }
 
     /// Send a password reset email.
-    pub async fn send_reset_email(&self, to: &str, token: &str, base_url: &str) -> Result<()> {
-        let template = self.get_template(TEMPLATE_RESET_PASSWORD).await;
+    /// Uses French template if `lang == "fr"`.
+    pub async fn send_reset_email(
+        &self,
+        to: &str,
+        token: &str,
+        base_url: &str,
+        lang: &str,
+    ) -> Result<()> {
+        let tpl_name = template_for_lang(TEMPLATE_RESET_PASSWORD, lang);
+        let template = self.get_template(tpl_name).await;
         let mut vars = self.base_vars();
         vars.insert(
             "ActionURL".into(),
@@ -472,7 +607,8 @@ impl EmailService {
         );
         vars.insert("Token".into(), token.into());
         vars.insert("Email".into(), to.into());
-        vars.insert("ExpiresIn".into(), "1 hour".into());
+        let expires = if lang == "fr" { "1 heure" } else { "1 hour" };
+        vars.insert("ExpiresIn".into(), expires.into());
         vars.insert("SiteURL".into(), base_url.into());
 
         let rendered = template.render(&vars);
@@ -481,10 +617,21 @@ impl EmailService {
     }
 
     /// Send an MFA change alert.
-    pub async fn send_mfa_alert(&self, to: &str, action: &str) -> Result<()> {
-        let template = self.get_template(TEMPLATE_MFA_ALERT).await;
+    /// Uses French template if `lang == "fr"`.
+    pub async fn send_mfa_alert(&self, to: &str, action: &str, lang: &str) -> Result<()> {
+        let tpl_name = template_for_lang(TEMPLATE_MFA_ALERT, lang);
+        let template = self.get_template(tpl_name).await;
         let mut vars = self.base_vars();
-        vars.insert("Action".into(), action.into());
+        let action_label = if lang == "fr" {
+            match action {
+                "enabled" => "activée",
+                "disabled" => "désactivée",
+                _ => action,
+            }
+        } else {
+            action
+        };
+        vars.insert("Action".into(), action_label.into());
         vars.insert("Email".into(), to.into());
 
         let rendered = template.render(&vars);
@@ -493,8 +640,16 @@ impl EmailService {
     }
 
     /// Send a magic link sign-in email.
-    pub async fn send_magic_link_email(&self, to: &str, token: &str, base_url: &str) -> Result<()> {
-        let template = self.get_template(TEMPLATE_MAGIC_LINK).await;
+    /// Uses French template if `lang == "fr"`.
+    pub async fn send_magic_link_email(
+        &self,
+        to: &str,
+        token: &str,
+        base_url: &str,
+        lang: &str,
+    ) -> Result<()> {
+        let tpl_name = template_for_lang(TEMPLATE_MAGIC_LINK, lang);
+        let template = self.get_template(tpl_name).await;
         let mut vars = self.base_vars();
         vars.insert(
             "ActionURL".into(),
@@ -511,8 +666,10 @@ impl EmailService {
     }
 
     /// Send a welcome email to a newly created user.
-    pub async fn send_welcome_email(&self, to: &str) -> Result<()> {
-        let template = self.get_template(TEMPLATE_WELCOME).await;
+    /// Uses French template if `lang == "fr"`.
+    pub async fn send_welcome_email(&self, to: &str, lang: &str) -> Result<()> {
+        let tpl_name = template_for_lang(TEMPLATE_WELCOME, lang);
+        let template = self.get_template(tpl_name).await;
         let mut vars = self.base_vars();
         vars.insert("Email".into(), to.to_string());
         vars.insert(
@@ -526,7 +683,11 @@ impl EmailService {
     }
 
     /// Send a multipart HTML + plain text email with proper deliverability headers.
+    /// CASL footer is automatically appended to all auth emails.
     async fn send_multipart(&self, to: &str, subject: &str, plain: &str, html: &str) -> Result<()> {
+        // Append CASL footer for compliance
+        let plain = [plain, CASL_FOOTER_TEXT].concat();
+        let html = append_casl_footer_html(html);
         let mut builder = Message::builder()
             .from(
                 self.config
@@ -735,7 +896,7 @@ mod tests {
     #[test]
     fn test_default_templates_count() {
         let templates = default_templates();
-        assert_eq!(templates.len(), 6);
+        assert_eq!(templates.len(), 12); // 6 English + 6 French
     }
 
     #[test]
@@ -1058,7 +1219,7 @@ mod tests {
         };
         let service = EmailService::new(config);
         let templates = service.list_templates().await.unwrap();
-        assert_eq!(templates.len(), 6);
+        assert_eq!(templates.len(), 12); // 6 English + 6 French
     }
 
     #[tokio::test]

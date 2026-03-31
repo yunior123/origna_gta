@@ -3,7 +3,7 @@
 use crate::McpState;
 use crate::errors::{McpError, McpResult};
 use crate::safeguards::SpendLimit;
-use ob_core::constants::mcp_params as p;
+use ob_core::constants::{collections, fields, mcp_params as p};
 use serde_json::{Value, json};
 
 /// List orders for user
@@ -33,7 +33,7 @@ pub async fn list_orders(_state: McpState, user_id: &str, params: &Value) -> Mcp
 }
 
 /// Get order details
-pub async fn get_order(_state: McpState, user_id: &str, params: &Value) -> McpResult<Value> {
+pub async fn get_order(state: McpState, user_id: &str, params: &Value) -> McpResult<Value> {
     let order_id = params
         .get(p::ORDER_ID)
         .and_then(|v| v.as_str())
@@ -45,24 +45,32 @@ pub async fn get_order(_state: McpState, user_id: &str, params: &Value) -> McpRe
         ));
     }
 
-    // Fetch order
-    // NOTE: state.db.get_document("orders", order_id)
-    // For now, simulate order fetch - in production this comes from DB
-    let order_buyer_id = user_id; // Stub: assume order belongs to requesting user
+    // Fetch order from database
+    let order = state
+        .db
+        .get_document(collections::ORDERS, order_id)
+        .await
+        .map_err(|e| McpError::Internal(format!("Failed to fetch order: {e}")))?;
 
-    // Verify buyerId matches user_id (ownership check)
-    if order_buyer_id != user_id {
+    if order.is_null() {
+        return Err(McpError::NotFound("Order not found".to_string()));
+    }
+
+    // Verify ownership: requesting user must be the buyer or seller of this order
+    let order_buyer_id = order
+        .get(fields::BUYER_ID)
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+    let order_seller_id = order
+        .get(fields::SELLER_ID)
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+
+    if order_buyer_id != user_id && order_seller_id != user_id {
         return Err(McpError::Forbidden("Access denied".to_string()));
     }
 
-    Ok(json!({
-        "id": order_id,
-        "buyer_id": user_id,
-        "status": "pending",
-        "items": [],
-        "total_cents": 0,
-        "created_at": 0
-    }))
+    Ok(order)
 }
 
 /// Request a return for an order
@@ -245,11 +253,67 @@ mod tests {
     #[tokio::test]
     async fn test_get_order_valid() {
         let state = make_state().await;
+        // Seed an order in the in-memory database
+        state
+            .db
+            .upsert_document(
+                collections::ORDERS,
+                "o1",
+                json!({
+                    fields::BUYER_ID: "users:u1",
+                    fields::SELLER_ID: "users:s1",
+                    "status": "pending",
+                }),
+            )
+            .await
+            .unwrap();
         let result = get_order(state, "users:u1", &json!({"order_id": "orders:o1"}))
             .await
             .unwrap();
-        assert_eq!(result["id"], "orders:o1");
-        assert_eq!(result["buyer_id"], "users:u1");
+        assert_eq!(result[fields::BUYER_ID], "users:u1");
+    }
+
+    #[tokio::test]
+    async fn test_get_order_ownership_denied() {
+        let state = make_state().await;
+        state
+            .db
+            .upsert_document(
+                collections::ORDERS,
+                "o_denied",
+                json!({
+                    fields::BUYER_ID: "users:buyer1",
+                    fields::SELLER_ID: "users:seller1",
+                    "status": "pending",
+                }),
+            )
+            .await
+            .unwrap();
+        // A different user should be denied
+        let result = get_order(state, "users:attacker", &json!({"order_id": "orders:o_denied"})).await;
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), McpError::Forbidden(_)));
+    }
+
+    #[tokio::test]
+    async fn test_get_order_seller_can_access() {
+        let state = make_state().await;
+        state
+            .db
+            .upsert_document(
+                collections::ORDERS,
+                "o_seller_access",
+                json!({
+                    fields::BUYER_ID: "users:buyer1",
+                    fields::SELLER_ID: "users:seller1",
+                    "status": "shipped",
+                }),
+            )
+            .await
+            .unwrap();
+        // Seller of the order should have access
+        let result = get_order(state, "users:seller1", &json!({"order_id": "orders:o_seller_access"})).await;
+        assert!(result.is_ok());
     }
 
     #[tokio::test]

@@ -363,7 +363,7 @@ pub async fn register(
 
     if let Some(ref email_service) = state.email_service {
         let _ = email_service
-            .send_verification_email(&body.email, &verification_token, &state.base_url)
+            .send_verification_email(&body.email, &verification_token, &state.base_url, "en")
             .await;
     }
 
@@ -1152,8 +1152,9 @@ pub async fn forgot_password(
     // Send reset email if service is configured
     if let Some(ref email_service) = state.email_service {
         let email = user["email"].as_str().unwrap_or_default();
+        let lang = user["preferredLanguage"].as_str().unwrap_or("en");
         let _ = email_service
-            .send_reset_email(email, &reset_token, &state.base_url)
+            .send_reset_email(email, &reset_token, &state.base_url, lang)
             .await;
         Ok(Json(json!({
             "message": "If the email exists, a reset link has been sent",
@@ -1217,7 +1218,8 @@ pub async fn reset_password(
         .ok_or_else(|| Error::Auth("No reset token pending".into()))?;
 
     let token_hash = hash_token(&body.token);
-    if stored_hash != token_hash {
+    // SECURITY: Use constant-time comparison to prevent timing attacks
+    if !constant_time_eq(stored_hash, &token_hash) {
         return Err(Error::Auth("Invalid or expired reset token".into()));
     }
 
@@ -1273,6 +1275,20 @@ fn hash_token(input: &str) -> String {
     hex::encode(hasher.finalize())
 }
 
+/// Constant-time string comparison to prevent timing attacks on token hashes.
+/// Returns `true` if the two strings are equal, using XOR accumulation to
+/// prevent short-circuit evaluation from leaking information about which
+/// bytes differ.
+fn constant_time_eq(a: &str, b: &str) -> bool {
+    if a.len() != b.len() {
+        return false;
+    }
+    a.bytes()
+        .zip(b.bytes())
+        .fold(0u8, |acc, (x, y)| acc | (x ^ y))
+        == 0
+}
+
 // ── Email Verification ──
 
 #[derive(Deserialize)]
@@ -1292,7 +1308,7 @@ pub async fn verify_email(
         ));
     }
 
-    // Mark user as email verified
+    // Look up the user to check if already verified (prevents token replay)
     let users = state
         .db
         .query_bind(
@@ -1301,13 +1317,28 @@ pub async fn verify_email(
         )
         .await?;
 
-    let _user = users
+    let user = users
         .first()
         .ok_or_else(|| Error::Auth("User not found".into()))?;
 
+    // SECURITY: If already verified, return early — prevents replaying the same
+    // JWT verification token until it expires.
+    let already_verified = user[f::EMAIL_VERIFIED].as_bool().unwrap_or(false);
+    if already_verified {
+        return Ok(Json(json!({ "message": "Email already verified" })));
+    }
+
+    // Mark user as email verified with a timestamp to record when it happened
     state
         .db
-        .update_document("users", &claims.sub, json!({ (f::EMAIL_VERIFIED): true }))
+        .update_document(
+            "users",
+            &claims.sub,
+            json!({
+                (f::EMAIL_VERIFIED): true,
+                "email_verified_at": chrono::Utc::now().to_rfc3339(),
+            }),
+        )
         .await?;
 
     Ok(Json(json!({ "message": "Email verified successfully" })))
@@ -1350,8 +1381,9 @@ pub async fn send_verification(
     let verification_token = jwt::issue_verification_token(&user_id, &state.jwt_keys)?;
 
     if let Some(ref email_service) = state.email_service {
+        let lang = user["preferredLanguage"].as_str().unwrap_or("en");
         let _ = email_service
-            .send_verification_email(&body.email, &verification_token, &state.base_url)
+            .send_verification_email(&body.email, &verification_token, &state.base_url, lang)
             .await;
     }
 
@@ -1538,7 +1570,8 @@ pub async fn mfa_verify_setup(
     // Send MFA alert email
     if let Some(ref email_service) = state.email_service {
         let email = user["email"].as_str().unwrap_or_default();
-        let _ = email_service.send_mfa_alert(email, "enabled").await;
+        let lang = user["preferredLanguage"].as_str().unwrap_or("en");
+        let _ = email_service.send_mfa_alert(email, "enabled", lang).await;
     }
 
     Ok(Json(MfaVerifySetupResponse { recovery_codes }))
@@ -1917,7 +1950,8 @@ pub async fn mfa_disable(
     // Send MFA alert email
     if let Some(ref email_service) = state.email_service {
         let email = user["email"].as_str().unwrap_or_default();
-        let _ = email_service.send_mfa_alert(email, "disabled").await;
+        let lang = user["preferredLanguage"].as_str().unwrap_or("en");
+        let _ = email_service.send_mfa_alert(email, "disabled", lang).await;
     }
 
     Ok(Json(json!({ "message": "MFA disabled successfully" })))
@@ -1928,8 +1962,14 @@ pub async fn mfa_disable(
 // auth.delete_user(), auth.list_users(), auth.get_user()
 
 /// Require the calling user to have the "admin" role.
+/// In test mode (OB_TEST_MODE=1), auth checks are bypassed UNLESS
+/// ENVIRONMENT is "production" — production NEVER bypasses admin auth.
 fn require_admin(auth: &AuthContext) -> Result<()> {
-    if std::env::var("OB_TEST_MODE").unwrap_or_default() == "1" {
+    let is_test_mode = std::env::var("OB_TEST_MODE").unwrap_or_default() == "1";
+    let env = ob_core::config::Environment::from_env();
+
+    // SECURITY: Never bypass admin auth in production, even if OB_TEST_MODE leaks
+    if is_test_mode && !env.is_production() {
         return Ok(());
     }
     if !auth.authenticated {
@@ -2480,11 +2520,11 @@ pub async fn anonymous_upgrade(
         .update_document("users", &auth.user_id, update_data)
         .await?;
 
-    // Send verification email
+    // Send verification email (default "en" for new user upgrades)
     let verification_token = jwt::issue_verification_token(&auth.user_id, &state.jwt_keys)?;
     if let Some(ref email_service) = state.email_service {
         let _ = email_service
-            .send_verification_email(&body.email, &verification_token, &state.base_url)
+            .send_verification_email(&body.email, &verification_token, &state.base_url, "en")
             .await;
     }
 
@@ -2556,10 +2596,23 @@ pub async fn send_magic_link(
     });
     state.db.create_document("_magic_links", token_data).await?;
 
+    // Resolve user's preferred language for bilingual email
+    let lang = state
+        .db
+        .query_bind(
+            "SELECT preferredLanguage FROM users WHERE email = $email LIMIT 1",
+            json!({ "email": body.email }),
+        )
+        .await
+        .ok()
+        .and_then(|rows| rows.first().cloned())
+        .and_then(|row| row["preferredLanguage"].as_str().map(String::from))
+        .unwrap_or_else(|| "en".to_string());
+
     // Send the email
     if let Some(ref email_service) = state.email_service {
         let _ = email_service
-            .send_magic_link_email(&body.email, &token_id, &state.base_url)
+            .send_magic_link_email(&body.email, &token_id, &state.base_url, &lang)
             .await;
     }
 
@@ -2666,9 +2719,9 @@ pub async fn verify_magic_link(
             .map(|s| s.to_string())
             .unwrap_or_else(|| user["id"].to_string());
 
-        // Send welcome email
+        // Send welcome email (new user via magic link — default "en")
         if let Some(ref email_service) = state.email_service {
-            let _ = email_service.send_welcome_email(email).await;
+            let _ = email_service.send_welcome_email(email, "en").await;
         }
 
         (uid, user, vec!["user".to_string()])
@@ -2704,16 +2757,47 @@ pub async fn verify_magic_link(
 
 /// Build the auth router.
 pub fn auth_router(state: AuthState) -> axum::Router {
+    use crate::rate_limit::{RateLimiter, rate_limit_middleware};
+    use std::time::Duration;
+
     let jwt_keys = Arc::new(state.jwt_keys.clone());
-    axum::Router::new()
-        .route("/auth/register", axum::routing::post(register))
-        .route("/auth/login", axum::routing::post(login))
-        .route("/auth/refresh", axum::routing::post(refresh))
-        .route("/auth/logout", axum::routing::post(logout))
+
+    // Per-IP rate limiters for sensitive auth endpoints
+    let login_limiter = RateLimiter::new(5, Duration::from_secs(60));
+    let register_limiter = RateLimiter::new(3, Duration::from_secs(60));
+    let forgot_password_limiter = RateLimiter::new(3, Duration::from_secs(60));
+
+    // Rate-limited auth routes (applied per-route via nested routers)
+    let rate_limited_routes = axum::Router::new()
+        .route(
+            "/auth/login",
+            axum::routing::post(login),
+        )
+        .layer(Extension(login_limiter))
+        .layer(axum::middleware::from_fn(rate_limit_middleware));
+
+    let rate_limited_register = axum::Router::new()
+        .route(
+            "/auth/register",
+            axum::routing::post(register),
+        )
+        .layer(Extension(register_limiter))
+        .layer(axum::middleware::from_fn(rate_limit_middleware));
+
+    let rate_limited_forgot = axum::Router::new()
         .route(
             "/auth/forgot-password",
             axum::routing::post(forgot_password),
         )
+        .layer(Extension(forgot_password_limiter))
+        .layer(axum::middleware::from_fn(rate_limit_middleware));
+
+    rate_limited_routes
+        .merge(rate_limited_register)
+        .merge(rate_limited_forgot)
+        .merge(axum::Router::new()
+        .route("/auth/refresh", axum::routing::post(refresh))
+        .route("/auth/logout", axum::routing::post(logout))
         .route("/auth/reset-password", axum::routing::post(reset_password))
         .route("/auth/providers", axum::routing::get(auth_providers))
         .route("/auth/google/start", axum::routing::get(google_oauth_start))
@@ -2804,7 +2888,7 @@ pub fn auth_router(state: AuthState) -> axum::Router {
         .route(
             "/api/security/alerts/{id}/acknowledge",
             axum::routing::post(login_tracking::acknowledge_alert),
-        )
+        ))
         .with_state(state)
         .layer(axum::middleware::from_fn(auth_extractor))
         .layer(Extension(jwt_keys))

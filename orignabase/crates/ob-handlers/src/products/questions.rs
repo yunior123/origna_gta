@@ -2,12 +2,14 @@
 //! Ported from: functions/handlers/products.py (ask_product_question, answer_product_question,
 //! get_product_questions)
 
-use axum::{Json, Router, extract::State, routing::post};
+use axum::{Extension, Json, Router, extract::State, routing::post};
+use ob_auth::middleware::AuthContext;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tracing::info;
 
 use crate::HandlersState;
+use crate::shared::auth::resolve_self_user_id;
 use crate::shared::schema::{collections, fields};
 use crate::shared::validation::{sanitize_html, validate_uid};
 
@@ -100,14 +102,16 @@ pub fn router(state: HandlersState) -> Router {
 
 async fn ask_question(
     State(state): State<HandlersState>,
+    Extension(auth): Extension<AuthContext>,
     Json(req): Json<AskQuestionRequest>,
 ) -> Result<Json<AskQuestionResponse>, ob_core::Error> {
+    let user_id = resolve_self_user_id(&auth, Some(req.user_id.as_str()), "userId")?;
     validate_uid("productId", &req.product_id)?;
-    validate_uid("userId", &req.user_id)?;
+    validate_uid("userId", &user_id)?;
 
     crate::shared::rate_limiter::check_user_rate_limit(
         &state.db,
-        &req.user_id,
+        &user_id,
         "ask_question",
         10, // 10 questions
         60, // per hour
@@ -154,7 +158,7 @@ async fn ask_question(
         "questionId": question_id,
         fields::PRODUCT_ID: req.product_id,
         fields::SELLER_ID: seller_id,
-        "askerId": req.user_id,
+        "askerId": user_id,
         "questionText": question,
         "answerText": null,
         "answeredAt": null,
@@ -172,7 +176,7 @@ async fn ask_question(
 
     info!(
         product_id = %req.product_id,
-        user_id = %req.user_id,
+        user_id = %user_id,
         question_id = %question_id,
         "Product question asked"
     );
@@ -185,14 +189,16 @@ async fn ask_question(
 
 async fn answer_question(
     State(state): State<HandlersState>,
+    Extension(auth): Extension<AuthContext>,
     Json(req): Json<AnswerQuestionRequest>,
 ) -> Result<Json<AnswerQuestionResponse>, ob_core::Error> {
+    let user_id = resolve_self_user_id(&auth, Some(req.user_id.as_str()), "userId")?;
     validate_uid("questionId", &req.question_id)?;
-    validate_uid("userId", &req.user_id)?;
+    validate_uid("userId", &user_id)?;
 
     crate::shared::rate_limiter::check_user_rate_limit(
         &state.db,
-        &req.user_id,
+        &user_id,
         "answer_question",
         30, // 30 answers
         60, // per hour
@@ -232,7 +238,7 @@ async fn answer_question(
     // Check admin role
     let user = state
         .db
-        .get_document(collections::USERS, &req.user_id)
+        .get_document(collections::USERS, &user_id)
         .await
         .unwrap_or(Value::Null);
 
@@ -245,7 +251,7 @@ async fn answer_question(
     let is_admin = roles.contains(&"admin");
 
     // Only product's seller or admin can answer
-    if !is_admin && req.user_id != seller_id {
+    if !is_admin && user_id != seller_id {
         return Err(ob_core::Error::Forbidden(
             "Only the seller or an admin can answer this question".into(),
         ));
@@ -256,7 +262,7 @@ async fn answer_question(
     let update = serde_json::json!({
         "answerText": answer,
         "answeredAt": now,
-        "answeredBy": req.user_id,
+        "answeredBy": user_id,
         "isAnswered": true,
     });
 
@@ -268,7 +274,7 @@ async fn answer_question(
 
     info!(
         question_id = %req.question_id,
-        user_id = %req.user_id,
+        user_id = %user_id,
         "Product question answered"
     );
 
@@ -363,6 +369,26 @@ mod tests {
     use ob_database::DatabaseClient;
     use serde_json::json;
     use std::sync::Arc;
+
+    fn auth(user_id: &str) -> Extension<AuthContext> {
+        Extension(AuthContext {
+            user_id: user_id.into(),
+            roles: vec!["user".into()],
+            authenticated: true,
+            email_verified: true,
+            custom_claims: serde_json::Value::Null,
+        })
+    }
+
+    fn auth_with_roles(user_id: &str, roles: &[&str]) -> Extension<AuthContext> {
+        Extension(AuthContext {
+            user_id: user_id.into(),
+            roles: roles.iter().map(|r| (*r).to_string()).collect(),
+            authenticated: true,
+            email_verified: true,
+            custom_claims: serde_json::Value::Null,
+        })
+    }
 
     async fn setup_state() -> HandlersState {
         unsafe { std::env::set_var("OB_TEST_MODE", "1") };
@@ -558,6 +584,7 @@ mod tests {
 
         let Json(resp) = ask_question(
             State(state.clone()),
+            auth("buyer_1"),
             Json(AskQuestionRequest {
                 product_id: "prod_1".into(),
                 question: "<b>How long is shipping?</b>".into(),
@@ -592,6 +619,7 @@ mod tests {
 
         let short = ask_question(
             State(state.clone()),
+            auth("buyer_1"),
             Json(AskQuestionRequest {
                 product_id: "prod_1".into(),
                 question: "short".into(),
@@ -608,6 +636,7 @@ mod tests {
 
         let missing_product = ask_question(
             State(state),
+            auth("buyer_1"),
             Json(AskQuestionRequest {
                 product_id: "prod_missing".into(),
                 question: "How long is shipping?".into(),
@@ -639,6 +668,7 @@ mod tests {
 
         let Json(seller_resp) = answer_question(
             State(state.clone()),
+            auth("seller_1"),
             Json(AnswerQuestionRequest {
                 question_id: "q_1".into(),
                 answer: "<p>Yes, it does.</p>".into(),
@@ -687,6 +717,7 @@ mod tests {
 
         let Json(admin_resp) = answer_question(
             State(state.clone()),
+            auth_with_roles("admin_1", &["admin"]),
             Json(AnswerQuestionRequest {
                 question_id: "q_2".into(),
                 answer: "Yes, one year warranty is included.".into(),
@@ -725,6 +756,7 @@ mod tests {
 
         let short = answer_question(
             State(state.clone()),
+            auth("seller_1"),
             Json(AnswerQuestionRequest {
                 question_id: "q_1".into(),
                 answer: "short".into(),
@@ -741,6 +773,7 @@ mod tests {
 
         let forbidden = answer_question(
             State(state.clone()),
+            auth("buyer_2"),
             Json(AnswerQuestionRequest {
                 question_id: "q_1".into(),
                 answer: "Yes, it fits standard mounts.".into(),
@@ -757,6 +790,7 @@ mod tests {
 
         let missing = answer_question(
             State(state),
+            auth("seller_1"),
             Json(AnswerQuestionRequest {
                 question_id: "q_missing".into(),
                 answer: "Yes, it fits standard mounts.".into(),
@@ -788,6 +822,7 @@ mod tests {
         let long_question = "x".repeat(MAX_QUESTION_LENGTH + 200);
         let Json(resp) = ask_question(
             State(state.clone()),
+            auth("buyer_1"),
             Json(AskQuestionRequest {
                 product_id: "prod_trunc".into(),
                 question: long_question,
@@ -834,6 +869,7 @@ mod tests {
         let long_answer = "y".repeat(MAX_ANSWER_LENGTH + 500);
         let Json(resp) = answer_question(
             State(state.clone()),
+            auth("seller_1"),
             Json(AnswerQuestionRequest {
                 question_id: "q_trunc".into(),
                 answer: long_answer,

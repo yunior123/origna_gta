@@ -196,7 +196,7 @@ async fn notify_admins_of_return_escalation(
     let all_tokens_result = state
         .db
         .query_bind(
-            "SELECT user_id, token FROM _push_tokens WHERE user_id IN $admin_ids",
+            &format!("SELECT user_id, token FROM {} WHERE user_id IN $admin_ids", collections::PUSH_TOKENS),
             json!({ "admin_ids": admin_ids }),
         )
         .await
@@ -1870,7 +1870,7 @@ mod tests {
         state
             .db
             .create_document(
-                "_push_tokens",
+                collections::PUSH_TOKENS,
                 json!({ "user_id": &admin1_id, "token": "tok_1" }),
             )
             .await
@@ -1878,7 +1878,7 @@ mod tests {
         state
             .db
             .create_document(
-                "_push_tokens",
+                collections::PUSH_TOKENS,
                 json!({ "user_id": &admin2_id, "token": "tok_2" }),
             )
             .await
@@ -2557,7 +2557,7 @@ mod tests {
         // Insert push token via raw query to match the query format in prod code
         state
             .db
-            .query_raw("CREATE _push_tokens SET user_id = 'adm1', token = 'fcm_tok_1'")
+            .query_raw(&format!("CREATE {} SET user_id = 'adm1', token = 'fcm_tok_1'", collections::PUSH_TOKENS))
             .await
             .unwrap();
 
@@ -2751,7 +2751,7 @@ mod tests {
         state
             .db
             .create_document(
-                "_push_tokens",
+                collections::PUSH_TOKENS,
                 json!({ "user_id": &adm_id, "token": "fcm_token_abc" }),
             )
             .await
@@ -2842,7 +2842,7 @@ mod tests {
         state
             .db
             .create_document(
-                "_push_tokens",
+                collections::PUSH_TOKENS,
                 json!({ "user_id": &adm1_id, "token": "tok_m1a" }),
             )
             .await
@@ -2850,7 +2850,7 @@ mod tests {
         state
             .db
             .create_document(
-                "_push_tokens",
+                collections::PUSH_TOKENS,
                 json!({ "user_id": &adm1_id, "token": "tok_m1b" }),
             )
             .await
@@ -2858,7 +2858,7 @@ mod tests {
         state
             .db
             .create_document(
-                "_push_tokens",
+                collections::PUSH_TOKENS,
                 json!({ "user_id": &adm2_id, "token": "tok_m2a" }),
             )
             .await
