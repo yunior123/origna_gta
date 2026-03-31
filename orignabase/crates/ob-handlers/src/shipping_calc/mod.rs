@@ -578,6 +578,14 @@ async fn calculate_shipping(
                                 .into(),
                         ));
                     }
+                    // P1-NEW-15: Fail closed for perishables — cannot verify 50km limit
+                    // without distance data. Reject rather than allow potentially unsafe delivery.
+                    if has_perishable {
+                        return Err(ob_core::Error::Validation(
+                            "Perishable delivery temporarily unavailable (distance verification failed). Please try again later."
+                                .into(),
+                        ));
+                    }
                 }
             }
         }

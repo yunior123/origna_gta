@@ -398,11 +398,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ),
                       ],
                     ),
-                    const Row(
+                    Row(
                       children: [
-                        _SettingsButton(),
-                        _AddProductButton(),
-                        CartBadge.animated(),
+                        const _SettingsButton(),
+                        _NotificationBellButton(),
+                        const _AddProductButton(),
+                        const CartBadge.animated(),
                       ],
                     ),
                   ],

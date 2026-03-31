@@ -681,7 +681,7 @@ async fn send_payment_authorized_emails(
 // Event Handlers (full implementations)
 // ---------------------------------------------------------------------------
 
-/// Handle payment_intent.succeeded: order confirmed, stock decremented, coupon marked used
+/// Handle payment_intent.succeeded: order confirmed, coupon marked used (stock reserved at checkout)
 async fn handle_payment_intent_succeeded(
     state: &HandlersState,
     event_data: &Value,
@@ -773,7 +773,7 @@ async fn handle_payment_intent_succeeded(
     info!(
         order_id = %order_id,
         payment_intent_id = %pi_id,
-        "Payment intent succeeded: order confirmed, stock decremented"
+        "Payment intent succeeded: order confirmed (stock reserved at checkout)"
     );
 
     Ok(())
@@ -1164,7 +1164,7 @@ async fn handle_checkout_session_completed(
         order_id = %order_id,
         session_id = %session_id,
         payment_intent_id = %payment_intent_id,
-        "Checkout session completed: order confirmed, stock decremented"
+        "Checkout session completed: order confirmed (stock reserved at checkout)"
     );
 
     Ok(())
@@ -2639,15 +2639,71 @@ async fn handle_invoice_paid(
 }
 
 async fn handle_invoice_payment_failed(
-    _state: &HandlersState,
+    state: &HandlersState,
     event_data: &Value,
 ) -> Result<(), ob_core::Error> {
-    if let Some(invoice_id) = event_data
-        .get("object")
-        .and_then(|o| o.get("id"))
-        .and_then(|i| i.as_str())
-    {
-        warn!(invoice_id = %invoice_id, "Invoice payment failed");
+    let object = event_data.get("object").unwrap_or(event_data);
+    let invoice_id = object.get("id").and_then(|v| v.as_str()).unwrap_or("");
+    let subscription_id = object
+        .get("subscription")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+    let customer_id = object
+        .get("customer")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+    let attempt_count = object
+        .get("attempt_count")
+        .and_then(|v| v.as_i64())
+        .unwrap_or(0);
+
+    warn!(
+        invoice_id = %invoice_id,
+        subscription_id = %subscription_id,
+        customer_id = %customer_id,
+        attempt_count = attempt_count,
+        "Invoice payment failed"
+    );
+
+    // If this invoice is for a subscription, record the failure on the user
+    if !subscription_id.is_empty() && !customer_id.is_empty() {
+        let now = chrono::Utc::now().to_rfc3339();
+        // Find user by stripeCustomerId and flag payment_failed
+        let sql = format!(
+            "SELECT * FROM {} WHERE data->>'stripeCustomerId' = $customer_id LIMIT 1",
+            collections::USERS
+        );
+        if let Ok(users) = state
+            .db
+            .query_bind(&sql, serde_json::json!({ "customer_id": customer_id }))
+            .await
+            && let Some(user) = users.first()
+        {
+            let user_id = user
+                .get("id")
+                .and_then(|v| v.as_str())
+                .unwrap_or_default();
+            if !user_id.is_empty() {
+                let _ = state
+                    .db
+                    .update_document(
+                        collections::USERS,
+                        user_id,
+                        serde_json::json!({
+                            "subscriptionPaymentFailed": true,
+                            "subscriptionPaymentFailedAt": now,
+                            "subscriptionPaymentAttemptCount": attempt_count,
+                            fields::UPDATED_AT: now,
+                        }),
+                    )
+                    .await;
+                info!(
+                    user_id = %user_id,
+                    attempt_count = attempt_count,
+                    "Flagged user subscription payment failure"
+                );
+            }
+        }
     }
     Ok(())
 }

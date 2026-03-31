@@ -172,14 +172,12 @@ async fn is_user_admin(state: &HandlersState, user_id: &str) -> Result<bool, ob_
 }
 
 fn is_valid_order_transition(from: &str, to: &str) -> bool {
-    // Re-use the transition table from status.rs logic
+    // Cancellation transitions allowed from these states (deduplicated)
     let pairs = [
         ("pending", "cancelled"),
         ("confirmed", "cancelled"),
         ("awaiting_shipping_approval", "cancelled"),
         ("processing", "cancelled"),
-        ("pending", "cancelled"),
-        ("confirmed", "cancelled"),
     ];
     pairs.iter().any(|(f, t)| *f == from && *t == to)
 }
@@ -401,45 +399,61 @@ async fn refund_order_item(
         .order_id
         .strip_prefix(&format!("{}:", collections::ORDERS))
         .unwrap_or(&req.order_id);
-    // CAS atomic reserve: read current cumulative, then conditionally update only if unchanged.
-    // This closes the TOCTOU race between concurrent refund requests.
-    let reserve_order = state.db.get_document(collections::ORDERS, order_id_stripped).await
-        .map_err(|e| ob_core::Error::Database(format!("Failed to reserve refund amount: {e}")))?;
-    let cur_cumulative = reserve_order.get(fields::CUMULATIVE_REFUNDED_CENTS).and_then(|v| v.as_i64()).unwrap_or(0);
-    let total_cents = reserve_order.get(fields::TOTAL_AMOUNT_CENTS).and_then(|v| v.as_i64()).unwrap_or(0);
-    let new_cumulative = cur_cumulative + refund_amount_cents;
-    let reserved_rows = if new_cumulative <= total_cents {
-        // If cumulativeRefundedCents is absent (first refund), initialize it so CAS has
-        // a concrete value to compare against on subsequent concurrent requests.
-        if reserve_order.get(fields::CUMULATIVE_REFUNDED_CENTS).is_none()
-            || reserve_order.get(fields::CUMULATIVE_REFUNDED_CENTS) == Some(&json!(null))
-        {
-            let _ = state.db.update_document(
+    // ATOMIC refund reservation via CAS retry loop (max 3 attempts).
+    // Each CAS is a single atomic UPDATE ... WHERE in PostgreSQL — concurrent
+    // refund requests cannot both succeed if they would exceed totalAmountCents.
+    let reserved_rows = 'cas: {
+        for attempt in 1..=3 {
+            let cur_order = state.db.get_document(collections::ORDERS, order_id_stripped).await
+                .map_err(|e| ob_core::Error::Database(format!("Failed to read order: {e}")))?;
+            let cur_cumulative = cur_order
+                .get(fields::CUMULATIVE_REFUNDED_CENTS)
+                .and_then(|v| v.as_i64())
+                .unwrap_or(0);
+            let total_cents = cur_order
+                .get(fields::TOTAL_AMOUNT_CENTS)
+                .and_then(|v| v.as_i64())
+                .unwrap_or(0);
+            let new_cumulative = cur_cumulative + refund_amount_cents;
+
+            if new_cumulative > total_cents {
+                break 'cas vec![];
+            }
+
+            // Ensure field exists before CAS (NULL defeats the WHERE check).
+            // This is idempotent — setting 0 when already 0 is a no-op.
+            if cur_cumulative == 0
+                && (cur_order.get(fields::CUMULATIVE_REFUNDED_CENTS).is_none()
+                    || cur_order.get(fields::CUMULATIVE_REFUNDED_CENTS) == Some(&json!(null)))
+            {
+                let _ = state.db.update_document(
+                    collections::ORDERS,
+                    order_id_stripped,
+                    json!({ fields::CUMULATIVE_REFUNDED_CENTS: 0 }),
+                ).await;
+            }
+
+            // CAS: update only if cumulativeRefundedCents still equals cur_cumulative.
+            let cas_result = state.db.update_document_cas(
                 collections::ORDERS,
                 order_id_stripped,
-                json!({ fields::CUMULATIVE_REFUNDED_CENTS: 0 }),
-            ).await;
-        }
-        // CAS: only update if cumulativeRefundedCents hasn't changed since read.
-        let cas_result = state.db.update_document_cas(
-            collections::ORDERS,
-            order_id_stripped,
-            json!({ fields::CUMULATIVE_REFUNDED_CENTS: new_cumulative }),
-            fields::CUMULATIVE_REFUNDED_CENTS,
-            &json!(cur_cumulative),
-        ).await
-        .map_err(|e| ob_core::Error::Database(format!("Failed to reserve refund amount: {e}")))?;
-        match cas_result {
-            Some(_) => vec![json!({"ok": true})],
-            None => {
-                // CAS failed — concurrent modification detected
-                return Err(ob_core::Error::Validation(
-                    "Concurrent refund modification detected. Please retry.".into(),
-                ));
+                json!({ fields::CUMULATIVE_REFUNDED_CENTS: new_cumulative }),
+                fields::CUMULATIVE_REFUNDED_CENTS,
+                &json!(cur_cumulative),
+            ).await
+            .map_err(|e| ob_core::Error::Database(format!("Failed to reserve refund: {e}")))?;
+
+            match cas_result {
+                Some(_) => break 'cas vec![json!({"ok": true})],
+                None if attempt < 3 => continue, // Retry on concurrent modification
+                None => {
+                    return Err(ob_core::Error::Validation(
+                        "Concurrent refund modification detected. Please retry.".into(),
+                    ));
+                }
             }
         }
-    } else {
-        vec![]
+        vec![] // unreachable but satisfies type checker
     };
     if reserved_rows.is_empty() {
         // WHERE guard not satisfied: cumulative + amt would exceed total
@@ -564,24 +578,30 @@ async fn refund_order_item(
             })?;
         info!(order_id = %req.order_id, product_id = %req.product_id, "Digital licenses revoked for refunded item");
     } else {
-        // Restore stock for physical items
+        // Restore stock for physical items — CAS to prevent lost updates from
+        // concurrent refunds/cancellations of orders with the same product.
         let product_id = &req.product_id;
-        let cur_product = state.db.get_document(collections::PRODUCTS, product_id).await.unwrap_or_default();
-        let cur_stock = cur_product.get(fields::STOCK_QUANTITY).and_then(|v| v.as_i64()).unwrap_or(0);
-        state
-            .db
-            .update_document(
+        for _attempt in 0..3 {
+            let cur_product = state.db.get_document(collections::PRODUCTS, product_id).await.unwrap_or_default();
+            let cur_stock = cur_product.get(fields::STOCK_QUANTITY).and_then(|v| v.as_i64()).unwrap_or(0);
+            let cas_result = state.db.update_document_cas(
                 collections::PRODUCTS,
                 product_id,
                 json!({
                     fields::STOCK_QUANTITY: cur_stock + item_quantity as i64,
                     fields::UPDATED_AT: now
                 }),
-            )
-            .await
+                fields::STOCK_QUANTITY,
+                &json!(cur_stock),
+            ).await
             .map_err(|e| {
                 ob_core::Error::Database(format!("Failed to restore stock for refunded item: {e}"))
             })?;
+            if cas_result.is_some() {
+                break;
+            }
+            // CAS failed — stock changed concurrently, retry with fresh read
+        }
     }
 
     // Log the event
@@ -690,7 +710,7 @@ async fn cancel_order(
     }
 
     // Buyers can only cancel pre-shipment
-    let buyer_cancellable = ["pending", "pending", "confirmed", "confirmed"];
+    let buyer_cancellable = ["pending", "confirmed"];
     if is_buyer && !is_admin && !is_seller && !buyer_cancellable.contains(&current_status) {
         return Err(ob_core::Error::Validation(
             "Order cannot be cancelled at this stage. Contact support if there is an issue.".into(),
@@ -764,9 +784,11 @@ async fn cancel_order(
         "cancelled"
     };
 
-    state
+    // CAS guard: only cancel if orderStatus hasn't changed since we validated it.
+    // Prevents race where a webhook (e.g. payment confirmation) changes status concurrently.
+    let cas_result = state
         .db
-        .update_document(
+        .update_document_cas(
             collections::ORDERS,
             &req.order_id,
             json!({
@@ -778,9 +800,16 @@ async fn cancel_order(
                 fields::STOCK_RESTORED: true,
                 fields::UPDATED_AT: now,
             }),
+            fields::ORDER_STATUS,
+            &json!(current_status),
         )
         .await
         .map_err(|e| ob_core::Error::Database(format!("Failed to update cancelled order: {e}")))?;
+    if cas_result.is_none() {
+        return Err(ob_core::Error::Validation(
+            "Order status changed concurrently — please retry cancellation".into(),
+        ));
+    }
 
     // Restore stock for all physical items (guard against double-restore).
     let stock_restored = bool_field(&order, fields::STOCK_RESTORED);
@@ -794,24 +823,29 @@ async fn cancel_order(
             let pid = str_field(item, fields::PRODUCT_ID);
             let qty = item.get(fields::QUANTITY).and_then(|v| v.as_i64()).unwrap_or(1);
             if !pid.is_empty() && qty > 0 {
-                let cur_product = state.db.get_document(collections::PRODUCTS, pid).await.unwrap_or_default();
-                let cur_stock = cur_product.get(fields::STOCK_QUANTITY).and_then(|v| v.as_i64()).unwrap_or(0);
-                state
-                    .db
-                    .update_document(
+                // CAS retry loop to prevent lost-update on concurrent stock restores
+                for _attempt in 0..3 {
+                    let cur_product = state.db.get_document(collections::PRODUCTS, pid).await.unwrap_or_default();
+                    let cur_stock = cur_product.get(fields::STOCK_QUANTITY).and_then(|v| v.as_i64()).unwrap_or(0);
+                    let cas_result = state.db.update_document_cas(
                         collections::PRODUCTS,
                         pid,
                         json!({
                             fields::STOCK_QUANTITY: cur_stock + qty,
                             fields::UPDATED_AT: now
                         }),
-                    )
-                    .await
+                        fields::STOCK_QUANTITY,
+                        &json!(cur_stock),
+                    ).await
                     .map_err(|e| {
                         ob_core::Error::Database(format!(
                             "Failed to restore stock for product {pid}: {e}"
                         ))
                     })?;
+                    if cas_result.is_some() {
+                        break;
+                    }
+                }
             }
         }
     }

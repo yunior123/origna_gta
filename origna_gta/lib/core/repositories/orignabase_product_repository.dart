@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:cross_file/cross_file.dart';
 import 'package:flutter/foundation.dart';
 import 'package:origna_gta/utils/app_logger.dart';
@@ -101,9 +102,21 @@ class OrignaBaseProductRepository
       data[Fields.categoryId] =
           int.tryParse(data[Fields.categoryId] as String) ?? 0;
     }
-    data[Fields.categoryId] ??= 0;
+    if (data[Fields.categoryId] == null) {
+      AppLogger.w(
+        'Product ${data[Fields.productId]} missing categoryId — defaulting to 0',
+        tag: 'product',
+      );
+      data[Fields.categoryId] = 0;
+    }
     data[Fields.stockQuantity] ??= 0;
-    data[Fields.priceCents] ??= 0;
+    if (data[Fields.priceCents] == null) {
+      AppLogger.w(
+        'Product ${data[Fields.productId]} missing priceCents — defaulting to 0',
+        tag: 'product',
+      );
+      data[Fields.priceCents] = 0;
+    }
     data[Fields.price] ??=
         ((data[Fields.priceCents] as num?)?.toDouble() ?? 0) / 100;
     data[Fields.rating] ??= 0.0;
@@ -461,6 +474,23 @@ class OrignaBaseProductRepository
   /// Uploads a product video to cloud storage and returns the URL.
   @override
   Future<String?> uploadProductVideo(XFile videoFile, String sellerId) async {
+    // P1-20: Pre-check file size before loading into memory to prevent OOM.
+    // StreamedRequest doesn't actually stream on Flutter Web, so readAsBytes is
+    // unavoidable — but this guard rejects oversized files early.
+    try {
+      final file = File(videoFile.path);
+      if (await file.exists()) {
+        final sizeBytes = await file.length();
+        if (sizeBytes > BusinessRules.maxVideoBytes) {
+          throw Exception(
+            'Video too large (${(sizeBytes / 1024 / 1024).toStringAsFixed(1)}MB). '
+            'Maximum: ${BusinessRules.maxVideoBytes ~/ 1024 ~/ 1024}MB',
+          );
+        }
+      }
+    } on UnimplementedError catch (_) {
+      // In-memory XFile (tests) — skip file-system size check
+    }
     final bytes = await videoFile.readAsBytes();
     final ext = videoFile.name.split('.').last.toLowerCase();
     String contentType = 'video/mp4';

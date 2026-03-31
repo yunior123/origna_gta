@@ -34,6 +34,13 @@ final obSellerRegistrationViewModelProvider =
 class OrignaBaseSellerRegistrationViewModel
     extends StateNotifier<SellerRegistrationState> {
   final Ref _ref;
+  bool _disposed = false;
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
 
   bool _isOperationInProgress = false;
   DateTime? _lastOperationTime;
@@ -88,7 +95,10 @@ class OrignaBaseSellerRegistrationViewModel
       final data = Map<String, dynamic>.from(result as Map);
       final url = data[ApiKeys.url] as String?;
       if (url != null && await canLaunchUrl(Uri.parse(url))) {
-        await safeLaunchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+        await safeLaunchUrl(
+          Uri.parse(url),
+          mode: LaunchMode.externalApplication,
+        );
       } else {
         state = state.copyWith(error: 'Could not open Stripe Dashboard');
       }
@@ -105,15 +115,30 @@ class OrignaBaseSellerRegistrationViewModel
     }
   }
 
-  /// Refreshes the user's stripe status from the backend.
+  /// Refreshes the user's Stripe status from the backend and updates local state.
   Future<void> refreshAccountStatus() async {
     try {
       final userId = _userId;
       if (userId == null || userId.isEmpty) {
         throw StateError('Authentication required.');
       }
-      await _ob.request('POST', ApiEndpoints.connectStatus, body: {});
+      final result = await _ob.request(
+        'POST',
+        ApiEndpoints.connectStatus,
+        body: {},
+      );
+      final data = Map<String, dynamic>.from(result as Map);
+      final chargesEnabled = data[Fields.chargesEnabled] == true;
+      final payoutsEnabled = data[Fields.payoutsEnabled] == true;
+      if (_disposed) return;
+      if (chargesEnabled && payoutsEnabled) {
+        state = state.copyWith(
+          successMessage: 'seller.account_fully_active'.tr(),
+          error: null,
+        );
+      }
     } on OrignaBaseException catch (e) {
+      if (_disposed) return;
       state = state.copyWith(
         error: _cleanErrorMessage(e, 'Failed to refresh account status'),
       );
@@ -162,6 +187,7 @@ class OrignaBaseSellerRegistrationViewModel
       );
       _isOperationInProgress = false;
     } catch (e) {
+      if (_disposed) return;
       state = state.copyWith(
         isLoading: false,
         error: 'seller.unexpected_error'.tr(),
@@ -224,10 +250,12 @@ class OrignaBaseSellerRegistrationViewModel
         error: _cleanErrorMessage(e, 'Failed to generate onboarding link'),
       );
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        error: 'Could not complete onboarding. Please try again.',
-      );
+      if (!_disposed) {
+        state = state.copyWith(
+          isLoading: false,
+          error: 'Could not complete onboarding. Please try again.',
+        );
+      }
     } finally {
       _isOperationInProgress = false;
     }

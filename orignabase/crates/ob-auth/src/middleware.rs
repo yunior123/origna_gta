@@ -5,13 +5,26 @@ use tracing::warn;
 
 use crate::jwt::{Claims, JwtKeys, verify_token};
 
-/// Panics at startup if JWT secret is the default placeholder in production.
+/// Panics at startup if JWT secret is the default placeholder, empty, or too short in production.
 pub fn assert_jwt_secret_configured(jwt_secret: &str) {
     let environment = std::env::var("ENVIRONMENT").unwrap_or_default();
-    if environment == "production" && jwt_secret == "CHANGE_ME_IN_PRODUCTION" {
-        panic!(
-            "FATAL: JWT secret is still the default 'CHANGE_ME_IN_PRODUCTION' in production. Set OB_AUTH__JWT_SECRET to a strong random value."
-        );
+    if environment == "production" {
+        if jwt_secret.is_empty() {
+            panic!(
+                "FATAL: JWT secret is empty in production. Set OB_AUTH__JWT_SECRET to a strong random value (at least 32 bytes)."
+            );
+        }
+        if jwt_secret == "CHANGE_ME_IN_PRODUCTION" {
+            panic!(
+                "FATAL: JWT secret is still the default 'CHANGE_ME_IN_PRODUCTION' in production. Set OB_AUTH__JWT_SECRET to a strong random value."
+            );
+        }
+        if jwt_secret.len() < 32 {
+            panic!(
+                "FATAL: JWT secret is only {} bytes in production. Use at least 32 bytes for adequate security.",
+                jwt_secret.len()
+            );
+        }
     }
 }
 
@@ -107,8 +120,13 @@ pub async fn auth_extractor(mut request: Request, next: Next) -> Result<Response
                             AuthContext::anonymous()
                         } else {
                             // CRITICAL FIX: Authorization header present but JWT invalid → 401
-                            // Do NOT silently become anonymous
-                            return Err(Error::Auth(format!("Invalid or expired token: {e}")));
+                            // Do NOT silently become anonymous.
+                            // Log the full error server-side but return a generic message
+                            // to avoid leaking JWT internals (algorithm, expiry details, etc.)
+                            warn!(error = %e, "JWT verification failed");
+                            return Err(Error::Auth(
+                                "Invalid or expired token".into(),
+                            ));
                         }
                     }
                 }

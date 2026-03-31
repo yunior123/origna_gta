@@ -416,7 +416,7 @@ void main() {
       expect(allTexts, contains('Purolator'));
       expect(allTexts, contains('DHL'));
       expect(allTexts, contains('USPS'));
-      expect(allTexts, contains('Maritime (International)'));
+      expect(allTexts, contains('orders.carrier_maritime'));
     });
 
     testWidgets('dialog initializes carrier provider to null', (tester) async {

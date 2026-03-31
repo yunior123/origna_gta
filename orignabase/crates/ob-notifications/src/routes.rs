@@ -188,6 +188,8 @@ async fn register_token(
 
     // ignore-magic: ob-notifications has no access to ob-handlers schema constants
     // Upsert: if this token already exists, update user_id and platform
+    // Push tokens expire after 60 days — stale tokens waste FCM calls and leak device info
+    let expires_at = (chrono::Utc::now() + chrono::Duration::days(60)).to_rfc3339();
     state
         .db
         .upsert_document(
@@ -198,6 +200,7 @@ async fn register_token(
                 "token": body.token,
                 "platform": body.platform,
                 "updated_at": now,
+                "expires_at": expires_at,
             }),
         )
         .await?;

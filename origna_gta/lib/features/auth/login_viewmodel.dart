@@ -86,6 +86,13 @@ String _friendlyAuthError(OrignaBaseAuthException e) {
 ///   never block sign-in.
 class LoginViewModel extends StateNotifier<LoginState> {
   final Ref _ref;
+  bool _disposed = false;
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
 
   LoginViewModel(this._ref) : super(const LoginState());
 
@@ -123,6 +130,7 @@ class LoginViewModel extends StateNotifier<LoginState> {
         errorMessage: _friendlyAuthError(e),
       );
     } catch (e) {
+      if (_disposed) return;
       state = state.copyWith(isLoading: false);
       if (!e.toString().contains('cancelled') &&
           !e.toString().contains('user_cancelled')) {
@@ -256,6 +264,7 @@ class LoginViewModel extends StateNotifier<LoginState> {
         challengeToken: null,
       );
     } catch (e) {
+      if (_disposed) return;
       AppLogger.d('🔐 Unexpected auth error: $e', tag: 'auth');
       String errorMessage = 'auth.errors.generic_error';
       final errorStr = e.toString().toLowerCase();
@@ -301,6 +310,7 @@ class LoginViewModel extends StateNotifier<LoginState> {
         errorMessage: _friendlyAuthError(e),
       );
     } catch (e) {
+      if (_disposed) return;
       state = state.copyWith(isLoading: false);
       if (!e.toString().contains('popup-closed') &&
           !e.toString().contains('cancelled')) {

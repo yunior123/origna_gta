@@ -110,10 +110,17 @@ pub struct SpendLimit {
     /// Track spend per user: Vec of (amount_cents, timestamp_secs) entries
     #[allow(clippy::type_complexity)]
     user_spend: Arc<RwLock<HashMap<String, Vec<(u64, i64)>>>>,
+
+    /// Counter for periodic full cleanup (same pattern as IdempotencyTracker)
+    check_count: Arc<RwLock<u64>>,
 }
 
 /// TTL for spend entries: 24 hours in seconds
 const SPEND_TTL_SECS: i64 = 86_400;
+/// Maximum users tracked before forced eviction
+const SPEND_MAX_USERS: usize = 10_000;
+/// Run full cleanup every N check() calls
+const SPEND_CLEANUP_INTERVAL: u64 = 100;
 
 impl SpendLimit {
     pub fn new(max_amount_cents: u64, max_per_24h_cents: u64) -> Self {
@@ -121,6 +128,7 @@ impl SpendLimit {
             max_amount_cents,
             max_per_24h_cents,
             user_spend: Arc::new(RwLock::new(HashMap::new())),
+            check_count: Arc::new(RwLock::new(0)),
         }
     }
 
@@ -130,6 +138,42 @@ impl SpendLimit {
         entries.iter().map(|(amt, _)| amt).sum()
     }
 
+    /// Remove all expired entries and users with no remaining entries.
+    /// Called periodically to prevent unbounded memory growth from idle users.
+    pub async fn cleanup(&self) {
+        let now = chrono::Utc::now().timestamp();
+        let mut spend = self.user_spend.write().await;
+        let before = spend.len();
+
+        // Prune expired entries per user, then remove users with empty vecs
+        spend.retain(|_, entries| {
+            entries.retain(|(_, ts)| now - *ts < SPEND_TTL_SECS);
+            !entries.is_empty()
+        });
+
+        // If still over capacity, evict users with oldest last-activity
+        if spend.len() > SPEND_MAX_USERS {
+            let mut users_by_age: Vec<(String, i64)> = spend
+                .iter()
+                .map(|(uid, entries)| {
+                    let newest = entries.iter().map(|(_, ts)| *ts).max().unwrap_or(0);
+                    (uid.clone(), newest)
+                })
+                .collect();
+            users_by_age.sort_by_key(|(_, ts)| *ts);
+            let evict_count = spend.len() - SPEND_MAX_USERS / 2;
+            for (uid, _) in users_by_age.into_iter().take(evict_count) {
+                spend.remove(&uid);
+            }
+            tracing::debug!("SpendLimit: evicted {} users (capacity limit)", evict_count);
+        }
+
+        let removed = before - spend.len();
+        if removed > 0 {
+            tracing::debug!("SpendLimit: cleaned up {} idle user entries", removed);
+        }
+    }
+
     /// Check if user can spend amount_cents
     pub async fn check(&self, user_id: &str, amount_cents: u64) -> McpResult<()> {
         if amount_cents > self.max_amount_cents {
@@ -137,6 +181,17 @@ impl SpendLimit {
                 "Amount exceeds per-request limit of ${}",
                 self.max_amount_cents / 100
             )));
+        }
+
+        // Periodic cleanup every N calls
+        {
+            let mut count = self.check_count.write().await;
+            *count += 1;
+            if *count >= SPEND_CLEANUP_INTERVAL {
+                *count = 0;
+                drop(count);
+                self.cleanup().await;
+            }
         }
 
         let now = chrono::Utc::now().timestamp();
@@ -269,6 +324,45 @@ mod tests {
 
         // Within limit still
         assert!(limit.check(user, 90_000).await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_spend_limit_cleanup_removes_expired_users() {
+        let limit = SpendLimit::new(100_000, 1_000_000);
+        let old_ts = chrono::Utc::now().timestamp() - SPEND_TTL_SECS - 1;
+
+        // Insert an expired entry directly
+        {
+            let mut spend = limit.user_spend.write().await;
+            spend.insert("stale_user".to_string(), vec![(5000, old_ts)]);
+            spend.insert("active_user".to_string(), vec![(5000, chrono::Utc::now().timestamp())]);
+        }
+
+        limit.cleanup().await;
+
+        let spend = limit.user_spend.read().await;
+        assert!(!spend.contains_key("stale_user"), "expired user should be evicted");
+        assert!(spend.contains_key("active_user"), "active user should remain");
+    }
+
+    #[tokio::test]
+    async fn test_spend_limit_periodic_cleanup_triggers() {
+        let limit = SpendLimit::new(100_000, 1_000_000);
+        let old_ts = chrono::Utc::now().timestamp() - SPEND_TTL_SECS - 1;
+
+        // Insert expired entry
+        {
+            let mut spend = limit.user_spend.write().await;
+            spend.insert("old_user".to_string(), vec![(1000, old_ts)]);
+        }
+
+        // Call check() SPEND_CLEANUP_INTERVAL times to trigger cleanup
+        for i in 0..SPEND_CLEANUP_INTERVAL {
+            let _ = limit.check(&format!("user_{i}"), 100).await;
+        }
+
+        let spend = limit.user_spend.read().await;
+        assert!(!spend.contains_key("old_user"), "cleanup should have evicted expired user");
     }
 
     #[test]

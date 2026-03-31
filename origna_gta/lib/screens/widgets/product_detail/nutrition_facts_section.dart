@@ -279,7 +279,9 @@ class _IngredientsCard extends StatelessWidget {
     return ModernCard(
       padding: EdgeInsets.zero,
       child: Theme(
-        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        data: Theme.of(
+          context,
+        ).copyWith(dividerColor: DesignTokens.transparent),
         child: ExpansionTile(
           initiallyExpanded: true,
           tilePadding: const EdgeInsets.symmetric(horizontal: 14),
@@ -471,7 +473,9 @@ class _NutritionFactsCard extends StatelessWidget {
     return ModernCard(
       padding: EdgeInsets.zero,
       child: Theme(
-        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        data: Theme.of(
+          context,
+        ).copyWith(dividerColor: DesignTokens.transparent),
         child: ExpansionTile(
           initiallyExpanded: false,
           tilePadding: const EdgeInsets.symmetric(horizontal: 14),
@@ -839,7 +843,9 @@ class _StorageCard extends StatelessWidget {
     return ModernCard(
       padding: EdgeInsets.zero,
       child: Theme(
-        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        data: Theme.of(
+          context,
+        ).copyWith(dividerColor: DesignTokens.transparent),
         child: ExpansionTile(
           initiallyExpanded: false,
           tilePadding: const EdgeInsets.symmetric(horizontal: 14),

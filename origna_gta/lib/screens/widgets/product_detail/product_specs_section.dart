@@ -48,7 +48,9 @@ class ProductSpecsSection extends StatelessWidget {
     return ModernCard(
       padding: EdgeInsets.zero,
       child: Theme(
-        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        data: Theme.of(
+          context,
+        ).copyWith(dividerColor: DesignTokens.transparent),
         child: ExpansionTile(
           initiallyExpanded: true,
           tilePadding: const EdgeInsets.symmetric(horizontal: 14),

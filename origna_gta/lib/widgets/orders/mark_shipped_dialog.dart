@@ -228,7 +228,7 @@ String carrierLabel(String carrier) {
     case CarrierValues.usps:
       return 'USPS';
     case CarrierValues.maritime:
-      return 'Maritime (International)';
+      return 'orders.carrier_maritime'.tr();
     case CarrierValues.other:
       return 'seller.carrier_other'.tr();
     default:

@@ -132,25 +132,75 @@ mixin ProductSearchHelpers {
   /// - [productIds]: list of product document IDs to fetch.
   ///
   /// Returns a list of [Product] models. Missing or malformed documents are
-  /// silently skipped. Processes in chunks of 30 and fetches each chunk with a
-  /// single `whereIn` query to avoid one document read per product ID.
+  /// silently skipped. Splits into chunks of 30, fires all chunk queries in
+  /// parallel via [Future.wait], then reassembles results in the original
+  /// request order.
   Future<List<Product>> fetchProductsByIdsImpl(List<String> productIds) async {
     if (productIds.isEmpty) return [];
 
-    final List<Product> results = [];
+    // Split into chunks of 30
+    final chunks = <List<String>>[];
     for (int i = 0; i < productIds.length; i += 30) {
-      final chunk = productIds.skip(i).take(30).toList();
-      final snapshot = await ob
-          .collection(Collections.products)
-          .where(Fields.productId, whereIn: chunk)
-          .get();
+      chunks.add(productIds.skip(i).take(30).toList());
+    }
 
-      final productsById = <String, Product>{};
-      final fetchedIds = <String>{};
-      for (final doc in snapshot.docs) {
-        if (!doc.exists) continue;
-        final fetchedId = doc.data[Fields.productId] as String? ?? doc.id;
-        fetchedIds.add(fetchedId);
+    // Fire all chunk queries in parallel
+    final chunkResults = await Future.wait(
+      chunks.map((chunk) => _fetchChunk(chunk)),
+    );
+
+    // Merge all chunk maps into a single lookup, preserving original order
+    final allProducts = <String, Product>{};
+    for (final chunkMap in chunkResults) {
+      allProducts.addAll(chunkMap);
+    }
+
+    // Return in original request order
+    return [
+      for (final id in productIds)
+        if (allProducts.containsKey(id)) allProducts[id]!,
+    ];
+  }
+
+  /// Fetches a single chunk of product IDs and returns a map of productId -> Product.
+  Future<Map<String, Product>> _fetchChunk(List<String> chunk) async {
+    final snapshot = await ob
+        .collection(Collections.products)
+        .where(Fields.productId, whereIn: chunk)
+        .get();
+
+    final productsById = <String, Product>{};
+    final fetchedIds = <String>{};
+    for (final doc in snapshot.docs) {
+      if (!doc.exists) continue;
+      final fetchedId = doc.data[Fields.productId] as String? ?? doc.id;
+      fetchedIds.add(fetchedId);
+      try {
+        final product = docToProduct(doc);
+        productsById[product.productId] = product;
+      } catch (e) {
+        AppLogger.d(
+          'OrignaBaseProductRepo: skipping malformed doc ${doc.id}: $e',
+          tag: 'product',
+        );
+      }
+    }
+
+    final missingIds = chunk
+        .where(
+          (productId) =>
+              !productsById.containsKey(productId) &&
+              !fetchedIds.contains(productId),
+        )
+        .toList();
+    if (missingIds.isNotEmpty) {
+      final fallbackDocs = await Future.wait(
+        missingIds.map(
+          (id) => ob.collection(Collections.products).doc(id).get(),
+        ),
+      );
+      for (final doc in fallbackDocs) {
+        if (doc == null || !doc.exists) continue;
         try {
           final product = docToProduct(doc);
           productsById[product.productId] = product;
@@ -161,40 +211,9 @@ mixin ProductSearchHelpers {
           );
         }
       }
-
-      final missingIds = chunk
-          .where(
-            (productId) =>
-                !productsById.containsKey(productId) &&
-                !fetchedIds.contains(productId),
-          )
-          .toList();
-      if (missingIds.isNotEmpty) {
-        final fallbackDocs = await Future.wait(
-          missingIds.map((id) => ob.collection(Collections.products).doc(id).get()),
-        );
-        for (final doc in fallbackDocs) {
-          if (doc == null || !doc.exists) continue;
-          try {
-            final product = docToProduct(doc);
-            productsById[product.productId] = product;
-          } catch (e) {
-            AppLogger.d(
-              'OrignaBaseProductRepo: skipping malformed doc ${doc.id}: $e',
-              tag: 'product',
-            );
-          }
-        }
-      }
-
-      for (final productId in chunk) {
-        final product = productsById[productId];
-        if (product != null) {
-          results.add(product);
-        }
-      }
     }
-    return results;
+
+    return productsById;
   }
 
   /// Looks up a single active product by its URL slug.

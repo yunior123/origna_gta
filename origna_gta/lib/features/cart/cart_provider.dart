@@ -420,13 +420,9 @@ final _cartProductsBatchProvider =
       if (productIds.isEmpty) return {};
 
       final Map<String, Map<String, dynamic>> cache = {};
-      try {
-        final products = await productRepository.fetchProductsByIds(productIds);
-        for (final product in products) {
-          cache[product.productId] = product.toJson();
-        }
-      } catch (e, st) {
-        Sentry.captureException(e, stackTrace: st);
+      final products = await productRepository.fetchProductsByIds(productIds);
+      for (final product in products) {
+        cache[product.productId] = product.toJson();
       }
 
       return cache;
@@ -559,7 +555,20 @@ class CartController {
       await _ref
           .read(productRepositoryProvider)
           .toggleFavorite(userId, productId);
-      await removeFromCart(cartItemId);
+      try {
+        await removeFromCart(cartItemId);
+      } catch (e, st) {
+        // Roll back the favorite toggle if cart removal fails
+        try {
+          await _ref
+              .read(productRepositoryProvider)
+              .toggleFavorite(userId, productId);
+        } catch (_) {
+          // Best-effort rollback
+        }
+        Sentry.captureException(e, stackTrace: st);
+        return false;
+      }
       return true;
     } catch (e, st) {
       Sentry.captureException(e, stackTrace: st);
@@ -587,8 +596,13 @@ class CartController {
     final userId = _userId;
     if (userId == null) return false;
 
-    await _repository.updateQuantity(userId, cartItemId, newQuantity);
-    return true;
+    try {
+      await _repository.updateQuantity(userId, cartItemId, newQuantity);
+      return true;
+    } catch (e, st) {
+      Sentry.captureException(e, stackTrace: st);
+      return false;
+    }
   }
 }
 

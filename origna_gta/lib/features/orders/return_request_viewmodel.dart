@@ -1,6 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/orders/orders_provider.dart';
 import 'package:origna_gta/utils/utils.dart';
 
@@ -35,6 +36,8 @@ class ReturnRequestViewModel extends StateNotifier<ReturnRequestState> {
   ///
   /// Returns `true` on success, `false` on failure.
   /// On success, invalidates the order and return requests caches.
+  /// Enforces the return window client-side as defense-in-depth
+  /// (server also validates).
   Future<bool> submitReturn({
     required String orderId,
     required List<String> cartItemIds,
@@ -42,6 +45,38 @@ class ReturnRequestViewModel extends StateNotifier<ReturnRequestState> {
     String? description,
   }) async {
     if (state.isLoading) return false;
+
+    // Client-side return window enforcement (defense-in-depth)
+    try {
+      final order = await _ref
+          .read(orderRepositoryProvider)
+          .fetchOrderById(orderId);
+      if (order != null) {
+        final now = DateTime.now();
+        bool hasEligibleItem = false;
+        for (final item in order.items) {
+          if (item.deliveredAt != null) {
+            final deadline = item.deliveredAt!.add(
+              const Duration(days: BusinessRules.returnWindowDays),
+            );
+            if (now.isBefore(deadline)) {
+              hasEligibleItem = true;
+              break;
+            }
+          }
+        }
+        if (!hasEligibleItem) {
+          state = state.copyWith(
+            errorMessage:
+                'The ${BusinessRules.returnWindowDays}-day return window has expired',
+          );
+          return false;
+        }
+      }
+    } catch (_) {
+      // Best-effort check — server will enforce authoritatively
+    }
+
     state = state.copyWith(
       isLoading: true,
       isSuccess: false,

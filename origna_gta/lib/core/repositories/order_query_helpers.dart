@@ -80,8 +80,12 @@ mixin OrderQueryHelpers {
   /// Strips the `collection:` prefix from a PostgreSQL record ID for comparison.
   ///
   /// Example: `"users:abc123"` → `"abc123"`.
-  static String normalizeId(String id) =>
-      id.contains(':') ? id.split(':').last : id;
+  /// Only strips the first segment before the first colon to match `_bareId`
+  /// behavior and handle IDs that may contain colons (e.g., namespaced UUIDs).
+  static String normalizeId(String id) {
+    final idx = id.indexOf(':');
+    return idx >= 0 ? id.substring(idx + 1) : id;
+  }
 
   /// Realtime stream of orders backed by WebSocket subscription.
   ///

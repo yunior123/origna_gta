@@ -335,7 +335,7 @@ void main() {
         container
             .read(editProductViewModelProvider(initialProduct))
             .errorMessage,
-        contains('100,000'),
+        contains('price_limit'),
       );
 
       await viewModel.updateProduct(

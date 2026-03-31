@@ -1,5 +1,25 @@
 part of '../home_screen.dart';
 
+/// Notification bell icon for the home screen app bar.
+/// Shows the notification icon and navigates to the notifications screen on tap.
+class _NotificationBellButton extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: 'btn-notifications',
+      child: IconButton(
+        icon: const Icon(
+          Icons.notifications_outlined,
+          color: DesignTokens.white,
+          size: 24,
+        ),
+        tooltip: 'Notifications',
+        onPressed: () => Navigator.pushNamed(context, AppRoutes.notifications),
+      ),
+    );
+  }
+}
+
 class _AddProductButton extends ConsumerWidget {
   const _AddProductButton();
 

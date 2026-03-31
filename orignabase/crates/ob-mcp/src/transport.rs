@@ -49,9 +49,19 @@ async fn handle_rpc(
                 debug!(uid = %claims.uid, "Authenticated MCP request");
                 McpContext::with_claims(claims)
             }
-            Err(_) => {
-                debug!("Invalid auth header, proceeding as anonymous");
-                McpContext::new()
+            Err(e) => {
+                // P1-NEW-5: Reject invalid JWTs instead of silently downgrading to anonymous.
+                // An invalid Authorization header means the caller attempted to authenticate
+                // but failed — this should be a hard error, not a silent fallback.
+                tracing::warn!("MCP auth failed: {e}");
+                return (
+                    StatusCode::UNAUTHORIZED,
+                    Json(serde_json::json!({
+                        "jsonrpc": "2.0",
+                        "error": { "code": -32000, "message": "Invalid authentication token" },
+                        "id": null
+                    })),
+                );
             }
         },
         None => McpContext::new(),
@@ -60,7 +70,7 @@ async fn handle_rpc(
     // Process request
     let response = mcp.handle_request(request, ctx).await;
 
-    (StatusCode::OK, Json(response))
+    (StatusCode::OK, Json(serde_json::to_value(response).unwrap_or_default()))
 }
 
 /// List available tools
@@ -609,9 +619,9 @@ mod tests {
             .body(Body::from(body.to_string()))
             .unwrap();
 
-        // Should still succeed (falls back to anonymous)
+        // P1-NEW-5: Invalid JWT should return 401, not silently fall back to anonymous
         let resp = router.oneshot(req).await.unwrap();
-        assert_eq!(resp.status(), StatusCode::OK);
+        assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
     }
 
     #[tokio::test]

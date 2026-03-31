@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -36,6 +38,14 @@ final editProductViewModelProvider = StateNotifierProvider.autoDispose
 /// - [AddProductViewModel] for new product creation
 class EditProductViewModel extends StateNotifier<EditProductState> {
   final Ref _ref;
+  bool _disposed = false;
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+
   final models.Product _product;
 
   EditProductViewModel(this._ref, this._product)
@@ -57,7 +67,9 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
           deviceLimit: _product.deviceLimit,
           existingImageUrls: List.from(_product.imageUrls),
           existingVideoUrl: _product.videoUrl,
-          selectedProvince: _normalizeProvinceCode(_product.sellerAddress?.state),
+          selectedProvince: _normalizeProvinceCode(
+            _product.sellerAddress?.state,
+          ),
           latitude: _product.sellerAddress?.latitude,
           longitude: _product.sellerAddress?.longitude,
           standardEnabled: _product.deliveryOptions.any(
@@ -232,11 +244,13 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
     sameDayEnabled: value,
     isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly,
   );
+
   /// Toggles standard delivery; disables local-only when enabled.
   void setStandardEnabled(bool value) => state = state.copyWith(
     standardEnabled: value,
     isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly,
   );
+
   /// Sets the product video file and its duration.
   ///
   /// Parameters:
@@ -374,12 +388,12 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
       state = state.copyWith(errorMessage: 'Description is required');
       return;
     }
-    if (price <= 0) {
+    if (price <= 0.99) {
       state = state.copyWith(errorMessage: 'product.please_enter_price'.tr());
       return;
     }
     if (price > 100000) {
-      state = state.copyWith(errorMessage: 'Price cannot exceed \$100,000');
+      state = state.copyWith(errorMessage: 'product.price_limit_exceeded'.tr());
       return;
     }
     if (compareAtPrice != null && compareAtPrice - price < 0.50) {
@@ -505,8 +519,13 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
           );
           return;
         }
-        final bytes = await state.videoFile!.readAsBytes();
-        if (bytes.length > BusinessRules.maxVideoBytes) {
+        // P1-21: Check file size via File.length() to avoid loading entire video into RAM.
+        // Falls back to readAsBytes().length for in-memory XFiles (e.g. in tests).
+        final videoFile = File(state.videoFile!.path);
+        final videoLength = await videoFile.exists()
+            ? await videoFile.length()
+            : (await state.videoFile!.readAsBytes()).length;
+        if (videoLength > BusinessRules.maxVideoBytes) {
           state = state.copyWith(
             isLoading: false,
             errorMessage: 'product.video_too_large'.tr(),
@@ -524,6 +543,17 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
           processedImages,
           _product.productId,
         );
+        // P1-22: Block save if any image upload failed
+        if (successfulUrls.length < processedImages.length) {
+          final failed = processedImages.length - successfulUrls.length;
+          state = state.copyWith(
+            isLoading: false,
+            errorMessage: 'product.image_upload_failed'.tr(
+              namedArgs: {'count': failed.toString()},
+            ),
+          );
+          return;
+        }
         allImageUrls.addAll(successfulUrls);
       }
 
@@ -615,8 +645,10 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
       }
 
       await _repository.updateProduct(_product.productId, updateMap);
+      if (_disposed) return;
       state = state.copyWith(isLoading: false, isSuccess: true);
     } catch (e) {
+      if (_disposed) return;
       state = state.copyWith(
         isLoading: false,
         errorMessage: AppError.getMessage(e),

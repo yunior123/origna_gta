@@ -681,7 +681,8 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
     }
   }
 
-  /// Updates the shipping address and clears the cached idempotency key for re-checkout.
+  /// Updates the shipping address, clears the cached idempotency key, and
+  /// recalculates shipping + taxes for the new destination.
   ///
   /// Parameters:
   /// - [address]: new shipping address to use for the checkout.
@@ -689,6 +690,8 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
   /// Clears the idempotency key so the next [startCheckout] creates a fresh session.
   void updateAddress(Address address) {
     state = state.copyWith(address: address, idempotencyKey: null);
+    // Recalculate shipping and taxes for the new address
+    _ref.read(cartWithDetailsProvider).whenData(calculateShipping);
   }
 
   /// Recalculates shipping and taxes after a coupon change.

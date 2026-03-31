@@ -26,7 +26,12 @@ PASS=true
 # ── Flutter unit/widget coverage ─────────────────────────────────────────────
 echo "=== Flutter unit/widget tests + coverage ==="
 cd origna_gta
-flutter test --coverage --reporter=compact --exclude-tags golden || { echo "FAIL: flutter test"; PASS=false; }
+flutter test --coverage --reporter=compact --exclude-tags golden
+TEST_EXIT=$?
+if [ $TEST_EXIT -ne 0 ]; then
+  echo "FAIL: flutter test exited with code $TEST_EXIT"
+  PASS=false
+fi
 
 if command -v lcov &>/dev/null; then
   COVERAGE=$(lcov --summary coverage/lcov.info 2>&1 | grep "lines" | grep -oE "[0-9]+\.[0-9]+" | head -1)

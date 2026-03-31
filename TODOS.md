@@ -167,7 +167,7 @@ dashboard full ex3:addresses etc, all, search the missing gaps. the mega seed al
 should include:yuniorrodriguezo460@gmail.com, yr62813@gmail.com, yuniorrodriguezo4601@yahoo.com.4. coverage for orignabase
 rust and origna_gta should be 95+ for tests. increase coverage, test all. priority for live tests, unit tests are
 secondary.fix all warnings too.19. audit auth system all over in backend and frontend.18. audit full codebase with 30+
-agents, use delegation. findings should be added to state.md. findings should be validated in depth to avoid false
+agents, use delegation, use all skills too. findings should be added to state.md. findings should be validated in depth to avoid false
 positives.21. use delegation to document codebase like pro, search web for best practices. document so well that it will
 avoid going back and forth many times: ex: we were using for loop for images compression then future.wait then for loop
 again. document functions, clases, etc
@@ -179,3 +179,10 @@ mode is a workaround, not a proper fix. The pro fix: check the seller's
 state.md
 28. u can reseed db as many times as needed if there are issues with data34. docs for classes, functions, etc, to avoid
 back and forth. search web for best practices
+
+
+
+1. connect to my iphone and increase protection, verify internet security
+2.  audit codebase for unwired features, todos, remaining issues, etc
+3.  wifi ruview github package
+3.

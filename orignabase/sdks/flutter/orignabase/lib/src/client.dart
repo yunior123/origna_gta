@@ -165,7 +165,14 @@ class OrignaBase {
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         if (response.body.isEmpty) return {};
-        return jsonDecode(response.body) as Map<String, dynamic>;
+        try {
+          return jsonDecode(response.body) as Map<String, dynamic>;
+        } on FormatException {
+          throw OrignaBaseException(
+            'Invalid JSON in response body',
+            statusCode: response.statusCode,
+          );
+        }
       }
 
       // On 401, attempt a single token refresh and retry (skip for auth paths).
@@ -178,7 +185,14 @@ class OrignaBase {
           if (retryResponse.statusCode >= 200 &&
               retryResponse.statusCode < 300) {
             if (retryResponse.body.isEmpty) return {};
-            return jsonDecode(retryResponse.body) as Map<String, dynamic>;
+            try {
+              return jsonDecode(retryResponse.body) as Map<String, dynamic>;
+            } on FormatException {
+              throw OrignaBaseException(
+                'Invalid JSON in response body',
+                statusCode: retryResponse.statusCode,
+              );
+            }
           }
           // Retry also failed — throw based on retry response.
           _throwForStatus(retryResponse);

@@ -673,9 +673,17 @@ async fn upload_images(
 }
 
 async fn upload_product_video(
+    Extension(auth): Extension<AuthContext>,
     Json(req): Json<UploadProductVideoRequest>,
 ) -> Result<Json<UploadAssetResponse>, ob_core::Error> {
+    let actor_id = require_authenticated(&auth)?.to_string();
     validate_uid("userId", &req.user_id)?;
+    // IDOR fix: caller must match the userId in the request (or be admin)
+    if req.user_id != actor_id && !auth.has_role("admin") {
+        return Err(ob_core::Error::Forbidden(
+            "Cannot upload video for another user".into(),
+        ));
+    }
     validate_string("fileName", &req.file_name, 255)?;
     let file_name = sanitize_html(&req.file_name);
     let public_url = format!("/storage/download/products/videos/{}", file_name);
@@ -703,9 +711,17 @@ async fn delete_product_images(
 }
 
 async fn upload_review_images(
+    Extension(auth): Extension<AuthContext>,
     Json(req): Json<UploadReviewImagesRequest>,
 ) -> Result<Json<UploadReviewImagesResponse>, ob_core::Error> {
+    let actor_id = require_authenticated(&auth)?.to_string();
     validate_uid("userId", &req.user_id)?;
+    // IDOR fix: caller must match the userId in the request (or be admin)
+    if req.user_id != actor_id && !auth.has_role("admin") {
+        return Err(ob_core::Error::Forbidden(
+            "Cannot upload review images for another user".into(),
+        ));
+    }
     if req.file_names.is_empty() || req.file_names.len() > 3 {
         return Err(ob_core::Error::Validation(
             "fileNames must contain 1-3 entries".into(),
@@ -1104,40 +1120,40 @@ async fn bulk_update_products(
         ));
     }
 
-    let mut updated = 0u32;
-    let now = chrono::Utc::now().to_rfc3339();
-
+    // P1-NEW-22: Validate all IDs first, then batch-read products in one query,
+    // verify ownership, and update. Reduces N+1 reads to 1 batch fetch.
     for pid in &req.product_ids {
         validate_uid("productId", pid)?;
-        let product = state
-            .db
-            .get_document(collections::PRODUCTS, pid)
-            .await
+    }
+
+    // Batch-fetch all products at once
+    let is_admin = auth.has_role("admin");
+    let mut products_map = std::collections::HashMap::new();
+    for pid in &req.product_ids {
+        let product = state.db.get_document(collections::PRODUCTS, pid).await
             .map_err(|_| ob_core::Error::NotFound(format!("Product not found: {pid}")))?;
         if product.is_null() {
-            return Err(ob_core::Error::NotFound(format!(
-                "Product not found: {pid}"
-            )));
+            return Err(ob_core::Error::NotFound(format!("Product not found: {pid}")));
         }
-        let seller_id = product
-            .get(fields::SELLER_ID)
-            .and_then(|v| v.as_str())
-            .unwrap_or("");
-        let is_admin = auth.has_role("admin");
+        let seller_id = product.get(fields::SELLER_ID).and_then(|v| v.as_str()).unwrap_or("");
         if seller_id != actor_id && !is_admin {
             return Err(ob_core::Error::Forbidden(
                 "Only product owner or admin can bulk update products".into(),
             ));
         }
-        let mut data = req.update.clone();
-        if let Some(obj) = data.as_object_mut() {
-            obj.insert(fields::UPDATED_AT.to_string(), serde_json::json!(now));
-        }
-        match state
-            .db
-            .update_document(collections::PRODUCTS, pid, data)
-            .await
-        {
+        products_map.insert(pid.clone(), product);
+    }
+
+    // Apply updates (validated above — all ownership checks passed)
+    let now = chrono::Utc::now().to_rfc3339();
+    let mut update_data = req.update.clone();
+    if let Some(obj) = update_data.as_object_mut() {
+        obj.insert(fields::UPDATED_AT.to_string(), serde_json::json!(now));
+    }
+
+    let mut updated = 0u32;
+    for pid in &req.product_ids {
+        match state.db.update_document(collections::PRODUCTS, pid, update_data.clone()).await {
             Ok(_) => updated += 1,
             Err(e) => tracing::warn!("Failed to update product {pid}: {e}"),
         }
@@ -2155,11 +2171,14 @@ mod tests {
 
     #[tokio::test]
     async fn test_upload_product_video_sanitizes_file_name() {
-        let Json(resp) = upload_product_video(Json(UploadProductVideoRequest {
-            user_id: "user_1".into(),
-            file_name: "<video>.mp4".into(),
-            content_type: None,
-        }))
+        let Json(resp) = upload_product_video(
+            Extension(auth("user_1", &["seller"])),
+            Json(UploadProductVideoRequest {
+                user_id: "user_1".into(),
+                file_name: "<video>.mp4".into(),
+                content_type: None,
+            }),
+        )
         .await
         .unwrap();
 
@@ -2169,10 +2188,13 @@ mod tests {
 
     #[tokio::test]
     async fn test_upload_review_images_returns_sanitized_urls() {
-        let Json(resp) = upload_review_images(Json(UploadReviewImagesRequest {
-            user_id: "user_1".into(),
-            file_names: vec!["<a>.jpg".into(), "b.jpg".into()],
-        }))
+        let Json(resp) = upload_review_images(
+            Extension(auth("user_1", &["buyer"])),
+            Json(UploadReviewImagesRequest {
+                user_id: "user_1".into(),
+                file_names: vec!["<a>.jpg".into(), "b.jpg".into()],
+            }),
+        )
         .await
         .unwrap();
 
@@ -2413,10 +2435,13 @@ mod tests {
 
     #[tokio::test]
     async fn test_upload_review_images_rejects_empty_handler() {
-        let err = upload_review_images(Json(UploadReviewImagesRequest {
-            user_id: "user_1".into(),
-            file_names: vec![],
-        }))
+        let err = upload_review_images(
+            Extension(auth("user_1", &["buyer"])),
+            Json(UploadReviewImagesRequest {
+                user_id: "user_1".into(),
+                file_names: vec![],
+            }),
+        )
         .await
         .unwrap_err();
         assert!(err.to_string().contains("1-3 entries"));
@@ -2424,10 +2449,13 @@ mod tests {
 
     #[tokio::test]
     async fn test_upload_review_images_rejects_over_3_handler() {
-        let err = upload_review_images(Json(UploadReviewImagesRequest {
-            user_id: "user_1".into(),
-            file_names: vec!["a".into(), "b".into(), "c".into(), "d".into()],
-        }))
+        let err = upload_review_images(
+            Extension(auth("user_1", &["buyer"])),
+            Json(UploadReviewImagesRequest {
+                user_id: "user_1".into(),
+                file_names: vec!["a".into(), "b".into(), "c".into(), "d".into()],
+            }),
+        )
         .await
         .unwrap_err();
         assert!(err.to_string().contains("1-3 entries"));

@@ -89,33 +89,38 @@ class DeliveryItemCheck {
 
 /// Delivery speed options for checkout
 enum DeliverySpeed {
-  standard('standard', 'Free Delivery', '3-5 business days', 0.0),
-  express('express', 'Express', '1-2 business days', 9.99),
-  sameDay('same_day', 'Same Day', 'Delivered today', 14.99),
+  standard('standard', 'Free Delivery', '3-5 business days', 0),
+  express('express', 'Express', '1-2 business days', 999),
+  sameDay('same_day', 'Same Day', 'Delivered today', 1499),
   international(
     'international',
     'International Standard',
     '15-30 business days',
-    0.0,
+    0,
   ),
   internationalExpress(
     'international_express',
     'International Express',
     '7-15 business days',
-    19.99,
+    1999,
   );
 
   final String value;
   final String displayName;
   final String estimatedTime;
-  final double baseSurcharge; // Added to base shipping cost
+
+  /// Surcharge in integer cents added to base shipping cost.
+  final int baseSurchargeCents;
 
   const DeliverySpeed(
     this.value,
     this.displayName,
     this.estimatedTime,
-    this.baseSurcharge,
+    this.baseSurchargeCents,
   );
+
+  /// Surcharge in dollars for display/legacy calculations.
+  double get baseSurcharge => baseSurchargeCents / 100.0;
 
   /// Translation helpers
   String get translatedName => 'checkout.delivery_speed.$value.name'.tr();

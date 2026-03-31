@@ -73,6 +73,7 @@ class SellerOrdersViewModel extends StateNotifier<SellerOrdersState> {
       );
 
       // Step 2: Store tracking number if provided
+      String? trackingWarning;
       if (trackingNumber.isNotEmpty) {
         try {
           // Update ALL items with tracking info — seller ships the entire order as one shipment
@@ -85,12 +86,20 @@ class SellerOrdersViewModel extends StateNotifier<SellerOrdersState> {
             carrierNote: carrierNote,
           );
         } catch (e) {
-          // Non-critical tracking write failed — log for visibility
+          // Tracking write failed — shipping cost updated but tracking not saved
           AppError.log(e, context: 'sellerOrders.trackingUpdate');
+          trackingWarning = AppError.getMessage(
+            e,
+            'Shipping cost updated but tracking number could not be saved. Please retry adding tracking.',
+          );
         }
       }
 
-      state = state.copyWith(isLoading: false, isSuccess: true);
+      state = state.copyWith(
+        isLoading: false,
+        isSuccess: true,
+        errorMessage: trackingWarning,
+      );
     } catch (e) {
       state = state.copyWith(
         isLoading: false,

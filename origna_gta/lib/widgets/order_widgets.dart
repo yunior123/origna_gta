@@ -893,7 +893,8 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
           ),
 
           // ─── CANCEL ORDER (pending / confirmed only) ─────────
-          if (order.orderStatus == OrderStatus.pending || order.orderStatus == OrderStatus.confirmed)
+          if (order.orderStatus == OrderStatus.pending ||
+              order.orderStatus == OrderStatus.confirmed)
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
               child: SizedBox(
@@ -2215,10 +2216,12 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
       CarrierValues.purolator => 'Purolator',
       CarrierValues.dhl => 'DHL',
       CarrierValues.usps => 'USPS',
-      CarrierValues.maritime => 'Maritime (International)',
+      CarrierValues.maritime => 'orders.carrier_maritime'.tr(),
       CarrierValues.other =>
-        carrierNote?.isNotEmpty == true ? carrierNote! : 'Other carrier',
-      _ => 'Tracking',
+        carrierNote?.isNotEmpty == true
+            ? carrierNote!
+            : 'orders.carrier_other'.tr(),
+      _ => 'orders.tracking'.tr(),
     };
   }
 
@@ -2340,8 +2343,10 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius20)),
-        backgroundColor: isDark ? DesignTokens.darkSurface : Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(DesignTokens.radius20),
+        ),
+        backgroundColor: isDark ? DesignTokens.darkSurface : DesignTokens.white,
         title: Row(
           children: [
             Icon(Icons.warning_rounded, color: DesignTokens.warning, size: 28),
@@ -2349,19 +2354,30 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
             Expanded(
               child: Text(
                 'orders.cancel_order_title'.tr(),
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: isDark ? Colors.white : DesignTokens.textPrimary),
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? DesignTokens.white : DesignTokens.textPrimary,
+                ),
               ),
             ),
           ],
         ),
         content: Text(
           'orders.cancel_order_body'.tr(),
-          style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13, height: 1.6),
+          style: TextStyle(
+            color: DesignTokens.textSecondary,
+            fontSize: 13,
+            height: 1.6,
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: Text('common.go_back'.tr(), style: TextStyle(color: DesignTokens.textSecondary)),
+            child: Text(
+              'common.go_back'.tr(),
+              style: TextStyle(color: DesignTokens.textSecondary),
+            ),
           ),
           Semantics(
             button: true,
@@ -2370,21 +2386,34 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
               onPressed: () async {
                 Navigator.pop(dialogContext);
                 final messenger = ScaffoldMessenger.of(context);
-                final success = await ref.read(buyerOrdersViewModelProvider.notifier).cancelOrder(order.orderId);
+                final success = await ref
+                    .read(buyerOrdersViewModelProvider.notifier)
+                    .cancelOrder(order.orderId);
                 if (!mounted) return;
                 messenger.showSnackBar(
                   SnackBar(
-                    content: Text(success ? 'orders.order_cancelled'.tr() : 'orders.cancel_failed'.tr()),
-                    backgroundColor: success ? DesignTokens.success : DesignTokens.error,
+                    content: Text(
+                      success
+                          ? 'orders.order_cancelled'.tr()
+                          : 'orders.cancel_failed'.tr(),
+                    ),
+                    backgroundColor: success
+                        ? DesignTokens.success
+                        : DesignTokens.error,
                   ),
                 );
               },
               style: TextButton.styleFrom(
                 backgroundColor: DesignTokens.error,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius12)),
+                foregroundColor: DesignTokens.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(DesignTokens.radius12),
+                ),
               ),
-              child: Text('orders.yes_cancel_order'.tr(), style: const TextStyle(fontWeight: FontWeight.w600)),
+              child: Text(
+                'orders.yes_cancel_order'.tr(),
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
             ),
           ),
         ],
@@ -2396,31 +2425,41 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
     final messenger = ScaffoldMessenger.of(context);
     final cartController = ref.read(cartControllerProvider);
     int added = 0;
+    int failed = 0;
+    final physicalItems = order.items.where((i) => !i.isDigital).toList();
 
-    for (final item in order.items) {
-      if (item.isDigital) continue; // skip digital — already owned
+    for (final item in physicalItems) {
       final success = await cartController.addToCart(
         item.productId,
         item.quantity,
         variantId: item.variantId,
       );
-      if (success) added++;
+      if (success) {
+        added++;
+      } else {
+        failed++;
+      }
     }
 
     if (!mounted) return;
+    final message = failed > 0
+        ? '${'orders.items_added_to_cart'.tr(namedArgs: {'count': added.toString()})} ($failed unavailable)'
+        : 'orders.items_added_to_cart'.tr(
+            namedArgs: {'count': added.toString()},
+          );
     messenger.showSnackBar(
       SnackBar(
-        content: Text(
-          'orders.items_added_to_cart'.tr(
-            namedArgs: {'count': added.toString()},
-          ),
-        ),
-        backgroundColor: DesignTokens.success,
-        action: SnackBarAction(
-          label: 'cart.view_cart'.tr(),
-          textColor: DesignTokens.white,
-          onPressed: () => Navigator.pushNamed(context, AppRoutes.cart),
-        ),
+        content: Text(message),
+        backgroundColor: failed > 0
+            ? DesignTokens.warning
+            : DesignTokens.success,
+        action: added > 0
+            ? SnackBarAction(
+                label: 'cart.view_cart'.tr(),
+                textColor: DesignTokens.white,
+                onPressed: () => Navigator.pushNamed(context, AppRoutes.cart),
+              )
+            : null,
       ),
     );
   }

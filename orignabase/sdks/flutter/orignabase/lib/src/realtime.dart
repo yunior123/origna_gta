@@ -48,6 +48,10 @@ class RealtimeClient {
   /// All active subscriptions keyed by subscription ID.
   final _subs = <String, _SubEntry>{};
 
+  /// Monotonic counter to guarantee unique subscription IDs even within
+  /// the same millisecond.
+  int _subCounter = 0;
+
   bool _disconnecting = false;
   Timer? _reconnectTimer;
   int _reconnectAttempts = 0;
@@ -165,7 +169,7 @@ class RealtimeClient {
   Stream<DocumentChange> subscribeDocument(
       String collection, String documentId) {
     final subId =
-        '${collection}_${documentId}_${DateTime.now().millisecondsSinceEpoch}';
+        '${collection}_${documentId}_${DateTime.now().millisecondsSinceEpoch}_${_subCounter++}';
     final entry = _SubEntry(
       id: subId,
       collection: collection,
@@ -181,7 +185,8 @@ class RealtimeClient {
 
   /// Subscribe to changes on a collection.
   Stream<DocumentChange> subscribe(String collection, {String? filter}) {
-    final subId = '${collection}_${DateTime.now().millisecondsSinceEpoch}';
+    final subId =
+        '${collection}_${DateTime.now().millisecondsSinceEpoch}_${_subCounter++}';
     final entry = _SubEntry(
       id: subId,
       collection: collection,

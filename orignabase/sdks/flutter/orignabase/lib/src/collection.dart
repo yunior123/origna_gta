@@ -62,8 +62,12 @@ class CollectionRef extends Query {
     if (result is Map<String, dynamic>) {
       return Document.fromMap(collectionName, result);
     }
-    // Return with data if no structured response
-    return Document(id: '', collection: collectionName, data: data);
+    // Server returned a non-map response — the document was likely created
+    // but we don't have a valid ID. Throw so callers don't get a Document
+    // with exists == false that silently hides the problem.
+    throw OrignaBaseException(
+      'Server did not return a document after create',
+    );
   }
 }
 

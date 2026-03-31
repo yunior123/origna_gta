@@ -423,7 +423,12 @@ class OrignaBaseAuthRepository implements AuthRepository {
       final authState = await _ob.auth.refreshToken();
       if (!authState.isAuthenticated) return false;
       return _ob.auth.isEmailVerified;
+    } on NetworkException catch (e) {
+      // Network error — don't assume unverified, rethrow so caller can retry
+      AppLogger.w('Network error checking email verification: $e', tag: 'auth');
+      rethrow;
     } catch (e) {
+      // Auth error (expired session, invalid token) — treat as unverified
       AppLogger.d('Error checking email verification: $e', tag: 'auth');
       return false;
     }
@@ -588,19 +593,42 @@ class OrignaBaseAuthRepository implements AuthRepository {
       }
 
       return true;
-    } catch (e) {
-      final errorStr = e.toString().toLowerCase();
-      if (errorStr.contains('not found') ||
-          errorStr.contains('disabled') ||
-          errorStr.contains('expired') ||
-          errorStr.contains('unauthorized')) {
-        AppLogger.d('User account no longer valid, signing out', tag: 'auth');
-        await signOut();
-        return false;
-      }
+    } on NetworkException catch (e) {
       // Network error — don't sign out, could be temporary
-      AppLogger.d('Error validating user: $e', tag: 'auth');
+      AppLogger.d('Network error validating user: $e', tag: 'auth');
       return true;
+    } on NotFoundException catch (e) {
+      AppLogger.d('User not found, signing out: $e', tag: 'auth');
+      await signOut();
+      return false;
+    } on AuthException catch (e) {
+      AppLogger.d('Auth error validating user, signing out: $e', tag: 'auth');
+      await signOut();
+      return false;
+    } on ForbiddenException catch (e) {
+      AppLogger.d('User disabled/forbidden, signing out: $e', tag: 'auth');
+      await signOut();
+      return false;
+    } catch (e) {
+      // Unknown error — check if it looks like a transient network issue
+      final msg = e.toString().toLowerCase();
+      if (msg.contains('network') ||
+          msg.contains('timeout') ||
+          msg.contains('socket') ||
+          msg.contains('connection')) {
+        AppLogger.d(
+          'Transient error validating user (not signing out): $e',
+          tag: 'auth',
+        );
+        return true;
+      }
+      // Non-transient unknown error — sign out to be safe
+      AppLogger.w(
+        'Unknown error validating user, signing out: $e',
+        tag: 'auth',
+      );
+      await signOut();
+      return false;
     }
   }
 
@@ -833,7 +861,8 @@ class OrignaBaseAuthRepository implements AuthRepository {
         message: e.toString(),
       );
     }
-    if (errorStr.contains('disabled') || errorStr.contains('account')) {
+    if (errorStr.contains('disabled') ||
+        (errorStr.contains('account') && errorStr.contains('suspended'))) {
       throw OrignaBaseAuthException(
         code: 'user-disabled',
         message: e.toString(),

@@ -101,7 +101,12 @@ class EnvConfig {
     }
     if (_envString == 'dev') return AppEnvironment.dev;
     if (_envString == 'staging') return AppEnvironment.staging;
-    return AppEnvironment.production;
+    if (_envString == 'production') return AppEnvironment.production;
+    // Reject unknown environment strings instead of silently falling back to production.
+    throw StateError(
+      'Unknown ENVIRONMENT="$_envString". '
+      'Valid values: emulator, dev, staging, production.',
+    );
   }
 
   /// Current environment (memoized — safe to call on every rebuild)

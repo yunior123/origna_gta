@@ -8,6 +8,38 @@ use serde_json::Value;
 use std::sync::Arc;
 use tokio::sync::mpsc;
 
+/// P1-NEW-21: Fields that must never appear in GraphQL responses.
+/// Admin users get a reduced blocklist (they may need some internal fields).
+const SENSITIVE_FIELDS_ALL: &[&str] = &[
+    "hashedPassword",
+    "mfaSecret",
+    "mfaRecoveryCodes",
+    "refreshToken",
+    "encryptedTotpSecret",
+    "passwordSalt",
+];
+const SENSITIVE_FIELDS_NON_ADMIN: &[&str] = &[
+    "stripeConnectId",
+    "stripeCustomerId",
+    "bankAccountLast4",
+    "internalNotes",
+];
+
+/// Strip sensitive fields from a document based on caller's role.
+fn strip_sensitive_fields(doc: &mut Value, ctx: &SecurityContext) {
+    if let Some(obj) = doc.as_object_mut() {
+        for &field in SENSITIVE_FIELDS_ALL {
+            obj.remove(field);
+        }
+        let is_admin = ctx.roles.iter().any(|r| r == "admin");
+        if !is_admin {
+            for &field in SENSITIVE_FIELDS_NON_ADMIN {
+                obj.remove(field);
+            }
+        }
+    }
+}
+
 /// If `data` is a JSON-encoded string, parse it into a Value.
 /// This handles the case where GraphQL mutations pass data as a string
 /// (e.g., from Flutter SDK's double-encoding: `jsonEncode(jsonEncode(data))`).
@@ -64,7 +96,9 @@ impl QueryRoot {
             return Err(async_graphql::Error::new("Permission denied"));
         }
 
-        Ok(doc)
+        let mut result = doc;
+        strip_sensitive_fields(&mut result, &sec_ctx);
+        Ok(result)
     }
 
     /// List documents in a collection with optional filters and cursor pagination.
@@ -162,7 +196,18 @@ impl QueryRoot {
             })
             .collect();
 
-        Ok(filtered)
+        // P1-NEW-21: Strip sensitive fields from responses to prevent data leakage.
+        // Fields like hashed passwords, MFA secrets, and internal tokens must never
+        // be exposed via GraphQL — even to authenticated users.
+        let sanitized: Vec<Value> = filtered
+            .into_iter()
+            .map(|mut doc| {
+                strip_sensitive_fields(&mut doc, &sec_ctx);
+                doc
+            })
+            .collect();
+
+        Ok(sanitized)
     }
 
     /// Get a remote config value by key.

@@ -5,6 +5,7 @@ export 'orignabase_checkout_provider.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
+import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:origna_gta/utils/utils.dart' show getTaxRate, provinceTaxRates;
 
@@ -17,7 +18,11 @@ import 'orignabase_checkout_provider.dart';
 final checkoutTaxRateProvider = Provider.autoDispose<double>((ref) {
   final address = ref.watch(checkoutStateProvider.select((s) => s.address));
   if (address == null) {
-    return getTaxRate(ProvinceCodeValues.ontario);
+    // For digital-only carts with no address, use the buyer's profile province
+    // instead of blindly defaulting to Ontario.
+    final userProfile = ref.watch(userProfileProvider).valueOrNull;
+    final profileProvince = userProfile?.address?.state;
+    return getTaxRate(profileProvince ?? ProvinceCodeValues.ontario);
   }
   return getTaxRate(address.state);
 });

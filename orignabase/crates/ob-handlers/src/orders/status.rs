@@ -411,16 +411,19 @@ async fn confirm_item_receipt(
         }
     }
 
-    // Update the order — PostgreSQL's data || merge handles the update atomically.
+    // CAS guard: only update if orderStatus hasn't changed since we read the order.
+    // Prevents TOCTOU race where a webhook or concurrent request modifies the order.
+    let current_status = str_field(&order, fields::ORDER_STATUS);
     let updated = state
         .db
-        .update_document(
+        .update_document_cas(
             collections::ORDERS,
             &req.order_id,
             update_data,
+            fields::ORDER_STATUS,
+            &json!(current_status),
         )
         .await
-        .map(Some)
         .map_err(|e| ob_core::Error::Database(format!("Failed to update order: {e}")))?;
 
     if updated.is_none() {
@@ -736,21 +739,22 @@ async fn update_order_status(
         .order_id
         .strip_prefix(&format!("{}:", collections::ORDERS))
         .unwrap_or(&req.order_id);
-    // CAS: re-read the order and verify status hasn't changed, then update
-    let fresh_order = state.db.get_document(collections::ORDERS, order_id_stripped).await
-        .map_err(|e| ob_core::Error::Database(format!("Failed to update order: {e}")))?;
-    let fresh_status = fresh_order.get(fields::ORDER_STATUS).and_then(|v| v.as_str()).unwrap_or("");
-    if fresh_status != old_status.as_str() {
+    // True CAS: atomic UPDATE ... WHERE orderStatus = old_status in PostgreSQL.
+    // No read-then-write gap — the WHERE clause prevents concurrent modifications.
+    let cas_result = state.db.update_document_cas(
+        collections::ORDERS,
+        order_id_stripped,
+        update_data.clone(),
+        fields::ORDER_STATUS,
+        &json!(old_status.as_str()),
+    ).await
+    .map_err(|e| ob_core::Error::Database(format!("Failed to update order: {e}")))?;
+    if cas_result.is_none() {
         return Err(ob_core::Error::Validation(format!(
             "Order status changed concurrently — expected '{}', please retry",
             old_status.as_str()
         )));
     }
-    state.db.update_document(collections::ORDERS, order_id_stripped, update_data.clone()).await
-        .map_err(|e| ob_core::Error::Database(format!("Failed to update order: {e}")))?;
-    // Use update_data as-is for success path
-    let cas_rows = vec![json!({"ok": true})];
-    let _ = &cas_rows; // prevent unused warning
 
     info!(
         order_id = %req.order_id,

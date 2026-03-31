@@ -1779,6 +1779,20 @@ pub async fn mfa_recovery(
         return Err(Error::Auth("Invalid challenge token".into()));
     }
 
+    // P1-NEW-4: Rate limit recovery code attempts (3 per 15 min per user)
+    let rate_limit_result = crate::rate_limit::check_rate_limit(
+        &state.db,
+        &claims.sub,
+        "mfa_recovery",
+        3,
+        900,
+    )
+    .await;
+    if let Err(e) = rate_limit_result {
+        tracing::warn!(user_id = %claims.sub, "MFA recovery rate limit exceeded");
+        return Err(e);
+    }
+
     let users = state
         .db
         .query_bind(
@@ -1928,8 +1942,9 @@ pub async fn mfa_disable(
         }
     };
 
-    // Verify current TOTP code
-    let _step = totp::verify_totp(&secret, &body.code, None)?;
+    // Verify current TOTP code (with replay protection using stored last_used_step)
+    let last_used_step = user["mfa_last_used_step"].as_u64();
+    let _step = totp::verify_totp(&secret, &body.code, last_used_step)?;
 
     // Disable MFA
     state

@@ -261,9 +261,12 @@ void main() {
         expect(OrderQueryHelpers.normalizeId('abc123'), 'abc123');
       });
 
-      test('handles multiple colons by taking last part', () {
-        expect(OrderQueryHelpers.normalizeId('a:b:c'), 'c');
-      });
+      test(
+        'handles multiple colons by stripping only the collection prefix',
+        () {
+          expect(OrderQueryHelpers.normalizeId('a:b:c'), 'b:c');
+        },
+      );
 
       test('handles empty string after colon', () {
         expect(OrderQueryHelpers.normalizeId('orders:'), '');

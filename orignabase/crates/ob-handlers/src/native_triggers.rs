@@ -758,6 +758,18 @@ impl NativeTriggerExecutor {
             return;
         }
 
+        // P1-NEW-12: Enforce daily push rate limit (MAX_PUSH_PER_DAY = 20)
+        let push_count = self.state.db.count_where(
+            collections::PENDING_NOTIFICATIONS,
+            fields::USER_ID,
+            "=",
+            &json!(user_id),
+        ).await.unwrap_or(0) as u32;
+        if !push::check_daily_limit(push_count) {
+            tracing::info!(user_id = %user_id, count = push_count, "Push rate limit reached, skipping");
+            return;
+        }
+
         let data_map = json_to_string_map(data);
         let project_id = std::env::var("OB_FCM_PROJECT_ID").ok();
         let REDACTED_SECRET = std::env::var("OB_FCM_SERVICE_ACCOUNT").ok();

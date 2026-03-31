@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
+import 'package:origna_gta/utils/app_logger.dart';
 
 /// Service that automatically signs out users after a period of inactivity.
 ///
@@ -139,7 +140,9 @@ class SessionTimeoutService {
         );
       }
     } catch (e) {
-      // Auto-logout failed — user will need to re-authenticate manually
+      // Auto-logout failed — user will need to re-authenticate manually.
+      // Log but don't crash — timeout handler must be resilient.
+      AppLogger.w('Session timeout sign-out failed: $e', tag: 'session');
     }
   }
 

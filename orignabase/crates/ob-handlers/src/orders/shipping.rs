@@ -143,7 +143,10 @@ fn get_tax_rate(province: &str) -> f64 {
         "QC" => 0.14975,                   // GST 5% + QST 9.975%
         "ON" => 0.13,                      // HST
         "NB" | "NL" | "NS" | "PE" => 0.15, // HST
-        _ => 0.13,                         // Default to ON HST
+        other => {
+            tracing::warn!(province = %other, "Unknown province code — falling back to 15% HST (deprecated fn)");
+            0.15
+        }
     }
 }
 
@@ -158,7 +161,12 @@ fn get_tax_rate_bps(province: &str) -> i64 {
         "QC" => 14_975,                        // 14.975%
         "ON" => 13_000,                        // 13% HST
         "NB" | "NL" | "NS" | "PE" => 15_000,  // 15% HST
-        _ => 13_000,                           // Default to ON HST
+        other => {
+            // Log unrecognized province so ops can investigate — fall back to
+            // highest common rate (HST 15%) to avoid under-collecting tax.
+            tracing::warn!(province = %other, "Unknown province code — falling back to 15% HST");
+            15_000
+        }
     }
 }
 
@@ -725,8 +733,8 @@ mod tests {
         assert!((get_tax_rate("BC") - 0.12).abs() < 0.001);
         assert!((get_tax_rate("QC") - 0.14975).abs() < 0.001);
         assert!((get_tax_rate("NS") - 0.15).abs() < 0.001);
-        // Unknown defaults to ON
-        assert!((get_tax_rate("XX") - 0.13).abs() < 0.001);
+        // Unknown defaults to highest HST (15%) to avoid under-collecting
+        assert!((get_tax_rate("XX") - 0.15).abs() < 0.001);
     }
 
     #[test]
@@ -797,8 +805,9 @@ mod tests {
     }
 
     #[test]
-    fn test_tax_difference_uses_default_ontario_rate_for_unknown_province() {
-        assert_eq!(shipping_tax_difference_cents(1000, "??"), 130);
+    fn test_tax_difference_uses_default_highest_hst_for_unknown_province() {
+        // Unknown province falls back to 15% (15_000 permyriad)
+        assert_eq!(shipping_tax_difference_cents(1000, "??"), 150);
     }
 
     #[test]
@@ -1164,8 +1173,9 @@ mod tests {
     }
 
     #[test]
-    fn test_tax_rate_empty_string_defaults_to_on() {
-        assert!((get_tax_rate("") - 0.13).abs() < 0.001);
+    fn test_tax_rate_empty_string_defaults_to_highest_hst() {
+        // Empty string falls back to 15% (highest HST) to avoid under-collecting
+        assert!((get_tax_rate("") - 0.15).abs() < 0.001);
     }
 
     // -----------------------------------------------------------------------

@@ -726,13 +726,14 @@ void main() {
       expect(fakeOb.auth.accessToken, isNull);
     });
 
-    test('does nothing when no current user', () async {
+    test('throws when no current user', () async {
       final auth = fakeOb.auth as _FakeAuth;
       auth.userIdValue = null;
 
-      await repository.deleteAccount();
-
-      expect(fakeOb.lastRequestMethod, isNull);
+      expect(
+        () => repository.deleteAccount(),
+        throwsA(isA<OrignaBaseAuthException>()),
+      );
     });
   });
 

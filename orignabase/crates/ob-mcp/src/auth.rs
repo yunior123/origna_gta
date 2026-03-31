@@ -69,10 +69,25 @@ fn parse_jwt_claims(token: &str, jwt_keys: &JwtKeys) -> McpResult<McpClaims> {
         .unwrap_or(&claims.sub)
         .to_string();
 
+    // Use highest-privilege role rather than just the first one.
+    // Priority: admin > seller > buyer > anything else.
+    let role = {
+        let roles = &claims.roles;
+        if roles.iter().any(|r| r == "admin") {
+            Some("admin".to_string())
+        } else if roles.iter().any(|r| r == "seller") {
+            Some("seller".to_string())
+        } else if roles.iter().any(|r| r == "buyer") {
+            Some("buyer".to_string())
+        } else {
+            roles.first().cloned()
+        }
+    };
+
     Ok(McpClaims {
         sub: claims.sub,
         uid,
-        role: claims.roles.into_iter().next(),
+        role,
         iat: claims.iat,
         exp: claims.exp,
     })

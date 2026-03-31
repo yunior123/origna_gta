@@ -239,9 +239,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   }
 }
 
-
 // === Widget Previews ===
-
 
 // ═══ Widget Previews ═══
 
@@ -405,8 +403,6 @@ Widget previewAppBarAllVariants() => previewGrid(
   ],
 );
 
-
-
 // ═══ Widget Previews ═══
 
 @Preview(name: 'Custom AppBar — Cart Scenarios', group: 'CustomAppBar')
@@ -436,7 +432,13 @@ Widget previewAppBarVariants() => previewScope(
       AppBarFactory.custom(
         title: 'Search Results',
         leading: const Icon(Icons.search, color: DesignTokens.white),
-        actions: [IconButton(icon: const Icon(Icons.filter_list), onPressed: () {}, tooltip: 'Filter')],
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.filter_list),
+            onPressed: () {},
+            tooltip: 'Filter',
+          ),
+        ],
       ),
     ],
   ),
@@ -471,9 +473,14 @@ Widget previewAppBarVariantsLight() => previewScope(
       AppBarFactory.custom(
         title: 'Search Results',
         leading: const Icon(Icons.search, color: DesignTokens.white),
-        actions: [IconButton(icon: const Icon(Icons.filter_list), onPressed: () {}, tooltip: 'Filter')],
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.filter_list),
+            onPressed: () {},
+            tooltip: 'Filter',
+          ),
+        ],
       ),
     ],
   ),
 );
-

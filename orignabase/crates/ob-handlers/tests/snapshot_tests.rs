@@ -263,8 +263,9 @@ fn snapshot_validate_amount_cents_ok() {
 
 #[test]
 fn snapshot_validate_amount_cents_zero() {
+    // Zero amount is now correctly rejected (P2-NEW: validate_amount_cents allows zero)
     let result = validate_amount_cents("price", 0);
-    assert!(result.is_ok());
+    assert!(result.is_err());
 }
 
 #[test]

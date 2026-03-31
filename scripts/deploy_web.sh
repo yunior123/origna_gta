@@ -20,11 +20,19 @@ CURRENT_LINK="${REMOTE_BASE}/current"
 
 echo "Deploying web for ${ENV} to ${VPS_HOST} with release ${TIMESTAMP}"
 
-ORIGNABASE_URL="https://api.orignagta.ca"
 case "$ENV" in
-  dev)        TURNSTILE_KEY="1x00000000000000000000AA" ;;
-  staging)    TURNSTILE_KEY="0x4AAAAAACmRNCDQqc20J_1T" ;;
-  production) TURNSTILE_KEY="0x4AAAAAACmRNXgZQ1M928iq" ;;
+  dev)
+    ORIGNABASE_URL="https://api.dev.orignagta.ca"
+    TURNSTILE_KEY="1x00000000000000000000AA"
+    ;;
+  staging)
+    ORIGNABASE_URL="https://api.staging.orignagta.ca"
+    TURNSTILE_KEY="0x4AAAAAACmRNCDQqc20J_1T"
+    ;;
+  production)
+    ORIGNABASE_URL="https://api.orignagta.ca"
+    TURNSTILE_KEY="0x4AAAAAACmRNXgZQ1M928iq"
+    ;;
 esac
 
 cd origna_gta
