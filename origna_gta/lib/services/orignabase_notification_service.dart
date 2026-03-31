@@ -318,6 +318,34 @@ class OrignaBaseNotificationService {
               arguments: ProductDetailsArgs(productId: productId));
         }
 
+      case NotificationTypes.newMessage:
+        final productId = data[Fields.productId] as String?;
+        final productTitle = data[Fields.productTitle] as String? ?? '';
+        if (productId != null && productId.isNotEmpty) {
+          navigator.pushNamed(AppRoutes.chat,
+              arguments: ChatArgs(
+                  productId: productId, productTitle: productTitle));
+        } else {
+          navigator.pushNamed(AppRoutes.chatInbox);
+        }
+
+      case NotificationTypes.messageReport:
+        navigator.pushNamed(AppRoutes.chatInbox);
+
+      case NotificationTypes.perishableOrderUrgent:
+        final orderId = data[Fields.orderId] as String?;
+        if (orderId != null && orderId.isNotEmpty) {
+          navigator.pushNamed(AppRoutes.orderDetail,
+              arguments: OrderDetailArgs(orderId: orderId));
+        } else {
+          navigator.pushNamed(AppRoutes.sellerOrders);
+        }
+
+      case NotificationTypes.promo:
+      case NotificationTypes.system:
+      case NotificationTypes.account:
+        navigator.pushNamed(AppRoutes.notifications);
+
       default:
         AppLogger.d(
             'Unhandled notification type "$type" — ignoring tap', tag: 'push');

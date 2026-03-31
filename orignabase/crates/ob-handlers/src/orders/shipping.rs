@@ -19,7 +19,12 @@ use crate::shared::validation::{sanitize_html, validate_uid};
 // ---------------------------------------------------------------------------
 
 /// Threshold above which shipping cost increase requires buyer approval (20%).
+/// Kept for backward compatibility reference; prefer SHIPPING_APPROVAL_THRESHOLD_BPS.
+#[allow(dead_code)]
 const SHIPPING_APPROVAL_THRESHOLD: f64 = 0.20;
+
+/// 20% threshold in basis points (20% * 10_000 = 2_000).
+const SHIPPING_APPROVAL_THRESHOLD_BPS: i64 = 2_000;
 
 /// Basis points multiplier for max shipping: (1.0 + 0.20) * 100 = 120.
 const SHIPPING_APPROVAL_MULTIPLIER_BPS: i64 = 120;
@@ -117,15 +122,18 @@ fn max_allowed_shipping_cents(old_seller_cents: i64) -> i64 {
 
 fn shipping_update_requires_approval(original_seller_cents: i64, new_shipping_cents: i64) -> bool {
     if original_seller_cents > 0 {
-        let increase_ratio =
-            (new_shipping_cents - original_seller_cents) as f64 / original_seller_cents as f64;
-        increase_ratio > SHIPPING_APPROVAL_THRESHOLD
+        // Integer basis-point arithmetic: increase > 20% means
+        // (new - old) * 10_000 / old > 2_000
+        let diff = new_shipping_cents - original_seller_cents;
+        diff * 10_000 / original_seller_cents > SHIPPING_APPROVAL_THRESHOLD_BPS
     } else {
         new_shipping_cents > 0
     }
 }
 
 /// Canadian tax rates by province (combined GST+HST or GST+PST) as f64.
+/// DEPRECATED: prefer get_tax_rate_bps() for integer arithmetic.
+#[allow(dead_code)]
 fn get_tax_rate(province: &str) -> f64 {
     match province {
         "AB" | "NT" | "NU" | "YT" => 0.05, // GST only
@@ -139,23 +147,25 @@ fn get_tax_rate(province: &str) -> f64 {
     }
 }
 
-/// Canadian tax rates by province in basis points (integer arithmetic).
-#[allow(dead_code)]
+/// Canadian tax rates by province in permyriad (1/100_000 units).
+/// 100_000 = 100%. This scale preserves Quebec's 3-decimal precision (14.975%).
 fn get_tax_rate_bps(province: &str) -> i64 {
     match province {
-        "AB" | "NT" | "NU" | "YT" => 500,   // 5% GST only
-        "BC" => 1200,                        // 12%
-        "MB" => 1200,                        // 12%
-        "SK" => 1100,                        // 11%
-        "QC" => 14975,                       // 14.975%
-        "ON" => 1300,                        // 13% HST
-        "NB" | "NL" | "NS" | "PE" => 1500,  // 15% HST
-        _ => 1300,                           // Default to ON HST
+        "AB" | "NT" | "NU" | "YT" => 5_000,   // 5% GST only
+        "BC" => 12_000,                        // 12%
+        "MB" => 12_000,                        // 12%
+        "SK" => 11_000,                        // 11%
+        "QC" => 14_975,                        // 14.975%
+        "ON" => 13_000,                        // 13% HST
+        "NB" | "NL" | "NS" | "PE" => 15_000,  // 15% HST
+        _ => 13_000,                           // Default to ON HST
     }
 }
 
 fn shipping_tax_difference_cents(difference_cents: i64, province: &str) -> i64 {
-    (difference_cents as f64 * get_tax_rate(province)).round() as i64
+    // Integer arithmetic: (cents * rate_permyriad + 50_000 * sign) / 100_000 for rounding
+    let rate = get_tax_rate_bps(province);
+    (difference_cents * rate + 50_000 * difference_cents.signum()) / 100_000
 }
 
 async fn stripe_modify_pi(

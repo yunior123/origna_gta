@@ -651,6 +651,24 @@ pub mod fields {
     pub const CLOSED_AT: &str = "closedAt";
     pub const STRIPE_STATUS: &str = "stripeStatus";
 
+    // Payout lifecycle fields
+    pub const ARRIVAL_DATE: &str = "arrivalDate";
+    pub const PAYOUT_METHOD: &str = "payoutMethod";
+    pub const STRIPE_PAYOUT_STATUS: &str = "stripePayoutStatus";
+    pub const PAYOUT_COMPLETED_AT: &str = "payoutCompletedAt";
+
+    // Refund lifecycle fields
+    pub const STRIPE_REFUND_ID: &str = "stripeRefundId";
+    pub const STRIPE_REFUND_STATUS: &str = "stripeRefundStatus";
+    pub const REFUND_FAILURE_REASON: &str = "refundFailureReason";
+
+    // Dispute fund movement fields
+    pub const FUNDS_WITHDRAWN: &str = "fundsWithdrawn";
+    pub const FUNDS_WITHDRAWN_AT: &str = "fundsWithdrawnAt";
+    pub const FUNDS_REINSTATED: &str = "fundsReinstated";
+    pub const FUNDS_REINSTATED_AT: &str = "fundsReinstatedAt";
+    pub const BALANCE_TRANSACTION: &str = "balanceTransaction";
+
     // Payout notification fields (MESSAGE kept for backward compat / other uses)
     pub const MESSAGE: &str = "message";
 

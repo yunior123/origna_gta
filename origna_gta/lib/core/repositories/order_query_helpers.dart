@@ -162,11 +162,16 @@ mixin OrderQueryHelpers {
   /// [sessionId]: the Stripe Checkout session ID to look up.
   ///
   /// Emits null until the order is found, then emits the order and cancels the timer.
+  /// Maximum number of poll attempts before giving up (30 × 3s = 90s timeout).
+  static const _maxPollAttempts = 30;
+
   Stream<models.Order?> watchPaidOrderBySessionImpl(String sessionId) {
     late StreamController<models.Order?> controller;
     Timer? timer;
+    var attempts = 0;
 
     Future<void> fetch() async {
+      attempts++;
       try {
         final snapshot = await ob
             .collection(Collections.orders)
@@ -182,7 +187,19 @@ mixin OrderQueryHelpers {
               ? null
               : docToOrder(snapshot.docs.first);
           controller.add(order);
-          if (order != null) timer?.cancel(); // Stop once found
+          if (order != null) {
+            timer?.cancel(); // Stop once found
+          } else if (attempts >= _maxPollAttempts) {
+            // P1-25: Stop infinite polling after max attempts to prevent
+            // unbounded network requests when the webhook is delayed or lost.
+            timer?.cancel();
+            controller.addError(
+              TimeoutException(
+                'Order not found after $_maxPollAttempts poll attempts',
+              ),
+            );
+            controller.close();
+          }
         }
       } catch (e) {
         if (!controller.isClosed) controller.addError(e);

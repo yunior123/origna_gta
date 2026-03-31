@@ -1248,11 +1248,14 @@ async fn update_product(
 }
 
 async fn toggle_favorite(
+    Extension(auth): Extension<AuthContext>,
     State(state): State<HandlersState>,
     Json(req): Json<ToggleFavoriteRequest>,
 ) -> Result<Json<serde_json::Value>, ob_core::Error> {
     validate_uid("productId", &req.product_id)?;
-    validate_uid("userId", &req.user_id)?;
+
+    // P1-NEW-3: Derive userId from JWT to prevent IDOR
+    let user_id = resolve_self_user_id(&auth, Some(req.user_id.as_str()), "userId")?;
 
     let product = state
         .db
@@ -1272,7 +1275,7 @@ async fn toggle_favorite(
         "SELECT * FROM {} WHERE {} = '{}' AND {} = '{}' LIMIT 1",
         collections::FAVORITES,
         fields::USER_ID,
-        ob_core::escape_sql_string(&req.user_id),
+        ob_core::escape_sql_string(&user_id),
         fields::PRODUCT_ID,
         ob_core::escape_sql_string(&req.product_id),
     );
@@ -1312,7 +1315,7 @@ async fn toggle_favorite(
         .create_document(
             collections::FAVORITES,
             serde_json::json!({
-                fields::USER_ID: req.user_id,
+                fields::USER_ID: user_id,
                 fields::PRODUCT_ID: req.product_id,
                 fields::CREATED_AT: now,
             }),
@@ -2191,6 +2194,7 @@ mod tests {
             .unwrap();
 
         let Json(first) = toggle_favorite(
+            Extension(auth("user_1", &["buyer"])),
             State(state.clone()),
             Json(ToggleFavoriteRequest {
                 product_id: "prod_1".into(),
@@ -2202,6 +2206,7 @@ mod tests {
         assert_eq!(first["favorite"], true);
 
         let Json(second) = toggle_favorite(
+            Extension(auth("user_1", &["buyer"])),
             State(state.clone()),
             Json(ToggleFavoriteRequest {
                 product_id: "prod_1".into(),
@@ -2652,6 +2657,7 @@ mod tests {
     async fn test_toggle_favorite_product_not_found_handler() {
         let state = setup_state().await;
         let err = toggle_favorite(
+            Extension(auth("user_1", &["buyer"])),
             State(state),
             Json(ToggleFavoriteRequest {
                 product_id: "nonexistent".into(),

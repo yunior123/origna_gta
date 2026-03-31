@@ -4,13 +4,16 @@
 //! Province-based pricing tiers, distance calculation via Geoapify,
 //! weight/volumetric surcharges, express/same-day multipliers.
 
-use axum::{Json, Router, extract::State, routing::post};
+use axum::{Json, Router, extract::{Extension, State}, routing::post};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::collections::HashMap;
 use tracing::warn;
 
+use ob_auth::middleware::AuthContext;
+
 use crate::HandlersState;
+use crate::shared::auth::require_authenticated;
 use crate::shared::schema::{app_config, business_rules, collections};
 
 // ===========================================================================
@@ -407,9 +410,12 @@ async fn geoapify_distance(
 // ===========================================================================
 
 async fn calculate_shipping(
+    Extension(auth): Extension<AuthContext>,
     State(state): State<HandlersState>,
     Json(req): Json<CalculateShippingRequest>,
 ) -> Result<Json<CalculateShippingResponse>, ob_core::Error> {
+    // P1-11: Require authenticated user for shipping calculation
+    let _user_id = require_authenticated(&auth)?;
     let speed = req.speed.as_str();
     let buyer_province = req.buyer_address.state.as_deref().ok_or_else(|| {
         ob_core::Error::Validation("Buyer province is required for shipping calculation".into())
@@ -629,6 +635,16 @@ mod tests {
             seller_address: None,
             ship_from_province: None,
         }
+    }
+
+    fn test_auth() -> Extension<AuthContext> {
+        Extension(AuthContext {
+            user_id: "test_buyer".into(),
+            roles: vec!["buyer".into()],
+            authenticated: true,
+            email_verified: true,
+            custom_claims: serde_json::Value::Null,
+        })
     }
 
     async fn setup_state() -> HandlersState {
@@ -1143,6 +1159,7 @@ mod tests {
         seed_seller(&state.db, "seller_1", "ON").await;
 
         let Json(resp) = calculate_shipping(
+            test_auth(),
             State(state),
             Json(CalculateShippingRequest {
                 buyer_address: ShippingAddress {
@@ -1182,6 +1199,7 @@ mod tests {
         seed_seller(&state.db, "seller_1", "ON").await;
 
         let err = calculate_shipping(
+            test_auth(),
             State(state),
             Json(CalculateShippingRequest {
                 buyer_address: ShippingAddress {
@@ -1305,6 +1323,7 @@ mod tests {
 
         // Express with coords + geo key but geoapify will fail (wrong URL) → fallback
         let Json(resp) = calculate_shipping(
+            test_auth(),
             State(state),
             Json(CalculateShippingRequest {
                 buyer_address: ShippingAddress {
@@ -1359,6 +1378,7 @@ mod tests {
         seed_seller(&state.db, "seller_1", "ON").await;
 
         let err = calculate_shipping(
+            test_auth(),
             State(state),
             Json(CalculateShippingRequest {
                 buyer_address: ShippingAddress {
@@ -1396,6 +1416,7 @@ mod tests {
         seed_seller(&state.db, "seller_a", "ON").await;
 
         let Json(resp) = calculate_shipping(
+            test_auth(),
             State(state),
             Json(CalculateShippingRequest {
                 buyer_address: ShippingAddress {
@@ -1445,6 +1466,7 @@ mod tests {
         seed_seller(&state.db, "seller_b", "QC").await;
 
         let Json(resp) = calculate_shipping(
+            test_auth(),
             State(state),
             Json(CalculateShippingRequest {
                 buyer_address: ShippingAddress {

@@ -117,15 +117,16 @@ impl QueryRoot {
             .as_ref()
             .map(|f| f.iter().map(|s| s.as_str()).collect());
 
-        // When cursor pagination is active, fetch limit+1 so clients can detect hasMore
-        let effective_limit = limit.map(|n| {
+        // P1-NEW-20: Default limit of 20, capped at 100 to prevent unbounded queries
+        let effective_limit = {
+            let n = limit.unwrap_or(20);
             let clamped = n.clamp(1, 100) as usize;
-            if start_after.is_some() {
+            Some(if start_after.is_some() {
                 clamped + 1
             } else {
                 clamped
-            }
-        });
+            })
+        };
 
         let query = ob_database::query::QueryTranslator::build_select_ext(
             &collection,

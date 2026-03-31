@@ -107,9 +107,13 @@ pub struct SpendLimit {
     /// Maximum total in integer cents per user per 24h
     pub max_per_24h_cents: u64,
 
-    /// Track spend per user
-    user_spend: Arc<RwLock<HashMap<String, u64>>>,
+    /// Track spend per user: Vec of (amount_cents, timestamp_secs) entries
+    #[allow(clippy::type_complexity)]
+    user_spend: Arc<RwLock<HashMap<String, Vec<(u64, i64)>>>>,
 }
+
+/// TTL for spend entries: 24 hours in seconds
+const SPEND_TTL_SECS: i64 = 86_400;
 
 impl SpendLimit {
     pub fn new(max_amount_cents: u64, max_per_24h_cents: u64) -> Self {
@@ -118,6 +122,12 @@ impl SpendLimit {
             max_per_24h_cents,
             user_spend: Arc::new(RwLock::new(HashMap::new())),
         }
+    }
+
+    /// Prune entries older than the 24h window and return current total
+    fn prune_and_sum(entries: &mut Vec<(u64, i64)>, now: i64) -> u64 {
+        entries.retain(|(_, ts)| now - *ts < SPEND_TTL_SECS);
+        entries.iter().map(|(amt, _)| amt).sum()
     }
 
     /// Check if user can spend amount_cents
@@ -129,8 +139,11 @@ impl SpendLimit {
             )));
         }
 
-        let spend = self.user_spend.read().await;
-        let current = spend.get(user_id).copied().unwrap_or(0);
+        let now = chrono::Utc::now().timestamp();
+        let mut spend = self.user_spend.write().await;
+        let entries = spend.entry(user_id.to_string()).or_default();
+        let current = Self::prune_and_sum(entries, now);
+
         if current + amount_cents > self.max_per_24h_cents {
             return Err(McpError::ValidationError(
                 "Amount exceeds 24h spend limit".to_string(),
@@ -142,8 +155,12 @@ impl SpendLimit {
 
     /// Record spend
     pub async fn record(&self, user_id: String, amount_cents: u64) {
+        let now = chrono::Utc::now().timestamp();
         let mut spend = self.user_spend.write().await;
-        *spend.entry(user_id).or_insert(0) += amount_cents;
+        let entries = spend.entry(user_id).or_default();
+        // Prune stale entries on every write to bound memory
+        Self::prune_and_sum(entries, now);
+        entries.push((amount_cents, now));
     }
 }
 

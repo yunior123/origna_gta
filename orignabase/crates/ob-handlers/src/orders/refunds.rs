@@ -401,20 +401,43 @@ async fn refund_order_item(
         .order_id
         .strip_prefix(&format!("{}:", collections::ORDERS))
         .unwrap_or(&req.order_id);
-    // Atomic reserve: read current cumulative, check guard, then update.
+    // CAS atomic reserve: read current cumulative, then conditionally update only if unchanged.
+    // This closes the TOCTOU race between concurrent refund requests.
     let reserve_order = state.db.get_document(collections::ORDERS, order_id_stripped).await
         .map_err(|e| ob_core::Error::Database(format!("Failed to reserve refund amount: {e}")))?;
     let cur_cumulative = reserve_order.get(fields::CUMULATIVE_REFUNDED_CENTS).and_then(|v| v.as_i64()).unwrap_or(0);
     let total_cents = reserve_order.get(fields::TOTAL_AMOUNT_CENTS).and_then(|v| v.as_i64()).unwrap_or(0);
     let new_cumulative = cur_cumulative + refund_amount_cents;
     let reserved_rows = if new_cumulative <= total_cents {
-        state.db.update_document(
+        // If cumulativeRefundedCents is absent (first refund), initialize it so CAS has
+        // a concrete value to compare against on subsequent concurrent requests.
+        if reserve_order.get(fields::CUMULATIVE_REFUNDED_CENTS).is_none()
+            || reserve_order.get(fields::CUMULATIVE_REFUNDED_CENTS) == Some(&json!(null))
+        {
+            let _ = state.db.update_document(
+                collections::ORDERS,
+                order_id_stripped,
+                json!({ fields::CUMULATIVE_REFUNDED_CENTS: 0 }),
+            ).await;
+        }
+        // CAS: only update if cumulativeRefundedCents hasn't changed since read.
+        let cas_result = state.db.update_document_cas(
             collections::ORDERS,
             order_id_stripped,
             json!({ fields::CUMULATIVE_REFUNDED_CENTS: new_cumulative }),
+            fields::CUMULATIVE_REFUNDED_CENTS,
+            &json!(cur_cumulative),
         ).await
         .map_err(|e| ob_core::Error::Database(format!("Failed to reserve refund amount: {e}")))?;
-        vec![json!({"ok": true})]
+        match cas_result {
+            Some(_) => vec![json!({"ok": true})],
+            None => {
+                // CAS failed — concurrent modification detected
+                return Err(ob_core::Error::Validation(
+                    "Concurrent refund modification detected. Please retry.".into(),
+                ));
+            }
+        }
     } else {
         vec![]
     };

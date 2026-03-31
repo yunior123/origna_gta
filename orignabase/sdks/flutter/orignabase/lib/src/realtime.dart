@@ -80,6 +80,11 @@ class RealtimeClient {
     _reconnectTimer?.cancel();
     _reconnectTimer = null;
 
+    // P1-23: Cancel the previous listener before creating a new one to prevent
+    // leaked StreamSubscriptions accumulating on every reconnect.
+    _listener?.cancel();
+    _listener = null;
+
     final baseUri = Uri.parse(_client.url);
     final wsScheme = baseUri.scheme == 'https' ? 'wss' : 'ws';
     // Explicit port to avoid Dart URI defaulting wss to port 0.

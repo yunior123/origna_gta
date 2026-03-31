@@ -1,12 +1,14 @@
 //! Product ratings and reviews.
 //! Ported from: functions/handlers/products.py (submit_product_rating, get_product_ratings_paginated)
 
-use axum::{Json, Router, extract::State, routing::post};
+use axum::{Extension, Json, Router, extract::State, routing::post};
+use ob_auth::middleware::AuthContext;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tracing::info;
 
 use crate::HandlersState;
+use crate::shared::auth::resolve_self_user_id;
 use crate::shared::schema::{collections, fields};
 use crate::shared::validation::{sanitize_html, validate_uid};
 
@@ -113,16 +115,19 @@ pub fn router(state: HandlersState) -> Router {
 // ─── Handlers ───────────────────────────────────────────────────────────────
 
 async fn submit_rating(
+    Extension(auth): Extension<AuthContext>,
     State(state): State<HandlersState>,
     Json(req): Json<SubmitRatingRequest>,
 ) -> Result<Json<SubmitRatingResponse>, ob_core::Error> {
     validate_uid("productId", &req.product_id)?;
-    validate_uid("userId", &req.user_id)?;
     validate_uid("orderId", &req.order_id)?;
+
+    // P1-NEW-1: Derive userId from JWT to prevent IDOR
+    let user_id = resolve_self_user_id(&auth, Some(req.user_id.as_str()), "userId")?;
 
     crate::shared::rate_limiter::check_user_rate_limit(
         &state.db,
-        &req.user_id,
+        &user_id,
         "submit_rating",
         5,  // 5 reviews
         60, // per hour
@@ -165,7 +170,7 @@ async fn submit_rating(
         .and_then(|v| v.as_str())
         .unwrap_or("");
 
-    if order_buyer != req.user_id {
+    if order_buyer != user_id {
         return Err(ob_core::Error::Forbidden("Order ownership mismatch".into()));
     }
 
@@ -206,7 +211,7 @@ async fn submit_rating(
         })
         .and_then(|item| item.get(fields::SELLER_ID).and_then(|v| v.as_str()));
 
-    if rated_item_seller == Some(req.user_id.as_str()) {
+    if rated_item_seller == Some(user_id.as_str()) {
         return Err(ob_core::Error::Forbidden(
             "Sellers cannot rate their own products".into(),
         ));
@@ -218,7 +223,7 @@ async fn submit_rating(
         collections::PRODUCT_RATINGS,
         fields::PRODUCT_ID,
         ob_core::escape_sql_string(&req.product_id),
-        ob_core::escape_sql_string(&req.user_id),
+        ob_core::escape_sql_string(&user_id),
     );
 
     let existing: Vec<Value> = state.db.query_raw(&dup_query).await.unwrap_or_default();
@@ -255,7 +260,7 @@ async fn submit_rating(
     let now = chrono::Utc::now().to_rfc3339();
     let rating_doc = serde_json::json!({
         fields::PRODUCT_ID: req.product_id,
-        fields::USER_ID: req.user_id,
+        fields::USER_ID: user_id,
         fields::ORDER_ID: req.order_id,
         fields::RATING: req.rating,
         fields::REVIEW_TEXT: review,
@@ -499,10 +504,12 @@ async fn review_vote(
 }
 
 async fn submit_rating_atomic(
+    auth: Extension<AuthContext>,
     State(state): State<HandlersState>,
     Json(req): Json<SubmitRatingAtomicRequest>,
 ) -> Result<Json<SubmitRatingResponse>, ob_core::Error> {
     submit_rating(
+        auth,
         State(state),
         Json(SubmitRatingRequest {
             product_id: req.product_id,
@@ -591,6 +598,16 @@ mod tests {
     use ob_core::Config;
     use ob_database::DatabaseClient;
     use std::sync::Arc;
+
+    fn auth(user_id: &str) -> Extension<AuthContext> {
+        Extension(AuthContext {
+            user_id: user_id.into(),
+            roles: vec!["buyer".into()],
+            authenticated: true,
+            email_verified: true,
+            custom_claims: serde_json::Value::Null,
+        })
+    }
 
     async fn setup_state() -> HandlersState {
         // Skip rate limiting in handler tests to avoid cross-test collisions in shared PG
@@ -873,6 +890,7 @@ mod tests {
             .unwrap();
 
         let err = submit_rating(
+            auth(&buyer),
             State(state),
             Json(SubmitRatingRequest {
                 product_id: prod.clone(),
@@ -918,6 +936,7 @@ mod tests {
             .unwrap();
 
         let err = submit_rating(
+            auth(&seller),
             State(state),
             Json(SubmitRatingRequest {
                 product_id: prod.clone(),
@@ -971,6 +990,7 @@ mod tests {
             .unwrap();
 
         let Json(resp) = submit_rating(
+            auth(&buyer),
             State(state.clone()),
             Json(SubmitRatingRequest {
                 product_id: prod.clone(),
@@ -1083,6 +1103,7 @@ mod tests {
     async fn test_submit_rating_invalid_rating_range() {
         let state = setup_state().await;
         let err = submit_rating(
+            auth("user_1"),
             State(state),
             Json(SubmitRatingRequest {
                 product_id: "prod_1".into(),
@@ -1129,6 +1150,7 @@ mod tests {
 
         let long_text = "a".repeat(2000);
         let Json(resp) = submit_rating(
+            auth(&buyer),
             State(state),
             Json(SubmitRatingRequest {
                 product_id: prod.clone(),
@@ -1148,6 +1170,7 @@ mod tests {
     async fn test_submit_rating_order_not_found() {
         let state = setup_state().await;
         let err = submit_rating(
+            auth("user_1"),
             State(state),
             Json(SubmitRatingRequest {
                 product_id: "prod_1".into(),
@@ -1185,6 +1208,7 @@ mod tests {
             .unwrap();
 
         let err = submit_rating(
+            auth(&user),
             State(state),
             Json(SubmitRatingRequest {
                 product_id: prod.clone(),
@@ -1222,6 +1246,7 @@ mod tests {
             .unwrap();
 
         let err = submit_rating(
+            auth(&user),
             State(state),
             Json(SubmitRatingRequest {
                 product_id: prod.clone(),
@@ -1260,6 +1285,7 @@ mod tests {
             .unwrap();
 
         let err = submit_rating(
+            auth(&user),
             State(state),
             Json(SubmitRatingRequest {
                 product_id: prod.clone(),
@@ -1292,6 +1318,7 @@ mod tests {
         ).await.unwrap();
 
         let err = submit_rating(
+            auth(&buyer),
             State(state),
             Json(SubmitRatingRequest {
                 product_id: prod.clone(),
@@ -1461,6 +1488,7 @@ mod tests {
             .unwrap();
 
         let Json(resp) = submit_rating_atomic(
+            auth(&buyer),
             State(state),
             Json(SubmitRatingAtomicRequest {
                 product_id: prod.clone(),

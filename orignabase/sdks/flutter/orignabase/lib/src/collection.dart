@@ -35,11 +35,20 @@ class CollectionRef extends Query {
   Stream<DocumentChange> snapshots() {
     final stream = client.realtime.subscribe(collectionName);
     final controller = StreamController<DocumentChange>.broadcast();
-    stream.listen(
-      controller.add,
-      onError: controller.addError,
-      onDone: controller.close,
-    );
+    StreamSubscription<DocumentChange>? innerSub;
+    controller.onListen = () {
+      innerSub = stream.listen(
+        controller.add,
+        onError: controller.addError,
+        onDone: controller.close,
+      );
+    };
+    // P1-24: Cancel the inner subscription and close the controller when the
+    // last listener unsubscribes, preventing a StreamController leak.
+    controller.onCancel = () {
+      innerSub?.cancel();
+      controller.close();
+    };
     return controller.stream;
   }
 

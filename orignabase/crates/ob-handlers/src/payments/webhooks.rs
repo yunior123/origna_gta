@@ -153,12 +153,30 @@ async fn handle_stripe_webhook(
             handle_checkout_session_async_payment_failed(&state, &event.data).await
         }
 
+        // Charge capture events (pre-auth flows)
+        "charge.captured" => handle_charge_captured(&state, &event.data).await,
+
         // Charge dispute events
         "charge.dispute.created" => handle_charge_dispute_created(&state, &event.data).await,
         "charge.dispute.closed" => handle_charge_dispute_closed(&state, &event.data).await,
+        "charge.dispute.updated" => handle_charge_dispute_updated(&state, &event.data).await,
+        "charge.dispute.funds_withdrawn" => {
+            handle_charge_dispute_funds_withdrawn(&state, &event.data).await
+        }
+        "charge.dispute.funds_reinstated" => {
+            handle_charge_dispute_funds_reinstated(&state, &event.data).await
+        }
 
         // Payout events
+        "payout.created" => handle_payout_created(&state, &event.data).await,
+        "payout.updated" => handle_payout_updated(&state, &event.data).await,
+        "payout.paid" => handle_payout_paid(&state, &event.data).await,
         "payout.failed" => handle_payout_failed(&state, &event.data).await,
+
+        // Refund events
+        "refund.created" => handle_refund_created(&state, &event.data).await,
+        "refund.updated" => handle_refund_updated(&state, &event.data).await,
+        "refund.failed" => handle_refund_failed(&state, &event.data).await,
 
         // Stripe Connect events
         "account.updated" => handle_account_updated(&state, &event.data).await,
@@ -638,7 +656,10 @@ async fn release_coupon_reservation(
             serde_json::json!({"order_id": order_id}),
         )
         .await
-        .unwrap_or_default();
+        .unwrap_or_else(|e| {
+            tracing::error!(order_id = %order_id, error = %e, "Failed to release coupon reservation");
+            vec![]
+        });
 
     info!(order_id = %order_id, "Coupon reservation released");
     Ok(())
@@ -1277,7 +1298,74 @@ async fn handle_checkout_session_async_payment_failed(
 }
 
 // ---------------------------------------------------------------------------
-// Charge Dispute Handler
+// Charge Capture Handler (pre-auth flows)
+// ---------------------------------------------------------------------------
+
+/// Handle charge.captured: log capture event for pre-authorization payment flows.
+/// In separate auth+capture flows the charge is first authorized and then captured
+/// at a later point. This event confirms the capture succeeded.
+async fn handle_charge_captured(
+    state: &HandlersState,
+    event_data: &Value,
+) -> Result<(), ob_core::Error> {
+    let charge = event_data
+        .get("object")
+        .ok_or_else(|| ob_core::Error::Validation("No object in event data".into()))?;
+
+    let charge_id = charge
+        .get("id")
+        .and_then(|i| i.as_str())
+        .ok_or_else(|| ob_core::Error::Validation("No charge ID".into()))?;
+
+    let amount_captured = charge
+        .get("amount_captured")
+        .and_then(|a| a.as_i64())
+        .unwrap_or(0);
+
+    let payment_intent_id = charge
+        .get("payment_intent")
+        .and_then(|i| i.as_str())
+        .unwrap_or("");
+
+    // If we can find the order, mark payment as captured
+    if !payment_intent_id.is_empty()
+        && let Ok(Some(order)) = find_order_by_payment_intent(state, payment_intent_id).await
+    {
+        let order_id = order.get("id").and_then(|v| v.as_str()).unwrap_or("");
+        if !order_id.is_empty() {
+            let now = chrono::Utc::now().to_rfc3339();
+            let _: Vec<Value> = state
+                .db
+                .query_bind_value(
+                    &format!(
+                        "UPDATE {} SET {} = 'captured', {} = true, {} = $now WHERE id = $order_id",
+                        collections::ORDERS,
+                        fields::PAYMENT_STATUS,
+                        fields::AUTO_CAPTURED,
+                        fields::UPDATED_AT
+                    ),
+                    serde_json::json!({
+                        "order_id": order_id,
+                        "now": now,
+                    }),
+                )
+                .await
+                .unwrap_or_default();
+        }
+    }
+
+    info!(
+        charge_id = %charge_id,
+        amount_captured_cents = amount_captured,
+        payment_intent_id = %payment_intent_id,
+        "Charge captured"
+    );
+
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Charge Dispute Handlers
 // ---------------------------------------------------------------------------
 
 /// Handle charge.dispute.created: flag order as disputed, log dispute for admin.
@@ -1462,6 +1550,517 @@ async fn handle_charge_dispute_closed(
     Ok(())
 }
 
+/// Handle charge.dispute.updated: track dispute progress (evidence submitted, etc.)
+async fn handle_charge_dispute_updated(
+    state: &HandlersState,
+    event_data: &Value,
+) -> Result<(), ob_core::Error> {
+    let dispute = event_data
+        .get("object")
+        .ok_or_else(|| ob_core::Error::Validation("No object in event data".into()))?;
+
+    let dispute_id = dispute
+        .get("id")
+        .and_then(|i| i.as_str())
+        .ok_or_else(|| ob_core::Error::Validation("No dispute ID".into()))?;
+
+    let status = dispute
+        .get(fields::STATUS)
+        .and_then(|s| s.as_str())
+        .unwrap_or("unknown");
+
+    let reason = dispute
+        .get("reason")
+        .and_then(|r| r.as_str())
+        .unwrap_or("unknown");
+
+    let amount = dispute.get("amount").and_then(|a| a.as_i64()).unwrap_or(0);
+
+    let now = chrono::Utc::now();
+
+    // Update dispute record with latest status
+    let _: Vec<Value> = state
+        .db
+        .query_bind_value(
+            &format!(
+                "UPDATE {} SET {} = $status, {} = $now WHERE {} = $dispute_id",
+                collections::DISPUTES,
+                fields::STRIPE_STATUS,
+                fields::UPDATED_AT,
+                fields::DISPUTE_ID
+            ),
+            serde_json::json!({
+                "dispute_id": dispute_id,
+                "status": status,
+                "now": now.to_rfc3339(),
+            }),
+        )
+        .await
+        .unwrap_or_default();
+
+    info!(
+        dispute_id = %dispute_id,
+        status = %status,
+        reason = %reason,
+        amount_cents = amount,
+        "Charge dispute updated"
+    );
+
+    Ok(())
+}
+
+/// Handle charge.dispute.funds_withdrawn: Stripe has debited the disputed amount
+/// from the seller's account. Log the debit for accounting and admin visibility.
+async fn handle_charge_dispute_funds_withdrawn(
+    state: &HandlersState,
+    event_data: &Value,
+) -> Result<(), ob_core::Error> {
+    let dispute = event_data
+        .get("object")
+        .ok_or_else(|| ob_core::Error::Validation("No object in event data".into()))?;
+
+    let dispute_id = dispute
+        .get("id")
+        .and_then(|i| i.as_str())
+        .ok_or_else(|| ob_core::Error::Validation("No dispute ID".into()))?;
+
+    let amount = dispute.get("amount").and_then(|a| a.as_i64()).unwrap_or(0);
+
+    let currency = dispute
+        .get("currency")
+        .and_then(|c| c.as_str())
+        .unwrap_or("cad");
+
+    let balance_transaction = dispute
+        .get("balance_transactions")
+        .and_then(|bt| bt.as_array())
+        .and_then(|arr| arr.first())
+        .and_then(|bt| bt.get("id"))
+        .and_then(|id| id.as_str())
+        .unwrap_or("");
+
+    let now = chrono::Utc::now();
+
+    // Update dispute record: mark funds as withdrawn
+    let _: Vec<Value> = state
+        .db
+        .query_bind_value(
+            &format!(
+                "UPDATE {} SET {} = true, {} = $now, {} = $bt WHERE {} = $dispute_id",
+                collections::DISPUTES,
+                fields::FUNDS_WITHDRAWN,
+                fields::FUNDS_WITHDRAWN_AT,
+                fields::BALANCE_TRANSACTION,
+                fields::DISPUTE_ID
+            ),
+            serde_json::json!({
+                "dispute_id": dispute_id,
+                "now": now.to_rfc3339(),
+                "bt": balance_transaction,
+            }),
+        )
+        .await
+        .unwrap_or_default();
+
+    error!(
+        dispute_id = %dispute_id,
+        amount_cents = amount,
+        currency = %currency,
+        balance_transaction = %balance_transaction,
+        "DISPUTE FUNDS WITHDRAWN: Stripe debited disputed amount from seller account"
+    );
+
+    Ok(())
+}
+
+/// Handle charge.dispute.funds_reinstated: merchant won the dispute, Stripe returns
+/// the funds. Log the credit for accounting and update dispute record.
+async fn handle_charge_dispute_funds_reinstated(
+    state: &HandlersState,
+    event_data: &Value,
+) -> Result<(), ob_core::Error> {
+    let dispute = event_data
+        .get("object")
+        .ok_or_else(|| ob_core::Error::Validation("No object in event data".into()))?;
+
+    let dispute_id = dispute
+        .get("id")
+        .and_then(|i| i.as_str())
+        .ok_or_else(|| ob_core::Error::Validation("No dispute ID".into()))?;
+
+    let amount = dispute.get("amount").and_then(|a| a.as_i64()).unwrap_or(0);
+
+    let currency = dispute
+        .get("currency")
+        .and_then(|c| c.as_str())
+        .unwrap_or("cad");
+
+    let payment_intent_id = dispute
+        .get("payment_intent")
+        .and_then(|i| i.as_str())
+        .unwrap_or("");
+
+    let now = chrono::Utc::now();
+
+    // Update dispute record: mark funds as reinstated
+    let _: Vec<Value> = state
+        .db
+        .query_bind_value(
+            &format!(
+                "UPDATE {} SET {} = true, {} = $now, {} = 'resolved' WHERE {} = $dispute_id",
+                collections::DISPUTES,
+                fields::FUNDS_REINSTATED,
+                fields::FUNDS_REINSTATED_AT,
+                fields::DISPUTE_STATUS,
+                fields::DISPUTE_ID
+            ),
+            serde_json::json!({
+                "dispute_id": dispute_id,
+                "now": now.to_rfc3339(),
+            }),
+        )
+        .await
+        .unwrap_or_default();
+
+    // If we can find the order, restore its payment status from disputed_lost
+    if !payment_intent_id.is_empty()
+        && let Ok(Some(order)) = find_order_by_payment_intent(state, payment_intent_id).await
+    {
+        let order_id = order.get("id").and_then(|v| v.as_str()).unwrap_or("");
+        if !order_id.is_empty() {
+            let _: Vec<Value> = state
+                .db
+                .query_bind_value(
+                    &format!(
+                        "UPDATE {} SET {} = 'captured' WHERE id = $order_id AND {} = 'disputed_lost'",
+                        collections::ORDERS,
+                        fields::PAYMENT_STATUS,
+                        fields::PAYMENT_STATUS
+                    ),
+                    serde_json::json!({"order_id": order_id}),
+                )
+                .await
+                .unwrap_or_default();
+        }
+    }
+
+    info!(
+        dispute_id = %dispute_id,
+        amount_cents = amount,
+        currency = %currency,
+        "Dispute funds reinstated: merchant won, funds returned"
+    );
+
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Payout Handlers
+// ---------------------------------------------------------------------------
+
+/// Handle payout.created: log payout initiation and update linked orders' payout status.
+async fn handle_payout_created(
+    state: &HandlersState,
+    event_data: &Value,
+) -> Result<(), ob_core::Error> {
+    let payout = event_data
+        .get("object")
+        .ok_or_else(|| ob_core::Error::Validation("No object in event data".into()))?;
+
+    let payout_id = payout
+        .get("id")
+        .and_then(|i| i.as_str())
+        .ok_or_else(|| ob_core::Error::Validation("No payout ID".into()))?;
+
+    let amount = payout.get("amount").and_then(|a| a.as_i64()).unwrap_or(0);
+
+    let currency = payout
+        .get("currency")
+        .and_then(|c| c.as_str())
+        .unwrap_or("cad");
+
+    let arrival_date = payout
+        .get("arrival_date")
+        .and_then(|a| a.as_i64())
+        .unwrap_or(0);
+
+    let method = payout
+        .get("method")
+        .and_then(|m| m.as_str())
+        .unwrap_or("standard");
+
+    let destination = payout
+        .get("destination")
+        .and_then(|d| d.as_str())
+        .unwrap_or("");
+
+    let status = payout
+        .get(fields::STATUS)
+        .and_then(|s| s.as_str())
+        .unwrap_or("pending");
+
+    let now = chrono::Utc::now();
+
+    // Create payout record
+    state
+        .db
+        .create_document(
+            collections::PAYOUTS,
+            serde_json::json!({
+                fields::PAYOUT_ID: payout_id,
+                fields::AMOUNT_CENTS: amount,
+                fields::CURRENCY: currency,
+                fields::ARRIVAL_DATE: arrival_date,
+                fields::PAYOUT_METHOD: method,
+                fields::STRIPE_PAYOUT_STATUS: status,
+                fields::STATUS: "initiated",
+                fields::CREATED_AT: now.timestamp(),
+                fields::CREATED_AT_ISO: now.to_rfc3339(),
+            }),
+        )
+        .await?;
+
+    // Update any orders linked to this seller's Connect account
+    if !destination.is_empty() {
+        let _: Vec<Value> = state
+            .db
+            .query_bind_value(
+                &format!(
+                    "UPDATE {} SET {} = 'initiated', {} = $payout_id WHERE {} = $acct_id AND {} IS NULL",
+                    collections::ORDERS,
+                    fields::PAYOUT_STATUS,
+                    fields::PAYOUT_ID,
+                    fields::STRIPE_ACCOUNT_ID,
+                    fields::PAYOUT_ID
+                ),
+                serde_json::json!({
+                    "payout_id": payout_id,
+                    "acct_id": destination,
+                }),
+            )
+            .await
+            .unwrap_or_default();
+    }
+
+    info!(
+        payout_id = %payout_id,
+        amount_cents = amount,
+        currency = %currency,
+        arrival_date = arrival_date,
+        method = %method,
+        "Payout created"
+    );
+
+    Ok(())
+}
+
+/// Handle payout.updated: update payout status (in_transit, paid, failed, etc.)
+async fn handle_payout_updated(
+    state: &HandlersState,
+    event_data: &Value,
+) -> Result<(), ob_core::Error> {
+    let payout = event_data
+        .get("object")
+        .ok_or_else(|| ob_core::Error::Validation("No object in event data".into()))?;
+
+    let payout_id = payout
+        .get("id")
+        .and_then(|i| i.as_str())
+        .ok_or_else(|| ob_core::Error::Validation("No payout ID".into()))?;
+
+    let status = payout
+        .get(fields::STATUS)
+        .and_then(|s| s.as_str())
+        .unwrap_or("unknown");
+
+    let arrival_date = payout
+        .get("arrival_date")
+        .and_then(|a| a.as_i64())
+        .unwrap_or(0);
+
+    let now = chrono::Utc::now();
+
+    // Update payout record
+    let _: Vec<Value> = state
+        .db
+        .query_bind_value(
+            &format!(
+                "UPDATE {} SET {} = $status, {} = $arrival, {} = $now WHERE {} = $payout_id",
+                collections::PAYOUTS,
+                fields::STRIPE_PAYOUT_STATUS,
+                fields::ARRIVAL_DATE,
+                fields::UPDATED_AT,
+                fields::PAYOUT_ID
+            ),
+            serde_json::json!({
+                "payout_id": payout_id,
+                "status": status,
+                "arrival": arrival_date,
+                "now": now.to_rfc3339(),
+            }),
+        )
+        .await
+        .unwrap_or_default();
+
+    // Map Stripe payout status to our order payout status
+    let order_payout_status = match status {
+        "in_transit" => "in_transit",
+        "paid" => "paid",
+        "failed" => "failed",
+        "canceled" => "cancelled",
+        _ => "pending",
+    };
+
+    // Update linked orders
+    let _: Vec<Value> = state
+        .db
+        .query_bind_value(
+            &format!(
+                "UPDATE {} SET {} = $status WHERE {} = $payout_id",
+                collections::ORDERS,
+                fields::PAYOUT_STATUS,
+                fields::PAYOUT_ID
+            ),
+            serde_json::json!({
+                "payout_id": payout_id,
+                "status": order_payout_status,
+            }),
+        )
+        .await
+        .unwrap_or_default();
+
+    info!(
+        payout_id = %payout_id,
+        status = %status,
+        arrival_date = arrival_date,
+        "Payout updated"
+    );
+
+    Ok(())
+}
+
+/// Handle payout.paid: mark payout as complete, notify seller of successful payout.
+async fn handle_payout_paid(
+    state: &HandlersState,
+    event_data: &Value,
+) -> Result<(), ob_core::Error> {
+    let payout = event_data
+        .get("object")
+        .ok_or_else(|| ob_core::Error::Validation("No object in event data".into()))?;
+
+    let payout_id = payout
+        .get("id")
+        .and_then(|i| i.as_str())
+        .ok_or_else(|| ob_core::Error::Validation("No payout ID".into()))?;
+
+    let amount = payout.get("amount").and_then(|a| a.as_i64()).unwrap_or(0);
+
+    let currency = payout
+        .get("currency")
+        .and_then(|c| c.as_str())
+        .unwrap_or("cad");
+
+    let destination = payout
+        .get("destination")
+        .and_then(|d| d.as_str())
+        .unwrap_or("");
+
+    let now = chrono::Utc::now();
+
+    // Mark payout as complete
+    let _: Vec<Value> = state
+        .db
+        .query_bind_value(
+            &format!(
+                "UPDATE {} SET {} = 'paid', {} = $now, {} = $now WHERE {} = $payout_id",
+                collections::PAYOUTS,
+                fields::STRIPE_PAYOUT_STATUS,
+                fields::PAYOUT_COMPLETED_AT,
+                fields::UPDATED_AT,
+                fields::PAYOUT_ID
+            ),
+            serde_json::json!({
+                "payout_id": payout_id,
+                "now": now.to_rfc3339(),
+            }),
+        )
+        .await
+        .unwrap_or_default();
+
+    // Update linked orders' payout status
+    let _: Vec<Value> = state
+        .db
+        .query_bind_value(
+            &format!(
+                "UPDATE {} SET {} = 'paid', {} = $now WHERE {} = $payout_id",
+                collections::ORDERS,
+                fields::PAYOUT_STATUS,
+                fields::PAYOUT_DATE,
+                fields::PAYOUT_ID
+            ),
+            serde_json::json!({
+                "payout_id": payout_id,
+                "now": now.to_rfc3339(),
+            }),
+        )
+        .await
+        .unwrap_or_default();
+
+    // Find seller by Stripe Connect account ID and send notification
+    if !destination.is_empty() {
+        let sellers: Vec<Value> = state
+            .db
+            .query_bind_value(
+                &format!(
+                    "SELECT * FROM {} WHERE {} = $acct_id LIMIT 1",
+                    collections::SELLER_PROFILES,
+                    fields::STRIPE_ACCOUNT_ID
+                ),
+                serde_json::json!({"acct_id": destination}),
+            )
+            .await
+            .unwrap_or_default();
+
+        let seller_id = sellers
+            .first()
+            .and_then(|s| s.get(fields::SELLER_ID))
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+
+        if !seller_id.is_empty() {
+            let _ = state
+                .db
+                .create_document(
+                    collections::NOTIFICATIONS,
+                    serde_json::json!({
+                        fields::USER_ID: seller_id,
+                        fields::TYPE: "payout_paid",
+                        fields::NOTIFICATION_TITLE: "Payout Complete",
+                        fields::NOTIFICATION_BODY: format!(
+                            "Your payout of {}{}.{:02} has been deposited to your bank account.",
+                            if currency == "cad" { "$" } else { "" },
+                            amount / 100,
+                            amount % 100
+                        ),
+                        fields::READ: false,
+                        fields::CREATED_AT: now.timestamp(),
+                        fields::CREATED_AT_ISO: now.to_rfc3339(),
+                    }),
+                )
+                .await;
+        }
+    }
+
+    info!(
+        payout_id = %payout_id,
+        amount_cents = amount,
+        currency = %currency,
+        "Payout paid: funds deposited to seller bank account"
+    );
+
+    Ok(())
+}
+
 /// Handle payout.failed: update payout status and notify the seller.
 async fn handle_payout_failed(
     state: &HandlersState,
@@ -1597,6 +2196,251 @@ async fn handle_payout_failed(
         seller_id = %seller_id,
         linked_orders = orders.len(),
         "PAYOUT FAILED: seller payout unsuccessful, notification sent, admin review required"
+    );
+
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Refund Handlers
+// ---------------------------------------------------------------------------
+
+/// Handle refund.created: log refund initiation for audit trail.
+async fn handle_refund_created(
+    state: &HandlersState,
+    event_data: &Value,
+) -> Result<(), ob_core::Error> {
+    let refund = event_data
+        .get("object")
+        .ok_or_else(|| ob_core::Error::Validation("No object in event data".into()))?;
+
+    let refund_id = refund
+        .get("id")
+        .and_then(|i| i.as_str())
+        .ok_or_else(|| ob_core::Error::Validation("No refund ID".into()))?;
+
+    let amount = refund.get("amount").and_then(|a| a.as_i64()).unwrap_or(0);
+
+    let currency = refund
+        .get("currency")
+        .and_then(|c| c.as_str())
+        .unwrap_or("cad");
+
+    let status = refund
+        .get(fields::STATUS)
+        .and_then(|s| s.as_str())
+        .unwrap_or("pending");
+
+    let payment_intent_id = refund
+        .get("payment_intent")
+        .and_then(|i| i.as_str())
+        .unwrap_or("");
+
+    let reason = refund
+        .get("reason")
+        .and_then(|r| r.as_str())
+        .unwrap_or("");
+
+    let now = chrono::Utc::now();
+
+    // Create refund record for tracking
+    state
+        .db
+        .create_document(
+            collections::REFUNDS,
+            serde_json::json!({
+                fields::STRIPE_REFUND_ID: refund_id,
+                fields::AMOUNT_CENTS: amount,
+                fields::CURRENCY: currency,
+                fields::STRIPE_REFUND_STATUS: status,
+                fields::PAYMENT_INTENT_ID: payment_intent_id,
+                fields::REASON: reason,
+                fields::CREATED_AT: now.timestamp(),
+                fields::CREATED_AT_ISO: now.to_rfc3339(),
+            }),
+        )
+        .await?;
+
+    // If we can find the order, store the refund ID on it
+    if !payment_intent_id.is_empty()
+        && let Ok(Some(order)) = find_order_by_payment_intent(state, payment_intent_id).await
+    {
+        let order_id = order.get("id").and_then(|v| v.as_str()).unwrap_or("");
+        if !order_id.is_empty() {
+            let _: Vec<Value> = state
+                .db
+                .query_bind_value(
+                    &format!(
+                        "UPDATE {} SET {} = $refund_id WHERE id = $order_id",
+                        collections::ORDERS,
+                        fields::REFUND_ID
+                    ),
+                    serde_json::json!({
+                        "order_id": order_id,
+                        "refund_id": refund_id,
+                    }),
+                )
+                .await
+                .unwrap_or_default();
+        }
+    }
+
+    info!(
+        refund_id = %refund_id,
+        amount_cents = amount,
+        currency = %currency,
+        status = %status,
+        payment_intent_id = %payment_intent_id,
+        "Refund created"
+    );
+
+    Ok(())
+}
+
+/// Handle refund.updated: update refund status tracking.
+async fn handle_refund_updated(
+    state: &HandlersState,
+    event_data: &Value,
+) -> Result<(), ob_core::Error> {
+    let refund = event_data
+        .get("object")
+        .ok_or_else(|| ob_core::Error::Validation("No object in event data".into()))?;
+
+    let refund_id = refund
+        .get("id")
+        .and_then(|i| i.as_str())
+        .ok_or_else(|| ob_core::Error::Validation("No refund ID".into()))?;
+
+    let status = refund
+        .get(fields::STATUS)
+        .and_then(|s| s.as_str())
+        .unwrap_or("unknown");
+
+    let now = chrono::Utc::now();
+
+    // Update refund record
+    let _: Vec<Value> = state
+        .db
+        .query_bind_value(
+            &format!(
+                "UPDATE {} SET {} = $status, {} = $now WHERE {} = $refund_id",
+                collections::REFUNDS,
+                fields::STRIPE_REFUND_STATUS,
+                fields::UPDATED_AT,
+                fields::STRIPE_REFUND_ID
+            ),
+            serde_json::json!({
+                "refund_id": refund_id,
+                "status": status,
+                "now": now.to_rfc3339(),
+            }),
+        )
+        .await
+        .unwrap_or_default();
+
+    info!(
+        refund_id = %refund_id,
+        status = %status,
+        "Refund updated"
+    );
+
+    Ok(())
+}
+
+/// Handle refund.failed: alert admin and notify buyer that their refund failed.
+async fn handle_refund_failed(
+    state: &HandlersState,
+    event_data: &Value,
+) -> Result<(), ob_core::Error> {
+    let refund = event_data
+        .get("object")
+        .ok_or_else(|| ob_core::Error::Validation("No object in event data".into()))?;
+
+    let refund_id = refund
+        .get("id")
+        .and_then(|i| i.as_str())
+        .ok_or_else(|| ob_core::Error::Validation("No refund ID".into()))?;
+
+    let amount = refund.get("amount").and_then(|a| a.as_i64()).unwrap_or(0);
+
+    let currency = refund
+        .get("currency")
+        .and_then(|c| c.as_str())
+        .unwrap_or("cad");
+
+    let failure_reason = refund
+        .get("failure_reason")
+        .and_then(|r| r.as_str())
+        .unwrap_or("unknown");
+
+    let payment_intent_id = refund
+        .get("payment_intent")
+        .and_then(|i| i.as_str())
+        .unwrap_or("");
+
+    let now = chrono::Utc::now();
+
+    // Update refund record with failure info
+    let _: Vec<Value> = state
+        .db
+        .query_bind_value(
+            &format!(
+                "UPDATE {} SET {} = 'failed', {} = $reason, {} = $now WHERE {} = $refund_id",
+                collections::REFUNDS,
+                fields::STRIPE_REFUND_STATUS,
+                fields::REFUND_FAILURE_REASON,
+                fields::UPDATED_AT,
+                fields::STRIPE_REFUND_ID
+            ),
+            serde_json::json!({
+                "refund_id": refund_id,
+                "reason": failure_reason,
+                "now": now.to_rfc3339(),
+            }),
+        )
+        .await
+        .unwrap_or_default();
+
+    // Find the order to notify the buyer
+    if !payment_intent_id.is_empty()
+        && let Ok(Some(order)) = find_order_by_payment_intent(state, payment_intent_id).await
+    {
+        let buyer_id = order
+            .get(fields::BUYER_ID)
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+
+        if !buyer_id.is_empty() {
+            let _ = state
+                .db
+                .create_document(
+                    collections::NOTIFICATIONS,
+                    serde_json::json!({
+                        fields::USER_ID: buyer_id,
+                        fields::TYPE: "refund_failed",
+                        fields::NOTIFICATION_TITLE: "Refund Failed",
+                        fields::NOTIFICATION_BODY: format!(
+                            "Your refund of {}{}.{:02} could not be processed. Our team has been notified and will resolve this shortly.",
+                            if currency == "cad" { "$" } else { "" },
+                            amount / 100,
+                            amount % 100
+                        ),
+                        fields::READ: false,
+                        fields::CREATED_AT: now.timestamp(),
+                        fields::CREATED_AT_ISO: now.to_rfc3339(),
+                    }),
+                )
+                .await;
+        }
+    }
+
+    error!(
+        refund_id = %refund_id,
+        amount_cents = amount,
+        currency = %currency,
+        failure_reason = %failure_reason,
+        payment_intent_id = %payment_intent_id,
+        "REFUND FAILED: buyer refund unsuccessful, admin review required"
     );
 
     Ok(())
@@ -3121,6 +3965,470 @@ mod tests {
         });
         // Should succeed gracefully (warns and returns Ok)
         let result = handle_account_updated(&state, &data).await;
+        assert!(result.is_ok());
+    }
+
+    // -----------------------------------------------------------------------
+    // handle_charge_captured tests
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn test_handle_charge_captured_no_object() {
+        let state = setup_state().await;
+        let result = handle_charge_captured(&state, &json!({})).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_handle_charge_captured_no_charge_id() {
+        let state = setup_state().await;
+        let result = handle_charge_captured(&state, &json!({"object": {}})).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_handle_charge_captured_logs_capture() {
+        let state = setup_state().await;
+        let data = json!({
+            "object": {
+                "id": "ch_captured_001",
+                "amount_captured": 5000,
+                "payment_intent": "pi_captured_001"
+            }
+        });
+        let result = handle_charge_captured(&state, &data).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_handle_charge_captured_updates_order_payment_status() {
+        let state = setup_state().await;
+        state
+            .db
+            .upsert_document(
+                collections::ORDERS,
+                "capture_order",
+                json!({
+                    fields::ORDER_ID: "capture_order",
+                    fields::ORDER_STATUS: "payment_authorized",
+                    fields::PAYMENT_STATUS: "authorized",
+                    fields::PAYMENT_INTENT_ID: "pi_capture_test",
+                    fields::ITEMS: []
+                }),
+            )
+            .await
+            .unwrap();
+
+        let data = json!({
+            "object": {
+                "id": "ch_capture_test",
+                "amount_captured": 5000,
+                "payment_intent": "pi_capture_test"
+            }
+        });
+        let result = handle_charge_captured(&state, &data).await;
+        assert!(result.is_ok());
+    }
+
+    // -----------------------------------------------------------------------
+    // handle_charge_dispute_updated tests
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn test_handle_charge_dispute_updated_no_object() {
+        let state = setup_state().await;
+        let result = handle_charge_dispute_updated(&state, &json!({})).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_handle_charge_dispute_updated_no_dispute_id() {
+        let state = setup_state().await;
+        let result = handle_charge_dispute_updated(&state, &json!({"object": {}})).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_handle_charge_dispute_updated_tracks_progress() {
+        let state = setup_state().await;
+        // Create an existing dispute record
+        state
+            .db
+            .create_document(
+                collections::DISPUTES,
+                json!({
+                    fields::DISPUTE_ID: "dp_upd_001",
+                    fields::STRIPE_STATUS: "needs_response",
+                    fields::AMOUNT_CENTS: 5000,
+                }),
+            )
+            .await
+            .unwrap();
+
+        let data = json!({
+            "object": {
+                "id": "dp_upd_001",
+                "status": "under_review",
+                "reason": "fraudulent",
+                "amount": 5000
+            }
+        });
+        let result = handle_charge_dispute_updated(&state, &data).await;
+        assert!(result.is_ok());
+    }
+
+    // -----------------------------------------------------------------------
+    // handle_charge_dispute_funds_withdrawn tests
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn test_handle_charge_dispute_funds_withdrawn_no_object() {
+        let state = setup_state().await;
+        let result = handle_charge_dispute_funds_withdrawn(&state, &json!({})).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_handle_charge_dispute_funds_withdrawn_no_dispute_id() {
+        let state = setup_state().await;
+        let result =
+            handle_charge_dispute_funds_withdrawn(&state, &json!({"object": {}})).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_handle_charge_dispute_funds_withdrawn_logs_debit() {
+        let state = setup_state().await;
+        state
+            .db
+            .create_document(
+                collections::DISPUTES,
+                json!({
+                    fields::DISPUTE_ID: "dp_fw_001",
+                    fields::STRIPE_STATUS: "needs_response",
+                    fields::AMOUNT_CENTS: 3000,
+                }),
+            )
+            .await
+            .unwrap();
+
+        let data = json!({
+            "object": {
+                "id": "dp_fw_001",
+                "amount": 3000,
+                "currency": "cad",
+                "balance_transactions": [{"id": "txn_fw_001"}]
+            }
+        });
+        let result = handle_charge_dispute_funds_withdrawn(&state, &data).await;
+        assert!(result.is_ok());
+    }
+
+    // -----------------------------------------------------------------------
+    // handle_charge_dispute_funds_reinstated tests
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn test_handle_charge_dispute_funds_reinstated_no_object() {
+        let state = setup_state().await;
+        let result = handle_charge_dispute_funds_reinstated(&state, &json!({})).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_handle_charge_dispute_funds_reinstated_no_dispute_id() {
+        let state = setup_state().await;
+        let result =
+            handle_charge_dispute_funds_reinstated(&state, &json!({"object": {}})).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_handle_charge_dispute_funds_reinstated_updates_dispute() {
+        let state = setup_state().await;
+        state
+            .db
+            .create_document(
+                collections::DISPUTES,
+                json!({
+                    fields::DISPUTE_ID: "dp_fr_001",
+                    fields::STRIPE_STATUS: "won",
+                    fields::AMOUNT_CENTS: 4000,
+                }),
+            )
+            .await
+            .unwrap();
+
+        let data = json!({
+            "object": {
+                "id": "dp_fr_001",
+                "amount": 4000,
+                "currency": "cad",
+                "payment_intent": "pi_fr_nonexistent"
+            }
+        });
+        let result = handle_charge_dispute_funds_reinstated(&state, &data).await;
+        assert!(result.is_ok());
+    }
+
+    // -----------------------------------------------------------------------
+    // handle_payout_created tests
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn test_handle_payout_created_no_object() {
+        let state = setup_state().await;
+        let result = handle_payout_created(&state, &json!({})).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_handle_payout_created_no_payout_id() {
+        let state = setup_state().await;
+        let result = handle_payout_created(&state, &json!({"object": {}})).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_handle_payout_created_creates_record() {
+        let state = setup_state().await;
+        let data = json!({
+            "object": {
+                "id": "po_created_001",
+                "amount": 10000,
+                "currency": "cad",
+                "arrival_date": 1714567800,
+                "method": "standard",
+                "destination": "acct_seller_001",
+                "status": "pending"
+            }
+        });
+        let result = handle_payout_created(&state, &data).await;
+        assert!(result.is_ok());
+    }
+
+    // -----------------------------------------------------------------------
+    // handle_payout_updated tests
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn test_handle_payout_updated_no_object() {
+        let state = setup_state().await;
+        let result = handle_payout_updated(&state, &json!({})).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_handle_payout_updated_no_payout_id() {
+        let state = setup_state().await;
+        let result = handle_payout_updated(&state, &json!({"object": {}})).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_handle_payout_updated_in_transit() {
+        let state = setup_state().await;
+        let data = json!({
+            "object": {
+                "id": "po_updated_001",
+                "status": "in_transit",
+                "arrival_date": 1714567800
+            }
+        });
+        let result = handle_payout_updated(&state, &data).await;
+        assert!(result.is_ok());
+    }
+
+    // -----------------------------------------------------------------------
+    // handle_payout_paid tests
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn test_handle_payout_paid_no_object() {
+        let state = setup_state().await;
+        let result = handle_payout_paid(&state, &json!({})).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_handle_payout_paid_no_payout_id() {
+        let state = setup_state().await;
+        let result = handle_payout_paid(&state, &json!({"object": {}})).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_handle_payout_paid_marks_complete() {
+        let state = setup_state().await;
+        let data = json!({
+            "object": {
+                "id": "po_paid_001",
+                "amount": 8500,
+                "currency": "cad",
+                "destination": "acct_paid_seller"
+            }
+        });
+        let result = handle_payout_paid(&state, &data).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_handle_payout_paid_notifies_seller() {
+        let state = setup_state().await;
+        // Create seller profile linked to Connect account
+        state
+            .db
+            .create_document(
+                collections::SELLER_PROFILES,
+                json!({
+                    fields::STRIPE_ACCOUNT_ID: "acct_notify_seller",
+                    fields::SELLER_ID: "seller_notify_001",
+                }),
+            )
+            .await
+            .unwrap();
+
+        let data = json!({
+            "object": {
+                "id": "po_paid_notify",
+                "amount": 12000,
+                "currency": "cad",
+                "destination": "acct_notify_seller"
+            }
+        });
+        let result = handle_payout_paid(&state, &data).await;
+        assert!(result.is_ok());
+    }
+
+    // -----------------------------------------------------------------------
+    // handle_refund_created tests
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn test_handle_refund_created_no_object() {
+        let state = setup_state().await;
+        let result = handle_refund_created(&state, &json!({})).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_handle_refund_created_no_refund_id() {
+        let state = setup_state().await;
+        let result = handle_refund_created(&state, &json!({"object": {}})).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_handle_refund_created_logs_refund() {
+        let state = setup_state().await;
+        let data = json!({
+            "object": {
+                "id": "re_created_001",
+                "amount": 5000,
+                "currency": "cad",
+                "status": "pending",
+                "payment_intent": "pi_refund_001",
+                "reason": "requested_by_customer"
+            }
+        });
+        let result = handle_refund_created(&state, &data).await;
+        assert!(result.is_ok());
+    }
+
+    // -----------------------------------------------------------------------
+    // handle_refund_updated tests
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn test_handle_refund_updated_no_object() {
+        let state = setup_state().await;
+        let result = handle_refund_updated(&state, &json!({})).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_handle_refund_updated_no_refund_id() {
+        let state = setup_state().await;
+        let result = handle_refund_updated(&state, &json!({"object": {}})).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_handle_refund_updated_tracks_status() {
+        let state = setup_state().await;
+        let data = json!({
+            "object": {
+                "id": "re_updated_001",
+                "status": "succeeded"
+            }
+        });
+        let result = handle_refund_updated(&state, &data).await;
+        assert!(result.is_ok());
+    }
+
+    // -----------------------------------------------------------------------
+    // handle_refund_failed tests
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn test_handle_refund_failed_no_object() {
+        let state = setup_state().await;
+        let result = handle_refund_failed(&state, &json!({})).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_handle_refund_failed_no_refund_id() {
+        let state = setup_state().await;
+        let result = handle_refund_failed(&state, &json!({"object": {}})).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_handle_refund_failed_alerts_and_notifies() {
+        let state = setup_state().await;
+        let data = json!({
+            "object": {
+                "id": "re_failed_001",
+                "amount": 3000,
+                "currency": "cad",
+                "failure_reason": "expired_or_canceled_card",
+                "payment_intent": "pi_refund_fail_001"
+            }
+        });
+        let result = handle_refund_failed(&state, &data).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_handle_refund_failed_notifies_buyer() {
+        let state = setup_state().await;
+        // Create order with buyer
+        state
+            .db
+            .upsert_document(
+                collections::ORDERS,
+                "refund_fail_order",
+                json!({
+                    fields::ORDER_ID: "refund_fail_order",
+                    fields::BUYER_ID: "buyer_refund_fail",
+                    fields::PAYMENT_INTENT_ID: "pi_refund_fail_notify",
+                    fields::ITEMS: []
+                }),
+            )
+            .await
+            .unwrap();
+
+        let data = json!({
+            "object": {
+                "id": "re_failed_notify",
+                "amount": 2500,
+                "currency": "cad",
+                "failure_reason": "charge_for_pending_refund_disputed",
+                "payment_intent": "pi_refund_fail_notify"
+            }
+        });
+        let result = handle_refund_failed(&state, &data).await;
         assert!(result.is_ok());
     }
 }

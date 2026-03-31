@@ -90,7 +90,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         if (_formKey.currentState!.validate()) {
           viewModel.handleAuth(
             email: _emailController.text.trim(),
-            password: _passwordController.text,
+            password: _passwordController.text.trim(),
             name: !state.isLogin ? _nameController.text.trim() : null,
             marketingOptIn: !state.isLogin ? state.marketingOptIn : false,
           );

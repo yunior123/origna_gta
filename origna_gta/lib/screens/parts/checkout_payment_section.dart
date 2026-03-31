@@ -134,6 +134,13 @@ class _CheckoutButton extends ConsumerWidget {
   }
 
   Future<void> _startCheckout(BuildContext context, WidgetRef ref) async {
+    // P1-1: Race-condition guard — prevent double-tap even if the button disable
+    // state hasn't propagated yet.
+    final alreadyProcessing = ref.read(
+      checkoutStateProvider.select((s) => s.isProcessing),
+    );
+    if (alreadyProcessing) return;
+
     final messenger = ScaffoldMessenger.of(context);
     final notifier = ref.read(checkoutStateProvider.notifier);
 

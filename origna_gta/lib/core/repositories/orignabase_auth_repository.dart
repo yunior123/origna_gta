@@ -504,7 +504,12 @@ class OrignaBaseAuthRepository implements AuthRepository {
   @override
   Future<void> deleteAccount() async {
     final userId = _currentUserId;
-    if (userId == null || userId.isEmpty) return;
+    if (userId == null || userId.isEmpty) {
+      throw OrignaBaseAuthException(
+        code: 'no-current-user',
+        message: 'No authenticated user — cannot delete account',
+      );
+    }
 
     // Require re-authentication within the last 60 seconds
     const reAuthWindowMs = 60 * 1000;
