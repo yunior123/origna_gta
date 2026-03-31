@@ -36,16 +36,25 @@ All findings from Waves 1-5 have been resolved. Summary tables below.
 - **Webhook security**: HMAC constant-time, replay 300s, atomic dedup, 22 event types
 - **MCP security**: Ownership checks, spend limits, filter injection fix, quantity bounds
 
-### Test Results (at resolution)
+### Test Results (2026-03-31 — latest)
 
 | Suite | Pass | Fail |
 |-------|------|------|
-| Flutter app (with live flag) | 4,953 | 0 |
-| Rust backend | 3,228 | 0 |
+| Flutter app | 4,681 | 0 |
+| Flutter live tests | 211 | 0 |
+| Rust backend | 2,906 | 0 |
 | OrignaBase SDK | 538 | 0 |
-| E2E (6 phases) | 1,225 | 0 |
-| Stress tests (k6) | 1,503 | 0 |
-| **Total** | **11,447** | **0** |
+| Stripe webhooks (CLI) | 5 event types | 0 |
+| k6 stress tests | auth+payloads+connections | 0 |
+| **Total** | **8,300+** | **0** |
+
+### Deployments (2026-03-31)
+
+| Env | URL | Release |
+|-----|-----|---------|
+| Dev | dev.orignagta.ca | 20260331145614 |
+| Staging | staging.orignagta.ca | 20260331145735 |
+| Prod | orignagta.ca | 20260331145857 |
 
 ---
 
@@ -223,9 +232,9 @@ All findings from Waves 1-5 have been resolved. Summary tables below.
 |----------|-------------|-------|---------|
 | P0 — CRITICAL | 29 | 29 | 0 |
 | P1 — HIGH | 69 | 67 | 2 |
-| P2 — MEDIUM | 72 | 12 | 60 |
-| P3 — LOW | 42 | 3 | 39 |
-| **TOTAL** | **212** | **111** | **101** |
+| P2 — MEDIUM | 72 | 40 | 32 |
+| P3 — LOW | 42 | 20 | 22 |
+| **TOTAL** | **212** | **156** | **56** |
 
 ### Top 10 Priority Fixes
 
