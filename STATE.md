@@ -76,26 +76,26 @@ All findings from Waves 1-5 have been resolved. Summary tables below.
 
 ## UNFIXED Findings — Deep Codebase Audit 2026-03-28
 
-### P0 — CRITICAL (5 remaining after false-positive filtering)
+### P0 — CRITICAL (3 remaining)
 
-| # | Finding | Location | Impact |
+| # | Finding | Location | Status |
 |---|---------|----------|--------|
-| P0-2 | Payment failure does NOT restore reserved stock | webhooks.rs:751-794 | Phantom inventory depletion |
-| P0-4 | TOCTOU: update_item_status has no CAS guard | status.rs:959-963 | Seller updates overwritten |
-| P0-5 | TOCTOU: confirm_item_receipt has no CAS guard | status.rs:427-431 | Buyer confirmation overwrites seller |
-| P0-NEW-1 | 12 files have unresolved git merge conflict markers | Multiple Flutter files | Code doesn't compile |
-| P0-NEW-2 | Webhook dedup format!() with event ID into raw SQL | webhooks.rs:342-349 | Fragile SQL pattern |
-| P0-NEW-3 | Stock decrement format!() interpolates pid/qty | checkout.rs:824-829 | Fragile SQL pattern |
-| P0-NEW-4 | IDOR: answer_question uses req.user_id, not JWT | questions.rs:186 | Seller impersonation |
-| P0-NEW-5 | IDOR: stock subscribe/unsubscribe uses req.user_id | stock.rs:54,170 | User impersonation |
-| P0-NEW-6 | require_admin() bypasses all auth in test mode, no prod guard | ob-auth/routes.rs:1922 | Admin endpoints unauth |
-| P0-NEW-7 | Rate limiter middleware NEVER wired to auth routes | ob-auth/routes.rs:2697 | No rate limiting on login |
-| P0-NEW-8 | Refund cumulative cap TOCTOU race | refunds.rs:404-420 | Over-refund possible |
-| P0-NEW-9 | update_item_status concurrent lost-update | status.rs:967-982 | Seller updates dropped |
-| P0-NEW-10 | Push token table name mismatch (_push_tokens vs fcm_tokens) | native_triggers.rs:752 vs users/mod.rs:604 | Token leak |
-| P0-NEW-11 | generic_email_html interpolates unescaped user data | native_triggers.rs:1025-1029 | XSS via email |
-| P0-NEW-12 | MCP get_order ownership check is a STUB | ob-mcp/orders.rs:50 | Any user reads any order |
-| P0-NEW-13 | MCP spend tracker HashMap never resets (no TTL) | ob-mcp/safeguards.rs:110-111 | Permanent block |
+| ~~P0-2~~ | ~~Payment failure stock restore~~ | webhooks.rs | **FIXED** 2026-03-29 — restore_stock_for_order verified |
+| ~~P0-4~~ | ~~TOCTOU update_item_status~~ | status.rs | **FIXED** 2026-03-29 — update_document_cas added |
+| ~~P0-5~~ | ~~TOCTOU confirm_item_receipt~~ | status.rs | **FIXED** 2026-03-29 — update_document_cas added |
+| ~~P0-NEW-1~~ | ~~12 merge conflict files~~ | Flutter | **FIXED** 2026-03-29 — all conflicts resolved |
+| ~~P0-NEW-2~~ | ~~Webhook dedup SQL injection~~ | webhooks.rs | **FIXED** 2026-03-30 — create_document (parameterized) |
+| ~~P0-NEW-3~~ | ~~Stock decrement format!~~ | checkout.rs | **FIXED** — validate_document_id + bind params |
+| ~~P0-NEW-4~~ | ~~IDOR answer_question~~ | questions.rs | **FIXED** 2026-03-30 — JWT auth Extension |
+| ~~P0-NEW-5~~ | ~~IDOR stock subscribe~~ | stock.rs | **FIXED** 2026-03-30 — JWT auth Extension |
+| ~~P0-NEW-6~~ | ~~require_admin bypass~~ | ob-auth/routes.rs | **FIXED** 2026-03-30 — production guard |
+| ~~P0-NEW-7~~ | ~~Rate limiter not wired~~ | ob-auth/routes.rs | **FIXED** 2026-03-30 — 5/3/3 per min |
+| P0-NEW-8 | Refund cumulative cap TOCTOU race | refunds.rs:404-420 | **UNFIXED** |
+| ~~P0-NEW-9~~ | ~~update_item_status lost-update~~ | status.rs | **FIXED** 2026-03-29 — CAS guard |
+| ~~P0-NEW-10~~ | ~~Push token table mismatch~~ | native_triggers.rs | **FIXED** 2026-03-30 — unified PUSH_TOKENS |
+| ~~P0-NEW-11~~ | ~~Email XSS~~ | native_triggers.rs | **FIXED** 2026-03-30 — html_escape() |
+| ~~P0-NEW-12~~ | ~~MCP get_order ownership stub~~ | ob-mcp/orders.rs | **FIXED** 2026-03-30 — real auth check |
+| P0-NEW-13 | MCP spend tracker no TTL | ob-mcp/safeguards.rs | **UNFIXED** |
 
 ### P1 — HIGH (25 remaining)
 
@@ -103,7 +103,7 @@ All findings from Waves 1-5 have been resolved. Summary tables below.
 - [ ] **P1-1.** Double checkout race on rapid taps — `checkout_payment_section.dart:136-149`
 - [ ] **P1-2.** Price verification sends double dollars instead of priceCents — `checkout_provider.dart:176-184`
 - [ ] **P1-3.** Dual subtotal: double vs int cents can disagree by 1 cent — `checkout_screen.dart:150-152`
-- [ ] **P1-4.** `CartItemDetailModel.fromMap` uses `~/ 1` truncation — `models.dart:286`
+- [x] **P1-4.** `CartItemDetailModel.fromMap` uses `~/ 1` truncation — **FIXED** 2026-03-29 → `.round()`
 - [ ] **P1-5.** Biometric guard dead-end on unsupported devices — `checkout_provider.dart:523-528`
 
 #### Rust Backend
@@ -128,11 +128,11 @@ All findings from Waves 1-5 have been resolved. Summary tables below.
 - [ ] **P1-23.** WebSocket reconnect leaks old listener/channel — `realtime.dart:79-122`
 - [ ] **P1-24.** snapshots() StreamController never closed — `collection.dart:35-44`
 - [ ] **P1-25.** Infinite polling with no timeout — `order_query_helpers.dart:165-200`
-- [ ] **P1-9.** Order state machine missing delivered→refund transitions — `order_state_machine.dart:10`
+- [x] **P1-9.** Order state machine missing delivered→refund transitions — **FIXED** 2026-03-29 — partiallyRefunded added
 
 #### 2026-03-29 Additions
 - [ ] **P1-NEW-1.** IDOR: submit_rating uses req.user_id — `ratings.rs:115`
-- [ ] **P1-NEW-2.** IDOR: ask_question uses req.user_id — `questions.rs:101`
+- [x] **P1-NEW-2.** IDOR: ask_question uses req.user_id — **FIXED** 2026-03-30 — JWT auth Extension
 - [ ] **P1-NEW-3.** IDOR: toggle_favorite uses req.user_id — `crud.rs:1250`
 - [ ] **P1-NEW-4.** MFA recovery zero rate limiting, 32-bit entropy — `routes.rs:1731`
 - [ ] **P1-NEW-5.** Invalid JWT silently downgrades to anonymous in MCP — `transport.rs:52-54`
@@ -217,13 +217,13 @@ All findings from Waves 1-5 have been resolved. Summary tables below.
 
 ### Audit Summary — Cumulative
 
-| Severity | Total Found | Fixed | Verified Clean | Unfixed |
-|----------|-------------|-------|----------------|---------|
-| P0 — CRITICAL | 29 | 13 | 0 | 16 |
-| P1 — HIGH | 69 | 22 | 0 | 47 |
-| P2 — MEDIUM | 72 | 12 | 0 | 60 |
-| P3 — LOW | 42 | 3 | 0 | 39 |
-| **TOTAL** | **212** | **50** | **0** | **162** |
+| Severity | Total Found | Fixed | Unfixed |
+|----------|-------------|-------|---------|
+| P0 — CRITICAL | 29 | 26 | 3 |
+| P1 — HIGH | 69 | 27 | 42 |
+| P2 — MEDIUM | 72 | 12 | 60 |
+| P3 — LOW | 42 | 3 | 39 |
+| **TOTAL** | **212** | **68** | **144** |
 
 ### Top 10 Priority Fixes
 
