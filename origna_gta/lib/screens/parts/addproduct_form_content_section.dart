@@ -30,7 +30,7 @@ extension _AddProductFormContentSection on _AddProductScreenState {
               hint: 'product.enter_product_name'.tr(),
               validator: (v) =>
                   v?.isEmpty ?? true ? 'common.required'.tr() : null,
-            semanticsLabel: 'input-name',
+              semanticsLabel: 'input-name',
             ),
             const SizedBox(height: 16),
             buildGlassTextField(
@@ -42,7 +42,7 @@ extension _AddProductFormContentSection on _AddProductScreenState {
               maxLines: 3,
               validator: (v) =>
                   v?.isEmpty ?? true ? 'common.required'.tr() : null,
-            semanticsLabel: 'input-description',
+              semanticsLabel: 'input-description',
             ),
             const SizedBox(height: 16),
             Row(
@@ -94,7 +94,7 @@ extension _AddProductFormContentSection on _AddProductScreenState {
                 }
                 return null;
               },
-            semanticsLabel: 'input-compare-at-price',
+              semanticsLabel: 'input-compare-at-price',
             ),
             buildTappableInfoHint(
               'product.compare_at_price_learn_more'.tr(),
@@ -111,7 +111,7 @@ extension _AddProductFormContentSection on _AddProductScreenState {
                   v?.isEmpty ?? true ? 'common.required'.tr() : null,
               onChanged: (v) =>
                   viewModel.setMinimumOrderQuantity(int.tryParse(v) ?? 1),
-            semanticsLabel: 'input-min-order',
+              semanticsLabel: 'input-min-order',
             ),
             if (!state.isDigital) ...[
               const SizedBox(height: 12),
@@ -137,7 +137,7 @@ extension _AddProductFormContentSection on _AddProductScreenState {
               hint: 'product.tax_code_hint'.tr(),
               validator: (v) =>
                   isValidTaxCode(v) ? null : 'product.invalid_tax_code'.tr(),
-            semanticsLabel: 'input-tax-code',
+              semanticsLabel: 'input-tax-code',
             ),
             buildTappableInfoHint(
               'product.tax_code_learn_more'.tr(),
@@ -156,7 +156,7 @@ extension _AddProductFormContentSection on _AddProductScreenState {
                 if (state.skuError != null) viewModel.clearSkuError();
                 viewModel.setSellerSku(v);
               },
-            semanticsLabel: 'input-seller-sku',
+              semanticsLabel: 'input-seller-sku',
             ),
             buildTappableInfoHint(
               'product.sku_what_is'.tr(),
@@ -244,15 +244,6 @@ extension _AddProductFormContentSection on _AddProductScreenState {
             !state.isPerishable)
           const SizedBox(height: 16),
 
-        // SECTION 6: Supplier & Inventory (collapsible)
-        buildCollapsibleSection(
-          key: const Key('addproduct_section_supplier'),
-          index: 4,
-          icon: Icons.business_center_rounded,
-          title: 'product.supplier_inventory'.tr(),
-          subtitle: 'product.cost_margins_stock'.tr(),
-          children: _buildSupplierChildren(state, viewModel),
-        ),
         const SizedBox(height: 28),
 
         buildSubmitButton(state, viewModel),
