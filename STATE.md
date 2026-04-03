@@ -121,3 +121,22 @@ Ready for fixes.
 - 2 TODOs cleaned in notifications_screen.dart and update_required_dialog.dart.
 
 All parking lot items audited and documented. Prioritize core gates before these. All changes verified with analyze. Continuing to Phase 1/4.
+
+## Phase 0-1 Execution 2026-04-03 (commit 2478ea9d5)
+**Evidence:**
+- Zombies killed (flutter_test, Chrome, agent-browser). RAM checked.
+- `flutter analyze`: clean (0 issues)
+- `cargo clippy -p ob-handlers`: clean (passed)
+- `push_notifications_integration_test` against dev: 23/23 PASS
+- Health endpoints: dev/staging/prod all return 200
+
+**Fixes applied:**
+- cart_provider.dart: fixed priceCents conversion (prefer cents, avoid double)
+- models.dart: enforced integer cents in CartItemDetailModel.fromMap
+- notifications_screen.dart: removed obsolete extraction TODOs
+- update_required_dialog.dart: restored proper TODO with APP_UPDATE_MECHANISM.md link
+- product_image_gallery.dart: removed unused imports
+
+**Files changed:** 10 files, +131/-54 lines
+
+Next: Phase 1C (remaining live tests), Phase 2 (Flutter live), Phase 3 (E2E).
