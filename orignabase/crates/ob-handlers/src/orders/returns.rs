@@ -690,7 +690,7 @@ async fn approve_return_request(
                         collections::PRODUCTS,
                         product_id,
                         json!({
-                            "stockQuantity": cur_stock + qty as i64,
+                            "stockQuantity": cur_stock + qty,
                             "updatedAt": now
                         }),
                     )
