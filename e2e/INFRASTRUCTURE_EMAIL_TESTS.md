@@ -26,7 +26,7 @@ Three new comprehensive test suites verify infrastructure stability and email no
 - POST /auth/register endpoint responds (no 500)
 - SurrealDB connection healthy (implicit via /health)
 - Meilisearch connection healthy (search endpoint works)
-- Webhook endpoint exists (POST /stripe/webhook ≠ 404)
+- Webhook endpoint exists (POST /api/webhooks/stripe ≠ 404)
 - Support chat endpoint exists (POST /api/support/chat ≠ 404)
 
 **Key Assertions**:

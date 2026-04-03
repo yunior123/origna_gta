@@ -616,7 +616,7 @@ mod query_builder_tests {
                 expected_contains: vec![
                     "SELECT * FROM products",
                     "WHERE status = 'active'",
-                    "ORDER BY price DESC",
+                    "ORDER BY data->>'price' DESC",
                     "LIMIT 20",
                 ],
                 should_not_contain: vec!["START"],

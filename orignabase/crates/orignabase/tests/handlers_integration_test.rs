@@ -10,7 +10,7 @@
 //! Run with: `cargo test --test handlers_integration_test -- --ignored`
 //!
 //! Requirements:
-//!   surreal start --user root --pass root memory
+//!   docker compose -f docker/docker-compose.yml up -d postgres meilisearch
 //!   cargo run -- serve
 
 use serde_json::{Value, json};
@@ -54,9 +54,9 @@ async fn make_request(
     let url = format!("{}{}", base_url(), path);
 
     let req = match method {
-        "POST" => client.post(&url), // ignore-magic
-        "GET" => client.get(&url), // ignore-magic
-        "PUT" => client.put(&url), // ignore-magic
+        "POST" => client.post(&url),     // ignore-magic
+        "GET" => client.get(&url),       // ignore-magic
+        "PUT" => client.put(&url),       // ignore-magic
         "DELETE" => client.delete(&url), // ignore-magic
         _ => panic!("Unsupported method"),
     };
@@ -132,7 +132,7 @@ async fn test_127_products_upload_images_success() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                        // ignore-magic
         "/api/products/upload-images", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -154,7 +154,7 @@ async fn test_128_products_upload_images_missing_fields() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                        // ignore-magic
         "/api/products/upload-images", // ignore-magic
         Some(&token),
         Some(json!({ "productId": "" })), // ignore-magic
@@ -173,7 +173,7 @@ async fn test_129_products_delete_success() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                 // ignore-magic
         "/api/products/delete", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -196,7 +196,7 @@ async fn test_130_products_delete_unauthorized() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                 // ignore-magic
         "/api/products/delete", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -222,7 +222,7 @@ async fn test_131_products_list_success() {
 
     let (status, body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",               // ignore-magic
         "/api/products/list", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -244,7 +244,7 @@ async fn test_132_products_list_with_filters() {
 
     let (status, body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",               // ignore-magic
         "/api/products/list", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -268,7 +268,7 @@ async fn test_133_products_list_invalid_pagination() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",               // ignore-magic
         "/api/products/list", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -290,7 +290,7 @@ async fn test_134_products_seller_list() {
 
     let (status, body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                      // ignore-magic
         "/api/products/seller-list", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -319,7 +319,7 @@ async fn test_135_products_submit_rating_success() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                        // ignore-magic
         "/api/products/submit-rating", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -344,7 +344,7 @@ async fn test_136_products_submit_rating_invalid_range() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                        // ignore-magic
         "/api/products/submit-rating", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -369,7 +369,7 @@ async fn test_137_products_get_ratings() {
 
     let (status, body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                  // ignore-magic
         "/api/products/ratings", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -391,7 +391,7 @@ async fn test_138_products_ratings_with_min_filter() {
 
     let (status, body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                  // ignore-magic
         "/api/products/ratings", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -418,7 +418,7 @@ async fn test_139_products_ask_question_success() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                        // ignore-magic
         "/api/products/questions/ask", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -440,7 +440,7 @@ async fn test_140_products_ask_question_too_short() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                        // ignore-magic
         "/api/products/questions/ask", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -463,7 +463,7 @@ async fn test_141_products_answer_question() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                           // ignore-magic
         "/api/products/questions/answer", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -485,7 +485,7 @@ async fn test_142_products_answer_question_too_short() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                           // ignore-magic
         "/api/products/questions/answer", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -507,7 +507,7 @@ async fn test_143_products_list_questions() {
 
     let (status, body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                         // ignore-magic
         "/api/products/questions/list", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -529,7 +529,7 @@ async fn test_144_products_list_questions_answered_only() {
 
     let (status, body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                         // ignore-magic
         "/api/products/questions/list", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -556,7 +556,7 @@ async fn test_145_products_stock_subscribe_success() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                                 // ignore-magic
         "/api/products/stock-notify/subscribe", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -577,7 +577,7 @@ async fn test_146_products_stock_subscribe_invalid_product() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                                 // ignore-magic
         "/api/products/stock-notify/subscribe", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -598,7 +598,7 @@ async fn test_147_products_stock_unsubscribe() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                                   // ignore-magic
         "/api/products/stock-notify/unsubscribe", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -619,7 +619,7 @@ async fn test_148_products_stock_unsubscribe_no_subscription() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                                   // ignore-magic
         "/api/products/stock-notify/unsubscribe", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -644,7 +644,7 @@ async fn test_149_orders_confirm_receipt() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                        // ignore-magic
         "/api/orders/confirm-receipt", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -665,7 +665,7 @@ async fn test_150_orders_update_status() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                      // ignore-magic
         "/api/orders/update-status", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -686,7 +686,7 @@ async fn test_151_orders_update_status_invalid() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                      // ignore-magic
         "/api/orders/update-status", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -707,7 +707,7 @@ async fn test_152_orders_update_item_status() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                           // ignore-magic
         "/api/orders/update-item-status", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -729,7 +729,7 @@ async fn test_153_orders_approve_shipping() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                         // ignore-magic
         "/api/orders/approve-shipping", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -750,7 +750,7 @@ async fn test_154_orders_recalculate_shipping() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                             // ignore-magic
         "/api/orders/recalculate-shipping", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -774,7 +774,7 @@ async fn test_155_orders_refund_item() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                    // ignore-magic
         "/api/orders/refund-item", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -797,7 +797,7 @@ async fn test_156_orders_cancel() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",               // ignore-magic
         "/api/orders/cancel", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -818,7 +818,7 @@ async fn test_157_returns_create() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                // ignore-magic
         "/api/returns/create", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -841,7 +841,7 @@ async fn test_158_returns_approve() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                 // ignore-magic
         "/api/returns/approve", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -861,7 +861,7 @@ async fn test_159_returns_reject() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                // ignore-magic
         "/api/returns/reject", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -887,7 +887,7 @@ async fn test_160_chat_get_or_create() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                    // ignore-magic
         "/api/chat/get-or-create", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -909,7 +909,7 @@ async fn test_161_chat_send_message() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",           // ignore-magic
         "/api/chat/send", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -931,7 +931,7 @@ async fn test_162_chat_send_message_empty() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",           // ignore-magic
         "/api/chat/send", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -953,7 +953,7 @@ async fn test_163_chat_mark_read() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                // ignore-magic
         "/api/chat/mark-read", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -974,7 +974,7 @@ async fn test_164_chat_delete_message() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                     // ignore-magic
         "/api/chat/delete-message", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -996,7 +996,7 @@ async fn test_165_chat_report_message() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",             // ignore-magic
         "/api/chat/report", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -1022,7 +1022,7 @@ async fn test_166_digital_activate_license() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                          // ignore-magic
         "/api/digital/activate-license", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -1043,7 +1043,7 @@ async fn test_167_digital_activate_license_invalid_key() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                          // ignore-magic
         "/api/digital/activate-license", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -1064,7 +1064,7 @@ async fn test_168_digital_deactivate_license() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                            // ignore-magic
         "/api/digital/deactivate-license", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -1085,7 +1085,7 @@ async fn test_169_digital_download_book() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                       // ignore-magic
         "/api/digital/download/book", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -1106,7 +1106,7 @@ async fn test_170_digital_download_software() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                           // ignore-magic
         "/api/digital/download/software", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -1128,7 +1128,7 @@ async fn test_171_digital_verify_license() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                        // ignore-magic
         "/api/digital/verify-license", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -1152,7 +1152,7 @@ async fn test_172_coupons_apply() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",               // ignore-magic
         "/api/coupons/apply", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -1174,7 +1174,7 @@ async fn test_173_coupons_apply_invalid_code() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",               // ignore-magic
         "/api/coupons/apply", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -1196,7 +1196,7 @@ async fn test_174_coupons_admin_create() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                      // ignore-magic
         "/api/admin/coupons/create", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -1219,7 +1219,7 @@ async fn test_175_coupons_redeem() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                // ignore-magic
         "/api/coupons/redeem", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -1244,7 +1244,7 @@ async fn test_176_users_create_profile() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                      // ignore-magic
         "/api/users/create-profile", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -1266,7 +1266,7 @@ async fn test_177_users_get_profile() {
 
     let (status, body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                   // ignore-magic
         "/api/users/profile/get", // ignore-magic
         Some(&token),
         Some(json!({ "userId": user_id })), // ignore-magic
@@ -1287,7 +1287,7 @@ async fn test_178_users_update_profile() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                      // ignore-magic
         "/api/users/profile/update", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -1309,7 +1309,7 @@ async fn test_179_users_email_consent() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                     // ignore-magic
         "/api/users/email-consent", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -1330,7 +1330,7 @@ async fn test_180_users_delete_account() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                      // ignore-magic
         "/api/admin/delete-account", // ignore-magic
         Some(&token),
         Some(json!({ "userId": user_id })), // ignore-magic
@@ -1348,7 +1348,7 @@ async fn test_181_users_cleanup_fcm_token() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                         // ignore-magic
         "/api/users/cleanup-fcm-token", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -1419,7 +1419,7 @@ async fn test_184_shipping_calculate() {
 
     let (status, body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                    // ignore-magic
         "/api/shipping/calculate", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -1452,7 +1452,7 @@ async fn test_185_shipping_calculate_invalid_postal() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                    // ignore-magic
         "/api/shipping/calculate", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -1484,7 +1484,7 @@ async fn test_186_admin_update_roles() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                    // ignore-magic
         "/api/admin/update-roles", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -1505,7 +1505,7 @@ async fn test_187_admin_update_roles_empty() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                    // ignore-magic
         "/api/admin/update-roles", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -1526,7 +1526,7 @@ async fn test_188_admin_suspend_seller() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                      // ignore-magic
         "/api/admin/suspend-seller", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -1547,7 +1547,7 @@ async fn test_189_admin_unsuspend_seller() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                        // ignore-magic
         "/api/admin/unsuspend-seller", // ignore-magic
         Some(&token),
         Some(json!({ "sellerId": user_id })), // ignore-magic
@@ -1565,7 +1565,7 @@ async fn test_190_admin_update_stock() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                    // ignore-magic
         "/api/admin/update-stock", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -1586,7 +1586,7 @@ async fn test_191_admin_export_data() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                   // ignore-magic
         "/api/admin/export-data", // ignore-magic
         Some(&token),
         Some(json!({ "format": "json" })), // ignore-magic
@@ -1604,7 +1604,7 @@ async fn test_192_admin_unsubscribe_email() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                         // ignore-magic
         "/api/admin/unsubscribe-email", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -1629,7 +1629,7 @@ async fn test_193_admin_mfa_enroll() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                  // ignore-magic
         "/api/admin/mfa/enroll", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -1650,7 +1650,7 @@ async fn test_194_admin_mfa_verify() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                  // ignore-magic
         "/api/admin/mfa/verify", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -1671,7 +1671,7 @@ async fn test_195_admin_mfa_disable() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                   // ignore-magic
         "/api/admin/mfa/disable", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -1696,7 +1696,7 @@ async fn test_196_checkout_session_create() {
 
     let (status, body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                  // ignore-magic
         "/api/checkout/session", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -1735,7 +1735,7 @@ async fn test_197_checkout_session_missing_eula() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                  // ignore-magic
         "/api/checkout/session", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -1770,7 +1770,7 @@ async fn test_198_checkout_session_invalid_province() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                  // ignore-magic
         "/api/checkout/session", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -1805,7 +1805,7 @@ async fn test_199_checkout_session_with_coupon() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                  // ignore-magic
         "/api/checkout/session", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -1845,7 +1845,7 @@ async fn test_200_payments_capture_success() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                  // ignore-magic
         "/api/payments/capture", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -1867,7 +1867,7 @@ async fn test_201_payments_capture_missing_intent_id() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                  // ignore-magic
         "/api/payments/capture", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -1892,7 +1892,7 @@ async fn test_202_connect_create_account() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                        // ignore-magic
         "/api/connect/create-account", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -1914,7 +1914,7 @@ async fn test_203_connect_create_account_invalid_country() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                        // ignore-magic
         "/api/connect/create-account", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -1936,7 +1936,7 @@ async fn test_204_connect_account_link() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                      // ignore-magic
         "/api/connect/account-link", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -1956,7 +1956,7 @@ async fn test_205_connect_status() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                // ignore-magic
         "/api/connect/status", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -1980,7 +1980,7 @@ async fn test_206_subscriptions_create() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                      // ignore-magic
         "/api/subscriptions/create", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -2003,7 +2003,7 @@ async fn test_207_subscriptions_create_invalid_interval() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                      // ignore-magic
         "/api/subscriptions/create", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -2026,7 +2026,7 @@ async fn test_208_subscriptions_cancel() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                      // ignore-magic
         "/api/subscriptions/cancel", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -2046,7 +2046,7 @@ async fn test_209_subscriptions_status() {
 
     let (status, body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                      // ignore-magic
         "/api/subscriptions/status", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -2073,7 +2073,7 @@ async fn test_210_subscriptions_update_payment() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                              // ignore-magic
         "/api/subscriptions/update-payment", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -2097,7 +2097,7 @@ async fn test_211_webhooks_stripe_payment_intent_succeeded() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                 // ignore-magic
         "/api/webhooks/stripe", // ignore-magic
         None,
         Some(json!({ // ignore-magic
@@ -2126,7 +2126,7 @@ async fn test_212_webhooks_stripe_charge_failed() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                 // ignore-magic
         "/api/webhooks/stripe", // ignore-magic
         None,
         Some(json!({ // ignore-magic
@@ -2156,7 +2156,7 @@ async fn test_213_payment_provider_set() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                           // ignore-magic
         "/api/payments/providers/update", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -2178,7 +2178,7 @@ async fn test_214_payment_provider_set_invalid() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                           // ignore-magic
         "/api/payments/providers/update", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -2199,7 +2199,7 @@ async fn test_215_payment_provider_preferred() {
 
     let (status, body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                         // ignore-magic
         "/api/payments/providers/list", // ignore-magic
         Some(&token),
         Some(json!({ "userId": user_id })), // ignore-magic
@@ -2220,7 +2220,7 @@ async fn test_216_payment_provider_available() {
 
     let (status, body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                           // ignore-magic
         "/api/payments/providers/status", // ignore-magic
         Some(&token),
         Some(json!({ "provider": "stripe" })), // ignore-magic
@@ -2245,7 +2245,7 @@ async fn test_217_warehouse_create_success() {
 
     let (status, body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                   // ignore-magic
         "/api/warehouses/create", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -2277,7 +2277,7 @@ async fn test_218_warehouse_create_invalid_type() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                   // ignore-magic
         "/api/warehouses/create", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -2306,7 +2306,7 @@ async fn test_219_warehouse_create_empty_label() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                   // ignore-magic
         "/api/warehouses/create", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -2336,7 +2336,7 @@ async fn test_220_warehouse_list() {
     // Create a warehouse first
     make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                   // ignore-magic
         "/api/warehouses/create", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -2356,7 +2356,7 @@ async fn test_220_warehouse_list() {
 
     let (status, body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                 // ignore-magic
         "/api/warehouses/list", // ignore-magic
         Some(&token),
         Some(json!({ "userId": user_id })), // ignore-magic
@@ -2377,7 +2377,7 @@ async fn test_221_warehouse_update_success() {
     // Create
     let (_, create_body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                   // ignore-magic
         "/api/warehouses/create", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -2400,7 +2400,7 @@ async fn test_221_warehouse_update_success() {
     // Update
     let (status, body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                   // ignore-magic
         "/api/warehouses/update", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -2423,7 +2423,7 @@ async fn test_222_warehouse_update_nonexistent() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                   // ignore-magic
         "/api/warehouses/update", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -2446,7 +2446,7 @@ async fn test_223_warehouse_delete_success() {
     // Create
     let (_, create_body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                   // ignore-magic
         "/api/warehouses/create", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -2469,7 +2469,7 @@ async fn test_223_warehouse_delete_success() {
     // Delete
     let (status, body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                   // ignore-magic
         "/api/warehouses/delete", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -2491,7 +2491,7 @@ async fn test_224_warehouse_delete_nonexistent() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                   // ignore-magic
         "/api/warehouses/delete", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -2516,7 +2516,7 @@ async fn test_225_address_add_buyer_success() {
 
     let (status, body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                   // ignore-magic
         "/api/users/address/add", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -2543,7 +2543,7 @@ async fn test_226_address_add_buyer_missing_fields() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                   // ignore-magic
         "/api/users/address/add", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -2569,7 +2569,7 @@ async fn test_227_address_set_default_buyer() {
     // Add an address first
     let (_, add_body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                   // ignore-magic
         "/api/users/address/add", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -2591,7 +2591,7 @@ async fn test_227_address_set_default_buyer() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                           // ignore-magic
         "/api/users/address/set-default", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -2613,7 +2613,7 @@ async fn test_228_address_delete_buyer() {
     // Add then delete
     let (_, add_body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                   // ignore-magic
         "/api/users/address/add", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -2635,7 +2635,7 @@ async fn test_228_address_delete_buyer() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                      // ignore-magic
         "/api/users/address/delete", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -2660,7 +2660,7 @@ async fn test_229_admin_warehouse_commission_update() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                                   // ignore-magic
         "/api/admin/update-warehouse-commission", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -2684,7 +2684,7 @@ async fn test_230_admin_deactivate_supplier() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                                    // ignore-magic
         "/api/admin/deactivate-supplier-platform", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -2705,7 +2705,7 @@ async fn test_231_admin_mfa_verify_backup() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                         // ignore-magic
         "/api/admin/mfa/verify-backup", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -2727,7 +2727,7 @@ async fn test_232_admin_delete_account() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                      // ignore-magic
         "/api/admin/delete-account", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -2749,7 +2749,7 @@ async fn test_233_admin_get_reviews() {
 
     let (status, body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",               // ignore-magic
         "/api/admin/reviews", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -2774,7 +2774,7 @@ async fn test_234_admin_refund_order() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                    // ignore-magic
         "/api/admin/refund-order", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -2796,7 +2796,7 @@ async fn test_235_admin_approve_product() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                       // ignore-magic
         "/api/admin/approve-product", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -2817,7 +2817,7 @@ async fn test_236_admin_reject_product() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                      // ignore-magic
         "/api/admin/reject-product", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -2839,7 +2839,7 @@ async fn test_237_admin_e2e_mail_logs() {
 
     let (status, body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                     // ignore-magic
         "/api/admin/e2e/mail-logs", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -2864,7 +2864,7 @@ async fn test_238_admin_e2e_seed_license() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                        // ignore-magic
         "/api/admin/e2e/seed-license", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -2888,7 +2888,7 @@ async fn test_239_admin_reviews_flagged_only() {
 
     let (status, body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",               // ignore-magic
         "/api/admin/reviews", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -2913,7 +2913,7 @@ async fn test_240_admin_flag_review() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                   // ignore-magic
         "/api/admin/flag-review", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -2941,7 +2941,7 @@ async fn test_241_auth_register_duplicate_email() {
     // Register first time
     let (status1, _) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",           // ignore-magic
         "/auth/register", // ignore-magic
         None,
         Some(json!({ "email": email, "password": "REDACTED_TEST_PASSWORD" })), // ignore-magic
@@ -2952,7 +2952,7 @@ async fn test_241_auth_register_duplicate_email() {
     // Register same email again
     let (status2, _) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",           // ignore-magic
         "/auth/register", // ignore-magic
         None,
         Some(json!({ "email": email, "password": "REDACTED_TEST_PASSWORD" })), // ignore-magic
@@ -2969,7 +2969,7 @@ async fn test_242_auth_register_weak_password() {
 
     let (status, _) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",           // ignore-magic
         "/auth/register", // ignore-magic
         None,
         Some(json!({ "email": "weak@test.com", "password": "123" })), // ignore-magic
@@ -2986,7 +2986,7 @@ async fn test_243_auth_register_invalid_email() {
 
     let (status, _) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",           // ignore-magic
         "/auth/register", // ignore-magic
         None,
         Some(json!({ "email": "not-an-email", "password": "REDACTED_TEST_PASSWORD" })), // ignore-magic
@@ -3005,7 +3005,7 @@ async fn test_244_auth_login_wrong_password() {
     // Register
     make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",           // ignore-magic
         "/auth/register", // ignore-magic
         None,
         Some(json!({ "email": email, "password": "CorrectPass123!" })), // ignore-magic
@@ -3015,7 +3015,7 @@ async fn test_244_auth_login_wrong_password() {
     // Login with wrong password
     let (status, _) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",        // ignore-magic
         "/auth/login", // ignore-magic
         None,
         Some(json!({ "email": email, "password": "WrongPass456!" })), // ignore-magic
@@ -3032,7 +3032,7 @@ async fn test_245_auth_login_nonexistent_user() {
 
     let (status, _) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",        // ignore-magic
         "/auth/login", // ignore-magic
         None,
         Some(json!({ "email": "nobody@nonexistent.com", "password": "REDACTED_TEST_PASSWORD" })), // ignore-magic
@@ -3049,9 +3049,9 @@ async fn test_246_auth_access_without_token() {
 
     let (status, _) = make_request(
         &client,
-        "POST", // ignore-magic
-        "/api/users/profile/get", // ignore-magic
-        None, // no token
+        "POST",                               // ignore-magic
+        "/api/users/profile/get",             // ignore-magic
+        None,                                 // no token
         Some(json!({ "userId": "someone" })), // ignore-magic
     )
     .await;
@@ -3076,7 +3076,7 @@ async fn test_247_products_create_minimal() {
 
     let (status, body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                        // ignore-magic
         "/api/products/create-atomic", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -3105,7 +3105,7 @@ async fn test_248_products_create_negative_price() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                        // ignore-magic
         "/api/products/create-atomic", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -3135,7 +3135,7 @@ async fn test_249_products_create_xss_in_title() {
 
     let (status, body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                        // ignore-magic
         "/api/products/create-atomic", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -3166,7 +3166,7 @@ async fn test_250_products_rating_out_of_bounds() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                         // ignore-magic
         "/api/products/ratings/submit", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -3189,7 +3189,7 @@ async fn test_251_products_rating_zero() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                         // ignore-magic
         "/api/products/ratings/submit", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -3212,7 +3212,7 @@ async fn test_252_products_question_xss_injection() {
 
     let (status, body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                        // ignore-magic
         "/api/products/questions/ask", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -3244,7 +3244,7 @@ async fn test_253_orders_confirm_receipt_nonexistent() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                        // ignore-magic
         "/api/orders/confirm-receipt", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -3265,7 +3265,7 @@ async fn test_254_orders_cancel_nonexistent() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",               // ignore-magic
         "/api/orders/cancel", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -3286,7 +3286,7 @@ async fn test_255_returns_create_without_order() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                       // ignore-magic
         "/api/orders/returns/create", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -3308,7 +3308,7 @@ async fn test_256_refund_without_payment() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",               // ignore-magic
         "/api/orders/refund", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -3334,7 +3334,7 @@ async fn test_257_addresses_add_buyer_success() {
 
     let (status, body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                   // ignore-magic
         "/api/users/address/add", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -3362,7 +3362,7 @@ async fn test_258_addresses_add_buyer_unauthorized() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                   // ignore-magic
         "/api/users/address/add", // ignore-magic
         None,
         Some(json!({ // ignore-magic
@@ -3389,7 +3389,7 @@ async fn test_259_addresses_update_buyer_success() {
     // Create an address first
     let (create_status, create_body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                   // ignore-magic
         "/api/users/address/add", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -3412,7 +3412,7 @@ async fn test_259_addresses_update_buyer_success() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                      // ignore-magic
         "/api/users/address/update", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -3439,7 +3439,7 @@ async fn test_260_addresses_update_buyer_invalid_address_id() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                      // ignore-magic
         "/api/users/address/update", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -3466,7 +3466,7 @@ async fn test_261_addresses_delete_buyer_success() {
     // Create an address first
     let (create_status, create_body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                   // ignore-magic
         "/api/users/address/add", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -3489,7 +3489,7 @@ async fn test_261_addresses_delete_buyer_success() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                      // ignore-magic
         "/api/users/address/delete", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -3510,7 +3510,7 @@ async fn test_262_addresses_delete_buyer_invalid_address_id() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                      // ignore-magic
         "/api/users/address/delete", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -3532,7 +3532,7 @@ async fn test_263_addresses_set_default_success() {
     // Create an address first
     let (create_status, create_body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                   // ignore-magic
         "/api/users/address/add", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -3555,7 +3555,7 @@ async fn test_263_addresses_set_default_success() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                           // ignore-magic
         "/api/users/address/set-default", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -3576,7 +3576,7 @@ async fn test_264_addresses_set_default_unauthorized() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                           // ignore-magic
         "/api/users/address/set-default", // ignore-magic
         None,
         Some(json!({ // ignore-magic
@@ -3602,7 +3602,7 @@ async fn test_265_admin_update_warehouse_commission_valid_payload() {
 
     let (create_status, create_body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                   // ignore-magic
         "/api/warehouses/create", // ignore-magic
         Some(&seller_token),
         Some(json!({ // ignore-magic
@@ -3619,7 +3619,7 @@ async fn test_265_admin_update_warehouse_commission_valid_payload() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                                   // ignore-magic
         "/api/admin/update-warehouse-commission", // ignore-magic
         Some(&admin_token),
         Some(json!({ // ignore-magic
@@ -3648,7 +3648,7 @@ async fn test_266_admin_update_warehouse_commission_invalid_rate() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                                   // ignore-magic
         "/api/admin/update-warehouse-commission", // ignore-magic
         Some(&admin_token),
         Some(json!({ // ignore-magic
@@ -3671,7 +3671,7 @@ async fn test_267_admin_deactivate_supplier_platform_valid_payload() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                                    // ignore-magic
         "/api/admin/deactivate-supplier-platform", // ignore-magic
         Some(&admin_token),
         Some(json!({ // ignore-magic
@@ -3696,7 +3696,7 @@ async fn test_268_admin_deactivate_supplier_platform_missing_supplier_type() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                                    // ignore-magic
         "/api/admin/deactivate-supplier-platform", // ignore-magic
         Some(&admin_token),
         Some(json!({ // ignore-magic
@@ -3717,7 +3717,7 @@ async fn test_269_admin_mfa_verify_backup_valid_code_shape() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                         // ignore-magic
         "/api/admin/mfa/verify-backup", // ignore-magic
         Some(&admin_token),
         Some(json!({ // ignore-magic
@@ -3742,7 +3742,7 @@ async fn test_270_admin_mfa_verify_backup_invalid_code() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                         // ignore-magic
         "/api/admin/mfa/verify-backup", // ignore-magic
         Some(&admin_token),
         Some(json!({ // ignore-magic
@@ -3763,7 +3763,7 @@ async fn test_271_admin_delete_account_valid_confirmation() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                      // ignore-magic
         "/api/admin/delete-account", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -3784,7 +3784,7 @@ async fn test_272_admin_delete_account_bad_confirmation() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                      // ignore-magic
         "/api/admin/delete-account", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -3805,7 +3805,7 @@ async fn test_273_admin_reviews_valid_payload() {
 
     let (status, body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",               // ignore-magic
         "/api/admin/reviews", // ignore-magic
         Some(&admin_token),
         Some(json!({ // ignore-magic
@@ -3831,7 +3831,7 @@ async fn test_274_admin_reviews_invalid_admin_id() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",               // ignore-magic
         "/api/admin/reviews", // ignore-magic
         Some(&admin_token),
         Some(json!({ // ignore-magic
@@ -3852,7 +3852,7 @@ async fn test_275_admin_refund_order_valid_payload() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                    // ignore-magic
         "/api/admin/refund-order", // ignore-magic
         Some(&admin_token),
         Some(json!({ // ignore-magic
@@ -3878,7 +3878,7 @@ async fn test_276_admin_refund_order_missing_order_id() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                    // ignore-magic
         "/api/admin/refund-order", // ignore-magic
         Some(&admin_token),
         Some(json!({ // ignore-magic
@@ -3899,7 +3899,7 @@ async fn test_277_admin_flag_review_valid_payload() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                   // ignore-magic
         "/api/admin/flag-review", // ignore-magic
         Some(&admin_token),
         Some(json!({ // ignore-magic
@@ -3921,7 +3921,7 @@ async fn test_278_admin_flag_review_invalid_review_id() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                   // ignore-magic
         "/api/admin/flag-review", // ignore-magic
         Some(&admin_token),
         Some(json!({ // ignore-magic
@@ -3942,7 +3942,7 @@ async fn test_279_admin_approve_product_valid_payload() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                       // ignore-magic
         "/api/admin/approve-product", // ignore-magic
         Some(&admin_token),
         Some(json!({ // ignore-magic
@@ -3962,7 +3962,7 @@ async fn test_280_admin_approve_product_invalid_product_id() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                       // ignore-magic
         "/api/admin/approve-product", // ignore-magic
         Some(&admin_token),
         Some(json!({ // ignore-magic
@@ -3982,7 +3982,7 @@ async fn test_281_admin_reject_product_valid_payload() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                      // ignore-magic
         "/api/admin/reject-product", // ignore-magic
         Some(&admin_token),
         Some(json!({ // ignore-magic
@@ -4003,7 +4003,7 @@ async fn test_282_admin_reject_product_invalid_product_id() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                      // ignore-magic
         "/api/admin/reject-product", // ignore-magic
         Some(&admin_token),
         Some(json!({ // ignore-magic
@@ -4024,7 +4024,7 @@ async fn test_283_admin_e2e_mail_logs_valid_payload() {
 
     let (status, body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                     // ignore-magic
         "/api/admin/e2e/mail-logs", // ignore-magic
         Some(&admin_token),
         Some(json!({ // ignore-magic
@@ -4049,7 +4049,7 @@ async fn test_284_admin_e2e_mail_logs_invalid_email() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                     // ignore-magic
         "/api/admin/e2e/mail-logs", // ignore-magic
         Some(&admin_token),
         Some(json!({ // ignore-magic
@@ -4070,7 +4070,7 @@ async fn test_285_admin_e2e_seed_license_create() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                        // ignore-magic
         "/api/admin/e2e/seed-license", // ignore-magic
         Some(&admin_token),
         Some(json!({ // ignore-magic
@@ -4100,7 +4100,7 @@ async fn test_286_admin_e2e_seed_license_invalid_action() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                        // ignore-magic
         "/api/admin/e2e/seed-license", // ignore-magic
         Some(&admin_token),
         Some(json!({ // ignore-magic
@@ -4126,7 +4126,7 @@ async fn test_287_warehouses_create_success() {
 
     let (status, body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                   // ignore-magic
         "/api/warehouses/create", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -4152,7 +4152,7 @@ async fn test_288_warehouses_create_invalid_type() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                   // ignore-magic
         "/api/warehouses/create", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -4176,7 +4176,7 @@ async fn test_289_warehouses_update_success() {
 
     let (create_status, create_body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                   // ignore-magic
         "/api/warehouses/create", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -4193,7 +4193,7 @@ async fn test_289_warehouses_update_success() {
 
     let (status, body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                   // ignore-magic
         "/api/warehouses/update", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -4217,7 +4217,7 @@ async fn test_290_warehouses_update_missing_fields() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                   // ignore-magic
         "/api/warehouses/update", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -4238,7 +4238,7 @@ async fn test_291_warehouses_delete_success() {
 
     let (create_status, create_body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                   // ignore-magic
         "/api/warehouses/create", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -4255,7 +4255,7 @@ async fn test_291_warehouses_delete_success() {
 
     let (status, body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                   // ignore-magic
         "/api/warehouses/delete", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -4277,7 +4277,7 @@ async fn test_292_warehouses_delete_nonexistent() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                   // ignore-magic
         "/api/warehouses/delete", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -4298,7 +4298,7 @@ async fn test_293_warehouses_list_success() {
 
     let (create_status, _create_body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                   // ignore-magic
         "/api/warehouses/create", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -4314,7 +4314,7 @@ async fn test_293_warehouses_list_success() {
 
     let (status, body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                 // ignore-magic
         "/api/warehouses/list", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -4335,7 +4335,7 @@ async fn test_294_warehouses_list_invalid_user_id() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                 // ignore-magic
         "/api/warehouses/list", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic

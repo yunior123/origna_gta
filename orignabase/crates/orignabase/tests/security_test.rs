@@ -56,9 +56,9 @@ async fn request(
 ) -> (u16, Value) {
     let url = format!("{}{}", base_url(), path);
     let req = match method {
-        "POST" => client.post(&url), // ignore-magic
-        "GET" => client.get(&url), // ignore-magic
-        "PUT" => client.put(&url), // ignore-magic
+        "POST" => client.post(&url),     // ignore-magic
+        "GET" => client.get(&url),       // ignore-magic
+        "PUT" => client.put(&url),       // ignore-magic
         "DELETE" => client.delete(&url), // ignore-magic
         _ => panic!("Unsupported method"),
     };
@@ -79,7 +79,7 @@ async fn request(
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// SURREALQL INJECTION (via GraphQL)
+// QUERY INJECTION (via GraphQL)
 // ═══════════════════════════════════════════════════════════════════
 
 mod injection {
@@ -564,7 +564,7 @@ mod path_traversal {
         let token = register_and_login(&c).await;
         let (status, _) = request(
             &c,
-            "POST", // ignore-magic
+            "POST",                    // ignore-magic
             "/storage/presign/upload", // ignore-magic
             Some(&token),
             Some(json!({"path": "../../../etc/passwd", "content_type": "text/plain"})), // ignore-magic
@@ -584,7 +584,7 @@ mod path_traversal {
         let token = register_and_login(&c).await;
         let (status, _) = request(
             &c,
-            "POST", // ignore-magic
+            "POST",                    // ignore-magic
             "/storage/presign/upload", // ignore-magic
             Some(&token),
             Some(json!({"path": "%2e%2e%2f%2e%2e%2fetc%2fpasswd", "content_type": "text/plain"})), // ignore-magic
@@ -603,7 +603,7 @@ mod path_traversal {
         let token = register_and_login(&c).await;
         let (status, _) = request(
             &c,
-            "POST", // ignore-magic
+            "POST",                    // ignore-magic
             "/storage/presign/upload", // ignore-magic
             Some(&token),
             Some(json!({"path": "file\u{0000}.txt", "content_type": "text/plain"})), // ignore-magic
@@ -656,7 +656,7 @@ mod path_traversal {
         let token = register_and_login(&c).await;
         let (status, _) = request(
             &c,
-            "POST", // ignore-magic
+            "POST",                    // ignore-magic
             "/storage/presign/upload", // ignore-magic
             Some(&token),
             Some(json!({"path": "%252e%252e%252f%252e%252e%252f", "content_type": "text/plain"})), // ignore-magic

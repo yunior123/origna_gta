@@ -716,6 +716,10 @@ pub mod fields {
     // Stock notification fields
     pub const NOTIFIED_AT: &str = "notifiedAt";
 
+    // Pending notification fields
+    pub const PENDING_CREATED_AT: &str = "created_at";
+    pub const PENDING_NOTIFICATION_TYPE: &str = "notification_type";
+
     // Review fields
     pub const REVIEW_IMAGE_URLS: &str = "reviewImageUrls";
     pub const VERIFIED_PURCHASE: &str = "verifiedPurchase";

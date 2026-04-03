@@ -167,7 +167,8 @@ async fn test_return_request_lifecycle() {
                 .unwrap_or_default();
             let status = order["status"].as_str().unwrap_or(""); // ignore-magic
 
-            if order_id.is_empty() || status != "delivered" { // ignore-magic
+            if order_id.is_empty() || status != "delivered" {
+                // ignore-magic
                 eprintln!("Order {} not in delivered state — skipping", order_id);
                 return;
             }
@@ -210,7 +211,8 @@ async fn test_return_request_lifecycle() {
 
                     // Verify initial status is "pending"
                     assert_eq!(
-                        return_status, "pending", // ignore-magic
+                        return_status,
+                        "pending", // ignore-magic
                         "Return should start in pending state"
                     );
 

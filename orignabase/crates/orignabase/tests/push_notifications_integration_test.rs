@@ -97,7 +97,8 @@ async fn test_push_register_token_success() {
 
     assert_eq!(status, 200, "Register token should succeed: {body:?}");
     assert_eq!(
-        body["registered"], true, // ignore-magic
+        body["registered"],
+        true, // ignore-magic
         "Response should confirm registration"
     );
 }

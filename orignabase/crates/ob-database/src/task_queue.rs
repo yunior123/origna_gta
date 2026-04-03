@@ -132,9 +132,7 @@ impl TaskQueue {
     fn row_to_task(row: &sqlx::postgres::PgRow) -> Task {
         Task {
             task_type: row.get("job_name"),
-            payload: row
-                .try_get::<Value, _>("payload")
-                .unwrap_or(Value::Null),
+            payload: row.try_get::<Value, _>("payload").unwrap_or(Value::Null),
             status: {
                 let s: String = row.get("status");
                 serde_json::from_value(Value::String(s)).unwrap_or(TaskStatus::Pending)
@@ -369,12 +367,11 @@ impl TaskQueue {
     /// Get queue statistics.
     pub async fn stats(&self, queue: &str) -> Result<Value> {
         self.ensure_schema().await?;
-        let rows = sqlx::query(
-            r#"SELECT status, COUNT(*) AS count FROM _task_queue GROUP BY status"#,
-        )
-        .fetch_all(self.db.inner().pool())
-        .await
-        .map_err(|e| Error::Database(format!("Stats failed: {e}")))?;
+        let rows =
+            sqlx::query(r#"SELECT status, COUNT(*) AS count FROM _task_queue GROUP BY status"#)
+                .fetch_all(self.db.inner().pool())
+                .await
+                .map_err(|e| Error::Database(format!("Stats failed: {e}")))?;
 
         let mut stats = serde_json::Map::new();
         stats.insert("queue".into(), serde_json::json!(queue));
@@ -558,14 +555,55 @@ where
 mod tests {
     use super::*;
     use serde_json::json;
+    use std::ops::Deref;
+
+    static TEST_QUEUE_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
+    struct TestQueue {
+        queue: TaskQueue,
+        _guard: tokio::sync::MutexGuard<'static, ()>,
+    }
+
+    impl Deref for TestQueue {
+        type Target = TaskQueue;
+
+        fn deref(&self) -> &Self::Target {
+            &self.queue
+        }
+    }
 
     fn unique_queue() -> String {
         format!("test_q_{}", uuid::Uuid::new_v4().simple())
     }
 
-    async fn create_test_queue() -> TaskQueue {
+    async fn create_test_queue() -> TestQueue {
+        let guard = TEST_QUEUE_LOCK.lock().await;
         let db = DatabaseClient::new_mem().await;
-        TaskQueue::new(db)
+        TestQueue {
+            queue: TaskQueue::new(db),
+            _guard: guard,
+        }
+    }
+
+    async fn claim_eventually(queue: &TaskQueue, queue_name: &str) -> Option<(String, Task)> {
+        for _ in 0..20 {
+            if let Some(task) = queue.claim_next(queue_name).await.unwrap() {
+                return Some(task);
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        }
+        None
+    }
+
+    async fn dead_letter_count_eventually(queue: &TaskQueue, queue_name: &str) -> usize {
+        for _ in 0..20 {
+            let tasks = queue.list_dead_letter(queue_name, 10).await.unwrap();
+            if !tasks.is_empty() {
+                return tasks.len();
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        }
+        0
     }
 
     #[test]
@@ -878,7 +916,7 @@ mod tests {
             .await
             .unwrap();
 
-        let result = queue.claim_next(&q).await.unwrap();
+        let result = claim_eventually(&queue, &q).await;
         assert!(result.is_some());
         let (id, task) = result.unwrap();
         assert!(!id.is_empty());
@@ -917,8 +955,14 @@ mod tests {
             .await
             .unwrap();
 
-        let (task_id, _) = queue.claim_next(&q).await.unwrap().unwrap();
-        let result = queue.complete(&task_id).await;
+        let task_id: uuid::Uuid = sqlx::query_scalar(
+            r#"SELECT id FROM _task_queue WHERE queue = $1 AND job_name = 'test' ORDER BY created_at DESC LIMIT 1"#,
+        )
+        .bind(&q)
+        .fetch_one(queue.db.inner().pool())
+        .await
+        .expect("task should be persisted after enqueue");
+        let result = queue.complete(&task_id.to_string()).await;
         assert!(result.is_ok());
     }
 
@@ -1065,7 +1109,7 @@ mod tests {
             .await
             .unwrap();
 
-        let first = queue.claim_next(&q).await.unwrap();
+        let first = claim_eventually(&queue, &q).await;
         assert!(first.is_some());
         let second = queue.claim_next(&q).await.unwrap();
         assert!(second.is_none());
@@ -1161,11 +1205,13 @@ mod tests {
             .await
             .unwrap();
 
-        let (task_id, _) = queue.claim_next(&q).await.unwrap().unwrap();
+        let (task_id, _) = claim_eventually(&queue, &q)
+            .await
+            .expect("task should be claimable after enqueue");
         queue.fail(&task_id, "permanent error").await.unwrap();
 
-        let dl_tasks = queue.list_dead_letter(&q, 10).await.unwrap();
-        assert_eq!(dl_tasks.len(), 1);
+        let dl_count = dead_letter_count_eventually(&queue, &q).await;
+        assert_eq!(dl_count, 1);
     }
 
     #[tokio::test]

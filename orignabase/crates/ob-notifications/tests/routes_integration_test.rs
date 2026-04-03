@@ -3,15 +3,29 @@ use axum::http::{Request, StatusCode};
 use ob_database::DatabaseClient;
 use ob_notifications::{NotificationsState, notifications_router};
 use serde_json::{Value, json};
+use std::sync::atomic::{AtomicU64, Ordering};
+use tokio::sync::{Mutex, MutexGuard};
 use tower::util::ServiceExt;
 
-async fn test_state() -> NotificationsState {
-    NotificationsState::new(
-        DatabaseClient::new_mem().await,
-        Some("integration-project".into()),
-        None,
-        reqwest::Client::new(),
-    )
+static TEST_SUFFIX: AtomicU64 = AtomicU64::new(1);
+static ROUTES_TEST_LOCK: Mutex<()> = Mutex::const_new(());
+
+struct TestState {
+    state: NotificationsState,
+    _guard: MutexGuard<'static, ()>,
+}
+
+async fn test_state() -> TestState {
+    let guard = ROUTES_TEST_LOCK.lock().await;
+    TestState {
+        state: NotificationsState::new(
+            DatabaseClient::new_mem().await,
+            Some("integration-project".into()),
+            None,
+            reqwest::Client::new(),
+        ),
+        _guard: guard,
+    }
 }
 
 async fn parse_json(response: axum::response::Response) -> Value {
@@ -19,11 +33,20 @@ async fn parse_json(response: axum::response::Response) -> Value {
     serde_json::from_slice(&body).unwrap()
 }
 
+fn unique_test_id(prefix: &str) -> String {
+    let suffix = TEST_SUFFIX.fetch_add(1, Ordering::Relaxed);
+    format!("{prefix}-{suffix}")
+}
+
 #[tokio::test]
 async fn register_then_send_to_user_persists_pending_notification() {
     let state = test_state().await;
-    let db = state.db.clone();
-    let app = notifications_router(state);
+    let db = state.state.db.clone();
+    let app = notifications_router(state.state);
+    let user_id = format!("users:{}", unique_test_id("buyer"));
+    let token = unique_test_id("device-token");
+    let title = unique_test_id("Order update");
+    let order_id = format!("orders:{}", unique_test_id("order"));
 
     let register_response = app
         .clone()
@@ -34,8 +57,8 @@ async fn register_then_send_to_user_persists_pending_notification() {
                 .header("content-type", "application/json") // ignore-magic
                 .body(Body::from(
                     json!({ // ignore-magic
-                        "user_id": "users:buyer-1",
-                        "token": "device-token-1", // ignore-magic
+                        "user_id": user_id,
+                        "token": token, // ignore-magic
                         "platform": "android"
                     })
                     .to_string(),
@@ -54,11 +77,11 @@ async fn register_then_send_to_user_persists_pending_notification() {
                 .header("content-type", "application/json") // ignore-magic
                 .body(Body::from(
                     json!({ // ignore-magic
-                        "to": "users:buyer-1",
+                        "to": user_id,
                         "target_type": "user", // ignore-magic
-                        "title": "Order update", // ignore-magic
+                        "title": title, // ignore-magic
                         "body": "Your order has shipped",
-                        "data": { "order_id": "orders:1" }
+                        "data": { "order_id": order_id }
                     })
                     .to_string(),
                 ))
@@ -77,17 +100,22 @@ async fn register_then_send_to_user_persists_pending_notification() {
         .list_documents("_pending_notifications", None, None)
         .await
         .unwrap();
-    assert_eq!(pending.len(), 1);
-    assert_eq!(pending[0]["token"], "device-token-1"); // ignore-magic
-    assert_eq!(pending[0]["title"], "Order update"); // ignore-magic
-    assert_eq!(pending[0]["data"]["order_id"], "orders:1"); // ignore-magic
+    let matching: Vec<_> = pending
+        .into_iter()
+        .filter(|doc| doc["token"] == token && doc["title"] == title)
+        .collect();
+    assert_eq!(matching.len(), 1);
+    assert_eq!(matching[0]["data"]["order_id"], order_id); // ignore-magic
 }
 
 #[tokio::test]
 async fn subscribe_send_and_unsubscribe_topic_uses_real_router_flow() {
     let state = test_state().await;
-    let db = state.db.clone();
-    let app = notifications_router(state);
+    let db = state.state.db.clone();
+    let app = notifications_router(state.state);
+    let token = unique_test_id("device-topic");
+    let topic = unique_test_id("flash-sales");
+    let title = unique_test_id("Big sale");
 
     let subscribe_response = app
         .clone()
@@ -98,8 +126,8 @@ async fn subscribe_send_and_unsubscribe_topic_uses_real_router_flow() {
                 .header("content-type", "application/json") // ignore-magic
                 .body(Body::from(
                     json!({ // ignore-magic
-                        "token": "device-topic-1", // ignore-magic
-                        "topic": "flash-sales"
+                        "token": token, // ignore-magic
+                        "topic": topic
                     })
                     .to_string(),
                 ))
@@ -118,9 +146,9 @@ async fn subscribe_send_and_unsubscribe_topic_uses_real_router_flow() {
                 .header("content-type", "application/json") // ignore-magic
                 .body(Body::from(
                     json!({ // ignore-magic
-                        "to": "flash-sales",
+                        "to": topic,
                         "target_type": "topic",
-                        "title": "Big sale", // ignore-magic
+                        "title": title, // ignore-magic
                         "body": "Starts now"
                     })
                     .to_string(),
@@ -143,8 +171,8 @@ async fn subscribe_send_and_unsubscribe_topic_uses_real_router_flow() {
                 .header("content-type", "application/json") // ignore-magic
                 .body(Body::from(
                     json!({ // ignore-magic
-                        "token": "device-topic-1", // ignore-magic
-                        "topic": "flash-sales"
+                        "token": token, // ignore-magic
+                        "topic": topic
                     })
                     .to_string(),
                 ))
@@ -162,9 +190,9 @@ async fn subscribe_send_and_unsubscribe_topic_uses_real_router_flow() {
                 .header("content-type", "application/json") // ignore-magic
                 .body(Body::from(
                     json!({ // ignore-magic
-                        "to": "flash-sales",
+                        "to": topic,
                         "target_type": "topic",
-                        "title": "Big sale", // ignore-magic
+                        "title": title, // ignore-magic
                         "body": "Starts now"
                     })
                     .to_string(),
@@ -182,14 +210,20 @@ async fn subscribe_send_and_unsubscribe_topic_uses_real_router_flow() {
         .list_documents("_pending_notifications", None, None)
         .await
         .unwrap();
-    assert_eq!(pending.len(), 1);
-    assert_eq!(pending[0]["token"], "device-topic-1"); // ignore-magic
+    let matching: Vec<_> = pending
+        .into_iter()
+        .filter(|doc| doc["token"] == token && doc["title"] == title)
+        .collect();
+    assert_eq!(matching.len(), 1);
 }
 
 #[tokio::test]
 async fn unregistering_a_token_removes_it_from_user_fanout() {
     let state = test_state().await;
-    let router = notifications_router(state);
+    let router = notifications_router(state.state);
+    let user_id = format!("users:{}", unique_test_id("buyer"));
+    let token = unique_test_id("device-token");
+    let title = unique_test_id("Order update");
 
     let register_response = router
         .clone()
@@ -200,8 +234,8 @@ async fn unregistering_a_token_removes_it_from_user_fanout() {
                 .header("content-type", "application/json") // ignore-magic
                 .body(Body::from(
                     json!({ // ignore-magic
-                        "user_id": "users:buyer-2",
-                        "token": "device-token-2", // ignore-magic
+                        "user_id": user_id,
+                        "token": token, // ignore-magic
                         "platform": "ios"
                     })
                     .to_string(),
@@ -219,7 +253,7 @@ async fn unregistering_a_token_removes_it_from_user_fanout() {
                 .method("DELETE") // ignore-magic
                 .uri("/push/register")
                 .header("content-type", "application/json") // ignore-magic
-                .body(Body::from(json!({ "token": "device-token-2" }).to_string())) // ignore-magic
+                .body(Body::from(json!({ "token": token }).to_string())) // ignore-magic
                 .unwrap(),
         )
         .await
@@ -234,9 +268,9 @@ async fn unregistering_a_token_removes_it_from_user_fanout() {
                 .header("content-type", "application/json") // ignore-magic
                 .body(Body::from(
                     json!({ // ignore-magic
-                        "to": "users:buyer-2",
+                        "to": user_id,
                         "target_type": "user", // ignore-magic
-                        "title": "Order update", // ignore-magic
+                        "title": title, // ignore-magic
                         "body": "No device should receive this"
                     })
                     .to_string(),

@@ -252,10 +252,7 @@ pub async fn resolve_seller_contact(
 
     let lang = user_doc
         .as_ref()
-        .and_then(|doc| {
-            doc.get(fields::PREFERRED_LANGUAGE)
-                .and_then(|v| v.as_str())
-        })
+        .and_then(|doc| doc.get(fields::PREFERRED_LANGUAGE).and_then(|v| v.as_str()))
         .unwrap_or("en")
         .to_string();
 

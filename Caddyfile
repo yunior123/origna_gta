@@ -76,6 +76,11 @@ orignagta.ca, www.orignagta.ca {
 	import site_cache_rules
 	encode zstd gzip
 
+	# Backend health probe — bypass SPA fallback
+	handle /health {
+		reverse_proxy orignabase:8080
+	}
+
 	root * /var/www/orignagta/production/current
 	try_files {path} {path}/ /index.html
 	file_server
@@ -86,6 +91,11 @@ dev.orignagta.ca {
 	import site_cache_rules
 	encode zstd gzip
 
+	# Backend health probe — bypass SPA fallback
+	handle /health {
+		reverse_proxy orignabase:8080
+	}
+
 	root * /var/www/orignagta/dev/current
 	try_files {path} {path}/ /index.html
 	file_server
@@ -95,6 +105,11 @@ staging.orignagta.ca {
 	import site_security_headers
 	import site_cache_rules
 	encode zstd gzip
+
+	# Backend health probe — bypass SPA fallback
+	handle /health {
+		reverse_proxy orignabase:8080
+	}
 
 	root * /var/www/orignagta/staging/current
 	try_files {path} {path}/ /index.html

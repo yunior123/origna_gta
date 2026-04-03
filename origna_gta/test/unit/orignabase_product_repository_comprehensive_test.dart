@@ -483,6 +483,14 @@ void main() {
 
       expect(product.createdAt, isA<DateTime>());
     });
+
+    test('derives priceCents from legacy price field', () {
+      final doc = _FakeDocument('prod_123', {'price': 45.67});
+
+      final product = repository.docToProduct(doc);
+
+      expect(product.priceCents, 4567);
+    });
   });
 
   group('OrignaBaseProductRepository - getUploadUrl', () {

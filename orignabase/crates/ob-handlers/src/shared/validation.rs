@@ -229,16 +229,10 @@ mod tests {
     #[test]
     fn test_sanitize_html() {
         // Script content must be stripped entirely, not preserved
-        assert_eq!(
-            sanitize_html("<script>alert('xss')</script>hello"),
-            "hello"
-        );
+        assert_eq!(sanitize_html("<script>alert('xss')</script>hello"), "hello");
         assert_eq!(sanitize_html("no tags here"), "no tags here");
         // Style tags stripped with content
-        assert_eq!(
-            sanitize_html("<style>body{color:red}</style>text"),
-            "text"
-        );
+        assert_eq!(sanitize_html("<style>body{color:red}</style>text"), "text");
         // Iframe stripped
         assert_eq!(
             sanitize_html("<iframe src='evil.com'></iframe>safe"),

@@ -13,6 +13,7 @@ import 'package:origna_gta/features/qa/qa_provider.dart';
 import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:origna_gta/utils/media_url_resolver.dart';
 import 'package:origna_gta/utils/responsive_layout.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/shared/trending_badge.dart';
@@ -419,4 +420,3 @@ Widget previewProductCardScreenLightDesktop() =>
 )
 Widget previewProductCardScreenLightWeb() =>
     previewWeb(theme: previewLightTheme, child: _productCardContent());
-

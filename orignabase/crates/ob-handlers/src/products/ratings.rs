@@ -328,7 +328,11 @@ async fn get_ratings(
     )];
 
     if let Some(min) = req.min_rating {
-        conditions.push(format!("CAST(data->>'{}' AS DOUBLE PRECISION) >= {}", fields::RATING, min));
+        conditions.push(format!(
+            "CAST(data->>'{}' AS DOUBLE PRECISION) >= {}",
+            fields::RATING,
+            min
+        ));
     }
 
     let where_clause = format!(" WHERE {}", conditions.join(" AND "));
@@ -410,7 +414,10 @@ async fn review_vote(
         state.db.query_raw(&find_query).await.unwrap_or_default();
 
     if let Some(record) = existing.first() {
-        let old_vote = record.get(fields::VOTE).and_then(|v| v.as_str()).unwrap_or("");
+        let old_vote = record
+            .get(fields::VOTE)
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
         if old_vote == vote_str {
             // Unchanged, idempotent
             return Ok(Json(serde_json::json!({
@@ -419,7 +426,10 @@ async fn review_vote(
             })));
         }
 
-        let record_id = record.get(fields::ID).and_then(|v| v.as_str()).unwrap_or("");
+        let record_id = record
+            .get(fields::ID)
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
 
         // Update vote via CRUD method (avoids SurrealDB UPDATE id SET syntax)
         let now = chrono::Utc::now().to_rfc3339();
@@ -448,32 +458,48 @@ async fn review_vote(
 
         if helpful_adj != 0 || unhelpful_adj != 0 {
             // Read current review, adjust counts, update via CRUD
-            let review = state.db.get_document(collections::PRODUCT_RATINGS, &req.review_id).await.unwrap_or_default();
-            let cur_helpful = review.get(fields::HELPFUL_VOTES).and_then(|v| v.as_i64()).unwrap_or(0);
-            let cur_unhelpful = review.get(fields::UNHELPFUL_VOTES).and_then(|v| v.as_i64()).unwrap_or(0);
+            let review = state
+                .db
+                .get_document(collections::PRODUCT_RATINGS, &req.review_id)
+                .await
+                .unwrap_or_default();
+            let cur_helpful = review
+                .get(fields::HELPFUL_VOTES)
+                .and_then(|v| v.as_i64())
+                .unwrap_or(0);
+            let cur_unhelpful = review
+                .get(fields::UNHELPFUL_VOTES)
+                .and_then(|v| v.as_i64())
+                .unwrap_or(0);
             let now_ts = chrono::Utc::now().to_rfc3339();
-            state.db.update_document(
-                collections::PRODUCT_RATINGS,
-                &req.review_id,
-                serde_json::json!({
-                    fields::HELPFUL_VOTES: cur_helpful + helpful_adj as i64,
-                    fields::UNHELPFUL_VOTES: cur_unhelpful + unhelpful_adj as i64,
-                    fields::UPDATED_AT: now_ts,
-                }),
-            ).await?;
+            state
+                .db
+                .update_document(
+                    collections::PRODUCT_RATINGS,
+                    &req.review_id,
+                    serde_json::json!({
+                        fields::HELPFUL_VOTES: cur_helpful + helpful_adj as i64,
+                        fields::UNHELPFUL_VOTES: cur_unhelpful + unhelpful_adj as i64,
+                        fields::UPDATED_AT: now_ts,
+                    }),
+                )
+                .await?;
         }
     } else {
         let now_ts = chrono::Utc::now().to_rfc3339();
-        state.db.create_document(
-            vote_col,
-            serde_json::json!({
-                fields::REVIEW_ID: req.review_id,
-                fields::USER_ID: user_id,
-                fields::VOTE: vote_str,
-                fields::CREATED_AT: now_ts,
-                fields::UPDATED_AT: now_ts,
-            }),
-        ).await?;
+        state
+            .db
+            .create_document(
+                vote_col,
+                serde_json::json!({
+                    fields::REVIEW_ID: req.review_id,
+                    fields::USER_ID: user_id,
+                    fields::VOTE: vote_str,
+                    fields::CREATED_AT: now_ts,
+                    fields::UPDATED_AT: now_ts,
+                }),
+            )
+            .await?;
 
         let (helpful_adj, unhelpful_adj) = match vote_str {
             "helpful" => (1, 0),
@@ -482,18 +508,31 @@ async fn review_vote(
         };
 
         if helpful_adj != 0 || unhelpful_adj != 0 {
-            let review = state.db.get_document(collections::PRODUCT_RATINGS, &req.review_id).await.unwrap_or_default();
-            let cur_helpful = review.get(fields::HELPFUL_VOTES).and_then(|v| v.as_i64()).unwrap_or(0);
-            let cur_unhelpful = review.get(fields::UNHELPFUL_VOTES).and_then(|v| v.as_i64()).unwrap_or(0);
-            state.db.update_document(
-                collections::PRODUCT_RATINGS,
-                &req.review_id,
-                serde_json::json!({
-                    fields::HELPFUL_VOTES: cur_helpful + helpful_adj as i64,
-                    fields::UNHELPFUL_VOTES: cur_unhelpful + unhelpful_adj as i64,
-                    fields::UPDATED_AT: now_ts,
-                }),
-            ).await?;
+            let review = state
+                .db
+                .get_document(collections::PRODUCT_RATINGS, &req.review_id)
+                .await
+                .unwrap_or_default();
+            let cur_helpful = review
+                .get(fields::HELPFUL_VOTES)
+                .and_then(|v| v.as_i64())
+                .unwrap_or(0);
+            let cur_unhelpful = review
+                .get(fields::UNHELPFUL_VOTES)
+                .and_then(|v| v.as_i64())
+                .unwrap_or(0);
+            state
+                .db
+                .update_document(
+                    collections::PRODUCT_RATINGS,
+                    &req.review_id,
+                    serde_json::json!({
+                        fields::HELPFUL_VOTES: cur_helpful + helpful_adj as i64,
+                        fields::UNHELPFUL_VOTES: cur_unhelpful + unhelpful_adj as i64,
+                        fields::UPDATED_AT: now_ts,
+                    }),
+                )
+                .await?;
         }
     }
 
@@ -1126,14 +1165,19 @@ mod tests {
         let prod = format!("prod_lr_{u}");
         let buyer = format!("buyer_lr_{u}");
         let ord = format!("ord_lr_{u}");
-        state.db.upsert_document(
-            collections::ORDERS, &ord,
-            serde_json::json!({
-                fields::BUYER_ID: buyer,
-                fields::STATUS: "delivered",
-                fields::ITEMS: [{ fields::PRODUCT_ID: prod, fields::SELLER_ID: "seller_1" }],
-            }),
-        ).await.unwrap();
+        state
+            .db
+            .upsert_document(
+                collections::ORDERS,
+                &ord,
+                serde_json::json!({
+                    fields::BUYER_ID: buyer,
+                    fields::STATUS: "delivered",
+                    fields::ITEMS: [{ fields::PRODUCT_ID: prod, fields::SELLER_ID: "seller_1" }],
+                }),
+            )
+            .await
+            .unwrap();
         state
             .db
             .upsert_document(
@@ -1308,14 +1352,19 @@ mod tests {
         let prod = format!("prod_nf_{u}");
         let ord = format!("ord_nf_{u}");
         let buyer = format!("buyer_nf_{u}");
-        state.db.upsert_document(
-            collections::ORDERS, &ord,
-            serde_json::json!({
-                fields::BUYER_ID: buyer,
-                fields::STATUS: "delivered",
-                fields::ITEMS: [{ fields::PRODUCT_ID: prod, fields::SELLER_ID: "seller_1" }],
-            }),
-        ).await.unwrap();
+        state
+            .db
+            .upsert_document(
+                collections::ORDERS,
+                &ord,
+                serde_json::json!({
+                    fields::BUYER_ID: buyer,
+                    fields::STATUS: "delivered",
+                    fields::ITEMS: [{ fields::PRODUCT_ID: prod, fields::SELLER_ID: "seller_1" }],
+                }),
+            )
+            .await
+            .unwrap();
 
         let err = submit_rating(
             auth(&buyer),
@@ -1465,14 +1514,19 @@ mod tests {
         let prod = format!("prod_at_{u}");
         let buyer = format!("buyer_at_{u}");
         let ord = format!("ord_at_{u}");
-        state.db.upsert_document(
-            collections::ORDERS, &ord,
-            serde_json::json!({
-                fields::BUYER_ID: buyer,
-                fields::STATUS: "delivered",
-                fields::ITEMS: [{ fields::PRODUCT_ID: prod, fields::SELLER_ID: "seller_1" }],
-            }),
-        ).await.unwrap();
+        state
+            .db
+            .upsert_document(
+                collections::ORDERS,
+                &ord,
+                serde_json::json!({
+                    fields::BUYER_ID: buyer,
+                    fields::STATUS: "delivered",
+                    fields::ITEMS: [{ fields::PRODUCT_ID: prod, fields::SELLER_ID: "seller_1" }],
+                }),
+            )
+            .await
+            .unwrap();
         state
             .db
             .upsert_document(

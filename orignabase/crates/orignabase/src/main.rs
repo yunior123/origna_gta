@@ -1370,7 +1370,7 @@ fn install_panic_hook() {
 }
 
 async fn health_handler(db: DatabaseClient) -> impl IntoResponse {
-    match db.query_raw_value("RETURN 1").await {
+    match db.query_raw_value("SELECT 1").await {
         Ok(_) => (StatusCode::OK, "ok").into_response(),
         Err(error) => {
             tracing::error!(error = %error, "health_check_db_ping_failed");

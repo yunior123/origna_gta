@@ -125,7 +125,7 @@ class OrignaBaseCartRepository implements CartRepository {
     final bool hasValidExisting =
         existing != null &&
         existing.exists &&
-        existing.data['parent_id'] == parentId;
+        existing.data[Fields.parentId] == parentId;
     final currentQty = hasValidExisting
         ? (existing.get<num>(Fields.quantity))?.toInt() ?? 0
         : 0;
@@ -171,7 +171,7 @@ class OrignaBaseCartRepository implements CartRepository {
       // parent_id required by SubcollectionRef.get() which filters by it.
       // doc().set() does not inject parent_id automatically (only add() does).
       // Must match SubcollectionRef._parentFilterValue = '$parentCollection:$parentId'.
-      'parent_id': parentId,
+      Fields.parentId: parentId,
     };
     await cartRef.doc(docId).set(data);
   }
@@ -212,7 +212,7 @@ class OrignaBaseCartRepository implements CartRepository {
       final map = v as Map<String, dynamic>?;
       return map != null &&
           map[Fields.variantId] == variantId &&
-          (map['isActive'] as bool? ?? true);
+          (map[Fields.isActive] as bool? ?? true);
     });
   }
 

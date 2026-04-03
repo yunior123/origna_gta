@@ -47,9 +47,9 @@ async fn make_request(
     let url = format!("{}{}", base_url(), path);
 
     let req = match method {
-        "POST" => client.post(&url), // ignore-magic
-        "GET" => client.get(&url), // ignore-magic
-        "PUT" => client.put(&url), // ignore-magic
+        "POST" => client.post(&url),     // ignore-magic
+        "GET" => client.get(&url),       // ignore-magic
+        "PUT" => client.put(&url),       // ignore-magic
         "DELETE" => client.delete(&url), // ignore-magic
         _ => panic!("Unsupported method"),
     };
@@ -84,7 +84,7 @@ async fn test_700_invoice_generate_english() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                         // ignore-magic
         "/api/orders/generate-invoice", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -109,7 +109,7 @@ async fn test_701_invoice_generate_french() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                         // ignore-magic
         "/api/orders/generate-invoice", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -133,7 +133,7 @@ async fn test_702_invoice_missing_order() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                         // ignore-magic
         "/api/orders/generate-invoice", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -163,7 +163,7 @@ async fn test_703_upload_product_image() {
     // Simulating image upload (typically multipart/form-data in real implementation)
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                       // ignore-magic
         "/api/products/upload-image", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -189,7 +189,7 @@ async fn test_704_download_digital_product() {
 
     let (status, _body) = make_request(
         &client,
-        "GET", // ignore-magic
+        "GET",                                    // ignore-magic
         "/api/digital/download/prod_digital_123", // ignore-magic
         Some(&token),
         None,
@@ -211,7 +211,7 @@ async fn test_705_invalid_file_type() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                       // ignore-magic
         "/api/products/upload-image", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -242,7 +242,7 @@ async fn test_706_order_status_invalid_transition() {
     // Try to jump from pending to delivered (should be invalid)
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                      // ignore-magic
         "/api/orders/update-status", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -268,7 +268,7 @@ async fn test_707_product_lifecycle_draft_to_active() {
     // Create a product in draft status
     let (status_create, body_create) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                 // ignore-magic
         "/api/products/create", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -288,7 +288,7 @@ async fn test_707_product_lifecycle_draft_to_active() {
         if let Some(id) = product_id.and_then(|v| v.as_str()) {
             let (status_update, _body_update) = make_request(
                 &client,
-                "POST", // ignore-magic
+                "POST",                 // ignore-magic
                 "/api/products/update", // ignore-magic
                 Some(&token),
                 Some(json!({ // ignore-magic
@@ -317,7 +317,7 @@ async fn test_708_double_payment_prevention() {
 
     let (_status_1, _body_1) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                  // ignore-magic
         "/api/payments/capture", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -330,7 +330,7 @@ async fn test_708_double_payment_prevention() {
     // Second attempt with same order
     let (status_2, _body_2) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                  // ignore-magic
         "/api/payments/capture", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -356,7 +356,7 @@ async fn test_709_cancelled_order_reactivation() {
     // Try to reactivate a cancelled order (should be terminal state)
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                      // ignore-magic
         "/api/orders/update-status", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -388,7 +388,7 @@ async fn test_710_idempotent_cart_add() {
     // Add item to cart
     let (status_1, _body_1) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",               // ignore-magic
         "/api/cart/add-item", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -401,7 +401,7 @@ async fn test_710_idempotent_cart_add() {
     // Add same item again (should increase quantity or be idempotent)
     let (status_2, _body_2) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",               // ignore-magic
         "/api/cart/add-item", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -433,7 +433,7 @@ async fn test_711_refund_already_refunded() {
     // Try to refund twice (should handle idempotently)
     let (_status_1, _body_1) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",               // ignore-magic
         "/api/orders/refund", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -445,7 +445,7 @@ async fn test_711_refund_already_refunded() {
 
     let (status_2, _body_2) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",               // ignore-magic
         "/api/orders/refund", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic

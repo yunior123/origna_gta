@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/core/orignabase_provider.dart';
+import 'package:origna_gta/core/repositories/notification_repository.dart';
 import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/notifications/notification_provider.dart';
@@ -55,6 +56,15 @@ class OrignaBaseNotificationService {
   @visibleForTesting
   PushMessagingClient? messagingOverride;
 
+  /// Factory override for constructing user-bound messaging clients in tests.
+  @visibleForTesting
+  PushMessagingClient Function(
+    NotificationRepository repository,
+    String userId,
+    String platform,
+  )?
+  messagingFactoryOverride;
+
   /// Override for foreground message stream in tests.
   @visibleForTesting
   Stream<AppRemoteMessage>? onMessageOverride;
@@ -63,6 +73,9 @@ class OrignaBaseNotificationService {
   @visibleForTesting
   Stream<AppRemoteMessage>? onMessageOpenedAppOverride;
 
+  PushMessagingClient? _cachedMessagingClient;
+  String? _cachedMessagingUserId;
+
   factory OrignaBaseNotificationService() => instance;
 
   OrignaBaseNotificationService._internal();
@@ -70,12 +83,14 @@ class OrignaBaseNotificationService {
   /// Resets all service state for testing. Cancels active subscriptions.
   @visibleForTesting
   void resetForTesting() {
+    _disposeCachedMessagingClient();
     _initialized = false;
     _isInitializing = false;
     _tokenSubscription?.cancel();
     _authSubscription?.close();
     _container = null;
     messagingOverride = null;
+    messagingFactoryOverride = null;
     onMessageOverride = null;
     onMessageOpenedAppOverride = null;
   }
@@ -98,9 +113,52 @@ class OrignaBaseNotificationService {
     scaffoldMessengerKey = key;
   }
 
-  /// Resolves the push messaging client (test override or no-op).
-  PushMessagingClient get _messaging =>
-      messagingOverride ?? const NoopPushMessagingClient();
+  void _disposeCachedMessagingClient() {
+    _cachedMessagingClient?.dispose();
+    _cachedMessagingClient = null;
+    _cachedMessagingUserId = null;
+  }
+
+  void _resetMessagingClientIfUserChanged(String? nextUserId) {
+    if (_cachedMessagingUserId != nextUserId) {
+      _disposeCachedMessagingClient();
+    }
+  }
+
+  /// Resolves the push messaging client (test override or cached OrignaBase realtime client).
+  PushMessagingClient get _messaging {
+    if (messagingOverride != null) return messagingOverride!;
+    final container = _container;
+    if (container == null) {
+      _disposeCachedMessagingClient();
+      return const NoopPushMessagingClient();
+    }
+
+    final userId = container.read(obUserIdProvider);
+    if (userId == null) {
+      _disposeCachedMessagingClient();
+      return const NoopPushMessagingClient();
+    }
+
+    if (_cachedMessagingClient != null && _cachedMessagingUserId == userId) {
+      return _cachedMessagingClient!;
+    }
+
+    _disposeCachedMessagingClient();
+
+    final platform = kIsWeb ? 'web' : defaultTargetPlatform.name.toLowerCase();
+    final repo = container.read(notificationRepositoryProvider);
+    final client =
+        messagingFactoryOverride?.call(repo, userId, platform) ??
+        OrignaBasePushMessagingClient(
+          repository: repo,
+          userId: userId,
+          platform: platform,
+        );
+    _cachedMessagingClient = client;
+    _cachedMessagingUserId = userId;
+    return client;
+  }
 
   /// Reads the OrignaBase client from the Riverpod container.
   OrignaBase get _ob => _container!.read(orignabaseProvider);
@@ -114,12 +172,17 @@ class OrignaBaseNotificationService {
       final fcmToken = await _messaging.getToken();
       if (fcmToken != null) {
         await _ob.push.unregisterToken(fcmToken);
-        AppLogger.d('Removed FCM token from OrignaBase for user: $userId', tag: 'push');
+        AppLogger.d(
+          'Removed FCM token from OrignaBase for user: $userId',
+          tag: 'push',
+        );
       }
     } catch (e, st) {
-      AppError.log(e,
-          stackTrace: st,
-          context: 'OrignaBaseNotificationService.clearTokenFromOrignaBase');
+      AppError.log(
+        e,
+        stackTrace: st,
+        context: 'OrignaBaseNotificationService.clearTokenFromOrignaBase',
+      );
     }
   }
 
@@ -127,6 +190,7 @@ class OrignaBaseNotificationService {
   void dispose() {
     _tokenSubscription?.cancel();
     _authSubscription?.close();
+    _disposeCachedMessagingClient();
   }
 
   /// Initialize the notification service.
@@ -159,14 +223,17 @@ class OrignaBaseNotificationService {
 
       final granted =
           settings.authorizationStatus ==
-                  AppNotificationAuthorizationStatus.authorized ||
-              settings.authorizationStatus ==
-                  AppNotificationAuthorizationStatus.provisional;
+              AppNotificationAuthorizationStatus.authorized ||
+          settings.authorizationStatus ==
+              AppNotificationAuthorizationStatus.provisional;
 
       ref?.read(notificationPermissionProvider.notifier).setGranted(granted);
 
       if (granted) {
-        AppLogger.i('User granted permission: ${settings.authorizationStatus}', tag: 'push');
+        AppLogger.i(
+          'User granted permission: ${settings.authorizationStatus}',
+          tag: 'push',
+        );
 
         await _saveTokenToOrignaBase();
 
@@ -175,28 +242,37 @@ class OrignaBaseNotificationService {
         });
 
         if (_container != null) {
-          _authSubscription =
-              _container!.listen(obUserIdProvider, (previous, next) {
-            if (next != null && next != previous) {
+          _authSubscription = _container!.listen(obUserIdProvider, (
+            previous,
+            next,
+          ) {
+            final previousUserId = previous as String?;
+            final nextUserId = next as String?;
+            _resetMessagingClientIfUserChanged(nextUserId);
+            if (nextUserId != null && nextUserId != previousUserId) {
               _saveTokenToOrignaBase();
             }
           });
         }
       } else {
         AppLogger.i(
-            'User declined or has not accepted notification permissions', tag: 'push');
+          'User declined or has not accepted notification permissions',
+          tag: 'push',
+        );
 
         Future<void> saveOptOut() async {
           if (_container == null) return;
           final userId = _container!.read(obUserIdProvider);
           if (userId != null) {
             try {
-              await _ob
-                  .collection(Collections.users)
-                  .doc(userId)
-                  .update({Fields.pushEnabled: false});
+              await _ob.collection(Collections.users).doc(userId).update({
+                Fields.pushEnabled: false,
+              });
             } catch (e) {
-              AppLogger.w('Failed to save pushEnabled setting: $e', tag: 'push');
+              AppLogger.w(
+                'Failed to save pushEnabled setting: $e',
+                tag: 'push',
+              );
             }
           }
         }
@@ -204,33 +280,44 @@ class OrignaBaseNotificationService {
         await saveOptOut();
 
         if (_container != null) {
-          _authSubscription =
-              _container!.listen(obUserIdProvider, (previous, next) {
-            if (next != null && next != previous) {
+          _authSubscription = _container!.listen(obUserIdProvider, (
+            previous,
+            next,
+          ) {
+            final previousUserId = previous as String?;
+            final nextUserId = next as String?;
+            _resetMessagingClientIfUserChanged(nextUserId);
+            if (nextUserId != null && nextUserId != previousUserId) {
               saveOptOut();
             }
           });
         }
       }
 
-      (onMessageOpenedAppOverride ?? const Stream.empty())
-          .listen(handleNotificationTap);
+      (onMessageOpenedAppOverride ?? messaging.onMessageOpenedApp).listen(
+        handleNotificationTap,
+      );
 
       messaging.getInitialMessage().then((AppRemoteMessage? message) {
         if (message != null) {
-          Future.delayed(const Duration(milliseconds: 300),
-              () => handleNotificationTap(message));
+          Future.delayed(
+            const Duration(milliseconds: 300),
+            () => handleNotificationTap(message),
+          );
         }
       });
 
-      (onMessageOverride ?? const Stream.empty())
-          .listen(handleForegroundMessage);
+      (onMessageOverride ?? messaging.onMessage).listen(
+        handleForegroundMessage,
+      );
 
       _initialized = true;
     } catch (e, st) {
-      AppError.log(e,
-          stackTrace: st,
-          context: 'OrignaBaseNotificationService.initialize');
+      AppError.log(
+        e,
+        stackTrace: st,
+        context: 'OrignaBaseNotificationService.initialize',
+      );
     } finally {
       _isInitializing = false;
     }
@@ -244,11 +331,13 @@ class OrignaBaseNotificationService {
       scaffoldMessengerKey.currentState?.showSnackBar(
         SnackBar(
           content: Text(
-              '${notification.title ?? ''}: ${notification.body ?? ''}'),
+            '${notification.title ?? ''}: ${notification.body ?? ''}',
+          ),
           duration: const Duration(seconds: 4),
           action: SnackBarAction(
-              label: 'common.view'.tr(),
-              onPressed: () => handleNotificationTap(message)),
+            label: 'common.view'.tr(),
+            onPressed: () => handleNotificationTap(message),
+          ),
         ),
       );
     }
@@ -271,21 +360,25 @@ class OrignaBaseNotificationService {
     try {
       final fcmToken = token ?? await _messaging.getToken();
       if (fcmToken != null) {
-        final platform =
-            kIsWeb ? 'web' : defaultTargetPlatform.name.toLowerCase();
+        final platform = kIsWeb
+            ? 'web'
+            : defaultTargetPlatform.name.toLowerCase();
         await _ob.push.registerToken(
           userId: userId,
           token: fcmToken,
           platform: platform,
         );
         AppLogger.d(
-            'FCM Token registered with OrignaBase for user: $userId ($platform)', tag: 'push');
+          'FCM Token registered with OrignaBase for user: $userId ($platform)',
+          tag: 'push',
+        );
       }
     } catch (e, st) {
-      AppError.log(e,
-          stackTrace: st,
-          context:
-              'OrignaBaseNotificationService._saveTokenToOrignaBase');
+      AppError.log(
+        e,
+        stackTrace: st,
+        context: 'OrignaBaseNotificationService._saveTokenToOrignaBase',
+      );
     }
   }
 
@@ -305,8 +398,10 @@ class OrignaBaseNotificationService {
       case NotificationTypes.refundIssued:
         final orderId = data[Fields.orderId] as String?;
         if (orderId != null && orderId.isNotEmpty) {
-          navigator.pushNamed(AppRoutes.orderDetail,
-              arguments: OrderDetailArgs(orderId: orderId));
+          navigator.pushNamed(
+            AppRoutes.orderDetail,
+            arguments: OrderDetailArgs(orderId: orderId),
+          );
         } else {
           navigator.pushNamed(AppRoutes.orders);
         }
@@ -314,17 +409,23 @@ class OrignaBaseNotificationService {
       case NotificationTypes.backInStock:
         final productId = data[Fields.productId] as String?;
         if (productId != null && productId.isNotEmpty) {
-          navigator.pushNamed(AppRoutes.productDetails,
-              arguments: ProductDetailsArgs(productId: productId));
+          navigator.pushNamed(
+            AppRoutes.productDetails,
+            arguments: ProductDetailsArgs(productId: productId),
+          );
         }
 
       case NotificationTypes.newMessage:
         final productId = data[Fields.productId] as String?;
         final productTitle = data[Fields.productTitle] as String? ?? '';
         if (productId != null && productId.isNotEmpty) {
-          navigator.pushNamed(AppRoutes.chat,
-              arguments: ChatArgs(
-                  productId: productId, productTitle: productTitle));
+          navigator.pushNamed(
+            AppRoutes.chat,
+            arguments: ChatArgs(
+              productId: productId,
+              productTitle: productTitle,
+            ),
+          );
         } else {
           navigator.pushNamed(AppRoutes.chatInbox);
         }
@@ -335,8 +436,10 @@ class OrignaBaseNotificationService {
       case NotificationTypes.perishableOrderUrgent:
         final orderId = data[Fields.orderId] as String?;
         if (orderId != null && orderId.isNotEmpty) {
-          navigator.pushNamed(AppRoutes.orderDetail,
-              arguments: OrderDetailArgs(orderId: orderId));
+          navigator.pushNamed(
+            AppRoutes.orderDetail,
+            arguments: OrderDetailArgs(orderId: orderId),
+          );
         } else {
           navigator.pushNamed(AppRoutes.sellerOrders);
         }
@@ -348,7 +451,9 @@ class OrignaBaseNotificationService {
 
       default:
         AppLogger.d(
-            'Unhandled notification type "$type" — ignoring tap', tag: 'push');
+          'Unhandled notification type "$type" — ignoring tap',
+          tag: 'push',
+        );
     }
   }
 }

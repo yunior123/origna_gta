@@ -335,7 +335,8 @@ mod new_features {
         if response.status() == StatusCode::OK {
             let body: Value = response.json().await.unwrap_or(json!({})); // ignore-magic
 
-            if let Some(webhook_days) = body["webhookEventRetentionDays"].as_i64() { // ignore-magic
+            if let Some(webhook_days) = body["webhookEventRetentionDays"].as_i64() {
+                // ignore-magic
                 assert!(
                     (30..=180).contains(&webhook_days),
                     "webhook retention should be between 30-180 days (got {})",

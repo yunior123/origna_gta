@@ -13,6 +13,20 @@ use serde_json::Value;
 pub struct QueryTranslator;
 
 impl QueryTranslator {
+    fn sql_field_expr(field: &str) -> Option<String> {
+        if validate_identifier(field).is_err() {
+            tracing::warn!("Rejected invalid field name in query builder: {field}");
+            return None;
+        }
+
+        Some(match field {
+            "id" => "id".to_string(),
+            "createdAt" | "created_at" => "created_at".to_string(),
+            "updatedAt" | "updated_at" => "updated_at".to_string(),
+            _ => format!("data->>'{field}'"),
+        })
+    }
+
     /// Convert a filter map to a SQL WHERE clause.
     pub fn filters_to_where(filters: &Value) -> String {
         let Some(obj) = filters.as_object() else {
@@ -156,12 +170,15 @@ impl QueryTranslator {
         if let Some(cursor_id) = start_after {
             let safe_cursor = escape_sql_string(cursor_id);
             let order_field = order_by.unwrap_or("id");
-            // Validate the order field used in cursor comparison
-            if validate_identifier(order_field).is_ok() {
+            if let Some(order_expr) = Self::sql_field_expr(order_field) {
                 let op = if descending { "<" } else { ">" };
-                where_parts.push(format!(
-                    "{order_field} {op} type::thing('{collection}', '{safe_cursor}').{order_field}"
-                ));
+                if order_field == "id" {
+                    where_parts.push(format!("id {op} '{safe_cursor}'"));
+                } else {
+                    where_parts.push(format!(
+                        "{order_expr} {op} (SELECT {order_expr} FROM {collection} WHERE id = '{safe_cursor}')"
+                    ));
+                }
             } else {
                 tracing::warn!("Rejected invalid cursor order field: {order_field}");
             }
@@ -172,10 +189,9 @@ impl QueryTranslator {
         }
 
         if let Some(field) = order_by {
-            // Validate order_by field to prevent SQL injection
-            if validate_identifier(field).is_ok() {
+            if let Some(order_expr) = Self::sql_field_expr(field) {
                 let dir = if descending { "DESC" } else { "ASC" };
-                query.push_str(&format!(" ORDER BY {field} {dir}"));
+                query.push_str(&format!(" ORDER BY {order_expr} {dir}"));
             } else {
                 tracing::warn!("Rejected invalid order_by field: {field}");
             }
@@ -358,7 +374,7 @@ mod tests {
     fn test_build_select_ascending_order() {
         let query =
             QueryTranslator::build_select("events", None, Some("timestamp"), false, None, None);
-        assert_eq!(query, "SELECT * FROM events ORDER BY timestamp ASC");
+        assert_eq!(query, "SELECT * FROM events ORDER BY data->>'timestamp' ASC");
     }
 
     #[test]
@@ -428,7 +444,7 @@ mod tests {
         let query = QueryTranslator::build_select_ext(
             "products",
             None,
-            Some("created_at"),
+            Some("createdAt"),
             true,
             Some(20),
             None,
@@ -438,6 +454,7 @@ mod tests {
         assert!(query.contains("WHERE"));
         assert!(query.contains("created_at <"));
         assert!(query.contains("ORDER BY created_at DESC"));
+        assert!(query.contains("SELECT created_at FROM products WHERE id = 'abc123'"));
         assert!(query.contains("LIMIT 20"));
     }
 
@@ -457,6 +474,21 @@ mod tests {
         assert!(query.contains("status = 'active'"));
         assert!(query.contains("AND"));
         assert!(query.contains("id >"));
+    }
+
+    #[test]
+    fn test_build_select_ext_orders_json_field_via_data_extraction() {
+        let query = QueryTranslator::build_select_ext(
+            "products",
+            None,
+            Some("priceCents"),
+            true,
+            Some(5),
+            None,
+            None,
+            None,
+        );
+        assert!(query.contains("ORDER BY data->>'priceCents' DESC"));
     }
 
     #[test]

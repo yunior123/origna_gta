@@ -230,5 +230,6 @@ void main() {
 
       verify(mockCartController.addToCart('p1', 1, variantId: null)).called(1);
     });
+
   });
 }

@@ -117,6 +117,9 @@ class OrignaBaseSellerRegistrationViewModel
 
   /// Refreshes the user's Stripe status from the backend and updates local state.
   Future<void> refreshAccountStatus() async {
+    if (_disposed) return;
+    state = state.copyWith(isLoading: true, error: null, successMessage: null);
+
     try {
       final userId = _userId;
       if (userId == null || userId.isEmpty) {
@@ -131,19 +134,27 @@ class OrignaBaseSellerRegistrationViewModel
       final chargesEnabled = data[Fields.chargesEnabled] == true;
       final payoutsEnabled = data[Fields.payoutsEnabled] == true;
       if (_disposed) return;
-      if (chargesEnabled && payoutsEnabled) {
-        state = state.copyWith(
-          successMessage: 'seller.account_fully_active'.tr(),
-          error: null,
-        );
-      }
+      state = state.copyWith(
+        isLoading: false,
+        successMessage: chargesEnabled && payoutsEnabled
+            ? 'seller.account_fully_active'.tr()
+            : null,
+        error: null,
+      );
     } on OrignaBaseException catch (e) {
       if (_disposed) return;
       state = state.copyWith(
+        isLoading: false,
         error: _cleanErrorMessage(e, 'Failed to refresh account status'),
       );
-    } catch (_) {
-      // Silently fail on background refresh
+    } catch (e) {
+      if (_disposed) return;
+      state = state.copyWith(
+        isLoading: false,
+        error: e is StateError
+            ? e.message.toString()
+            : 'Failed to refresh account status',
+      );
     }
   }
 

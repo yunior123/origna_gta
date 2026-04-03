@@ -1,0 +1,124 @@
+{
+  "scenarios": [
+    {
+      "id": "home-guest",
+      "persona": "guest",
+      "url": "/",
+      "anchors": ["btn-home-settings", "input-home-search"]
+    },
+    {
+      "id": "home-buyer",
+      "persona": "buyer",
+      "url": "/",
+      "anchors": ["btn-home-settings", "input-home-search"]
+    },
+    {
+      "id": "profile-buyer",
+      "persona": "buyer",
+      "url": "/",
+      "steps": [
+        { "action": "click", "target": "btn-home-settings" }
+      ],
+      "anchors": ["Paramètres", "Settings", "Abonnement"]
+    },
+    {
+      "id": "cart-buyer",
+      "persona": "buyer",
+      "url": "/",
+      "steps": [
+        { "action": "click", "target": "btn-cart" }
+      ],
+      "anchors": ["panier", "Panier", "cart"]
+    },
+    {
+      "id": "orders-buyer",
+      "persona": "buyer",
+      "url": "/",
+      "steps": [
+        { "action": "click", "target": "btn-home-settings" },
+        { "action": "click", "target": "menu-my-orders" }
+      ],
+      "anchors": ["Commandes", "commandes", "order"]
+    },
+    {
+      "id": "favorites-buyer",
+      "persona": "buyer",
+      "url": "/",
+      "steps": [
+        { "action": "click", "target": "btn-home-settings" },
+        { "action": "click", "target": "menu-favorites" }
+      ],
+      "anchors": ["favoris", "Favoris", "favorite"]
+    },
+    {
+      "id": "messages-buyer",
+      "persona": "buyer",
+      "url": "/",
+      "steps": [
+        { "action": "click", "target": "btn-home-settings" },
+        { "action": "click", "target": "menu-my-messages" }
+      ],
+      "anchors": ["messages", "Messages", "chat"]
+    },
+    {
+      "id": "address-buyer",
+      "persona": "buyer",
+      "url": "/",
+      "steps": [
+        { "action": "click", "target": "btn-home-settings" },
+        { "action": "click", "target": "menu-address" }
+      ],
+      "anchors": ["Adresses", "adresse", "address"]
+    },
+    {
+      "id": "premium-buyer",
+      "persona": "buyer",
+      "url": "/",
+      "steps": [
+        { "action": "click", "target": "btn-home-settings" },
+        { "action": "click", "target": "menu-premium" }
+      ],
+      "anchors": ["Abonnement", "Premium", "subscription"]
+    },
+    {
+      "id": "dashboard-seller",
+      "persona": "seller",
+      "url": "/",
+      "steps": [
+        { "action": "click", "target": "btn-home-settings" },
+        { "action": "click", "target": "menu-seller-dashboard" }
+      ],
+      "anchors": ["Mes produits", "produit", "products"]
+    },
+    {
+      "id": "orders-seller",
+      "persona": "seller",
+      "url": "/",
+      "steps": [
+        { "action": "click", "target": "btn-home-settings" },
+        { "action": "click", "target": "menu-seller-orders" }
+      ],
+      "anchors": ["Gérer les commandes", "seller-order", "commande"]
+    },
+    {
+      "id": "analytics-seller",
+      "persona": "seller",
+      "url": "/",
+      "steps": [
+        { "action": "click", "target": "btn-home-settings" },
+        { "action": "click", "target": "menu-seller-analytics" }
+      ],
+      "anchors": ["Analytique", "analytique", "Revenue"]
+    },
+    {
+      "id": "panel-admin",
+      "persona": "admin",
+      "url": "/",
+      "steps": [
+        { "action": "click", "target": "btn-home-settings" },
+        { "action": "click", "target": "menu-admin-panel" }
+      ],
+      "anchors": ["Panneau", "admin", "Vendeurs", "Utilisateurs"]
+    }
+  ]
+}

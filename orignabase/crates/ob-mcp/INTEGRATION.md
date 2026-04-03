@@ -198,7 +198,8 @@ curl http://localhost:8081/mcp/tools
 2. **Resource subscription** — Tools that notify on product/order changes
 3. **Batch operations** — Single request to perform multiple tool calls atomically
 4. **Tool versioning** — Support for breaking API changes
-5. **Rate limiting per client** — Track usage per connected Claude session
+5. **~~Rate limiting per client~~** — ✅ Implemented: 30 req/60s per IP via tower_governor
+5. **Per-session rate limiting** — Track usage per connected Claude session (currently per-IP)
 
 ### Troubleshooting
 

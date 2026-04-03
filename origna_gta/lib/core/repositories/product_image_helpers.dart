@@ -24,7 +24,9 @@ mixin ProductImageHelpers {
       },
     );
     final resultMap = Map<String, dynamic>.from((result as Map?) ?? {});
-    final urls = List<Map<String, dynamic>>.from((resultMap['urls'] as List?) ?? []);
+    final urls = List<Map<String, dynamic>>.from(
+      (resultMap['urls'] as List?) ?? [],
+    );
     if (urls.isEmpty) return null;
     return {
       'uploadUrl': urls[0]['upload_url'] as String,
@@ -47,7 +49,9 @@ mixin ProductImageHelpers {
       },
     );
     final resultMap = Map<String, dynamic>.from((result as Map?) ?? {});
-    final urls = List<Map<String, dynamic>>.from((resultMap['urls'] as List?) ?? []);
+    final urls = List<Map<String, dynamic>>.from(
+      (resultMap['urls'] as List?) ?? [],
+    );
     if (urls.isEmpty) return null;
     return {
       'uploadUrl': urls[0]['upload_url'] as String,
@@ -103,7 +107,9 @@ mixin ProductImageHelpers {
     );
 
     final resultMap = Map<String, dynamic>.from((result as Map?) ?? {});
-    final urls = List<Map<String, dynamic>>.from((resultMap['urls'] as List?) ?? []);
+    final urls = List<Map<String, dynamic>>.from(
+      (resultMap['urls'] as List?) ?? [],
+    );
 
     final uploadFutures = urls.asMap().entries.map((entry) async {
       final i = entry.key;

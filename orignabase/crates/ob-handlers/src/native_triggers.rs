@@ -32,11 +32,19 @@ impl NativeTriggerExecutor {
 
     async fn handle_event(&self, event: ChangeEvent) -> Result<(), ob_core::Error> {
         match (event.collection.as_str(), &event.action) {
-            (collections::PRODUCTS, ChangeAction::Create) => self.handle_product_create(&event).await,
-            (collections::PRODUCTS, ChangeAction::Update) => self.handle_product_update(&event).await,
-            (collections::PRODUCTS, ChangeAction::Delete) => self.handle_product_delete(&event).await,
+            (collections::PRODUCTS, ChangeAction::Create) => {
+                self.handle_product_create(&event).await
+            }
+            (collections::PRODUCTS, ChangeAction::Update) => {
+                self.handle_product_update(&event).await
+            }
+            (collections::PRODUCTS, ChangeAction::Delete) => {
+                self.handle_product_delete(&event).await
+            }
             (collections::ORDERS, ChangeAction::Update) => self.handle_order_update(&event).await,
-            (collections::RETURN_REQUESTS, ChangeAction::Update) => self.handle_return_update(&event).await,
+            (collections::RETURN_REQUESTS, ChangeAction::Update) => {
+                self.handle_return_update(&event).await
+            }
             _ => Ok(()),
         }
     }
@@ -469,11 +477,11 @@ impl NativeTriggerExecutor {
                 json!({
                     "table": collections::WEBHOOK_EVENTS,
                     "id": claim_id,
-                    "data": {
+                    fields::DATA: {
                         "eventType": event_type,
-                        "processed": true,
+                        fields::PROCESSED: true,
                         "payload": payload,
-                        "timestamp": created_at,
+                        fields::TIMESTAMP: created_at,
                         fields::CREATED_AT: created_at,
                         "processedAt": created_at,
                     }
@@ -521,7 +529,10 @@ impl NativeTriggerExecutor {
                 .unwrap_or_default();
 
             for row in rows {
-                let row_variant = row.get(fields::VARIANT_KEY).and_then(|v| v.as_str()).unwrap_or("");
+                let row_variant = row
+                    .get(fields::VARIANT_KEY)
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
                 if row_variant != variant_key {
                     continue;
                 }
@@ -557,12 +568,12 @@ impl NativeTriggerExecutor {
                 json!({
                     "table": collections::NOTIFICATIONS,
                     "id": notification_id,
-                    "data": {
+                    fields::DATA: {
                         fields::USER_ID: user_id,
                         fields::NOTIFICATION_TYPE: notification_type,
-                        "title": title,
-                        "body": body,
-                        "data": data,
+                        fields::NOTIFICATION_TITLE: title,
+                        fields::NOTIFICATION_BODY: body,
+                        fields::DATA: data,
                         fields::READ: false,
                         fields::CREATED_AT: now,
                         fields::UPDATED_AT: now,
@@ -681,15 +692,15 @@ impl NativeTriggerExecutor {
                 json!({
                     "table": collections::MAIL_LOGS,
                     "id": mail_log_id,
-                    "data": {
-                        "notificationId": notification_id,
+                    fields::DATA: {
+                        fields::NOTIFICATION_ID: notification_id,
                         "to": to_email,
                         "subject": title,
                         "html": html,
                         "status": "pending",
                         fields::NOTIFICATION_TYPE: notification_type,
-                        "data": data,
-                        "error": Value::Null,
+                        fields::DATA: data,
+                        fields::ERROR: Value::Null,
                         fields::CREATED_AT: now,
                         fields::UPDATED_AT: now,
                     }
@@ -749,7 +760,10 @@ impl NativeTriggerExecutor {
             .state
             .db
             .query_bind_value(
-                &format!("SELECT token FROM {} WHERE user_id = $user_id", collections::PUSH_TOKENS),
+                &format!(
+                    "SELECT token FROM {} WHERE user_id = $user_id",
+                    collections::PUSH_TOKENS
+                ),
                 json!({"user_id": escaped_user_id}),
             )
             .await
@@ -759,12 +773,17 @@ impl NativeTriggerExecutor {
         }
 
         // P1-NEW-12: Enforce daily push rate limit (MAX_PUSH_PER_DAY = 20)
-        let push_count = self.state.db.count_where(
-            collections::PENDING_NOTIFICATIONS,
-            fields::USER_ID,
-            "=",
-            &json!(user_id),
-        ).await.unwrap_or(0) as u32;
+        let push_count = self
+            .state
+            .db
+            .count_where(
+                collections::PENDING_NOTIFICATIONS,
+                fields::USER_ID,
+                "=",
+                &json!(user_id),
+            )
+            .await
+            .unwrap_or(0) as u32;
         if !push::check_daily_limit(push_count) {
             tracing::info!(user_id = %user_id, count = push_count, "Push rate limit reached, skipping");
             return;
@@ -1935,39 +1954,52 @@ mod tests {
             .await
             .unwrap();
 
-        let notifications = executor
+        let order_record_id = record_id(&order_id);
+        let buyer_notification_id = notification_record_id(&claim_key(
+            "order_status_buyer",
+            &[order_record_id, "confirmed", &buyer_id],
+        ));
+        let seller_notification_id = notification_record_id(&claim_key(
+            "order_status_seller",
+            &[order_record_id, "confirmed", &seller_id],
+        ));
+        let urgent_notification_id = notification_record_id(&claim_key(
+            "perishable_order_urgent",
+            &[order_record_id, &seller_id],
+        ));
+
+        let buyer_notification = executor
             .state
             .db
-            .query_bind(
-                "SELECT * FROM notifications WHERE userId = $uid",
-                json!({fields::UID: &buyer_id}),
-            )
+            .get_document(collections::NOTIFICATIONS, &buyer_notification_id)
             .await
             .unwrap();
-        let seller_notifs = executor
+        let seller_notification = executor
             .state
             .db
-            .query_bind(
-                "SELECT * FROM notifications WHERE userId = $uid",
-                json!({fields::UID: &seller_id}),
-            )
+            .get_document(collections::NOTIFICATIONS, &seller_notification_id)
+            .await
+            .unwrap();
+        let urgent_notification = executor
+            .state
+            .db
+            .get_document(collections::NOTIFICATIONS, &urgent_notification_id)
             .await
             .unwrap();
         let stock_watchers = executor
             .state
             .db
             .query_bind(
-                "SELECT * FROM stock_notifications WHERE userId = $uid",
-                json!({fields::UID: &buyer_id}),
+                "SELECT * FROM stock_notifications WHERE data->>'userId' = $uid AND data->>'productId' = $product_id",
+                json!({fields::UID: &buyer_id, "product_id": &product_id}),
             )
             .await
             .unwrap();
 
         // buyer gets 1 order notification, seller gets 1 order + 1 perishable = 2
-        assert!(!notifications.is_empty());
-        assert!(!seller_notifs.is_empty());
-        let total = notifications.len() + seller_notifs.len();
-        assert_eq!(total, 3);
+        assert!(!buyer_notification.is_null());
+        assert!(!seller_notification.is_null());
+        assert!(!urgent_notification.is_null());
         assert!(stock_watchers.is_empty());
     }
 
@@ -2050,16 +2082,18 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(notifications.len(), 2);
-        assert!(
-            notifications
-                .iter()
-                .any(|doc| doc[fields::NOTIFICATION_TITLE].as_str().unwrap_or("").contains("shipped"))
-        );
-        assert!(
-            notifications
-                .iter()
-                .any(|doc| doc[fields::NOTIFICATION_TITLE].as_str().unwrap_or("").contains("delivered"))
-        );
+        assert!(notifications.iter().any(|doc| {
+            doc[fields::NOTIFICATION_TITLE]
+                .as_str()
+                .unwrap_or("")
+                .contains("shipped")
+        }));
+        assert!(notifications.iter().any(|doc| {
+            doc[fields::NOTIFICATION_TITLE]
+                .as_str()
+                .unwrap_or("")
+                .contains("delivered")
+        }));
     }
 
     #[tokio::test]
@@ -2188,11 +2222,12 @@ mod tests {
                 .unwrap_or("")
                 .contains("ready for pickup")
         }));
-        assert!(
-            buyer_notifications
-                .iter()
-                .any(|doc| doc[fields::NOTIFICATION_BODY].as_str().unwrap_or("").contains("in transit"))
-        );
+        assert!(buyer_notifications.iter().any(|doc| {
+            doc[fields::NOTIFICATION_BODY]
+                .as_str()
+                .unwrap_or("")
+                .contains("in transit")
+        }));
         assert!(buyer_notifications.iter().any(|doc| {
             doc[fields::NOTIFICATION_BODY]
                 .as_str()
@@ -2211,11 +2246,12 @@ mod tests {
                 .unwrap_or("")
                 .contains("could not be processed")
         }));
-        assert!(
-            buyer_notifications
-                .iter()
-                .any(|doc| doc[fields::NOTIFICATION_BODY].as_str().unwrap_or("").contains("has expired"))
-        );
+        assert!(buyer_notifications.iter().any(|doc| {
+            doc[fields::NOTIFICATION_BODY]
+                .as_str()
+                .unwrap_or("")
+                .contains("has expired")
+        }));
         assert!(buyer_notifications.iter().any(|doc| {
             doc[fields::NOTIFICATION_BODY]
                 .as_str()
@@ -2580,7 +2616,10 @@ mod tests {
             .list_documents(collections::MAIL_LOGS, Some(100), None)
             .await
             .unwrap();
-        let mail_logs: Vec<_> = all_mail.iter().filter(|doc| doc["notificationId"] == notif_id.as_str()).collect();
+        let mail_logs: Vec<_> = all_mail
+            .iter()
+            .filter(|doc| doc["notificationId"] == notif_id.as_str())
+            .collect();
 
         assert_eq!(mail_logs.len(), 1);
         assert_eq!(mail_logs[0]["to"], email.as_str());
@@ -2617,10 +2656,7 @@ mod tests {
             .await
             .unwrap();
 
-        let claim_id = claim_key(
-            "order_status_buyer",
-            &[&order_id, "confirmed", &buyer_id],
-        );
+        let claim_id = claim_key("order_status_buyer", &[&order_id, "confirmed", &buyer_id]);
         executor
             .create_notification_once(
                 &claim_id,
@@ -2642,7 +2678,10 @@ mod tests {
             .list_documents(collections::MAIL_LOGS, Some(100), None)
             .await
             .unwrap();
-        let mail_logs: Vec<_> = all_mail.iter().filter(|doc| doc["notificationId"] == notif_id.as_str()).collect();
+        let mail_logs: Vec<_> = all_mail
+            .iter()
+            .filter(|doc| doc["notificationId"] == notif_id.as_str())
+            .collect();
         assert!(mail_logs.is_empty());
     }
 
@@ -2667,10 +2706,7 @@ mod tests {
             .await
             .unwrap();
 
-        let claim_id = claim_key(
-            "order_status_buyer",
-            &[&order_id, "confirmed", &buyer_id],
-        );
+        let claim_id = claim_key("order_status_buyer", &[&order_id, "confirmed", &buyer_id]);
         executor
             .create_notification_once(
                 &claim_id,
@@ -3136,11 +3172,12 @@ mod tests {
         let all_notifs: Vec<_> = buyer_notifs.iter().chain(seller_notifs.iter()).collect();
         // Should have buyer + seller notifications but no perishable urgent
         assert_eq!(all_notifs.len(), 2);
-        assert!(
-            !all_notifs
-                .iter()
-                .any(|doc| { doc[fields::NOTIFICATION_TITLE].as_str().unwrap_or("").contains("URGENT") })
-        );
+        assert!(!all_notifs.iter().any(|doc| {
+            doc[fields::NOTIFICATION_TITLE]
+                .as_str()
+                .unwrap_or("")
+                .contains("URGENT")
+        }));
     }
 
     // ── Coverage: handle_order_payment_status_change early returns (lines 292, 296, 301) ──
@@ -3381,7 +3418,10 @@ mod tests {
         executor
             .state
             .db
-            .create_document(collections::PUSH_TOKENS, json!({"user_id": &uid, "token": "fcm_token_abc123"}))
+            .create_document(
+                collections::PUSH_TOKENS,
+                json!({"user_id": &uid, "token": "fcm_token_abc123"}),
+            )
             .await
             .unwrap();
 
@@ -3412,7 +3452,13 @@ mod tests {
             .await;
 
         executor
-            .dispatch_push(&format!("notif_push_{uid}"), &uid, "Title", "Body", &json!({}))
+            .dispatch_push(
+                &format!("notif_push_{uid}"),
+                &uid,
+                "Title",
+                "Body",
+                &json!({}),
+            )
             .await;
 
         // Check that no notification was created for THIS user (no valid token)
@@ -3420,7 +3466,7 @@ mod tests {
             .state
             .db
             .query_bind(
-                &format!("SELECT * FROM _pending_notifications WHERE data->>'userId' = $uid"),
+                "SELECT * FROM _pending_notifications WHERE data->>'userId' = $uid",
                 json!({fields::UID: &uid}),
             )
             .await
@@ -3972,7 +4018,10 @@ mod tests {
 
     #[test]
     fn urgent_perishable_message_fr_with_names() {
-        let items = [json!({fields::TITLE: "Milk"}), json!({fields::TITLE: "Eggs"})];
+        let items = [
+            json!({fields::TITLE: "Milk"}),
+            json!({fields::TITLE: "Eggs"}),
+        ];
         let (t, b) = urgent_perishable_message("orders:abc12345", &items, "fr");
         assert!(t.contains("URGENT"));
         assert!(b.contains("Milk"));
@@ -4563,10 +4612,16 @@ mod tests {
             .await
             .unwrap();
         assert!(buyer_notifs.iter().any(|doc| {
-            doc[fields::NOTIFICATION_TITLE].as_str().unwrap_or("").contains("confirmée")
+            doc[fields::NOTIFICATION_TITLE]
+                .as_str()
+                .unwrap_or("")
+                .contains("confirmée")
         }));
         assert!(seller_notifs.iter().any(|doc| {
-            doc[fields::NOTIFICATION_TITLE].as_str().unwrap_or("").contains("URGENT")
+            doc[fields::NOTIFICATION_TITLE]
+                .as_str()
+                .unwrap_or("")
+                .contains("URGENT")
         }));
     }
 
@@ -4894,7 +4949,10 @@ mod tests {
         executor
             .state
             .db
-            .query_raw(&format!("CREATE {} SET user_id = 'buyer_fcm', token = 'fcm_token_xyz'", collections::PUSH_TOKENS))
+            .query_raw(&format!(
+                "CREATE {} SET user_id = 'buyer_fcm', token = 'fcm_token_xyz'",
+                collections::PUSH_TOKENS
+            ))
             .await
             .unwrap();
 
@@ -4933,13 +4991,19 @@ mod tests {
         executor
             .state
             .db
-            .query_raw(&format!("CREATE {} SET user_id = 'buyer_multi', token = 'tok_1'", collections::PUSH_TOKENS))
+            .query_raw(&format!(
+                "CREATE {} SET user_id = 'buyer_multi', token = 'tok_1'",
+                collections::PUSH_TOKENS
+            ))
             .await
             .unwrap();
         executor
             .state
             .db
-            .query_raw(&format!("CREATE {} SET user_id = 'buyer_multi', token = 'tok_2'", collections::PUSH_TOKENS))
+            .query_raw(&format!(
+                "CREATE {} SET user_id = 'buyer_multi', token = 'tok_2'",
+                collections::PUSH_TOKENS
+            ))
             .await
             .unwrap();
 

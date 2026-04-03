@@ -65,10 +65,17 @@ extension _AddProductBasicInfoSection on _AddProductScreenState {
               child: Semantics(
                 label: 'category-option-${c.categoryId}',
                 child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(c.icon, size: 18, color: DesignTokens.primary),
                     const SizedBox(width: 10),
-                    Text(c.name.tr()),
+                    Flexible(
+                      child: Text(
+                        c.name.tr(),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ),
                   ],
                 ),
               ),

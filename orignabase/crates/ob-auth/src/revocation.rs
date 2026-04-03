@@ -9,7 +9,11 @@
 use ob_core::{Error, Result};
 use serde_json::json;
 use sha2::{Digest, Sha256};
+use sqlx::postgres::PgTransaction;
 use tracing::info;
+
+/// Transaction type for the refresh rotation lock.
+pub type RotationLockTx<'a> = PgTransaction<'a>;
 
 /// Hash a raw token using SHA256.
 /// Returns hex-encoded hash suitable for storage.
@@ -17,6 +21,46 @@ fn hash_token(token: &str) -> String {
     let mut hasher = Sha256::new();
     hasher.update(token.as_bytes());
     format!("{:x}", hasher.finalize())
+}
+
+/// Derive a 64-bit advisory lock key from a refresh token.
+fn rotation_lock_key(token: &str) -> i64 {
+    let hash = hash_token(token);
+    let bytes = hex::decode(&hash[..16]).unwrap_or_default();
+    let mut arr = [0u8; 8];
+    arr.copy_from_slice(&bytes);
+    i64::from_be_bytes(arr)
+}
+
+/// Acquire an advisory lock for refresh token rotation.
+///
+/// Returns a transaction that holds the lock. The lock is released
+/// when the transaction is committed or rolled back.
+pub async fn acquire_refresh_rotation_lock<'a>(
+    db: &'a ob_database::DatabaseClient,
+    token: &str,
+) -> Result<RotationLockTx<'a>> {
+    let key = rotation_lock_key(token);
+    let mut tx = db
+        .inner()
+        .pool()
+        .begin()
+        .await
+        .map_err(|e| Error::Database(format!("Failed to begin refresh lock transaction: {e}")))?;
+
+    let acquired: bool = sqlx::query_scalar("SELECT pg_try_advisory_xact_lock($1)")
+        .bind(key)
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(|e| Error::Database(format!("Failed to acquire refresh lock: {e}")))?;
+
+    if !acquired {
+        return Err(Error::Auth(
+            "Refresh token is already being rotated. Please retry.".into(),
+        ));
+    }
+
+    Ok(tx)
 }
 
 /// Revoke a token by storing its hash in the database.
@@ -184,5 +228,16 @@ mod integration_tests {
         let long_token = "x".repeat(10000);
         let hash = hash_token(&long_token);
         assert_eq!(hash.len(), 64);
+    }
+
+    #[tokio::test]
+    async fn test_refresh_rotation_lock_is_single_holder() {
+        let unique_token = format!("test-refresh-rotation-{}", uuid::Uuid::new_v4());
+        let db = ob_database::DatabaseClient::new_mem().await;
+        let tx = acquire_refresh_rotation_lock(&db, &unique_token).await;
+        assert!(tx.is_ok());
+
+        let second = acquire_refresh_rotation_lock(&db, &unique_token).await;
+        assert!(second.is_err());
     }
 }

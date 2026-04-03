@@ -754,5 +754,35 @@ void main() {
       final product = repository.docToProduct(doc);
       expect(product.name, 'My Title');
     });
+
+    test('derives priceCents from legacy price when priceCents is missing', () {
+      final doc = _FakeDocument('p1', {
+        Fields.name: 'Test',
+        Fields.price: 12.34,
+        Fields.sellerId: 's1',
+        Fields.categoryId: 1,
+        Fields.imageUrls: [],
+        Fields.stockQuantity: 5,
+        Fields.createdAt: DateTime.now().toIso8601String(),
+      });
+
+      final product = repository.docToProduct(doc);
+      expect(product.priceCents, 1234);
+    });
+
+    test('parses string priceCents before product conversion', () {
+      final doc = _FakeDocument('p1', {
+        Fields.name: 'Test',
+        Fields.priceCents: '1299',
+        Fields.sellerId: 's1',
+        Fields.categoryId: 1,
+        Fields.imageUrls: [],
+        Fields.stockQuantity: 5,
+        Fields.createdAt: DateTime.now().toIso8601String(),
+      });
+
+      final product = repository.docToProduct(doc);
+      expect(product.priceCents, 1299);
+    });
   });
 }

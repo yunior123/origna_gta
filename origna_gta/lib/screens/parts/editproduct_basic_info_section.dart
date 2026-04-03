@@ -263,7 +263,11 @@ extension _EditProductBasicInfo on _EditProductScreenState {
               .map(
                 (c) => DropdownMenuItem(
                   value: c.categoryId.toString(),
-                  child: Text(c.name.tr()),
+                  child: Text(
+                    c.name.tr(),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
                 ),
               )
               .toList(),

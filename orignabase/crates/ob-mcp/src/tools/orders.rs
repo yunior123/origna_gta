@@ -253,44 +253,55 @@ mod tests {
     #[tokio::test]
     async fn test_get_order_valid() {
         let state = make_state().await;
+        let order_id = format!("o_valid_{}", uuid::Uuid::new_v4());
+        let buyer_id = format!("users:buyer-{}", uuid::Uuid::new_v4());
+        let seller_id = format!("users:seller-{}", uuid::Uuid::new_v4());
         // Seed an order in the in-memory database
         state
             .db
             .upsert_document(
                 collections::ORDERS,
-                "o1",
+                &order_id,
                 json!({
-                    fields::BUYER_ID: "users:u1",
-                    fields::SELLER_ID: "users:s1",
+                    fields::BUYER_ID: buyer_id,
+                    fields::SELLER_ID: seller_id,
                     "status": "pending",
                 }),
             )
             .await
             .unwrap();
-        let result = get_order(state, "users:u1", &json!({"order_id": "orders:o1"}))
+        let result = get_order(state, &buyer_id, &json!({"order_id": format!("orders:{order_id}")}))
             .await
             .unwrap();
-        assert_eq!(result[fields::BUYER_ID], "users:u1");
+        assert_eq!(result[fields::BUYER_ID], buyer_id);
     }
 
     #[tokio::test]
     async fn test_get_order_ownership_denied() {
         let state = make_state().await;
+        let order_id = format!("o_denied_{}", uuid::Uuid::new_v4());
+        let buyer_id = format!("users:buyer-{}", uuid::Uuid::new_v4());
+        let seller_id = format!("users:seller-{}", uuid::Uuid::new_v4());
         state
             .db
             .upsert_document(
                 collections::ORDERS,
-                "o_denied",
+                &order_id,
                 json!({
-                    fields::BUYER_ID: "users:buyer1",
-                    fields::SELLER_ID: "users:seller1",
+                    fields::BUYER_ID: buyer_id,
+                    fields::SELLER_ID: seller_id,
                     "status": "pending",
                 }),
             )
             .await
             .unwrap();
         // A different user should be denied
-        let result = get_order(state, "users:attacker", &json!({"order_id": "orders:o_denied"})).await;
+        let result = get_order(
+            state,
+            "users:attacker",
+            &json!({"order_id": format!("orders:{order_id}")}),
+        )
+        .await;
         assert!(result.is_err());
         assert!(matches!(result.unwrap_err(), McpError::Forbidden(_)));
     }
@@ -298,21 +309,29 @@ mod tests {
     #[tokio::test]
     async fn test_get_order_seller_can_access() {
         let state = make_state().await;
+        let order_id = format!("o_seller_access_{}", uuid::Uuid::new_v4());
+        let buyer_id = format!("users:buyer-{}", uuid::Uuid::new_v4());
+        let seller_id = format!("users:seller-{}", uuid::Uuid::new_v4());
         state
             .db
             .upsert_document(
                 collections::ORDERS,
-                "o_seller_access",
+                &order_id,
                 json!({
-                    fields::BUYER_ID: "users:buyer1",
-                    fields::SELLER_ID: "users:seller1",
+                    fields::BUYER_ID: buyer_id,
+                    fields::SELLER_ID: seller_id.clone(),
                     "status": "shipped",
                 }),
             )
             .await
             .unwrap();
         // Seller of the order should have access
-        let result = get_order(state, "users:seller1", &json!({"order_id": "orders:o_seller_access"})).await;
+        let result = get_order(
+            state,
+            &seller_id,
+            &json!({"order_id": format!("orders:{order_id}")}),
+        )
+        .await;
         assert!(result.is_ok());
     }
 

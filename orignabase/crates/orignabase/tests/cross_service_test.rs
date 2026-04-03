@@ -33,8 +33,8 @@ async fn register_test_user(c: &Client) -> (String, String) {
     (body["access_token"].as_str().unwrap().to_string(), email) // ignore-magic
 }
 
-/// Login as the seeded seller account (has permissions to create products)
-async fn login_seller(c: &Client) -> (String, String) {
+/// Login as the seeded seller account (has permissions to create products).
+async fn login_seller(c: &Client) -> (String, String, String) {
     let resp = c
         .post(format!("{}/auth/login", base_url()))
         .json(&json!({ "email": "e2e-seller@test.origna.ca", "password": "REDACTED_TEST_PASSWORD" })) // ignore-magic
@@ -44,7 +44,8 @@ async fn login_seller(c: &Client) -> (String, String) {
     let body: Value = resp.json().await.unwrap();
     let token = body["access_token"].as_str().unwrap_or("").to_string(); // ignore-magic
     let refresh = body["refresh_token"].as_str().unwrap_or("").to_string(); // ignore-magic
-    (token, refresh)
+    let user_id = body["user"]["id"].as_str().unwrap_or("").to_string(); // ignore-magic
+    (token, refresh, user_id)
 }
 
 async fn graphql(c: &Client, token: &str, query: &str) -> Value {
@@ -72,7 +73,7 @@ async fn create_doc(c: &Client, token: &str, collection: &str, data: &Value) -> 
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// SURREALDB + MEILISEARCH SYNC
+// DATABASE + MEILISEARCH SYNC
 // ═══════════════════════════════════════════════════════════════════
 
 #[tokio::test]
@@ -85,7 +86,7 @@ async fn search_finds_created_product() {
     create_doc(
         &c,
         &token,
-        "products", // ignore-magic
+        "products",                            // ignore-magic
         &json!({"name": name, "price": 1999}), // ignore-magic
     )
     .await;
@@ -128,7 +129,7 @@ async fn search_reflects_updated_name() {
     let doc_id = create_doc(
         &c,
         &token,
-        "products", // ignore-magic
+        "products",                               // ignore-magic
         &json!({"name": old_name, "price": 999}), // ignore-magic
     )
     .await;
@@ -220,7 +221,7 @@ async fn bulk_create_all_searchable() {
         create_doc(
             &c,
             &token,
-            "products", // ignore-magic
+            "products",                                                  // ignore-magic
             &json!({"name": format!("{prefix}_{i}"), "price": i * 100}), // ignore-magic
         )
         .await;
@@ -317,7 +318,8 @@ async fn websocket_subscribe_receives_events() {
         while let Some(Ok(msg)) = ws.next().await {
             if let Message::Text(text) = msg {
                 let v: Value = serde_json::from_str(&text).unwrap_or(json!({})); // ignore-magic
-                if v["type"] == "change" || v["event"].is_string() { // ignore-magic
+                if v["type"] == "change" || v["event"].is_string() {
+                    // ignore-magic
                     return Some(v);
                 }
             }
@@ -369,14 +371,20 @@ async fn websocket_multiple_subscriptions() {
 #[ignore = "requires running orignabase instance"]
 async fn create_then_read_matches() {
     let c = Client::new();
-    let (token, _) = login_seller(&c).await;
+    let (token, _, seller_id) = login_seller(&c).await;
     let unique_name = format!("verify_me_{}", Uuid::new_v4().simple());
 
     let doc_id = create_doc(
         &c,
         &token,
         "products", // ignore-magic
-        &json!({"name": unique_name, "priceCents": 4200, "stockQuantity": 1}), // ignore-magic
+        &json!({
+            "name": unique_name,
+            "priceCents": 4200,
+            "stockQuantity": 1,
+            "sellerId": seller_id,
+            "lifecycleStatus": "draft"
+        }), // ignore-magic
     )
     .await;
     assert!(!doc_id.is_empty(), "Create should return a document ID");
@@ -405,14 +413,20 @@ async fn create_then_read_matches() {
 async fn token_refresh_continues_crud() {
     let c = Client::new();
     // Use seller account (has permissions to create products)
-    let (token, refresh_token) = login_seller(&c).await;
+    let (token, refresh_token, seller_id) = login_seller(&c).await;
 
     // Use original token to create a product
     let doc_id_before = create_doc(
         &c,
         &token,
         "products", // ignore-magic
-        &json!({"name": "before_refresh", "priceCents": 100, "stockQuantity": 1}), // ignore-magic
+        &json!({
+            "name": "before_refresh",
+            "priceCents": 100,
+            "stockQuantity": 1,
+            "sellerId": seller_id,
+            "lifecycleStatus": "draft"
+        }), // ignore-magic
     )
     .await;
     assert!(
@@ -441,7 +455,13 @@ async fn token_refresh_continues_crud() {
         &c,
         &new_token,
         "products", // ignore-magic
-        &json!({"name": "after_refresh", "priceCents": 200, "stockQuantity": 1}), // ignore-magic
+        &json!({
+            "name": "after_refresh",
+            "priceCents": 200,
+            "stockQuantity": 1,
+            "sellerId": seller_id,
+            "lifecycleStatus": "draft"
+        }), // ignore-magic
     )
     .await;
     assert!(

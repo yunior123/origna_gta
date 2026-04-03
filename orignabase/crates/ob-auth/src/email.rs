@@ -528,14 +528,19 @@ impl EmailService {
     async fn get_template(&self, name: &str) -> EmailTemplate {
         // Try DB first
         if let Some(ref db) = self.db
-            && let Ok(results) = db
-                .query_bind(
-                    "SELECT * FROM _email_templates WHERE name = $name",
-                    serde_json::json!({ "name": name }),
-                )
-                .await
-            && let Some(doc) = results.first()
-            && let Ok(template) = serde_json::from_value::<EmailTemplate>(doc.clone())
+            && let Ok(doc) = db.get_document("_email_templates", name).await
+            && !doc.is_null()
+            && let Ok(template) = serde_json::from_value::<EmailTemplate>(doc)
+        {
+            return template;
+        }
+
+        if let Some(ref db) = self.db
+            && let Ok(results) = db.list_documents("_email_templates", None, None).await
+            && let Some(doc) = results
+                .into_iter()
+                .find(|row| row.get("name").and_then(|value| value.as_str()) == Some(name))
+            && let Ok(template) = serde_json::from_value::<EmailTemplate>(doc)
         {
             return template;
         }
@@ -580,7 +585,11 @@ impl EmailService {
         );
         vars.insert("Token".into(), token.into());
         vars.insert("Email".into(), to.into());
-        let expires = if lang == "fr" { "24 heures" } else { "24 hours" };
+        let expires = if lang == "fr" {
+            "24 heures"
+        } else {
+            "24 hours"
+        };
         vars.insert("ExpiresIn".into(), expires.into());
         vars.insert("SiteURL".into(), base_url.into());
 
@@ -745,9 +754,7 @@ impl EmailService {
             return Ok(defaults);
         };
 
-        let raw = db
-            .query_raw("SELECT * FROM _email_templates")
-            .await?;
+        let raw = db.list_documents("_email_templates", None, None).await?;
         let custom: Vec<EmailTemplate> = raw
             .into_iter()
             .filter_map(|v| serde_json::from_value(v).ok())
@@ -779,16 +786,10 @@ impl EmailService {
             .as_ref()
             .ok_or_else(|| Error::Internal("Database not configured for email templates".into()))?;
 
-        // Upsert: delete existing, then create
-        let _ = db
-            .query_bind(
-                "DELETE FROM _email_templates WHERE name = $name",
-                serde_json::json!({ "name": template.name }),
-            )
-            .await;
-
-        db.create_document(
+        let template_name = template.name.clone();
+        db.upsert_document(
             "_email_templates",
+            &template_name,
             serde_json::to_value(&template)
                 .map_err(|e| Error::Internal(format!("Template serialization failed: {e}")))?,
         )
@@ -804,12 +805,7 @@ impl EmailService {
             .as_ref()
             .ok_or_else(|| Error::Internal("Database not configured for email templates".into()))?;
 
-        let _ = db
-            .query_bind(
-                "DELETE FROM _email_templates WHERE name = $name",
-                serde_json::json!({ "name": name }),
-            )
-            .await;
+        let _ = db.delete_document("_email_templates", name).await;
 
         default_templates()
             .into_iter()
@@ -1275,18 +1271,20 @@ mod tests {
             site_url: None,
         };
         let service = EmailService::with_db(config, db);
+        let template_name = format!("custom_verify_{}", uuid::Uuid::new_v4());
+        let subject = "Custom verify for {{ .AppName }}".to_string();
 
         let template = EmailTemplate {
-            name: "custom_verify".into(),
-            subject: "Custom verify for {{ .AppName }}".into(),
+            name: template_name.clone(),
+            subject: subject.clone(),
             html: "<p>Custom HTML</p>".into(),
             text: "Custom text".into(),
         };
 
         service.save_template(template).await.unwrap();
-        let fetched = service.get_template_by_name("custom_verify").await.unwrap();
-        assert_eq!(fetched.name, "custom_verify");
-        assert!(fetched.subject.contains("Custom verify"));
+        let fetched = service.get_template_by_name(&template_name).await.unwrap();
+        assert_eq!(fetched.name, template_name);
+        assert_eq!(fetched.subject, subject);
     }
 
     #[tokio::test]

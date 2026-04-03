@@ -42,6 +42,14 @@ Map<String, dynamic> _deepCastMap(Map<dynamic, dynamic> source) {
   });
 }
 
+double? _parseProductPriceDollars(Object? rawPrice) {
+  return switch (rawPrice) {
+    num value => value.toDouble(),
+    String value => double.tryParse(value.trim()),
+    _ => null,
+  };
+}
+
 /// OrignaBase implementation of [ProductRepository].
 ///
 /// This repository manages product-related data using the OrignaBase SDK.
@@ -92,10 +100,10 @@ class OrignaBaseProductRepository
   Product docToProduct(Document doc) {
     final data = <String, dynamic>{...doc.data};
 
-    data[Fields.name] ??= data['title'] ?? 'Untitled product';
+    data[Fields.name] ??= data[Fields.title] ?? 'Untitled product';
     data[Fields.description] ??= '';
     // Backend may store images as 'images' — map to 'imageUrls' for model
-    data[Fields.imageUrls] ??= data['images'] ?? const <String>[];
+    data[Fields.imageUrls] ??= data[ApiKeys.images] ?? const <String>[];
     data[Fields.sellerId] ??= '';
     // categoryId may arrive as String from backend — coerce to int
     if (data[Fields.categoryId] is String) {
@@ -110,12 +118,27 @@ class OrignaBaseProductRepository
       data[Fields.categoryId] = 0;
     }
     data[Fields.stockQuantity] ??= 0;
-    if (data[Fields.priceCents] == null) {
-      AppLogger.w(
-        'Product ${data[Fields.productId]} missing priceCents — defaulting to 0',
-        tag: 'product',
+    if (data[Fields.priceCents] is String) {
+      data[Fields.priceCents] = int.tryParse(
+        (data[Fields.priceCents] as String).trim(),
       );
-      data[Fields.priceCents] = 0;
+    }
+
+    final fallbackPriceDollars = _parseProductPriceDollars(data[Fields.price]);
+    if (data[Fields.priceCents] == null) {
+      if (fallbackPriceDollars != null) {
+        AppLogger.w(
+          'Product ${data[Fields.productId] ?? doc.id} missing priceCents — deriving from price',
+          tag: 'product',
+        );
+        data[Fields.price] = fallbackPriceDollars;
+      } else {
+        AppLogger.w(
+          'Product ${data[Fields.productId] ?? doc.id} missing both priceCents and price — defaulting to 0',
+          tag: 'product',
+        );
+        data[Fields.priceCents] = 0;
+      }
     }
     data[Fields.price] ??=
         ((data[Fields.priceCents] as num?)?.toDouble() ?? 0) / 100;
@@ -135,7 +158,7 @@ class OrignaBaseProductRepository
       Fields.createdAt,
       Fields.dateCreated,
       Fields.updatedAt,
-      'trendingAt',
+      Fields.trendingAt,
     ]) {
       final raw = data[key];
       if (raw is String) {
@@ -153,15 +176,15 @@ class OrignaBaseProductRepository
     if (addr is Map) {
       final a = Map<String, dynamic>.from(addr.cast<String, dynamic>());
       // Backward compat: 'province' → 'state'
-      a['state'] ??= a['province'] ?? '';
-      a['street'] ??= '';
-      a['city'] ??= '';
-      a['postalCode'] ??= '';
-      a['country'] ??= 'Canada';
+      a[Fields.state] ??= a[Fields.province] ?? '';
+      a[Fields.street] ??= '';
+      a[Fields.city] ??= '';
+      a[Fields.postalCode] ??= '';
+      a[Fields.country] ??= CountryValues.canada;
       // If all required fields are empty, drop the address entirely
-      if ((a['street'] as String).isEmpty &&
-          (a['city'] as String).isEmpty &&
-          (a['state'] as String).isEmpty) {
+      if ((a[Fields.street] as String).isEmpty &&
+          (a[Fields.city] as String).isEmpty &&
+          (a[Fields.state] as String).isEmpty) {
         data.remove(Fields.sellerAddress);
       } else {
         data[Fields.sellerAddress] = a;
@@ -175,7 +198,10 @@ class OrignaBaseProductRepository
 
     // Deep-cast nested maps from Map<dynamic, dynamic> to Map<String, dynamic>
     // PostgreSQL returns dynamic maps which Freezed's fromJson rejects.
-    return Product.fromJson(_deepCastMap(data));
+    return Product.fromMap(
+      _deepCastMap(data),
+      data[Fields.productId] as String,
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -218,7 +244,7 @@ class OrignaBaseProductRepository
       ..remove(Fields.ratingCount);
 
     if (bookSourceUrl != null && bookSourceUrl.isNotEmpty) {
-      productJson['bookSourceUrl'] = bookSourceUrl;
+      productJson[Fields.bookSourceUrl] = bookSourceUrl;
     }
 
     // Normalize apartment
@@ -227,9 +253,9 @@ class OrignaBaseProductRepository
       final addr = Map<String, dynamic>.from(
         sellerAddress.cast<String, dynamic>(),
       );
-      if (addr['apartment'] is String &&
-          (addr['apartment'] as String).trim().isEmpty) {
-        addr['apartment'] = null;
+      if (addr[Fields.apartment] is String &&
+          (addr[Fields.apartment] as String).trim().isEmpty) {
+        addr[Fields.apartment] = null;
       }
       productJson[Fields.sellerAddress] = addr;
     }
@@ -239,8 +265,8 @@ class OrignaBaseProductRepository
       ApiEndpoints.productsCreateAtomic,
       body: {
         Fields.userId: userId,
-        'productData': productJson,
-        'testImageUrls': testImageUrls ?? const <String>[],
+        ApiKeys.productData: productJson,
+        ApiKeys.testImageUrls: testImageUrls ?? const <String>[],
       },
     );
 
@@ -347,9 +373,9 @@ class OrignaBaseProductRepository
       final response = await _ob.request(
         'POST',
         ApiEndpoints.geocodeAutocomplete,
-        body: {'query': query, 'country': 'ca'},
+        body: {'query': query, 'country': CountryValues.canadaCode},
       );
-      final features = response['features'];
+      final features = response[ApiKeys.features];
       if (features is List) {
         return List<Map<String, dynamic>>.from(features);
       }
@@ -365,7 +391,7 @@ class OrignaBaseProductRepository
   @override
   Future<String?> getUploadUrl(String fileName) async {
     final info = await getUploadUrlInfo(fileName);
-    return info?['uploadUrl'];
+    return info?[Fields.uploadUrl];
   }
 
   @override
@@ -462,7 +488,7 @@ class OrignaBaseProductRepository
       body: {
         Fields.productId: productId,
         Fields.userId: userId,
-        'productData': data,
+        ApiKeys.productData: data,
       },
     );
   }
@@ -505,14 +531,14 @@ class OrignaBaseProductRepository
 
     final response = await _httpClient
         .put(
-          Uri.parse(urlInfo['uploadUrl']!),
+          Uri.parse(urlInfo[Fields.uploadUrl]!),
           body: bytes,
           headers: {'Content-Type': contentType},
         )
         .timeout(const Duration(minutes: 5));
 
     if (response.statusCode == 200) {
-      return urlInfo['publicUrl'];
+      return urlInfo[Fields.publicUrl];
     }
     throw Exception('Upload failed with status ${response.statusCode}');
   }

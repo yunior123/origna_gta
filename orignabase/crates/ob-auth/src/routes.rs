@@ -559,25 +559,33 @@ pub async fn refresh(
     State(state): State<AuthState>,
     Json(body): Json<RefreshRequest>,
 ) -> Result<Json<serde_json::Value>> {
+    tracing::info!("refresh: acquiring rotation lock");
+    let rotation_lock =
+        crate::revocation::acquire_refresh_rotation_lock(&state.db, &body.refresh_token).await?;
+    tracing::info!("refresh: verifying token");
     let claims = jwt::verify_token(&body.refresh_token, &state.jwt_keys)?;
+    tracing::info!(typ = %claims.typ, sub = %claims.sub, "refresh: token verified");
 
     if claims.typ != "refresh" {
         return Err(Error::Auth("Invalid token type".into()));
     }
 
     // Check if the refresh token has been revoked
+    tracing::info!("refresh: checking revocation");
     if crate::revocation::is_token_revoked(&state.db, &body.refresh_token).await? {
         tracing::warn!("Attempted refresh with revoked token");
         return Err(Error::Auth("Token has been revoked".into()));
     }
+    tracing::info!("refresh: token not revoked, looking up user");
 
     // Look up user to get current roles
-    // Use type::thing() to convert the string record ID back to a RecordId
+    let bare_uid = claims.sub.split(':').next_back().unwrap_or(&claims.sub);
+    tracing::info!(bare_uid = %bare_uid, "refresh: querying user");
     let users = state
         .db
         .query_bind(
-            "SELECT * FROM type::thing($uid)",
-            json!({ "uid": claims.sub }),
+            "SELECT * FROM users WHERE id = $uid",
+            json!({ "uid": bare_uid }),
         )
         .await?;
 
@@ -626,14 +634,12 @@ pub async fn refresh(
     let new_refresh_token =
         jwt::issue_refresh_token(&claims.sub, &state.jwt_keys, state.refresh_ttl)?;
 
-    // Atomically revoke the old refresh token after issuing the new one.
-    // If revocation fails, it's a non-fatal error (tokens will expire naturally).
-    if let Err(e) =
-        crate::revocation::revoke_token(&state.db, &body.refresh_token, state.refresh_ttl).await
-    {
-        tracing::warn!("Failed to revoke old refresh token: {}", e);
-        // Continue anyway - don't fail the refresh operation
-    }
+    crate::revocation::revoke_token(&state.db, &body.refresh_token, state.refresh_ttl).await?;
+
+    rotation_lock
+        .commit()
+        .await
+        .map_err(|e| Error::Database(format!("Failed to release refresh lock transaction: {e}")))?;
 
     Ok(Json(json!({
         "access_token": access_token,
@@ -1203,7 +1209,7 @@ pub async fn reset_password(
     let users = state
         .db
         .query_bind(
-            "SELECT * FROM type::thing($uid)",
+            "SELECT * FROM users WHERE id = $uid",
             json!({ "uid": claims.sub }),
         )
         .await?;
@@ -1312,7 +1318,7 @@ pub async fn verify_email(
     let users = state
         .db
         .query_bind(
-            "SELECT * FROM type::thing($uid)",
+            "SELECT * FROM users WHERE id = $uid",
             json!({ "uid": claims.sub }),
         )
         .await?;
@@ -1417,7 +1423,7 @@ pub async fn mfa_setup(
     let users = state
         .db
         .query_bind(
-            "SELECT * FROM type::thing($uid)",
+            "SELECT * FROM users WHERE id = $uid",
             json!({ "uid": auth.user_id }),
         )
         .await?;
@@ -1504,7 +1510,7 @@ pub async fn mfa_verify_setup(
     let users = state
         .db
         .query_bind(
-            "SELECT * FROM type::thing($uid)",
+            "SELECT * FROM users WHERE id = $uid",
             json!({ "uid": auth.user_id }),
         )
         .await?;
@@ -1639,7 +1645,7 @@ pub async fn mfa_challenge(
     let users = state
         .db
         .query_bind(
-            "SELECT * FROM type::thing($uid)",
+            "SELECT * FROM users WHERE id = $uid",
             json!({ "uid": claims.sub }),
         )
         .await?;
@@ -1703,7 +1709,11 @@ pub async fn mfa_challenge(
     // Update last used step
     state
         .db
-        .update_document("users", &claims.sub, json!({ (f::MFA_LAST_USED_STEP): step }))
+        .update_document(
+            "users",
+            &claims.sub,
+            json!({ (f::MFA_LAST_USED_STEP): step }),
+        )
         .await?;
 
     // Issue real tokens
@@ -1780,14 +1790,8 @@ pub async fn mfa_recovery(
     }
 
     // P1-NEW-4: Rate limit recovery code attempts (3 per 15 min per user)
-    let rate_limit_result = crate::rate_limit::check_rate_limit(
-        &state.db,
-        &claims.sub,
-        "mfa_recovery",
-        3,
-        900,
-    )
-    .await;
+    let rate_limit_result =
+        crate::rate_limit::check_rate_limit(&state.db, &claims.sub, "mfa_recovery", 3, 900).await;
     if let Err(e) = rate_limit_result {
         tracing::warn!(user_id = %claims.sub, "MFA recovery rate limit exceeded");
         return Err(e);
@@ -1796,7 +1800,7 @@ pub async fn mfa_recovery(
     let users = state
         .db
         .query_bind(
-            "SELECT * FROM type::thing($uid)",
+            "SELECT * FROM users WHERE id = $uid",
             json!({ "uid": claims.sub }),
         )
         .await?;
@@ -1912,7 +1916,7 @@ pub async fn mfa_disable(
     let users = state
         .db
         .query_bind(
-            "SELECT * FROM type::thing($uid)",
+            "SELECT * FROM users WHERE id = $uid",
             json!({ "uid": auth.user_id }),
         )
         .await?;
@@ -1977,16 +1981,8 @@ pub async fn mfa_disable(
 // auth.delete_user(), auth.list_users(), auth.get_user()
 
 /// Require the calling user to have the "admin" role.
-/// In test mode (OB_TEST_MODE=1), auth checks are bypassed UNLESS
-/// ENVIRONMENT is "production" — production NEVER bypasses admin auth.
+/// Admin routes are never allowed to bypass authentication, even in test mode.
 fn require_admin(auth: &AuthContext) -> Result<()> {
-    let is_test_mode = std::env::var("OB_TEST_MODE").unwrap_or_default() == "1";
-    let env = ob_core::config::Environment::from_env();
-
-    // SECURITY: Never bypass admin auth in production, even if OB_TEST_MODE leaks
-    if is_test_mode && !env.is_production() {
-        return Ok(());
-    }
     if !auth.authenticated {
         return Err(Error::Auth("Authentication required".into()));
     }
@@ -2017,25 +2013,22 @@ pub async fn admin_list_users(
     require_admin(&auth)?;
 
     let limit = params.limit.min(100);
-    let query = format!(
-        "SELECT id, email, display_name, roles, email_verified, mfa_enabled, created_at, custom_claims FROM users ORDER BY created_at DESC LIMIT {limit} START {offset}",
-        offset = params.offset
-    );
-    let users = state.db.query_raw(&query).await?;
+    let users = state
+        .db
+        .query_raw(&format!(
+            "SELECT id, email, COALESCE(NULLIF(data->>'display_name', ''), '') AS display_name, COALESCE(data->'roles', '[]'::jsonb) AS roles, COALESCE((data->>'email_verified')::boolean, false) AS email_verified, COALESCE((data->>'mfa_enabled')::boolean, false) AS mfa_enabled, created_at, COALESCE(data->'custom_claims', jsonb_build_object()) AS custom_claims FROM users ORDER BY created_at DESC LIMIT {limit} OFFSET {offset}",
+            offset = params.offset,
+        ))
+        .await?;
 
     // Count total
-    let count_result = state
+    let count_rows = state
         .db
-        .query_raw_value("SELECT count() AS count FROM users GROUP ALL")
+        .query_raw("SELECT COUNT(*) AS count FROM users")
         .await?;
-    let total = count_result
-        .get(f::COUNT)
-        .or_else(|| {
-            count_result
-                .as_array()
-                .and_then(|items| items.first())
-                .and_then(|item| item.get(f::COUNT))
-        })
+    let total = count_rows
+        .first()
+        .and_then(|row| row.get(f::COUNT))
         .and_then(|v| v.as_u64())
         .unwrap_or(0);
 
@@ -2063,7 +2056,7 @@ pub async fn admin_get_user(
     let users = state
         .db
         .query_bind(
-            "SELECT id, email, display_name, roles, email_verified, mfa_enabled, created_at, custom_claims, oauth_provider FROM type::thing($uid)",
+            "SELECT id, COALESCE(data->>'email', '') AS email, COALESCE(NULLIF(data->>'display_name', ''), '') AS display_name, COALESCE(data->'roles', '[]'::jsonb) AS roles, COALESCE((data->>'email_verified')::boolean, false) AS email_verified, COALESCE((data->>'mfa_enabled')::boolean, false) AS mfa_enabled, created_at, COALESCE(data->'custom_claims', jsonb_build_object()) AS custom_claims, COALESCE(data->>'oauth_provider', '') AS oauth_provider FROM users WHERE id = $uid",
             json!({ "uid": path.user_id }),
         )
         .await?;
@@ -2784,18 +2777,12 @@ pub fn auth_router(state: AuthState) -> axum::Router {
 
     // Rate-limited auth routes (applied per-route via nested routers)
     let rate_limited_routes = axum::Router::new()
-        .route(
-            "/auth/login",
-            axum::routing::post(login),
-        )
+        .route("/auth/login", axum::routing::post(login))
         .layer(Extension(login_limiter))
         .layer(axum::middleware::from_fn(rate_limit_middleware));
 
     let rate_limited_register = axum::Router::new()
-        .route(
-            "/auth/register",
-            axum::routing::post(register),
-        )
+        .route("/auth/register", axum::routing::post(register))
         .layer(Extension(register_limiter))
         .layer(axum::middleware::from_fn(rate_limit_middleware));
 
@@ -2810,100 +2797,102 @@ pub fn auth_router(state: AuthState) -> axum::Router {
     rate_limited_routes
         .merge(rate_limited_register)
         .merge(rate_limited_forgot)
-        .merge(axum::Router::new()
-        .route("/auth/refresh", axum::routing::post(refresh))
-        .route("/auth/logout", axum::routing::post(logout))
-        .route("/auth/reset-password", axum::routing::post(reset_password))
-        .route("/auth/providers", axum::routing::get(auth_providers))
-        .route("/auth/google/start", axum::routing::get(google_oauth_start))
-        .route(
-            "/auth/google/callback",
-            axum::routing::get(google_oauth_callback),
+        .merge(
+            axum::Router::new()
+                .route("/auth/refresh", axum::routing::post(refresh))
+                .route("/auth/logout", axum::routing::post(logout))
+                .route("/auth/reset-password", axum::routing::post(reset_password))
+                .route("/auth/providers", axum::routing::get(auth_providers))
+                .route("/auth/google/start", axum::routing::get(google_oauth_start))
+                .route(
+                    "/auth/google/callback",
+                    axum::routing::get(google_oauth_callback),
+                )
+                .route("/auth/google", axum::routing::post(google_sign_in))
+                .route("/auth/apple", axum::routing::post(apple_sign_in))
+                .route("/auth/oidc", axum::routing::post(oidc_sign_in))
+                // Email verification
+                .route("/auth/verify-email", axum::routing::post(verify_email))
+                .route(
+                    "/auth/send-verification",
+                    axum::routing::post(send_verification),
+                )
+                // MFA / TOTP
+                .route("/auth/mfa/setup", axum::routing::post(mfa_setup))
+                .route(
+                    "/auth/mfa/verify-setup",
+                    axum::routing::post(mfa_verify_setup),
+                )
+                .route("/auth/mfa/challenge", axum::routing::post(mfa_challenge))
+                .route("/auth/mfa/recovery", axum::routing::post(mfa_recovery))
+                .route("/auth/mfa", axum::routing::delete(mfa_disable))
+                // Anonymous auth
+                .route("/auth/anonymous", axum::routing::post(anonymous_sign_in))
+                .route(
+                    "/auth/anonymous/upgrade",
+                    axum::routing::post(anonymous_upgrade),
+                )
+                // Magic link (passwordless)
+                .route("/auth/magic-link", axum::routing::post(send_magic_link))
+                .route(
+                    "/auth/verify-magic-link",
+                    axum::routing::post(verify_magic_link),
+                )
+                // Admin user management
+                .route("/admin/users", axum::routing::get(admin_list_users))
+                .route("/admin/users", axum::routing::post(admin_create_user))
+                .route("/admin/users/{user_id}", axum::routing::get(admin_get_user))
+                .route(
+                    "/admin/users/{user_id}",
+                    axum::routing::patch(admin_update_user),
+                )
+                .route(
+                    "/admin/users/{user_id}",
+                    axum::routing::delete(admin_delete_user),
+                )
+                .route(
+                    "/admin/users/{user_id}/claims",
+                    axum::routing::put(admin_set_claims),
+                )
+                // Admin email templates
+                .route(
+                    "/admin/email-templates",
+                    axum::routing::get(admin_list_templates),
+                )
+                .route(
+                    "/admin/email-templates/{template_name}",
+                    axum::routing::get(admin_get_template),
+                )
+                .route(
+                    "/admin/email-templates/{template_name}",
+                    axum::routing::put(admin_update_template),
+                )
+                .route(
+                    "/admin/email-templates/{template_name}/reset",
+                    axum::routing::post(admin_reset_template),
+                )
+                // Security / login tracking
+                .route(
+                    "/api/security/login-history",
+                    axum::routing::get(login_tracking::get_login_history),
+                )
+                .route(
+                    "/api/security/known-devices",
+                    axum::routing::get(login_tracking::get_known_devices),
+                )
+                .route(
+                    "/api/security/known-devices/{id}",
+                    axum::routing::delete(login_tracking::delete_known_device),
+                )
+                .route(
+                    "/api/security/alerts",
+                    axum::routing::get(login_tracking::get_security_alerts),
+                )
+                .route(
+                    "/api/security/alerts/{id}/acknowledge",
+                    axum::routing::post(login_tracking::acknowledge_alert),
+                ),
         )
-        .route("/auth/google", axum::routing::post(google_sign_in))
-        .route("/auth/apple", axum::routing::post(apple_sign_in))
-        .route("/auth/oidc", axum::routing::post(oidc_sign_in))
-        // Email verification
-        .route("/auth/verify-email", axum::routing::post(verify_email))
-        .route(
-            "/auth/send-verification",
-            axum::routing::post(send_verification),
-        )
-        // MFA / TOTP
-        .route("/auth/mfa/setup", axum::routing::post(mfa_setup))
-        .route(
-            "/auth/mfa/verify-setup",
-            axum::routing::post(mfa_verify_setup),
-        )
-        .route("/auth/mfa/challenge", axum::routing::post(mfa_challenge))
-        .route("/auth/mfa/recovery", axum::routing::post(mfa_recovery))
-        .route("/auth/mfa", axum::routing::delete(mfa_disable))
-        // Anonymous auth
-        .route("/auth/anonymous", axum::routing::post(anonymous_sign_in))
-        .route(
-            "/auth/anonymous/upgrade",
-            axum::routing::post(anonymous_upgrade),
-        )
-        // Magic link (passwordless)
-        .route("/auth/magic-link", axum::routing::post(send_magic_link))
-        .route(
-            "/auth/verify-magic-link",
-            axum::routing::post(verify_magic_link),
-        )
-        // Admin user management
-        .route("/admin/users", axum::routing::get(admin_list_users))
-        .route("/admin/users", axum::routing::post(admin_create_user))
-        .route("/admin/users/{user_id}", axum::routing::get(admin_get_user))
-        .route(
-            "/admin/users/{user_id}",
-            axum::routing::patch(admin_update_user),
-        )
-        .route(
-            "/admin/users/{user_id}",
-            axum::routing::delete(admin_delete_user),
-        )
-        .route(
-            "/admin/users/{user_id}/claims",
-            axum::routing::put(admin_set_claims),
-        )
-        // Admin email templates
-        .route(
-            "/admin/email-templates",
-            axum::routing::get(admin_list_templates),
-        )
-        .route(
-            "/admin/email-templates/{template_name}",
-            axum::routing::get(admin_get_template),
-        )
-        .route(
-            "/admin/email-templates/{template_name}",
-            axum::routing::put(admin_update_template),
-        )
-        .route(
-            "/admin/email-templates/{template_name}/reset",
-            axum::routing::post(admin_reset_template),
-        )
-        // Security / login tracking
-        .route(
-            "/api/security/login-history",
-            axum::routing::get(login_tracking::get_login_history),
-        )
-        .route(
-            "/api/security/known-devices",
-            axum::routing::get(login_tracking::get_known_devices),
-        )
-        .route(
-            "/api/security/known-devices/{id}",
-            axum::routing::delete(login_tracking::delete_known_device),
-        )
-        .route(
-            "/api/security/alerts",
-            axum::routing::get(login_tracking::get_security_alerts),
-        )
-        .route(
-            "/api/security/alerts/{id}/acknowledge",
-            axum::routing::post(login_tracking::acknowledge_alert),
-        ))
         .with_state(state)
         .layer(axum::middleware::from_fn(auth_extractor))
         .layer(Extension(jwt_keys))

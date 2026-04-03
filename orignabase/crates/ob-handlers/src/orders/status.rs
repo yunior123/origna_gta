@@ -741,14 +741,17 @@ async fn update_order_status(
         .unwrap_or(&req.order_id);
     // True CAS: atomic UPDATE ... WHERE orderStatus = old_status in PostgreSQL.
     // No read-then-write gap — the WHERE clause prevents concurrent modifications.
-    let cas_result = state.db.update_document_cas(
-        collections::ORDERS,
-        order_id_stripped,
-        update_data.clone(),
-        fields::ORDER_STATUS,
-        &json!(old_status.as_str()),
-    ).await
-    .map_err(|e| ob_core::Error::Database(format!("Failed to update order: {e}")))?;
+    let cas_result = state
+        .db
+        .update_document_cas(
+            collections::ORDERS,
+            order_id_stripped,
+            update_data.clone(),
+            fields::ORDER_STATUS,
+            &json!(old_status.as_str()),
+        )
+        .await
+        .map_err(|e| ob_core::Error::Database(format!("Failed to update order: {e}")))?;
     if cas_result.is_none() {
         return Err(ob_core::Error::Validation(format!(
             "Order status changed concurrently — expected '{}', please retry",
@@ -978,11 +981,7 @@ async fn update_item_status(
     // Update the order — PostgreSQL's data || merge handles the update atomically.
     let updated = state
         .db
-        .update_document(
-            collections::ORDERS,
-            &req.order_id,
-            update_data,
-        )
+        .update_document(collections::ORDERS, &req.order_id, update_data)
         .await
         .map(Some)
         .map_err(|e| ob_core::Error::Database(format!("Failed to update order: {e}")))?;
@@ -1203,7 +1202,7 @@ mod tests {
 
     #[test]
     fn test_confirm_receipt_request_deserialize() {
-        let json_str = r#"{"orderId":"ord1","productId":"prod1"}"#;  // ignore-magic
+        let json_str = r#"{"orderId":"ord1","productId":"prod1"}"#; // ignore-magic
         let req: ConfirmItemReceiptRequest = serde_json::from_str(json_str).unwrap();
         assert_eq!(req.order_id, "ord1");
         assert_eq!(req.product_id, "prod1");
@@ -1211,7 +1210,7 @@ mod tests {
 
     #[test]
     fn test_update_order_status_request_deserialize() {
-        let json_str = r#"{"orderId":"o1","newStatus":"shipped","trackingNumber":"TN123"}"#;  // ignore-magic
+        let json_str = r#"{"orderId":"o1","newStatus":"shipped","trackingNumber":"TN123"}"#; // ignore-magic
         let req: UpdateOrderStatusRequest = serde_json::from_str(json_str).unwrap();
         assert_eq!(req.order_id, "o1");
         assert_eq!(req.new_status, "shipped");
@@ -1232,7 +1231,7 @@ mod tests {
 
     #[test]
     fn test_update_item_status_request_deserialize() {
-        let json_str = r#"{"orderId":"o1","productId":"p1","newStatus":"shipped"}"#;  // ignore-magic
+        let json_str = r#"{"orderId":"o1","productId":"p1","newStatus":"shipped"}"#; // ignore-magic
         let req: UpdateItemStatusRequest = serde_json::from_str(json_str).unwrap();
         assert_eq!(req.new_status, "shipped");
         assert!(req.tracking_number.is_none());
@@ -1559,7 +1558,10 @@ mod tests {
         assert!(items_array(&json!({fields::ITEMS: null})).is_empty());
         assert!(items_array(&json!({fields::ITEMS: "not_array"})).is_empty());
         assert_eq!(items_array(&json!({fields::ITEMS: []})).len(), 0);
-        assert_eq!(items_array(&json!({fields::ITEMS: [{fields::ID: 1}]})).len(), 1);
+        assert_eq!(
+            items_array(&json!({fields::ITEMS: [{fields::ID: 1}]})).len(),
+            1
+        );
     }
 
     #[test]
@@ -1610,13 +1612,13 @@ mod tests {
 
     #[test]
     fn test_confirm_receipt_request_missing_fields_fails() {
-        let s = r#"{"orderId":"o1"}"#;  // ignore-magic
+        let s = r#"{"orderId":"o1"}"#; // ignore-magic
         assert!(serde_json::from_str::<ConfirmItemReceiptRequest>(s).is_err());
     }
 
     #[test]
     fn test_update_order_status_request_optional_fields() {
-        let s = r#"{"orderId":"o1","newStatus":"shipped","userId":"u1"}"#;  // ignore-magic
+        let s = r#"{"orderId":"o1","newStatus":"shipped","userId":"u1"}"#; // ignore-magic
         let req: UpdateOrderStatusRequest = serde_json::from_str(s).unwrap();
         assert!(req.tracking_number.is_none());
         assert!(req.carrier.is_none());
@@ -1624,7 +1626,7 @@ mod tests {
 
     #[test]
     fn test_update_item_status_request_with_carrier() {
-        let s = r#"{"orderId":"o1","productId":"p1","newStatus":"shipped","userId":"u1","trackingNumber":"TN1","carrier":"UPS"}"#;  // ignore-magic
+        let s = r#"{"orderId":"o1","productId":"p1","newStatus":"shipped","userId":"u1","trackingNumber":"TN1","carrier":"UPS"}"#; // ignore-magic
         let req: UpdateItemStatusRequest = serde_json::from_str(s).unwrap();
         assert_eq!(req.tracking_number, Some("TN1".to_string()));
         assert_eq!(req.carrier, Some("UPS".to_string()));

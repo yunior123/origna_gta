@@ -43,15 +43,7 @@ async fn health() -> Json<Value> {
 /// GET /_admin/collections — List all collections (returns DB info).
 async fn list_collections(State(state): State<AdminState>) -> Result<Json<Value>> {
     let info = schema::list_collections(&state.db).await?;
-    // Extract table names from INFO FOR DB response
-    let tables = info
-        .get("tables") // ignore-magic: SurrealDB INFO FOR DB response key
-        .and_then(|t| t.as_object())
-        .map(|obj| obj.keys().cloned().collect::<Vec<_>>())
-        .unwrap_or_default()
-        .into_iter()
-        .filter(|t| ALLOWED_TABLES.contains(&t.as_str()))
-        .collect::<Vec<_>>();
+    let tables = extract_allowed_tables(&info);
     Ok(Json(json!({ "collections": tables })))
 }
 
@@ -93,10 +85,9 @@ async fn list_users(
 
     let users = state
         .db
-        .query_bind(
-            "SELECT id, display_name, roles, created_at FROM users LIMIT $limit START $offset",
-            serde_json::json!({ "limit": limit, "offset": offset }),
-        )
+        .query_raw(&format!(
+            "SELECT id, COALESCE(NULLIF(data->>'display_name', ''), '') AS display_name, COALESCE(data->'roles', '[]'::jsonb) AS roles, created_at FROM users ORDER BY created_at DESC LIMIT {limit} OFFSET {offset}"
+        ))
         .await?;
     Ok(Json(json!({ "users": users })))
 }
@@ -199,7 +190,20 @@ fn is_localhost(ip: &str) -> bool {
     ip == "127.0.0.1" || ip == "::1"
 }
 
-fn require_admin(auth: &AuthContext, client_ip: &str) -> Result<()> {
+fn is_localhost_host(host: &str) -> bool {
+    let trimmed = host.trim();
+    let normalized = if let Some(rest) = trimmed.strip_prefix('[') {
+        rest.split(']').next().unwrap_or("")
+    } else {
+        trimmed.split(':').next().unwrap_or("")
+    }
+    .trim()
+    .to_ascii_lowercase();
+
+    matches!(normalized.as_str(), "localhost" | "127.0.0.1" | "::1")
+}
+
+fn require_admin(auth: &AuthContext, client_ip: &str, host: &str) -> Result<()> {
     if std::env::var("OB_TEST_MODE").unwrap_or_default() == "1" {
         // Guard: OB_TEST_MODE must never be active in production
         let environment = std::env::var("ENVIRONMENT").unwrap_or_default();
@@ -208,9 +212,13 @@ fn require_admin(auth: &AuthContext, client_ip: &str) -> Result<()> {
             return Err(Error::Forbidden("Admin access required".into()));
         }
 
-        // Test mode on dev/staging: allow localhost without auth, require admin role for remote IPs
-        if is_localhost(client_ip) {
-            tracing::debug!("OB_TEST_MODE: allowing admin access from localhost ({client_ip})");
+        // Test mode on local dev: allow only real localhost requests without auth.
+        // Reverse-proxied remote environments can present a localhost socket address,
+        // so require the Host header to also target localhost before bypassing auth.
+        if is_localhost(client_ip) && is_localhost_host(host) {
+            tracing::debug!(
+                "OB_TEST_MODE: allowing admin access from localhost ({client_ip}, host={host})"
+            );
             return Ok(());
         }
 
@@ -262,13 +270,20 @@ async fn require_admin_middleware(request: Request, next: Next) -> Result<Respon
                 .unwrap_or_else(|| "unknown".to_string())
         });
 
+    let host = request
+        .headers()
+        .get(header::HOST)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or_default()
+        .to_string();
+
     let auth = request
         .extensions()
         .get::<AuthContext>()
         .cloned()
         .unwrap_or_else(AuthContext::anonymous);
 
-    require_admin(&auth, &client_ip)?;
+    require_admin(&auth, &client_ip, &host)?;
     Ok(next.run(request).await)
 }
 
@@ -280,7 +295,9 @@ async fn config_get_all(
 ) -> Result<([(header::HeaderName, &'static str); 1], Json<Value>)> {
     let configs = state
         .db
-        .query_raw("SELECT * FROM _config ORDER BY key ASC")
+        .query_raw(
+            "SELECT data->>'key' AS key, data->'value' AS value FROM _config ORDER BY data->>'key' ASC",
+        )
         .await
         .unwrap_or_else(|e| {
             tracing::warn!("Failed to load config: {e}");
@@ -313,7 +330,7 @@ async fn config_get(
     let rows = state
         .db
         .query_bind_value(
-            "SELECT * FROM _config WHERE key = $key LIMIT 1",
+            "SELECT data->>'key' AS key, data->'value' AS value FROM _config WHERE data->>'key' = $key LIMIT 1",
             serde_json::json!({"key": key}),
         )
         .await
@@ -344,7 +361,9 @@ async fn config_get(
 async fn admin_config_get_all(State(state): State<AdminState>) -> Result<Json<Value>> {
     let configs = state
         .db
-        .query_raw("SELECT * FROM _config ORDER BY key ASC")
+        .query_raw(
+            "SELECT data->>'key' AS key, data->'value' AS value, data->>'type' AS type, data->>'description' AS description FROM _config ORDER BY data->>'key' ASC",
+        )
         .await
         .unwrap_or_else(|e| {
             tracing::warn!("Failed to load admin config: {e}");
@@ -686,6 +705,29 @@ const ALLOWED_TABLES: &[&str] = &[
     "analytics_events",
 ];
 
+fn extract_allowed_tables(info: &Value) -> Vec<String> {
+    let tables = if let Some(obj) = info.get("tables").and_then(|t| t.as_object()) {
+        obj.keys().cloned().collect::<Vec<_>>()
+    } else if let Some(rows) = info.as_array() {
+        rows.iter()
+            .filter_map(|row| {
+                row.get("tablename")
+                    .or_else(|| row.get("table_name"))
+                    .or_else(|| row.get("name"))
+                    .and_then(|v| v.as_str())
+                    .map(ToOwned::to_owned)
+            })
+            .collect::<Vec<_>>()
+    } else {
+        Vec::new()
+    };
+
+    tables
+        .into_iter()
+        .filter(|t| ALLOWED_TABLES.contains(&t.as_str()))
+        .collect()
+}
+
 async fn usage_dashboard(State(state): State<AdminState>) -> Result<Json<Value>> {
     // Force-initialize START_TIME on first call
     let uptime_seconds = START_TIME.elapsed().as_secs();
@@ -709,14 +751,7 @@ async fn usage_dashboard(State(state): State<AdminState>) -> Result<Json<Value>>
 
     // Collections info
     let info = schema::list_collections(&state.db).await?;
-    let tables = info
-        .get("tables") // ignore-magic: SurrealDB INFO FOR DB response key
-        .and_then(|t| t.as_object())
-        .map(|obj| obj.keys().cloned().collect::<Vec<_>>())
-        .unwrap_or_default()
-        .into_iter()
-        .filter(|t| ALLOWED_TABLES.contains(&t.as_str()))
-        .collect::<Vec<_>>();
+    let tables = extract_allowed_tables(&info);
     let collection_count = tables.len();
 
     // Estimate total documents across all collections (single batch query)
@@ -802,14 +837,7 @@ async fn system_alerts(State(state): State<AdminState>) -> Result<Json<Value>> {
 
     // Check collection sizes
     let info = schema::list_collections(&state.db).await?;
-    let tables = info
-        .get("tables") // ignore-magic: SurrealDB INFO FOR DB response key
-        .and_then(|t| t.as_object())
-        .map(|obj| obj.keys().cloned().collect::<Vec<_>>())
-        .unwrap_or_default()
-        .into_iter()
-        .filter(|t| ALLOWED_TABLES.contains(&t.as_str()))
-        .collect::<Vec<_>>();
+    let tables = extract_allowed_tables(&info);
 
     // Batch count all collections in a single query
     if !tables.is_empty() {
@@ -1037,7 +1065,15 @@ mod tests {
         let auth = AuthContext::anonymous();
         // In dev test mode, localhost should bypass auth check
         // This matches the fix: localhost is allowed without credentials
-        let _ = require_admin(&auth, "127.0.0.1");
+        let _ = require_admin(&auth, "127.0.0.1", "localhost:8080");
+    }
+
+    #[test]
+    fn test_is_localhost_host() {
+        assert!(is_localhost_host("localhost:8080"));
+        assert!(is_localhost_host("127.0.0.1"));
+        assert!(is_localhost_host("[::1]:8080"));
+        assert!(!is_localhost_host("api.dev.orignagta.ca"));
     }
 
     #[test]

@@ -2,6 +2,7 @@ use ob_core::Result;
 use ob_database::DatabaseClient;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use sqlx::Row;
 
 /// Describes a collection (table) schema.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -35,10 +36,10 @@ pub async fn create_collection(db: &DatabaseClient, schema: &CollectionSchema) -
     let mut query = format!("DEFINE TABLE {} SCHEMAFULL;\n", schema.name);
 
     for field in &schema.fields {
-        let surreal_type = to_surreal_type(&field.field_type);
+        let query_type = to_surreal_type(&field.field_type);
         query.push_str(&format!(
             "DEFINE FIELD {} ON TABLE {} TYPE {}",
-            field.name, schema.name, surreal_type
+            field.name, schema.name, query_type
         ));
         if !field.required {
             // PostgreSQL uses CHECK constraints for required fields
@@ -67,7 +68,21 @@ pub async fn create_collection(db: &DatabaseClient, schema: &CollectionSchema) -
 
 /// List all tables in the current database.
 pub async fn list_collections(db: &DatabaseClient) -> Result<Value> {
-    db.query_raw_value("INFO FOR DB").await
+    let rows = sqlx::query(
+        "SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename NOT LIKE 'pg_%' AND tablename NOT LIKE '_sqlx%' ORDER BY tablename ASC",
+    )
+    .fetch_all(db.inner().pool())
+    .await
+    .map_err(|e| ob_core::Error::Database(format!("Failed to list collections: {e}")))?;
+
+    Ok(Value::Array(
+        rows.into_iter()
+            .map(|row| Value::Object(serde_json::Map::from_iter([(
+                "tablename".to_string(),
+                Value::String(row.get::<String, _>("tablename")),
+            )])))
+            .collect(),
+    ))
 }
 
 /// Drop a table.

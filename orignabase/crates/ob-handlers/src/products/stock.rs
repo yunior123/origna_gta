@@ -382,9 +382,12 @@ mod tests {
 
         let rows = state
             .db
-            .query_raw(
-                &format!("SELECT * FROM {} WHERE productId = '{}' AND userId = '{}'", collections::STOCK_NOTIFICATIONS, prod, buyer),
-            )
+            .query_raw(&format!(
+                "SELECT * FROM {} WHERE productId = '{}' AND userId = '{}'",
+                collections::STOCK_NOTIFICATIONS,
+                prod,
+                buyer
+            ))
             .await
             .unwrap();
         assert_eq!(rows.len(), 1);
@@ -614,9 +617,12 @@ mod tests {
 
         let rows = state
             .db
-            .query_raw(
-                &format!("SELECT * FROM {} WHERE productId = '{}' AND userId = '{}'", collections::STOCK_NOTIFICATIONS, prod, buyer),
-            )
+            .query_raw(&format!(
+                "SELECT * FROM {} WHERE productId = '{}' AND userId = '{}'",
+                collections::STOCK_NOTIFICATIONS,
+                prod,
+                buyer
+            ))
             .await
             .unwrap();
         assert_eq!(rows.len(), 1);

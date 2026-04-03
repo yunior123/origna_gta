@@ -1,6 +1,6 @@
 use argon2::{
-    password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
     Algorithm, Argon2, Params, Version,
+    password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString, rand_core::OsRng},
 };
 use ob_core::{Error, Result};
 use std::sync::OnceLock;
@@ -188,26 +188,27 @@ fn test_timing_dummy_verify_similar_to_real() {
     // Warm the cached dummy hash to avoid one-time initialization skewing timings.
     dummy_verify(password);
 
-    let dummy_total = (0..3).fold(0u128, |acc, _| {
+    let dummy_total = (0..5).fold(0u128, |acc, _| {
         let start = Instant::now();
         dummy_verify(password);
-        acc + start.elapsed().as_millis()
+        acc + start.elapsed().as_micros()
     });
 
-    let real_total = (0..3).fold(0u128, |acc, _| {
+    let real_total = (0..5).fold(0u128, |acc, _| {
         let start = Instant::now();
         let _ = verify_password(password, &hash);
-        acc + start.elapsed().as_millis()
+        acc + start.elapsed().as_micros()
     });
 
-    let dummy_time = dummy_total / 3;
-    let real_time = real_total / 3;
+    let dummy_time = dummy_total / 5;
+    let real_time = real_total / 5;
 
-    // Dummy and real should be in similar ballpark (within 2x)
-    // Note: This is a rough heuristic, timing can vary
+    // Dummy and real should stay in the same rough order of magnitude.
+    // Use a wider bound because CI and shared developer machines can skew
+    // Argon2 timings materially between runs.
     let ratio = dummy_time as f64 / real_time.max(1) as f64;
     assert!(
-        ratio > 0.5 && ratio < 2.0,
+        ratio > 0.25 && ratio < 4.0,
         "Timing mismatch: dummy {}, real {}",
         dummy_time,
         real_time

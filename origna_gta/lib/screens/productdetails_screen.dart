@@ -14,6 +14,7 @@ import 'package:origna_gta/features/products/products_provider.dart';
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/env_config.dart';
+import 'package:origna_gta/utils/media_url_resolver.dart';
 import 'package:origna_gta/utils/responsive_layout.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/animations.dart';
@@ -49,6 +50,9 @@ class ProductDetailScreen extends ConsumerStatefulWidget {
 class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
   String? _lastRecordedProductId;
 
+  double _mobileGalleryHeight(BuildContext context) =>
+      (MediaQuery.sizeOf(context).height * 0.45).clamp(320.0, 480.0);
+
   @override
   void didUpdateWidget(covariant ProductDetailScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -69,7 +73,14 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     Product? initialProduct;
     if (widget.product != null) {
       try {
-        initialProduct = Product.fromJson(widget.product!);
+        final snapshot = Map<String, dynamic>.from(widget.product!);
+        snapshot[Fields.productId] ??= widget.productId;
+        snapshot[Fields.imageUrls] ??= snapshot['images'] ?? const <String>[];
+        snapshot[Fields.createdAt] ??= DateTime.now().toIso8601String();
+        initialProduct = Product.fromMap(
+          snapshot,
+          (snapshot[Fields.productId] as String?) ?? widget.productId,
+        );
       } catch (_) {}
     }
 
@@ -274,71 +285,50 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
             );
           }
 
+          final galleryHeight = _mobileGalleryHeight(context);
+
           return CustomScrollView(
             slivers: [
               SliverAppBar(
                 automaticallyImplyLeading: false,
                 pinned: true,
                 floating: true,
-                expandedHeight: (MediaQuery.sizeOf(context).height * 0.45)
-                    .clamp(320.0, 480.0),
                 backgroundColor: isDark
                     ? DesignTokens.darkSurface
                     : DesignTokens.white,
+                titleSpacing: 8,
+                leading: IconButton(
+                  key: const Key('productdetail_back_button'),
+                  tooltip: 'btn-back-product-details',
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: () => Navigator.pop(context),
+                ),
                 actions: [buildShareButton()],
-                flexibleSpace: FlexibleSpaceBar(
-                  background: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      buildImageGallery(
-                        height: (MediaQuery.sizeOf(context).height * 0.45)
-                            .clamp(320.0, 480.0),
-                      ),
-                      Positioned(
-                        top: MediaQuery.of(context).padding.top + 8,
-                        left: 12,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: DesignTokens.black.withValues(alpha: 0.5),
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: DesignTokens.white.withValues(alpha: 0.3),
-                              width: 1,
-                            ),
-                          ),
-                          child: IconButton(
-                            key: const Key('productdetail_back_button'),
-                            tooltip: 'btn-back-product-details',
-                            icon: const Icon(
-                              Icons.arrow_back,
-                              color: DesignTokens.white,
-                            ),
-                            onPressed: () => Navigator.pop(context),
-                          ),
-                        ),
+              ),
+              SliverToBoxAdapter(
+                child: SizedBox(
+                  height: galleryHeight,
+                  child: buildImageGallery(height: galleryHeight),
+                ),
+              ),
+              SliverToBoxAdapter(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? DesignTokens.darkSurface
+                        : DesignTokens.white,
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(24),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: DesignTokens.black.withValues(alpha: 0.08),
+                        blurRadius: 16,
+                        offset: const Offset(0, -4),
                       ),
                     ],
                   ),
-                ),
-                bottom: PreferredSize(
-                  preferredSize: const Size.fromHeight(20),
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? DesignTokens.darkSurface
-                          : DesignTokens.white,
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(24),
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: DesignTokens.black.withValues(alpha: 0.08),
-                          blurRadius: 16,
-                          offset: const Offset(0, -4),
-                        ),
-                      ],
-                    ),
-                  ),
+                  child: const SizedBox(height: 20),
                 ),
               ),
               SliverToBoxAdapter(
@@ -348,7 +338,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                       maxWidth: ResponsiveBreakpoints.contentMaxWidth,
                     ),
                     child: Padding(
-                      padding: const EdgeInsets.all(20),
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -585,11 +575,12 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
       );
     }
 
+    final galleryHeight = _mobileGalleryHeight(context);
+
     return CustomScrollView(
       slivers: [
         SliverAppBar(
           pinned: true,
-          expandedHeight: 360,
           backgroundColor: isDark
               ? DesignTokens.darkSurface
               : DesignTokens.white,
@@ -600,31 +591,29 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
             onPressed: () => Navigator.pop(context),
           ),
           actions: [buildShareButton()],
-          flexibleSpace: FlexibleSpaceBar(
-            background: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                child: buildImageGallery(height: 320),
-              ),
-            ),
+        ),
+        SliverToBoxAdapter(
+          child: SizedBox(
+            height: galleryHeight,
+            child: buildImageGallery(height: galleryHeight),
           ),
-          bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(20),
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: isDark ? DesignTokens.darkSurface : DesignTokens.white,
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(24),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: DesignTokens.black.withValues(alpha: 0.08),
-                    blurRadius: 16,
-                    offset: const Offset(0, -4),
-                  ),
-                ],
+        ),
+        SliverToBoxAdapter(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: isDark ? DesignTokens.darkSurface : DesignTokens.white,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(24),
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: DesignTokens.black.withValues(alpha: 0.08),
+                  blurRadius: 16,
+                  offset: const Offset(0, -4),
+                ),
+              ],
             ),
+            child: const SizedBox(height: 20),
           ),
         ),
         SliverToBoxAdapter(
@@ -634,7 +623,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                 maxWidth: ResponsiveBreakpoints.contentMaxWidth,
               ),
               child: Padding(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -715,7 +704,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                 maxScale: 4.0,
                 child: Center(
                   child: CachedNetworkImage(
-                    imageUrl: imageUrls[i],
+                    imageUrl: resolveMediaUrl(imageUrls[i]),
                     width: double.infinity,
                     height: double.infinity,
                     fit: BoxFit.contain,

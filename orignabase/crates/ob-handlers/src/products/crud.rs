@@ -1130,12 +1130,20 @@ async fn bulk_update_products(
     let is_admin = auth.has_role("admin");
     let mut products_map = std::collections::HashMap::new();
     for pid in &req.product_ids {
-        let product = state.db.get_document(collections::PRODUCTS, pid).await
+        let product = state
+            .db
+            .get_document(collections::PRODUCTS, pid)
+            .await
             .map_err(|_| ob_core::Error::NotFound(format!("Product not found: {pid}")))?;
         if product.is_null() {
-            return Err(ob_core::Error::NotFound(format!("Product not found: {pid}")));
+            return Err(ob_core::Error::NotFound(format!(
+                "Product not found: {pid}"
+            )));
         }
-        let seller_id = product.get(fields::SELLER_ID).and_then(|v| v.as_str()).unwrap_or("");
+        let seller_id = product
+            .get(fields::SELLER_ID)
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
         if seller_id != actor_id && !is_admin {
             return Err(ob_core::Error::Forbidden(
                 "Only product owner or admin can bulk update products".into(),
@@ -1153,7 +1161,11 @@ async fn bulk_update_products(
 
     let mut updated = 0u32;
     for pid in &req.product_ids {
-        match state.db.update_document(collections::PRODUCTS, pid, update_data.clone()).await {
+        match state
+            .db
+            .update_document(collections::PRODUCTS, pid, update_data.clone())
+            .await
+        {
             Ok(_) => updated += 1,
             Err(e) => tracing::warn!("Failed to update product {pid}: {e}"),
         }
@@ -2128,12 +2140,14 @@ mod tests {
     #[tokio::test]
     async fn test_update_product_success() {
         let state = setup_state().await;
+        let product_id = format!("prod_{}", uuid::Uuid::new_v4());
+        let seller_id = format!("seller_{}", uuid::Uuid::new_v4());
         state
             .db
             .upsert_document(
                 collections::PRODUCTS,
-                "prod_1",
-                serde_json::json!({ fields::SELLER_ID: "seller_1", fields::TITLE: "Old" }),
+                &product_id,
+                serde_json::json!({ fields::SELLER_ID: &seller_id, fields::TITLE: "Old" }),
             )
             .await
             .unwrap();
@@ -2141,7 +2155,7 @@ mod tests {
             .db
             .upsert_document(
                 collections::USERS,
-                "seller_1",
+                &seller_id,
                 serde_json::json!({ fields::ROLES: ["seller"] }),
             )
             .await
@@ -2149,10 +2163,10 @@ mod tests {
 
         let Json(resp) = update_product(
             State(state.clone()),
-            Extension(auth("seller_1", &["seller"])),
+            Extension(auth(&seller_id, &["seller"])),
             Json(UpdateProductRequest {
-                product_id: "prod_1".into(),
-                user_id: "seller_1".into(),
+                product_id: product_id.clone(),
+                user_id: seller_id.clone(),
                 product_data: serde_json::json!({ fields::TITLE: "New Title" }),
             }),
         )
@@ -2162,7 +2176,7 @@ mod tests {
         assert_eq!(resp["success"], true);
         let updated = state
             .db
-            .get_document(collections::PRODUCTS, "prod_1")
+            .get_document(collections::PRODUCTS, &product_id)
             .await
             .unwrap();
         assert_eq!(updated[fields::TITLE], "New Title");
@@ -2508,8 +2522,16 @@ mod tests {
         let state = setup_state().await;
         let unique_seller = format!("seller_asc_{}", uuid::Uuid::new_v4());
         for (id, status, created_at) in [
-            (&format!("p_asc_{}", uuid::Uuid::new_v4()), "active", "2026-01-01T00:00:00Z"),
-            (&format!("p_asc_{}", uuid::Uuid::new_v4()), "active", "2026-01-02T00:00:00Z"),
+            (
+                &format!("p_asc_{}", uuid::Uuid::new_v4()),
+                "active",
+                "2026-01-01T00:00:00Z",
+            ),
+            (
+                &format!("p_asc_{}", uuid::Uuid::new_v4()),
+                "active",
+                "2026-01-02T00:00:00Z",
+            ),
         ] {
             state.db.upsert_document(
                 collections::PRODUCTS, id,

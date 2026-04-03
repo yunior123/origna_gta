@@ -30,15 +30,49 @@ mod security_fixes {
         format!("sec_{}@example.com", Uuid::new_v4())
     }
 
+    async fn login_admin(client: &Client) -> String {
+        let login = client
+            .post(format!("{}/auth/login", base_url()))
+            .json(&json!({
+                "email": "e2e-admin@test.origna.ca",
+                "password": "REDACTED_TEST_PASSWORD"
+            }))
+            .send()
+            .await
+            .expect("admin login failed");
+
+        let body: Value = login.json().await.expect("admin login body invalid");
+        body["access_token"]
+            .as_str()
+            .expect("missing admin access_token")
+            .to_string()
+    }
+
     async fn register_and_login(email: &str, password: &str) -> String {
         let client = client();
 
-        client
+        let register = client
             .post(format!("{}/auth/register", base_url()))
             .json(&json!({"email": email, "password": password})) // ignore-magic
             .send()
             .await
             .expect("register failed");
+        let register_body: Value = register.json().await.expect("register body invalid");
+        let user_id = register_body["user"]["id"]
+            .as_str()
+            .expect("missing user.id")
+            .to_string();
+
+        let admin_token = login_admin(&client).await;
+        client
+            .patch(format!("{}/admin/users/{}", base_url(), user_id))
+            .header("Authorization", format!("Bearer {}", admin_token))
+            .json(&json!({
+                "roles": ["user", "seller"]
+            }))
+            .send()
+            .await
+            .expect("admin role patch failed");
 
         let login = client
             .post(format!("{}/auth/login", base_url()))
@@ -138,7 +172,7 @@ mod security_fixes {
             .post(format!("{}/products", base_url()))
             .header("Authorization", format!("Bearer {}", token)) // ignore-magic
             .json(&json!({ // ignore-magic
-                "title": "Self-purchase test product", // ignore-magic
+                "name": "Self-purchase test product", // ignore-magic
                 "description": "Test", // ignore-magic
                 "priceCents": 5000, // ignore-magic
                 "categoryId": "cat_123", // ignore-magic
@@ -206,7 +240,7 @@ mod security_fixes {
             .post(format!("{}/products", base_url()))
             .header("Authorization", format!("Bearer {}", token)) // ignore-magic
             .json(&json!({ // ignore-magic
-                "title": "Negative price test", // ignore-magic
+                "name": "Negative price test", // ignore-magic
                 "description": "Test", // ignore-magic
                 "priceCents": -5000, // ignore-magic
                 "categoryId": "cat_123", // ignore-magic
@@ -240,7 +274,7 @@ mod security_fixes {
             .post(format!("{}/products", base_url()))
             .header("Authorization", format!("Bearer {}", token)) // ignore-magic
             .json(&json!({ // ignore-magic
-                "title": "Zero price test", // ignore-magic
+                "name": "Zero price test", // ignore-magic
                 "description": "Test", // ignore-magic
                 "priceCents": 0, // ignore-magic
                 "categoryId": "cat_123", // ignore-magic
@@ -274,7 +308,7 @@ mod security_fixes {
             .post(format!("{}/products", base_url()))
             .header("Authorization", format!("Bearer {}", token)) // ignore-magic
             .json(&json!({ // ignore-magic
-                "title": "Negative stock test", // ignore-magic
+                "name": "Negative stock test", // ignore-magic
                 "description": "Test", // ignore-magic
                 "priceCents": 5000, // ignore-magic
                 "categoryId": "cat_123", // ignore-magic
@@ -377,7 +411,7 @@ mod security_fixes {
             .post(format!("{}/products", base_url()))
             .header("Authorization", format!("Bearer {}", token)) // ignore-magic
             .json(&json!({ // ignore-magic
-                "title": "Expensive item test", // ignore-magic
+                "name": "Expensive item test", // ignore-magic
                 "description": "Test", // ignore-magic
                 "priceCents": 10000001,  // $100,000.01 CAD // ignore-magic
                 "categoryId": "cat_123", // ignore-magic
@@ -563,7 +597,7 @@ mod security_fixes {
             .post(format!("{}/products", base_url()))
             .header("Authorization", format!("Bearer {}", token)) // ignore-magic
             .json(&json!({ // ignore-magic
-                "title": "Product with bad image", // ignore-magic
+                "name": "Product with bad image", // ignore-magic
                 "description": "Test", // ignore-magic
                 "priceCents": 5000, // ignore-magic
                 "categoryId": "cat_123", // ignore-magic

@@ -206,7 +206,8 @@ async fn test_mcp_rpc_invalid_method() {
         "Should have error field for unknown method"
     );
     assert_eq!(
-        body["error"]["code"], -32601, // ignore-magic
+        body["error"]["code"],
+        -32601, // ignore-magic
         "Should be method not found error"
     );
 }
@@ -330,7 +331,8 @@ async fn test_mcp_rpc_string_id() {
 
     assert_eq!(status, 200);
     assert_eq!(
-        body["id"], "request-abc-123", // ignore-magic
+        body["id"],
+        "request-abc-123", // ignore-magic
         "String ID should be preserved in response"
     );
 }

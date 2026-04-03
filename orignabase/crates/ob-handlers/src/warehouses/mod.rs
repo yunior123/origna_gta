@@ -293,7 +293,10 @@ async fn update_warehouse(
         patch.insert(fields::LABEL.to_string(), json!(sanitize_label(label)?));
     }
     if let Some(warehouse_type) = req.warehouse_type.as_deref() {
-        patch.insert(fields::TYPE.to_string(), json!(sanitize_type(warehouse_type)?));
+        patch.insert(
+            fields::TYPE.to_string(),
+            json!(sanitize_type(warehouse_type)?),
+        );
     }
     if let Some(address) = req.address.as_ref() {
         patch.insert(fields::ADDRESS.to_string(), sanitize_address(address)?);

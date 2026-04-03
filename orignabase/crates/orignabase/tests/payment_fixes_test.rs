@@ -89,7 +89,7 @@ mod payment_fixes {
             let body: Value = response.json().await.unwrap_or(json!({})); // ignore-magic
 
             if let (Some(subtotal), Some(fee)) = (
-                body["subtotalCents"].as_i64(), // ignore-magic
+                body["subtotalCents"].as_i64(),         // ignore-magic
                 body["platformFeeTotalCents"].as_i64(), // ignore-magic
             ) {
                 let expected_fee = subtotal / 20; // 5% = 1/20
@@ -132,10 +132,10 @@ mod payment_fixes {
             let body: Value = response.json().await.unwrap_or(json!({})); // ignore-magic
 
             if let (Some(subtotal), Some(tax), Some(shipping), Some(total), Some(_fee)) = (
-                body["subtotalCents"].as_i64(), // ignore-magic
-                body["taxAmountCents"].as_i64(), // ignore-magic
-                body["shippingCostCents"].as_i64(), // ignore-magic
-                body["totalAmountCents"].as_i64(), // ignore-magic
+                body["subtotalCents"].as_i64(),         // ignore-magic
+                body["taxAmountCents"].as_i64(),        // ignore-magic
+                body["shippingCostCents"].as_i64(),     // ignore-magic
+                body["totalAmountCents"].as_i64(),      // ignore-magic
                 body["platformFeeTotalCents"].as_i64(), // ignore-magic
             ) {
                 // Total = subtotal + tax + shipping (platform fee collected via Stripe Connect, not deducted from total)
@@ -353,7 +353,8 @@ mod payment_fixes {
             let body: Value = coupon_check.json().await.unwrap_or(json!({})); // ignore-magic
 
             // isUsed should be false until webhook confirms payment
-            if let Some(is_used) = body["isUsed"].as_bool() { // ignore-magic
+            if let Some(is_used) = body["isUsed"].as_bool() {
+                // ignore-magic
                 assert!(
                     !is_used,
                     "coupon should not be marked used until webhook confirms payment"
@@ -383,7 +384,8 @@ mod payment_fixes {
             let body: Value = response.json().await.unwrap_or(json!({})); // ignore-magic
 
             // Payout status should be nil/pending (not released)
-            if let Some(status) = body["status"].as_str() { // ignore-magic
+            if let Some(status) = body["status"].as_str() {
+                // ignore-magic
                 assert_ne!(
                     status, "completed",
                     "payout should not be completed for confirmed orders"
@@ -501,7 +503,8 @@ mod payment_fixes {
         if response.status() == StatusCode::OK || response.status() == StatusCode::CREATED {
             let body: Value = response.json().await.unwrap_or(json!({})); // ignore-magic
 
-            if let Some(subtotal) = body["subtotalCents"].as_i64() { // ignore-magic
+            if let Some(subtotal) = body["subtotalCents"].as_i64() {
+                // ignore-magic
                 let expected_subtotal = 3 * 1337;
                 let difference = (subtotal - expected_subtotal).abs();
 

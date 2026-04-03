@@ -2,7 +2,7 @@
 
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { AgentBrowser } from './agent-browser.js';
+import { AgentBrowser, type CapturePersona } from './agent-browser.js';
 
 const OUT_DIR = '/Users/yuniorrodriguezosorio/Desktop/origna-design-review-2026-03-26';
 
@@ -48,14 +48,22 @@ async function main() {
   mkdirSync(OUT_DIR, { recursive: true });
   const browser = new AgentBrowser();
 
-  // Make sure we are logged in and ready
-  await browser.goHomeAndLogin();
+  const goHome = async (persona: CapturePersona) => {
+    await browser.goHomeAndLogin(persona);
+  };
 
-  const capture = async (name: string, keywords: string[], width: number = 1440, height: number = 900) => {
+  const capture = async (
+    name: string,
+    keywords: string[],
+    width: number = 1440,
+    height: number = 900,
+    requiredKeywordCount = 1,
+  ) => {
     await browser.screenshotWithVerify({
       filepath: join(OUT_DIR, name),
       expectedKeywords: keywords,
       viewport: { width, height },
+      requiredKeywordCount,
     });
   };
 
@@ -71,7 +79,7 @@ async function main() {
   await capture('153-promo-banner.png', ['origna', 'promo', 'btn-home-settings', 'panier']);
 
   // ADD PRODUCT
-  await browser.goHomeAndLogin();
+  await goHome('seller');
   let res = await browser.navigateAndVerify({ clickRef: 'btn-add-product', expectedKeywords: SCREEN_KEYWORDS['btn-add-product'] });
   if (res.success) {
     await sleep(2000);
@@ -87,7 +95,7 @@ async function main() {
   }
 
   // EDIT PRODUCT
-  await browser.goHomeAndLogin();
+  await goHome('seller');
   const editClicked = await safeClickSearch(browser, /btn-edit-product-/i, 2);
   if (editClicked) {
     await capture('105-edit-product-top.png', ['Modifier', 'edit']);
@@ -100,33 +108,33 @@ async function main() {
   }
 
   // PROFILE HEADER
-  await browser.goHomeAndLogin();
+  await goHome('buyer');
   await browser.safeClick(/btn-home-settings/i);
   await sleep(3000);
   await capture('167-profile-header-card.png', ['Abonnement', 'Paramètres', 'Settings']);
 
   // FAVORITES
-  res = await browser.navigateToProfileMenu('menu-favorites', SCREEN_KEYWORDS['menu-favorites']);
-  if (res.success) await capture('159-favorites-empty.png', SCREEN_KEYWORDS['menu-favorites']);
+  res = await browser.navigateToProfileMenu('menu-favorites', SCREEN_KEYWORDS['menu-favorites'], 'buyer');
+  if (res.success) await capture('159-favorites-screen.png', SCREEN_KEYWORDS['menu-favorites']);
 
   // ADDRESS
-  res = await browser.navigateToProfileMenu('menu-address', SCREEN_KEYWORDS['menu-address']);
+  res = await browser.navigateToProfileMenu('menu-address', SCREEN_KEYWORDS['menu-address'], 'buyer');
   if (res.success) {
-    await capture('112-seller-warehouses-list.png', SCREEN_KEYWORDS['menu-address']);
+    await capture('112-buyer-addresses-list.png', SCREEN_KEYWORDS['menu-address']);
     const formClicked = await safeClickSearch(browser, /add|edit|address|nouvelle/i, 3);
     if (formClicked) await capture('128-address-edit-form.png', ['sauvegarder', 'save', 'ville', 'city']);
   }
 
   // MESSAGES
-  res = await browser.navigateToProfileMenu('menu-my-messages', SCREEN_KEYWORDS['menu-my-messages']);
+  res = await browser.navigateToProfileMenu('menu-my-messages', SCREEN_KEYWORDS['menu-my-messages'], 'buyer');
   if (res.success) {
-    await capture('164-chat-empty.png', SCREEN_KEYWORDS['menu-my-messages']);
+    await capture('164-chat-premium-gate-or-inbox.png', SCREEN_KEYWORDS['menu-my-messages']);
     const threadClicked = await safeClickSearch(browser, /chat-thread-/i, 3);
     if (threadClicked) await capture('127-chat-conversation.png', ['envoyer', 'send', 'message']);
   }
 
   // PREMIUM
-  res = await browser.navigateToProfileMenu('menu-premium', SCREEN_KEYWORDS['menu-premium']);
+  res = await browser.navigateToProfileMenu('menu-premium', SCREEN_KEYWORDS['menu-premium'], 'buyer');
   if (res.success) {
     await capture('129-subscription-cancel-flow.png', SCREEN_KEYWORDS['menu-premium']);
     const cancelClicked = await safeClickSearch(browser, /cancel-subscription|btn-cancel-subscription|annuler/i, 2);
@@ -134,7 +142,7 @@ async function main() {
   }
 
   // SELLER ORDERS
-  res = await browser.navigateToProfileMenu('menu-seller-orders', SCREEN_KEYWORDS['menu-seller-orders']);
+  res = await browser.navigateToProfileMenu('menu-seller-orders', SCREEN_KEYWORDS['menu-seller-orders'], 'seller');
   if (res.success) {
     await capture('162-seller-orders-populated.png', SCREEN_KEYWORDS['menu-seller-orders']);
     const orderClicked = await safeClickSearch(browser, /order-card-|btn-update-shipping/i, 2);
@@ -142,11 +150,11 @@ async function main() {
   }
 
   // SELLER DASHBOARD
-  res = await browser.navigateToProfileMenu('menu-seller-dashboard', SCREEN_KEYWORDS['menu-seller-dashboard']);
+  res = await browser.navigateToProfileMenu('menu-seller-dashboard', SCREEN_KEYWORDS['menu-seller-dashboard'], 'seller');
   if (res.success) await capture('163-seller-products-populated.png', SCREEN_KEYWORDS['menu-seller-dashboard']);
 
   // ADMIN PANEL
-  res = await browser.navigateToProfileMenu('menu-admin-panel', SCREEN_KEYWORDS['menu-admin-panel']);
+  res = await browser.navigateToProfileMenu('menu-admin-panel', SCREEN_KEYWORDS['menu-admin-panel'], 'admin');
   if (res.success) {
     await capture('168-admin-users-tab.png', ['Utilisateurs', 'Users', 'admin']);
     await browser.safeClick(/admin-tab-orders|admin_tab_orders|Commandes/i);
@@ -158,7 +166,7 @@ async function main() {
   }
 
   // CART & CHECKOUT
-  await browser.goHomeAndLogin();
+  await goHome('buyer');
   res = await browser.navigateAndVerify({ clickRef: 'btn-cart', expectedKeywords: SCREEN_KEYWORDS['btn-cart'] });
   if (res.success) {
     await capture('144-cart-total-breakdown.png', SCREEN_KEYWORDS['btn-cart']);
@@ -174,15 +182,15 @@ async function main() {
   }
 
   // MORE DESKTOP
-  await browser.goHomeAndLogin();
-  await capture('171-home-default-desktop.png', ['panier', 'btn-add-product']);
+  await goHome('buyer');
+  await capture('171-home-default-desktop.png', ['panier', 'btn-home-settings']);
   await browser.safeClick(/btn-home-settings/i);
   await sleep(3000);
   await capture('172-profile-menu-desktop.png', ['Abonnement', 'Paramètres']);
-  await browser.goHomeAndLogin();
+  await goHome('buyer');
   await capture('173-home-categories-desktop.png', ['catégorie', 'panier']);
   
-  res = await browser.navigateToProfileMenu('menu-language', SCREEN_KEYWORDS['menu-language']);
+  res = await browser.navigateToProfileMenu('menu-language', SCREEN_KEYWORDS['menu-language'], 'buyer');
   if (res.success) await capture('152-language-selector.png', SCREEN_KEYWORDS['menu-language']);
 }
 

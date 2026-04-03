@@ -90,7 +90,9 @@ impl JwtKeys {
     /// Create HS256 keys from a shared secret.
     pub fn from_secret(secret: &str) -> Self {
         if secret.is_empty() {
-            tracing::error!("JWT HMAC secret is empty — tokens will be trivially forgeable. Set OB_AUTH__JWT_SECRET.");
+            tracing::error!(
+                "JWT HMAC secret is empty — tokens will be trivially forgeable. Set OB_AUTH__JWT_SECRET."
+            );
         } else if secret.len() < 32 {
             tracing::warn!(
                 "JWT HMAC secret is only {} bytes — recommend at least 32 bytes for production.",

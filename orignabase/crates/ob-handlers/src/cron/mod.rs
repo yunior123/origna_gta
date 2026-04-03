@@ -293,7 +293,7 @@ async fn run_auto_capture(state: &HandlersState) -> std::result::Result<(), Stri
             // Funds were already transferred to the seller at checkout time via
             // Stripe Connect destination charge (transfer_data[destination]).
             // No separate Stripe Transfer is needed — just mark payout completed.
-            let _ = state
+            match state
                 .db
                 .update_document(
                     collections::PAYOUTS,
@@ -303,8 +303,17 @@ async fn run_auto_capture(state: &HandlersState) -> std::result::Result<(), Stri
                         fields::PAYOUT_DATE: Utc::now().to_rfc3339(),
                     }),
                 )
-                .await;
-            success_count += 1;
+                .await
+            {
+                Ok(_) => success_count += 1,
+                Err(e) => {
+                    warn!(
+                        "Failed to update payout {} to completed: {e}",
+                        payout_id
+                    );
+                    failed_count += 1;
+                }
+            }
         }
 
         // Update order payout status
@@ -2314,20 +2323,6 @@ mod tests {
         db.query_raw(&format!(
             "SELECT * FROM {} WHERE data->>'{}' = '{}'",
             table, field, value
-        ))
-        .await
-        .unwrap_or_default()
-    }
-
-    /// Helper: query rows from a table filtered by id prefix.
-    async fn query_by_id_prefix(
-        db: &DatabaseClient,
-        table: &str,
-        prefix: &str,
-    ) -> Vec<Value> {
-        db.query_raw(&format!(
-            "SELECT * FROM {} WHERE id LIKE '{}%'",
-            table, prefix
         ))
         .await
         .unwrap_or_default()

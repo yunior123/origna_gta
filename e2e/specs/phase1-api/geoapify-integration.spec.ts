@@ -7,11 +7,11 @@ const BUYER_EMAIL = TEST_ACCOUNTS.BUYER_EMAIL;
 const DEFAULT_PASS = "REDACTED_TEST_PASSWORD";
 
 describe("Geoapify Address Autocomplete", () => {
-  let buyerToken: string;
+  let buyerToken = "";
 
   test("T01 — authenticate buyer", async () => {
     const auth = await signIn(BUYER_EMAIL, DEFAULT_PASS);
-    buyerToken = auth.accessToken;
+    buyerToken = auth.accessToken ?? auth.idToken ?? "";
     expect(buyerToken).toBeTruthy();
   });
 

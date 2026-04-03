@@ -4,7 +4,11 @@
 //! Province-based pricing tiers, distance calculation via Geoapify,
 //! weight/volumetric surcharges, express/same-day multipliers.
 
-use axum::{Json, Router, extract::{Extension, State}, routing::post};
+use axum::{
+    Json, Router,
+    extract::{Extension, State},
+    routing::post,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::collections::HashMap;

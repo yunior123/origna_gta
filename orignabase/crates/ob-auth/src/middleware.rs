@@ -124,9 +124,7 @@ pub async fn auth_extractor(mut request: Request, next: Next) -> Result<Response
                             // Log the full error server-side but return a generic message
                             // to avoid leaking JWT internals (algorithm, expiry details, etc.)
                             warn!(error = %e, "JWT verification failed");
-                            return Err(Error::Auth(
-                                "Invalid or expired token".into(),
-                            ));
+                            return Err(Error::Auth("Invalid or expired token".into()));
                         }
                     }
                 }

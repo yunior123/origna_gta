@@ -160,7 +160,10 @@ fn normalize_document_for_indexing(document_id: &str, data: &Value) -> Value {
                 }
             }
             safe_doc.insert(f::ID.to_string(), Value::String(search_id));
-            safe_doc.insert(f::ORIG_ID.to_string(), Value::String(document_id.to_string()));
+            safe_doc.insert(
+                f::ORIG_ID.to_string(),
+                Value::String(document_id.to_string()),
+            );
             Value::Object(safe_doc)
         }
         _ => json!({

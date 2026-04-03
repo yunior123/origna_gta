@@ -1445,7 +1445,11 @@ mod tests {
             .get_document(collections::LICENSES, &license_key)
             .await
             .unwrap();
-        assert!(license["activations"][0].get(fields::LAST_VERIFIED_AT).is_some());
+        assert!(
+            license["activations"][0]
+                .get(fields::LAST_VERIFIED_AT)
+                .is_some()
+        );
     }
 
     #[tokio::test]
@@ -1497,7 +1501,10 @@ mod tests {
         let token_value = resp.download_url.strip_prefix("/sdl?t=").unwrap();
         let tokens = db
             .query_bind(
-                &format!("SELECT * FROM software_access_tokens WHERE data->>'accessToken' = '{}'", ob_core::escape_sql_string(token_value)),
+                &format!(
+                    "SELECT * FROM software_access_tokens WHERE data->>'accessToken' = '{}'",
+                    ob_core::escape_sql_string(token_value)
+                ),
                 json!({}),
             )
             .await

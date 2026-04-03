@@ -46,7 +46,7 @@ for arg in "$@"; do
       echo "  --status  Print service status and exit"
       echo ""
       echo "Services started:"
-      echo "  SurrealDB    -> localhost:8000"
+      echo "  PostgreSQL   -> localhost:5432"
       echo "  Meilisearch  -> localhost:7700"
       echo "  OrignaBase   -> localhost:8080"
       echo "  Caddy        -> localhost:80/443"
@@ -59,18 +59,28 @@ done
 
 # --- Status mode ---
 print_service_status() {
-  local name="$1" url="$2"
-  if curl -sf "$url" >/dev/null 2>&1; then
-    echo -e "  ${GREEN}[UP]${NC}   $name  $url"
+  local name="$1" probe="$2"
+  if [[ "$probe" == pg:* ]]; then
+    local host="${probe#pg:}"
+    if pg_isready -h "$host" -p 5432 >/dev/null 2>&1; then
+      echo -e "  ${GREEN}[UP]${NC}   $name  postgres://$host:5432"
+    else
+      echo -e "  ${RED}[DOWN]${NC} $name  postgres://$host:5432"
+    fi
+    return
+  fi
+
+  if curl -sf "$probe" >/dev/null 2>&1; then
+    echo -e "  ${GREEN}[UP]${NC}   $name  $probe"
   else
-    echo -e "  ${RED}[DOWN]${NC} $name  $url"
+    echo -e "  ${RED}[DOWN]${NC} $name  $probe"
   fi
 }
 
 if $STATUS_MODE; then
   echo ""
   echo -e "${CYAN}Service Status:${NC}"
-  print_service_status "SurrealDB  " "http://localhost:8000/health"
+  print_service_status "PostgreSQL " "pg:localhost"
   print_service_status "Meilisearch" "http://localhost:7700/health"
   print_service_status "OrignaBase " "http://localhost:8080/health"
   if docker ps --format '{{.Names}}' 2>/dev/null | grep -q chromadb; then
@@ -140,9 +150,17 @@ docker compose up -d --wait 2>&1 | tail -5 || {
 
 # --- Wait for health ---
 wait_for_health() {
-  local name="$1" url="$2" max_wait="${3:-60}"
+  local name="$1" probe="$2" max_wait="${3:-60}"
   local elapsed=0
-  while ! curl -sf "$url" >/dev/null 2>&1; do
+  while true; do
+    if [[ "$probe" == pg:* ]]; then
+      local host="${probe#pg:}"
+      if pg_isready -h "$host" -p 5432 >/dev/null 2>&1; then
+        break
+      fi
+    elif curl -sf "$probe" >/dev/null 2>&1; then
+      break
+    fi
     sleep 2
     elapsed=$((elapsed + 2))
     if [[ $elapsed -ge $max_wait ]]; then
@@ -154,7 +172,7 @@ wait_for_health() {
 }
 
 log "Waiting for services to become healthy..."
-wait_for_health "SurrealDB"   "http://localhost:8000/health" 60
+wait_for_health "PostgreSQL"  "pg:localhost" 60
 wait_for_health "Meilisearch" "http://localhost:7700/health" 60
 wait_for_health "OrignaBase"  "http://localhost:8080/health" 90
 
@@ -254,7 +272,7 @@ echo ""
 echo -e "${GREEN}========================================================${NC}"
 echo -e "${GREEN}  Local dev environment ready!${NC}"
 echo ""
-print_service_status "SurrealDB  " "http://localhost:8000/health"
+print_service_status "PostgreSQL " "pg:localhost"
 print_service_status "Meilisearch" "http://localhost:7700/health"
 print_service_status "OrignaBase " "http://localhost:8080/health"
 if docker ps --format '{{.Names}}' 2>/dev/null | grep -q chromadb; then

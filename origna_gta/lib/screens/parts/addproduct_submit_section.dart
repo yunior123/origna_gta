@@ -5,6 +5,24 @@ part of '../addproduct_screen.dart';
 // ============================================================================
 
 extension _AddProductSubmitSection on _AddProductScreenState {
+  double? _parseSubmittedPrice() {
+    final priceText = _priceController.text.trim();
+    final parsedPrice = double.tryParse(priceText);
+    if (parsedPrice != null) return parsedPrice;
+
+    AppLogger.w(
+      'Add product submit aborted due to invalid price input: $priceText',
+      tag: 'product',
+    );
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('product.invalid_price'.tr()),
+        backgroundColor: DesignTokens.error,
+      ),
+    );
+    return null;
+  }
+
   List<SellerDeliveryOption> buildDeliveryOptions(AddProductState state) {
     if (state.isDigital) return [];
 
@@ -219,6 +237,9 @@ extension _AddProductSubmitSection on _AddProductScreenState {
           : 0,
     );
 
+    final price = _parseSubmittedPrice();
+    if (price == null) return;
+
     viewModel.addProduct(
       name: _nameController.text.trim(),
       description: _descriptionController.text.trim(),
@@ -228,7 +249,7 @@ extension _AddProductSubmitSection on _AddProductScreenState {
       descriptionF: _descriptionFController.text.trim().isEmpty
           ? null
           : _descriptionFController.text.trim(),
-      price: double.tryParse(_priceController.text.trim()) ?? 0,
+      price: price,
       compareAtPrice: _compareAtPriceController.text.trim().isEmpty
           ? null
           : double.tryParse(_compareAtPriceController.text.trim()),

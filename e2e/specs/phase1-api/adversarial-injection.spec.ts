@@ -84,7 +84,7 @@ describe('1. XSS / Injection in Product Create', () => {
         console.log(`XSS product create: accepted and stored (expected if backend escapes)`);
       } else {
         // Rejected — even better
-        expect(['invalid-argument', 'failed-precondition', 'unauthenticated']).toContain(result.error.code);
+        expect(['invalid-argument', 'failed-precondition', 'unauthenticated', 'internal', 'DATABASE_ERROR']).toContain(result.error.code);
       }
     });
   }

@@ -21,6 +21,25 @@ fn password() -> String {
     std::env::var("OB_TEST_PASSWORD").unwrap_or_else(|_| "TestPassword123!".to_string()) // ignore-magic
 }
 
+async fn login_admin(client: &reqwest::Client) -> String {
+    let resp = client
+        .post(format!("{}/auth/login", base_url()))
+        .json(&json!({
+            "email": "e2e-admin@test.origna.ca",
+            "password": "REDACTED_TEST_PASSWORD"
+        }))
+        .send()
+        .await
+        .expect("admin login failed");
+
+    assert_eq!(resp.status(), StatusCode::OK, "admin login should succeed");
+    let body: Value = resp.json().await.expect("admin login json");
+    body["access_token"] // ignore-magic
+        .as_str()
+        .expect("missing admin access_token")
+        .to_string()
+}
+
 async fn register_test_user(client: &reqwest::Client) -> (String, String) {
     let email = format!("stress_{}@example.com", Uuid::new_v4());
     let resp = client
@@ -41,6 +60,50 @@ async fn register_test_user(client: &reqwest::Client) -> (String, String) {
     )
 }
 
+async fn register_seller_user(client: &reqwest::Client) -> (String, String) {
+    let email = format!("stress_seller_{}@example.com", Uuid::new_v4());
+    let resp = client
+        .post(format!("{}/auth/register", base_url()))
+        .json(&json!({ "email": email, "password": password() })) // ignore-magic
+        .send()
+        .await
+        .expect("seller register failed");
+
+    assert_eq!(resp.status(), StatusCode::OK, "seller registration should succeed");
+    let body: Value = resp.json().await.expect("seller register json");
+    let user_id = body["user"]["id"] // ignore-magic
+        .as_str()
+        .expect("missing seller user id")
+        .to_string();
+
+    let admin_token = login_admin(client).await;
+    let data = serde_json::to_string(&json!({ "roles": ["seller", "user"] })).expect("serialize roles");
+    let escaped = serde_json::to_string(&data).expect("escape roles");
+    let query =
+        format!(r#"mutation {{ update(collection: "users", id: "{user_id}", data: {escaped}) }}"#);
+    let update_body = graphql(client, &admin_token, &query).await;
+    assert!(
+        update_body.get("errors").is_none(),
+        "seller role bootstrap should succeed: {update_body}"
+    );
+
+    let login_resp = client
+        .post(format!("{}/auth/login", base_url()))
+        .json(&json!({ "email": email, "password": password() })) // ignore-magic
+        .send()
+        .await
+        .expect("seller login failed");
+
+    assert_eq!(login_resp.status(), StatusCode::OK, "seller login should succeed");
+    let login_body: Value = login_resp.json().await.expect("seller login json");
+    let token = login_body["access_token"] // ignore-magic
+        .as_str()
+        .expect("missing seller access_token")
+        .to_string();
+
+    (token, user_id)
+}
+
 async fn graphql(client: &reqwest::Client, token: &str, query: &str) -> Value {
     let resp = client
         .post(format!("{}/graphql", base_url()))
@@ -54,16 +117,25 @@ async fn graphql(client: &reqwest::Client, token: &str, query: &str) -> Value {
     resp.json().await.expect("graphql json")
 }
 
+async fn create_doc_response(
+    client: &reqwest::Client,
+    token: &str,
+    collection: &str,
+    data: &Value,
+) -> Value {
+    let data_str = serde_json::to_string(data).expect("serialize data");
+    let escaped = serde_json::to_string(&data_str).expect("escape data");
+    let query = format!(r#"mutation {{ create(collection: "{collection}", data: {escaped}) }}"#);
+    graphql(client, token, &query).await
+}
+
 async fn create_doc(
     client: &reqwest::Client,
     token: &str,
     collection: &str,
     data: &Value,
 ) -> String {
-    let data_str = serde_json::to_string(data).expect("serialize data");
-    let escaped = serde_json::to_string(&data_str).expect("escape data");
-    let query = format!(r#"mutation {{ create(collection: "{collection}", data: {escaped}) }}"#);
-    let body = graphql(client, token, &query).await;
+    let body = create_doc_response(client, token, collection, data).await;
     body["data"]["create"]["id"] // ignore-magic
         .as_str()
         .or_else(|| body["data"]["create"]["_id"].as_str()) // ignore-magic
@@ -72,19 +144,20 @@ async fn create_doc(
         .to_string()
 }
 
-async fn list_collection(
-    client: &reqwest::Client,
-    token: &str,
-    collection: &str,
-    limit: usize,
-) -> Value {
+async fn list_collection(client: &reqwest::Client, token: &str, collection: &str, limit: usize) -> Value {
     let query = format!(r#"{{ list(collection: "{collection}", limit: {limit}) }}"#);
     graphql(client, token, &query).await
 }
 
-async fn admin_put_config(client: &reqwest::Client, key: &str, value: Value) -> reqwest::Response {
+async fn admin_put_config(
+    client: &reqwest::Client,
+    admin_token: &str,
+    key: &str,
+    value: Value,
+) -> reqwest::Response {
     client
         .put(format!("{}/_admin/config/{key}", base_url()))
+        .header("Authorization", format!("Bearer {admin_token}")) // ignore-magic
         .json(&json!({ "value": value })) // ignore-magic
         .send()
         .await
@@ -96,13 +169,15 @@ async fn admin_put_config(client: &reqwest::Client, key: &str, value: Value) -> 
 async fn test_01_concurrent_same_key_writes_five_parallel_puts() {
     let client = Arc::new(reqwest::Client::new());
     let key = format!("stress_config_{}", Uuid::new_v4().simple());
+    let admin_token = Arc::new(login_admin(&client).await);
     let mut set = JoinSet::new();
 
     for idx in 0..5 {
         let client = Arc::clone(&client);
         let key = key.clone();
+        let admin_token = Arc::clone(&admin_token);
         set.spawn(async move {
-            let resp = admin_put_config(&client, &key, json!({ "writer": idx })).await; // ignore-magic
+            let resp = admin_put_config(&client, admin_token.as_str(), &key, json!({ "writer": idx })).await; // ignore-magic
             let status = resp.status();
             // Concurrent writes may cause 409 Conflict or 500 from PostgreSQL write conflicts
             assert!(
@@ -129,21 +204,32 @@ async fn test_01_concurrent_same_key_writes_five_parallel_puts() {
 #[ignore = "requires running orignabase instance"]
 async fn test_02_rapid_sequential_creates_hundred_docs() {
     let client = reqwest::Client::new();
-    let (token, _) = register_test_user(&client).await;
-    let collection = format!("stress_seq_{}", Uuid::new_v4().simple());
+    let (token, seller_id) = register_seller_user(&client).await;
+    let collection = "products";
 
     for idx in 0..100 {
-        let doc_id = create_doc(
+        let body = create_doc_response(
             &client,
             &token,
-            &collection,
-            &json!({ "idx": idx, "kind": "rapid-sequential" }), // ignore-magic
+            collection,
+            &json!({
+                "name": format!("Stress Product {idx}"),
+                "priceCents": 1000 + idx as i64,
+                "stockQuantity": 10,
+                "sellerId": seller_id,
+                "lifecycleStatus": "draft",
+                "isDigital": false,
+                "isPerishable": false
+            }),
         )
         .await;
-        assert!(!doc_id.is_empty(), "document {idx} should be created");
+        assert!(
+            body.get("errors").is_none(),
+            "document {idx} create should not return graphql errors: {body}"
+        );
     }
 
-    let body = list_collection(&client, &token, &collection, 150).await;
+    let body = list_collection(&client, &token, collection, 150).await;
     let len = body["data"]["list"] // ignore-magic
         .as_array()
         .map(|items| items.len())
@@ -210,13 +296,16 @@ async fn test_04_connection_pool_behavior_under_parallel_health_checks() {
 #[ignore = "requires running orignabase instance"]
 async fn test_05_parallel_admin_collection_reads_stay_responsive() {
     let client = Arc::new(reqwest::Client::new());
+    let admin_token = Arc::new(login_admin(&client).await);
     let mut set = JoinSet::new();
 
     for _ in 0..25 {
         let client = Arc::clone(&client);
+        let admin_token = Arc::clone(&admin_token);
         set.spawn(async move {
             let resp = client
                 .get(format!("{}/_admin/collections", base_url()))
+                .header("Authorization", format!("Bearer {}", admin_token.as_str())) // ignore-magic
                 .send()
                 .await
                 .expect("admin collections failed");

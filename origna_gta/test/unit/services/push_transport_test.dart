@@ -173,4 +173,13 @@ class _TestPushMessagingClient implements PushMessagingClient {
       authorizationStatus: AppNotificationAuthorizationStatus.authorized,
     );
   }
+
+  @override
+  Stream<AppRemoteMessage> get onMessage => const Stream.empty();
+
+  @override
+  Stream<AppRemoteMessage> get onMessageOpenedApp => const Stream.empty();
+
+  @override
+  void dispose() {}
 }

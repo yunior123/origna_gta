@@ -5,8 +5,29 @@ part of '../editproduct_screen.dart';
 // ============================================================================
 
 extension _EditProductSubmitSection on _EditProductScreenState {
+  double? _parseSubmittedPrice() {
+    final priceText = _priceController.text.trim();
+    final parsedPrice = double.tryParse(priceText);
+    if (parsedPrice != null) return parsedPrice;
+
+    AppLogger.w(
+      'Edit product submit aborted due to invalid price input: $priceText',
+      tag: 'product',
+    );
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('product.invalid_price'.tr()),
+        backgroundColor: DesignTokens.error,
+      ),
+    );
+    return null;
+  }
+
   void handleSave(EditProductViewModel viewModel) {
     if (!_formKey.currentState!.validate()) return;
+
+    final price = _parseSubmittedPrice();
+    if (price == null) return;
 
     final state = ref.read(editProductViewModelProvider(widget.product));
 
@@ -98,7 +119,7 @@ extension _EditProductSubmitSection on _EditProductScreenState {
       descriptionF: _descriptionFController.text.trim().isEmpty
           ? null
           : _descriptionFController.text.trim(),
-      price: double.tryParse(_priceController.text.trim()) ?? 0,
+      price: price,
       stock: int.tryParse(_stockController.text.trim()) ?? 0,
       categoryId: int.tryParse(_categoryController.text.trim()) ?? 0,
       street: _streetController.text.trim(),

@@ -13,6 +13,12 @@ use axum::{
 };
 use serde_json::Value;
 use std::sync::Arc;
+#[cfg(not(test))]
+use std::time::Duration;
+#[cfg(not(test))]
+use tower_governor::{
+    GovernorLayer, governor::GovernorConfigBuilder, key_extractor::PeerIpKeyExtractor,
+};
 use tracing::{debug, info};
 
 /// Public type exported for use in main.rs
@@ -28,10 +34,37 @@ pub fn create_mcp_router(state: McpState) -> Router {
 
     let mcp_state = Arc::new(OrignaGtaMcp::new(state, idempotency, spend_limit));
 
-    Router::new()
+    // P1-NEW-16: Rate limiting — 30 req/60s per IP (stricter than API-wide 100)
+    // Skipped in test builds — PeerIpKeyExtractor fails on axum oneshot (no TCP)
+    let router = Router::new()
         .route("/mcp/rpc", post(handle_rpc))
-        .route("/mcp/tools", get(list_tools))
-        .with_state(mcp_state)
+        .route("/mcp/tools", get(list_tools));
+
+    #[cfg(not(test))]
+    let router = {
+        let mcp_governor_conf = Arc::new(
+            GovernorConfigBuilder::default()
+                .key_extractor(PeerIpKeyExtractor)
+                .per_millisecond(600)
+                .burst_size(30)
+                .finish()
+                .expect("valid governor config for mcp"),
+        );
+        let mcp_governor_limiter = mcp_governor_conf.limiter().clone();
+        // Spawn periodic cleanup to prevent memory leak
+        {
+            let limiter = mcp_governor_limiter;
+            tokio::spawn(async move {
+                loop {
+                    tokio::time::sleep(Duration::from_secs(60)).await;
+                    limiter.retain_recent();
+                }
+            });
+        }
+        router.layer(GovernorLayer::new(mcp_governor_conf))
+    };
+
+    router.with_state(mcp_state)
 }
 
 /// Handle JSON-RPC 2.0 requests
@@ -70,7 +103,10 @@ async fn handle_rpc(
     // Process request
     let response = mcp.handle_request(request, ctx).await;
 
-    (StatusCode::OK, Json(serde_json::to_value(response).unwrap_or_default()))
+    (
+        StatusCode::OK,
+        Json(serde_json::to_value(response).unwrap_or_default()),
+    )
 }
 
 /// List available tools

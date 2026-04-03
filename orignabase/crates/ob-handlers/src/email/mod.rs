@@ -427,13 +427,21 @@ pub fn seller_notification_html(order: &OrderSummary, seller_name: &str, lang: &
 pub fn low_stock_alert_html(product_name: &str, current_stock: u32, lang: &str) -> String {
     let l = if lang == "fr" { "fr" } else { "en" };
     let units = if l == "fr" {
-        if current_stock == 1 { "unité" } else { "unités" }
+        if current_stock == 1 {
+            "unité"
+        } else {
+            "unités"
+        }
     } else if current_stock == 1 {
         "unit"
     } else {
         "units"
     };
-    let current_stock_label = if l == "fr" { "Stock actuel" } else { "Current stock" };
+    let current_stock_label = if l == "fr" {
+        "Stock actuel"
+    } else {
+        "Current stock"
+    };
     let content = format!(
         r##"<tr><td style="padding:32px 40px;">
             <h2 style="color:#E53E3E;">{hero}</h2>
@@ -454,7 +462,11 @@ pub fn low_stock_alert_html(product_name: &str, current_stock: u32, lang: &str) 
             </p>
         </td></tr>"##,
         hero = t("stock.hero", l),
-        body_prefix = if l == "fr" { "Votre produit" } else { "Your product" },
+        body_prefix = if l == "fr" {
+            "Votre produit"
+        } else {
+            "Your product"
+        },
         name = html_escape(product_name),
         body_suffix = t("stock.body", l),
         stock_label = current_stock_label,
@@ -558,7 +570,11 @@ pub fn subscription_created_html(buyer_name: &str, price_cad: f64, lang: &str) -
         body = t("sub.created.body", l),
         price = price_cad,
         url = email_config::URL_PROD,
-        cta = if l == "fr" { "Mon compte" } else { "My Account" },
+        cta = if l == "fr" {
+            "Mon compte"
+        } else {
+            "My Account"
+        },
     );
     email_wrapper(t("sub.created", l), &content, true, l)
 }

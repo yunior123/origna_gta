@@ -1044,6 +1044,21 @@ void main() {
       expect(query, contains('limit: 20'));
     });
 
+    test('zero offset is omitted from list query', () async {
+      final rec = recordingClient((_) => {
+            'data': {'list': []}
+          });
+      final ob = OrignaBase.initialize(
+          url: 'http://test.local', httpClient: rec.client);
+
+      await ob.collection('products').offset(0).limit(20).get();
+
+      final query = (jsonDecode(rec.requests.first.body)
+          as Map<String, dynamic>)['query'] as String;
+      expect(query, contains('limit: 20'));
+      expect(query, isNot(contains('offset: 0')));
+    });
+
     test('N+1 pattern: hasMore true when results exceed limit', () async {
       final ob = mockOb((_) => <String, dynamic>{
             'data': {
@@ -2859,6 +2874,41 @@ void main() {
       final body = jsonDecode(rec.requests.first.body) as Map<String, dynamic>;
       expect(body['query'], contains('batchDelete'));
 
+      ob.dispose();
+    });
+
+    test('batch delete parses backend response array', () async {
+      final ob = mockOb((_) => {
+            'data': {
+              'batchDelete': [
+                {'id': 'doc_1', 'deleted': true},
+              ],
+            },
+          });
+
+      final batch = ob.batch();
+      batch.delete('collection', 'doc_1');
+      final results = await batch.commit();
+
+      expect(results, [
+        {'id': 'doc_1', 'deleted': true},
+      ]);
+      ob.dispose();
+    });
+
+    test('batch delete preserves backend message response', () async {
+      final ob = mockOb((_) => {
+            'data': {'batchDelete': 'deleted'},
+          });
+
+      final batch = ob.batch();
+      batch.delete('collection', 'doc_1');
+      batch.delete('collection', 'doc_2');
+      final results = await batch.commit();
+
+      expect(results, [
+        {'message': 'deleted', 'deletedCount': 2},
+      ]);
       ob.dispose();
     });
 

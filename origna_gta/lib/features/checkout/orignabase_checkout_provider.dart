@@ -56,10 +56,10 @@ final _stripeCircuitBreaker = CircuitBreakerRegistry.get(
 ///   errors instead of hanging.
 /// - Idempotency keys prevent duplicate orders on retry — the server returns
 ///   the existing session if the key matches.
-/// - Biometric auth required for transactions >= $100 CAD — security guard
+/// - Biometric auth required for buyer totals >= $100 CAD — security guard
 ///   via [LocalAuthentication].
 /// - Cart price verification runs before checkout — catches price drift between
-///   add-to-cart and checkout time. Fails open (continues on verification error).
+///   add-to-cart and checkout time. Fails closed if verification cannot complete.
 /// - Free shipping threshold checked against post-coupon subtotal — coupons can
 ///   trigger free shipping.
 /// - All monetary values use integer cents internally; dollars only for display.
@@ -86,6 +86,16 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
   OrderRepository get _orderRepository => _ref.read(orderRepositoryProvider);
   String? get _userId => _ref.read(obUserIdProvider);
   UserRepository get _userRepository => _ref.read(userRepositoryProvider);
+
+  int _buyerTotalCentsForCheckout(int subtotalCents) {
+    final discountedSubtotalCents = max(
+      0,
+      subtotalCents - state.couponDiscountCents,
+    );
+    final shippingCents = (state.shippingCost * 100).round();
+    final taxCents = (state.taxAmount * 100).round();
+    return discountedSubtotalCents + shippingCents + taxCents;
+  }
 
   /// Validates and applies a coupon code server-side, storing the discount in state.
   ///
@@ -443,7 +453,7 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
   /// Pre-flight validation: cart non-empty, address valid (for physical items),
   /// subtotal > 0, email present, not already processing.
   ///
-  /// Security: biometric auth required for transactions >= $100 CAD.
+  /// Security: biometric auth required for buyer totals >= $100 CAD.
   ///
   /// Flow:
   /// 1. Verify cart prices haven't changed (fail-open on error)
@@ -493,8 +503,10 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
     );
 
     try {
-      // Biometric guard for high-value transactions ($100 CAD)
-      if (subtotalCents >= 10000) {
+      final buyerTotalCents = _buyerTotalCentsForCheckout(subtotalCents);
+
+      // Biometric guard for high-value buyer totals ($100 CAD)
+      if (buyerTotalCents >= 10000) {
         final localAuth = LocalAuthentication();
         final canAuthenticateWithBiometrics =
             await localAuth.canCheckBiometrics;

@@ -5,8 +5,8 @@
 
 use ob_core::ports::db_store::{AppResult, DatabaseStore};
 use serde_json::Value;
-use sqlx::postgres::{PgPool, PgPoolOptions};
 use sqlx::Row;
+use sqlx::postgres::{PgPool, PgPoolOptions};
 
 /// PostgreSQL adapter for the DatabaseStore trait.
 ///
@@ -223,8 +223,7 @@ pub(crate) fn translate_surreal_raw(query: &str) -> String {
             for (k, v) in &pairs {
                 obj.insert(k.clone(), parse_surreal_literal(v));
             }
-            let id = explicit_id
-                .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
+            let id = explicit_id.unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
             obj.insert("id".to_string(), Value::String(id.clone()));
             let data = serde_json::to_string(&Value::Object(obj)).unwrap_or_default();
             q = format!(
@@ -247,11 +246,15 @@ pub(crate) fn translate_surreal_raw(query: &str) -> String {
                 .trim_end();
 
             // Parse the JSON body
-            let mut data: Value = serde_json::from_str(body).unwrap_or(Value::Object(Default::default()));
+            let mut data: Value =
+                serde_json::from_str(body).unwrap_or(Value::Object(Default::default()));
             if let Some(obj) = data.as_object_mut() {
-                let id = explicit_id
-                    .unwrap_or_else(|| obj.get("id").and_then(|v| v.as_str()).map(String::from)
-                        .unwrap_or_else(|| uuid::Uuid::new_v4().to_string()));
+                let id = explicit_id.unwrap_or_else(|| {
+                    obj.get("id")
+                        .and_then(|v| v.as_str())
+                        .map(String::from)
+                        .unwrap_or_else(|| uuid::Uuid::new_v4().to_string())
+                });
                 obj.insert("id".to_string(), Value::String(id.clone()));
                 let data_str = serde_json::to_string(&data).unwrap_or_default();
                 q = format!(
@@ -271,7 +274,9 @@ pub(crate) fn translate_surreal_raw(query: &str) -> String {
             if parts.len() == 2 {
                 let table = parts[0].trim();
                 let id = parts[1].trim().trim_matches('\'').trim_matches('"');
-                q = format!("DELETE FROM {table} WHERE id = '{id}' RETURNING id, data::TEXT, created_at, updated_at");
+                q = format!(
+                    "DELETE FROM {table} WHERE id = '{id}' RETURNING id, data::TEXT, created_at, updated_at"
+                );
                 return q;
             }
         }
@@ -283,7 +288,9 @@ pub(crate) fn translate_surreal_raw(query: &str) -> String {
         let upper = q.to_uppercase();
         if let Some(from_idx) = upper.find("FROM ") {
             let after_from = &q[from_idx + 5..];
-            let end = after_from.find(|c: char| c.is_whitespace() || c == ';').unwrap_or(after_from.len());
+            let end = after_from
+                .find(|c: char| c.is_whitespace() || c == ';')
+                .unwrap_or(after_from.len());
             let table_ref = &after_from[..end];
             if table_ref.contains(':') && !table_ref.contains("::") {
                 let parts: Vec<&str> = table_ref.splitn(2, ':').collect();
@@ -294,10 +301,8 @@ pub(crate) fn translate_surreal_raw(query: &str) -> String {
                     let after_ref = &after_from[end..];
                     // Check if WHERE already exists
                     if after_ref.to_uppercase().contains("WHERE") {
-                        q = format!("{before}{table}{after_ref}").replace(
-                            "WHERE",
-                            &format!("WHERE id = '{id}' AND"),
-                        );
+                        q = format!("{before}{table}{after_ref}")
+                            .replace("WHERE", &format!("WHERE id = '{id}' AND"));
                     } else {
                         q = format!("{before}{table} WHERE id = '{id}'{after_ref}");
                     }
@@ -310,7 +315,10 @@ pub(crate) fn translate_surreal_raw(query: &str) -> String {
     q = rewrite_bare_fields_in_where(&q);
 
     // ── 5. Remove RETURN AFTER → RETURNING * ───────────────────────────
-    q = q.replace("RETURN AFTER", "RETURNING id, data::TEXT, created_at, updated_at");
+    q = q.replace(
+        "RETURN AFTER",
+        "RETURNING id, data::TEXT, created_at, updated_at",
+    );
 
     // ── 6. SurrealDB NONE → PostgreSQL IS NULL ────────────────────────
     q = q.replace("= NONE", "IS NULL");
@@ -342,15 +350,15 @@ pub(crate) fn translate_surreal_raw(query: &str) -> String {
 ///
 /// # Errors
 /// Returns `Error::Database` if `binds` is not a JSON object.
-pub(crate) fn translate_surreal_to_pg(query: &str, binds: Value) -> AppResult<(String, Vec<Value>)> {
+pub(crate) fn translate_surreal_to_pg(
+    query: &str,
+    binds: Value,
+) -> AppResult<(String, Vec<Value>)> {
     let obj = binds
         .as_object()
         .ok_or_else(|| ob_core::Error::Database("Binds must be a JSON object".into()))?;
 
-    let pairs: Vec<(String, Value)> = obj
-        .iter()
-        .map(|(k, v)| (k.clone(), v.clone()))
-        .collect();
+    let pairs: Vec<(String, Value)> = obj.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
 
     let mut pg_query = query.to_string();
 
@@ -364,7 +372,7 @@ pub(crate) fn translate_surreal_to_pg(query: &str, binds: Value) -> AppResult<(S
             if let Some(close) = after.find(')') {
                 let args = &after[..close];
                 let _full_match = &pg_query[start..start + 12 + close + 1];
-                // Parse arguments: ('table', $id) or ($table, $id)
+                // Parse arguments: ('table', $id) or ($table, $id) or ($combined)
                 let parts: Vec<&str> = args.splitn(2, ',').collect();
                 if parts.len() == 2 {
                     let id_param = parts[1].trim().trim_matches('\'').trim_matches('"');
@@ -373,6 +381,37 @@ pub(crate) fn translate_surreal_to_pg(query: &str, binds: Value) -> AppResult<(S
                         "{}{}{}",
                         &pg_query[..start],
                         id_param,
+                        &pg_query[start + 12 + close + 1..]
+                    );
+                } else if parts.len() == 1 {
+                    // Single-arg: type::thing($param) where $param = "table:id"
+                    // Extract table name from the bind value and rewrite to proper PostgreSQL
+                    let param = parts[0].trim();
+                    if let Some((_, bind_val)) = pairs.iter().find(|(k, _)| format!("${k}") == param || k == param.trim_start_matches('$'))
+                        && let Some(combined) = bind_val.as_str()
+                        && let Some((table, id)) = combined.split_once(':')
+                    {
+                        // Rewrite: SELECT * FROM type::thing($uid) → SELECT * FROM users WHERE id = 'abc'
+                        let after_expr = &pg_query[start + 12 + close + 1..];
+                        // Check if preceded by "FROM " — keep it in the output
+                        let prefix_end = pg_query[..start]
+                            .rfind("FROM ")
+                            .map(|pos| pos + 5) // include "FROM " itself
+                            .unwrap_or(start);
+                        pg_query = format!(
+                            "{}{} WHERE id = '{}' {}",
+                            &pg_query[..prefix_end],
+                            table,
+                            id,
+                            after_expr
+                        );
+                        continue;
+                    }
+                    // Fallback: just strip the type::thing wrapper
+                    pg_query = format!(
+                        "{}{}{}",
+                        &pg_query[..start],
+                        param,
                         &pg_query[start + 12 + close + 1..]
                     );
                 } else {
@@ -388,17 +427,22 @@ pub(crate) fn translate_surreal_to_pg(query: &str, binds: Value) -> AppResult<(S
 
     // CREATE type::thing($table, $id) CONTENT $data RETURN AFTER
     // → INSERT INTO $table (id, data) VALUES ($id, $data::jsonb) RETURNING *
-    if pg_query.to_uppercase().starts_with("CREATE ") && pg_query.to_uppercase().contains("CONTENT ") {
+    if pg_query.to_uppercase().starts_with("CREATE ")
+        && pg_query.to_uppercase().contains("CONTENT ")
+    {
         // Extract the table from binds
-        let table = pairs.iter()
+        let table = pairs
+            .iter()
             .find(|(k, _)| k == "table")
             .and_then(|(_, v)| v.as_str())
             .unwrap_or("unknown");
-        let id_val = pairs.iter()
+        let id_val = pairs
+            .iter()
             .find(|(k, _)| k == "id")
             .map(|(_, v)| v.clone())
             .unwrap_or(Value::String(uuid::Uuid::new_v4().to_string()));
-        let data_val = pairs.iter()
+        let data_val = pairs
+            .iter()
             .find(|(k, _)| k == "data")
             .map(|(_, v)| v.clone())
             .unwrap_or(Value::Object(Default::default()));
@@ -406,9 +450,10 @@ pub(crate) fn translate_surreal_to_pg(query: &str, binds: Value) -> AppResult<(S
         // Merge id into data
         let mut merged = data_val.clone();
         if let Some(obj) = merged.as_object_mut()
-            && let Some(id_str) = id_val.as_str() {
-                obj.insert("id".to_string(), Value::String(id_str.to_string()));
-            }
+            && let Some(id_str) = id_val.as_str()
+        {
+            obj.insert("id".to_string(), Value::String(id_str.to_string()));
+        }
 
         let data_str = serde_json::to_string(&merged).unwrap_or_default();
         let id_str = id_val.as_str().unwrap_or("unknown");
@@ -418,30 +463,37 @@ pub(crate) fn translate_surreal_to_pg(query: &str, binds: Value) -> AppResult<(S
              ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, updated_at = now() \
              RETURNING id, data::TEXT, created_at, updated_at"
         );
-        return Ok((pg_query, vec![Value::String(id_str.to_string()), Value::String(data_str)]));
+        return Ok((
+            pg_query,
+            vec![Value::String(id_str.to_string()), Value::String(data_str)],
+        ));
     }
 
     // UPSERT type::thing($table, $id) CONTENT $data RETURN AFTER
     // → INSERT ... ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data RETURNING *
     if pg_query.to_uppercase().starts_with("UPSERT ") {
-        let table = pairs.iter()
+        let table = pairs
+            .iter()
             .find(|(k, _)| k == "table")
             .and_then(|(_, v)| v.as_str())
             .unwrap_or("unknown");
-        let id_val = pairs.iter()
+        let id_val = pairs
+            .iter()
             .find(|(k, _)| k == "id")
             .map(|(_, v)| v.clone())
             .unwrap_or(Value::String(uuid::Uuid::new_v4().to_string()));
-        let data_val = pairs.iter()
+        let data_val = pairs
+            .iter()
             .find(|(k, _)| k == "data")
             .map(|(_, v)| v.clone())
             .unwrap_or(Value::Object(Default::default()));
 
         let mut merged = data_val.clone();
         if let Some(obj) = merged.as_object_mut()
-            && let Some(id_str) = id_val.as_str() {
-                obj.insert("id".to_string(), Value::String(id_str.to_string()));
-            }
+            && let Some(id_str) = id_val.as_str()
+        {
+            obj.insert("id".to_string(), Value::String(id_str.to_string()));
+        }
         let data_str = serde_json::to_string(&merged).unwrap_or_default();
         let id_str = id_val.as_str().unwrap_or("unknown");
 
@@ -450,19 +502,25 @@ pub(crate) fn translate_surreal_to_pg(query: &str, binds: Value) -> AppResult<(S
              ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, updated_at = now() \
              RETURNING id, data::TEXT, created_at, updated_at"
         );
-        return Ok((pg_query, vec![Value::String(id_str.to_string()), Value::String(data_str)]));
+        return Ok((
+            pg_query,
+            vec![Value::String(id_str.to_string()), Value::String(data_str)],
+        ));
     }
 
     // UPDATE ... MERGE $data RETURN AFTER → UPDATE SET data = data || $data::jsonb WHERE id = $id
     if pg_query.to_uppercase().contains("MERGE ") && pg_query.to_uppercase().contains("UPDATE ") {
-        let table = pairs.iter()
+        let table = pairs
+            .iter()
             .find(|(k, _)| k == "table")
             .and_then(|(_, v)| v.as_str())
             .unwrap_or("unknown");
-        let id_val = pairs.iter()
+        let id_val = pairs
+            .iter()
             .find(|(k, _)| k == "id")
             .map(|(_, v)| v.clone());
-        let data_val = pairs.iter()
+        let data_val = pairs
+            .iter()
             .find(|(k, _)| k == "data")
             .map(|(_, v)| v.clone())
             .unwrap_or(Value::Object(Default::default()));
@@ -476,7 +534,10 @@ pub(crate) fn translate_surreal_to_pg(query: &str, binds: Value) -> AppResult<(S
                  WHERE id = $2 \
                  RETURNING id, data::TEXT, created_at, updated_at"
             );
-            return Ok((pg_query, vec![Value::String(data_str), Value::String(id_str.to_string())]));
+            return Ok((
+                pg_query,
+                vec![Value::String(data_str), Value::String(id_str.to_string())],
+            ));
         }
     }
 
@@ -484,9 +545,11 @@ pub(crate) fn translate_surreal_to_pg(query: &str, binds: Value) -> AppResult<(S
     pg_query = pg_query.replace("count()", "COUNT(*)");
     pg_query = pg_query.replace("COUNT()", "COUNT(*)");
     pg_query = pg_query.replace(" GROUP ALL", "");
-    pg_query = pg_query.replace("RETURN AFTER", "RETURNING id, data::TEXT, created_at, updated_at");
+    pg_query = pg_query.replace(
+        "RETURN AFTER",
+        "RETURNING id, data::TEXT, created_at, updated_at",
+    );
     pg_query = pg_query.replace("time::now()", "now()");
-
 
     // Rewrite UPDATE table SET field1 = $p1, field2 = $p2 WHERE ...
     // → UPDATE table SET data = data || jsonb_build_object('field1', $p1, 'field2', $p2) WHERE ...
@@ -502,25 +565,32 @@ pub(crate) fn translate_surreal_to_pg(query: &str, binds: Value) -> AppResult<(S
             let trimmed_set = set_clause.trim();
             if !trimmed_set.starts_with("data") && !trimmed_set.starts_with("data ") {
                 // Parse SET pairs: field1 = $p1, field2 = $p2
-                let set_pairs: Vec<(&str, &str)> = trimmed_set.split(',').filter_map(|part| {
-                    let part = part.trim();
-                    let eq = part.find('=')?;
-                    let key = part[..eq].trim();
-                    let val = part[eq + 1..].trim();
-                    // Skip if field is already data-> prefixed or is a standard column
-                    let standard = ["id", "created_at", "updated_at", "data"];
-                    if standard.contains(&key) || key.starts_with("data") {
-                        return None;
-                    }
-                    Some((key, val))
-                }).collect();
+                let set_pairs: Vec<(&str, &str)> = trimmed_set
+                    .split(',')
+                    .filter_map(|part| {
+                        let part = part.trim();
+                        let eq = part.find('=')?;
+                        let key = part[..eq].trim();
+                        let val = part[eq + 1..].trim();
+                        // Skip if field is already data-> prefixed or is a standard column
+                        let standard = ["id", "created_at", "updated_at", "data"];
+                        if standard.contains(&key) || key.starts_with("data") {
+                            return None;
+                        }
+                        Some((key, val))
+                    })
+                    .collect();
 
                 if !set_pairs.is_empty() {
                     // Build JSONB merge: data = data || jsonb_build_object(...)
-                    let jsonb_args: Vec<String> = set_pairs.iter().map(|(k, v)| {
-                        format!("'{k}', {v}")
-                    }).collect();
-                    let new_set = format!("data = data || jsonb_build_object({}), updated_at = now()", jsonb_args.join(", "));
+                    let jsonb_args: Vec<String> = set_pairs
+                        .iter()
+                        .map(|(k, v)| format!("'{k}', {v}"))
+                        .collect();
+                    let new_set = format!(
+                        "data = data || jsonb_build_object({}), updated_at = now()",
+                        jsonb_args.join(", ")
+                    );
                     let after = &pg_query[set_end..];
                     let before = &pg_query[..set_idx + 5];
                     pg_query = format!("{before}{new_set}{after}");
@@ -563,7 +633,8 @@ pub(crate) fn translate_surreal_to_pg(query: &str, binds: Value) -> AppResult<(S
                                     && candidate.chars().all(|c| c.is_alphanumeric() || c == '_')
                                 {
                                     field_name = candidate;
-                                    field_start_idx = before[..op_pos].rfind(field_name).unwrap_or(op_pos);
+                                    field_start_idx =
+                                        before[..op_pos].rfind(field_name).unwrap_or(op_pos);
                                     break;
                                 }
                             } else {
@@ -581,7 +652,9 @@ pub(crate) fn translate_surreal_to_pg(query: &str, binds: Value) -> AppResult<(S
                 }
 
                 if !field_name.is_empty() && !standard_columns.contains(&field_name) {
-                    let op_str = &before_trimmed[before_trimmed.rfind(field_name).unwrap_or(0) + field_name.len()..].trim();
+                    let op_str = &before_trimmed
+                        [before_trimmed.rfind(field_name).unwrap_or(0) + field_name.len()..]
+                        .trim();
                     result.push_str(&before[..field_start_idx]);
                     result.push_str(&format!("data->>'{field_name}' {op_str} "));
                 } else {
@@ -612,7 +685,10 @@ fn parse_surreal_table_id(s: &str) -> (String, Option<String>) {
     let clean = s.trim().trim_matches('\'').trim_matches('"');
     if let Some(colon) = clean.find(':') {
         let table = clean[..colon].to_string();
-        let id = clean[colon + 1..].trim_matches('\'').trim_matches('"').to_string();
+        let id = clean[colon + 1..]
+            .trim_matches('\'')
+            .trim_matches('"')
+            .to_string();
         (table, Some(id))
     } else {
         (clean.to_string(), None)
@@ -645,16 +721,21 @@ fn parse_surreal_literal(s: &str) -> Value {
         return Value::String(s[1..s.len() - 1].to_string());
     }
     // Boolean
-    if s == "true" { return Value::Bool(true); }
-    if s == "false" { return Value::Bool(false); }
+    if s == "true" {
+        return Value::Bool(true);
+    }
+    if s == "false" {
+        return Value::Bool(false);
+    }
     // Number
     if let Ok(n) = s.parse::<i64>() {
         return Value::Number(n.into());
     }
     if let Ok(n) = s.parse::<f64>()
-        && let Some(n) = serde_json::Number::from_f64(n) {
-            return Value::Number(n);
-        }
+        && let Some(n) = serde_json::Number::from_f64(n)
+    {
+        return Value::Number(n);
+    }
     Value::String(s.to_string())
 }
 
@@ -683,7 +764,9 @@ fn rewrite_bare_fields_in_where(query: &str) -> String {
         let prefix_ws = remaining.len() - trimmed.len();
 
         // Find the next word (potential field name)
-        let word_end = trimmed.find(|c: char| !c.is_alphanumeric() && c != '_').unwrap_or(trimmed.len());
+        let word_end = trimmed
+            .find(|c: char| !c.is_alphanumeric() && c != '_')
+            .unwrap_or(trimmed.len());
         if word_end == 0 {
             // Not a word, just copy the character
             result.push_str(&remaining[..prefix_ws + 1.min(trimmed.len())]);
@@ -696,10 +779,45 @@ fn rewrite_bare_fields_in_where(query: &str) -> String {
 
         // Skip SQL keywords
         let keywords = [
-            "AND", "OR", "NOT", "IN", "IS", "NULL", "LIKE", "BETWEEN", "EXISTS", "ASC", "DESC",
-            "ORDER", "BY", "GROUP", "HAVING", "LIMIT", "OFFSET", "FROM", "SELECT", "INSERT",
-            "UPDATE", "DELETE", "SET", "VALUES", "RETURNING", "TRUE", "FALSE", "CASE", "WHEN",
-            "THEN", "ELSE", "END", "AS", "ON", "JOIN", "LEFT", "RIGHT", "INNER", "OUTER",
+            "AND",
+            "OR",
+            "NOT",
+            "IN",
+            "IS",
+            "NULL",
+            "LIKE",
+            "BETWEEN",
+            "EXISTS",
+            "ASC",
+            "DESC",
+            "ORDER",
+            "BY",
+            "GROUP",
+            "HAVING",
+            "LIMIT",
+            "OFFSET",
+            "FROM",
+            "SELECT",
+            "INSERT",
+            "UPDATE",
+            "DELETE",
+            "SET",
+            "VALUES",
+            "RETURNING",
+            "TRUE",
+            "FALSE",
+            "CASE",
+            "WHEN",
+            "THEN",
+            "ELSE",
+            "END",
+            "AS",
+            "ON",
+            "JOIN",
+            "LEFT",
+            "RIGHT",
+            "INNER",
+            "OUTER",
         ];
 
         if keywords.contains(&word_upper.as_str())
@@ -745,9 +863,9 @@ fn extract_table_name(query: &str) -> Option<String> {
 
     // Try each keyword pattern, ensuring word boundaries
     let patterns: &[(&str, bool)] = &[
-        ("delete from", true),  // multi-word, look for FROM after DELETE
-        ("update", false),      // single keyword at statement start
-        ("from", true),         // FROM in SELECT queries
+        ("delete from", true), // multi-word, look for FROM after DELETE
+        ("update", false),     // single keyword at statement start
+        ("from", true),        // FROM in SELECT queries
     ];
 
     for &(keyword, is_multiword) in patterns {
@@ -758,7 +876,10 @@ fn extract_table_name(query: &str) -> Option<String> {
 
             // Check word boundary: keyword must be preceded by whitespace or start of string
             let before_ok = abs_pos == 0
-                || query.as_bytes().get(abs_pos - 1).is_none_or(|b| b.is_ascii_whitespace());
+                || query
+                    .as_bytes()
+                    .get(abs_pos - 1)
+                    .is_none_or(|b| b.is_ascii_whitespace());
 
             // Check word boundary: keyword must be followed by whitespace
             let after_ok = after_keyword.starts_with(|c: char| c.is_ascii_whitespace());
@@ -811,6 +932,9 @@ pub(crate) fn bind_json_value<'q>(
 }
 
 /// Convert sqlx rows to Vec<Value> (best-effort extraction).
+/// Standard columns that are always present — extra columns are SQL aliases.
+const STANDARD_COLUMNS: &[&str] = &["data", "id", "created_at", "updated_at"];
+
 fn rows_to_values(rows: Vec<sqlx::postgres::PgRow>) -> AppResult<Vec<Value>> {
     use sqlx::{Column, Row};
 
@@ -823,15 +947,28 @@ fn rows_to_values(rows: Vec<sqlx::postgres::PgRow>) -> AppResult<Vec<Value>> {
                 if let Ok(id) = row.try_get::<String, _>("id") {
                     obj.insert("id".to_string(), Value::String(id));
                 }
-                if let Ok(ts) =
-                    row.try_get::<chrono::DateTime<chrono::Utc>, _>("created_at")
-                {
+                if let Ok(ts) = row.try_get::<chrono::DateTime<chrono::Utc>, _>("created_at") {
                     obj.insert("createdAt".to_string(), Value::String(ts.to_rfc3339()));
                 }
-                if let Ok(ts) =
-                    row.try_get::<chrono::DateTime<chrono::Utc>, _>("updated_at")
-                {
+                if let Ok(ts) = row.try_get::<chrono::DateTime<chrono::Utc>, _>("updated_at") {
                     obj.insert("updatedAt".to_string(), Value::String(ts.to_rfc3339()));
+                }
+                // Extract SQL aliases (e.g. COALESCE(...) AS roles) — these are
+                // computed columns from raw queries that don't live in the JSONB data.
+                for col in row.columns() {
+                    let name = col.name();
+                    if STANDARD_COLUMNS.contains(&name) {
+                        continue;
+                    }
+                    if let Ok(v) = row.try_get::<Value, _>(name) {
+                        obj.insert(name.to_string(), v);
+                    } else if let Ok(v) = row.try_get::<bool, _>(name) {
+                        obj.insert(name.to_string(), Value::Bool(v));
+                    } else if let Ok(v) = row.try_get::<i64, _>(name) {
+                        obj.insert(name.to_string(), Value::Number(v.into()));
+                    } else if let Ok(v) = row.try_get::<String, _>(name) {
+                        obj.insert(name.to_string(), Value::String(v));
+                    }
                 }
             }
             results.push(result);
@@ -895,17 +1032,12 @@ impl DatabaseStore for PgDatabaseStore {
         .await
         .map_err(|e| ob_core::Error::Database(format!("Create failed: {e}")))?;
 
-        let mut result: Value = serde_json::from_str(
-            row.get::<String, _>("data").as_str()
-        )
-        .unwrap_or(Value::Object(Default::default()));
+        let mut result: Value = serde_json::from_str(row.get::<String, _>("data").as_str())
+            .unwrap_or(Value::Object(Default::default()));
 
         // Inject the id and timestamps into the result
         if let Some(obj) = result.as_object_mut() {
-            obj.insert(
-                "id".to_string(),
-                Value::String(row.get::<String, _>("id")),
-            );
+            obj.insert("id".to_string(), Value::String(row.get::<String, _>("id")));
             obj.insert(
                 "createdAt".to_string(),
                 Value::String(
@@ -930,9 +1062,7 @@ impl DatabaseStore for PgDatabaseStore {
         let table = sanitize_table_name(collection)?;
 
         // Strip collection prefix if present (e.g., "products:abc" → "abc")
-        let bare_id = id
-            .strip_prefix(&format!("{collection}:"))
-            .unwrap_or(id);
+        let bare_id = id.strip_prefix(&format!("{collection}:")).unwrap_or(id);
 
         let row = sqlx::query(&format!(
             r#"SELECT id, data::TEXT, created_at, updated_at FROM {table} WHERE id = $1"#
@@ -942,14 +1072,11 @@ impl DatabaseStore for PgDatabaseStore {
         .await
         .map_err(|e| ob_core::Error::Database(format!("Get failed: {e}")))?;
 
-        let row = row.ok_or_else(|| {
-            ob_core::Error::NotFound(format!("{collection}:{bare_id} not found"))
-        })?;
+        let row = row
+            .ok_or_else(|| ob_core::Error::NotFound(format!("{collection}:{bare_id} not found")))?;
 
-        let mut result: Value = serde_json::from_str(
-            row.get::<String, _>("data").as_str()
-        )
-        .unwrap_or(Value::Object(Default::default()));
+        let mut result: Value = serde_json::from_str(row.get::<String, _>("data").as_str())
+            .unwrap_or(Value::Object(Default::default()));
 
         if let Some(obj) = result.as_object_mut() {
             obj.insert("id".to_string(), Value::String(row.get("id")));
@@ -972,17 +1099,10 @@ impl DatabaseStore for PgDatabaseStore {
         Ok(result)
     }
 
-    async fn update_document(
-        &self,
-        collection: &str,
-        id: &str,
-        data: Value,
-    ) -> AppResult<Value> {
+    async fn update_document(&self, collection: &str, id: &str, data: Value) -> AppResult<Value> {
         self.ensure_table(collection).await?;
         let table = sanitize_table_name(collection)?;
-        let bare_id = id
-            .strip_prefix(&format!("{collection}:"))
-            .unwrap_or(id);
+        let bare_id = id.strip_prefix(&format!("{collection}:")).unwrap_or(id);
         let data_str = json_to_string(&data);
 
         let row = sqlx::query(&format!(
@@ -999,14 +1119,11 @@ impl DatabaseStore for PgDatabaseStore {
         .await
         .map_err(|e| ob_core::Error::Database(format!("Update failed: {e}")))?;
 
-        let row = row.ok_or_else(|| {
-            ob_core::Error::NotFound(format!("{collection}:{bare_id} not found"))
-        })?;
+        let row = row
+            .ok_or_else(|| ob_core::Error::NotFound(format!("{collection}:{bare_id} not found")))?;
 
-        let mut result: Value = serde_json::from_str(
-            row.get::<String, _>("data").as_str()
-        )
-        .unwrap_or(Value::Object(Default::default()));
+        let mut result: Value = serde_json::from_str(row.get::<String, _>("data").as_str())
+            .unwrap_or(Value::Object(Default::default()));
 
         if let Some(obj) = result.as_object_mut() {
             obj.insert("id".to_string(), Value::String(row.get("id")));
@@ -1022,17 +1139,10 @@ impl DatabaseStore for PgDatabaseStore {
         Ok(result)
     }
 
-    async fn upsert_document(
-        &self,
-        collection: &str,
-        id: &str,
-        data: Value,
-    ) -> AppResult<Value> {
+    async fn upsert_document(&self, collection: &str, id: &str, data: Value) -> AppResult<Value> {
         self.ensure_table(collection).await?;
         let table = sanitize_table_name(collection)?;
-        let bare_id = id
-            .strip_prefix(&format!("{collection}:"))
-            .unwrap_or(id);
+        let bare_id = id.strip_prefix(&format!("{collection}:")).unwrap_or(id);
         let data_str = json_to_string(&data);
 
         let row = sqlx::query(&format!(
@@ -1048,10 +1158,8 @@ impl DatabaseStore for PgDatabaseStore {
         .await
         .map_err(|e| ob_core::Error::Database(format!("Upsert failed: {e}")))?;
 
-        let mut result: Value = serde_json::from_str(
-            row.get::<String, _>("data").as_str()
-        )
-        .unwrap_or(Value::Object(Default::default()));
+        let mut result: Value = serde_json::from_str(row.get::<String, _>("data").as_str())
+            .unwrap_or(Value::Object(Default::default()));
 
         if let Some(obj) = result.as_object_mut() {
             obj.insert("id".to_string(), Value::String(row.get("id")));
@@ -1070,9 +1178,7 @@ impl DatabaseStore for PgDatabaseStore {
     async fn delete_document(&self, collection: &str, id: &str) -> AppResult<Value> {
         self.ensure_table(collection).await?;
         let table = sanitize_table_name(collection)?;
-        let bare_id = id
-            .strip_prefix(&format!("{collection}:"))
-            .unwrap_or(id);
+        let bare_id = id.strip_prefix(&format!("{collection}:")).unwrap_or(id);
 
         let row = sqlx::query(&format!(
             r#"DELETE FROM {table} WHERE id = $1 RETURNING id, data::TEXT"#
@@ -1082,14 +1188,11 @@ impl DatabaseStore for PgDatabaseStore {
         .await
         .map_err(|e| ob_core::Error::Database(format!("Delete failed: {e}")))?;
 
-        let row = row.ok_or_else(|| {
-            ob_core::Error::NotFound(format!("{collection}:{bare_id} not found"))
-        })?;
+        let row = row
+            .ok_or_else(|| ob_core::Error::NotFound(format!("{collection}:{bare_id} not found")))?;
 
-        let mut result: Value = serde_json::from_str(
-            row.get::<String, _>("data").as_str()
-        )
-        .unwrap_or(Value::Object(Default::default()));
+        let mut result: Value = serde_json::from_str(row.get::<String, _>("data").as_str())
+            .unwrap_or(Value::Object(Default::default()));
 
         if let Some(obj) = result.as_object_mut() {
             obj.insert("id".to_string(), Value::String(row.get("id")));
@@ -1120,10 +1223,8 @@ impl DatabaseStore for PgDatabaseStore {
 
         let mut results = Vec::with_capacity(rows.len());
         for row in rows {
-            let mut val: Value = serde_json::from_str(
-                row.get::<String, _>("data").as_str()
-            )
-            .unwrap_or(Value::Object(Default::default()));
+            let mut val: Value = serde_json::from_str(row.get::<String, _>("data").as_str())
+                .unwrap_or(Value::Object(Default::default()));
 
             if let Some(obj) = val.as_object_mut() {
                 obj.insert("id".to_string(), Value::String(row.get("id")));
@@ -1148,11 +1249,7 @@ impl DatabaseStore for PgDatabaseStore {
         Ok(results)
     }
 
-    async fn batch_create(
-        &self,
-        collection: &str,
-        docs: Vec<Value>,
-    ) -> AppResult<Vec<Value>> {
+    async fn batch_create(&self, collection: &str, docs: Vec<Value>) -> AppResult<Vec<Value>> {
         if docs.is_empty() {
             return Ok(vec![]);
         }
@@ -1178,11 +1275,7 @@ impl DatabaseStore for PgDatabaseStore {
         Ok(results)
     }
 
-    async fn batch_delete(
-        &self,
-        collection: &str,
-        ids: Vec<String>,
-    ) -> AppResult<Vec<Value>> {
+    async fn batch_delete(&self, collection: &str, ids: Vec<String>) -> AppResult<Vec<Value>> {
         if ids.is_empty() {
             return Ok(vec![]);
         }
@@ -1295,9 +1388,7 @@ impl DatabaseStore for PgDatabaseStore {
     ) -> AppResult<Option<Value>> {
         self.ensure_table(collection).await?;
         let table = sanitize_table_name(collection)?;
-        let bare_id = id
-            .strip_prefix(&format!("{collection}:"))
-            .unwrap_or(id);
+        let bare_id = id.strip_prefix(&format!("{collection}:")).unwrap_or(id);
         let data_str = json_to_string(&data);
         let check_str = json_to_string(check_value);
 
@@ -1319,10 +1410,8 @@ impl DatabaseStore for PgDatabaseStore {
         match row {
             None => Ok(None),
             Some(row) => {
-                let mut result: Value = serde_json::from_str(
-                    row.get::<String, _>("data").as_str()
-                )
-                .unwrap_or(Value::Object(Default::default()));
+                let mut result: Value = serde_json::from_str(row.get::<String, _>("data").as_str())
+                    .unwrap_or(Value::Object(Default::default()));
 
                 if let Some(obj) = result.as_object_mut() {
                     obj.insert("id".to_string(), Value::String(row.get("id")));
@@ -1449,12 +1538,7 @@ impl DatabaseStore for PgDatabaseStore {
         Ok(count as usize)
     }
 
-    async fn exists_where(
-        &self,
-        collection: &str,
-        field: &str,
-        value: &Value,
-    ) -> AppResult<bool> {
+    async fn exists_where(&self, collection: &str, field: &str, value: &Value) -> AppResult<bool> {
         self.ensure_table(collection).await?;
         let table = sanitize_table_name(collection)?;
         let val_str = json_to_text(value);
@@ -1607,7 +1691,10 @@ mod tests {
                 .await
                 .unwrap();
         }
-        let docs = store.list_documents("test_list", Some(2), None).await.unwrap();
+        let docs = store
+            .list_documents("test_list", Some(2), None)
+            .await
+            .unwrap();
         assert_eq!(docs.len(), 2);
     }
 
@@ -1638,10 +1725,7 @@ mod tests {
         let store = test_store().await;
         let result = store.get_document("test_404", "nonexistent").await;
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("not found"));
+        assert!(result.unwrap_err().to_string().contains("not found"));
     }
 
     #[test]
@@ -1670,9 +1754,18 @@ mod tests {
         let query = "SELECT count() FROM login_lockout WHERE email = $email AND timestamp >= $window_start GROUP ALL";
         let binds = serde_json::json!({ "email": "test@test.com", "window_start": 1000 });
         let (pg, _vals) = translate_surreal_to_pg(query, binds).unwrap();
-        assert!(pg.contains("COUNT(*)"), "Should rewrite count() to COUNT(*), got: {pg}");
-        assert!(!pg.contains("GROUP ALL"), "Should remove GROUP ALL, got: {pg}");
-        assert!(pg.contains("data->>'email'"), "Should rewrite email to JSONB, got: {pg}");
+        assert!(
+            pg.contains("COUNT(*)"),
+            "Should rewrite count() to COUNT(*), got: {pg}"
+        );
+        assert!(
+            !pg.contains("GROUP ALL"),
+            "Should remove GROUP ALL, got: {pg}"
+        );
+        assert!(
+            pg.contains("data->>'email'"),
+            "Should rewrite email to JSONB, got: {pg}"
+        );
         assert!(
             pg.contains("data->>'timestamp'"),
             "Should rewrite timestamp to JSONB, got: {pg}"
@@ -1692,5 +1785,33 @@ mod tests {
             !pg.contains("FROM _email_templates WHERE data->>'FROM'"),
             "Should not rewrite FROM, got: {pg}"
         );
+    }
+
+    #[test]
+    fn test_translate_single_arg_type_thing() {
+        let query = "SELECT * FROM type::thing($uid)";
+        let binds = serde_json::json!({ "uid": "users:abc-123" });
+        let (pg, _vals) = translate_surreal_to_pg(query, binds).unwrap();
+        assert!(
+            pg.contains("FROM users WHERE id = 'abc-123'"),
+            "Should rewrite single-arg type::thing to FROM table WHERE id = value, got: {pg}"
+        );
+        assert!(!pg.contains("type::thing"), "Should remove type::thing, got: {pg}");
+    }
+
+    #[test]
+    fn test_translate_users_where_id() {
+        let query = "SELECT * FROM users WHERE id = $uid";
+        let binds = serde_json::json!({ "uid": "5b59c572-1041-4dcb-b58e-0f6c0f02a5d8" });
+        let (pg, vals) = translate_surreal_to_pg(query, binds).unwrap();
+        assert!(
+            pg.contains("WHERE id = $1"),
+            "Should keep id as physical column, got: {pg}"
+        );
+        assert!(
+            !pg.contains("data->>'id'"),
+            "Should NOT rewrite id to JSONB, got: {pg}"
+        );
+        assert_eq!(vals.len(), 1);
     }
 }

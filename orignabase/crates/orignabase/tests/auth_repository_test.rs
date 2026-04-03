@@ -27,9 +27,9 @@ async fn make_request(
     let url = format!("{}{}", base_url(), path);
 
     let req = match method {
-        "POST" => client.post(&url), // ignore-magic
-        "GET" => client.get(&url), // ignore-magic
-        "PUT" => client.put(&url), // ignore-magic
+        "POST" => client.post(&url),     // ignore-magic
+        "GET" => client.get(&url),       // ignore-magic
+        "PUT" => client.put(&url),       // ignore-magic
         "DELETE" => client.delete(&url), // ignore-magic
         _ => panic!("Unsupported method"),
     };
@@ -64,7 +64,7 @@ async fn test_auth_register_success() {
 
     let (status, body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",           // ignore-magic
         "/auth/register", // ignore-magic
         None,
         Some(json!({ // ignore-magic
@@ -89,7 +89,7 @@ async fn test_auth_register_missing_email() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",           // ignore-magic
         "/auth/register", // ignore-magic
         None,
         Some(json!({ // ignore-magic
@@ -110,7 +110,7 @@ async fn test_auth_register_missing_password() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",           // ignore-magic
         "/auth/register", // ignore-magic
         None,
         Some(json!({ // ignore-magic
@@ -130,7 +130,7 @@ async fn test_auth_register_invalid_email() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",           // ignore-magic
         "/auth/register", // ignore-magic
         None,
         Some(json!({ // ignore-magic
@@ -152,7 +152,7 @@ async fn test_auth_register_weak_password() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",           // ignore-magic
         "/auth/register", // ignore-magic
         None,
         Some(json!({ // ignore-magic
@@ -175,7 +175,7 @@ async fn test_auth_register_duplicate_email() {
     // Register first user
     let (status1, _body1) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",           // ignore-magic
         "/auth/register", // ignore-magic
         None,
         Some(json!({ // ignore-magic
@@ -189,7 +189,7 @@ async fn test_auth_register_duplicate_email() {
     // Try to register with same email
     let (status2, _body2) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",           // ignore-magic
         "/auth/register", // ignore-magic
         None,
         Some(json!({ // ignore-magic
@@ -216,7 +216,7 @@ async fn test_auth_login_success() {
     // Register
     let (status_reg, _body_reg) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",           // ignore-magic
         "/auth/register", // ignore-magic
         None,
         Some(json!({ // ignore-magic
@@ -230,7 +230,7 @@ async fn test_auth_login_success() {
     // Login
     let (status_login, body_login) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",        // ignore-magic
         "/auth/login", // ignore-magic
         None,
         Some(json!({ // ignore-magic
@@ -254,7 +254,7 @@ async fn test_auth_login_missing_email() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",        // ignore-magic
         "/auth/login", // ignore-magic
         None,
         Some(json!({ // ignore-magic
@@ -274,7 +274,7 @@ async fn test_auth_login_missing_password() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",        // ignore-magic
         "/auth/login", // ignore-magic
         None,
         Some(json!({ // ignore-magic
@@ -296,7 +296,7 @@ async fn test_auth_login_invalid_password() {
     // Register
     let (status_reg, _body_reg) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",           // ignore-magic
         "/auth/register", // ignore-magic
         None,
         Some(json!({ // ignore-magic
@@ -310,7 +310,7 @@ async fn test_auth_login_invalid_password() {
     // Try to login with wrong password
     let (status_login, _body_login) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",        // ignore-magic
         "/auth/login", // ignore-magic
         None,
         Some(json!({ // ignore-magic
@@ -331,7 +331,7 @@ async fn test_auth_login_nonexistent_email() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",        // ignore-magic
         "/auth/login", // ignore-magic
         None,
         Some(json!({ // ignore-magic
@@ -357,7 +357,7 @@ async fn test_auth_protected_endpoint_requires_token() {
     // Try to access GraphQL without token — returns 200 with null data
     let (status, body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",     // ignore-magic
         "/graphql", // ignore-magic
         None,
         Some(json!({ // ignore-magic
@@ -385,7 +385,7 @@ async fn test_auth_invalid_token() {
     // Try GraphQL with invalid/malformed token — returns 200 with null data
     let (status, body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",     // ignore-magic
         "/graphql", // ignore-magic
         Some("invalid_token_xyz"),
         Some(json!({ // ignore-magic
@@ -416,7 +416,7 @@ async fn test_auth_expired_token_simulation() {
     // Try GraphQL with bad token — returns 200 with null data
     let (status, body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",     // ignore-magic
         "/graphql", // ignore-magic
         Some(bad_token),
         Some(json!({ // ignore-magic
@@ -446,10 +446,10 @@ async fn test_auth_logout() {
     let client = reqwest::Client::new();
     let email = format!("test_{}@example.com", Uuid::new_v4()); // ignore-magic
 
-    // Register and get token
+    // Register and get tokens
     let (status_reg, body_reg) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",           // ignore-magic
         "/auth/register", // ignore-magic
         None,
         Some(json!({ // ignore-magic
@@ -459,17 +459,19 @@ async fn test_auth_logout() {
     )
     .await;
     assert_eq!(status_reg, 200);
-    let token = body_reg["access_token"] // ignore-magic
+    let refresh_token = body_reg["refresh_token"] // ignore-magic
         .as_str()
-        .expect("missing token")
+        .expect("missing refresh_token")
         .to_string();
 
-    // Logout
+    // Logout — requires refresh_token in body
     let (status_logout, _body_logout) =
-        make_request(&client, "POST", "/auth/logout", Some(&token), None).await; // ignore-magic
+        make_request(&client, "POST", "/auth/logout", None, Some(json!({ // ignore-magic
+            "refresh_token": &refresh_token // ignore-magic
+        }))).await;
 
-    // Should succeed (200) or return 404 if endpoint doesn't exist
-    assert!(status_logout == 200 || status_logout == 404);
+    // Should succeed (200)
+    assert_eq!(status_logout, 200, "Logout should succeed with valid refresh_token");
 }
 
 #[tokio::test]
@@ -481,7 +483,7 @@ async fn test_auth_refresh_token() {
     // Register
     let (status_reg, body_reg) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",           // ignore-magic
         "/auth/register", // ignore-magic
         None,
         Some(json!({ // ignore-magic
@@ -505,7 +507,7 @@ async fn test_auth_refresh_token() {
 
     let (status_refresh, body_refresh) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",          // ignore-magic
         "/auth/refresh", // ignore-magic
         None,
         Some(json!({ "refresh_token": refresh_token })), // ignore-magic
@@ -532,7 +534,7 @@ async fn test_auth_forgot_password() {
     // Register
     let (status_reg, _body_reg) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",           // ignore-magic
         "/auth/register", // ignore-magic
         None,
         Some(json!({ // ignore-magic
@@ -546,7 +548,7 @@ async fn test_auth_forgot_password() {
     // Request password reset
     let (status_reset, _body_reset) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                  // ignore-magic
         "/auth/forgot-password", // ignore-magic
         None,
         Some(json!({ // ignore-magic
@@ -568,7 +570,7 @@ async fn test_auth_forgot_password_nonexistent_email() {
     // Request reset for non-existent email
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                  // ignore-magic
         "/auth/forgot-password", // ignore-magic
         None,
         Some(json!({ // ignore-magic
@@ -596,7 +598,7 @@ async fn test_auth_rate_limit_login_attempts() {
     for i in 0..5 {
         let (status, _body) = make_request(
             &client,
-            "POST", // ignore-magic
+            "POST",        // ignore-magic
             "/auth/login", // ignore-magic
             None,
             Some(json!({ // ignore-magic
@@ -621,7 +623,7 @@ async fn test_auth_rate_limit_registration() {
         let email = format!("test_{}@example.com", Uuid::new_v4()); // ignore-magic
         let (status, _body) = make_request(
             &client,
-            "POST", // ignore-magic
+            "POST",           // ignore-magic
             "/auth/register", // ignore-magic
             None,
             Some(json!({ // ignore-magic

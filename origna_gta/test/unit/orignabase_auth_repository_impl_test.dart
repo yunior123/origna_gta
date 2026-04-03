@@ -23,6 +23,7 @@ class _FakeOrignaBase extends Fake implements OrignaBase {
   String? lastRequestPath;
   Map<String, dynamic>? lastRequestBody;
   Map<String, dynamic> requestResponse = {'success': true};
+  Object? requestThrowException;
 
   @override
   OrignaBaseAuth get auth => _auth;
@@ -45,6 +46,11 @@ class _FakeOrignaBase extends Fake implements OrignaBase {
     Map<String, dynamic>? body,
     Map<String, String>? headers,
   }) async {
+    if (requestThrowException != null) {
+      final error = requestThrowException!;
+      requestThrowException = null;
+      throw error;
+    }
     lastRequestMethod = method;
     lastRequestPath = path;
     lastRequestBody = body;
@@ -197,12 +203,12 @@ class _FakeDocument extends Fake implements Document {
   final Map<String, dynamic> data;
 
   @override
-  final bool exists;
+  final bool exists = true;
 
   @override
   final String collection = 'test_collection';
 
-  _FakeDocument(this.id, this.data, {this.exists = true});
+  _FakeDocument(this.id, this.data);
 
   @override
   T? get<T>(String field) => data[field] as T?;
@@ -751,26 +757,23 @@ void main() {
       final auth = fakeOb.auth as _FakeAuth;
       auth.accessTokenValue = 'valid_token';
       auth.userIdValue = 'user_123';
-
-      final userDoc = _FakeDocument('user_123', {
+      fakeOb.requestResponse = {
+        ApiKeys.success: true,
         'uid': 'user_123',
         'email': 'test@example.com',
-      });
-      final userRef = _FakeDocumentRef(doc: userDoc);
-      fakeOb._usersCollection.setDoc('user_123', userRef);
+      };
 
       final result = await repository.validateCurrentUser();
 
       expect(result, true);
+      expect(fakeOb.lastRequestPath, ApiEndpoints.usersProfileGet);
     });
 
     test('returns false and signs out when user doc not found', () async {
       final auth = fakeOb.auth as _FakeAuth;
       auth.accessTokenValue = 'valid_token';
       auth.userIdValue = 'user_123';
-
-      final userRef = _FakeDocumentRef(doc: null);
-      fakeOb._usersCollection.setDoc('user_123', userRef);
+      fakeOb.requestResponse = {ApiKeys.success: false};
 
       final result = await repository.validateCurrentUser();
 
@@ -799,10 +802,10 @@ void main() {
         final auth = fakeOb.auth as _FakeAuth;
         auth.accessTokenValue = 'valid_token';
         auth.userIdValue = 'user_123';
-
-        final userRef = _FakeDocumentRef();
-        userRef.throwOnGet(Exception('not found'));
-        fakeOb._usersCollection.setDoc('user_123', userRef);
+        fakeOb.requestThrowException = NotFoundException(
+          'not found',
+          statusCode: 404,
+        );
 
         final result = await repository.validateCurrentUser();
 
@@ -815,10 +818,10 @@ void main() {
       final auth = fakeOb.auth as _FakeAuth;
       auth.accessTokenValue = 'valid_token';
       auth.userIdValue = 'user_123';
-
-      final userRef = _FakeDocumentRef();
-      userRef.throwOnGet(Exception('User account disabled'));
-      fakeOb._usersCollection.setDoc('user_123', userRef);
+      fakeOb.requestThrowException = ForbiddenException(
+        'User account disabled',
+        statusCode: 403,
+      );
 
       final result = await repository.validateCurrentUser();
 
@@ -830,10 +833,10 @@ void main() {
       final auth = fakeOb.auth as _FakeAuth;
       auth.accessTokenValue = 'valid_token';
       auth.userIdValue = 'user_123';
-
-      final userRef = _FakeDocumentRef();
-      userRef.throwOnGet(Exception('Token expired'));
-      fakeOb._usersCollection.setDoc('user_123', userRef);
+      fakeOb.requestThrowException = AuthException(
+        'Token expired',
+        statusCode: 401,
+      );
 
       final result = await repository.validateCurrentUser();
 
@@ -845,16 +848,43 @@ void main() {
       final auth = fakeOb.auth as _FakeAuth;
       auth.accessTokenValue = 'valid_token';
       auth.userIdValue = 'user_123';
-
-      final userRef = _FakeDocumentRef();
-      userRef.throwOnGet(Exception('Network timeout'));
-      fakeOb._usersCollection.setDoc('user_123', userRef);
+      fakeOb.requestThrowException = NetworkException('Network timeout');
 
       final result = await repository.validateCurrentUser();
 
       expect(result, true);
       expect(fakeOb.auth.accessToken, isNotNull);
     });
+
+    test('returns true on timeout error (does not sign out)', () async {
+      final auth = fakeOb.auth as _FakeAuth;
+      auth.accessTokenValue = 'valid_token';
+      auth.userIdValue = 'user_123';
+      fakeOb.requestThrowException = TimeoutException('Request timed out');
+
+      final result = await repository.validateCurrentUser();
+
+      expect(result, true);
+      expect(fakeOb.auth.accessToken, isNotNull);
+    });
+
+    test(
+      'returns true on unexpected OrignaBaseException (does not sign out)',
+      () async {
+        final auth = fakeOb.auth as _FakeAuth;
+        auth.accessTokenValue = 'valid_token';
+        auth.userIdValue = 'user_123';
+        fakeOb.requestThrowException = OrignaBaseException(
+          'Internal server error',
+          statusCode: 500,
+        );
+
+        final result = await repository.validateCurrentUser();
+
+        expect(result, true);
+        expect(fakeOb.auth.accessToken, isNotNull);
+      },
+    );
   });
 
   group('OrignaBaseAuthRepository - ensureUserDocumentExists', () {
@@ -872,9 +902,10 @@ void main() {
       auth.accessTokenValue = 'valid_token';
       auth.userIdValue = 'user_123';
       auth.emailValue = 'user@example.com';
-
-      final userRef = _FakeDocumentRef(doc: null);
-      fakeOb._usersCollection.setDoc('user_123', userRef);
+      fakeOb.requestThrowException = NotFoundException(
+        'not found',
+        statusCode: 404,
+      );
 
       await repository.ensureUserDocumentExists();
 
@@ -885,17 +916,15 @@ void main() {
       final auth = fakeOb.auth as _FakeAuth;
       auth.accessTokenValue = 'valid_token';
       auth.userIdValue = 'user_123';
-
-      final existingDoc = _FakeDocument('user_123', {
+      fakeOb.requestResponse = {
+        ApiKeys.success: true,
         'uid': 'user_123',
         'email': 'existing@example.com',
-      }, exists: true);
-      final userRef = _FakeDocumentRef(doc: existingDoc);
-      fakeOb._usersCollection.setDoc('user_123', userRef);
+      };
 
       await repository.ensureUserDocumentExists();
 
-      expect(fakeOb.lastRequestPath, isNull);
+      expect(fakeOb.lastRequestPath, ApiEndpoints.usersProfileGet);
     });
 
     test('returns early when refresh token is unauthenticated', () async {
@@ -913,9 +942,10 @@ void main() {
       auth.accessTokenValue = 'valid_token';
       auth.userIdValue = 'user_123';
       auth.emailValue = 'pending@example.com';
-
-      final userRef = _FakeDocumentRef(doc: null);
-      fakeOb._usersCollection.setDoc('user_123', userRef);
+      fakeOb.requestThrowException = NotFoundException(
+        'not found',
+        statusCode: 404,
+      );
       final pendingDoc = _FakeDocument('user_123', {
         Fields.name: 'Pending Name',
         Fields.marketingOptIn: true,

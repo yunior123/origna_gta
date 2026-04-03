@@ -19,12 +19,22 @@ impl DatabaseClient {
     }
 
     /// Update a document by ID. Merges fields with existing document.
-    pub async fn update_document(&self, collection: &str, id: &str, data: Value) -> ob_core::Result<Value> {
+    pub async fn update_document(
+        &self,
+        collection: &str,
+        id: &str,
+        data: Value,
+    ) -> ob_core::Result<Value> {
         self.inner.update_document(collection, id, data).await
     }
 
     /// Create or replace a document at an explicit ID.
-    pub async fn upsert_document(&self, collection: &str, id: &str, data: Value) -> ob_core::Result<Value> {
+    pub async fn upsert_document(
+        &self,
+        collection: &str,
+        id: &str,
+        data: Value,
+    ) -> ob_core::Result<Value> {
         self.inner.upsert_document(collection, id, data).await
     }
 
@@ -76,7 +86,11 @@ impl DatabaseClient {
     }
 
     /// Batch create multiple documents.
-    pub async fn batch_create(&self, collection: &str, docs: Vec<Value>) -> ob_core::Result<Vec<Value>> {
+    pub async fn batch_create(
+        &self,
+        collection: &str,
+        docs: Vec<Value>,
+    ) -> ob_core::Result<Vec<Value>> {
         self.inner.batch_create(collection, docs).await
     }
 
@@ -90,7 +104,11 @@ impl DatabaseClient {
     }
 
     /// Batch delete multiple documents by ID.
-    pub async fn batch_delete(&self, collection: &str, ids: Vec<String>) -> ob_core::Result<Vec<Value>> {
+    pub async fn batch_delete(
+        &self,
+        collection: &str,
+        ids: Vec<String>,
+    ) -> ob_core::Result<Vec<Value>> {
         self.inner.batch_delete(collection, ids).await
     }
 
@@ -101,7 +119,9 @@ impl DatabaseClient {
         id: &str,
         data: Value,
     ) -> ob_core::Result<Value> {
-        self.inner.update_with_field_values(collection, id, data).await
+        self.inner
+            .update_with_field_values(collection, id, data)
+            .await
     }
 
     /// Compare-and-swap update: only applies the update if the specified field matches
@@ -114,7 +134,9 @@ impl DatabaseClient {
         check_field: &str,
         check_value: &Value,
     ) -> ob_core::Result<Option<Value>> {
-        self.inner.update_document_cas(collection, id, data, check_field, check_value).await
+        self.inner
+            .update_document_cas(collection, id, data, check_field, check_value)
+            .await
     }
 
     // ── Filter-based queries (hexagonal — no SQL in handlers) ───────
@@ -128,7 +150,9 @@ impl DatabaseClient {
         value: &Value,
         limit: Option<usize>,
     ) -> ob_core::Result<Vec<Value>> {
-        self.inner.find_where(collection, field, operator, value, limit).await
+        self.inner
+            .find_where(collection, field, operator, value, limit)
+            .await
     }
 
     /// Find documents matching multiple field conditions (AND).
@@ -140,7 +164,9 @@ impl DatabaseClient {
         order_dir: Option<&str>,
         limit: Option<usize>,
     ) -> ob_core::Result<Vec<Value>> {
-        self.inner.find_where_multi(collection, filters, order_by, order_dir, limit).await
+        self.inner
+            .find_where_multi(collection, filters, order_by, order_dir, limit)
+            .await
     }
 
     /// Count documents matching a field condition.
@@ -151,7 +177,9 @@ impl DatabaseClient {
         operator: &str,
         value: &Value,
     ) -> ob_core::Result<usize> {
-        self.inner.count_where(collection, field, operator, value).await
+        self.inner
+            .count_where(collection, field, operator, value)
+            .await
     }
 
     /// Check if any document exists matching a field condition.
@@ -173,7 +201,9 @@ impl DatabaseClient {
         field_value: &Value,
         data: Value,
     ) -> ob_core::Result<Vec<Value>> {
-        self.inner.update_where(collection, field, operator, field_value, data).await
+        self.inner
+            .update_where(collection, field, operator, field_value, data)
+            .await
     }
 
     /// Delete all documents matching a field condition.
@@ -184,7 +214,9 @@ impl DatabaseClient {
         operator: &str,
         value: &Value,
     ) -> ob_core::Result<usize> {
-        self.inner.delete_where(collection, field, operator, value).await
+        self.inner
+            .delete_where(collection, field, operator, value)
+            .await
     }
 
     /// Vector similarity search.

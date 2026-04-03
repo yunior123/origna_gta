@@ -12,6 +12,7 @@ import 'package:origna_gta/models/generated/product_models.dart';
 import 'package:origna_gta/screens/productaddimages_screen.dart';
 import 'package:origna_gta/screens/productaddvideo_screen.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:origna_gta/utils/app_logger.dart';
 import 'package:origna_gta/utils/responsive_layout.dart';
 import 'package:origna_gta/utils/spec_templates.dart';
 import 'package:origna_gta/utils/utils.dart';

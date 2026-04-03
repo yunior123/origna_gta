@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/features/products/product_detail_viewmodel.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:origna_gta/utils/media_url_resolver.dart';
 import 'package:origna_gta/widgets/modern_skeleton_loader.dart';
 
 /// Image gallery with PageView for product images and optional video thumbnail.
@@ -183,9 +184,10 @@ class _GalleryImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final resolvedSource = resolveMediaUrl(imageSource);
     if (_isAssetImage) {
       return Image.asset(
-        imageSource,
+        resolvedSource,
         fit: fit,
         width: width,
         height: height,
@@ -193,8 +195,16 @@ class _GalleryImage extends StatelessWidget {
       );
     }
 
+    final resolvedUri = Uri.tryParse(resolvedSource);
+    if (resolvedSource.isEmpty ||
+        resolvedUri == null ||
+        !resolvedUri.hasScheme ||
+        !(resolvedUri.scheme == 'http' || resolvedUri.scheme == 'https')) {
+      return const _ImageErrorPlaceholder();
+    }
+
     return CachedNetworkImage(
-      imageUrl: imageSource,
+      imageUrl: resolvedSource,
       fit: fit,
       width: width,
       height: height,

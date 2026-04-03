@@ -50,7 +50,7 @@ fn translate_filter(filter: &serde_json::Value) -> String {
         for (field, ops) in obj {
             if let Some(ops_obj) = ops.as_object() {
                 for (op, value) in ops_obj {
-                    let surreal_op = match op.as_str() {
+                    let query_op = match op.as_str() {
                         "_eq" => "=",
                         "_ne" => "!=",
                         "_gt" => ">",
@@ -75,7 +75,7 @@ fn translate_filter(filter: &serde_json::Value) -> String {
                         }
                         other => other.to_string(),
                     };
-                    clauses.push(format!("{field} {surreal_op} {val_str}"));
+                    clauses.push(format!("{field} {query_op} {val_str}"));
                 }
             }
         }

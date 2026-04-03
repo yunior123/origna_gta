@@ -1032,7 +1032,7 @@ mod tests {
 
     #[test]
     fn test_create_profile_request_deser() {
-        let json_str = r#"{"userId":"u1","email":"a@b.com","name":"Test","roles":["buyer"]}"#;  // ignore-magic
+        let json_str = r#"{"userId":"u1","email":"a@b.com","name":"Test","roles":["buyer"]}"#; // ignore-magic
         let req: CreateProfileRequest = serde_json::from_str(json_str).unwrap();
         assert_eq!(req.user_id, Some("u1".to_string()));
         assert_eq!(req.email, "a@b.com");
@@ -1070,7 +1070,7 @@ mod tests {
 
     #[test]
     fn test_email_consent_request_deser() {
-        let json_str = r#"{"userId":"u1","consent":false}"#;  // ignore-magic
+        let json_str = r#"{"userId":"u1","consent":false}"#; // ignore-magic
         let req: EmailConsentRequest = serde_json::from_str(json_str).unwrap();
         assert_eq!(req.user_id, Some("u1".to_string()));
         assert!(!req.consent);
@@ -1078,7 +1078,7 @@ mod tests {
 
     #[test]
     fn test_notification_prefs_partial() {
-        let json_str = r#"{"userId":"u1","notifyNewProducts":true}"#;  // ignore-magic
+        let json_str = r#"{"userId":"u1","notifyNewProducts":true}"#; // ignore-magic
         let req: NotificationPrefsRequest = serde_json::from_str(json_str).unwrap();
         assert_eq!(req.notify_new_products, Some(true));
         assert_eq!(req.notify_trending, None);
@@ -1234,7 +1234,7 @@ mod tests {
 
     #[test]
     fn test_add_buyer_address_request_defaults() {
-        let json = r#"{"userId":"u1","street":"A","city":"B","state":"C","postalCode":"D"}"#;  // ignore-magic
+        let json = r#"{"userId":"u1","street":"A","city":"B","state":"C","postalCode":"D"}"#; // ignore-magic
         let req: AddBuyerAddressRequest = serde_json::from_str(json).unwrap();
         assert_eq!(req.country, COUNTRY_CANADA);
         assert!(req.label.is_none());
@@ -1251,21 +1251,21 @@ mod tests {
 
     #[test]
     fn test_delete_buyer_address_request_deser() {
-        let json = r#"{"userId":"u1","addressId":"addr99"}"#;  // ignore-magic
+        let json = r#"{"userId":"u1","addressId":"addr99"}"#; // ignore-magic
         let req: DeleteBuyerAddressRequest = serde_json::from_str(json).unwrap();
         assert_eq!(req.address_id, "addr99");
     }
 
     #[test]
     fn test_set_default_buyer_address_request_deser() {
-        let json = r#"{"userId":"u1","addressId":"addr42"}"#;  // ignore-magic
+        let json = r#"{"userId":"u1","addressId":"addr42"}"#; // ignore-magic
         let req: SetDefaultBuyerAddressRequest = serde_json::from_str(json).unwrap();
         assert_eq!(req.address_id, "addr42");
     }
 
     #[test]
     fn test_tax_exemption_input_deser() {
-        let json = r#"{"gstNumber":"123456789RT0001"}"#;  // ignore-magic
+        let json = r#"{"gstNumber":"123456789RT0001"}"#; // ignore-magic
         let tax: TaxExemptionInput = serde_json::from_str(json).unwrap();
         assert_eq!(tax.gst_number, "123456789RT0001");
     }
@@ -1282,7 +1282,7 @@ mod tests {
 
     #[test]
     fn test_update_profile_request_minimal() {
-        let json = r#"{"userId":"u1"}"#;  // ignore-magic
+        let json = r#"{"userId":"u1"}"#; // ignore-magic
         let req: UpdateProfileRequest = serde_json::from_str(json).unwrap();
         assert!(req.name.is_none());
         assert!(req.address.is_none());
@@ -1292,7 +1292,7 @@ mod tests {
 
     #[test]
     fn test_create_profile_request_with_roles() {
-        let json = r#"{"userId":"u1","email":"a@b.com","name":"X","roles":["buyer","seller"]}"#;  // ignore-magic
+        let json = r#"{"userId":"u1","email":"a@b.com","name":"X","roles":["buyer","seller"]}"#; // ignore-magic
         let req: CreateProfileRequest = serde_json::from_str(json).unwrap();
         let roles = req.roles.unwrap();
         assert_eq!(roles.len(), 2);
@@ -1300,7 +1300,7 @@ mod tests {
 
     #[test]
     fn test_create_profile_request_with_consent() {
-        let json = r#"{"userId":"u1","email":"a@b.com","name":"X","consentMethod":"google_oauth","marketingOptIn":true}"#;  // ignore-magic
+        let json = r#"{"userId":"u1","email":"a@b.com","name":"X","consentMethod":"google_oauth","marketingOptIn":true}"#; // ignore-magic
         let req: CreateProfileRequest = serde_json::from_str(json).unwrap();
         assert_eq!(req.consent_method.as_deref(), Some("google_oauth"));
         assert_eq!(req.marketing_opt_in, Some(true));
@@ -1308,7 +1308,7 @@ mod tests {
 
     #[test]
     fn test_cleanup_fcm_token_request_deser() {
-        let json = r#"{"userId":"u1","token":"fcm_token_abc123"}"#;  // ignore-magic
+        let json = r#"{"userId":"u1","token":"fcm_token_abc123"}"#; // ignore-magic
         let req: CleanupFcmTokenRequest = serde_json::from_str(json).unwrap();
         assert_eq!(req.token, "fcm_token_abc123");
     }
@@ -1349,7 +1349,7 @@ mod tests {
 
     #[test]
     fn test_notification_prefs_both_fields() {
-        let json = r#"{"userId":"u1","notifyNewProducts":false,"notifyTrending":true}"#;  // ignore-magic
+        let json = r#"{"userId":"u1","notifyNewProducts":false,"notifyTrending":true}"#; // ignore-magic
         let req: NotificationPrefsRequest = serde_json::from_str(json).unwrap();
         assert_eq!(req.notify_new_products, Some(false));
         assert_eq!(req.notify_trending, Some(true));
@@ -1769,22 +1769,25 @@ mod tests {
     #[tokio::test]
     async fn test_update_buyer_address_rejects_ownership_mismatch() {
         let state = setup_state().await;
+        let auth_user_id = uuid::Uuid::new_v4().to_string();
+        let other_user_id = uuid::Uuid::new_v4().to_string();
+        let address_id = uuid::Uuid::new_v4().to_string();
         state
             .db
             .upsert_document(
                 collections::ADDRESSES,
-                "addr_1",
-                json!({ "userId": "other_user" }),
+                &address_id,
+                json!({ "userId": other_user_id }),
             )
             .await
             .unwrap();
 
         let err = update_buyer_address(
             State(state),
-            Extension(auth("test")),
+            Extension(auth(&auth_user_id)),
             Json(UpdateBuyerAddressRequest {
-                user_id: Some("test".to_string()),
-                address_id: "addr_1".into(),
+                user_id: Some(auth_user_id),
+                address_id,
                 street: "1 Main".into(),
                 city: "Toronto".into(),
                 province: "ON".into(),
@@ -2164,12 +2167,15 @@ mod tests {
     #[tokio::test]
     async fn test_update_buyer_address_with_is_default_clears_others() {
         let state = setup_state().await;
+        let user_id = format!("user_{}", uuid::Uuid::new_v4());
+        let addr1_id = format!("addr_{}", uuid::Uuid::new_v4());
+        let addr2_id = format!("addr_{}", uuid::Uuid::new_v4());
         state
             .db
             .upsert_document(
                 collections::ADDRESSES,
-                "addr_1",
-                json!({ "userId": "user_1", "isDefault": true }),
+                &addr1_id,
+                json!({ "userId": user_id, "isDefault": true }),
             )
             .await
             .unwrap();
@@ -2177,18 +2183,18 @@ mod tests {
             .db
             .upsert_document(
                 collections::ADDRESSES,
-                "addr_2",
-                json!({ "userId": "user_1", "isDefault": false }),
+                &addr2_id,
+                json!({ "userId": user_id, "isDefault": false }),
             )
             .await
             .unwrap();
 
         let Json(resp) = update_buyer_address(
             State(state.clone()),
-            Extension(auth("user_1")),
+            Extension(auth(&user_id)),
             Json(UpdateBuyerAddressRequest {
-                user_id: Some("user_1".to_string()),
-                address_id: "addr_2".into(),
+                user_id: Some(user_id.clone()),
+                address_id: addr2_id.clone(),
                 street: "5 Oak St".into(),
                 city: "Toronto".into(),
                 province: "ON".into(),
@@ -2204,10 +2210,16 @@ mod tests {
         assert_eq!(resp.data["updated"], true);
         let addr2 = state
             .db
-            .get_document(collections::ADDRESSES, "addr_2")
+            .get_document(collections::ADDRESSES, &addr2_id)
             .await
             .unwrap();
         assert_eq!(addr2["isDefault"], true);
+        let addr1 = state
+            .db
+            .get_document(collections::ADDRESSES, &addr1_id)
+            .await
+            .unwrap();
+        assert_eq!(addr1["isDefault"], false);
     }
 
     // ── Coverage: delete_buyer_address ownership mismatch (lines 710-712) ──

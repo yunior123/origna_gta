@@ -11,3 +11,13 @@ can u record a video of the app covering:web,mobile,tablet/desktop,dark theme,li
 - [ ] **No disaster recovery docs** — Team doesn't know recovery procedure. — Not started
 
 -use Prometheus for monitoring
+
+
+
+29. add patrol live tests for flutter side
+
+
+1. connect to my iphone and increase protection, verify internet security
+
+3.  wifi ruview github package
+3.

@@ -52,11 +52,7 @@ impl DatabaseStore for DatabaseClient {
         self.batch_update(collection, updates).await
     }
 
-    async fn batch_delete(
-        &self,
-        collection: &str,
-        ids: Vec<String>,
-    ) -> AppResult<Vec<Value>> {
+    async fn batch_delete(&self, collection: &str, ids: Vec<String>) -> AppResult<Vec<Value>> {
         self.batch_delete(collection, ids).await
     }
 
@@ -97,7 +93,8 @@ impl DatabaseStore for DatabaseClient {
         check_field: &str,
         check_value: &Value,
     ) -> AppResult<Option<Value>> {
-        self.update_document_cas(collection, id, data, check_field, check_value).await
+        self.update_document_cas(collection, id, data, check_field, check_value)
+            .await
     }
 
     // ── Filter-based queries ───────────────────────────────────────────
@@ -110,7 +107,8 @@ impl DatabaseStore for DatabaseClient {
         value: &Value,
         limit: Option<usize>,
     ) -> AppResult<Vec<Value>> {
-        self.find_where(collection, field, operator, value, limit).await
+        self.find_where(collection, field, operator, value, limit)
+            .await
     }
 
     async fn find_where_multi(
@@ -121,7 +119,8 @@ impl DatabaseStore for DatabaseClient {
         order_dir: Option<&str>,
         limit: Option<usize>,
     ) -> AppResult<Vec<Value>> {
-        self.find_where_multi(collection, filters, order_by, order_dir, limit).await
+        self.find_where_multi(collection, filters, order_by, order_dir, limit)
+            .await
     }
 
     async fn count_where(
@@ -134,12 +133,7 @@ impl DatabaseStore for DatabaseClient {
         self.count_where(collection, field, operator, value).await
     }
 
-    async fn exists_where(
-        &self,
-        collection: &str,
-        field: &str,
-        value: &Value,
-    ) -> AppResult<bool> {
+    async fn exists_where(&self, collection: &str, field: &str, value: &Value) -> AppResult<bool> {
         self.exists_where(collection, field, value).await
     }
 
@@ -151,7 +145,8 @@ impl DatabaseStore for DatabaseClient {
         field_value: &Value,
         data: Value,
     ) -> AppResult<Vec<Value>> {
-        self.update_where(collection, field, operator, field_value, data).await
+        self.update_where(collection, field, operator, field_value, data)
+            .await
     }
 
     async fn delete_where(

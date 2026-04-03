@@ -13,6 +13,7 @@ import 'package:origna_gta/core/theme_provider.dart';
 // Deferred imports for code splitting — reduces initial JS bundle on Flutter Web
 import 'package:origna_gta/features/admin/admin_panel_screen.dart'
     deferred as admin_panel;
+import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:origna_gta/features/products/products_provider.dart';
 import 'package:origna_gta/screens/addproduct_screen.dart'
     deferred as add_product;
@@ -779,11 +780,22 @@ class OrignaApp extends ConsumerStatefulWidget {
   ConsumerState<OrignaApp> createState() => _OrignaAppState();
 }
 
-class _OrignaAppState extends ConsumerState<OrignaApp> {
+class _OrignaAppState extends ConsumerState<OrignaApp>
+    with WidgetsBindingObserver {
+  static const _resumeRefreshThreshold = Duration(minutes: 5);
+  static const _backgroundStates = {
+    AppLifecycleState.hidden,
+    AppLifecycleState.paused,
+    AppLifecycleState.detached,
+  };
+
   final _sessionTimeout = SessionTimeoutService();
   StreamSubscription<AuthState>? _authSubscription;
   StreamSubscription<Uri>? _deepLinkSubscription;
   String? _ensuredUserId; // Guard: only call ensureUserDocument once per user
+  DateTime? _pausedAt; // Track when app went to background
+  bool _resumeRefreshInFlight = false;
+  AppLifecycleState? _lastLifecycleState;
   // FIX-5 (HIGH): Use the shared navigatorKey from OrignaBaseNotificationService so
   // notification tap handlers can push routes headlessly (without BuildContext).
   // The private _navigatorKey is replaced by the static singleton key.
@@ -999,6 +1011,7 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _authSubscription?.cancel();
     _deepLinkSubscription?.cancel();
     _sessionTimeout.stopMonitoring();
@@ -1006,8 +1019,86 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    final previousState = _lastLifecycleState;
+    _lastLifecycleState = state;
+
+    switch (state) {
+      case AppLifecycleState.resumed:
+        _onAppResumed(previousState);
+      case AppLifecycleState.paused:
+        _onAppBackgrounded();
+      case AppLifecycleState.inactive:
+      // Transitional state — no action needed
+      case AppLifecycleState.detached:
+        _onAppDetached();
+      case AppLifecycleState.hidden:
+        _onAppBackgrounded();
+    }
+  }
+
+  void _onAppResumed(AppLifecycleState? previousState) {
+    _sessionTimeout.recordActivity();
+
+    if (previousState == null || !_backgroundStates.contains(previousState)) {
+      return;
+    }
+
+    final pausedAt = _pausedAt;
+    _pausedAt = null;
+
+    final userId = ref.read(currentUserProvider)?.uid;
+    if (userId == null || pausedAt == null) return;
+
+    final timeInBackground = DateTime.now().difference(pausedAt);
+    if (timeInBackground < _resumeRefreshThreshold || _resumeRefreshInFlight) {
+      return;
+    }
+
+    _resumeRefreshInFlight = true;
+    unawaited(_refreshAfterResume(userId, timeInBackground));
+  }
+
+  void _onAppBackgrounded() {
+    _pausedAt ??= DateTime.now();
+    AppLogger.d('App paused at $_pausedAt', tag: 'lifecycle');
+  }
+
+  void _onAppDetached() {
+    AppLogger.d('App detached — cleaning up', tag: 'lifecycle');
+    _sessionTimeout.stopMonitoring();
+  }
+
+  Future<void> _refreshAfterResume(
+    String userId,
+    Duration timeInBackground,
+  ) async {
+    try {
+      AppLogger.d(
+        'App resumed after ${timeInBackground.inMinutes}min — validating session and refreshing cart',
+        tag: 'lifecycle',
+      );
+
+      final isValid = await ref
+          .read(authRepositoryProvider)
+          .validateCurrentUser();
+      if (!mounted || !isValid) return;
+
+      // Re-fetch cart after a meaningful background gap so stale badge/counts
+      // are corrected without firing duplicate work on quick foreground hops.
+      ref.invalidate(cartItemsProvider);
+    } catch (e) {
+      AppLogger.w('Resume refresh failed: $e', tag: 'lifecycle');
+    } finally {
+      _resumeRefreshInFlight = false;
+    }
+  }
+
+  @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
 
     // Check for required app updates (mobile/tablet only)
     if (!kIsWeb) {

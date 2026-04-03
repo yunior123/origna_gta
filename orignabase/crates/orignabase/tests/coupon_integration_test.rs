@@ -11,8 +11,8 @@ fn base_url() -> String {
     std::env::var("OB_TEST_URL").unwrap_or_else(|_| "https://api.dev.orignagta.ca".to_string())
 }
 
-/// Login as buyer and return access token.
-async fn login_buyer(client: &reqwest::Client) -> String {
+/// Login as buyer and return (access token, user id).
+async fn login_buyer(client: &reqwest::Client) -> (String, String) {
     let resp = client
         .post(format!("{}/auth/login", base_url()))
         .json(&json!({ // ignore-magic
@@ -29,14 +29,20 @@ async fn login_buyer(client: &reqwest::Client) -> String {
         "Buyer login failed. Check test account exists on dev server."
     );
     let body: Value = resp.json().await.expect("parse login response");
-    body["access_token"] // ignore-magic
+    let access_token = body["access_token"] // ignore-magic
         .as_str()
         .expect("missing access_token in login response")
-        .to_string()
+        .to_string();
+    let user_id = body["user"]["id"] // ignore-magic
+        .as_str()
+        .expect("missing user.id in login response")
+        .to_string();
+
+    (access_token, user_id)
 }
 
-/// Login as seller and return access token.
-async fn login_seller(client: &reqwest::Client) -> String {
+/// Login as seller and return (access token, user id).
+async fn login_seller(client: &reqwest::Client) -> (String, String) {
     let resp = client
         .post(format!("{}/auth/login", base_url()))
         .json(&json!({ // ignore-magic
@@ -49,25 +55,59 @@ async fn login_seller(client: &reqwest::Client) -> String {
 
     assert_eq!(resp.status(), 200, "Seller login failed");
     let body: Value = resp.json().await.expect("parse login response");
-    body["access_token"] // ignore-magic
+    let access_token = body["access_token"] // ignore-magic
         .as_str()
-        .expect("missing access_token")
-        .to_string()
+        .expect("missing access_token in login response")
+        .to_string();
+    let user_id = body["user"]["id"] // ignore-magic
+        .as_str()
+        .expect("missing user.id in login response")
+        .to_string();
+
+    (access_token, user_id)
+}
+
+/// Login as admin and return (access token, user id).
+async fn login_admin(client: &reqwest::Client) -> (String, String) {
+    let resp = client
+        .post(format!("{}/auth/login", base_url()))
+        .json(&json!({ // ignore-magic
+            "email": "e2e-admin@test.origna.ca", // ignore-magic
+            "password": "REDACTED_TEST_PASSWORD" // ignore-magic
+        }))
+        .send()
+        .await
+        .expect("login request failed");
+
+    assert_eq!(resp.status(), 200, "Admin login failed");
+    let body: Value = resp.json().await.expect("parse login response");
+    let access_token = body["access_token"] // ignore-magic
+        .as_str()
+        .expect("missing access_token in login response")
+        .to_string();
+    let user_id = body["user"]["id"] // ignore-magic
+        .as_str()
+        .expect("missing user.id in login response")
+        .to_string();
+
+    (access_token, user_id)
 }
 
 /// Apply coupon to checkout (buyer action).
 async fn apply_coupon_to_checkout(
     client: &reqwest::Client,
     token: &str,
+    user_id: &str,
     coupon_code: &str,
     subtotal_cents: i64,
 ) -> Result<Value, String> {
     let resp = client
-        .post(format!("{}/coupons/apply", base_url()))
+        .post(format!("{}/api/coupons/apply", base_url()))
         .header("Authorization", format!("Bearer {}", token)) // ignore-magic
         .json(&json!({ // ignore-magic
-            "couponCode": coupon_code,
-            "subtotalCents": subtotal_cents // ignore-magic
+            "code": coupon_code,
+            "userId": user_id,
+            "orderSubtotalCents": subtotal_cents // ignore-magic
         }))
         .send()
         .await
@@ -92,10 +132,9 @@ async fn test_apply_valid_coupon_reduces_checkout_total() {
     let client = reqwest::Client::new();
 
     // Login as buyer
-    let buyer_token = login_buyer(&client).await;
-
-    // Login as seller to create a coupon first
-    let seller_token = login_seller(&client).await;
+    let (buyer_token, buyer_user_id) = login_buyer(&client).await;
+    let (admin_token, admin_user_id) = login_admin(&client).await;
+    let (_, seller_user_id) = login_seller(&client).await;
 
     // Create a test coupon (10% off, max 50 uses)
     let coupon_code = format!(
@@ -104,13 +143,16 @@ async fn test_apply_valid_coupon_reduces_checkout_total() {
     );
 
     let create_resp = client
-        .post(format!("{}/coupons/create", base_url()))
-        .header("Authorization", format!("Bearer {}", seller_token)) // ignore-magic
+        .post(format!("{}/api/admin/coupons/create", base_url()))
+        .header("Authorization", format!("Bearer {}", admin_token)) // ignore-magic
         .json(&json!({ // ignore-magic
             "code": coupon_code,
-            "discountPercentage": 10.0,
-            "maxUses": 50,
+            "discountType": "percentage",
+            "discountValue": 10.0,
+            "maxUsesTotal": 50,
             "expiresAt": "2099-12-31T23:59:59Z",
+            "sellerId": seller_user_id,
+            "userId": admin_user_id,
             "description": "Integration test coupon" // ignore-magic
         }))
         .send()
@@ -125,23 +167,23 @@ async fn test_apply_valid_coupon_reduces_checkout_total() {
 
     // Apply the coupon to a checkout with $100 subtotal
     let subtotal_cents = 10000; // $100
-    match apply_coupon_to_checkout(&client, &buyer_token, &coupon_code, subtotal_cents).await {
+    match apply_coupon_to_checkout(
+        &client,
+        &buyer_token,
+        &buyer_user_id,
+        &coupon_code,
+        subtotal_cents,
+    )
+    .await
+    {
         Ok(result) => {
             // Verify discount was applied
-            let discount_cents = result["discountCents"].as_i64().unwrap_or(0); // ignore-magic
-            let discounted_total = result["totalCents"].as_i64().unwrap_or(0); // ignore-magic
+            let discount_cents = result["discountAmountCents"].as_i64().unwrap_or(0); // ignore-magic
 
             // 10% of $100 = $10
             assert!(discount_cents > 0, "Discount should be applied");
-            assert!(
-                discounted_total < subtotal_cents,
-                "Total should be less than subtotal"
-            );
-            assert_eq!(
-                discounted_total,
-                subtotal_cents - discount_cents,
-                "Discounted total should match calculation"
-            );
+            assert_eq!(discount_cents, 1000, "10% of $100 should be $10");
+            assert_eq!(result["couponCode"], coupon_code, "Coupon code should round-trip"); // ignore-magic
         }
         Err(e) => {
             eprintln!("Could not apply coupon (might not exist): {}", e);
@@ -154,13 +196,21 @@ async fn test_apply_valid_coupon_reduces_checkout_total() {
 #[ignore]
 async fn test_expired_coupon_returns_error() {
     let client = reqwest::Client::new();
-    let buyer_token = login_buyer(&client).await;
+    let (buyer_token, buyer_user_id) = login_buyer(&client).await;
 
     // Try to apply a clearly expired coupon code
     let expired_code = "EXPIRED_COUPON_2020";
     let subtotal_cents = 10000;
 
-    match apply_coupon_to_checkout(&client, &buyer_token, expired_code, subtotal_cents).await {
+    match apply_coupon_to_checkout(
+        &client,
+        &buyer_token,
+        &buyer_user_id,
+        expired_code,
+        subtotal_cents,
+    )
+    .await
+    {
         Ok(_) => {
             // If it succeeds, the coupon doesn't exist (which is fine for this test)
         }
@@ -179,8 +229,9 @@ async fn test_expired_coupon_returns_error() {
 #[ignore]
 async fn test_coupon_max_uses_enforced() {
     let client = reqwest::Client::new();
-    let seller_token = login_seller(&client).await;
-    let buyer_token = login_buyer(&client).await;
+    let (buyer_token, buyer_user_id) = login_buyer(&client).await;
+    let (admin_token, admin_user_id) = login_admin(&client).await;
+    let (_, seller_user_id) = login_seller(&client).await;
 
     // Create a coupon with max 1 use
     let coupon_code = format!(
@@ -189,12 +240,15 @@ async fn test_coupon_max_uses_enforced() {
     );
 
     let create_resp = client
-        .post(format!("{}/coupons/create", base_url()))
-        .header("Authorization", format!("Bearer {}", seller_token)) // ignore-magic
+        .post(format!("{}/api/admin/coupons/create", base_url()))
+        .header("Authorization", format!("Bearer {}", admin_token)) // ignore-magic
         .json(&json!({ // ignore-magic
             "code": coupon_code,
-            "discountPercentage": 15.0,
-            "maxUses": 1,
+            "discountType": "percentage",
+            "discountValue": 15.0,
+            "maxUsesTotal": 1,
+            "sellerId": seller_user_id,
+            "userId": admin_user_id,
             "expiresAt": "2099-12-31T23:59:59Z"
         }))
         .send()
@@ -209,7 +263,9 @@ async fn test_coupon_max_uses_enforced() {
     let subtotal = 5000;
 
     // First use should succeed
-    let first_use = apply_coupon_to_checkout(&client, &buyer_token, &coupon_code, subtotal).await;
+    let first_use =
+        apply_coupon_to_checkout(&client, &buyer_token, &buyer_user_id, &coupon_code, subtotal)
+            .await;
     if first_use.is_err() {
         return; // Skip if coupon apply not working
     }
@@ -219,5 +275,7 @@ async fn test_coupon_max_uses_enforced() {
 
     // Second use with a different buyer would fail, but we're same buyer
     // So just verify the endpoint exists and responds
-    let _ = apply_coupon_to_checkout(&client, &buyer_token, &coupon_code, subtotal).await;
+    let _ =
+        apply_coupon_to_checkout(&client, &buyer_token, &buyer_user_id, &coupon_code, subtotal)
+            .await;
 }

@@ -44,7 +44,11 @@ async fn list_users(client: &reqwest::Client, token: &str) -> Result<Vec<Value>,
         .map_err(|e| format!("parse response: {}", e))?;
 
     if status == 200 {
-        Ok(body.as_array().cloned().unwrap_or_default())
+        Ok(body
+            .get("users")
+            .and_then(|users| users.as_array())
+            .cloned()
+            .unwrap_or_default())
     } else {
         Err(format!("list users failed: {} — {}", status, body))
     }
@@ -74,35 +78,29 @@ async fn get_user(client: &reqwest::Client, token: &str, user_id: &str) -> Resul
 
 #[tokio::test]
 #[ignore]
-async fn test_admin_list_users_no_email_leak() {
+async fn test_admin_list_users_includes_email_for_account_identification() {
     let client = reqwest::Client::new();
     let admin_token = login_admin(&client).await;
 
-    match list_users(&client, &admin_token).await {
-        Ok(users) => {
-            assert!(!users.is_empty(), "Should return users");
+    let users = list_users(&client, &admin_token)
+        .await
+        .expect("admin list users should succeed");
+    assert!(!users.is_empty(), "Should return users");
 
-            // Check that email field is NOT included in list response
-            // (per spec: admins should not see emails in list — only name, ID, role)
-            for user in users.iter().take(5) {
-                let has_email = user.get("email").is_some(); // ignore-magic
-                assert!(
-                    !has_email || user["email"].is_null(), // ignore-magic
-                    "User list should NOT include email field for privacy"
-                );
+    // Admin workflows need email in the list response to identify accounts
+    // before opening the per-user detail view.
+    for user in users.iter().take(5) {
+        assert!(
+            user.get("email").and_then(|email| email.as_str()).is_some(), // ignore-magic
+            "User list should include email for account identification"
+        );
 
-                // Verify we have safe fields
-                let has_id = user.get("id").is_some();
-                let has_role = user.get("role").is_some();
-                assert!(
-                    has_id && has_role,
-                    "User list should include id and role fields"
-                );
-            }
-        }
-        Err(e) => {
-            eprintln!("List users not available: {}", e);
-        }
+        let has_id = user.get("id").is_some();
+        let has_role = user.get("roles").is_some();
+        assert!(
+            has_id && has_role,
+            "User list should include id and roles fields"
+        );
     }
 }
 
@@ -133,27 +131,26 @@ async fn test_admin_get_user_requires_admin_role() {
     let admin_token = login_admin(&client).await;
 
     // List users to get a valid user ID
-    if let Ok(users) = list_users(&client, &admin_token).await
-        && !users.is_empty()
-    {
-        let user_id = users[0]["id"] // ignore-magic
-            .as_str()
-            .map(|s| s.to_string())
-            .unwrap_or_default();
+    let users = list_users(&client, &admin_token)
+        .await
+        .expect("admin list users should succeed");
+    assert!(!users.is_empty(), "Should return at least one user");
 
-        if !user_id.is_empty() {
-            // Get user details as admin — should succeed
-            match get_user(&client, &admin_token, &user_id).await {
-                Ok(user) => {
-                    let id = user["id"].as_str().unwrap_or(""); // ignore-magic
-                    assert_eq!(id, user_id, "Should return requested user");
-                }
-                Err(e) => {
-                    eprintln!("Get user as admin failed: {}", e);
-                }
-            }
-        }
-    }
+    let user_id = users[0]["id"] // ignore-magic
+        .as_str()
+        .map(|s| s.to_string())
+        .unwrap_or_default();
+    assert!(
+        !user_id.is_empty(),
+        "List users should return a concrete user id"
+    );
+
+    // Get user details as admin — should succeed
+    let user = get_user(&client, &admin_token, &user_id)
+        .await
+        .expect("admin get user should succeed");
+    let id = user["id"].as_str().unwrap_or(""); // ignore-magic
+    assert_eq!(id, user_id, "Should return requested user");
 }
 
 #[tokio::test]
@@ -163,37 +160,34 @@ async fn test_admin_actions_logged_with_uid() {
     let admin_token = login_admin(&client).await;
 
     // Perform an admin action (list users)
-    match list_users(&client, &admin_token).await {
-        Ok(_users) => {
-            // If we can list users, verify there's an audit log
-            // (This test assumes audit logging is implemented)
+    let _users = list_users(&client, &admin_token)
+        .await
+        .expect("admin list users should succeed");
 
-            // Try to fetch audit log (endpoint may not exist)
-            let audit_resp = client
-                .get(format!("{}/admin/audit-log", base_url()))
-                .header("Authorization", format!("Bearer {}", admin_token)) // ignore-magic
-                .send()
-                .await;
+    // If we can list users, verify there's an audit log
+    // (This test assumes audit logging is implemented)
 
-            if let Ok(resp) = audit_resp
-                && resp.status() == 200
-            {
-                let body: Value = resp.json().await.unwrap_or(json!({})); // ignore-magic
-                let empty_vec = vec![];
-                let logs = body.as_array().unwrap_or(&empty_vec);
+    // Try to fetch audit log (endpoint may not exist)
+    let audit_resp = client
+        .get(format!("{}/admin/audit-log", base_url()))
+        .header("Authorization", format!("Bearer {}", admin_token)) // ignore-magic
+        .send()
+        .await;
 
-                // Verify recent log entries have adminUid
-                for log in logs.iter().take(5) {
-                    let has_admin_uid = log.get("adminUid").is_some();
-                    assert!(
-                        has_admin_uid,
-                        "Admin actions should be logged with adminUid"
-                    );
-                }
-            }
-        }
-        Err(e) => {
-            eprintln!("Admin list users failed: {}", e);
+    if let Ok(resp) = audit_resp
+        && resp.status() == 200
+    {
+        let body: Value = resp.json().await.unwrap_or(json!({})); // ignore-magic
+        let empty_vec = vec![];
+        let logs = body.as_array().unwrap_or(&empty_vec);
+
+        // Verify recent log entries have adminUid
+        for log in logs.iter().take(5) {
+            let has_admin_uid = log.get("adminUid").is_some();
+            assert!(
+                has_admin_uid,
+                "Admin actions should be logged with adminUid"
+            );
         }
     }
 }

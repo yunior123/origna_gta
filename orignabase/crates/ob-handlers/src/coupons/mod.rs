@@ -182,10 +182,7 @@ async fn apply_coupon(
             );
             let docs = state
                 .db
-                .query_bind(
-                    &query,
-                    serde_json::json!({"code": code.clone()}),
-                )
+                .query_bind(&query, serde_json::json!({"code": code.clone()}))
                 .await
                 .map_err(|e| {
                     error!("Coupon lookup query failed: {e}");
@@ -1520,7 +1517,10 @@ mod tests {
         let uses = state
             .db
             .query_bind(
-                &format!("SELECT * FROM {} WHERE couponId = $coupon_id AND userId = $user_id LIMIT 1", collections::COUPON_USES),
+                &format!(
+                    "SELECT * FROM {} WHERE couponId = $coupon_id AND userId = $user_id LIMIT 1",
+                    collections::COUPON_USES
+                ),
                 json!({"coupon_id": &code, "user_id": &user_id}),
             )
             .await

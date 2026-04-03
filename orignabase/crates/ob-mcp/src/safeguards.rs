@@ -335,14 +335,23 @@ mod tests {
         {
             let mut spend = limit.user_spend.write().await;
             spend.insert("stale_user".to_string(), vec![(5000, old_ts)]);
-            spend.insert("active_user".to_string(), vec![(5000, chrono::Utc::now().timestamp())]);
+            spend.insert(
+                "active_user".to_string(),
+                vec![(5000, chrono::Utc::now().timestamp())],
+            );
         }
 
         limit.cleanup().await;
 
         let spend = limit.user_spend.read().await;
-        assert!(!spend.contains_key("stale_user"), "expired user should be evicted");
-        assert!(spend.contains_key("active_user"), "active user should remain");
+        assert!(
+            !spend.contains_key("stale_user"),
+            "expired user should be evicted"
+        );
+        assert!(
+            spend.contains_key("active_user"),
+            "active user should remain"
+        );
     }
 
     #[tokio::test]
@@ -362,7 +371,10 @@ mod tests {
         }
 
         let spend = limit.user_spend.read().await;
-        assert!(!spend.contains_key("old_user"), "cleanup should have evicted expired user");
+        assert!(
+            !spend.contains_key("old_user"),
+            "cleanup should have evicted expired user"
+        );
     }
 
     #[test]

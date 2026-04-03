@@ -24,6 +24,8 @@ import 'package:origna_gta/utils/constants.dart';
 import 'checkout_viewmodel_comprehensive_test.mocks.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   late MockOrderRepository mockOrderRepo;
   late MockUserRepository mockUserRepo;
   late MockOrignaBase mockOrignaBase;
@@ -387,112 +389,159 @@ void main() {
       await future1;
     });
 
-    test('startCheckout keeps cart provider alive after successful session creation', () async {
-      var cartSubscriptions = 0;
-      container = ProviderContainer(
-        overrides: [
-          orderRepositoryProvider.overrideWithValue(mockOrderRepo),
-          userRepositoryProvider.overrideWithValue(mockUserRepo),
-          orignabaseProvider.overrideWithValue(mockOrignaBase),
-          obUserIdProvider.overrideWithValue('user_123'),
-          cartSubtotalProvider.overrideWithValue(1000),
-          cartItemsProvider.overrideWith((ref) {
-            cartSubscriptions++;
-            return Stream.value(const <CartItemModel>[]);
-          }),
-        ],
-      );
+    test(
+      'startCheckout skips biometric auth when discount drops buyer total below threshold',
+      () async {
+        when(
+          mockOrignaBase.request(any, any, body: anyNamed('body')),
+        ).thenAnswer((invocation) async {
+          final path = invocation.positionalArguments[1] as String;
+          if (path == ApiEndpoints.couponsApply) {
+            return <String, dynamic>{Fields.discountAmountCents: 2000};
+          }
+          return <String, dynamic>{ApiKeys.hasChanges: false};
+        });
+        when(mockOrderRepo.createCheckoutSession(any)).thenAnswer((_) async {
+          return {
+            ApiKeys.checkoutUrl: 'https://checkout.example/session',
+            Fields.orderId: 'order_123',
+            ApiKeys.sessionId: 'session_123',
+            Fields.taxAmountCents: 0,
+          };
+        });
+        when(
+          mockOrderRepo.updateLastSession(any, any, any),
+        ).thenAnswer((_) async {});
 
-      when(mockOrderRepo.createCheckoutSession(any)).thenAnswer((_) async {
-        return {
-          ApiKeys.checkoutUrl: 'https://checkout.example/session',
-          Fields.orderId: 'order_123',
-          ApiKeys.sessionId: 'session_123',
-          Fields.taxAmountCents: 130,
-        };
-      });
-      when(
-        mockOrderRepo.updateLastSession(any, any, any),
-      ).thenAnswer((_) async {});
+        final notifier = container.read(checkoutStateProvider.notifier);
+        await notifier.applyCoupon('SAVE20', 10000);
 
-      final sub = container.listen(cartItemsProvider, (previous, next) {});
-      addTearDown(sub.close);
-      await container.read(cartItemsProvider.future);
-      expect(cartSubscriptions, 1);
+        final result = await notifier.startCheckout(
+          items: [createTestItem(isDigital: true)],
+          user: createTestUser(),
+          subtotalCents: 10000,
+        );
 
-      container.read(checkoutStateProvider.notifier).updateAddress(
-        Address(
-          street: '123 St',
-          city: 'Toronto',
-          state: 'ON',
-          postalCode: 'M1M 1M1',
-          country: 'CA',
-        ),
-      );
+        expect(result, isA<CheckoutSuccess>());
+      },
+    );
 
-      final result = await container
-          .read(checkoutStateProvider.notifier)
-          .startCheckout(
-            items: [createTestItem()],
-            user: createTestUser(),
-            subtotalCents: 1000,
-          );
+    test(
+      'startCheckout keeps cart provider alive after successful session creation',
+      () async {
+        var cartSubscriptions = 0;
+        container = ProviderContainer(
+          overrides: [
+            orderRepositoryProvider.overrideWithValue(mockOrderRepo),
+            userRepositoryProvider.overrideWithValue(mockUserRepo),
+            orignabaseProvider.overrideWithValue(mockOrignaBase),
+            obUserIdProvider.overrideWithValue('user_123'),
+            cartSubtotalProvider.overrideWithValue(1000),
+            cartItemsProvider.overrideWith((ref) {
+              cartSubscriptions++;
+              return Stream.value(const <CartItemModel>[]);
+            }),
+          ],
+        );
 
-      expect(result, isA<CheckoutSuccess>());
-      expect(cartSubscriptions, 1);
-    });
+        when(mockOrderRepo.createCheckoutSession(any)).thenAnswer((_) async {
+          return {
+            ApiKeys.checkoutUrl: 'https://checkout.example/session',
+            Fields.orderId: 'order_123',
+            ApiKeys.sessionId: 'session_123',
+            Fields.taxAmountCents: 130,
+          };
+        });
+        when(
+          mockOrderRepo.updateLastSession(any, any, any),
+        ).thenAnswer((_) async {});
 
-    test('startCheckout keeps cart provider alive for duplicate checkout URL', () async {
-      var cartSubscriptions = 0;
-      container = ProviderContainer(
-        overrides: [
-          orderRepositoryProvider.overrideWithValue(mockOrderRepo),
-          userRepositoryProvider.overrideWithValue(mockUserRepo),
-          orignabaseProvider.overrideWithValue(mockOrignaBase),
-          obUserIdProvider.overrideWithValue('user_123'),
-          cartSubtotalProvider.overrideWithValue(1000),
-          cartItemsProvider.overrideWith((ref) {
-            cartSubscriptions++;
-            return Stream.value(const <CartItemModel>[]);
-          }),
-        ],
-      );
+        final sub = container.listen(cartItemsProvider, (previous, next) {});
+        addTearDown(sub.close);
+        await container.read(cartItemsProvider.future);
+        expect(cartSubscriptions, 1);
 
-      when(mockOrderRepo.createCheckoutSession(any)).thenAnswer((_) async {
-        return {
-          ApiKeys.duplicate: true,
-          ApiKeys.checkoutUrl: 'https://checkout.example/existing',
-          Fields.orderId: 'order_existing',
-          ApiKeys.sessionId: 'session_existing',
-        };
-      });
+        container
+            .read(checkoutStateProvider.notifier)
+            .updateAddress(
+              Address(
+                street: '123 St',
+                city: 'Toronto',
+                state: 'ON',
+                postalCode: 'M1M 1M1',
+                country: 'CA',
+              ),
+            );
 
-      final sub = container.listen(cartItemsProvider, (previous, next) {});
-      addTearDown(sub.close);
-      await container.read(cartItemsProvider.future);
-      expect(cartSubscriptions, 1);
+        final result = await container
+            .read(checkoutStateProvider.notifier)
+            .startCheckout(
+              items: [createTestItem()],
+              user: createTestUser(),
+              subtotalCents: 1000,
+            );
 
-      container.read(checkoutStateProvider.notifier).updateAddress(
-        Address(
-          street: '123 St',
-          city: 'Toronto',
-          state: 'ON',
-          postalCode: 'M1M 1M1',
-          country: 'CA',
-        ),
-      );
+        expect(result, isA<CheckoutSuccess>());
+        expect(cartSubscriptions, 1);
+      },
+    );
 
-      final result = await container
-          .read(checkoutStateProvider.notifier)
-          .startCheckout(
-            items: [createTestItem()],
-            user: createTestUser(),
-            subtotalCents: 1000,
-          );
+    test(
+      'startCheckout keeps cart provider alive for duplicate checkout URL',
+      () async {
+        var cartSubscriptions = 0;
+        container = ProviderContainer(
+          overrides: [
+            orderRepositoryProvider.overrideWithValue(mockOrderRepo),
+            userRepositoryProvider.overrideWithValue(mockUserRepo),
+            orignabaseProvider.overrideWithValue(mockOrignaBase),
+            obUserIdProvider.overrideWithValue('user_123'),
+            cartSubtotalProvider.overrideWithValue(1000),
+            cartItemsProvider.overrideWith((ref) {
+              cartSubscriptions++;
+              return Stream.value(const <CartItemModel>[]);
+            }),
+          ],
+        );
 
-      expect(result, isA<CheckoutSuccess>());
-      expect(cartSubscriptions, 1);
-    });
+        when(mockOrderRepo.createCheckoutSession(any)).thenAnswer((_) async {
+          return {
+            ApiKeys.duplicate: true,
+            ApiKeys.checkoutUrl: 'https://checkout.example/existing',
+            Fields.orderId: 'order_existing',
+            ApiKeys.sessionId: 'session_existing',
+          };
+        });
+
+        final sub = container.listen(cartItemsProvider, (previous, next) {});
+        addTearDown(sub.close);
+        await container.read(cartItemsProvider.future);
+        expect(cartSubscriptions, 1);
+
+        container
+            .read(checkoutStateProvider.notifier)
+            .updateAddress(
+              Address(
+                street: '123 St',
+                city: 'Toronto',
+                state: 'ON',
+                postalCode: 'M1M 1M1',
+                country: 'CA',
+              ),
+            );
+
+        final result = await container
+            .read(checkoutStateProvider.notifier)
+            .startCheckout(
+              items: [createTestItem()],
+              user: createTestUser(),
+              subtotalCents: 1000,
+            );
+
+        expect(result, isA<CheckoutSuccess>());
+        expect(cartSubscriptions, 1);
+      },
+    );
   });
 
   group('CheckoutNotifier Error Handling Tests', () {

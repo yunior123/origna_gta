@@ -34,21 +34,13 @@ async fn login(client: &reqwest::Client) -> (String, String) {
     (access_token, refresh_tok)
 }
 
-/// Logout and optionally provide refresh_token to revoke.
-async fn logout(
-    client: &reqwest::Client,
-    access_token: &str,
-    refresh_token: Option<&str>,
-) -> Result<(), String> {
-    let mut json_body = json!({}); // ignore-magic
-    if let Some(rt) = refresh_token {
-        json_body["refresh_token"] = json!(rt); // ignore-magic
-    }
-
+/// Logout by revoking the refresh token.
+async fn logout(client: &reqwest::Client, refresh_token: &str) -> Result<(), String> {
     let resp = client
         .post(format!("{}/auth/logout", base_url()))
-        .header("Authorization", format!("Bearer {}", access_token)) // ignore-magic
-        .json(&json_body)
+        .json(&json!({ // ignore-magic
+            "refresh_token": refresh_token // ignore-magic
+        }))
         .send()
         .await
         .map_err(|e| format!("logout request failed: {}", e))?;
@@ -95,7 +87,7 @@ async fn refresh_access_token(
 /// Make a simple authenticated request to verify token validity.
 async fn verify_token_valid(client: &reqwest::Client, token: &str) -> bool {
     let resp = client
-        .get(format!("{}/me", base_url()))
+        .get(format!("{}/user/profile", base_url()))
         .header("Authorization", format!("Bearer {}", token)) // ignore-magic
         .send()
         .await;
@@ -122,7 +114,7 @@ async fn test_logout_revokes_refresh_token() {
     );
 
     // Logout with refresh token
-    match logout(&client, &access_token, Some(&refresh_tok)).await {
+    match logout(&client, &refresh_tok).await {
         Ok(()) => {
             eprintln!("Logged out successfully");
         }
@@ -222,11 +214,11 @@ async fn test_refresh_rotation_revokes_old() {
 
 #[tokio::test]
 #[ignore]
-async fn test_logout_invalidates_access_token() {
+async fn test_logout_does_not_revoke_current_access_token() {
     let client = reqwest::Client::new();
 
     // Login
-    let (access_token, _refresh_token) = login(&client).await;
+    let (access_token, refresh_token) = login(&client).await;
 
     // Verify token works before logout
     assert!(
@@ -235,7 +227,7 @@ async fn test_logout_invalidates_access_token() {
     );
 
     // Logout
-    match logout(&client, &access_token, None).await {
+    match logout(&client, &refresh_token).await {
         Ok(()) => {
             eprintln!("Logged out");
         }
@@ -247,10 +239,11 @@ async fn test_logout_invalidates_access_token() {
 
     sleep(Duration::from_millis(500)).await;
 
-    // Try to use logged-out access token
+    // Current backend contract revokes the refresh token only.
+    // The existing access token remains usable until expiry.
     let still_valid = verify_token_valid(&client, &access_token).await;
     assert!(
-        !still_valid,
-        "Access token should be invalid after logout (or at least not grant new access)"
+        still_valid,
+        "Access token should remain usable until expiry; logout only revokes refresh tokens"
     );
 }

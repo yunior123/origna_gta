@@ -2,6 +2,9 @@
  * FIXED AgentBrowser v4 — Reduced clearState timeout + better error messages
  */
 import type { Snapshot, SnapshotRef } from './types.js';
+import { ORIGNABASE_URL, TEST_ACCOUNTS, WEB_APP_URL } from './config.js';
+
+export type CapturePersona = 'buyer' | 'seller' | 'admin';
 
 export class AgentBrowser {
   private engine: 'chrome' | 'lightpanda';
@@ -333,8 +336,10 @@ export class AgentBrowser {
     filepath: string;
     expectedKeywords: string[];
     viewport?: { width: number; height: number };
+    requiredKeywordCount?: number;
   }): Promise<boolean> {
     const { filepath, expectedKeywords, viewport } = options;
+    const requiredKeywordCount = Math.max(1, options.requiredKeywordCount ?? 1);
 
     if (viewport) {
       this.run(['set', 'viewport', String(viewport.width), String(viewport.height)]);
@@ -343,10 +348,15 @@ export class AgentBrowser {
 
     const snap = await this.snapshot({ compact: true });
     const snapRaw = snap.raw;
-    const hasExpected = expectedKeywords.some(kw => snapRaw.toLowerCase().includes(kw.toLowerCase()));
+    const matchedKeywords = expectedKeywords.filter((kw) =>
+      snapRaw.toLowerCase().includes(kw.toLowerCase()),
+    );
+    const hasExpected = matchedKeywords.length >= requiredKeywordCount;
 
     if (!hasExpected) {
-      console.error(`[screenshotWithVerify] SKIPPING ${filepath} — expected keywords [${expectedKeywords.join(', ')}] not on current page`);
+      console.error(
+        `[screenshotWithVerify] SKIPPING ${filepath} — matched ${matchedKeywords.length}/${requiredKeywordCount} keywords [${expectedKeywords.join(', ')}]`,
+      );
       return false;
     }
 
@@ -355,27 +365,80 @@ export class AgentBrowser {
     return true;
   }
 
-  async goHomeAndLogin(): Promise<string> {
-    await this.open('https://dev.orignagta.ca', 60_000);
-    await new Promise(r => setTimeout(r, 3000));
+  private credentialsForPersona(persona: CapturePersona): {
+    email: string;
+    password: string;
+    successMarkers: string[];
+  } {
+    switch (persona) {
+      case 'buyer':
+        return {
+          email: TEST_ACCOUNTS.BUYER_EMAIL,
+          password: TEST_ACCOUNTS.BUYER_PASS,
+          successMarkers: ['btn-home-settings', 'btn-cart'],
+        };
+      case 'seller':
+        return {
+          email: TEST_ACCOUNTS.SELLER_EMAIL,
+          password: TEST_ACCOUNTS.SELLER_PASS,
+          successMarkers: ['btn-home-settings', 'btn-add-product'],
+        };
+      case 'admin':
+      default:
+        return {
+          email: TEST_ACCOUNTS.ADMIN_EMAIL,
+          password: TEST_ACCOUNTS.ADMIN_PASS,
+          successMarkers: ['btn-home-settings', 'btn-add-product', 'menu-admin-panel'],
+        };
+    }
+  }
+
+  private hasAnyMarker(raw: string, successMarkers: string[]): boolean {
+    return successMarkers.some((marker) => raw.includes(marker));
+  }
+
+  async goHomeAndLogin(persona: CapturePersona = 'admin'): Promise<string> {
+    await this.clearState();
+    await this.open(WEB_APP_URL, 60_000);
+    await this.waitForFlutter();
+    await new Promise(r => setTimeout(r, 2000));
 
     let snap = await this.snapshot({ compact: true });
-    if (!snap.raw.includes('btn-add-product')) {
-      this.run(['eval', `(async()=>{const r=await fetch('https://api.dev.orignagta.ca/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:'e2e-admin@test.origna.ca',password:'REDACTED_TEST_PASSWORD'})});const d=await r.json();localStorage.setItem('orignabase_access_token',d.access_token);localStorage.setItem('orignabase_refresh_token',d.refresh_token);localStorage.setItem('orignabase_email','e2e-admin@test.origna.ca');return 'OK'})()`]);
-      await this.open('https://dev.orignagta.ca', 60_000);
+    const { email, password, successMarkers } = this.credentialsForPersona(persona);
+    if (!this.hasAnyMarker(snap.raw, successMarkers)) {
+      await this.open(`${WEB_APP_URL}/login`, 60_000);
+      await this.waitForFlutter();
+      await new Promise(r => setTimeout(r, 2000));
+      await this.safeFill(/email|you@example|login_email/i, email);
+      await this.safeFill(/password|login_password|••••••••/i, password);
+      await this.press('Enter');
+      
+      // Wait for login to complete and navigate home
       await new Promise(r => setTimeout(r, 5000));
+      await this.waitForFlutter();
+      
+      // Double check we are home, if not navigate
+      await this.open(WEB_APP_URL, 60_000);
+      await this.waitForFlutter();
+      await new Promise(r => setTimeout(r, 3000));
       snap = await this.snapshot({ compact: true });
     }
 
-    if (!snap.raw.includes('btn-add-product')) {
-      throw new Error('Login failed — btn-add-product not found after login');
+    if (!this.hasAnyMarker(snap.raw, successMarkers)) {
+      throw new Error(
+        `Login failed for ${persona} — none of [${successMarkers.join(', ')}] were found after login`,
+      );
     }
 
     return snap.raw;
   }
 
-  async navigateToProfileMenu(menuName: string, expectedKeywords: string[]): Promise<{ success: boolean; snapshot: string; error?: string }> {
-    const homeSnapRaw = await this.goHomeAndLogin();
+  async navigateToProfileMenu(
+    menuName: string,
+    expectedKeywords: string[],
+    persona: CapturePersona = 'admin',
+  ): Promise<{ success: boolean; snapshot: string; error?: string }> {
+    const homeSnapRaw = await this.goHomeAndLogin(persona);
     const homeSnapObj = await this.snapshot({ compact: true });
     
     let settingsRef = this.findByLabel(homeSnapObj, /btn-home-settings/i)?.ref;

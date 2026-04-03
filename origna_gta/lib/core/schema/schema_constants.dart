@@ -486,7 +486,8 @@ abstract final class Collections {
   static const userRecommendations = 'user_recommendations';
 
   // Security audit
-  static const loginEvents = 'login_events'; // Login audit log (success/fail, email, timestamp)
+  static const loginEvents =
+      'login_events'; // Login audit log (success/fail, email, timestamp)
 
   // Financial audit (backend-only)
   static const platformDebt =
@@ -1210,6 +1211,12 @@ abstract final class Fields {
   // === CART & FAVORITES FIELDS ===
   static const dateFavorited = 'dateFavorited';
   static const favoriteCount = 'favoriteCount';
+  static const parentId = 'parent_id'; // subcollection parent reference
+
+  // === STORAGE FIELDS ===
+  static const publicUrl = 'publicUrl';
+  static const paths = 'paths';
+  static const ttlSecs = 'ttl_secs';
 
   // === ALTERNATE FIELD NAMES (used in database deserialization fallbacks) ===
   /// Alternate name for [confirmedByBuyer]
@@ -1226,6 +1233,9 @@ abstract final class Fields {
 
   /// Alternate name for [minimumOrderQuantity]
   static const minOrderQuantity = 'minOrderQuantity';
+  static const isActive = 'isActive'; // legacy active flag
+  static const title = 'title'; // legacy alias for product name
+  static const province = 'province'; // legacy alias for state
 
   // === LOWERCASE TAX KEYS (used in JSON API responses) ===
   /// Lowercase variant of [GST] for JSON responses

@@ -12,6 +12,36 @@ use ob_auth::middleware::AuthContext;
 use serde::Deserialize;
 use serde_json::json;
 
+fn validate_image_url(url: &str) -> Result<(), ob_core::Error> {
+    if url.trim().is_empty() {
+        return Err(ob_core::Error::Validation(
+            "Image URL cannot be empty".into(),
+        ));
+    }
+
+    if !url.starts_with("https://") {
+        return Err(ob_core::Error::Validation(
+            "Image URLs must use HTTPS protocol".into(),
+        ));
+    }
+
+    let allowed_domains = [
+        "r2.cloudflarestorage.com",
+        "orignagta.ca",
+        "cdn.orignagta.ca",
+        "pub-",
+    ];
+
+    let is_allowed = allowed_domains.iter().any(|domain| url.contains(domain));
+    if !is_allowed {
+        return Err(ob_core::Error::Validation(
+            "Image URL must be from Cloudflare R2 or OrignaGTA CDN".into(),
+        ));
+    }
+
+    Ok(())
+}
+
 pub fn router(state: HandlersState) -> Router {
     Router::new()
         // Products
@@ -261,6 +291,20 @@ async fn create_product(
         )));
     }
 
+    let mut normalized_image_urls = Vec::new();
+    if let Some(image_urls) = obj.get(fields::IMAGE_URLS).and_then(|v| v.as_array()) {
+        for url in image_urls {
+            let url = url.as_str().ok_or_else(|| {
+                ob_core::Error::Validation("imageUrls entries must be strings".into())
+            })?;
+            validate_image_url(url)?;
+            normalized_image_urls.push(url.to_string());
+        }
+    } else if let Some(image_url) = obj.get("imageUrl").and_then(|v| v.as_str()) {
+        validate_image_url(image_url)?;
+        normalized_image_urls.push(image_url.to_string());
+    }
+
     // Build product document
     let mut product = body.clone();
     let product_obj = product
@@ -268,11 +312,16 @@ async fn create_product(
         .expect("already validated as object");
     product_obj.insert(fields::SELLER_ID.into(), json!(user_id));
     // Products use dateCreated (not createdAt) per schema
-    product_obj.insert(fields::DATE_CREATED.into(), json!(chrono::Utc::now().to_rfc3339()));
+    product_obj.insert(
+        fields::DATE_CREATED.into(),
+        json!(chrono::Utc::now().to_rfc3339()),
+    );
     product_obj.insert(
         fields::UPDATED_AT.into(),
         json!(chrono::Utc::now().to_rfc3339()),
     );
+    product_obj.insert(fields::IMAGE_URLS.into(), json!(normalized_image_urls));
+    product_obj.remove("imageUrl");
 
     let created = state
         .db
@@ -336,7 +385,10 @@ async fn get_cart(
         .await
         .map_err(|_| ob_core::Error::NotFound("User not found".into()))?;
 
-    let cart = user.get(collections::CART).cloned().unwrap_or_else(|| json!([]));
+    let cart = user
+        .get(collections::CART)
+        .cloned()
+        .unwrap_or_else(|| json!([]));
 
     Ok(Json(cart))
 }

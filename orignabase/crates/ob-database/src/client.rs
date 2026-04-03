@@ -1,7 +1,7 @@
+use crate::pg_store::PgDatabaseStore;
 use ob_core::Error;
 use ob_core::config::DatabaseConfig;
 use ob_core::ports::db_store::DatabaseStore;
-use crate::pg_store::PgDatabaseStore;
 
 /// Database client wrapping the PostgreSQL adapter.
 ///
@@ -18,8 +18,9 @@ impl DatabaseClient {
     /// On first call per process, truncates all tables for a clean slate.
     /// Uses the local PostgreSQL instance.
     pub async fn new_mem() -> Self {
-        let url = std::env::var("OB_TEST_DATABASE_URL")
-            .unwrap_or_else(|_| "postgres://orignabase:orignabase_dev@127.0.0.1:5432/orignabase".to_string());
+        let url = std::env::var("OB_TEST_DATABASE_URL").unwrap_or_else(|_| {
+            "postgres://orignabase:orignabase_dev@127.0.0.1:5432/orignabase".to_string()
+        });
         let inner = PgDatabaseStore::connect(&url).await.unwrap();
 
         // Truncate all tables once per test process to clear stale data.

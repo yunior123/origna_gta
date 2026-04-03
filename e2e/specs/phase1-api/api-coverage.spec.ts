@@ -741,7 +741,7 @@ describe('K. Chat', () => {
     if (result.error) {
       // Accept: premium gate, missing param, not-found, or other permission-denied — all valid guards
       const errCode = (result.error.code || result.error.status || '').toLowerCase().replace(/_/g, '-');
-      expect(['permission-denied', 'failed-precondition', 'unauthenticated', 'not-found', 'invalid-argument', 'validation-error']).toContain(errCode);
+      expect(['permission-denied', 'failed-precondition', 'unauthenticated', 'not-found', 'invalid-argument', 'validation-error', 'forbidden']).toContain(errCode);
     } else {
       const r = result.result || result;
       chatId = r.chatId || r.threadId || r.id;
@@ -759,7 +759,7 @@ describe('K. Chat', () => {
       if (chatResult.error) {
         // Permission gate (premium, self-chat, order required, not-found) — expected, pass test
         const errCode = (chatResult.error.code || chatResult.error.status || '').toLowerCase().replace(/_/g, '-');
-        expect(['permission-denied', 'failed-precondition', 'unauthenticated', 'not-found', 'invalid-argument', 'validation-error']).toContain(errCode);
+        expect(['permission-denied', 'failed-precondition', 'unauthenticated', 'not-found', 'invalid-argument', 'validation-error', 'forbidden']).toContain(errCode);
         return;
       }
       const r = chatResult.result || chatResult;
@@ -791,7 +791,7 @@ describe('K. Chat', () => {
       if (chatResult.error) {
         // Accept: premium gate, order required, self-chat, or other permission-denied
         const errCode = chatResult.error.code || chatResult.error.status || '';
-        expect(['permission-denied', 'failed-precondition', 'unauthenticated', 'not-found', 'invalid-argument', 'validation-error']).toContain(
+        expect(['permission-denied', 'failed-precondition', 'unauthenticated', 'not-found', 'invalid-argument', 'validation-error', 'forbidden']).toContain(
           errCode.toLowerCase().replace(/_/g, '-')
         );
         return;

@@ -20,6 +20,7 @@ const ALLOWED_UPLOAD_TYPES: &[&str] = &[
     "image/gif",
     "image/webp",
     "application/pdf",
+    "application/octet-stream",
 ];
 
 /// Maximum file size for regular uploads: 500MB
@@ -37,6 +38,12 @@ fn validate_file_signature(bytes: &[u8], content_type: &str) -> Result<()> {
             "File type '{}' is not allowed",
             content_type
         )));
+    }
+
+    // Generic private binary uploads intentionally use octet-stream.
+    // They are always downloaded as attachments, so we skip format sniffing here.
+    if content_type == "application/octet-stream" {
+        return Ok(());
     }
 
     // Verify magic bytes match declared Content-Type
@@ -653,10 +660,10 @@ mod tests {
     }
 
     #[test]
-    fn test_validate_octet_stream_rejected() {
+    fn test_validate_octet_stream_allowed() {
         let bytes = [0xFF, 0xD8, 0xFF, 0xE0];
         let result = validate_file_signature(&bytes, "application/octet-stream");
-        assert!(result.is_err());
+        assert!(result.is_ok());
     }
 
     #[test]
@@ -997,6 +1004,7 @@ mod tests {
         assert!(ALLOWED_UPLOAD_TYPES.contains(&"image/gif"));
         assert!(ALLOWED_UPLOAD_TYPES.contains(&"image/webp"));
         assert!(ALLOWED_UPLOAD_TYPES.contains(&"application/pdf"));
+        assert!(ALLOWED_UPLOAD_TYPES.contains(&"application/octet-stream"));
         assert!(!ALLOWED_UPLOAD_TYPES.contains(&"text/html"));
         assert!(!ALLOWED_UPLOAD_TYPES.contains(&"video/mp4"));
     }
@@ -1200,18 +1208,17 @@ mod tests {
 
     #[test]
     fn test_allowed_upload_types_count() {
-        assert_eq!(ALLOWED_UPLOAD_TYPES.len(), 5);
+        assert_eq!(ALLOWED_UPLOAD_TYPES.len(), 6);
     }
 
     #[test]
-    fn test_validate_file_signature_test_mode_no_longer_bypasses() {
+    fn test_validate_file_signature_octet_stream_allowed() {
         let _lock = ENV_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
         unsafe {
             std::env::set_var("OB_TEST_MODE", "1");
         }
-        // Test mode no longer bypasses MIME validation — octet-stream is rejected
         let result = validate_file_signature(b"random bytes", "application/octet-stream");
-        assert!(result.is_err(), "Test mode should NOT bypass validation");
+        assert!(result.is_ok(), "octet-stream should be allowed for binary uploads");
         unsafe {
             std::env::remove_var("OB_TEST_MODE");
         }

@@ -4,7 +4,13 @@ import 'dart:math';
 import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/core/repositories/user_repository.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart'
-    show ApiEndpoints, BusinessRules, Collections, Fields, PolicyVersionValues;
+    show
+        ApiEndpoints,
+        ApiKeys,
+        BusinessRules,
+        Collections,
+        Fields,
+        PolicyVersionValues;
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/app_logger.dart';
 import 'package:origna_gta/utils/utils.dart';
@@ -143,8 +149,8 @@ class OrignaBaseUserRepository implements UserRepository {
       body: {Fields.userId: userId},
     );
     final data = Map<String, dynamic>.from(response as Map);
-    if (data['success'] != true) return null;
-    final profile = Map<String, dynamic>.from(data)..remove('success');
+    if (data[ApiKeys.success] != true) return null;
+    final profile = Map<String, dynamic>.from(data)..remove(ApiKeys.success);
     if (profile.isEmpty) return null;
     profile.putIfAbsent(Fields.uid, () => userId);
     final address = profile[Fields.address];
@@ -174,8 +180,10 @@ class OrignaBaseUserRepository implements UserRepository {
       },
     );
     final data = Map<String, dynamic>.from(response as Map);
-    if (data['success'] != true) {
-      throw Exception(data['error'] ?? 'Failed to record terms acceptance');
+    if (data[ApiKeys.success] != true) {
+      throw Exception(
+        data[Fields.error] ?? 'Failed to record terms acceptance',
+      );
     }
   }
 
@@ -343,9 +351,9 @@ class OrignaBaseUserRepository implements UserRepository {
       body: updates,
     );
     final data = Map<String, dynamic>.from(response as Map);
-    if (data['success'] != true) {
+    if (data[ApiKeys.success] != true) {
       throw Exception(
-        data['error'] ?? 'Failed to update notification preferences',
+        data[Fields.error] ?? 'Failed to update notification preferences',
       );
     }
   }
@@ -362,8 +370,10 @@ class OrignaBaseUserRepository implements UserRepository {
       body: {Fields.userId: userId, Fields.preferredLanguage: lang},
     );
     final data = Map<String, dynamic>.from(response as Map);
-    if (data['success'] != true) {
-      throw Exception(data['error'] ?? 'Failed to update language preference');
+    if (data[ApiKeys.success] != true) {
+      throw Exception(
+        data[Fields.error] ?? 'Failed to update language preference',
+      );
     }
   }
 

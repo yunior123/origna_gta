@@ -4,7 +4,7 @@
 //! Run with: `cargo test --test integration_test -- --ignored`
 //!
 //! To start PostgreSQL + OrignaBase:
-//!   surreal start --user root --pass root memory
+//!   docker compose -f docker/docker-compose.yml up -d postgres meilisearch
 //!   cargo run -- serve
 //!
 //! Set OB_TEST_URL to override the default (http://localhost:8080).
@@ -467,7 +467,8 @@ async fn test_17_graphql_query_with_filters() {
     let col = format!("filter_{}", uuid::Uuid::new_v4().simple());
 
     // Create docs with different statuses
-    for (title, status) in [("A", "active"), ("B", "inactive"), ("C", "active")] { // ignore-magic
+    for (title, status) in [("A", "active"), ("B", "inactive"), ("C", "active")] {
+        // ignore-magic
         create_doc(
             &client,
             &token,
@@ -505,7 +506,8 @@ async fn test_18_graphql_query_with_limit() {
     let query = format!(r#"{{ list(collection: "{col}", limit: 2) }}"#);
     let body = graphql(&client, &token, &query).await;
 
-    if let Some(arr) = body["data"]["list"].as_array() { // ignore-magic
+    if let Some(arr) = body["data"]["list"].as_array() {
+        // ignore-magic
         assert!(
             arr.len() <= 3, // limit+1 for N+1 pattern
             "Limit should cap results, got {}",
@@ -574,10 +576,10 @@ async fn test_21_graphql_compound_query() {
     let col = format!("compound_{}", uuid::Uuid::new_v4().simple());
 
     for (i, status) in [
-        (10, "active"), // ignore-magic
-        (20, "active"), // ignore-magic
+        (10, "active"),   // ignore-magic
+        (20, "active"),   // ignore-magic
         (30, "inactive"), // ignore-magic
-        (5, "active"), // ignore-magic
+        (5, "active"),    // ignore-magic
     ] {
         create_doc(
             &client,
@@ -1151,7 +1153,8 @@ async fn test_40_concurrent_reads() {
     let mut success_count = 0;
     for handle in handles {
         if let Ok(body) = handle.await
-            && body["data"]["list"].is_array() // ignore-magic
+            && body["data"]["list"].is_array()
+        // ignore-magic
         {
             success_count += 1;
         }
@@ -2181,7 +2184,8 @@ async fn test_71_ecommerce_chat_messages() {
     let query =
         format!(r#"{{ list(collection: "{messages_col}", orderBy: "created_at", limit: 50) }}"#);
     let body = graphql(&client, &token, &query).await;
-    if let Some(arr) = body["data"]["list"].as_array() { // ignore-magic
+    if let Some(arr) = body["data"]["list"].as_array() {
+        // ignore-magic
         assert!(arr.len() >= 2, "Should have chat messages");
     }
 }
@@ -2259,7 +2263,8 @@ async fn test_73_ecommerce_product_ratings_aggregate() {
         r#"{{ list(collection: "{ratings_col}", filters: {escaped}, orderBy: "rating", descending: true) }}"#
     );
     let body = graphql(&client, &token, &query).await;
-    if let Some(arr) = body["data"]["list"].as_array() { // ignore-magic
+    if let Some(arr) = body["data"]["list"].as_array() {
+        // ignore-magic
         assert!(arr.len() >= 3, "Should have multiple ratings");
     }
 }
@@ -2670,7 +2675,7 @@ async fn test_80_throughput_500_concurrent_writes() {
     let wps = success as f64 / elapsed.as_secs_f64();
     let avg_ms = elapsed.as_secs_f64() * 1000.0 / success as f64;
     eprintln!(
-        ">>> Throughput (500 concurrent HTTP→GraphQL→SurrealDB): {success}/{total} in {:.2?} → {:.0} writes/sec, avg {:.1}ms/write",
+        ">>> Throughput (500 concurrent HTTP→GraphQL→PostgreSQL): {success}/{total} in {:.2?} → {:.0} writes/sec, avg {:.1}ms/write",
         elapsed, wps, avg_ms
     );
 
@@ -2761,7 +2766,7 @@ async fn test_82_throughput_read_heavy_1000() {
     let rps = success as f64 / elapsed.as_secs_f64();
     let avg_ms = elapsed.as_secs_f64() * 1000.0 / success as f64;
     eprintln!(
-        ">>> Read throughput (1000 concurrent HTTP→GraphQL→SurrealDB): {success}/{total} in {:.2?} → {:.0} reads/sec, avg {:.1}ms/read",
+        ">>> Read throughput (1000 concurrent HTTP→GraphQL→PostgreSQL): {success}/{total} in {:.2?} → {:.0} reads/sec, avg {:.1}ms/read",
         elapsed, rps, avg_ms
     );
 
@@ -3660,7 +3665,8 @@ async fn test_97_email_verification_flow() {
 
     let body: Value = resp.json().await.unwrap();
     // In dev mode (no SMTP), the token is returned in the response
-    if let Some(verify_token) = body.get("token").and_then(|t| t.as_str()) { // ignore-magic
+    if let Some(verify_token) = body.get("token").and_then(|t| t.as_str()) {
+        // ignore-magic
         // Verify the email
         let resp = client
             .post(format!("{}/auth/verify-email", base_url()))
@@ -3694,7 +3700,8 @@ async fn test_98_magic_link_full_flow() {
 
     let body: Value = resp.json().await.unwrap();
     // In dev mode, the token is returned
-    if let Some(magic_token) = body.get("token").and_then(|t| t.as_str()) { // ignore-magic
+    if let Some(magic_token) = body.get("token").and_then(|t| t.as_str()) {
+        // ignore-magic
         // Verify magic link
         let resp = client
             .post(format!("{}/auth/verify-magic-link", base_url()))
@@ -3879,7 +3886,8 @@ async fn test_100_password_change_full_flow() {
 
     let body: Value = resp.json().await.unwrap();
     // In dev mode, token is returned
-    if let Some(reset_token) = body.get("token").and_then(|t| t.as_str()) { // ignore-magic
+    if let Some(reset_token) = body.get("token").and_then(|t| t.as_str()) {
+        // ignore-magic
         let resp = client
             .post(format!("{}/auth/reset-password", base_url()))
             .json(&json!({ // ignore-magic
@@ -4340,7 +4348,7 @@ async fn test_110_orignagta_order_state_machine() {
         ("confirmed", "Payment verified"), // ignore-magic
         ("processing", "Order being prepared"),
         ("shipped", "Tracking: CAN123456"), // ignore-magic
-        ("delivered", "Package received"), // ignore-magic
+        ("delivered", "Package received"),  // ignore-magic
     ];
 
     for (status, note) in transitions {
@@ -5007,9 +5015,9 @@ async fn test_124_unicode_handling() {
 
     let test_cases = [
         ("emoji", json!({"text": "Hello 🌍 World 🎉 OrignaBase 🚀"})), // ignore-magic
-        ("chinese", json!({"text": "你好世界 - 中文测试"})), // ignore-magic
-        ("arabic", json!({"text": "مرحبا بالعالم"})), // ignore-magic
-        ("cyrillic", json!({"text": "Привет мир"})), // ignore-magic
+        ("chinese", json!({"text": "你好世界 - 中文测试"})),           // ignore-magic
+        ("arabic", json!({"text": "مرحبا بالعالم"})),                  // ignore-magic
+        ("cyrillic", json!({"text": "Привет мир"})),                   // ignore-magic
         (
             "mixed",
             json!({"text": "Café résumé naïve über Straße 日本語 한국어"}), // ignore-magic
@@ -5029,7 +5037,8 @@ async fn test_124_unicode_handling() {
         let body = graphql(&client, &token, &query).await;
         let doc = parse_graphql_json_field(&body["data"]["get"]); // ignore-magic
         assert_eq!(
-            doc["text"], data["text"], // ignore-magic
+            doc["text"],
+            data["text"], // ignore-magic
             "Unicode roundtrip failed for '{label}'"
         );
     }

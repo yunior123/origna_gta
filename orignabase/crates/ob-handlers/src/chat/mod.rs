@@ -691,8 +691,8 @@ async fn send_message(
     let _ = crate::push::send_push(
         &state.http_client,
         "orignabase", // Project ID placeholder
-        "",                          // Would need service account
-        "",                          // Would need recipient token
+        "",           // Would need service account
+        "",           // Would need recipient token
         &format!("Message from {sender_name}"),
         if text.is_empty() {
             "Sent an image"
@@ -1074,7 +1074,10 @@ mod tests {
             get_or_create_chat(State(state.clone()), Extension(auth.clone()), Json(req)).await;
         assert!(result.is_err(), "Expected error but got success");
         let err_str = result.unwrap_err().to_string();
-        assert!(err_str.contains("delivered order"), "Expected 'delivered order' error, got: {err_str}");
+        assert!(
+            err_str.contains("delivered order"),
+            "Expected 'delivered order' error, got: {err_str}"
+        );
 
         // 3. Add eligible order
         state
@@ -1257,7 +1260,11 @@ mod tests {
         };
         let result =
             mark_messages_read(State(state.clone()), Extension(auth.clone()), Json(req)).await;
-        assert!(result.is_ok(), "mark_messages_read failed: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "mark_messages_read failed: {:?}",
+            result.err()
+        );
         let Json(resp) = result.unwrap();
         assert_eq!(resp.count, 2);
 

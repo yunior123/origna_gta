@@ -76,10 +76,7 @@ Configure via `orignabase.toml` or environment variables:
 ```bash
 OB_HOST=0.0.0.0
 OB_PORT=8080
-OB_DATABASE__ENDPOINT=localhost:5432
-OB_DATABASE__USERNAME=orignabase
-OB_DATABASE__PASSWORD=orignabase
-OB_DATABASE__NAME=orignabase
+OB_DATABASE__URL=postgres://orignabase:orignabase@localhost:5432/orignabase
 OB_AUTH__JWT_SECRET=your-secret-here
 OB_SECRETS__STRIPE_SECRET_KEY=sk_test_...
 OB_SECRETS__STRIPE_WEBHOOK_SECRET=whsec_...
@@ -262,7 +259,7 @@ Use PgBouncer for connection pooling and horizontal scaling:
 pgbouncer /etc/pgbouncer/pgbouncer.ini
 
 # Point OrignaBase to PgBouncer
-OB_DATABASE__ENDPOINT=pgbouncer:6432 orignabase serve
+OB_DATABASE__URL=REDACTED_SECRET/orignabase orignabase serve
 ```
 
 ### Multi-Node Clustering (NATS JetStream)

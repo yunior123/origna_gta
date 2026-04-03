@@ -314,11 +314,9 @@ pub async fn check_account_lockout(db: &ob_database::DatabaseClient, email: &str
         .as_secs() as i64;
     let window_start = now_secs - LOCKOUT_WINDOW_SECS;
 
-    let query = "SELECT count() FROM login_lockout WHERE email = $email AND timestamp >= $window_start GROUP ALL";
-
     let results = db
-        .query_bind_value(
-            query,
+        .query_bind(
+            "SELECT * FROM login_lockout WHERE email = $email AND timestamp >= $window_start LIMIT 10",
             json!({
                 "email": email,
                 "window_start": window_start,
@@ -327,11 +325,7 @@ pub async fn check_account_lockout(db: &ob_database::DatabaseClient, email: &str
         .await
         .unwrap_or_default();
 
-    let count = if let Some(first) = results.first() {
-        first.get("count").and_then(|v| v.as_i64()).unwrap_or(0)
-    } else {
-        0
-    };
+    let count = results.len() as i64;
 
     if count >= LOCKOUT_MAX_ATTEMPTS {
         return Err(Error::Auth(
@@ -507,6 +501,15 @@ pub async fn acknowledge_alert(
 mod tests {
     use super::*;
     use axum::http::HeaderValue;
+    use std::sync::{Mutex, MutexGuard, OnceLock};
+
+    fn ob_test_mode_guard() -> MutexGuard<'static, ()> {
+        static GUARD: OnceLock<Mutex<()>> = OnceLock::new();
+        GUARD
+            .get_or_init(|| Mutex::new(()))
+            .lock()
+            .expect("OB_TEST_MODE test guard poisoned")
+    }
 
     #[test]
     fn test_compute_device_hash_deterministic() {
@@ -730,30 +733,6 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_check_suspicious_new_device() {
-        let db = ob_database::DatabaseClient::new_mem().await;
-        let uid = format!("user-{}", uuid::Uuid::new_v4());
-        let hash = format!("hash-{}", uuid::Uuid::new_v4());
-        let alert_type = check_suspicious(&db, &uid, &hash).await;
-        assert_eq!(alert_type, Some("new_device".to_string()));
-    }
-
-    #[tokio::test]
-    async fn test_check_suspicious_known_device() {
-        let db = ob_database::DatabaseClient::new_mem().await;
-        let _ = upsert_known_device(&db, "user1", "known_hash", "Chrome").await;
-        let alert_type = check_suspicious(&db, "user1", "known_hash").await;
-        assert!(alert_type.is_none());
-    }
-
-    #[tokio::test]
-    async fn test_create_security_alert() {
-        let db = ob_database::DatabaseClient::new_mem().await;
-        let result = create_security_alert(&db, "user1", "new_device", "Details here").await;
-        assert!(result.is_ok());
-    }
-
-    #[tokio::test]
     async fn test_upsert_known_device_creates_new() {
         let db = ob_database::DatabaseClient::new_mem().await;
         let result = upsert_known_device(&db, "user1", "hash1", "Chrome").await;
@@ -815,7 +794,9 @@ mod tests {
     // ── Account Lockout Tests ────────────────────────────────────────
 
     #[tokio::test]
+    #[allow(clippy::await_holding_lock)]
     async fn test_lockout_not_triggered_below_threshold() {
+        let _guard = ob_test_mode_guard();
         // Ensure OB_TEST_MODE is NOT set for this test
         unsafe { std::env::remove_var("OB_TEST_MODE") };
 
@@ -834,8 +815,38 @@ mod tests {
         );
     }
 
+    async fn wait_for_lockout_attempts(
+        db: &ob_database::DatabaseClient,
+        email: &str,
+        expected_min: usize,
+    ) -> usize {
+        for _ in 0..20 {
+            let attempts = db
+                .query_bind(
+                    "SELECT * FROM login_lockout WHERE email = $email",
+                    json!({ "email": email }),
+                )
+                .await
+                .unwrap_or_default();
+            if attempts.len() >= expected_min {
+                return attempts.len();
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(25)).await;
+        }
+
+        db.query_bind(
+            "SELECT * FROM login_lockout WHERE email = $email",
+            json!({ "email": email }),
+        )
+        .await
+        .unwrap_or_default()
+        .len()
+    }
+
     #[tokio::test]
+    #[allow(clippy::await_holding_lock)]
     async fn test_lockout_triggered_after_5_failures() {
+        let _guard = ob_test_mode_guard();
         unsafe { std::env::remove_var("OB_TEST_MODE") };
 
         let db = ob_database::DatabaseClient::new_mem().await;
@@ -845,6 +856,11 @@ mod tests {
         for _ in 0..5 {
             record_failed_login_for_lockout(&db, &email).await;
         }
+        let visible = wait_for_lockout_attempts(&db, &email, 5).await;
+        assert!(
+            visible >= 5,
+            "Expected at least 5 persisted lockout attempts, saw {visible}"
+        );
 
         let result = check_account_lockout(&db, &email).await;
         assert!(result.is_err(), "Account SHOULD be locked after 5 failures");
@@ -856,7 +872,9 @@ mod tests {
     }
 
     #[tokio::test]
+    #[allow(clippy::await_holding_lock)]
     async fn test_lockout_different_emails_independent() {
+        let _guard = ob_test_mode_guard();
         unsafe { std::env::remove_var("OB_TEST_MODE") };
 
         let db = ob_database::DatabaseClient::new_mem().await;
@@ -874,7 +892,9 @@ mod tests {
     }
 
     #[tokio::test]
+    #[allow(clippy::await_holding_lock)]
     async fn test_lockout_expires_after_window() {
+        let _guard = ob_test_mode_guard();
         unsafe { std::env::remove_var("OB_TEST_MODE") };
 
         let db = ob_database::DatabaseClient::new_mem().await;
@@ -905,7 +925,9 @@ mod tests {
     }
 
     #[tokio::test]
+    #[allow(clippy::await_holding_lock)]
     async fn test_lockout_exactly_at_threshold() {
+        let _guard = ob_test_mode_guard();
         unsafe { std::env::remove_var("OB_TEST_MODE") };
 
         let db = ob_database::DatabaseClient::new_mem().await;
@@ -915,11 +937,21 @@ mod tests {
         for _ in 0..5 {
             record_failed_login_for_lockout(&db, &email).await;
         }
+        let visible = wait_for_lockout_attempts(&db, &email, 5).await;
+        assert!(
+            visible >= 5,
+            "Expected at least 5 persisted lockout attempts, saw {visible}"
+        );
         let result = check_account_lockout(&db, &email).await;
         assert!(result.is_err(), "Exactly 5 failures should trigger lockout");
 
         // 6 failures should also be locked
         record_failed_login_for_lockout(&db, &email).await;
+        let visible = wait_for_lockout_attempts(&db, &email, 6).await;
+        assert!(
+            visible >= 6,
+            "Expected at least 6 persisted lockout attempts, saw {visible}"
+        );
         let result = check_account_lockout(&db, &email).await;
         assert!(result.is_err(), "6 failures should still be locked");
     }

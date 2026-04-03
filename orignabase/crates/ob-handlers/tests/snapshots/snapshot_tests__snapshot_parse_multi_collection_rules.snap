@@ -1,9 +1,23 @@
 ---
 source: crates/ob-handlers/tests/snapshot_tests.rs
-assertion_line: 663
-expression: result
+assertion_line: 666
+expression: sorted
 ---
 {
+    "*": RuleSet {
+        collection: "*",
+        rules: [
+            SecurityRule {
+                operations: [
+                    "read",
+                ],
+                condition: Bool(
+                    true,
+                ),
+                validation: None,
+            },
+        ],
+    },
     "orders": RuleSet {
         collection: "orders",
         rules: [
@@ -50,20 +64,6 @@ expression: result
                             ],
                         },
                     ],
-                ),
-                validation: None,
-            },
-        ],
-    },
-    "*": RuleSet {
-        collection: "*",
-        rules: [
-            SecurityRule {
-                operations: [
-                    "read",
-                ],
-                condition: Bool(
-                    true,
                 ),
                 validation: None,
             },

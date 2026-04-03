@@ -3,9 +3,13 @@ import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/core/repositories/orignabase_auth_repository.dart';
 import 'package:origna_gta/utils/env_config.dart';
 
+import 'live_seed_utils.dart';
+
 void main() {
-  const runLive =
-      bool.fromEnvironment('RUN_ORIGNABASE_LIVE_TESTS', defaultValue: false);
+  const runLive = bool.fromEnvironment(
+    'RUN_ORIGNABASE_LIVE_TESTS',
+    defaultValue: false,
+  );
 
   if (!runLive) {
     test('live tests disabled', () {});
@@ -19,6 +23,10 @@ void main() {
     setUpAll(() async {
       if (!runLive) return;
       final env = EnvConfig();
+      await ensureSeedUserEmailVerified(
+        'e2e-buyer@test.origna.ca',
+        'REDACTED_TEST_PASSWORD',
+      );
       ob = OrignaBase.initialize(url: env.orignabaseUrl);
       authRepo = OrignaBaseAuthRepository(ob);
     });
@@ -72,7 +80,10 @@ void main() {
         if (!runLive) return;
 
         // Sign in first
-        await authRepo.signInWithEmail('e2e-buyer@test.origna.ca', 'REDACTED_TEST_PASSWORD');
+        await authRepo.signInWithEmail(
+          'e2e-buyer@test.origna.ca',
+          'REDACTED_TEST_PASSWORD',
+        );
 
         // Get current user to ensure token exists
         var userId = ob.auth.currentUserId;
@@ -91,7 +102,10 @@ void main() {
         if (!runLive) return;
 
         // Sign in
-        await authRepo.signInWithEmail('e2e-buyer@test.origna.ca', 'REDACTED_TEST_PASSWORD');
+        await authRepo.signInWithEmail(
+          'e2e-buyer@test.origna.ca',
+          'REDACTED_TEST_PASSWORD',
+        );
 
         // Verify authenticated
         var userId = ob.auth.currentUserId;
@@ -117,10 +131,7 @@ void main() {
         if (!runLive) return;
 
         expect(
-          () => authRepo.signInWithEmail(
-            'not-an-email',
-            'REDACTED_TEST_PASSWORD',
-          ),
+          () => authRepo.signInWithEmail('not-an-email', 'REDACTED_TEST_PASSWORD'),
           throwsA(isA<OrignaBaseAuthException>()),
         );
       },
@@ -148,13 +159,23 @@ void main() {
       () async {
         if (!runLive) return;
 
-        await authRepo.signInWithEmail('e2e-buyer@test.origna.ca', 'REDACTED_TEST_PASSWORD');
+        await authRepo.signInWithEmail(
+          'e2e-buyer@test.origna.ca',
+          'REDACTED_TEST_PASSWORD',
+        );
 
         final isVerified = await authRepo.isEmailVerified();
-        expect(isVerified, isA<bool>(),
-            reason: 'Email verification status should return boolean');
+        expect(
+          isVerified,
+          isA<bool>(),
+          reason: 'Email verification status should return boolean',
+        );
 
-        expect(isVerified, isTrue, reason: 'Test user email should be verified');
+        expect(
+          isVerified,
+          isTrue,
+          reason: 'Test user email should be verified',
+        );
       },
       timeout: const Timeout(Duration(minutes: 2)),
     );

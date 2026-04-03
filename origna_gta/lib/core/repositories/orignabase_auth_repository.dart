@@ -578,12 +578,10 @@ class OrignaBaseAuthRepository implements AuthRepository {
         return false;
       }
 
-      // Check if user profile exists
-      final userDoc = await _ob
-          .collection(Collections.users)
-          .doc(authState.userId!)
-          .get();
-      if (userDoc == null) {
+      // Validate via the profile endpoint instead of a direct document read.
+      // Live permissions allow profile access here but may forbid raw users/{id}.
+      final profile = await _fetchProfilePayload(authState.userId!);
+      if (profile == null) {
         AppLogger.d(
           'User profile not found, signing out stale session',
           tag: 'auth',
@@ -594,8 +592,10 @@ class OrignaBaseAuthRepository implements AuthRepository {
 
       return true;
     } on NetworkException catch (e) {
-      // Network error — don't sign out, could be temporary
       AppLogger.d('Network error validating user: $e', tag: 'auth');
+      return true;
+    } on TimeoutException catch (e) {
+      AppLogger.d('Timeout validating user: $e', tag: 'auth');
       return true;
     } on NotFoundException catch (e) {
       AppLogger.d('User not found, signing out: $e', tag: 'auth');
@@ -609,26 +609,18 @@ class OrignaBaseAuthRepository implements AuthRepository {
       AppLogger.d('User disabled/forbidden, signing out: $e', tag: 'auth');
       await signOut();
       return false;
-    } catch (e) {
-      // Unknown error — check if it looks like a transient network issue
-      final msg = e.toString().toLowerCase();
-      if (msg.contains('network') ||
-          msg.contains('timeout') ||
-          msg.contains('socket') ||
-          msg.contains('connection')) {
-        AppLogger.d(
-          'Transient error validating user (not signing out): $e',
-          tag: 'auth',
-        );
-        return true;
-      }
-      // Non-transient unknown error — sign out to be safe
+    } on OrignaBaseException catch (e) {
       AppLogger.w(
-        'Unknown error validating user, signing out: $e',
+        'Unexpected OrignaBase error validating user, keeping session: $e',
         tag: 'auth',
       );
-      await signOut();
-      return false;
+      return true;
+    } catch (e) {
+      AppLogger.w(
+        'Unknown error validating user, keeping session: $e',
+        tag: 'auth',
+      );
+      return true;
     }
   }
 
@@ -655,20 +647,8 @@ class OrignaBaseAuthRepository implements AuthRepository {
       return null;
     }
     try {
-      final response = await _ob.request(
-        'POST',
-        ApiEndpoints.usersProfileGet,
-        body: {Fields.userId: userId},
-      );
-      final data = Map<String, dynamic>.from(response as Map);
-      if (data['success'] != true) return null;
-      final profile = Map<String, dynamic>.from(data)..remove('success');
-      if (profile.isEmpty) return null;
-      profile.putIfAbsent(Fields.uid, () => userId);
-      final address = profile[Fields.address];
-      if (address is Map<String, dynamic>) {
-        profile[Fields.address] = {...address, Fields.userId: userId};
-      }
+      final profile = await _fetchProfilePayload(userId);
+      if (profile == null || profile.isEmpty) return null;
       return UserModel.fromMap(profile);
     } catch (e) {
       AppLogger.d('Error watching profile: $e', tag: 'auth');
@@ -694,12 +674,18 @@ class OrignaBaseAuthRepository implements AuthRepository {
     bool? initialMarketingOptIn,
   }) async {
     try {
-      // Check if doc already exists
-      final existing = await _ob
-          .collection(Collections.users)
-          .doc(userId)
-          .get();
-      if (existing != null && existing.exists) return; // Profile already exists
+      try {
+        final existingProfile = await _fetchProfilePayload(userId);
+        if (existingProfile != null) return;
+      } on NotFoundException {
+        // Missing profile is the only case where creation should continue.
+      } on ForbiddenException catch (e) {
+        AppLogger.d(
+          'Skipping profile ensure because current session cannot read profile: $e',
+          tag: 'auth',
+        );
+        return;
+      }
 
       // Attempt to recover name from pending_profiles
       String? savedName = name;
@@ -752,6 +738,26 @@ class OrignaBaseAuthRepository implements AuthRepository {
       AppLogger.d('Error creating user document: $e', tag: 'auth');
       // Don't rethrow — profile creation failure shouldn't block auth
     }
+  }
+
+  Future<Map<String, dynamic>?> _fetchProfilePayload(String userId) async {
+    final response = await _ob.request(
+      'POST',
+      ApiEndpoints.usersProfileGet,
+      body: {Fields.userId: userId},
+    );
+    final data = Map<String, dynamic>.from(response);
+    if (data[ApiKeys.success] != true) return null;
+
+    final profile = Map<String, dynamic>.from(data)..remove(ApiKeys.success);
+    if (profile.isEmpty) return null;
+
+    profile.putIfAbsent(Fields.uid, () => userId);
+    final address = profile[Fields.address];
+    if (address is Map<String, dynamic>) {
+      profile[Fields.address] = {...address, Fields.userId: userId};
+    }
+    return profile;
   }
 
   /// Maps OrignaBase SDK exceptions to [OrignaBaseAuthException] with codes

@@ -47,9 +47,9 @@ async fn make_request(
     let url = format!("{}{}", base_url(), path);
 
     let req = match method {
-        "POST" => client.post(&url), // ignore-magic
-        "GET" => client.get(&url), // ignore-magic
-        "PUT" => client.put(&url), // ignore-magic
+        "POST" => client.post(&url),     // ignore-magic
+        "GET" => client.get(&url),       // ignore-magic
+        "PUT" => client.put(&url),       // ignore-magic
         "DELETE" => client.delete(&url), // ignore-magic
         _ => panic!("Unsupported method"),
     };
@@ -99,7 +99,7 @@ async fn test_product_create_success() {
     // Use GraphQL mutation to create product
     let (status, body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",     // ignore-magic
         "/graphql", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -136,7 +136,7 @@ async fn test_product_create_missing_title() {
 
     let (status, body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",     // ignore-magic
         "/graphql", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -169,7 +169,7 @@ async fn test_product_create_invalid_price() {
 
     let (status, body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",     // ignore-magic
         "/graphql", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -201,7 +201,7 @@ async fn test_product_create_invalid_stock() {
 
     let (status, body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",     // ignore-magic
         "/graphql", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -230,7 +230,7 @@ async fn test_product_create_requires_authentication() {
     // GraphQL returns 200 even without auth — data should be null
     let (status, body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",     // ignore-magic
         "/graphql", // ignore-magic
         None,
         Some(json!({ // ignore-magic
@@ -261,7 +261,7 @@ async fn test_product_list_success() {
 
     let (status, body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",     // ignore-magic
         "/graphql", // ignore-magic
         None,
         Some(json!({ // ignore-magic
@@ -285,7 +285,7 @@ async fn test_product_list_pagination() {
 
     let (status, body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",     // ignore-magic
         "/graphql", // ignore-magic
         None,
         Some(json!({ // ignore-magic
@@ -308,7 +308,7 @@ async fn test_product_list_filters() {
 
     let (status, body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",     // ignore-magic
         "/graphql", // ignore-magic
         None,
         Some(json!({ // ignore-magic
@@ -331,7 +331,7 @@ async fn test_product_get_by_id() {
 
     let (status, body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",     // ignore-magic
         "/graphql", // ignore-magic
         None,
         Some(json!({ // ignore-magic
@@ -356,7 +356,7 @@ async fn test_product_update_requires_authentication() {
     // GraphQL returns 200 even without auth — data should be null
     let (status, body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",     // ignore-magic
         "/graphql", // ignore-magic
         None,
         Some(json!({ // ignore-magic
@@ -388,7 +388,7 @@ async fn test_product_update_nonexistent() {
 
     let (status, body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",     // ignore-magic
         "/graphql", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -421,7 +421,7 @@ async fn test_product_delete_requires_authentication() {
     // GraphQL returns 200 even without auth — data should be null
     let (status, body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",     // ignore-magic
         "/graphql", // ignore-magic
         None,
         Some(json!({ // ignore-magic
@@ -450,7 +450,7 @@ async fn test_product_delete_nonexistent() {
 
     let (status, body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",     // ignore-magic
         "/graphql", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -483,7 +483,7 @@ async fn test_product_search() {
 
     let (status, body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                 // ignore-magic
         "/api/search/products", // ignore-magic
         None,
         Some(json!({ // ignore-magic
@@ -508,7 +508,7 @@ async fn test_product_search_with_filters() {
 
     let (status, _body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",                 // ignore-magic
         "/api/search/products", // ignore-magic
         None,
         Some(json!({ // ignore-magic
@@ -539,7 +539,7 @@ async fn test_product_digital_no_shipping() {
 
     let (status, body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",     // ignore-magic
         "/graphql", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic
@@ -572,7 +572,7 @@ async fn test_product_perishable_local_delivery() {
 
     let (status, body) = make_request(
         &client,
-        "POST", // ignore-magic
+        "POST",     // ignore-magic
         "/graphql", // ignore-magic
         Some(&token),
         Some(json!({ // ignore-magic

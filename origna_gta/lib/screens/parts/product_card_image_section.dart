@@ -26,7 +26,12 @@ class _ProductCardImageSection extends ConsumerWidget {
   });
 
   bool _isValidImageUrl(String url) {
-    return url.isNotEmpty && Uri.tryParse(url)?.hasAbsolutePath == true;
+    final resolved = resolveMediaUrl(url);
+    final uri = Uri.tryParse(resolved);
+    return resolved.isNotEmpty &&
+        uri != null &&
+        uri.hasScheme &&
+        (uri.scheme == 'http' || uri.scheme == 'https');
   }
 
   @override
@@ -81,7 +86,7 @@ class _ProductCardImageSection extends ConsumerWidget {
                                         ),
                                   child: CachedNetworkImage(
                                     imageUrl: _isValidImageUrl(imageUrls[index])
-                                        ? imageUrls[index]
+                                        ? resolveMediaUrl(imageUrls[index])
                                         : '',
                                     width: double.infinity,
                                     height: double.infinity,

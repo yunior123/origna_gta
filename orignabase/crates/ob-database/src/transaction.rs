@@ -61,9 +61,10 @@ impl Transaction {
         for (query, binds) in &self.queries {
             if let Some(binds) = binds {
                 // Translate query to PostgreSQL and bind parameters
-                let (pg_query, bind_values) =
-                    translate_surreal_to_pg(query, binds.clone())
-                        .map_err(|e| Error::Database(format!("Transaction query translation failed: {e}")))?;
+                let (pg_query, bind_values) = translate_surreal_to_pg(query, binds.clone())
+                    .map_err(|e| {
+                        Error::Database(format!("Transaction query translation failed: {e}"))
+                    })?;
 
                 let mut q = sqlx::query(&pg_query);
                 for val in &bind_values {

@@ -1,7 +1,7 @@
 /// Comprehensive live integration tests for OrignaBase Flutter SDK.
 ///
-/// These tests run against a LIVE orignabase server (http://localhost:8080)
-/// backed by SurrealDB v2. They cover the full SDK surface:
+/// These tests run against a live OrignaBase server (http://localhost:8080)
+/// backed by PostgreSQL. They cover the full SDK surface:
 ///
 /// - Auth: register, login, signout, refresh, forgot/reset password, anonymous
 /// - CRUD: add, get, update, delete documents
@@ -16,7 +16,7 @@
 /// - GraphQL: raw graphql queries
 ///
 /// Run with: dart test test/live_integration_test.dart
-/// Requires: orignabase server + SurrealDB running
+/// Requires: OrignaBase server + PostgreSQL running
 @TestOn('vm')
 @Tags(['live'])
 library;
@@ -53,8 +53,7 @@ void main() {
 
     if (!serverAvailable) {
       fail('OrignaBase server not running at $baseUrl. '
-          'Start with: surreal start --user root --pass root memory && '
-          'cargo run --release -- serve');
+          'Start PostgreSQL and OrignaBase, then rerun the test.');
     }
   });
 
@@ -944,6 +943,16 @@ void main() {
     test('admin list users', () async {
       final resp = await http.get(Uri.parse('$baseUrl/_admin/users'));
       expect(resp.statusCode, 200);
+      final body = jsonDecode(resp.body) as Map<String, dynamic>;
+      expect(body['users'], isA<List<dynamic>>());
+      final users = body['users'] as List<dynamic>;
+      if (users.isNotEmpty) {
+        expect(users.first, isA<Map<String, dynamic>>());
+        expect(
+          (users.first as Map<String, dynamic>).containsKey('email'),
+          isTrue,
+        );
+      }
     });
 
     test('functions list endpoint', () async {

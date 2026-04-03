@@ -154,13 +154,13 @@ fn get_tax_rate(province: &str) -> f64 {
 /// 100_000 = 100%. This scale preserves Quebec's 3-decimal precision (14.975%).
 fn get_tax_rate_bps(province: &str) -> i64 {
     match province {
-        "AB" | "NT" | "NU" | "YT" => 5_000,   // 5% GST only
-        "BC" => 12_000,                        // 12%
-        "MB" => 12_000,                        // 12%
-        "SK" => 11_000,                        // 11%
-        "QC" => 14_975,                        // 14.975%
-        "ON" => 13_000,                        // 13% HST
-        "NB" | "NL" | "NS" | "PE" => 15_000,  // 15% HST
+        "AB" | "NT" | "NU" | "YT" => 5_000,  // 5% GST only
+        "BC" => 12_000,                      // 12%
+        "MB" => 12_000,                      // 12%
+        "SK" => 11_000,                      // 11%
+        "QC" => 14_975,                      // 14.975%
+        "ON" => 13_000,                      // 13% HST
+        "NB" | "NL" | "NS" | "PE" => 15_000, // 15% HST
         other => {
             // Log unrecognized province so ops can investigate — fall back to
             // highest common rate (HST 15%) to avoid under-collecting tax.
@@ -446,8 +446,15 @@ async fn approve_shipping_cost(
         }
 
         // Update order with rejection data
-        state.db.update_document(collections::ORDERS, &req.order_id, update_data).await
-            .map_err(|e| ob_core::Error::Database(format!("Failed to reject shipping and restore stock: {e}")))?;
+        state
+            .db
+            .update_document(collections::ORDERS, &req.order_id, update_data)
+            .await
+            .map_err(|e| {
+                ob_core::Error::Database(format!(
+                    "Failed to reject shipping and restore stock: {e}"
+                ))
+            })?;
 
         // Restore stock for all physical items
         let items = items_array(&order);
@@ -462,16 +469,26 @@ async fn approve_shipping_cost(
             let pid = str_field(item, fields::PRODUCT_ID);
             let qty = item.get("quantity").and_then(|v| v.as_i64()).unwrap_or(1);
             if !pid.is_empty() && qty > 0 {
-                let cur_product = state.db.get_document(collections::PRODUCTS, pid).await.unwrap_or_default();
-                let cur_stock = cur_product.get("stockQuantity").and_then(|v| v.as_i64()).unwrap_or(0);
-                let _ = state.db.update_document(
-                    collections::PRODUCTS,
-                    pid,
-                    json!({
-                        "stockQuantity": cur_stock + qty,
-                        "updatedAt": now,
-                    }),
-                ).await;
+                let cur_product = state
+                    .db
+                    .get_document(collections::PRODUCTS, pid)
+                    .await
+                    .unwrap_or_default();
+                let cur_stock = cur_product
+                    .get("stockQuantity")
+                    .and_then(|v| v.as_i64())
+                    .unwrap_or(0);
+                let _ = state
+                    .db
+                    .update_document(
+                        collections::PRODUCTS,
+                        pid,
+                        json!({
+                            "stockQuantity": cur_stock + qty,
+                            "updatedAt": now,
+                        }),
+                    )
+                    .await;
             }
         }
     }
@@ -739,7 +756,7 @@ mod tests {
 
     #[test]
     fn test_approve_request_deserialize() {
-        let s = r#"{"orderId":"o1","userId":"u1","approved":true,"expectedCostCents":1500}"#;  // ignore-magic
+        let s = r#"{"orderId":"o1","userId":"u1","approved":true,"expectedCostCents":1500}"#; // ignore-magic
         let req: ApproveShippingRequest = serde_json::from_str(s).unwrap();
         assert!(req.approved);
         assert_eq!(req.expected_cost_cents, Some(1500));
@@ -747,7 +764,7 @@ mod tests {
 
     #[test]
     fn test_approve_request_without_expected_cost() {
-        let s = r#"{"orderId":"o1","userId":"u1","approved":false}"#;  // ignore-magic
+        let s = r#"{"orderId":"o1","userId":"u1","approved":false}"#; // ignore-magic
         let req: ApproveShippingRequest = serde_json::from_str(s).unwrap();
         assert!(!req.approved);
         assert!(req.expected_cost_cents.is_none());
@@ -755,7 +772,7 @@ mod tests {
 
     #[test]
     fn test_update_shipping_request_deserialize() {
-        let s = r#"{"orderId":"o1","userId":"u1","newShippingCost":15.99,"reason":"heavier"}"#;  // ignore-magic
+        let s = r#"{"orderId":"o1","userId":"u1","newShippingCost":15.99,"reason":"heavier"}"#; // ignore-magic
         let req: UpdateShippingCostRequest = serde_json::from_str(s).unwrap();
         assert!((req.new_shipping_cost - 15.99).abs() < 0.001);
         assert_eq!(req.reason, Some("heavier".to_string()));
@@ -960,7 +977,9 @@ mod tests {
             Some(150)
         );
         assert_eq!(
-            order.get(fields::TOTAL_AMOUNT_CENTS).and_then(|v| v.as_i64()),
+            order
+                .get(fields::TOTAL_AMOUNT_CENTS)
+                .and_then(|v| v.as_i64()),
             Some(1300)
         );
         assert_eq!(order["shippingApproval"][fields::STATUS], "approved");
@@ -1091,7 +1110,9 @@ mod tests {
         );
         assert_eq!(order.get("taxDiffCents").and_then(|v| v.as_i64()), Some(7));
         assert_eq!(
-            order.get(fields::TOTAL_AMOUNT_CENTS).and_then(|v| v.as_i64()),
+            order
+                .get(fields::TOTAL_AMOUNT_CENTS)
+                .and_then(|v| v.as_i64()),
             Some(565)
         );
         assert_eq!(
@@ -1213,13 +1234,13 @@ mod tests {
 
     #[test]
     fn test_approve_request_missing_required_fields() {
-        let s = r#"{"orderId":"o1"}"#;  // ignore-magic
+        let s = r#"{"orderId":"o1"}"#; // ignore-magic
         assert!(serde_json::from_str::<ApproveShippingRequest>(s).is_err());
     }
 
     #[test]
     fn test_update_shipping_request_missing_reason() {
-        let s = r#"{"orderId":"o1","userId":"u1","newShippingCost":5.0}"#;  // ignore-magic
+        let s = r#"{"orderId":"o1","userId":"u1","newShippingCost":5.0}"#; // ignore-magic
         let req: UpdateShippingCostRequest = serde_json::from_str(s).unwrap();
         assert!(req.reason.is_none());
     }
@@ -1227,13 +1248,13 @@ mod tests {
     #[test]
     fn test_update_shipping_request_missing_required_fields() {
         // Missing newShippingCost
-        let s = r#"{"orderId":"o1","userId":"u1"}"#;  // ignore-magic
+        let s = r#"{"orderId":"o1","userId":"u1"}"#; // ignore-magic
         assert!(serde_json::from_str::<UpdateShippingCostRequest>(s).is_err());
     }
 
     #[test]
     fn test_update_shipping_request_zero_cost() {
-        let s = r#"{"orderId":"o1","userId":"u1","newShippingCost":0.0}"#;  // ignore-magic
+        let s = r#"{"orderId":"o1","userId":"u1","newShippingCost":0.0}"#; // ignore-magic
         let req: UpdateShippingCostRequest = serde_json::from_str(s).unwrap();
         assert!((req.new_shipping_cost).abs() < f64::EPSILON);
     }

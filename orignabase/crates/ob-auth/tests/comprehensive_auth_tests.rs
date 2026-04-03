@@ -559,7 +559,11 @@ fn test_totp_recovery_codes_format() {
 
     for code in codes {
         // 128-bit entropy: 32 hex chars + 3 dashes = 35 chars
-        assert_eq!(code.len(), 35, "Each recovery code should be 35 chars (32 hex + 3 dashes)");
+        assert_eq!(
+            code.len(),
+            35,
+            "Each recovery code should be 35 chars (32 hex + 3 dashes)"
+        );
         assert!(
             code.chars().all(|c| c.is_ascii_hexdigit() || c == '-'),
             "Code should be hex + dashes only"

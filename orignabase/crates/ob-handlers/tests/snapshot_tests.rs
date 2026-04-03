@@ -435,20 +435,20 @@ fn snapshot_jwt_claims_with_custom_claims() {
     let json = serde_json::to_value(&claims).unwrap();
     insta::assert_json_snapshot!(json, @r###"
     {
-      "sub": "seller_001",
-      "iat": 1700000000,
-      "exp": 1700000900,
-      "roles": [
-        "seller"
-      ],
-      "typ": "access",
-      "email_verified": true,
-      "mfa_required": false,
       "custom_claims": {
         "plan": "pro",
         "role": "seller",
         "store_id": "store_abc123"
-      }
+      },
+      "email_verified": true,
+      "exp": 1700000900,
+      "iat": 1700000000,
+      "mfa_required": false,
+      "roles": [
+        "seller"
+      ],
+      "sub": "seller_001",
+      "typ": "access"
     }
     "###);
 }
@@ -644,6 +644,7 @@ fn snapshot_parse_wildcard_rules() {
 #[cfg_attr(not(feature = "integration"), ignore)]
 fn snapshot_parse_multi_collection_rules() {
     use ob_security::parser::parse_rules;
+    use std::collections::BTreeMap;
 
     let input = r#"
         rules users {
@@ -661,7 +662,8 @@ fn snapshot_parse_multi_collection_rules() {
     "#;
 
     let result = parse_rules(input).unwrap();
-    insta::assert_debug_snapshot!(result);
+    let sorted: BTreeMap<_, _> = result.into_iter().collect();
+    insta::assert_debug_snapshot!(sorted);
 }
 
 #[test]

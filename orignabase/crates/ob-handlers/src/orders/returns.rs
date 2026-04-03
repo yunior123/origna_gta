@@ -13,7 +13,7 @@ use ob_auth::middleware::AuthContext;
 use crate::HandlersState;
 use crate::push;
 use crate::shared::auth::resolve_self_user_id;
-use crate::shared::schema::{business_rules, collections, fields};
+use crate::shared::schema::{business_rules, collections, fields, notification_types};
 use crate::shared::validation::{sanitize_html, validate_uid};
 
 // ---------------------------------------------------------------------------
@@ -147,9 +147,7 @@ async fn admin_user_ids(state: &HandlersState) -> Vec<String> {
     // This reduces N+1 issues when querying push tokens later
     let results = state
         .db
-        .query_raw(
-            "SELECT * FROM users WHERE data->'roles' @> '\"admin\"'::jsonb LIMIT 100",
-        )
+        .query_raw("SELECT * FROM users WHERE data->'roles' @> '\"admin\"'::jsonb LIMIT 100")
         .await
         .unwrap_or_default();
 
@@ -196,7 +194,10 @@ async fn notify_admins_of_return_escalation(
     let all_tokens_result = state
         .db
         .query_bind(
-            &format!("SELECT user_id, token FROM {} WHERE user_id IN $admin_ids", collections::PUSH_TOKENS),
+            &format!(
+                "SELECT user_id, token FROM {} WHERE user_id IN $admin_ids",
+                collections::PUSH_TOKENS
+            ),
             json!({ "admin_ids": admin_ids }),
         )
         .await
@@ -235,16 +236,16 @@ async fn notify_admins_of_return_escalation(
                 collections::NOTIFICATIONS,
                 &notification_id,
                 json!({
-                    "userId": at.admin_id,
-                    fields::NOTIFICATION_TYPE: "return_escalated_admin",
-                    "title": notif_title,
-                    "body": notif_body,
-                    "data": {
+                    fields::USER_ID: at.admin_id,
+                    fields::NOTIFICATION_TYPE: notification_types::RETURN_ESCALATED_ADMIN,
+                    fields::NOTIFICATION_TITLE: notif_title,
+                    fields::NOTIFICATION_BODY: notif_body,
+                    fields::DATA: {
                         fields::ORDER_ID: order_id,
-                        "returnId": return_id,
+                        fields::RETURN_ID: return_id,
                         fields::RETURN_STATUS: "escalated",
                     },
-                    "read": false,
+                    fields::READ: false,
                     fields::CREATED_AT: &now,
                     fields::UPDATED_AT: &now,
                 }),
@@ -265,23 +266,23 @@ async fn notify_admins_of_return_escalation(
             state
                 .db
                 .upsert_document(
-                    "_pending_notifications",
+                    collections::PENDING_NOTIFICATIONS,
                     &pending_id,
                     json!({
-                        "userId": at.admin_id,
-                        "token": token,
-                        "notification_type": "return_escalated_admin",
-                        "title": title,
-                        "body": body,
-                        "data": {
-                            "orderId": order_id,
-                            "returnId": return_id,
+                        fields::USER_ID: at.admin_id,
+                        fields::TOKEN: token,
+                        fields::PENDING_NOTIFICATION_TYPE: notification_types::RETURN_ESCALATED_ADMIN,
+                        fields::NOTIFICATION_TITLE: title,
+                        fields::NOTIFICATION_BODY: body,
+                        fields::DATA: {
+                            fields::ORDER_ID: order_id,
+                            fields::RETURN_ID: return_id,
                             fields::RETURN_STATUS: "escalated",
                         },
-                        "status": "pending",
-                        "attempts": 0,
-                        "created_at": &now,
-                        "updated_at": &now,
+                        fields::STATUS: "pending",
+                        fields::ATTEMPTS: 0,
+                        fields::PENDING_CREATED_AT: &now,
+                        fields::PENDING_UPDATED_AT: &now,
                     }),
                 )
                 .await
@@ -335,12 +336,12 @@ async fn notify_admins_of_return_escalation(
                 let _ = state
                     .db
                     .update_document(
-                        "_pending_notifications",
+                        collections::PENDING_NOTIFICATIONS,
                         &pending_id,
                         json!({
-                            "status": "delivered",
-                            "delivered_at": delivered_at,
-                            "updated_at": delivered_at,
+                            fields::STATUS: "delivered",
+                            fields::DELIVERED_AT_PENDING: delivered_at,
+                            fields::PENDING_UPDATED_AT: delivered_at,
                         }),
                     )
                     .await;
@@ -674,8 +675,15 @@ async fn approve_return_request(
             }
 
             if !product_id.is_empty() && qty > 0 {
-                let cur_product = state.db.get_document(collections::PRODUCTS, product_id).await.unwrap_or_default();
-                let cur_stock = cur_product.get("stockQuantity").and_then(|v| v.as_i64()).unwrap_or(0);
+                let cur_product = state
+                    .db
+                    .get_document(collections::PRODUCTS, product_id)
+                    .await
+                    .unwrap_or_default();
+                let cur_stock = cur_product
+                    .get("stockQuantity")
+                    .and_then(|v| v.as_i64())
+                    .unwrap_or(0);
                 state
                     .db
                     .update_document(
@@ -1051,28 +1059,28 @@ mod tests {
 
     #[test]
     fn test_create_return_request_deserialize() {
-        let s = r#"{"orderId":"o1","productId":"p1","userId":"u1","returnReason":"Defective"}"#;  // ignore-magic
+        let s = r#"{"orderId":"o1","productId":"p1","userId":"u1","returnReason":"Defective"}"#; // ignore-magic
         let req: CreateReturnRequest = serde_json::from_str(s).unwrap();
         assert_eq!(req.return_reason, "Defective");
     }
 
     #[test]
     fn test_approve_return_default_action() {
-        let s = r#"{"returnId":"r1","userId":"u1"}"#;  // ignore-magic
+        let s = r#"{"returnId":"r1","userId":"u1"}"#; // ignore-magic
         let req: ApproveReturnReq = serde_json::from_str(s).unwrap();
         assert_eq!(req.action, "approve");
     }
 
     #[test]
     fn test_reject_return_deserialize() {
-        let s = r#"{"returnId":"r1","userId":"u1","reason":"Not eligible"}"#;  // ignore-magic
+        let s = r#"{"returnId":"r1","userId":"u1","reason":"Not eligible"}"#; // ignore-magic
         let req: RejectReturnReq = serde_json::from_str(s).unwrap();
         assert_eq!(req.reason, Some("Not eligible".to_string()));
     }
 
     #[test]
     fn test_escalate_return_deserialize() {
-        let s = r#"{"returnId":"r1","userId":"u1","escalationReason":"seller unresponsive"}"#;  // ignore-magic
+        let s = r#"{"returnId":"r1","userId":"u1","escalationReason":"seller unresponsive"}"#; // ignore-magic
         let req: EscalateReturnReq = serde_json::from_str(s).unwrap();
         assert_eq!(req.escalation_reason, "seller unresponsive");
     }
@@ -1111,7 +1119,7 @@ mod tests {
 
     #[test]
     fn test_escalate_return_req_all_fields() {
-        let s = r#"{"returnId":"ret_abc","userId":"usr_1","escalationReason":"Seller not responding for 5 days"}"#;  // ignore-magic
+        let s = r#"{"returnId":"ret_abc","userId":"usr_1","escalationReason":"Seller not responding for 5 days"}"#; // ignore-magic
         let req: EscalateReturnReq = serde_json::from_str(s).unwrap();
         assert_eq!(req.return_id, "ret_abc");
         assert_eq!(req.user_id, "usr_1");
@@ -1120,7 +1128,7 @@ mod tests {
 
     #[test]
     fn test_escalate_return_req_missing_reason_fails() {
-        let s = r#"{"returnId":"r1","userId":"u1"}"#;  // ignore-magic
+        let s = r#"{"returnId":"r1","userId":"u1"}"#; // ignore-magic
         let result = serde_json::from_str::<EscalateReturnReq>(s);
         assert!(result.is_err(), "escalationReason is required");
     }
@@ -1263,11 +1271,11 @@ mod tests {
     #[test]
     fn test_create_return_request_missing_required_fields() {
         // Missing returnReason
-        let s = r#"{"orderId":"o1","productId":"p1","userId":"u1"}"#;  // ignore-magic
+        let s = r#"{"orderId":"o1","productId":"p1","userId":"u1"}"#; // ignore-magic
         assert!(serde_json::from_str::<CreateReturnRequest>(s).is_err());
 
         // Missing productId
-        let s = r#"{"orderId":"o1","userId":"u1","returnReason":"broken"}"#;  // ignore-magic
+        let s = r#"{"orderId":"o1","userId":"u1","returnReason":"broken"}"#; // ignore-magic
         assert!(serde_json::from_str::<CreateReturnRequest>(s).is_err());
 
         // Empty JSON
@@ -1276,7 +1284,7 @@ mod tests {
 
     #[test]
     fn test_approve_return_with_all_optional_fields() {
-        let s = r#"{"returnId":"r1","userId":"u1","action":"issue_label","returnTrackingNumber":"TRK-ABC","returnAdminNote":"expedited"}"#;  // ignore-magic
+        let s = r#"{"returnId":"r1","userId":"u1","action":"issue_label","returnTrackingNumber":"TRK-ABC","returnAdminNote":"expedited"}"#; // ignore-magic
         let req: ApproveReturnReq = serde_json::from_str(s).unwrap();
         assert_eq!(req.action, "issue_label");
         assert_eq!(req.return_tracking_number, Some("TRK-ABC".to_string()));
@@ -1285,7 +1293,7 @@ mod tests {
 
     #[test]
     fn test_approve_return_mark_received_action() {
-        let s = r#"{"returnId":"r1","userId":"u1","action":"mark_received"}"#;  // ignore-magic
+        let s = r#"{"returnId":"r1","userId":"u1","action":"mark_received"}"#; // ignore-magic
         let req: ApproveReturnReq = serde_json::from_str(s).unwrap();
         assert_eq!(req.action, "mark_received");
         assert!(req.return_tracking_number.is_none());
@@ -1293,14 +1301,14 @@ mod tests {
 
     #[test]
     fn test_reject_return_missing_reason() {
-        let s = r#"{"returnId":"r1","userId":"u1"}"#;  // ignore-magic
+        let s = r#"{"returnId":"r1","userId":"u1"}"#; // ignore-magic
         let req: RejectReturnReq = serde_json::from_str(s).unwrap();
         assert!(req.reason.is_none());
     }
 
     #[test]
     fn test_reject_return_missing_required_fields() {
-        let s = r#"{"returnId":"r1"}"#;  // ignore-magic
+        let s = r#"{"returnId":"r1"}"#; // ignore-magic
         assert!(serde_json::from_str::<RejectReturnReq>(s).is_err());
     }
 
@@ -1930,7 +1938,11 @@ mod tests {
             ))
             .await
             .unwrap();
-        assert!(notifications.len() >= 2, "Expected at least 2 admin notifications, got {}", notifications.len());
+        assert!(
+            notifications.len() >= 2,
+            "Expected at least 2 admin notifications, got {}",
+            notifications.len()
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -2557,7 +2569,10 @@ mod tests {
         // Insert push token via raw query to match the query format in prod code
         state
             .db
-            .query_raw(&format!("CREATE {} SET user_id = 'adm1', token = 'fcm_tok_1'", collections::PUSH_TOKENS))
+            .query_raw(&format!(
+                "CREATE {} SET user_id = 'adm1', token = 'fcm_tok_1'",
+                collections::PUSH_TOKENS
+            ))
             .await
             .unwrap();
 
@@ -2598,7 +2613,12 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(ret[fields::RETURN_STATUS], "escalated");
-        assert!(!ret[fields::ESCALATION_REASON].as_str().unwrap_or("").is_empty());
+        assert!(
+            !ret[fields::ESCALATION_REASON]
+                .as_str()
+                .unwrap_or("")
+                .is_empty()
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -2814,7 +2834,11 @@ mod tests {
             ))
             .await
             .unwrap();
-        assert!(notifications.len() >= 1, "Expected at least 1 admin notification, got {}", notifications.len());
+        assert!(
+            !notifications.is_empty(),
+            "Expected at least 1 admin notification, got {}",
+            notifications.len()
+        );
     }
 
     #[tokio::test]
@@ -2906,7 +2930,8 @@ mod tests {
             .unwrap();
         assert!(
             notifications.len() >= 2,
-            "Should have notification for each admin, got {}", notifications.len()
+            "Should have notification for each admin, got {}",
+            notifications.len()
         );
     }
 

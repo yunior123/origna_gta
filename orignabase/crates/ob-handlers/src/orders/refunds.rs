@@ -141,7 +141,9 @@ pub(crate) fn calculate_refund_amount_cents(
         ));
     }
 
-    let item_shipping_snapshot = item.get(fields::ITEM_SHIPPING_CENTS).and_then(|v| v.as_i64());
+    let item_shipping_snapshot = item
+        .get(fields::ITEM_SHIPPING_CENTS)
+        .and_then(|v| v.as_i64());
     let shipping_refund_cents = if let Some(snap) = item_shipping_snapshot {
         snap
     } else {
@@ -404,7 +406,10 @@ async fn refund_order_item(
     // refund requests cannot both succeed if they would exceed totalAmountCents.
     let reserved_rows = 'cas: {
         for attempt in 1..=3 {
-            let cur_order = state.db.get_document(collections::ORDERS, order_id_stripped).await
+            let cur_order = state
+                .db
+                .get_document(collections::ORDERS, order_id_stripped)
+                .await
                 .map_err(|e| ob_core::Error::Database(format!("Failed to read order: {e}")))?;
             let cur_cumulative = cur_order
                 .get(fields::CUMULATIVE_REFUNDED_CENTS)
@@ -426,22 +431,28 @@ async fn refund_order_item(
                 && (cur_order.get(fields::CUMULATIVE_REFUNDED_CENTS).is_none()
                     || cur_order.get(fields::CUMULATIVE_REFUNDED_CENTS) == Some(&json!(null)))
             {
-                let _ = state.db.update_document(
-                    collections::ORDERS,
-                    order_id_stripped,
-                    json!({ fields::CUMULATIVE_REFUNDED_CENTS: 0 }),
-                ).await;
+                let _ = state
+                    .db
+                    .update_document(
+                        collections::ORDERS,
+                        order_id_stripped,
+                        json!({ fields::CUMULATIVE_REFUNDED_CENTS: 0 }),
+                    )
+                    .await;
             }
 
             // CAS: update only if cumulativeRefundedCents still equals cur_cumulative.
-            let cas_result = state.db.update_document_cas(
-                collections::ORDERS,
-                order_id_stripped,
-                json!({ fields::CUMULATIVE_REFUNDED_CENTS: new_cumulative }),
-                fields::CUMULATIVE_REFUNDED_CENTS,
-                &json!(cur_cumulative),
-            ).await
-            .map_err(|e| ob_core::Error::Database(format!("Failed to reserve refund: {e}")))?;
+            let cas_result = state
+                .db
+                .update_document_cas(
+                    collections::ORDERS,
+                    order_id_stripped,
+                    json!({ fields::CUMULATIVE_REFUNDED_CENTS: new_cumulative }),
+                    fields::CUMULATIVE_REFUNDED_CENTS,
+                    &json!(cur_cumulative),
+                )
+                .await
+                .map_err(|e| ob_core::Error::Database(format!("Failed to reserve refund: {e}")))?;
 
             match cas_result {
                 Some(_) => break 'cas vec![json!({"ok": true})],
@@ -501,8 +512,15 @@ async fn refund_order_item(
         Ok(id) => id,
         Err(stripe_err) => {
             // Rollback: subtract the reserved amount
-            let rb_order = state.db.get_document(collections::ORDERS, order_id_stripped).await.unwrap_or_default();
-            let rb_cumulative = rb_order.get(fields::CUMULATIVE_REFUNDED_CENTS).and_then(|v| v.as_i64()).unwrap_or(0);
+            let rb_order = state
+                .db
+                .get_document(collections::ORDERS, order_id_stripped)
+                .await
+                .unwrap_or_default();
+            let rb_cumulative = rb_order
+                .get(fields::CUMULATIVE_REFUNDED_CENTS)
+                .and_then(|v| v.as_i64())
+                .unwrap_or(0);
             if let Err(rb_err) = state
                 .db
                 .update_document(
@@ -582,21 +600,33 @@ async fn refund_order_item(
         // concurrent refunds/cancellations of orders with the same product.
         let product_id = &req.product_id;
         for _attempt in 0..3 {
-            let cur_product = state.db.get_document(collections::PRODUCTS, product_id).await.unwrap_or_default();
-            let cur_stock = cur_product.get(fields::STOCK_QUANTITY).and_then(|v| v.as_i64()).unwrap_or(0);
-            let cas_result = state.db.update_document_cas(
-                collections::PRODUCTS,
-                product_id,
-                json!({
-                    fields::STOCK_QUANTITY: cur_stock + item_quantity as i64,
-                    fields::UPDATED_AT: now
-                }),
-                fields::STOCK_QUANTITY,
-                &json!(cur_stock),
-            ).await
-            .map_err(|e| {
-                ob_core::Error::Database(format!("Failed to restore stock for refunded item: {e}"))
-            })?;
+            let cur_product = state
+                .db
+                .get_document(collections::PRODUCTS, product_id)
+                .await
+                .unwrap_or_default();
+            let cur_stock = cur_product
+                .get(fields::STOCK_QUANTITY)
+                .and_then(|v| v.as_i64())
+                .unwrap_or(0);
+            let cas_result = state
+                .db
+                .update_document_cas(
+                    collections::PRODUCTS,
+                    product_id,
+                    json!({
+                        fields::STOCK_QUANTITY: cur_stock + item_quantity as i64,
+                        fields::UPDATED_AT: now
+                    }),
+                    fields::STOCK_QUANTITY,
+                    &json!(cur_stock),
+                )
+                .await
+                .map_err(|e| {
+                    ob_core::Error::Database(format!(
+                        "Failed to restore stock for refunded item: {e}"
+                    ))
+                })?;
             if cas_result.is_some() {
                 break;
             }
@@ -821,27 +851,40 @@ async fn cancel_order(
                 continue;
             }
             let pid = str_field(item, fields::PRODUCT_ID);
-            let qty = item.get(fields::QUANTITY).and_then(|v| v.as_i64()).unwrap_or(1);
+            let qty = item
+                .get(fields::QUANTITY)
+                .and_then(|v| v.as_i64())
+                .unwrap_or(1);
             if !pid.is_empty() && qty > 0 {
                 // CAS retry loop to prevent lost-update on concurrent stock restores
                 for _attempt in 0..3 {
-                    let cur_product = state.db.get_document(collections::PRODUCTS, pid).await.unwrap_or_default();
-                    let cur_stock = cur_product.get(fields::STOCK_QUANTITY).and_then(|v| v.as_i64()).unwrap_or(0);
-                    let cas_result = state.db.update_document_cas(
-                        collections::PRODUCTS,
-                        pid,
-                        json!({
-                            fields::STOCK_QUANTITY: cur_stock + qty,
-                            fields::UPDATED_AT: now
-                        }),
-                        fields::STOCK_QUANTITY,
-                        &json!(cur_stock),
-                    ).await
-                    .map_err(|e| {
-                        ob_core::Error::Database(format!(
-                            "Failed to restore stock for product {pid}: {e}"
-                        ))
-                    })?;
+                    let cur_product = state
+                        .db
+                        .get_document(collections::PRODUCTS, pid)
+                        .await
+                        .unwrap_or_default();
+                    let cur_stock = cur_product
+                        .get(fields::STOCK_QUANTITY)
+                        .and_then(|v| v.as_i64())
+                        .unwrap_or(0);
+                    let cas_result = state
+                        .db
+                        .update_document_cas(
+                            collections::PRODUCTS,
+                            pid,
+                            json!({
+                                fields::STOCK_QUANTITY: cur_stock + qty,
+                                fields::UPDATED_AT: now
+                            }),
+                            fields::STOCK_QUANTITY,
+                            &json!(cur_stock),
+                        )
+                        .await
+                        .map_err(|e| {
+                            ob_core::Error::Database(format!(
+                                "Failed to restore stock for product {pid}: {e}"
+                            ))
+                        })?;
                     if cas_result.is_some() {
                         break;
                     }
@@ -940,7 +983,7 @@ mod tests {
 
     #[test]
     fn test_refund_request_deserialize() {
-        let s = r#"{"orderId":"o1","productId":"p1","userId":"u1","reason":"defective"}"#;  // ignore-magic
+        let s = r#"{"orderId":"o1","productId":"p1","userId":"u1","reason":"defective"}"#; // ignore-magic
         let req: RefundItemRequest = serde_json::from_str(s).unwrap();
         assert_eq!(req.order_id, "o1");
         assert_eq!(req.reason, Some("defective".to_string()));
@@ -948,7 +991,7 @@ mod tests {
 
     #[test]
     fn test_cancel_request_deserialize() {
-        let s = r#"{"orderId":"o1","userId":"u1"}"#;  // ignore-magic
+        let s = r#"{"orderId":"o1","userId":"u1"}"#; // ignore-magic
         let req: CancelOrderRequest = serde_json::from_str(s).unwrap();
         assert_eq!(req.order_id, "o1");
         assert!(req.reason.is_none());
@@ -1328,7 +1371,7 @@ mod tests {
 
     #[test]
     fn test_refund_request_missing_optional_reason() {
-        let s = r#"{"orderId":"o1","productId":"p1","userId":"u1"}"#;  // ignore-magic
+        let s = r#"{"orderId":"o1","productId":"p1","userId":"u1"}"#; // ignore-magic
         let req: RefundItemRequest = serde_json::from_str(s).unwrap();
         assert!(req.reason.is_none());
     }
@@ -1336,32 +1379,32 @@ mod tests {
     #[test]
     fn test_refund_request_missing_required_fields() {
         // Missing productId
-        let s = r#"{"orderId":"o1","userId":"u1"}"#;  // ignore-magic
+        let s = r#"{"orderId":"o1","userId":"u1"}"#; // ignore-magic
         assert!(serde_json::from_str::<RefundItemRequest>(s).is_err());
 
         // Missing orderId
-        let s = r#"{"productId":"p1","userId":"u1"}"#;  // ignore-magic
+        let s = r#"{"productId":"p1","userId":"u1"}"#; // ignore-magic
         assert!(serde_json::from_str::<RefundItemRequest>(s).is_err());
 
         // Missing userId
-        let s = r#"{"orderId":"o1","productId":"p1"}"#;  // ignore-magic
+        let s = r#"{"orderId":"o1","productId":"p1"}"#; // ignore-magic
         assert!(serde_json::from_str::<RefundItemRequest>(s).is_err());
 
         // Empty object
-        let s = r#"{}"#;  // ignore-magic
+        let s = r#"{}"#; // ignore-magic
         assert!(serde_json::from_str::<RefundItemRequest>(s).is_err());
     }
 
     #[test]
     fn test_cancel_request_with_reason() {
-        let s = r#"{"orderId":"o1","userId":"u1","reason":"changed my mind"}"#;  // ignore-magic
+        let s = r#"{"orderId":"o1","userId":"u1","reason":"changed my mind"}"#; // ignore-magic
         let req: CancelOrderRequest = serde_json::from_str(s).unwrap();
         assert_eq!(req.reason, Some("changed my mind".to_string()));
     }
 
     #[test]
     fn test_cancel_request_missing_required_fields() {
-        let s = r#"{"orderId":"o1"}"#;  // ignore-magic
+        let s = r#"{"orderId":"o1"}"#; // ignore-magic
         assert!(serde_json::from_str::<CancelOrderRequest>(s).is_err());
     }
 
@@ -1758,7 +1801,10 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(events.len(), 1);
-        assert_eq!(events[0][fields::DATA][fields::PRODUCT_ID], prod_id.as_str());
+        assert_eq!(
+            events[0][fields::DATA][fields::PRODUCT_ID],
+            prod_id.as_str()
+        );
     }
 
     #[tokio::test]
@@ -1994,7 +2040,10 @@ mod tests {
 
         let events = state
             .db
-            .query_raw(&format!("SELECT * FROM events WHERE orderId = '{}' AND eventType = 'order_cancelled'", order_id))
+            .query_raw(&format!(
+                "SELECT * FROM events WHERE orderId = '{}' AND eventType = 'order_cancelled'",
+                order_id
+            ))
             .await
             .unwrap();
         assert_eq!(events.len(), 1);

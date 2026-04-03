@@ -224,7 +224,7 @@ impl QueryRoot {
 
         let results = db
             .query_bind(
-                "SELECT value FROM _config WHERE key = $key LIMIT 1",
+                "SELECT data->'value' AS value FROM _config WHERE data->>'key' = $key LIMIT 1",
                 serde_json::json!({ "key": key }),
             )
             .await
@@ -258,7 +258,9 @@ impl QueryRoot {
         let db = ctx.data::<DatabaseClient>()?;
 
         let configs = db
-            .query_raw("SELECT key, value FROM _config ORDER BY key ASC")
+            .query_raw(
+                "SELECT data->>'key' AS key, data->'value' AS value FROM _config ORDER BY data->>'key' ASC",
+            )
             .await
             .map_err(|e| {
                 tracing::error!("DB error: {e}");

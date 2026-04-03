@@ -146,7 +146,8 @@ async fn test_ws_subscribe_collection() {
     if let Ok(Some(Ok(Message::Text(text)))) = response {
         let msg: Value = serde_json::from_str(&text).unwrap_or(json!({})); // ignore-magic
         assert_eq!(
-            msg["type"], "subscribed", // ignore-magic
+            msg["type"],
+            "subscribed", // ignore-magic
             "Should confirm subscription: {msg:?}"
         );
         assert_eq!(msg["id"], sub_id); // ignore-magic
@@ -175,8 +176,20 @@ async fn test_ws_unsubscribe() {
         .await
         .unwrap();
 
-    // Consume subscribe confirmation
-    let _ = tokio::time::timeout(std::time::Duration::from_secs(3), read.next()).await;
+    // Drain messages until we get subscribe confirmation (ignore any change events)
+    let mut found_sub = false;
+    for _ in 0..10 {
+        if let Ok(Some(Ok(Message::Text(text)))) =
+            tokio::time::timeout(std::time::Duration::from_secs(3), read.next()).await
+        {
+            let msg: Value = serde_json::from_str(&text).unwrap_or(json!({})); // ignore-magic
+            if msg["type"] == "subscribed" || msg["subscription_id"] == sub_id {
+                found_sub = true;
+                break;
+            }
+        }
+    }
+    assert!(found_sub, "Should receive subscribe confirmation");
 
     // Unsubscribe
     write
@@ -188,15 +201,24 @@ async fn test_ws_unsubscribe() {
         .await
         .unwrap();
 
-    // Should receive "unsubscribed" confirmation
-    let response = tokio::time::timeout(std::time::Duration::from_secs(5), read.next()).await;
-    if let Ok(Some(Ok(Message::Text(text)))) = response {
-        let msg: Value = serde_json::from_str(&text).unwrap_or(json!({})); // ignore-magic
-        assert_eq!(
-            msg["type"], "unsubscribed", // ignore-magic
-            "Should confirm unsubscription: {msg:?}"
-        );
+    // Drain messages until we get unsubscribe confirmation
+    let mut found_unsub = false;
+    for _ in 0..10 {
+        if let Ok(Some(Ok(Message::Text(text)))) =
+            tokio::time::timeout(std::time::Duration::from_secs(5), read.next()).await
+        {
+            let msg: Value = serde_json::from_str(&text).unwrap_or(json!({})); // ignore-magic
+            if msg["type"] == "unsubscribed" {
+                found_unsub = true;
+                break;
+            }
+            // Ignore change events that may arrive before unsubscribe confirmation
+        }
     }
+    assert!(
+        found_unsub,
+        "Should receive unsubscribe confirmation within timeout"
+    );
 }
 
 // =============================================================================
@@ -231,7 +253,8 @@ async fn test_ws_presence_update() {
     if let Ok(Some(Ok(Message::Text(text)))) = response {
         let msg: Value = serde_json::from_str(&text).unwrap_or(json!({})); // ignore-magic
         assert_eq!(
-            msg["type"], "presence_update", // ignore-magic
+            msg["type"],
+            "presence_update", // ignore-magic
             "Should get presence_update: {msg:?}"
         );
         assert!(msg["online"].is_array(), "Should include online users list"); // ignore-magic
@@ -265,7 +288,8 @@ async fn test_ws_invalid_message_returns_error() {
     if let Ok(Some(Ok(Message::Text(text)))) = response {
         let msg: Value = serde_json::from_str(&text).unwrap_or(json!({})); // ignore-magic
         assert_eq!(
-            msg["type"], "error", // ignore-magic
+            msg["type"],
+            "error", // ignore-magic
             "Should return error for invalid message: {msg:?}"
         );
     }
@@ -298,7 +322,8 @@ async fn test_ws_subscribe_to_specific_document() {
     if let Ok(Some(Ok(Message::Text(text)))) = response {
         let msg: Value = serde_json::from_str(&text).unwrap_or(json!({})); // ignore-magic
         assert_eq!(
-            msg["type"], "subscribed", // ignore-magic
+            msg["type"],
+            "subscribed", // ignore-magic
             "Should confirm doc subscription: {msg:?}"
         );
         assert_eq!(msg["id"], sub_id); // ignore-magic

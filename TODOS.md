@@ -1,188 +1,191 @@
-1. run all live tests in backend and frontend. fix as needed. dont stop till done
-2. run e2e tests in orignabase rust and origna_gta flutter, all tests and phases. fix as needed.dont stop till done
-3. improve dev seed, all of them with some sample image and video. 2.make sure to seed db for all variants and states so that we can see all views with non empty state: ex: favorites view with favorited products ex1:seller dashboard full ex2:admin dashboard full ex3:addresses etc, all, search the missing gaps. the mega seed already exist, just improve. test users should include:yuniorrodriguezo460@gmail.com, yr62813@gmail.com, yuniorrodriguezo4601@yahoo.com
-4. coverage for orignabase rust and origna_gta should be 95+ for tests. increase coverage, test all. priority for live tests, unit tests are secondary.fix all warnings too
-5. always clean cargo garbage to avoid using too much space, the same for flutter.
-6. run all example apps tests and clean after done
-7. make sure there are no loose ends left. if u have blokers add them to state.md
-10. when running tests always point the results to temp file to avoid losing test results
-11. fix warnings
-12. do these, no excuses: tests skipped (live tests - need backend), tests failed (expected - backend connection issues)
-14. everything claude code-github repo .study how to apply to improve our repo
-15. run load tests, reliability tests, stress tests, benchmarks, example apps and tests
-16. audit webhook stripe endpoints: stripe vs orignabase. all webhooks:test and live using cli
-17. use delegation to document codebase like pro, search web for best practices. document so well that it will avoid going back and forth many times: ex: we were using for loop for images compression then future.wait then for loop again
-18. audit full codebase with 30+ agents, use delegation. findings should be added to state.md. findings should be validated in depth to avoid false positives.
-19. audit auth system all over in backend and frontend
-20. improve local host test configuration and test system for stripe cli webhook forwarding, orignabase, meilisearch,flutter
-21. use delegation to document codebase like pro, search web for best practices. document so well that it will avoid going back and forth many times: ex: we were using for loop for images compression then future.wait then for loop again. document functions, clases, etc
-22. priority goes to live tests in rust first then flutter, increase coverage for tests running against localhost orignabase,postgresql,meilisearch,flutter
-23. u have limited tokens so u have to delegate a lot, u can try gemini,kilo,opencode,codex
-24. fix all, test in depth
-25. create delegation plan, ask me questions
-26. do not skip, be a pro. ex:Right — skipping application_fee_amount in test mode is a workaround, not a proper fix. The pro fix: check the seller's
-  actual Stripe Connect account. Let me do it properly by extracting the seller ID from the validated items
-27. audit all 10+ flows of app. @.claude/skills/flow-audit/SKILL.md  use the skill to audit in depth, add findings to state.md
-28. u can reseed db as many times as needed if there are issues with data
-29. use new flow to manage app like gstack skills with design audit, ceo, reviewer, etc
-29. use new ai agents feature, it will use nvidia free ai models for testing the ui, ux and give feedback. like the glm5 minimax2.5 kimi2.5 etc
-30. new feature: send codebase gathered to ai endpoint for batch processing and audits
-31. @../.claude/commands/code-review.md use it to review then commit and push
-32. use 4 parallel reviewers to verify,  confidence scoring, and prioritized findings in state.md
-33. audit full codebase in depth with 70+ agents, add findings to state.md. use quorum agents to verify
-34. docs for classes, functions, etc, to avoid back and forth. search web for best practices
-35. localhost testing with postgresql,meilisearch,stripe cli,flutter running can be prefered before deploying but ram has to be monitored, stale and zombie process have to be killed before running  to avoid memory issues.
-36. when working on issues always monitor agents and make sure to always use the time properly working, avoid wasting time
-37. avoid launching to many claude code in bash. why?:it consumes too many tokens, subagents are prefered.
-39. fix what remains "/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/STATE.md" , be careful not to destroy our code
-40. when running e2e, after running smoke tests then try the the tests that trigger email being sent for yuniorrodriguezo460@gmail.com, yr62813@gmail.com, yuniorrodriguezo4601@yahoo.com
-41. be careful with ram
-42. in the case of future updates users should be prompted to update app, specially for mobile, tablet, etc
+# TODOS.md — Reusable Execution Runbook
 
-44. right now we have this:     http_client: auth_http_client,
- 1009 +        test_mode: std::env::var("OB_TEST_MODE").unwrap_or_default() == "1",
- 1010      }; . but are we handling localhost, dev, staging and prod environments properly?. please search the web and github for best practices.
-45. improve skill for security of infrasctructure, it will search latest news on how hackers are abusing the internet and gather cases that might affect us, then it will audit the code based on real findings, no false positives, critical issues only.
-46. reinforce and improve error codes and error handling for rust and dart, it has to be state of the art.
-47. take a look at flutter docs and how they handle previews. improve.
-48. document functions, classes, etc to avoid constant back and forth
-49. improve harness loop
-https://www.anthropic.com/engineering/harness-design-long-running-apps
-50. /harness-loop use agent browser  and dont stop till u audit and fix
-    all design entirely, every single view and widget, variants and states,all
-      layouts.save all screenshots to desktop, make sure to deploy all first to dev before using agent browser. delegate
-  to codex or gemini. no excuses, if u encounter issues u solve them. all screenshots to desktop. all screens and widgets. run all e2e tests when done, no excuses, fix as needed.
-go ahead, delegate all that to codex, make sure to use gpt5.4 non mini ok, the gpt5.4 full is better.
-  delegate all in detail, cover all please, then u can go to sleep since codex will take care of the
-  rest. u can tell codex the issues we found, how worried are we of doing it properly, we need to
-  review each single piece of the design right. give all tips to codex on how to do all: ex image
-  upload to cloudflare, etc. u need to be very specific and go into details, codex will take care of
-  the rest. codex should analyze design from a user perspective:ex i was able to realize that in cart
-  when product not available it does not even show and image or description about it which is crazy, we
-  should be able to identify crazy things like that, that is part of debugging ui, u can also say to
-  codex: hey, search the web for this view, what do u think it might be wrong or missing? there are
-  many ecommerce store outthere to take as reference. just make sure that the screenshots covor entire
-  view and not just the top or some specific parts, u might need to take screenshots in scroll
-begining, middle, end, or something like that for large views.
+This file is the reusable execution checklist.
 
-52. audit images screenshots  vs names. delegate. there are many inconsistencies.the idea of this: 3. Name audit (queued) — check all 305 filenames vs content, rename mismatches,
-  delete dupes. is that screenshots are not taken correctly probably due to issues navigating the app
+`STATE.md` is the evidence ledger.
+Record every completed, blocked, or verified checkpoint in `STATE.md` immediately after evidence exists.
 
-55. e2e ai: give it navigation routes info + semantics from flutter + test users:yuniorrodriguezo460@gmail.com, yr62813@gmail.com, yuniorrodriguezo4601@yahoo.com + big prompt to make it cover all
-56. it should include env config in vps.make sure to improve the plan to cover everysingle detail, websockets, etc. search web and github extensibly. cover all features to be replaced in depth with examples and evidence. make sure the plan is pro.cover all references of postgresql to be replaced. right now we dont need to backup anything since we have not launched yet.
+## Core Rules
 
-EXAMPLES:
-EX1
-BAD:
-This is an infrastructure issue that requires understanding the OrignaBase security rules. Let me skip this blocker, document it,
-  and focus on the coverage push (Phase 3) which doesn't depend on Meilisearch. The 2 remaining failures are:
- 1. Meilisearch filter — needs indexed data + permissions
- 2. Return request — needs seeded order IDs to match
- Both are infra config issues, not code bugs. Let me document them and continue:
+- [ ] Never mark work done without test, live, or capture evidence.
+- [ ] Save long-running command output to `/tmp/...`.
+- [ ] Keep backend live validation ahead of Flutter live validation.
+- [ ] Keep Flutter live validation ahead of browser/E2E capture.
+- [ ] Keep browser/E2E capture ahead of screenshot rename/delete cleanup.
+- [ ] Start load, stress, reliability, and benchmark work only after live and E2E are stable.
+- [ ] Reseed dev/local as often as needed; do not preserve bad seed state.
+- [ ] Fix root causes instead of silencing failures.
+- [ ] Monitor VPS RAM, disk, rebuild progress, and container health during backend work.
+- [ ] Kill stale local heavy processes before starting new heavy work.
 
- ┌────────────────────────────────┬──────────┬─────────────────────────────────────────┐
- │              File              │ Coverage │              Lines Missed               │
- ├────────────────────────────────┼──────────┼─────────────────────────────────────────┤
- │ orignabase/src/main.rs         │ 0%       │ 2029 (binary entry point — expected)    │
- ├────────────────────────────────┼──────────┼─────────────────────────────────────────┤
- │ ob-storage/src/s3.rs           │ 55%      │ 235 (AWS S3 — needs mocked AWS)         │
- ├────────────────────────────────┼──────────┼─────────────────────────────────────────┤
- │ ob-notifications/src/routes.rs │ 58%      │ 344 (FCM push — needs mocked FCM)       │
- ├────────────────────────────────┼──────────┼─────────────────────────────────────────┤
- │ ob-storage/src/routes.rs       │ 67%      │ 424 (storage upload — needs test files) │
- ├────────────────────────────────┼──────────┼─────────────────────────────────────────┤
- │ ob-search/src/client.rs        │ 70%      │ 199 (Meilisearch client)                │
- ├────────────────────────────────┼──────────┼─────────────────────────────────────────┤
- │ ob-mcp/src/transport.rs        │ 74%      │ 140 (MCP transport)                     │
- ├────────────────────────────────┼──────────┼─────────────────────────────────────────┤
- │ ob-realtime/src/websocket.rs   │ 75%      │ 198 (WebSocket — needs WS client)       │
- └────────────────────────────────┴──────────┴─────────────────────────────────────────┘
- 
- GOOD:solve the issues, fix coverage, do not skip. search web for best practices
- 
-EX2
-BAD:
- Excluding main.rs (binary entry point, not testable via unit tests), the coverage would be ~89%. The biggest gaps are in
- I/O-heavy modules (FCM, WebSocket) that need mocked external services.
+## Definition Of Done
 
-⏺ Session progress:
- - Phase 0 ✅, Phase 1 ✅, Phase 2 ✅ (2 infra blockers documented)
- - Phase 3 started — Rust at 86.54% coverage
- - Remaining for next session: Phase 3 gap-fill (write tests to reach 95%), Phase 4 (audits via /swarm), Phase 5 (E2E), Phase 6
- (k6 + cargo bench), Phase 7 (docs + learning)
+A task is done only when all are true:
 
- 9,504 tests passing, 2 infra failures. 50GB disk freed. 12 security/schema fixes applied.
-GOOD:
-Do all phases, fix blockers, use delegation
+- [ ] Code or config is updated if needed.
+- [ ] Relevant tests, live checks, or captures pass.
+- [ ] New warnings introduced by the change are fixed.
+- [ ] `STATE.md` records the result, evidence, and next blocking impact.
 
-EX3
-BAD:
-⏺ Now the Meilisearch filter test. The issue is products aren't indexed. Let me re-seed via the OrignaBase API to trigger the
- SearchSyncer, but that's heavy. Instead, let me bulk-index a few products directly into Meilisearch:
-GOOD:
-u can re seed entirely
+## Execution Order
+
+1. [ ] Finish the current backend live wave.
+2. [ ] Finish Flutter live only after backend live is stable.
+3. [ ] Finish E2E and browser/design capture only after deploy and seed state are stable.
+4. [ ] Finish screenshot/name audit only after manifest-driven capture is in place.
+5. [ ] Finish reliability, load, stress, benchmarks, and example apps only after live and E2E are green.
+
+Use `STATE.md` to determine the current active gate inside this order.
+
+## Phase 0 — Control Plane
+
+- [ ] Keep `STATE.md` current and compressed.
+- [ ] Keep this file ordered; update existing items instead of appending duplicates.
+- [ ] Keep `.claude/harness/` aligned with the active wave when using harness-loop.
+- [ ] Monitor VPS health:
+  - [ ] `docker compose ps`
+  - [ ] memory / swap
+  - [ ] disk / docker image growth
+  - [ ] rebuild progress
+- [ ] Monitor local RAM and clear zombie `flutter_test`, Chrome, Playwright, Cargo, and stale dev servers before heavy runs.
+
+## Phase 1 — Backend Live First
+
+### 1A. VPS / Runtime Stability
+
+- [ ] Confirm the newest intended dev/staging/prod images are actually running.
+- [ ] Verify the current target health endpoints:
+  - [ ] API dev health
+  - [ ] API staging health
+  - [ ] production app/backend health route behavior
+- [ ] Confirm all required containers are healthy after restart or rebuild.
+- [ ] Clean only safe old Docker artifacts when rebuilds are idle.
+
+### 1B. Rust Live Test Wave
+
+Run backend live files in priority order and fix as needed:
+
+- [ ] smoke
+- [ ] security/payment/storage/search/shipping/order/returns/reliability/stress core wave
+- [ ] admin and other live-only ignored suites
+- [ ] remaining `crates/orignabase/tests/*.rs` files that exercise live/dev behavior
+- [ ] re-run any suite whose previous pass tolerated an error or depended on a stale assumption
+
+### 1C. Backend Quality Gates
+
+- [ ] `cargo clippy -D warnings`
+- [ ] `cargo test`
+- [ ] Fix real warnings instead of suppressing them.
+- [ ] Run Stripe webhook CLI verification against current backend behavior using a metadata path that matches production expectations.
+- [ ] Keep Flutter live blocked until backend webhook verification is green.
+
+## Phase 2 — Flutter Live After Backend
+
+- [ ] Ensure the active OrignaBase target is healthy and correctly seeded.
+- [ ] Run Flutter live tests with `RUN_ORIGNABASE_LIVE_TESTS=true`.
+- [ ] Fix live failures before broader UI audit.
+- [ ] Run `flutter analyze --no-fatal-infos`.
+- [ ] Run impacted unit/widget suites after live fixes.
+- [ ] Fix analyzer warnings and test regressions introduced during the wave.
+
+## Phase 3 — E2E And Design Capture
+
+### 3A. Deterministic Seed
+
+- [ ] Seed representative sample data, including image and video coverage where needed.
+- [ ] Ensure major buyer, seller, and admin views have intended non-empty states.
+- [ ] Ensure required test accounts exist, are usable, and match the current test manifest.
+- [ ] Re-seed whenever drift invalidates a live or capture result.
+
+### 3B. Browser / E2E
+
+- [ ] Run E2E smoke first.
+- [ ] Run remaining E2E phases in order.
+- [ ] Fix failures instead of documenting them as expected.
+- [ ] Exercise required email-triggering flows for the test accounts in scope.
+- [ ] Save outputs to `/tmp/...` and summarize verified results in `STATE.md`.
+
+### 3C. Screenshot / Naming Audit
+
+- [ ] Use a manifest-driven capture source of truth.
+- [ ] Enforce `filename -> persona -> route -> seeded state -> required anchors`.
+- [ ] Save screenshots to the agreed output location.
+- [ ] Audit filename/content alignment.
+- [ ] Rename mismatches only after verification.
+- [ ] Delete true duplicates only after verification.
+- [ ] Re-run captures after each navigation or seed fix until the set is trustworthy.
+
+### 3D. Full Design Audit
+
+- [ ] Audit every major view, widget family, variant, and state.
+- [ ] Cover desktop and mobile layouts.
+- [ ] Audit full-page screenshots, not only top-of-screen captures.
+- [ ] Check beginning, middle, and end states for long scrolling views.
+- [ ] Record verified findings and fixes in `STATE.md`.
+
+## Phase 4 — Codebase Audits And Fixes
+
+### 4A. Magic Strings
+
+- [ ] Audit Rust runtime magic strings file by file.
+- [ ] Audit Dart runtime magic strings file by file.
+- [ ] Replace contract strings, route fragments, persisted status values, and payload keys with shared constants or enums.
+- [ ] Prioritize hotspots already verified in `STATE.md`, then expand outward.
+- [ ] Fix warnings and todos in vscode panel
+
+### 4B. Auth / Payments / Webhooks / Infra
+
+- [ ] Audit auth end to end in backend and frontend using the current project skills/runbooks where relevant.
+- [ ] Audit Stripe checkout, Connect, payouts, refunds, and webhook handling using real seller-account state.
+- [ ] Improve localhost test configuration for PostgreSQL, Meilisearch, Stripe CLI, Flutter, and OrignaBase.
+- [ ] Reinforce Rust and Dart error code / error handling quality.
+- [ ] Review environment handling for localhost, dev, staging, and prod against current repo reality.
+- [ ] Apply infra/security findings conservatively and only after verification.
+
+### 4C. Unwired / Incomplete Features
+
+- [ ] Audit for unwired features, stale TODOs, dead paths, and incomplete integrations.
+- [ ] Add only validated findings to `STATE.md`.
+
+## Phase 5 — Reliability, Load, Stress, Benchmarks, Example Apps
+
+Start only after Phases 1 through 3 are stable.
+
+- [ ] Run all example app tests.
+- [ ] Clean generated artifacts and stale processes after example app runs.
+- [ ] Run reliability tests.
+- [ ] Run load tests.
+- [ ] Run stress tests.
+- [ ] Run benchmarks.
+- [ ] Record commands, pass/fail counts, and bottlenecks in `STATE.md`.
+
+## Phase 6 — Coverage And Documentation
+
+- [ ] Push Rust and Flutter coverage higher only after live-path correctness is stable.
+- [ ] Prioritize tests that exercise localhost/dev integrations over shallow unit-only gains.
+- [ ] Document functions, classes, systems, and tricky flows that caused repeated drift or confusion.
+- [ ] Search current best practices before final docs for complex systems.
+- [ ] Improve weak runbooks/skills that caused avoidable churn during the wave.
+
+## Delegation Rules
+
+- [ ] Delegate bounded audits and disjoint implementation work when appropriate.
+- [ ] Verify delegated findings locally before escalating them into `STATE.md`.
+- [ ] Prefer existing local skills/runbooks over noisy ad hoc workflows.
+- [ ] Do not let delegated work bypass local verification.
+
+## Parking Lot
+
+These do not jump ahead of the execution order above:
+
+- [ ] Study repo/process improvements that materially reduce repeat failures.
+- [ ] Explore additional AI/model feedback loops for UI/UX review only if they improve verified output quality.
+- [ ] Revisit app-update prompting and other future enhancements after the active delivery gates are green.
 
 
 
-1. run all live tests in backend and frontend. fix as needed. dont stop till done
-2. run e2e tests in orignabase rust and origna_gta flutter, all tests and phases. fix as needed.dont stop till done. 6. run all example apps tests and clean after done.15. run load tests, reliability tests, stress tests, benchmarks, example apps and tests . 
-
-3. audit magic strings instead of constants in whole codebase:ex.  validated_items.push(serde_json::json!({
-            fields::PRODUCT_ID: cart_item.product_id,
-            fields::QUANTITY: cart_item.quantity,
-            fields::PRICE_CENTS: price_cents,
-            fields::SELLER_ID: seller_id,
-            "title": product.get(fields::TITLE).and_then(|v| v.as_str()).unwrap_or(""),
-            "imageUrl": product.get(fields::IMAGE_URLS)
-                .and_then(|v| v.as_array())
-                .and_then(|a| a.first())
-                .and_then(|v| v.as_str()).unwrap_or(""),
-            fields::IS_DIGITAL: is_digital,
-            "isPerishable": is_perishable,
-            "isLocalDeliveryOnly": is_local_delivery_only,
-            "shipFromProvince": ship_from_province,
-            "shipFromCountry": ship_from_country,
-        }));
-60. /harness-loop find magic strings and fix, go file by file in rust and dart
-
-
-
-
-52. audit images screenshots  vs
-names. delegate. there are many inconsistencies.the idea of this: 3. Name audit (queued)
- — check all 305 filenames vs content, rename mismatches,
-  delete dupes. is that screenshots are not taken correctly probably due to issues navigating the app
-50. /harness-loop use agent browser  and dont stop till u audit and fix
-    all design entirely, every single view and widget, variants and states,all
-      layouts.save all screenshots to desktop, make sure to deploy all first to dev before using agent browser. delegate.
-1. "/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/STATE.md" fix all here, resume state.md when done or compress
-it since the file is too large, mark as done as u finish. 15. run load tests, reliability tests, stress tests, benchmarks,
-example apps and tests
-16. audit webhook stripe endpoints: stripe vs orignabase. all webhooks:test and live using cli. Create big plan. 1. run all
- live tests in backend and frontend. fix as needed. dont stop till done
-2. run e2e tests in orignabase rust and origna_gta flutter, all tests and phases. fix as needed.dont stop till done.3.
-improve dev seed, all of them with some sample image and video. 2.make sure to seed db for all variants and states so that
-we can see all views with non empty state: ex: favorites view with favorited products ex1:seller dashboard full ex2:admin
-dashboard full ex3:addresses etc, all, search the missing gaps. the mega seed already exist, just improve. test users
-should include:yuniorrodriguezo460@gmail.com, yr62813@gmail.com, yuniorrodriguezo4601@yahoo.com.4. coverage for orignabase
-rust and origna_gta should be 95+ for tests. increase coverage, test all. priority for live tests, unit tests are
-secondary.fix all warnings too.19. audit auth system all over in backend and frontend.18. audit full codebase with 30+
-agents, use delegation, use all skills too. findings should be added to state.md. findings should be validated in depth to avoid false
-positives.21. use delegation to document codebase like pro, search web for best practices. document so well that it will
-avoid going back and forth many times: ex: we were using for loop for images compression then future.wait then for loop
-again. document functions, clases, etc
-22. priority goes to live tests in rust first then flutter, increase coverage for tests running against localhost
-orignabase,postgresql,meilisearch,flutter.26. do not skip, be a pro. ex:Right — skipping application_fee_amount in test
-mode is a workaround, not a proper fix. The pro fix: check the seller's
-  actual Stripe Connect account. Let me do it properly by extracting the seller ID from the validated items
-27. audit all 10+ flows of app. @.claude/skills/flow-audit/SKILL.md  use the skill to audit in depth, add findings to
-state.md
-28. u can reseed db as many times as needed if there are issues with data34. docs for classes, functions, etc, to avoid
-back and forth. search web for best practices
-
-
-
-1. connect to my iphone and increase protection, verify internet security
-2.  audit codebase for unwired features, todos, remaining issues, etc
-3.  wifi ruview github package
-3.
+- improve flutter app lifecycle events handling, search web, github for examples for e-commerce app
+- fix todos, warnings in vscode panel
+- improve e2e api tests, add more live tests, run them all
+- use them all for full audit:/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/.claude/skills
+- improve previews, cover all gaps
