@@ -41,7 +41,7 @@ class UpdateRequiredDialog extends StatelessWidget {
   }
 
   void _openStore() {
-    // TODO: Replace with actual store URLs when published
+    // TODO: Replace with real App Store / Play Store IDs when published (see APP_UPDATE_MECHANISM.md)
     final url = Platform.isIOS
         ? 'https://apps.apple.com/app/orignagta/id000000000'
         : 'https://play.google.com/store/apps/details?id=ca.orignagta.app';

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/features/products/products_provider.dart';
 import 'package:origna_gta/screens/product_card_screen.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
 /// Horizontal scrolling row of products from the same seller.
@@ -72,13 +73,12 @@ class SellerProductsSection extends ConsumerWidget {
           child: ModernLoadingIndicator(size: 20),
         ),
       ),
-      error: (err, st) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Text(
-          'errors.something_went_wrong'.tr(),
-          style: TextStyle(color: DesignTokens.error, fontSize: 13),
-        ),
-      ),
+      error: (err, st) {
+        // Silently fail — this is a non-critical "more from seller" section.
+        // Logging the error for debugging without showing UI noise.
+        AppError.log(err, stackTrace: st, context: 'SellerProductsSection');
+        return const SizedBox.shrink();
+      },
     );
   }
 }

@@ -220,31 +220,52 @@ class _ImageErrorPlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [DesignTokens.gradientStart, DesignTokens.gradientMiddle],
+      decoration: BoxDecoration(
+        color: isDark
+            ? DesignTokens.darkSurfaceVariant
+            : DesignTokens.surfaceVariant,
+        borderRadius: BorderRadius.circular(DesignTokens.radius16),
+        border: Border.all(
+          color: isDark
+              ? DesignTokens.white.withValues(alpha: 0.1)
+              : DesignTokens.outline.withValues(alpha: 0.2),
+          width: 1,
         ),
       ),
       child: Center(
-        child: Container(
-          width: 88,
-          height: 88,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: DesignTokens.white.withValues(alpha: 0.12),
-            border: Border.all(
-              color: DesignTokens.white.withValues(alpha: 0.25),
-              width: 2,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isDark
+                    ? DesignTokens.white.withValues(alpha: 0.08)
+                    : DesignTokens.primary.withValues(alpha: 0.08),
+              ),
+              child: Icon(
+                Icons.camera_alt_outlined,
+                size: 32,
+                color: isDark
+                    ? DesignTokens.white.withValues(alpha: 0.5)
+                    : DesignTokens.primary.withValues(alpha: 0.5),
+              ),
             ),
-          ),
-          child: const Icon(
-            Icons.camera_alt_outlined,
-            size: 40,
-            color: DesignTokens.white,
-          ),
+            const SizedBox(height: 12),
+            Text(
+              'product.no_image'.tr(),
+              style: TextStyle(
+                fontSize: 13,
+                color: isDark
+                    ? DesignTokens.textSecondary
+                    : DesignTokens.textSecondary,
+              ),
+            ),
+          ],
         ),
       ),
     );

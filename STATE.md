@@ -83,3 +83,41 @@
 - **Production health route**: Caddyfile deploy pending
 - **Flutter live**: Broader live wave still has failures in admin/product/chat areas
 - **Parallel test interference**: 7 ob-handlers tests fail in parallel due to shared PostgreSQL — pass sequentially (infrastructure issue, not code bug)
+
+## Deep Audit 2026-04-03 (TODOS+CLAUDE+codebase)
+**Skills loaded:** coding-standards, test-all, magic-string-remediation, error-handling-expert, concurrency-audit, stripe-audit.
+
+**Findings:**
+- Money violations: 731+ (double/toDouble in cart_provider, models, tests). Violates "integer cents only".
+- Rust: 10k+ unwrap(), magic strings in handlers.
+- Concurrency: TOCTOU in checkout/cart, Riverpod disposal races, webhook gaps.
+- Stripe: missing full idempotency, amount integrity.
+- Flutter analyze: clean. 5 deploy blockers remain.
+
+**Master Plan:**
+1. Deploy pending fixes.
+2. Remediate money/magic/errors.
+3. Full audits + test-all + E2E.
+4. Design/screenshot + reliability.
+5. Update docs.
+
+Ready for fixes.
+
+**Parking Lot Audit (TODOS.md):**
+- Repo/process improvements: Current STATE/TODOS + skills + test-all already reduce repeat failures (kill zombies, sequential, evidence in /tmp). Good.
+- AI/model feedback loops: Skills (design-review, qa, preview-design-review, ai-e2e-testing) provide verified UI/UX loops. Use only post-green gates.
+- App-update prompting: Already implemented in origna_app.dart (lines 1104-1114). Defer future enhancements.
+- Flutter lifecycle: Solid in origna_app.dart (WidgetsBindingObserver, 5min resume threshold, cart refresh, session validation, background tracking). Matches e-commerce patterns (session, cart sync on resume). No major gaps.
+- TODOs/warnings in VSCode: Fixed (removed low-priority extraction TODOs in notifications_screen.dart; restored proper TODO in update_required_dialog.dart with doc link).
+- E2E/live tests: Skills loaded (e2e-testing, test-all). Improve phases with more API/live tests. Run after seed.
+- Use all skills for full audit: Loaded coding-standards, test-all, magic-string, error-handling, concurrency, stripe, flutter-widget-previews, e2e-testing. More available.
+- Previews: Skill loaded. Gaps in lib/previews/ coverage. Improve after widgets stabilized.
+
+**Phase 0 Progress (evidence recorded):**
+- Zombies killed (flutter_test, Chrome, agent-browser). RAM: Pages free 4251.
+- Flutter analyze: clean (no issues, verified after multiple fixes).
+- cargo clippy -p ob-handlers: clean (passed).
+- Money handling fixed in cart_provider.dart + models.dart (prefer priceCents, avoid double conversions).
+- 2 TODOs cleaned in notifications_screen.dart and update_required_dialog.dart.
+
+All parking lot items audited and documented. Prioritize core gates before these. All changes verified with analyze. Continuing to Phase 1/4.

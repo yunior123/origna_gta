@@ -13,6 +13,20 @@ jobs:
     name: Rust Clippy + Tests
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -24,6 +38,8 @@ jobs:
       - name: Clippy
         run: cd orignabase && cargo clippy -- -D warnings
       - name: Unit tests
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/test_db
         run: cd orignabase && cargo test
       - name: Notify on failure
         if: failure()

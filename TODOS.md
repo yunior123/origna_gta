@@ -17,6 +17,11 @@ Record every completed, blocked, or verified checkpoint in `STATE.md` immediatel
 - [ ] Fix root causes instead of silencing failures.
 - [ ] Monitor VPS RAM, disk, rebuild progress, and container health during backend work.
 - [ ] Kill stale local heavy processes before starting new heavy work.
+- [ ] Dont be lazy, work, go the extra mile if needed
+- [ ] When auditing the codebase do it as an outsider
+- [ ] Document as you fix
+- [ ] Deploy all then use agent-browser to test the changes
+- [ ] Live tests are mandatory, do not skip them
 
 ## Definition Of Done
 
@@ -29,11 +34,11 @@ A task is done only when all are true:
 
 ## Execution Order
 
-1. [ ] Finish the current backend live wave.
-2. [ ] Finish Flutter live only after backend live is stable.
-3. [ ] Finish E2E and browser/design capture only after deploy and seed state are stable.
-4. [ ] Finish screenshot/name audit only after manifest-driven capture is in place.
-5. [ ] Finish reliability, load, stress, benchmarks, and example apps only after live and E2E are green.
+1. [ ] Execute the current backend live wave.
+2. [ ] Execute Flutter live only after backend live is stable.
+3. [ ] Execute E2E and browser/design capture only after deploy and seed state are stable.
+4. [ ] Execute screenshot/name audit only after manifest-driven capture is in place.
+5. [ ] Execute reliability, load, stress, benchmarks, and example apps only after live and E2E are green.
 
 Use `STATE.md` to determine the current active gate inside this order.
 
@@ -47,7 +52,7 @@ Use `STATE.md` to determine the current active gate inside this order.
   - [ ] memory / swap
   - [ ] disk / docker image growth
   - [ ] rebuild progress
-- [ ] Monitor local RAM and clear zombie `flutter_test`, Chrome, Playwright, Cargo, and stale dev servers before heavy runs.
+- [ ] Monitor local RAM and clear zombie `flutter_test`, Chrome, agent-browser, Cargo, and stale dev servers before heavy runs.
 
 ## Phase 1 — Backend Live First
 
@@ -176,16 +181,12 @@ Start only after Phases 1 through 3 are stable.
 
 ## Parking Lot
 
-These do not jump ahead of the execution order above:
-
 - [ ] Study repo/process improvements that materially reduce repeat failures.
 - [ ] Explore additional AI/model feedback loops for UI/UX review only if they improve verified output quality.
 - [ ] Revisit app-update prompting and other future enhancements after the active delivery gates are green.
-
-
-
-- improve flutter app lifecycle events handling, search web, github for examples for e-commerce app
-- fix todos, warnings in vscode panel
-- improve e2e api tests, add more live tests, run them all
-- use them all for full audit:/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/.claude/skills
-- improve previews, cover all gaps
+- [ ] improve flutter app lifecycle events handling, search web, github for examples for e-commerce app
+- [ ] fix todos, warnings in vscode panel
+- [ ] improve e2e api tests, add more live tests, run them all
+- [ ] use them all for full audit:/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/.claude/skills
+- [ ] improve previews, cover all gaps
+- [ ] audit and improve skills, claude.md, agents.md, etc
