@@ -148,7 +148,7 @@ PostgreSQL  Meilisearch Stripe  Cloudflare R2
 4. Add rate limiting if needed
 5. Handle errors with `Result<T, Error>`
 6. Add webhook logging for auditing
-7. Test with E2E (Playwright)
+7. Test with E2E (agent-browser)
 
 ### Modify Database Schema
 
@@ -183,7 +183,7 @@ flutter test
 flutter test --exclude-tags=golden
 ```
 
-### E2E Tests (Playwright/Bun)
+### E2E Tests (agent-browser/Bun)
 ```bash
 cd e2e
 bun test

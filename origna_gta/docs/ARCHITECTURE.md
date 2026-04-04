@@ -16,11 +16,11 @@ OrignaGTA is a Canada-first multi-vendor e-commerce marketplace built with Flutt
 | Storage | Cloudflare R2 (presigned URLs) |
 | Error Tracking | Sentry |
 | i18n | easy_localization (EN + FR-CA) |
-| E2E Testing | Bun + Playwright (agent-browser) |
+| E2E Testing | Bun + agent-browser (agent-browser) |
 
 ### Key Constraints
 
-- **8GB RAM Mac**: Sequential heavy tasks only. No parallel Flutter builds + Playwright + tests.
+- **8GB RAM Mac**: Sequential heavy tasks only. No parallel Flutter builds + agent-browser + tests.
 - **Canada-first**: All shipping to Canada. Sellers can be international. Quebec Bill 96 (Loi 96) requires French translations.
 - **Firebase is GONE**: All backend goes through OrignaBase SDK. Never `FirebaseAuth.instance`.
 - **main only**: No branches. All commits to main.
@@ -339,9 +339,9 @@ const Padding(
 
 ---
 
-### 10. Semantics Labels for Playwright E2E
+### 10. Semantics Labels for agent-browser E2E
 
-**What**: All interactive elements have `Semantics(label: 'btn-*')` or `tooltip:` for Playwright selectors.
+**What**: All interactive elements have `Semantics(label: 'btn-*')` or `tooltip:` for agent-browser selectors.
 
 **Why**: E2E tests use `page.locator('[aria-label="btn-add-to-cart"]')` to find elements. Without semantic labels, tests use fragile CSS selectors or coordinates.
 

@@ -59,7 +59,7 @@
 | Guide | Description |
 |-------|-------------|
 | [Deploy to VPS](./how-to/deploy.md) | Web frontend and backend deployment |
-| [Run E2E Tests Locally](./how-to/e2e-local.md) | Playwright and agent-browser setup |
+| [Run E2E Tests Locally](./how-to/e2e-local.md) | agent-browser and agent-browser setup |
 | [Debug Production Issues](./how-to/debug-production.md) | Logs, Sentry, and database queries |
 
 ---
@@ -107,7 +107,7 @@
 | [Unit Tests](./testing/unit-tests.md) | Unit test patterns and conventions |
 | [Widget Tests](./testing/widget-tests.md) | Widget testing best practices |
 | [Integration Tests](./testing/integration-tests.md) | Live tests against real backend |
-| [E2E Tests](./testing/e2e-tests.md) | Playwright and agent-browser specs |
+| [E2E Tests](./testing/e2e-tests.md) | agent-browser and agent-browser specs |
 
 ### Infrastructure Reference
 

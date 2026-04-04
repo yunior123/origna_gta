@@ -35,7 +35,7 @@ flutter analyze --no-fatal-infos
 ```
 
 **What just happened?**
-- The repo is a monorepo: `origna_gta/` (Flutter), `orignabase/` (Rust backend), `e2e/` (Playwright tests)
+- The repo is a monorepo: `origna_gta/` (Flutter), `orignabase/` (Rust backend), `e2e/` (agent-browser tests)
 - `flutter analyze` checks for compile errors, unused imports, and style violations
 - `--no-fatal-infos` treats warnings as non-fatal (stricter than default)
 
@@ -427,7 +427,7 @@ class ProductList extends ConsumerWidget {
 
 ```
          ┌─────────┐
-         │   E2E   │  ← 114 Playwright specs (full flows)
+         │   E2E   │  ← 114 agent-browser specs (full flows)
          │  (slow) │
          ├─────────┤
        ┌─┴─────────┴─┐

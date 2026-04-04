@@ -139,4 +139,24 @@ All parking lot items audited and documented. Prioritize core gates before these
 
 **Files changed:** 10 files, +131/-54 lines
 
-Next: Phase 1C (remaining live tests), Phase 2 (Flutter live), Phase 3 (E2E).
+## Phase 3 E2E Results (2026-04-03)
+| Test File | Result | Time |
+|-----------|--------|------|
+| admin-security.spec.ts | 5/5 PASS | 1.2s |
+| cart-api.spec.ts | 10/10 PASS | 5.7s |
+| address-crud.spec.ts | 13/13 PASS | 40.5s |
+| checkout-validation.spec.ts | 24/24 PASS | 15.0s |
+| infrastructure-health.spec.ts | 12/12 PASS | 6.8s |
+
+## Phase 4 Magic Strings Audit (2026-04-03)
+- Analyzed ob-handlers for runtime magic strings
+- Found: "userId", "status" in subscriptions.rs, connect.rs, webhooks.rs
+- Assessment: Most are in test JSON fixtures (// ignore-magic) or external Stripe API responses
+- The codebase already uses fields::USER_ID, fields::STATUS for internal schema
+- Verdict: No critical remediation needed - existing constants are used correctly
+
+## Commit History 2026-04-03
+- `2478ea9d5`: Phase 0-1 fixes (money handling, TODOs, push_notifications pass)
+- `7a9f9dc00`: STATE.md update
+
+Next: Phase 5 (reliability/stress/benchmarks after phases 1-3 stable), Phase 6 (coverage boost).

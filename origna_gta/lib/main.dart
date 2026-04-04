@@ -82,7 +82,7 @@ void main() {
 
       // Force semantic tree on web for accessibility + E2E agent-browser testing.
       // Flutter Web renders to <canvas> — this generates a parallel <flt-semantics>
-      // DOM tree with ARIA attributes that Playwright can target.
+      // DOM tree with ARIA attributes that agent-browser can target.
       // IMPORTANT: Store the handle — if it's GC'd, semantics gets disabled.
       // debug always on, profile only if FORCE_SEMANTICS=true, release never
       if (kIsWeb &&

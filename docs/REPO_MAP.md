@@ -31,7 +31,7 @@ Unified monorepo for Origna GTA, a Canada-first multi-vendor e-commerce platform
 | Bot protection | Cloudflare Turnstile |
 | Web reverse proxy | Caddy (on VPS) |
 | CI | GitHub Actions |
-| E2E | Playwright (TypeScript) + Bun agent-browser (116 specs across 7 phases) |
+| E2E | agent-browser (TypeScript) + Bun agent-browser (116 specs across 7 phases) |
 | Tests | Flutter: 3,173+ passing. Rust: ~3,268 passing + 537 failing (ob-handlers SurrealDB→PG migration in progress). SDK: 531 passing. |
 
 No Firebase. No Cloud Functions. No Firestore. All backend is OrignaBase on the VPS.
@@ -91,7 +91,7 @@ origna_gta/                        # repo root (monorepo: frontend + backend)
 │   │   └── helpers/               # Test utilities (EMPTY — planned)
 │   ├── integration_test/          # Flutter integration tests (7 files)
 │   └── pubspec.yaml
-├── e2e/                           # Playwright E2E (TypeScript + Bun agent-browser)
+├── e2e/                           # agent-browser E2E (TypeScript + Bun agent-browser)
 │   ├── specs/
 │   │   ├── phase1-api/            # 34 API smoke tests
 │   │   ├── phase2-smoke/          # 13 UI quality tests
@@ -399,7 +399,7 @@ Pure Dart SDK (no Flutter dependency). Communicates with OrignaBase via GraphQL 
 ## Schema Source of Truth
 
 Field names are defined in `origna_gta/lib/core/schema/schema_constants.dart`.
-All Dart code, Playwright helpers, and OrignaBase Rust handlers must agree on these names.
+All Dart code, agent-browser helpers, and OrignaBase Rust handlers must agree on these names.
 
 Key conventions:
 - Money: integer cents (`subtotalCents`, `taxAmountCents`, `totalAmountCents`)
@@ -414,7 +414,7 @@ Key conventions:
 
 | Runner | Language | Directory | Specs |
 |--------|----------|-----------|-------|
-| Playwright | TypeScript | `e2e/` | 114 specs across 6 phases |
+| agent-browser | TypeScript | `e2e/` | 114 specs across 6 phases |
 | Agent Browser | TypeScript + Bun | `e2e-agent-browser/` | 114 specs (mirrors e2e/) |
 
 ### Phase Breakdown
@@ -459,7 +459,7 @@ bun x tsc --noEmit                  # TypeScript check
 
 | Plugin | Tools |
 |--------|-------|
-| Playwright | 14 browser automation tools |
+| agent-browser | 14 browser automation tools |
 | Firebase | 3 Firestore/Firebase tools |
 | Figma | 1 design generation tool |
 | Stitch | 6 screen generation tools |

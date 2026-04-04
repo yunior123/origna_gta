@@ -34,7 +34,7 @@
 
 | Command | Purpose |
 |---------|---------|
-| `/add-semantics` | Add Playwright semantics labels to Flutter screens |
+| `/add-semantics` | Add agent-browser semantics labels to Flutter screens |
 | `/agent-heartbeat` | Agent email monitoring loop (Gmail, Sentry, Stripe) |
 | `/audit-security` | Run comprehensive security audit |
 | `/audit-workflow` | Deep logic audit on a specific workflow (checkout, orders, etc.) |
@@ -89,7 +89,7 @@
 | `/lead-generator` | Find companies by industry/location/size |
 | `/memory-recall` | Semantic memory recall via Pinecone |
 | `/office-hours` | Problem framing (global version) |
-| `/playwright-flutter` | Testing Flutter Web apps using Playwright |
+| `/agent-browser-flutter` | Testing Flutter Web apps using agent-browser |
 | `/ralph-loop` | Autonomous coding loop (global version) |
 | `/retro` | Session retrospective (global version) |
 | `/sandbox-bash` | Wrap dangerous bash commands in Docker container |
@@ -389,7 +389,7 @@
 |--------|-------------|
 | `context7` | Context7 library documentation lookup |
 | `pinecone` | Pinecone vector DB: search, upsert, rerank |
-| `playwright` | Browser automation: navigate, click, fill, screenshot, evaluate |
+| `agent-browser` | Browser automation: navigate, click, fill, screenshot, evaluate |
 | `stripe` | Stripe API: customers, products, prices, invoices, subscriptions, refunds |
 | `firebase` | Firebase: auth, Firestore, RTDB, storage, functions, messaging, remote config |
 | `bio-research` | bioRxiv, ChEMBL, clinical trials, PubMed, Open Targets |

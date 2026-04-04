@@ -84,9 +84,9 @@ Comments explain rationale, not obvious code:
 
 **Example** (`main.dart:77-81`):
 ```dart
-// Force semantic tree on web for accessibility + E2E Playwright testing.
+// Force semantic tree on web for accessibility + E2E agent-browser testing.
 // Flutter Web renders to <canvas> — this generates a parallel <flt-semantics>
-// DOM tree with ARIA attributes that Playwright can target.
+// DOM tree with ARIA attributes that agent-browser can target.
 // IMPORTANT: Store the handle — if it's GC'd, semantics gets disabled.
 ```
 
@@ -145,15 +145,15 @@ static const localDeliveryRadiusKm = 50.0; // 50km radius for local delivery Eli
 // TODO(#123): Extract to NotificationViewModel if notification logic grows beyond 2 methods [LOW]
 ```
 
-### 2. ⚠️ Comment References Playwright (Should be agent-browser) (LOW PRIORITY)
+### 2. ⚠️ Comment References agent-browser (Should be agent-browser) (LOW PRIORITY)
 
 **Location**: `main.dart:77`
 
 ```dart
-// Force semantic tree on web for accessibility + E2E Playwright testing.
+// Force semantic tree on web for accessibility + E2E agent-browser testing.
 ```
 
-**Issue**: Should reference `agent-browser` instead of `Playwright` (per user feedback that Playwright was replaced).
+**Issue**: Should reference `agent-browser` instead of `agent-browser` (per user feedback that agent-browser was replaced).
 
 **Fix**:
 ```dart
@@ -270,7 +270,7 @@ The following anti-patterns were **NOT found**:
 
 | Priority | Item | Effort |
 |----------|------|--------|
-| **Low** | Update Playwright reference to agent-browser | 1 file |
+| **Low** | Update agent-browser reference to agent-browser | 1 file |
 | **Low** | Add issue links to 2 TODOs | 2 files |
 | **Optional** | Add file headers to undocumented files | ~10 files |
 
@@ -290,7 +290,7 @@ The OrignaGTA codebase demonstrates **professional comment hygiene**. Comments e
 
 **Minor Improvements**:
 - Link TODOs to issues
-- Update tool references (Playwright → agent-browser)
+- Update tool references (agent-browser → agent-browser)
 
 ---
 

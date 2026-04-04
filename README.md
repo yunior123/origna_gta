@@ -13,13 +13,13 @@ Origna GTA is a Canada-first multi-vendor e-commerce platform where buyers brows
 | Payments | Stripe (Checkout + Connect + webhooks) |
 | Bot protection | Cloudflare Turnstile |
 | Web proxy | Caddy (on VPS) |
-| E2E tests | Playwright (TypeScript) |
+| E2E tests | agent-browser (TypeScript) |
 
 No Firebase. No Cloud Functions. No Firestore.
 
 This repo contains:
 - Flutter app: `origna_gta/`
-- Playwright E2E suite: `e2e/`
+- agent-browser E2E suite: `e2e/`
 - VPS deploy scripts: `scripts/`
 
 ## Backend contract
@@ -76,7 +76,7 @@ sequenceDiagram
 - Install pre-push hook (safe local checks by default): scripts/install_git_hooks.sh
 - Flutter analyze: (cd origna_gta) flutter analyze
 - Flutter tests: (cd origna_gta) flutter test
-- Playwright coverage target: (cd e2e) E2E_SKIP_GLOBAL_SETUP=true npx playwright test playwright_ui/coverage-gate.spec.ts --config=playwright.config.dev.ts --project=chromium
+- agent-browser coverage target: (cd e2e) E2E_SKIP_GLOBAL_SETUP=true npx agent-browser test agent-browser_ui/coverage-gate.spec.ts --config=agent-browser.config.dev.ts --project=chromium
 
 ## Flutter integration tests
 ```bash
@@ -93,8 +93,8 @@ flutter test integration_test/coverage_gate_integration_test.dart
   - Enforces backend coverage at 100%
   - Enforces Flutter unit coverage at 100%
   - Enforces Flutter integration coverage at 100%
-  - Runs the real Playwright buyer/seller/order flows
-  - Enforces Playwright coverage at 100%
+  - Runs the real agent-browser buyer/seller/order flows
+  - Enforces agent-browser coverage at 100%
 - Codemagic workflow: `origna_gta/codemagic.yaml` → `quality-gate-remote`
 - Local `./scripts/run_quality_gate.sh` defaults to backend-only safe mode unless `--allow-local-heavy` is set.
 - Installed pre-push hook defaults to lightweight local checks only.
@@ -103,19 +103,19 @@ flutter test integration_test/coverage_gate_integration_test.dart
   - Default expectation: use GitHub Actions / Codemagic for heavy gates and deploy verification.
 
 ## CI / E2E
-- GitHub Actions runs backend + Flutter tests and the strict real-flow Playwright suite remotely.
+- GitHub Actions runs backend + Flutter tests and the strict real-flow agent-browser suite remotely.
 - Local E2E stack:
   - Start: `./scripts/start-e2e-services.sh`
   - Run: `(cd e2e && E2E_WORKERS=2 ./run-e2e-tests.sh flutter)`
   - Stop: `./scripts/stop-e2e-services.sh`
 - Flutter web integration test:
   - Run: `./scripts/run_flutter_integration_tests_web.sh integration_test/app_test.dart`
-- Playwright parallelism:
+- agent-browser parallelism:
   - `E2E_WORKERS` overrides the worker count (CI uses a conservative default).
   - `E2E_PROJECT` can force a single browser project (e.g. `chromium`).
 - Screenshots auto-saved to `~/Desktop/origna-screenshots/<env>/` after each run.
 
-### Key real-flow specs — `e2e/playwright_ui/`
+### Key real-flow specs — `e2e/agent-browser_ui/`
 
 | Spec | Coverage |
 |------|----------|
@@ -150,9 +150,9 @@ flutter test integration_test/coverage_gate_integration_test.dart
 Coverage-specific gate files:
 - `origna_gta/test/coverage_gate_test.dart`
 - `origna_gta/integration_test/coverage_gate_integration_test.dart`
-- `e2e/playwright_ui/coverage-gate.spec.ts`
-- `e2e/playwright_ui/coverage_gate.ts`
-- `e2e/playwright.config.dev.ts` skips `global-setup.ts` when `E2E_SKIP_GLOBAL_SETUP=true`, which keeps the coverage-only Playwright gate off the auth prewarm path.
+- `e2e/agent-browser_ui/coverage-gate.spec.ts`
+- `e2e/agent-browser_ui/coverage_gate.ts`
+- `e2e/agent-browser.config.dev.ts` skips `global-setup.ts` when `E2E_SKIP_GLOBAL_SETUP=true`, which keeps the coverage-only agent-browser gate off the auth prewarm path.
 
 
 ## Flutter Web performance (release checklist)
