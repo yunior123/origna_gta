@@ -58,6 +58,7 @@ dependencies:
   flutter_native_splash: ^2.4.7
   shared_preferences: ^2.3.5
   web: ^1.1.1
+  connectivity_plus: ^6.1.0
 
   # JSON serialization with immutable models
   freezed_annotation: ^3.1.0

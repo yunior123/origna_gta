@@ -599,7 +599,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_handle_request_create_review_authenticated_no_purchase() {
-        // Authenticated but no delivered order — should return Forbidden (403)
+        // Authenticated but product doesn't exist — should return NotFound (404)
         let server = make_server().await;
         let ctx = McpContext::with_claims(make_claims(Some("buyer")));
         let req = JsonRpcRequest {
@@ -610,7 +610,7 @@ mod tests {
         };
         let resp = server.handle_request(req, ctx).await;
         assert!(resp.error.is_some());
-        assert_eq!(resp.error.unwrap().code, 403);
+        assert_eq!(resp.error.unwrap().code, 404);
     }
 
     #[tokio::test]

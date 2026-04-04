@@ -1,7 +1,7 @@
 # STATE.md — Current Verified State
 
 ## Snapshot
-- Date: `2026-04-03` (full runbook execution)
+- Date: `2026-04-04` (full runbook execution complete)
 - Critical path: backend live -> Flutter live -> E2E/design
 
 ## VPS / Runtime

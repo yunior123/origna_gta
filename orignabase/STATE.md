@@ -1,5 +1,37 @@
 # STATE.md — Audit Findings & Tasks (2026-03-22)
 
+## Full 15-Skill Audit — 2026-04-03
+
+### Quorum-Verified Critical Fixes (7/7 CONFIRMED)
+
+- [x] MCP: Price manipulation — `create_checkout` now fetches prices from DB, validates lifecycle status and stock
+- [x] MCP: Return request IDOR — `request_return` now verifies ownership, delivered status, 30-day window
+- [x] MCP: Idempotency wired — `create_checkout` and `add_to_cart` now use `IdempotencyTracker`
+- [x] MCP: Admin tools wired — `get_analytics` queries real orders/products, `create_review` persists to DB
+- [x] Auth: HS256 fallback blocked in production — panics if RSA keys unavailable
+- [x] Auth: Test mode bypass restricted — `OB_TEST_MODE=1` only allowed in dev/test environments
+- [x] Webhook dedup TOCTOU — removed redundant `get_document` check, relies on atomic `create_document`
+
+### MCP Fixes Summary
+- `orders.rs`: `create_checkout` fetches product prices from DB, validates `lifecycleStatus == "active"`, checks `stockQuantity >= requested`. Strips `collection:` prefix from IDs for DB lookups.
+- `orders.rs`: `request_return` fetches order, verifies `buyerId == user_id`, checks `orderStatus == "delivered"`, validates 30-day window from `deliveredAt`
+- `orders.rs`: `get_order` strips collection prefix from order_id for DB lookup
+- `shopping.rs`: `add_to_cart` wired with `IdempotencyTracker` — returns cached response for duplicate keys
+- `admin.rs`: `get_analytics` queries delivered orders, calculates revenue/avg/platform_fee, returns top 5 products by purchaseCount
+- `admin.rs`: `create_review` validates product exists, persists review to `reviews` collection
+- `server.rs`: Wired `idempotency` tracker to `create_checkout` and `add_to_cart` handlers
+
+### Notes Inventory — All Wired
+- 2 UNWIRED items fixed: `get_analytics` and `create_review` now query/persist to DB
+- All `// NOTE: state.db` comments in MCP tools resolved
+- 9 FEATURE_GAP items documented (pgvector, FieldValue, down migrations, S3/R2, co-purchase, French docs, store URLs, cron, OpenClaw) — deferred to future work
+- 6 TEST_GAP items documented (3DS flows, stock-notif UI, accessibility, bulk-upload, MFA UI, FCM in tests) — deferred
+
+### Test Results
+- `cargo clippy -- -D warnings`: PASS (0 warnings)
+- `cargo test -p ob-mcp`: 166 passed, 3 failed (all pre-existing catalog/search DB issues)
+- `cargo check` (full workspace): PASS
+
 ## Security Audit — Rust Backend
 
 ### P0 — Critical (FIXED 2026-03-22)

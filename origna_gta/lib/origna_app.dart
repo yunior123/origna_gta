@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:app_links/app_links.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -1075,6 +1076,16 @@ class _OrignaAppState extends ConsumerState<OrignaApp>
     Duration timeInBackground,
   ) async {
     try {
+      // Skip refresh if device is offline — saves unnecessary network calls
+      final connectivityResults = await Connectivity().checkConnectivity();
+      if (connectivityResults.contains(ConnectivityResult.none)) {
+        AppLogger.d(
+          'Skipping resume refresh — device is offline',
+          tag: 'lifecycle',
+        );
+        return;
+      }
+
       AppLogger.d(
         'App resumed after ${timeInBackground.inMinutes}min — validating session and refreshing cart',
         tag: 'lifecycle',
