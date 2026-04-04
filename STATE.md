@@ -58,6 +58,62 @@ Full audit completed: 56 unique magic string sites identified across Rust and Da
 - `ob-handlers/subscriptions.rs`, `connect.rs`: `"userId"` validation messages (API contract)
 - Dart: Geoapify keys, GA4 analytics keys, CSV column names (external formats)
 
+## Load Tests — 2026-04-04
+
+| Test | VUs | Duration | Result | Notes |
+|------|-----|----------|--------|-------|
+| Auth storm | 10 | 30s | 137/137 (100%) | avg 2.24s, p95 2.59s |
+| Checkout stress | 50 | 60s | 2650/2650 (100%) | 0% error rate, p95 153ms |
+
+## Coverage Notes — 2026-04-04
+
+### Rust Payment Modules (well-covered)
+- `capture.rs`: 20 tests
+- `checkout.rs`: 58 tests
+- `connect.rs`: 17 tests
+- `providers.rs`: 35 tests
+- `subscriptions.rs`: 74 tests
+- `webhooks.rs`: 139 tests
+- **Total: 343 payment tests**
+
+### Flutter Coverage Gaps
+- `orignabase_checkout_provider.dart`: 0 dedicated test files (critical checkout integration)
+- `.freezed.dart` files: generated, no direct tests needed
+- All other critical modules have 2+ test files
+
+### Dead Code Cleanup
+- Deleted: `notification_viewmodel.dart` (0 references)
+- Deleted: `product_address_helpers.dart` (0 references)
+- Kept: `conf_services.dart`, `turnstile_service.dart`, `orignabase_digital_service.dart` (have active test references)
+
+## Load Tests — 2026-04-04
+
+| Test | VUs | Duration | Result | Notes |
+|------|-----|----------|--------|-------|
+| Auth storm | 10 | 30s | 137/137 (100%) | avg 2.24s, p95 2.59s |
+| Checkout stress | 50 | 60s | 2650/2650 (100%) | 0% error rate, p95 153ms |
+
+## Coverage Notes — 2026-04-04
+
+### Rust Payment Modules (well-covered)
+- `capture.rs`: 20 tests
+- `checkout.rs`: 58 tests
+- `connect.rs`: 17 tests
+- `providers.rs`: 35 tests
+- `subscriptions.rs`: 74 tests
+- `webhooks.rs`: 139 tests
+- **Total: 343 payment tests**
+
+### Flutter Coverage Gaps
+- `orignabase_checkout_provider.dart`: 0 dedicated test files (critical checkout integration)
+- `.freezed.dart` files: generated, no direct tests needed
+- All other critical modules have 2+ test files
+
+### Dead Code Cleanup
+- Deleted: `notification_viewmodel.dart` (0 references)
+- Deleted: `product_address_helpers.dart` (0 references)
+- Kept: `conf_services.dart`, `turnstile_service.dart`, `orignabase_digital_service.dart` (have active test references)
+
 ## Active Blockers
 - **Cron test `test_auto_capture_confirmed_receipts_flow`**: Pre-existing infrastructure issue — shared PostgreSQL test DB doesn't isolate between tests.
 - **CORS security**: Deploy needed (source code correct with explicit whitelisting)
