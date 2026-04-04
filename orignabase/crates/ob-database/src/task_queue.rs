@@ -130,6 +130,7 @@ impl TaskQueue {
                 payload JSONB NOT NULL DEFAULT '{}'::jsonb,
                 scheduled_at TIMESTAMPTZ,
                 locked_at TIMESTAMPTZ,
+                locked_by TEXT,
                 created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
                 started_at TIMESTAMPTZ,
                 completed_at TIMESTAMPTZ,
