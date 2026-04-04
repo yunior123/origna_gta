@@ -10,6 +10,13 @@
 - VPS: 7.5GB RAM (696MB used), 42GB disk free (43%), 6 containers running (all healthy)
 - Dev image: `2026-04-02 08:18:25 UTC`
 
+## Flutter Lifecycle Improvement — 2026-04-04
+- Added `connectivity_plus` dependency
+- `_refreshAfterResume()` now checks connectivity before session validation
+- Skips refresh when offline — saves unnecessary network calls
+- `flutter analyze`: 0 issues
+- `cargo clippy`: clean
+
 ## Backend Live — Verified 2026-04-03 (Full Wave)
 
 | Suite | Result | Notes |

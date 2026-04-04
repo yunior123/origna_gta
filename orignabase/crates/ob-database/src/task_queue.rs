@@ -116,9 +116,35 @@ impl TaskQueue {
         Self { db }
     }
 
-    /// Ensure the _task_queue table has all required columns.
+    /// Ensure the _task_queue table exists and has all required columns.
     /// Handles schema evolution for existing databases.
     async fn ensure_schema(&self) -> Result<()> {
+        // Create the table if it doesn't exist
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS _task_queue (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                job_name TEXT NOT NULL,
+                queue TEXT NOT NULL DEFAULT 'default',
+                status TEXT NOT NULL DEFAULT 'pending',
+                payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+                scheduled_at TIMESTAMPTZ,
+                locked_at TIMESTAMPTZ,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+                started_at TIMESTAMPTZ,
+                completed_at TIMESTAMPTZ,
+                retry_count INT NOT NULL DEFAULT 0,
+                max_retries INT NOT NULL DEFAULT 3,
+                priority INT NOT NULL DEFAULT 0,
+                error_message TEXT
+            )
+            "#,
+        )
+        .execute(self.db.inner().pool())
+        .await
+        .map_err(|e| Error::Database(format!("Failed to create _task_queue table: {e}")))?;
+
+        // Add missing columns for schema evolution
         sqlx::query(
             r#"ALTER TABLE _task_queue ADD COLUMN IF NOT EXISTS queue TEXT NOT NULL DEFAULT 'default'"#,
         )
