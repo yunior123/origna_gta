@@ -346,8 +346,9 @@ async fn try_store_webhook_event_atomic(
         ));
     }
 
-    // Strict INSERT (no ON CONFLICT) — fails on duplicate ID for atomic dedup.
-    // This eliminates the TOCTOU race between is_duplicate_webhook + store_webhook_event.
+    // Atomic dedup via create_document — relies on DB-level unique constraint on ID.
+    // No check-then-create TOCTOU: we attempt the INSERT directly and catch duplicate errors.
+    // This is the only reliable way to prevent duplicate webhook processing under concurrency.
     let event_data = serde_json::json!({
         fields::ID: event.id,
         fields::TYPE: event.r#type,
@@ -356,19 +357,14 @@ async fn try_store_webhook_event_atomic(
         fields::PROCESSED: true,
         fields::DATA: event.data,
     });
-    // P0 FIX: Check-then-create with parameterized queries — no SQL interpolation.
-    // First check if event already exists (idempotency).
-    if state.db.get_document(collections::WEBHOOK_EVENTS, &event.id).await.is_ok() {
-        return Ok(false); // Duplicate — caller returns "duplicate" response
-    }
+
     let result = state
         .db
-        .create_document(collections::WEBHOOK_EVENTS, event_data.clone())
-        .await
-        .map(|v| vec![v]);
+        .create_document(collections::WEBHOOK_EVENTS, event_data)
+        .await;
 
     match result {
-        Ok(_) => Ok(true), // New event, proceed
+        Ok(_) => Ok(true),
         Err(e) => {
             let err_str = e.to_string();
             if err_str.contains("already exists")
@@ -376,9 +372,9 @@ async fn try_store_webhook_event_atomic(
                 || err_str.contains("unique constraint")
                 || err_str.contains("RecordIdAlreadyExists")
             {
-                Ok(false) // Duplicate, skip
+                Ok(false)
             } else {
-                Err(e) // Real error, propagate
+                Err(e)
             }
         }
     }

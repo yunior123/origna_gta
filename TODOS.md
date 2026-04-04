@@ -190,3 +190,4 @@ Start only after Phases 1 through 3 are stable.
 - [ ] use them all for full audit:/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/.claude/skills
 - [ ] improve previews, cover all gaps
 - [ ] audit and improve skills, claude.md, agents.md, etc
+- [ ] track all notes in app and make sure all is wired

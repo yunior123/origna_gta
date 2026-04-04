@@ -39,14 +39,15 @@ pub fn assert_no_live_stripe_in_dev(stripe_key: &str) {
     }
 }
 
-/// Panics at startup if OB_TEST_MODE=1 in production environment.
-/// Call this during server initialization to prevent accidental production bypass.
+/// Panics at startup if OB_TEST_MODE=1 in anything other than development or test.
+/// Call this during server initialization to prevent accidental auth bypass.
 pub fn assert_test_mode_not_in_production() {
     let test_mode = std::env::var("OB_TEST_MODE").unwrap_or_default() == "1";
     let environment = std::env::var("ENVIRONMENT").unwrap_or_default();
-    if test_mode && environment == "production" {
+    if test_mode && environment != "development" && environment != "test" {
         panic!(
-            "FATAL: OB_TEST_MODE=1 is set in production environment. This bypasses authentication and is a critical security risk. Remove OB_TEST_MODE or set ENVIRONMENT to a non-production value."
+            "FATAL: OB_TEST_MODE=1 is only allowed in development or test environments. \
+             Current environment: '{environment}'. This bypasses authentication and is a critical security risk."
         );
     }
 }

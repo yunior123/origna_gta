@@ -101,7 +101,7 @@ impl OrignaGtaMcp {
 
     async fn add_to_cart(&self, params: &Value, ctx: &McpContext) -> McpResult<Value> {
         let user_id = ctx.user_id()?;
-        tools::shopping::add_to_cart(self.state.clone(), &user_id, params).await
+        tools::shopping::add_to_cart(self.state.clone(), &user_id, params, Some(&self.idempotency)).await
     }
 
     async fn remove_from_cart(&self, params: &Value, ctx: &McpContext) -> McpResult<Value> {
@@ -137,6 +137,7 @@ impl OrignaGtaMcp {
             &user_id,
             params,
             Some(&self.spend_limit),
+            Some(&self.idempotency),
         )
         .await
     }

@@ -906,54 +906,56 @@ async fn serve(config: Config) -> Result<()> {
     );
 
     // --- JWT Keys ---
-    // Try RS256 (auto-generate if keys don't exist), fall back to HS256
+    // Require RS256 (RSA keys) in production; HS256 fallback only for dev/test
     let jwt_keys = {
         let keys_dir = std::path::Path::new("./data/keys");
         let private_path = keys_dir.join("jwt_private.pem");
         let public_path = keys_dir.join("jwt_public.pem");
+        let environment = std::env::var("ENVIRONMENT").unwrap_or_default();
+        let is_production = environment == "production";
 
-        if private_path.exists() && public_path.exists() {
-            let private_pem = std::fs::read(&private_path)?;
-            let public_pem = std::fs::read(&public_path)?;
-            match ob_auth::JwtKeys::from_rsa_pem(&private_pem, &public_pem) {
-                Ok(keys) => {
-                    tracing::info!(
-                        "Using RS256 JWT signing (RSA keys from {})",
-                        keys_dir.display()
-                    );
-                    keys
-                }
-                Err(e) => {
-                    tracing::warn!("Invalid RSA keys, falling back to HS256: {e}");
-                    ob_auth::JwtKeys::from_secret(&config.auth.jwt_secret)
-                }
+        let try_load_rsa = || -> Option<ob_auth::JwtKeys> {
+            if private_path.exists() && public_path.exists() {
+                let private_pem = std::fs::read(&private_path).ok()?;
+                let public_pem = std::fs::read(&public_path).ok()?;
+                ob_auth::JwtKeys::from_rsa_pem(&private_pem, &public_pem).ok()
+            } else {
+                None
             }
-        } else {
-            // Try to auto-generate RSA keys
+        };
+
+        let try_generate_rsa = || -> Option<ob_auth::JwtKeys> {
             match ob_auth::generate_rsa_keys(keys_dir) {
                 Ok((private_pem, public_pem)) => {
-                    match ob_auth::JwtKeys::from_rsa_pem(&private_pem, &public_pem) {
-                        Ok(keys) => {
-                            tracing::info!(
-                                "Auto-generated RS256 JWT keys at {}",
-                                keys_dir.display()
-                            );
-                            keys
-                        }
-                        Err(e) => {
-                            tracing::warn!("Failed to load generated RSA keys: {e}");
-                            ob_auth::JwtKeys::from_secret(&config.auth.jwt_secret)
-                        }
-                    }
+                    ob_auth::JwtKeys::from_rsa_pem(&private_pem, &public_pem).ok()
                 }
                 Err(e) => {
-                    tracing::warn!(
-                        "Could not generate RSA keys (openssl not found?), using HS256: {e}"
-                    );
-                    ob_auth::JwtKeys::from_secret(&config.auth.jwt_secret)
+                    tracing::warn!("Could not generate RSA keys: {e}");
+                    None
                 }
             }
-        }
+        };
+
+        try_load_rsa()
+            .or_else(|| {
+                tracing::info!("RSA keys not found, attempting auto-generation");
+                try_generate_rsa()
+            })
+            .inspect(|_| {
+                tracing::info!("Using RS256 JWT signing (RSA keys from {})", keys_dir.display());
+            })
+            .unwrap_or_else(|| {
+                if is_production {
+                    panic!(
+                        "FATAL: RS256 RSA keys are required in production but could not be loaded or generated. \
+                         Ensure openssl is installed and ./data/keys/ is writable. \
+                         HS256 fallback is not permitted in production."
+                    );
+                } else {
+                    tracing::warn!("RSA keys unavailable, falling back to HS256 (dev/test only)");
+                    ob_auth::JwtKeys::from_secret(&config.auth.jwt_secret)
+                }
+            })
     };
 
     // --- Auth ---
