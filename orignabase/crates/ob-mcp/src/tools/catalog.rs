@@ -284,7 +284,7 @@ mod tests {
     async fn test_get_product_returns_real_data() {
         let state = make_state().await;
         // Insert a product first
-        state.db.upsert_document("products", "products:test1", &json!({
+        state.db.upsert_document("products", "products:test1", json!({
             "name": "Test Product",
             "description": "A test product",
             "priceCents": 1500,
@@ -337,7 +337,7 @@ mod tests {
     async fn test_check_inventory_returns_real_stock() {
         let state = make_state().await;
         // Insert a product
-        state.db.upsert_document("products", "products:inv1", &json!({
+        state.db.upsert_document("products", "products:inv1", json!({
             "name": "Stocked Item",
             "stockQuantity": 42,
             "lifecycleStatus": "active"
@@ -354,7 +354,7 @@ mod tests {
     #[tokio::test]
     async fn test_check_inventory_out_of_stock() {
         let state = make_state().await;
-        state.db.upsert_document("products", "products:oos1", &json!({
+        state.db.upsert_document("products", "products:oos1", json!({
             "name": "Out of Stock",
             "stockQuantity": 0,
             "lifecycleStatus": "active"
