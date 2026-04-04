@@ -22,6 +22,7 @@ Record every completed, blocked, or verified checkpoint in `STATE.md` immediatel
 - [ ] Document as you fix
 - [ ] Deploy all then use agent-browser to test the changes
 - [ ] Live tests are mandatory, do not skip them
+- [ ] No sql injection
 
 ## Definition Of Done
 
@@ -191,3 +192,5 @@ Start only after Phases 1 through 3 are stable.
 - [ ] improve previews, cover all gaps
 - [ ] audit and improve skills, claude.md, agents.md, etc
 - [ ] track all notes in app and make sure all is wired
+- [ ] increase number of live tests 
+- [ ] increase number of e2e visual tests, cover all gaps, execute them, debug, fix ui ux errors or issues
