@@ -1397,7 +1397,7 @@ impl DatabaseStore for PgDatabaseStore {
         data: Value,
     ) -> AppResult<Value> {
         // For now, treat as a regular merge update.
-        // TODO Phase 2: Translate FieldValue markers (_increment, _arrayUnion, etc.)
+        // TODO: Translate FieldValue markers (_increment, _arrayUnion, etc.)
         // to PostgreSQL JSONB operations.
         self.update_document(collection, id, data).await
     }
