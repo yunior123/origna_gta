@@ -39,7 +39,7 @@ jobs:
         run: cd orignabase && cargo clippy -- -D warnings
       - name: Unit tests
         env:
-          DATABASE_URL: postgres://postgres:postgres@localhost:5432/test_db
+          OB_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/test_db
         run: cd orignabase && cargo test
       - name: Notify on failure
         if: failure()
