@@ -159,4 +159,12 @@ All parking lot items audited and documented. Prioritize core gates before these
 - `2478ea9d5`: Phase 0-1 fixes (money handling, TODOs, push_notifications pass)
 - `7a9f9dc00`: STATE.md update
 
-Next: Phase 5 (reliability/stress/benchmarks after phases 1-3 stable), Phase 6 (coverage boost).
+## Phase 5 Reliability/Stress Tests (2026-04-03)
+| Test Suite | Result | Time |
+|------------|--------|------|
+| reliability_test | 15/15 PASS | 10.2s |
+| stress_test | 9/9 PASS | 37.2s |
+
+All phases 0-5 executed successfully. Flutter analyze clean. E2E 85+ tests pass. Backend live tests pass. 
+
+Next: Phase 6 (coverage boost) - push coverage higher only after live-path correctness is stable.
