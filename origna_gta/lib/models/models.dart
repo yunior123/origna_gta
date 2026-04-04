@@ -1237,11 +1237,11 @@ class UserModel {
       if (r is UserRole) return r;
       final s = r.toString();
       switch (s) {
-        case 'admin':
+        case UserRoleValues.admin:
           return UserRole.admin;
-        case 'seller':
+        case UserRoleValues.seller:
           return UserRole.seller;
-        case 'buyer':
+        case UserRoleValues.buyer:
         default:
           return UserRole.buyer;
       }

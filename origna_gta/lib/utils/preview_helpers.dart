@@ -203,11 +203,11 @@ class _PhoneChromePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final borderPaint = Paint()
-      ..color = isDark ? const Color(0xFF3A3A5C) : const Color(0xFFCCCCDD)
+      ..color = isDark ? DesignTokens.darkOutline : DesignTokens.outlineVariant
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2;
     final notchPaint = Paint()
-      ..color = isDark ? const Color(0xFF0A0A1A) : const Color(0xFFDDDDE8);
+      ..color = isDark ? DesignTokens.darkBackground : DesignTokens.surface;
     final homeBarPaint = Paint()
       ..color = isDark
           ? DesignTokens.white.withAlpha(100)
@@ -316,11 +316,11 @@ class _TabletChromePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final borderPaint = Paint()
-      ..color = isDark ? const Color(0xFF3A3A5C) : const Color(0xFFCCCCDD)
+      ..color = isDark ? DesignTokens.darkOutline : DesignTokens.outlineVariant
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5;
     final cameraPaint = Paint()
-      ..color = isDark ? const Color(0xFF2A2A4A) : const Color(0xFF707080);
+      ..color = isDark ? DesignTokens.darkSurface : DesignTokens.textSecondary;
 
     canvas.drawRRect(
       RRect.fromRectAndRadius(
@@ -388,15 +388,15 @@ class _BrowserChromeBar extends StatelessWidget {
     return Container(
       width: width,
       height: height,
-      color: isDark ? const Color(0xFF2A2A40) : const Color(0xFFF0F0F5),
+      color: isDark ? DesignTokens.darkSurface : DesignTokens.surfaceVariant,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Row(
         children: [
-          _dot(const Color(0xFFFF5F57)),
+          _dot(DesignTokens.error),
           const SizedBox(width: 5),
-          _dot(const Color(0xFFFFBD2E)),
+          _dot(DesignTokens.warning),
           const SizedBox(width: 5),
-          _dot(const Color(0xFF28CA41)),
+          _dot(DesignTokens.success),
           const SizedBox(width: 10),
           Expanded(
             child: Container(
@@ -698,7 +698,6 @@ class _PreviewUserRepository implements UserRepository {
       Stream.value(
         const SellerAccountStatus(isSeller: false, chargesEnabled: false),
       );
-
 }
 
 // ============================================================================

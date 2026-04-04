@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/widget_previews.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:origna_gta/utils/preview_helpers.dart';
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
@@ -340,3 +342,38 @@ class _EmailVerificationRequiredScreenState
     }
   }
 }
+
+@Preview(
+  name: 'Email Verification — Mobile',
+  group: 'EmailVerification',
+  size: Size(390, 844),
+)
+Widget previewEmailVerificationMobile() =>
+    previewMobile(child: const EmailVerificationRequiredScreen());
+
+@Preview(
+  name: 'Email Verification — Tablet',
+  group: 'EmailVerification',
+  size: Size(768, 1024),
+)
+Widget previewEmailVerificationTablet() =>
+    previewTablet(child: const EmailVerificationRequiredScreen());
+
+@Preview(
+  name: 'Email Verification — Desktop',
+  group: 'EmailVerification',
+  size: Size(1280, 800),
+)
+Widget previewEmailVerificationDesktop() =>
+    previewDesktop(child: const EmailVerificationRequiredScreen());
+
+@Preview(
+  name: 'Email Verification — Light',
+  group: 'EmailVerification',
+  size: Size(390, 844),
+  brightness: Brightness.light,
+)
+Widget previewEmailVerificationLight() => previewMobile(
+  child: const EmailVerificationRequiredScreen(),
+  theme: previewLightTheme,
+);

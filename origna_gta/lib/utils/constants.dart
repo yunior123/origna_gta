@@ -291,8 +291,8 @@ class SellerDeliveryOption {
 
   static SellerDeliveryOption? fromMap(Map<String, dynamic> map) {
     // New schema (costCents)
-    if (map.containsKey('type') || map.containsKey('costCents')) {
-      final rawDiscounts = map['quantityDiscounts'];
+    if (map.containsKey(Fields.type) || map.containsKey(Fields.costCents)) {
+      final rawDiscounts = map[Fields.quantityDiscounts];
       final discounts = rawDiscounts is List
           ? rawDiscounts
                 .whereType<Map<dynamic, dynamic>>()
@@ -305,15 +305,16 @@ class SellerDeliveryOption {
           : const <ShippingQuantityDiscount>[];
 
       return SellerDeliveryOption(
-        type: map['type'] as String? ?? '',
-        description: map['description'] as String? ?? '',
-        costCents: (map['costCents'] as num?)?.toInt() ?? 0,
-        estimatedDays: (map['estimatedDays'] as num?)?.toInt() ?? 0,
+        type: map[Fields.type] as String? ?? '',
+        description: map[Fields.description] as String? ?? '',
+        costCents: (map[Fields.costCents] as num?)?.toInt() ?? 0,
+        estimatedDays: (map[Fields.estimatedDays] as num?)?.toInt() ?? 0,
         quantityDiscounts: discounts,
-        maxItemsPerShipment: (map['maxItemsPerShipment'] as num?)?.toInt() ?? 0,
+        maxItemsPerShipment:
+            (map[Fields.maxItemsPerShipment] as num?)?.toInt() ?? 0,
         additionalItemCostCents:
-            (map['additionalItemCostCents'] as num?)?.toInt() ?? 0,
-        availableNationwide: map['availableNationwide'] as bool? ?? true,
+            (map[Fields.additionalItemCostCents] as num?)?.toInt() ?? 0,
+        availableNationwide: map[Fields.availableNationwide] as bool? ?? true,
       );
     }
 
@@ -376,14 +377,14 @@ class SellerDeliveryOption {
     // Apply quantity discount
     if (bestDiscount != null) {
       switch (bestDiscount.discountType) {
-        case 'percent':
+        case DiscountTypeValues.percent:
           return baseCost * (1 - bestDiscount.discountValue / 100);
-        case 'fixed':
+        case DiscountTypeValues.fixed:
           return (baseCost - bestDiscount.discountValue).clamp(
             0,
             double.infinity,
           );
-        case 'flat_rate':
+        case DiscountTypeValues.flatRate:
           return bestDiscount.discountValue;
         default:
           return baseCost;
@@ -394,34 +395,37 @@ class SellerDeliveryOption {
   }
 
   Map<String, dynamic> toMap() => {
-    'type': type,
-    'description': description,
-    'costCents': costCents,
-    'estimatedDays': estimatedDays,
+    Fields.type: type,
+    Fields.description: description,
+    Fields.costCents: costCents,
+    Fields.estimatedDays: estimatedDays,
     if (quantityDiscounts.isNotEmpty)
-      'quantityDiscounts': quantityDiscounts.map((d) => d.toMap()).toList(),
-    if (maxItemsPerShipment != 0) 'maxItemsPerShipment': maxItemsPerShipment,
+      Fields.quantityDiscounts: quantityDiscounts
+          .map((d) => d.toMap())
+          .toList(),
+    if (maxItemsPerShipment != 0)
+      Fields.maxItemsPerShipment: maxItemsPerShipment,
     if (additionalItemCostCents != 0)
-      'additionalItemCostCents': additionalItemCostCents,
-    if (!availableNationwide) 'availableNationwide': availableNationwide,
+      Fields.additionalItemCostCents: additionalItemCostCents,
+    if (!availableNationwide) Fields.availableNationwide: availableNationwide,
   };
 
   /// Create default options for a new product
   static List<SellerDeliveryOption> defaultOptions() => [
     const SellerDeliveryOption(
-      type: 'standard',
+      type: DeliveryTypeValues.standard,
       description: 'Standard Delivery',
       costCents: 0,
       estimatedDays: 5,
     ),
     const SellerDeliveryOption(
-      type: 'express',
+      type: DeliveryTypeValues.express,
       description: 'Express Delivery',
       costCents: 999,
       estimatedDays: 2,
     ),
     const SellerDeliveryOption(
-      type: 'same_day',
+      type: DeliveryTypeValues.sameDay,
       description: 'Same Day Delivery',
       costCents: 1499,
       estimatedDays: 0,

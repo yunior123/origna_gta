@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/admin/admin_actions_viewmodel.dart';
 import 'package:origna_gta/features/admin/admin_providers.dart';
 import 'package:origna_gta/utils/constants.dart';
@@ -176,9 +177,9 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
                         searchQuery.isEmpty ||
                         name.contains(searchQuery) ||
                         email.contains(searchQuery);
-                    final matchesRole = roleFilter == 'all'
+                    final matchesRole = roleFilter == FilterValues.all
                         ? true
-                        : roleFilter == 'buyer'
+                        : roleFilter == UserRoleValues.buyer
                         ? !roles.contains(UserRole.seller) &&
                               !roles.contains(UserRole.admin)
                         : roles.any((r) => r.name == roleFilter);

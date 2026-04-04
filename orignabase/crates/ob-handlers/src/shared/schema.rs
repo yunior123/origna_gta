@@ -311,6 +311,53 @@ pub mod lifecycle_status {
 }
 
 // =============================================================================
+// RETURN REQUEST STATUS VALUES
+// =============================================================================
+
+pub mod return_request_status {
+    pub const REQUESTED: &str = "requested";
+    pub const APPROVED: &str = "approved";
+    pub const REJECTED: &str = "rejected";
+    pub const LABEL_ISSUED: &str = "label_issued";
+    pub const RECEIVED: &str = "received";
+    pub const REFUNDED: &str = "refunded";
+    pub const COMPLETED: &str = "completed";
+    pub const ESCALATED: &str = "escalated";
+}
+
+/// Return request action values
+pub mod return_actions {
+    pub const APPROVE: &str = "approve";
+    pub const ISSUE_LABEL: &str = "issue_label";
+    pub const MARK_RECEIVED: &str = "mark_received";
+    pub const REJECT: &str = "reject";
+    pub const ESCALATE: &str = "escalate";
+}
+
+// =============================================================================
+// DELIVERY ITEM STATUS VALUES
+// =============================================================================
+// DELIVERY ITEM STATUS VALUES
+// =============================================================================
+
+pub mod delivery_status {
+    pub const PENDING: &str = "pending";
+    pub const SHIPPED: &str = "shipped";
+    pub const DELIVERED: &str = "delivered";
+    pub const REFUNDED: &str = "refunded";
+}
+
+// =============================================================================
+// PAYOUT STATUS VALUES
+// =============================================================================
+
+pub mod payout_status {
+    pub const PROCESSING: &str = "processing";
+    pub const FAILED: &str = "failed";
+    pub const COMPLETED: &str = "completed";
+}
+
+// =============================================================================
 // FIELD NAMES - Database document field names
 // =============================================================================
 
@@ -387,6 +434,9 @@ pub mod fields {
     pub const RETURN_STATUS: &str = "returnStatus";
     pub const RETURN_ID: &str = "returnId";
     pub const RETURN_REASON: &str = "returnReason";
+    pub const RETURN_TRACKING_NUMBER: &str = "returnTrackingNumber";
+    pub const RETURN_ADMIN_NOTE: &str = "returnAdminNote";
+    pub const RETURN_REFUND_AMOUNT_CENTS: &str = "returnRefundAmountCents";
     pub const STATUS: &str = "status";
     pub const ITEMS: &str = "items";
     pub const TOTAL_AMOUNT_CENTS: &str = "totalAmountCents";
@@ -472,6 +522,7 @@ pub mod fields {
     pub const QUANTITY: &str = "quantity";
     pub const DELIVERED_AT: &str = "deliveredAt";
     pub const REFUNDED_AT: &str = "refundedAt";
+    pub const RESOLVED_AT: &str = "resolvedAt";
     pub const REFUND_REASON: &str = "refundReason";
     pub const REFUND_AMOUNT_CENTS: &str = "refundAmountCents";
     pub const REFUND_ID: &str = "refundId";

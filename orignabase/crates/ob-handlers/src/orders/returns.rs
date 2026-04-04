@@ -13,7 +13,7 @@ use ob_auth::middleware::AuthContext;
 use crate::HandlersState;
 use crate::push;
 use crate::shared::auth::resolve_self_user_id;
-use crate::shared::schema::{business_rules, collections, fields, notification_types};
+use crate::shared::schema::{business_rules, collections, delivery_status, fields, notification_types, return_request_status};
 use crate::shared::validation::{sanitize_html, validate_uid};
 
 // ---------------------------------------------------------------------------
@@ -372,10 +372,10 @@ fn assert_within_return_window(item: &Value) -> Result<(), ob_core::Error> {
 /// Valid return-request status transitions.
 fn valid_return_transitions(from: &str) -> Vec<&'static str> {
     match from {
-        "requested" => vec!["approved", "rejected"],
-        "approved" => vec!["label_issued", "received"],
-        "label_issued" => vec!["received"],
-        "received" => vec!["refunded"],
+        return_request_status::REQUESTED => vec![return_request_status::APPROVED, return_request_status::REJECTED],
+        return_request_status::APPROVED => vec![return_request_status::LABEL_ISSUED, return_request_status::RECEIVED],
+        return_request_status::LABEL_ISSUED => vec![return_request_status::RECEIVED],
+        return_request_status::RECEIVED => vec![return_request_status::REFUNDED],
         _ => vec![],
     }
 }
@@ -444,7 +444,7 @@ async fn create_return_request(
 
     // Must be delivered
     let item_status = str_field(item, fields::STATUS);
-    if item_status != "delivered" {
+    if item_status != delivery_status::DELIVERED {
         return Err(ob_core::Error::Validation(
             "Item must be marked as delivered before requesting a return".into(),
         ));
@@ -472,7 +472,7 @@ async fn create_return_request(
         .unwrap_or_default();
     for doc in &existing {
         let status = str_field(doc, fields::RETURN_STATUS);
-        if status != "rejected" && status != "refunded" {
+        if status != return_request_status::REJECTED && status != return_request_status::REFUNDED {
             return Err(ob_core::Error::Validation(
                 "A return request already exists for this item".into(),
             ));
@@ -492,7 +492,7 @@ async fn create_return_request(
         fields::TITLE: str_field(item, fields::NAME),
         fields::QUANTITY: item.get(fields::QUANTITY).and_then(|v| v.as_i64()).unwrap_or(1),
         fields::FULFILLMENT_WAREHOUSE_ID: str_field(item, fields::FULFILLMENT_WAREHOUSE_ID),
-        fields::RETURN_STATUS: "requested",
+        fields::RETURN_STATUS: return_request_status::REQUESTED,
         fields::RETURN_REASON: return_reason,
         fields::REQUESTED_AT: now,
         fields::UPDATED_AT: now,

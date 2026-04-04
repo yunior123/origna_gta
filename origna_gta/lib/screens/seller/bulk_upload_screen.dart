@@ -3,11 +3,13 @@ import 'dart:js_interop';
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/widget_previews.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/features/products/bulk_upload_state.dart';
 import 'package:origna_gta/features/products/bulk_upload_viewmodel.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:origna_gta/utils/preview_helpers.dart';
 import 'package:web/web.dart' as web;
 
 /// Bulk product upload screen.
@@ -366,3 +368,27 @@ class _BulkUploadScreenState extends ConsumerState<BulkUploadScreen> {
     );
   }
 }
+
+@Preview(
+  name: 'Bulk Upload — Mobile',
+  group: 'BulkUpload',
+  size: Size(390, 844),
+)
+Widget previewBulkUploadMobile() =>
+    previewMobile(child: const BulkUploadScreen());
+
+@Preview(
+  name: 'Bulk Upload — Tablet',
+  group: 'BulkUpload',
+  size: Size(768, 1024),
+)
+Widget previewBulkUploadTablet() =>
+    previewTablet(child: const BulkUploadScreen());
+
+@Preview(
+  name: 'Bulk Upload — Desktop',
+  group: 'BulkUpload',
+  size: Size(1280, 800),
+)
+Widget previewBulkUploadDesktop() =>
+    previewDesktop(child: const BulkUploadScreen());

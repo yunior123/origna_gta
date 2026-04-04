@@ -2235,8 +2235,8 @@ pub async fn admin_delete_user(
             .query_bind(query, json!({ "uid": user_id }))
             .await
             .map_err(|e| {
-                eprintln!(
-                    "Warning: Failed to delete related data for {}: {}",
+                tracing::warn!(
+                    "Failed to delete related data for {}: {}",
                     user_id, e
                 );
                 // Don't fail entire deletion if a related delete fails, but log it
@@ -2267,7 +2267,7 @@ pub async fn admin_delete_user(
         .create_document("admin_audit_logs", audit_log)
         .await
         .map_err(|e| {
-            eprintln!("Warning: Failed to log admin action: {}", e);
+            tracing::warn!("Failed to log admin action: {}", e);
         });
 
     Ok(Json(json!({

@@ -1,10 +1,13 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/widget_previews.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/models/generated/base_models.dart';
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:origna_gta/utils/preview_helpers.dart';
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
@@ -24,7 +27,6 @@ class AdminRequiredGate extends ConsumerWidget {
       userProfileProvider.select((a) => a.valueOrNull?.roles),
     );
 
-    // Still loading profile — show spinner
     if (profileRoles == null) {
       return Container(
         decoration: BoxDecoration(
@@ -37,7 +39,6 @@ class AdminRequiredGate extends ConsumerWidget {
       );
     }
 
-    // Not admin — redirect home
     if (!profileRoles.contains(UserRole.admin)) {
       return Container(
         decoration: BoxDecoration(
@@ -98,3 +99,46 @@ class AdminRequiredGate extends ConsumerWidget {
     return child;
   }
 }
+
+@Preview(
+  name: 'Admin Gate — Loading',
+  group: 'AdminRequiredGate',
+  size: Size(390, 844),
+)
+Widget previewAdminGateLoading() => previewWrapper(
+  child: const AdminRequiredGate(child: Text('Admin Content')),
+  breakpoint: PreviewBreakpoint.mobile,
+);
+
+@Preview(
+  name: 'Admin Gate — Access Denied',
+  group: 'AdminRequiredGate',
+  size: Size(390, 844),
+)
+Widget previewAdminGateDenied() => previewWrapper(
+  child: const AdminRequiredGate(child: Text('Admin Content')),
+  breakpoint: PreviewBreakpoint.mobile,
+);
+
+@Preview(
+  name: 'Admin Gate — Desktop',
+  group: 'AdminRequiredGate',
+  size: Size(1280, 800),
+)
+Widget previewAdminGateDesktop() => previewWrapper(
+  child: const AdminRequiredGate(child: Text('Admin Content')),
+  breakpoint: PreviewBreakpoint.desktop,
+);
+
+@Preview(
+  name: 'Admin Gate — Light',
+  group: 'AdminRequiredGate',
+  brightness: Brightness.light,
+  size: Size(390, 844),
+)
+Widget previewAdminGateLight() => previewWrapper(
+  theme: previewLightTheme,
+  background: DesignTokens.surface,
+  child: const AdminRequiredGate(child: Text('Admin Content')),
+  breakpoint: PreviewBreakpoint.mobile,
+);

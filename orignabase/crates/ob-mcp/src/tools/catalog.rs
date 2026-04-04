@@ -7,7 +7,7 @@ use serde_json::{Value, json};
 
 /// Search products by query, category, price range
 pub async fn search_products(state: McpState, params: &Value) -> McpResult<Value> {
-    let _query = params
+    let query = params
         .get(p::QUERY)
         .and_then(|v| v.as_str())
         .ok_or_else(|| McpError::InvalidParams("Missing 'query' parameter".to_string()))?;
@@ -16,11 +16,13 @@ pub async fn search_products(state: McpState, params: &Value) -> McpResult<Value
     let min_price = params.get(p::MIN_PRICE).and_then(|v| v.as_u64());
     let max_price = params.get(p::MAX_PRICE).and_then(|v| v.as_u64());
     let raw_limit = params.get(p::LIMIT).and_then(|v| v.as_u64()).unwrap_or(20);
-    let limit = raw_limit.clamp(1, 100);
-    let offset = params.get(p::OFFSET).and_then(|v| v.as_u64()).unwrap_or(0);
+    let limit = raw_limit.clamp(1, 100) as usize;
+    let offset = params.get(p::OFFSET).and_then(|v| v.as_u64()).unwrap_or(0) as usize;
 
-    // If Meilisearch is available, use it; otherwise fall back to PostgreSQL
-    if let Some(_search) = &state.search {
+    // If Meilisearch is available and enabled, use it
+    if let Some(search) = &state.search
+        && search.is_enabled()
+    {
         // Build Meilisearch filter query
         let mut filters = Vec::new();
         if let Some(cat) = category {
@@ -35,35 +37,71 @@ pub async fn search_products(state: McpState, params: &Value) -> McpResult<Value
         }
         filters.push("lifecycleStatus = 'active'".to_string());
 
-        // Call Meilisearch
-        let _filter_str = if filters.is_empty() {
+        let filter_str = if filters.is_empty() {
             None
         } else {
             Some(filters.join(" AND "))
         };
 
-        // NOTE: This calls search.search() method which would be implemented in ob-search
-        // For now, stub the response
-        return Ok(json!({
-            "results": [],
-            "total": 0,
-            "limit": limit,
-            "offset": offset
-        }));
+        match search.search("products", query, Some(limit), Some(offset), filter_str.as_deref()).await {
+            Ok(result) => {
+                return Ok(json!({
+                    "results": result.hits,
+                    "total": result.estimated_total_hits.unwrap_or(0),
+                    "limit": limit,
+                    "offset": offset
+                }));
+            }
+            Err(e) => {
+                // Log but fall through to PostgreSQL fallback
+                tracing::warn!("Meilisearch failed, falling back to PostgreSQL: {e}");
+            }
+        }
     }
 
-    // Fallback: PostgreSQL query
-    // NOTE: In production, construct PostgreSQL query via state.db
+    // Fallback: PostgreSQL query via query_raw
+    let mut conditions = vec![
+        "data->>'lifecycleStatus' = 'active'".to_string(),
+    ];
+
+    // Search by name/description using ILIKE
+    let safe_query = query.replace('\'', "''");
+    conditions.push(format!(
+        "(data->>'name' ILIKE '%{}%' OR data->>'description' ILIKE '%{}%')",
+        safe_query, safe_query
+    ));
+
+    if let Some(cat) = category {
+        let safe_cat = cat.replace('\'', "''");
+        conditions.push(format!("(data->>'categoryId')::int = {}", safe_cat));
+    }
+    if let Some(min) = min_price {
+        conditions.push(format!("(data->>'priceCents')::bigint >= {}", min));
+    }
+    if let Some(max) = max_price {
+        conditions.push(format!("(data->>'priceCents')::bigint <= {}", max));
+    }
+
+    let where_clause = conditions.join(" AND ");
+    let sql = format!(
+        "SELECT data FROM products WHERE {} ORDER BY data->>'createdAt' DESC LIMIT {} OFFSET {}",
+        where_clause, limit, offset
+    );
+
+    let rows = state.db.query_raw(&sql).await.map_err(|e| {
+        McpError::Internal(format!("PostgreSQL search failed: {e}"))
+    })?;
+
     Ok(json!({
-        "results": [],
-        "total": 0,
+        "results": rows,
+        "total": rows.len(),
         "limit": limit,
         "offset": offset
     }))
 }
 
 /// Get product by ID
-pub async fn get_product(_state: McpState, params: &Value) -> McpResult<Value> {
+pub async fn get_product(state: McpState, params: &Value) -> McpResult<Value> {
     let product_id = params
         .get(p::PRODUCT_ID)
         .and_then(|v| v.as_str())
@@ -77,20 +115,15 @@ pub async fn get_product(_state: McpState, params: &Value) -> McpResult<Value> {
     }
 
     // Fetch from PostgreSQL
-    // NOTE: state.db.get_document("products", product_id)
-    // For now, stub
-    Ok(json!({
-        "id": product_id,
-        "name": "Example Product",
-        "description": "Product description",
-        "priceCents": 10000,
-        "stockQuantity": 5,
-        "lifecycleStatus": "active"
-    }))
+    let product = state.db.get_document("products", product_id).await.map_err(|e| {
+        McpError::NotFound(format!("Product not found: {e}"))
+    })?;
+
+    Ok(product)
 }
 
 /// Check inventory for a product
-pub async fn check_inventory(_state: McpState, params: &Value) -> McpResult<Value> {
+pub async fn check_inventory(state: McpState, params: &Value) -> McpResult<Value> {
     let product_id = params
         .get(p::PRODUCT_ID)
         .and_then(|v| v.as_str())
@@ -103,12 +136,19 @@ pub async fn check_inventory(_state: McpState, params: &Value) -> McpResult<Valu
     }
 
     // Fetch stock from PostgreSQL
-    // NOTE: state.db.get_document("products", product_id)
-    // and extract stockQuantity field
+    let product = state.db.get_document("products", product_id).await.map_err(|e| {
+        McpError::NotFound(format!("Product not found: {e}"))
+    })?;
+
+    let stock_quantity = product
+        .get("stockQuantity")
+        .and_then(|v| v.as_i64())
+        .unwrap_or(0);
+
     Ok(json!({
         "product_id": product_id,
-        "stock_quantity": 5,
-        "available": true
+        "stock_quantity": stock_quantity,
+        "available": stock_quantity > 0
     }))
 }
 
@@ -218,16 +258,6 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_get_product_valid_id() {
-        let state = make_state().await;
-        let result = get_product(state, &json!({"product_id": "products:p1"}))
-            .await
-            .unwrap();
-        assert_eq!(result["id"], "products:p1");
-        assert!(result["priceCents"].is_number());
-    }
-
-    #[tokio::test]
     async fn test_get_product_invalid_format_no_colon() {
         let state = make_state().await;
         let result = get_product(state, &json!({"product_id": "p1"})).await;
@@ -243,15 +273,31 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_get_product_returns_expected_fields() {
+    async fn test_get_product_not_found() {
         let state = make_state().await;
-        let result = get_product(state, &json!({"product_id": "products:p1"}))
+        let result = get_product(state, &json!({"product_id": "products:nonexistent"})).await;
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), McpError::NotFound(_)));
+    }
+
+    #[tokio::test]
+    async fn test_get_product_returns_real_data() {
+        let state = make_state().await;
+        // Insert a product first
+        state.db.upsert_document("products", "products:test1", &json!({
+            "name": "Test Product",
+            "description": "A test product",
+            "priceCents": 1500,
+            "stockQuantity": 10,
+            "lifecycleStatus": "active"
+        })).await.unwrap();
+
+        let result = get_product(state, &json!({"product_id": "products:test1"}))
             .await
             .unwrap();
-        assert!(result["name"].is_string());
-        assert!(result["description"].is_string());
-        assert!(result["stockQuantity"].is_number());
-        assert_eq!(result["lifecycleStatus"], "active");
+        assert_eq!(result["name"], "Test Product");
+        assert_eq!(result["priceCents"], 1500);
+        assert_eq!(result["stockQuantity"], 10);
     }
 
     // ── check_inventory ──
@@ -262,17 +308,6 @@ mod tests {
         let result = check_inventory(state, &json!({})).await;
         assert!(result.is_err());
         assert!(matches!(result.unwrap_err(), McpError::InvalidParams(_)));
-    }
-
-    #[tokio::test]
-    async fn test_check_inventory_valid() {
-        let state = make_state().await;
-        let result = check_inventory(state, &json!({"product_id": "products:p1"}))
-            .await
-            .unwrap();
-        assert_eq!(result["product_id"], "products:p1");
-        assert!(result["stock_quantity"].is_number());
-        assert_eq!(result["available"], true);
     }
 
     #[tokio::test]
@@ -288,5 +323,47 @@ mod tests {
         let state = make_state().await;
         let result = check_inventory(state, &json!({"product_id": 123})).await;
         assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_check_inventory_not_found() {
+        let state = make_state().await;
+        let result = check_inventory(state, &json!({"product_id": "products:nonexistent"})).await;
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), McpError::NotFound(_)));
+    }
+
+    #[tokio::test]
+    async fn test_check_inventory_returns_real_stock() {
+        let state = make_state().await;
+        // Insert a product
+        state.db.upsert_document("products", "products:inv1", &json!({
+            "name": "Stocked Item",
+            "stockQuantity": 42,
+            "lifecycleStatus": "active"
+        })).await.unwrap();
+
+        let result = check_inventory(state, &json!({"product_id": "products:inv1"}))
+            .await
+            .unwrap();
+        assert_eq!(result["product_id"], "products:inv1");
+        assert_eq!(result["stock_quantity"], 42);
+        assert_eq!(result["available"], true);
+    }
+
+    #[tokio::test]
+    async fn test_check_inventory_out_of_stock() {
+        let state = make_state().await;
+        state.db.upsert_document("products", "products:oos1", &json!({
+            "name": "Out of Stock",
+            "stockQuantity": 0,
+            "lifecycleStatus": "active"
+        })).await.unwrap();
+
+        let result = check_inventory(state, &json!({"product_id": "products:oos1"}))
+            .await
+            .unwrap();
+        assert_eq!(result["stock_quantity"], 0);
+        assert_eq!(result["available"], false);
     }
 }

@@ -1,12 +1,14 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/widget_previews.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/orders/orders_provider.dart';
 import 'package:origna_gta/features/orders/return_request_viewmodel.dart';
 import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:origna_gta/utils/preview_helpers.dart';
 import 'package:origna_gta/utils/responsive_layout.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
@@ -530,3 +532,41 @@ class _ReturnRequestScreenState extends ConsumerState<ReturnRequestScreen> {
     );
   }
 }
+
+@Preview(
+  name: 'Return Request — Mobile',
+  group: 'ReturnRequest',
+  size: Size(390, 844),
+)
+Widget previewReturnRequestMobile() => previewMobile(
+  child: const ReturnRequestScreen(orderId: 'preview-order-id'),
+);
+
+@Preview(
+  name: 'Return Request — Tablet',
+  group: 'ReturnRequest',
+  size: Size(768, 1024),
+)
+Widget previewReturnRequestTablet() => previewTablet(
+  child: const ReturnRequestScreen(orderId: 'preview-order-id'),
+);
+
+@Preview(
+  name: 'Return Request — Desktop',
+  group: 'ReturnRequest',
+  size: Size(1280, 800),
+)
+Widget previewReturnRequestDesktop() => previewDesktop(
+  child: const ReturnRequestScreen(orderId: 'preview-order-id'),
+);
+
+@Preview(
+  name: 'Return Request — Light',
+  group: 'ReturnRequest',
+  size: Size(390, 844),
+  brightness: Brightness.light,
+)
+Widget previewReturnRequestLight() => previewMobile(
+  child: const ReturnRequestScreen(orderId: 'preview-order-id'),
+  theme: previewLightTheme,
+);
