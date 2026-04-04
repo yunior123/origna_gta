@@ -3,10 +3,10 @@ name: CI — OrignaBase Rust
 on:
   push:
     branches: ["main"]
-    paths: ['orignabase/**']
+    paths: ['orignabase/**', '.github/workflows/ci-rust.yml']
   pull_request:
     branches: ["main"]
-    paths: ['orignabase/**']
+    paths: ['orignabase/**', '.github/workflows/ci-rust.yml']
 
 jobs:
   rust-checks:
