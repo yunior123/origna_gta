@@ -141,6 +141,42 @@ impl PgDatabaseStore {
             ob_core::Error::Database(format!("Failed to migrate table {table}: {e}"))
         })?;
 
+        // Ensure the updated_at trigger function exists
+        sqlx::query(
+            r#"
+            CREATE OR REPLACE FUNCTION set_updated_at()
+            RETURNS TRIGGER AS $$
+            BEGIN
+                NEW.updated_at = now();
+                RETURN NEW;
+            END;
+            $$ LANGUAGE plpgsql;
+            "#
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| {
+            ob_core::Error::Database(format!("Failed to create set_updated_at function: {e}"))
+        })?;
+
+        // Ensure the updated_at trigger function exists
+        sqlx::query(
+            r#"
+            CREATE OR REPLACE FUNCTION set_updated_at()
+            RETURNS TRIGGER AS $$
+            BEGIN
+                NEW.updated_at = now();
+                RETURN NEW;
+            END;
+            $$ LANGUAGE plpgsql;
+            "#
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| {
+            ob_core::Error::Database(format!("Failed to create set_updated_at function: {e}"))
+        })?;
+
         // Ensure the updated_at trigger exists
         sqlx::query(&format!(
             r#"
