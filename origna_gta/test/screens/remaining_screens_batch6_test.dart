@@ -24,6 +24,7 @@ void main() {
       TestWrapper(
         overrides: [
           currentUserProvider.overrideWithValue(mockUser),
+          orderRepositoryProvider.overrideWithValue(FakeOrderRepository()),
         ],
         child: widget,
       ),

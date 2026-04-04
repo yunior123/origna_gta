@@ -53,6 +53,7 @@ void main() {
         TestWrapper(
           overrides: [
             currentUserProvider.overrideWithValue(mockUser),
+            orderRepositoryProvider.overrideWithValue(FakeOrderRepository()),
           ],
           child: const OrderSuccessScreen(orderId: 'order_123'),
         ),

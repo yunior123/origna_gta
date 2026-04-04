@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:origna_gta/core/repositories/order_repository.dart';
+import 'package:origna_gta/models/generated/models.dart' as models;
 
 import 'mock_asset_loader.dart';
 
@@ -52,4 +55,14 @@ class TestWrapper extends StatelessWidget {
 /// Helper to initialize necessary mocks for all tests
 void initTestMocks() {
   SharedPreferences.setMockInitialValues({});
+}
+
+/// A fake OrderRepository that returns null for fetchOrderById to prevent
+/// tests from crashing or throwing "Failed to verify payment status" warnings
+/// when the analytics service is invoked on the OrderSuccessScreen.
+class FakeOrderRepository extends Fake implements OrderRepository {
+  @override
+  Future<models.Order?> fetchOrderById(String orderId) async {
+    return null;
+  }
 }

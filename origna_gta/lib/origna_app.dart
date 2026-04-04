@@ -6,6 +6,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:origna_gta/core/lifecycle_provider.dart';
 import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:orignabase/orignabase.dart';
@@ -1022,6 +1023,7 @@ class _OrignaAppState extends ConsumerState<OrignaApp>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
+    ref.read(appLifecycleProvider.notifier).state = state;
     final previousState = _lastLifecycleState;
     _lastLifecycleState = state;
 

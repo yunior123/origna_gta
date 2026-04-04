@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:origna_gta/core/lifecycle_provider.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
@@ -114,10 +115,16 @@ final _sellerTermsAcceptedProvider = StateProvider.autoDispose<bool>(
 );
 
 class _SellerRegistrationScreenState
-    extends ConsumerState<SellerRegistrationScreen>
-    with WidgetsBindingObserver {
+    extends ConsumerState<SellerRegistrationScreen> {
   @override
   Widget build(BuildContext context) {
+    // When user returns from the browser (Stripe onboarding), refresh their status
+    ref.onResume(() {
+      ref
+          .read(sellerRegistrationViewModelProvider.notifier)
+          .refreshAccountStatus();
+    });
+
     final termsAccepted = ref.watch(_sellerTermsAcceptedProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     // Watch User Data
@@ -308,28 +315,6 @@ class _SellerRegistrationScreenState
         ),
       ),
     );
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    // When user returns from the browser (Stripe onboarding), refresh their status
-    if (state == AppLifecycleState.resumed) {
-      ref
-          .read(sellerRegistrationViewModelProvider.notifier)
-          .refreshAccountStatus();
-    }
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
   }
 
   // Status row builder - reserved for future use if needed

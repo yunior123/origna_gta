@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:origna_gta/screens/ordersuccess_screen.dart';
+import 'package:origna_gta/core/providers.dart';
 
 import '../test_utils.dart';
 
@@ -18,6 +19,9 @@ void main() {
     bool isLocalDelivery = false,
   }) {
     return TestWrapper(
+      overrides: [
+        orderRepositoryProvider.overrideWithValue(FakeOrderRepository()),
+      ],
       child: OrderSuccessScreen(
         orderId: orderId,
         valueCad: valueCad,

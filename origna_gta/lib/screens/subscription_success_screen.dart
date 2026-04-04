@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:origna_gta/core/lifecycle_provider.dart';
 import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
@@ -112,15 +113,22 @@ final _subscriptionTimedOutProvider = StateProvider.autoDispose<bool>(
 
 class _SubscriptionSuccessScreenState
     extends ConsumerState<SubscriptionSuccessScreen>
-    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
+    with SingleTickerProviderStateMixin {
   late final AnimationController _pulseController;
   late final Animation<double> _scaleAnimation;
   late final Animation<double> _glowAnimation;
   Timer? _activationTimeout;
-  DateTime? _backgroundTime;
 
   @override
   Widget build(BuildContext context) {
+    ref.onResume(() {
+      if (_activationTimeout?.isActive == true) {
+        // Force timeout on resume to ensure user sees manual refresh button if processing is slow
+        _activationTimeout?.cancel();
+        ref.read(_subscriptionTimedOutProvider.notifier).state = true;
+      }
+    });
+
     final timedOut = ref.watch(_subscriptionTimedOutProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     // Gate the success UI on actual isPremium=true from database
@@ -396,24 +404,7 @@ class _SubscriptionSuccessScreenState
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused) {
-      _backgroundTime = DateTime.now();
-    } else if (state == AppLifecycleState.resumed) {
-      if (_backgroundTime != null && _activationTimeout?.isActive == true) {
-        final elapsed = DateTime.now().difference(_backgroundTime!).inSeconds;
-        // If we were backgrounded for a long time, trigger timeout immediately on resume
-        if (elapsed > 10 && !ref.read(_subscriptionTimedOutProvider)) {
-          _activationTimeout?.cancel();
-          ref.read(_subscriptionTimedOutProvider.notifier).state = true;
-        }
-      }
-    }
-  }
-
-  @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
     _activationTimeout?.cancel();
     _pulseController.dispose();
     super.dispose();
@@ -422,7 +413,6 @@ class _SubscriptionSuccessScreenState
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1800),

@@ -95,12 +95,33 @@ List<Override> _baseOverrides({
 /// A fake HomeViewModel that starts with a given state and does not
 /// call loadProducts on construction (avoids needing backend services).
 class _FakeHomeViewModel extends HomeViewModel {
-  _FakeHomeViewModel(super.ref, HomeState initial) {
+  final Future<void> Function()? onLoadProductsCallback;
+  final void Function()? onDismissSearchOverlayCallback;
+
+  _FakeHomeViewModel(
+    Ref? ref,
+    HomeState initial, {
+    this.onLoadProductsCallback,
+    this.onDismissSearchOverlayCallback,
+  }) : super(ref as Ref) {
     state = initial;
   }
 
   @override
-  Future<void> loadProducts() async {}
+  Future<void> loadProducts() async {
+    if (onLoadProductsCallback != null) {
+      return onLoadProductsCallback!();
+    }
+  }
+
+  @override
+  void dismissSearchOverlay() {
+    if (onDismissSearchOverlayCallback != null) {
+      onDismissSearchOverlayCallback!();
+    } else {
+      super.dismissSearchOverlay();
+    }
+  }
 }
 
 void main() {
@@ -742,9 +763,9 @@ void main() {
   });
 
   // --------------------------------------------------------------------------
-  // 11. PAGINATION LOADER
+  // 11. PAGINATION LOADER & ON_SCROLL
   // --------------------------------------------------------------------------
-  group('HomeScreen - Pagination', () {
+  group('HomeScreen - Pagination & OnScroll', () {
     testWidgets('shows pagination loader when isLoadingMore', (tester) async {
       setMobileViewport(tester);
 
@@ -773,6 +794,250 @@ void main() {
       await tester.pump(const Duration(milliseconds: 500));
 
       // The pagination loader should be present somewhere in the tree
+      expect(find.byType(HomeScreen), findsOneWidget);
+      resetViewport(tester);
+    });
+
+    testWidgets('scrolling to bottom triggers pagination loadProducts', (tester) async {
+      setMobileViewport(tester);
+      final products = List.generate(
+        30,
+        (i) => _makeProduct(productId: 'p_$i', name: 'Product $i'),
+      );
+      
+      var loadCalled = false;
+
+      await tester.pumpWidget(
+        TestWrapper(
+          overrides: [
+            currentUserProvider.overrideWithValue(null),
+            userProfileProvider.overrideWith((ref) => Stream.value(null)),
+            productRepositoryProvider.overrideWithValue(mockProductRepo),
+            cartItemCountProvider.overrideWithValue(0),
+            mascotControllerProvider.overrideWithValue(mascotController),
+            mooseControllerProvider.overrideWithValue(mooseController),
+            homeViewModelProvider.overrideWith((ref) => _FakeHomeViewModel(
+              ref,
+              HomeState(
+                isLoading: false,
+                isLoadingMore: false,
+                hasMore: true,
+                products: products,
+              ),
+              onLoadProductsCallback: () async {
+                loadCalled = true;
+              },
+            )),
+          ],
+          child: const HomeScreen(),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      loadCalled = false;
+
+      final scrollable = tester.state<ScrollableState>(find.byType(Scrollable).first);
+      scrollable.position.jumpTo(scrollable.position.maxScrollExtent);
+      await tester.pump();
+      
+      expect(loadCalled, isTrue);
+      resetViewport(tester);
+    });
+
+    testWidgets('does not trigger pagination when already paginating', (tester) async {
+      setMobileViewport(tester);
+      final products = List.generate(
+        30,
+        (i) => _makeProduct(productId: 'p_$i', name: 'Product $i'),
+      );
+      
+      int loadCount = 0;
+
+      await tester.pumpWidget(
+        TestWrapper(
+          overrides: [
+            currentUserProvider.overrideWithValue(null),
+            userProfileProvider.overrideWith((ref) => Stream.value(null)),
+            productRepositoryProvider.overrideWithValue(mockProductRepo),
+            cartItemCountProvider.overrideWithValue(0),
+            mascotControllerProvider.overrideWithValue(mascotController),
+            mooseControllerProvider.overrideWithValue(mooseController),
+            homeViewModelProvider.overrideWith((ref) => _FakeHomeViewModel(
+              ref,
+              HomeState(
+                isLoading: false,
+                isLoadingMore: true, // Already paginating
+                hasMore: true,
+                products: products,
+              ),
+              onLoadProductsCallback: () async {
+                loadCount++;
+              },
+            )),
+          ],
+          child: const HomeScreen(),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      // Reset count after initial construction call
+      loadCount = 0;
+
+      final scrollable = tester.state<ScrollableState>(find.byType(Scrollable).first);
+      scrollable.position.jumpTo(scrollable.position.maxScrollExtent);
+      await tester.pump();
+      
+      expect(loadCount, 0); // Should not have triggered
+      resetViewport(tester);
+    });
+
+    testWidgets('handles synchronous error during loadProducts without crashing', (tester) async {
+      setMobileViewport(tester);
+      final products = List.generate(
+        30,
+        (i) => _makeProduct(productId: 'p_$i', name: 'Product $i'),
+      );
+      
+      bool allowErrors = false;
+
+      await tester.pumpWidget(
+        TestWrapper(
+          overrides: [
+            currentUserProvider.overrideWithValue(null),
+            userProfileProvider.overrideWith((ref) => Stream.value(null)),
+            productRepositoryProvider.overrideWithValue(mockProductRepo),
+            cartItemCountProvider.overrideWithValue(0),
+            mascotControllerProvider.overrideWithValue(mascotController),
+            mooseControllerProvider.overrideWithValue(mooseController),
+            homeViewModelProvider.overrideWith((ref) => _FakeHomeViewModel(
+              ref,
+              HomeState(
+                isLoading: false,
+                isLoadingMore: false,
+                hasMore: true,
+                products: products,
+              ),
+              onLoadProductsCallback: () async {
+                if (allowErrors) throw Exception('Simulated synchronous crash');
+              },
+            )),
+          ],
+          child: const HomeScreen(),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      allowErrors = true;
+
+      final scrollable = tester.state<ScrollableState>(find.byType(Scrollable).first);
+      scrollable.position.jumpTo(scrollable.position.maxScrollExtent);
+      await tester.pump();
+      
+      // Should not crash the tester
+      expect(find.byType(HomeScreen), findsOneWidget);
+      resetViewport(tester);
+    });
+
+    testWidgets('dismisses search overlay when scrolling', (tester) async {
+      setMobileViewport(tester);
+      final products = List.generate(
+        30,
+        (i) => _makeProduct(productId: 'p_$i', name: 'Product $i'),
+      );
+      
+      var overlayDismissed = false;
+
+      await tester.pumpWidget(
+        TestWrapper(
+          overrides: [
+            currentUserProvider.overrideWithValue(null),
+            userProfileProvider.overrideWith((ref) => Stream.value(null)),
+            productRepositoryProvider.overrideWithValue(mockProductRepo),
+            cartItemCountProvider.overrideWithValue(0),
+            mascotControllerProvider.overrideWithValue(mascotController),
+            mooseControllerProvider.overrideWithValue(mooseController),
+            homeViewModelProvider.overrideWith((ref) => _FakeHomeViewModel(
+              ref,
+              HomeState(
+                isLoading: false,
+                isLoadingMore: false,
+                hasMore: true,
+                products: products,
+                showSearchOverlay: true,
+              ),
+              onDismissSearchOverlayCallback: () {
+                overlayDismissed = true;
+              },
+            )),
+          ],
+          child: const HomeScreen(),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      
+      // Focus search bar first to trigger overlay dismissal logic
+      final searchField = find.byKey(const Key('home_search_field'));
+      await tester.tap(searchField);
+      await tester.pump(const Duration(milliseconds: 500)); // Allow keyboard/focus to settle
+
+      final scrollable = tester.state<ScrollableState>(find.byType(Scrollable).first);
+      // Give enough scroll to ensure maxScrollExtent > 0 triggers the listener
+      scrollable.position.jumpTo(100);
+      await tester.pump();
+      
+      expect(overlayDismissed, isTrue);
+      resetViewport(tester);
+    });
+
+    testWidgets('handles asynchronous error during loadProducts without crashing', (tester) async {
+      setMobileViewport(tester);
+      final products = List.generate(
+        30,
+        (i) => _makeProduct(productId: 'p_$i', name: 'Product $i'),
+      );
+      
+      bool allowErrors = false;
+
+      await tester.pumpWidget(
+        TestWrapper(
+          overrides: [
+            currentUserProvider.overrideWithValue(null),
+            userProfileProvider.overrideWith((ref) => Stream.value(null)),
+            productRepositoryProvider.overrideWithValue(mockProductRepo),
+            cartItemCountProvider.overrideWithValue(0),
+            mascotControllerProvider.overrideWithValue(mascotController),
+            mooseControllerProvider.overrideWithValue(mooseController),
+            homeViewModelProvider.overrideWith((ref) => _FakeHomeViewModel(
+              ref,
+              HomeState(
+                isLoading: false,
+                isLoadingMore: false,
+                hasMore: true,
+                products: products,
+              ),
+              onLoadProductsCallback: () {
+                if (allowErrors) return Future.error(Exception('Simulated async crash'));
+                return Future.value();
+              },
+            )),
+          ],
+          child: const HomeScreen(),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      allowErrors = true;
+
+      final scrollable = tester.state<ScrollableState>(find.byType(Scrollable).first);
+      scrollable.position.jumpTo(scrollable.position.maxScrollExtent);
+      await tester.pump();
+      
+      // Should not crash the tester
       expect(find.byType(HomeScreen), findsOneWidget);
       resetViewport(tester);
     });

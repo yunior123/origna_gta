@@ -8,6 +8,7 @@ import 'package:origna_gta/screens/seller_products_screen.dart';
 import 'package:origna_gta/screens/seller_registration_screen.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
+import 'package:origna_gta/features/seller/seller_products_viewmodel.dart';
 import 'package:origna_gta/core/repositories/product_repository.dart';
 import 'package:origna_gta/core/repositories/order_repository.dart';
 import 'package:origna_gta/core/repositories/user_repository.dart';
@@ -50,6 +51,7 @@ void main() {
           productRepositoryProvider.overrideWithValue(mockProductRepo),
           orderRepositoryProvider.overrideWithValue(mockOrderRepo),
           userRepositoryProvider.overrideWithValue(mockUserRepo),
+          sellerProductsProvider.overrideWith((ref) => Stream.value([])),
         ],
         child: widget,
       ),

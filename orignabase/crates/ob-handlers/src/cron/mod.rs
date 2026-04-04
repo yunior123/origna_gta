@@ -14,7 +14,7 @@ use serde_json::{Value, json};
 use tracing::{error, info, warn};
 
 use crate::HandlersState;
-use crate::shared::schema::{business_rules, collections, documents, fields};
+use crate::shared::schema::{OrderStatus, PaymentStatus, business_rules, collections, documents, fields};
 
 // ---------------------------------------------------------------------------
 // Field extraction helpers (local to cron module)
@@ -154,7 +154,7 @@ async fn run_auto_capture(state: &HandlersState) -> std::result::Result<(), Stri
     let orders = state
         .db
         .query_bind(
-            &format!("SELECT * FROM {} WHERE data->>'orderStatus' = 'delivered' AND data->>'paymentStatus' IN ('captured','authorized') AND data->>'deliveredAt' <= $cutoff LIMIT 250", collections::ORDERS),
+            &format!("SELECT * FROM {} WHERE data->>'orderStatus' = '{}' AND data->>'paymentStatus' IN ('{}','{}') AND data->>'deliveredAt' <= $cutoff LIMIT 250", collections::ORDERS, OrderStatus::Delivered.as_str(), PaymentStatus::Captured.as_str(), PaymentStatus::Authorized.as_str()),
             json!({
                 "cutoff": cutoff_str
             }),

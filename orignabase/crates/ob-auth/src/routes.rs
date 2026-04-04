@@ -6,6 +6,7 @@ use axum::{
 };
 use chrono::Utc;
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
+use ob_core::constants::collections as c;
 use ob_core::constants::fields as f;
 use ob_core::{Error, Result};
 use serde::{Deserialize, Serialize};
@@ -352,7 +353,7 @@ pub async fn register(
         (f::CREATED_AT): chrono::Utc::now().to_rfc3339(),
     });
 
-    let user = state.db.create_document("users", user_data).await?;
+    let user = state.db.create_document(c::USERS, user_data).await?;
     let user_id = user["id"]
         .as_str()
         .map(|s| s.to_string())
@@ -1026,7 +1027,7 @@ async fn oauth_find_or_create_user(
             state
                 .db
                 .update_document(
-                    "users",
+                    c::USERS,
                     &user_id,
                     json!({
                         "oauth_provider": provider,
@@ -1049,7 +1050,7 @@ async fn oauth_find_or_create_user(
                 "roles": ["user"],
                 "created_at": chrono::Utc::now().to_rfc3339(),
             });
-            state.db.create_document("users", user_data).await?
+            state.db.create_document(c::USERS, user_data).await?
         }
     };
 
@@ -1144,7 +1145,7 @@ pub async fn forgot_password(
     state
         .db
         .update_document(
-            "users",
+            c::USERS,
             &user_id,
             json!({
                 "reset_token_hash": token_hash,
@@ -1255,7 +1256,7 @@ pub async fn reset_password(
     state
         .db
         .update_document(
-            "users",
+            c::USERS,
             &user_id,
             json!({
                 "password_hash": new_hash,
@@ -1338,7 +1339,7 @@ pub async fn verify_email(
     state
         .db
         .update_document(
-            "users",
+            c::USERS,
             &claims.sub,
             json!({
                 (f::EMAIL_VERIFIED): true,
@@ -1457,7 +1458,7 @@ pub async fn mfa_setup(
     state
         .db
         .update_document(
-            "users",
+            c::USERS,
             &auth.user_id,
             json!({
                 "mfa_pending_secret": base64::Engine::encode(&base64::engine::general_purpose::STANDARD, &encrypted),
@@ -1559,7 +1560,7 @@ pub async fn mfa_verify_setup(
     state
         .db
         .update_document(
-            "users",
+            c::USERS,
             &auth.user_id,
             json!({
                 (f::MFA_ENABLED): true,
@@ -1630,7 +1631,7 @@ pub async fn mfa_challenge(
         let _ = state
             .db
             .update_document(
-                "users",
+                c::USERS,
                 user_id,
                 json!({
                     "mfa_locked": true,
@@ -1669,7 +1670,7 @@ pub async fn mfa_challenge(
             let _ = state
                 .db
                 .update_document(
-                    "users",
+                    c::USERS,
                     user_id,
                     json!({
                         "mfa_locked": false,
@@ -1710,7 +1711,7 @@ pub async fn mfa_challenge(
     state
         .db
         .update_document(
-            "users",
+            c::USERS,
             &claims.sub,
             json!({ (f::MFA_LAST_USED_STEP): step }),
         )
@@ -1836,7 +1837,7 @@ pub async fn mfa_recovery(
     state
         .db
         .update_document(
-            "users",
+            c::USERS,
             &claims.sub,
             json!({ (f::MFA_RECOVERY_CODES): remaining_codes }),
         )
@@ -1954,7 +1955,7 @@ pub async fn mfa_disable(
     state
         .db
         .update_document(
-            "users",
+            c::USERS,
             &auth.user_id,
             json!({
                 (f::MFA_ENABLED): false,
@@ -2033,7 +2034,7 @@ pub async fn admin_list_users(
         .unwrap_or(0);
 
     Ok(Json(json!({
-        "users": users,
+        c::USERS: users,
         "total": total,
         "limit": limit,
         "offset": params.offset,
@@ -2088,7 +2089,7 @@ pub async fn admin_set_claims(
     state
         .db
         .update_document(
-            "users",
+            c::USERS,
             &path.user_id,
             json!({ (f::CUSTOM_CLAIMS): body.custom_claims }),
         )
@@ -2143,7 +2144,7 @@ pub async fn admin_update_user(
 
     state
         .db
-        .update_document("users", &path.user_id, serde_json::Value::Object(updates))
+        .update_document(c::USERS, &path.user_id, serde_json::Value::Object(updates))
         .await?;
 
     Ok(Json(json!({ "message": "User updated" })))
@@ -2244,7 +2245,7 @@ pub async fn admin_delete_user(
     }
 
     // Finally delete the user account itself
-    state.db.delete_document("users", user_id).await?;
+    state.db.delete_document(c::USERS, user_id).await?;
 
     // Log admin deletion action for audit trail
     let audit_log = json!({
@@ -2255,7 +2256,7 @@ pub async fn admin_delete_user(
         "ip_address": "unknown", // Should come from request header in real impl
         "status": "success",
         "deleted_collections": [
-            "users", "_sessions", "orders", "addresses", "seller_profiles",
+            c::USERS, "_sessions", "orders", "addresses", "seller_profiles",
             "cart", "products", "return_requests", "payouts", "user_fcm_tokens",
             "chat_rooms", "chat_messages", "coupons", "product_questions",
             "notification_prefs", "reviews", "wishlist", "buyer_addresses"
@@ -2273,7 +2274,7 @@ pub async fn admin_delete_user(
     Ok(Json(json!({
         "message": "User and all related data deleted successfully",
         "deleted_collections": [
-            "users", "_sessions", "orders", "addresses", "seller_profiles",
+            c::USERS, "_sessions", "orders", "addresses", "seller_profiles",
             "cart", "products", "return_requests", "payouts", "user_fcm_tokens",
             "chat_rooms", "chat_messages", "coupons", "product_questions",
             "notification_prefs", "reviews", "wishlist", "buyer_addresses"
@@ -2338,7 +2339,7 @@ pub async fn admin_create_user(
         (f::CREATED_AT): chrono::Utc::now().to_rfc3339(),
     });
 
-    let user = state.db.create_document("users", user_data).await?;
+    let user = state.db.create_document(c::USERS, user_data).await?;
 
     let mut safe_user = user.clone();
     if let Some(obj) = safe_user.as_object_mut() {
@@ -2449,7 +2450,7 @@ pub async fn anonymous_sign_in(State(state): State<AuthState>) -> Result<Json<Au
         (f::CREATED_AT): now,
     });
 
-    let user = state.db.create_document("users", user_data).await?;
+    let user = state.db.create_document(c::USERS, user_data).await?;
     let user_id = user["id"]
         .as_str()
         .map(|s| s.to_string())
@@ -2525,7 +2526,7 @@ pub async fn anonymous_upgrade(
 
     state
         .db
-        .update_document("users", &auth.user_id, update_data)
+        .update_document(c::USERS, &auth.user_id, update_data)
         .await?;
 
     // Send verification email (default "en" for new user upgrades)
@@ -2721,7 +2722,7 @@ pub async fn verify_magic_link(
             (f::CREATED_AT): now,
         });
 
-        let user = state.db.create_document("users", user_data).await?;
+        let user = state.db.create_document(c::USERS, user_data).await?;
         let uid = user["id"]
             .as_str()
             .map(|s| s.to_string())

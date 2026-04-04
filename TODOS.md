@@ -192,5 +192,7 @@ Start only after Phases 1 through 3 are stable.
 - [ ] improve previews, cover all gaps
 - [ ] audit and improve skills, claude.md, agents.md, etc
 - [ ] track all notes in app and make sure all is wired
-- [ ] increase number of live tests 
+- [ ] increase number of live tests, cover more gaps, do it for rust and flutter, search web in depth to do it like a pro
 - [ ] increase number of e2e visual tests, cover all gaps, execute them, debug, fix ui ux errors or issues
+- [ ] after a fix then add 5+ tests to prevent the same issue from happening, also add inline docs for it
+- [ ] use strong pro try catch that log the errors to sentry or logs collection. use modern tecniques, search web for rust and flutter best practices

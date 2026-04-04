@@ -598,7 +598,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // mobile web (first-tap-unfocuses-then-second-tap-navigates issue).
     if (_searchFocusNode.hasFocus) {
       _searchFocusNode.unfocus();
-      ref.read(homeViewModelProvider.notifier).dismissSearchOverlay();
+      try {
+        ref.read(homeViewModelProvider.notifier).dismissSearchOverlay();
+      } catch (e, st) {
+        AppError.log(e, stackTrace: st, context: 'HomeScreen._onScroll.dismissSearchOverlay');
+      }
     }
 
     try {
@@ -609,15 +613,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             !state.isLoadingMore &&
             state.hasMore) {
           _isPaginating = true;
-          ref.read(homeViewModelProvider.notifier).loadProducts().whenComplete(
-            () {
+          Future.microtask(() async {
+            try {
+              await ref.read(homeViewModelProvider.notifier).loadProducts();
+            } catch (e, st) {
+              AppError.log(e, stackTrace: st, context: 'HomeScreen._onScroll.loadProducts');
+            } finally {
               _isPaginating = false;
-            },
-          );
+            }
+          });
         }
       }
-    } catch (_) {
-      // Scroll position can throw during rapid layout changes — ignore
+    } catch (e, st) {
+      AppError.log(e, stackTrace: st, context: 'HomeScreen._onScroll.pagination');
     }
   }
 }

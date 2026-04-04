@@ -4,7 +4,7 @@ use std::hash::{Hash, Hasher};
 use tokio::sync::mpsc;
 use tracing::{error, info};
 
-use crate::shared::schema::{OrderStatus, collections, fields, notification_types};
+use crate::shared::schema::{OrderStatus, PaymentStatus, collections, fields, notification_types};
 use crate::{HandlersState, products};
 use crate::{email, push};
 
@@ -1091,23 +1091,23 @@ fn buyer_order_status_message(
     let carrier = str_field(order, fields::SHIPPING_CARRIER);
     let is_pickup = str_field(order, fields::DELIVERY_SPEED) == "pickup";
     match (normalize_status(status).as_str(), lang) {
-        ("confirmed", "fr") => (
+        (s, "fr") if s == OrderStatus::PaymentAuthorized.as_str() => (
             format!("Commande #{oid} confirmée"),
             format!("Votre commande #{oid} a été confirmée."),
         ),
-        ("confirmed", _) => (
+        (s, _) if s == OrderStatus::PaymentAuthorized.as_str() => (
             format!("Order #{oid} confirmed"),
             format!("Your order #{oid} has been confirmed."),
         ),
-        ("processing", "fr") => (
+        (s, "fr") if s == OrderStatus::Processing.as_str() => (
             format!("Commande #{oid} en préparation"),
             format!("Votre commande #{oid} est en cours de préparation."),
         ),
-        ("processing", _) => (
+        (s, _) if s == OrderStatus::Processing.as_str() => (
             format!("Order #{oid} is processing"),
             format!("Your order #{oid} is being processed."),
         ),
-        ("in_transit", "fr") => (
+        (s, "fr") if s == OrderStatus::InTransit.as_str() => (
             format!("Commande #{oid} en transit"),
             if tracking.is_empty() {
                 format!("Votre commande #{oid} est en transit.")
@@ -1117,7 +1117,7 @@ fn buyer_order_status_message(
                 format!("Votre commande #{oid} est en transit via {carrier}. Suivi: {tracking}.")
             },
         ),
-        ("in_transit", _) => (
+        (s, _) if s == OrderStatus::InTransit.as_str() => (
             format!("Order #{oid} in transit"),
             if tracking.is_empty() {
                 format!("Your order #{oid} is in transit.")
@@ -1127,15 +1127,15 @@ fn buyer_order_status_message(
                 format!("Your order #{oid} is in transit via {carrier}. Tracking: {tracking}.")
             },
         ),
-        ("shipped", "fr") if is_pickup => (
+        (s, "fr") if s == OrderStatus::Shipped.as_str() && is_pickup => (
             format!("Commande #{oid} prête pour ramassage"),
             format!("Votre commande #{oid} est prête pour le ramassage."),
         ),
-        ("shipped", _) if is_pickup => (
+        (s, _) if s == OrderStatus::Shipped.as_str() && is_pickup => (
             format!("Order #{oid} ready for pickup"),
             format!("Your order #{oid} is ready for pickup."),
         ),
-        ("shipped", "fr") => (
+        (s, "fr") if s == OrderStatus::Shipped.as_str() => (
             format!("Commande #{oid} expédiée"),
             if tracking.is_empty() {
                 format!("Votre commande #{oid} est en route.")
@@ -1145,7 +1145,7 @@ fn buyer_order_status_message(
                 format!("Votre commande #{oid} est en route via {carrier}. Suivi: {tracking}.")
             },
         ),
-        ("shipped", _) => (
+        (s, _) if s == OrderStatus::Shipped.as_str() => (
             format!("Order #{oid} shipped"),
             if tracking.is_empty() {
                 format!("Your order #{oid} is on the way.")
@@ -1155,73 +1155,75 @@ fn buyer_order_status_message(
                 format!("Your order #{oid} is on the way via {carrier}. Tracking: {tracking}.")
             },
         ),
-        ("delivered", "fr")
-            if order
-                .get(fields::CONFIRMED_BY_CLIENT)
-                .and_then(|v| v.as_bool())
-                .unwrap_or(false)
-                || order
-                    .get(fields::AUTO_CONFIRMED)
+        (s, "fr")
+            if s == OrderStatus::Delivered.as_str()
+                && (order
+                    .get(fields::CONFIRMED_BY_CLIENT)
                     .and_then(|v| v.as_bool())
-                    .unwrap_or(false) =>
+                    .unwrap_or(false)
+                    || order
+                        .get(fields::AUTO_CONFIRMED)
+                        .and_then(|v| v.as_bool())
+                        .unwrap_or(false)) =>
         {
             (
                 format!("Réception confirmée pour la commande #{oid}"),
                 format!("La réception de votre commande #{oid} a été enregistrée."),
             )
         }
-        ("delivered", _)
-            if order
-                .get(fields::CONFIRMED_BY_CLIENT)
-                .and_then(|v| v.as_bool())
-                .unwrap_or(false)
-                || order
-                    .get(fields::AUTO_CONFIRMED)
+        (s, _)
+            if s == OrderStatus::Delivered.as_str()
+                && (order
+                    .get(fields::CONFIRMED_BY_CLIENT)
                     .and_then(|v| v.as_bool())
-                    .unwrap_or(false) =>
+                    .unwrap_or(false)
+                    || order
+                        .get(fields::AUTO_CONFIRMED)
+                        .and_then(|v| v.as_bool())
+                        .unwrap_or(false)) =>
         {
             (
                 format!("Receipt confirmed for order #{oid}"),
                 format!("Receipt confirmation for your order #{oid} has been recorded."),
             )
         }
-        ("delivered", "fr") => (
+        (s, "fr") if s == OrderStatus::Delivered.as_str() => (
             format!("Commande #{oid} livrée"),
             format!("Votre commande #{oid} a été livrée."),
         ),
-        ("delivered", _) => (
+        (s, _) if s == OrderStatus::Delivered.as_str() => (
             format!("Order #{oid} delivered"),
             format!("Your order #{oid} has been delivered."),
         ),
-        ("cancelled", "fr") => (
+        (s, "fr") if s == OrderStatus::Cancelled.as_str() => (
             format!("Commande #{oid} annulée"),
             format!("Votre commande #{oid} a été annulée."),
         ),
-        ("cancelled", _) => (
+        (s, _) if s == OrderStatus::Cancelled.as_str() => (
             format!("Order #{oid} cancelled"),
             format!("Your order #{oid} has been cancelled."),
         ),
-        ("failed", "fr") => (
+        (s, "fr") if s == OrderStatus::Failed.as_str() => (
             format!("Paiement échoué pour la commande #{oid}"),
             format!("Le paiement de votre commande #{oid} n'a pas pu être traité."),
         ),
-        ("failed", _) => (
+        (s, _) if s == OrderStatus::Failed.as_str() => (
             format!("Payment failed for order #{oid}"),
             format!("Payment for your order #{oid} could not be processed."),
         ),
-        ("expired", "fr") => (
+        (s, "fr") if s == OrderStatus::Expired.as_str() => (
             format!("Commande #{oid} expirée"),
             format!("Votre commande #{oid} a expiré."),
         ),
-        ("expired", _) => (
+        (s, _) if s == OrderStatus::Expired.as_str() => (
             format!("Order #{oid} expired"),
             format!("Your order #{oid} has expired."),
         ),
-        ("disputed", "fr") => (
+        (s, "fr") if s == OrderStatus::Disputed.as_str() => (
             format!("Litige ouvert pour la commande #{oid}"),
             format!("Un litige a été ouvert pour votre commande #{oid}."),
         ),
-        ("disputed", _) => (
+        (s, _) if s == OrderStatus::Disputed.as_str() => (
             format!("Dispute opened for order #{oid}"),
             format!("A dispute has been opened for your order #{oid}."),
         ),
@@ -1255,59 +1257,59 @@ fn seller_order_status_message(
         })
         .unwrap_or(false);
     match (normalize_status(status).as_str(), lang) {
-        ("confirmed", "fr") if is_perishable => (
+        (s, "fr") if s == OrderStatus::PaymentAuthorized.as_str() && is_perishable => (
             format!("URGENT: commande périssable #{oid}"),
             format!("Une commande périssable #{oid} a été confirmée. Expédiez-la aujourd'hui."),
         ),
-        ("confirmed", _) if is_perishable => (
+        (s, _) if s == OrderStatus::PaymentAuthorized.as_str() && is_perishable => (
             format!("URGENT: perishable order #{oid}"),
             format!("Perishable order #{oid} has been confirmed. Ship it today."),
         ),
-        ("confirmed", "fr") => (
+        (s, "fr") if s == OrderStatus::PaymentAuthorized.as_str() => (
             format!("Nouvelle commande #{oid}"),
             format!("Une nouvelle commande #{oid} a été confirmée."),
         ),
-        ("confirmed", _) => (
+        (s, _) if s == OrderStatus::PaymentAuthorized.as_str() => (
             format!("New order #{oid}"),
             format!("A new order #{oid} has been confirmed."),
         ),
-        ("processing", "fr") => (
+        (s, "fr") if s == OrderStatus::Processing.as_str() => (
             format!("Commande #{oid} en préparation"),
             format!("La commande #{oid} est maintenant en préparation."),
         ),
-        ("processing", _) => (
+        (s, _) if s == OrderStatus::Processing.as_str() => (
             format!("Order #{oid} is processing"),
             format!("Order #{oid} is now being processed."),
         ),
-        ("shipped", "fr") => (
+        (s, "fr") if s == OrderStatus::Shipped.as_str() => (
             format!("Expédition confirmée #{oid}"),
             format!("La commande #{oid} a été marquée comme expédiée."),
         ),
-        ("shipped", _) => (
+        (s, _) if s == OrderStatus::Shipped.as_str() => (
             format!("Shipment confirmed #{oid}"),
             format!("Order #{oid} has been marked as shipped."),
         ),
-        ("in_transit", "fr") => (
+        (s, "fr") if s == OrderStatus::InTransit.as_str() => (
             format!("Commande #{oid} en transit"),
             format!("La commande #{oid} est maintenant en transit."),
         ),
-        ("in_transit", _) => (
+        (s, _) if s == OrderStatus::InTransit.as_str() => (
             format!("Order #{oid} in transit"),
             format!("Order #{oid} is now in transit."),
         ),
-        ("delivered", "fr") => (
+        (s, "fr") if s == OrderStatus::Delivered.as_str() => (
             format!("Réception confirmée #{oid}"),
             format!("La commande #{oid} a été livrée. Le paiement est en attente."),
         ),
-        ("delivered", _) => (
+        (s, _) if s == OrderStatus::Delivered.as_str() => (
             format!("Receipt confirmed #{oid}"),
             format!("Order #{oid} has been delivered. Payout is now pending."),
         ),
-        ("cancelled", "fr") => (
+        (s, "fr") if s == OrderStatus::Cancelled.as_str() => (
             format!("Commande #{oid} annulée"),
             format!("La commande #{oid} a été annulée."),
         ),
-        ("cancelled", _) => (
+        (s, _) if s == OrderStatus::Cancelled.as_str() => (
             format!("Order #{oid} cancelled"),
             format!("Order #{oid} has been cancelled."),
         ),
@@ -1330,7 +1332,7 @@ fn buyer_payment_message(
 ) -> (String, String) {
     let oid = short_id(order_id);
     match (normalize_status(status).as_str(), lang) {
-        ("refunded", "fr") => (
+        (s, "fr") if s == PaymentStatus::Refunded.as_str() => (
             format!("Remboursement traité pour la commande #{oid}"),
             match refund_cents.and_then(format_cents) {
                 Some(amount) => {
@@ -1339,7 +1341,7 @@ fn buyer_payment_message(
                 None => format!("Le remboursement de votre commande #{oid} a été traité."),
             },
         ),
-        ("refunded", _) => (
+        (s, _) if s == PaymentStatus::Refunded.as_str() => (
             format!("Refund processed for order #{oid}"),
             match refund_cents.and_then(format_cents) {
                 Some(amount) => {
@@ -1348,7 +1350,7 @@ fn buyer_payment_message(
                 None => format!("Your refund for order #{oid} has been processed."),
             },
         ),
-        ("partially_refunded", "fr") => (
+        (s, "fr") if s == PaymentStatus::PartialRefund.as_str() => (
             format!("Remboursement partiel pour la commande #{oid}"),
             match refund_cents.and_then(format_cents) {
                 Some(amount) => format!(
@@ -1359,7 +1361,7 @@ fn buyer_payment_message(
                 }
             },
         ),
-        ("partially_refunded", _) => (
+        (s, _) if s == PaymentStatus::PartialRefund.as_str() => (
             format!("Partial refund for order #{oid}"),
             match refund_cents.and_then(format_cents) {
                 Some(amount) => format!(
@@ -1368,19 +1370,19 @@ fn buyer_payment_message(
                 None => format!("A partial refund has been processed for your order #{oid}."),
             },
         ),
-        ("captured", "fr") => (
+        (s, "fr") if s == PaymentStatus::Captured.as_str() => (
             format!("Paiement capturé pour la commande #{oid}"),
             format!("Le paiement de votre commande #{oid} a été capturé."),
         ),
-        ("captured", _) => (
+        (s, _) if s == PaymentStatus::Captured.as_str() => (
             format!("Payment captured for order #{oid}"),
             format!("Payment for your order #{oid} has been captured."),
         ),
-        ("authorized", "fr") => (
+        (s, "fr") if s == PaymentStatus::Authorized.as_str() => (
             format!("Paiement autorisé pour la commande #{oid}"),
             format!("Le paiement de votre commande #{oid} a été autorisé."),
         ),
-        ("authorized", _) => (
+        (s, _) if s == PaymentStatus::Authorized.as_str() => (
             format!("Payment authorized for order #{oid}"),
             format!("Payment for your order #{oid} has been authorized."),
         ),

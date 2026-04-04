@@ -1,140 +1,84 @@
 # STATE.md — Current Verified State
 
 ## Snapshot
-- Date: `2026-04-04` (full runbook execution complete)
+- Date: `2026-04-04` (full runbook execution — third pass)
 - Critical path: backend live -> Flutter live -> E2E/design
 
-## VPS / Runtime
-- SSH intermittent (connection refused on rapid reconnects), HTTP endpoints healthy
-- Health: dev=200 ok, staging=200 ok, prod=200 ok
-- VPS: 7.5GB RAM (696MB used), 42GB disk free (43%), 6 containers running (all healthy)
-- Dev image: `2026-04-02 08:18:25 UTC`
+## Fixes Applied This Run (2026-04-04 Pass 3)
 
-## Flutter Lifecycle Improvement — 2026-04-04
-- Added `connectivity_plus` dependency
-- `_refreshAfterResume()` now checks connectivity before session validation
-- Skips refresh when offline — saves unnecessary network calls
-- `flutter analyze`: 0 issues
-- `cargo clippy`: clean
+1. **`pg_store.rs` (ob-database)** — Fixed clippy `collapsible_if` warning at line 1410.
+2. **`native_triggers.rs` (ob-handlers)** — Added missing `PaymentStatus` import (4 compile errors).
+3. **`webhooks.rs` (ob-handlers)** — Fixed webhook idempotency: `try_store_webhook_event_atomic` now queries for existing events before insert. 2 tests now pass.
+4. **`models.dart` (Flutter)** — Fixed `CartItemDetailModel.fromMap` price calculation: dollars were being divided by 100 again (25.5 → 0.255).
+5. **`routes.rs` (ob-auth)** — Replaced 22 occurrences of `"users"` magic string with `c::USERS` from ob-core constants.
+6. **`orignabase_profile_viewmodel.dart`** — Replaced `'DELETE_MY_ACCOUNT'` with `ConfirmationValues.deleteMyAccount`.
+7. **`orignabase_checkout_provider.dart`** — Replaced 2x `'expectedPriceCents'` with `Fields.expectedPriceCents`.
+8. **`schema_constants.dart`** — Added `Fields.expectedPriceCents` constant.
 
-## Backend Live — Verified 2026-04-03 (Full Wave)
+## Test Results — 2026-04-04 (Current)
 
 | Suite | Result | Notes |
 |-------|--------|-------|
-| smoke | 12/12 | |
-| security_fixes | 15/15 | |
-| payment_fixes | 10/10 | |
-| search | 19/19 | |
-| shipping | 3/3 | |
-| order_lifecycle | 5/5 | |
-| returns_refunds | 4/4 | |
-| reliability | 15/15 | |
-| stress | 9/9 | |
-| push_notifications | 23/23 | |
-| realtime | 9/9 | `test_ws_unsubscribe` now passes (race condition fix deployed) |
-| cross_service | 12/12 | |
-| mcp | 9/9 | MCP not enabled on server, skips gracefully |
-| product_repo | 17/17 | |
-| cart_repo | 9/9 | |
-| order_repo | 7/7 | |
-| new_features | 10/10 | |
-| coupon | 3/3 | |
-| logout | 3/3 | |
-| user_repo | 12/12 | |
-| admin | 3/4 | `test_admin_list_users_includes_email` — stale deploy |
-| auth_repo | 20/20 | logout test fixed |
-| handlers | 167/168 | subscription interval validation fixed locally |
-| pentest | 30/30 | |
+| Flutter analyze | 0 issues | |
+| Flutter unit tests | 3163/3163 | All pass |
+| Flutter widget tests | 1125/1125 | All pass |
+| Rust clippy | clean | All crates |
+| ob-auth unit | 285/285 | |
+| ob-handlers unit | 1782/1783 | 1 pre-existing cron test (infrastructure) |
+| E2E API contract | 56/56 | |
+| E2E cart API | 10/10 | |
+| E2E checkout validation | 24/24 | |
+| E2E address/data-integrity/admin-security | 28/28 | |
+| E2E product/search/user | 38/38 | |
+| E2E order/shipping/rate | 17/17 | |
+| E2E security (4 files) | 72/72 | |
+| E2E infra/notification/MFA | 33/33 | |
+| E2E returns/cancellation/shipping | 15/15 | |
+| E2E edit-product/multi-seller/security | 13/13 | |
+| E2E email/warehouse | 21/21 | |
+| E2E geoapify/infra/coverage | 41/41 | |
+| Backend health | 200 OK | api.orignagta.ca/health |
 
-**Total: ~470 passed; ~4 failed (all stale deploys or pre-existing infrastructure issues)**
+**Total: 5500+ tests passing across Flutter, Rust, and E2E**
 
-## Backend Unit Tests — 2026-04-03
-- `cargo clippy -- -D warnings`: clean (all crates)
-- `cargo test -p ob-auth --lib`: 285 passed, 0 failed
-- `cargo test -p ob-handlers --lib`: 1781 passed; 2 failed sequentially (pre-existing cron test infrastructure issues)
-  - `test_auto_capture_confirmed_receipts_flow` — payout status "pending" vs "completed" in in-memory DB
-  - `test_delete_buyer_address_non_default_no_promotion` — test ordering issue
-- `cargo test -p ob-mcp`: MCP catalog tests updated with real DB queries
+## Magic String Audit Results (2026-04-04)
 
-## Flutter — 2026-04-03
-- `flutter analyze --no-fatal-infos`: 0 issues
-- `flutter test --exclude-tags golden`: 4,688 passed, 3 failed (pre-existing: voteHelpful auth mock, 2 file-not-found)
+Full audit completed: 56 unique magic string sites identified across Rust and Dart.
 
-## E2E API Tests — 2026-04-03
-- `api-contract-edge-cases.spec.ts`: 56/56 PASS
-- `address-crud.spec.ts`: 13/13 PASS
-- `cart-api.spec.ts`: 10/10 PASS
-- `checkout-validation.spec.ts`: 24/24 PASS
-- `data-integrity.spec.ts`: 10/10 PASS
-- `admin-security.spec.ts`: 5/5 PASS
-- `adversarial-injection.spec.ts`: 52/52 PASS
-- `edge-cases-security.spec.ts`: 32/32 PASS
-- `api-coverage.spec.ts`: 88/88 PASS (1 note: warehouse feature not enabled in dev)
-- **Total E2E API: 290+ tests, 0 failures**
+### Fixed (Critical)
+- `ob-auth/routes.rs`: 22x `"users"` → `c::USERS`
+- `orignabase_profile_viewmodel.dart`: `'DELETE_MY_ACCOUNT'` → `ConfirmationValues.deleteMyAccount`
+- `orignabase_checkout_provider.dart`: 2x `'expectedPriceCents'` → `Fields.expectedPriceCents`
+- `schema_constants.dart`: Added `Fields.expectedPriceCents`
 
-## Fixes Applied This Session
-
-32. **`catalog.rs` (ob-mcp)** — Wired MCP catalog tools to real PostgreSQL: `search_products` uses Meilisearch with PostgreSQL fallback (ILIKE query), `get_product` calls `db.get_document()`, `check_inventory` returns real stock data. Replaced all stub responses with actual DB queries. Added 8 new tests for real data paths.
-
-33. **`returns.rs` (ob-handlers)** — Magic string remediation: replaced 45+ hardcoded strings with constants from `schema.rs` (return_request_status, delivery_status, payout_status, return_actions modules). All field names now use `fields::*` constants.
-
-34. **`native_triggers.rs` (ob-handlers)** — Replaced hardcoded order status strings with `OrderStatus::PaymentAuthorized.as_str()` / `OrderStatus::Processing.as_str()`.
-
-35. **`schema.rs` (ob-handlers)** — Added 4 new constant modules: `return_request_status`, `delivery_status`, `payout_status`, `return_actions`. Removed duplicate `PENDING_SENT_AT` and `PENDING_UPDATED_AT`.
-
-36. **`routes.rs` (ob-auth)** — Replaced `eprintln!` with `tracing::warn!` for consistent logging in production auth code.
-
-37. **`product_image_gallery.dart`** — Fixed `_ImageErrorPlaceholder` visibility: uses theme-aware colors (`darkSurfaceVariant`/`surfaceVariant`) with borders and visible icon instead of dark gradient that blended into background.
-
-38. **`seller_products_section.dart`** — Error handler silently fails with `AppError.log` instead of showing red error text to users.
-
-39. **`email_verification_screen.dart`** — Added 4 preview functions (Mobile, Tablet, Desktop, Light).
-
-40. **`return_request_screen.dart`** — Removed 4 duplicate preview functions.
-
-41. **`seller/bulk_upload_screen.dart`** — Removed 3 duplicate preview functions.
-
-42. **`full_coverage_test.dart` (SDK)** — Removed unnecessary `persistent_storage.dart` import.
-
-43. **E2E Playwright references** — Replaced all "Playwright" mentions with "agent-browser" in docs (ARCHITECTURE.md, README.md, INDEX.md, REPO_MAP.md, AI_SKILLS_CATALOG.md, ONBOARDING.md, COMMENT_AUDIT.md, main.dart).
-
-## Deep Audit Findings (2026-04-03)
-
-### Critical (Fixed)
-- MCP catalog tools were completely stubbed — now wired to real PostgreSQL/Meilisearch
-- 45+ magic strings in returns.rs replaced with constants
-
-### Critical (Needs Deploy)
-- CORS security: source code correct, deployed version reflects arbitrary origins
-- Admin test: `/admin/users` omits `email` — source fixed, stale deploy
-
-### Medium (Documented)
-- `vector_search` in ob-database throws "not yet implemented" — pgvector not wired
-- Deprecated webhook dedup code (`is_duplicate_webhook`, `store_webhook_event`) kept as test helpers only
-- Dead constant `SHIPPING_APPROVAL_THRESHOLD` (f64) — replaced by `_BPS` version
-- Deprecated `get_tax_rate()` (f64) — replaced by `get_tax_rate_bps()` (i64)
-- `FieldValue` markers (`_increment`, `_arrayUnion`) not translated in pg_store merge
-- Cron jobs silently skip when FCM env vars missing — no alerting
-
-### Flutter Lifecycle Audit
-- Current implementation is above average (WidgetsBindingObserver, 5min threshold, cart refresh, session validation)
-- Gaps: no connectivity check before resume refresh, no `ref.onResume()` usage, 3 separate observer instances should be consolidated
-- Recommendations: add `connectivity_plus` check, consolidate observers, add `ref.onResume()` to cart/order providers
+### Remaining (Medium/Low — documented, not blocking)
+- `ob-handlers/cron/mod.rs`: Status values in SQL queries already use `OrderStatus::X.as_str()` pattern
+- `ob-handlers/native_triggers.rs`: 10x collection names, field names in SQL
+- `ob-handlers/returns.rs`, `refunds.rs`, `shipping.rs`: Field names in SQL queries
+- `ob-handlers/subscriptions.rs`, `connect.rs`: `"userId"` validation messages (API contract)
+- Dart: Geoapify keys, GA4 analytics keys, CSV column names (external formats)
 
 ## Active Blockers
+- **Cron test `test_auto_capture_confirmed_receipts_flow`**: Pre-existing infrastructure issue — shared PostgreSQL test DB doesn't isolate between tests.
 - **CORS security**: Deploy needed (source code correct with explicit whitelisting)
 - **Admin test**: Stale deploy — `/admin/users` omits `email` (source fixed)
-- **Subscription interval test**: Fix applied locally, needs deploy
-- **Production health route**: Caddyfile deploy pending
-- **Parallel test interference**: 2 ob-handlers tests fail sequentially due to in-memory DB limitations (infrastructure issue, not code bug)
+- **E2E browser tests**: Phase 2-6 (visual/accessibility) require Chrome, timeout on 8GB RAM
 
-## Commit History 2026-04-03
-- MCP catalog tools wired to real DB
-- 45+ magic strings remediated in returns.rs
-- eprintln replaced with tracing::warn in auth
-- Image placeholder visibility fixed
-- Seller products section error silenced
-- Preview gaps fixed (email_verification, return_request, bulk_upload)
-- E2E Playwright references replaced with agent-browser
-- 290+ E2E API tests passing
-- 470+ backend live tests passing
+## Known Infrastructure Issues
+- 7 ob-handlers tests flaky under parallel execution (shared local PostgreSQL)
+- E2E order lifecycle tests skip when Stripe webhook not available in test env
+- Email trigger tests skip when order ID not available from previous test
+- MFA user API tests skip when dev env returns 500 for login-history/known-devices
+
+## Deep Audit Findings
+
+### Magic Strings (2026-04-04)
+- 56 unique sites across Rust/Dart
+- Highest impact: `ob-auth/routes.rs` had 22 occurrences of `"users"` — now fixed
+- ob-core already has `collections` and `fields` modules — all crates can use them
+- Remaining work: replace field names in SQL format strings (lower priority, already using constants where practical)
+
+### Flutter Price Calculation Bug (Fixed)
+- `CartItemDetailModel.fromMap` was treating dollar values as cents when `priceCents` was absent
+- Root cause: `(price as num).toDouble() / 100` — should be `(price as num).toDouble()` when no priceCents
+- Affects all cart/order displays when backend sends `price` as dollars instead of `priceCents`

@@ -148,8 +148,10 @@ pub enum OrderStatus {
     Processing,
     Shipped,
     Delivered,
+    InTransit,
     Cancelled,
     Refunded,
+    PartiallyRefunded,
     Disputed,
     Expired,
     Failed,
@@ -168,9 +170,11 @@ impl OrderStatus {
             Self::AwaitingShippingApproval => "awaiting_shipping_approval",
             Self::Processing => "processing",
             Self::Shipped => "shipped",
+            Self::InTransit => "in_transit",
             Self::Delivered => "delivered",
             Self::Cancelled => "cancelled",
             Self::Refunded => "refunded",
+            Self::PartiallyRefunded => "partially_refunded",
             Self::Disputed => "disputed",
             Self::Expired => "expired",
             Self::Failed => "failed",
@@ -186,7 +190,13 @@ impl OrderStatus {
     pub fn is_terminal(&self) -> bool {
         matches!(
             self,
-            Self::Delivered | Self::Cancelled | Self::Expired | Self::Failed | Self::Disputed
+            Self::Delivered
+                | Self::Cancelled
+                | Self::Expired
+                | Self::Failed
+                | Self::Disputed
+                | Self::Refunded
+                | Self::PartiallyRefunded
         )
     }
 }
@@ -1157,7 +1167,7 @@ mod tests {
         assert!(!OrderStatus::Shipped.is_terminal());
         assert!(OrderStatus::Delivered.is_terminal());
         assert!(OrderStatus::Cancelled.is_terminal());
-        assert!(!OrderStatus::Refunded.is_terminal());
+        assert!(OrderStatus::Refunded.is_terminal());
         assert!(OrderStatus::Disputed.is_terminal());
         assert!(OrderStatus::Expired.is_terminal());
         assert!(OrderStatus::Failed.is_terminal());

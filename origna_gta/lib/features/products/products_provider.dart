@@ -314,16 +314,20 @@ final productRatingsProvider = StreamProvider.autoDispose
       final ratings = ob.collection(Collections.productRatings);
 
       Future<List<Map<String, dynamic>>> fetchRatings() async {
-        final snapshot = await ratings
-            .where(Fields.productId, isEqualTo: productId)
-            .orderBy(Fields.createdAt, descending: true)
-            .limit(10)
-            .get();
-        return snapshot.docs
-            .map(
-              (doc) => <String, dynamic>{...doc.data, Fields.ratingId: doc.id},
-            )
-            .toList();
+        try {
+          final snapshot = await ratings
+              .where(Fields.productId, isEqualTo: productId)
+              .orderBy(Fields.createdAt, descending: true)
+              .limit(10)
+              .get();
+          return snapshot.docs
+              .map(
+                (doc) => <String, dynamic>{...doc.data, Fields.ratingId: doc.id},
+              )
+              .toList();
+        } catch (e) {
+          return const [];
+        }
       }
 
       return Stream.multi((controller) async {

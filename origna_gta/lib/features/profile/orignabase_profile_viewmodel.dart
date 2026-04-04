@@ -4,7 +4,7 @@ import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart'
-    show ApiEndpoints, Fields;
+    show ApiEndpoints, ConfirmationValues, Fields;
 import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/utils/utils.dart';
 
@@ -132,7 +132,10 @@ class OrignaBaseProfileViewModel extends StateNotifier<ProfileState> {
       await _ob.request(
         'POST',
         ApiEndpoints.authDeleteAccount,
-        body: {Fields.userId: userId, 'confirmation': 'DELETE_MY_ACCOUNT'},
+        body: {
+          Fields.userId: userId,
+          'confirmation': ConfirmationValues.deleteMyAccount,
+        },
       );
       await _ref.read(authActionsProvider).signOut();
       state = state.copyWith(isLoading: false, isDeleted: true);

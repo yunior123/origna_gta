@@ -346,9 +346,20 @@ async fn try_store_webhook_event_atomic(
         ));
     }
 
-    // Atomic dedup via create_document — relies on DB-level unique constraint on ID.
-    // No check-then-create TOCTOU: we attempt the INSERT directly and catch duplicate errors.
-    // This is the only reliable way to prevent duplicate webhook processing under concurrency.
+    // Check if event already exists (query by data->>'id' since table id is auto-generated UUID).
+    let existing = state
+        .db
+        .query_bind(
+            &format!("SELECT id FROM {} WHERE data->>'id' = $1 LIMIT 1", collections::WEBHOOK_EVENTS),
+            serde_json::json!({ "event_id": &event.id }),
+        )
+        .await;
+
+    if let Ok(rows) = existing
+        && !rows.is_empty() {
+            return Ok(false); // Duplicate event
+        }
+
     let event_data = serde_json::json!({
         fields::ID: event.id,
         fields::TYPE: event.r#type,

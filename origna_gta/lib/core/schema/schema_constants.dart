@@ -762,6 +762,7 @@ abstract final class Fields {
   static const price = 'price';
   static const priceCents =
       'priceCents'; // Integer cents derived from price — use for arithmetic
+  static const expectedPriceCents = 'expectedPriceCents';
 
   /// Original/crossed-out price for sale display (null = no active sale)
   static const compareAtPrice = 'compareAtPrice';

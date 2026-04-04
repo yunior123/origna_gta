@@ -454,7 +454,7 @@ void main() {
 
       expect(fakeOb.lastRequestPath, ApiEndpoints.geocodeAutocomplete);
       expect(fakeOb.lastRequestBody?['query'], 'Toron');
-      expect(fakeOb.lastRequestBody?['country'], 'ca');
+      expect(fakeOb.lastRequestBody?['country'], 'CA');
       expect(suggestions.length, 2);
     });
 
