@@ -189,7 +189,7 @@ abstract final class BusinessRules {
   static const freeShippingThresholdCents =
       7500; // $75 CAD — subtotals at or above qualify for free standard shipping
   static const localDeliveryRadiusKm =
-      50.0; // 50km radius for local delivery Eligibility (BUG-L1)
+      50.0; // 50km radius for local delivery Eligibility
   // BOOT-L1: session timeout extracted to constant
   static const sessionTimeoutMinutes = 15;
   // FAV-M2: seller product list page size — cursor pagination planned for >200 sellers

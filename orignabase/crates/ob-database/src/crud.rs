@@ -228,7 +228,7 @@ impl DatabaseClient {
         top_k: usize,
         _threshold: Option<f64>,
     ) -> ob_core::Result<Vec<Value>> {
-        // TODO Phase 2: Implement pgvector similarity search
+        // Requires pgvector extension and vector column setup
         let _ = (collection, vector_field, top_k);
         Err(ob_core::Error::Database(
             "vector_search not yet implemented for PostgreSQL adapter".into(),
