@@ -132,6 +132,7 @@ impl TaskQueue {
                 locked_at TIMESTAMPTZ,
                 locked_by TEXT,
                 created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
                 started_at TIMESTAMPTZ,
                 completed_at TIMESTAMPTZ,
                 retry_count INT NOT NULL DEFAULT 0,

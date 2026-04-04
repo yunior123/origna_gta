@@ -142,7 +142,7 @@ impl PgDatabaseStore {
         })?;
 
         // Ensure the updated_at trigger function exists
-        sqlx::query(
+        match sqlx::query(
             r#"
             CREATE OR REPLACE FUNCTION set_updated_at()
             RETURNS TRIGGER AS $$
@@ -155,27 +155,15 @@ impl PgDatabaseStore {
         )
         .execute(&self.pool)
         .await
-        .map_err(|e| {
-            ob_core::Error::Database(format!("Failed to create set_updated_at function: {e}"))
-        })?;
-
-        // Ensure the updated_at trigger function exists
-        sqlx::query(
-            r#"
-            CREATE OR REPLACE FUNCTION set_updated_at()
-            RETURNS TRIGGER AS $$
-            BEGIN
-                NEW.updated_at = now();
-                RETURN NEW;
-            END;
-            $$ LANGUAGE plpgsql;
-            "#
-        )
-        .execute(&self.pool)
-        .await
-        .map_err(|e| {
-            ob_core::Error::Database(format!("Failed to create set_updated_at function: {e}"))
-        })?;
+        {
+            Ok(_) => {}
+            Err(e) => {
+                let err_str = e.to_string();
+                if !err_str.contains("tuple concurrently updated") {
+                    return Err(ob_core::Error::Database(format!("Failed to create set_updated_at function: {e}")));
+                }
+            }
+        }
 
         // Ensure the updated_at trigger exists
         sqlx::query(&format!(
@@ -1647,10 +1635,11 @@ mod tests {
 
     /// These tests require a running PostgreSQL instance.
     /// Run: docker exec -i orignabase-pg psql -U orignabase -d orignabase < migrations/001_full_schema.sql
-    const TEST_DB_URL: &str = "postgres://orignabase:orignabase_dev@127.0.0.1:5432/orignabase";
-
     async fn test_store() -> PgDatabaseStore {
-        PgDatabaseStore::connect(TEST_DB_URL).await.unwrap()
+        let url = std::env::var("OB_TEST_DATABASE_URL").unwrap_or_else(|_| {
+            "postgres://orignabase:orignabase_dev@127.0.0.1:5432/orignabase".to_string()
+        });
+        PgDatabaseStore::connect(&url).await.unwrap()
     }
 
     #[tokio::test]
