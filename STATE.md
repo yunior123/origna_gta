@@ -18,4 +18,4 @@ All active blockers and known infrastructure issues from previous sessions have 
 
 ## Next Steps
 - Trigger or await backend CI/CD deploy to propagate the CORS, Admin, and MFA fixes to `api.orignagta.ca`.
-- Proceed with Phase 3 E2E tests (`e2e/run-tests.sh all`) to confirm the browser and API suites run smoothly in sequential mode without RAM exhaustion.
+- Proceed with Phase 3 E2E tests (`e2e/run-tests.sh all`) to confirm the browser and API suites run smoothly in sequential mode without RAM exhaustion. (Update: API tests confirmed passing/skipped correctly).
