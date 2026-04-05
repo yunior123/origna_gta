@@ -441,9 +441,12 @@ final _cartProductsBatchProvider =
 /// - Analytics: All mutations log fire-and-forget analytics events.
 class CartController {
   final Ref _ref;
+  bool _disposed = false;
 
   /// Creates a new [CartController].
-  CartController(this._ref);
+  CartController(this._ref) {
+    _ref.onDispose(() => _disposed = true);
+  }
 
   CartRepository get _repository => _ref.read(cartRepositoryProvider);
   String? get _userId => _ref.read(userIdProvider);
@@ -485,6 +488,9 @@ class CartController {
         quantity,
         variantId: variantId,
       );
+      if (_disposed) {
+        return true;
+      }
       if (productName != null && priceCad != null) {
         unawaited(
           _ref

@@ -16,6 +16,7 @@ import 'package:origna_gta/core/repositories/user_repository.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/models/models.dart';
 import 'package:origna_gta/services/orignabase_conf_service.dart';
+import 'package:origna_gta/utils/app_logger.dart';
 import 'package:origna_gta/utils/env_config.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:orignabase/orignabase.dart';
@@ -159,7 +160,12 @@ final googleAuthAvailabilityProvider =
               ? google.map((key, value) => MapEntry(key.toString(), value))
               : null,
         );
-      } catch (_) {
+      } catch (e) {
+        AppLogger.w(
+          'googleAuthAvailabilityProvider: /auth/providers fetch failed, falling back to config',
+          tag: 'auth',
+          error: e,
+        );
         final clientId = (await OrignaBaseConfigService().getString(
           RemoteConfigKeys.googleWebClientId,
         )).trim();

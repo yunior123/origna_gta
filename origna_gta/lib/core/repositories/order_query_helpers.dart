@@ -6,6 +6,7 @@ import 'package:origna_gta/models/enum_extensions.dart';
 import 'package:origna_gta/models/generated/base_models.dart'
     show PaymentStatus;
 import 'package:origna_gta/models/generated/models.dart' as models;
+import 'package:origna_gta/utils/app_logger.dart';
 
 /// Extracted realtime stream helpers for [OrignaBaseOrderRepository].
 ///
@@ -141,8 +142,12 @@ mixin OrderQueryHelpers {
                     state[order.orderId] = order;
                   }
                   controller.add(sort(state.values.toList()));
-                } catch (_) {
-                  // Malformed document — skip silently.
+                } catch (e) {
+                  AppLogger.w(
+                    'OrderQueryHelpers: malformed order document skipped',
+                    tag: 'orders',
+                    error: e,
+                  );
                 }
               },
               onError: (_) {

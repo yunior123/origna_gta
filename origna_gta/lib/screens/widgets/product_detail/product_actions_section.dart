@@ -513,10 +513,7 @@ class _AddToCartButtonState extends ConsumerState<AddToCartButton> {
       Navigator.pushNamed(
         context,
         AppRoutes.checkout,
-        arguments: CheckoutArgs(
-          items: cartDetails,
-          total: subtotalCents / 100.0,
-        ),
+        arguments: CheckoutArgs(items: cartDetails, totalCents: subtotalCents),
       );
     } finally {
       if (mounted) ref.read(_isBuyingNowProvider.notifier).state = false;

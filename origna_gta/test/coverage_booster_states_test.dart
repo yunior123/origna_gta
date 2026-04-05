@@ -253,7 +253,7 @@ void main() {
     testWidgets('CheckoutScreen dark', (tester) async {
       await tester.pumpWidget(
         boosterWrapper(
-          const CheckoutScreen(items: [], total: 0),
+          const CheckoutScreen(items: [], totalCents: 0),
           themeMode: ThemeMode.dark,
         ),
       );
@@ -475,7 +475,7 @@ void main() {
 
     testWidgets('CheckoutScreen settles', (tester) async {
       await tester.pumpWidget(
-        boosterWrapper(const CheckoutScreen(items: [], total: 0)),
+        boosterWrapper(const CheckoutScreen(items: [], totalCents: 0)),
       );
       await tester.pump(const Duration(milliseconds: 500));
       await tester.pump(const Duration(milliseconds: 500));

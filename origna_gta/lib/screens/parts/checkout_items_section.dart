@@ -2,12 +2,12 @@ part of '../checkout_screen.dart';
 
 class _OrderSummary extends ConsumerWidget {
   final List<CartItemDetailModel> items;
-  final double subtotal;
+  final int subtotalCents;
   final String state;
 
   const _OrderSummary({
     required this.items,
-    required this.subtotal,
+    required this.subtotalCents,
     required this.state,
   });
 
@@ -29,7 +29,10 @@ class _OrderSummary extends ConsumerWidget {
         false;
     // Tax breakdown and rates computed in providers — no business logic in build()
     final taxBreakdown = ref.watch(
-      checkoutTaxBreakdownProvider((subtotal: subtotal, province: state)),
+      checkoutTaxBreakdownProvider((
+        subtotalCents: subtotalCents,
+        province: state,
+      )),
     );
     final taxRatesMap = ref.watch(checkoutProvinceRatesMapProvider(state));
 
@@ -93,7 +96,7 @@ class _OrderSummary extends ConsumerWidget {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    '\$${subtotal.toStringAsFixed(2)}',
+                    '\$${(subtotalCents / 100.0).toStringAsFixed(2)}',
                     style: const TextStyle(fontSize: 16),
                   ),
                 ],
@@ -214,12 +217,12 @@ class _OrderSummary extends ConsumerWidget {
                       // Total computed in provider — no business logic in build()
                       final total = ref.watch(
                         checkoutBuyerTotalProvider((
-                          subtotal: subtotal,
+                          subtotalCents: subtotalCents,
                           province: state,
                         )),
                       );
                       return Text(
-                        '\$${total.toStringAsFixed(2)}',
+                        '\$${(total / 100.0).toStringAsFixed(2)}',
                         style: const TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
@@ -346,7 +349,9 @@ class _OrderSummary extends ConsumerWidget {
 
   Widget _buildPlatformFeeRow(WidgetRef ref, bool isPremium) {
     // Platform fee computed in provider — no business logic in build()
-    final feeAmount = ref.watch(checkoutPlatformFeeProvider(subtotal));
+    final feeAmountCents = ref.watch(
+      checkoutPlatformFeeProvider(subtotalCents),
+    );
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -390,7 +395,7 @@ class _OrderSummary extends ConsumerWidget {
             Row(
               children: [
                 Text(
-                  '\$${feeAmount.toStringAsFixed(2)}',
+                  '\$${(feeAmountCents / 100.0).toStringAsFixed(2)}',
                   style: TextStyle(
                     fontSize: 14,
                     color: DesignTokens.textDisabled,
@@ -426,7 +431,7 @@ class _OrderSummary extends ConsumerWidget {
             )
           else
             Text(
-              '\$${feeAmount.toStringAsFixed(2)}',
+              '\$${(feeAmountCents / 100.0).toStringAsFixed(2)}',
               style: const TextStyle(
                 fontSize: 14,
                 color: DesignTokens.textSecondary,
@@ -442,7 +447,7 @@ class _OrderSummary extends ConsumerWidget {
   /// Tax amounts are computed in [checkoutTaxBreakdownProvider] — this method
   /// only handles presentation.
   List<Widget> _buildTaxBreakdownRows(
-    Map<String, double> taxBreakdown,
+    Map<String, int> taxBreakdown,
     Map<String, double> rates,
   ) {
     List<Widget> widgets = [];
@@ -471,7 +476,7 @@ class _OrderSummary extends ConsumerWidget {
             ),
             const SizedBox(width: 8),
             Text(
-              '\$${taxAmount.toStringAsFixed(2)}',
+              '\$${(taxAmount / 100.0).toStringAsFixed(2)}',
               style: TextStyle(fontSize: 14, color: DesignTokens.textSecondary),
             ),
           ],

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/lifecycle_provider.dart';
 import 'package:origna_gta/core/routes.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
@@ -441,32 +442,45 @@ class _SubscriptionSuccessScreenState
 
 // ═══ Widget Previews ═══
 
+final _previewSubscriptionInfo = SubscriptionInfo(
+  status: SubscriptionStatusValues.premiumActive.first,
+  isPremium: true,
+  currentPeriodEnd: DateTime(2026, 4, 25),
+  cancelAtPeriodEnd: false,
+);
+
+Widget _subscriptionSuccessContent() => previewScopeLoggedIn(
+  extraOverrides: [
+    subscriptionStreamProvider.overrideWith(
+      (ref) => Stream.value(_previewSubscriptionInfo),
+    ),
+  ],
+  child: SubscriptionSuccessScreen(),
+);
+
 @Preview(
   name: 'Premium Upgrade Success — Mobile',
   group: 'Screens — Premium Flow',
   size: Size(390, 844),
 )
-Widget previewSubscriptionSuccessScreenMobile() => previewMobile(
-  child: previewScopeLoggedIn(child: SubscriptionSuccessScreen()),
-);
+Widget previewSubscriptionSuccessScreenMobile() =>
+    previewMobile(child: _subscriptionSuccessContent());
 
 @Preview(
   name: 'Premium Upgrade Success — Tablet',
   group: 'Screens — Premium Flow',
   size: Size(768, 1024),
 )
-Widget previewSubscriptionSuccessScreenTablet() => previewTablet(
-  child: previewScopeLoggedIn(child: SubscriptionSuccessScreen()),
-);
+Widget previewSubscriptionSuccessScreenTablet() =>
+    previewTablet(child: _subscriptionSuccessContent());
 
 @Preview(
   name: 'Premium Upgrade Success — Desktop',
   group: 'Screens — Premium Flow',
   size: Size(1280, 800),
 )
-Widget previewSubscriptionSuccessScreenDesktop() => previewDesktop(
-  child: previewScopeLoggedIn(child: SubscriptionSuccessScreen()),
-);
+Widget previewSubscriptionSuccessScreenDesktop() =>
+    previewDesktop(child: _subscriptionSuccessContent());
 
 @Preview(
   name: 'Premium Upgrade Success — Web',
@@ -474,7 +488,7 @@ Widget previewSubscriptionSuccessScreenDesktop() => previewDesktop(
   size: Size(1440, 900),
 )
 Widget previewSubscriptionSuccessScreenWeb() =>
-    previewWeb(child: previewScopeLoggedIn(child: SubscriptionSuccessScreen()));
+    previewWeb(child: _subscriptionSuccessContent());
 
 // ── Light ────────────────────────────────────────────────────────────────────
 @Preview(
@@ -484,7 +498,7 @@ Widget previewSubscriptionSuccessScreenWeb() =>
 )
 Widget previewSubscriptionSuccessLightMobile() => previewMobile(
   theme: previewLightTheme,
-  child: previewScopeLoggedIn(child: SubscriptionSuccessScreen()),
+  child: _subscriptionSuccessContent(),
 );
 
 @Preview(
@@ -494,7 +508,7 @@ Widget previewSubscriptionSuccessLightMobile() => previewMobile(
 )
 Widget previewSubscriptionSuccessLightTablet() => previewTablet(
   theme: previewLightTheme,
-  child: previewScopeLoggedIn(child: SubscriptionSuccessScreen()),
+  child: _subscriptionSuccessContent(),
 );
 
 @Preview(
@@ -504,7 +518,7 @@ Widget previewSubscriptionSuccessLightTablet() => previewTablet(
 )
 Widget previewSubscriptionSuccessLightDesktop() => previewDesktop(
   theme: previewLightTheme,
-  child: previewScopeLoggedIn(child: SubscriptionSuccessScreen()),
+  child: _subscriptionSuccessContent(),
 );
 
 @Preview(
@@ -512,7 +526,5 @@ Widget previewSubscriptionSuccessLightDesktop() => previewDesktop(
   group: 'Screens — Premium Flow',
   size: Size(1440, 900),
 )
-Widget previewSubscriptionSuccessLightWeb() => previewWeb(
-  theme: previewLightTheme,
-  child: previewScopeLoggedIn(child: SubscriptionSuccessScreen()),
-);
+Widget previewSubscriptionSuccessLightWeb() =>
+    previewWeb(theme: previewLightTheme, child: _subscriptionSuccessContent());

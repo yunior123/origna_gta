@@ -33,10 +33,10 @@ extension _EditProductSubmitSection on _EditProductScreenState {
 
     // Bug #6: Preserve existing quantityDiscounts/additionalItemCost/maxItemsPerShipment from product
     final existingStandard = widget.product.deliveryOptions
-        .where((o) => o.type == 'standard')
+        .where((o) => o.type == DeliveryTypeValues.standard)
         .firstOrNull;
     final existingExpress = widget.product.deliveryOptions
-        .where((o) => o.type == 'express')
+        .where((o) => o.type == DeliveryTypeValues.express)
         .firstOrNull;
     final existingQuantityDiscounts =
         existingStandard?.quantityDiscounts ??
@@ -58,7 +58,7 @@ extension _EditProductSubmitSection on _EditProductScreenState {
       // Bug #2: Inject pickup option for local-only products
       deliveryOptions = [
         SellerDeliveryOption(
-          type: 'pickup',
+          type: DeliveryTypeValues.pickup,
           description: 'product.local_pickup_only'.tr(),
           estimatedDays: 0,
           costCents: 0,
@@ -68,7 +68,7 @@ extension _EditProductSubmitSection on _EditProductScreenState {
       deliveryOptions = <SellerDeliveryOption>[
         if (state.standardEnabled)
           SellerDeliveryOption(
-            type: 'standard',
+            type: DeliveryTypeValues.standard,
             description: 'product.standard_delivery'.tr(),
             estimatedDays: int.tryParse(_standardDaysController.text) ?? 5,
             costCents:
@@ -80,7 +80,7 @@ extension _EditProductSubmitSection on _EditProductScreenState {
           ),
         if (state.expressEnabled)
           SellerDeliveryOption(
-            type: 'express',
+            type: DeliveryTypeValues.express,
             description: 'product.express_delivery'.tr(),
             estimatedDays: int.tryParse(_expressDaysController.text) ?? 2,
             costCents:
@@ -92,7 +92,7 @@ extension _EditProductSubmitSection on _EditProductScreenState {
           ),
         if (state.sameDayEnabled)
           SellerDeliveryOption(
-            type: 'same_day',
+            type: DeliveryTypeValues.sameDay,
             description: 'product.same_day_delivery'.tr(),
             estimatedDays: 0,
             costCents:

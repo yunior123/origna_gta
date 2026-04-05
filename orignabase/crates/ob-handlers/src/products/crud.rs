@@ -891,14 +891,17 @@ async fn delete_product(
     // Check for pending orders containing this product
     // Uses validated user_id from JWT (not client-supplied req.user_id)
     let pending_query = format!(
-        "SELECT * FROM {} WHERE data->>'{}' = '{}' AND data->>'{}' IN ('pending', 'processing', 'shipped') LIMIT 5",
+        "SELECT * FROM {} WHERE data->>'{}' = $1 AND data->>'{}' IN ('pending', 'processing', 'shipped') LIMIT 5",
         collections::ORDERS,
         fields::SELLER_ID,
-        ob_core::escape_sql_string(&user_id),
         fields::STATUS,
     );
 
-    let pending_orders: Vec<Value> = state.db.query_raw(&pending_query).await.unwrap_or_default();
+    let pending_orders: Vec<Value> = state
+        .db
+        .query_bind(&pending_query, serde_json::json!({ "1": user_id }))
+        .await
+        .unwrap_or_default();
 
     // Check if any pending order contains this product
     for order in &pending_orders {
@@ -971,7 +974,13 @@ async fn list_products(
     }
 
     // Build query — always filter for active products in public API
-    let mut conditions = vec![format!("data->>'{}' = 'active'", fields::LIFECYCLE_STATUS)];
+    // User-controlled string values are escaped via escape_sql_string
+    // order_by and order_direction are validated against whitelists above
+    let mut conditions = vec![format!(
+        "data->>'{}' = '{}'",
+        fields::LIFECYCLE_STATUS,
+        "active"
+    )];
 
     if let Some(ref category) = req.category {
         conditions.push(format!(
@@ -1049,6 +1058,7 @@ async fn seller_list(
 
     let limit = req.limit.min(MAX_PAGE_SIZE);
 
+    // Build query — seller_id is escaped, lifecycle_status is a constant
     let mut conditions = vec![format!(
         "data->>'{}' = '{}'",
         fields::SELLER_ID,
@@ -1056,7 +1066,11 @@ async fn seller_list(
     )];
 
     if !req.include_inactive {
-        conditions.push(format!("data->>'{}' = 'active'", fields::LIFECYCLE_STATUS));
+        conditions.push(format!(
+            "data->>'{}' = '{}'",
+            fields::LIFECYCLE_STATUS,
+            "active"
+        ));
     }
 
     let where_clause = format!(" WHERE {}", conditions.join(" AND "));

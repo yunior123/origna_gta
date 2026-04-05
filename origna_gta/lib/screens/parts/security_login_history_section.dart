@@ -72,7 +72,13 @@ Widget _buildLoginHistoryCard(
                     formattedDate = DateFormat(
                       'MMM d, yyyy HH:mm',
                     ).format(DateTime.parse(date));
-                  } catch (_) {}
+                  } catch (e) {
+                    AppLogger.w(
+                      'SecurityLoginHistory: date format failed for login entry',
+                      tag: 'security',
+                      error: e,
+                    );
+                  }
 
                   return Padding(
                     padding: const EdgeInsets.symmetric(vertical: 10),

@@ -8,6 +8,7 @@ import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
+import 'package:origna_gta/features/home/home_state.dart';
 import 'package:origna_gta/features/home/home_viewmodel.dart';
 import 'package:origna_gta/features/seller/seller_account_status_viewmodel.dart';
 import 'package:origna_gta/models/generated/models.dart';
@@ -601,7 +602,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       try {
         ref.read(homeViewModelProvider.notifier).dismissSearchOverlay();
       } catch (e, st) {
-        AppError.log(e, stackTrace: st, context: 'HomeScreen._onScroll.dismissSearchOverlay');
+        AppError.log(
+          e,
+          stackTrace: st,
+          context: 'HomeScreen._onScroll.dismissSearchOverlay',
+        );
       }
     }
 
@@ -617,7 +622,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             try {
               await ref.read(homeViewModelProvider.notifier).loadProducts();
             } catch (e, st) {
-              AppError.log(e, stackTrace: st, context: 'HomeScreen._onScroll.loadProducts');
+              AppError.log(
+                e,
+                stackTrace: st,
+                context: 'HomeScreen._onScroll.loadProducts',
+              );
             } finally {
               _isPaginating = false;
             }
@@ -625,7 +634,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         }
       }
     } catch (e, st) {
-      AppError.log(e, stackTrace: st, context: 'HomeScreen._onScroll.pagination');
+      AppError.log(
+        e,
+        stackTrace: st,
+        context: 'HomeScreen._onScroll.pagination',
+      );
     }
   }
 }
@@ -634,11 +647,150 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
 // ═══ Widget Previews ═══
 
-// Logged-out (default): previewScope — authStateProvider returns null
-Widget _home() => previewScope(child: HomeScreen());
+final _previewProducts = [
+  Product(
+    productId: 'preview-1',
+    sellerId: 'seller-1',
+    name: 'Érable Artisan Syrup',
+    description: 'Pure Quebec maple syrup, Grade A Amber',
+    priceCents: 1899,
+    stockQuantity: 150,
+    imageUrls: ['images/1.png'],
+    categoryId: 1,
+    createdAt: DateTime(2026, 1, 15),
+    isTrending: true,
+    trendingScore: 95,
+    rating: 4.8,
+    ratingCount: 124,
+    shipFromCountry: 'CA',
+    shipFromCity: 'Montreal',
+    shipFromProvince: 'QC',
+    freeShipping: true,
+  ),
+  Product(
+    productId: 'preview-2',
+    sellerId: 'seller-2',
+    name: 'Handcrafted Leather Wallet',
+    description: 'Full-grain leather, handmade in Toronto',
+    priceCents: 7999,
+    compareAtPriceCents: 9999,
+    stockQuantity: 42,
+    imageUrls: ['images/2.png'],
+    categoryId: 3,
+    createdAt: DateTime(2026, 2, 10),
+    rating: 4.5,
+    ratingCount: 67,
+    shipFromCountry: 'CA',
+    shipFromCity: 'Toronto',
+    shipFromProvince: 'ON',
+  ),
+  Product(
+    productId: 'preview-3',
+    sellerId: 'seller-3',
+    name: 'Organic Wild Blueberry Jam',
+    description: 'Small-batch jam from Nova Scotia wild blueberries',
+    priceCents: 1249,
+    stockQuantity: 200,
+    imageUrls: ['images/3.png'],
+    categoryId: 1,
+    createdAt: DateTime(2026, 3, 1),
+    isTrending: true,
+    trendingScore: 88,
+    rating: 4.9,
+    ratingCount: 203,
+    shipFromCountry: 'CA',
+    shipFromCity: 'Halifax',
+    shipFromProvince: 'NS',
+    freeShipping: true,
+  ),
+  Product(
+    productId: 'preview-4',
+    sellerId: 'seller-1',
+    name: 'Ceramic Coffee Mug Set',
+    description: 'Set of 4 handmade ceramic mugs, dishwasher safe',
+    priceCents: 5499,
+    stockQuantity: 28,
+    imageUrls: ['images/4.png'],
+    categoryId: 5,
+    createdAt: DateTime(2026, 1, 28),
+    rating: 4.3,
+    ratingCount: 45,
+    shipFromCountry: 'CA',
+    shipFromCity: 'Vancouver',
+    shipFromProvince: 'BC',
+  ),
+  Product(
+    productId: 'preview-5',
+    sellerId: 'seller-4',
+    name: 'Premium Headphones',
+    description: 'Noise-canceling wireless headphones, 40hr battery',
+    priceCents: 29999,
+    compareAtPriceCents: 39999,
+    stockQuantity: 15,
+    imageUrls: ['images/5.png'],
+    categoryId: 8,
+    createdAt: DateTime(2026, 2, 20),
+    isTrending: true,
+    trendingScore: 72,
+    rating: 4.7,
+    ratingCount: 312,
+    shipFromCountry: 'CA',
+    shipFromCity: 'Calgary',
+    shipFromProvince: 'AB',
+  ),
+  Product(
+    productId: 'preview-6',
+    sellerId: 'seller-2',
+    name: 'Artisan Quebec Cheese Board',
+    description: 'Selection of aged Quebec cheeses, locally sourced',
+    priceCents: 4500,
+    stockQuantity: 10,
+    imageUrls: ['images/6.png'],
+    categoryId: 1,
+    createdAt: DateTime(2026, 3, 5),
+    rating: 4.6,
+    ratingCount: 89,
+    shipFromCountry: 'CA',
+    shipFromCity: 'Quebec City',
+    shipFromProvince: 'QC',
+    isPerishable: true,
+  ),
+];
+
+class _PreviewHomeViewModel extends HomeViewModel {
+  _PreviewHomeViewModel(List<Product> mockProducts) : super(_FakeHomeRef()) {
+    state = HomeState(
+      products: mockProducts,
+      isLoading: false,
+      hasMore: false,
+      recentSearches: ['maple syrup', 'leather wallet', 'headphones'],
+    );
+  }
+}
+
+class _FakeHomeRef extends Ref {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
+}
+
+Widget _home() => previewScope(
+  extraOverrides: [
+    homeViewModelProvider.overrideWith((ref) {
+      return _PreviewHomeViewModel(_previewProducts);
+    }),
+  ],
+  child: HomeScreen(),
+);
 
 // Logged-in: previewScopeLoggedIn — userIdProvider returns a uid
-Widget _homeLoggedIn() => previewScopeLoggedIn(child: HomeScreen());
+Widget _homeLoggedIn() => previewScopeLoggedIn(
+  extraOverrides: [
+    homeViewModelProvider.overrideWith((ref) {
+      return _PreviewHomeViewModel(_previewProducts);
+    }),
+  ],
+  child: HomeScreen(),
+);
 
 // ── Dark (default) ──────────────────────────────────────────────────────────
 @Preview(

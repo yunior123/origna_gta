@@ -546,8 +546,10 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
       page: AuthRequiredGate(
         child: DeferredWidget(
           loader: checkout.loadLibrary,
-          builder: () =>
-              checkout.CheckoutScreen(items: args.items, total: args.total),
+          builder: () => checkout.CheckoutScreen(
+            items: args.items,
+            totalCents: args.totalCents,
+          ),
         ),
       ),
     );

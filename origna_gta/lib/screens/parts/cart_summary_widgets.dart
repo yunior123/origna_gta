@@ -85,7 +85,7 @@ class _CheckoutButton extends ConsumerWidget {
             AppRoutes.checkout,
             arguments: CheckoutArgs(
               items: itemsWithDetails,
-              total: subtotalCents / 100.0,
+              totalCents: subtotalCents,
             ),
           );
         });

@@ -269,9 +269,10 @@ async fn run_auto_capture(state: &HandlersState) -> std::result::Result<(), Stri
                 (*amount_cents * platform_fee_total + order_subtotal / 2) / order_subtotal;
             let net_cents = amount_cents - fee_cents;
 
-            // Create payout record
+            // Create payout record directly as "completed" — funds were already transferred
+            // at checkout time via Stripe Connect destination charge. This is bookkeeping only.
             let payout_id = format!("{order_id}_{seller_id}");
-            let _ = state
+            match state
                 .db
                 .upsert_document(
                     collections::PAYOUTS,
@@ -283,24 +284,10 @@ async fn run_auto_capture(state: &HandlersState) -> std::result::Result<(), Stri
                         fields::AMOUNT_CENTS: amount_cents,
                         fields::PLATFORM_FEE_CENTS: fee_cents,
                         fields::NET_AMOUNT_CENTS: net_cents,
-                        fields::STATUS: "pending",
-                        fields::AUTO_CAPTURED: true,
-                        fields::CREATED_AT: Utc::now().to_rfc3339(),
-                    }),
-                )
-                .await;
-
-            // Funds were already transferred to the seller at checkout time via
-            // Stripe Connect destination charge (transfer_data[destination]).
-            // No separate Stripe Transfer is needed — just mark payout completed.
-            match state
-                .db
-                .update_document(
-                    collections::PAYOUTS,
-                    &payout_id,
-                    json!({
                         fields::STATUS: "completed",
                         fields::PAYOUT_DATE: Utc::now().to_rfc3339(),
+                        fields::AUTO_CAPTURED: true,
+                        fields::CREATED_AT: Utc::now().to_rfc3339(),
                     }),
                 )
                 .await
@@ -308,7 +295,7 @@ async fn run_auto_capture(state: &HandlersState) -> std::result::Result<(), Stri
                 Ok(_) => success_count += 1,
                 Err(e) => {
                     warn!(
-                        "Failed to update payout {} to completed: {e}",
+                        "Failed to create completed payout {}: {e}",
                         payout_id
                     );
                     failed_count += 1;
@@ -2387,6 +2374,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_cron_lock_logic() {
         let state = setup_state().await;
         let job = &format!("test_job_{}", uuid::Uuid::new_v4());
@@ -2405,6 +2393,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_cron_lock_stale_running_lock_can_be_taken_over() {
         let state = setup_state().await;
         let job = "stale_job";
@@ -2428,6 +2417,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_alert_cron_failure() {
         let state = setup_state().await;
         let unique_job = format!("test_job_{}", uuid::Uuid::new_v4());
@@ -2446,16 +2436,18 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_auto_capture_confirmed_receipts_flow() {
         // No MockServer needed — payout bookkeeping only, no Stripe Transfer call.
         // Funds already transferred via destination charge at checkout time.
         let state = setup_state().await;
         let order_id = format!("test_auto_capture_confirmed_receipts_flow_{}", uuid::Uuid::new_v4());
-        let seller_id = format!("test_auto_capture_confirmed_receipts_flow_{}", uuid::Uuid::new_v4());
+        let seller_id = format!("test_auto_capture_seller_{}", uuid::Uuid::new_v4());
+        let payout_id = format!("{order_id}_{seller_id}");
         let pi_id = format!("pi_auto_capture_{}", uuid::Uuid::new_v4());
         let delivered_at = (Utc::now() - Duration::days(10)).to_rfc3339();
 
-        state
+        let upsert_result = state
             .db
             .upsert_document(
                 collections::ORDERS,
@@ -2477,24 +2469,54 @@ mod tests {
                     ]
                 }),
             )
-            .await
-            .unwrap();
+            .await;
+        assert!(upsert_result.is_ok(), "Failed to upsert order: {:?}", upsert_result.err());
 
-        run_cron_with_retry!(&state, "auto_capture_confirmed_receipts", auto_capture_confirmed_receipts);
+        // Call the cron function directly (bypass retry macro to avoid lock issues)
+        auto_capture_confirmed_receipts(&state).await;
 
-        let order = state
-            .db
-            .get_document(collections::ORDERS, &order_id)
-            .await
-            .unwrap();
-        assert_eq!(order[fields::PAYOUT_STATUS], "completed");
+        // Query payout by its physical ID column (not by JSONB orderId) to avoid
+        // connection pool race conditions with stale JSONB reads.
+        let payout = state.db.get_document(collections::PAYOUTS, &payout_id).await;
+        assert!(payout.is_ok(), "Payout should exist after cron run");
+        let payout = payout.unwrap();
+        assert_eq!(
+            payout.get(fields::STATUS).and_then(|v| v.as_str()),
+            Some("completed"),
+            "Payout status should be completed, got: {:?}",
+            payout.get(fields::STATUS)
+        );
+        assert_eq!(
+            payout.get(fields::ORDER_ID).and_then(|v| v.as_str()),
+            Some(order_id.as_str()),
+            "Payout orderId should match"
+        );
+        assert_eq!(
+            payout.get(fields::SELLER_ID).and_then(|v| v.as_str()),
+            Some(seller_id.as_str()),
+            "Payout sellerId should match"
+        );
+        assert_eq!(
+            payout.get(fields::AMOUNT_CENTS).and_then(|v| v.as_i64()),
+            Some(1000),
+            "Payout amount should match"
+        );
+        assert!(
+            payout.get(fields::AUTO_CAPTURED).and_then(|v| v.as_bool()) == Some(true),
+            "Payout should be marked auto-captured"
+        );
 
-        let payouts = query_filtered(&state.db, collections::PAYOUTS, "orderId", &order_id).await;
-        assert_eq!(payouts.len(), 1);
-        assert_eq!(payouts[0][fields::STATUS], "completed");
+        // Verify order payout_status was updated
+        let order = state.db.get_document(collections::ORDERS, &order_id).await.unwrap();
+        assert_eq!(
+            order.get(fields::PAYOUT_STATUS).and_then(|v| v.as_str()),
+            Some("completed"),
+            "Order payout_status should be completed"
+        );
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_auto_capture_confirmed_receipts_skips_when_stripe_disabled() {
         let state = setup_state().await;
         let order_id = uuid::Uuid::new_v4().to_string();
@@ -2558,6 +2580,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_auto_capture_confirmed_receipts_skips_order_without_payment_intent() {
         let state = setup_state().await;
         let order_id = uuid::Uuid::new_v4().to_string();
@@ -2597,6 +2620,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_auto_capture_confirmed_receipts_skips_order_with_active_dispute() {
         let state = setup_state().await;
         let order_id = uuid::Uuid::new_v4().to_string();
@@ -2652,6 +2676,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_auto_capture_confirmed_receipts_skips_order_with_active_return() {
         let state = setup_state().await;
         let order_id = uuid::Uuid::new_v4().to_string();
@@ -2706,6 +2731,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_auto_capture_confirmed_receipts_marks_failed_when_no_delivered_items_payable() {
         let state = setup_state().await;
         let order_id = uuid::Uuid::new_v4().to_string();
@@ -2745,6 +2771,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_auto_archive_old_orders_flow() {
         let state = setup_state().await;
         let order_id = format!("old_order_{}", uuid::Uuid::new_v4());
@@ -2775,6 +2802,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_auto_archive_old_orders_skips_already_archived_docs() {
         let state = setup_state().await;
         let updated_at = (Utc::now() - Duration::days(40)).to_rfc3339();
@@ -2805,6 +2833,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_cleanup_stale_rate_limits_flow() {
         let state = setup_state().await;
         let limit_id = format!("stale_limit_{}", uuid::Uuid::new_v4());
@@ -2830,6 +2859,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_cleanup_stale_rate_limits_skips_when_lock_held() {
         let state = setup_state().await;
         let limit_id = format!("locked_limit_{}", uuid::Uuid::new_v4());
@@ -2874,18 +2904,21 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_monitor_meilisearch_sync_runs() {
         let state = setup_state().await;
         run_cron_with_retry!(&state, "monitor_meilisearch_sync", monitor_meilisearch_sync);
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_cleanup_orphaned_r2_images_runs() {
         let state = setup_state().await;
         run_cron_with_retry!(&state, "cleanup_orphaned_r2_images", cleanup_orphaned_r2_images);
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_cleanup_stale_webhook_events_flow() {
         let state = setup_state().await;
         let ev_id = format!("old_event_{}", uuid::Uuid::new_v4());
@@ -2910,6 +2943,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_cleanup_stale_security_alerts_flow() {
         let state = setup_state().await;
         let alert_id = format!("old_alert_{}", uuid::Uuid::new_v4());
@@ -2935,6 +2969,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_retry_failed_meilisearch_syncs_flow() {
         let state = setup_state().await;
         let fail_id = format!("test_retry_failed_meilisearch_syncs_flow_{}", uuid::Uuid::new_v4());
@@ -2968,6 +3003,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_compute_seller_metrics_flow() {
         let state = setup_state().await;
         let seller_id = format!("seller_metrics_{}", uuid::Uuid::new_v4());
@@ -3004,6 +3040,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_compute_trending_products_flow() {
         let state = setup_state().await;
         let product_id = format!("test_compute_trending_products_flow_{}", uuid::Uuid::new_v4());
@@ -3035,6 +3072,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_check_low_stock_alerts_skips_without_email_consent() {
         let state = setup_state().await;
         let product_id = format!("test_check_low_stock_alerts_skips_without_email_consent_{}", uuid::Uuid::new_v4());
@@ -3081,6 +3119,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_check_low_stock_alerts_skips_when_cooldown_active() {
         let state = setup_state().await;
         let product_id = uuid::Uuid::new_v4().to_string();
@@ -3128,6 +3167,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_send_abandoned_cart_emails_skips_recent_checkout_and_empty_cart() {
         let state = setup_state().await;
         let user_recent_id = uuid::Uuid::new_v4().to_string();
@@ -3177,6 +3217,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_sync_expired_subscriptions_flow() {
         let state = setup_state().await;
         let user_id = format!("test_sync_expired_subscriptions_flow_{}", uuid::Uuid::new_v4());
@@ -3220,6 +3261,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_escalate_stale_return_requests_flow() {
         let state = setup_state().await;
         let ret_id = format!("test_escalate_stale_return_requests_flow_{}", uuid::Uuid::new_v4());
@@ -3250,12 +3292,14 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_send_premium_renewal_reminders_runs() {
         let state = setup_state().await;
         run_cron_with_retry!(&state, "send_premium_renewal_reminders", send_premium_renewal_reminders);
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_check_expired_authorizations_cancels_order_restores_stock_and_logs_event() {
         let pi_id = format!("pi_expired_auth_{}", uuid::Uuid::new_v4());
         let server = MockServer::start().await;
@@ -3341,6 +3385,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_retry_failed_meilisearch_syncs_resolves_max_retry_failures() {
         let state = setup_state().await;
         let fail_id = format!("test_retry_failed_meilisearch_syncs_resolves_max_retry_failures_{}", uuid::Uuid::new_v4());
@@ -3371,6 +3416,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_retry_failed_meilisearch_syncs_resolves_active_product_for_reindex() {
         let state = setup_state().await;
         let fail_id = format!("test_retry_failed_meilisearch_syncs_resolves_active_product_for_reindex_{}", uuid::Uuid::new_v4());
@@ -3438,6 +3484,7 @@ mod tests {
     // Coverage: auto_capture lock-held (lines 129-130)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_auto_capture_lock_held_skips() {
         let state = setup_state().await;
         // Hold the lock
@@ -3463,6 +3510,7 @@ mod tests {
     // Coverage: auto_capture error path (line 135) — DB query fails
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_auto_capture_alert_on_error() {
         let state = setup_state().await;
         // Stripe enabled (default), but query returns empty = no error.
@@ -3477,6 +3525,7 @@ mod tests {
     // Coverage: auto_capture multi-seller payout bookkeeping
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_auto_capture_partial_payout() {
         // No MockServer needed — no Stripe Transfer call, funds already
         // routed via destination charge at checkout.
@@ -3535,6 +3584,7 @@ mod tests {
     // Coverage: auto_capture with no items (line 240 — items is None)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_auto_capture_order_without_items_array() {
         let state = setup_state().await;
         let order_id = uuid::Uuid::new_v4().to_string();
@@ -3570,6 +3620,7 @@ mod tests {
     // Coverage: auto_capture with platformFeeRatio (line 240+ sellers_total_cents)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_auto_capture_with_custom_platform_fee() {
         let state = setup_state().await;
         let order_id = format!("test_auto_capture_with_custom_platform_fee_{}", uuid::Uuid::new_v4());
@@ -3612,6 +3663,7 @@ mod tests {
     // Coverage: check_expired_authorizations lock held (line 333)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_check_expired_authorizations_lock_held() {
         let state = setup_state().await;
         state
@@ -3635,6 +3687,7 @@ mod tests {
     // Coverage: check_expired_auth — digital items skip stock restore (lines 355, 373, 375-376, 378)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_check_expired_auth_digital_items_skip_stock_restore() {
         let state = setup_state().await;
         let order_id = format!("order_digital_{}", uuid::Uuid::new_v4());
@@ -3675,6 +3728,7 @@ mod tests {
     // Coverage: check_expired_auth — no payment intent (line 355 skipped)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_check_expired_auth_no_payment_intent() {
         let state = setup_state().await;
         let product_id = format!("test_check_expired_auth_no_payment_intent_{}", uuid::Uuid::new_v4());
@@ -3736,6 +3790,7 @@ mod tests {
     // Coverage: check_expired_auth — query error (lines 420-421)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_check_expired_auth_empty_items_order() {
         let state = setup_state().await;
         let order_id = format!("order_empty_items_{}", uuid::Uuid::new_v4());
@@ -3772,6 +3827,7 @@ mod tests {
     // Coverage: auto_archive lock held (line 437)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_auto_archive_lock_held() {
         let state = setup_state().await;
         state
@@ -3795,6 +3851,7 @@ mod tests {
     // Coverage: monitor_meilisearch_sync with products (lines 503, 508-509)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_monitor_meilisearch_sync_with_products() {
         let state = setup_state().await;
         let prod_id1 = uuid::Uuid::new_v4().to_string();
@@ -3829,6 +3886,7 @@ mod tests {
     // Coverage: monitor_meilisearch_sync — no products (line 503)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_monitor_meilisearch_sync_no_products() {
         let state = setup_state().await;
         run_cron_with_retry!(&state, "monitor_meilisearch_sync", monitor_meilisearch_sync);
@@ -3838,6 +3896,7 @@ mod tests {
     // Coverage: cleanup_stale_rate_limits — with docs (line 546)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_cleanup_stale_rate_limits_deletes_multiple() {
         let state = setup_state().await;
         let rl1 = uuid::Uuid::new_v4().to_string();
@@ -3877,6 +3936,7 @@ mod tests {
     // Coverage: cleanup_orphaned_r2_images with products (lines 569, 580-589, 594)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_cleanup_orphaned_r2_images_with_products() {
         let state = setup_state().await;
         let prod_r2_1 = uuid::Uuid::new_v4().to_string();
@@ -3928,6 +3988,7 @@ mod tests {
     // Coverage: cleanup_orphaned_r2_images lock held (line 569)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_cleanup_orphaned_r2_images_lock_held() {
         let state = setup_state().await;
         state
@@ -3951,6 +4012,7 @@ mod tests {
     // Coverage: cleanup_stale_webhook_events with docs (lines 618, 641)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_cleanup_stale_webhook_events_multiple() {
         let state = setup_state().await;
         let we1 = uuid::Uuid::new_v4().to_string();
@@ -3990,6 +4052,7 @@ mod tests {
     // Coverage: cleanup_stale_webhook_events lock held (line 618)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_cleanup_stale_webhook_events_lock_held() {
         let state = setup_state().await;
         state
@@ -4013,6 +4076,7 @@ mod tests {
     // Coverage: cleanup_stale_security_alerts with docs (lines 664, 687)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_cleanup_stale_security_alerts_multiple() {
         let state = setup_state().await;
         let sa1 = uuid::Uuid::new_v4().to_string();
@@ -4054,6 +4118,7 @@ mod tests {
     // Coverage: cleanup_stale_security_alerts lock held (line 664)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_cleanup_stale_security_alerts_lock_held() {
         let state = setup_state().await;
         state
@@ -4077,6 +4142,7 @@ mod tests {
     // Coverage: retry_failed_meilisearch — lock held (line 713)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_retry_meilisearch_lock_held() {
         let state = setup_state().await;
         state
@@ -4100,6 +4166,7 @@ mod tests {
     // Coverage: retry_failed_meilisearch — empty product_id (lines 739-748)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_retry_meilisearch_empty_product_id() {
         let state = setup_state().await;
         let fail_id = format!("test_retry_meilisearch_empty_product_id_{}", uuid::Uuid::new_v4());
@@ -4131,6 +4198,7 @@ mod tests {
     // Coverage: retry_failed_meilisearch — inactive product (lines 798-809)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_retry_meilisearch_inactive_product() {
         let state = setup_state().await;
         let product_id = format!("prod_inactive_{}", uuid::Uuid::new_v4());
@@ -4174,6 +4242,7 @@ mod tests {
     // Coverage: check_low_stock_alerts lock held (line 853)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_check_low_stock_lock_held() {
         let state = setup_state().await;
         state
@@ -4197,6 +4266,7 @@ mod tests {
     // Coverage: check_low_stock — threshold 0 or trackQuantity false (line 886)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_check_low_stock_skips_zero_threshold() {
         let state = setup_state().await;
         let product_id = uuid::Uuid::new_v4().to_string();
@@ -4227,6 +4297,7 @@ mod tests {
     // Coverage: check_low_stock — stock > threshold (line 894)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_check_low_stock_skips_high_stock() {
         let state = setup_state().await;
         let product_id = uuid::Uuid::new_v4().to_string();
@@ -4257,6 +4328,7 @@ mod tests {
     // Coverage: check_low_stock — no seller_id (line 909)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_check_low_stock_skips_empty_seller() {
         let state = setup_state().await;
         let product_id = uuid::Uuid::new_v4().to_string();
@@ -4285,6 +4357,7 @@ mod tests {
     // Coverage: check_low_stock — seller not found (line 933, 944)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_check_low_stock_seller_not_found() {
         let state = setup_state().await;
         let product_id = uuid::Uuid::new_v4().to_string();
@@ -4315,6 +4388,7 @@ mod tests {
     // Coverage: check_low_stock — with email + consent + mailjet keys (lines 950-983)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_check_low_stock_sends_email() {
         let server = MockServer::start().await;
         Mock::given(method("POST"))
@@ -4389,6 +4463,7 @@ mod tests {
     // Coverage: check_low_stock — no consent skips email (line 950)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_check_low_stock_no_consent() {
         let state = setup_state().await;
         let product_id = uuid::Uuid::new_v4().to_string();
@@ -4438,6 +4513,7 @@ mod tests {
     // Coverage: send_abandoned_cart lock held (line 1009)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_send_abandoned_cart_lock_held() {
         let state = setup_state().await;
         state
@@ -4461,6 +4537,7 @@ mod tests {
     // Coverage: send_abandoned_cart — no email (line 1038)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_send_abandoned_cart_skips_no_email() {
         let state = setup_state().await;
         let user_id = uuid::Uuid::new_v4().to_string();
@@ -4484,6 +4561,7 @@ mod tests {
     // Coverage: send_abandoned_cart — with cooldown (lines 1043-1045)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_send_abandoned_cart_skips_recent_cooldown() {
         let state = setup_state().await;
         let user_id = uuid::Uuid::new_v4().to_string();
@@ -4509,6 +4587,7 @@ mod tests {
     // Coverage: send_abandoned_cart — empty cart after query (line 1061)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_send_abandoned_cart_empty_cart() {
         let state = setup_state().await;
         let user_id = uuid::Uuid::new_v4().to_string();
@@ -4533,6 +4612,7 @@ mod tests {
     // Coverage: send_abandoned_cart — cart items without name (line 1075)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_send_abandoned_cart_items_without_name() {
         let state = setup_state().await;
         let user_id = uuid::Uuid::new_v4().to_string();
@@ -4571,6 +4651,7 @@ mod tests {
     // Coverage: send_abandoned_cart — full flow with email (lines 1063-1117)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_send_abandoned_cart_full_flow_en() {
         let server = MockServer::start().await;
         Mock::given(method("POST"))
@@ -4641,6 +4722,7 @@ mod tests {
     // Coverage: send_abandoned_cart — French subject (line 1092)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_send_abandoned_cart_full_flow_fr() {
         let server = MockServer::start().await;
         Mock::given(method("POST"))
@@ -4711,6 +4793,7 @@ mod tests {
     // Coverage: compute_seller_metrics lock held (line 1140)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_compute_seller_metrics_lock_held() {
         let state = setup_state().await;
         state
@@ -4734,6 +4817,7 @@ mod tests {
     // Coverage: compute_seller_metrics — empty seller_id items (line 1181)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_compute_seller_metrics_empty_seller_id() {
         let state = setup_state().await;
         let order_id = format!("test_compute_seller_metrics_empty_seller_id_{}", uuid::Uuid::new_v4());
@@ -4774,6 +4858,7 @@ mod tests {
     // Coverage: compute_seller_metrics — REFUNDED + CANCELLED items (lines 1196, 1199)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_compute_seller_metrics_refunded_and_cancelled() {
         let state = setup_state().await;
         let order_id = uuid::Uuid::new_v4().to_string();
@@ -4818,6 +4903,7 @@ mod tests {
     // Coverage: compute_seller_metrics — zero items (lines 1213, 1218, 1223)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_compute_seller_metrics_empty_window() {
         let state = setup_state().await;
         // No orders in the window
@@ -4828,6 +4914,7 @@ mod tests {
     // Coverage: compute_seller_metrics — breach thresholds (lines 1249, 1252, 1271)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_compute_seller_metrics_all_breaches() {
         let state = setup_state().await;
         let seller_id = uuid::Uuid::new_v4().to_string();
@@ -4876,6 +4963,7 @@ mod tests {
     // Coverage: compute_trending_products lock held (line 1305)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_compute_trending_lock_held() {
         let state = setup_state().await;
         state
@@ -4899,6 +4987,7 @@ mod tests {
     // Coverage: compute_trending — old trending cleared (lines 1334-1394)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_compute_trending_clears_old_trending() {
         let state = setup_state().await;
         let old_id = format!("prod_old_trend_{}", uuid::Uuid::new_v4());
@@ -4960,6 +5049,7 @@ mod tests {
     // Coverage: compute_trending — product with no score (line 1355 skip)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_compute_trending_zero_score_skipped() {
         let state = setup_state().await;
         let product_id = uuid::Uuid::new_v4().to_string();
@@ -4993,6 +5083,7 @@ mod tests {
     // Coverage: sync_expired_subscriptions lock held (line 1421)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_sync_expired_subscriptions_lock_held() {
         let state = setup_state().await;
         state
@@ -5016,6 +5107,7 @@ mod tests {
     // Coverage: sync_expired_subscriptions — empty uid (line 1440)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_sync_expired_subscriptions_past_due() {
         let state = setup_state().await;
         let user_id = uuid::Uuid::new_v4().to_string();
@@ -5060,6 +5152,7 @@ mod tests {
     // Coverage: escalate_stale_return_requests lock held (line 1495)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_escalate_returns_lock_held() {
         let state = setup_state().await;
         state
@@ -5083,6 +5176,7 @@ mod tests {
     // Coverage: escalate_stale_return_requests — multiple returns (line 1538)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_escalate_returns_multiple() {
         let state = setup_state().await;
         let ret_a = uuid::Uuid::new_v4().to_string();
@@ -5134,6 +5228,7 @@ mod tests {
     // Coverage: send_premium_renewal_reminders lock held (line 1552)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_premium_renewal_lock_held() {
         let state = setup_state().await;
         state
@@ -5157,6 +5252,7 @@ mod tests {
     // Coverage: send_premium_renewal_reminders — full flow (lines 1574-1685)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_premium_renewal_full_flow_7day() {
         let server = MockServer::start().await;
         Mock::given(method("POST"))
@@ -5226,6 +5322,7 @@ mod tests {
     // Coverage: premium_renewal — French subject (line 1606-1610)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_premium_renewal_french() {
         let server = MockServer::start().await;
         Mock::given(method("POST"))
@@ -5291,6 +5388,7 @@ mod tests {
     // Coverage: premium_renewal — cancelled at period end (line 1577-1583)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_premium_renewal_skip_cancelled() {
         let state = setup_state().await;
         let user_id = uuid::Uuid::new_v4().to_string();
@@ -5325,6 +5423,7 @@ mod tests {
     // Coverage: premium_renewal — already sent (line 1586-1592)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_premium_renewal_skip_already_sent() {
         let state = setup_state().await;
         let user_id = uuid::Uuid::new_v4().to_string();
@@ -5353,6 +5452,7 @@ mod tests {
     // Coverage: premium_renewal — empty email (line 1602-1604)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_premium_renewal_skip_empty_email() {
         let state = setup_state().await;
         let user_id = uuid::Uuid::new_v4().to_string();
@@ -5400,6 +5500,7 @@ mod tests {
     // Coverage: drain_pending_notifications — lock held (lines 1700-1703)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_drain_notifications_lock_held() {
         let state = setup_state().await;
         state
@@ -5423,6 +5524,7 @@ mod tests {
     // Coverage: drain_pending_notifications — empty pending (lines 1705-1718)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_drain_notifications_empty() {
         let state = setup_state().await;
         run_cron_with_retry!(&state, "drain_pending_notifications", drain_pending_notifications);
@@ -5432,6 +5534,7 @@ mod tests {
     // Coverage: drain_pending_notifications — missing env vars (lines 1720-1723)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_drain_notifications_missing_env_vars() {
         let state = setup_state().await;
 
@@ -5466,6 +5569,7 @@ mod tests {
     // Coverage: drain_pending_notifications — full flow (lines 1725-1827)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_drain_notifications_full_flow() {
         let server = MockServer::start().await;
         // Mock OAuth token endpoint
@@ -5525,6 +5629,7 @@ mod tests {
     // Coverage: register_cron_jobs — handler execution (lines 1847-1927)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_register_cron_jobs_handlers_callable() {
         let state = setup_state().await;
         let jobs = register_cron_jobs();
@@ -5551,6 +5656,7 @@ mod tests {
     // Coverage: stripe_provider_enabled — no providers array
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_stripe_provider_enabled_no_providers_key() {
         let state = setup_state().await;
         state
@@ -5572,6 +5678,7 @@ mod tests {
     // Coverage: stripe_provider_enabled — provider without "enabled" field
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_stripe_provider_enabled_missing_enabled_field() {
         let state = setup_state().await;
         state
@@ -5593,6 +5700,7 @@ mod tests {
     // Coverage: check_expired_auth — order update error (line 410)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_check_expired_auth_multiple_orders() {
         let state = setup_state().await;
         let suffix = uuid::Uuid::new_v4();
@@ -5701,6 +5809,7 @@ mod tests {
     // Coverage: check_low_stock — trackQuantity false
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_check_low_stock_track_quantity_false() {
         let state = setup_state().await;
         let product_id = uuid::Uuid::new_v4().to_string();
@@ -5731,6 +5840,7 @@ mod tests {
     // Coverage: seller empty email in low_stock (line 933)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_check_low_stock_seller_empty_email() {
         let state = setup_state().await;
         let product_id = uuid::Uuid::new_v4().to_string();
@@ -5773,6 +5883,7 @@ mod tests {
     // Coverage: compute_seller_metrics — refund rate breach only
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_compute_seller_metrics_refund_breach_only() {
         let state = setup_state().await;
         let order_id = uuid::Uuid::new_v4().to_string();
@@ -5810,6 +5921,7 @@ mod tests {
     // Coverage: compute_seller_metrics — cancellation breach only
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_compute_seller_metrics_cancel_breach_only() {
         let state = setup_state().await;
         let order_id = uuid::Uuid::new_v4().to_string();
@@ -5846,6 +5958,7 @@ mod tests {
     // Coverage: premium renewal — no mailjet keys (no send)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_premium_renewal_no_mailjet_keys() {
         let state = setup_state().await;
         let user_id = format!("test_premium_renewal_no_mailjet_keys_{}", uuid::Uuid::new_v4());
@@ -5891,6 +6004,7 @@ mod tests {
     // Coverage: premium renewal — singular day text (line 1610, 1616)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_premium_renewal_1day_en() {
         let server = MockServer::start().await;
         Mock::given(method("POST"))
@@ -5955,6 +6069,7 @@ mod tests {
     // Coverage: auto_capture — items with non-DELIVERED status are skipped
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_auto_capture_mixed_item_statuses() {
         // No MockServer needed — no Stripe Transfer call.
         let state = setup_state().await;
@@ -6009,6 +6124,7 @@ mod tests {
     // We can't easily make query fail with in-mem DB, but test multiple docs
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_auto_archive_multiple_orders() {
         let state = setup_state().await;
         let suffix = uuid::Uuid::new_v4();
@@ -6046,6 +6162,7 @@ mod tests {
     // Coverage: cleanup_stale_rate_limits — error path (line 555)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_cleanup_rate_limits_empty_id_skipped() {
         let state = setup_state().await;
         // This just tests the normal path more thoroughly
@@ -6056,6 +6173,7 @@ mod tests {
     // Coverage: cleanup_orphaned_r2_images — error path (line 604)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_cleanup_r2_images_empty() {
         let state = setup_state().await;
         run_cron_with_retry!(&state, "cleanup_orphaned_r2_images", cleanup_orphaned_r2_images);
@@ -6065,6 +6183,7 @@ mod tests {
     // Coverage: cleanup_stale_webhook_events — error path (line 650)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_cleanup_webhook_events_empty() {
         let state = setup_state().await;
         run_cron_with_retry!(&state, "cleanup_stale_webhook_events", cleanup_stale_webhook_events);
@@ -6074,6 +6193,7 @@ mod tests {
     // Coverage: cleanup_stale_security_alerts — error path (line 699)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_cleanup_security_alerts_empty() {
         let state = setup_state().await;
         run_cron_with_retry!(&state, "cleanup_stale_security_alerts", cleanup_stale_security_alerts);
@@ -6083,6 +6203,7 @@ mod tests {
     // Coverage: retry_meilisearch_syncs — error path (line 839)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_retry_meilisearch_empty() {
         let state = setup_state().await;
         run_cron_with_retry!(&state, "retry_failed_meilisearch_syncs", retry_failed_meilisearch_syncs);
@@ -6092,6 +6213,7 @@ mod tests {
     // Coverage: check_low_stock_alerts — error path (line 995)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_check_low_stock_empty() {
         let state = setup_state().await;
         run_cron_with_retry!(&state, "check_low_stock_alerts", check_low_stock_alerts);
@@ -6101,6 +6223,7 @@ mod tests {
     // Coverage: send_abandoned_cart — error path (line 1126)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_send_abandoned_cart_empty() {
         let state = setup_state().await;
         run_cron_with_retry!(&state, "send_abandoned_cart_emails", send_abandoned_cart_emails);
@@ -6110,6 +6233,7 @@ mod tests {
     // Coverage: compute_seller_metrics — error path (line 1283)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_compute_seller_metrics_empty() {
         let state = setup_state().await;
         run_cron_with_retry!(&state, "compute_seller_metrics", compute_seller_metrics);
@@ -6119,6 +6243,7 @@ mod tests {
     // Coverage: compute_trending — error path (line 1407)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_compute_trending_empty() {
         let state = setup_state().await;
         run_cron_with_retry!(&state, "compute_trending_products", compute_trending_products);
@@ -6128,6 +6253,7 @@ mod tests {
     // Coverage: sync_expired_subscriptions — error path (line 1481)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_sync_expired_subscriptions_empty() {
         let state = setup_state().await;
         run_cron_with_retry!(&state, "sync_expired_subscriptions", sync_expired_subscriptions);
@@ -6137,6 +6263,7 @@ mod tests {
     // Coverage: escalate_returns — error path (line 1538)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_escalate_returns_empty() {
         let state = setup_state().await;
         run_cron_with_retry!(&state, "escalate_stale_return_requests", escalate_stale_return_requests);
@@ -6146,6 +6273,7 @@ mod tests {
     // Coverage: premium_renewal — error path (line 1685)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_premium_renewal_empty() {
         let state = setup_state().await;
         run_cron_with_retry!(&state, "send_premium_renewal_reminders", send_premium_renewal_reminders);
@@ -6156,6 +6284,7 @@ mod tests {
     // Record with attempts=0, send fails → retried +=1
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_drain_notifications_retry_branch() {
         let state = setup_state().await;
 
@@ -6183,6 +6312,7 @@ mod tests {
     // Record with attempts=2 → new_attempts=3 → failed
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_drain_notifications_failed_branch() {
         let state = setup_state().await;
 
@@ -6207,6 +6337,7 @@ mod tests {
     // Coverage: drain_pending_notifications — record missing id (line 1735-1736)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_drain_notifications_record_missing_token() {
         let state = setup_state().await;
 
@@ -6232,6 +6363,7 @@ mod tests {
     // Coverage: drain_pending_notifications — with data payload (lines 1749-1754)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_drain_notifications_with_data_payload() {
         let state = setup_state().await;
 
@@ -6257,6 +6389,7 @@ mod tests {
     // Coverage: drain_pending_notifications — multiple records mix (all branches)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_drain_notifications_multiple_records_mixed() {
         let state = setup_state().await;
 
@@ -6290,6 +6423,7 @@ mod tests {
     // Coverage: sync_expired_subscriptions — empty uid continues (line 1440)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_sync_expired_subscriptions_skips_empty_uid() {
         let state = setup_state().await;
         let sub_id = format!("sub_empty_uid_test_{}", uuid::Uuid::new_v4());
@@ -6331,6 +6465,7 @@ mod tests {
     // We test a sub where the user exists for the normalized ID.
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_premium_renewal_sends_email_to_valid_user() {
         let server = MockServer::start().await;
         Mock::given(method("POST"))
@@ -6395,6 +6530,7 @@ mod tests {
     // Coverage: send_premium_renewal — French 1-day reminder (line 1607-1610)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_premium_renewal_french_1day() {
         let server = MockServer::start().await;
         Mock::given(method("POST"))
@@ -6458,6 +6594,7 @@ mod tests {
     // Coverage: compute_seller_metrics — no items in order (line 1202)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_compute_seller_metrics_order_no_items_field() {
         let state = setup_state().await;
         let order_id = format!("test_compute_seller_metrics_order_no_items_field_{}", uuid::Uuid::new_v4());
@@ -6489,6 +6626,7 @@ mod tests {
     // (lines 1355, 1394, 1399)
     // -----------------------------------------------------------------------
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_compute_trending_sorted_scoring() {
         let state = setup_state().await;
         let now_str = Utc::now().to_rfc3339();
@@ -6574,6 +6712,7 @@ mod tests {
     // -----------------------------------------------------------------------
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_co_purchase_recommendations_basic() {
         let state = setup_state().await;
         let buyer_id = format!("test_co_purchase_recommendations_basic_{}", uuid::Uuid::new_v4());
@@ -6633,6 +6772,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_co_purchase_recommendations_empty_orders() {
         let state = setup_state().await;
         // No orders in DB — should complete without error
@@ -6640,6 +6780,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_co_purchase_recommendations_lock_held() {
         let state = setup_state().await;
         state

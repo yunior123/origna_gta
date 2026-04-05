@@ -3,6 +3,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/features/admin/admin_providers.dart';
 import 'package:origna_gta/features/admin/admin_repository.dart';
+import 'package:origna_gta/utils/app_logger.dart';
 import 'package:origna_gta/utils/utils.dart';
 
 part 'admin_actions_viewmodel.freezed.dart';
@@ -139,7 +140,12 @@ class AdminActionsViewModel extends StateNotifier<AdminActionsState> {
   Future<UserModel?> fetchUserById(String userId) async {
     try {
       return await _repository.fetchUserById(userId);
-    } catch (_) {
+    } catch (e) {
+      AppLogger.w(
+        'AdminActionsViewModel: fetchUserById failed',
+        tag: 'admin',
+        error: e,
+      );
       return null;
     }
   }

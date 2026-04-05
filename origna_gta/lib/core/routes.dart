@@ -69,9 +69,9 @@ class ChatArgs {
 /// Arguments for [AppRoutes.checkout].
 class CheckoutArgs {
   final List<CartItemDetailModel> items;
-  final double total;
+  final int totalCents;
 
-  const CheckoutArgs({required this.items, required this.total});
+  const CheckoutArgs({required this.items, required this.totalCents});
 }
 
 /// Arguments for [AppRoutes.editProduct].

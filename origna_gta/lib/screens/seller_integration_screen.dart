@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:origna_gta/utils/app_logger.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/env_config.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
@@ -28,7 +29,12 @@ class SellerIntegrationScreen extends ConsumerWidget {
   String? _safeOrignabaseUrl() {
     try {
       return EnvConfig().orignabaseUrl;
-    } catch (_) {
+    } catch (e) {
+      AppLogger.w(
+        'SellerIntegrationScreen: failed to read orignabaseUrl',
+        tag: 'seller',
+        error: e,
+      );
       return null;
     }
   }

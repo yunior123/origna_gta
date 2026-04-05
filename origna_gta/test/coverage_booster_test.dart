@@ -247,7 +247,7 @@ void main() {
     });
 
     testWidgets('pumps CheckoutScreen', (tester) async {
-      await pumpScreen(tester, const CheckoutScreen(items: [], total: 0));
+      await pumpScreen(tester, const CheckoutScreen(items: [], totalCents: 0));
     });
 
     testWidgets('pumps ShippingApprovalScreen', (tester) async {

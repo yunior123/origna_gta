@@ -374,8 +374,12 @@ class OrignaBaseAuthRepository implements AuthRepository {
       await _ob.auth.authStateChanges
           .firstWhere((state) => !state.isAuthenticated)
           .timeout(const Duration(seconds: 5));
-    } catch (_) {
-      // Best-effort: don't block navigation if event is delayed
+    } catch (e) {
+      AppLogger.w(
+        'OrignaBaseAuthRepository: signOut authStateChanges timeout (non-fatal)',
+        tag: 'auth',
+        error: e,
+      );
     }
   }
 

@@ -51,7 +51,7 @@
 - CI runs on every PR: `flutter analyze --no-fatal-infos` + `flutter test`
 - Failures → email notification to `support@orignagta.ca` (requires `MAIL_USERNAME` + `MAIL_PASSWORD` secrets)
 - E2E tests run on merge to `main` only (too slow for every PR)
-- Secrets: `STRIPE_TEST_KEY`, `ALGOLIA_ADMIN_KEY`, `ALGOLIA_APP_ID`, `MAIL_USERNAME`, `MAIL_PASSWORD`
+- Secrets: `STRIPE_TEST_KEY`, `MAIL_USERNAME`, `MAIL_PASSWORD`
 
 ## Coverage Targets
 - ViewModels: ≥80% line coverage.

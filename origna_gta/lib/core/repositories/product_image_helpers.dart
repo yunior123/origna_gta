@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 import 'package:orignabase/orignabase.dart';
+import 'package:origna_gta/utils/app_logger.dart';
 
 /// Extracted image upload helpers for [OrignaBaseProductRepository].
 ///
@@ -79,8 +80,12 @@ mixin ProductImageHelpers {
             '/storage/batch-delete',
             body: {'paths': urls},
           );
-        } catch (_) {
-          // Best-effort cleanup
+        } catch (e) {
+          AppLogger.w(
+            'ProductImageHelpers: best-effort batch cleanup failed',
+            tag: 'product',
+            error: e,
+          );
         }
       }
       throw Exception('Image upload failed');
@@ -124,7 +129,12 @@ mixin ProductImageHelpers {
             .timeout(const Duration(seconds: 30));
         if (response.statusCode == 200) return urlInfo['path'] as String;
         return null;
-      } catch (_) {
+      } catch (e) {
+        AppLogger.w(
+          'ProductImageHelpers: review image upload failed',
+          tag: 'product',
+          error: e,
+        );
         return null;
       }
     });

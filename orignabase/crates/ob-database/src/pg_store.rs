@@ -1386,7 +1386,6 @@ impl DatabaseStore for PgDatabaseStore {
     }
 
     async fn query_bind_value(&self, query: &str, binds: Value) -> AppResult<Vec<Value>> {
-        // Same as query_bind for our purposes
         self.query_bind(query, binds).await
     }
 
@@ -1836,6 +1835,27 @@ mod tests {
         assert!(
             !pg.contains("data->>'id'"),
             "Should NOT rewrite id to JSONB, got: {pg}"
+        );
+        assert_eq!(vals.len(), 1);
+    }
+
+    #[test]
+    fn test_translate_cron_order_query() {
+        let query = "SELECT * FROM orders WHERE data->>'orderStatus' = 'delivered' AND data->>'paymentStatus' IN ('captured','authorized') AND data->>'deliveredAt' <= $cutoff LIMIT 250";
+        let binds = serde_json::json!({ "cutoff": "2026-03-29T00:00:00Z" });
+        let (pg, vals) = translate_surreal_to_pg(query, binds).unwrap();
+        // Should preserve existing data->>'deliveredAt' and just replace $cutoff with $1
+        assert!(
+            pg.contains("data->>'deliveredAt'"),
+            "Should preserve JSONB field ref, got: {pg}"
+        );
+        assert!(
+            pg.contains("$1"),
+            "Should have positional param, got: {pg}"
+        );
+        assert!(
+            !pg.contains("$cutoff"),
+            "Should not have named param, got: {pg}"
         );
         assert_eq!(vals.len(), 1);
     }

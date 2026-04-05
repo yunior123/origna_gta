@@ -230,9 +230,12 @@ final selectedCategoryProvider = StateProvider.autoDispose<int?>((ref) => null);
 /// - [ProductRepository.toggleFavorite] for persistence
 class FavoritesController {
   final Ref _ref;
+  bool _disposed = false;
 
   /// Creates a new [FavoritesController].
-  FavoritesController(this._ref);
+  FavoritesController(this._ref) {
+    _ref.onDispose(() => _disposed = true);
+  }
 
   ProductRepository get _repository => _ref.read(productRepositoryProvider);
   String? get _userId => _ref.read(userIdProvider);
@@ -263,6 +266,7 @@ class FavoritesController {
     if (userId == null) return;
     final wasFavorited = isFavorite(productId);
     await _repository.toggleFavorite(userId, productId);
+    if (_disposed) return;
     if (productName != null && priceCad != null && !wasFavorited) {
       unawaited(
         _ref
@@ -322,7 +326,10 @@ final productRatingsProvider = StreamProvider.autoDispose
               .get();
           return snapshot.docs
               .map(
-                (doc) => <String, dynamic>{...doc.data, Fields.ratingId: doc.id},
+                (doc) => <String, dynamic>{
+                  ...doc.data,
+                  Fields.ratingId: doc.id,
+                },
               )
               .toList();
         } catch (e) {
@@ -357,6 +364,5 @@ final productRatingsProvider = StreamProvider.autoDispose
         controller.onCancel = () => subscription.cancel();
       });
     });
-
 
 // === Widget Previews ===

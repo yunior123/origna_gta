@@ -36,14 +36,16 @@ flutter build web --debug --dart-define=ENVIRONMENT=dev
 # Run app
 flutter run --dart-define=ENVIRONMENT=dev
 
-# Widget previews (ALWAYS use this script, never direct command)
-./start-preview.sh
+# Widget previews: VS Code sidebar — open .dart file → @Preview widgets appear. Each has own Hot Restart.
 
-# ── E2E (run from e2e-agent-browser/) ─────────────────────────────────────
-cd e2e-agent-browser
-bun test specs/phase1-api/          # API smoke tests
-bun test specs/phase2-auth/         # Auth flow tests
-bun test specs/phase3-products/     # Product tests
+# ── E2E (run from e2e/) ──────────────────────────────────────────────────
+cd e2e
+bun test specs/phase1-api/          # API smoke tests (35 files)
+bun test specs/phase2-smoke/         # UI smoke tests (13 files)
+bun test specs/phase3-auth-nav/      # Auth flow tests (11 files)
+bun test specs/phase4-product-flows/ # Product tests (21 files)
+bun test specs/phase5-complex-flows/ # Order lifecycle, returns, chat (23 files)
+bun test specs/phase6-stripe/        # Stripe payments, webhooks (13 files)
 bun x tsc --noEmit                  # TypeScript check
 
 # ── Pre-commit checklist ──────────────────────────────────────────────────
@@ -188,7 +190,7 @@ flutter analyze --no-fatal-infos && flutter test --exclude-tags golden
 3. NEVER `FirebaseAuth.instance` directly in Flutter screens — Firebase is GONE
 4. NEVER manually edit `.pb.go` — always `make protos`
 5. VERIFY agent fixes: run `pytest` / `flutter analyze` after agents complete
-6. 8GB RAM = LOCAL Mac only — Cloud Functions use Google's servers
+6. 8GB RAM = LOCAL Mac only — all backend runs on VPS
 7. GitHub username: `yunior123`. NEVER put Co-Authored-By Claude/AI in commits.
 
 ## AI Delegation System

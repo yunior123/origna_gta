@@ -10,7 +10,7 @@ import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/preview_helpers.dart';
 import 'package:origna_gta/utils/responsive_layout.dart';
-import 'package:origna_gta/utils/utils.dart';
+import 'package:origna_gta/utils/utils.dart' hide Address;
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
@@ -538,27 +538,24 @@ class _ReturnRequestScreenState extends ConsumerState<ReturnRequestScreen> {
   group: 'ReturnRequest',
   size: Size(390, 844),
 )
-Widget previewReturnRequestMobile() => previewMobile(
-  child: const ReturnRequestScreen(orderId: 'preview-order-id'),
-);
+Widget previewReturnRequestMobile() =>
+    previewMobile(child: _returnRequestContent());
 
 @Preview(
   name: 'Return Request — Tablet',
   group: 'ReturnRequest',
   size: Size(768, 1024),
 )
-Widget previewReturnRequestTablet() => previewTablet(
-  child: const ReturnRequestScreen(orderId: 'preview-order-id'),
-);
+Widget previewReturnRequestTablet() =>
+    previewTablet(child: _returnRequestContent());
 
 @Preview(
   name: 'Return Request — Desktop',
   group: 'ReturnRequest',
   size: Size(1280, 800),
 )
-Widget previewReturnRequestDesktop() => previewDesktop(
-  child: const ReturnRequestScreen(orderId: 'preview-order-id'),
-);
+Widget previewReturnRequestDesktop() =>
+    previewDesktop(child: _returnRequestContent());
 
 @Preview(
   name: 'Return Request — Light',
@@ -566,7 +563,74 @@ Widget previewReturnRequestDesktop() => previewDesktop(
   size: Size(390, 844),
   brightness: Brightness.light,
 )
-Widget previewReturnRequestLight() => previewMobile(
-  child: const ReturnRequestScreen(orderId: 'preview-order-id'),
-  theme: previewLightTheme,
+Widget previewReturnRequestLight() =>
+    previewMobile(child: _returnRequestContent(), theme: previewLightTheme);
+
+const _previewOrderId = 'preview-order-id';
+
+Widget _returnRequestContent() => previewScopeLoggedIn(
+  extraOverrides: [
+    orderByIdProvider(_previewOrderId).overrideWith(
+      (ref) => Future.value(
+        Order(
+          orderId: _previewOrderId,
+          userId: 'preview-uid',
+          items: [
+            OrderItem(
+              productId: 'prod-1',
+              cartItemId: 'cart-1',
+              name: 'Premium Headphones',
+              description: 'Noise-canceling wireless headphones',
+              priceCents: 29999,
+              quantity: 1,
+              imageUrls: ['images/5.png'],
+              sellerId: 'seller-1',
+              sellerName: 'AudioTech Canada',
+              status: DeliveryStatusValues.delivered,
+              deliveredAt: DateTime(2026, 3, 20),
+            ),
+            OrderItem(
+              productId: 'prod-2',
+              cartItemId: 'cart-2',
+              name: 'USB-C Charging Cable',
+              description: 'Braided 2m cable',
+              priceCents: 1499,
+              quantity: 2,
+              imageUrls: ['images/7.png'],
+              sellerId: 'seller-1',
+              sellerName: 'AudioTech Canada',
+              status: DeliveryStatusValues.delivered,
+              deliveredAt: DateTime(2026, 3, 20),
+            ),
+          ],
+          totalAmountCents: 32997,
+          subtotalCents: 32997,
+          taxes: const Taxes(
+            gstCents: 0,
+            pstCents: 0,
+            qstCents: 0,
+            hstCents: 0,
+          ),
+          orderStatus: OrderStatus.delivered,
+          paymentStatus: PaymentStatus.paid,
+          createdAt: DateTime(2026, 3, 15),
+          shippingAddress: Address(
+            street: '123 Queen St W',
+            city: 'Toronto',
+            state: 'ON',
+            postalCode: 'M5H 2M9',
+            country: 'CA',
+          ),
+        ),
+      ),
+    ),
+    returnRequestViewModelProvider.overrideWith(
+      (ref) => _PreviewReturnRequestViewModel(ref),
+    ),
+  ],
+  child: const ReturnRequestScreen(orderId: _previewOrderId),
 );
+
+class _PreviewReturnRequestViewModel extends ReturnRequestViewModel {
+  _PreviewReturnRequestViewModel(super.ref) : super.preview();
+}

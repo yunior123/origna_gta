@@ -3,14 +3,14 @@ part of '../checkout_screen.dart';
 class _CheckoutButton extends ConsumerWidget {
   final List<CartItemDetailModel> items;
   final UserModel userModel;
-  final double subtotal;
-  final double total;
+  final int subtotalCents;
+  final int totalCents;
 
   const _CheckoutButton({
     required this.items,
     required this.userModel,
-    required this.subtotal,
-    required this.total,
+    required this.subtotalCents,
+    required this.totalCents,
   });
 
   @override
@@ -107,7 +107,7 @@ class _CheckoutButton extends ConsumerWidget {
       backgroundColor: DesignTokens.transparent,
       builder: (_) => OrderReviewSheet(
         items: items,
-        subtotal: subtotal,
+        subtotalCents: subtotalCents,
         onConfirm: () {
           Navigator.of(context).pop();
           _startCheckout(context, ref);
@@ -565,9 +565,9 @@ class _SecurityInfo extends StatelessWidget {
 /// Shows "Spend $X.XX more for free shipping!" when subtotal is below the threshold.
 /// Disappears when shipping is already free or the threshold is reached.
 class _FreeShippingBanner extends ConsumerWidget {
-  final double subtotal;
+  final int subtotalCents;
 
-  const _FreeShippingBanner({required this.subtotal});
+  const _FreeShippingBanner({required this.subtotalCents});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -581,7 +581,6 @@ class _FreeShippingBanner extends ConsumerWidget {
     if (isCalculating || shippingCost == 0) return const SizedBox.shrink();
 
     const thresholdCents = BusinessRules.freeShippingThresholdCents;
-    final subtotalCents = ref.watch(checkoutSubtotalCentsProvider(subtotal));
     final remainingCents = thresholdCents - subtotalCents;
     if (remainingCents <= 0) return const SizedBox.shrink();
 

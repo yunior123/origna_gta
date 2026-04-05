@@ -25,7 +25,7 @@
 - Buyers can only read their own orders and profile.
 - Admins have elevated access — all admin actions must be logged with `adminUid` in the event log.
 - Never trust `userId` sent from Flutter — always derive it from the verified JWT on the backend.
-- Row-level security enforced in PostgreSQL via `RLS` policies on all tables.
+- Row-level security enforced in Rust (OrignaBase) — every query scopes data by `userId`/`sellerId`.
 
 ## Rate Limiting
 - OrignaBase uses `tower_governor` for rate limiting — respect 429 responses.
@@ -64,7 +64,7 @@
 
 ## Forbidden
 - Hardcoded credentials or tokens of any kind in any file.
-- Disabling App Check in production.
+- Disabling Turnstile in production.
 - Skipping webhook signature verification.
 - Logging PII (emails, phone numbers, addresses, payment card info).
 - Storing Stripe API keys in environment variables accessible to Flutter.

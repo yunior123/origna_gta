@@ -7,6 +7,7 @@ import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/subscription/subscription_provider.dart';
+import 'package:origna_gta/utils/app_logger.dart';
 
 import 'chat_repository.dart';
 import 'chat_state.dart';
@@ -88,8 +89,12 @@ class ChatViewModel extends StateNotifier<ChatState> {
       // If loading or error, try to get the future value
       try {
         subInfo = await _ref.read(subscriptionStreamProvider.future);
-      } catch (_) {
-        // Fallback to non-premium on error
+      } catch (e) {
+        AppLogger.w(
+          'ChatViewModel: subscription check failed, falling back to non-premium',
+          tag: 'chat',
+          error: e,
+        );
       }
     }
 

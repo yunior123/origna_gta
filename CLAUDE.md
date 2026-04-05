@@ -22,7 +22,7 @@ flutter test --name "should calculate subtotal"         # pattern match
 flutter pub run build_runner build --delete-conflicting-outputs  # codegen
 # Widget previews: REMOVED. start-preview.sh deleted. @Preview annotations stay in code but don't run the preview server — it dumps all widgets into one messy page. Previews should work per-view like SwiftUI, not all-at-once.
 
-# E2E (from e2e-agent-browser/)
+# E2E (from e2e/)
 bun test specs/phase1-api/
 bun x tsc --noEmit
 
@@ -79,7 +79,7 @@ cd e2e && ORIGNABASE_URL=http://127.0.0.1:8080 bun run lib/seed-dev.ts
 
 ## Agent Rules
 
-- Use 10+ subagents per session to keep main context clean
+- Use max 5 subagents per session (8GB RAM constraint)
 - Kill orphan Chrome processes before E2E tests
 - Run smoke tests before full test suite
 - If you find a problem, fix it — never silence it

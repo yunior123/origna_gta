@@ -321,6 +321,7 @@ async fn get_ratings(
         ));
     }
 
+    // Build query — product_id is escaped, min_rating is a validated f64 (safe to interpolate)
     let mut conditions = vec![format!(
         "data->>'{}' = '{}'",
         fields::PRODUCT_ID,
@@ -328,6 +329,7 @@ async fn get_ratings(
     )];
 
     if let Some(min) = req.min_rating {
+        // min_rating is validated to 1.0..=5.0, f64 Display cannot produce SQL injection
         conditions.push(format!(
             "CAST(data->>'{}' AS DOUBLE PRECISION) >= {}",
             fields::RATING,

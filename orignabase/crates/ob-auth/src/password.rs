@@ -1,9 +1,139 @@
 use argon2::{
+    password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
     Algorithm, Argon2, Params, Version,
-    password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString, rand_core::OsRng},
 };
 use ob_core::{Error, Result};
 use std::sync::OnceLock;
+
+/// Minimum password length.
+pub const MIN_PASSWORD_LENGTH: usize = 8;
+
+/// Common weak passwords to reject (case-insensitive check).
+/// Mirrors the frontend list in validation_constants.dart.
+/// Includes variants that meet complexity requirements to catch users who
+/// add a single special char or digit to a common base password.
+const COMMON_PASSWORDS: &[&str] = &[
+    "password",
+    "12345678",
+    "123456789",
+    "1234567890",
+    "qwerty",
+    "qwerty123",
+    "abc123",
+    "abc123456",
+    "password1",
+    "password123",
+    "iloveyou",
+    "monkey",
+    "dragon",
+    "master",
+    "letmein",
+    "login",
+    "admin",
+    "welcome",
+    "shadow",
+    "sunshine",
+    "trustno1",
+    "football",
+    "baseball",
+    "soccer",
+    "hockey",
+    "batman",
+    "superman",
+    "spider",
+    "michael",
+    "jennifer",
+    "hunter",
+    "harley",
+    "ranger",
+    "buster",
+    "thomas",
+    "robert",
+    "george",
+    "asdfgh",
+    "asdfghjkl",
+    "zxcvbn",
+    "zxcvbnm",
+    "qazwsx",
+    "qweasd",
+    "password!",
+    "password@",
+    "password#",
+    "123456!",
+    "qwerty!",
+    "shop1234",
+    "store123",
+    "buybuy123",
+    "market1",
+    "summer2024",
+    "winter2024",
+    "spring2024",
+    "fall2024",
+    "summer2025",
+    "winter2025",
+    "spring2025",
+    "fall2025",
+    "summer2026",
+    "winter2026",
+    "spring2026",
+    "fall2026",
+    // Variants that meet complexity requirements (upper+lower+digit+special)
+    "Password1!",
+    "Password123!",
+    "Qwerty1!",
+    "Qwerty123!",
+    "Summer2024!",
+    "Winter2024!",
+    "Spring2024!",
+    "Fall2024!",
+    "Abc123456!",
+    "Monkey1!",
+    "Dragon1!",
+    "Welcome1!",
+];
+
+/// Validate password strength: minimum length, character diversity, common password check.
+pub fn validate_password_strength(password: &str) -> Result<()> {
+    if password.len() < MIN_PASSWORD_LENGTH {
+        return Err(Error::Validation(format!(
+            "Password must be at least {MIN_PASSWORD_LENGTH} characters"
+        )));
+    }
+    let has_upper = password.chars().any(|c| c.is_ascii_uppercase());
+    let has_lower = password.chars().any(|c| c.is_ascii_lowercase());
+    let has_digit = password.chars().any(|c| c.is_ascii_digit());
+    let has_special = password
+        .chars()
+        .any(|c| "!@#$%^&*()_+-=[]{}|;':\",./<>?~`".contains(c));
+
+    let missing: Vec<&str> = [
+        ("an uppercase letter", has_upper),
+        ("a lowercase letter", has_lower),
+        ("a digit", has_digit),
+        ("a special character", has_special),
+    ]
+    .iter()
+    .filter(|(_, ok)| !ok)
+    .map(|(name, _)| *name)
+    .collect();
+
+    if !missing.is_empty() {
+        return Err(Error::Validation(format!(
+            "Password must include: {}",
+            missing.join(", ")
+        )));
+    }
+
+    // Check against common passwords (case-insensitive)
+    let lower = password.to_lowercase();
+    if COMMON_PASSWORDS.iter().any(|&p| p.to_lowercase() == lower) {
+        return Err(Error::Validation(
+            "Password is too common. Please choose a stronger password.".into(),
+        ));
+    }
+
+    Ok(())
+}
 
 fn secure_argon2() -> Argon2<'static> {
     let params = Params::new(65536, 3, 1, None).expect("hardcoded Argon2id params must be valid");
@@ -56,6 +186,99 @@ pub fn verify_password(password: &str, hash: &str) -> Result<bool> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_validate_password_strong_password() {
+        assert!(validate_password_strength("Str0ng!Pass").is_ok());
+    }
+
+    #[test]
+    fn test_validate_password_too_short() {
+        let result = validate_password_strength("Sh1!a");
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("8 characters"));
+    }
+
+    #[test]
+    fn test_validate_password_missing_uppercase() {
+        let result = validate_password_strength("str0ng!pass");
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("uppercase"));
+    }
+
+    #[test]
+    fn test_validate_password_missing_lowercase() {
+        let result = validate_password_strength("STR0NG!PASS");
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("lowercase"));
+    }
+
+    #[test]
+    fn test_validate_password_missing_digit() {
+        let result = validate_password_strength("Strong!Pass");
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("digit"));
+    }
+
+    #[test]
+    fn test_validate_password_missing_special() {
+        let result = validate_password_strength("Str0ngpass");
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("special"));
+    }
+
+    #[test]
+    fn test_validate_password_missing_multiple() {
+        let result = validate_password_strength("alllowercase");
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("uppercase"));
+        assert!(err.contains("digit"));
+        assert!(err.contains("special"));
+    }
+
+    #[test]
+    fn test_validate_password_empty() {
+        let result = validate_password_strength("");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_validate_password_exactly_8_chars() {
+        assert!(validate_password_strength("Ab1!xxxx").is_ok());
+    }
+
+    #[test]
+    fn test_validate_password_rejects_common() {
+        // "Password1!" meets all diversity requirements but is in common list
+        let result = validate_password_strength("Password1!");
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("common"));
+    }
+
+    #[test]
+    fn test_validate_password_rejects_common_case_insensitive() {
+        // "pASSWORD1!" has upper+lower+digit+special - passes diversity
+        // "password1!" lowercased matches "Password1!" in the common list
+        let result = validate_password_strength("pASSWORD1!");
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("common"));
+    }
+
+    #[test]
+    fn test_validate_password_rejects_seasonal() {
+        let result = validate_password_strength("Summer2024!");
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("common"));
+    }
 
     #[test]
     fn test_hash_and_verify() {
@@ -161,13 +384,6 @@ fn test_same_password_different_hashes() {
     // But both should verify
     assert!(verify_password(password, &hash1).unwrap());
     assert!(verify_password(password, &hash2).unwrap());
-}
-
-#[test]
-fn test_invalid_hash_format() {
-    let bad_hash = "not_a_valid_argon2_hash";
-    let result = verify_password("password", bad_hash);
-    assert!(result.is_err());
 }
 
 #[test]

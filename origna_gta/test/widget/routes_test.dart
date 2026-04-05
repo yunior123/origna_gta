@@ -294,13 +294,13 @@ void main() {
 
   group('CheckoutArgs', () {
     test('creates with required parameters', () {
-      const args = CheckoutArgs(items: [], total: 100.0);
+      const args = CheckoutArgs(items: [], totalCents: 10000);
       expect(args.items, isEmpty);
-      expect(args.total, 100.0);
+      expect(args.totalCents, 10000);
     });
 
     test('const constructor works', () {
-      const args = CheckoutArgs(items: [], total: 0.0);
+      const args = CheckoutArgs(items: [], totalCents: 0);
       expect(args.items, isEmpty);
     });
   });

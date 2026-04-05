@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
+import 'package:origna_gta/utils/app_logger.dart';
 import 'package:origna_gta/utils/env_config.dart';
 import 'package:origna_gta/utils/utils.dart';
 
@@ -36,7 +37,12 @@ final sellerMetricsProvider = StreamProvider.autoDispose
 
       try {
         EnvConfig().orignabaseUrl;
-      } catch (_) {
+      } catch (e) {
+        AppLogger.w(
+          'sellerMetricsProvider: EnvConfig.orignabaseUrl unavailable',
+          tag: 'product',
+          error: e,
+        );
         return Stream.value(const SellerMetrics());
       }
 

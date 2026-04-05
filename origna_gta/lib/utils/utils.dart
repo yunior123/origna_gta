@@ -358,7 +358,13 @@ Future<bool> checkEmailVerifiedOrPrompt(
       onResend: () async {
         try {
           await ref.read(authRepositoryProvider).sendEmailVerification();
-        } catch (_) {}
+        } catch (e) {
+          AppLogger.w(
+            'checkEmailVerifiedOrPrompt: resend verification email failed',
+            tag: 'auth',
+            error: e,
+          );
+        }
       },
     );
   }

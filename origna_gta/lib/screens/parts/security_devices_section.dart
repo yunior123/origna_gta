@@ -70,7 +70,13 @@ Widget _buildKnownDevicesCard(
                     formattedDate = DateFormat(
                       'MMM d, yyyy HH:mm',
                     ).format(DateTime.parse(lastUsed));
-                  } catch (_) {}
+                  } catch (e) {
+                    AppLogger.w(
+                      'SecurityDevices: date format failed for device',
+                      tag: 'security',
+                      error: e,
+                    );
+                  }
 
                   return Padding(
                     padding: const EdgeInsets.symmetric(vertical: 10),

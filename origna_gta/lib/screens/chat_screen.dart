@@ -4,6 +4,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:origna_gta/utils/app_logger.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/responsive_layout.dart';
 import 'package:origna_gta/core/providers.dart';
@@ -69,8 +70,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         duration: const Duration(milliseconds: 250),
         curve: Curves.easeOut,
       );
-    } catch (_) {
-      // Position may not be ready during layout — safe to ignore
+    } catch (e) {
+      AppLogger.w(
+        'ChatScreen: scroll-to-bottom animation failed',
+        tag: 'chat',
+        error: e,
+      );
     }
   }
 
@@ -649,8 +654,77 @@ class _MessageInput extends StatelessWidget {
 
 // ═══ Widget Previews ═══
 
-// Default — chat view (will show loading state while preview stub resolves)
+const _previewChatId = 'preview-chat-123';
+
+final _previewMessages = [
+  ChatMessage(
+    id: 'msg-1',
+    senderId: 'preview-uid',
+    senderDisplayName: 'You',
+    text: 'Hi! Is this still available?',
+    createdAt: DateTime(2026, 3, 28, 10, 30),
+    isRead: true,
+  ),
+  ChatMessage(
+    id: 'msg-2',
+    senderId: 'seller-uid',
+    senderDisplayName: 'Marie',
+    text:
+        'Yes, it is! Brand new in the box. Would you like to see more photos?',
+    createdAt: DateTime(2026, 3, 28, 10, 35),
+    isRead: true,
+  ),
+  ChatMessage(
+    id: 'msg-3',
+    senderId: 'preview-uid',
+    senderDisplayName: 'You',
+    text: 'That would be great! Also, do you ship to Ottawa?',
+    createdAt: DateTime(2026, 3, 28, 10, 40),
+    isRead: true,
+  ),
+  ChatMessage(
+    id: 'msg-4',
+    senderId: 'seller-uid',
+    senderDisplayName: 'Marie',
+    text:
+        'Sure! Shipping is about \$12. I can also do local pickup in downtown Montreal if you\'re ever in the area 😊',
+    createdAt: DateTime(2026, 3, 28, 10, 45),
+    isRead: true,
+  ),
+  ChatMessage(
+    id: 'msg-5',
+    senderId: 'preview-uid',
+    senderDisplayName: 'You',
+    text: 'I\'ll take it! Can we proceed with shipping to Ottawa?',
+    createdAt: DateTime(2026, 3, 28, 11, 0),
+    isRead: false,
+  ),
+];
+
+class _PreviewChatViewModel extends ChatViewModel {
+  _PreviewChatViewModel(super.ref, super.productId);
+
+  @override
+  Future<void> openChat() async {
+    state = state.copyWith(
+      chatId: _previewChatId,
+      isLoading: false,
+      isOwnProduct: false,
+      isPremiumRequired: false,
+    );
+  }
+}
+
+// Default — chat view with mock messages
 Widget _chatContent() => previewScopeLoggedIn(
+  extraOverrides: [
+    chatViewModelProvider(
+      'preview-id',
+    ).overrideWith((ref) => _PreviewChatViewModel(ref, 'preview-id')),
+    chatMessagesProvider(
+      _previewChatId,
+    ).overrideWith((ref) => Stream.value(_previewMessages)),
+  ],
   child: ChatScreen(
     productId: 'preview-id',
     productTitle: 'Premium Headphones',
@@ -659,6 +733,14 @@ Widget _chatContent() => previewScopeLoggedIn(
 
 // French locale variant
 Widget _chatContentFr() => previewScopeLoggedIn(
+  extraOverrides: [
+    chatViewModelProvider(
+      'preview-fr',
+    ).overrideWith((ref) => _PreviewChatViewModel(ref, 'preview-fr')),
+    chatMessagesProvider(
+      _previewChatId,
+    ).overrideWith((ref) => Stream.value(_previewMessages)),
+  ],
   child: ChatScreen(
     productId: 'preview-fr',
     productTitle: 'Casque Audio Premium',

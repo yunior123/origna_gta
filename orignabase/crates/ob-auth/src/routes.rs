@@ -320,11 +320,7 @@ pub async fn register(
     if !body.email.contains('@') || body.email.len() < 5 {
         return Err(Error::Validation("Invalid email address".into()));
     }
-    if body.password.len() < 8 {
-        return Err(Error::Validation(
-            "Password must be at least 8 characters".into(),
-        ));
-    }
+    crate::password::validate_password_strength(&body.password)?;
 
     // Check if email already exists (parameterized query — safe from injection)
     let existing = state
@@ -1194,11 +1190,7 @@ pub async fn reset_password(
     State(state): State<AuthState>,
     Json(body): Json<ResetPasswordRequest>,
 ) -> Result<Json<serde_json::Value>> {
-    if body.new_password.len() < 8 {
-        return Err(Error::Validation(
-            "Password must be at least 8 characters".into(),
-        ));
-    }
+    crate::password::validate_password_strength(&body.new_password)?;
 
     // Verify the reset token
     let claims = jwt::verify_token(&body.token, &state.jwt_keys)?;
@@ -2307,11 +2299,7 @@ pub async fn admin_create_user(
     if !body.email.contains('@') || body.email.len() < 5 {
         return Err(Error::Validation("Invalid email address".into()));
     }
-    if body.password.len() < 8 {
-        return Err(Error::Validation(
-            "Password must be at least 8 characters".into(),
-        ));
-    }
+    crate::password::validate_password_strength(&body.password)?;
 
     // Check duplicate
     let existing = state
@@ -2495,11 +2483,7 @@ pub async fn anonymous_upgrade(
     if !body.email.contains('@') || body.email.len() < 5 {
         return Err(Error::Validation("Invalid email address".into()));
     }
-    if body.password.len() < 8 {
-        return Err(Error::Validation(
-            "Password must be at least 8 characters".into(),
-        ));
-    }
+    crate::password::validate_password_strength(&body.password)?;
 
     // Check email not taken
     let existing = state

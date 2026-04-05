@@ -80,7 +80,7 @@ void main() {
         userRepositoryProvider.overrideWithValue(mockUserRepo),
         authRepositoryProvider.overrideWithValue(mockAuthRepo),
       ],
-      child: CheckoutScreen(items: items, total: total),
+      child: CheckoutScreen(items: items, totalCents: (total * 100).round()),
     );
   }
 

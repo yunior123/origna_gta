@@ -135,7 +135,9 @@ void main() {
                 tag: 'init',
               ),
             )
-            .catchError((_) {}),
+            .catchError((e) {
+              AppLogger.w('Config init catchError', tag: 'init', error: e);
+            }),
       );
 
       // Background: initialize Sentry after config is likely populated.

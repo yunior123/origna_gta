@@ -203,7 +203,7 @@ void main() {
       );
 
       const chatArgs = ChatArgs(productId: 'p1', productTitle: 'Honey');
-      final checkoutArgs = CheckoutArgs(items: [cartItem], total: 20);
+      final checkoutArgs = CheckoutArgs(items: [cartItem], totalCents: 2000);
       final editArgs = EditProductArgs(product: product);
       const orderDetailArgs = OrderDetailArgs(orderId: 'o1');
       const returnArgs = ReturnRequestArgs(orderId: 'o1');
@@ -215,7 +215,7 @@ void main() {
 
       expect(chatArgs.productTitle, 'Honey');
       expect(checkoutArgs.items.single.productId, 'p1');
-      expect(checkoutArgs.total, 20);
+      expect(checkoutArgs.totalCents, 2000);
       expect(editArgs.product.productId, 'p1');
       expect(orderDetailArgs.orderId, 'o1');
       expect(returnArgs.orderId, 'o1');

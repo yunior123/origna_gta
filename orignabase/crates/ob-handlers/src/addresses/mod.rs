@@ -796,16 +796,10 @@ mod tests {
 
     // Lines 207-224: delete_buyer_address
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_delete_buyer_address_success() {
         let state = setup_state().await;
-        let address_id = "addr_del123";
-        // Clean up any leftover from previous test runs
-        let _ = state
-            .db
-            .query_raw(&format!(
-                "DELETE FROM buyer_addresses WHERE id = '{address_id}'"
-            ))
-            .await;
+        let address_id = format!("addr_del_{}", uuid::Uuid::new_v4().simple());
         state
             .db
             .create_document(
@@ -821,7 +815,7 @@ mod tests {
         let auth = auth_for("user_1");
         let req = DeleteBuyerAddressRequest {
             user_id: "user_1".into(),
-            address_id: address_id.into(),
+            address_id: address_id.clone().into(),
         };
 
         let result = delete_buyer_address(State(state), Extension(auth), Json(req)).await;

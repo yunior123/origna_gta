@@ -159,8 +159,12 @@ class HomeViewModel extends StateNotifier<HomeState> {
 
         if (!mounted) return;
         state = state.copyWith(searchSuggestions: names);
-      } catch (_) {
-        // Suggestions are best-effort — swallow errors silently
+      } catch (e) {
+        AppLogger.w(
+          'HomeViewModel: search suggestions fetch failed',
+          tag: 'home',
+          error: e,
+        );
       }
     });
   }

@@ -14,13 +14,13 @@ import 'package:origna_gta/widgets/modern_button.dart';
 /// shipping, tax), and a confirm-and-pay button.
 class OrderReviewSheet extends ConsumerWidget {
   final List<CartItemDetailModel> items;
-  final double subtotal;
+  final int subtotalCents;
   final VoidCallback onConfirm;
 
   const OrderReviewSheet({
     super.key,
     required this.items,
-    required this.subtotal,
+    required this.subtotalCents,
     required this.onConfirm,
   });
 
@@ -46,11 +46,17 @@ class OrderReviewSheet extends ConsumerWidget {
     final province = addressState ?? ProvinceCodeValues.ontario;
     final taxRate = ref.watch(checkoutProvinceTaxRateProvider(province));
     final couponDiscount = ref.watch(checkoutCouponDiscountDollarsProvider);
-    final total = ref.watch(
-      checkoutBuyerTotalProvider((subtotal: subtotal, province: province)),
+    final totalCents = ref.watch(
+      checkoutBuyerTotalProvider((
+        subtotalCents: subtotalCents,
+        province: province,
+      )),
     );
-    final tax = ref.watch(
-      checkoutTaxAmountProvider((subtotal: subtotal, province: province)),
+    final taxCents = ref.watch(
+      checkoutTaxAmountProvider((
+        subtotalCents: subtotalCents,
+        province: province,
+      )),
     );
 
     final bgColor = isDark ? DesignTokens.darkCard : DesignTokens.white;
@@ -238,12 +244,12 @@ class OrderReviewSheet extends ConsumerWidget {
                       ],
                       // Price breakdown
                       const Divider(height: 24),
-                      _buildPriceLine('cart.subtotal'.tr(), subtotal),
+                      _buildPriceLine('cart.subtotal'.tr(), subtotalCents),
                       if (couponDiscount > 0)
                         _buildCouponLine(couponCode, couponDiscount),
                       _buildPriceLine(
                         'checkout.estimated_shipping'.tr(),
-                        shippingCost,
+                        (shippingCost * 100).round(),
                       ),
                       _buildPriceLine(
                         'checkout.tax_estimate_label'.tr(
@@ -252,7 +258,7 @@ class OrderReviewSheet extends ConsumerWidget {
                             'rate': (taxRate * 100).toStringAsFixed(2),
                           },
                         ),
-                        tax,
+                        taxCents,
                       ),
                       const Divider(height: 16),
                       Row(
@@ -271,7 +277,7 @@ class OrderReviewSheet extends ConsumerWidget {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            '\$${total.toStringAsFixed(2)}',
+                            '\$${(totalCents / 100.0).toStringAsFixed(2)}',
                             style: const TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
@@ -320,7 +326,7 @@ class OrderReviewSheet extends ConsumerWidget {
     );
   }
 
-  Widget _buildPriceLine(String label, double amount) {
+  Widget _buildPriceLine(String label, int amountCents) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
@@ -333,7 +339,7 @@ class OrderReviewSheet extends ConsumerWidget {
             ),
           ),
           Text(
-            '\$${amount.toStringAsFixed(2)}',
+            '\$${(amountCents / 100.0).toStringAsFixed(2)}',
             style: TextStyle(fontSize: 14, color: DesignTokens.textSecondary),
           ),
         ],
@@ -341,7 +347,7 @@ class OrderReviewSheet extends ConsumerWidget {
     );
   }
 
-  Widget _buildCouponLine(String? code, double discount) {
+  Widget _buildCouponLine(String? code, double discountDollars) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
@@ -376,7 +382,7 @@ class OrderReviewSheet extends ConsumerWidget {
           ),
           const SizedBox(width: 8),
           Text(
-            '-\$${discount.toStringAsFixed(2)}',
+            '-\$${discountDollars.toStringAsFixed(2)}',
             style: const TextStyle(
               fontSize: 14,
               color: DesignTokens.success,

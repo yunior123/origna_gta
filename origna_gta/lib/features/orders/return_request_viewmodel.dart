@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/orders/orders_provider.dart';
+import 'package:origna_gta/utils/app_logger.dart';
 import 'package:origna_gta/utils/utils.dart';
 
 part 'return_request_viewmodel.freezed.dart';
@@ -31,6 +32,10 @@ class ReturnRequestViewModel extends StateNotifier<ReturnRequestState> {
   final Ref _ref;
 
   ReturnRequestViewModel(this._ref) : super(const ReturnRequestState());
+
+  /// Preview constructor — skips all backend calls.
+  ReturnRequestViewModel.preview(this._ref)
+    : super(const ReturnRequestState());
 
   /// Submit a return request for the given order and items.
   ///
@@ -73,8 +78,12 @@ class ReturnRequestViewModel extends StateNotifier<ReturnRequestState> {
           return false;
         }
       }
-    } catch (_) {
-      // Best-effort check — server will enforce authoritatively
+    } catch (e) {
+      AppLogger.w(
+        'ReturnRequestViewModel: return window check failed (server will enforce)',
+        tag: 'orders',
+        error: e,
+      );
     }
 
     state = state.copyWith(

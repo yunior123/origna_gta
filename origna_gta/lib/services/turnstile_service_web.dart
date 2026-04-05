@@ -5,6 +5,8 @@ library;
 import 'dart:async';
 import 'dart:js_interop';
 
+import 'package:origna_gta/utils/app_logger.dart';
+
 @JS('window._getTurnstileToken')
 external JSPromise<JSString?> _getTurnstileToken();
 
@@ -16,7 +18,12 @@ Future<String?> getTurnstileTokenFromJs() async {
   try {
     final result = await _getTurnstileToken().toDart;
     return result?.toDart;
-  } catch (_) {
+  } catch (e) {
+    AppLogger.w(
+      'TurnstileServiceWeb: failed to get Turnstile token from JS',
+      tag: 'auth',
+      error: e,
+    );
     return null;
   }
 }

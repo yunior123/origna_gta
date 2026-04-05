@@ -17,7 +17,11 @@ import 'package:origna_gta/screens/checkout_screen.dart';
 import 'package:origna_gta/utils/constants.dart';
 
 import '../test_utils.dart';
-@GenerateNiceMocks([MockSpec<OrderRepository>(), MockSpec<UserRepository>(), MockSpec<AuthRepository>()])
+@GenerateNiceMocks([
+  MockSpec<OrderRepository>(),
+  MockSpec<UserRepository>(),
+  MockSpec<AuthRepository>(),
+])
 import 'checkout_screen_test.mocks.dart';
 
 void main() {
@@ -32,15 +36,29 @@ void main() {
     initTestMocks();
   });
 
-  final testUser = UserModel(uid: 'user_123', email: 'test@example.com', name: 'Test User', roles: [UserRole.buyer], createdAt: DateTime.now());
+  final testUser = UserModel(
+    uid: 'user_123',
+    email: 'test@example.com',
+    name: 'Test User',
+    roles: [UserRole.buyer],
+    createdAt: DateTime.now(),
+  );
 
-  final testAddress = Address(street: '123 Main St', city: 'Toronto', state: 'ON', postalCode: 'M5V 3A8', country: 'Canada', isDefault: true);
+  final testAddress = Address(
+    street: '123 Main St',
+    city: 'Toronto',
+    state: 'ON',
+    postalCode: 'M5V 3A8',
+    country: 'Canada',
+    isDefault: true,
+  );
 
   final testItem = CartItemDetailModel(
     productId: 'prod_1',
     name: 'Test Product',
     description: 'Test description',
-    price: 50.00, priceCents: 5000,
+    price: 50.00,
+    priceCents: 5000,
     quantity: 1,
     sellerId: 'seller_1',
     sellerName: 'Seller 1',
@@ -53,7 +71,11 @@ void main() {
     createdAt: DateTime.now(),
   );
 
-  Widget createTestWidget({List<CartItemDetailModel> items = const [], UserModel? user, CheckoutState? initialState}) {
+  Widget createTestWidget({
+    List<CartItemDetailModel> items = const [],
+    UserModel? user,
+    CheckoutState? initialState,
+  }) {
     return TestWrapper(
       overrides: [
         userProfileProvider.overrideWith((ref) => Stream.value(user)),
@@ -64,7 +86,10 @@ void main() {
         userIdProvider.overrideWithValue('user_123'),
         userAddressesProvider.overrideWith((ref) => Stream.value([])),
         cartItemsProvider.overrideWith((ref) => Stream.value(const [])),
-        cartSubtotalProvider.overrideWith((ref) => items.fold(0, (total, i) => total + (i.priceCents * i.quantity))),
+        cartSubtotalProvider.overrideWith(
+          (ref) =>
+              items.fold(0, (total, i) => total + (i.priceCents * i.quantity)),
+        ),
         cartWithDetailsProvider.overrideWith((ref) => items),
         subscriptionStreamProvider.overrideWith((ref) => Stream.value(null)),
         deliveryInstructionsProvider.overrideWith((ref) => ''),
@@ -77,27 +102,42 @@ void main() {
             return notifier;
           }),
       ],
-      child: CheckoutScreen(items: items, total: items.fold(0.0, (total, i) => total + (i.price * i.quantity))),
+      child: CheckoutScreen(
+        items: items,
+        totalCents: items.fold(
+          0,
+          (total, i) => total + (i.priceCents * i.quantity),
+        ),
+      ),
     );
   }
 
   group('CheckoutScreen Widget Tests', () {
-    testWidgets('renders stepper and address section when address exists', (tester) async {
+    testWidgets('renders stepper and address section when address exists', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(1200, 1200);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
 
       // Make sure repo returns the address so initialize() finds it
-      when(mockUserRepo.getUserProfile(any)).thenAnswer((_) async => testUser.copyWith(address: testAddress));
+      when(
+        mockUserRepo.getUserProfile(any),
+      ).thenAnswer((_) async => testUser.copyWith(address: testAddress));
 
-      await tester.pumpWidget(createTestWidget(user: testUser, items: [testItem]));
+      await tester.pumpWidget(
+        createTestWidget(user: testUser, items: [testItem]),
+      );
       await tester.pump();
       await tester.pump(const Duration(seconds: 1));
       await tester.pump(const Duration(seconds: 1));
 
       expect(find.text('checkout.checkout'.tr()), findsWidgets);
       // Wait for initialize to complete and UI to update
-      expect(find.textContaining('123 Main St', skipOffstage: false), findsWidgets);
+      expect(
+        find.textContaining('123 Main St', skipOffstage: false),
+        findsWidgets,
+      );
     });
 
     testWidgets('shows no address view when address is null', (tester) async {
@@ -105,9 +145,13 @@ void main() {
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
 
-      when(mockUserRepo.getUserProfile(any)).thenAnswer((_) async => testUser.copyWith(address: null));
+      when(
+        mockUserRepo.getUserProfile(any),
+      ).thenAnswer((_) async => testUser.copyWith(address: null));
 
-      await tester.pumpWidget(createTestWidget(user: testUser, items: [testItem]));
+      await tester.pumpWidget(
+        createTestWidget(user: testUser, items: [testItem]),
+      );
       await tester.pump();
       await tester.pump(const Duration(seconds: 1));
       await tester.pump(const Duration(seconds: 1));

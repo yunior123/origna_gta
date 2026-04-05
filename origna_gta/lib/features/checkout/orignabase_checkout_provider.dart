@@ -345,7 +345,7 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
         ),
       );
 
-      calculateTaxes(subtotal, shippingCost: cost);
+      calculateTaxes(subtotalCents, shippingCostCents: (cost * 100).round());
     } on CircuitBreakerOpenException catch (_) {
       if (!mounted) return;
       state = state.copyWith(
@@ -364,10 +364,12 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
   /// Computes province-specific tax breakdown (GST/HST/PST/QST) for display.
   ///
   /// These are client-side estimates only — the server uses Stripe Tax API
-  /// for the authoritative calculation. [subtotal] and [shippingCost] in dollars.
-  void calculateTaxes(double subtotal, {double shippingCost = 0.0}) {
+  /// for the authoritative calculation. [subtotalCents] and [shippingCostCents] in integer cents.
+  void calculateTaxes(int subtotalCents, {int shippingCostCents = 0}) {
     if (state.address == null) return;
-    final taxableAmount = subtotal + shippingCost;
+    final subtotalDollars = subtotalCents / 100.0;
+    final shippingDollars = shippingCostCents / 100.0;
+    final taxableAmount = subtotalDollars + shippingDollars;
     final taxes = calculateDetailedTaxes(state.address, taxableAmount);
     state = state.copyWith(taxBreakdown: taxes);
   }
@@ -713,7 +715,10 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
   /// - [subtotalCents]: post-discount subtotal in integer cents.
   void _recalculateTotalsAfterCouponChange(int subtotalCents) {
     _ref.read(cartWithDetailsProvider).whenData(calculateShipping);
-    calculateTaxes(subtotalCents / 100.0, shippingCost: state.shippingCost);
+    calculateTaxes(
+      subtotalCents,
+      shippingCostCents: (state.shippingCost * 100).round(),
+    );
   }
 
   /// Computes the Haversine distance in km between two coordinate pairs.

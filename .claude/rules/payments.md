@@ -43,8 +43,8 @@
 - Mixing these two keys is a known source of silent failures.
 
 ## Webhook Memory (OOM Fix)
-- `stripe_webhook` Cloud Function: `WEBHOOK_OPTIONS` must set `memory: options.MemoryOption.MB_512`.
-- Default 256 MiB causes OOM crashes under load.
+- Webhook handler runs on OrignaBase Rust VPS — ensure adequate memory allocation in Docker Compose.
+- Default container memory limits may cause OOM under load; monitor and adjust as needed.
 
 ## Forbidden
 - Never call Stripe API directly from Flutter — all Stripe calls go through OrignaBase.

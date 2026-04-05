@@ -196,3 +196,7 @@ Start only after Phases 1 through 3 are stable.
 - [ ] increase number of e2e visual tests, cover all gaps, execute them, debug, fix ui ux errors or issues
 - [ ] after a fix then add 5+ tests to prevent the same issue from happening, also add inline docs for it
 - [ ] use strong pro try catch that log the errors to sentry or logs collection. use modern tecniques, search web for rust and flutter best practices
+- [ ] make sure db is replaceable using hexagonal architecture
+- [ ] orignabase rules should be as strong as firebase rules
+- [ ] orignabase queries should be similar to firebase
+- [ ] fix gaps with previews, right now it shows only empty state in some views.

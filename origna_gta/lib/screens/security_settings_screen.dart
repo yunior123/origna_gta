@@ -8,6 +8,7 @@ import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/features/auth/mfa_state.dart';
 import 'package:origna_gta/features/auth/mfa_viewmodel.dart';
 import 'package:origna_gta/core/orignabase_provider.dart';
+import 'package:origna_gta/utils/app_logger.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
@@ -158,7 +159,13 @@ class _SecuritySettingsScreenState
       await auth.acknowledgeAlert(alertId);
       // Invalidate provider to reload security data
       ref.invalidate(_securityDataProvider);
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.w(
+        'SecuritySettings: failed to acknowledge alert',
+        tag: 'security',
+        error: e,
+      );
+    }
   }
 
   Future<void> _removeDevice(String deviceId) async {
@@ -175,7 +182,13 @@ class _SecuritySettingsScreenState
         // Invalidate provider to reload security data
         ref.invalidate(_securityDataProvider);
       }
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.w(
+        'SecuritySettings: failed to remove device',
+        tag: 'security',
+        error: e,
+      );
+    }
   }
 
   void _showDisableMfaDialog() {
@@ -253,7 +266,6 @@ class _SecuritySettingsScreenState
   }
 }
 
-
 // ═══ Widget Previews ═══
 
 Widget _securityMfaEnabledContent() => previewScope(
@@ -275,39 +287,83 @@ Widget _securityMfaDisabledContent() => previewScope(
 );
 
 // ── MFA Enabled — Dark ──────────────────────────────────────────────────────
-@Preview(name: 'Security MFA Enabled Dark — Mobile', group: 'Security Screens', size: Size(390, 844))
-Widget previewSecurityEnabledDarkMobile() => previewMobile(child: _securityMfaEnabledContent());
+@Preview(
+  name: 'Security MFA Enabled Dark — Mobile',
+  group: 'Security Screens',
+  size: Size(390, 844),
+)
+Widget previewSecurityEnabledDarkMobile() =>
+    previewMobile(child: _securityMfaEnabledContent());
 
-@Preview(name: 'Security MFA Enabled Dark — Tablet', group: 'Security Screens', size: Size(768, 1024))
-Widget previewSecurityEnabledDarkTablet() => previewTablet(child: _securityMfaEnabledContent());
+@Preview(
+  name: 'Security MFA Enabled Dark — Tablet',
+  group: 'Security Screens',
+  size: Size(768, 1024),
+)
+Widget previewSecurityEnabledDarkTablet() =>
+    previewTablet(child: _securityMfaEnabledContent());
 
-@Preview(name: 'Security MFA Enabled Dark — Desktop', group: 'Security Screens', size: Size(1280, 800))
-Widget previewSecurityEnabledDarkDesktop() => previewDesktop(child: _securityMfaEnabledContent());
+@Preview(
+  name: 'Security MFA Enabled Dark — Desktop',
+  group: 'Security Screens',
+  size: Size(1280, 800),
+)
+Widget previewSecurityEnabledDarkDesktop() =>
+    previewDesktop(child: _securityMfaEnabledContent());
 
-@Preview(name: 'Security MFA Enabled Dark — Web', group: 'Security Screens', size: Size(1440, 900))
-Widget previewSecurityEnabledDarkWeb() => previewWeb(child: _securityMfaEnabledContent());
+@Preview(
+  name: 'Security MFA Enabled Dark — Web',
+  group: 'Security Screens',
+  size: Size(1440, 900),
+)
+Widget previewSecurityEnabledDarkWeb() =>
+    previewWeb(child: _securityMfaEnabledContent());
 
 // ── MFA Disabled — Dark ─────────────────────────────────────────────────────
-@Preview(name: 'Security MFA Disabled Dark — Mobile', group: 'Security Screens', size: Size(390, 844))
-Widget previewSecurityDisabledDarkMobile() => previewMobile(child: _securityMfaDisabledContent());
+@Preview(
+  name: 'Security MFA Disabled Dark — Mobile',
+  group: 'Security Screens',
+  size: Size(390, 844),
+)
+Widget previewSecurityDisabledDarkMobile() =>
+    previewMobile(child: _securityMfaDisabledContent());
 
-@Preview(name: 'Security MFA Disabled Dark — Desktop', group: 'Security Screens', size: Size(1280, 800))
-Widget previewSecurityDisabledDarkDesktop() => previewDesktop(child: _securityMfaDisabledContent());
+@Preview(
+  name: 'Security MFA Disabled Dark — Desktop',
+  group: 'Security Screens',
+  size: Size(1280, 800),
+)
+Widget previewSecurityDisabledDarkDesktop() =>
+    previewDesktop(child: _securityMfaDisabledContent());
 
 // ── Light ────────────────────────────────────────────────────────────────────
-@Preview(name: 'Security Light — Mobile', group: 'Security Screens', size: Size(390, 844))
-Widget previewSecurityLightMobile() => previewMobile(theme: previewLightTheme, child: _securityMfaDisabledContent());
+@Preview(
+  name: 'Security Light — Mobile',
+  group: 'Security Screens',
+  size: Size(390, 844),
+)
+Widget previewSecurityLightMobile() => previewMobile(
+  theme: previewLightTheme,
+  child: _securityMfaDisabledContent(),
+);
 
-@Preview(name: 'Security Light — Desktop', group: 'Security Screens', size: Size(1280, 800))
-Widget previewSecurityLightDesktop() => previewDesktop(theme: previewLightTheme, child: _securityMfaDisabledContent());
+@Preview(
+  name: 'Security Light — Desktop',
+  group: 'Security Screens',
+  size: Size(1280, 800),
+)
+Widget previewSecurityLightDesktop() => previewDesktop(
+  theme: previewLightTheme,
+  child: _securityMfaDisabledContent(),
+);
 
 /// Preview ViewModel for security settings — no backend calls.
 class _PreviewSecurityViewModel extends MfaViewModel {
   final bool _mfaEnabled;
 
   _PreviewSecurityViewModel({required bool mfaEnabled})
-      : _mfaEnabled = mfaEnabled,
-        super(_FakeRef());
+    : _mfaEnabled = mfaEnabled,
+      super(_FakeRef());
 
   @override
   void checkStatus() {
@@ -319,4 +375,3 @@ class _FakeRef implements Ref {
   @override
   dynamic noSuchMethod(Invocation invocation) => null;
 }
-

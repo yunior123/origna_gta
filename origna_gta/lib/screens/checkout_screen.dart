@@ -148,9 +148,13 @@ class _CheckoutStepper extends StatelessWidget {
 /// Stripe Checkout on successful session creation.
 class CheckoutScreen extends ConsumerStatefulWidget {
   final List<CartItemDetailModel> items;
-  final double total;
+  final int totalCents;
 
-  const CheckoutScreen({super.key, required this.items, required this.total});
+  const CheckoutScreen({
+    super.key,
+    required this.items,
+    required this.totalCents,
+  });
 
   @override
   ConsumerState<CheckoutScreen> createState() => _CheckoutScreenState();
@@ -158,13 +162,13 @@ class CheckoutScreen extends ConsumerStatefulWidget {
 
 class _CheckoutContent extends ConsumerWidget {
   final List<CartItemDetailModel> items;
-  final double subtotal;
+  final int subtotalCents;
   final UserModel userModel;
   final VoidCallback onRefreshShipping;
 
   const _CheckoutContent({
     required this.items,
-    required this.subtotal,
+    required this.subtotalCents,
     required this.userModel,
     required this.onRefreshShipping,
   });
@@ -176,7 +180,9 @@ class _CheckoutContent extends ConsumerWidget {
     );
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final hasPhysicalItems = items.any((item) => !item.isDigital);
-    final subtotalCents = ref.watch(checkoutSubtotalCentsProvider(subtotal));
+    final subtotalCents = ref.watch(
+      checkoutSubtotalCentsProvider(this.subtotalCents),
+    );
     final paymentProvider = ref.watch(
       checkoutStateProvider.select((state) => state.paymentProvider),
     );
@@ -192,7 +198,7 @@ class _CheckoutContent extends ConsumerWidget {
         // Business logic computed in provider — screen only renders.
         final digitalTotal = ref.watch(
           checkoutBuyerTotalProvider((
-            subtotal: subtotal,
+            subtotalCents: subtotalCents,
             province: digitalProvince,
           )),
         );
@@ -247,7 +253,7 @@ class _CheckoutContent extends ConsumerWidget {
                       const SizedBox(height: 28),
                       _OrderSummary(
                         items: items,
-                        subtotal: subtotal,
+                        subtotalCents: subtotalCents,
                         state: digitalProvince,
                       ),
                       const SizedBox(height: 40),
@@ -259,8 +265,8 @@ class _CheckoutContent extends ConsumerWidget {
               _CheckoutButton(
                 items: items,
                 userModel: userModel,
-                subtotal: subtotal,
-                total: digitalTotal,
+                subtotalCents: subtotalCents,
+                totalCents: digitalTotal,
               ),
               const _DigitalEulaText(),
               if (items.any((item) => item.isAgeRestricted))
@@ -276,8 +282,11 @@ class _CheckoutContent extends ConsumerWidget {
     }
 
     // Business logic computed in providers — screen only renders.
-    final totalWithTax = ref.watch(
-      checkoutBuyerTotalProvider((subtotal: subtotal, province: address.state)),
+    final totalWithTaxCents = ref.watch(
+      checkoutBuyerTotalProvider((
+        subtotalCents: subtotalCents,
+        province: address.state,
+      )),
     );
 
     final isDesktop = ResponsiveBreakpoints.isDesktop(context);
@@ -293,7 +302,7 @@ class _CheckoutContent extends ConsumerWidget {
         height: ResponsiveBreakpoints.getSpacing(context, SpacingSize.xl),
       ),
       if (hasPhysicalItems) ...[
-        _FreeShippingBanner(subtotal: subtotal),
+        _FreeShippingBanner(subtotalCents: subtotalCents),
         const SizedBox(height: 12),
         const DeliveryOptionsSection(),
         const SizedBox(height: 28),
@@ -340,8 +349,8 @@ class _CheckoutContent extends ConsumerWidget {
       _CheckoutButton(
         items: items,
         userModel: userModel,
-        subtotal: subtotal,
-        total: totalWithTax,
+        subtotalCents: subtotalCents,
+        totalCents: totalWithTaxCents,
       ),
       if (items.any((item) => item.isDigital)) const _DigitalEulaText(),
       if (items.any((item) => item.isAgeRestricted)) const _AgeGateText(),
@@ -352,7 +361,7 @@ class _CheckoutContent extends ConsumerWidget {
 
     final orderSummary = _OrderSummary(
       items: items,
-      subtotal: subtotal,
+      subtotalCents: subtotalCents,
       state: address.state,
     );
 
@@ -503,7 +512,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
               }
               return _CheckoutContent(
                 items: widget.items,
-                subtotal: widget.total,
+                subtotalCents: widget.totalCents,
                 userModel: userProfile,
                 onRefreshShipping: _refreshShipping,
               );
@@ -532,7 +541,10 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       await notifier.calculateShipping(widget.items);
       if (!mounted) return; // Guard: widget may be disposed during async gap
       final shipping = ref.read(checkoutStateProvider).shippingCost;
-      notifier.calculateTaxes(widget.total, shippingCost: shipping);
+      notifier.calculateTaxes(
+        widget.totalCents,
+        shippingCostCents: (shipping * 100).round(),
+      );
     }
   }
 
@@ -547,7 +559,10 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       await notifier.calculateShipping(widget.items);
       if (!mounted) return; // Guard: widget may be disposed during async gap
       final shipping = ref.read(checkoutStateProvider).shippingCost;
-      notifier.calculateTaxes(widget.total, shippingCost: shipping);
+      notifier.calculateTaxes(
+        widget.totalCents,
+        shippingCostCents: (shipping * 100).round(),
+      );
     }
   }
 }
@@ -595,12 +610,12 @@ final _mockItems = [
 ];
 
 Widget _checkoutContent() => previewScopeLoggedIn(
-  child: CheckoutScreen(items: _mockItems, total: 94.98),
+  child: CheckoutScreen(items: _mockItems, totalCents: 9498),
 );
 
 // Single-item checkout
 Widget _checkoutSingleItem() => previewScopeLoggedIn(
-  child: CheckoutScreen(items: [_mockItems.first], total: 49.98),
+  child: CheckoutScreen(items: [_mockItems.first], totalCents: 4998),
 );
 
 // ── Dark (default) ──────────────────────────────────────────────────────────

@@ -66,7 +66,7 @@ Mixing these up causes sort/query failures. Always use `schema_constants.dart`.
 - IP: `204.168.137.16` | SSH: `ssh -i ~/.ssh/id_ed25519 root@204.168.137.16`
 - Docker Compose at `/opt/orignabase/`
 - PostgreSQL creds: stored in VPS `.env` files, database: `orignabase`
-- Meilisearch master key: `REDACTED_SECRET`
+- Meilisearch master key: stored in VPS `.env` file — never hardcode or log it.
 
 ## Forbidden
 - ❌ Any Firebase SDK calls from Flutter (Firestore, Auth, Storage, Functions — all gone)

@@ -43,12 +43,10 @@ class OrignaBaseConfigService {
   }
 
   /// Base URL for serving product images (e.g., `https://cdn.example.com/`).
-  String get imageBaseUrl =>
-      _cache[RemoteConfigKeys.imageBaseUrl] ?? '';
+  String get imageBaseUrl => _cache[RemoteConfigKeys.imageBaseUrl] ?? '';
 
   /// Sentry DSN for error reporting and crash analytics.
-  String get sentryDnsKey =>
-      _cache[RemoteConfigKeys.sentryDnsKey] ?? '';
+  String get sentryDnsKey => _cache[RemoteConfigKeys.sentryDnsKey] ?? '';
 
   /// Google OAuth web client ID for Sign-In with Google on web.
   String get googleWebClientId =>
@@ -79,10 +77,14 @@ class OrignaBaseConfigService {
         _cache[entry.key] = entry.value?.toString() ?? '';
       }
       AppLogger.i(
-          'OrignaBaseConfig loaded: geoapify_api_key present=${geoapifyKey.trim().isNotEmpty}', tag: 'config');
+        'OrignaBaseConfig loaded: geoapify_api_key present=${geoapifyKey.trim().isNotEmpty}',
+        tag: 'config',
+      );
     } catch (_) {
       AppLogger.w(
-          'OrignaBaseConfig fetch failed (geoapify_api_key may be empty)', tag: 'config');
+        'OrignaBaseConfig fetch failed (geoapify_api_key may be empty)',
+        tag: 'config',
+      );
     }
   }
 
@@ -99,7 +101,12 @@ class OrignaBaseConfigService {
       final value = await _ob!.config.getString(key);
       _cache[key] = value;
       return value;
-    } catch (_) {
+    } catch (e) {
+      AppLogger.w(
+        'OrignaBaseConfigService: getString failed, returning cached',
+        tag: 'config',
+        error: e,
+      );
       return _cache[key] ?? '';
     }
   }

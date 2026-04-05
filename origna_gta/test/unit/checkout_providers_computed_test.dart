@@ -47,7 +47,7 @@ void main() {
       addTearDown(container.dispose);
 
       final total = container.read(checkoutTotalProvider);
-      expect(total, 100.0);
+      expect(total, 10000);
     });
 
     test('applies coupon discount to total', () {
@@ -63,7 +63,7 @@ void main() {
       final state = container.read(checkoutStateProvider);
       if (state.couponDiscountCents > 0) {
         final total = container.read(checkoutTotalProvider);
-        expect(total, lessThan(100.0));
+        expect(total, lessThan(10000));
       }
     });
 
@@ -74,7 +74,7 @@ void main() {
       addTearDown(container.dispose);
 
       final total = container.read(checkoutTotalProvider);
-      expect(total, greaterThanOrEqualTo(0.0));
+      expect(total, greaterThanOrEqualTo(0));
     });
   });
 }

@@ -231,7 +231,7 @@ void main() {
   group('calculateTaxes', () {
     test('calculateTaxes without address does nothing', () {
       final notifier = container.read(checkoutStateProvider.notifier);
-      notifier.calculateTaxes(100.0);
+      notifier.calculateTaxes(10000);
 
       final state = container.read(checkoutStateProvider);
       expect(state.taxBreakdown, isEmpty);
@@ -248,7 +248,7 @@ void main() {
           country: 'CA',
         ),
       );
-      notifier.calculateTaxes(100.0, shippingCost: 10.0);
+      notifier.calculateTaxes(10000, shippingCostCents: 1000);
 
       final state = container.read(checkoutStateProvider);
       // Ontario HST is 13%

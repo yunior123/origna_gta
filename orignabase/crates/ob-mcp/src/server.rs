@@ -572,6 +572,13 @@ mod tests {
     #[tokio::test]
     async fn test_handle_request_check_inventory() {
         let server = make_server().await;
+        
+        server.state.db.upsert_document("products", "products:p1", json!({
+            "name": "Test Item",
+            "stockQuantity": 10,
+            "lifecycleStatus": "active"
+        })).await.unwrap();
+
         let ctx = McpContext::new();
         let req = JsonRpcRequest {
             jsonrpc: "2.0".into(),
@@ -580,6 +587,9 @@ mod tests {
             id: Some(json!(1)),
         };
         let resp = server.handle_request(req, ctx).await;
+        if let Some(err) = &resp.error {
+            println!("Error: {:?}", err);
+        }
         assert!(resp.error.is_none());
     }
 
@@ -609,6 +619,9 @@ mod tests {
             id: Some(json!(1)),
         };
         let resp = server.handle_request(req, ctx).await;
+        if resp.error.is_none() {
+            println!("Got unexpected success: {:?}", resp.result);
+        }
         assert!(resp.error.is_some());
         assert_eq!(resp.error.unwrap().code, 404);
     }

@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:origna_gta/utils/app_logger.dart';
 import 'package:origna_gta/utils/image_compression_utils.dart';
 import 'package:origna_gta/utils/utils.dart';
 
@@ -22,7 +23,12 @@ Future<List<Uint8List>> compressProductImages(
   final futures = imageModels.map((m) async {
     try {
       return await validateAndCompressImage(m.bytes);
-    } catch (_) {
+    } catch (e) {
+      AppLogger.w(
+        'compressProductImages: single image compression failed',
+        tag: 'product',
+        error: e,
+      );
       return null;
     }
   });

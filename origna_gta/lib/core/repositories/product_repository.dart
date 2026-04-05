@@ -4,6 +4,7 @@ import 'package:orignabase/orignabase.dart' show FieldValue;
 import 'package:origna_gta/core/compat/timestamp.dart' show truncateNanoseconds;
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/models/generated/models.dart';
+import 'package:origna_gta/utils/app_logger.dart';
 
 /// Shared sanitization for product data before writing to database.
 /// Used by both concrete repository implementations.
@@ -49,7 +50,12 @@ Map<String, dynamic> sanitizeProductData(
         data[Fields.createdAt] = DateTime.parse(
           truncateNanoseconds(createdAt),
         ).toIso8601String();
-      } catch (_) {
+      } catch (e) {
+        AppLogger.w(
+          'sanitizeProductData: createdAt parse failed, using server timestamp',
+          tag: 'product',
+          error: e,
+        );
         data[Fields.createdAt] = FieldValue.serverTimestamp();
       }
     } else if (createdAt is DateTime) {

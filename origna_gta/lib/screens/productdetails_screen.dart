@@ -11,6 +11,7 @@ import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/features/products/product_detail_viewmodel.dart';
 import 'package:origna_gta/features/products/products_provider.dart';
+import 'package:origna_gta/utils/app_logger.dart';
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/env_config.dart';
@@ -81,7 +82,13 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
           snapshot,
           (snapshot[Fields.productId] as String?) ?? widget.productId,
         );
-      } catch (_) {}
+      } catch (e) {
+        AppLogger.w(
+          'ProductDetailScreen: failed to build product snapshot from nav args',
+          tag: 'product',
+          error: e,
+        );
+      }
     }
 
     final fetchedProduct = productAsync.valueOrNull;

@@ -64,29 +64,31 @@ pub async fn search_products(state: McpState, params: &Value) -> McpResult<Value
         "data->>'lifecycleStatus' = 'active'".to_string(),
     ];
 
-    // Search by name/description using ILIKE
+    // Search by name/description using case-insensitive match (~~*)
     let safe_query = query.replace('\'', "''");
     conditions.push(format!(
-        "(data->>'name' ILIKE '%{}%' OR data->>'description' ILIKE '%{}%')",
+        "(data->>'name' ~~* '%{}%' OR data->>'description' ~~* '%{}%')",
         safe_query, safe_query
     ));
 
     if let Some(cat) = category {
         let safe_cat = cat.replace('\'', "''");
-        conditions.push(format!("(data->>'categoryId')::int = {}", safe_cat));
+        conditions.push(format!("data->>'categoryId' = '{}'", safe_cat));
     }
     if let Some(min) = min_price {
-        conditions.push(format!("(data->>'priceCents')::bigint >= {}", min));
+        conditions.push(format!("(data->>'priceCents')::\"numeric\" >= {}", min));
     }
     if let Some(max) = max_price {
-        conditions.push(format!("(data->>'priceCents')::bigint <= {}", max));
+        conditions.push(format!("(data->>'priceCents')::\"numeric\" <= {}", max));
     }
 
     let where_clause = conditions.join(" AND ");
     let sql = format!(
-        "SELECT data FROM products WHERE {} ORDER BY data->>'createdAt' DESC LIMIT {} OFFSET {}",
+        "SELECT * FROM products WHERE {} ORDER BY data->>'createdAt' DESC LIMIT {} OFFSET {}",
         where_clause, limit, offset
     );
+
+    println!("Executing Search SQL: {}", sql);
 
     let rows = state.db.query_raw(&sql).await.map_err(|e| {
         McpError::Internal(format!("PostgreSQL search failed: {e}"))
@@ -202,6 +204,14 @@ mod tests {
         let result = search_products(state, &params).await.unwrap();
         assert_eq!(result["limit"], 10);
         assert_eq!(result["offset"], 5);
+    }
+
+    #[tokio::test]
+    async fn test_debug_query() {
+        let state = make_state().await;
+        let sql = "SELECT data FROM products WHERE data->>'categoryId' = 'clothing' ORDER BY data->>'createdAt' DESC LIMIT 10 OFFSET 5";
+        let res = state.db.query_raw(sql).await;
+        println!("RESULT: {:?}", res);
     }
 
     #[tokio::test]
