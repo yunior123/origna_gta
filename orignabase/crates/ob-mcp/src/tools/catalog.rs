@@ -88,8 +88,6 @@ pub async fn search_products(state: McpState, params: &Value) -> McpResult<Value
         where_clause, limit, offset
     );
 
-    println!("Executing Search SQL: {}", sql);
-
     let rows = state.db.query_raw(&sql).await.map_err(|e| {
         McpError::Internal(format!("PostgreSQL search failed: {e}"))
     })?;
@@ -204,14 +202,6 @@ mod tests {
         let result = search_products(state, &params).await.unwrap();
         assert_eq!(result["limit"], 10);
         assert_eq!(result["offset"], 5);
-    }
-
-    #[tokio::test]
-    async fn test_debug_query() {
-        let state = make_state().await;
-        let sql = "SELECT data FROM products WHERE data->>'categoryId' = 'clothing' ORDER BY data->>'createdAt' DESC LIMIT 10 OFFSET 5";
-        let res = state.db.query_raw(sql).await;
-        println!("RESULT: {:?}", res);
     }
 
     #[tokio::test]

@@ -310,6 +310,7 @@ mod tests {
     // ── list_tools ──
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_list_tools_contains_all_tools() {
         let server = make_server().await;
         let tools = server.list_tools();
@@ -331,6 +332,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_list_tools_has_required_fields() {
         let server = make_server().await;
         let tools = server.list_tools();
@@ -344,6 +346,7 @@ mod tests {
     // ── handle_request routing ──
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_handle_request_unknown_method() {
         let server = make_server().await;
         let ctx = McpContext::new();
@@ -360,6 +363,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_handle_request_tools_list() {
         let server = make_server().await;
         let ctx = McpContext::new();
@@ -376,6 +380,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_handle_request_search_products_unauthenticated() {
         let server = make_server().await;
         let ctx = McpContext::new();
@@ -390,6 +395,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_handle_request_search_products_missing_query() {
         let server = make_server().await;
         let ctx = McpContext::new();
@@ -405,6 +411,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_handle_request_get_cart_unauthenticated() {
         let server = make_server().await;
         let ctx = McpContext::new();
@@ -420,6 +427,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_handle_request_get_cart_authenticated() {
         let server = make_server().await;
         let ctx = McpContext::with_claims(make_claims(Some("buyer")));
@@ -434,6 +442,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_handle_request_admin_unauthenticated() {
         let server = make_server().await;
         let ctx = McpContext::new();
@@ -449,6 +458,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_handle_request_admin_non_admin() {
         let server = make_server().await;
         let ctx = McpContext::with_claims(make_claims(Some("buyer")));
@@ -464,6 +474,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_handle_request_admin_authorized() {
         let server = make_server().await;
         let ctx = McpContext::with_claims(make_claims(Some("admin")));
@@ -478,6 +489,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_handle_request_response_preserves_id() {
         let server = make_server().await;
         let ctx = McpContext::new();
@@ -492,6 +504,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_handle_request_response_jsonrpc_version() {
         let server = make_server().await;
         let ctx = McpContext::new();
@@ -556,6 +569,7 @@ mod tests {
     // ── All MCP methods route correctly ──
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_handle_request_get_product() {
         let server = make_server().await;
         let ctx = McpContext::new();
@@ -570,6 +584,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_handle_request_check_inventory() {
         let server = make_server().await;
         
@@ -587,13 +602,11 @@ mod tests {
             id: Some(json!(1)),
         };
         let resp = server.handle_request(req, ctx).await;
-        if let Some(err) = &resp.error {
-            println!("Error: {:?}", err);
-        }
         assert!(resp.error.is_none());
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_handle_request_list_orders_authenticated() {
         let server = make_server().await;
         let ctx = McpContext::with_claims(make_claims(Some("buyer")));
@@ -608,6 +621,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_handle_request_create_review_authenticated_no_purchase() {
         // Authenticated but product doesn't exist — should return NotFound (404)
         let server = make_server().await;
@@ -615,18 +629,16 @@ mod tests {
         let req = JsonRpcRequest {
             jsonrpc: "2.0".into(),
             method: "create_review".into(),
-            params: json!({"product_id": "products:p1", "rating": 5}),
+            params: json!({"product_id": "products:nonexistent_review_test", "rating": 5}),
             id: Some(json!(1)),
         };
         let resp = server.handle_request(req, ctx).await;
-        if resp.error.is_none() {
-            println!("Got unexpected success: {:?}", resp.result);
-        }
         assert!(resp.error.is_some());
         assert_eq!(resp.error.unwrap().code, 404);
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_handle_request_create_review_unauthenticated() {
         let server = make_server().await;
         let ctx = McpContext::new();

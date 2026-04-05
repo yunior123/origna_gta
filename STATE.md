@@ -93,5 +93,6 @@
 2. `630eef518` — dead code cleanup, stale comment fixes
 3. `f16d2b63f` — STATE.md update with load test results and coverage analysis
 4. `487dc9e17` — remove stale 'Phase 2' reference from FieldValue TODO comment
-5. *(pending)* — cron flakiness fix: serial tests, single-step payout creation, query-by-ID fix
-6. *(pending)* — Riverpod disposal races, delivery type magic strings, money-as-double checkout, password regex `:`, AI config cleanup
+5. *(committed)* — cron flakiness fix: serial tests, single-step payout creation, query-by-ID fix
+6. *(committed)* — Riverpod disposal races, delivery type magic strings, money-as-double checkout, password regex `:`, AI config cleanup
+7. *(committed)* `493463c96` — fixed `ob-mcp` (type "data" does not exist caused by `pg_store.rs` translation intercepting bare keywords, fixed using `::"numeric"` and `~~*`), and checkout `ob-handlers` tests. All Rust (3000+) and Flutter (4696) tests are currently passing. Added `audit_orchestrator.sh` to fully utilize all `.claude/skills` safely via free models.
