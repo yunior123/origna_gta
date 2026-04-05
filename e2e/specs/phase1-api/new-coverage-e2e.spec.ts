@@ -91,7 +91,7 @@ describe('1. Stock Notification Subscribe/Unsubscribe', () => {
 // ════════════════════════════════════════════════════════════════════════════
 
 describe('2. Digital Product Purchase -> License Generation', () => {
-  const DIGITAL_PRODUCT_ID = 'product_031';
+  const DIGITAL_PRODUCT_ID = 'e2e_product_test_seller';
 
   test('2.1 Purchasing a digital product creates checkout session', { timeout: 60_000 }, async () => {
     const auth = await signIn(TEST_ACCOUNTS.BUYER_EMAIL);

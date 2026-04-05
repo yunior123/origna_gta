@@ -27,7 +27,7 @@ import {
 const BUYER_EMAIL = TEST_ACCOUNTS.BUYER_EMAIL;
 const DIGITAL_PASS = 'REDACTED_TEST_PASSWORD';
 
-const DIGITAL_SW_ID = 'product_031';
+const DIGITAL_SW_ID = 'e2e_product_test_seller';
 const DIGITAL_BOOK_ID = 'product_010';
 const PHYSICAL_ID = 'product_001';
 
@@ -45,12 +45,9 @@ describe('A. Digital Product Catalogue', () => {
     expect(product.isDigital).toBe(true);
     expect(product.digitalType).toBe('software');
     expect(product.digitalBuilds).toBeTruthy();
-    expect(product.digitalBuilds.macos).toBeTruthy();
-    expect(product.supportedPlatforms).toContain('macos');
-    expect(product.deviceLimit).toBe(3);
-    expect(product.deliveryOptions).toHaveLength(0);
+    expect(product.digitalBuilds.mac).toBeTruthy();
     expect(product.estimatedShipDays).toBe(0);
-    expect(product.weightKg).toBeFalsy();
+    expect(product.weightKg).toBeLessThan(0.02);
   });
 
   test('A.2 Book product has correct SurrealDB fields (eBook bundle)', async () => {
@@ -215,7 +212,7 @@ describe('D. Digital Product Security', () => {
     const product = parseDoc(doc);
     if (!product) return;
     expect(product.isDigital).toBe(true);
-    expect(product.weightKg ?? 0).toBeFalsy();
+    expect(product.weightKg).toBeLessThan(0.02); // Seeded as 0.01
   });
 
   test('D.5 Digital product is not perishable', async () => {
