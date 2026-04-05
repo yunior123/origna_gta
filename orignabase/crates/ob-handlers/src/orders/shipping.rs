@@ -60,8 +60,8 @@ pub struct ApproveShippingResponse {
 pub struct UpdateShippingCostRequest {
     pub order_id: String,
     pub user_id: String,
-    /// New shipping cost in dollars (float).
-    pub new_shipping_cost: f64,
+    /// New shipping cost in cents
+    pub new_shipping_cost_cents: i64,
     #[serde(default)]
     pub reason: Option<String>,
 }
@@ -532,7 +532,7 @@ async fn update_shipping_cost(
     )
     .await?;
 
-    if req.new_shipping_cost < 0.0 {
+    if req.new_shipping_cost_cents < 0 {
         return Err(ob_core::Error::Validation(
             "newShippingCost must be non-negative".into(),
         ));
@@ -592,7 +592,7 @@ async fn update_shipping_cost(
         .unwrap_or_default();
 
     let original_seller_cents = *seller_shipping_map.get(&user_id).unwrap_or(&0);
-    let new_shipping_cents = (req.new_shipping_cost * 100.0).round() as i64;
+    let new_shipping_cents = req.new_shipping_cost_cents;
     seller_shipping_map.insert(user_id.clone(), new_shipping_cents);
     let new_total_shipping: i64 = seller_shipping_map.values().sum();
     let original_shipping = i64_field(&order, fields::SHIPPING_COST_CENTS);
@@ -607,7 +607,7 @@ async fn update_shipping_cost(
         let update_data = json!({
             "shippingApproval": {
                 fields::STATUS: "pending",
-                "actualCost": req.new_shipping_cost,
+                "actualCost": (new_shipping_cents as f64) / 100.0,
                 "originalCostCents": original_seller_cents,
                 "newCostCents": new_shipping_cents,
                 "reason": reason,
@@ -772,9 +772,9 @@ mod tests {
 
     #[test]
     fn test_update_shipping_request_deserialize() {
-        let s = r#"{"orderId":"o1","userId":"u1","newShippingCost":15.99,"reason":"heavier"}"#; // ignore-magic
+        let s = r#"{"orderId":"o1","userId":"u1","newShippingCostCents":1599,"reason":"heavier"}"#; // ignore-magic
         let req: UpdateShippingCostRequest = serde_json::from_str(s).unwrap();
-        assert!((req.new_shipping_cost - 15.99).abs() < 0.001);
+        assert_eq!(req.new_shipping_cost_cents, 1599);
         assert_eq!(req.reason, Some("heavier".to_string()));
     }
 
@@ -1016,7 +1016,7 @@ mod tests {
             Json(UpdateShippingCostRequest {
                 order_id: "ord_3".into(),
                 user_id: "seller_b".into(),
-                new_shipping_cost: 9.0,
+                new_shipping_cost_cents: 900,
                 reason: None,
             }),
         )
@@ -1030,7 +1030,7 @@ mod tests {
             Json(UpdateShippingCostRequest {
                 order_id: "ord_3".into(),
                 user_id: "seller_a".into(),
-                new_shipping_cost: 9.0,
+                new_shipping_cost_cents: 900,
                 reason: Some("<b>heavy</b>".into()),
             }),
         )
@@ -1085,7 +1085,7 @@ mod tests {
             Json(UpdateShippingCostRequest {
                 order_id: "ord_4".into(),
                 user_id: "seller_c".into(),
-                new_shipping_cost: 5.50,
+                new_shipping_cost_cents: 550,
                 reason: None,
             }),
         )
@@ -1240,23 +1240,23 @@ mod tests {
 
     #[test]
     fn test_update_shipping_request_missing_reason() {
-        let s = r#"{"orderId":"o1","userId":"u1","newShippingCost":5.0}"#; // ignore-magic
+        let s = r#"{"orderId":"o1","userId":"u1","newShippingCostCents":500}"#; // ignore-magic
         let req: UpdateShippingCostRequest = serde_json::from_str(s).unwrap();
         assert!(req.reason.is_none());
     }
 
     #[test]
     fn test_update_shipping_request_missing_required_fields() {
-        // Missing newShippingCost
+        // Missing newShippingCostCents
         let s = r#"{"orderId":"o1","userId":"u1"}"#; // ignore-magic
         assert!(serde_json::from_str::<UpdateShippingCostRequest>(s).is_err());
     }
 
     #[test]
     fn test_update_shipping_request_zero_cost() {
-        let s = r#"{"orderId":"o1","userId":"u1","newShippingCost":0.0}"#; // ignore-magic
+        let s = r#"{"orderId":"o1","userId":"u1","newShippingCostCents":0}"#; // ignore-magic
         let req: UpdateShippingCostRequest = serde_json::from_str(s).unwrap();
-        assert!((req.new_shipping_cost).abs() < f64::EPSILON);
+        assert_eq!(req.new_shipping_cost_cents, 0);
     }
 
     // -----------------------------------------------------------------------
@@ -1993,7 +1993,7 @@ mod tests {
             Json(UpdateShippingCostRequest {
                 order_id: "ord_1".into(),
                 user_id: "seller_1".into(),
-                new_shipping_cost: -5.0,
+                new_shipping_cost_cents: -500,
                 reason: None,
             }),
         )
@@ -2027,7 +2027,7 @@ mod tests {
             Json(UpdateShippingCostRequest {
                 order_id: "ord_bad".into(),
                 user_id: "seller_1".into(),
-                new_shipping_cost: 10.0,
+                new_shipping_cost_cents: 1000,
                 reason: None,
             }),
         )
@@ -2061,7 +2061,7 @@ mod tests {
             Json(UpdateShippingCostRequest {
                 order_id: "ord_pay".into(),
                 user_id: "seller_1".into(),
-                new_shipping_cost: 10.0,
+                new_shipping_cost_cents: 1000,
                 reason: None,
             }),
         )
@@ -2117,7 +2117,7 @@ mod tests {
             Json(UpdateShippingCostRequest {
                 order_id: "ord_auto".into(),
                 user_id: "seller_1".into(),
-                new_shipping_cost: 11.0, // 10% increase, auto-approve
+                new_shipping_cost_cents: 1100, // 10% increase, auto-approve
                 reason: Some("heavier".into()),
             }),
         )
@@ -2170,7 +2170,7 @@ mod tests {
             Json(UpdateShippingCostRequest {
                 order_id: "ord_aub".into(),
                 user_id: "seller_1".into(),
-                new_shipping_cost: 11.0,
+                new_shipping_cost_cents: 1100,
                 reason: None,
             }),
         )

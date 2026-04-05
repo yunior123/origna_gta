@@ -197,7 +197,7 @@ class OrignaBaseOrderRepository
       ApiEndpoints.ordersUpdateShipping,
       body: {
         Fields.orderId: orderId,
-        ApiKeys.newShippingCost: newShippingCostCents,
+        ApiKeys.newShippingCostCents: newShippingCostCents,
         ApiKeys.reason: reason,
       },
     );

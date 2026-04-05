@@ -200,3 +200,4 @@ Start only after Phases 1 through 3 are stable.
 - [ ] orignabase rules should be as strong as firebase rules
 - [ ] orignabase queries should be similar to firebase
 - [ ] fix gaps with previews, right now it shows only empty state in some views.
+- [ ] no backward compatibility is needed, make sure no legacy code

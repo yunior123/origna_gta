@@ -403,7 +403,7 @@ void main() {
 
       expect(fakeOb.lastRequestPath, ApiEndpoints.ordersUpdateShipping);
       expect(fakeOb.lastRequestBody?[Fields.orderId], 'order_1');
-      expect(fakeOb.lastRequestBody?[ApiKeys.newShippingCost], 1500);
+      expect(fakeOb.lastRequestBody?[ApiKeys.newShippingCostCents], 1500);
       expect(
         fakeOb.lastRequestBody?[ApiKeys.reason],
         'Actual cost from carrier',

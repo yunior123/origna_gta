@@ -59,27 +59,27 @@ pub async fn search_products(state: McpState, params: &Value) -> McpResult<Value
         }
     }
 
-    // Fallback: PostgreSQL query via query_raw
+    // Fallback: PostgreSQL query via query_bind
     let mut conditions = vec![
         "data->>'lifecycleStatus' = 'active'".to_string(),
     ];
+    let mut binds = serde_json::Map::new();
 
     // Search by name/description using case-insensitive match (~~*)
-    let safe_query = query.replace('\'', "''");
-    conditions.push(format!(
-        "(data->>'name' ~~* '%{}%' OR data->>'description' ~~* '%{}%')",
-        safe_query, safe_query
-    ));
+    conditions.push("(data->>'name' ~~* $search_query OR data->>'description' ~~* $search_query)".to_string());
+    binds.insert("search_query".to_string(), json!(format!("%{}%", query)));
 
     if let Some(cat) = category {
-        let safe_cat = cat.replace('\'', "''");
-        conditions.push(format!("data->>'categoryId' = '{}'", safe_cat));
+        conditions.push("data->>'categoryId' = $category".to_string());
+        binds.insert("category".to_string(), json!(cat));
     }
     if let Some(min) = min_price {
-        conditions.push(format!("(data->>'priceCents')::\"numeric\" >= {}", min));
+        conditions.push("(data->>'priceCents')::\"numeric\" >= ($min_price)::\"numeric\"".to_string());
+        binds.insert("min_price".to_string(), json!(min));
     }
     if let Some(max) = max_price {
-        conditions.push(format!("(data->>'priceCents')::\"numeric\" <= {}", max));
+        conditions.push("(data->>'priceCents')::\"numeric\" <= ($max_price)::\"numeric\"".to_string());
+        binds.insert("max_price".to_string(), json!(max));
     }
 
     let where_clause = conditions.join(" AND ");
@@ -88,7 +88,7 @@ pub async fn search_products(state: McpState, params: &Value) -> McpResult<Value
         where_clause, limit, offset
     );
 
-    let rows = state.db.query_raw(&sql).await.map_err(|e| {
+    let rows = state.db.query_bind(&sql, Value::Object(binds)).await.map_err(|e| {
         McpError::Internal(format!("PostgreSQL search failed: {e}"))
     })?;
 

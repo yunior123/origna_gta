@@ -72,7 +72,7 @@ abstract final class ApiKeys {
   static const returnUrl = 'returnUrl';
   static const newStatus = 'newStatus';
   static const approved = 'approved';
-  static const newShippingCost = 'newShippingCost';
+  static const newShippingCostCents = 'newShippingCostCents';
   static const subtotal = 'subtotal';
   static const subtotalCents = 'subtotalCents';
   static const itemIds = 'itemIds';
