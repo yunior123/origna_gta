@@ -7,7 +7,7 @@ All active blockers and known infrastructure issues from previous sessions have 
 - `cargo clippy --workspace -- -D warnings`: 0 warnings
 - `cargo test --workspace`: 3432/3432 tests passing
 - `flutter analyze --no-fatal-infos`: 0 issues
-- `flutter test --exclude-tags golden`: 4696/4696 tests passing
+- `flutter test --exclude-tags golden`: 4696/4696 tests passing (including `RUN_ORIGNABASE_LIVE_TESTS=true`)
 
 ### Resolved Blockers
 1. **E2E Browser & API Timeout on 8GB RAM**: Fixed by altering `run-tests.sh` to run sequentially with `BROWSER_CONCURRENCY=1` and `API_CONCURRENCY=1`. This eliminates the OOM and timeout issues on 8GB Mac devices.
@@ -18,4 +18,4 @@ All active blockers and known infrastructure issues from previous sessions have 
 
 ## Next Steps
 - Trigger or await backend CI/CD deploy to propagate the CORS, Admin, and MFA fixes to `api.orignagta.ca`.
-- Proceed with Phase 2 Flutter Live tests.
+- Proceed with Phase 3 E2E tests (`e2e/run-tests.sh all`) to confirm the browser and API suites run smoothly in sequential mode without RAM exhaustion.
