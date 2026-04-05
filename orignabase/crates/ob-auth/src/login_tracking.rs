@@ -363,7 +363,7 @@ pub async fn get_login_history(
     let records = state
         .db
         .query_bind(
-            "SELECT * FROM login_history WHERE user_id = $uid ORDER BY created_at DESC LIMIT $lim START $off",
+            "SELECT * FROM login_history WHERE user_id = $uid ORDER BY created_at DESC LIMIT $lim OFFSET $off",
             json!({
                 "uid": auth.user_id,
                 "lim": pagination.limit,

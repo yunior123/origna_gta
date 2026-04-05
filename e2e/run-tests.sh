@@ -21,10 +21,9 @@ export PATH="$BUN_INSTALL/bin:$PATH"
 TIMEOUT="${E2E_TEST_TIMEOUT:-60000}"
 PHASE="${1:-all}"
 # Max parallel browser files — tune based on RAM
-# 4 = safe for 8GB (2.8GB Chrome + 2.5GB OS + headroom)
-# Set E2E_BROWSER_CONCURRENCY=6 to push it on 16GB machines
-BROWSER_CONCURRENCY="${E2E_BROWSER_CONCURRENCY:-4}"
-API_CONCURRENCY="${E2E_API_CONCURRENCY:-10}"
+# 1 = safe for 8GB Mac (sequential, avoids timeout)
+BROWSER_CONCURRENCY="${E2E_BROWSER_CONCURRENCY:-1}"
+API_CONCURRENCY="${E2E_API_CONCURRENCY:-1}"
 
 # API-only files (no Chrome needed) — scattered across UI phases
 API_ONLY_FILES=(
@@ -87,16 +86,20 @@ case "$PHASE" in
     echo "✓ Seed done in ${SEED_ELAPSED}s"
     echo ""
 
-    # ── Background: ALL API-only tests (P1 + scattered) ──
-    echo "▶ API tests (background — 0 Chrome, 27 files, concurrency=$API_CONCURRENCY)"
+    # ── Sequential: ALL API-only tests (P1 + scattered) ──
+    echo "▶ API tests (sequential — 0 Chrome, 27 files, concurrency=$API_CONCURRENCY)"
     API_START=$(date +%s)
     bun test \
       specs/phase1-api/ \
       "${API_ONLY_FILES[@]}" \
       --timeout "$TIMEOUT" \
       --max-concurrency "$API_CONCURRENCY" \
-      > /tmp/e2e-api-results.log 2>&1 &
-    API_PID=$!
+      > /tmp/e2e-api-results.log 2>&1
+    API_ELAPSED=$(( $(date +%s) - API_START ))
+    echo "✓ API tests done in ${API_ELAPSED}s"
+    echo "── API test output ──"
+    cat /tmp/e2e-api-results.log
+    echo ""
 
     # ── Main: ALL browser files in parallel (concurrency-limited) ──
     BROWSER_FILES=$(collect_browser_files)
@@ -113,16 +116,6 @@ case "$PHASE" in
     BROWSER_END=$(date +%s)
     BROWSER_ELAPSED=$((BROWSER_END - BROWSER_START))
     echo "✓ Browser tests done in ${BROWSER_ELAPSED}s"
-    echo ""
-
-    # ── Wait for background API tests ──
-    echo "══════════════════════════════════════"
-    echo "▶ Waiting for API tests..."
-    wait $API_PID || SUITE_STATUS=1
-    API_ELAPSED=$(( $(date +%s) - API_START ))
-    echo "✓ API tests done in ${API_ELAPSED}s"
-    echo "── API test output ──"
-    cat /tmp/e2e-api-results.log
     echo ""
 
     TOTAL_ELAPSED=$(( $(date +%s) - TOTAL_START ))
