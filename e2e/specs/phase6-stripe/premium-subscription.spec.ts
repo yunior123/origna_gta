@@ -35,28 +35,11 @@ const WEB_APP_URL = process.env.E2E_TARGET_URL ?? 'https://dev.orignagta.ca';
 
 async function loginAs(browser: AgentBrowser, email: string, password: string) {
   try {
-    await browser.open(`${WEB_APP_URL}/login`);
-    await browser.waitForFlutter();
-    let snap = await browser.waitForChange({ text: /you@example|vous@exemple|login_email_field/i, timeout: 30_000 });
-
-    const emailInput = browser.findByLabel(snap, /you@example|vous@exemple|login_email_field/i);
-    if (!emailInput) throw new Error('Email input not found');
-    await browser.click(emailInput.ref);
-    await browser.type(email);
-
-    snap = await browser.waitForChange({ text: /login_password_field|••••••••/i, timeout: 10_000 });
-    const passInput = browser.findByLabel(snap, /login_password_field|••••••••/);
-    if (!passInput) throw new Error('Password input not found');
-    await browser.click(passInput.ref);
-    await browser.type(password);
-
-    await browser.press('Tab');
-    await browser.waitForChange({ timeout: 500 });
-    await browser.press('Enter');
-    await browser.waitForChange({ timeout: 5000 });
+    await browser.loginViaApi(email, password);
+    await browser.open(`${WEB_APP_URL}/`);
     await browser.waitForFlutter();
   } catch (err) {
-    console.log(`loginAs warning: ${(err as Error).message}`);
+    console.warn(`loginViaApi warning: ${(err as Error).message}`);
   }
 }
 
@@ -177,10 +160,8 @@ describe('B. Subscription Screen UI', () => {
   }, 180_000);
 
   test('B2: Upgrade button semantic label is btn-subscribe-premium', async () => {
-    const TARGET_URL = process.env.E2E_TARGET_URL ?? 'https://dev.orignagta.ca';
     try {
-      await browser.open(`${TARGET_URL}/`);
-      await browser.waitForFlutter();
+      await loginAs(browser, BUYER_EMAIL, TEST_ACCOUNTS.BUYER_PASS);
     } catch {
       console.log('B2: Browser open/waitForFlutter failed — verifying via API');
       const auth = await signIn(BUYER_EMAIL, TEST_ACCOUNTS.BUYER_PASS);

@@ -1,22 +1,23 @@
 # Sprint Contract — Round 1
 
 ## Deliverables
-- [ ] Align harness files with the current backend-live-first runbook
-- [ ] Verify the active dev-only VPS rebuild status
-- [ ] Re-run `storage_integration_test` against the rebuilt dev image
-- [ ] Continue the backend live queue in order after storage
-- [ ] Record every verified result or blocker in `.claude/harness/STATE.md` and `STATE.md`
+- [ ] Let the active seeded `e2e/run-tests.sh all` rerun continue until it finishes or surfaces the next concrete failing file.
+- [ ] Capture the authoritative aggregate result from `/tmp/origna_e2e_run_all_after_deep_fix.log`.
+- [ ] If a new failure appears, patch only that failing slice and verify it with a focused rerun.
+- [ ] If the wrapper completes green, update `STATE.md`, `TODOS.md`, and `.claude/harness/STATE.md` with the final evidence and next gate.
 
 ## Verification Criteria
-- [ ] Harness files no longer describe the stale March design-audit round
-- [ ] VPS runtime state is summarized with concrete evidence
-- [ ] `storage_integration_test` is rerun on the rebuilt dev image
-- [ ] The next backend live file after storage is selected and executed unless storage still blocks
-- [ ] `STATE.md` and harness state reflect the new evidence immediately
+- [ ] `/tmp/origna_e2e_run_all_after_deep_fix.log` contains either the final wrapper summary or a concrete failing spec trace.
+- [ ] Any new patch is followed by `cd e2e && bun x tsc --noEmit`.
+- [ ] Any new failing spec/helper fix is followed by a focused `bun test ... --timeout 120000`.
+- [ ] Ledger docs are updated only after command evidence exists.
 
 ## Files to Touch
 - `.claude/harness/SPEC.md`
 - `.claude/harness/SPRINT.md`
 - `.claude/harness/STATE.md`
 - `STATE.md`
-- additional backend files only if the rerun exposes a real defect
+- `TODOS.md`
+- `e2e/lib/auth.ts` if a new auth/bootstrap defect appears
+- `e2e/lib/agent-browser.ts` if a new browser-state defect appears
+- the next concretely failing `e2e/specs/**` file only if needed

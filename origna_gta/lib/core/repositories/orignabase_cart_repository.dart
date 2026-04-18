@@ -23,6 +23,30 @@ class OrignaBaseCartRepository implements CartRepository {
   /// Creates a new instance of [OrignaBaseCartRepository].
   OrignaBaseCartRepository(this._ob);
 
+  Never _throwStockConflict({
+    required int availableStock,
+    required int currentQty,
+    required int requestedQty,
+  }) {
+    if (availableStock <= 0) {
+      throw ConflictException('This product is out of stock', statusCode: 409);
+    }
+
+    if (currentQty > 0) {
+      throw ConflictException(
+        'Only $availableStock items available (you already have $currentQty in your cart)',
+        statusCode: 409,
+      );
+    }
+
+    throw ConflictException(
+      requestedQty > maxCartItemQuantity
+          ? 'Cart item quantity cannot exceed $maxCartItemQuantity'
+          : 'Only $availableStock items available in stock',
+      statusCode: 409,
+    );
+  }
+
   /// Returns the cart subcollection reference for a specific user.
   ///
   /// Normalizes the [userId] to its bare record ID to match the PostgreSQL
@@ -132,31 +156,50 @@ class OrignaBaseCartRepository implements CartRepository {
 
     // Stock check must account for quantity already in cart
     final totalRequested = currentQty + quantity;
-    if (availableStock < totalRequested) {
-      throw ConflictException(
-        availableStock == 0
-            ? 'This product is out of stock'
-            : currentQty > 0
-            ? 'Only $availableStock items available (you already have $currentQty in your cart)'
-            : 'Only $availableStock items available in stock',
-        statusCode: 409,
+    final effectiveCap = availableStock < maxCartItemQuantity
+        ? availableStock
+        : maxCartItemQuantity;
+    if (availableStock < totalRequested ||
+        totalRequested > maxCartItemQuantity) {
+      _throwStockConflict(
+        availableStock: effectiveCap,
+        currentQty: currentQty,
+        requestedQty: totalRequested,
       );
     }
 
-    final newQty = (currentQty + quantity).clamp(
-      minCartItemQuantity,
-      maxCartItemQuantity,
-    );
-
     // Always use set (upsert) to ensure parent_id and userId are written.
     // update() would 403 on stale docs that lack userId/parent_id.
+    if (hasValidExisting) {
+      await cartRef.doc(docId).update({
+        Fields.quantity: FieldValue.increment(quantity),
+        Fields.priceSnapshot: priceSnapshot,
+        ...?variantId == null ? null : {Fields.variantId: variantId},
+        ...?variantTitle == null ? null : {Fields.variantTitle: variantTitle},
+        ...?variantOptions == null
+            ? null
+            : {Fields.variantOptions: variantOptions},
+        ...?variantSku == null ? null : {Fields.variantSku: variantSku},
+      });
+
+      final updated = await cartRef.doc(docId).get();
+      final updatedQty = (updated?.get<num>(Fields.quantity))?.toInt() ?? 0;
+      if (updatedQty > effectiveCap) {
+        await cartRef.doc(docId).update({Fields.quantity: effectiveCap});
+        _throwStockConflict(
+          availableStock: effectiveCap,
+          currentQty: currentQty,
+          requestedQty: updatedQty,
+        );
+      }
+      return;
+    }
+
     final data = <String, dynamic>{
       ...CartModel(
         productId: productId,
-        quantity: newQty,
-        createdAt: hasValidExisting
-            ? (CartItemModel.fromMap(existing.data, docId: docId).createdAt)
-            : DateTime.now(),
+        quantity: quantity,
+        createdAt: DateTime.now(),
         variantId: variantId,
         variantTitle: variantTitle,
         variantOptions: variantOptions,

@@ -24,21 +24,28 @@ case "$ENV" in
   dev)
     ORIGNABASE_URL="https://api.dev.orignagta.ca"
     TURNSTILE_KEY="1x00000000000000000000AA"
+    BUILD_MODE="--debug"
+    EXTRA_DART_DEFINES=(--dart-define=FORCE_SEMANTICS=true)
     ;;
   staging)
     ORIGNABASE_URL="https://api.staging.orignagta.ca"
     TURNSTILE_KEY="0x4AAAAAACmRNCDQqc20J_1T"
+    BUILD_MODE="--profile"
+    EXTRA_DART_DEFINES=(--dart-define=FORCE_SEMANTICS=true)
     ;;
   production)
     ORIGNABASE_URL="https://api.orignagta.ca"
     TURNSTILE_KEY="0x4AAAAAACmRNXgZQ1M928iq"
+    BUILD_MODE="--release"
+    EXTRA_DART_DEFINES=()
     ;;
 esac
 
 cd origna_gta
-flutter build web --release \
+flutter build web ${BUILD_MODE} \
   --dart-define=ENVIRONMENT=${ENV} \
   --dart-define=ORIGNABASE_URL=${ORIGNABASE_URL} \
+  "${EXTRA_DART_DEFINES[@]}" \
   --pwa-strategy=none \
   --no-tree-shake-icons
 

@@ -291,21 +291,101 @@ class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen> {
 
 // ═══ Widget Previews ═══
 
+const _previewSellerProductsImageBase = 'https://fastly.picsum.photos/id';
+
+String _previewSellerProductsImage(int id, {int width = 900, int height = 900}) =>
+    '$_previewSellerProductsImageBase/$id/$width/$height.jpg';
+
+final _previewSellerUser = UserModel(
+  uid: 'preview-seller',
+  email: 'seller.preview@origna.ca',
+  name: 'Atelier Origna',
+  roles: const [UserRole.buyer, UserRole.seller],
+  createdAt: DateTime(2026, 1, 10),
+  isPremium: true,
+  businessName: 'Atelier Origna',
+  verified: true,
+);
+
+final _previewSellerProducts = [
+  Product(
+    productId: 'seller-preview-1',
+    sellerId: 'preview-seller',
+    name: 'Handmade Walnut Serving Board',
+    description: 'Premium walnut board with engraved Origna branding.',
+    priceCents: 8900,
+    stockQuantity: 18,
+    imageUrls: [_previewSellerProductsImage(1040)],
+    categoryId: 5,
+    createdAt: DateTime(2026, 2, 14),
+    lifecycleStatus: ProductLifecycleStatusValues.active,
+    rating: 4.8,
+    ratingCount: 48,
+    shipFromCountry: 'CA',
+    shipFromCity: 'Toronto',
+    shipFromProvince: 'ON',
+    freeShipping: true,
+  ),
+  Product(
+    productId: 'seller-preview-2',
+    sellerId: 'preview-seller',
+    name: 'Small-Batch Chili Oil',
+    description: 'Locally bottled chili oil with premium ingredients.',
+    priceCents: 1599,
+    stockQuantity: 4,
+    imageUrls: [_previewSellerProductsImage(292)],
+    categoryId: 1,
+    createdAt: DateTime(2026, 3, 2),
+    lifecycleStatus: ProductLifecycleStatusValues.underReview,
+    rating: 4.6,
+    ratingCount: 17,
+    shipFromCountry: 'CA',
+    shipFromCity: 'Montreal',
+    shipFromProvince: 'QC',
+  ),
+  Product(
+    productId: 'seller-preview-3',
+    sellerId: 'preview-seller',
+    name: 'Seasonal Gift Box',
+    description: 'Curated holiday bundle with local artisan products.',
+    priceCents: 12900,
+    stockQuantity: 0,
+    imageUrls: [_previewSellerProductsImage(433)],
+    categoryId: 7,
+    createdAt: DateTime(2026, 1, 28),
+    lifecycleStatus: ProductLifecycleStatusValues.rejected,
+    approvalRejectionReason:
+        'Packaging image does not clearly show the nutrition label.',
+    rating: 4.2,
+    ratingCount: 9,
+    shipFromCountry: 'CA',
+    shipFromCity: 'Vancouver',
+    shipFromProvince: 'BC',
+  ),
+];
+
+Widget _sellerProductsPreview() => previewScopeLoggedIn(
+  extraOverrides: [
+    userProfileProvider.overrideWith(
+      (ref) => Stream.value(_previewSellerUser),
+    ),
+    sellerProductsProvider.overrideWith(
+      (ref) => Stream.value(_previewSellerProducts),
+    ),
+    sellerUnansweredQaProvider(_previewSellerUser.uid).overrideWith(
+      (ref) => Stream.value(6),
+    ),
+  ],
+  child: const SellerProductsScreen(),
+);
+
 @Preview(
   name: 'Seller Inventory — Mobile',
   group: 'Screens — Seller Management',
   size: Size(390, 844),
 )
 Widget previewSellerProductsScreenMobile() =>
-    previewMobile(child: previewScope(child: SellerProductsScreen()));
-
-@Preview(
-  name: 'Seller Inventory — Tablet',
-  group: 'Screens — Seller Management',
-  size: Size(768, 1024),
-)
-Widget previewSellerProductsScreenTablet() =>
-    previewTablet(child: previewScope(child: SellerProductsScreen()));
+    previewMobile(child: _sellerProductsPreview());
 
 @Preview(
   name: 'Seller Inventory — Desktop',
@@ -313,36 +393,7 @@ Widget previewSellerProductsScreenTablet() =>
   size: Size(1280, 800),
 )
 Widget previewSellerProductsScreenDesktop() =>
-    previewDesktop(child: previewScope(child: SellerProductsScreen()));
-
-@Preview(
-  name: 'Seller Inventory — Web',
-  group: 'Screens — Seller Management',
-  size: Size(1440, 900),
-)
-Widget previewSellerProductsScreenWeb() =>
-    previewWeb(child: previewScope(child: SellerProductsScreen()));
-
-// ── Light ────────────────────────────────────────────────────────────────────
-@Preview(
-  name: 'Seller Inventory Light — Mobile',
-  group: 'Screens — Seller Management',
-  size: Size(390, 844),
-)
-Widget previewSellerProductsLightMobile() => previewMobile(
-  theme: previewLightTheme,
-  child: previewScope(child: SellerProductsScreen()),
-);
-
-@Preview(
-  name: 'Seller Inventory Light — Tablet',
-  group: 'Screens — Seller Management',
-  size: Size(768, 1024),
-)
-Widget previewSellerProductsLightTablet() => previewTablet(
-  theme: previewLightTheme,
-  child: previewScope(child: SellerProductsScreen()),
-);
+    previewDesktop(child: _sellerProductsPreview());
 
 @Preview(
   name: 'Seller Inventory Light — Desktop',
@@ -351,15 +402,5 @@ Widget previewSellerProductsLightTablet() => previewTablet(
 )
 Widget previewSellerProductsLightDesktop() => previewDesktop(
   theme: previewLightTheme,
-  child: previewScope(child: SellerProductsScreen()),
-);
-
-@Preview(
-  name: 'Seller Inventory Light — Web',
-  group: 'Screens — Seller Management',
-  size: Size(1440, 900),
-)
-Widget previewSellerProductsLightWeb() => previewWeb(
-  theme: previewLightTheme,
-  child: previewScope(child: SellerProductsScreen()),
+  child: _sellerProductsPreview(),
 );

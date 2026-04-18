@@ -695,21 +695,6 @@ Widget previewLegalMobile() => previewMobile(
 );
 
 @Preview(
-  name: 'Legal — Tablet Dark',
-  group: 'Legal Content',
-  size: Size(768, 1024),
-  brightness: Brightness.dark,
-)
-Widget previewLegalTablet() => previewTablet(
-  child: const LegalScreenBody(
-    heroTitle: 'Privacy Policy',
-    heroBadge: 'PRIVACY',
-    heroBadgeIcon: Icons.shield_outlined,
-    rawContent: _kPrivacyMock,
-  ),
-);
-
-@Preview(
   name: 'Legal — Desktop Dark',
   group: 'Legal Content',
   size: Size(1280, 800),
@@ -746,38 +731,6 @@ Widget previewLegalVariants() => previewGrid(
       ),
     ),
   ],
-);
-
-@Preview(
-  name: 'Legal Light — Mobile',
-  group: 'Legal Content',
-  size: Size(390, 844),
-  brightness: Brightness.light,
-)
-Widget previewLegalLightMobile() => previewMobile(
-  theme: previewLightTheme,
-  child: const LegalScreenBody(
-    heroTitle: 'Privacy Policy',
-    heroBadge: 'PRIVACY',
-    heroBadgeIcon: Icons.shield_outlined,
-    rawContent: _kPrivacyMock,
-  ),
-);
-
-@Preview(
-  name: 'Legal Light — Tablet',
-  group: 'Legal Content',
-  size: Size(768, 1024),
-  brightness: Brightness.light,
-)
-Widget previewLegalLightTablet() => previewTablet(
-  theme: previewLightTheme,
-  child: const LegalScreenBody(
-    heroTitle: 'Privacy Policy',
-    heroBadge: 'PRIVACY',
-    heroBadgeIcon: Icons.shield_outlined,
-    rawContent: _kPrivacyMock,
-  ),
 );
 
 @Preview(

@@ -2,7 +2,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
-import 'package:origna_gta/models/models.dart';
+import 'package:origna_gta/features/home/home_state.dart';
+import 'package:origna_gta/features/home/home_viewmodel.dart';
+import 'package:origna_gta/models/generated/models.dart';
+import 'package:origna_gta/models/models.dart' show UserModel, UserRole;
 import 'package:origna_gta/screens/home_screen.dart';
 import 'package:flutter/widget_previews.dart';
 import 'package:origna_gta/utils/preview_helpers.dart';
@@ -79,28 +82,97 @@ class _MainScreenState extends ConsumerState<MainScreen> {
 
 // ═══ Widget Previews ═══
 
-@Preview(name: 'Main Screen — Mobile', group: 'Home Screens', size: Size(390, 844))
-Widget previewMainScreenMobile() => previewMobile(child: previewScope(child: MainScreen()));
+const _previewMainImageBase = 'https://fastly.picsum.photos/id';
 
-@Preview(name: 'Main Screen — Tablet', group: 'Home Screens', size: Size(768, 1024))
-Widget previewMainScreenTablet() => previewTablet(child: previewScope(child: MainScreen()));
+String _previewMainImage(int id, {int width = 900, int height = 900}) =>
+    '$_previewMainImageBase/$id/$width/$height.jpg';
+
+class _PreviewMainHomeRef extends Ref {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
+}
+
+class _PreviewMainHomeViewModel extends HomeViewModel {
+  _PreviewMainHomeViewModel() : super(_PreviewMainHomeRef()) {
+    state = HomeState(
+      products: [
+        Product(
+          productId: 'main-preview-1',
+          sellerId: 'main-preview-seller',
+          name: 'Ontario Maple Breakfast Box',
+          description: 'Curated breakfast staples from independent Canadian makers.',
+          priceCents: 7400,
+          stockQuantity: 12,
+          imageUrls: [_previewMainImage(431)],
+          categoryId: 1,
+          createdAt: DateTime(2026, 3, 12),
+          rating: 4.9,
+          ratingCount: 132,
+          freeShipping: true,
+          shipFromCountry: 'CA',
+          shipFromCity: 'Toronto',
+          shipFromProvince: 'ON',
+        ),
+        Product(
+          productId: 'main-preview-2',
+          sellerId: 'main-preview-seller',
+          name: 'Montreal Atelier Leather Wallet',
+          description: 'Vegetable-tanned leather wallet with hand-stitched edges.',
+          priceCents: 9800,
+          stockQuantity: 6,
+          imageUrls: [_previewMainImage(1062)],
+          categoryId: 5,
+          createdAt: DateTime(2026, 3, 22),
+          rating: 4.7,
+          ratingCount: 41,
+          shipFromCountry: 'CA',
+          shipFromCity: 'Montreal',
+          shipFromProvince: 'QC',
+        ),
+      ],
+      isLoading: false,
+      hasMore: false,
+      recentSearches: const ['maple syrup', 'gift box', 'artisan wallet'],
+    );
+  }
+}
+
+final _previewMainUser = UserModel(
+  uid: 'main-preview-user',
+  email: 'main.preview@origna.ca',
+  name: 'Jordan Lee',
+  roles: const [UserRole.buyer],
+  createdAt: DateTime(2026, 1, 5),
+  verified: true,
+);
+
+Widget _mainScreenPreview({bool loggedIn = false}) {
+  final child = const MainScreen();
+  final overrides = [
+    homeViewModelProvider.overrideWith((ref) => _PreviewMainHomeViewModel()),
+  ];
+  if (!loggedIn) {
+    return previewScope(extraOverrides: overrides, child: child);
+  }
+  return previewScopeLoggedIn(
+    uid: _previewMainUser.uid,
+    extraOverrides: [
+      userProfileProvider.overrideWith((ref) => Stream.value(_previewMainUser)),
+      ...overrides,
+    ],
+    child: child,
+  );
+}
+
+@Preview(name: 'Main Screen — Mobile', group: 'Home Screens', size: Size(390, 844))
+Widget previewMainScreenMobile() => previewMobile(child: _mainScreenPreview());
 
 @Preview(name: 'Main Screen — Desktop', group: 'Home Screens', size: Size(1280, 800))
-Widget previewMainScreenDesktop() => previewDesktop(child: previewScope(child: MainScreen()));
-
-@Preview(name: 'Main Screen — Web', group: 'Home Screens', size: Size(1440, 900))
-Widget previewMainScreenWeb() => previewWeb(child: previewScope(child: MainScreen()));
-
-// ── Light ────────────────────────────────────────────────────────────────────
-@Preview(name: 'Main Screen Light — Mobile', group: 'Home Screens', size: Size(390, 844))
-Widget previewMainScreenLightMobile() => previewMobile(theme: previewLightTheme, child: previewScope(child: MainScreen()));
-
-@Preview(name: 'Main Screen Light — Tablet', group: 'Home Screens', size: Size(768, 1024))
-Widget previewMainScreenLightTablet() => previewTablet(theme: previewLightTheme, child: previewScope(child: MainScreen()));
+Widget previewMainScreenDesktop() =>
+    previewDesktop(child: _mainScreenPreview(loggedIn: true));
 
 @Preview(name: 'Main Screen Light — Desktop', group: 'Home Screens', size: Size(1280, 800))
-Widget previewMainScreenLightDesktop() => previewDesktop(theme: previewLightTheme, child: previewScope(child: MainScreen()));
-
-@Preview(name: 'Main Screen Light — Web', group: 'Home Screens', size: Size(1440, 900))
-Widget previewMainScreenLightWeb() => previewWeb(theme: previewLightTheme, child: previewScope(child: MainScreen()));
-
+Widget previewMainScreenLightDesktop() => previewDesktop(
+  theme: previewLightTheme,
+  child: _mainScreenPreview(loggedIn: true),
+);

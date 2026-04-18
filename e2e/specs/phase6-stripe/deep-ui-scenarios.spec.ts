@@ -89,28 +89,11 @@ async function createFreshAddressBuyerAuth() {
 
 async function loginAs(browser: AgentBrowser, email: string, password: string) {
   try {
-    await browser.open(`${TARGET_URL}/login`);
-    await browser.waitForFlutter();
-    let snap = await browser.waitForChange({ text: /you@example|vous@exemple|login_email_field/i, timeout: 30_000 });
-
-    const emailInput = browser.findByLabel(snap, /you@example|vous@exemple|login_email_field/i);
-    if (!emailInput) throw new Error('Email input not found');
-    await browser.click(emailInput.ref);
-    await browser.type(email);
-
-    snap = await browser.waitForChange({ text: /login_password_field|••••••••/i, timeout: 10_000 });
-    const passInput = browser.findByLabel(snap, /login_password_field|••••••••/);
-    if (!passInput) throw new Error('Password input not found');
-    await browser.click(passInput.ref);
-    await browser.type(password);
-
-    await browser.press('Tab');
-    await browser.waitForChange({ timeout: 500 });
-    await browser.press('Enter');
-    await browser.waitForChange({ timeout: 5000 });
+    await browser.loginViaApi(email, password);
+    await browser.open(`${TARGET_URL}/`);
     await browser.waitForFlutter();
   } catch (err) {
-    console.log(`loginAs warning: ${(err as Error).message}`);
+    console.warn(`loginViaApi warning: ${(err as Error).message}`);
   }
 }
 
@@ -289,18 +272,7 @@ describe('B. Seller Product Lifecycle', () => {
   test('B3: Seller can view their products on the seller products page', async () => {
     const browser = new AgentBrowser({ headed: false });
     try {
-      await browser.open(`${TARGET_URL}/login`);
-      await browser.waitForFlutter();
-
-      const snap1 = await browser.snapshot({ interactive: true, compact: true });
-      const emailInput = browser.findByLabel(snap1, /you@example\.com|login_email_field|email/i);
-      const passInput = browser.findByLabel(snap1, /login_password_field|password/i);
-      if (emailInput) await browser.fill(emailInput.ref, SELLER_EMAIL);
-      if (passInput) await browser.fill(passInput.ref, TEST_ACCOUNTS.SELLER_PASS);
-
-      const loginBtn = browser.findByLabel(snap1, /login_submit_button/i);
-      if (loginBtn) await browser.click(loginBtn.ref);
-      await browser.waitForChange({ timeout: 5_000 });
+      await loginAs(browser, SELLER_EMAIL, TEST_ACCOUNTS.SELLER_PASS);
 
       // Navigate to settings
       const snap2 = await browser.snapshot({ interactive: true, compact: true });

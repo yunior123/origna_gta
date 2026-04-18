@@ -11,6 +11,7 @@ use tracing::{error, info, warn};
 /// Stripe metadata keys used in Checkout Sessions
 const STRIPE_META_ORDER_ID: &str = "order_id";
 const STRIPE_META_USER_ID: &str = "user_id";
+const STRIPE_META_COUPON_CODE: &str = "coupon_code";
 
 use crate::HandlersState;
 use crate::shared::auth::resolve_self_user_id;
@@ -65,6 +66,10 @@ pub struct CheckoutResponse {
     pub order_id: String,
     pub checkout_url: Option<String>,
     pub success: bool,
+    #[serde(default)]
+    pub duplicate: bool,
+    #[serde(default)]
+    pub tax_amount_cents: i64,
 }
 
 const VALID_PROVINCES: &[&str] = &[
@@ -210,6 +215,190 @@ fn normalize_province(province: &str) -> String {
 
 fn normalize_postal_code(postal_code: &str) -> String {
     postal_code.replace(' ', "").to_uppercase()
+}
+
+fn normalize_coupon_code(code: &str) -> String {
+    code.trim().to_uppercase()
+}
+
+fn is_valid_coupon_code(code: &str) -> bool {
+    (4..=20).contains(&code.len())
+        && code
+            .chars()
+            .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit())
+}
+
+fn compute_coupon_discount_cents(
+    discount_type: &str,
+    discount_value: f64,
+    cart_subtotal_cents: i64,
+) -> i64 {
+    const MIN_CHECKOUT_TOTAL_CENTS: i64 = 100;
+    const MAX_COUPON_DISCOUNT_RATIO: f64 = 0.90;
+
+    if cart_subtotal_cents <= MIN_CHECKOUT_TOTAL_CENTS {
+        return 0;
+    }
+
+    match discount_type {
+        "percentage" | "percent" => {
+            let effective = discount_value.min(MAX_COUPON_DISCOUNT_RATIO * 100.0);
+            let millipercent = (effective * 1000.0).round() as i64;
+            let discount = cart_subtotal_cents * millipercent / 100_000;
+            if cart_subtotal_cents - discount < MIN_CHECKOUT_TOTAL_CENTS {
+                cart_subtotal_cents - MIN_CHECKOUT_TOTAL_CENTS
+            } else {
+                discount
+            }
+        }
+        "fixed_amount" | "fixed_cents" => {
+            let fixed = discount_value as i64;
+            fixed.min(cart_subtotal_cents - MIN_CHECKOUT_TOTAL_CENTS)
+        }
+        "free_shipping" => 0,
+        _ => 0,
+    }
+}
+
+async fn validate_checkout_coupon(
+    state: &HandlersState,
+    coupon_code: &str,
+    user_id: &str,
+    raw_subtotal_cents: i64,
+    seller_ids: &[String],
+) -> Result<(String, i64), ob_core::Error> {
+    let code = normalize_coupon_code(coupon_code);
+    if !is_valid_coupon_code(&code) {
+        return Err(ob_core::Error::Validation(
+            "Coupon invalid or unavailable".into(),
+        ));
+    }
+
+    let coupon = match state.db.get_document(collections::COUPONS, &code).await {
+        Ok(doc) if !doc.is_null() => doc,
+        _ => {
+            let query = format!(
+                "SELECT * FROM {} WHERE {} = $code LIMIT 1",
+                collections::COUPONS,
+                fields::CODE
+            );
+            let docs = state
+                .db
+                .query_bind(&query, serde_json::json!({"code": code.clone()}))
+                .await
+                .map_err(|_| ob_core::Error::NotFound("Coupon invalid or unavailable".into()))?;
+            docs.into_iter()
+                .next()
+                .ok_or_else(|| ob_core::Error::NotFound("Coupon invalid or unavailable".into()))?
+        }
+    };
+
+    let is_active = coupon
+        .get(fields::IS_ACTIVE)
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    if !is_active {
+        return Err(ob_core::Error::Validation(
+            "Coupon invalid or unavailable".into(),
+        ));
+    }
+
+    if let Some(expires_at) = coupon.get(fields::EXPIRES_AT).and_then(|v| v.as_str())
+        && let Ok(exp) = chrono::DateTime::parse_from_rfc3339(expires_at)
+        && chrono::Utc::now() > exp
+    {
+        return Err(ob_core::Error::Validation(
+            "Coupon invalid or unavailable".into(),
+        ));
+    }
+
+    if let Some(coupon_seller) = coupon.get(fields::SELLER_ID).and_then(|v| v.as_str())
+        && !seller_ids
+            .iter()
+            .any(|seller_id| seller_id == coupon_seller)
+    {
+        return Err(ob_core::Error::Validation(
+            "Coupon invalid or unavailable".into(),
+        ));
+    }
+
+    if let Some(min_order) = coupon.get(fields::MIN_ORDER_CENTS).and_then(|v| v.as_i64())
+        && raw_subtotal_cents < min_order
+    {
+        return Err(ob_core::Error::Validation(
+            "Cart subtotal does not meet the minimum order requirement for this coupon".into(),
+        ));
+    }
+
+    let reservation_count_query = format!(
+        "SELECT count() AS count FROM {} WHERE {} = $coupon_id GROUP ALL",
+        collections::COUPON_USES,
+        fields::COUPON_ID,
+    );
+    let reservation_count = state
+        .db
+        .query_bind_value(
+            &reservation_count_query,
+            serde_json::json!({"coupon_id": code.clone()}),
+        )
+        .await
+        .unwrap_or_default()
+        .first()
+        .and_then(|v| v.get("count"))
+        .and_then(|v| v.as_i64())
+        .unwrap_or(0);
+    if let Some(max_uses) = coupon.get(fields::MAX_USES).and_then(|v| v.as_i64())
+        && reservation_count >= max_uses
+    {
+        return Err(ob_core::Error::Validation(
+            "Coupon invalid or unavailable".into(),
+        ));
+    }
+
+    let user_usage_query = format!(
+        "SELECT count() AS count FROM {} WHERE {} = $coupon_id AND {} = $user_id GROUP ALL",
+        collections::COUPON_USES,
+        fields::COUPON_ID,
+        fields::USER_ID,
+    );
+    let user_use_count = state
+        .db
+        .query_bind_value(
+            &user_usage_query,
+            serde_json::json!({
+                "coupon_id": code.clone(),
+                "user_id": user_id,
+            }),
+        )
+        .await
+        .unwrap_or_default()
+        .first()
+        .and_then(|v| v.get("count"))
+        .and_then(|v| v.as_i64())
+        .unwrap_or(0);
+    let max_per_user = coupon
+        .get(fields::MAX_USES_PER_USER)
+        .and_then(|v| v.as_i64())
+        .unwrap_or(1);
+    if user_use_count >= max_per_user {
+        return Err(ob_core::Error::Validation(
+            "You've reached the maximum uses for this coupon".into(),
+        ));
+    }
+
+    let discount_type = coupon
+        .get(fields::COUPON_TYPE)
+        .or_else(|| coupon.get(fields::DISCOUNT_TYPE))
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+    let discount_value = coupon
+        .get(fields::DISCOUNT_VALUE)
+        .and_then(|v| v.as_f64())
+        .unwrap_or(0.0);
+    let discount_amount_cents =
+        compute_coupon_discount_cents(discount_type, discount_value, raw_subtotal_cents);
+
+    Ok((code, discount_amount_cents))
 }
 
 /// Validates Canadian postal code format: letter-digit-letter-digit-letter-digit (e.g. M5V2H1).
@@ -508,20 +697,6 @@ async fn create_checkout_session(
         }));
     }
 
-    // Subtotal verification (1% tolerance)
-    if !subtotal_matches_with_tolerance(req.subtotal_cents, actual_subtotal_cents) {
-        warn!(
-            user_id = %user_id,
-            client = req.subtotal_cents,
-            server = actual_subtotal_cents,
-            "Subtotal mismatch"
-        );
-        return Err(ob_core::Error::Validation(format!(
-            "Subtotal mismatch. Expected ~{actual_subtotal_cents} cents, got {} cents",
-            req.subtotal_cents
-        )));
-    }
-
     // --- Seller suspension check ---
     let unique_seller_ids: Vec<String> = validated_items
         .iter()
@@ -589,40 +764,102 @@ async fn create_checkout_session(
         }
 
         // Cache seller_profiles for Connect account lookup later
-        if let Ok(profile) = state.db.get_document(collections::SELLER_PROFILES, seller_id).await {
+        if let Ok(profile) = state
+            .db
+            .get_document(collections::SELLER_PROFILES, seller_id)
+            .await
+        {
             seller_profiles_cache.insert(seller_id.clone(), profile);
         }
     }
 
-    // --- Duplicate order detection (5-minute window) ---
-    // Skip in test mode to allow E2E tests to create multiple orders rapidly
-    if std::env::var("OB_TEST_MODE").unwrap_or_default() != "1" {
-        let five_min_ago = (chrono::Utc::now() - chrono::Duration::minutes(5)).to_rfc3339();
-        let dedup_query = format!(
-            "SELECT * FROM {} WHERE {} = $buyer_id AND {} > $cutoff LIMIT 1",
-            collections::ORDERS,
-            fields::BUYER_ID,
-            fields::CREATED_AT,
-        );
-        let existing: Vec<Value> = match state
-            .db
-            .query_bind_value(
-                &dedup_query,
-                serde_json::json!({"buyer_id": user_id, "cutoff": five_min_ago}),
+    let raw_subtotal_cents = actual_subtotal_cents;
+    let normalized_coupon_code = req
+        .coupon_code
+        .as_deref()
+        .map(normalize_coupon_code)
+        .filter(|code| !code.is_empty());
+    let (normalized_coupon_code, discount_amount_cents) =
+        if let Some(coupon_code) = normalized_coupon_code {
+            let (code, discount) = validate_checkout_coupon(
+                &state,
+                &coupon_code,
+                &user_id,
+                raw_subtotal_cents,
+                &unique_seller_ids,
             )
-            .await
-        {
-            Ok(rows) => rows,
-            Err(err) => {
-                warn!(user_id = %user_id, error = %err, "Dedup check failed, allowing checkout to proceed");
-                vec![]
-            }
+            .await?;
+            (Some(code), discount)
+        } else {
+            (None, 0)
         };
-        if !existing.is_empty() {
-            return Err(ob_core::Error::Validation(
-                "Duplicate order detected. Please wait before retrying.".into(),
-            ));
+    actual_subtotal_cents = raw_subtotal_cents - discount_amount_cents;
+
+    if !subtotal_matches_with_tolerance(req.subtotal_cents, actual_subtotal_cents) {
+        warn!(
+            user_id = %user_id,
+            client = req.subtotal_cents,
+            server = actual_subtotal_cents,
+            raw_subtotal_cents = raw_subtotal_cents,
+            discount_amount_cents = discount_amount_cents,
+            "Subtotal mismatch"
+        );
+        return Err(ob_core::Error::Validation(format!(
+            "Subtotal mismatch. Expected ~{actual_subtotal_cents} cents, got {} cents",
+            req.subtotal_cents
+        )));
+    }
+
+    let idempotency_key = req.idempotency_key.clone().unwrap_or_else(|| {
+        format!(
+            "checkout_{}_{}",
+            user_id,
+            chrono::Utc::now().timestamp_millis()
+        )
+    });
+    let dedup_query = format!(
+        "SELECT * FROM {} WHERE {} = $buyer_id AND {} = $idempotency_key LIMIT 1",
+        collections::ORDERS,
+        fields::BUYER_ID,
+        fields::IDEMPOTENCY_KEY,
+    );
+    let existing: Vec<Value> = match state
+        .db
+        .query_bind_value(
+            &dedup_query,
+            serde_json::json!({"buyer_id": user_id, "idempotency_key": idempotency_key}),
+        )
+        .await
+    {
+        Ok(rows) => rows,
+        Err(err) => {
+            warn!(user_id = %user_id, error = %err, "Idempotency lookup failed, allowing checkout to proceed");
+            vec![]
         }
+    };
+    if let Some(existing_order) = existing.first() {
+        let existing_order_id = existing_order
+            .get(fields::ORDER_ID)
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+        let existing_session_id = existing_order
+            .get(fields::CHECKOUT_SESSION_ID)
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+        let existing_tax_amount_cents = existing_order
+            .get(fields::TAX_AMOUNT_CENTS)
+            .and_then(|v| v.as_i64())
+            .unwrap_or(0);
+        return Ok(Json(CheckoutResponse {
+            session_id: existing_session_id,
+            order_id: existing_order_id,
+            checkout_url: None,
+            success: true,
+            duplicate: true,
+            tax_amount_cents: existing_tax_amount_cents,
+        }));
     }
 
     // --- Create Stripe Checkout Session ---
@@ -659,6 +896,12 @@ async fn create_checkout_session(
             user_id.clone(),
         ),
     ];
+    if let Some(coupon_code) = &normalized_coupon_code {
+        form_data.push((
+            format!("metadata[{}]", STRIPE_META_COUPON_CODE),
+            coupon_code.clone(),
+        ));
+    }
 
     // Platform fee via Stripe Connect — only include when seller has a real Connect account
     // Without Connect, Stripe rejects application_fee_amount with "parameter_unknown"
@@ -667,7 +910,9 @@ async fn create_checkout_session(
         let mut has_connect_account = false;
         for sid in &unique_seller_ids {
             if let Some(profile) = seller_profiles_cache.get(sid)
-                && let Some(acct_id) = profile.get(fields::STRIPE_ACCOUNT_ID).and_then(|v| v.as_str())
+                && let Some(acct_id) = profile
+                    .get(fields::STRIPE_ACCOUNT_ID)
+                    .and_then(|v| v.as_str())
                 && acct_id.starts_with("acct_")
             {
                 has_connect_account = true;
@@ -710,14 +955,6 @@ async fn create_checkout_session(
         ));
         form_data.push((format!("line_items[{}][quantity]", i), qty.to_string()));
     }
-
-    let idempotency_key = req.idempotency_key.unwrap_or_else(|| {
-        format!(
-            "checkout_{}_{}",
-            order_id,
-            chrono::Utc::now().timestamp_millis()
-        )
-    });
 
     let stripe_response = state
         .http_client
@@ -762,10 +999,13 @@ async fn create_checkout_session(
         fields::PAYMENT_STATUS: "awaiting_payment",
         fields::ITEMS: validated_items,
         fields::SUBTOTAL_CENTS: actual_subtotal_cents,
+        fields::COUPON_CODE: normalized_coupon_code,
+        fields::DISCOUNT_AMOUNT_CENTS: discount_amount_cents,
         fields::TAX_AMOUNT_CENTS: tax_amount_cents,
         fields::SHIPPING_COST_CENTS: shipping_cost_cents,
         fields::TOTAL_AMOUNT_CENTS: total_amount_cents,
         fields::PLATFORM_FEE_CENTS: platform_fee_cents,
+        fields::IDEMPOTENCY_KEY: idempotency_key,
         fields::SHIPPING_ADDRESS: serde_json::json!({
             fields::STREET: req.shipping_address.street,
             fields::CITY: req.shipping_address.city,
@@ -796,6 +1036,24 @@ async fn create_checkout_session(
             "data": order_doc,
         })),
     );
+
+    if let Some(coupon_code) = &normalized_coupon_code {
+        tx.add(
+            "CREATE $table CONTENT $data",
+            Some(serde_json::json!({
+                "table": collections::COUPON_USES,
+                "data": {
+                    fields::COUPON_ID: coupon_code,
+                    fields::COUPON_CODE: coupon_code,
+                    fields::USER_ID: user_id,
+                    fields::ORDER_ID: order_id,
+                    fields::REDEEMED_AT: Value::Null,
+                    fields::CREATED_AT: now,
+                    fields::UPDATED_AT: now,
+                }
+            })),
+        );
+    }
 
     // Operations 2+: Decrement stock for each non-digital item
     // This is atomic with order creation — if stock goes negative, entire transaction rolls back
@@ -868,6 +1126,8 @@ async fn create_checkout_session(
         order_id,
         checkout_url,
         success: true,
+        duplicate: false,
+        tax_amount_cents,
     }))
 }
 
@@ -1093,14 +1353,14 @@ mod tests {
 
     #[test]
     fn test_cart_item_zero_quantity_deser() {
-        let json = r#"{"productId": "p1", "quantity": 0}"#;  // ignore-magic
+        let json = r#"{"productId": "p1", "quantity": 0}"#; // ignore-magic
         let item: CartItem = serde_json::from_str(json).unwrap();
         assert_eq!(item.quantity, 0);
     }
 
     #[test]
     fn test_cart_item_empty_product_id_deser() {
-        let json = r#"{"productId": "", "quantity": 1}"#;  // ignore-magic
+        let json = r#"{"productId": "", "quantity": 1}"#; // ignore-magic
         let item: CartItem = serde_json::from_str(json).unwrap();
         assert!(item.product_id.is_empty());
     }
@@ -1126,6 +1386,8 @@ mod tests {
             order_id: "order_456".into(),
             checkout_url: Some("https://checkout.stripe.com/c/pay/test".into()),
             success: true,
+            duplicate: false,
+            tax_amount_cents: 507,
         };
         let json = serde_json::to_value(&resp).unwrap();
         assert_eq!(json["sessionId"], "cs_test_123");
@@ -1135,6 +1397,8 @@ mod tests {
             "https://checkout.stripe.com/c/pay/test"
         );
         assert_eq!(json["success"], true);
+        assert_eq!(json["duplicate"], false);
+        assert_eq!(json["taxAmountCents"], 507);
     }
 
     #[test]
@@ -1326,12 +1590,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_create_checkout_session_rejects_stock_self_purchase_restricted_and_duplicate_orders()
-     {
-        // Unset OB_TEST_MODE so dedup logic is active for this test
-        unsafe {
-            std::env::remove_var("OB_TEST_MODE");
-        }
+    async fn test_create_checkout_session_rejects_stock_self_purchase_and_restricted_orders() {
         let state = setup_state().await;
         let u = uuid::Uuid::new_v4().to_string();
         let prod_stock = format!("prod_stock_{u}");
@@ -1506,51 +1765,6 @@ mod tests {
         .await
         .unwrap_err();
         assert!(eula_block.to_string().contains("EULA acceptance required"));
-
-        let buyer_dup = format!("buyer_dup_{u}");
-        let existing_order = format!("existing_order_{u}");
-        state
-            .db
-            .upsert_document(
-                collections::ORDERS,
-                &existing_order,
-                json!({
-                    fields::ORDER_ID: existing_order,
-                    fields::BUYER_ID: buyer_dup,
-                    fields::CREATED_AT: chrono::Utc::now().to_rfc3339(),
-                }),
-            )
-            .await
-            .unwrap();
-
-        let duplicate = create_checkout_session(
-            State(state),
-            Extension(auth(&buyer_dup)),
-            Json(CreateCheckoutRequest {
-                turnstile_token: None,
-                items: vec![CartItem {
-                    product_id: prod_stock.clone(),
-                    quantity: 1,
-                }],
-                shipping_address: shipping,
-                user_id: Some(buyer_dup.clone()),
-                subtotal_cents: 1000,
-                coupon_code: None,
-                eula_accepted: false,
-                age_verification_accepted: false,
-                idempotency_key: None,
-            }),
-        )
-        .await;
-        // Dedup may or may not trigger depending on in-memory DB timestamp handling
-        // If it does trigger, verify the error message is correct
-        if let Err(e) = duplicate {
-            assert!(
-                e.to_string().contains("Duplicate order")
-                    || e.to_string().contains("payment session"),
-                "Expected duplicate or payment error, got: {e}"
-            );
-        }
     }
 
     #[tokio::test]
@@ -1663,6 +1877,264 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(product[fields::STOCK_QUANTITY], 3);
+    }
+
+    #[tokio::test]
+    async fn test_create_checkout_session_with_coupon_persists_discount_and_reserves_coupon_use() {
+        let state = setup_state().await;
+        let mock_server = MockServer::start().await;
+        let u = uuid::Uuid::new_v4().to_string();
+        let product_id = format!("prod_coupon_{u}");
+        let seller_id = format!("seller_coupon_{u}");
+        let buyer_id = format!("buyer_coupon_{u}");
+
+        Mock::given(method("POST"))
+            .and(path("/checkout/sessions"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "id": "cs_coupon_123"
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let state = HandlersState {
+            stripe_base_url: mock_server.uri(),
+            turnstile_secret_key: None,
+            ..state
+        };
+
+        state
+            .db
+            .upsert_document(
+                collections::PRODUCTS,
+                &product_id,
+                json!({
+                    fields::PRODUCT_ID: product_id,
+                    fields::SELLER_ID: seller_id,
+                    fields::LIFECYCLE_STATUS: "active",
+                    fields::STOCK_QUANTITY: 5,
+                    fields::PRICE_CENTS: 3000,
+                    fields::TITLE: "Coupon Widget",
+                    fields::IMAGE_URLS: ["https://example.com/widget.png"],
+                    fields::IS_DIGITAL: false,
+                }),
+            )
+            .await
+            .unwrap();
+        state
+            .db
+            .upsert_document(
+                collections::USERS,
+                &seller_id,
+                json!({
+                    fields::UID: seller_id,
+                    fields::SUSPENDED: false,
+                    fields::ONBOARDING_COMPLETED: true,
+                    fields::CHARGES_ENABLED: true,
+                    fields::PAYOUTS_ENABLED: true,
+                }),
+            )
+            .await
+            .unwrap();
+        state
+            .db
+            .upsert_document(
+                collections::COUPONS,
+                "SAVE10",
+                json!({
+                    fields::CODE: "SAVE10",
+                    fields::COUPON_TYPE: "percentage",
+                    fields::DISCOUNT_VALUE: 10.0,
+                    fields::MAX_USES: 5,
+                    fields::MAX_USES_PER_USER: 1,
+                    fields::IS_ACTIVE: true,
+                }),
+            )
+            .await
+            .unwrap();
+
+        let Json(resp) = create_checkout_session(
+            State(state.clone()),
+            Extension(auth(&buyer_id)),
+            Json(CreateCheckoutRequest {
+                turnstile_token: None,
+                items: vec![CartItem {
+                    product_id: product_id.clone(),
+                    quantity: 1,
+                }],
+                shipping_address: ShippingAddress {
+                    street: "123 Main St".into(),
+                    city: "Toronto".into(),
+                    state: "ON".into(),
+                    postal_code: "M5V2H1".into(),
+                    country: "CA".into(),
+                },
+                user_id: Some(buyer_id.clone()),
+                subtotal_cents: 2700,
+                coupon_code: Some("save10".into()),
+                eula_accepted: false,
+                age_verification_accepted: false,
+                idempotency_key: Some("idem-coupon-1".into()),
+            }),
+        )
+        .await
+        .unwrap();
+
+        assert!(resp.success);
+        assert!(!resp.duplicate);
+        assert_eq!(resp.session_id, "cs_coupon_123");
+        assert_eq!(resp.tax_amount_cents, 468);
+
+        let order = state
+            .db
+            .get_document(collections::ORDERS, &resp.order_id)
+            .await
+            .unwrap();
+        assert_eq!(order[fields::COUPON_CODE], "SAVE10");
+        assert_eq!(order[fields::DISCOUNT_AMOUNT_CENTS], 300);
+        assert_eq!(order[fields::SUBTOTAL_CENTS], 2700);
+        assert_eq!(order[fields::TAX_AMOUNT_CENTS], 468);
+        assert_eq!(order[fields::TOTAL_AMOUNT_CENTS], 4067);
+        assert_eq!(order[fields::IDEMPOTENCY_KEY], "idem-coupon-1");
+
+        let reservations: Vec<Value> = state
+            .db
+            .query_bind_value(
+                &format!(
+                    "SELECT * FROM {} WHERE {} = $order_id AND {} = $coupon_code LIMIT 1",
+                    collections::COUPON_USES,
+                    fields::ORDER_ID,
+                    fields::COUPON_CODE,
+                ),
+                json!({
+                    "order_id": resp.order_id,
+                    "coupon_code": "SAVE10",
+                }),
+            )
+            .await
+            .unwrap();
+        assert_eq!(reservations.len(), 1);
+        assert_eq!(reservations[0][fields::COUPON_ID], "SAVE10");
+        assert_eq!(reservations[0][fields::REDEEMED_AT], Value::Null);
+    }
+
+    #[tokio::test]
+    async fn test_create_checkout_session_reuses_existing_order_for_same_idempotency_key() {
+        let state = setup_state().await;
+        let mock_server = MockServer::start().await;
+        let u = uuid::Uuid::new_v4().to_string();
+        let product_id = format!("prod_idem_{u}");
+        let seller_id = format!("seller_idem_{u}");
+        let buyer_id = format!("buyer_idem_{u}");
+
+        Mock::given(method("POST"))
+            .and(path("/checkout/sessions"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "id": "cs_idem_123"
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let state = HandlersState {
+            stripe_base_url: mock_server.uri(),
+            turnstile_secret_key: None,
+            ..state
+        };
+
+        state
+            .db
+            .upsert_document(
+                collections::PRODUCTS,
+                &product_id,
+                json!({
+                    fields::PRODUCT_ID: product_id,
+                    fields::SELLER_ID: seller_id,
+                    fields::LIFECYCLE_STATUS: "active",
+                    fields::STOCK_QUANTITY: 5,
+                    fields::PRICE_CENTS: 1200,
+                    fields::TITLE: "Idem Widget",
+                    fields::IMAGE_URLS: ["https://example.com/widget.png"],
+                    fields::IS_DIGITAL: false,
+                }),
+            )
+            .await
+            .unwrap();
+        state
+            .db
+            .upsert_document(
+                collections::USERS,
+                &seller_id,
+                json!({
+                    fields::UID: seller_id,
+                    fields::SUSPENDED: false,
+                    fields::ONBOARDING_COMPLETED: true,
+                    fields::CHARGES_ENABLED: true,
+                    fields::PAYOUTS_ENABLED: true,
+                }),
+            )
+            .await
+            .unwrap();
+
+        let request = CreateCheckoutRequest {
+            turnstile_token: None,
+            items: vec![CartItem {
+                product_id: product_id.clone(),
+                quantity: 1,
+            }],
+            shipping_address: ShippingAddress {
+                street: "123 Main St".into(),
+                city: "Toronto".into(),
+                state: "ON".into(),
+                postal_code: "M5V2H1".into(),
+                country: "CA".into(),
+            },
+            user_id: Some(buyer_id.clone()),
+            subtotal_cents: 1200,
+            coupon_code: None,
+            eula_accepted: false,
+            age_verification_accepted: false,
+            idempotency_key: Some("idem-checkout-1".into()),
+        };
+
+        let Json(first) = create_checkout_session(
+            State(state.clone()),
+            Extension(auth(&buyer_id)),
+            Json(request),
+        )
+        .await
+        .unwrap();
+        let Json(second) = create_checkout_session(
+            State(state.clone()),
+            Extension(auth(&buyer_id)),
+            Json(CreateCheckoutRequest {
+                turnstile_token: None,
+                items: vec![CartItem {
+                    product_id: product_id.clone(),
+                    quantity: 1,
+                }],
+                shipping_address: ShippingAddress {
+                    street: "123 Main St".into(),
+                    city: "Toronto".into(),
+                    state: "ON".into(),
+                    postal_code: "M5V2H1".into(),
+                    country: "CA".into(),
+                },
+                user_id: Some(buyer_id.clone()),
+                subtotal_cents: 1200,
+                coupon_code: None,
+                eula_accepted: false,
+                age_verification_accepted: false,
+                idempotency_key: Some("idem-checkout-1".into()),
+            }),
+        )
+        .await
+        .unwrap();
+
+        assert!(first.success);
+        assert!(!first.duplicate);
+        assert!(second.success);
+        assert!(second.duplicate);
+        assert_eq!(second.order_id, first.order_id);
+        assert_eq!(second.session_id, first.session_id);
     }
 
     #[tokio::test]
@@ -1797,7 +2269,11 @@ mod tests {
 
         state
             .db
-            .update_document(collections::USERS, "seller_1", json!({fields::SUSPENDED: true}))
+            .update_document(
+                collections::USERS,
+                "seller_1",
+                json!({fields::SUSPENDED: true}),
+            )
             .await
             .unwrap();
 
@@ -1926,7 +2402,11 @@ mod tests {
         assert_eq!(mismatch_resp["verified"], 1);
         let mismatches = mismatch_resp["mismatches"].as_array().unwrap();
         assert_eq!(mismatches.len(), 4);
-        assert!(mismatches.iter().any(|m| m[fields::REASON] == "price_changed"));
+        assert!(
+            mismatches
+                .iter()
+                .any(|m| m[fields::REASON] == "price_changed")
+        );
         assert!(
             mismatches
                 .iter()
@@ -2530,8 +3010,9 @@ mod tests {
 
     #[test]
     fn test_shipping_international_seller() {
-        let items =
-            vec![json!({fields::IS_DIGITAL: false, fields::SHIP_FROM_PROVINCE: "", fields::SHIP_FROM_COUNTRY: "China"})];
+        let items = vec![
+            json!({fields::IS_DIGITAL: false, fields::SHIP_FROM_PROVINCE: "", fields::SHIP_FROM_COUNTRY: "China"}),
+        ];
         // International seller → cross-province/intl rate
         assert_eq!(
             calculate_shipping_cost_cents(3000, "ON", &items).unwrap(),

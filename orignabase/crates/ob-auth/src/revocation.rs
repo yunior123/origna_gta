@@ -9,6 +9,7 @@
 use ob_core::{Error, Result};
 use serde_json::json;
 use sha2::{Digest, Sha256};
+use sqlx::Row;
 use sqlx::postgres::PgTransaction;
 use tracing::info;
 
@@ -32,6 +33,24 @@ fn rotation_lock_key(token: &str) -> i64 {
     i64::from_be_bytes(arr)
 }
 
+async fn ensure_revoked_tokens_table(db: &ob_database::DatabaseClient) -> Result<()> {
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS _revoked_tokens (
+            id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
+            data JSONB NOT NULL DEFAULT '{}'::jsonb,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )
+        "#,
+    )
+    .execute(db.inner().pool())
+    .await
+    .map_err(|e| Error::Database(format!("Failed to ensure _revoked_tokens table: {e}")))?;
+
+    Ok(())
+}
+
 /// Acquire an advisory lock for refresh token rotation.
 ///
 /// Returns a transaction that holds the lock. The lock is released
@@ -41,12 +60,10 @@ pub async fn acquire_refresh_rotation_lock<'a>(
     token: &str,
 ) -> Result<RotationLockTx<'a>> {
     let key = rotation_lock_key(token);
-    let mut tx = db
-        .inner()
-        .pool()
-        .begin()
-        .await
-        .map_err(|e| Error::Database(format!("Failed to begin refresh lock transaction: {e}")))?;
+    let mut tx =
+        db.inner().pool().begin().await.map_err(|e| {
+            Error::Database(format!("Failed to begin refresh lock transaction: {e}"))
+        })?;
 
     let acquired: bool = sqlx::query_scalar("SELECT pg_try_advisory_xact_lock($1)")
         .bind(key)
@@ -79,12 +96,16 @@ pub async fn revoke_token(
 ) -> Result<()> {
     let token_hash = hash_token(token);
     let expires_at = chrono::Utc::now().timestamp() + ttl_secs as i64;
+    let revoked_at = chrono::Utc::now().to_rfc3339();
+    ensure_revoked_tokens_table(db).await?;
 
-    db.query_bind(
-        "CREATE _revoked_tokens CONTENT { hash: $hash, expiresAt: $expires_at, revokedAt: time::now() }",
+    db.upsert_document(
+        "_revoked_tokens",
+        &token_hash,
         json!({
             "hash": token_hash,
-            "expires_at": expires_at,
+            "expiresAt": expires_at,
+            "revokedAt": revoked_at,
         }),
     )
     .await
@@ -104,15 +125,29 @@ pub async fn revoke_token(
 /// * `token` - Raw token to check
 pub async fn is_token_revoked(db: &ob_database::DatabaseClient, token: &str) -> Result<bool> {
     let token_hash = hash_token(token);
+    let now = chrono::Utc::now().timestamp();
+    ensure_revoked_tokens_table(db).await?;
 
-    let results = db
-        .query_bind(
-            "SELECT * FROM _revoked_tokens WHERE hash = $hash AND expiresAt > time::now() LIMIT 1",
-            json!({ "hash": token_hash }),
-        )
-        .await?;
+    let row = sqlx::query(
+        r#"
+        SELECT data->>'expiresAt' AS expires_at
+        FROM _revoked_tokens
+        WHERE data->>'hash' = $1
+        ORDER BY updated_at DESC
+        LIMIT 1
+        "#,
+    )
+    .bind(&token_hash)
+    .fetch_optional(db.inner().pool())
+    .await
+    .map_err(|e| Error::Database(format!("Failed to load revoked token: {e}")))?;
 
-    Ok(!results.is_empty())
+    let expires_at = row
+        .as_ref()
+        .and_then(|value| value.try_get::<String, _>("expires_at").ok())
+        .and_then(|value| value.parse::<i64>().ok());
+
+    Ok(expires_at.is_some_and(|expires_at| expires_at > now))
 }
 
 /// Clean up expired revocation entries from the database.
@@ -122,14 +157,22 @@ pub async fn is_token_revoked(db: &ob_database::DatabaseClient, token: &str) -> 
 ///
 /// Returns the count of deleted entries.
 pub async fn cleanup_revoked_tokens(db: &ob_database::DatabaseClient) -> Result<usize> {
-    let results = db
-        .query_bind(
-            "DELETE FROM _revoked_tokens WHERE expiresAt < time::now()",
-            json!({}),
-        )
-        .await?;
+    let now = chrono::Utc::now().timestamp();
+    ensure_revoked_tokens_table(db).await?;
 
-    let count = results.len();
+    let result = sqlx::query(
+        r#"
+        DELETE FROM _revoked_tokens
+        WHERE COALESCE(NULLIF(data->>'expiresAt', ''), '0')::bigint < $1
+        "#,
+    )
+    .bind(now)
+    .execute(db.inner().pool())
+    .await
+    .map_err(|e| Error::Database(format!("Failed to cleanup revoked tokens: {e}")))?;
+
+    let count = result.rows_affected() as usize;
+
     info!("Cleaned up {} expired revocation entries", count);
     Ok(count)
 }
@@ -239,5 +282,31 @@ mod integration_tests {
 
         let second = acquire_refresh_rotation_lock(&db, &unique_token).await;
         assert!(second.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_revoke_token_round_trip_and_cleanup() {
+        let db = ob_database::DatabaseClient::new_mem().await;
+        let token = format!("refresh-token-{}", uuid::Uuid::new_v4());
+
+        revoke_token(&db, &token, 60).await.unwrap();
+        assert!(is_token_revoked(&db, &token).await.unwrap());
+
+        let token_hash = hash_token(&token);
+        db.upsert_document(
+            "_revoked_tokens",
+            &token_hash,
+            json!({
+                "hash": token_hash,
+                "expiresAt": chrono::Utc::now().timestamp() - 1,
+                "revokedAt": chrono::Utc::now().to_rfc3339(),
+            }),
+        )
+        .await
+        .unwrap();
+
+        let cleaned = cleanup_revoked_tokens(&db).await.unwrap();
+        assert_eq!(cleaned, 1);
+        assert!(!is_token_revoked(&db, &token).await.unwrap());
     }
 }

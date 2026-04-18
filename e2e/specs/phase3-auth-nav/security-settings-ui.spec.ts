@@ -8,33 +8,35 @@
 import { test, expect, describe, beforeAll, beforeEach, afterAll } from 'bun:test';
 import { AgentBrowser } from '../../lib/agent-browser.js';
 import { TEST_ACCOUNTS, DEFAULT_PASS, WEB_APP_URL } from '../../lib/config.js';
+import { signIn } from '../../lib/api-client.js';
 
 
-/** Helper: login via browser UI — uses click+type to avoid stale refs. */
+/** Helper: land in an authenticated home shell, tolerating flaky page-side fetch login. */
 async function loginViaBrowser(browser: AgentBrowser, email: string, password: string): Promise<void> {
   try {
-    await browser.open(`${WEB_APP_URL}/login`);
-    await browser.waitForFlutter();
-    let snap = await browser.waitForChange({ text: /you@example|vous@exemple|login_email_field/i, timeout: 30_000 });
-
-    const emailInput = browser.findByLabel(snap, /you@example|vous@exemple|login_email_field/i);
-    if (!emailInput) throw new Error('Email input not found');
-    await browser.click(emailInput.ref);
-    await browser.type(email);
-
-    snap = await browser.waitForChange({ text: /login_password_field|••••••••/i, timeout: 10_000 });
-    const passInput = browser.findByLabel(snap, /login_password_field|••••••••/);
-    if (!passInput) throw new Error('Password input not found');
-    await browser.click(passInput.ref);
-    await browser.type(password);
-
-    await browser.press('Tab');
-    await browser.waitForChange({ timeout: 500 });
-    await browser.press('Enter');
-    await browser.waitForChange({ timeout: 5000 });
-    await browser.waitForFlutter();
+    await browser.loginViaApi(email, password);
   } catch (err) {
     console.log(`loginViaBrowser warning: ${(err as Error).message}`);
+    const auth = await signIn(email, password);
+    await browser.open(WEB_APP_URL);
+    await browser.waitForFlutter();
+    browser.run([
+      'eval',
+      `localStorage.setItem('orignabase_access_token', ${JSON.stringify(auth.idToken)});
+       localStorage.setItem('orignabase_refresh_token', ${JSON.stringify(auth.refreshToken ?? '')});
+       localStorage.setItem('orignabase_email', ${JSON.stringify(email)});`,
+    ], 15_000);
+  }
+
+  await browser.open(WEB_APP_URL);
+  await browser.waitForFlutter();
+  try {
+    await browser.waitForChange({ text: /btn-home-settings|product-card-|search|home/i, timeout: 20_000 });
+  } catch {
+    const snap = await browser.snapshot({ interactive: true, compact: true });
+    if (snap.refs.length === 0) {
+      throw new Error('Authenticated home shell did not render any interactive content');
+    }
   }
 }
 

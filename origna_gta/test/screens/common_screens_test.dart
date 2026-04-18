@@ -102,5 +102,25 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(EmailVerificationRequiredScreen), findsOneWidget);
     });
+
+    testWidgets('EmailVerificationRequiredScreen shows current user email', (
+      tester,
+    ) async {
+      const unverifiedUser = AppAuthUser(
+        uid: 'verify_user_123',
+        email: 'verify.me@origna.ca',
+        emailVerified: false,
+      );
+
+      await tester.pumpWidget(TestWrapper(
+        overrides: [
+          currentUserProvider.overrideWithValue(unverifiedUser),
+        ],
+        child: const EmailVerificationRequiredScreen(),
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('verify.me@origna.ca'), findsOneWidget);
+    });
   });
 }

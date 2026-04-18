@@ -16,6 +16,7 @@ import 'package:origna_gta/core/theme_provider.dart';
 import 'package:origna_gta/features/admin/admin_panel_screen.dart'
     deferred as admin_panel;
 import 'package:origna_gta/features/cart/cart_provider.dart';
+import 'package:origna_gta/features/orders/orders_provider.dart';
 import 'package:origna_gta/features/products/products_provider.dart';
 import 'package:origna_gta/screens/addproduct_screen.dart'
     deferred as add_product;
@@ -47,6 +48,8 @@ import 'package:origna_gta/screens/privacy_policy_screen.dart'
 import 'package:origna_gta/screens/productdetails_screen.dart';
 import 'package:origna_gta/screens/profile_screen.dart';
 import 'package:origna_gta/screens/reset_password_screen.dart';
+import 'package:origna_gta/screens/seller/bulk_upload_screen.dart'
+    deferred as seller_bulk_upload;
 import 'package:origna_gta/screens/seller/seller_analytics_screen.dart'
     deferred as seller_analytics;
 import 'package:origna_gta/screens/seller/seller_warehouses_screen.dart'
@@ -635,6 +638,19 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
     );
   }
 
+  // Seller bulk upload screen
+  if (uri.path == AppRoutes.sellerBulkUpload) {
+    return SlidePageRoute(
+      settings: settings,
+      page: AuthRequiredGate(
+        child: DeferredWidget(
+          loader: seller_bulk_upload.loadLibrary,
+          builder: () => seller_bulk_upload.BulkUploadScreen(),
+        ),
+      ),
+    );
+  }
+
   // Seller Integration Guide
   if (uri.path == AppRoutes.sellerIntegration) {
     return SlidePageRoute(
@@ -1091,7 +1107,7 @@ class _OrignaAppState extends ConsumerState<OrignaApp>
       }
 
       AppLogger.d(
-        'App resumed after ${timeInBackground.inMinutes}min — validating session and refreshing cart',
+        'App resumed after ${timeInBackground.inMinutes}min — validating session and refreshing cart, orders, favorites, and notifications',
         tag: 'lifecycle',
       );
 
@@ -1100,9 +1116,14 @@ class _OrignaAppState extends ConsumerState<OrignaApp>
           .validateCurrentUser();
       if (!mounted || !isValid) return;
 
-      // Re-fetch cart after a meaningful background gap so stale badge/counts
-      // are corrected without firing duplicate work on quick foreground hops.
+      // Re-fetch the highest-signal buyer/seller surfaces after a meaningful
+      // background gap so stale badges, counts, and order states self-heal
+      // without firing duplicate work on quick foreground hops.
       ref.invalidate(cartItemsProvider);
+      ref.invalidate(buyerOrdersProvider);
+      ref.invalidate(sellerOrdersProvider);
+      ref.invalidate(favoritesProvider);
+      ref.invalidate(userNotificationsProvider);
     } catch (e) {
       AppLogger.w('Resume refresh failed: $e', tag: 'lifecycle');
     } finally {

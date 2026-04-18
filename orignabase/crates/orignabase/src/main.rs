@@ -10,7 +10,7 @@ use ob_admin::admin_router;
 use ob_admin::routes::AdminState;
 use ob_analytics::{AnalyticsState, analytics_router};
 use ob_auth::routes::{AuthState, auth_router};
-use ob_core::Config;
+use ob_core::{Config, Environment};
 use ob_database::DatabaseClient;
 use ob_functions::routes::FunctionsState;
 use ob_functions::{
@@ -38,7 +38,7 @@ use tower_governor::governor::GovernorConfigBuilder;
 use tower_governor::key_extractor::PeerIpKeyExtractor;
 use tower_http::catch_panic::CatchPanicLayer;
 use tower_http::compression::CompressionLayer;
-use tower_http::cors::CorsLayer;
+use tower_http::cors::{AllowOrigin, CorsLayer};
 use tower_http::request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer};
 use tower_http::set_header::SetResponseHeaderLayer;
 use tower_http::timeout::TimeoutLayer;
@@ -565,44 +565,7 @@ match /users/{userId} {
 /// CRITICAL FIX: Replace .allow_origin(Any) with specific production domains.
 /// In test mode, use very_permissive() so integration tests with arbitrary origins pass.
 fn build_cors_layer(is_test_mode: bool) -> CorsLayer {
-    if is_test_mode {
-        // In test mode, allow localhost + dev domains (not fully permissive)
-        let test_origins = vec![
-            "http://localhost:3000".parse::<HeaderValue>().unwrap(),
-            "http://localhost:8080".parse::<HeaderValue>().unwrap(),
-            "http://127.0.0.1:3000".parse::<HeaderValue>().unwrap(),
-            "http://127.0.0.1:8080".parse::<HeaderValue>().unwrap(),
-            "https://dev.orignagta.ca".parse::<HeaderValue>().unwrap(),
-            "https://staging.orignagta.ca"
-                .parse::<HeaderValue>()
-                .unwrap(),
-        ];
-        return CorsLayer::new()
-            .allow_origin(test_origins)
-            .allow_credentials(true)
-            .allow_methods([
-                axum::http::Method::GET,
-                axum::http::Method::POST,
-                axum::http::Method::PUT,
-                axum::http::Method::DELETE,
-                axum::http::Method::PATCH,
-                axum::http::Method::OPTIONS,
-            ])
-            .allow_headers([
-                axum::http::header::ACCEPT,
-                axum::http::header::AUTHORIZATION,
-                axum::http::header::CONTENT_TYPE,
-                axum::http::header::ORIGIN,
-                axum::http::header::CACHE_CONTROL,
-                "x-requested-with"
-                    .parse()
-                    .expect("static header should parse"),
-                "x-tenant-id".parse().expect("static header should parse"),
-            ])
-            .max_age(Duration::from_secs(3600));
-    }
-
-    let allowed_origins = vec![
+    let allowed_origins = [
         "https://orignagta.ca".parse::<HeaderValue>().unwrap(),
         "https://www.orignagta.ca".parse::<HeaderValue>().unwrap(),
         "https://dev.orignagta.ca".parse::<HeaderValue>().unwrap(),
@@ -611,8 +574,13 @@ fn build_cors_layer(is_test_mode: bool) -> CorsLayer {
             .unwrap(),
     ];
 
+    let allow_loopback_origins = is_test_mode || Environment::from_env().is_dev();
+    let allow_origin = AllowOrigin::predicate(move |origin, _request_parts| {
+        allowed_origins.contains(origin) || (allow_loopback_origins && is_loopback_origin(origin))
+    });
+
     CorsLayer::new()
-        .allow_origin(allowed_origins)
+        .allow_origin(allow_origin)
         .allow_credentials(true)
         .allow_methods([
             Method::GET,
@@ -634,6 +602,25 @@ fn build_cors_layer(is_test_mode: bool) -> CorsLayer {
             "x-tenant-id".parse().expect("static header should parse"),
         ])
         .max_age(Duration::from_secs(3600))
+}
+
+fn is_loopback_origin(origin: &HeaderValue) -> bool {
+    let Ok(origin) = origin.to_str() else {
+        return false;
+    };
+
+    let Ok(uri) = origin.parse::<axum::http::Uri>() else {
+        return false;
+    };
+
+    if !matches!(uri.scheme_str(), Some("http" | "https")) {
+        return false;
+    }
+
+    matches!(
+        uri.host(),
+        Some("localhost" | "127.0.0.1" | "::1" | "[::1]")
+    )
 }
 
 /// Validate configuration and panic on critical security issues.

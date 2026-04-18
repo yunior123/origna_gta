@@ -71,9 +71,10 @@ describe('Order Cancellation & Refund', () => {
 
     // Cancel the pending order
     const result = await callCallable('cancel_order', { orderId }, buyerAuth.idToken);
-    const code = result?.error?.code ?? result?.result?.status ?? result?.status;
-    // Either cancelled successfully or already cancelled or not-found (dedup)
-    expect(code).toBeDefined();
+    const success = result?.success ?? result?.result?.success;
+    const refunded = result?.refunded ?? result?.result?.refunded;
+    expect(success).toBe(true);
+    expect(typeof refunded).toBe('boolean');
   });
 
   test('Cannot cancel a shipped order (API: status guard)', { timeout: 60_000 }, async () => {

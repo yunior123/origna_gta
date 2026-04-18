@@ -567,6 +567,10 @@ Widget previewReturnRequestLight() =>
     previewMobile(child: _returnRequestContent(), theme: previewLightTheme);
 
 const _previewOrderId = 'preview-order-id';
+const _previewReturnRequestImageBase = 'https://fastly.picsum.photos/id';
+
+String _previewReturnRequestImage(int id, {int width = 900, int height = 900}) =>
+    '$_previewReturnRequestImageBase/$id/$width/$height.jpg';
 
 Widget _returnRequestContent() => previewScopeLoggedIn(
   extraOverrides: [
@@ -583,7 +587,7 @@ Widget _returnRequestContent() => previewScopeLoggedIn(
               description: 'Noise-canceling wireless headphones',
               priceCents: 29999,
               quantity: 1,
-              imageUrls: ['images/5.png'],
+              imageUrls: [_previewReturnRequestImage(367)],
               sellerId: 'seller-1',
               sellerName: 'AudioTech Canada',
               status: DeliveryStatusValues.delivered,
@@ -596,7 +600,7 @@ Widget _returnRequestContent() => previewScopeLoggedIn(
               description: 'Braided 2m cable',
               priceCents: 1499,
               quantity: 2,
-              imageUrls: ['images/7.png'],
+              imageUrls: [_previewReturnRequestImage(29)],
               sellerId: 'seller-1',
               sellerName: 'AudioTech Canada',
               status: DeliveryStatusValues.delivered,

@@ -111,6 +111,69 @@ fn items_array(order: &Value) -> Vec<Value> {
         .unwrap_or_default()
 }
 
+async fn restore_stock_for_items(
+    state: &HandlersState,
+    items: &[Value],
+    updated_at: &str,
+) -> Result<(), ob_core::Error> {
+    for item in items {
+        if item
+            .get(fields::IS_DIGITAL)
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false)
+        {
+            continue;
+        }
+
+        let product_id = str_field(item, fields::PRODUCT_ID);
+        let quantity = item
+            .get(fields::QUANTITY)
+            .and_then(|v| v.as_i64())
+            .unwrap_or(1);
+        if product_id.is_empty() || quantity <= 0 {
+            continue;
+        }
+
+        let mut restored = false;
+        for _attempt in 0..3 {
+            let product = state
+                .db
+                .get_document(collections::PRODUCTS, product_id)
+                .await
+                .unwrap_or_default();
+            let current_stock = product
+                .get(fields::STOCK_QUANTITY)
+                .and_then(|v| v.as_i64())
+                .unwrap_or(0);
+            let cas_result = state
+                .db
+                .update_document_cas(
+                    collections::PRODUCTS,
+                    product_id,
+                    json!({
+                        fields::STOCK_QUANTITY: current_stock + quantity,
+                        fields::UPDATED_AT: updated_at,
+                    }),
+                    fields::STOCK_QUANTITY,
+                    &json!(current_stock),
+                )
+                .await?;
+            if cas_result.is_some() {
+                restored = true;
+                break;
+            }
+        }
+
+        if !restored {
+            return Err(ob_core::Error::Database(format!(
+                "Failed to restore stock for product {product_id}"
+            )));
+        }
+    }
+
+    Ok(())
+}
+
 fn max_allowed_shipping_cents(old_seller_cents: i64) -> i64 {
     if old_seller_cents == 0 {
         ABSOLUTE_MAX_SHIPPING_CENTS
@@ -400,6 +463,10 @@ async fn approve_shipping_cost(
             .map_err(|e| ob_core::Error::Database(format!("Failed to update order: {e}")))?;
     } else {
         // Buyer rejected — cancel order atomically with stock restore
+        let stock_restored = order
+            .get(fields::STOCK_RESTORED)
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
         let mut update_data = json!({
             "shippingApproval": {
                 fields::STATUS: "rejected",
@@ -408,6 +475,7 @@ async fn approve_shipping_cost(
             "shippingApprovalStatus": "rejected",
             fields::ORDER_STATUS: "cancelled",
             "cancellationReason": "Buyer rejected shipping cost",
+            fields::STOCK_RESTORED: true,
             fields::UPDATED_AT: now,
         });
 
@@ -445,10 +513,18 @@ async fn approve_shipping_cost(
             }
         }
 
-        // Update order with rejection data
-        state
+        let updated_orders = state
             .db
-            .update_document(collections::ORDERS, &req.order_id, update_data)
+            .query_bind(
+                &format!(
+                    "UPDATE {} SET data = data || $update::jsonb WHERE id = $order_id AND COALESCE(data->'shippingApproval'->>'status', '') = 'pending' RETURNING id, data::TEXT, created_at, updated_at",
+                    collections::ORDERS
+                ),
+                json!({
+                    "order_id": req.order_id,
+                    "update": update_data,
+                }),
+            )
             .await
             .map_err(|e| {
                 ob_core::Error::Database(format!(
@@ -456,40 +532,15 @@ async fn approve_shipping_cost(
                 ))
             })?;
 
-        // Restore stock for all physical items
-        let items = items_array(&order);
-        for item in items.iter() {
-            if item
-                .get(fields::IS_DIGITAL)
-                .and_then(|v| v.as_bool())
-                .unwrap_or(false)
-            {
-                continue;
-            }
-            let pid = str_field(item, fields::PRODUCT_ID);
-            let qty = item.get("quantity").and_then(|v| v.as_i64()).unwrap_or(1);
-            if !pid.is_empty() && qty > 0 {
-                let cur_product = state
-                    .db
-                    .get_document(collections::PRODUCTS, pid)
-                    .await
-                    .unwrap_or_default();
-                let cur_stock = cur_product
-                    .get("stockQuantity")
-                    .and_then(|v| v.as_i64())
-                    .unwrap_or(0);
-                let _ = state
-                    .db
-                    .update_document(
-                        collections::PRODUCTS,
-                        pid,
-                        json!({
-                            "stockQuantity": cur_stock + qty,
-                            "updatedAt": now,
-                        }),
-                    )
-                    .await;
-            }
+        if updated_orders.is_empty() {
+            return Err(ob_core::Error::Validation(
+                "No pending shipping approval".into(),
+            ));
+        }
+
+        if !stock_restored {
+            let items = items_array(&order);
+            restore_stock_for_items(&state, &items, &now).await?;
         }
     }
 
@@ -1730,10 +1781,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_approve_shipping_buyer_rejects_builds_rejection_data() {
-        // The rejection path (lines 347-432) builds update_data, runs stock restore
-        // via Transaction. We verify the code path is entered by checking the
-        // transaction attempts (PostgreSQL has a MERGE $data serialization
-        // limitation, so we verify the error path on line 430-432 is covered).
         let state = setup_state().await;
         state
             .db
@@ -1779,19 +1826,32 @@ mod tests {
         )
         .await;
 
-        // The rejection path is entered (covering lines 349-432), transaction
-        // may fail in test env due to limitations
-        match result {
-            Ok(Json(resp)) => {
-                assert!(!resp.approved);
-            }
-            Err(e) => {
-                // Covers the .map_err on line 430-432
-                assert!(
-                    e.to_string().contains("reject shipping") || e.to_string().contains("Database")
-                );
-            }
-        }
+        let Json(resp) = result.unwrap();
+        assert!(!resp.approved);
+
+        let order = state
+            .db
+            .get_document(collections::ORDERS, "ord_rej")
+            .await
+            .unwrap();
+        assert_eq!(
+            order.get(fields::ORDER_STATUS).and_then(|v| v.as_str()),
+            Some("cancelled")
+        );
+        assert_eq!(
+            order.get(fields::STOCK_RESTORED).and_then(|v| v.as_bool()),
+            Some(true)
+        );
+
+        let product = state
+            .db
+            .get_document(collections::PRODUCTS, "prod_1")
+            .await
+            .unwrap();
+        assert_eq!(
+            product.get(fields::STOCK_QUANTITY).and_then(|v| v.as_i64()),
+            Some(7)
+        );
     }
 
     #[tokio::test]
@@ -1852,13 +1912,28 @@ mod tests {
         )
         .await;
 
-        // Covers refund path (lines 361-392) + transaction path
-        match result {
-            Ok(Json(resp)) => assert!(!resp.approved),
-            Err(e) => {
-                assert!(e.to_string().contains("Database") || e.to_string().contains("reject"))
-            }
-        }
+        let Json(resp) = result.unwrap();
+        assert!(!resp.approved);
+
+        let order = state
+            .db
+            .get_document(collections::ORDERS, "ord_rejcap")
+            .await
+            .unwrap();
+        assert_eq!(
+            order.get(fields::PAYMENT_STATUS).and_then(|v| v.as_str()),
+            Some("refunded")
+        );
+
+        let product = state
+            .db
+            .get_document(collections::PRODUCTS, "prod_2")
+            .await
+            .unwrap();
+        assert_eq!(
+            product.get(fields::STOCK_QUANTITY).and_then(|v| v.as_i64()),
+            Some(4)
+        );
     }
 
     #[tokio::test]
@@ -1919,13 +1994,32 @@ mod tests {
         )
         .await;
 
-        // Covers refund failure path (lines 376-392) + transaction
-        match result {
-            Ok(Json(resp)) => assert!(!resp.approved),
-            Err(e) => {
-                assert!(e.to_string().contains("Database") || e.to_string().contains("reject"))
-            }
-        }
+        let Json(resp) = result.unwrap();
+        assert!(!resp.approved);
+
+        let order = state
+            .db
+            .get_document(collections::ORDERS, "ord_rejfail")
+            .await
+            .unwrap();
+        assert_eq!(
+            order.get("requiresManualReview").and_then(|v| v.as_bool()),
+            Some(true)
+        );
+        assert_eq!(
+            order.get("manualReviewReason").and_then(|v| v.as_str()),
+            Some("Buyer rejected shipping but refund failed. Requires manual refund.")
+        );
+
+        let product = state
+            .db
+            .get_document(collections::PRODUCTS, "prod_3")
+            .await
+            .unwrap();
+        assert_eq!(
+            product.get(fields::STOCK_QUANTITY).and_then(|v| v.as_i64()),
+            Some(6)
+        );
     }
 
     #[tokio::test]
@@ -1971,13 +2065,75 @@ mod tests {
         )
         .await;
 
-        // Covers digital item skip (lines 407-413) + transaction
-        match result {
-            Ok(Json(resp)) => assert!(!resp.approved),
-            Err(e) => {
-                assert!(e.to_string().contains("Database") || e.to_string().contains("reject"))
-            }
-        }
+        let Json(resp) = result.unwrap();
+        assert!(!resp.approved);
+
+        let product = state
+            .db
+            .get_document(collections::PRODUCTS, "prod_phys")
+            .await
+            .unwrap();
+        assert_eq!(
+            product.get(fields::STOCK_QUANTITY).and_then(|v| v.as_i64()),
+            Some(3)
+        );
+    }
+
+    #[tokio::test]
+    async fn test_approve_shipping_buyer_rejects_skips_stock_when_already_restored() {
+        let state = setup_state().await;
+        state
+            .db
+            .upsert_document(
+                collections::PRODUCTS,
+                "prod_done",
+                json!({ fields::STOCK_QUANTITY: 4 }),
+            )
+            .await
+            .unwrap();
+        state
+            .db
+            .upsert_document(
+                collections::ORDERS,
+                "ord_done",
+                json!({
+                    "userId": "buyer_1",
+                    fields::STOCK_RESTORED: true,
+                    "shippingApproval": { fields::STATUS: "pending" },
+                    fields::SHIPPING_COST_CENTS: 500,
+                    fields::PAYMENT_STATUS: "awaiting_payment",
+                    fields::ITEMS: [
+                        { fields::PRODUCT_ID: "prod_done", fields::QUANTITY: 2 },
+                    ],
+                }),
+            )
+            .await
+            .unwrap();
+
+        let Json(resp) = approve_shipping_cost(
+            State(state.clone()),
+            auth("buyer_1"),
+            Json(ApproveShippingRequest {
+                order_id: "ord_done".into(),
+                user_id: "buyer_1".into(),
+                approved: false,
+                expected_cost_cents: None,
+            }),
+        )
+        .await
+        .unwrap();
+
+        assert!(!resp.approved);
+
+        let product = state
+            .db
+            .get_document(collections::PRODUCTS, "prod_done")
+            .await
+            .unwrap();
+        assert_eq!(
+            product.get(fields::STOCK_QUANTITY).and_then(|v| v.as_i64()),
+            Some(4)
+        );
     }
 
     // -----------------------------------------------------------------------

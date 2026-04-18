@@ -277,51 +277,148 @@ class CartScreen extends ConsumerWidget {
 
 // ═══ Widget Previews ═══
 
-Widget _cartDark() => previewScopeLoggedIn(child: CartScreen());
-Widget _cartLight() => previewScopeLoggedIn(child: CartScreen());
-Widget _cartEmpty() => previewScope(
-  extraOverrides: [
-    cartItemsProvider.overrideWith((ref) => Stream.value([])),
-  ],
-  child: CartScreen(),
+const _previewCartImageBase = 'https://fastly.picsum.photos/id';
+
+String _previewCartImage(int id, {int width = 900, int height = 900}) =>
+    '$_previewCartImageBase/$id/$width/$height.jpg';
+
+final _previewCartUser = AppAuthUser(
+  uid: 'preview-cart-user',
+  email: 'cart.preview@origna.ca',
+  emailVerified: true,
 );
 
-// ── Dark (default) ──────────────────────────────────────────────────────────
+final _previewCartItems = [
+  CartItemModel(
+    cartItemId: 'cart-preview-1',
+    productId: 'cart-product-1',
+    quantity: 2,
+    createdAt: DateTime(2026, 4, 15, 10, 0),
+    productName: 'Small-Batch Espresso Beans',
+    productDescription: 'Fresh roasted beans with chocolate and cherry notes.',
+    imageUrls: [_previewCartImage(225)],
+    priceSnapshot: 2200,
+  ),
+  CartItemModel(
+    cartItemId: 'cart-preview-2',
+    productId: 'cart-product-2',
+    quantity: 1,
+    createdAt: DateTime(2026, 4, 15, 10, 5),
+    productName: 'Handmade Ceramic Mug',
+    productDescription: 'Stoneware mug glazed in matte forest green.',
+    imageUrls: [_previewCartImage(1060)],
+    priceSnapshot: 3800,
+  ),
+  CartItemModel(
+    cartItemId: 'cart-preview-unavailable',
+    productId: 'cart-product-unavailable',
+    quantity: 1,
+    createdAt: DateTime(2026, 4, 15, 10, 10),
+    productName: 'Limited Run Chocolate Box',
+    productDescription: 'Seasonal assortment currently out of stock.',
+    imageUrls: [_previewCartImage(1074)],
+    priceSnapshot: 2600,
+  ),
+];
+
+final _previewCartDetails = [
+  CartItemDetailModel(
+    productId: 'cart-product-1',
+    name: 'Small-Batch Espresso Beans',
+    description: 'Fresh roasted beans with chocolate and cherry notes.',
+    price: 22.0,
+    priceCents: 2200,
+    imageUrls: [_previewCartImage(225)],
+    quantity: 2,
+    createdAt: DateTime(2026, 4, 15, 10, 0),
+    sellerAddress: Address(
+      street: '101 King St W',
+      city: 'Toronto',
+      state: 'ON',
+      postalCode: 'M5X 1A9',
+      country: 'CA',
+    ),
+    sellerId: 'seller-preview-1',
+    sellerName: 'North Roast Co.',
+    estimatedShipDays: 2,
+    freeShipping: true,
+  ),
+  CartItemDetailModel(
+    productId: 'cart-product-2',
+    name: 'Handmade Ceramic Mug',
+    description: 'Stoneware mug glazed in matte forest green.',
+    price: 38.0,
+    priceCents: 3800,
+    imageUrls: [_previewCartImage(1060)],
+    quantity: 1,
+    createdAt: DateTime(2026, 4, 15, 10, 5),
+    sellerAddress: Address(
+      street: '410 Rue Saint-Nicolas',
+      city: 'Montreal',
+      state: 'QC',
+      postalCode: 'H2Y 2P5',
+      country: 'CA',
+    ),
+    sellerId: 'seller-preview-2',
+    sellerName: 'Clay Studio North',
+    estimatedShipDays: 4,
+  ),
+];
+
+Widget _cartPreview({
+  bool empty = false,
+}) => previewScopeLoggedIn(
+  uid: _previewCartUser.uid,
+  extraOverrides: [
+    currentUserProvider.overrideWith((ref) => _previewCartUser),
+    cartItemsProvider.overrideWith(
+      (ref) => Stream.value(empty ? <CartItemModel>[] : _previewCartItems),
+    ),
+    cartWithDetailsProvider.overrideWith(
+      (ref) async => empty ? <CartItemDetailModel>[] : _previewCartDetails,
+    ),
+    unavailableCartItemsProvider.overrideWith(
+      (ref) async => empty ? <String>[] : ['cart-product-unavailable'],
+    ),
+    cartItemDetailProvider('cart-preview-1').overrideWith(
+      (ref) async => empty ? null : _previewCartDetails[0],
+    ),
+    cartItemDetailProvider('cart-preview-2').overrideWith(
+      (ref) async => empty ? null : _previewCartDetails[1],
+    ),
+    cartItemDetailProvider('cart-preview-unavailable').overrideWith(
+      (ref) async => null,
+    ),
+  ],
+  child: const CartScreen(),
+);
+
+Widget _cartDark() => _cartPreview();
+Widget _cartLight() => _cartPreview();
+Widget _cartEmpty() => previewScopeLoggedIn(
+  uid: _previewCartUser.uid,
+  extraOverrides: [
+    currentUserProvider.overrideWith((ref) => _previewCartUser),
+    cartItemsProvider.overrideWith((ref) => Stream.value([])),
+    cartWithDetailsProvider.overrideWith((ref) async => []),
+    unavailableCartItemsProvider.overrideWith((ref) async => []),
+  ],
+  child: const CartScreen(),
+);
+
+// ── Core previews ───────────────────────────────────────────────────────────
 @Preview(name: 'Shopping Cart Dark — Mobile', group: 'Cart Screens', size: Size(390, 844))
 Widget previewCartScreenMobile() => previewMobile(child: _cartDark());
-
-@Preview(name: 'Shopping Cart Dark — Tablet', group: 'Cart Screens', size: Size(768, 1024))
-Widget previewCartScreenTablet() => previewTablet(child: _cartDark());
 
 @Preview(name: 'Shopping Cart Dark — Desktop', group: 'Cart Screens', size: Size(1280, 800))
 Widget previewCartScreenDesktop() => previewDesktop(child: _cartDark());
 
-@Preview(name: 'Shopping Cart Dark — Web', group: 'Cart Screens', size: Size(1440, 900))
-Widget previewCartScreenWeb() => previewWeb(child: _cartDark());
-
-// ── Light ────────────────────────────────────────────────────────────────────
-@Preview(name: 'Shopping Cart Light — Mobile', group: 'Cart Screens', size: Size(390, 844))
-Widget previewCartScreenLightMobile() => previewMobile(theme: previewLightTheme, child: _cartLight());
-
-@Preview(name: 'Shopping Cart Light — Tablet', group: 'Cart Screens', size: Size(768, 1024))
-Widget previewCartScreenLightTablet() => previewTablet(theme: previewLightTheme, child: _cartLight());
-
 @Preview(name: 'Shopping Cart Light — Desktop', group: 'Cart Screens', size: Size(1280, 800))
-Widget previewCartScreenLightDesktop() => previewDesktop(theme: previewLightTheme, child: _cartLight());
+Widget previewCartScreenLightDesktop() =>
+    previewDesktop(theme: previewLightTheme, child: _cartLight());
 
-@Preview(name: 'Shopping Cart Light — Web', group: 'Cart Screens', size: Size(1440, 900))
-Widget previewCartScreenLightWeb() => previewWeb(theme: previewLightTheme, child: _cartLight());
-
-// ── Empty State ───────────────────────────────────────────────────────────────
 @Preview(name: 'Shopping Cart Empty — Mobile', group: 'Cart Screens', size: Size(390, 844))
 Widget previewCartScreenEmptyMobile() => previewMobile(child: _cartEmpty());
 
-@Preview(name: 'Shopping Cart Empty — Tablet', group: 'Cart Screens', size: Size(768, 1024))
-Widget previewCartScreenEmptyTablet() => previewTablet(child: _cartEmpty());
-
 @Preview(name: 'Shopping Cart Empty — Desktop', group: 'Cart Screens', size: Size(1280, 800))
 Widget previewCartScreenEmptyDesktop() => previewDesktop(child: _cartEmpty());
-
-@Preview(name: 'Shopping Cart Empty — Web', group: 'Cart Screens', size: Size(1440, 900))
-Widget previewCartScreenEmptyWeb() => previewWeb(child: _cartEmpty());
-

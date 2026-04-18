@@ -3,7 +3,9 @@ import 'package:origna_gta/utils/preview_helpers.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
+import 'package:origna_gta/models/models.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/responsive_layout.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
@@ -222,60 +224,123 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
 
 // ═══ Widget Previews ═══
 
-// Free user (no subscription)
-Widget _subscriptionFreeUser() => previewScope(child: SubscriptionScreen());
+class _PreviewSubscriptionRef extends Ref {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
+}
+
+class _PreviewSubscriptionViewModel extends SubscriptionViewModel {
+  _PreviewSubscriptionViewModel([SubscriptionState previewState = const SubscriptionState()])
+    : super(_PreviewSubscriptionRef()) {
+    state = previewState;
+  }
+}
+
+final _previewSubscriptionUser = UserModel(
+  uid: 'preview-subscription-user',
+  email: 'premium.preview@origna.ca',
+  name: 'Avery Martin',
+  roles: const [UserRole.buyer],
+  createdAt: DateTime(2026, 1, 22),
+  verified: true,
+  notifyNewProducts: true,
+  notifyTrending: true,
+  isPremium: false,
+);
+
+UserModel _previewPremiumSubscriptionUser({bool cancelAtPeriodEnd = false}) =>
+    UserModel(
+      uid: _previewSubscriptionUser.uid,
+      email: _previewSubscriptionUser.email,
+      name: _previewSubscriptionUser.name,
+      roles: _previewSubscriptionUser.roles,
+      createdAt: _previewSubscriptionUser.createdAt,
+      verified: true,
+      notifyNewProducts: true,
+      notifyTrending: true,
+      isPremium: true,
+      premiumSince: DateTime(2026, 3, 17),
+      premiumExpiresAt: cancelAtPeriodEnd ? DateTime(2026, 5, 17) : null,
+    );
+
+final _previewPremiumSubscriptionInfo = SubscriptionInfo(
+  status: SubscriptionStatusValues.premiumActive.first,
+  isPremium: true,
+  currentPeriodEnd: DateTime(2026, 5, 17),
+  cancelAtPeriodEnd: false,
+);
+
+final _previewCancelingSubscriptionInfo = SubscriptionInfo(
+  status: SubscriptionStatusValues.premiumActive.first,
+  isPremium: true,
+  currentPeriodEnd: DateTime(2026, 5, 17),
+  cancelAtPeriodEnd: true,
+);
+
+Widget _subscriptionPreview({
+  required UserModel user,
+  required SubscriptionInfo? subscriptionInfo,
+  SubscriptionState state = const SubscriptionState(),
+}) {
+  return previewScopeLoggedIn(
+    uid: user.uid,
+    extraOverrides: [
+      userProfileProvider.overrideWith((ref) => Stream.value(user)),
+      subscriptionStreamProvider.overrideWith(
+        (ref) => Stream.value(subscriptionInfo),
+      ),
+      subscriptionViewModelProvider.overrideWith(
+        (ref) => _PreviewSubscriptionViewModel(state),
+      ),
+    ],
+    child: const SubscriptionScreen(),
+  );
+}
+
+Widget _subscriptionFreeUser() => _subscriptionPreview(
+  user: _previewSubscriptionUser,
+  subscriptionInfo: null,
+);
 
 // Premium user — already subscribed
-Widget _subscriptionPremiumUser() => previewScope(
-  extraOverrides: [
-    subscriptionStreamProvider.overrideWith(
-      (ref) => Stream.value(SubscriptionInfo(status: 'active', isPremium: true)),
-    ),
-  ],
-  child: SubscriptionScreen(),
+Widget _subscriptionPremiumUser() => _subscriptionPreview(
+  user: _previewPremiumSubscriptionUser(),
+  subscriptionInfo: _previewPremiumSubscriptionInfo,
+);
+
+Widget _subscriptionPremiumCancellingUser() => _subscriptionPreview(
+  user: _previewPremiumSubscriptionUser(cancelAtPeriodEnd: true),
+  subscriptionInfo: _previewCancelingSubscriptionInfo,
+  state: const SubscriptionState(
+    errorMessage: 'Billing portal is temporarily unavailable. Try again in a few minutes.',
+  ),
 );
 
 @Preview(name: 'Premium Subscription Plans — Mobile', group: 'Screens — Premium Flow', size: Size(390, 844))
-Widget previewSubscriptionScreenMobile() => previewMobile(child: _subscriptionFreeUser());
-
-@Preview(name: 'Premium Subscription Plans — Tablet', group: 'Screens — Premium Flow', size: Size(768, 1024))
-Widget previewSubscriptionScreenTablet() => previewTablet(child: previewScope(child: SubscriptionScreen()));
+Widget previewSubscriptionScreenMobile() =>
+    previewMobile(child: _subscriptionFreeUser());
 
 @Preview(name: 'Premium Subscription Plans — Desktop', group: 'Screens — Premium Flow', size: Size(1280, 800))
-Widget previewSubscriptionScreenDesktop() => previewDesktop(child: previewScope(child: SubscriptionScreen()));
-
-@Preview(name: 'Premium Subscription Plans — Web', group: 'Screens — Premium Flow', size: Size(1440, 900))
-Widget previewSubscriptionScreenWeb() => previewWeb(child: previewScope(child: SubscriptionScreen()));
-
-// ── Light ────────────────────────────────────────────────────────────────────
-@Preview(name: 'Premium Subscription Plans Light — Mobile', group: 'Screens — Premium Flow', size: Size(390, 844))
-Widget previewSubscriptionLightMobile() => previewMobile(theme: previewLightTheme, child: previewScope(child: SubscriptionScreen()));
+Widget previewSubscriptionScreenDesktop() =>
+    previewDesktop(child: _subscriptionFreeUser());
 
 @Preview(name: 'Premium Subscription Plans Light — Desktop', group: 'Screens — Premium Flow', size: Size(1280, 800))
-Widget previewSubscriptionLightDesktop() => previewDesktop(theme: previewLightTheme, child: previewScope(child: SubscriptionScreen()));
+Widget previewSubscriptionLightDesktop() =>
+    previewDesktop(theme: previewLightTheme, child: _subscriptionFreeUser());
 
-@Preview(name: 'Premium Subscription Plans Light — Tablet', group: 'Screens — Premium Flow', size: Size(768, 1024))
-Widget previewSubscriptionLightTablet() => previewTablet(theme: previewLightTheme, child: previewScope(child: SubscriptionScreen()));
-
-@Preview(name: 'Premium Subscription Plans Light — Web', group: 'Screens — Premium Flow', size: Size(1440, 900))
-Widget previewSubscriptionLightWeb() => previewWeb(theme: previewLightTheme, child: previewScope(child: SubscriptionScreen()));
-
-// ── Premium User (already subscribed) ────────────────────────────────────────
+// ── Premium user states ──────────────────────────────────────────────────────
 @Preview(name: 'Premium Member View Dark — Mobile', group: 'Screens — Premium Flow', size: Size(390, 844))
-Widget previewSubscriptionPremiumMobile() => previewMobile(child: _subscriptionPremiumUser());
-
-@Preview(name: 'Premium Member View Dark — Tablet', group: 'Screens — Premium Flow', size: Size(768, 1024))
-Widget previewSubscriptionPremiumTablet() => previewTablet(child: _subscriptionPremiumUser());
+Widget previewSubscriptionPremiumMobile() =>
+    previewMobile(child: _subscriptionPremiumUser());
 
 @Preview(name: 'Premium Member View Dark — Desktop', group: 'Screens — Premium Flow', size: Size(1280, 800))
-Widget previewSubscriptionPremiumDesktop() => previewDesktop(child: _subscriptionPremiumUser());
-
-@Preview(name: 'Premium Member View Dark — Web', group: 'Screens — Premium Flow', size: Size(1440, 900))
-Widget previewSubscriptionPremiumWeb() => previewWeb(child: _subscriptionPremiumUser());
-
-@Preview(name: 'Premium Member View Light — Mobile', group: 'Screens — Premium Flow', size: Size(390, 844))
-Widget previewSubscriptionPremiumLightMobile() => previewMobile(theme: previewLightTheme, child: _subscriptionPremiumUser());
+Widget previewSubscriptionPremiumDesktop() =>
+    previewDesktop(child: _subscriptionPremiumUser());
 
 @Preview(name: 'Premium Member View Light — Desktop', group: 'Screens — Premium Flow', size: Size(1280, 800))
-Widget previewSubscriptionPremiumLightDesktop() => previewDesktop(theme: previewLightTheme, child: _subscriptionPremiumUser());
+Widget previewSubscriptionPremiumLightDesktop() =>
+    previewDesktop(theme: previewLightTheme, child: _subscriptionPremiumUser());
 
+@Preview(name: 'Premium Member Cancelling — Desktop', group: 'Screens — Premium Flow', size: Size(1280, 800))
+Widget previewSubscriptionPremiumCancellingDesktop() =>
+    previewDesktop(child: _subscriptionPremiumCancellingUser());

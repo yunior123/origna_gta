@@ -1711,167 +1711,158 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
                 top: Radius.circular(DesignTokens.radius16),
               ),
             ),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Flag + origin chip
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 5,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isCanada
-                        ? DesignTokens.canadaRed.withValues(alpha: 0.08)
-                        : DesignTokens.primary.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: isCanada
-                          ? DesignTokens.canadaRed.withValues(alpha: 0.2)
-                          : DesignTokens.primary.withValues(alpha: 0.2),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        isCanada ? '🇨🇦' : '🌍',
-                        style: const TextStyle(fontSize: 14),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
                       ),
-                      const SizedBox(width: 5),
-                      Text(
-                        isCanada
-                            ? 'orders.ships_from_canada'.tr()
-                            : 'orders.ships_international'.tr(),
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
+                      decoration: BoxDecoration(
+                        color: isCanada
+                            ? DesignTokens.canadaRed.withValues(alpha: 0.08)
+                            : DesignTokens.primary.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
                           color: isCanada
-                              ? DesignTokens.canadaRed
-                              : DesignTokens.primary,
+                              ? DesignTokens.canadaRed.withValues(alpha: 0.2)
+                              : DesignTokens.primary.withValues(alpha: 0.2),
                         ),
                       ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        sellerName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: isDark
-                              ? DesignTokens.white
-                              : DesignTokens.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Row(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          if (total > 1) ...[
-                            Flexible(
-                              child: Text(
-                                'orders.package_label'.tr(
-                                  namedArgs: {
-                                    'index': index.toString(),
-                                    'total': total.toString(),
-                                  },
-                                ),
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: DesignTokens.textSecondary,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
+                          Text(
+                            isCanada ? '🇨🇦' : '🌍',
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            isCanada
+                                ? 'orders.ships_from_canada'.tr()
+                                : 'orders.ships_international'.tr(),
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: isCanada
+                                  ? DesignTokens.canadaRed
+                                  : DesignTokens.primary,
                             ),
-                            if (hasPerishable) const SizedBox(width: 6),
-                          ],
-                          if (hasPerishable)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 7,
-                                vertical: 3,
-                              ),
-                              decoration: BoxDecoration(
-                                color: DesignTokens.success.withValues(
-                                  alpha: 0.12,
-                                ),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: DesignTokens.success.withValues(
-                                    alpha: 0.35,
-                                  ),
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Text(
-                                    '🥬',
-                                    style: TextStyle(fontSize: 10),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    'orders.perishable_chip'.tr(),
-                                    style: const TextStyle(
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.w700,
-                                      color: DesignTokens.success,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                          ),
                         ],
                       ),
-                    ],
-                  ),
-                ),
-                // Package status badge
-                if (!isTerminalPackage)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 5,
                     ),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          packageStatusConfig.color.withValues(alpha: 0.15),
-                          packageStatusConfig.color.withValues(alpha: 0.05),
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: packageStatusConfig.color.withValues(alpha: 0.3),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          packageStatusConfig.icon,
-                          size: 12,
-                          color: packageStatusConfig.color,
+                    if (!isTerminalPackage)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
                         ),
-                        const SizedBox(width: 4),
-                        Text(
-                          packageStatusConfig.label,
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: packageStatusConfig.color,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              packageStatusConfig.color.withValues(alpha: 0.15),
+                              packageStatusConfig.color.withValues(alpha: 0.05),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: packageStatusConfig.color.withValues(
+                              alpha: 0.3,
+                            ),
                           ),
                         ),
-                      ],
-                    ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              packageStatusConfig.icon,
+                              size: 12,
+                              color: packageStatusConfig.color,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              packageStatusConfig.label,
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: packageStatusConfig.color,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  sellerName,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: isDark
+                        ? DesignTokens.white
+                        : DesignTokens.textPrimary,
                   ),
+                ),
+                const SizedBox(height: 4),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    if (total > 1)
+                      Text(
+                        'orders.package_label'.tr(
+                          namedArgs: {
+                            'index': index.toString(),
+                            'total': total.toString(),
+                          },
+                        ),
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: DesignTokens.textSecondary,
+                        ),
+                      ),
+                    if (hasPerishable)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: DesignTokens.success.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: DesignTokens.success.withValues(alpha: 0.35),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text('🥬', style: TextStyle(fontSize: 10)),
+                            const SizedBox(width: 4),
+                            Text(
+                              'orders.perishable_chip'.tr(),
+                              style: const TextStyle(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w700,
+                                color: DesignTokens.success,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
               ],
             ),
           ),

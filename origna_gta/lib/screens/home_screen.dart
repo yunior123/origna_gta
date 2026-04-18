@@ -305,114 +305,136 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   PreferredSizeWidget _buildModernAppBar() {
     return PreferredSize(
       preferredSize: const Size.fromHeight(64),
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [
-              DesignTokens.gradientStart,
-              DesignTokens.gradientMiddle,
-              DesignTokens.gradientEnd,
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: DesignTokens.gradientStart.withValues(alpha: 0.5),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: SafeArea(
-          child: Align(
-            alignment: Alignment.center,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(
-                maxWidth: ResponsiveBreakpoints.contentMaxWidth,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isCompact = constraints.maxWidth < 430;
+          return Container(
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [
+                  DesignTokens.gradientStart,
+                  DesignTokens.gradientMiddle,
+                  DesignTokens.gradientEnd,
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
+              boxShadow: [
+                BoxShadow(
+                  color: DesignTokens.gradientStart.withValues(alpha: 0.5),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
+              ],
+            ),
+            child: SafeArea(
+              child: Align(
+                alignment: Alignment.center,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(
+                    maxWidth: ResponsiveBreakpoints.contentMaxWidth,
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    child: Row(
                       children: [
-                        TweenAnimationBuilder<double>(
-                          tween: Tween(begin: 0.0, end: 1.0),
-                          duration: const Duration(milliseconds: 800),
-                          curve: Curves.elasticOut,
-                          builder: (context, value, child) {
-                            return Transform.scale(
-                              scale: value,
-                              child: Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: DesignTokens.white.withValues(
-                                    alpha: 0.2,
-                                  ),
-                                  borderRadius: BorderRadius.circular(
-                                    DesignTokens.radius16,
-                                  ),
-                                  border: Border.all(
-                                    color: DesignTokens.white.withValues(
-                                      alpha: 0.3,
+                        Expanded(
+                          child: Row(
+                            children: [
+                              TweenAnimationBuilder<double>(
+                                tween: Tween(begin: 0.0, end: 1.0),
+                                duration: const Duration(milliseconds: 800),
+                                curve: Curves.elasticOut,
+                                builder: (context, value, child) {
+                                  return Transform.scale(
+                                    scale: value,
+                                    child: Container(
+                                      padding: EdgeInsets.all(
+                                        isCompact ? 8 : 10,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: DesignTokens.white.withValues(
+                                          alpha: 0.2,
+                                        ),
+                                        borderRadius: BorderRadius.circular(
+                                          DesignTokens.radius16,
+                                        ),
+                                        border: Border.all(
+                                          color: DesignTokens.white.withValues(
+                                            alpha: 0.3,
+                                          ),
+                                          width: 1,
+                                        ),
+                                      ),
+                                      child: Icon(
+                                        Icons.shopping_bag,
+                                        color: DesignTokens.white,
+                                        size: isCompact ? 24 : 28,
+                                      ),
                                     ),
-                                    width: 1,
+                                  );
+                                },
+                              ),
+                              SizedBox(width: isCompact ? 8 : 12),
+                              Flexible(
+                                child: Semantics(
+                                  header: true,
+                                  child: ShaderMask(
+                                    shaderCallback: (bounds) => LinearGradient(
+                                      colors: [
+                                        DesignTokens.white,
+                                        DesignTokens.white.withValues(
+                                          alpha: 0.8,
+                                        ),
+                                      ],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ).createShader(bounds),
+                                    child: Text(
+                                      key: Key('home_screen_title'),
+                                      AppConfig.appName,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w900,
+                                        color: DesignTokens.white,
+                                        fontSize: isCompact ? 20 : 24,
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
                                   ),
                                 ),
-                                child: const Icon(
-                                  Icons.shopping_bag,
-                                  color: DesignTokens.white,
-                                  size: 28,
-                                ),
                               ),
-                            );
-                          },
+                            ],
+                          ),
                         ),
-                        const SizedBox(width: 12),
-                        Semantics(
-                          header: true,
-                          child: ShaderMask(
-                            shaderCallback: (bounds) => LinearGradient(
-                              colors: [
-                                DesignTokens.white,
-                                DesignTokens.white.withValues(alpha: 0.8),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            physics: const ClampingScrollPhysics(),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const _SettingsButton(),
+                                _NotificationBellButton(),
+                                const _AddProductButton(),
+                                const CartBadge.animated(),
                               ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ).createShader(bounds),
-                            child: const Text(
-                              key: Key('home_screen_title'),
-                              AppConfig.appName,
-                              style: TextStyle(
-                                fontWeight: FontWeight.w900,
-                                color: DesignTokens.white,
-                                fontSize: 24,
-                                letterSpacing: 0.5,
-                              ),
                             ),
                           ),
                         ),
                       ],
                     ),
-                    Row(
-                      children: [
-                        const _SettingsButton(),
-                        _NotificationBellButton(),
-                        const _AddProductButton(),
-                        const CartBadge.animated(),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ), // ConstrainedBox
-          ), // Align
-        ),
+                  ),
+                ), // ConstrainedBox
+              ), // Align
+            ),
+          );
+        },
       ),
     );
   }
@@ -647,6 +669,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
 // ═══ Widget Previews ═══
 
+const _previewHomeImageBase = 'https://fastly.picsum.photos/id';
+
+String _previewHomeImage(int id, {int width = 900, int height = 900}) =>
+    '$_previewHomeImageBase/$id/$width/$height.jpg';
+
 final _previewProducts = [
   Product(
     productId: 'preview-1',
@@ -655,7 +682,7 @@ final _previewProducts = [
     description: 'Pure Quebec maple syrup, Grade A Amber',
     priceCents: 1899,
     stockQuantity: 150,
-    imageUrls: ['images/1.png'],
+    imageUrls: [_previewHomeImage(431)],
     categoryId: 1,
     createdAt: DateTime(2026, 1, 15),
     isTrending: true,
@@ -675,7 +702,7 @@ final _previewProducts = [
     priceCents: 7999,
     compareAtPriceCents: 9999,
     stockQuantity: 42,
-    imageUrls: ['images/2.png'],
+    imageUrls: [_previewHomeImage(292)],
     categoryId: 3,
     createdAt: DateTime(2026, 2, 10),
     rating: 4.5,
@@ -691,7 +718,7 @@ final _previewProducts = [
     description: 'Small-batch jam from Nova Scotia wild blueberries',
     priceCents: 1249,
     stockQuantity: 200,
-    imageUrls: ['images/3.png'],
+    imageUrls: [_previewHomeImage(1025)],
     categoryId: 1,
     createdAt: DateTime(2026, 3, 1),
     isTrending: true,
@@ -710,7 +737,7 @@ final _previewProducts = [
     description: 'Set of 4 handmade ceramic mugs, dishwasher safe',
     priceCents: 5499,
     stockQuantity: 28,
-    imageUrls: ['images/4.png'],
+    imageUrls: [_previewHomeImage(1062)],
     categoryId: 5,
     createdAt: DateTime(2026, 1, 28),
     rating: 4.3,
@@ -727,7 +754,7 @@ final _previewProducts = [
     priceCents: 29999,
     compareAtPriceCents: 39999,
     stockQuantity: 15,
-    imageUrls: ['images/5.png'],
+    imageUrls: [_previewHomeImage(367)],
     categoryId: 8,
     createdAt: DateTime(2026, 2, 20),
     isTrending: true,
@@ -745,7 +772,7 @@ final _previewProducts = [
     description: 'Selection of aged Quebec cheeses, locally sourced',
     priceCents: 4500,
     stockQuantity: 10,
-    imageUrls: ['images/6.png'],
+    imageUrls: [_previewHomeImage(433)],
     categoryId: 1,
     createdAt: DateTime(2026, 3, 5),
     rating: 4.6,

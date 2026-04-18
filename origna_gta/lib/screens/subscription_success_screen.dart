@@ -467,14 +467,6 @@ Widget previewSubscriptionSuccessScreenMobile() =>
     previewMobile(child: _subscriptionSuccessContent());
 
 @Preview(
-  name: 'Premium Upgrade Success — Tablet',
-  group: 'Screens — Premium Flow',
-  size: Size(768, 1024),
-)
-Widget previewSubscriptionSuccessScreenTablet() =>
-    previewTablet(child: _subscriptionSuccessContent());
-
-@Preview(
   name: 'Premium Upgrade Success — Desktop',
   group: 'Screens — Premium Flow',
   size: Size(1280, 800),
@@ -482,35 +474,7 @@ Widget previewSubscriptionSuccessScreenTablet() =>
 Widget previewSubscriptionSuccessScreenDesktop() =>
     previewDesktop(child: _subscriptionSuccessContent());
 
-@Preview(
-  name: 'Premium Upgrade Success — Web',
-  group: 'Screens — Premium Flow',
-  size: Size(1440, 900),
-)
-Widget previewSubscriptionSuccessScreenWeb() =>
-    previewWeb(child: _subscriptionSuccessContent());
-
 // ── Light ────────────────────────────────────────────────────────────────────
-@Preview(
-  name: 'Premium Upgrade Success Light — Mobile',
-  group: 'Screens — Premium Flow',
-  size: Size(390, 844),
-)
-Widget previewSubscriptionSuccessLightMobile() => previewMobile(
-  theme: previewLightTheme,
-  child: _subscriptionSuccessContent(),
-);
-
-@Preview(
-  name: 'Premium Upgrade Success Light — Tablet',
-  group: 'Screens — Premium Flow',
-  size: Size(768, 1024),
-)
-Widget previewSubscriptionSuccessLightTablet() => previewTablet(
-  theme: previewLightTheme,
-  child: _subscriptionSuccessContent(),
-);
-
 @Preview(
   name: 'Premium Upgrade Success Light — Desktop',
   group: 'Screens — Premium Flow',

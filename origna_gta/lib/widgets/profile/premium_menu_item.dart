@@ -68,7 +68,10 @@ class PremiumMenuItem extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 6,
+                          crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
                             Text(
                               'subscription.premium_label'.tr(),
@@ -80,8 +83,7 @@ class PremiumMenuItem extends StatelessWidget {
                                     : DesignTokens.textPrimary,
                               ),
                             ),
-                            if (isPremium) ...[
-                              const SizedBox(width: 8),
+                            if (isPremium)
                               Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 8,
@@ -102,7 +104,6 @@ class PremiumMenuItem extends StatelessWidget {
                                   ),
                                 ),
                               ),
-                            ],
                           ],
                         ),
                         const SizedBox(height: 4),
@@ -110,6 +111,8 @@ class PremiumMenuItem extends StatelessWidget {
                           isPremium
                               ? 'subscription.menu_manage_desc'.tr()
                               : 'subscription.menu_upgrade_desc'.tr(),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: 12,
                             color: DesignTokens.textSecondary,

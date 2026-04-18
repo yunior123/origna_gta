@@ -101,7 +101,13 @@ impl OrignaGtaMcp {
 
     async fn add_to_cart(&self, params: &Value, ctx: &McpContext) -> McpResult<Value> {
         let user_id = ctx.user_id()?;
-        tools::shopping::add_to_cart(self.state.clone(), &user_id, params, Some(&self.idempotency)).await
+        tools::shopping::add_to_cart(
+            self.state.clone(),
+            &user_id,
+            params,
+            Some(&self.idempotency),
+        )
+        .await
     }
 
     async fn remove_from_cart(&self, params: &Value, ctx: &McpContext) -> McpResult<Value> {
@@ -587,12 +593,21 @@ mod tests {
     #[serial_test::serial]
     async fn test_handle_request_check_inventory() {
         let server = make_server().await;
-        
-        server.state.db.upsert_document("products", "products:p1", json!({
-            "name": "Test Item",
-            "stockQuantity": 10,
-            "lifecycleStatus": "active"
-        })).await.unwrap();
+
+        server
+            .state
+            .db
+            .upsert_document(
+                "products",
+                "products:p1",
+                json!({
+                    "name": "Test Item",
+                    "stockQuantity": 10,
+                    "lifecycleStatus": "active"
+                }),
+            )
+            .await
+            .unwrap();
 
         let ctx = McpContext::new();
         let req = JsonRpcRequest {

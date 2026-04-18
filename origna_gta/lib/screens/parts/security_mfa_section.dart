@@ -17,86 +17,92 @@ Widget _buildMfaStatusCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  gradient: DesignTokens.primaryGradient,
-                  borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                ),
-                child: const Icon(
-                  Icons.shield_rounded,
-                  color: DesignTokens.white,
-                  size: 22,
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'security.title'.tr(),
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      gradient: DesignTokens.primaryGradient,
+                      borderRadius: BorderRadius.circular(
+                        DesignTokens.radius12,
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'security.subtitle'.tr(),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: DesignTokens.textSecondary,
+                    child: const Icon(
+                      Icons.shield_rounded,
+                      color: DesignTokens.white,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'security.title'.tr(),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'security.subtitle'.tr(),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: DesignTokens.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: mfaState.mfaEnabled
+                      ? DesignTokens.success.withValues(alpha: 0.12)
+                      : DesignTokens.outlineVariant.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      mfaState.mfaEnabled
+                          ? Icons.check_circle_rounded
+                          : Icons.cancel_rounded,
+                      size: 14,
+                      color: mfaState.mfaEnabled
+                          ? DesignTokens.success
+                          : DesignTokens.textSecondary,
+                    ),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        mfaState.mfaEnabled
+                            ? 'security.mfa_enabled'.tr()
+                            : 'security.mfa_disabled'.tr(),
+                        style: TextStyle(
+                          color: mfaState.mfaEnabled
+                              ? DesignTokens.success
+                              : DesignTokens.textSecondary,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 11,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
-                ),
-              ),
-              Flexible(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: mfaState.mfaEnabled
-                        ? DesignTokens.success.withValues(alpha: 0.12)
-                        : DesignTokens.outlineVariant.withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        mfaState.mfaEnabled
-                            ? Icons.check_circle_rounded
-                            : Icons.cancel_rounded,
-                        size: 14,
-                        color: mfaState.mfaEnabled
-                            ? DesignTokens.success
-                            : DesignTokens.textSecondary,
-                      ),
-                      const SizedBox(width: 4),
-                      Flexible(
-                        child: Text(
-                          mfaState.mfaEnabled
-                              ? 'security.mfa_enabled'.tr()
-                              : 'security.mfa_disabled'.tr(),
-                          style: TextStyle(
-                            color: mfaState.mfaEnabled
-                                ? DesignTokens.success
-                                : DesignTokens.textSecondary,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 11,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
                 ),
               ),
             ],

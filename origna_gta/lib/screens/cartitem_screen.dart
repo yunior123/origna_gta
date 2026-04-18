@@ -709,6 +709,11 @@ class CartItemScreen extends StatelessWidget {
 
 // ═══ Widget Previews ═══
 
+const _previewCartImageBase = 'https://fastly.picsum.photos/id';
+
+String _previewCartImage(int id, {int width = 900, int height = 900}) =>
+    '$_previewCartImageBase/$id/$width/$height.jpg';
+
 Widget _cartItemContent() => previewScope(
   child: Scaffold(
     body: Center(
@@ -717,7 +722,12 @@ Widget _cartItemContent() => previewScope(
         child: CartItemScreen(
           productId: 'preview-id',
           cartItemId: 'preview-cart-item-id',
-          item: const {'name': 'Preview Product', 'price': 9.99, 'quantity': 1},
+          item: {
+            'name': 'Preview Product',
+            'price': 9.99,
+            'quantity': 1,
+            Fields.imageUrls: [_previewCartImage(431), _previewCartImage(1062)],
+          },
           onRemove: () {},
         ),
       ),

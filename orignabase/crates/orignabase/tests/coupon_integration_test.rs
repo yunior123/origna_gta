@@ -183,7 +183,10 @@ async fn test_apply_valid_coupon_reduces_checkout_total() {
             // 10% of $100 = $10
             assert!(discount_cents > 0, "Discount should be applied");
             assert_eq!(discount_cents, 1000, "10% of $100 should be $10");
-            assert_eq!(result["couponCode"], coupon_code, "Coupon code should round-trip"); // ignore-magic
+            assert_eq!(
+                result["couponCode"], coupon_code,
+                "Coupon code should round-trip"
+            ); // ignore-magic
         }
         Err(e) => {
             eprintln!("Could not apply coupon (might not exist): {}", e);
@@ -263,9 +266,14 @@ async fn test_coupon_max_uses_enforced() {
     let subtotal = 5000;
 
     // First use should succeed
-    let first_use =
-        apply_coupon_to_checkout(&client, &buyer_token, &buyer_user_id, &coupon_code, subtotal)
-            .await;
+    let first_use = apply_coupon_to_checkout(
+        &client,
+        &buyer_token,
+        &buyer_user_id,
+        &coupon_code,
+        subtotal,
+    )
+    .await;
     if first_use.is_err() {
         return; // Skip if coupon apply not working
     }
@@ -275,7 +283,12 @@ async fn test_coupon_max_uses_enforced() {
 
     // Second use with a different buyer would fail, but we're same buyer
     // So just verify the endpoint exists and responds
-    let _ =
-        apply_coupon_to_checkout(&client, &buyer_token, &buyer_user_id, &coupon_code, subtotal)
-            .await;
+    let _ = apply_coupon_to_checkout(
+        &client,
+        &buyer_token,
+        &buyer_user_id,
+        &coupon_code,
+        subtotal,
+    )
+    .await;
 }

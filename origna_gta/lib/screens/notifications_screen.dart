@@ -14,7 +14,10 @@ import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:flutter/widget_previews.dart';
 
 /// Live stream of the current user's notifications via OrignaBase realtime.
-final _userNotificationsProvider =
+///
+/// Kept public so global lifecycle handlers can invalidate it after a
+/// meaningful background gap and avoid stale badges/lists on resume.
+final userNotificationsProvider =
     StreamProvider.autoDispose<List<AppNotification>>((ref) {
       final uid = ref.watch(currentUserProvider)?.uid;
       if (uid == null) return Stream.value(const []);
@@ -30,13 +33,13 @@ class NotificationsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final notificationsAsync = ref.watch(_userNotificationsProvider);
+    final notificationsAsync = ref.watch(userNotificationsProvider);
     final uid = ref.watch(currentUserProvider.select((u) => u?.uid));
 
     return NotificationsScreenLayout(
       notificationsAsync: notificationsAsync,
       uid: uid,
-      onRefresh: () async => ref.invalidate(_userNotificationsProvider),
+      onRefresh: () async => ref.invalidate(userNotificationsProvider),
       onBack: () => Navigator.of(context).pop(),
       onMarkAllRead: () => _markAll(context, uid, ref),
       onMarkRead: (n) => _markRead(n, uid, ref),
@@ -554,14 +557,84 @@ class _SectionHeader extends StatelessWidget {
 
 // ═══ Widget Previews ═══
 
+final _previewNotificationsMixed = [
+  AppNotification(
+    id: 'notif-order-confirmed',
+    title: 'Order confirmed — Small-Batch Espresso Beans',
+    body: 'Your order #OG-2048 has been confirmed and is now being prepared.',
+    type: NotificationTypes.orderConfirmation,
+    isRead: false,
+    createdAt: DateTime.now().subtract(const Duration(minutes: 8)),
+  ),
+  AppNotification(
+    id: 'notif-chat',
+    title: 'New message from North Roast Co.',
+    body: 'We packed your order and added a note about roast date freshness.',
+    type: NotificationTypes.chatMessage,
+    isRead: false,
+    createdAt: DateTime.now().subtract(const Duration(hours: 2)),
+  ),
+  AppNotification(
+    id: 'notif-shipping',
+    title: 'Shipping update — Tracking now available',
+    body: 'Carrier UPS picked up your package. Delivery is expected this week.',
+    type: NotificationTypes.shippingUpdate,
+    isRead: true,
+    createdAt: DateTime.now().subtract(const Duration(days: 1, hours: 3)),
+  ),
+  AppNotification(
+    id: 'notif-stock',
+    title: 'Back in stock — Ceramic Morning Mug',
+    body: 'An item from your wishlist is available again in limited quantity.',
+    type: NotificationTypes.stockAvailable,
+    isRead: true,
+    createdAt: DateTime.now().subtract(const Duration(days: 3)),
+  ),
+  AppNotification(
+    id: 'notif-payment',
+    title: 'Payment method needs attention',
+    body: 'Please review your saved card before your next subscription renewal.',
+    type: NotificationTypes.paymentIssue,
+    isRead: true,
+    createdAt: DateTime.now().subtract(const Duration(days: 10)),
+  ),
+];
+
+final _previewNotificationsUnread = [
+  AppNotification(
+    id: 'notif-new-order',
+    title: 'New order from Toronto buyer',
+    body: 'A buyer just placed an order for 3 products from your storefront.',
+    type: NotificationTypes.newOrder,
+    isRead: false,
+    createdAt: DateTime.now().subtract(const Duration(minutes: 20)),
+  ),
+  AppNotification(
+    id: 'notif-account',
+    title: 'Account update completed',
+    body: 'Your seller verification details were successfully reviewed.',
+    type: NotificationTypes.accountUpdate,
+    isRead: false,
+    createdAt: DateTime.now().subtract(const Duration(hours: 5)),
+  ),
+  AppNotification(
+    id: 'notif-order-2',
+    title: 'Order confirmed — Maple Gift Box',
+    body: 'Your buyer order is confirmed and the shipping label is next.',
+    type: NotificationTypes.orderConfirmation,
+    isRead: false,
+    createdAt: DateTime.now().subtract(const Duration(days: 2)),
+  ),
+];
+
 Widget _notificationsLoading() => previewScope(
   child: NotificationsScreenLayout(
     notificationsAsync: const AsyncValue.loading(),
     uid: 'preview-uid',
     onRefresh: () async {},
     onBack: () {},
-    onMarkAllRead: () async {},
-    onMarkRead: (n) async {},
+    onMarkAllRead: () {},
+    onMarkRead: (_) {},
   ),
 );
 
@@ -571,60 +644,56 @@ Widget _notificationsEmpty() => previewScope(
     uid: 'preview-uid',
     onRefresh: () async {},
     onBack: () {},
-    onMarkAllRead: () async {},
-    onMarkRead: (n) async {},
+    onMarkAllRead: () {},
+    onMarkRead: (_) {},
   ),
 );
 
-// ── Loading Dark ─────────────────────────────────────────────────────────────
+Widget _notificationsMixed() => previewScope(
+  child: NotificationsScreenLayout(
+    notificationsAsync: AsyncValue.data(_previewNotificationsMixed),
+    uid: 'preview-uid',
+    onRefresh: () async {},
+    onBack: () {},
+    onMarkAllRead: () {},
+    onMarkRead: (_) {},
+  ),
+);
+
+Widget _notificationsUnread() => previewScope(
+  child: NotificationsScreenLayout(
+    notificationsAsync: AsyncValue.data(_previewNotificationsUnread),
+    uid: 'preview-uid',
+    onRefresh: () async {},
+    onBack: () {},
+    onMarkAllRead: () {},
+    onMarkRead: (_) {},
+  ),
+);
+
 @Preview(
-  name: 'Notifications Center Dark — Mobile',
+  name: 'Notifications Feed Dark — Mobile',
   group: 'Screens',
   size: Size(390, 844),
 )
 Widget previewNotificationsScreenMobile() =>
-    previewMobile(child: _notificationsLoading());
+    previewMobile(child: _notificationsMixed());
 
 @Preview(
-  name: 'Notifications Center Dark — Tablet',
-  group: 'Screens',
-  size: Size(768, 1024),
-)
-Widget previewNotificationsScreenTablet() =>
-    previewTablet(child: _notificationsLoading());
-
-@Preview(
-  name: 'Notifications Center Dark — Desktop',
+  name: 'Notifications Feed Dark — Desktop',
   group: 'Screens',
   size: Size(1280, 800),
 )
 Widget previewNotificationsScreenDesktop() =>
-    previewDesktop(child: _notificationsLoading());
+    previewDesktop(child: _notificationsMixed());
 
 @Preview(
-  name: 'Notifications Center Dark — Web',
-  group: 'Screens',
-  size: Size(1440, 900),
-)
-Widget previewNotificationsScreenWeb() =>
-    previewWeb(child: _notificationsLoading());
-
-// ── Empty State Dark ─────────────────────────────────────────────────────────
-@Preview(
-  name: 'Notifications Empty Dark — Mobile',
+  name: 'Notifications Unread Dark — Mobile',
   group: 'Screens',
   size: Size(390, 844),
 )
-Widget previewNotificationsScreenEmptyMobile() =>
-    previewMobile(child: _notificationsEmpty());
-
-@Preview(
-  name: 'Notifications Empty Dark — Tablet',
-  group: 'Screens',
-  size: Size(768, 1024),
-)
-Widget previewNotificationsScreenEmptyTablet() =>
-    previewTablet(child: _notificationsEmpty());
+Widget previewNotificationsUnreadMobile() =>
+    previewMobile(child: _notificationsUnread());
 
 @Preview(
   name: 'Notifications Empty Dark — Desktop',
@@ -635,74 +704,17 @@ Widget previewNotificationsScreenEmptyDesktop() =>
     previewDesktop(child: _notificationsEmpty());
 
 @Preview(
-  name: 'Notifications Empty Dark — Web',
-  group: 'Screens',
-  size: Size(1440, 900),
-)
-Widget previewNotificationsScreenEmptyWeb() =>
-    previewWeb(child: _notificationsEmpty());
-
-// ── Light mode ───────────────────────────────────────────────────────────────
-@Preview(
-  name: 'Notifications Center Light — Mobile',
-  group: 'Screens',
-  size: Size(390, 844),
-)
-Widget previewNotificationsLightMobile() =>
-    previewMobile(theme: previewLightTheme, child: _notificationsLoading());
-
-@Preview(
-  name: 'Notifications Center Light — Tablet',
+  name: 'Notifications Loading Dark — Tablet',
   group: 'Screens',
   size: Size(768, 1024),
 )
-Widget previewNotificationsLightTablet() =>
-    previewTablet(theme: previewLightTheme, child: _notificationsLoading());
+Widget previewNotificationsScreenTablet() =>
+    previewTablet(child: _notificationsLoading());
 
 @Preview(
-  name: 'Notifications Center Light — Desktop',
+  name: 'Notifications Feed Light — Desktop',
   group: 'Screens',
   size: Size(1280, 800),
 )
 Widget previewNotificationsLightDesktop() =>
-    previewDesktop(theme: previewLightTheme, child: _notificationsLoading());
-
-@Preview(
-  name: 'Notifications Center Light — Web',
-  group: 'Screens',
-  size: Size(1440, 900),
-)
-Widget previewNotificationsLightWeb() =>
-    previewWeb(theme: previewLightTheme, child: _notificationsLoading());
-
-@Preview(
-  name: 'Notifications Empty Light — Mobile',
-  group: 'Screens',
-  size: Size(390, 844),
-)
-Widget previewNotificationsEmptyLightMobile() =>
-    previewMobile(theme: previewLightTheme, child: _notificationsEmpty());
-
-@Preview(
-  name: 'Notifications Empty Light — Tablet',
-  group: 'Screens',
-  size: Size(768, 1024),
-)
-Widget previewNotificationsEmptyLightTablet() =>
-    previewTablet(theme: previewLightTheme, child: _notificationsEmpty());
-
-@Preview(
-  name: 'Notifications Empty Light — Desktop',
-  group: 'Screens',
-  size: Size(1280, 800),
-)
-Widget previewNotificationsEmptyLightDesktop() =>
-    previewDesktop(theme: previewLightTheme, child: _notificationsEmpty());
-
-@Preview(
-  name: 'Notifications Empty Light — Web',
-  group: 'Screens',
-  size: Size(1440, 900),
-)
-Widget previewNotificationsEmptyLightWeb() =>
-    previewWeb(theme: previewLightTheme, child: _notificationsEmpty());
+    previewDesktop(theme: previewLightTheme, child: _notificationsMixed());

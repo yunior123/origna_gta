@@ -24,6 +24,12 @@ class EmailVerificationRequiredScreen extends ConsumerStatefulWidget {
 final _evrsCheckingProvider = StateProvider.autoDispose<bool>((ref) => false);
 final _evrsResendingProvider = StateProvider.autoDispose<bool>((ref) => false);
 
+final _previewEmailVerificationUser = AppAuthUser(
+  uid: 'preview-email-verification-user',
+  email: 'verify.me@origna.ca',
+  emailVerified: false,
+);
+
 class _EmailVerificationRequiredScreenState
     extends ConsumerState<EmailVerificationRequiredScreen> {
   @override
@@ -343,37 +349,52 @@ class _EmailVerificationRequiredScreenState
   }
 }
 
+Widget _emailVerificationPreview({
+  bool checking = false,
+  bool resending = false,
+}) => previewScope(
+  extraOverrides: [
+    currentUserProvider.overrideWith((ref) => _previewEmailVerificationUser),
+    _evrsCheckingProvider.overrideWith((ref) => checking),
+    _evrsResendingProvider.overrideWith((ref) => resending),
+  ],
+  child: const EmailVerificationRequiredScreen(),
+);
+
 @Preview(
   name: 'Email Verification — Mobile',
   group: 'EmailVerification',
   size: Size(390, 844),
 )
-Widget previewEmailVerificationMobile() =>
-    previewMobile(child: const EmailVerificationRequiredScreen());
-
-@Preview(
-  name: 'Email Verification — Tablet',
-  group: 'EmailVerification',
-  size: Size(768, 1024),
-)
-Widget previewEmailVerificationTablet() =>
-    previewTablet(child: const EmailVerificationRequiredScreen());
+Widget previewEmailVerificationMobile() => previewMobile(
+  child: _emailVerificationPreview(),
+);
 
 @Preview(
   name: 'Email Verification — Desktop',
   group: 'EmailVerification',
   size: Size(1280, 800),
 )
-Widget previewEmailVerificationDesktop() =>
-    previewDesktop(child: const EmailVerificationRequiredScreen());
+Widget previewEmailVerificationDesktop() => previewDesktop(
+  child: _emailVerificationPreview(),
+);
 
 @Preview(
-  name: 'Email Verification — Light',
+  name: 'Email Verification Checking — Mobile',
   group: 'EmailVerification',
   size: Size(390, 844),
+)
+Widget previewEmailVerificationCheckingMobile() => previewMobile(
+  child: _emailVerificationPreview(checking: true),
+);
+
+@Preview(
+  name: 'Email Verification Light — Desktop',
+  group: 'EmailVerification',
+  size: Size(1280, 800),
   brightness: Brightness.light,
 )
-Widget previewEmailVerificationLight() => previewMobile(
-  child: const EmailVerificationRequiredScreen(),
+Widget previewEmailVerificationLightDesktop() => previewDesktop(
+  child: _emailVerificationPreview(resending: true),
   theme: previewLightTheme,
 );

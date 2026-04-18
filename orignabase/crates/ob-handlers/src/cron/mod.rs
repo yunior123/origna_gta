@@ -14,7 +14,9 @@ use serde_json::{Value, json};
 use tracing::{error, info, warn};
 
 use crate::HandlersState;
-use crate::shared::schema::{OrderStatus, PaymentStatus, business_rules, collections, documents, fields};
+use crate::shared::schema::{
+    OrderStatus, PaymentStatus, business_rules, collections, documents, fields,
+};
 
 // ---------------------------------------------------------------------------
 // Field extraction helpers (local to cron module)
@@ -165,7 +167,8 @@ async fn run_auto_capture(state: &HandlersState) -> std::result::Result<(), Stri
     let mut failed_count = 0u32;
 
     for order in &orders {
-        let order_id = normalize_record_id(order.get(fields::ID).and_then(|v| v.as_str()).unwrap_or(""));
+        let order_id =
+            normalize_record_id(order.get(fields::ID).and_then(|v| v.as_str()).unwrap_or(""));
         let payment_intent_id = order
             .get(fields::PAYMENT_INTENT_ID)
             .and_then(|v| v.as_str())
@@ -294,10 +297,7 @@ async fn run_auto_capture(state: &HandlersState) -> std::result::Result<(), Stri
             {
                 Ok(_) => success_count += 1,
                 Err(e) => {
-                    warn!(
-                        "Failed to create completed payout {}: {e}",
-                        payout_id
-                    );
+                    warn!("Failed to create completed payout {}: {e}", payout_id);
                     failed_count += 1;
                 }
             }
@@ -378,6 +378,35 @@ pub async fn check_expired_authorizations(state: &HandlersState) {
                     .get(fields::PAYMENT_INTENT_ID)
                     .and_then(|v| v.as_str())
                     .unwrap_or("");
+                let stock_restored = order
+                    .get(fields::STOCK_RESTORED)
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false);
+                let order_id = normalize_record_id(id);
+
+                let order_update = state
+                    .db
+                    .update_document_cas(
+                        collections::ORDERS,
+                        order_id,
+                        json!({
+                            fields::ORDER_STATUS: "expired",
+                            fields::PAYMENT_STATUS: "cancelled",
+                            fields::CANCELLATION_REASON: "authorization_expired",
+                            fields::STOCK_RESTORED: true,
+                            fields::UPDATED_AT: now_str,
+                        }),
+                        fields::ORDER_STATUS,
+                        &order[fields::ORDER_STATUS],
+                    )
+                    .await;
+                let Ok(order_update) = order_update else {
+                    error!(order_id = %id, "Failed to expire order");
+                    continue;
+                };
+                if order_update.is_none() {
+                    continue;
+                }
 
                 if !payment_intent_id.is_empty() {
                     let _ =
@@ -385,7 +414,9 @@ pub async fn check_expired_authorizations(state: &HandlersState) {
                 }
 
                 // Restore stock for all physical items
-                if let Some(items) = order.get(fields::ITEMS).and_then(|v| v.as_array()) {
+                if !stock_restored
+                    && let Some(items) = order.get(fields::ITEMS).and_then(|v| v.as_array())
+                {
                     for item in items {
                         let is_digital = item
                             .get(fields::IS_DIGITAL)
@@ -419,21 +450,6 @@ pub async fn check_expired_authorizations(state: &HandlersState) {
                     }
                 }
 
-                let order_update = state
-                    .db
-                    .update_document(
-                        collections::ORDERS,
-                        normalize_record_id(id),
-                        json!({
-                            fields::ORDER_STATUS: "expired",
-                            fields::PAYMENT_STATUS: "cancelled",
-                            fields::CANCELLATION_REASON: "authorization_expired",
-                            fields::STOCK_RESTORED: true,
-                            fields::UPDATED_AT: now_str,
-                        }),
-                    )
-                    .await;
-
                 let event_write = state
                     .db
                     .create_document(
@@ -448,14 +464,10 @@ pub async fn check_expired_authorizations(state: &HandlersState) {
                     )
                     .await;
 
-                if let Err(e) = order_update {
-                    error!(order_id = %id, error = %e, "Failed to expire order");
-                } else {
-                    if let Err(e) = event_write {
-                        error!(order_id = %id, error = %e, "Failed to log expired authorization event");
-                    }
-                    cancelled += 1;
+                if let Err(e) = event_write {
+                    error!(order_id = %id, error = %e, "Failed to log expired authorization event");
                 }
+                cancelled += 1;
             }
             info!("Expired authorizations: {} orders cancelled", cancelled);
         }
@@ -632,7 +644,10 @@ pub async fn cleanup_orphaned_r2_images(state: &HandlersState) {
         // Collect all referenced image URLs from products
         let products = state
             .db
-            .query_bind(&format!("SELECT * FROM {} LIMIT 5000", collections::PRODUCTS), json!({}))
+            .query_bind(
+                &format!("SELECT * FROM {} LIMIT 5000", collections::PRODUCTS),
+                json!({}),
+            )
             .await
             .map_err(|e| e.to_string())?;
 
@@ -806,7 +821,10 @@ pub async fn retry_failed_meilisearch_syncs(state: &HandlersState) {
         let max_retries = business_rules::MEILISEARCH_DLQ_MAX_RETRIES;
 
         for failure in &failures {
-            let failure_id = failure.get(fields::ID).and_then(|v| v.as_str()).unwrap_or("");
+            let failure_id = failure
+                .get(fields::ID)
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
             let product_id = failure
                 .get(fields::PRODUCT_ID)
                 .and_then(|v| v.as_str())
@@ -1047,7 +1065,10 @@ pub async fn check_low_stock_alerts(state: &HandlersState) {
                 .get(fields::NAME)
                 .and_then(|v| v.as_str())
                 .unwrap_or("Your product");
-            let product_id = product.get(fields::ID).and_then(|v| v.as_str()).unwrap_or("");
+            let product_id = product
+                .get(fields::ID)
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
 
             // Generate and send low stock email
             if let Some(api_key) = state.config.secret("mailjet_api_key")
@@ -2220,7 +2241,11 @@ mod tests {
             turnstile_secret_key: None,
         };
         // Clear all cron locks to prevent interference from stale locks in shared DB
-        if let Ok(locks) = state.db.list_documents(collections::CRON_LOCKS, Some(100usize), Some(0usize)).await {
+        if let Ok(locks) = state
+            .db
+            .list_documents(collections::CRON_LOCKS, Some(100usize), Some(0usize))
+            .await
+        {
             for lock in &locks {
                 if let Some(id) = lock.get(fields::ID).and_then(|v| v.as_str()) {
                     let _ = state.db.update_document(
@@ -2273,7 +2298,11 @@ mod tests {
             for _attempt in 0..10u32 {
                 // Wait up to 5s for any running lock to complete
                 for _wait in 0..50u32 {
-                    if let Ok(lock) = $state.db.get_document(collections::CRON_LOCKS, $lock_name).await {
+                    if let Ok(lock) = $state
+                        .db
+                        .get_document(collections::CRON_LOCKS, $lock_name)
+                        .await
+                    {
                         if lock.get(fields::STATUS).and_then(|v| v.as_str()) != Some("running") {
                             break;
                         }
@@ -2285,7 +2314,11 @@ mod tests {
                 pre_release_lock($state, $lock_name).await;
                 $cron_fn($state).await;
                 // Verify the cron actually ran (lock should be "completed" now)
-                if let Ok(lock) = $state.db.get_document(collections::CRON_LOCKS, $lock_name).await {
+                if let Ok(lock) = $state
+                    .db
+                    .get_document(collections::CRON_LOCKS, $lock_name)
+                    .await
+                {
                     if lock.get(fields::STATUS).and_then(|v| v.as_str()) == Some("completed") {
                         _ran = true;
                         break;
@@ -2326,7 +2359,11 @@ mod tests {
         };
         // Release all cron locks (mark as completed) rather than deleting,
         // to avoid destroying locks held by other concurrent tests.
-        if let Ok(locks) = state.db.list_documents(collections::CRON_LOCKS, Some(100usize), Some(0usize)).await {
+        if let Ok(locks) = state
+            .db
+            .list_documents(collections::CRON_LOCKS, Some(100usize), Some(0usize))
+            .await
+        {
             for lock in &locks {
                 if let Some(id) = lock.get(fields::ID).and_then(|v| v.as_str()) {
                     let _ = state.db.update_document(
@@ -2427,7 +2464,8 @@ mod tests {
             .db
             .query_raw(&format!(
                 "SELECT * FROM {} WHERE data->>'jobName' = '{}'",
-                collections::CRON_FAILURES, unique_job
+                collections::CRON_FAILURES,
+                unique_job
             ))
             .await
             .unwrap();
@@ -2441,7 +2479,10 @@ mod tests {
         // No MockServer needed — payout bookkeeping only, no Stripe Transfer call.
         // Funds already transferred via destination charge at checkout time.
         let state = setup_state().await;
-        let order_id = format!("test_auto_capture_confirmed_receipts_flow_{}", uuid::Uuid::new_v4());
+        let order_id = format!(
+            "test_auto_capture_confirmed_receipts_flow_{}",
+            uuid::Uuid::new_v4()
+        );
         let seller_id = format!("test_auto_capture_seller_{}", uuid::Uuid::new_v4());
         let payout_id = format!("{order_id}_{seller_id}");
         let pi_id = format!("pi_auto_capture_{}", uuid::Uuid::new_v4());
@@ -2470,14 +2511,21 @@ mod tests {
                 }),
             )
             .await;
-        assert!(upsert_result.is_ok(), "Failed to upsert order: {:?}", upsert_result.err());
+        assert!(
+            upsert_result.is_ok(),
+            "Failed to upsert order: {:?}",
+            upsert_result.err()
+        );
 
         // Call the cron function directly (bypass retry macro to avoid lock issues)
         auto_capture_confirmed_receipts(&state).await;
 
         // Query payout by its physical ID column (not by JSONB orderId) to avoid
         // connection pool race conditions with stale JSONB reads.
-        let payout = state.db.get_document(collections::PAYOUTS, &payout_id).await;
+        let payout = state
+            .db
+            .get_document(collections::PAYOUTS, &payout_id)
+            .await;
         assert!(payout.is_ok(), "Payout should exist after cron run");
         let payout = payout.unwrap();
         assert_eq!(
@@ -2507,7 +2555,11 @@ mod tests {
         );
 
         // Verify order payout_status was updated
-        let order = state.db.get_document(collections::ORDERS, &order_id).await.unwrap();
+        let order = state
+            .db
+            .get_document(collections::ORDERS, &order_id)
+            .await
+            .unwrap();
         assert_eq!(
             order.get(fields::PAYOUT_STATUS).and_then(|v| v.as_str()),
             Some("completed"),
@@ -2563,7 +2615,11 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "auto_capture_confirmed_receipts", auto_capture_confirmed_receipts);
+        run_cron_with_retry!(
+            &state,
+            "auto_capture_confirmed_receipts",
+            auto_capture_confirmed_receipts
+        );
 
         let order = state
             .db
@@ -2572,11 +2628,16 @@ mod tests {
             .unwrap();
         let payouts = query_filtered(&state.db, collections::PAYOUTS, "orderId", &order_id).await;
 
-        assert!(order.get(fields::PAYOUT_STATUS).is_none() || order[fields::PAYOUT_STATUS].is_null());
+        assert!(
+            order.get(fields::PAYOUT_STATUS).is_none() || order[fields::PAYOUT_STATUS].is_null()
+        );
         assert!(payouts.is_empty());
 
         // Clean up: re-enable Stripe so subsequent tests are not affected
-        let _ = state.db.delete_document(collections::CONFIG, documents::PAYMENT_PROVIDERS).await;
+        let _ = state
+            .db
+            .delete_document(collections::CONFIG, documents::PAYMENT_PROVIDERS)
+            .await;
     }
 
     #[tokio::test]
@@ -2607,7 +2668,11 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "auto_capture_confirmed_receipts", auto_capture_confirmed_receipts);
+        run_cron_with_retry!(
+            &state,
+            "auto_capture_confirmed_receipts",
+            auto_capture_confirmed_receipts
+        );
 
         let order = state
             .db
@@ -2615,7 +2680,9 @@ mod tests {
             .await
             .unwrap();
         let payouts = query_filtered(&state.db, collections::PAYOUTS, "orderId", &order_id).await;
-        assert!(order.get(fields::PAYOUT_STATUS).is_none() || order[fields::PAYOUT_STATUS].is_null());
+        assert!(
+            order.get(fields::PAYOUT_STATUS).is_none() || order[fields::PAYOUT_STATUS].is_null()
+        );
         assert!(payouts.is_empty());
     }
 
@@ -2663,7 +2730,11 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "auto_capture_confirmed_receipts", auto_capture_confirmed_receipts);
+        run_cron_with_retry!(
+            &state,
+            "auto_capture_confirmed_receipts",
+            auto_capture_confirmed_receipts
+        );
 
         let order = state
             .db
@@ -2671,7 +2742,9 @@ mod tests {
             .await
             .unwrap();
         let payouts = query_filtered(&state.db, collections::PAYOUTS, "orderId", &order_id).await;
-        assert!(order.get(fields::PAYOUT_STATUS).is_none() || order[fields::PAYOUT_STATUS].is_null());
+        assert!(
+            order.get(fields::PAYOUT_STATUS).is_none() || order[fields::PAYOUT_STATUS].is_null()
+        );
         assert!(payouts.is_empty());
     }
 
@@ -2718,7 +2791,11 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "auto_capture_confirmed_receipts", auto_capture_confirmed_receipts);
+        run_cron_with_retry!(
+            &state,
+            "auto_capture_confirmed_receipts",
+            auto_capture_confirmed_receipts
+        );
 
         let order = state
             .db
@@ -2726,7 +2803,9 @@ mod tests {
             .await
             .unwrap();
         let payouts = query_filtered(&state.db, collections::PAYOUTS, "orderId", &order_id).await;
-        assert!(order.get(fields::PAYOUT_STATUS).is_none() || order[fields::PAYOUT_STATUS].is_null());
+        assert!(
+            order.get(fields::PAYOUT_STATUS).is_none() || order[fields::PAYOUT_STATUS].is_null()
+        );
         assert!(payouts.is_empty());
     }
 
@@ -2760,7 +2839,11 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "auto_capture_confirmed_receipts", auto_capture_confirmed_receipts);
+        run_cron_with_retry!(
+            &state,
+            "auto_capture_confirmed_receipts",
+            auto_capture_confirmed_receipts
+        );
 
         let order = state
             .db
@@ -2851,11 +2934,21 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "cleanup_stale_rate_limits", cleanup_stale_rate_limits);
+        run_cron_with_retry!(
+            &state,
+            "cleanup_stale_rate_limits",
+            cleanup_stale_rate_limits
+        );
 
         // Verify the specific document was deleted
-        let doc = state.db.get_document(collections::RATE_LIMITS, &limit_id).await;
-        assert!(doc.is_err(), "Stale rate limit doc should have been deleted");
+        let doc = state
+            .db
+            .get_document(collections::RATE_LIMITS, &limit_id)
+            .await;
+        assert!(
+            doc.is_err(),
+            "Stale rate limit doc should have been deleted"
+        );
     }
 
     #[tokio::test]
@@ -2914,7 +3007,11 @@ mod tests {
     #[serial_test::serial]
     async fn test_cleanup_orphaned_r2_images_runs() {
         let state = setup_state().await;
-        run_cron_with_retry!(&state, "cleanup_orphaned_r2_images", cleanup_orphaned_r2_images);
+        run_cron_with_retry!(
+            &state,
+            "cleanup_orphaned_r2_images",
+            cleanup_orphaned_r2_images
+        );
     }
 
     #[tokio::test]
@@ -2936,9 +3033,16 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "cleanup_stale_webhook_events", cleanup_stale_webhook_events);
+        run_cron_with_retry!(
+            &state,
+            "cleanup_stale_webhook_events",
+            cleanup_stale_webhook_events
+        );
 
-        let doc = state.db.get_document(collections::WEBHOOK_EVENTS, &ev_id).await;
+        let doc = state
+            .db
+            .get_document(collections::WEBHOOK_EVENTS, &ev_id)
+            .await;
         assert!(doc.is_err(), "Stale webhook event should have been deleted");
     }
 
@@ -2962,18 +3066,34 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "cleanup_stale_security_alerts", cleanup_stale_security_alerts);
+        run_cron_with_retry!(
+            &state,
+            "cleanup_stale_security_alerts",
+            cleanup_stale_security_alerts
+        );
 
-        let doc = state.db.get_document(collections::SECURITY_ALERTS, &alert_id).await;
-        assert!(doc.is_err(), "Stale security alert should have been deleted");
+        let doc = state
+            .db
+            .get_document(collections::SECURITY_ALERTS, &alert_id)
+            .await;
+        assert!(
+            doc.is_err(),
+            "Stale security alert should have been deleted"
+        );
     }
 
     #[tokio::test]
     #[serial_test::serial]
     async fn test_retry_failed_meilisearch_syncs_flow() {
         let state = setup_state().await;
-        let fail_id = format!("test_retry_failed_meilisearch_syncs_flow_{}", uuid::Uuid::new_v4());
-        let product_id = format!("test_retry_failed_meilisearch_syncs_flow_{}", uuid::Uuid::new_v4());
+        let fail_id = format!(
+            "test_retry_failed_meilisearch_syncs_flow_{}",
+            uuid::Uuid::new_v4()
+        );
+        let product_id = format!(
+            "test_retry_failed_meilisearch_syncs_flow_{}",
+            uuid::Uuid::new_v4()
+        );
         let failure_id = &fail_id;
         let product_id = &product_id;
 
@@ -2992,7 +3112,11 @@ mod tests {
             .unwrap();
 
         // Product not found, should resolve
-        run_cron_with_retry!(&state, "retry_failed_meilisearch_syncs", retry_failed_meilisearch_syncs);
+        run_cron_with_retry!(
+            &state,
+            "retry_failed_meilisearch_syncs",
+            retry_failed_meilisearch_syncs
+        );
 
         let failure = state
             .db
@@ -3043,7 +3167,10 @@ mod tests {
     #[serial_test::serial]
     async fn test_compute_trending_products_flow() {
         let state = setup_state().await;
-        let product_id = format!("test_compute_trending_products_flow_{}", uuid::Uuid::new_v4());
+        let product_id = format!(
+            "test_compute_trending_products_flow_{}",
+            uuid::Uuid::new_v4()
+        );
         let product_id = &product_id;
 
         state
@@ -3061,7 +3188,11 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "compute_trending_products", compute_trending_products);
+        run_cron_with_retry!(
+            &state,
+            "compute_trending_products",
+            compute_trending_products
+        );
 
         let product = state
             .db
@@ -3075,8 +3206,14 @@ mod tests {
     #[serial_test::serial]
     async fn test_check_low_stock_alerts_skips_without_email_consent() {
         let state = setup_state().await;
-        let product_id = format!("test_check_low_stock_alerts_skips_without_email_consent_{}", uuid::Uuid::new_v4());
-        let seller_id = format!("test_check_low_stock_alerts_skips_without_email_consent_{}", uuid::Uuid::new_v4());
+        let product_id = format!(
+            "test_check_low_stock_alerts_skips_without_email_consent_{}",
+            uuid::Uuid::new_v4()
+        );
+        let seller_id = format!(
+            "test_check_low_stock_alerts_skips_without_email_consent_{}",
+            uuid::Uuid::new_v4()
+        );
         state
             .db
             .upsert_document(
@@ -3200,7 +3337,11 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "send_abandoned_cart_emails", send_abandoned_cart_emails);
+        run_cron_with_retry!(
+            &state,
+            "send_abandoned_cart_emails",
+            send_abandoned_cart_emails
+        );
 
         let recent = state
             .db
@@ -3220,7 +3361,10 @@ mod tests {
     #[serial_test::serial]
     async fn test_sync_expired_subscriptions_flow() {
         let state = setup_state().await;
-        let user_id = format!("test_sync_expired_subscriptions_flow_{}", uuid::Uuid::new_v4());
+        let user_id = format!(
+            "test_sync_expired_subscriptions_flow_{}",
+            uuid::Uuid::new_v4()
+        );
         let uid = &user_id;
         let period_end = (Utc::now() - Duration::days(1)).to_rfc3339();
 
@@ -3250,7 +3394,11 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "sync_expired_subscriptions", sync_expired_subscriptions);
+        run_cron_with_retry!(
+            &state,
+            "sync_expired_subscriptions",
+            sync_expired_subscriptions
+        );
 
         let user = state
             .db
@@ -3264,7 +3412,10 @@ mod tests {
     #[serial_test::serial]
     async fn test_escalate_stale_return_requests_flow() {
         let state = setup_state().await;
-        let ret_id = format!("test_escalate_stale_return_requests_flow_{}", uuid::Uuid::new_v4());
+        let ret_id = format!(
+            "test_escalate_stale_return_requests_flow_{}",
+            uuid::Uuid::new_v4()
+        );
         let ret_id = &ret_id;
         let requested_at = (Utc::now() - Duration::days(10)).to_rfc3339();
 
@@ -3281,7 +3432,11 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "escalate_stale_return_requests", escalate_stale_return_requests);
+        run_cron_with_retry!(
+            &state,
+            "escalate_stale_return_requests",
+            escalate_stale_return_requests
+        );
 
         let ret = state
             .db
@@ -3295,7 +3450,11 @@ mod tests {
     #[serial_test::serial]
     async fn test_send_premium_renewal_reminders_runs() {
         let state = setup_state().await;
-        run_cron_with_retry!(&state, "send_premium_renewal_reminders", send_premium_renewal_reminders);
+        run_cron_with_retry!(
+            &state,
+            "send_premium_renewal_reminders",
+            send_premium_renewal_reminders
+        );
     }
 
     #[tokio::test]
@@ -3318,9 +3477,18 @@ mod tests {
             .values
             .insert("stripe_secret_key".to_string(), "STRIPE_SECRET_KEY_REDACTED".to_string());
         let state = setup_state_with_config(config, server.uri()).await;
-        let buyer_id = format!("test_check_expired_authorizations_cancels_order_restores_stock_and_logs_event_{}", uuid::Uuid::new_v4());
-        let order_id = format!("test_check_expired_authorizations_cancels_order_restores_stock_and_logs_event_{}", uuid::Uuid::new_v4());
-        let product_id = format!("test_check_expired_authorizations_cancels_order_restores_stock_and_logs_event_{}", uuid::Uuid::new_v4());
+        let buyer_id = format!(
+            "test_check_expired_authorizations_cancels_order_restores_stock_and_logs_event_{}",
+            uuid::Uuid::new_v4()
+        );
+        let order_id = format!(
+            "test_check_expired_authorizations_cancels_order_restores_stock_and_logs_event_{}",
+            uuid::Uuid::new_v4()
+        );
+        let product_id = format!(
+            "test_check_expired_authorizations_cancels_order_restores_stock_and_logs_event_{}",
+            uuid::Uuid::new_v4()
+        );
 
         let created_at = (Utc::now() - Duration::days(10)).to_rfc3339();
         state
@@ -3356,7 +3524,11 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "check_expired_authorizations", check_expired_authorizations);
+        run_cron_with_retry!(
+            &state,
+            "check_expired_authorizations",
+            check_expired_authorizations
+        );
 
         let order = state
             .db
@@ -3386,10 +3558,92 @@ mod tests {
 
     #[tokio::test]
     #[serial_test::serial]
+    async fn test_check_expired_authorizations_does_not_double_restore_stock() {
+        let pi_id = format!("pi_expired_auth_repeat_{}", uuid::Uuid::new_v4());
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path(format!("/payment_intents/{pi_id}/cancel")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                fields::ID: &pi_id,
+                fields::STATUS: "canceled"
+            })))
+            .mount(&server)
+            .await;
+
+        let mut config = Config::load(None).unwrap();
+        config
+            .secrets
+            .values
+            .insert("stripe_secret_key".to_string(), "STRIPE_SECRET_KEY_REDACTED".to_string());
+        let state = setup_state_with_config(config, server.uri()).await;
+        let order_id = format!("expired_order_repeat_{}", uuid::Uuid::new_v4());
+        let product_id = format!("expired_product_repeat_{}", uuid::Uuid::new_v4());
+        let created_at = (Utc::now() - Duration::days(10)).to_rfc3339();
+
+        state
+            .db
+            .upsert_document(
+                collections::PRODUCTS,
+                &product_id,
+                json!({
+                    fields::PRODUCT_ID: &product_id,
+                    fields::STOCK_QUANTITY: 1
+                }),
+            )
+            .await
+            .unwrap();
+        state
+            .db
+            .upsert_document(
+                collections::ORDERS,
+                &order_id,
+                json!({
+                    fields::CREATED_AT: created_at,
+                    fields::PAYMENT_STATUS: "authorized",
+                    fields::ORDER_STATUS: "confirmed",
+                    fields::PAYMENT_INTENT_ID: &pi_id,
+                    fields::STOCK_RESTORED: false,
+                    fields::ITEMS: [{
+                        fields::PRODUCT_ID: &product_id,
+                        fields::QUANTITY: 2,
+                        fields::IS_DIGITAL: false
+                    }]
+                }),
+            )
+            .await
+            .unwrap();
+
+        run_cron_with_retry!(
+            &state,
+            "check_expired_authorizations",
+            check_expired_authorizations
+        );
+        run_cron_with_retry!(
+            &state,
+            "check_expired_authorizations",
+            check_expired_authorizations
+        );
+
+        let product = state
+            .db
+            .get_document(collections::PRODUCTS, &product_id)
+            .await
+            .unwrap();
+        assert_eq!(product[fields::STOCK_QUANTITY], 3);
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
     async fn test_retry_failed_meilisearch_syncs_resolves_max_retry_failures() {
         let state = setup_state().await;
-        let fail_id = format!("test_retry_failed_meilisearch_syncs_resolves_max_retry_failures_{}", uuid::Uuid::new_v4());
-        let product_id = format!("test_retry_failed_meilisearch_syncs_resolves_max_retry_failures_{}", uuid::Uuid::new_v4());
+        let fail_id = format!(
+            "test_retry_failed_meilisearch_syncs_resolves_max_retry_failures_{}",
+            uuid::Uuid::new_v4()
+        );
+        let product_id = format!(
+            "test_retry_failed_meilisearch_syncs_resolves_max_retry_failures_{}",
+            uuid::Uuid::new_v4()
+        );
         state
             .db
             .upsert_document(
@@ -3404,7 +3658,11 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "retry_failed_meilisearch_syncs", retry_failed_meilisearch_syncs);
+        run_cron_with_retry!(
+            &state,
+            "retry_failed_meilisearch_syncs",
+            retry_failed_meilisearch_syncs
+        );
 
         let failure = state
             .db
@@ -3419,8 +3677,14 @@ mod tests {
     #[serial_test::serial]
     async fn test_retry_failed_meilisearch_syncs_resolves_active_product_for_reindex() {
         let state = setup_state().await;
-        let fail_id = format!("test_retry_failed_meilisearch_syncs_resolves_active_product_for_reindex_{}", uuid::Uuid::new_v4());
-        let product_id = format!("test_retry_failed_meilisearch_syncs_resolves_active_product_for_reindex_{}", uuid::Uuid::new_v4());
+        let fail_id = format!(
+            "test_retry_failed_meilisearch_syncs_resolves_active_product_for_reindex_{}",
+            uuid::Uuid::new_v4()
+        );
+        let product_id = format!(
+            "test_retry_failed_meilisearch_syncs_resolves_active_product_for_reindex_{}",
+            uuid::Uuid::new_v4()
+        );
         state
             .db
             .upsert_document(
@@ -3446,7 +3710,11 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "retry_failed_meilisearch_syncs", retry_failed_meilisearch_syncs);
+        run_cron_with_retry!(
+            &state,
+            "retry_failed_meilisearch_syncs",
+            retry_failed_meilisearch_syncs
+        );
 
         let failure = state
             .db
@@ -3518,7 +3786,11 @@ mod tests {
         // We can't easily make query_raw fail with in-memory DB.
         // Instead test the partial payout path (lines 297-298).
         // The error alert path is tested indirectly via the alert_cron_failure test.
-        run_cron_with_retry!(&state, "auto_capture_confirmed_receipts", auto_capture_confirmed_receipts);
+        run_cron_with_retry!(
+            &state,
+            "auto_capture_confirmed_receipts",
+            auto_capture_confirmed_receipts
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -3567,7 +3839,11 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "auto_capture_confirmed_receipts", auto_capture_confirmed_receipts);
+        run_cron_with_retry!(
+            &state,
+            "auto_capture_confirmed_receipts",
+            auto_capture_confirmed_receipts
+        );
 
         let order = state
             .db
@@ -3606,7 +3882,11 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "auto_capture_confirmed_receipts", auto_capture_confirmed_receipts);
+        run_cron_with_retry!(
+            &state,
+            "auto_capture_confirmed_receipts",
+            auto_capture_confirmed_receipts
+        );
 
         let order = state
             .db
@@ -3623,8 +3903,14 @@ mod tests {
     #[serial_test::serial]
     async fn test_auto_capture_with_custom_platform_fee() {
         let state = setup_state().await;
-        let order_id = format!("test_auto_capture_with_custom_platform_fee_{}", uuid::Uuid::new_v4());
-        let seller_id = format!("test_auto_capture_with_custom_platform_fee_{}", uuid::Uuid::new_v4());
+        let order_id = format!(
+            "test_auto_capture_with_custom_platform_fee_{}",
+            uuid::Uuid::new_v4()
+        );
+        let seller_id = format!(
+            "test_auto_capture_with_custom_platform_fee_{}",
+            uuid::Uuid::new_v4()
+        );
         let pi_id = format!("pi_fee_{}", uuid::Uuid::new_v4());
         let delivered_at = (Utc::now() - Duration::days(10)).to_rfc3339();
 
@@ -3652,7 +3938,11 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "auto_capture_confirmed_receipts", auto_capture_confirmed_receipts);
+        run_cron_with_retry!(
+            &state,
+            "auto_capture_confirmed_receipts",
+            auto_capture_confirmed_receipts
+        );
 
         let payouts = query_filtered(&state.db, collections::PAYOUTS, "orderId", &order_id).await;
         assert_eq!(payouts.len(), 1);
@@ -3714,7 +4004,11 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "check_expired_authorizations", check_expired_authorizations);
+        run_cron_with_retry!(
+            &state,
+            "check_expired_authorizations",
+            check_expired_authorizations
+        );
 
         let order = state
             .db
@@ -3731,9 +4025,18 @@ mod tests {
     #[serial_test::serial]
     async fn test_check_expired_auth_no_payment_intent() {
         let state = setup_state().await;
-        let product_id = format!("test_check_expired_auth_no_payment_intent_{}", uuid::Uuid::new_v4());
-        let order_id = format!("test_check_expired_auth_no_payment_intent_{}", uuid::Uuid::new_v4());
-        let buyer_id = format!("test_check_expired_auth_no_payment_intent_{}", uuid::Uuid::new_v4());
+        let product_id = format!(
+            "test_check_expired_auth_no_payment_intent_{}",
+            uuid::Uuid::new_v4()
+        );
+        let order_id = format!(
+            "test_check_expired_auth_no_payment_intent_{}",
+            uuid::Uuid::new_v4()
+        );
+        let buyer_id = format!(
+            "test_check_expired_auth_no_payment_intent_{}",
+            uuid::Uuid::new_v4()
+        );
         let created_at = (Utc::now() - Duration::days(10)).to_rfc3339();
 
         state
@@ -3768,7 +4071,11 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "check_expired_authorizations", check_expired_authorizations);
+        run_cron_with_retry!(
+            &state,
+            "check_expired_authorizations",
+            check_expired_authorizations
+        );
 
         let order = state
             .db
@@ -3813,7 +4120,11 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "check_expired_authorizations", check_expired_authorizations);
+        run_cron_with_retry!(
+            &state,
+            "check_expired_authorizations",
+            check_expired_authorizations
+        );
 
         let order = state
             .db
@@ -3926,10 +4237,26 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "cleanup_stale_rate_limits", cleanup_stale_rate_limits);
+        run_cron_with_retry!(
+            &state,
+            "cleanup_stale_rate_limits",
+            cleanup_stale_rate_limits
+        );
 
-        assert!(state.db.get_document(collections::RATE_LIMITS, &rl1).await.is_err());
-        assert!(state.db.get_document(collections::RATE_LIMITS, &rl2).await.is_err());
+        assert!(
+            state
+                .db
+                .get_document(collections::RATE_LIMITS, &rl1)
+                .await
+                .is_err()
+        );
+        assert!(
+            state
+                .db
+                .get_document(collections::RATE_LIMITS, &rl2)
+                .await
+                .is_err()
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -3981,7 +4308,11 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "cleanup_orphaned_r2_images", cleanup_orphaned_r2_images);
+        run_cron_with_retry!(
+            &state,
+            "cleanup_orphaned_r2_images",
+            cleanup_orphaned_r2_images
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -4042,10 +4373,26 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "cleanup_stale_webhook_events", cleanup_stale_webhook_events);
+        run_cron_with_retry!(
+            &state,
+            "cleanup_stale_webhook_events",
+            cleanup_stale_webhook_events
+        );
 
-        assert!(state.db.get_document(collections::WEBHOOK_EVENTS, &we1).await.is_err());
-        assert!(state.db.get_document(collections::WEBHOOK_EVENTS, &we2).await.is_err());
+        assert!(
+            state
+                .db
+                .get_document(collections::WEBHOOK_EVENTS, &we1)
+                .await
+                .is_err()
+        );
+        assert!(
+            state
+                .db
+                .get_document(collections::WEBHOOK_EVENTS, &we2)
+                .await
+                .is_err()
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -4108,10 +4455,26 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "cleanup_stale_security_alerts", cleanup_stale_security_alerts);
+        run_cron_with_retry!(
+            &state,
+            "cleanup_stale_security_alerts",
+            cleanup_stale_security_alerts
+        );
 
-        assert!(state.db.get_document(collections::SECURITY_ALERTS, &sa1).await.is_err());
-        assert!(state.db.get_document(collections::SECURITY_ALERTS, &sa2).await.is_err());
+        assert!(
+            state
+                .db
+                .get_document(collections::SECURITY_ALERTS, &sa1)
+                .await
+                .is_err()
+        );
+        assert!(
+            state
+                .db
+                .get_document(collections::SECURITY_ALERTS, &sa2)
+                .await
+                .is_err()
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -4169,7 +4532,10 @@ mod tests {
     #[serial_test::serial]
     async fn test_retry_meilisearch_empty_product_id() {
         let state = setup_state().await;
-        let fail_id = format!("test_retry_meilisearch_empty_product_id_{}", uuid::Uuid::new_v4());
+        let fail_id = format!(
+            "test_retry_meilisearch_empty_product_id_{}",
+            uuid::Uuid::new_v4()
+        );
         state
             .db
             .upsert_document(
@@ -4184,7 +4550,11 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "retry_failed_meilisearch_syncs", retry_failed_meilisearch_syncs);
+        run_cron_with_retry!(
+            &state,
+            "retry_failed_meilisearch_syncs",
+            retry_failed_meilisearch_syncs
+        );
 
         let failure = state
             .db
@@ -4228,7 +4598,11 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "retry_failed_meilisearch_syncs", retry_failed_meilisearch_syncs);
+        run_cron_with_retry!(
+            &state,
+            "retry_failed_meilisearch_syncs",
+            retry_failed_meilisearch_syncs
+        );
 
         let failure = state
             .db
@@ -4554,7 +4928,11 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "send_abandoned_cart_emails", send_abandoned_cart_emails);
+        run_cron_with_retry!(
+            &state,
+            "send_abandoned_cart_emails",
+            send_abandoned_cart_emails
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -4580,7 +4958,11 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "send_abandoned_cart_emails", send_abandoned_cart_emails);
+        run_cron_with_retry!(
+            &state,
+            "send_abandoned_cart_emails",
+            send_abandoned_cart_emails
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -4605,7 +4987,11 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "send_abandoned_cart_emails", send_abandoned_cart_emails);
+        run_cron_with_retry!(
+            &state,
+            "send_abandoned_cart_emails",
+            send_abandoned_cart_emails
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -4644,7 +5030,11 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "send_abandoned_cart_emails", send_abandoned_cart_emails);
+        run_cron_with_retry!(
+            &state,
+            "send_abandoned_cart_emails",
+            send_abandoned_cart_emails
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -4677,8 +5067,14 @@ mod tests {
             .values
             .insert("mailjet_secret_key".to_string(), "mj_secret".to_string());
         let state = setup_state_with_config(config, server.uri()).await;
-        let user_id = format!("test_send_abandoned_cart_full_flow_en_{}", uuid::Uuid::new_v4());
-        let cart_id = format!("test_send_abandoned_cart_full_flow_en_{}", uuid::Uuid::new_v4());
+        let user_id = format!(
+            "test_send_abandoned_cart_full_flow_en_{}",
+            uuid::Uuid::new_v4()
+        );
+        let cart_id = format!(
+            "test_send_abandoned_cart_full_flow_en_{}",
+            uuid::Uuid::new_v4()
+        );
 
         state
             .db
@@ -4708,7 +5104,11 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "send_abandoned_cart_emails", send_abandoned_cart_emails);
+        run_cron_with_retry!(
+            &state,
+            "send_abandoned_cart_emails",
+            send_abandoned_cart_emails
+        );
 
         let user = state
             .db
@@ -4748,8 +5148,14 @@ mod tests {
             .values
             .insert("mailjet_secret_key".to_string(), "mj_secret".to_string());
         let state = setup_state_with_config(config, server.uri()).await;
-        let user_id = format!("test_send_abandoned_cart_full_flow_fr_{}", uuid::Uuid::new_v4());
-        let cart_id = format!("test_send_abandoned_cart_full_flow_fr_{}", uuid::Uuid::new_v4());
+        let user_id = format!(
+            "test_send_abandoned_cart_full_flow_fr_{}",
+            uuid::Uuid::new_v4()
+        );
+        let cart_id = format!(
+            "test_send_abandoned_cart_full_flow_fr_{}",
+            uuid::Uuid::new_v4()
+        );
 
         state
             .db
@@ -4779,7 +5185,11 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "send_abandoned_cart_emails", send_abandoned_cart_emails);
+        run_cron_with_retry!(
+            &state,
+            "send_abandoned_cart_emails",
+            send_abandoned_cart_emails
+        );
 
         let user = state
             .db
@@ -4820,7 +5230,10 @@ mod tests {
     #[serial_test::serial]
     async fn test_compute_seller_metrics_empty_seller_id() {
         let state = setup_state().await;
-        let order_id = format!("test_compute_seller_metrics_empty_seller_id_{}", uuid::Uuid::new_v4());
+        let order_id = format!(
+            "test_compute_seller_metrics_empty_seller_id_{}",
+            uuid::Uuid::new_v4()
+        );
         state
             .db
             .upsert_document(
@@ -5028,7 +5441,11 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "compute_trending_products", compute_trending_products);
+        run_cron_with_retry!(
+            &state,
+            "compute_trending_products",
+            compute_trending_products
+        );
 
         let old = state
             .db
@@ -5069,7 +5486,11 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "compute_trending_products", compute_trending_products);
+        run_cron_with_retry!(
+            &state,
+            "compute_trending_products",
+            compute_trending_products
+        );
 
         let prod = state
             .db
@@ -5138,7 +5559,11 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "sync_expired_subscriptions", sync_expired_subscriptions);
+        run_cron_with_retry!(
+            &state,
+            "sync_expired_subscriptions",
+            sync_expired_subscriptions
+        );
 
         let sub = state
             .db
@@ -5208,7 +5633,11 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "escalate_stale_return_requests", escalate_stale_return_requests);
+        run_cron_with_retry!(
+            &state,
+            "escalate_stale_return_requests",
+            escalate_stale_return_requests
+        );
 
         let a = state
             .db
@@ -5310,7 +5739,11 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "send_premium_renewal_reminders", send_premium_renewal_reminders);
+        run_cron_with_retry!(
+            &state,
+            "send_premium_renewal_reminders",
+            send_premium_renewal_reminders
+        );
 
         // NOTE: The production code at line 1574 uses raw sub.get("id") without
         // normalize_record_id, so get_document("users", "subscriptions:uid") fails
@@ -5380,7 +5813,11 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "send_premium_renewal_reminders", send_premium_renewal_reminders);
+        run_cron_with_retry!(
+            &state,
+            "send_premium_renewal_reminders",
+            send_premium_renewal_reminders
+        );
         // Same production code bug as test_premium_renewal_full_flow_7day
     }
 
@@ -5409,7 +5846,11 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "send_premium_renewal_reminders", send_premium_renewal_reminders);
+        run_cron_with_retry!(
+            &state,
+            "send_premium_renewal_reminders",
+            send_premium_renewal_reminders
+        );
 
         let sub = state
             .db
@@ -5445,7 +5886,11 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "send_premium_renewal_reminders", send_premium_renewal_reminders);
+        run_cron_with_retry!(
+            &state,
+            "send_premium_renewal_reminders",
+            send_premium_renewal_reminders
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -5486,7 +5931,11 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "send_premium_renewal_reminders", send_premium_renewal_reminders);
+        run_cron_with_retry!(
+            &state,
+            "send_premium_renewal_reminders",
+            send_premium_renewal_reminders
+        );
 
         let sub = state
             .db
@@ -5527,7 +5976,11 @@ mod tests {
     #[serial_test::serial]
     async fn test_drain_notifications_empty() {
         let state = setup_state().await;
-        run_cron_with_retry!(&state, "drain_pending_notifications", drain_pending_notifications);
+        run_cron_with_retry!(
+            &state,
+            "drain_pending_notifications",
+            drain_pending_notifications
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -5540,21 +5993,29 @@ mod tests {
 
         // Insert a pending notification that's old enough
         let notif_id = format!("notif_{}", uuid::Uuid::new_v4());
-        state.db.upsert_document(
-            "_pending_notifications",
-            &notif_id,
-            json!({
-                fields::STATUS: "pending",
-                "token": "tok",
-                fields::NOTIFICATION_TITLE: "T",
-                fields::NOTIFICATION_BODY: "B",
-            }),
-        ).await.unwrap();
+        state
+            .db
+            .upsert_document(
+                "_pending_notifications",
+                &notif_id,
+                json!({
+                    fields::STATUS: "pending",
+                    "token": "tok",
+                    fields::NOTIFICATION_TITLE: "T",
+                    fields::NOTIFICATION_BODY: "B",
+                }),
+            )
+            .await
+            .unwrap();
 
         // Call drain — behavior depends on env var state (parallel test race):
         // - No env vars → logs cron_failure, notification stays pending
         // - Env vars set → tries to send, fails on HTTP, notification gets retried/failed
-        run_cron_with_retry!(&state, "drain_pending_notifications", drain_pending_notifications);
+        run_cron_with_retry!(
+            &state,
+            "drain_pending_notifications",
+            drain_pending_notifications
+        );
 
         // Verify the function actually ran by checking notification was touched
         let all = state
@@ -5616,7 +6077,11 @@ mod tests {
             notif_id_2, old_ts
         )).await.unwrap();
 
-        run_cron_with_retry!(&state, "drain_pending_notifications", drain_pending_notifications);
+        run_cron_with_retry!(
+            &state,
+            "drain_pending_notifications",
+            drain_pending_notifications
+        );
 
         // Clean up env vars
         unsafe {
@@ -5776,7 +6241,11 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "check_expired_authorizations", check_expired_authorizations);
+        run_cron_with_retry!(
+            &state,
+            "check_expired_authorizations",
+            check_expired_authorizations
+        );
 
         let ord1 = state
             .db
@@ -5961,7 +6430,10 @@ mod tests {
     #[serial_test::serial]
     async fn test_premium_renewal_no_mailjet_keys() {
         let state = setup_state().await;
-        let user_id = format!("test_premium_renewal_no_mailjet_keys_{}", uuid::Uuid::new_v4());
+        let user_id = format!(
+            "test_premium_renewal_no_mailjet_keys_{}",
+            uuid::Uuid::new_v4()
+        );
         let now = Utc::now();
         // Use 7-day renewal window but verify the cron doesn't crash without
         // mailjet keys. Don't assert field absence because a concurrent test
@@ -5997,7 +6469,11 @@ mod tests {
         // The cron should complete without error even without mailjet keys.
         // In concurrent testing, another test's cron (with keys) may process
         // this subscription first, so we only verify the cron doesn't crash.
-        run_cron_with_retry!(&state, "send_premium_renewal_reminders", send_premium_renewal_reminders);
+        run_cron_with_retry!(
+            &state,
+            "send_premium_renewal_reminders",
+            send_premium_renewal_reminders
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -6061,7 +6537,11 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "send_premium_renewal_reminders", send_premium_renewal_reminders);
+        run_cron_with_retry!(
+            &state,
+            "send_premium_renewal_reminders",
+            send_premium_renewal_reminders
+        );
         // Same production code bug as test_premium_renewal_full_flow_7day
     }
 
@@ -6109,7 +6589,11 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "auto_capture_confirmed_receipts", auto_capture_confirmed_receipts);
+        run_cron_with_retry!(
+            &state,
+            "auto_capture_confirmed_receipts",
+            auto_capture_confirmed_receipts
+        );
 
         let order = state
             .db
@@ -6166,7 +6650,11 @@ mod tests {
     async fn test_cleanup_rate_limits_empty_id_skipped() {
         let state = setup_state().await;
         // This just tests the normal path more thoroughly
-        run_cron_with_retry!(&state, "cleanup_stale_rate_limits", cleanup_stale_rate_limits);
+        run_cron_with_retry!(
+            &state,
+            "cleanup_stale_rate_limits",
+            cleanup_stale_rate_limits
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -6176,7 +6664,11 @@ mod tests {
     #[serial_test::serial]
     async fn test_cleanup_r2_images_empty() {
         let state = setup_state().await;
-        run_cron_with_retry!(&state, "cleanup_orphaned_r2_images", cleanup_orphaned_r2_images);
+        run_cron_with_retry!(
+            &state,
+            "cleanup_orphaned_r2_images",
+            cleanup_orphaned_r2_images
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -6186,7 +6678,11 @@ mod tests {
     #[serial_test::serial]
     async fn test_cleanup_webhook_events_empty() {
         let state = setup_state().await;
-        run_cron_with_retry!(&state, "cleanup_stale_webhook_events", cleanup_stale_webhook_events);
+        run_cron_with_retry!(
+            &state,
+            "cleanup_stale_webhook_events",
+            cleanup_stale_webhook_events
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -6196,7 +6692,11 @@ mod tests {
     #[serial_test::serial]
     async fn test_cleanup_security_alerts_empty() {
         let state = setup_state().await;
-        run_cron_with_retry!(&state, "cleanup_stale_security_alerts", cleanup_stale_security_alerts);
+        run_cron_with_retry!(
+            &state,
+            "cleanup_stale_security_alerts",
+            cleanup_stale_security_alerts
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -6206,7 +6706,11 @@ mod tests {
     #[serial_test::serial]
     async fn test_retry_meilisearch_empty() {
         let state = setup_state().await;
-        run_cron_with_retry!(&state, "retry_failed_meilisearch_syncs", retry_failed_meilisearch_syncs);
+        run_cron_with_retry!(
+            &state,
+            "retry_failed_meilisearch_syncs",
+            retry_failed_meilisearch_syncs
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -6226,7 +6730,11 @@ mod tests {
     #[serial_test::serial]
     async fn test_send_abandoned_cart_empty() {
         let state = setup_state().await;
-        run_cron_with_retry!(&state, "send_abandoned_cart_emails", send_abandoned_cart_emails);
+        run_cron_with_retry!(
+            &state,
+            "send_abandoned_cart_emails",
+            send_abandoned_cart_emails
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -6246,7 +6754,11 @@ mod tests {
     #[serial_test::serial]
     async fn test_compute_trending_empty() {
         let state = setup_state().await;
-        run_cron_with_retry!(&state, "compute_trending_products", compute_trending_products);
+        run_cron_with_retry!(
+            &state,
+            "compute_trending_products",
+            compute_trending_products
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -6256,7 +6768,11 @@ mod tests {
     #[serial_test::serial]
     async fn test_sync_expired_subscriptions_empty() {
         let state = setup_state().await;
-        run_cron_with_retry!(&state, "sync_expired_subscriptions", sync_expired_subscriptions);
+        run_cron_with_retry!(
+            &state,
+            "sync_expired_subscriptions",
+            sync_expired_subscriptions
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -6266,7 +6782,11 @@ mod tests {
     #[serial_test::serial]
     async fn test_escalate_returns_empty() {
         let state = setup_state().await;
-        run_cron_with_retry!(&state, "escalate_stale_return_requests", escalate_stale_return_requests);
+        run_cron_with_retry!(
+            &state,
+            "escalate_stale_return_requests",
+            escalate_stale_return_requests
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -6276,7 +6796,11 @@ mod tests {
     #[serial_test::serial]
     async fn test_premium_renewal_empty() {
         let state = setup_state().await;
-        run_cron_with_retry!(&state, "send_premium_renewal_reminders", send_premium_renewal_reminders);
+        run_cron_with_retry!(
+            &state,
+            "send_premium_renewal_reminders",
+            send_premium_renewal_reminders
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -6299,7 +6823,11 @@ mod tests {
             std::env::set_var("OB_FCM_SERVICE_ACCOUNT", "{}");
         }
 
-        run_cron_with_retry!(&state, "drain_pending_notifications", drain_pending_notifications);
+        run_cron_with_retry!(
+            &state,
+            "drain_pending_notifications",
+            drain_pending_notifications
+        );
 
         unsafe {
             std::env::remove_var("OB_FCM_PROJECT_ID");
@@ -6325,7 +6853,11 @@ mod tests {
             std::env::set_var("OB_FCM_SERVICE_ACCOUNT", "{}");
         }
 
-        run_cron_with_retry!(&state, "drain_pending_notifications", drain_pending_notifications);
+        run_cron_with_retry!(
+            &state,
+            "drain_pending_notifications",
+            drain_pending_notifications
+        );
 
         unsafe {
             std::env::remove_var("OB_FCM_PROJECT_ID");
@@ -6351,7 +6883,11 @@ mod tests {
             std::env::set_var("OB_FCM_SERVICE_ACCOUNT", "{}");
         }
 
-        run_cron_with_retry!(&state, "drain_pending_notifications", drain_pending_notifications);
+        run_cron_with_retry!(
+            &state,
+            "drain_pending_notifications",
+            drain_pending_notifications
+        );
 
         unsafe {
             std::env::remove_var("OB_FCM_PROJECT_ID");
@@ -6377,7 +6913,11 @@ mod tests {
             std::env::set_var("OB_FCM_SERVICE_ACCOUNT", "{}");
         }
 
-        run_cron_with_retry!(&state, "drain_pending_notifications", drain_pending_notifications);
+        run_cron_with_retry!(
+            &state,
+            "drain_pending_notifications",
+            drain_pending_notifications
+        );
 
         unsafe {
             std::env::remove_var("OB_FCM_PROJECT_ID");
@@ -6411,7 +6951,11 @@ mod tests {
             std::env::set_var("OB_FCM_SERVICE_ACCOUNT", "{}");
         }
 
-        run_cron_with_retry!(&state, "drain_pending_notifications", drain_pending_notifications);
+        run_cron_with_retry!(
+            &state,
+            "drain_pending_notifications",
+            drain_pending_notifications
+        );
 
         unsafe {
             std::env::remove_var("OB_FCM_PROJECT_ID");
@@ -6447,7 +6991,11 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "sync_expired_subscriptions", sync_expired_subscriptions);
+        run_cron_with_retry!(
+            &state,
+            "sync_expired_subscriptions",
+            sync_expired_subscriptions
+        );
 
         let sub = state
             .db
@@ -6523,7 +7071,11 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "send_premium_renewal_reminders", send_premium_renewal_reminders);
+        run_cron_with_retry!(
+            &state,
+            "send_premium_renewal_reminders",
+            send_premium_renewal_reminders
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -6587,7 +7139,11 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "send_premium_renewal_reminders", send_premium_renewal_reminders);
+        run_cron_with_retry!(
+            &state,
+            "send_premium_renewal_reminders",
+            send_premium_renewal_reminders
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -6597,7 +7153,10 @@ mod tests {
     #[serial_test::serial]
     async fn test_compute_seller_metrics_order_no_items_field() {
         let state = setup_state().await;
-        let order_id = format!("test_compute_seller_metrics_order_no_items_field_{}", uuid::Uuid::new_v4());
+        let order_id = format!(
+            "test_compute_seller_metrics_order_no_items_field_{}",
+            uuid::Uuid::new_v4()
+        );
         state
             .db
             .upsert_document(
@@ -6684,7 +7243,11 @@ mod tests {
             .await
             .unwrap();
 
-        run_cron_with_retry!(&state, "compute_trending_products", compute_trending_products);
+        run_cron_with_retry!(
+            &state,
+            "compute_trending_products",
+            compute_trending_products
+        );
 
         let high = state
             .db
@@ -6715,8 +7278,14 @@ mod tests {
     #[serial_test::serial]
     async fn test_co_purchase_recommendations_basic() {
         let state = setup_state().await;
-        let buyer_id = format!("test_co_purchase_recommendations_basic_{}", uuid::Uuid::new_v4());
-        let seller_id = format!("test_co_purchase_recommendations_basic_{}", uuid::Uuid::new_v4());
+        let buyer_id = format!(
+            "test_co_purchase_recommendations_basic_{}",
+            uuid::Uuid::new_v4()
+        );
+        let seller_id = format!(
+            "test_co_purchase_recommendations_basic_{}",
+            uuid::Uuid::new_v4()
+        );
         let now = Utc::now().to_rfc3339();
 
         // Create 3 delivered orders with overlapping items
@@ -6751,7 +7320,11 @@ mod tests {
                 .unwrap();
         }
 
-        run_cron_with_retry!(&state, "compute_co_purchase_recommendations", compute_co_purchase_recommendations);
+        run_cron_with_retry!(
+            &state,
+            "compute_co_purchase_recommendations",
+            compute_co_purchase_recommendations
+        );
 
         // Verify recommendations were created for prodA
         let rec_a = state
@@ -6776,7 +7349,11 @@ mod tests {
     async fn test_co_purchase_recommendations_empty_orders() {
         let state = setup_state().await;
         // No orders in DB — should complete without error
-        run_cron_with_retry!(&state, "compute_co_purchase_recommendations", compute_co_purchase_recommendations);
+        run_cron_with_retry!(
+            &state,
+            "compute_co_purchase_recommendations",
+            compute_co_purchase_recommendations
+        );
     }
 
     #[tokio::test]

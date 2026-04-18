@@ -1,5 +1,6 @@
 import 'package:flutter/widget_previews.dart';
 import 'package:origna_gta/utils/preview_helpers.dart';
+import 'package:origna_gta/models/generated/base_models.dart' as generated_base;
 import 'package:origna_gta/models/generated/product_models.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
@@ -341,29 +342,60 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
 
 // ═══ Widget Previews ═══
 
-Widget _editProductContent() => previewScope(
-  child: EditProductScreen(
-    product: Product(
-      productId: 'mock-id',
-      name: 'Mock Product',
-      priceCents: 10000,
-      description: 'Mock Description',
-      imageUrls: ['https://via.placeholder.com/150'],
-      sellerId: 'mock-seller',
-      categoryId: 1,
-      stockQuantity: 10,
-      createdAt: DateTime.now(),
-    ),
+const _previewEditProductSellerId = 'preview-seller';
+const _previewEditProductImageBase = 'https://fastly.picsum.photos/id';
+
+String _previewEditProductImage(int id, {int width = 1200, int height = 1200}) =>
+    '$_previewEditProductImageBase/$id/$width/$height.jpg';
+
+Product _buildPreviewEditProduct() => Product(
+  productId: 'preview-edit-product',
+  name: 'Hand-poured Cedar Candle',
+  priceCents: 4200,
+  compareAtPriceCents: 5200,
+  description:
+      'Small-batch soy candle with cedar, amber, and citrus notes for cozy fall inventory screenshots.',
+  imageUrls: [
+    _previewEditProductImage(1060),
+    _previewEditProductImage(1040),
+  ],
+  sellerId: _previewEditProductSellerId,
+  categoryId: 1,
+  stockQuantity: 18,
+  sellerAddress: const generated_base.Address(
+    street: '100 Wellington St W',
+    city: 'Toronto',
+    state: ProvinceCodeValues.ontario,
+    postalCode: 'M5J 2N3',
+    country: 'Canada',
+    latitude: 43.6426,
+    longitude: -79.3871,
   ),
+  createdAt: DateTime(2026, 4, 18),
+  deliveryOptions: const [
+    SellerDeliveryOption(
+      type: DeliveryTypeValues.standard,
+      description: 'Standard shipping',
+      costCents: 799,
+      estimatedDays: 4,
+    ),
+    SellerDeliveryOption(
+      type: DeliveryTypeValues.express,
+      description: 'Express shipping',
+      costCents: 1499,
+      estimatedDays: 2,
+    ),
+  ],
+);
+
+Widget _editProductContent() => previewScopeLoggedIn(
+  uid: _previewEditProductSellerId,
+  child: EditProductScreen(product: _buildPreviewEditProduct()),
 );
 
 @Preview(name: 'Edit Product — Mobile', group: 'Screens', size: Size(390, 844))
 Widget previewEditProductScreenMobile() =>
     previewMobile(child: _editProductContent());
-
-@Preview(name: 'Edit Product — Tablet', group: 'Screens', size: Size(768, 1024))
-Widget previewEditProductScreenTablet() =>
-    previewTablet(child: _editProductContent());
 
 @Preview(
   name: 'Edit Product — Desktop',
@@ -373,27 +405,6 @@ Widget previewEditProductScreenTablet() =>
 Widget previewEditProductScreenDesktop() =>
     previewDesktop(child: _editProductContent());
 
-@Preview(name: 'Edit Product — Web', group: 'Screens', size: Size(1440, 900))
-Widget previewEditProductScreenWeb() =>
-    previewWeb(child: _editProductContent());
-
-// ── Light ────────────────────────────────────────────────────────────────────
-@Preview(
-  name: 'Edit Product Light — Mobile',
-  group: 'Screens',
-  size: Size(390, 844),
-)
-Widget previewEditProductScreenLightMobile() =>
-    previewMobile(theme: previewLightTheme, child: _editProductContent());
-
-@Preview(
-  name: 'Edit Product Light — Tablet',
-  group: 'Screens',
-  size: Size(768, 1024),
-)
-Widget previewEditProductScreenLightTablet() =>
-    previewTablet(theme: previewLightTheme, child: _editProductContent());
-
 @Preview(
   name: 'Edit Product Light — Desktop',
   group: 'Screens',
@@ -401,11 +412,3 @@ Widget previewEditProductScreenLightTablet() =>
 )
 Widget previewEditProductScreenLightDesktop() =>
     previewDesktop(theme: previewLightTheme, child: _editProductContent());
-
-@Preview(
-  name: 'Edit Product Light — Web',
-  group: 'Screens',
-  size: Size(1440, 900),
-)
-Widget previewEditProductScreenLightWeb() =>
-    previewWeb(theme: previewLightTheme, child: _editProductContent());

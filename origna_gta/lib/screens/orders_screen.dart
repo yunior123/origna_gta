@@ -6,7 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/orders/orders_provider.dart';
-import 'package:origna_gta/models/generated/models.dart';
+import 'package:origna_gta/models/generated/base_models.dart' as base;
+import 'package:origna_gta/models/generated/models.dart' hide Address;
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/responsive_layout.dart';
 import 'package:origna_gta/utils/utils.dart';
@@ -379,68 +380,198 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
 
 // ═══ Widget Previews ═══
 
-Widget _orders() => previewScopeLoggedIn(child: OrdersScreen());
+const _previewOrdersImageBase = 'https://fastly.picsum.photos/id';
+
+String _previewOrdersImage(int id, {int width = 900, int height = 900}) =>
+    '$_previewOrdersImageBase/$id/$width/$height.jpg';
+
+final _previewBuyerOrdersUser = AppAuthUser(
+  uid: 'preview-buyer-orders',
+  email: 'buyer.orders@origna.ca',
+  emailVerified: true,
+);
+
+final _previewBuyerOrders = [
+  Order(
+    orderId: 'buyer-order-preview-1',
+    userId: 'preview-buyer-orders',
+    items: [
+      OrderItem(
+        productId: 'buyer-product-1',
+        cartItemId: 'buyer-cart-1',
+        name: 'Premium Espresso Beans',
+        description: 'Small-batch roasted beans from a Toronto roastery.',
+        priceCents: 2200,
+        quantity: 2,
+        imageUrls: [_previewOrdersImage(431)],
+        sellerId: 'seller-preview-1',
+        sellerName: 'North Roast Co.',
+        status: DeliveryStatusValues.shipped,
+        shippedAt: DateTime(2026, 4, 14),
+      ),
+    ],
+    totalAmountCents: 5424,
+    subtotalCents: 4400,
+    shippingCostCents: 700,
+    taxAmountCents: 324,
+    taxes: const Taxes(gstCents: 0, pstCents: 0, qstCents: 0, hstCents: 324),
+    orderStatus: OrderStatus.shipped,
+    paymentStatus: PaymentStatus.paid,
+    createdAt: DateTime(2026, 4, 12),
+    shippingAddress: base.Address(
+      street: '101 Queen St E',
+      city: 'Toronto',
+      state: 'ON',
+      postalCode: 'M5C 1S2',
+      country: 'CA',
+    ),
+  ),
+  Order(
+    orderId: 'buyer-order-preview-2',
+    userId: 'preview-buyer-orders',
+    items: [
+      OrderItem(
+        productId: 'buyer-product-2',
+        cartItemId: 'buyer-cart-2',
+        name: 'Wool Throw Blanket',
+        description: 'Soft Canadian wool blanket in charcoal grey.',
+        priceCents: 8900,
+        quantity: 1,
+        imageUrls: [_previewOrdersImage(1062)],
+        sellerId: 'seller-preview-2',
+        sellerName: 'Halifax Loom',
+        status: DeliveryStatusValues.delivered,
+        deliveredAt: DateTime(2026, 4, 8),
+      ),
+    ],
+    totalAmountCents: 10617,
+    subtotalCents: 8900,
+    shippingCostCents: 950,
+    taxAmountCents: 767,
+    taxes: const Taxes(gstCents: 0, pstCents: 0, qstCents: 0, hstCents: 767),
+    orderStatus: OrderStatus.delivered,
+    paymentStatus: PaymentStatus.paid,
+    createdAt: DateTime(2026, 4, 4),
+    shippingAddress: base.Address(
+      street: '55 Bloor St W',
+      city: 'Toronto',
+      state: 'ON',
+      postalCode: 'M4W 1A5',
+      country: 'CA',
+    ),
+  ),
+];
+
+final _previewBuyerOrdersPendingApproval = [
+  ..._previewBuyerOrders,
+  Order(
+    orderId: 'buyer-order-preview-3',
+    userId: 'preview-buyer-orders',
+    items: [
+      OrderItem(
+        productId: 'buyer-product-3',
+        cartItemId: 'buyer-cart-3',
+        name: 'Ultra Long Preview Product Name For Tight Mobile Cards',
+        description:
+            'Preview order that keeps shipping approval and long text visible.',
+        priceCents: 14999,
+        quantity: 1,
+        imageUrls: [_previewOrdersImage(366)],
+        sellerId: 'seller-preview-3',
+        sellerName: 'Longform Atelier Montreal Preview Collective',
+        status: DeliveryStatusValues.pending,
+        isPerishable: true,
+      ),
+    ],
+    totalAmountCents: 16949,
+    subtotalCents: 14999,
+    shippingCostCents: 0,
+    taxAmountCents: 1950,
+    taxes: const Taxes(gstCents: 0, pstCents: 0, qstCents: 0, hstCents: 1950),
+    orderStatus: OrderStatus.confirmed,
+    paymentStatus: PaymentStatus.authorized,
+    shippingApprovalRequired: true,
+    shippingApprovalStatus: ShippingApprovalStatus.pending,
+    pendingTotalCents: 1200,
+    actualShippingCents: 1200,
+    createdAt: DateTime(2026, 4, 16),
+    shippingAddress: base.Address(
+      street: '777 Front St W',
+      city: 'Toronto',
+      state: 'ON',
+      postalCode: 'M5V 2B7',
+      country: 'CA',
+    ),
+  ),
+];
+
+Widget _orders({List<Order>? orders}) => previewScopeLoggedIn(
+  uid: _previewBuyerOrdersUser.uid,
+  extraOverrides: [
+    currentUserProvider.overrideWith((ref) => _previewBuyerOrdersUser),
+    buyerOrdersProvider.overrideWith(
+      (ref) => Stream.value(orders ?? _previewBuyerOrders),
+    ),
+  ],
+  child: const OrdersScreen(),
+);
 
 Widget _ordersEmpty() => previewScopeLoggedIn(
-  extraOverrides: [buyerOrdersProvider.overrideWith((ref) => Stream.value([]))],
-  child: OrdersScreen(),
+  uid: _previewBuyerOrdersUser.uid,
+  extraOverrides: [
+    currentUserProvider.overrideWith((ref) => _previewBuyerOrdersUser),
+    buyerOrdersProvider.overrideWith((ref) => Stream.value([])),
+  ],
+  child: const OrdersScreen(),
 );
 
 Widget _ordersLoading() => previewScopeLoggedIn(
+  uid: _previewBuyerOrdersUser.uid,
   extraOverrides: [
+    currentUserProvider.overrideWith((ref) => _previewBuyerOrdersUser),
     buyerOrdersProvider.overrideWith((ref) => const Stream.empty()),
   ],
-  child: OrdersScreen(),
+  child: const OrdersScreen(),
 );
 
-// ── Dark (default) ──────────────────────────────────────────────────────────
+Widget _ordersFrench() => previewScopeLoggedIn(
+  uid: _previewBuyerOrdersUser.uid,
+  extraOverrides: [
+    currentUserProvider.overrideWith((ref) => _previewBuyerOrdersUser),
+    buyerOrdersProvider.overrideWith(
+      (ref) => Stream.value(_previewBuyerOrdersPendingApproval),
+    ),
+  ],
+  child: const OrdersScreen(),
+);
+
+Widget _ordersPendingApproval() => previewScopeLoggedIn(
+  uid: _previewBuyerOrdersUser.uid,
+  extraOverrides: [
+    currentUserProvider.overrideWith((ref) => _previewBuyerOrdersUser),
+    buyerOrdersProvider.overrideWith(
+      (ref) => Stream.value(_previewBuyerOrdersPendingApproval),
+    ),
+  ],
+  child: const OrdersScreen(),
+);
+
 @Preview(
-  name: 'Orders Screen Dark — Mobile',
+  name: 'Orders Feed Dark — Mobile',
   group: 'Order Screens',
   size: Size(390, 844),
 )
 Widget previewOrdersScreenMobile() => previewMobile(child: _orders());
 
 @Preview(
-  name: 'Orders Screen Dark — Tablet',
-  group: 'Order Screens',
-  size: Size(768, 1024),
-)
-Widget previewOrdersScreenTablet() => previewTablet(child: _orders());
-
-@Preview(
-  name: 'Orders Screen Dark — Desktop',
+  name: 'Orders Feed Dark — Desktop',
   group: 'Order Screens',
   size: Size(1280, 800),
 )
 Widget previewOrdersScreenDesktop() => previewDesktop(child: _orders());
 
 @Preview(
-  name: 'Orders Screen Dark — Web',
-  group: 'Order Screens',
-  size: Size(1440, 900),
-)
-Widget previewOrdersScreenWeb() => previewWeb(child: _orders());
-
-// ── Light ────────────────────────────────────────────────────────────────────
-@Preview(
-  name: 'Orders Screen Light — Mobile',
-  group: 'Order Screens',
-  size: Size(390, 844),
-)
-Widget previewOrdersScreenLightMobile() =>
-    previewMobile(theme: previewLightTheme, child: _orders());
-
-@Preview(
-  name: 'Orders Screen Light — Tablet',
-  group: 'Order Screens',
-  size: Size(768, 1024),
-)
-Widget previewOrdersScreenLightTablet() =>
-    previewTablet(theme: previewLightTheme, child: _orders());
-
-@Preview(
-  name: 'Orders Screen Light — Desktop',
+  name: 'Orders Feed Light — Desktop',
   group: 'Order Screens',
   size: Size(1280, 800),
 )
@@ -448,58 +579,11 @@ Widget previewOrdersScreenLightDesktop() =>
     previewDesktop(theme: previewLightTheme, child: _orders());
 
 @Preview(
-  name: 'Orders Screen Light — Web',
-  group: 'Order Screens',
-  size: Size(1440, 900),
-)
-Widget previewOrdersScreenLightWeb() =>
-    previewWeb(theme: previewLightTheme, child: _orders());
-
-// ── Empty State Dark ──────────────────────────────────────────────────────────
-@Preview(
   name: 'Orders Empty Dark — Mobile',
   group: 'Order Screens',
   size: Size(390, 844),
 )
 Widget previewOrdersEmptyMobile() => previewMobile(child: _ordersEmpty());
-
-@Preview(
-  name: 'Orders Empty Dark — Tablet',
-  group: 'Order Screens',
-  size: Size(768, 1024),
-)
-Widget previewOrdersEmptyTablet() => previewTablet(child: _ordersEmpty());
-
-@Preview(
-  name: 'Orders Empty Dark — Desktop',
-  group: 'Order Screens',
-  size: Size(1280, 800),
-)
-Widget previewOrdersEmptyDesktop() => previewDesktop(child: _ordersEmpty());
-
-@Preview(
-  name: 'Orders Empty Dark — Web',
-  group: 'Order Screens',
-  size: Size(1440, 900),
-)
-Widget previewOrdersEmptyWeb() => previewWeb(child: _ordersEmpty());
-
-// ── Empty State Light ─────────────────────────────────────────────────────────
-@Preview(
-  name: 'Orders Empty Light — Mobile',
-  group: 'Order Screens',
-  size: Size(390, 844),
-)
-Widget previewOrdersEmptyLightMobile() =>
-    previewMobile(theme: previewLightTheme, child: _ordersEmpty());
-
-@Preview(
-  name: 'Orders Empty Light — Tablet',
-  group: 'Order Screens',
-  size: Size(768, 1024),
-)
-Widget previewOrdersEmptyLightTablet() =>
-    previewTablet(theme: previewLightTheme, child: _ordersEmpty());
 
 @Preview(
   name: 'Orders Empty Light — Desktop',
@@ -510,24 +594,24 @@ Widget previewOrdersEmptyLightDesktop() =>
     previewDesktop(theme: previewLightTheme, child: _ordersEmpty());
 
 @Preview(
-  name: 'Orders Empty Light — Web',
-  group: 'Order Screens',
-  size: Size(1440, 900),
-)
-Widget previewOrdersEmptyLightWeb() =>
-    previewWeb(theme: previewLightTheme, child: _ordersEmpty());
-
-// ── Loading State ─────────────────────────────────────────────────────────────
-@Preview(
-  name: 'Orders Loading Dark — Mobile',
+  name: 'Orders Pending Approval — Mobile',
   group: 'Order Screens',
   size: Size(390, 844),
 )
-Widget previewOrdersLoadingMobile() => previewMobile(child: _ordersLoading());
+Widget previewOrdersPendingApprovalMobile() =>
+    previewMobile(child: _ordersPendingApproval());
 
 @Preview(
-  name: 'Orders Loading Dark — Desktop',
+  name: 'Orders FR — Mobile',
   group: 'Order Screens',
-  size: Size(1280, 800),
+  size: Size(390, 844),
 )
-Widget previewOrdersLoadingDesktop() => previewDesktop(child: _ordersLoading());
+Widget previewOrdersFrenchMobile() =>
+    previewMobile(locale: const Locale('fr'), child: _ordersFrench());
+
+@Preview(
+  name: 'Orders Loading Dark — Tablet',
+  group: 'Order Screens',
+  size: Size(768, 1024),
+)
+Widget previewOrdersLoadingTablet() => previewTablet(child: _ordersLoading());

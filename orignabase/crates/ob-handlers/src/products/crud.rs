@@ -1166,12 +1166,48 @@ async fn bulk_update_products(
         products_map.insert(pid.clone(), product);
     }
 
+    let mut update_data = req.update.clone();
+    let obj = update_data
+        .as_object_mut()
+        .ok_or_else(|| ob_core::Error::Validation("update must be an object".into()))?;
+
+    if let Some(new_status) = obj.get(fields::LIFECYCLE_STATUS).and_then(|v| v.as_str()) {
+        for product in products_map.values() {
+            let current_status = product
+                .get(fields::LIFECYCLE_STATUS)
+                .and_then(|v| v.as_str())
+                .unwrap_or("draft");
+            validate_lifecycle_transition(current_status, new_status)?;
+        }
+    }
+
+    let price_cents = obj.get(fields::PRICE_CENTS).and_then(|v| v.as_i64());
+    let stock_quantity = obj.get(fields::STOCK_QUANTITY).and_then(|v| v.as_i64());
+    validate_price_and_stock(price_cents, stock_quantity)?;
+
+    if let Some(urls) = obj.get(fields::IMAGE_URLS).and_then(|v| v.as_array()) {
+        for url_val in urls {
+            if let Some(url) = url_val.as_str() {
+                validate_image_url(url)?;
+            }
+        }
+    }
+
+    validate_and_process_nutrition(obj)?;
+    validate_and_denormalize_specs(obj)?;
+
+    if let Some(bundled_val) = obj.get("bundledProductIds").cloned()
+        && let Some(arr) = bundled_val.as_array()
+        && arr.len() > 5
+    {
+        return Err(ob_core::Error::Validation(
+            "bundledProductIds cannot exceed 5 items".into(),
+        ));
+    }
+
     // Apply updates (validated above — all ownership checks passed)
     let now = chrono::Utc::now().to_rfc3339();
-    let mut update_data = req.update.clone();
-    if let Some(obj) = update_data.as_object_mut() {
-        obj.insert(fields::UPDATED_AT.to_string(), serde_json::json!(now));
-    }
+    obj.insert(fields::UPDATED_AT.to_string(), serde_json::json!(now));
 
     let mut updated = 0u32;
     for pid in &req.product_ids {
@@ -2099,7 +2135,7 @@ mod tests {
             Extension(auth("seller_1", &["seller"])),
             Json(BulkUpdateRequest {
                 product_ids: vec!["prod_1".into(), "prod_2".into()],
-                update: serde_json::json!({ fields::LIFECYCLE_STATUS: "paused" }),
+                update: serde_json::json!({ fields::LIFECYCLE_STATUS: "inactive" }),
             }),
         )
         .await
@@ -2111,7 +2147,7 @@ mod tests {
             .get_document(collections::PRODUCTS, "prod_1")
             .await
             .unwrap();
-        assert_eq!(updated[fields::LIFECYCLE_STATUS], "paused");
+        assert_eq!(updated[fields::LIFECYCLE_STATUS], "inactive");
         assert!(updated.get(fields::UPDATED_AT).is_some());
     }
 
@@ -2675,6 +2711,90 @@ mod tests {
         .unwrap_err();
 
         assert!(err.to_string().contains("Only product owner or admin"));
+    }
+
+    #[tokio::test]
+    async fn test_bulk_update_rejects_non_object_update() {
+        let state = setup_state().await;
+        state
+            .db
+            .upsert_document(
+                collections::PRODUCTS,
+                "prod_1",
+                serde_json::json!({ fields::SELLER_ID: "seller_1", fields::LIFECYCLE_STATUS: "active" }),
+            )
+            .await
+            .unwrap();
+
+        let err = bulk_update_products(
+            State(state),
+            Extension(auth("seller_1", &["seller"])),
+            Json(BulkUpdateRequest {
+                product_ids: vec!["prod_1".into()],
+                update: serde_json::json!("not-an-object"),
+            }),
+        )
+        .await
+        .unwrap_err();
+
+        assert!(err.to_string().contains("update must be an object"));
+    }
+
+    #[tokio::test]
+    async fn test_bulk_update_rejects_invalid_lifecycle_transition() {
+        let state = setup_state().await;
+        state
+            .db
+            .upsert_document(
+                collections::PRODUCTS,
+                "prod_1",
+                serde_json::json!({ fields::SELLER_ID: "seller_1", fields::LIFECYCLE_STATUS: "active" }),
+            )
+            .await
+            .unwrap();
+
+        let err = bulk_update_products(
+            State(state),
+            Extension(auth("seller_1", &["seller"])),
+            Json(BulkUpdateRequest {
+                product_ids: vec!["prod_1".into()],
+                update: serde_json::json!({ fields::LIFECYCLE_STATUS: "paused" }),
+            }),
+        )
+        .await
+        .unwrap_err();
+
+        assert!(err.to_string().contains("Invalid status transition"));
+    }
+
+    #[tokio::test]
+    async fn test_bulk_update_rejects_negative_stock_quantity() {
+        let state = setup_state().await;
+        state
+            .db
+            .upsert_document(
+                collections::PRODUCTS,
+                "prod_1",
+                serde_json::json!({ fields::SELLER_ID: "seller_1", fields::LIFECYCLE_STATUS: "active" }),
+            )
+            .await
+            .unwrap();
+
+        let err = bulk_update_products(
+            State(state),
+            Extension(auth("seller_1", &["seller"])),
+            Json(BulkUpdateRequest {
+                product_ids: vec!["prod_1".into()],
+                update: serde_json::json!({ fields::STOCK_QUANTITY: -1 }),
+            }),
+        )
+        .await
+        .unwrap_err();
+
+        assert!(
+            err.to_string()
+                .contains("Stock quantity cannot be negative")
+        );
     }
 
     // ── Coverage: update_product non-object productData ──

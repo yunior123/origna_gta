@@ -125,6 +125,8 @@ class ProfileHeaderCard extends StatelessWidget {
                 const SizedBox(height: 18),
                 Text(
                   userModel.name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w900,

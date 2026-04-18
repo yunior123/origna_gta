@@ -1,9 +1,9 @@
-use crate::{AppState, Config, Result};
+use crate::{AppState, Config, Environment, Result};
 use axum::Router;
 use axum::http::{HeaderValue, Method, header};
 use std::time::Duration;
 use tower_http::compression::CompressionLayer;
-use tower_http::cors::CorsLayer;
+use tower_http::cors::{AllowOrigin, CorsLayer};
 use tower_http::timeout::TimeoutLayer;
 use tower_http::trace::TraceLayer;
 
@@ -26,7 +26,7 @@ pub fn build_router(state: AppState) -> Router {
 /// Build CORS layer with explicit origin whitelist.
 /// CRITICAL FIX: Replace .allow_origin(Any) with specific production domains.
 fn build_cors_layer(config: &Config, is_test_mode: bool) -> CorsLayer {
-    let mut allowed_origins: Vec<HeaderValue> = config
+    let allowed_origins: Vec<HeaderValue> = config
         .cors
         .allowed_origins
         .iter()
@@ -39,33 +39,21 @@ fn build_cors_layer(config: &Config, is_test_mode: bool) -> CorsLayer {
         })
         .collect();
 
-    // Allow localhost ONLY in test mode (for local development)
-    if is_test_mode {
-        allowed_origins.push(
-            "http://localhost:3000"
-                .parse::<HeaderValue>()
-                .expect("static localhost origin should parse"),
-        );
-        allowed_origins.push(
-            "http://localhost:5173"
-                .parse::<HeaderValue>()
-                .expect("static localhost origin should parse"),
-        );
-    }
+    let allow_loopback_origins = is_test_mode || Environment::from_env().is_dev();
 
-    if allowed_origins.is_empty() && !is_test_mode {
+    if allowed_origins.is_empty() && !allow_loopback_origins {
         tracing::warn!(
             "CORS allowed_origins is empty and not in test mode — all cross-origin requests will be denied"
         );
     }
 
-    let cors = if allowed_origins.is_empty() {
-        CorsLayer::new()
-    } else {
-        CorsLayer::new().allow_origin(allowed_origins)
-    };
+    let allow_origin = AllowOrigin::predicate(move |origin, _request_parts| {
+        allowed_origins.contains(origin) || (allow_loopback_origins && is_loopback_origin(origin))
+    });
 
-    cors.allow_credentials(true)
+    CorsLayer::new()
+        .allow_origin(allow_origin)
+        .allow_credentials(true)
         .allow_methods([
             Method::GET,
             Method::POST,
@@ -85,6 +73,25 @@ fn build_cors_layer(config: &Config, is_test_mode: bool) -> CorsLayer {
                 .expect("static header should parse"),
             "x-tenant-id".parse().expect("static header should parse"),
         ])
+}
+
+fn is_loopback_origin(origin: &HeaderValue) -> bool {
+    let Ok(origin) = origin.to_str() else {
+        return false;
+    };
+
+    let Ok(uri) = origin.parse::<axum::http::Uri>() else {
+        return false;
+    };
+
+    if !matches!(uri.scheme_str(), Some("http" | "https")) {
+        return false;
+    }
+
+    matches!(
+        uri.host(),
+        Some("localhost" | "127.0.0.1" | "::1" | "[::1]")
+    )
 }
 
 async fn health_check() -> &'static str {
@@ -171,5 +178,38 @@ mod tests {
             .unwrap();
         let resp = app.oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::METHOD_NOT_ALLOWED);
+    }
+
+    #[test]
+    fn test_is_loopback_origin_allows_random_localhost_port() {
+        let origin = HeaderValue::from_static("http://localhost:54643");
+        assert!(is_loopback_origin(&origin));
+    }
+
+    #[test]
+    fn test_is_loopback_origin_rejects_public_host() {
+        let origin = HeaderValue::from_static("https://evil.example");
+        assert!(!is_loopback_origin(&origin));
+    }
+
+    #[tokio::test]
+    async fn test_router_options_allows_random_localhost_origin_in_dev() {
+        let app = build_router(make_state());
+        let req = Request::builder()
+            .method(Method::OPTIONS)
+            .uri("/health")
+            .header(header::ORIGIN, "http://localhost:54643")
+            .header(header::ACCESS_CONTROL_REQUEST_METHOD, "GET")
+            .body(Body::empty())
+            .unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+
+        assert_eq!(resp.status(), StatusCode::OK);
+        assert_eq!(
+            resp.headers()
+                .get(header::ACCESS_CONTROL_ALLOW_ORIGIN)
+                .and_then(|value| value.to_str().ok()),
+            Some("http://localhost:54643")
+        );
     }
 }

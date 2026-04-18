@@ -40,7 +40,10 @@ pub async fn get_order(state: McpState, user_id: &str, params: &Value) -> McpRes
         ));
     }
 
-    let record_id = order_id.split_once(':').map(|(_, id)| id).unwrap_or(order_id);
+    let record_id = order_id
+        .split_once(':')
+        .map(|(_, id)| id)
+        .unwrap_or(order_id);
 
     let order = state
         .db
@@ -86,7 +89,10 @@ pub async fn request_return(state: McpState, user_id: &str, params: &Value) -> M
         ));
     }
 
-    let record_id = order_id.split_once(':').map(|(_, id)| id).unwrap_or(order_id);
+    let record_id = order_id
+        .split_once(':')
+        .map(|(_, id)| id)
+        .unwrap_or(order_id);
 
     let order = state
         .db
@@ -130,9 +136,10 @@ pub async fn request_return(state: McpState, user_id: &str, params: &Value) -> M
         let now = chrono::Utc::now();
         let days_since_delivery = (now.timestamp() - delivered_at.timestamp()) / 86400;
         if days_since_delivery > RETURN_WINDOW_DAYS {
-            return Err(McpError::ValidationError(
-                format!("Return window expired ({} days since delivery)", days_since_delivery),
-            ));
+            return Err(McpError::ValidationError(format!(
+                "Return window expired ({} days since delivery)",
+                days_since_delivery
+            )));
         }
     }
 
@@ -217,10 +224,14 @@ pub async fn create_checkout(
         let product_doc = match product_doc {
             Ok(doc) if !doc.is_null() => doc,
             Ok(_) | Err(ob_core::Error::NotFound(_)) => {
-                return Err(McpError::NotFound(format!("Product {product_id} not found")));
+                return Err(McpError::NotFound(format!(
+                    "Product {product_id} not found"
+                )));
             }
             Err(e) => {
-                return Err(McpError::Internal(format!("Failed to fetch product {product_id}: {e}")));
+                return Err(McpError::Internal(format!(
+                    "Failed to fetch product {product_id}: {e}"
+                )));
             }
         };
 
@@ -235,9 +246,9 @@ pub async fn create_checkout(
             .unwrap_or("");
 
         if lifecycle_status != "active" {
-            return Err(McpError::ValidationError(
-                format!("Product {product_id} is not available for purchase"),
-            ));
+            return Err(McpError::ValidationError(format!(
+                "Product {product_id} is not available for purchase"
+            )));
         }
 
         let stock = product_doc
@@ -246,9 +257,9 @@ pub async fn create_checkout(
             .unwrap_or(0);
 
         if stock < quantity {
-            return Err(McpError::ValidationError(
-                format!("Product {product_id} has insufficient stock (available: {stock})"),
-            ));
+            return Err(McpError::ValidationError(format!(
+                "Product {product_id} has insufficient stock (available: {stock})"
+            )));
         }
 
         total_cents = total_cents.saturating_add(price_cents.saturating_mul(quantity));
@@ -614,15 +625,9 @@ mod tests {
             "shipping_address": {"line1": "123 Main"},
             "idempotency_key": "idem-key-1"
         });
-        let r1 = create_checkout(
-            state.clone(),
-            "users:u1",
-            &params,
-            None,
-            Some(&tracker),
-        )
-        .await
-        .unwrap();
+        let r1 = create_checkout(state.clone(), "users:u1", &params, None, Some(&tracker))
+            .await
+            .unwrap();
         let r2 = create_checkout(state, "users:u1", &params, None, Some(&tracker))
             .await
             .unwrap();

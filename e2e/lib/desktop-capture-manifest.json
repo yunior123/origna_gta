@@ -1,0 +1,262 @@
+{
+  "scenarios": [
+    {
+      "id": "desktop-home-guest",
+      "filename": "300-home-guest-desktop.png",
+      "persona": "guest",
+      "url": "/",
+      "viewport": { "width": 1440, "height": 900 },
+      "anchors": ["Privacy Policy", "Terms of Service", "Legal"]
+    },
+    {
+      "id": "desktop-login-guest",
+      "filename": "301-login-guest-desktop.png",
+      "persona": "guest",
+      "url": "/login",
+      "viewport": { "width": 1440, "height": 900 },
+      "anchors": ["Enable accessibility", "Privacy Policy", "Terms of Service"]
+    },
+    {
+      "id": "desktop-privacy-guest",
+      "filename": "302-privacy-policy-desktop.png",
+      "persona": "guest",
+      "url": "/privacy-policy",
+      "viewport": { "width": 1440, "height": 900 },
+      "anchors": ["privacy", "confidentialité", "origna"]
+    },
+    {
+      "id": "desktop-terms-guest",
+      "filename": "303-terms-of-service-desktop.png",
+      "persona": "guest",
+      "url": "/terms-of-service",
+      "viewport": { "width": 1440, "height": 900 },
+      "anchors": ["Terms of Service", "Legal", "Origna GTA"]
+    },
+    {
+      "id": "desktop-home-buyer",
+      "filename": "304-home-buyer-desktop.png",
+      "persona": "buyer",
+      "url": "/",
+      "viewport": { "width": 1440, "height": 900 },
+      "anchors": ["btn-home-settings", "btn-cart", "panier"]
+    },
+    {
+      "id": "desktop-home-sort-buyer",
+      "filename": "305-home-sort-buyer-desktop.png",
+      "persona": "buyer",
+      "url": "/",
+      "viewport": { "width": 1440, "height": 900 },
+      "steps": [
+        { "action": "click", "target": "btn-home-sort" }
+      ],
+      "anchors": ["sort", "Trier", "price", "prix"]
+    },
+    {
+      "id": "desktop-home-price-filter-buyer",
+      "filename": "306-home-price-filter-buyer-desktop.png",
+      "persona": "buyer",
+      "url": "/",
+      "viewport": { "width": 1440, "height": 900 },
+      "steps": [
+        { "action": "click", "target": "btn-home-price-filter" }
+      ],
+      "anchors": ["price", "Prix", "filtre", "filter"]
+    },
+    {
+      "id": "desktop-profile-buyer",
+      "filename": "307-profile-buyer-desktop.png",
+      "persona": "buyer",
+      "url": "/profile",
+      "viewport": { "width": 1440, "height": 900 },
+      "anchors": ["Abonnement", "Settings", "Paramètres"]
+    },
+    {
+      "id": "desktop-orders-buyer",
+      "filename": "308-orders-buyer-desktop.png",
+      "persona": "buyer",
+      "url": "/orders",
+      "viewport": { "width": 1440, "height": 900 },
+      "anchors": ["Commandes", "order", "orders"]
+    },
+    {
+      "id": "desktop-favorites-buyer",
+      "filename": "309-favorites-buyer-desktop.png",
+      "persona": "buyer",
+      "url": "/favorites",
+      "viewport": { "width": 1440, "height": 900 },
+      "anchors": ["Favoris", "favorites", "favorite"]
+    },
+    {
+      "id": "desktop-notifications-buyer",
+      "filename": "310-notifications-buyer-desktop.png",
+      "persona": "buyer",
+      "url": "/notifications",
+      "viewport": { "width": 1440, "height": 900 },
+      "anchors": ["Notifications", "notifications", "notification"]
+    },
+    {
+      "id": "desktop-addresses-buyer",
+      "filename": "311-addresses-buyer-desktop.png",
+      "persona": "buyer",
+      "url": "/addresses",
+      "viewport": { "width": 1440, "height": 900 },
+      "anchors": ["Adresses", "address", "adresse"]
+    },
+    {
+      "id": "desktop-subscription-buyer",
+      "filename": "312-subscription-buyer-desktop.png",
+      "persona": "buyer",
+      "url": "/subscription",
+      "viewport": { "width": 1440, "height": 900 },
+      "anchors": ["Abonnement", "Premium", "subscription"]
+    },
+    {
+      "id": "desktop-chat-inbox-buyer",
+      "filename": "313-chat-inbox-buyer-desktop.png",
+      "persona": "buyer",
+      "url": "/chat/inbox",
+      "viewport": { "width": 1440, "height": 900 },
+      "anchors": ["Messages", "chat", "message", "Premium requis", "inbox"]
+    },
+    {
+      "id": "desktop-cart-buyer",
+      "filename": "314-cart-buyer-desktop.png",
+      "persona": "buyer",
+      "url": "/cart",
+      "viewport": { "width": 1440, "height": 900 },
+      "anchors": ["Panier", "cart", "checkout", "Passer à la caisse"]
+    },
+    {
+      "id": "desktop-checkout-buyer",
+      "filename": "315-checkout-buyer-desktop.png",
+      "persona": "buyer",
+      "url": "/checkout",
+      "viewport": { "width": 1440, "height": 900 },
+      "anchors": ["paiement", "payment", "address", "adresse"]
+    },
+    {
+      "id": "desktop-support-buyer",
+      "filename": "316-support-buyer-desktop.png",
+      "persona": "buyer",
+      "url": "/support",
+      "viewport": { "width": 1440, "height": 900 },
+      "anchors": ["support", "Support", "message", "contact"]
+    },
+    {
+      "id": "desktop-security-settings-buyer",
+      "filename": "317-security-settings-buyer-desktop.png",
+      "persona": "buyer",
+      "url": "/security-settings",
+      "viewport": { "width": 1440, "height": 900 },
+      "anchors": ["security", "sécurité", "password", "mot de passe"]
+    },
+    {
+      "id": "desktop-seller-products",
+      "filename": "318-seller-products-desktop.png",
+      "persona": "seller",
+      "url": "/seller/products",
+      "viewport": { "width": 1440, "height": 900 },
+      "anchors": ["Mes produits", "produits", "products", "Ajouter"]
+    },
+    {
+      "id": "desktop-seller-orders",
+      "filename": "319-seller-orders-desktop.png",
+      "persona": "seller",
+      "url": "/seller/orders",
+      "viewport": { "width": 1440, "height": 900 },
+      "anchors": ["Gérer les commandes", "commande", "seller-order"]
+    },
+    {
+      "id": "desktop-seller-analytics",
+      "filename": "320-seller-analytics-desktop.png",
+      "persona": "seller",
+      "url": "/seller/analytics",
+      "viewport": { "width": 1440, "height": 900 },
+      "anchors": ["Analytique", "Revenue", "analytics", "revenu"]
+    },
+    {
+      "id": "desktop-seller-integration",
+      "filename": "321-seller-integration-desktop.png",
+      "persona": "seller",
+      "url": "/seller/integration",
+      "viewport": { "width": 1440, "height": 900 },
+      "anchors": ["Integration", "intégration", "Stripe", "Connect"]
+    },
+    {
+      "id": "desktop-seller-warehouses",
+      "filename": "322-seller-warehouses-desktop.png",
+      "persona": "seller",
+      "url": "/seller/warehouses",
+      "viewport": { "width": 1440, "height": 900 },
+      "anchors": ["warehouse", "entrepôt", "adresse", "stock"]
+    },
+    {
+      "id": "desktop-seller-bulk-upload",
+      "filename": "323-seller-bulk-upload-desktop.png",
+      "persona": "seller",
+      "url": "/seller/bulk-upload",
+      "viewport": { "width": 1440, "height": 900 },
+      "anchors": ["bulk", "CSV", "upload", "téléverser"]
+    },
+    {
+      "id": "desktop-add-product-seller",
+      "filename": "324-add-product-seller-desktop.png",
+      "persona": "seller",
+      "url": "/add-product",
+      "viewport": { "width": 1440, "height": 900 },
+      "anchors": ["Nouveau produit", "Nom du produit", "add-product"]
+    },
+    {
+      "id": "desktop-admin-panel-users",
+      "filename": "325-admin-panel-users-desktop.png",
+      "persona": "admin",
+      "url": "/admin",
+      "viewport": { "width": 1440, "height": 900 },
+      "anchors": ["admin", "Utilisateurs", "Users", "Panneau"]
+    },
+    {
+      "id": "desktop-admin-panel-orders",
+      "filename": "326-admin-panel-orders-desktop.png",
+      "persona": "admin",
+      "url": "/admin",
+      "viewport": { "width": 1440, "height": 900 },
+      "steps": [
+        { "action": "click", "target": "admin-tab-orders|admin_tab_orders|Commandes" }
+      ],
+      "anchors": ["Commandes", "Orders", "admin"]
+    },
+    {
+      "id": "desktop-admin-panel-products",
+      "filename": "327-admin-panel-products-desktop.png",
+      "persona": "admin",
+      "url": "/admin",
+      "viewport": { "width": 1440, "height": 900 },
+      "steps": [
+        { "action": "click", "target": "admin-tab-products|admin_tab_products|Produits" }
+      ],
+      "anchors": ["Produits", "Products", "admin"]
+    },
+    {
+      "id": "desktop-home-scrolled-buyer",
+      "filename": "328-home-scrolled-buyer-desktop.png",
+      "persona": "buyer",
+      "url": "/",
+      "viewport": { "width": 1440, "height": 900 },
+      "steps": [
+        { "action": "scroll", "target": "down", "value": "2400" }
+      ],
+      "anchors": ["panier", "btn-home-settings"]
+    },
+    {
+      "id": "desktop-profile-scrolled-buyer",
+      "filename": "329-profile-scrolled-buyer-desktop.png",
+      "persona": "buyer",
+      "url": "/profile",
+      "viewport": { "width": 1440, "height": 900 },
+      "steps": [
+        { "action": "scroll", "target": "down", "value": "2200" }
+      ],
+      "anchors": ["Paramètres", "Settings", "Abonnement"]
+    }
+  ]
+}

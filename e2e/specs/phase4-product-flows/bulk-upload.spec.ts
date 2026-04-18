@@ -23,42 +23,11 @@ const UI_TIMEOUT = 90_000;
 
 async function loginAs(browser: AgentBrowser, email: string, password: string) {
   try {
-    await browser.open(`${WEB_APP_URL}/login`, 15_000);
+    await browser.loginViaApi(email, password);
+    await browser.open(WEB_APP_URL, 15_000);
     await browser.waitForFlutter(5_000);
-  } catch {
-    return;
-  }
-
-  let snap: any;
-  try {
-    snap = await browser.snapshot({ interactive: true, compact: true });
-  } catch {
-    return;
-  }
-
-  const emailInput = browser.findByLabel(snap, /you@example|vous@exemple|login_email_field|email/i);
-  if (emailInput) {
-    try { await browser.fill(emailInput.ref, email); } catch { /* ignore */ }
-  }
-
-  try {
-    snap = await browser.snapshot({ interactive: true, compact: true });
-  } catch {
-    return;
-  }
-
-  const passInput = browser.findByLabel(snap, /login_password_field|••••••••|password/i);
-  if (passInput) {
-    try { await browser.fill(passInput.ref, password); } catch { /* ignore */ }
-  }
-
-  const submitBtn = browser.findByLabel(snap, /login_submit_button|connexion|sign.in|log.in/i);
-  try {
-    if (submitBtn) await browser.click(submitBtn.ref);
-    else await browser.press('Enter');
-    await browser.waitForChange({ timeout: 5_000 });
-  } catch {
-    // Best-effort login only
+  } catch (error) {
+    console.warn(`loginViaApi warning: ${(error as Error).message}`);
   }
 }
 

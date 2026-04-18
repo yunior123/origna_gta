@@ -296,14 +296,6 @@ Widget previewSecurityEnabledDarkMobile() =>
     previewMobile(child: _securityMfaEnabledContent());
 
 @Preview(
-  name: 'Security MFA Enabled Dark — Tablet',
-  group: 'Security Screens',
-  size: Size(768, 1024),
-)
-Widget previewSecurityEnabledDarkTablet() =>
-    previewTablet(child: _securityMfaEnabledContent());
-
-@Preview(
   name: 'Security MFA Enabled Dark — Desktop',
   group: 'Security Screens',
   size: Size(1280, 800),
@@ -311,23 +303,7 @@ Widget previewSecurityEnabledDarkTablet() =>
 Widget previewSecurityEnabledDarkDesktop() =>
     previewDesktop(child: _securityMfaEnabledContent());
 
-@Preview(
-  name: 'Security MFA Enabled Dark — Web',
-  group: 'Security Screens',
-  size: Size(1440, 900),
-)
-Widget previewSecurityEnabledDarkWeb() =>
-    previewWeb(child: _securityMfaEnabledContent());
-
 // ── MFA Disabled — Dark ─────────────────────────────────────────────────────
-@Preview(
-  name: 'Security MFA Disabled Dark — Mobile',
-  group: 'Security Screens',
-  size: Size(390, 844),
-)
-Widget previewSecurityDisabledDarkMobile() =>
-    previewMobile(child: _securityMfaDisabledContent());
-
 @Preview(
   name: 'Security MFA Disabled Dark — Desktop',
   group: 'Security Screens',
@@ -338,22 +314,22 @@ Widget previewSecurityDisabledDarkDesktop() =>
 
 // ── Light ────────────────────────────────────────────────────────────────────
 @Preview(
-  name: 'Security Light — Mobile',
-  group: 'Security Screens',
-  size: Size(390, 844),
-)
-Widget previewSecurityLightMobile() => previewMobile(
-  theme: previewLightTheme,
-  child: _securityMfaDisabledContent(),
-);
-
-@Preview(
   name: 'Security Light — Desktop',
   group: 'Security Screens',
   size: Size(1280, 800),
 )
 Widget previewSecurityLightDesktop() => previewDesktop(
   theme: previewLightTheme,
+  child: _securityMfaDisabledContent(),
+);
+
+@Preview(
+  name: 'Security FR — Mobile',
+  group: 'Security Screens',
+  size: Size(390, 844),
+)
+Widget previewSecurityFrenchMobile() => previewMobile(
+  locale: const Locale('fr'),
   child: _securityMfaDisabledContent(),
 );
 

@@ -183,8 +183,7 @@ async fn send_push_internal(request: PushRequest<'_>) -> Result<()> {
         return Err(PushError::MissingServiceAccount);
     }
 
-    let access_token =
-        get_access_token(request.http_client, request.REDACTED_SECRET_json).await?;
+    let access_token = get_access_token(request.http_client, request.REDACTED_SECRET_json).await?;
 
     let url = request
         .fcm_base_url

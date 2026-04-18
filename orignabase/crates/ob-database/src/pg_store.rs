@@ -151,7 +151,7 @@ impl PgDatabaseStore {
                 RETURN NEW;
             END;
             $$ LANGUAGE plpgsql;
-            "#
+            "#,
         )
         .execute(&self.pool)
         .await
@@ -160,7 +160,9 @@ impl PgDatabaseStore {
             Err(e) => {
                 let err_str = e.to_string();
                 if !err_str.contains("tuple concurrently updated") {
-                    return Err(ob_core::Error::Database(format!("Failed to create set_updated_at function: {e}")));
+                    return Err(ob_core::Error::Database(format!(
+                        "Failed to create set_updated_at function: {e}"
+                    )));
                 }
             }
         }
@@ -411,8 +413,9 @@ pub(crate) fn translate_surreal_to_pg(
                     // Single-arg: type::thing($param) where $param = "table:id"
                     // Extract table name from the bind value and rewrite to proper PostgreSQL
                     let param = parts[0].trim();
-                    if let Some((_, bind_val)) = pairs.iter().find(|(k, _)| format!("${k}") == param || k == param.trim_start_matches('$'))
-                        && let Some(combined) = bind_val.as_str()
+                    if let Some((_, bind_val)) = pairs.iter().find(|(k, _)| {
+                        format!("${k}") == param || k == param.trim_start_matches('$')
+                    }) && let Some(combined) = bind_val.as_str()
                         && let Some((table, id)) = combined.split_once(':')
                     {
                         // Rewrite: SELECT * FROM type::thing($uid) → SELECT * FROM users WHERE id = 'abc'
@@ -1820,7 +1823,10 @@ mod tests {
             pg.contains("FROM users WHERE id = 'abc-123'"),
             "Should rewrite single-arg type::thing to FROM table WHERE id = value, got: {pg}"
         );
-        assert!(!pg.contains("type::thing"), "Should remove type::thing, got: {pg}");
+        assert!(
+            !pg.contains("type::thing"),
+            "Should remove type::thing, got: {pg}"
+        );
     }
 
     #[test]
@@ -1849,10 +1855,7 @@ mod tests {
             pg.contains("data->>'deliveredAt'"),
             "Should preserve JSONB field ref, got: {pg}"
         );
-        assert!(
-            pg.contains("$1"),
-            "Should have positional param, got: {pg}"
-        );
+        assert!(pg.contains("$1"), "Should have positional param, got: {pg}");
         assert!(
             !pg.contains("$cutoff"),
             "Should not have named param, got: {pg}"

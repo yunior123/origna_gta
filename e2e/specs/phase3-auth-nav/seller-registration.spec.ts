@@ -94,36 +94,31 @@ describe('Seller Registration — UI Tests', () => {
   });
 
   test('T06: UI — Seller registration page has terms checkbox and action button', { timeout: 60_000 }, async () => {
-    // Login as non-onboarded seller (buyer account) — go directly to /login
-    await browser.open(`${WEB_APP_URL}/login`);
-    await browser.waitForFlutter();
-
-    let snap = await browser.waitForChange({ text: /you@example|vous@exemple|login_email_field|btn-home-settings/i, timeout: 30_000 });
-
-    // If not already logged in, fill the login form
-    if (!browser.findByLabel(snap, /btn-home-settings/)) {
-      const emailInput = browser.findByLabel(snap, /you@example|vous@exemple|login_email_field/i);
-      expect(emailInput).toBeTruthy();
-      await browser.click(emailInput!.ref);
-      await browser.type(TEST_ACCOUNTS.BUYER_EMAIL);
-
-      snap = await browser.waitForChange({ text: /login_password_field|••••••••/i, timeout: 10_000 });
-      const passInput = browser.findByLabel(snap, /login_password_field|••••••••/);
-      expect(passInput).toBeTruthy();
-      await browser.click(passInput!.ref);
-      await browser.type(DEFAULT_PASS);
-
-      await browser.press('Tab');
-      await browser.waitForChange({ timeout: 500 });
-      await browser.press('Enter');
-      await browser.waitForChange({ timeout: 5000 });
+    // Log in as buyer because the Become Seller menu should be visible there.
+    try {
+      await browser.loginViaApi(TEST_ACCOUNTS.BUYER_EMAIL, DEFAULT_PASS);
+    } catch (error) {
+      console.warn(`loginViaApi warning: ${(error as Error).message}`);
+      const auth = await signIn(TEST_ACCOUNTS.BUYER_EMAIL, DEFAULT_PASS);
+      await browser.open(WEB_APP_URL);
       await browser.waitForFlutter();
+      browser.run([
+        'eval',
+        `localStorage.setItem('orignabase_access_token', ${JSON.stringify(auth.idToken)});
+         localStorage.setItem('orignabase_refresh_token', ${JSON.stringify(auth.refreshToken ?? '')});
+         localStorage.setItem('orignabase_email', ${JSON.stringify(TEST_ACCOUNTS.BUYER_EMAIL)});`,
+      ], 15_000);
     }
 
     // Navigate to home, then settings
     await browser.open(WEB_APP_URL);
     await browser.waitForFlutter();
-    snap = await browser.waitForChange({ text: /btn-home-settings/i, timeout: 15_000 });
+    let snap: any;
+    try {
+      snap = await browser.waitForChange({ text: /btn-home-settings|product-card-|search|home/i, timeout: 15_000 });
+    } catch {
+      snap = await browser.snapshot({ interactive: true, compact: true });
+    }
 
     // Use safeClick for atomic snapshot+click to avoid stale refs
     let menuLoaded = false;

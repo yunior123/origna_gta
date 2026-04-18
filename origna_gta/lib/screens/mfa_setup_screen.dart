@@ -27,12 +27,16 @@ final _codesSavedCheckedProvider = StateProvider.autoDispose<bool>(
 class _MfaSetupScreenState extends ConsumerState<MfaSetupScreen> {
   final TextEditingController _codeController = TextEditingController();
 
+  bool get _isPreviewMode => const bool.fromEnvironment('WIDGET_PREVIEW');
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(mfaViewModelProvider.notifier).startSetup();
-    });
+    if (!_isPreviewMode) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ref.read(mfaViewModelProvider.notifier).startSetup();
+      });
+    }
   }
 
   @override
@@ -46,28 +50,23 @@ class _MfaSetupScreenState extends ConsumerState<MfaSetupScreen> {
     final mfaState = ref.watch(mfaViewModelProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return SensitiveContent(
-      sensitivity: (mfaState.currentStep == 1 || mfaState.currentStep == 3)
-          ? ContentSensitivity.sensitive
-          : ContentSensitivity.notSensitive,
-      child: Scaffold(
-        backgroundColor: isDark ? DesignTokens.darkBackground : null,
-        appBar: AppBar(
-          title: Text('mfa.setup_title'.tr()),
-          backgroundColor: isDark ? DesignTokens.darkSurface : null,
-        ),
-        body: mfaState.isLoading && mfaState.currentStep == 0
-            ? const Center(child: ModernLoadingIndicator())
-            : SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 500),
-                    child: _buildCurrentStep(mfaState, isDark),
-                  ),
+    return Scaffold(
+      backgroundColor: isDark ? DesignTokens.darkBackground : null,
+      appBar: AppBar(
+        title: Text('mfa.setup_title'.tr()),
+        backgroundColor: isDark ? DesignTokens.darkSurface : null,
+      ),
+      body: mfaState.isLoading && mfaState.currentStep == 0
+          ? const Center(child: ModernLoadingIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 500),
+                  child: _buildCurrentStep(mfaState, isDark),
                 ),
               ),
-      ),
+            ),
     );
   }
 
@@ -546,9 +545,28 @@ class _MfaSetupScreenState extends ConsumerState<MfaSetupScreen> {
 
 // ═══ Widget Previews ═══
 
-Widget _setupContent() => previewScope(
+Widget _setupContent() => previewScopeLoggedIn(
+  uid: 'preview-mfa-user',
   extraOverrides: [
     mfaViewModelProvider.overrideWith((ref) => _PreviewMfaSetupViewModel()),
+  ],
+  child: const MfaSetupScreen(),
+);
+
+Widget _setupVerifyContent() => previewScopeLoggedIn(
+  uid: 'preview-mfa-user',
+  extraOverrides: [
+    mfaViewModelProvider.overrideWith((ref) => _PreviewMfaVerifyViewModel()),
+  ],
+  child: const MfaSetupScreen(),
+);
+
+Widget _setupBackupCodesContent() => previewScopeLoggedIn(
+  uid: 'preview-mfa-user',
+  extraOverrides: [
+    mfaViewModelProvider.overrideWith(
+      (ref) => _PreviewMfaBackupCodesViewModel(),
+    ),
   ],
   child: const MfaSetupScreen(),
 );
@@ -562,34 +580,11 @@ Widget _setupContent() => previewScope(
 Widget previewMfaSetupDarkMobile() => previewMobile(child: _setupContent());
 
 @Preview(
-  name: 'MFA Setup Dark — Tablet',
-  group: 'MFA Screens',
-  size: Size(768, 1024),
-)
-Widget previewMfaSetupDarkTablet() => previewTablet(child: _setupContent());
-
-@Preview(
   name: 'MFA Setup Dark — Desktop',
   group: 'MFA Screens',
   size: Size(1280, 800),
 )
 Widget previewMfaSetupDarkDesktop() => previewDesktop(child: _setupContent());
-
-@Preview(
-  name: 'MFA Setup Dark — Web',
-  group: 'MFA Screens',
-  size: Size(1440, 900),
-)
-Widget previewMfaSetupDarkWeb() => previewWeb(child: _setupContent());
-
-// ── Light ────────────────────────────────────────────────────────────────────
-@Preview(
-  name: 'MFA Setup Light — Mobile',
-  group: 'MFA Screens',
-  size: Size(390, 844),
-)
-Widget previewMfaSetupLightMobile() =>
-    previewMobile(theme: previewLightTheme, child: _setupContent());
 
 @Preview(
   name: 'MFA Setup Light — Desktop',
@@ -598,6 +593,22 @@ Widget previewMfaSetupLightMobile() =>
 )
 Widget previewMfaSetupLightDesktop() =>
     previewDesktop(theme: previewLightTheme, child: _setupContent());
+
+@Preview(
+  name: 'MFA Verify FR — Mobile',
+  group: 'MFA Screens',
+  size: Size(390, 844),
+)
+Widget previewMfaVerifyFrenchMobile() =>
+    previewMobile(locale: const Locale('fr'), child: _setupVerifyContent());
+
+@Preview(
+  name: 'MFA Backup Codes — Desktop',
+  group: 'MFA Screens',
+  size: Size(1280, 800),
+)
+Widget previewMfaBackupCodesDesktop() =>
+    previewDesktop(child: _setupBackupCodesContent());
 
 /// Preview ViewModel that starts at step 1 (QR code) with mock data.
 class _PreviewMfaSetupViewModel extends MfaViewModel {
@@ -610,7 +621,8 @@ class _PreviewMfaSetupViewModel extends MfaViewModel {
   Future<void> startSetup() async {
     state = MfaState(
       currentStep: 1,
-      qrCodeBase64: '', // Empty = shows loading indicator in preview
+      qrCodeBase64:
+          'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9s3FoXkAAAAASUVORK5CYII=',
       manualKey: 'JBSWY3DPEHPK3PXP',
       recoveryCodes: [
         'abc12-def34',
@@ -621,6 +633,39 @@ class _PreviewMfaSetupViewModel extends MfaViewModel {
       ],
     );
   }
+}
+
+class _PreviewMfaVerifyViewModel extends MfaViewModel {
+  _PreviewMfaVerifyViewModel() : super(_FakeRef()) {
+    state = const MfaState(currentStep: 2, manualKey: 'JBSWY3DPEHPK3PXP');
+  }
+
+  @override
+  void checkStatus() {}
+
+  @override
+  Future<void> startSetup() async {}
+}
+
+class _PreviewMfaBackupCodesViewModel extends MfaViewModel {
+  _PreviewMfaBackupCodesViewModel() : super(_FakeRef()) {
+    state = MfaState(
+      currentStep: 3,
+      recoveryCodes: const [
+        'abc12-def34',
+        'ghi56-jkl78',
+        'mno90-pqr12',
+        'stu34-vwx56',
+        'yza78-bcd90',
+      ],
+    );
+  }
+
+  @override
+  void checkStatus() {}
+
+  @override
+  Future<void> startSetup() async {}
 }
 
 class _FakeRef implements Ref {

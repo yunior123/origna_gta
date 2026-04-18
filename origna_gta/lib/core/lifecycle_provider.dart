@@ -8,15 +8,24 @@ final appLifecycleProvider = StateProvider<AppLifecycleState>(
   name: 'appLifecycleProvider',
 );
 
+/// Returns true only when the app has genuinely come back from background-ish
+/// states into [AppLifecycleState.resumed].
+bool isResumeTransition(
+  AppLifecycleState? previous,
+  AppLifecycleState next,
+) {
+  return next == AppLifecycleState.resumed &&
+      previous != null &&
+      previous != AppLifecycleState.resumed;
+}
+
 extension LifecycleRefX on Ref {
   /// Calls [callback] only when the app returns from background to resumed state.
   /// This helps providers refresh stale data after a meaningful background gap
   /// without needing their own [WidgetsBindingObserver].
   void onResume(void Function() callback) {
     listen<AppLifecycleState>(appLifecycleProvider, (previous, next) {
-      if (next == AppLifecycleState.resumed &&
-          previous != null &&
-          previous != AppLifecycleState.resumed) {
+      if (isResumeTransition(previous, next)) {
         callback();
       }
     });
@@ -28,9 +37,7 @@ extension LifecycleWidgetRefX on WidgetRef {
   /// Useful for screens that need to refresh UI or trigger actions on return.
   void onResume(void Function() callback) {
     listen<AppLifecycleState>(appLifecycleProvider, (previous, next) {
-      if (next == AppLifecycleState.resumed &&
-          previous != null &&
-          previous != AppLifecycleState.resumed) {
+      if (isResumeTransition(previous, next)) {
         callback();
       }
     });

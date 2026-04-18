@@ -30,7 +30,13 @@ pub async fn get_analytics(state: McpState, params: &Value) -> McpResult<Value> 
 
     let orders = state
         .db
-        .find_where(collections::ORDERS, fields::ORDER_STATUS, "=", &json!("delivered"), None)
+        .find_where(
+            collections::ORDERS,
+            fields::ORDER_STATUS,
+            "=",
+            &json!("delivered"),
+            None,
+        )
         .await
         .unwrap_or_default();
 
@@ -51,7 +57,13 @@ pub async fn get_analytics(state: McpState, params: &Value) -> McpResult<Value> 
 
     let products = state
         .db
-        .find_where(collections::PRODUCTS, fields::LIFECYCLE_STATUS, "=", &json!("active"), None)
+        .find_where(
+            collections::PRODUCTS,
+            fields::LIFECYCLE_STATUS,
+            "=",
+            &json!("active"),
+            None,
+        )
         .await
         .unwrap_or_default();
 
@@ -109,7 +121,10 @@ pub async fn create_review(state: McpState, user_id: &str, params: &Value) -> Mc
         .map(|(_, id)| id)
         .unwrap_or(product_id);
 
-    let product = state.db.get_document(collections::PRODUCTS, record_id).await;
+    let product = state
+        .db
+        .get_document(collections::PRODUCTS, record_id)
+        .await;
 
     let _product = match product {
         Ok(doc) if !doc.is_null() => doc,

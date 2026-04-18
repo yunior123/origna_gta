@@ -58,12 +58,7 @@ async fn graphql(client: &Client, token: Option<&str>, query: &str) -> (u16, Val
     (status, body)
 }
 
-async fn cancel_order(
-    client: &Client,
-    token: &str,
-    order_id: &str,
-    user_id: &str,
-) -> (u16, Value) {
+async fn cancel_order(client: &Client, token: &str, order_id: &str, user_id: &str) -> (u16, Value) {
     let resp = client
         .post(format!("{}/api/orders/cancel", base_url()))
         .header("Authorization", format!("Bearer {token}"))
@@ -96,9 +91,8 @@ async fn register_seller_user(client: &Client) -> (String, String) {
     let admin_token = login_admin(client).await;
     let data = serde_json::to_string(&json!({ "roles": ["seller", "user"] })).unwrap();
     let escaped = serde_json::to_string(&data).unwrap();
-    let query = format!(
-        r#"mutation {{ update(collection: "users", id: "{user_id}", data: {escaped}) }}"#
-    );
+    let query =
+        format!(r#"mutation {{ update(collection: "users", id: "{user_id}", data: {escaped}) }}"#);
     let (status, body) = graphql(client, Some(&admin_token), &query).await;
     assert_eq!(status, 200, "seller role bootstrap failed: {body}");
 
@@ -112,7 +106,11 @@ async fn register_seller_user(client: &Client) -> (String, String) {
         .await
         .expect("seller login failed");
 
-    assert_eq!(login_resp.status(), 200, "seller login failed after role update");
+    assert_eq!(
+        login_resp.status(),
+        200,
+        "seller login failed after role update"
+    );
     let login_body: Value = login_resp.json().await.unwrap();
     let token = login_body["access_token"]
         .as_str()
@@ -228,7 +226,10 @@ async fn test_order_cancel_pending() {
 
     // Cancel order via the live cancellation API
     let (status, body) = cancel_order(&client, &buyer_token, &order_id, &buyer_id).await;
-    assert_eq!(status, 200, "Cancelling pending order should succeed: {body}");
+    assert_eq!(
+        status, 200,
+        "Cancelling pending order should succeed: {body}"
+    );
 
     // Verify order is now cancelled
     let get_query = format!(r#"{{ get(collection: "orders", id: "{order_id}") }}"#); // ignore-magic

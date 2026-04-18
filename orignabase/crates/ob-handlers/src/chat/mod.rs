@@ -1105,7 +1105,7 @@ mod tests {
             Json(req.clone()),
         )
         .await;
-        assert!(result.is_ok());
+        assert!(result.is_ok(), "{result:?}");
         let Json(resp) = result.unwrap();
         assert!(resp.is_new);
         assert_eq!(resp.chat_id, format!("{}_{}", product_id, buyer_id));
@@ -1113,12 +1113,13 @@ mod tests {
         // 5. Test idempotency (should return existing)
         let result =
             get_or_create_chat(State(state.clone()), Extension(auth.clone()), Json(req)).await;
-        assert!(result.is_ok());
+        assert!(result.is_ok(), "{result:?}");
         let Json(resp) = result.unwrap();
         assert!(!resp.is_new);
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_send_message_full_flow() {
         let state = setup_state().await;
         let buyer_id = &uuid::Uuid::new_v4().to_string();
@@ -2111,6 +2112,7 @@ mod tests {
     // --- Coverage: seller first reply metrics (lines 438-443) ---
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_send_message_seller_first_reply_metrics() {
         let state = setup_state().await;
         let buyer_id = &uuid::Uuid::new_v4().to_string();

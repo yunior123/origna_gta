@@ -77,10 +77,12 @@ pub async fn list_collections(db: &DatabaseClient) -> Result<Value> {
 
     Ok(Value::Array(
         rows.into_iter()
-            .map(|row| Value::Object(serde_json::Map::from_iter([(
-                "tablename".to_string(),
-                Value::String(row.get::<String, _>("tablename")),
-            )])))
+            .map(|row| {
+                Value::Object(serde_json::Map::from_iter([(
+                    "tablename".to_string(),
+                    Value::String(row.get::<String, _>("tablename")),
+                )]))
+            })
             .collect(),
     ))
 }

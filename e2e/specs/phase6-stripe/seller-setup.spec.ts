@@ -15,25 +15,8 @@ const BUYER_EMAIL = TEST_ACCOUNTS.BUYER_EMAIL;
 const BUYER_PASS = TEST_ACCOUNTS.BUYER_PASS;
 
 async function loginAs(browser: AgentBrowser, email: string, password: string) {
-  await browser.open(`${WEB_APP_URL}/login`);
-  await browser.waitForFlutter();
-
-  let snap = await browser.snapshot({ interactive: true, compact: true });
-  const emailInput = browser.findByLabel(snap, /you@example|vous@exemple|login_email_field/i);
-  if (!emailInput) throw new Error('Email input not found');
-  await browser.click(emailInput.ref);
-  await browser.type(email);
-
-  snap = await browser.snapshot({ interactive: true, compact: true });
-  const passInput = browser.findByLabel(snap, /login_password_field|••••••••/);
-  if (!passInput) throw new Error('Password input not found');
-  await browser.click(passInput.ref);
-  await browser.type(password);
-
-  await browser.press('Tab');
-  await browser.waitForChange({ timeout: 500 });
-  await browser.press('Enter');
-  await browser.waitForChange({ timeout: 5000 });
+  await browser.loginViaApi(email, password);
+  await browser.open(WEB_APP_URL);
   await browser.waitForFlutter();
 }
 

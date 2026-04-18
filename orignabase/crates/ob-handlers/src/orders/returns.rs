@@ -13,7 +13,9 @@ use ob_auth::middleware::AuthContext;
 use crate::HandlersState;
 use crate::push;
 use crate::shared::auth::resolve_self_user_id;
-use crate::shared::schema::{business_rules, collections, delivery_status, fields, notification_types, return_request_status};
+use crate::shared::schema::{
+    business_rules, collections, delivery_status, fields, notification_types, return_request_status,
+};
 use crate::shared::validation::{sanitize_html, validate_uid};
 
 // ---------------------------------------------------------------------------
@@ -372,8 +374,14 @@ fn assert_within_return_window(item: &Value) -> Result<(), ob_core::Error> {
 /// Valid return-request status transitions.
 fn valid_return_transitions(from: &str) -> Vec<&'static str> {
     match from {
-        return_request_status::REQUESTED => vec![return_request_status::APPROVED, return_request_status::REJECTED],
-        return_request_status::APPROVED => vec![return_request_status::LABEL_ISSUED, return_request_status::RECEIVED],
+        return_request_status::REQUESTED => vec![
+            return_request_status::APPROVED,
+            return_request_status::REJECTED,
+        ],
+        return_request_status::APPROVED => vec![
+            return_request_status::LABEL_ISSUED,
+            return_request_status::RECEIVED,
+        ],
         return_request_status::LABEL_ISSUED => vec![return_request_status::RECEIVED],
         return_request_status::RECEIVED => vec![return_request_status::REFUNDED],
         _ => vec![],
@@ -675,31 +683,45 @@ async fn approve_return_request(
             }
 
             if !product_id.is_empty() && qty > 0 {
-                let cur_product = state
-                    .db
-                    .get_document(collections::PRODUCTS, product_id)
-                    .await
-                    .unwrap_or_default();
-                let cur_stock = cur_product
-                    .get("stockQuantity")
-                    .and_then(|v| v.as_i64())
-                    .unwrap_or(0);
-                state
-                    .db
-                    .update_document(
-                        collections::PRODUCTS,
-                        product_id,
-                        json!({
-                            "stockQuantity": cur_stock + qty,
-                            "updatedAt": now
-                        }),
-                    )
-                    .await
-                    .map_err(|e| {
-                        ob_core::Error::Database(format!(
-                            "Failed to restore stock for returned product {product_id}: {e}"
-                        ))
-                    })?;
+                let mut restored = false;
+                for _attempt in 0..3 {
+                    let cur_product = state
+                        .db
+                        .get_document(collections::PRODUCTS, product_id)
+                        .await
+                        .unwrap_or_default();
+                    let cur_stock = cur_product
+                        .get(fields::STOCK_QUANTITY)
+                        .and_then(|v| v.as_i64())
+                        .unwrap_or(0);
+                    let cas_result = state
+                        .db
+                        .update_document_cas(
+                            collections::PRODUCTS,
+                            product_id,
+                            json!({
+                                fields::STOCK_QUANTITY: cur_stock + qty,
+                                fields::UPDATED_AT: now
+                            }),
+                            fields::STOCK_QUANTITY,
+                            &json!(cur_stock),
+                        )
+                        .await
+                        .map_err(|e| {
+                            ob_core::Error::Database(format!(
+                                "Failed to restore stock for returned product {product_id}: {e}"
+                            ))
+                        })?;
+                    if cas_result.is_some() {
+                        restored = true;
+                        break;
+                    }
+                }
+                if !restored {
+                    return Err(ob_core::Error::Database(format!(
+                        "Failed to restore stock for returned product {product_id}: concurrent modification"
+                    )));
+                }
             }
 
             state

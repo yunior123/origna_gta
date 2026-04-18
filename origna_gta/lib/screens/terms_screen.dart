@@ -784,21 +784,80 @@ class _TermsBodyState extends State<_TermsBody> {
 
 // ═══ Widget Previews ═══
 
+const _previewTermsContent = '''
+1. ACCEPTANCE OF TERMS
+By using Origna GTA, you agree to these marketplace terms, our privacy practices, and the current seller and buyer policies published in the app.
+
+2. ACCOUNT REGISTRATION
+You must provide accurate account details and keep login credentials secure.
+- Use a valid email address for verification and order communication.
+- Keep your shipping and billing details current before checkout.
+
+3. PURCHASES AND PAYMENT
+Orders are charged in Canadian dollars and settled through approved payment providers.
+- Taxes and shipping are calculated before final confirmation.
+- Promotional discounts may be revoked when abuse or duplicate redemption is detected.
+
+4. SHIPPING AND DELIVERY
+Estimated delivery windows are not guaranteed and may vary by seller location, carrier delays, or inventory availability.
+- Buyers must review seller shipping policies before purchase.
+- Sellers must provide timely fulfilment updates and accurate tracking when available.
+
+5. RETURNS AND REFUNDS
+Eligible returns must follow the product policy, return window, and condition requirements shown in the order flow.
+- Refunds may be partial when items are returned damaged or incomplete.
+- Digital products may be non-refundable after activation or download.
+
+6. SELLER RESPONSIBILITIES
+Sellers must keep listings accurate, fulfil legal obligations, and avoid misleading pricing or prohibited items.
+- Inventory, media, and shipping claims must reflect the live product state.
+- Repeated policy violations may suspend payouts, listings, or store access.
+
+7. PROHIBITED CONDUCT
+You may not abuse the platform, automate fraudulent purchases, scrape protected data, or interfere with other users.
+
+8. INTELLECTUAL PROPERTY
+Platform branding, code, and protected content remain the property of their respective owners and licensors.
+
+9. LIMITATION OF LIABILITY
+Origna GTA is provided on an as-available basis, subject to applicable law and consumer protections.
+
+10. PRIVACY AND CONTACT
+Questions about these terms can be sent to support@origna.ca and legal notices follow the published privacy and support channels.
+''';
+
+Widget _termsPreview() => previewScope(
+  extraOverrides: [
+    termsProvider.overrideWith((ref) async => _previewTermsContent),
+  ],
+  child: const TermsScreen(),
+);
+
+class _TermsPreviewStateHost extends StatelessWidget {
+  final AsyncValue<String> terms;
+
+  const _TermsPreviewStateHost({required this.terms});
+
+  @override
+  Widget build(BuildContext context) {
+    final screen = const TermsScreen();
+    return Scaffold(
+      body: terms.when(
+        loading: screen._buildLoadingState,
+        error: (err, stack) => screen._buildErrorState(context),
+        data: (content) => _TermsBody(rawContent: content),
+      ),
+    );
+  }
+}
+
 @Preview(
   name: 'Specific Legal Terms — Mobile',
   group: 'Screens — Legal',
   size: Size(390, 844),
 )
 Widget previewTermsScreenMobile() =>
-    previewMobile(child: previewScope(child: TermsScreen()));
-
-@Preview(
-  name: 'Specific Legal Terms — Tablet',
-  group: 'Screens — Legal',
-  size: Size(768, 1024),
-)
-Widget previewTermsScreenTablet() =>
-    previewTablet(child: previewScope(child: TermsScreen()));
+    previewMobile(child: _termsPreview());
 
 @Preview(
   name: 'Specific Legal Terms — Desktop',
@@ -806,37 +865,18 @@ Widget previewTermsScreenTablet() =>
   size: Size(1280, 800),
 )
 Widget previewTermsScreenDesktop() =>
-    previewDesktop(child: previewScope(child: TermsScreen()));
+    previewDesktop(child: _termsPreview());
 
 @Preview(
-  name: 'Specific Legal Terms — Web',
+  name: 'Specific Legal Terms Loading — Desktop',
   group: 'Screens — Legal',
-  size: Size(1440, 900),
+  size: Size(1280, 800),
 )
-Widget previewTermsScreenWeb() =>
-    previewWeb(child: previewScope(child: TermsScreen()));
+Widget previewTermsScreenLoadingDesktop() => previewDesktop(
+  child: const _TermsPreviewStateHost(terms: AsyncValue.loading()),
+);
 
 // ── Light ────────────────────────────────────────────────────────────────────
-@Preview(
-  name: 'Specific Legal Terms Light — Mobile',
-  group: 'Screens — Legal',
-  size: Size(390, 844),
-)
-Widget previewTermsScreenLightMobile() => previewMobile(
-  theme: previewLightTheme,
-  child: previewScope(child: TermsScreen()),
-);
-
-@Preview(
-  name: 'Specific Legal Terms Light — Tablet',
-  group: 'Screens — Legal',
-  size: Size(768, 1024),
-)
-Widget previewTermsScreenLightTablet() => previewTablet(
-  theme: previewLightTheme,
-  child: previewScope(child: TermsScreen()),
-);
-
 @Preview(
   name: 'Specific Legal Terms Light — Desktop',
   group: 'Screens — Legal',
@@ -844,15 +884,19 @@ Widget previewTermsScreenLightTablet() => previewTablet(
 )
 Widget previewTermsScreenLightDesktop() => previewDesktop(
   theme: previewLightTheme,
-  child: previewScope(child: TermsScreen()),
+  child: _termsPreview(),
 );
 
 @Preview(
-  name: 'Specific Legal Terms Light — Web',
+  name: 'Specific Legal Terms Error — Desktop',
   group: 'Screens — Legal',
-  size: Size(1440, 900),
+  size: Size(1280, 800),
 )
-Widget previewTermsScreenLightWeb() => previewWeb(
-  theme: previewLightTheme,
-  child: previewScope(child: TermsScreen()),
+Widget previewTermsScreenErrorDesktop() => previewDesktop(
+  child: _TermsPreviewStateHost(
+    terms: AsyncValue.error(
+      Exception('preview terms load failure'),
+      StackTrace.empty,
+    ),
+  ),
 );

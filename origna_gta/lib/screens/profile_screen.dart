@@ -215,44 +215,12 @@ Widget previewProfileScreenDarkMobile() =>
     previewMobile(theme: previewDarkTheme, child: _profileDarkContent());
 
 @Preview(
-  name: 'Profile Dark — Tablet',
-  group: 'ProfileScreen',
-  size: Size(768, 1024),
-)
-Widget previewProfileScreenDarkTablet() =>
-    previewTablet(theme: previewDarkTheme, child: _profileDarkContent());
-
-@Preview(
   name: 'Profile Dark — Desktop',
   group: 'ProfileScreen',
   size: Size(1280, 800),
 )
 Widget previewProfileScreenDarkDesktop() =>
     previewDesktop(theme: previewDarkTheme, child: _profileDarkContent());
-
-@Preview(
-  name: 'Profile Dark — Web',
-  group: 'ProfileScreen',
-  size: Size(1440, 900),
-)
-Widget previewProfileScreenDarkWeb() =>
-    previewWeb(theme: previewDarkTheme, child: _profileDarkContent());
-
-@Preview(
-  name: 'Profile Light — Mobile',
-  group: 'ProfileScreen',
-  size: Size(390, 844),
-)
-Widget previewProfileScreenLightMobile() =>
-    previewMobile(theme: previewLightTheme, child: _profileLightContent());
-
-@Preview(
-  name: 'Profile Light — Tablet',
-  group: 'ProfileScreen',
-  size: Size(768, 1024),
-)
-Widget previewProfileScreenLightTablet() =>
-    previewTablet(theme: previewLightTheme, child: _profileLightContent());
 
 @Preview(
   name: 'Profile Light — Desktop',
@@ -262,15 +230,7 @@ Widget previewProfileScreenLightTablet() =>
 Widget previewProfileScreenLightDesktop() =>
     previewDesktop(theme: previewLightTheme, child: _profileLightContent());
 
-@Preview(
-  name: 'Profile Light — Web',
-  group: 'ProfileScreen',
-  size: Size(1440, 900),
-)
-Widget previewProfileScreenLightWeb() =>
-    previewWeb(theme: previewLightTheme, child: _profileLightContent());
-
-// ── Logged-Out State ──────────────────────────────────────────────────────────
+// ── Logged-out state ─────────────────────────────────────────────────────────
 @Preview(
   name: 'Profile Logged-Out Dark — Mobile',
   group: 'ProfileScreen',
@@ -280,36 +240,12 @@ Widget previewProfileLoggedOutMobile() =>
     previewMobile(theme: previewDarkTheme, child: _profileLoggedOut());
 
 @Preview(
-  name: 'Profile Logged-Out Dark — Tablet',
-  group: 'ProfileScreen',
-  size: Size(768, 1024),
-)
-Widget previewProfileLoggedOutTablet() =>
-    previewTablet(theme: previewDarkTheme, child: _profileLoggedOut());
-
-@Preview(
   name: 'Profile Logged-Out Dark — Desktop',
   group: 'ProfileScreen',
   size: Size(1280, 800),
 )
 Widget previewProfileLoggedOutDesktop() =>
     previewDesktop(theme: previewDarkTheme, child: _profileLoggedOut());
-
-@Preview(
-  name: 'Profile Logged-Out Dark — Web',
-  group: 'ProfileScreen',
-  size: Size(1440, 900),
-)
-Widget previewProfileLoggedOutWeb() =>
-    previewWeb(theme: previewDarkTheme, child: _profileLoggedOut());
-
-@Preview(
-  name: 'Profile Logged-Out Light — Mobile',
-  group: 'ProfileScreen',
-  size: Size(390, 844),
-)
-Widget previewProfileLoggedOutLightMobile() =>
-    previewMobile(theme: previewLightTheme, child: _profileLoggedOut());
 
 @Preview(
   name: 'Profile Logged-Out Light — Desktop',

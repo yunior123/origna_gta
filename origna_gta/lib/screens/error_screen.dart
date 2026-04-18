@@ -109,35 +109,10 @@ Widget previewErrorMobile() => previewWrapper(
   breakpoint: PreviewBreakpoint.mobile,
 );
 
-@Preview(name: 'Error — Tablet', group: 'ErrorScreen', size: Size(768, 1024))
-Widget previewErrorTablet() => previewWrapper(
-  child: const ErrorScreen(message: 'Something went wrong. Please try again.'),
-  breakpoint: PreviewBreakpoint.tablet,
-);
-
 @Preview(name: 'Error — Desktop', group: 'ErrorScreen', size: Size(1280, 800))
 Widget previewErrorDesktop() => previewWrapper(
   child: const ErrorScreen(message: 'Something went wrong. Please try again.'),
   breakpoint: PreviewBreakpoint.desktop,
-);
-
-@Preview(name: 'Error — Web', group: 'ErrorScreen', size: Size(1440, 900))
-Widget previewErrorWeb() => previewWrapper(
-  child: const ErrorScreen(message: 'Something went wrong. Please try again.'),
-  breakpoint: PreviewBreakpoint.web,
-);
-
-@Preview(
-  name: 'Error — Light Mobile',
-  group: 'ErrorScreen',
-  brightness: Brightness.light,
-  size: Size(390, 844),
-)
-Widget previewErrorLightMobile() => previewWrapper(
-  theme: previewLightTheme,
-  background: DesignTokens.surface,
-  child: const ErrorScreen(message: 'Something went wrong. Please try again.'),
-  breakpoint: PreviewBreakpoint.mobile,
 );
 
 @Preview(

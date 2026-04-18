@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:origna_gta/utils/preview_helpers.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:flutter/widget_previews.dart';
 
 class ModernSkeletonLoader extends StatelessWidget {
   final Widget _child;
@@ -189,3 +191,80 @@ class _ListTileSkeleton extends StatelessWidget {
     );
   }
 }
+
+// === Widget Previews ===
+
+// ═══ Widget Previews ═══
+
+@Preview(name: 'Skeleton Card', group: 'ModernSkeletonLoader')
+Widget previewSkeletonCard() =>
+    previewWrapper(child: ModernSkeletonLoader.card(height: 120));
+
+@Preview(name: 'Skeleton List Tile', group: 'ModernSkeletonLoader')
+Widget previewSkeletonListTile() =>
+    previewWrapper(child: ModernSkeletonLoader.listTile());
+
+@Preview(name: 'Skeleton Text', group: 'ModernSkeletonLoader')
+Widget previewSkeletonText() => previewWrapper(
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      ModernSkeletonLoader.text(width: 200, height: 14),
+      const SizedBox(height: 8),
+      ModernSkeletonLoader.text(width: 160, height: 14),
+      const SizedBox(height: 8),
+      ModernSkeletonLoader.text(width: 240, height: 14),
+    ],
+  ),
+);
+
+@Preview(name: 'Skeleton Image Placeholder', group: 'ModernSkeletonLoader')
+Widget previewSkeletonImagePlaceholder() => previewWrapper(
+  child: SizedBox(
+    width: 120,
+    height: 120,
+    child: ModernSkeletonLoader.imagePlaceholder(width: 120, height: 120),
+  ),
+);
+
+@Preview(name: 'Skeleton Wrap (complex)', group: 'ModernSkeletonLoader')
+Widget previewSkeletonWrap() => previewWrapper(
+  child: ModernSkeletonLoader.wrap(
+    isDark: true,
+    child: Container(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          ModernSkeletonLoader.card(width: 80, height: 80),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ModernSkeletonLoader.text(width: 140, height: 14),
+                const SizedBox(height: 8),
+                ModernSkeletonLoader.text(width: 100, height: 12),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ),
+  ),
+);
+
+@Preview(name: 'Skeleton Variants', group: 'ModernSkeletonLoader')
+Widget previewSkeletonVariants() => previewGrid(
+  children: [
+    ModernSkeletonLoader.card(height: 80),
+    ModernSkeletonLoader.listTile(),
+    ModernSkeletonLoader.text(width: 180, height: 16),
+  ],
+);
+
+@Preview(name: 'Skeleton Light — Card', group: 'ModernSkeletonLoader')
+Widget previewSkeletonCardLight() => previewWrapper(
+  theme: previewLightTheme,
+  background: DesignTokens.surface,
+  child: ModernSkeletonLoader.card(height: 120),
+);

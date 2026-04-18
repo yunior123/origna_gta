@@ -465,13 +465,22 @@ async fn test_auth_logout() {
         .to_string();
 
     // Logout — requires refresh_token in body
-    let (status_logout, _body_logout) =
-        make_request(&client, "POST", "/auth/logout", None, Some(json!({ // ignore-magic
+    let (status_logout, _body_logout) = make_request(
+        &client,
+        "POST",
+        "/auth/logout",
+        None,
+        Some(json!({ // ignore-magic
             "refresh_token": &refresh_token // ignore-magic
-        }))).await;
+        })),
+    )
+    .await;
 
     // Should succeed (200)
-    assert_eq!(status_logout, 200, "Logout should succeed with valid refresh_token");
+    assert_eq!(
+        status_logout, 200,
+        "Logout should succeed with valid refresh_token"
+    );
 }
 
 #[tokio::test]

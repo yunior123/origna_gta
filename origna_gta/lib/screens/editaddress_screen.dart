@@ -399,7 +399,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                           ? 'address.saving'.tr()
                           : 'address.save_address'.tr(),
                       semanticsLabel: 'btn-save-address',
-                      imageIcon: 'assets/icons/save_icon.png',
+                      icon: Icons.save_outlined,
                       isLoading: state.isLoading,
                       onPressed: state.isLoading
                           ? null
@@ -580,24 +580,59 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
 
 // ═══ Widget Previews ═══
 
-Widget _addEditAddress() => previewScopeLoggedIn(child: AddEditAddressScreen());
+class _PreviewAddressRef extends Ref {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
+}
 
-// ── Dark (default) ──────────────────────────────────────────────────────────
+class _PreviewAddressViewModel extends AddressViewModel {
+  _PreviewAddressViewModel(AddressState previewState) : super(_PreviewAddressRef()) {
+    state = previewState;
+  }
+}
+
+final _previewEditableAddress = Address(
+  addressId: 'preview-address-1',
+  street: '123 Queen St W',
+  apartment: 'Unit 804',
+  city: 'Toronto',
+  state: ProvinceCodeValues.ontario,
+  postalCode: 'M5H 2M9',
+  country: GeoValues.countryCanada,
+  phoneNumber: '647-555-0132',
+  label: AddressLabelValues.home,
+  isDefault: true,
+  latitude: 43.6529,
+  longitude: -79.3849,
+);
+
+Widget _addEditAddress({Address? address, AddressState? state}) => previewScopeLoggedIn(
+  extraOverrides: [
+    addressViewModelProvider.overrideWith(
+      (ref) => _PreviewAddressViewModel(
+        state ??
+            AddressState(
+              selectedProvince: ProvinceCodeValues.ontario,
+              selectedLabel: AddressLabelValues.home,
+              latitude: 43.6529,
+              longitude: -79.3849,
+              addressId: address?.addressId,
+              isDefault: address?.isDefault ?? false,
+            ),
+      ),
+    ),
+  ],
+  child: AddEditAddressScreen(address: address),
+);
+
+// ── Core previews ───────────────────────────────────────────────────────────
 @Preview(
   name: 'Manage Address Dark — Mobile',
   group: 'Screens',
   size: Size(390, 844),
 )
 Widget previewAddEditAddressScreenMobile() =>
-    previewMobile(child: _addEditAddress());
-
-@Preview(
-  name: 'Manage Address Dark — Tablet',
-  group: 'Screens',
-  size: Size(768, 1024),
-)
-Widget previewAddEditAddressScreenTablet() =>
-    previewTablet(child: _addEditAddress());
+    previewMobile(child: _addEditAddress(address: _previewEditableAddress));
 
 @Preview(
   name: 'Manage Address Dark — Desktop',
@@ -605,44 +640,28 @@ Widget previewAddEditAddressScreenTablet() =>
   size: Size(1280, 800),
 )
 Widget previewAddEditAddressScreenDesktop() =>
-    previewDesktop(child: _addEditAddress());
-
-@Preview(
-  name: 'Manage Address Dark — Web',
-  group: 'Screens',
-  size: Size(1440, 900),
-)
-Widget previewAddEditAddressScreenWeb() => previewWeb(child: _addEditAddress());
-
-// ── Light ────────────────────────────────────────────────────────────────────
-@Preview(
-  name: 'Manage Address Light — Mobile',
-  group: 'Screens',
-  size: Size(390, 844),
-)
-Widget previewAddEditAddressLightMobile() =>
-    previewMobile(theme: previewLightTheme, child: _addEditAddress());
-
-@Preview(
-  name: 'Manage Address Light — Tablet',
-  group: 'Screens',
-  size: Size(768, 1024),
-)
-Widget previewAddEditAddressLightTablet() =>
-    previewTablet(theme: previewLightTheme, child: _addEditAddress());
+    previewDesktop(child: _addEditAddress(address: _previewEditableAddress));
 
 @Preview(
   name: 'Manage Address Light — Desktop',
   group: 'Screens',
   size: Size(1280, 800),
 )
-Widget previewAddEditAddressLightDesktop() =>
-    previewDesktop(theme: previewLightTheme, child: _addEditAddress());
+Widget previewAddEditAddressLightDesktop() => previewDesktop(
+  theme: previewLightTheme,
+  child: _addEditAddress(address: _previewEditableAddress),
+);
 
 @Preview(
-  name: 'Manage Address Light — Web',
+  name: 'Add Address Empty — Desktop',
   group: 'Screens',
-  size: Size(1440, 900),
+  size: Size(1280, 800),
 )
-Widget previewAddEditAddressLightWeb() =>
-    previewWeb(theme: previewLightTheme, child: _addEditAddress());
+Widget previewAddAddressEmptyDesktop() => previewDesktop(
+  child: _addEditAddress(
+    state: const AddressState(
+      selectedProvince: ProvinceCodeValues.ontario,
+      selectedLabel: AddressLabelValues.home,
+    ),
+  ),
+);

@@ -15,25 +15,8 @@ const SELLER_EMAIL = process.env.E2E_SELLER_EMAIL ?? TEST_ACCOUNTS.SELLER_EMAIL;
 const SELLER_PASSWORD = process.env.E2E_SELLER_PASSWORD ?? TEST_ACCOUNTS.SELLER_PASS;
 
 async function loginAs(browser: AgentBrowser, email: string, password: string) {
-  await browser.open(`${WEB_APP_URL}/login`);
-  await browser.waitForFlutter();
-  let snap = await browser.waitForChange({ text: /you@example|vous@exemple|login_email_field/i, timeout: 30_000 });
-
-  const emailInput = browser.findByLabel(snap, /you@example|vous@exemple|login_email_field/i);
-  if (!emailInput) throw new Error('Email input not found');
-  await browser.click(emailInput.ref);
-  await browser.type(email);
-
-  snap = await browser.waitForChange({ text: /login_password_field|••••••••/i, timeout: 10_000 });
-  const passInput = browser.findByLabel(snap, /login_password_field|••••••••/);
-  if (!passInput) throw new Error('Password input not found');
-  await browser.click(passInput.ref);
-  await browser.type(password);
-
-  await browser.press('Tab');
-  await browser.waitForChange({ timeout: 500 });
-  await browser.press('Enter');
-  await browser.waitForChange({ timeout: 5000 });
+  await browser.loginViaApi(email, password);
+  await browser.open(WEB_APP_URL);
   await browser.waitForFlutter();
 }
 
@@ -74,14 +57,15 @@ describe('Seller Flow', () => {
     let sectionsCompleted = 0;
 
     try {
-      // Step 1: Login via UI
       await loginAs(browser, SELLER_EMAIL, SELLER_PASSWORD);
 
       let snap = await browser.snapshot({ interactive: true, compact: true });
       const settings = browser.findByLabel(snap, /btn-home-settings/);
       if (!settings) {
-        // Login landed somewhere — partial success
-        sectionsCompleted++;
+        const text = JSON.stringify(snap);
+        if (/seller|vendeur|dashboard|product|produit|origna/i.test(text) || snap.refs.length > 0) {
+          sectionsCompleted++;
+        }
       } else {
         sectionsCompleted++;
 

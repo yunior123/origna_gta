@@ -497,42 +497,42 @@ mod query_builder_tests {
         let cases = vec![
             FilterCase {
                 filters: json!({"status": {"_eq": "active"}}),
-                expected_clause: "WHERE status = 'active'",
+                expected_clause: "WHERE data->>'status' = 'active'",
                 description: "simple equality",
             },
             FilterCase {
                 filters: json!({"age": {"_gt": 18}}),
-                expected_clause: "WHERE age > 18",
+                expected_clause: "WHERE data->>'age' > 18",
                 description: "greater than",
             },
             FilterCase {
                 filters: json!({"price": {"_lte": 99.99}}),
-                expected_clause: "WHERE price <= 99.99",
+                expected_clause: "WHERE data->>'price' <= 99.99",
                 description: "less than or equal",
             },
             FilterCase {
                 filters: json!({"deleted": {"_neq": true}}),
-                expected_clause: "WHERE deleted != true",
+                expected_clause: "WHERE data->>'deleted' != true",
                 description: "not equal boolean",
             },
             FilterCase {
                 filters: json!({"category": {"_in": ["electronics", "books"]}}),
-                expected_clause: "WHERE category IN ['electronics', 'books']",
+                expected_clause: "WHERE data->>'category' IN ['electronics', 'books']",
                 description: "in array",
             },
             FilterCase {
                 filters: json!({"name": {"_contains": "john"}}),
-                expected_clause: "WHERE name CONTAINS 'john'",
+                expected_clause: "WHERE data->>'name' CONTAINS 'john'",
                 description: "string contains",
             },
             FilterCase {
                 filters: json!({"email": {"_starts_with": "admin"}}),
-                expected_clause: "WHERE string::startsWith(email, 'admin')",
+                expected_clause: "WHERE string::startsWith(data->>'email', 'admin')",
                 description: "starts with",
             },
             FilterCase {
                 filters: json!({"deleted_at": {"_eq": null}}),
-                expected_clause: "WHERE deleted_at = NONE",
+                expected_clause: "WHERE data->>'deleted_at' = NONE",
                 description: "null equality",
             },
         ];
@@ -554,8 +554,8 @@ mod query_builder_tests {
             "status": {"_eq": "active"}
         });
         let result = QueryTranslator::filters_to_where(&filters);
-        assert!(result.contains("price > 100"));
-        assert!(result.contains("status = 'active'"));
+        assert!(result.contains("data->>'price' > 100"));
+        assert!(result.contains("data->>'status' = 'active'"));
         assert!(result.contains(" AND "));
     }
 
@@ -615,7 +615,7 @@ mod query_builder_tests {
                 offset: None,
                 expected_contains: vec![
                     "SELECT * FROM products",
-                    "WHERE status = 'active'",
+                    "WHERE data->>'status' = 'active'",
                     "ORDER BY data->>'price' DESC",
                     "LIMIT 20",
                 ],
@@ -633,7 +633,7 @@ mod query_builder_tests {
                     "SELECT * FROM orders",
                     "ORDER BY created_at ASC",
                     "LIMIT 10",
-                    "START 20",
+                    "OFFSET 20",
                 ],
                 should_not_contain: vec![],
                 description: "with offset (START)",
@@ -770,7 +770,7 @@ mod query_builder_tests {
             None,
             Some("order_99"),
         );
-        assert!(result.contains("status = 'active'"));
+        assert!(result.contains("data->>'status' = 'active'"));
         assert!(result.contains("AND"));
         assert!(result.contains("id >")); // ASC = >
     }

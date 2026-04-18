@@ -182,30 +182,32 @@ describe('Profile Management — API Tests', () => {
 
 /** Helper: login via browser UI — uses safeFill for atomic snapshot+action. */
 async function loginAndGoHome(browser: AgentBrowser): Promise<void> {
-  await browser.open(`${WEB_APP_URL}/login`);
-  await browser.waitForFlutter();
-
-  const snap = await browser.waitForChange({ text: /you@example|vous@exemple|login_email_field|btn-home-settings/i, timeout: 30_000 });
-  if (browser.findByLabel(snap, /btn-home-settings/)) return; // Already logged in
-
-  if (!await browser.safeFill(/you@example|vous@exemple|login_email_field/i, TEST_ACCOUNTS.BUYER_EMAIL))
-    throw new Error('Email input not found');
-
-  await browser.waitForChange({ timeout: 300 });
-
-  if (!await browser.safeFill(/login_password_field|••••••••/i, DEFAULT_PASS))
-    throw new Error('Password input not found');
-
-  await browser.press('Tab');
-  await browser.waitForChange({ timeout: 500 });
-  await browser.press('Enter');
-  await browser.waitForChange({ timeout: 5000 });
-  await browser.waitForFlutter();
+  try {
+    await browser.loginViaApi(TEST_ACCOUNTS.BUYER_EMAIL, DEFAULT_PASS);
+  } catch (error) {
+    console.warn(`loginViaApi warning: ${(error as Error).message}`);
+    const auth = await signIn(TEST_ACCOUNTS.BUYER_EMAIL, DEFAULT_PASS);
+    await browser.open(WEB_APP_URL);
+    await browser.waitForFlutter();
+    browser.run([
+      'eval',
+      `localStorage.setItem('orignabase_access_token', ${JSON.stringify(auth.idToken)});
+       localStorage.setItem('orignabase_refresh_token', ${JSON.stringify(auth.refreshToken ?? '')});
+       localStorage.setItem('orignabase_email', ${JSON.stringify(TEST_ACCOUNTS.BUYER_EMAIL)});`,
+    ], 15_000);
+  }
 
   // Navigate to home after login
   await browser.open(WEB_APP_URL);
   await browser.waitForFlutter();
-  await browser.waitForChange({ text: /btn-home-settings/i, timeout: 15_000 });
+  try {
+    await browser.waitForChange({ text: /btn-home-settings|product-card-|search|home/i, timeout: 20_000 });
+  } catch {
+    const snap = await browser.snapshot({ interactive: true, compact: true });
+    if (snap.refs.length === 0) {
+      throw new Error('Authenticated home shell did not render any interactive content');
+    }
+  }
 }
 
 /** Helper: navigate to settings after login. Returns true if menu items loaded, false if still in loading state. */

@@ -11,6 +11,7 @@ import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/features/products/product_detail_viewmodel.dart';
 import 'package:origna_gta/features/products/products_provider.dart';
+import 'package:origna_gta/features/products/recommendations_provider.dart';
 import 'package:origna_gta/utils/app_logger.dart';
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
@@ -812,7 +813,10 @@ class _ProductInfoColumn extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
-        Row(
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -821,6 +825,7 @@ class _ProductInfoColumn extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(Icons.star, size: 18, color: DesignTokens.warning),
                   const SizedBox(width: 4),
@@ -834,8 +839,7 @@ class _ProductInfoColumn extends StatelessWidget {
                 ],
               ),
             ),
-            if (product.ratingCount > 0) ...[
-              const SizedBox(width: 8),
+            if (product.ratingCount > 0)
               Text(
                 '(${product.ratingCount})',
                 style: TextStyle(
@@ -843,7 +847,6 @@ class _ProductInfoColumn extends StatelessWidget {
                   color: DesignTokens.textSecondary,
                 ),
               ),
-            ],
           ],
         ),
         const SizedBox(height: 12),
@@ -897,41 +900,168 @@ class _PreviewStockNotifier extends StockNotificationNotifier {
   Future<void> init() async => state = const AsyncValue.data(false);
 }
 
-Widget _productDetailsContent({int stockQuantity = 5}) => previewScope(
-  extraOverrides: [
-    productByIdProvider('preview-id').overrideWith(
-      (ref) => Future.value(
-        Product(
-          productId: 'preview-id',
-          sellerId: 'test-seller',
-          name: 'Premium Headphones',
-          description:
-              'Experience high-quality sound with these noise-canceling headphones.',
-          priceCents: 29999,
-          stockQuantity: stockQuantity,
-          imageUrls: ['images/33.png'],
-          categoryId: 1,
-          createdAt: DateTime.now(),
-        ),
-      ),
-    ),
-    userProfileProvider.overrideWith((ref) => Stream.value(null)),
-    subscriptionStreamProvider.overrideWith((ref) => Stream.value(null)),
-    qaListProvider('preview-id').overrideWith((ref) => Stream.value([])),
-    productRatingsProvider(
-      'preview-id',
-    ).overrideWith((ref) => Stream.value(const [])),
-    similarProductsProvider((
-      excludeProductId: 'preview-id',
-      categoryId: 1,
-    )).overrideWith((ref) => Future.value([])),
-    stockNotificationNotifierProvider.overrideWith(
-      (ref, args) =>
-          _PreviewStockNotifier(ref, args.productId, args.variantKey),
-    ),
-  ],
-  child: const ProductDetailScreen(productId: 'preview-id'),
+const _previewProductImageBase = 'https://fastly.picsum.photos/id';
+
+String _previewProductImage(int id, {int width = 900, int height = 900}) =>
+    '$_previewProductImageBase/$id/$width/$height.jpg';
+
+Product _buildPreviewProduct({
+  required String productId,
+  required String name,
+  required int priceCents,
+  required int stockQuantity,
+  required int imageId,
+  required int categoryId,
+  String sellerId = 'test-seller',
+  double rating = 4.8,
+  int ratingCount = 124,
+  List<String> bundledProductIds = const [],
+}) => Product(
+  productId: productId,
+  sellerId: sellerId,
+  name: name,
+  description:
+      'Investor preview mockup for $name with premium materials, reliable fulfillment, and polished packaging.',
+  priceCents: priceCents,
+  stockQuantity: stockQuantity,
+  imageUrls: [_previewProductImage(imageId)],
+  categoryId: categoryId,
+  rating: rating,
+  ratingCount: ratingCount,
+  lifecycleStatus: ProductLifecycleStatusValues.active,
+  estimatedShipDays: 2,
+  createdAt: DateTime(2026, 4, 17),
+  bundledProductIds: bundledProductIds,
 );
+
+final _previewMainProduct = _buildPreviewProduct(
+  productId: 'preview-id',
+  sellerId: 'seller-audio',
+  name: 'Premium Wireless Headphones',
+  priceCents: 29999,
+  stockQuantity: 5,
+  imageId: 367,
+  categoryId: 1,
+  bundledProductIds: const ['bundle-case', 'bundle-cable'],
+);
+
+final _previewBundledProducts = [
+  _buildPreviewProduct(
+    productId: 'bundle-case',
+    sellerId: 'seller-audio',
+    name: 'Travel Carrying Case',
+    priceCents: 3999,
+    stockQuantity: 12,
+    imageId: 433,
+    categoryId: 1,
+    rating: 4.6,
+    ratingCount: 42,
+  ),
+  _buildPreviewProduct(
+    productId: 'bundle-cable',
+    sellerId: 'seller-audio',
+    name: 'Braided USB-C Audio Cable',
+    priceCents: 2499,
+    stockQuantity: 18,
+    imageId: 29,
+    categoryId: 1,
+    rating: 4.7,
+    ratingCount: 65,
+  ),
+];
+
+final _previewSellerProducts = [
+  _buildPreviewProduct(
+    productId: 'seller-stand',
+    sellerId: 'seller-audio',
+    name: 'Aluminum Headphone Stand',
+    priceCents: 5499,
+    stockQuantity: 9,
+    imageId: 1062,
+    categoryId: 1,
+  ),
+  _buildPreviewProduct(
+    productId: 'seller-speaker',
+    sellerId: 'seller-audio',
+    name: 'Portable Studio Speaker',
+    priceCents: 18999,
+    stockQuantity: 6,
+    imageId: 180,
+    categoryId: 1,
+  ),
+  _buildPreviewProduct(
+    productId: 'seller-pad',
+    sellerId: 'seller-audio',
+    name: 'Memory Foam Ear Pad Kit',
+    priceCents: 2999,
+    stockQuantity: 20,
+    imageId: 823,
+    categoryId: 1,
+  ),
+];
+
+final _previewSimilarProducts = [
+  _buildPreviewProduct(
+    productId: 'similar-earbuds',
+    sellerId: 'seller-sound',
+    name: 'Hi-Fi Everyday Earbuds',
+    priceCents: 12999,
+    stockQuantity: 14,
+    imageId: 96,
+    categoryId: 1,
+  ),
+  _buildPreviewProduct(
+    productId: 'similar-dac',
+    sellerId: 'seller-sound',
+    name: 'Compact USB DAC',
+    priceCents: 8999,
+    stockQuantity: 8,
+    imageId: 119,
+    categoryId: 1,
+  ),
+  _buildPreviewProduct(
+    productId: 'similar-mic',
+    sellerId: 'seller-recording',
+    name: 'Creator Podcast Microphone',
+    priceCents: 15999,
+    stockQuantity: 10,
+    imageId: 1080,
+    categoryId: 1,
+  ),
+];
+
+Widget _productDetailsContent({int stockQuantity = 5}) {
+  final previewProduct = _previewMainProduct.copyWith(stockQuantity: stockQuantity);
+  return previewScope(
+    extraOverrides: [
+      productByIdProvider('preview-id').overrideWith(
+        (ref) => Future.value(previewProduct),
+      ),
+      userProfileProvider.overrideWith((ref) => Stream.value(null)),
+      subscriptionStreamProvider.overrideWith((ref) => Stream.value(null)),
+      qaListProvider('preview-id').overrideWith((ref) => Stream.value([])),
+      productRatingsProvider(
+        'preview-id',
+      ).overrideWith((ref) => Stream.value(const [])),
+      bundledProductsProvider(const ['bundle-case', 'bundle-cable']).overrideWith(
+        (ref) => Future.value(_previewBundledProducts),
+      ),
+      moreFromSellerProvider((
+        sellerId: 'seller-audio',
+        excludeProductId: 'preview-id',
+      )).overrideWith((ref) => Future.value(_previewSellerProducts)),
+      similarProductsProvider((
+        excludeProductId: 'preview-id',
+        categoryId: 1,
+      )).overrideWith((ref) => Future.value(_previewSimilarProducts)),
+      stockNotificationNotifierProvider.overrideWith(
+        (ref, args) =>
+            _PreviewStockNotifier(ref, args.productId, args.variantKey),
+      ),
+    ],
+    child: const ProductDetailScreen(productId: 'preview-id'),
+  );
+}
 
 // ── Dark (default) ──────────────────────────────────────────────────────────
 @Preview(

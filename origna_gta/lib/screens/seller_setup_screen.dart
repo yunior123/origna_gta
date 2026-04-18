@@ -5,6 +5,7 @@ import 'package:origna_gta/core/repositories/user_repository.dart';
 import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/features/seller/seller_account_status_viewmodel.dart';
+import 'package:origna_gta/models/models.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
@@ -747,13 +748,53 @@ class _SellerSetupCompleteScreenState
 
 // ═══ Widget Previews ═══
 
+final _previewSellerSetupUser = UserModel(
+  uid: 'preview-seller-setup',
+  email: 'seller.setup@origna.ca',
+  name: 'Prairie Goods Co.',
+  roles: const [UserRole.buyer, UserRole.seller],
+  createdAt: DateTime(2026, 2, 14),
+  businessName: 'Prairie Goods Co.',
+  verified: true,
+);
+
+Widget _sellerSetupCompletePreview(SellerAccountStatus status) =>
+    previewScopeLoggedIn(
+      uid: _previewSellerSetupUser.uid,
+      extraOverrides: [
+        userProfileProvider.overrideWith(
+          (ref) => Stream.value(_previewSellerSetupUser),
+        ),
+        sellerAccountStatusProvider.overrideWith((ref) => Stream.value(status)),
+      ],
+      child: const SellerSetupCompleteScreen(),
+    );
+
+Widget _sellerSetupRefreshPreview() => previewScopeLoggedIn(
+  uid: _previewSellerSetupUser.uid,
+  extraOverrides: [
+    userProfileProvider.overrideWith(
+      (ref) => Stream.value(_previewSellerSetupUser),
+    ),
+  ],
+  child: const SellerSetupRefreshScreen(),
+);
+
 @Preview(
   name: 'Seller Onboarding Success — Mobile',
   group: 'Screens — Seller Management',
   size: Size(390, 844),
 )
 Widget previewSellerSetupCompleteScreenMobile() =>
-    previewMobile(child: previewScope(child: SellerSetupCompleteScreen()));
+    previewMobile(
+      child: _sellerSetupCompletePreview(
+        const SellerAccountStatus(
+          isSeller: true,
+          chargesEnabled: true,
+          detailsSubmitted: true,
+        ),
+      ),
+    );
 
 @Preview(
   name: 'Seller Onboarding Success — Tablet',
@@ -761,7 +802,15 @@ Widget previewSellerSetupCompleteScreenMobile() =>
   size: Size(768, 1024),
 )
 Widget previewSellerSetupCompleteScreenTablet() =>
-    previewTablet(child: previewScope(child: SellerSetupCompleteScreen()));
+    previewTablet(
+      child: _sellerSetupCompletePreview(
+        const SellerAccountStatus(
+          isSeller: true,
+          chargesEnabled: true,
+          detailsSubmitted: true,
+        ),
+      ),
+    );
 
 @Preview(
   name: 'Seller Onboarding Success — Desktop',
@@ -769,7 +818,15 @@ Widget previewSellerSetupCompleteScreenTablet() =>
   size: Size(1280, 800),
 )
 Widget previewSellerSetupCompleteScreenDesktop() =>
-    previewDesktop(child: previewScope(child: SellerSetupCompleteScreen()));
+    previewDesktop(
+      child: _sellerSetupCompletePreview(
+        const SellerAccountStatus(
+          isSeller: true,
+          chargesEnabled: true,
+          detailsSubmitted: true,
+        ),
+      ),
+    );
 
 @Preview(
   name: 'Seller Onboarding Success — Web',
@@ -777,7 +834,15 @@ Widget previewSellerSetupCompleteScreenDesktop() =>
   size: Size(1440, 900),
 )
 Widget previewSellerSetupCompleteScreenWeb() =>
-    previewWeb(child: previewScope(child: SellerSetupCompleteScreen()));
+    previewWeb(
+      child: _sellerSetupCompletePreview(
+        const SellerAccountStatus(
+          isSeller: true,
+          chargesEnabled: true,
+          detailsSubmitted: true,
+        ),
+      ),
+    );
 
 @Preview(
   name: 'Seller Onboarding Refresh — Mobile',
@@ -785,7 +850,7 @@ Widget previewSellerSetupCompleteScreenWeb() =>
   size: Size(390, 844),
 )
 Widget previewSellerSetupRefreshScreenMobile() =>
-    previewMobile(child: previewScope(child: SellerSetupRefreshScreen()));
+    previewMobile(child: _sellerSetupRefreshPreview());
 
 @Preview(
   name: 'Seller Onboarding Refresh — Tablet',
@@ -793,7 +858,7 @@ Widget previewSellerSetupRefreshScreenMobile() =>
   size: Size(768, 1024),
 )
 Widget previewSellerSetupRefreshScreenTablet() =>
-    previewTablet(child: previewScope(child: SellerSetupRefreshScreen()));
+    previewTablet(child: _sellerSetupRefreshPreview());
 
 @Preview(
   name: 'Seller Onboarding Refresh — Desktop',
@@ -801,7 +866,7 @@ Widget previewSellerSetupRefreshScreenTablet() =>
   size: Size(1280, 800),
 )
 Widget previewSellerSetupRefreshScreenDesktop() =>
-    previewDesktop(child: previewScope(child: SellerSetupRefreshScreen()));
+    previewDesktop(child: _sellerSetupRefreshPreview());
 
 @Preview(
   name: 'Seller Onboarding Refresh — Web',
@@ -809,4 +874,39 @@ Widget previewSellerSetupRefreshScreenDesktop() =>
   size: Size(1440, 900),
 )
 Widget previewSellerSetupRefreshScreenWeb() =>
-    previewWeb(child: previewScope(child: SellerSetupRefreshScreen()));
+    previewWeb(child: _sellerSetupRefreshPreview());
+
+@Preview(
+  name: 'Seller Onboarding Pending Verification — Desktop',
+  group: 'Screens — Seller Management',
+  size: Size(1280, 800),
+)
+Widget previewSellerSetupPendingDesktop() => previewDesktop(
+  child: _sellerSetupCompletePreview(
+    const SellerAccountStatus(
+      isSeller: true,
+      chargesEnabled: false,
+      detailsSubmitted: true,
+    ),
+  ),
+);
+
+@Preview(
+  name: 'Seller Onboarding Requirements — Desktop',
+  group: 'Screens — Seller Management',
+  size: Size(1280, 800),
+)
+Widget previewSellerSetupRequirementsDesktop() => previewDesktop(
+  child: _sellerSetupCompletePreview(
+    const SellerAccountStatus(
+      isSeller: true,
+      chargesEnabled: false,
+      detailsSubmitted: false,
+      hasPendingRequirements: true,
+      pendingRequirements: [
+        'verification.document',
+        'external_account',
+      ],
+    ),
+  ),
+);

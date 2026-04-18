@@ -106,7 +106,9 @@ class AdminRequiredGate extends ConsumerWidget {
   size: Size(390, 844),
 )
 Widget previewAdminGateLoading() => previewWrapper(
-  child: const AdminRequiredGate(child: Text('Admin Content')),
+  child: previewScope(
+    child: const AdminRequiredGate(child: Text('Admin Content')),
+  ),
   breakpoint: PreviewBreakpoint.mobile,
 );
 
@@ -116,7 +118,9 @@ Widget previewAdminGateLoading() => previewWrapper(
   size: Size(390, 844),
 )
 Widget previewAdminGateDenied() => previewWrapper(
-  child: const AdminRequiredGate(child: Text('Admin Content')),
+  child: previewScope(
+    child: const AdminRequiredGate(child: Text('Admin Content')),
+  ),
   breakpoint: PreviewBreakpoint.mobile,
 );
 
@@ -126,7 +130,9 @@ Widget previewAdminGateDenied() => previewWrapper(
   size: Size(1280, 800),
 )
 Widget previewAdminGateDesktop() => previewWrapper(
-  child: const AdminRequiredGate(child: Text('Admin Content')),
+  child: previewScope(
+    child: const AdminRequiredGate(child: Text('Admin Content')),
+  ),
   breakpoint: PreviewBreakpoint.desktop,
 );
 
@@ -139,6 +145,8 @@ Widget previewAdminGateDesktop() => previewWrapper(
 Widget previewAdminGateLight() => previewWrapper(
   theme: previewLightTheme,
   background: DesignTokens.surface,
-  child: const AdminRequiredGate(child: Text('Admin Content')),
+  child: previewScope(
+    child: const AdminRequiredGate(child: Text('Admin Content')),
+  ),
   breakpoint: PreviewBreakpoint.mobile,
 );

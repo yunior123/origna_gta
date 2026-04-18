@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/features/products/products_provider.dart';
+import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/screens/product_card_screen.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/responsive_layout.dart';
@@ -237,150 +238,269 @@ class FavoritesScreen extends ConsumerWidget {
   }
 
   double _getCardAspectRatio(BuildContext context) {
-    // Synced with ResponsiveBreakpoints.cardAspect* — sized for worst case
-    // (trending row + delivery chip visible simultaneously).
+    // Favorites cards need slightly more vertical room in previews and runtime
+    // because unavailable-state copy and longer saved-product titles make the
+    // grid taller than the generic home grid assumptions.
     return ResponsiveBreakpoints.getValue(
       context: context,
-      mobile: ResponsiveBreakpoints.cardAspectMobile,
-      mobilePlus: ResponsiveBreakpoints.cardAspectMobilePlus,
-      tablet: ResponsiveBreakpoints.cardAspectTablet,
-      desktop: ResponsiveBreakpoints.cardAspectDesktop,
+      mobile: 0.63,
+      mobilePlus: 0.67,
+      tablet: 0.76,
+      desktop: 0.84,
     );
   }
 }
 
 // ═══ Widget Previews ═══
 
-Widget _favorites() => previewScopeLoggedIn(child: FavoritesScreen());
+const _previewFavoriteImageBase = 'https://fastly.picsum.photos/id';
 
-Widget _favoritesEmpty() => previewScopeLoggedIn(
-  extraOverrides: [
-    favoritedProductsProvider.overrideWith((ref) => Future.value([])),
-  ],
-  child: FavoritesScreen(),
+String _previewFavoriteImage(int id, {int width = 900, int height = 900}) =>
+    '$_previewFavoriteImageBase/$id/$width/$height.jpg';
+
+final _previewFavoritesUser = UserModel(
+  uid: 'preview-favorites-user',
+  email: 'favorites.preview@origna.ca',
+  name: 'Morgan Chen',
+  roles: const [UserRole.buyer],
+  createdAt: DateTime(2026, 1, 12),
+  verified: true,
 );
 
-// ── Dark (default) ──────────────────────────────────────────────────────────
+final _previewFavoriteProducts = [
+  Product(
+    productId: 'favorite-preview-1',
+    sellerId: 'favorite-seller-1',
+    name: 'Canadian Wool Throw Blanket',
+    description: 'Soft charcoal wool throw woven in Halifax.',
+    priceCents: 8900,
+    stockQuantity: 8,
+    imageUrls: [_previewFavoriteImage(1011)],
+    categoryId: 7,
+    createdAt: DateTime(2026, 3, 2),
+    lifecycleStatus: ProductLifecycleStatusValues.active,
+    rating: 4.9,
+    ratingCount: 52,
+    freeShipping: true,
+    shipFromCountry: 'CA',
+    shipFromCity: 'Halifax',
+    shipFromProvince: 'NS',
+    isTrending: true,
+    trendingScore: 92,
+  ),
+  Product(
+    productId: 'favorite-preview-2',
+    sellerId: 'favorite-seller-2',
+    name: 'Stoneware Matcha Bowl',
+    description: 'Hand-thrown bowl with speckled sage glaze.',
+    priceCents: 4200,
+    stockQuantity: 11,
+    imageUrls: [_previewFavoriteImage(1025)],
+    categoryId: 5,
+    createdAt: DateTime(2026, 2, 24),
+    lifecycleStatus: ProductLifecycleStatusValues.active,
+    rating: 4.7,
+    ratingCount: 19,
+    shipFromCountry: 'CA',
+    shipFromCity: 'Montreal',
+    shipFromProvince: 'QC',
+  ),
+  Product(
+    productId: 'favorite-preview-3',
+    sellerId: 'favorite-seller-3',
+    name: 'Seasonal Chocolate Box',
+    description: 'Limited artisan assortment, currently unavailable.',
+    priceCents: 2600,
+    stockQuantity: 0,
+    imageUrls: [_previewFavoriteImage(1060)],
+    categoryId: 1,
+    createdAt: DateTime(2026, 1, 28),
+    lifecycleStatus: ProductLifecycleStatusValues.rejected,
+    approvalRejectionReason: 'Seasonal run ended.',
+    shipFromCountry: 'CA',
+    shipFromCity: 'Toronto',
+    shipFromProvince: 'ON',
+  ),
+  Product(
+    productId: 'favorite-preview-4',
+    sellerId: 'favorite-seller-4',
+    name: 'Nordic Oak Desk Lamp',
+    description: 'Warm LED lamp with FSC-certified oak base.',
+    priceCents: 6800,
+    stockQuantity: 14,
+    imageUrls: [_previewFavoriteImage(1040)],
+    categoryId: 4,
+    createdAt: DateTime(2026, 3, 9),
+    lifecycleStatus: ProductLifecycleStatusValues.active,
+    rating: 4.6,
+    ratingCount: 31,
+    shipFromCountry: 'CA',
+    shipFromCity: 'Ottawa',
+    shipFromProvince: 'ON',
+  ),
+  Product(
+    productId: 'favorite-preview-5',
+    sellerId: 'favorite-seller-5',
+    name: 'Premium Over-Ear Studio Headphones',
+    description: 'Wireless ANC headphones with 40-hour battery life.',
+    priceCents: 22900,
+    compareAtPriceCents: 27900,
+    stockQuantity: 5,
+    imageUrls: [_previewFavoriteImage(180)],
+    categoryId: 8,
+    createdAt: DateTime(2026, 3, 12),
+    lifecycleStatus: ProductLifecycleStatusValues.active,
+    rating: 4.8,
+    ratingCount: 144,
+    shipFromCountry: 'CA',
+    shipFromCity: 'Calgary',
+    shipFromProvince: 'AB',
+  ),
+  Product(
+    productId: 'favorite-preview-6',
+    sellerId: 'favorite-seller-6',
+    name: 'Small-Batch Espresso Beans',
+    description: 'Roasted weekly with dark chocolate and cherry notes.',
+    priceCents: 2400,
+    stockQuantity: 18,
+    imageUrls: [_previewFavoriteImage(431)],
+    categoryId: 2,
+    createdAt: DateTime(2026, 3, 16),
+    lifecycleStatus: ProductLifecycleStatusValues.active,
+    rating: 4.9,
+    ratingCount: 86,
+    shipFromCountry: 'CA',
+    shipFromCity: 'Vancouver',
+    shipFromProvince: 'BC',
+    freeShipping: true,
+  ),
+];
+
+final _previewDenseFavoriteProducts = [
+  ..._previewFavoriteProducts,
+  Product(
+    productId: 'favorite-preview-7',
+    sellerId: 'favorite-seller-7',
+    name: 'Handwoven Prairie Basket',
+    description: 'Natural reed basket for blankets, plants, or storage.',
+    priceCents: 5400,
+    stockQuantity: 9,
+    imageUrls: [_previewFavoriteImage(433)],
+    categoryId: 6,
+    createdAt: DateTime(2026, 3, 20),
+    lifecycleStatus: ProductLifecycleStatusValues.active,
+    rating: 4.5,
+    ratingCount: 22,
+    shipFromCountry: 'CA',
+    shipFromCity: 'Winnipeg',
+    shipFromProvince: 'MB',
+  ),
+  Product(
+    productId: 'favorite-preview-8',
+    sellerId: 'favorite-seller-8',
+    name: 'Limited Pinot Cherry Preserve',
+    description: 'Fruit preserve from Okanagan cherries and pinot noir.',
+    priceCents: 1890,
+    stockQuantity: 0,
+    imageUrls: [_previewFavoriteImage(292)],
+    categoryId: 1,
+    createdAt: DateTime(2026, 3, 22),
+    lifecycleStatus: ProductLifecycleStatusValues.archived,
+    approvalRejectionReason: 'Vintage batch sold out.',
+    shipFromCountry: 'CA',
+    shipFromCity: 'Kelowna',
+    shipFromProvince: 'BC',
+  ),
+];
+
+Widget _favorites({List<Product>? products}) => previewScopeLoggedIn(
+  uid: _previewFavoritesUser.uid,
+  extraOverrides: [
+    userProfileProvider.overrideWith((ref) => Stream.value(_previewFavoritesUser)),
+    favoritedProductsProvider.overrideWith(
+      (ref) => Future.value(products ?? _previewFavoriteProducts),
+    ),
+  ],
+  child: const FavoritesScreen(),
+);
+
+Widget _favoritesEmpty() => previewScopeLoggedIn(
+  uid: _previewFavoritesUser.uid,
+  extraOverrides: [
+    userProfileProvider.overrideWith((ref) => Stream.value(_previewFavoritesUser)),
+    favoritedProductsProvider.overrideWith((ref) => Future.value([])),
+  ],
+  child: const FavoritesScreen(),
+);
+
+// ── Core states ─────────────────────────────────────────────────────────────
 @Preview(
-  name: 'Favorites / Wishlist Dark — Mobile',
-  group: 'Screens',
+  name: 'Favorites Dark — Mobile',
+  group: 'Favorites Screens',
   size: Size(390, 844),
 )
 Widget previewFavoritesScreenMobile() => previewMobile(child: _favorites());
 
 @Preview(
-  name: 'Favorites / Wishlist Dark — Tablet',
-  group: 'Screens',
+  name: 'Favorites Dark — Tablet',
+  group: 'Favorites Screens',
   size: Size(768, 1024),
 )
 Widget previewFavoritesScreenTablet() => previewTablet(child: _favorites());
 
 @Preview(
-  name: 'Favorites / Wishlist Dark — Desktop',
-  group: 'Screens',
+  name: 'Favorites Dark — Desktop',
+  group: 'Favorites Screens',
   size: Size(1280, 800),
 )
 Widget previewFavoritesScreenDesktop() => previewDesktop(child: _favorites());
 
 @Preview(
-  name: 'Favorites / Wishlist Dark — Web',
-  group: 'Screens',
-  size: Size(1440, 900),
-)
-Widget previewFavoritesScreenWeb() => previewWeb(child: _favorites());
-
-// ── Light ────────────────────────────────────────────────────────────────────
-@Preview(
-  name: 'Favorites / Wishlist Light — Mobile',
-  group: 'Screens',
-  size: Size(390, 844),
-)
-Widget previewFavoritesLightMobile() =>
-    previewMobile(theme: previewLightTheme, child: _favorites());
-
-@Preview(
-  name: 'Favorites / Wishlist Light — Tablet',
-  group: 'Screens',
-  size: Size(768, 1024),
-)
-Widget previewFavoritesLightTablet() =>
-    previewTablet(theme: previewLightTheme, child: _favorites());
-
-@Preview(
-  name: 'Favorites / Wishlist Light — Desktop',
-  group: 'Screens',
+  name: 'Favorites Light — Desktop',
+  group: 'Favorites Screens',
   size: Size(1280, 800),
 )
 Widget previewFavoritesLightDesktop() =>
     previewDesktop(theme: previewLightTheme, child: _favorites());
 
 @Preview(
-  name: 'Favorites / Wishlist Light — Web',
-  group: 'Screens',
-  size: Size(1440, 900),
-)
-Widget previewFavoritesLightWeb() =>
-    previewWeb(theme: previewLightTheme, child: _favorites());
-
-// ── Empty State Dark ──────────────────────────────────────────────────────────
-@Preview(
-  name: 'Favorites Empty Dark — Mobile',
-  group: 'Screens',
+  name: 'Favorites Empty — Mobile',
+  group: 'Favorites Screens',
   size: Size(390, 844),
 )
 Widget previewFavoritesEmptyMobile() => previewMobile(child: _favoritesEmpty());
 
 @Preview(
-  name: 'Favorites Empty Dark — Tablet',
-  group: 'Screens',
-  size: Size(768, 1024),
-)
-Widget previewFavoritesEmptyTablet() => previewTablet(child: _favoritesEmpty());
-
-@Preview(
-  name: 'Favorites Empty Dark — Desktop',
-  group: 'Screens',
+  name: 'Favorites Empty — Desktop',
+  group: 'Favorites Screens',
   size: Size(1280, 800),
 )
 Widget previewFavoritesEmptyDesktop() =>
     previewDesktop(child: _favoritesEmpty());
 
+// ── Richer mockups ───────────────────────────────────────────────────────────
 @Preview(
-  name: 'Favorites Empty Dark — Web',
-  group: 'Screens',
+  name: 'Favorites Dense Grid — Desktop',
+  group: 'Favorites Screens',
+  size: Size(1280, 900),
+)
+Widget previewFavoritesDenseDesktop() =>
+    previewDesktop(child: _favorites(products: _previewDenseFavoriteProducts));
+
+@Preview(
+  name: 'Favorites Dense Grid — Web',
+  group: 'Favorites Screens',
   size: Size(1440, 900),
 )
-Widget previewFavoritesEmptyWeb() => previewWeb(child: _favoritesEmpty());
-
-// ── Empty State Light ─────────────────────────────────────────────────────────
-@Preview(
-  name: 'Favorites Empty Light — Mobile',
-  group: 'Screens',
-  size: Size(390, 844),
-)
-Widget previewFavoritesEmptyLightMobile() =>
-    previewMobile(theme: previewLightTheme, child: _favoritesEmpty());
+Widget previewFavoritesDenseWeb() =>
+    previewWeb(child: _favorites(products: _previewDenseFavoriteProducts));
 
 @Preview(
-  name: 'Favorites Empty Light — Tablet',
-  group: 'Screens',
-  size: Size(768, 1024),
-)
-Widget previewFavoritesEmptyLightTablet() =>
-    previewTablet(theme: previewLightTheme, child: _favoritesEmpty());
-
-@Preview(
-  name: 'Favorites Empty Light — Desktop',
-  group: 'Screens',
-  size: Size(1280, 800),
-)
-Widget previewFavoritesEmptyLightDesktop() =>
-    previewDesktop(theme: previewLightTheme, child: _favoritesEmpty());
-
-@Preview(
-  name: 'Favorites Empty Light — Web',
-  group: 'Screens',
+  name: 'Favorites Light Dense — Web',
+  group: 'Favorites Screens',
   size: Size(1440, 900),
 )
-Widget previewFavoritesEmptyLightWeb() =>
-    previewWeb(theme: previewLightTheme, child: _favoritesEmpty());
+Widget previewFavoritesLightDenseWeb() => previewWeb(
+  theme: previewLightTheme,
+  child: _favorites(products: _previewDenseFavoriteProducts),
+);

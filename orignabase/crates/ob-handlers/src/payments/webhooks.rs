@@ -10,7 +10,7 @@ use tracing::{error, info, warn};
 
 use crate::HandlersState;
 use crate::email;
-use crate::shared::schema::{OrderStatus, collections, fields};
+use crate::shared::schema::{OrderStatus, PaymentStatus, collections, fields};
 use ob_database::Transaction;
 
 type HmacSha256 = Hmac<Sha256>;
@@ -350,15 +350,19 @@ async fn try_store_webhook_event_atomic(
     let existing = state
         .db
         .query_bind(
-            &format!("SELECT id FROM {} WHERE data->>'id' = $1 LIMIT 1", collections::WEBHOOK_EVENTS),
+            &format!(
+                "SELECT id FROM {} WHERE data->>'id' = $1 LIMIT 1",
+                collections::WEBHOOK_EVENTS
+            ),
             serde_json::json!({ "event_id": &event.id }),
         )
         .await;
 
     if let Ok(rows) = existing
-        && !rows.is_empty() {
-            return Ok(false); // Duplicate event
-        }
+        && !rows.is_empty()
+    {
+        return Ok(false); // Duplicate event
+    }
 
     let event_data = serde_json::json!({
         fields::ID: event.id,
@@ -453,16 +457,27 @@ async fn update_order_status(
     new_status: &str,
 ) -> Result<bool, ob_core::Error> {
     let now = chrono::Utc::now().to_rfc3339();
+    let order_status_path = format!("'{{{}}}'", fields::ORDER_STATUS);
+    let updated_at_path = format!("'{{{}}}'", fields::UPDATED_AT);
 
     let rows = state
         .db
         .query_bind_value(
             &format!(
-                "UPDATE {} SET {} = $status, {} = $now WHERE id = $order_id AND {} = $expected",
+                "UPDATE {} \
+                 SET data = jsonb_set(\
+                       jsonb_set(COALESCE(data, '{{}}'::jsonb), {}, to_jsonb($status::text), true), \
+                       {}, \
+                       to_jsonb($now::text), \
+                       true\
+                     ) \
+                 WHERE id = $order_id \
+                   AND COALESCE(data->>'{}', '') = $expected \
+                 RETURNING data",
                 collections::ORDERS,
+                order_status_path,
+                updated_at_path,
                 fields::ORDER_STATUS,
-                fields::UPDATED_AT,
-                fields::ORDER_STATUS
             ),
             serde_json::json!({
                 "order_id": order_id,
@@ -507,39 +522,58 @@ async fn restore_stock_for_order(
         return Ok(());
     }
 
-    // Build transaction to restore stock for all items
-    let mut tx = Transaction::new();
-
     for item in &items {
         let product_id = item
             .get(fields::PRODUCT_ID)
             .and_then(|v| v.as_str())
             .unwrap_or("");
 
-        let quantity = item.get(fields::QUANTITY).and_then(|v| v.as_i64()).unwrap_or(1);
+        let quantity = item
+            .get(fields::QUANTITY)
+            .and_then(|v| v.as_i64())
+            .unwrap_or(1);
 
-        if !product_id.is_empty() && quantity > 0 {
-            // Build product record ID: "products:productId"
-            let product_record_id = format!("{}:{}", collections::PRODUCTS, product_id);
+        if product_id.is_empty() || quantity <= 0 {
+            continue;
+        }
 
-            tx.add(
-                &format!(
-                    "UPDATE {} SET {} += $qty WHERE id = $id",
+        let mut restored = false;
+        for _attempt in 0..3 {
+            let product = state
+                .db
+                .get_document(collections::PRODUCTS, product_id)
+                .await
+                .unwrap_or_default();
+            let current_stock = product
+                .get(fields::STOCK_QUANTITY)
+                .and_then(|v| v.as_i64())
+                .unwrap_or(0);
+            let cas_result = state
+                .db
+                .update_document_cas(
                     collections::PRODUCTS,
-                    fields::STOCK_QUANTITY
-                ),
-                Some(serde_json::json!({
-                    "id": product_record_id,
-                    "qty": quantity,
-                })),
-            );
+                    product_id,
+                    serde_json::json!({
+                        fields::STOCK_QUANTITY: current_stock + quantity,
+                    }),
+                    fields::STOCK_QUANTITY,
+                    &serde_json::json!(current_stock),
+                )
+                .await?;
+            if cas_result.is_some() {
+                restored = true;
+                break;
+            }
+        }
+
+        if !restored {
+            return Err(ob_core::Error::Database(format!(
+                "Failed to restore stock for product {product_id}"
+            )));
         }
     }
 
-    if !tx.is_empty() {
-        tx.commit(&state.db).await?;
-        info!(order_id = %order_id, item_count = items.len(), "Stock restored for order items");
-    }
+    info!(order_id = %order_id, item_count = items.len(), "Stock restored for order items");
 
     Ok(())
 }
@@ -576,7 +610,10 @@ async fn decrement_stock_for_order(
             .and_then(|v| v.as_str())
             .unwrap_or("");
 
-        let quantity = item.get(fields::QUANTITY).and_then(|v| v.as_i64()).unwrap_or(1);
+        let quantity = item
+            .get(fields::QUANTITY)
+            .and_then(|v| v.as_i64())
+            .unwrap_or(1);
 
         if !product_id.is_empty() && quantity > 0 {
             // Build product record ID: "products:productId"
@@ -669,6 +706,212 @@ async fn release_coupon_reservation(
         });
 
     info!(order_id = %order_id, "Coupon reservation released");
+    Ok(())
+}
+
+struct RefundRecordInput<'a> {
+    refund_id: &'a str,
+    amount_cents: i64,
+    currency: &'a str,
+    status: &'a str,
+    payment_intent_id: &'a str,
+    reason: &'a str,
+    failure_reason: Option<&'a str>,
+}
+
+async fn upsert_refund_record(
+    state: &HandlersState,
+    refund: RefundRecordInput<'_>,
+    now: &chrono::DateTime<chrono::Utc>,
+) -> Result<(), ob_core::Error> {
+    let mut data = serde_json::json!({
+        fields::STRIPE_REFUND_ID: refund.refund_id,
+        fields::AMOUNT_CENTS: refund.amount_cents,
+        fields::CURRENCY: refund.currency,
+        fields::STRIPE_REFUND_STATUS: refund.status,
+        fields::PAYMENT_INTENT_ID: refund.payment_intent_id,
+        fields::REASON: refund.reason,
+        fields::UPDATED_AT: now.to_rfc3339(),
+    });
+
+    if let Some(reason) = refund.failure_reason {
+        data[fields::REFUND_FAILURE_REASON] = serde_json::json!(reason);
+    }
+
+    let existing = state
+        .db
+        .get_document(collections::REFUNDS, refund.refund_id)
+        .await
+        .unwrap_or_default();
+    if existing.is_null() || existing.as_object().is_none_or(|obj| obj.is_empty()) {
+        data[fields::CREATED_AT] = serde_json::json!(now.timestamp());
+        data[fields::CREATED_AT_ISO] = serde_json::json!(now.to_rfc3339());
+    }
+
+    state
+        .db
+        .upsert_document(collections::REFUNDS, refund.refund_id, data)
+        .await?;
+
+    Ok(())
+}
+
+async fn mark_order_refund_failure(
+    state: &HandlersState,
+    payment_intent_id: &str,
+    failure_reason: &str,
+    now: &chrono::DateTime<chrono::Utc>,
+) -> Result<(), ob_core::Error> {
+    if payment_intent_id.is_empty() {
+        return Ok(());
+    }
+
+    if let Some(order) = find_order_by_payment_intent(state, payment_intent_id).await? {
+        let order_id = order.get("id").and_then(|v| v.as_str()).unwrap_or("");
+        if !order_id.is_empty() {
+            state
+                .db
+                .update_document(
+                    collections::ORDERS,
+                    order_id,
+                    serde_json::json!({
+                        fields::REQUIRES_MANUAL_REVIEW: true,
+                        fields::REFUND_FAILURE_REASON: failure_reason,
+                        fields::UPDATED_AT: now.to_rfc3339(),
+                    }),
+                )
+                .await?;
+        }
+    }
+
+    Ok(())
+}
+
+async fn sync_order_refund_state(
+    state: &HandlersState,
+    payment_intent_id: &str,
+    refund_id: Option<&str>,
+    refunded_amount_cents: i64,
+    now: &chrono::DateTime<chrono::Utc>,
+) -> Result<(), ob_core::Error> {
+    if payment_intent_id.is_empty() {
+        return Ok(());
+    }
+
+    let Some(order) = find_order_by_payment_intent(state, payment_intent_id).await? else {
+        return Ok(());
+    };
+
+    let order_id = order
+        .get("id")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| ob_core::Error::Validation("Order missing id".into()))?;
+
+    let total_amount_cents = order
+        .get(fields::TOTAL_AMOUNT_CENTS)
+        .and_then(|v| v.as_i64())
+        .unwrap_or(0);
+
+    if refunded_amount_cents > total_amount_cents {
+        return Err(ob_core::Error::Validation(format!(
+            "Refund amount {} exceeds order total {}",
+            refunded_amount_cents, total_amount_cents
+        )));
+    }
+
+    let is_full_refund = refunded_amount_cents >= total_amount_cents && total_amount_cents > 0;
+    let stock_restored = order
+        .get(fields::STOCK_RESTORED)
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+
+    if is_full_refund && !stock_restored {
+        restore_stock_for_order(state, &order).await?;
+    }
+
+    let payment_status = if is_full_refund {
+        PaymentStatus::Refunded.as_str()
+    } else {
+        PaymentStatus::PartialRefund.as_str()
+    };
+    let order_status = if is_full_refund {
+        OrderStatus::Refunded.as_str()
+    } else {
+        OrderStatus::PartiallyRefunded.as_str()
+    };
+
+    let mut update = serde_json::json!({
+        fields::REFUNDED_AMOUNT_CENTS: refunded_amount_cents,
+        fields::PAYMENT_STATUS: payment_status,
+        fields::ORDER_STATUS: order_status,
+        fields::UPDATED_AT: now.to_rfc3339(),
+    });
+    if is_full_refund {
+        update[fields::REFUNDED_AT] = serde_json::json!(now.to_rfc3339());
+        update[fields::STOCK_RESTORED] = serde_json::json!(true);
+    }
+    if let Some(refund_id) = refund_id {
+        update[fields::REFUND_ID] = serde_json::json!(refund_id);
+    }
+
+    state
+        .db
+        .update_document(collections::ORDERS, order_id, update)
+        .await?;
+
+    Ok(())
+}
+
+async fn sync_order_refund_state_from_records(
+    state: &HandlersState,
+    payment_intent_id: &str,
+    refund_id: Option<&str>,
+    now: &chrono::DateTime<chrono::Utc>,
+) -> Result<(), ob_core::Error> {
+    if payment_intent_id.is_empty() {
+        return Ok(());
+    }
+
+    let refunds: Vec<Value> = state
+        .db
+        .query_bind_value(
+            &format!(
+                "SELECT * FROM {} WHERE {} = $payment_intent_id",
+                collections::REFUNDS,
+                fields::PAYMENT_INTENT_ID
+            ),
+            serde_json::json!({ "payment_intent_id": payment_intent_id }),
+        )
+        .await
+        .unwrap_or_default();
+
+    let refunded_amount_cents = refunds
+        .iter()
+        .filter(|refund| {
+            refund
+                .get(fields::STRIPE_REFUND_STATUS)
+                .and_then(|v| v.as_str())
+                == Some("succeeded")
+        })
+        .map(|refund| {
+            refund
+                .get(fields::AMOUNT_CENTS)
+                .and_then(|v| v.as_i64())
+                .unwrap_or(0)
+        })
+        .sum::<i64>();
+
+    if refunded_amount_cents > 0 {
+        sync_order_refund_state(
+            state,
+            payment_intent_id,
+            refund_id,
+            refunded_amount_cents,
+            now,
+        )
+        .await?;
+    }
+
     Ok(())
 }
 
@@ -969,7 +1212,10 @@ async fn handle_charge_refunded(
         .and_then(|a| a.as_i64())
         .ok_or_else(|| ob_core::Error::Validation("No refund amount in charge".into()))?;
 
-    // Find the order by payment intent
+    // charge.refunded carries cumulative refunded cents for the payment intent.
+    // Keep this path authoritative for aggregate refund amount even if separate
+    // refund.created / refund.updated events arrive earlier or later.
+    let now = chrono::Utc::now();
     let order = find_order_by_payment_intent(state, payment_intent_id)
         .await?
         .ok_or_else(|| {
@@ -978,64 +1224,9 @@ async fn handle_charge_refunded(
                 payment_intent_id
             ))
         })?;
+    let order_id = order.get("id").and_then(|v| v.as_str()).unwrap_or("");
 
-    let order_id = order
-        .get("id")
-        .and_then(|v| v.as_str())
-        .ok_or_else(|| ob_core::Error::Validation("Order missing id".into()))?;
-
-    let total_amount_cents = order
-        .get(fields::TOTAL_AMOUNT_CENTS)
-        .and_then(|v| v.as_i64())
-        .unwrap_or(0);
-
-    // Bounds check: refund cannot exceed order total
-    if refunded_amount_cents > total_amount_cents {
-        return Err(ob_core::Error::Validation(format!(
-            "Refund amount {} exceeds order total {}",
-            refunded_amount_cents, total_amount_cents
-        )));
-    }
-
-    // Only restore stock on FULL refunds, and ensure we haven't already restored
-    let stock_restored = order
-        .get(fields::STOCK_RESTORED)
-        .and_then(|v| v.as_bool())
-        .unwrap_or(false);
-
-    let mut is_full_refund = false;
-    if refunded_amount_cents >= total_amount_cents {
-        is_full_refund = true;
-        if !stock_restored {
-            restore_stock_for_order(state, &order).await?;
-        } else {
-            info!(order_id = %order_id, "Stock already restored, skipping");
-        }
-    } else {
-        info!(order_id = %order_id, refunded = %refunded_amount_cents, total = %total_amount_cents, "Partial refund, skipping stock restore");
-    }
-
-    // Update order with refund info
-    let now = chrono::Utc::now().to_rfc3339();
-
-    state
-        .db
-        .query_bind_value(
-            &format!(
-                "UPDATE {} SET {} = $refunded, {} = $now, {} = $stock_restored WHERE id = $order_id",
-                collections::ORDERS,
-                fields::REFUNDED_AMOUNT_CENTS,
-                fields::REFUNDED_AT,
-                fields::STOCK_RESTORED
-            ),
-            serde_json::json!({
-                "order_id": order_id,
-                "refunded": refunded_amount_cents,
-                "now": now,
-                "stock_restored": stock_restored || is_full_refund,
-            })
-        )
-        .await?;
+    sync_order_refund_state(state, payment_intent_id, None, refunded_amount_cents, &now).await?;
 
     info!(
         order_id = %order_id,
@@ -1122,15 +1313,30 @@ async fn handle_checkout_session_completed(
 
     // Store session ID and payment intent ID on order
     let now = chrono::Utc::now().to_rfc3339();
+    let payment_intent_id_path = format!("'{{{}}}'", fields::PAYMENT_INTENT_ID);
+    let checkout_session_id_path = format!("'{{{}}}'", fields::CHECKOUT_SESSION_ID);
+    let updated_at_path = format!("'{{{}}}'", fields::UPDATED_AT);
     state
         .db
         .query_bind_value(
             &format!(
-                "UPDATE {} SET {} = $pi_id, {} = $session_id, {} = $now WHERE id = $order_id",
+                "UPDATE {} \
+                 SET data = jsonb_set(\
+                       jsonb_set(\
+                         jsonb_set(COALESCE(data, '{{}}'::jsonb), {}, to_jsonb($pi_id::text), true), \
+                         {}, \
+                         to_jsonb($session_id::text), \
+                         true\
+                       ), \
+                       {}, \
+                       to_jsonb($now::text), \
+                       true\
+                     ) \
+                 WHERE id = $order_id",
                 collections::ORDERS,
-                fields::PAYMENT_INTENT_ID,
-                fields::CHECKOUT_SESSION_ID,
-                fields::UPDATED_AT
+                payment_intent_id_path,
+                checkout_session_id_path,
+                updated_at_path,
             ),
             serde_json::json!({
                 "order_id": order_id,
@@ -2243,30 +2449,24 @@ async fn handle_refund_created(
         .and_then(|i| i.as_str())
         .unwrap_or("");
 
-    let reason = refund
-        .get("reason")
-        .and_then(|r| r.as_str())
-        .unwrap_or("");
+    let reason = refund.get("reason").and_then(|r| r.as_str()).unwrap_or("");
 
     let now = chrono::Utc::now();
 
-    // Create refund record for tracking
-    state
-        .db
-        .create_document(
-            collections::REFUNDS,
-            serde_json::json!({
-                fields::STRIPE_REFUND_ID: refund_id,
-                fields::AMOUNT_CENTS: amount,
-                fields::CURRENCY: currency,
-                fields::STRIPE_REFUND_STATUS: status,
-                fields::PAYMENT_INTENT_ID: payment_intent_id,
-                fields::REASON: reason,
-                fields::CREATED_AT: now.timestamp(),
-                fields::CREATED_AT_ISO: now.to_rfc3339(),
-            }),
-        )
-        .await?;
+    upsert_refund_record(
+        state,
+        RefundRecordInput {
+            refund_id,
+            amount_cents: amount,
+            currency,
+            status,
+            payment_intent_id,
+            reason,
+            failure_reason: None,
+        },
+        &now,
+    )
+    .await?;
 
     // If we can find the order, store the refund ID on it
     if !payment_intent_id.is_empty()
@@ -2290,6 +2490,11 @@ async fn handle_refund_created(
                 .await
                 .unwrap_or_default();
         }
+    }
+
+    if status == "succeeded" {
+        sync_order_refund_state_from_records(state, payment_intent_id, Some(refund_id), &now)
+            .await?;
     }
 
     info!(
@@ -2318,32 +2523,42 @@ async fn handle_refund_updated(
         .and_then(|i| i.as_str())
         .ok_or_else(|| ob_core::Error::Validation("No refund ID".into()))?;
 
+    let amount = refund.get("amount").and_then(|a| a.as_i64()).unwrap_or(0);
+    let currency = refund
+        .get("currency")
+        .and_then(|c| c.as_str())
+        .unwrap_or("cad");
     let status = refund
         .get(fields::STATUS)
         .and_then(|s| s.as_str())
         .unwrap_or("unknown");
+    let payment_intent_id = refund
+        .get("payment_intent")
+        .and_then(|i| i.as_str())
+        .unwrap_or("");
+    let reason = refund.get("reason").and_then(|r| r.as_str()).unwrap_or("");
 
     let now = chrono::Utc::now();
 
-    // Update refund record
-    let _: Vec<Value> = state
-        .db
-        .query_bind_value(
-            &format!(
-                "UPDATE {} SET {} = $status, {} = $now WHERE {} = $refund_id",
-                collections::REFUNDS,
-                fields::STRIPE_REFUND_STATUS,
-                fields::UPDATED_AT,
-                fields::STRIPE_REFUND_ID
-            ),
-            serde_json::json!({
-                "refund_id": refund_id,
-                "status": status,
-                "now": now.to_rfc3339(),
-            }),
-        )
-        .await
-        .unwrap_or_default();
+    upsert_refund_record(
+        state,
+        RefundRecordInput {
+            refund_id,
+            amount_cents: amount,
+            currency,
+            status,
+            payment_intent_id,
+            reason,
+            failure_reason: None,
+        },
+        &now,
+    )
+    .await?;
+
+    if status == "succeeded" {
+        sync_order_refund_state_from_records(state, payment_intent_id, Some(refund_id), &now)
+            .await?;
+    }
 
     info!(
         refund_id = %refund_id,
@@ -2387,26 +2602,21 @@ async fn handle_refund_failed(
 
     let now = chrono::Utc::now();
 
-    // Update refund record with failure info
-    let _: Vec<Value> = state
-        .db
-        .query_bind_value(
-            &format!(
-                "UPDATE {} SET {} = 'failed', {} = $reason, {} = $now WHERE {} = $refund_id",
-                collections::REFUNDS,
-                fields::STRIPE_REFUND_STATUS,
-                fields::REFUND_FAILURE_REASON,
-                fields::UPDATED_AT,
-                fields::STRIPE_REFUND_ID
-            ),
-            serde_json::json!({
-                "refund_id": refund_id,
-                "reason": failure_reason,
-                "now": now.to_rfc3339(),
-            }),
-        )
-        .await
-        .unwrap_or_default();
+    upsert_refund_record(
+        state,
+        RefundRecordInput {
+            refund_id,
+            amount_cents: amount,
+            currency,
+            status: "failed",
+            payment_intent_id,
+            reason: "",
+            failure_reason: Some(failure_reason),
+        },
+        &now,
+    )
+    .await?;
+    mark_order_refund_failure(state, payment_intent_id, failure_reason, &now).await?;
 
     // Find the order to notify the buyer
     if !payment_intent_id.is_empty()
@@ -2686,10 +2896,7 @@ async fn handle_invoice_payment_failed(
             .await
             && let Some(user) = users.first()
         {
-            let user_id = user
-                .get("id")
-                .and_then(|v| v.as_str())
-                .unwrap_or_default();
+            let user_id = user.get("id").and_then(|v| v.as_str()).unwrap_or_default();
             if !user_id.is_empty() {
                 let _ = state
                     .db
@@ -2784,7 +2991,7 @@ mod tests {
     fn test_signature_verification_valid() {
         let secret = "test_secret";
         let ts = now_timestamp();
-        let body = br#"{"type":"payment_intent.succeeded"}"#;  // ignore-magic
+        let body = br#"{"type":"payment_intent.succeeded"}"#; // ignore-magic
         let signature = make_hmac_signature(secret, body, &ts);
         assert!(verify_stripe_signature(body, &signature, secret));
     }
@@ -2793,13 +3000,13 @@ mod tests {
     fn test_signature_verification_invalid() {
         let secret = "test_secret";
         let signature = "t=1614556800,v1=invalid_signature";
-        let body = br#"{"type":"payment_intent.succeeded"}"#;  // ignore-magic
+        let body = br#"{"type":"payment_intent.succeeded"}"#; // ignore-magic
         assert!(!verify_stripe_signature(body, signature, secret));
     }
 
     #[test]
     fn test_signature_verification_wrong_secret() {
-        let body = br#"{"id":"evt_1"}"#;  // ignore-magic
+        let body = br#"{"id":"evt_1"}"#; // ignore-magic
         let signature = make_hmac_signature("correct_secret", body, "1614556800");
         assert!(!verify_stripe_signature(body, &signature, "wrong_secret"));
     }
@@ -2807,16 +3014,16 @@ mod tests {
     #[test]
     fn test_signature_verification_tampered_body() {
         let secret = "STRIPE_WEBHOOK_SECRET_REDACTED";
-        let original = br#"{"id":"evt_1"}"#;  // ignore-magic
+        let original = br#"{"id":"evt_1"}"#; // ignore-magic
         let signature = make_hmac_signature(secret, original, "1614556800");
-        let tampered = br#"{"id":"evt_2"}"#;  // ignore-magic
+        let tampered = br#"{"id":"evt_2"}"#; // ignore-magic
         assert!(!verify_stripe_signature(tampered, &signature, secret));
     }
 
     #[test]
     fn test_signature_verification_tampered_timestamp() {
         let secret = "STRIPE_WEBHOOK_SECRET_REDACTED";
-        let body = br#"{"id":"evt_1"}"#;  // ignore-magic
+        let body = br#"{"id":"evt_1"}"#; // ignore-magic
         let signature = make_hmac_signature(secret, body, "1614556800");
         let tampered_sig = signature.replace("t=1614556800", "t=9999999999");
         assert!(!verify_stripe_signature(body, &tampered_sig, secret));
@@ -2849,7 +3056,7 @@ mod tests {
     #[test]
     fn test_signature_verification_long_body() {
         let secret = "STRIPE_WEBHOOK_SECRET_REDACTED";
-        let body = br#"{"data":{"object":{"id":"pi_large","metadata":{"order_id":"ord_123","coupon_code":"SAVE10"},"amount":99999,"currency":"cad"}}}"#;  // ignore-magic
+        let body = br#"{"data":{"object":{"id":"pi_large","metadata":{"order_id":"ord_123","coupon_code":"SAVE10"},"amount":99999,"currency":"cad"}}}"#; // ignore-magic
         let ts = now_timestamp();
         let signature = make_hmac_signature(secret, body, &ts);
         assert!(verify_stripe_signature(body, &signature, secret));
@@ -2858,7 +3065,7 @@ mod tests {
     #[test]
     fn test_signature_verification_signature_format_with_extra_parts() {
         let secret = "STRIPE_WEBHOOK_SECRET_REDACTED";
-        let body = br#"{"id":"evt_1"}"#;  // ignore-magic
+        let body = br#"{"id":"evt_1"}"#; // ignore-magic
         let ts = now_timestamp();
         let sig = make_hmac_signature(secret, body, &ts);
         let extended = format!("{},v2=extra", sig);
@@ -2886,7 +3093,10 @@ mod tests {
         assert_eq!(event.id, "evt_1234");
         assert_eq!(event.r#type, "payment_intent.succeeded");
         assert_eq!(event.created, 1614556800);
-        assert_eq!(event.data["object"][fields::ID].as_str().unwrap(), "pi_1234");
+        assert_eq!(
+            event.data["object"][fields::ID].as_str().unwrap(),
+            "pi_1234"
+        );
     }
 
     #[test]
@@ -3000,7 +3210,7 @@ mod tests {
     #[test]
     fn test_signature_verification_rejects_expired_timestamp_over_300_seconds() {
         let secret = "STRIPE_WEBHOOK_SECRET_REDACTED";
-        let body = br#"{"id":"evt_expired","type":"charge.succeeded"}"#;  // ignore-magic
+        let body = br#"{"id":"evt_expired","type":"charge.succeeded"}"#; // ignore-magic
         let expired_timestamp = (std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
@@ -3164,6 +3374,12 @@ mod tests {
         });
         let result = restore_stock_for_order(&state, &order).await;
         assert!(result.is_ok());
+        let product = state
+            .db
+            .get_document(collections::PRODUCTS, "prod_001")
+            .await
+            .unwrap();
+        assert_eq!(product[fields::STOCK_QUANTITY], 12);
     }
 
     #[tokio::test]
@@ -3598,6 +3814,149 @@ mod tests {
         });
         let result = handle_charge_refunded(&state, &event_data).await;
         assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_handle_charge_refunded_marks_full_order_refunded() {
+        let state = setup_state().await;
+        state
+            .db
+            .upsert_document(
+                collections::PRODUCTS,
+                "refund_product_full",
+                json!({
+                    fields::PRODUCT_ID: "refund_product_full",
+                    fields::STOCK_QUANTITY: 2,
+                }),
+            )
+            .await
+            .unwrap();
+        state
+            .db
+            .upsert_document(
+                collections::ORDERS,
+                "charge_refund_full_order",
+                json!({
+                    fields::ORDER_ID: "charge_refund_full_order",
+                    fields::ORDER_STATUS: OrderStatus::Delivered.as_str(),
+                    fields::PAYMENT_STATUS: PaymentStatus::Captured.as_str(),
+                    fields::PAYMENT_INTENT_ID: "pi_charge_refund_full",
+                    fields::TOTAL_AMOUNT_CENTS: 2500,
+                    fields::STOCK_RESTORED: false,
+                    fields::ITEMS: [{
+                        fields::PRODUCT_ID: "refund_product_full",
+                        fields::QUANTITY: 1,
+                        fields::IS_DIGITAL: false
+                    }],
+                }),
+            )
+            .await
+            .unwrap();
+
+        handle_charge_refunded(
+            &state,
+            &json!({
+                "object": {
+                    "id": "ch_refund_full",
+                    "payment_intent": "pi_charge_refund_full",
+                    "amount_refunded": 2500
+                }
+            }),
+        )
+        .await
+        .unwrap();
+
+        let order = state
+            .db
+            .get_document(collections::ORDERS, "charge_refund_full_order")
+            .await
+            .unwrap();
+        let product = state
+            .db
+            .get_document(collections::PRODUCTS, "refund_product_full")
+            .await
+            .unwrap();
+        assert_eq!(order[fields::ORDER_STATUS], OrderStatus::Refunded.as_str());
+        assert_eq!(
+            order[fields::PAYMENT_STATUS],
+            PaymentStatus::Refunded.as_str()
+        );
+        assert_eq!(order[fields::REFUNDED_AMOUNT_CENTS], 2500);
+        assert_eq!(order[fields::STOCK_RESTORED], true);
+        assert_eq!(product[fields::STOCK_QUANTITY], 3);
+    }
+
+    #[tokio::test]
+    async fn test_handle_charge_refunded_marks_partial_refund_without_stock_restore() {
+        let state = setup_state().await;
+        state
+            .db
+            .upsert_document(
+                collections::PRODUCTS,
+                "refund_product_partial",
+                json!({
+                    fields::PRODUCT_ID: "refund_product_partial",
+                    fields::STOCK_QUANTITY: 4,
+                }),
+            )
+            .await
+            .unwrap();
+        state
+            .db
+            .upsert_document(
+                collections::ORDERS,
+                "charge_refund_partial_order",
+                json!({
+                    fields::ORDER_ID: "charge_refund_partial_order",
+                    fields::ORDER_STATUS: OrderStatus::Delivered.as_str(),
+                    fields::PAYMENT_STATUS: PaymentStatus::Captured.as_str(),
+                    fields::PAYMENT_INTENT_ID: "pi_charge_refund_partial",
+                    fields::TOTAL_AMOUNT_CENTS: 5000,
+                    fields::STOCK_RESTORED: false,
+                    fields::ITEMS: [{
+                        fields::PRODUCT_ID: "refund_product_partial",
+                        fields::QUANTITY: 1,
+                        fields::IS_DIGITAL: false
+                    }],
+                }),
+            )
+            .await
+            .unwrap();
+
+        handle_charge_refunded(
+            &state,
+            &json!({
+                "object": {
+                    "id": "ch_refund_partial",
+                    "payment_intent": "pi_charge_refund_partial",
+                    "amount_refunded": 1200
+                }
+            }),
+        )
+        .await
+        .unwrap();
+
+        let order = state
+            .db
+            .get_document(collections::ORDERS, "charge_refund_partial_order")
+            .await
+            .unwrap();
+        let product = state
+            .db
+            .get_document(collections::PRODUCTS, "refund_product_partial")
+            .await
+            .unwrap();
+        assert_eq!(
+            order[fields::ORDER_STATUS],
+            OrderStatus::PartiallyRefunded.as_str()
+        );
+        assert_eq!(
+            order[fields::PAYMENT_STATUS],
+            PaymentStatus::PartialRefund.as_str()
+        );
+        assert_eq!(order[fields::REFUNDED_AMOUNT_CENTS], 1200);
+        assert_eq!(order[fields::STOCK_RESTORED], false);
+        assert_eq!(product[fields::STOCK_QUANTITY], 4);
     }
 
     // -----------------------------------------------------------------------
@@ -4154,8 +4513,7 @@ mod tests {
     #[tokio::test]
     async fn test_handle_charge_dispute_funds_withdrawn_no_dispute_id() {
         let state = setup_state().await;
-        let result =
-            handle_charge_dispute_funds_withdrawn(&state, &json!({"object": {}})).await;
+        let result = handle_charge_dispute_funds_withdrawn(&state, &json!({"object": {}})).await;
         assert!(result.is_err());
     }
 
@@ -4201,8 +4559,7 @@ mod tests {
     #[tokio::test]
     async fn test_handle_charge_dispute_funds_reinstated_no_dispute_id() {
         let state = setup_state().await;
-        let result =
-            handle_charge_dispute_funds_reinstated(&state, &json!({"object": {}})).await;
+        let result = handle_charge_dispute_funds_reinstated(&state, &json!({"object": {}})).await;
         assert!(result.is_err());
     }
 
@@ -4398,6 +4755,38 @@ mod tests {
         assert!(result.is_ok());
     }
 
+    #[tokio::test]
+    async fn test_handle_refund_created_is_idempotent_for_same_refund_id() {
+        let state = setup_state().await;
+        let data = json!({
+            "object": {
+                "id": "re_created_idempotent",
+                "amount": 5000,
+                "currency": "cad",
+                "status": "pending",
+                "payment_intent": "pi_refund_idempotent",
+                "reason": "requested_by_customer"
+            }
+        });
+
+        handle_refund_created(&state, &data).await.unwrap();
+        handle_refund_created(&state, &data).await.unwrap();
+
+        let refunds: Vec<Value> = state
+            .db
+            .query_bind_value(
+                &format!(
+                    "SELECT * FROM {} WHERE {} = $refund_id",
+                    collections::REFUNDS,
+                    fields::STRIPE_REFUND_ID
+                ),
+                json!({ "refund_id": "re_created_idempotent" }),
+            )
+            .await
+            .unwrap();
+        assert_eq!(refunds.len(), 1);
+    }
+
     // -----------------------------------------------------------------------
     // handle_refund_updated tests
     // -----------------------------------------------------------------------
@@ -4427,6 +4816,79 @@ mod tests {
         });
         let result = handle_refund_updated(&state, &data).await;
         assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_handle_refund_updated_succeeded_marks_order_refunded_from_records() {
+        let state = setup_state().await;
+        state
+            .db
+            .upsert_document(
+                collections::PRODUCTS,
+                "refund_update_product",
+                json!({
+                    fields::PRODUCT_ID: "refund_update_product",
+                    fields::STOCK_QUANTITY: 7,
+                }),
+            )
+            .await
+            .unwrap();
+        state
+            .db
+            .upsert_document(
+                collections::ORDERS,
+                "refund_update_order",
+                json!({
+                    fields::ORDER_ID: "refund_update_order",
+                    fields::ORDER_STATUS: OrderStatus::Delivered.as_str(),
+                    fields::PAYMENT_STATUS: PaymentStatus::Captured.as_str(),
+                    fields::PAYMENT_INTENT_ID: "pi_refund_update_success",
+                    fields::TOTAL_AMOUNT_CENTS: 3000,
+                    fields::STOCK_RESTORED: false,
+                    fields::ITEMS: [{
+                        fields::PRODUCT_ID: "refund_update_product",
+                        fields::QUANTITY: 1,
+                        fields::IS_DIGITAL: false
+                    }],
+                }),
+            )
+            .await
+            .unwrap();
+
+        handle_refund_updated(
+            &state,
+            &json!({
+                "object": {
+                    "id": "re_update_success",
+                    "amount": 3000,
+                    "currency": "cad",
+                    "status": "succeeded",
+                    "payment_intent": "pi_refund_update_success",
+                    "reason": "requested_by_customer"
+                }
+            }),
+        )
+        .await
+        .unwrap();
+
+        let order = state
+            .db
+            .get_document(collections::ORDERS, "refund_update_order")
+            .await
+            .unwrap();
+        let refund = state
+            .db
+            .get_document(collections::REFUNDS, "re_update_success")
+            .await
+            .unwrap();
+        assert_eq!(refund[fields::STRIPE_REFUND_STATUS], "succeeded");
+        assert_eq!(order[fields::REFUND_ID], "re_update_success");
+        assert_eq!(order[fields::ORDER_STATUS], OrderStatus::Refunded.as_str());
+        assert_eq!(
+            order[fields::PAYMENT_STATUS],
+            PaymentStatus::Refunded.as_str()
+        );
+        assert_eq!(order[fields::REFUNDED_AMOUNT_CENTS], 3000);
     }
 
     // -----------------------------------------------------------------------
@@ -4461,6 +4923,62 @@ mod tests {
         });
         let result = handle_refund_failed(&state, &data).await;
         assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_handle_refund_failed_marks_order_for_manual_review() {
+        let state = setup_state().await;
+        state
+            .db
+            .upsert_document(
+                collections::ORDERS,
+                "refund_failed_order",
+                json!({
+                    fields::ORDER_ID: "refund_failed_order",
+                    fields::BUYER_ID: "buyer_refund_failed_state",
+                    fields::PAYMENT_INTENT_ID: "pi_refund_failed_state",
+                    fields::ORDER_STATUS: OrderStatus::Delivered.as_str(),
+                    fields::PAYMENT_STATUS: PaymentStatus::Captured.as_str(),
+                }),
+            )
+            .await
+            .unwrap();
+
+        handle_refund_failed(
+            &state,
+            &json!({
+                "object": {
+                    "id": "re_failed_state",
+                    "amount": 1000,
+                    "currency": "cad",
+                    "failure_reason": "expired_or_canceled_card",
+                    "payment_intent": "pi_refund_failed_state"
+                }
+            }),
+        )
+        .await
+        .unwrap();
+
+        let order = state
+            .db
+            .get_document(collections::ORDERS, "refund_failed_order")
+            .await
+            .unwrap();
+        let refund = state
+            .db
+            .get_document(collections::REFUNDS, "re_failed_state")
+            .await
+            .unwrap();
+        assert_eq!(refund[fields::STRIPE_REFUND_STATUS], "failed");
+        assert_eq!(
+            refund[fields::REFUND_FAILURE_REASON],
+            "expired_or_canceled_card"
+        );
+        assert_eq!(order[fields::REQUIRES_MANUAL_REVIEW], true);
+        assert_eq!(
+            order[fields::REFUND_FAILURE_REASON],
+            "expired_or_canceled_card"
+        );
     }
 
     #[tokio::test]

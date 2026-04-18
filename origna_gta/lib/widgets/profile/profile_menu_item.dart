@@ -86,6 +86,8 @@ class ProfileMenuItem extends StatelessWidget {
                       children: [
                         Text(
                           title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
@@ -98,6 +100,8 @@ class ProfileMenuItem extends StatelessWidget {
                           const SizedBox(height: 4),
                           Text(
                             subtitle!,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               fontSize: 12,
                               color: DesignTokens.textSecondary,

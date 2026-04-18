@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/lifecycle_provider.dart';
+import 'package:origna_gta/core/repositories/user_repository.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
@@ -326,28 +327,183 @@ class _SellerRegistrationScreenState
 
 // ═══ Widget Previews ═══
 
+class _PreviewSellerRegistrationRef extends Ref {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
+}
+
+class _PreviewSellerRegistrationViewModel extends SellerRegistrationViewModel {
+  _PreviewSellerRegistrationViewModel(SellerRegistrationState previewState)
+    : super(_PreviewSellerRegistrationRef()) {
+    state = previewState;
+  }
+}
+
+final _previewSellerRegistrationUser = UserModel(
+  uid: 'preview-seller-registration',
+  email: 'seller.onboarding@origna.ca',
+  name: 'North Market Studio',
+  roles: const [UserRole.buyer],
+  createdAt: DateTime(2026, 2, 18),
+  businessName: 'North Market Studio',
+  country: 'Canada',
+  verified: true,
+  isPremium: true,
+);
+
+UserModel _previewSellerUserWithStripe({
+  required bool onboardingCompleted,
+  required bool chargesEnabled,
+}) {
+  return UserModel(
+    uid: _previewSellerRegistrationUser.uid,
+    email: _previewSellerRegistrationUser.email,
+    name: _previewSellerRegistrationUser.name,
+    roles: const [UserRole.buyer, UserRole.seller],
+    createdAt: _previewSellerRegistrationUser.createdAt,
+    businessName: _previewSellerRegistrationUser.businessName,
+    country: _previewSellerRegistrationUser.country,
+    verified: true,
+    isPremium: true,
+    stripeAccountId: 'acct_preview_123',
+    onboardingCompleted: onboardingCompleted,
+    chargesEnabled: chargesEnabled,
+    payoutsEnabled: chargesEnabled,
+  );
+}
+
+const _previewPaymentProviderStatus = {
+  PaymentProviderValues.stripe: {
+    ApiKeys.enabled: true,
+    ApiKeys.configured: true,
+    ApiKeys.missingKeys: <String>[],
+  },
+  'paypal': {
+    ApiKeys.enabled: false,
+    ApiKeys.configured: false,
+    ApiKeys.missingKeys: <String>['clientId'],
+  },
+  'wise': {
+    ApiKeys.enabled: false,
+    ApiKeys.configured: false,
+    ApiKeys.missingKeys: <String>['apiKey'],
+  },
+};
+
+Widget _sellerRegistrationPreview({
+  required UserModel user,
+  required SellerAccountStatus status,
+  SellerRegistrationState state = const SellerRegistrationState(),
+  bool termsAccepted = true,
+}) {
+  return previewScopeLoggedIn(
+    uid: user.uid,
+    extraOverrides: [
+      userProfileProvider.overrideWith((ref) => Stream.value(user)),
+      paymentProviderStatusProvider.overrideWith(
+        (ref) async => _previewPaymentProviderStatus,
+      ),
+      sellerAccountStatusProvider.overrideWith((ref) => Stream.value(status)),
+      sellerRegistrationViewModelProvider.overrideWith(
+        (ref) => _PreviewSellerRegistrationViewModel(state),
+      ),
+      _sellerTermsAcceptedProvider.overrideWith((ref) => termsAccepted),
+    ],
+    child: const SellerRegistrationScreen(),
+  );
+}
+
+Widget _sellerRegistrationStartPreview() => _sellerRegistrationPreview(
+  user: _previewSellerRegistrationUser,
+  status: const SellerAccountStatus(isSeller: false, chargesEnabled: false),
+);
+
+Widget _sellerRegistrationIncompletePreview() => _sellerRegistrationPreview(
+  user: _previewSellerUserWithStripe(
+    onboardingCompleted: false,
+    chargesEnabled: false,
+  ),
+  status: const SellerAccountStatus(
+    isSeller: true,
+    chargesEnabled: false,
+    detailsSubmitted: false,
+  ),
+);
+
+Widget _sellerRegistrationPendingPreview() => _sellerRegistrationPreview(
+  user: _previewSellerUserWithStripe(
+    onboardingCompleted: true,
+    chargesEnabled: false,
+  ),
+  status: const SellerAccountStatus(
+    isSeller: true,
+    chargesEnabled: false,
+    detailsSubmitted: true,
+  ),
+);
+
+Widget _sellerRegistrationRequirementsPreview() => _sellerRegistrationPreview(
+  user: _previewSellerUserWithStripe(
+    onboardingCompleted: true,
+    chargesEnabled: false,
+  ),
+  status: const SellerAccountStatus(
+    isSeller: true,
+    chargesEnabled: false,
+    detailsSubmitted: true,
+    hasPendingRequirements: true,
+    pendingRequirements: [
+      'verification.document',
+      'external_account',
+    ],
+  ),
+  state: const SellerRegistrationState(
+    error: 'Bank account verification needs one more document upload.',
+  ),
+);
+
+Widget _sellerRegistrationActivePreview() => _sellerRegistrationPreview(
+  user: _previewSellerUserWithStripe(
+    onboardingCompleted: true,
+    chargesEnabled: true,
+  ),
+  status: const SellerAccountStatus(
+    isSeller: true,
+    chargesEnabled: true,
+    detailsSubmitted: true,
+  ),
+  state: const SellerRegistrationState(
+    successMessage: 'Seller account fully active.',
+  ),
+);
+
 @Preview(name: 'Become a Seller — Mobile', group: 'Screens — Seller Management', size: Size(390, 844))
-Widget previewSellerRegistrationScreenMobile() => previewMobile(child: previewScope(child: SellerRegistrationScreen()));
+Widget previewSellerRegistrationScreenMobile() => previewMobile(child: _sellerRegistrationStartPreview());
 
 @Preview(name: 'Become a Seller — Tablet', group: 'Screens — Seller Management', size: Size(768, 1024))
-Widget previewSellerRegistrationScreenTablet() => previewTablet(child: previewScope(child: SellerRegistrationScreen()));
+Widget previewSellerRegistrationScreenTablet() => previewTablet(child: _sellerRegistrationStartPreview());
 
 @Preview(name: 'Become a Seller — Desktop', group: 'Screens — Seller Management', size: Size(1280, 800))
-Widget previewSellerRegistrationScreenDesktop() => previewDesktop(child: previewScope(child: SellerRegistrationScreen()));
+Widget previewSellerRegistrationScreenDesktop() => previewDesktop(child: _sellerRegistrationIncompletePreview());
 
 @Preview(name: 'Become a Seller — Web', group: 'Screens — Seller Management', size: Size(1440, 900))
-Widget previewSellerRegistrationScreenWeb() => previewWeb(child: previewScope(child: SellerRegistrationScreen()));
+Widget previewSellerRegistrationScreenWeb() => previewWeb(child: _sellerRegistrationPendingPreview());
 
 // ── Light ────────────────────────────────────────────────────────────────────
 @Preview(name: 'Become a Seller Light — Mobile', group: 'Screens — Seller Management', size: Size(390, 844))
-Widget previewSellerRegistrationLightMobile() => previewMobile(theme: previewLightTheme, child: previewScope(child: SellerRegistrationScreen()));
+Widget previewSellerRegistrationLightMobile() => previewMobile(theme: previewLightTheme, child: _sellerRegistrationStartPreview());
 
 @Preview(name: 'Become a Seller Light — Tablet', group: 'Screens — Seller Management', size: Size(768, 1024))
-Widget previewSellerRegistrationLightTablet() => previewTablet(theme: previewLightTheme, child: previewScope(child: SellerRegistrationScreen()));
+Widget previewSellerRegistrationLightTablet() => previewTablet(theme: previewLightTheme, child: _sellerRegistrationStartPreview());
 
 @Preview(name: 'Become a Seller Light — Desktop', group: 'Screens — Seller Management', size: Size(1280, 800))
-Widget previewSellerRegistrationLightDesktop() => previewDesktop(theme: previewLightTheme, child: previewScope(child: SellerRegistrationScreen()));
+Widget previewSellerRegistrationLightDesktop() => previewDesktop(theme: previewLightTheme, child: _sellerRegistrationActivePreview());
 
 @Preview(name: 'Become a Seller Light — Web', group: 'Screens — Seller Management', size: Size(1440, 900))
-Widget previewSellerRegistrationLightWeb() => previewWeb(theme: previewLightTheme, child: previewScope(child: SellerRegistrationScreen()));
+Widget previewSellerRegistrationLightWeb() => previewWeb(theme: previewLightTheme, child: _sellerRegistrationActivePreview());
 
+@Preview(name: 'Become a Seller Requirements — Desktop', group: 'Screens — Seller Management', size: Size(1280, 800))
+Widget previewSellerRegistrationRequirementsDesktop() => previewDesktop(child: _sellerRegistrationRequirementsPreview());
+
+@Preview(name: 'Become a Seller Active — Desktop', group: 'Screens — Seller Management', size: Size(1280, 800))
+Widget previewSellerRegistrationActiveDesktop() => previewDesktop(child: _sellerRegistrationActivePreview());

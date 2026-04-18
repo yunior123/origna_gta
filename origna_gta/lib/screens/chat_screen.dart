@@ -755,43 +755,13 @@ Widget _chatContentFr() => previewScopeLoggedIn(
 Widget previewChatScreenMobile() => previewMobile(child: _chatContent());
 
 @Preview(
-  name: 'Direct Messaging — Tablet',
-  group: 'Screens',
-  size: Size(768, 1024),
-)
-Widget previewChatScreenTablet() => previewTablet(child: _chatContent());
-
-@Preview(
   name: 'Direct Messaging — Desktop',
   group: 'Screens',
   size: Size(1280, 800),
 )
 Widget previewChatScreenDesktop() => previewDesktop(child: _chatContent());
 
-@Preview(
-  name: 'Direct Messaging — Web',
-  group: 'Screens',
-  size: Size(1440, 900),
-)
-Widget previewChatScreenWeb() => previewWeb(child: _chatContent());
-
 // ── Light ────────────────────────────────────────────────────────────────────
-@Preview(
-  name: 'Direct Messaging Light — Mobile',
-  group: 'Screens',
-  size: Size(390, 844),
-)
-Widget previewChatScreenLightMobile() =>
-    previewMobile(theme: previewLightTheme, child: _chatContent());
-
-@Preview(
-  name: 'Direct Messaging Light — Tablet',
-  group: 'Screens',
-  size: Size(768, 1024),
-)
-Widget previewChatScreenLightTablet() =>
-    previewTablet(theme: previewLightTheme, child: _chatContent());
-
 @Preview(
   name: 'Direct Messaging Light — Desktop',
   group: 'Screens',
@@ -799,14 +769,6 @@ Widget previewChatScreenLightTablet() =>
 )
 Widget previewChatScreenLightDesktop() =>
     previewDesktop(theme: previewLightTheme, child: _chatContent());
-
-@Preview(
-  name: 'Direct Messaging Light — Web',
-  group: 'Screens',
-  size: Size(1440, 900),
-)
-Widget previewChatScreenLightWeb() =>
-    previewWeb(theme: previewLightTheme, child: _chatContent());
 
 // ── French Locale ─────────────────────────────────────────────────────────────
 @Preview(

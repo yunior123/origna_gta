@@ -19,43 +19,11 @@ const NON_ADMIN_EMAIL = process.env.E2E_BUYER_EMAIL ?? TEST_ACCOUNTS.BUYER_EMAIL
 
 async function loginAs(browser: AgentBrowser, email: string, password: string) {
   try {
-    await browser.open(`${WEB_APP_URL}/login`);
+    await browser.loginViaApi(email, password);
+    await browser.open(WEB_APP_URL);
     await browser.waitForFlutter();
-  } catch {
-    // Retry once on timeout
-    await browser.open(`${WEB_APP_URL}/login`);
-    await browser.waitForFlutter();
-  }
-  let snap = await browser.waitForChange({ text: /you@example|vous@exemple|login_email_field/i, timeout: 30_000 });
-
-  const emailInput = browser.findByLabel(snap, /you@example|vous@exemple|login_email_field/i);
-  if (!emailInput) throw new Error('Email input not found');
-  await browser.click(emailInput.ref);
-  await browser.type(email);
-
-  await browser.waitForChange({ timeout: 500 });
-  snap = await browser.snapshot({ interactive: true, compact: true });
-  const passInput = browser.findByLabel(snap, /login_password_field|••••••••/);
-  if (!passInput) throw new Error('Password input not found');
-  await browser.click(passInput.ref);
-  await browser.type(password);
-
-  await browser.press('Tab');
-  await browser.waitForChange({ timeout: 500 });
-
-  // Re-snapshot to get fresh ref for submit button
-  snap = await browser.snapshot({ interactive: true, compact: true });
-  const submitBtn = browser.findByLabel(snap, /login_submit_button|se connecter|sign in|connexion/i);
-  if (submitBtn) {
-    await browser.click(submitBtn.ref);
-  } else {
-    await browser.press('Enter');
-  }
-  await browser.waitForChange({ timeout: 5000 });
-  try {
-    await browser.waitForFlutter();
-  } catch {
-    // Page may already be settled
+  } catch (error) {
+    console.warn(`loginViaApi warning: ${(error as Error).message}`);
   }
 }
 

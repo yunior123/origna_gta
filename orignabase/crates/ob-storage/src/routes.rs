@@ -1218,7 +1218,10 @@ mod tests {
             std::env::set_var("OB_TEST_MODE", "1");
         }
         let result = validate_file_signature(b"random bytes", "application/octet-stream");
-        assert!(result.is_ok(), "octet-stream should be allowed for binary uploads");
+        assert!(
+            result.is_ok(),
+            "octet-stream should be allowed for binary uploads"
+        );
         unsafe {
             std::env::remove_var("OB_TEST_MODE");
         }

@@ -84,7 +84,9 @@ Widget _buildSecurityAlerts(
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Row(
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
                     children: [
                       Semantics(
                         label: 'btn-alert-yes-$alertId',
@@ -105,7 +107,6 @@ Widget _buildSecurityAlerts(
                           child: Text('security.yes_it_was_me'.tr()),
                         ),
                       ),
-                      const SizedBox(width: 8),
                       Semantics(
                         label: 'btn-alert-no-$alertId',
                         child: OutlinedButton(

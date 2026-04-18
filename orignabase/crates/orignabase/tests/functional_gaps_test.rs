@@ -6,6 +6,7 @@
 //! Set `OB_TEST_URL` to point at the target server.
 
 use serde_json::{Value, json};
+use tokio::time::{Duration, sleep};
 use uuid::Uuid;
 
 fn base_url() -> String {
@@ -16,7 +17,7 @@ fn password() -> String {
     std::env::var("OB_TEST_PASSWORD").unwrap_or_else(|_| "TestPassword123!".to_string()) // ignore-magic
 }
 
-async fn register_test_user(client: &reqwest::Client) -> (String, String) {
+async fn register_test_user(client: &reqwest::Client) -> (String, String, String) {
     let email = format!("functional_gap_{}@example.com", Uuid::new_v4());
     let resp = client
         .post(format!("{}/auth/register", base_url()))
@@ -31,7 +32,68 @@ async fn register_test_user(client: &reqwest::Client) -> (String, String) {
         .as_str()
         .expect("missing access_token")
         .to_string();
-    (token, email)
+    let user_id = body["user"]["id"] // ignore-magic
+        .as_str()
+        .expect("missing user.id")
+        .to_string();
+    (token, user_id, email)
+}
+
+async fn login_admin(client: &reqwest::Client) -> String {
+    let resp = client
+        .post(format!("{}/auth/login", base_url()))
+        .json(&json!({
+            "email": "e2e-admin@test.origna.ca",
+            "password": "REDACTED_TEST_PASSWORD"
+        }))
+        .send()
+        .await
+        .expect("admin login failed");
+
+    assert_eq!(resp.status(), 200, "admin login should succeed");
+    let body: Value = resp.json().await.expect("admin login json");
+    body["access_token"]
+        .as_str()
+        .expect("missing admin access_token")
+        .to_string()
+}
+
+async fn promote_user_roles(
+    client: &reqwest::Client,
+    admin_token: &str,
+    user_id: &str,
+    roles: &[&str],
+) {
+    let resp = client
+        .patch(format!("{}/admin/users/{}", base_url(), user_id))
+        .header("Authorization", format!("Bearer {admin_token}"))
+        .json(&json!({ "roles": roles }))
+        .send()
+        .await
+        .expect("admin role patch failed");
+
+    assert_eq!(resp.status(), 200, "role patch should succeed");
+}
+
+async fn register_seller_user(client: &reqwest::Client) -> (String, String, String) {
+    let (_token, user_id, email) = register_test_user(client).await;
+    let admin_token = login_admin(client).await;
+    promote_user_roles(client, &admin_token, &user_id, &["user", "seller"]).await;
+
+    let login_resp = client
+        .post(format!("{}/auth/login", base_url()))
+        .json(&json!({ "email": email, "password": password() }))
+        .send()
+        .await
+        .expect("seller login failed");
+
+    assert_eq!(login_resp.status(), 200, "seller login should succeed");
+    let body: Value = login_resp.json().await.expect("seller login json");
+    let token = body["access_token"]
+        .as_str()
+        .expect("missing seller access_token")
+        .to_string();
+    (token, user_id, email)
 }
 
 async fn graphql(client: &reqwest::Client, token: &str, query: &str) -> Value {
@@ -152,6 +214,23 @@ async fn list_docs(
     value_as_array(&body["data"]["list"]) // ignore-magic
 }
 
+async fn list_docs_until(
+    client: &reqwest::Client,
+    token: &str,
+    collection: &str,
+    limit: usize,
+    predicate: impl Fn(&Value) -> bool,
+) -> Vec<Value> {
+    for attempt in 0..5 {
+        let items = list_docs(client, token, collection, limit).await;
+        if items.iter().any(&predicate) || attempt == 4 {
+            return items;
+        }
+        sleep(Duration::from_millis(250)).await;
+    }
+    Vec::new()
+}
+
 async fn update_doc(
     client: &reqwest::Client,
     token: &str,
@@ -181,6 +260,41 @@ async fn delete_doc(client: &reqwest::Client, token: &str, collection: &str, id:
     body["data"]["delete"].clone() // ignore-magic
 }
 
+fn create_doc_query(collection: &str, data: &Value) -> String {
+    format!(
+        r#"mutation {{ create(collection: "{collection}", data: {}) }}"#,
+        escape_json(data)
+    )
+}
+
+async fn create_product(
+    client: &reqwest::Client,
+    seller_token: &str,
+    seller_id: &str,
+    name: &str,
+    price_cents: i64,
+) -> String {
+    let body = graphql(
+        client,
+        seller_token,
+        &create_doc_query(
+            "products",
+            &json!({
+                "name": name,
+                "priceCents": price_cents,
+                "stockQuantity": 25,
+                "sellerId": seller_id
+            }),
+        ),
+    )
+    .await;
+    assert!(
+        body.get("errors").is_none(),
+        "product create returned graphql errors: {body}"
+    );
+    extract_id(&body["data"]["create"]).expect("product id")
+}
+
 fn admin_token_or(token: String) -> String {
     std::env::var("OB_TEST_ADMIN_TOKEN").unwrap_or(token)
 }
@@ -199,14 +313,13 @@ macro_rules! live_test {
 
 live_test!(address_create_buyer_address, {
     let client = reqwest::Client::new();
-    let (token, email) = register_test_user(&client).await;
-    let collection = unique_collection("fg_address_create");
+    let (token, user_id, _email) = register_test_user(&client).await;
     let created = create_doc(
         &client,
         &token,
-        &collection,
+        "addresses",
         &json!({ // ignore-magic
-            "owner_email": email,
+            "userId": user_id,
             "kind": "buyer_address",
             "label": unique_label("home"),
             "street": "123 Queen St W",
@@ -225,14 +338,13 @@ live_test!(address_create_buyer_address, {
 
 live_test!(address_get_buyer_address, {
     let client = reqwest::Client::new();
-    let (token, email) = register_test_user(&client).await;
-    let collection = unique_collection("fg_address_get");
+    let (token, user_id, _email) = register_test_user(&client).await;
     let created = create_doc(
         &client,
         &token,
-        &collection,
+        "addresses",
         &json!({ // ignore-magic
-            "owner_email": email,
+            "userId": user_id,
             "kind": "buyer_address",
             "label": unique_label("office"),
             "street": "77 King St E",
@@ -245,20 +357,20 @@ live_test!(address_get_buyer_address, {
     .await;
 
     let id = clean_id(&extract_id(&created).expect("created id"));
-    let doc = get_doc(&client, &token, &collection, &id).await;
+    let doc = get_doc(&client, &token, "addresses", &id).await;
     assert_eq!(doc["city"], "Toronto"); // ignore-magic
     assert_eq!(doc["kind"], "buyer_address"); // ignore-magic
 });
 
 live_test!(address_update_buyer_address, {
     let client = reqwest::Client::new();
-    let (token, _) = register_test_user(&client).await;
-    let collection = unique_collection("fg_address_update");
+    let (token, user_id, _) = register_test_user(&client).await;
     let created = create_doc(
         &client,
         &token,
-        &collection,
+        "addresses",
         &json!({ // ignore-magic
+            "userId": user_id,
             "label": unique_label("shipping"),
             "street": "1 First Ave",
             "city": "Ottawa",
@@ -273,7 +385,7 @@ live_test!(address_update_buyer_address, {
     let updated = update_doc(
         &client,
         &token,
-        &collection,
+        "addresses",
         &id,
         &json!({ // ignore-magic
             "street": "99 Updated Ave",
@@ -290,13 +402,13 @@ live_test!(address_update_buyer_address, {
 
 live_test!(address_delete_buyer_address, {
     let client = reqwest::Client::new();
-    let (token, _) = register_test_user(&client).await;
-    let collection = unique_collection("fg_address_delete");
+    let (token, user_id, _) = register_test_user(&client).await;
     let created = create_doc(
         &client,
         &token,
-        &collection,
+        "addresses",
         &json!({ // ignore-magic
+            "userId": user_id,
             "label": unique_label("old"),
             "street": "12 Remove Rd",
             "city": "Vancouver",
@@ -308,7 +420,7 @@ live_test!(address_delete_buyer_address, {
     .await;
 
     let id = clean_id(&extract_id(&created).expect("created id"));
-    let deleted = delete_doc(&client, &token, &collection, &id).await;
+    let deleted = delete_doc(&client, &token, "addresses", &id).await;
     assert!(
         deleted.is_boolean() || deleted.is_string() || deleted.is_object() || deleted.is_null()
     );
@@ -316,14 +428,13 @@ live_test!(address_delete_buyer_address, {
 
 live_test!(address_list_addresses, {
     let client = reqwest::Client::new();
-    let (token, email) = register_test_user(&client).await;
-    let collection = unique_collection("fg_address_list");
+    let (token, user_id, _email) = register_test_user(&client).await;
     let created = create_doc(
         &client,
         &token,
-        &collection,
+        "addresses",
         &json!({ // ignore-magic
-            "owner_email": email,
+            "userId": user_id,
             "label": unique_label("list"),
             "street": "50 Front St",
             "city": "Toronto",
@@ -334,10 +445,15 @@ live_test!(address_list_addresses, {
     )
     .await;
 
-    let id = extract_id(&created).expect("created id");
-    let items = list_docs(&client, &token, &collection, 10).await;
+    let label = created["label"].as_str().unwrap_or("").to_string(); // ignore-magic
+    let street = created["street"].as_str().unwrap_or("").to_string(); // ignore-magic
+    let items = list_docs_until(&client, &token, "addresses", 10, |item| {
+        item["label"] == label && item["street"] == street // ignore-magic
+    })
+    .await;
     assert!(
-        contains_id(&items, &id),
+        items.iter()
+            .any(|item| item["label"] == label && item["street"] == street), // ignore-magic
         "address should be present in list"
     );
 });
@@ -348,7 +464,7 @@ live_test!(address_list_addresses, {
 
 live_test!(coupon_create_admin, {
     let client = reqwest::Client::new();
-    let (token, _) = register_test_user(&client).await;
+    let (token, _, _) = register_test_user(&client).await;
     let admin_token = admin_token_or(token);
     let collection = unique_collection("fg_coupon_create");
     let created = create_doc(
@@ -372,7 +488,7 @@ live_test!(coupon_create_admin, {
 
 live_test!(coupon_validate_coupon, {
     let client = reqwest::Client::new();
-    let (token, _) = register_test_user(&client).await;
+    let (token, _, _) = register_test_user(&client).await;
     let collection = unique_collection("fg_coupon_validate");
     let code = unique_label("VALID");
     let created = create_doc(
@@ -399,7 +515,7 @@ live_test!(coupon_validate_coupon, {
 
 live_test!(coupon_apply_to_order, {
     let client = reqwest::Client::new();
-    let (token, email) = register_test_user(&client).await;
+    let (token, _, email) = register_test_user(&client).await;
     let coupon_collection = unique_collection("fg_coupon_apply_coupon");
     let order_collection = unique_collection("fg_coupon_apply_order");
     let coupon = create_doc(
@@ -441,7 +557,7 @@ live_test!(coupon_apply_to_order, {
 
 live_test!(coupon_reject_expired_coupon, {
     let client = reqwest::Client::new();
-    let (token, _) = register_test_user(&client).await;
+    let (token, _, _) = register_test_user(&client).await;
     let collection = unique_collection("fg_coupon_expired");
     let created = create_doc(
         &client,
@@ -466,7 +582,7 @@ live_test!(coupon_reject_expired_coupon, {
 
 live_test!(coupon_percentage_vs_fixed, {
     let client = reqwest::Client::new();
-    let (token, _) = register_test_user(&client).await;
+    let (token, _, _) = register_test_user(&client).await;
     let collection = unique_collection("fg_coupon_types");
     let percentage = create_doc(
         &client,
@@ -504,7 +620,7 @@ live_test!(coupon_percentage_vs_fixed, {
 
 live_test!(coupon_max_uses_enforced, {
     let client = reqwest::Client::new();
-    let (token, _) = register_test_user(&client).await;
+    let (token, _, _) = register_test_user(&client).await;
     let collection = unique_collection("fg_coupon_max_uses");
     let created = create_doc(
         &client,
@@ -539,18 +655,20 @@ live_test!(coupon_max_uses_enforced, {
 
 live_test!(digital_create_product, {
     let client = reqwest::Client::new();
-    let (token, _) = register_test_user(&client).await;
-    let collection = unique_collection("fg_digital_product");
+    let (token, seller_id, _) = register_seller_user(&client).await;
     let created = create_doc(
         &client,
         &token,
-        &collection,
+        "products",
         &json!({ // ignore-magic
             "sku": unique_label("ebook"),
-            "title": "Digital Product", // ignore-magic
+            "name": "Digital Product", // ignore-magic
             "delivery": "download",
             "licenseType": "single-user",
-            "isDigital": true // ignore-magic
+            "isDigital": true, // ignore-magic
+            "priceCents": 2500,
+            "stockQuantity": 50,
+            "sellerId": seller_id
         }),
     )
     .await;
@@ -563,7 +681,7 @@ live_test!(digital_create_product, {
 
 live_test!(digital_purchase_creates_license, {
     let client = reqwest::Client::new();
-    let (token, email) = register_test_user(&client).await;
+    let (token, _, email) = register_test_user(&client).await;
     let products = unique_collection("fg_digital_purchase_products");
     let licenses = unique_collection("fg_digital_purchase_licenses");
     let product = create_doc(
@@ -600,7 +718,7 @@ live_test!(digital_purchase_creates_license, {
 
 live_test!(digital_activate_license, {
     let client = reqwest::Client::new();
-    let (token, _) = register_test_user(&client).await;
+    let (token, _, _) = register_test_user(&client).await;
     let collection = unique_collection("fg_digital_activate");
     let created = create_doc(
         &client,
@@ -624,7 +742,7 @@ live_test!(digital_activate_license, {
 
 live_test!(digital_deactivate_license, {
     let client = reqwest::Client::new();
-    let (token, _) = register_test_user(&client).await;
+    let (token, _, _) = register_test_user(&client).await;
     let collection = unique_collection("fg_digital_deactivate");
     let created = create_doc(
         &client,
@@ -648,7 +766,7 @@ live_test!(digital_deactivate_license, {
 
 live_test!(digital_download_link_generation, {
     let client = reqwest::Client::new();
-    let (token, _) = register_test_user(&client).await;
+    let (token, _, _) = register_test_user(&client).await;
     let collection = unique_collection("fg_digital_download");
     let created = create_doc(
         &client,
@@ -683,18 +801,23 @@ live_test!(digital_download_link_generation, {
 
 live_test!(order_create_order, {
     let client = reqwest::Client::new();
-    let (token, email) = register_test_user(&client).await;
-    let collection = unique_collection("fg_order_create");
+    let (seller_token, seller_id, _) = register_seller_user(&client).await;
+    let (buyer_token, buyer_id, _email) = register_test_user(&client).await;
+    let product_id = create_product(&client, &seller_token, &seller_id, "Gap Order Product", 2500).await;
     let created = create_doc(
         &client,
-        &token,
-        &collection,
+        &buyer_token,
+        "orders",
         &json!({ // ignore-magic
-            "buyer_email": email,
-            "status": "pending", // ignore-magic
-            "items": [{"sku": "SKU-1", "qty": 1, "price": 25}], // ignore-magic
-            "subtotal": 25,
-            "total": 25
+            "buyerId": buyer_id,
+            "userId": buyer_id,
+            "sellerId": seller_id,
+            "orderStatus": "pending", // ignore-magic
+            "items": [{"productId": product_id, "quantity": 1, "unitPriceCents": 2500}], // ignore-magic
+            "subtotalCents": 2500,
+            "shippingCostCents": 0,
+            "taxAmountCents": 0,
+            "totalAmountCents": 2500
         }),
     )
     .await;
@@ -704,103 +827,179 @@ live_test!(order_create_order, {
 
 live_test!(order_transition_pending_to_processing, {
     let client = reqwest::Client::new();
-    let (token, _) = register_test_user(&client).await;
-    let collection = unique_collection("fg_order_processing");
-    let created = create_doc(&client, &token, &collection, &json!({"status": "pending"})).await; // ignore-magic
+    let admin_token = login_admin(&client).await;
+    let (seller_token, seller_id, _) = register_seller_user(&client).await;
+    let (buyer_token, buyer_id, _) = register_test_user(&client).await;
+    let product_id =
+        create_product(&client, &seller_token, &seller_id, "Gap Order Pending", 3100).await;
+    let created = create_doc(
+        &client,
+        &buyer_token,
+        "orders",
+        &json!({
+            "buyerId": buyer_id,
+            "userId": buyer_id,
+            "sellerId": seller_id,
+            "orderStatus": "pending",
+            "items": [{"productId": product_id, "quantity": 1, "unitPriceCents": 3100}],
+            "subtotalCents": 3100,
+            "shippingCostCents": 0,
+            "taxAmountCents": 0,
+            "totalAmountCents": 3100
+        }),
+    )
+    .await;
     let id = clean_id(&extract_id(&created).expect("order id"));
     let updated = update_doc(
         &client,
-        &token,
-        &collection,
+        &admin_token,
+        "orders",
         &id,
-        &json!({"status": "processing"}), // ignore-magic
+        &json!({"orderStatus": "processing"}), // ignore-magic
     )
     .await;
-    assert_eq!(updated["status"], "processing"); // ignore-magic
+    assert_eq!(updated["orderStatus"], "processing"); // ignore-magic
 });
 
 live_test!(order_transition_processing_to_shipped, {
     let client = reqwest::Client::new();
-    let (token, _) = register_test_user(&client).await;
-    let collection = unique_collection("fg_order_shipped");
+    let admin_token = login_admin(&client).await;
+    let (seller_token, seller_id, _) = register_seller_user(&client).await;
+    let (buyer_token, buyer_id, _) = register_test_user(&client).await;
+    let product_id =
+        create_product(&client, &seller_token, &seller_id, "Gap Order Ship", 4200).await;
     let created = create_doc(
         &client,
-        &token,
-        &collection,
-        &json!({"status": "processing"}), // ignore-magic
+        &buyer_token,
+        "orders",
+        &json!({
+            "buyerId": buyer_id,
+            "userId": buyer_id,
+            "sellerId": seller_id,
+            "orderStatus": "processing",
+            "items": [{"productId": product_id, "quantity": 1, "unitPriceCents": 4200}],
+            "subtotalCents": 4200,
+            "shippingCostCents": 0,
+            "taxAmountCents": 0,
+            "totalAmountCents": 4200
+        }),
     )
     .await;
     let id = clean_id(&extract_id(&created).expect("order id"));
     let updated = update_doc(
         &client,
-        &token,
-        &collection,
+        &admin_token,
+        "orders",
         &id,
-        &json!({"status": "shipped", "trackingNumber": unique_label("TRACK")}), // ignore-magic
+        &json!({"orderStatus": "shipped", "trackingNumber": unique_label("TRACK")}), // ignore-magic
     )
     .await;
-    assert_eq!(updated["status"], "shipped"); // ignore-magic
+    assert_eq!(updated["orderStatus"], "shipped"); // ignore-magic
 });
 
 live_test!(order_transition_shipped_to_delivered, {
     let client = reqwest::Client::new();
-    let (token, _) = register_test_user(&client).await;
-    let collection = unique_collection("fg_order_delivered");
-    let created = create_doc(&client, &token, &collection, &json!({"status": "shipped"})).await; // ignore-magic
+    let admin_token = login_admin(&client).await;
+    let (seller_token, seller_id, _) = register_seller_user(&client).await;
+    let (buyer_token, buyer_id, _) = register_test_user(&client).await;
+    let product_id =
+        create_product(&client, &seller_token, &seller_id, "Gap Order Deliver", 5100).await;
+    let created = create_doc(
+        &client,
+        &buyer_token,
+        "orders",
+        &json!({
+            "buyerId": buyer_id,
+            "userId": buyer_id,
+            "sellerId": seller_id,
+            "orderStatus": "shipped",
+            "items": [{"productId": product_id, "quantity": 1, "unitPriceCents": 5100}],
+            "subtotalCents": 5100,
+            "shippingCostCents": 0,
+            "taxAmountCents": 0,
+            "totalAmountCents": 5100
+        }),
+    )
+    .await;
     let id = clean_id(&extract_id(&created).expect("order id"));
     let updated = update_doc(
         &client,
-        &token,
-        &collection,
+        &admin_token,
+        "orders",
         &id,
-        &json!({"status": "delivered", "deliveredAt": "2099-01-01T12:00:00Z"}), // ignore-magic
+        &json!({"orderStatus": "delivered", "deliveredAt": "2099-01-01T12:00:00Z"}), // ignore-magic
     )
     .await;
-    assert_eq!(updated["status"], "delivered"); // ignore-magic
+    assert_eq!(updated["orderStatus"], "delivered"); // ignore-magic
 });
 
 live_test!(order_cancel_order, {
     let client = reqwest::Client::new();
-    let (token, _) = register_test_user(&client).await;
-    let collection = unique_collection("fg_order_cancel");
-    let created = create_doc(&client, &token, &collection, &json!({"status": "pending"})).await; // ignore-magic
+    let admin_token = login_admin(&client).await;
+    let (seller_token, seller_id, _) = register_seller_user(&client).await;
+    let (buyer_token, buyer_id, _) = register_test_user(&client).await;
+    let product_id =
+        create_product(&client, &seller_token, &seller_id, "Gap Order Cancel", 2700).await;
+    let created = create_doc(
+        &client,
+        &buyer_token,
+        "orders",
+        &json!({
+            "buyerId": buyer_id,
+            "userId": buyer_id,
+            "sellerId": seller_id,
+            "orderStatus": "pending",
+            "items": [{"productId": product_id, "quantity": 1, "unitPriceCents": 2700}],
+            "subtotalCents": 2700,
+            "shippingCostCents": 0,
+            "taxAmountCents": 0,
+            "totalAmountCents": 2700
+        }),
+    )
+    .await;
     let id = clean_id(&extract_id(&created).expect("order id"));
     let updated = update_doc(
         &client,
-        &token,
-        &collection,
+        &admin_token,
+        "orders",
         &id,
-        &json!({"status": "cancelled", "cancelReason": "buyer_request"}), // ignore-magic
+        &json!({"orderStatus": "cancelled", "cancelReason": "buyer_request"}), // ignore-magic
     )
     .await;
-    assert_eq!(updated["status"], "cancelled"); // ignore-magic
+    assert_eq!(updated["orderStatus"], "cancelled"); // ignore-magic
 });
 
 live_test!(order_with_multiple_items, {
     let client = reqwest::Client::new();
-    let (token, email) = register_test_user(&client).await;
-    let collection = unique_collection("fg_order_multi_item");
+    let (seller_token, seller_id, _) = register_seller_user(&client).await;
+    let (buyer_token, buyer_id, _email) = register_test_user(&client).await;
+    let product_a = create_product(&client, &seller_token, &seller_id, "Gap Order A", 1000).await;
+    let product_b = create_product(&client, &seller_token, &seller_id, "Gap Order B", 1500).await;
     let created = create_doc(
         &client,
-        &token,
-        &collection,
+        &buyer_token,
+        "orders",
         &json!({ // ignore-magic
-            "buyer_email": email,
-            "status": "pending", // ignore-magic
+            "buyerId": buyer_id,
+            "userId": buyer_id,
+            "sellerId": seller_id,
+            "orderStatus": "pending", // ignore-magic
             "items": [
-                {"sku": "SKU-A", "qty": 1, "price": 10}, // ignore-magic
-                {"sku": "SKU-B", "qty": 2, "price": 15} // ignore-magic
+                {"productId": product_a, "quantity": 1, "unitPriceCents": 1000}, // ignore-magic
+                {"productId": product_b, "quantity": 2, "unitPriceCents": 1500} // ignore-magic
             ],
-            "subtotal": 40,
-            "total": 40
+            "subtotalCents": 4000,
+            "shippingCostCents": 0,
+            "taxAmountCents": 0,
+            "totalAmountCents": 4000
         }),
     )
     .await;
 
     let doc = get_doc(
         &client,
-        &token,
-        &collection,
+        &buyer_token,
+        "orders",
         &clean_id(&extract_id(&created).expect("order id")),
     )
     .await;
@@ -819,15 +1018,16 @@ live_test!(order_with_multiple_items, {
 
 live_test!(qa_post_question, {
     let client = reqwest::Client::new();
-    let (token, email) = register_test_user(&client).await;
-    let collection = unique_collection("fg_qa_question");
+    let (seller_token, seller_id, _) = register_seller_user(&client).await;
+    let (token, user_id, _email) = register_test_user(&client).await;
+    let product_id = create_product(&client, &seller_token, &seller_id, "Gap QA Product", 1999).await;
     let created = create_doc(
         &client,
         &token,
-        &collection,
+        "product_questions",
         &json!({ // ignore-magic
-            "productSlug": unique_label("product"),
-            "author_email": email,
+            "productId": product_id,
+            "userId": user_id,
             "question": "Does this product include a charger?",
             "status": "open" // ignore-magic
         }),
@@ -839,13 +1039,17 @@ live_test!(qa_post_question, {
 
 live_test!(qa_post_answer, {
     let client = reqwest::Client::new();
-    let (token, _) = register_test_user(&client).await;
-    let collection = unique_collection("fg_qa_answer");
+    let (seller_token, seller_id, _) = register_seller_user(&client).await;
+    let (token, user_id, _) = register_test_user(&client).await;
+    let product_id =
+        create_product(&client, &seller_token, &seller_id, "Gap QA Answer Product", 2099).await;
     let created = create_doc(
         &client,
         &token,
-        &collection,
+        "product_questions",
         &json!({ // ignore-magic
+            "productId": product_id,
+            "userId": user_id,
             "question": "Does it support USB-C?",
             "answer": "Yes, it supports USB-C charging.",
             "status": "answered" // ignore-magic
@@ -856,7 +1060,7 @@ live_test!(qa_post_answer, {
     let doc = get_doc(
         &client,
         &token,
-        &collection,
+        "product_questions",
         &clean_id(&extract_id(&created).expect("qa id")),
     )
     .await;
@@ -866,13 +1070,17 @@ live_test!(qa_post_answer, {
 
 live_test!(qa_list_questions_and_answers, {
     let client = reqwest::Client::new();
-    let (token, _) = register_test_user(&client).await;
-    let collection = unique_collection("fg_qa_list");
+    let (seller_token, seller_id, _) = register_seller_user(&client).await;
+    let (token, user_id, _) = register_test_user(&client).await;
+    let product_id =
+        create_product(&client, &seller_token, &seller_id, "Gap QA List Product", 2199).await;
     let created = create_doc(
         &client,
         &token,
-        &collection,
+        "product_questions",
         &json!({ // ignore-magic
+            "productId": product_id,
+            "userId": user_id,
             "question": "Is there a warranty?",
             "answer": "Two years.",
             "status": "answered" // ignore-magic
@@ -880,29 +1088,43 @@ live_test!(qa_list_questions_and_answers, {
     )
     .await;
 
-    let items = list_docs(&client, &token, &collection, 10).await;
+    let question = created["question"].as_str().unwrap_or("").to_string(); // ignore-magic
+    let answer = created["answer"].as_str().unwrap_or("").to_string(); // ignore-magic
+    let items = list_docs_until(&client, &token, "product_questions", 10, |item| {
+        item["question"] == question && item["answer"] == answer // ignore-magic
+    })
+    .await;
     assert!(
-        contains_id(&items, &extract_id(&created).expect("qa id")),
+        items.iter()
+            .any(|item| item["question"] == question && item["answer"] == answer), // ignore-magic
         "qa entry should be listed"
     );
 });
 
 live_test!(qa_delete_question, {
     let client = reqwest::Client::new();
-    let (token, _) = register_test_user(&client).await;
-    let collection = unique_collection("fg_qa_delete");
+    let admin_token = login_admin(&client).await;
+    let (seller_token, seller_id, _) = register_seller_user(&client).await;
+    let (token, user_id, _) = register_test_user(&client).await;
+    let product_id =
+        create_product(&client, &seller_token, &seller_id, "Gap QA Delete Product", 2299).await;
     let created = create_doc(
         &client,
         &token,
-        &collection,
-        &json!({"question": "Can I remove this?", "status": "open"}), // ignore-magic
+        "product_questions",
+        &json!({
+            "productId": product_id,
+            "userId": user_id,
+            "question": "Can I remove this?",
+            "status": "open"
+        }), // ignore-magic
     )
     .await;
 
     let deleted = delete_doc(
         &client,
-        &token,
-        &collection,
+        &admin_token,
+        "product_questions",
         &clean_id(&extract_id(&created).expect("qa id")),
     )
     .await;
@@ -917,7 +1139,7 @@ live_test!(qa_delete_question, {
 
 live_test!(rating_submit_rating, {
     let client = reqwest::Client::new();
-    let (token, email) = register_test_user(&client).await;
+    let (token, _, email) = register_test_user(&client).await;
     let collection = unique_collection("fg_rating_submit");
     let created = create_doc(
         &client,
@@ -944,7 +1166,7 @@ live_test!(rating_submit_rating, {
 
 live_test!(rating_update_rating, {
     let client = reqwest::Client::new();
-    let (token, email) = register_test_user(&client).await;
+    let (token, _, email) = register_test_user(&client).await;
     let collection = unique_collection("fg_rating_update");
     let created = create_doc(
         &client,
@@ -967,7 +1189,7 @@ live_test!(rating_update_rating, {
 
 live_test!(rating_average_calculation, {
     let client = reqwest::Client::new();
-    let (token, _) = register_test_user(&client).await;
+    let (token, _, _) = register_test_user(&client).await;
     let collection = unique_collection("fg_rating_average");
     create_doc(&client, &token, &collection, &json!({"rating": 4})).await; // ignore-magic
     create_doc(&client, &token, &collection, &json!({"rating": 5})).await; // ignore-magic
@@ -987,7 +1209,7 @@ live_test!(rating_average_calculation, {
 
 live_test!(rating_prevent_duplicate_ratings, {
     let client = reqwest::Client::new();
-    let (token, email) = register_test_user(&client).await;
+    let (token, _, email) = register_test_user(&client).await;
     let collection = unique_collection("fg_rating_duplicate");
     create_doc(
         &client,
@@ -1018,43 +1240,20 @@ live_test!(rating_prevent_duplicate_ratings, {
 
 live_test!(profile_get_profile, {
     let client = reqwest::Client::new();
-    let (token, email) = register_test_user(&client).await;
-    let collection = unique_collection("fg_profile_get");
-    let created = create_doc(
-        &client,
-        &token,
-        &collection,
-        &json!({"email": email, "displayName": "Gap Tester", "locale": "en-CA"}), // ignore-magic
-    )
-    .await;
-
-    let doc = get_doc(
-        &client,
-        &token,
-        &collection,
-        &clean_id(&extract_id(&created).expect("profile id")),
-    )
-    .await;
-    assert_eq!(doc["displayName"], "Gap Tester"); // ignore-magic
+    let (token, user_id, email) = register_test_user(&client).await;
+    let doc = get_doc(&client, &token, "users", &clean_id(&user_id)).await;
+    assert_eq!(doc["email"], email); // ignore-magic
 });
 
 live_test!(profile_update_profile_fields, {
     let client = reqwest::Client::new();
-    let (token, email) = register_test_user(&client).await;
-    let collection = unique_collection("fg_profile_update");
-    let created = create_doc(
-        &client,
-        &token,
-        &collection,
-        &json!({"email": email, "displayName": "Before", "phone": "1111111111"}), // ignore-magic
-    )
-    .await;
+    let (token, user_id, _email) = register_test_user(&client).await;
 
     let updated = update_doc(
         &client,
         &token,
-        &collection,
-        &clean_id(&extract_id(&created).expect("profile id")),
+        "users",
+        &clean_id(&user_id),
         &json!({"displayName": "After", "phone": "2222222222"}), // ignore-magic
     )
     .await;
@@ -1063,21 +1262,13 @@ live_test!(profile_update_profile_fields, {
 
 live_test!(profile_update_avatar_url, {
     let client = reqwest::Client::new();
-    let (token, email) = register_test_user(&client).await;
-    let collection = unique_collection("fg_profile_avatar");
-    let created = create_doc(
-        &client,
-        &token,
-        &collection,
-        &json!({"email": email, "avatarUrl": "https://example.com/old.png"}), // ignore-magic
-    )
-    .await;
+    let (token, user_id, _email) = register_test_user(&client).await;
 
     let updated = update_doc(
         &client,
         &token,
-        &collection,
-        &clean_id(&extract_id(&created).expect("profile id")),
+        "users",
+        &clean_id(&user_id),
         &json!({"avatarUrl": "https://example.com/new.png"}), // ignore-magic
     )
     .await;
@@ -1086,7 +1277,7 @@ live_test!(profile_update_avatar_url, {
 
 live_test!(profile_delete_account, {
     let client = reqwest::Client::new();
-    let (token, email) = register_test_user(&client).await;
+    let (token, _, email) = register_test_user(&client).await;
     let collection = unique_collection("fg_profile_delete");
     let created = create_doc(
         &client,
@@ -1114,7 +1305,7 @@ live_test!(profile_delete_account, {
 
 live_test!(warehouse_create_warehouse, {
     let client = reqwest::Client::new();
-    let (token, email) = register_test_user(&client).await;
+    let (token, _, email) = register_test_user(&client).await;
     let collection = unique_collection("fg_warehouse_create");
     let created = create_doc(
         &client,
@@ -1138,7 +1329,7 @@ live_test!(warehouse_create_warehouse, {
 
 live_test!(warehouse_update_warehouse, {
     let client = reqwest::Client::new();
-    let (token, _) = register_test_user(&client).await;
+    let (token, _, _) = register_test_user(&client).await;
     let collection = unique_collection("fg_warehouse_update");
     let created = create_doc(
         &client,
@@ -1161,7 +1352,7 @@ live_test!(warehouse_update_warehouse, {
 
 live_test!(warehouse_list_warehouses, {
     let client = reqwest::Client::new();
-    let (token, _) = register_test_user(&client).await;
+    let (token, _, _) = register_test_user(&client).await;
     let collection = unique_collection("fg_warehouse_list");
     let created = create_doc(
         &client,
@@ -1180,7 +1371,7 @@ live_test!(warehouse_list_warehouses, {
 
 live_test!(warehouse_delete_warehouse, {
     let client = reqwest::Client::new();
-    let (token, _) = register_test_user(&client).await;
+    let (token, _, _) = register_test_user(&client).await;
     let collection = unique_collection("fg_warehouse_delete");
     let created = create_doc(
         &client,
@@ -1208,7 +1399,7 @@ live_test!(warehouse_delete_warehouse, {
 
 live_test!(shipping_calculate_between_addresses, {
     let client = reqwest::Client::new();
-    let (token, _) = register_test_user(&client).await;
+    let (token, _, _) = register_test_user(&client).await;
     let collection = unique_collection("fg_shipping_between");
     let created = create_doc(
         &client,
@@ -1235,7 +1426,7 @@ live_test!(shipping_calculate_between_addresses, {
 
 live_test!(shipping_different_methods, {
     let client = reqwest::Client::new();
-    let (token, _) = register_test_user(&client).await;
+    let (token, _, _) = register_test_user(&client).await;
     let collection = unique_collection("fg_shipping_methods");
     create_doc(
         &client,
@@ -1263,7 +1454,7 @@ live_test!(shipping_different_methods, {
 
 live_test!(shipping_free_shipping_threshold, {
     let client = reqwest::Client::new();
-    let (token, _) = register_test_user(&client).await;
+    let (token, _, _) = register_test_user(&client).await;
     let collection = unique_collection("fg_shipping_free");
     let created = create_doc(
         &client,
@@ -1290,7 +1481,7 @@ live_test!(shipping_free_shipping_threshold, {
 
 live_test!(shipping_international_shipping, {
     let client = reqwest::Client::new();
-    let (token, _) = register_test_user(&client).await;
+    let (token, _, _) = register_test_user(&client).await;
     let collection = unique_collection("fg_shipping_international");
     let created = create_doc(
         &client,
@@ -1321,15 +1512,17 @@ live_test!(shipping_international_shipping, {
 
 live_test!(chat_send_message, {
     let client = reqwest::Client::new();
-    let (token, email) = register_test_user(&client).await;
-    let collection = unique_collection("fg_chat_send");
+    let (token, buyer_id, _email) = register_test_user(&client).await;
+    let (_seller_token, seller_id, _) = register_seller_user(&client).await;
     let created = create_doc(
         &client,
         &token,
-        &collection,
+        "chat_messages",
         &json!({ // ignore-magic
             "conversationId": unique_label("conv"),
-            "sender_email": email,
+            "buyerId": buyer_id,
+            "sellerId": seller_id,
+            "senderId": buyer_id,
             "text": "Hello from the functional gaps suite",
             "read": false
         }),
@@ -1341,40 +1534,50 @@ live_test!(chat_send_message, {
 
 live_test!(chat_list_messages_in_conversation, {
     let client = reqwest::Client::new();
-    let (token, email) = register_test_user(&client).await;
-    let collection = unique_collection("fg_chat_list");
+    let (token, buyer_id, _email) = register_test_user(&client).await;
+    let (_seller_token, seller_id, _) = register_seller_user(&client).await;
     let conversation_id = unique_label("conversation");
     let created = create_doc(
         &client,
         &token,
-        &collection,
+        "chat_messages",
         &json!({ // ignore-magic
             "conversationId": conversation_id,
-            "sender_email": email,
+            "buyerId": buyer_id,
+            "sellerId": seller_id,
+            "senderId": buyer_id,
             "text": "Message one",
             "read": false
         }),
     )
     .await;
 
-    let items = list_docs(&client, &token, &collection, 10).await;
+    let text = created["text"].as_str().unwrap_or("").to_string(); // ignore-magic
+    let conversation_id = created["conversationId"].as_str().unwrap_or("").to_string(); // ignore-magic
+    let items = list_docs_until(&client, &token, "chat_messages", 10, |item| {
+        item["text"] == text && item["conversationId"] == conversation_id // ignore-magic
+    })
+    .await;
     assert!(
-        contains_id(&items, &extract_id(&created).expect("message id")),
+        items.iter()
+            .any(|item| item["text"] == text && item["conversationId"] == conversation_id), // ignore-magic
         "message should be present in conversation listing"
     );
 });
 
 live_test!(chat_mark_as_read, {
     let client = reqwest::Client::new();
-    let (token, email) = register_test_user(&client).await;
-    let collection = unique_collection("fg_chat_read");
+    let (token, buyer_id, _email) = register_test_user(&client).await;
+    let (_seller_token, seller_id, _) = register_seller_user(&client).await;
     let created = create_doc(
         &client,
         &token,
-        &collection,
+        "chat_messages",
         &json!({ // ignore-magic
             "conversationId": unique_label("conv"),
-            "sender_email": email,
+            "buyerId": buyer_id,
+            "sellerId": seller_id,
+            "senderId": buyer_id,
             "text": "Please read me",
             "read": false
         }),
@@ -1384,7 +1587,7 @@ live_test!(chat_mark_as_read, {
     let updated = update_doc(
         &client,
         &token,
-        &collection,
+        "chat_messages",
         &clean_id(&extract_id(&created).expect("message id")),
         &json!({"read": true}), // ignore-magic
     )

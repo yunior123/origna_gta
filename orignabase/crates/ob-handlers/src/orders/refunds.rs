@@ -710,7 +710,12 @@ async fn cancel_order(
 
     // Permission check — using JWT-authenticated user_id
     let is_admin = auth.roles.iter().any(|r| r == "admin");
-    let is_buyer = str_field(&order, fields::USER_ID) == user_id;
+    let order_buyer_id = order
+        .get(fields::BUYER_ID)
+        .and_then(|v| v.as_str())
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| str_field(&order, fields::USER_ID));
+    let is_buyer = order_buyer_id == user_id;
     let items = items_array(&order);
     let seller_items: Vec<&Value> = items
         .iter()
@@ -824,7 +829,7 @@ async fn cancel_order(
             json!({
                 fields::ORDER_STATUS: "cancelled",
                 fields::PAYMENT_STATUS: new_payment_status,
-                fields::CANCELLED_BY: req.user_id,
+                fields::CANCELLED_BY: user_id,
                 fields::CANCELLED_AT: now,
                 fields::CANCELLATION_REASON: reason,
                 fields::STOCK_RESTORED: true,
@@ -899,7 +904,7 @@ async fn cancel_order(
             collections::ORDER_EVENTS,
             json!({
                 fields::ORDER_ID: req.order_id,
-                fields::USER_ID: req.user_id,
+                fields::USER_ID: user_id,
                 fields::EVENT_TYPE: "order_cancelled",
                 fields::MESSAGE: format!("Order cancelled. Refunded: {}", refunded),
                 fields::DATA: { "refunded": refunded },
@@ -2097,6 +2102,77 @@ mod tests {
             .unwrap();
         assert_eq!(order[fields::PAYMENT_STATUS], "CANCEL_FAILED");
         assert_eq!(order["requiresManualReview"], true);
+    }
+
+    #[tokio::test]
+    async fn test_cancel_order_allows_checkout_style_buyer_id_records() {
+        let server = MockServer::start().await;
+        let state = stripe_state(&server).await;
+        let buyer_id = format!("buyer_checkout_{}", uuid::Uuid::new_v4().simple());
+        let product_id = format!("prod_checkout_{}", uuid::Uuid::new_v4().simple());
+        seed_user(&state, &buyer_id, &["buyer"]).await;
+        state
+            .db
+            .upsert_document(
+                collections::PRODUCTS,
+                &product_id,
+                json!({
+                    fields::PRODUCT_ID: product_id,
+                    fields::STOCK_QUANTITY: 4,
+                }),
+            )
+            .await
+            .unwrap();
+        state
+            .db
+            .upsert_document(
+                collections::ORDERS,
+                "order_buyer_id_only",
+                json!({
+                    fields::ORDER_ID: "order_buyer_id_only",
+                    fields::BUYER_ID: buyer_id,
+                    fields::ORDER_STATUS: "pending",
+                    fields::PAYMENT_STATUS: "awaiting_payment",
+                    fields::STOCK_RESTORED: false,
+                    fields::ITEMS: [{
+                        fields::PRODUCT_ID: product_id,
+                        fields::SELLER_ID: "seller_checkout_style",
+                        fields::QUANTITY: 2,
+                        fields::IS_DIGITAL: false
+                    }]
+                }),
+            )
+            .await
+            .unwrap();
+
+        let Json(resp) = cancel_order(
+            State(state.clone()),
+            Extension(auth(&buyer_id, &["buyer"])),
+            Json(CancelOrderRequest {
+                order_id: "order_buyer_id_only".into(),
+                user_id: buyer_id.clone(),
+                reason: Some("buyer changed plan".into()),
+            }),
+        )
+        .await
+        .unwrap();
+
+        assert!(resp.success);
+        assert!(!resp.refunded);
+
+        let order = state
+            .db
+            .get_document(collections::ORDERS, "order_buyer_id_only")
+            .await
+            .unwrap();
+        let product = state
+            .db
+            .get_document(collections::PRODUCTS, &product_id)
+            .await
+            .unwrap();
+        assert_eq!(order[fields::ORDER_STATUS], "cancelled");
+        assert_eq!(order[fields::CANCELLED_BY], buyer_id);
+        assert_eq!(product[fields::STOCK_QUANTITY], 6);
     }
 
     // -----------------------------------------------------------------------

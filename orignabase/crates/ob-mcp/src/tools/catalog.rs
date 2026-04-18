@@ -43,7 +43,16 @@ pub async fn search_products(state: McpState, params: &Value) -> McpResult<Value
             Some(filters.join(" AND "))
         };
 
-        match search.search("products", query, Some(limit), Some(offset), filter_str.as_deref()).await {
+        match search
+            .search(
+                "products",
+                query,
+                Some(limit),
+                Some(offset),
+                filter_str.as_deref(),
+            )
+            .await
+        {
             Ok(result) => {
                 return Ok(json!({
                     "results": result.hits,
@@ -60,13 +69,13 @@ pub async fn search_products(state: McpState, params: &Value) -> McpResult<Value
     }
 
     // Fallback: PostgreSQL query via query_bind
-    let mut conditions = vec![
-        "data->>'lifecycleStatus' = 'active'".to_string(),
-    ];
+    let mut conditions = vec!["data->>'lifecycleStatus' = 'active'".to_string()];
     let mut binds = serde_json::Map::new();
 
     // Search by name/description using case-insensitive match (~~*)
-    conditions.push("(data->>'name' ~~* $search_query OR data->>'description' ~~* $search_query)".to_string());
+    conditions.push(
+        "(data->>'name' ~~* $search_query OR data->>'description' ~~* $search_query)".to_string(),
+    );
     binds.insert("search_query".to_string(), json!(format!("%{}%", query)));
 
     if let Some(cat) = category {
@@ -74,11 +83,13 @@ pub async fn search_products(state: McpState, params: &Value) -> McpResult<Value
         binds.insert("category".to_string(), json!(cat));
     }
     if let Some(min) = min_price {
-        conditions.push("(data->>'priceCents')::\"numeric\" >= ($min_price)::\"numeric\"".to_string());
+        conditions
+            .push("(data->>'priceCents')::\"numeric\" >= ($min_price)::\"numeric\"".to_string());
         binds.insert("min_price".to_string(), json!(min));
     }
     if let Some(max) = max_price {
-        conditions.push("(data->>'priceCents')::\"numeric\" <= ($max_price)::\"numeric\"".to_string());
+        conditions
+            .push("(data->>'priceCents')::\"numeric\" <= ($max_price)::\"numeric\"".to_string());
         binds.insert("max_price".to_string(), json!(max));
     }
 
@@ -88,9 +99,11 @@ pub async fn search_products(state: McpState, params: &Value) -> McpResult<Value
         where_clause, limit, offset
     );
 
-    let rows = state.db.query_bind(&sql, Value::Object(binds)).await.map_err(|e| {
-        McpError::Internal(format!("PostgreSQL search failed: {e}"))
-    })?;
+    let rows = state
+        .db
+        .query_bind(&sql, Value::Object(binds))
+        .await
+        .map_err(|e| McpError::Internal(format!("PostgreSQL search failed: {e}")))?;
 
     Ok(json!({
         "results": rows,
@@ -115,9 +128,11 @@ pub async fn get_product(state: McpState, params: &Value) -> McpResult<Value> {
     }
 
     // Fetch from PostgreSQL
-    let product = state.db.get_document("products", product_id).await.map_err(|e| {
-        McpError::NotFound(format!("Product not found: {e}"))
-    })?;
+    let product = state
+        .db
+        .get_document("products", product_id)
+        .await
+        .map_err(|e| McpError::NotFound(format!("Product not found: {e}")))?;
 
     Ok(product)
 }
@@ -136,9 +151,11 @@ pub async fn check_inventory(state: McpState, params: &Value) -> McpResult<Value
     }
 
     // Fetch stock from PostgreSQL
-    let product = state.db.get_document("products", product_id).await.map_err(|e| {
-        McpError::NotFound(format!("Product not found: {e}"))
-    })?;
+    let product = state
+        .db
+        .get_document("products", product_id)
+        .await
+        .map_err(|e| McpError::NotFound(format!("Product not found: {e}")))?;
 
     let stock_quantity = product
         .get("stockQuantity")
@@ -284,13 +301,21 @@ mod tests {
     async fn test_get_product_returns_real_data() {
         let state = make_state().await;
         // Insert a product first
-        state.db.upsert_document("products", "products:test1", json!({
-            "name": "Test Product",
-            "description": "A test product",
-            "priceCents": 1500,
-            "stockQuantity": 10,
-            "lifecycleStatus": "active"
-        })).await.unwrap();
+        state
+            .db
+            .upsert_document(
+                "products",
+                "products:test1",
+                json!({
+                    "name": "Test Product",
+                    "description": "A test product",
+                    "priceCents": 1500,
+                    "stockQuantity": 10,
+                    "lifecycleStatus": "active"
+                }),
+            )
+            .await
+            .unwrap();
 
         let result = get_product(state, &json!({"product_id": "products:test1"}))
             .await
@@ -337,11 +362,19 @@ mod tests {
     async fn test_check_inventory_returns_real_stock() {
         let state = make_state().await;
         // Insert a product
-        state.db.upsert_document("products", "products:inv1", json!({
-            "name": "Stocked Item",
-            "stockQuantity": 42,
-            "lifecycleStatus": "active"
-        })).await.unwrap();
+        state
+            .db
+            .upsert_document(
+                "products",
+                "products:inv1",
+                json!({
+                    "name": "Stocked Item",
+                    "stockQuantity": 42,
+                    "lifecycleStatus": "active"
+                }),
+            )
+            .await
+            .unwrap();
 
         let result = check_inventory(state, &json!({"product_id": "products:inv1"}))
             .await
@@ -354,11 +387,19 @@ mod tests {
     #[tokio::test]
     async fn test_check_inventory_out_of_stock() {
         let state = make_state().await;
-        state.db.upsert_document("products", "products:oos1", json!({
-            "name": "Out of Stock",
-            "stockQuantity": 0,
-            "lifecycleStatus": "active"
-        })).await.unwrap();
+        state
+            .db
+            .upsert_document(
+                "products",
+                "products:oos1",
+                json!({
+                    "name": "Out of Stock",
+                    "stockQuantity": 0,
+                    "lifecycleStatus": "active"
+                }),
+            )
+            .await
+            .unwrap();
 
         let result = check_inventory(state, &json!({"product_id": "products:oos1"}))
             .await

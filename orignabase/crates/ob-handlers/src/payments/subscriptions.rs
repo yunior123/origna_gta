@@ -21,6 +21,8 @@ use crate::shared::validation::validate_uid;
 pub struct CreateSubscriptionRequest {
     #[serde(default)]
     pub user_id: Option<String>,
+    #[serde(default)]
+    pub interval: Option<String>,
     /// Stripe payment method ID (e.g. pm_xxxx) attached to the customer.
     #[serde(default)]
     pub payment_method_id: Option<String>,
@@ -109,6 +111,16 @@ const SUBSCRIPTION_BENEFITS_DELAY_HOURS: i64 = 48;
 const MAX_EARLY_CANCELS: i64 = 3;
 /// Days threshold for "early" cancellation
 const EARLY_CANCEL_DAYS: i64 = 7;
+
+fn normalize_subscription_interval(interval: Option<&str>) -> Result<&'static str, ob_core::Error> {
+    match interval.unwrap_or("monthly").trim().to_ascii_lowercase().as_str() {
+        "month" | "monthly" => Ok("month"),
+        "year" | "yearly" | "annual" | "annually" => Ok("year"),
+        other => Err(ob_core::Error::Validation(format!(
+            "interval must be one of monthly/yearly; got {other}"
+        ))),
+    }
+}
 // Router
 // ---------------------------------------------------------------------------
 
@@ -269,6 +281,7 @@ async fn create_subscription(
     Json(req): Json<CreateSubscriptionRequest>,
 ) -> Result<Json<CreateSubscriptionResponse>, ob_core::Error> {
     let user_id = resolve_self_user_id(&auth, req.user_id.as_deref(), "userId")?;
+    let recurring_interval = normalize_subscription_interval(req.interval.as_deref())?;
     validate_uid("userId", &user_id)?;
     if let Some(payment_method_id) = req.payment_method_id.as_deref() {
         validate_uid("paymentMethodId", payment_method_id)?;
@@ -368,7 +381,7 @@ async fn create_subscription(
             ("line_items[0][quantity]", "1".to_string()),
             (
                 "line_items[0][price_data][recurring][interval]",
-                "month".to_string(),
+                recurring_interval.to_string(),
             ),
             ("mode", "subscription".to_string()),
             (
@@ -487,7 +500,7 @@ async fn create_subscription(
                 "items[0][price_data][unit_amount]",
                 &PREMIUM_PRICE_CENTS.to_string(),
             ),
-            ("items[0][price_data][recurring][interval]", "month"),
+            ("items[0][price_data][recurring][interval]", recurring_interval),
             (
                 "items[0][price_data][product_data][name]",
                 "Origna Premium Subscription",
@@ -1332,7 +1345,7 @@ mod tests {
 
     #[test]
     fn test_create_request_deser() {
-        let json = r#"{"userId": "u1"}"#;  // ignore-magic
+        let json = r#"{"userId": "u1"}"#; // ignore-magic
         let req: CreateSubscriptionRequest = serde_json::from_str(json).unwrap();
         assert_eq!(req.user_id, Some("u1".to_string()));
         assert!(req.payment_method_id.is_none());
@@ -1359,7 +1372,7 @@ mod tests {
 
     #[test]
     fn test_cancel_request_deser() {
-        let json = r#"{"userId": "user-99"}"#;  // ignore-magic
+        let json = r#"{"userId": "user-99"}"#; // ignore-magic
         let req: CancelSubscriptionRequest = serde_json::from_str(json).unwrap();
         assert_eq!(req.user_id, Some("user-99".to_string()));
     }
@@ -1381,7 +1394,7 @@ mod tests {
 
     #[test]
     fn test_reactivate_request_deser() {
-        let json = r#"{"userId": "u42"}"#;  // ignore-magic
+        let json = r#"{"userId": "u42"}"#; // ignore-magic
         let req: ReactivateSubscriptionRequest = serde_json::from_str(json).unwrap();
         assert_eq!(req.user_id, Some("u42".to_string()));
     }
@@ -1397,7 +1410,7 @@ mod tests {
 
     #[test]
     fn test_notification_prefs_request_deser() {
-        let json = r#"{"userId":"u1","notifyNewProducts":true}"#;  // ignore-magic
+        let json = r#"{"userId":"u1","notifyNewProducts":true}"#; // ignore-magic
         let req: SubscriptionNotificationPrefsRequest = serde_json::from_str(json).unwrap();
         assert_eq!(req.user_id, Some("u1".to_string()));
         assert_eq!(req.notify_new_products, Some(true));
@@ -1408,7 +1421,7 @@ mod tests {
 
     #[test]
     fn test_create_request_with_payment_method() {
-        let json = r#"{"userId":"u1","paymentMethodId":"pm_123abc"}"#;  // ignore-magic
+        let json = r#"{"userId":"u1","paymentMethodId":"pm_123abc"}"#; // ignore-magic
         let req: CreateSubscriptionRequest = serde_json::from_str(json).unwrap();
         assert_eq!(req.payment_method_id.as_deref(), Some("pm_123abc"));
     }
@@ -1471,7 +1484,10 @@ mod tests {
         let json = serde_json::to_value(&resp).unwrap();
         assert_eq!(json[fields::IS_PREMIUM], true);
         assert_eq!(json[fields::STATUS], "active");
-        assert_eq!(json[fields::CURRENT_PERIOD_END], "2026-04-10T00:00:00+00:00");
+        assert_eq!(
+            json[fields::CURRENT_PERIOD_END],
+            "2026-04-10T00:00:00+00:00"
+        );
         assert_eq!(json[fields::STRIPE_SUBSCRIPTION_ID], "sub_abc123");
     }
 
@@ -1510,7 +1526,7 @@ mod tests {
 
     #[test]
     fn test_notification_prefs_both_fields() {
-        let json = r#"{"userId":"u1","notifyNewProducts":false,"notifyTrending":true}"#;  // ignore-magic
+        let json = r#"{"userId":"u1","notifyNewProducts":false,"notifyTrending":true}"#; // ignore-magic
         let req: SubscriptionNotificationPrefsRequest = serde_json::from_str(json).unwrap();
         assert_eq!(req.notify_new_products, Some(false));
         assert_eq!(req.notify_trending, Some(true));
@@ -1518,7 +1534,7 @@ mod tests {
 
     #[test]
     fn test_notification_prefs_empty() {
-        let json = r#"{"userId":"u1"}"#;  // ignore-magic
+        let json = r#"{"userId":"u1"}"#; // ignore-magic
         let req: SubscriptionNotificationPrefsRequest = serde_json::from_str(json).unwrap();
         assert!(req.notify_new_products.is_none());
         assert!(req.notify_trending.is_none());
@@ -1526,7 +1542,7 @@ mod tests {
 
     #[test]
     fn test_status_request_deser() {
-        let json = r#"{"userId":"user-42"}"#;  // ignore-magic
+        let json = r#"{"userId":"user-42"}"#; // ignore-magic
         let req: SubscriptionStatusRequest = serde_json::from_str(json).unwrap();
         assert_eq!(req.user_id, Some("user-42".to_string()));
     }
@@ -1659,6 +1675,7 @@ mod tests {
             Extension(auth(&format!("users:{uid}"))),
             Json(CreateSubscriptionRequest {
                 user_id: Some(format!("users:{uid}")),
+                interval: None,
                 payment_method_id: None,
             }),
         )
@@ -2030,6 +2047,7 @@ mod tests {
             Extension(auth(&format!("users:{uid}"))),
             Json(CreateSubscriptionRequest {
                 user_id: Some(format!("users:{uid}")),
+                interval: Some("monthly".to_string()),
                 payment_method_id: None,
             }),
         )
@@ -2306,12 +2324,30 @@ mod tests {
             Extension(auth("users:user_1")),
             Json(CreateSubscriptionRequest {
                 user_id: Some("users:user_1".to_string()),
+                interval: None,
                 payment_method_id: Some("".into()),
             }),
         )
         .await
         .unwrap_err();
         assert!(err.to_string().contains("paymentMethodId"));
+    }
+
+    #[tokio::test]
+    async fn test_create_subscription_rejects_invalid_interval() {
+        let state = setup_state().await;
+        let err = create_subscription(
+            State(state),
+            Extension(auth("users:user_1")),
+            Json(CreateSubscriptionRequest {
+                user_id: Some("users:user_1".to_string()),
+                interval: Some("invalid".into()),
+                payment_method_id: None,
+            }),
+        )
+        .await
+        .unwrap_err();
+        assert!(err.to_string().contains("interval must be one of monthly/yearly"));
     }
 
     // -----------------------------------------------------------------------
@@ -2355,6 +2391,7 @@ mod tests {
             Extension(auth("users:user_seller")),
             Json(CreateSubscriptionRequest {
                 user_id: Some("users:user_seller".to_string()),
+                interval: None,
                 payment_method_id: None,
             }),
         )
@@ -2409,6 +2446,7 @@ mod tests {
             Extension(auth("users:user_chk")),
             Json(CreateSubscriptionRequest {
                 user_id: Some("users:user_chk".to_string()),
+                interval: None,
                 payment_method_id: None,
             }),
         )
@@ -2469,6 +2507,7 @@ mod tests {
             Extension(auth("users:user_eu")),
             Json(CreateSubscriptionRequest {
                 user_id: Some("users:user_eu".to_string()),
+                interval: None,
                 payment_method_id: None,
             }),
         )
@@ -2551,6 +2590,7 @@ mod tests {
             Extension(auth(&format!("users:{uid}"))),
             Json(CreateSubscriptionRequest {
                 user_id: Some(format!("users:{uid}")),
+                interval: None,
                 payment_method_id: Some("pm_test_abc".into()),
             }),
         )
@@ -2617,6 +2657,7 @@ mod tests {
             Extension(auth("users:user_af")),
             Json(CreateSubscriptionRequest {
                 user_id: Some("users:user_af".to_string()),
+                interval: None,
                 payment_method_id: Some("pm_bad".into()),
             }),
         )
@@ -2691,6 +2732,7 @@ mod tests {
             Extension(auth("users:user_aa")),
             Json(CreateSubscriptionRequest {
                 user_id: Some("users:user_aa".to_string()),
+                interval: None,
                 payment_method_id: Some("pm_aa".into()),
             }),
         )
@@ -2757,6 +2799,7 @@ mod tests {
             Extension(auth("users:user_sf")),
             Json(CreateSubscriptionRequest {
                 user_id: Some("users:user_sf".to_string()),
+                interval: None,
                 payment_method_id: Some("pm_sf".into()),
             }),
         )

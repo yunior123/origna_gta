@@ -153,7 +153,15 @@ describe('Order Lifecycle — API Tests', () => {
 
     const cancelled = await callOk('cancel_order', { orderId }, buyerToken).catch(() => null);
     if (cancelled) {
-      expect(cancelled.status || cancelled.order?.status).toMatch(/cancelled/i);
+      const detail = await callOk('get_order_detail', { orderId }, buyerToken).catch(() => null);
+      const status =
+        cancelled.status ??
+        cancelled.order?.status ??
+        cancelled.result?.status ??
+        detail?.order?.status ??
+        detail?.status ??
+        detail?.orderStatus;
+      expect(String(status ?? '')).toMatch(/cancelled/i);
     }
   });
 });

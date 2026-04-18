@@ -18,7 +18,7 @@ use crate::shared::validation::validate_uid;
 
 /// Request body for POST /api/payments/capture — captures a pre-authorized Stripe payment.
 ///
-/// Requires JWT auth. Buyer of the order or admin only.
+/// Requires JWT auth. Buyer of the order, seller of the order, or admin only.
 /// Transitions order from confirmed -> delivered and payment from authorized -> captured.
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -77,8 +77,8 @@ async fn capture_payment(
         .await
         .map_err(|_| ob_core::Error::NotFound(format!("Order {} not found", req.order_id)))?;
 
-    // --- Verify the caller is the seller for this order ---
-    // Determine seller from items[0].sellerId (multi-seller orders route to first item seller)
+    // --- Verify the caller is authorized for this order ---
+    // Multi-seller carts are blocked at checkout, so items[0].sellerId is authoritative.
     let seller_id = order
         .get(fields::ITEMS)
         .and_then(|v| v.as_array())
@@ -86,22 +86,31 @@ async fn capture_payment(
         .and_then(|item| item.get(fields::SELLER_ID))
         .and_then(|v| v.as_str())
         .unwrap_or("");
+    let buyer_id = order
+        .get(fields::BUYER_ID)
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+    let is_admin = auth.roles.iter().any(|role| role == "admin");
 
-    if seller_id.is_empty() || seller_id != user_id {
+    if (!seller_id.is_empty() && seller_id != user_id)
+        && (!buyer_id.is_empty() && buyer_id != user_id)
+        && !is_admin
+    {
         warn!(
             order_id = %req.order_id,
             caller = %user_id,
             seller = %seller_id,
-            "Capture denied: caller is not the order seller"
+            buyer = %buyer_id,
+            "Capture denied: caller is not authorized for this order"
         );
         return Err(ob_core::Error::Forbidden(
-            "Only the seller can capture payment for this order".into(),
+            "Only the buyer, seller, or admin can capture payment for this order".into(),
         ));
     }
 
     // --- Verify order status allows capture ---
     let current_status = order
-        .get(fields::STATUS)
+        .get(fields::ORDER_STATUS)
         .and_then(|v| v.as_str())
         .unwrap_or("");
 
@@ -223,7 +232,7 @@ async fn capture_payment(
     // --- Update order in DB ---
     let now = chrono::Utc::now().to_rfc3339();
     let update_data = serde_json::json!({
-        fields::STATUS: OrderStatus::Processing.as_str(),
+        fields::ORDER_STATUS: OrderStatus::Processing.as_str(),
         fields::PAYMENT_STATUS: PaymentStatus::Captured.as_str(),
         fields::PAYMENT_INTENT_ID: pi_id,
         fields::UPDATED_AT: now,
@@ -295,7 +304,7 @@ mod tests {
 
     #[test]
     fn test_capture_request_deser() {
-        let json = r#"{"orderId": "order-abc-123", "userId": "seller-xyz"}"#;  // ignore-magic
+        let json = r#"{"orderId": "order-abc-123", "userId": "seller-xyz"}"#; // ignore-magic
         let req: CapturePaymentRequest = serde_json::from_str(json).unwrap();
         assert_eq!(req.order_id, "order-abc-123");
         assert_eq!(req.user_id, Some("seller-xyz".to_string()));
@@ -318,7 +327,7 @@ mod tests {
 
     #[test]
     fn test_capture_request_missing_user_id_defaults_to_none() {
-        let json = r#"{"orderId": "order-1"}"#;  // ignore-magic
+        let json = r#"{"orderId": "order-1"}"#; // ignore-magic
         let req: CapturePaymentRequest = serde_json::from_str(json).unwrap();
         assert_eq!(req.order_id, "order-1");
         assert!(
@@ -341,21 +350,21 @@ mod tests {
 
     #[test]
     fn test_capture_request_empty_order_id() {
-        let json = r#"{"orderId": "", "userId": "seller-1"}"#;  // ignore-magic
+        let json = r#"{"orderId": "", "userId": "seller-1"}"#; // ignore-magic
         let req: CapturePaymentRequest = serde_json::from_str(json).unwrap();
         assert!(req.order_id.is_empty());
     }
 
     #[test]
     fn test_capture_request_missing_order_id_fails() {
-        let json = r#"{"userId": "seller-1"}"#;  // ignore-magic
+        let json = r#"{"userId": "seller-1"}"#; // ignore-magic
         let result: std::result::Result<CapturePaymentRequest, _> = serde_json::from_str(json);
         assert!(result.is_err());
     }
 
     #[test]
     fn test_capture_request_missing_user_id_succeeds_with_none() {
-        let json = r#"{"orderId": "order-1"}"#;  // ignore-magic
+        let json = r#"{"orderId": "order-1"}"#; // ignore-magic
         let req: CapturePaymentRequest = serde_json::from_str(json).unwrap();
         assert!(req.user_id.is_none());
     }
@@ -408,8 +417,9 @@ mod tests {
                 &oid,
                 json!({
                     fields::ORDER_ID: oid,
-                    fields::STATUS: OrderStatus::PendingPayment.as_str(),
+                    fields::ORDER_STATUS: OrderStatus::PendingPayment.as_str(),
                     fields::PAYMENT_STATUS: PaymentStatus::Authorized.as_str(),
+                    fields::BUYER_ID: "buyer_ns",
                     fields::ITEMS: [{
                         fields::SELLER_ID: sid
                     }],
@@ -432,7 +442,7 @@ mod tests {
         assert!(
             forbidden
                 .to_string()
-                .contains("Only the seller can capture payment")
+                .contains("Only the buyer, seller, or admin can capture payment")
         );
 
         let invalid_status = capture_payment(
@@ -464,8 +474,9 @@ mod tests {
                 &oid,
                 json!({
                     fields::ORDER_ID: oid,
-                    fields::STATUS: OrderStatus::PaymentAuthorized.as_str(),
+                    fields::ORDER_STATUS: OrderStatus::PaymentAuthorized.as_str(),
                     fields::PAYMENT_STATUS: PaymentStatus::Captured.as_str(),
+                    fields::BUYER_ID: "buyer_ip",
                     fields::ITEMS: [{
                         fields::SELLER_ID: sid
                     }],
@@ -550,9 +561,10 @@ mod tests {
                 &oid,
                 json!({
                     fields::ORDER_ID: oid,
-                    fields::STATUS: OrderStatus::PaymentAuthorized.as_str(),
+                    fields::ORDER_STATUS: OrderStatus::PaymentAuthorized.as_str(),
                     fields::PAYMENT_STATUS: PaymentStatus::Authorized.as_str(),
                     fields::PAYMENT_INTENT_ID: "pi_capture",
+                    fields::BUYER_ID: format!("b_succ_{}", uuid::Uuid::new_v4().simple()),
                     fields::ITEMS: [{
                         fields::SELLER_ID: sid
                     }],
@@ -585,7 +597,82 @@ mod tests {
             order[fields::PAYMENT_STATUS],
             PaymentStatus::Captured.as_str()
         );
-        assert_eq!(order[fields::STATUS], OrderStatus::Processing.as_str());
+        assert_eq!(
+            order[fields::ORDER_STATUS],
+            OrderStatus::Processing.as_str()
+        );
+    }
+
+    #[tokio::test]
+    async fn test_capture_payment_allows_buyer_confirmation_flow() {
+        let state = setup_state().await;
+        let mock_server = MockServer::start().await;
+        let oid = format!("o_buyer_{}", uuid::Uuid::new_v4().simple());
+        let seller_id = format!("s_buyer_{}", uuid::Uuid::new_v4().simple());
+        let buyer_id = format!("b_buyer_{}", uuid::Uuid::new_v4().simple());
+
+        Mock::given(method("POST"))
+            .and(path("/payment_intents/pi_buyer_capture/capture"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "id": "pi_buyer_capture",
+                fields::STATUS: "succeeded"
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let state = HandlersState {
+            stripe_base_url: mock_server.uri(),
+            turnstile_secret_key: None,
+            ..state
+        };
+
+        state
+            .db
+            .upsert_document(
+                collections::ORDERS,
+                &oid,
+                json!({
+                    fields::ORDER_ID: oid,
+                    fields::ORDER_STATUS: OrderStatus::PaymentAuthorized.as_str(),
+                    fields::PAYMENT_STATUS: PaymentStatus::Authorized.as_str(),
+                    fields::PAYMENT_INTENT_ID: "pi_buyer_capture",
+                    fields::BUYER_ID: buyer_id,
+                    fields::ITEMS: [{
+                        fields::SELLER_ID: seller_id
+                    }],
+                }),
+            )
+            .await
+            .unwrap();
+
+        let Json(resp) = capture_payment(
+            State(state.clone()),
+            Extension(auth(&buyer_id)),
+            Json(CapturePaymentRequest {
+                order_id: oid.clone(),
+                user_id: Some(buyer_id.clone()),
+            }),
+        )
+        .await
+        .unwrap();
+
+        assert!(resp.success);
+        assert_eq!(resp.payment_status, PaymentStatus::Captured.as_str());
+        assert_eq!(resp.order_status, OrderStatus::Processing.as_str());
+
+        let order = state
+            .db
+            .get_document(collections::ORDERS, &oid)
+            .await
+            .unwrap();
+        assert_eq!(
+            order[fields::ORDER_STATUS],
+            OrderStatus::Processing.as_str()
+        );
+        assert_eq!(
+            order[fields::PAYMENT_STATUS],
+            PaymentStatus::Captured.as_str()
+        );
     }
 
     #[tokio::test]
@@ -625,9 +712,10 @@ mod tests {
                 &oid,
                 json!({
                     fields::ORDER_ID: oid,
-                    fields::STATUS: OrderStatus::AwaitingShippingApproval.as_str(),
+                    fields::ORDER_STATUS: OrderStatus::AwaitingShippingApproval.as_str(),
                     fields::PAYMENT_STATUS: PaymentStatus::Authorized.as_str(),
                     fields::CHECKOUT_SESSION_ID: "cs_123",
+                    fields::BUYER_ID: format!("b_fetch_{}", uuid::Uuid::new_v4().simple()),
                     fields::ITEMS: [{
                         fields::SELLER_ID: sid
                     }],
@@ -698,9 +786,10 @@ mod tests {
                 &oid_mpi,
                 json!({
                     fields::ORDER_ID: oid_mpi,
-                    fields::STATUS: OrderStatus::PaymentAuthorized.as_str(),
+                    fields::ORDER_STATUS: OrderStatus::PaymentAuthorized.as_str(),
                     fields::PAYMENT_STATUS: PaymentStatus::Authorized.as_str(),
                     fields::CHECKOUT_SESSION_ID: "cs_missing_pi",
+                    fields::BUYER_ID: format!("b_mpi_{}", uuid::Uuid::new_v4().simple()),
                     fields::ITEMS: [{
                         fields::SELLER_ID: sid
                     }],
@@ -732,9 +821,10 @@ mod tests {
                 &oid_bad,
                 json!({
                     fields::ORDER_ID: oid_bad,
-                    fields::STATUS: OrderStatus::PaymentAuthorized.as_str(),
+                    fields::ORDER_STATUS: OrderStatus::PaymentAuthorized.as_str(),
                     fields::PAYMENT_STATUS: PaymentStatus::Authorized.as_str(),
                     fields::PAYMENT_INTENT_ID: "pi_bad",
+                    fields::BUYER_ID: format!("b_bad_{}", uuid::Uuid::new_v4().simple()),
                     fields::ITEMS: [{
                         fields::SELLER_ID: sid
                     }],
@@ -787,9 +877,10 @@ mod tests {
                 &oid,
                 json!({
                     fields::ORDER_ID: oid,
-                    fields::STATUS: OrderStatus::PaymentAuthorized.as_str(),
+                    fields::ORDER_STATUS: OrderStatus::PaymentAuthorized.as_str(),
                     fields::PAYMENT_STATUS: PaymentStatus::Authorized.as_str(),
                     fields::CHECKOUT_SESSION_ID: "cs_fail",
+                    fields::BUYER_ID: format!("b_csf_{}", uuid::Uuid::new_v4().simple()),
                     fields::ITEMS: [{ fields::SELLER_ID: sid }],
                 }),
             )
@@ -836,9 +927,10 @@ mod tests {
                 &oid,
                 json!({
                     fields::ORDER_ID: oid,
-                    fields::STATUS: OrderStatus::PaymentAuthorized.as_str(),
+                    fields::ORDER_STATUS: OrderStatus::PaymentAuthorized.as_str(),
                     fields::PAYMENT_STATUS: PaymentStatus::Authorized.as_str(),
                     fields::PAYMENT_INTENT_ID: "pi_http_err",
+                    fields::BUYER_ID: format!("b_http_{}", uuid::Uuid::new_v4().simple()),
                     fields::ITEMS: [{ fields::SELLER_ID: sid }],
                 }),
             )

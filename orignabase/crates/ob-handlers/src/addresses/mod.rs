@@ -754,7 +754,7 @@ mod tests {
         let auth = auth_for("user_1");
         let req = UpdateBuyerAddressRequest {
             user_id: "user_1".into(),
-            address_id: address_id.into(),
+            address_id: address_id.to_string(),
             address: make_valid_address(),
         };
 
@@ -815,7 +815,7 @@ mod tests {
         let auth = auth_for("user_1");
         let req = DeleteBuyerAddressRequest {
             user_id: "user_1".into(),
-            address_id: address_id.clone().into(),
+            address_id,
         };
 
         let result = delete_buyer_address(State(state), Extension(auth), Json(req)).await;

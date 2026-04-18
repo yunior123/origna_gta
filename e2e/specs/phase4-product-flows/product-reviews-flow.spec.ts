@@ -16,7 +16,7 @@ import {
   signIn, callOk, fullCheckoutAndPay, waitForOrderStatus,
   getSellerAuth, getTestProduct,
 } from '../../lib/api-client.js';
-import { TEST_ACCOUNTS, WEB_APP_URL } from '../../lib/config.js';
+import { DEFAULT_PASS, TEST_ACCOUNTS, WEB_APP_URL } from '../../lib/config.js';
 
 const BUYER_EMAIL = TEST_ACCOUNTS.BUYER_EMAIL;
 const BUYER_PASS = TEST_ACCOUNTS.BUYER_PASS;
@@ -32,28 +32,31 @@ function isTransientError(e: any): boolean {
 }
 
 async function loginAs(browser: AgentBrowser, email: string, password: string) {
-  await browser.open(`${WEB_APP_URL}/login`);
-  await browser.waitForFlutter();
-
-  let snap = await browser.waitForChange({
-    text: /email|login_email/i,
-    timeout: 30_000,
-  });
-  const emailInput = browser.findByLabel(snap, /email|login_email/i);
-  if (emailInput) {
-    await browser.click(emailInput.ref);
-    await browser.type(email);
+  try {
+    await browser.loginViaApi(email, password);
+  } catch (error) {
+    console.warn(`loginViaApi warning: ${(error as Error).message}`);
+    const auth = await signIn(email, password);
+    await browser.open(WEB_APP_URL);
+    await browser.waitForFlutter();
+    browser.run([
+      'eval',
+      `localStorage.setItem('orignabase_access_token', ${JSON.stringify(auth.idToken)});
+       localStorage.setItem('orignabase_refresh_token', ${JSON.stringify(auth.refreshToken ?? '')});
+       localStorage.setItem('orignabase_email', ${JSON.stringify(email)});`,
+    ], 15_000);
   }
 
-  snap = await browser.waitForChange({ text: /password|login_password/i, timeout: 10_000 });
-  const passInput = browser.findByLabel(snap, /password|login_password/i);
-  if (passInput) {
-    await browser.click(passInput.ref);
-    await browser.type(password);
-  }
-
-  await browser.press('Enter');
+  await browser.open(WEB_APP_URL);
   await browser.waitForFlutter();
+  try {
+    await browser.waitForChange({ text: /btn-home-settings|product-card-|search|home/i, timeout: 20_000 });
+  } catch {
+    const snap = await browser.snapshot({ interactive: true, compact: true });
+    if (snap.refs.length === 0) {
+      throw new Error('Authenticated home shell did not render any interactive content');
+    }
+  }
 }
 
 let browser: AgentBrowser;
@@ -113,7 +116,7 @@ afterAll(async () => {
 
 describe('Product Reviews Flow', () => {
   test('C001: Login as buyer with delivered order', async () => {
-    await loginAs(browser, BUYER_EMAIL, BUYER_PASS);
+    await loginAs(browser, BUYER_EMAIL, BUYER_PASS || DEFAULT_PASS);
     await browser.waitForFlutter();
 
     const snap = await browser.snapshot({ interactive: true, compact: true });
@@ -157,7 +160,7 @@ describe('Product Reviews Flow', () => {
   }, 60_000);
 
   test('C004: Navigate to non-purchased product (different seller)', async () => {
-    await loginAs(browser, BUYER_EMAIL, BUYER_PASS);
+    await loginAs(browser, BUYER_EMAIL, BUYER_PASS || DEFAULT_PASS);
     await browser.open(`${WEB_APP_URL}/products/${OTHER_PRODUCT_ID}`);
     await browser.waitForFlutter();
 

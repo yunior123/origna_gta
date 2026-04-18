@@ -1,0 +1,127 @@
+{
+  "scenarios": [
+    {
+      "id": "desktop-home-guest",
+      "filename": "300-home-guest-desktop.png",
+      "persona": "guest",
+      "url": "/",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "anchors": [
+        "Privacy Policy",
+        "Terms of Service",
+        "Legal"
+      ]
+    },
+    {
+      "id": "desktop-login-guest",
+      "filename": "301-login-guest-desktop.png",
+      "persona": "guest",
+      "url": "/login",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "anchors": [
+        "Enable accessibility",
+        "Privacy Policy",
+        "Terms of Service"
+      ]
+    },
+    {
+      "id": "desktop-privacy-guest",
+      "filename": "302-privacy-policy-desktop.png",
+      "persona": "guest",
+      "url": "/privacy-policy",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "anchors": [
+        "privacy",
+        "confidentialité",
+        "origna"
+      ]
+    },
+    {
+      "id": "desktop-terms-guest",
+      "filename": "303-terms-of-service-desktop.png",
+      "persona": "guest",
+      "url": "/terms-of-service",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "anchors": [
+        "Terms of Service",
+        "Legal",
+        "Origna GTA"
+      ]
+    },
+    {
+      "id": "desktop-profile-buyer",
+      "filename": "307-profile-buyer-desktop.png",
+      "persona": "buyer",
+      "url": "/profile",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "anchors": [
+        "Abonnement",
+        "Settings",
+        "Paramètres"
+      ]
+    },
+    {
+      "id": "desktop-cart-buyer",
+      "filename": "314-cart-buyer-desktop.png",
+      "persona": "buyer",
+      "url": "/cart",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "anchors": [
+        "Panier",
+        "cart",
+        "checkout",
+        "Passer à la caisse"
+      ]
+    },
+    {
+      "id": "desktop-seller-products",
+      "filename": "318-seller-products-desktop.png",
+      "persona": "seller",
+      "url": "/seller/products",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "anchors": [
+        "Mes produits",
+        "produits",
+        "products",
+        "Ajouter"
+      ]
+    },
+    {
+      "id": "desktop-admin-panel-users",
+      "filename": "325-admin-panel-users-desktop.png",
+      "persona": "admin",
+      "url": "/admin",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "anchors": [
+        "admin",
+        "Utilisateurs",
+        "Users",
+        "Panneau"
+      ]
+    }
+  ]
+}

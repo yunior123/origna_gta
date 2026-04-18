@@ -503,7 +503,7 @@ final _mockAddresses = [
   ),
 ];
 
-Widget _addressManagement() => previewScope(child: AddressManagementScreen());
+Widget _addressManagement() => _addressManagementWithAddresses();
 
 Widget _addressManagementEmpty() => previewScopeLoggedIn(
   extraOverrides: [
@@ -523,26 +523,26 @@ Widget _addressManagementWithAddresses() => previewScopeLoggedIn(
 Widget previewAddressManagementScreenMobile() => previewMobile(child: _addressManagement());
 
 @Preview(name: 'Address Management — Tablet', group: 'Screens', size: Size(768, 1024))
-Widget previewAddressManagementScreenTablet() => previewTablet(child: previewScope(child: AddressManagementScreen()));
+Widget previewAddressManagementScreenTablet() => previewTablet(child: _addressManagement());
 
 @Preview(name: 'Address Management — Desktop', group: 'Screens', size: Size(1280, 800))
-Widget previewAddressManagementScreenDesktop() => previewDesktop(child: previewScope(child: AddressManagementScreen()));
+Widget previewAddressManagementScreenDesktop() => previewDesktop(child: _addressManagementWithAddresses());
 
 @Preview(name: 'Address Management — Web', group: 'Screens', size: Size(1440, 900))
-Widget previewAddressManagementScreenWeb() => previewWeb(child: previewScope(child: AddressManagementScreen()));
+Widget previewAddressManagementScreenWeb() => previewWeb(child: _addressManagementWithAddresses());
 
 // ── Light ────────────────────────────────────────────────────────────────────
 @Preview(name: 'Address Management Light — Mobile', group: 'Screens', size: Size(390, 844))
-Widget previewAddressManagementLightMobile() => previewMobile(theme: previewLightTheme, child: previewScope(child: AddressManagementScreen()));
+Widget previewAddressManagementLightMobile() => previewMobile(theme: previewLightTheme, child: _addressManagementWithAddresses());
 
 @Preview(name: 'Address Management Light — Tablet', group: 'Screens', size: Size(768, 1024))
-Widget previewAddressManagementLightTablet() => previewTablet(theme: previewLightTheme, child: previewScope(child: AddressManagementScreen()));
+Widget previewAddressManagementLightTablet() => previewTablet(theme: previewLightTheme, child: _addressManagementWithAddresses());
 
 @Preview(name: 'Address Management Light — Desktop', group: 'Screens', size: Size(1280, 800))
-Widget previewAddressManagementLightDesktop() => previewDesktop(theme: previewLightTheme, child: previewScope(child: AddressManagementScreen()));
+Widget previewAddressManagementLightDesktop() => previewDesktop(theme: previewLightTheme, child: _addressManagementWithAddresses());
 
 @Preview(name: 'Address Management Light — Web', group: 'Screens', size: Size(1440, 900))
-Widget previewAddressManagementLightWeb() => previewWeb(theme: previewLightTheme, child: previewScope(child: AddressManagementScreen()));
+Widget previewAddressManagementLightWeb() => previewWeb(theme: previewLightTheme, child: _addressManagementWithAddresses());
 
 // ── Empty State Dark ──────────────────────────────────────────────────────────
 @Preview(name: 'Address Management Empty Dark — Mobile', group: 'Screens', size: Size(390, 844))
@@ -576,4 +576,3 @@ Widget previewAddressManagementWithAddrLightMobile() => previewMobile(theme: pre
 
 @Preview(name: 'Address Management With Addresses Light — Desktop', group: 'Screens', size: Size(1280, 800))
 Widget previewAddressManagementWithAddrLightDesktop() => previewDesktop(theme: previewLightTheme, child: _addressManagementWithAddresses());
-

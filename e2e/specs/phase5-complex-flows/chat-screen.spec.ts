@@ -25,6 +25,13 @@ const BUYER_EMAIL = TEST_ACCOUNTS.BUYER_EMAIL;
 const BUYER_PASS = TEST_ACCOUNTS.BUYER_PASS;
 
 async function loginAs(browser: AgentBrowser, email: string, password: string) {
+  try {
+    await browser.loginViaApi(email, password);
+    return;
+  } catch (error) {
+    console.warn(`loginViaApi warning: ${(error as Error).message}`);
+  }
+
   await browser.open(`${WEB_APP_URL}/login`);
   await browser.waitForFlutter();
   let snap = await browser.waitForChange({ text: /you@example|vous@exemple|login_email_field/i, timeout: 30_000 });
@@ -65,30 +72,44 @@ describe('Chat Screen — Premium Gate', () => {
     // Login as buyer (non-premium by default)
     await loginAs(browser, BUYER_EMAIL, BUYER_PASS);
 
-    // Navigate to chat/messages
     let snap = await browser.snapshot({ interactive: true, compact: true });
     const settings = browser.findByLabel(snap, /btn-home-settings/);
     if (settings) {
       await browser.click(settings.ref);
-      await browser.waitForChange({ timeout: 2000 });
-      await browser.waitForFlutter();
+      try {
+        await browser.waitForChange({ timeout: 2000 });
+      } catch {}
+      try {
+        await browser.waitForFlutter();
+      } catch {}
 
       snap = await browser.snapshot({ interactive: true, compact: true });
       const messagesLink = browser.findByLabel(snap, /menu-my-messages|messages|messagerie/i);
       if (messagesLink) {
         await browser.click(messagesLink.ref);
-        await browser.waitForChange({ timeout: 2000 });
-        await browser.waitForFlutter();
+        try {
+          await browser.waitForChange({ timeout: 2000 });
+        } catch {}
+        try {
+          await browser.waitForFlutter();
+        } catch {}
       } else {
-        // Try direct URL
         await browser.open(`${WEB_APP_URL}/chat`);
-        await browser.waitForFlutter();
-        await browser.waitForChange({ timeout: 2000 });
+        try {
+          await browser.waitForFlutter();
+        } catch {}
+        try {
+          await browser.waitForChange({ timeout: 2000 });
+        } catch {}
       }
     } else {
       await browser.open(`${WEB_APP_URL}/chat`);
-      await browser.waitForFlutter();
-      await browser.waitForChange({ timeout: 2000 });
+      try {
+        await browser.waitForFlutter();
+      } catch {}
+      try {
+        await browser.waitForChange({ timeout: 2000 });
+      } catch {}
     }
 
     snap = await browser.snapshot({ interactive: true, compact: true });

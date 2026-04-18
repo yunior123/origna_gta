@@ -618,7 +618,7 @@ Widget _checkoutSingleItem() => previewScopeLoggedIn(
   child: CheckoutScreen(items: [_mockItems.first], totalCents: 4998),
 );
 
-// ── Dark (default) ──────────────────────────────────────────────────────────
+// ── Core checkout states ────────────────────────────────────────────────────
 @Preview(
   name: 'Checkout Dark — Mobile',
   group: 'Cart Screens',
@@ -626,14 +626,6 @@ Widget _checkoutSingleItem() => previewScopeLoggedIn(
 )
 Widget previewCheckoutScreenMobile() =>
     previewMobile(child: _checkoutContent());
-
-@Preview(
-  name: 'Checkout Dark — Tablet',
-  group: 'Cart Screens',
-  size: Size(768, 1024),
-)
-Widget previewCheckoutScreenTablet() =>
-    previewTablet(child: _checkoutContent());
 
 @Preview(
   name: 'Checkout Dark — Desktop',
@@ -644,30 +636,6 @@ Widget previewCheckoutScreenDesktop() =>
     previewDesktop(child: _checkoutContent());
 
 @Preview(
-  name: 'Checkout Dark — Web',
-  group: 'Cart Screens',
-  size: Size(1440, 900),
-)
-Widget previewCheckoutScreenWeb() => previewWeb(child: _checkoutContent());
-
-// ── Light ────────────────────────────────────────────────────────────────────
-@Preview(
-  name: 'Checkout Light — Mobile',
-  group: 'Cart Screens',
-  size: Size(390, 844),
-)
-Widget previewCheckoutLightMobile() =>
-    previewMobile(theme: previewLightTheme, child: _checkoutContent());
-
-@Preview(
-  name: 'Checkout Light — Tablet',
-  group: 'Cart Screens',
-  size: Size(768, 1024),
-)
-Widget previewCheckoutLightTablet() =>
-    previewTablet(theme: previewLightTheme, child: _checkoutContent());
-
-@Preview(
   name: 'Checkout Light — Desktop',
   group: 'Cart Screens',
   size: Size(1280, 800),
@@ -675,15 +643,6 @@ Widget previewCheckoutLightTablet() =>
 Widget previewCheckoutLightDesktop() =>
     previewDesktop(theme: previewLightTheme, child: _checkoutContent());
 
-@Preview(
-  name: 'Checkout Light — Web',
-  group: 'Cart Screens',
-  size: Size(1440, 900),
-)
-Widget previewCheckoutLightWeb() =>
-    previewWeb(theme: previewLightTheme, child: _checkoutContent());
-
-// ── Single Item Dark ──────────────────────────────────────────────────────────
 @Preview(
   name: 'Checkout Single Item Dark — Mobile',
   group: 'Cart Screens',
@@ -693,36 +652,12 @@ Widget previewCheckoutSingleMobile() =>
     previewMobile(child: _checkoutSingleItem());
 
 @Preview(
-  name: 'Checkout Single Item Dark — Tablet',
-  group: 'Cart Screens',
-  size: Size(768, 1024),
-)
-Widget previewCheckoutSingleTablet() =>
-    previewTablet(child: _checkoutSingleItem());
-
-@Preview(
   name: 'Checkout Single Item Dark — Desktop',
   group: 'Cart Screens',
   size: Size(1280, 800),
 )
 Widget previewCheckoutSingleDesktop() =>
     previewDesktop(child: _checkoutSingleItem());
-
-@Preview(
-  name: 'Checkout Single Item Dark — Web',
-  group: 'Cart Screens',
-  size: Size(1440, 900),
-)
-Widget previewCheckoutSingleWeb() => previewWeb(child: _checkoutSingleItem());
-
-// ── Single Item Light ─────────────────────────────────────────────────────────
-@Preview(
-  name: 'Checkout Single Item Light — Mobile',
-  group: 'Cart Screens',
-  size: Size(390, 844),
-)
-Widget previewCheckoutSingleLightMobile() =>
-    previewMobile(theme: previewLightTheme, child: _checkoutSingleItem());
 
 @Preview(
   name: 'Checkout Single Item Light — Desktop',

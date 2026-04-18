@@ -369,13 +369,68 @@ class _BulkUploadScreenState extends ConsumerState<BulkUploadScreen> {
   }
 }
 
+class _PreviewBulkUploadRef extends Ref {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
+}
+
+class _PreviewBulkUploadViewModel extends BulkUploadViewModel {
+  _PreviewBulkUploadViewModel() : super(_PreviewBulkUploadRef()) {
+    state = BulkUploadState(
+      totalCount: 4,
+      parsedProducts: const [
+        {
+          'title': 'Maple Granola',
+          'priceCents': 1299,
+          'stockQuantity': 48,
+          'categoryId': 1,
+        },
+        {
+          'title': 'Ceramic Tea Cup Set',
+          'priceCents': 5400,
+          'stockQuantity': 12,
+          'categoryId': 5,
+        },
+      ],
+      parseErrors: const [
+        BulkProductError(
+          index: 2,
+          message: 'Missing required column: description',
+        ),
+      ],
+      createdProducts: const [
+        CreatedProduct(
+          index: 0,
+          productId: 'preview-created-1',
+          title: 'Maple Granola',
+        ),
+        CreatedProduct(
+          index: 1,
+          productId: 'preview-created-2',
+          title: 'Ceramic Tea Cup Set',
+        ),
+      ],
+      isSuccess: true,
+    );
+  }
+}
+
+Widget _bulkUploadPreview() => previewScope(
+  extraOverrides: [
+    bulkUploadViewModelProvider.overrideWith(
+      (ref) => _PreviewBulkUploadViewModel(),
+    ),
+  ],
+  child: const BulkUploadScreen(),
+);
+
 @Preview(
   name: 'Bulk Upload — Mobile',
   group: 'BulkUpload',
   size: Size(390, 844),
 )
 Widget previewBulkUploadMobile() =>
-    previewMobile(child: const BulkUploadScreen());
+    previewMobile(child: _bulkUploadPreview());
 
 @Preview(
   name: 'Bulk Upload — Tablet',
@@ -383,7 +438,7 @@ Widget previewBulkUploadMobile() =>
   size: Size(768, 1024),
 )
 Widget previewBulkUploadTablet() =>
-    previewTablet(child: const BulkUploadScreen());
+    previewTablet(child: _bulkUploadPreview());
 
 @Preview(
   name: 'Bulk Upload — Desktop',
@@ -391,4 +446,4 @@ Widget previewBulkUploadTablet() =>
   size: Size(1280, 800),
 )
 Widget previewBulkUploadDesktop() =>
-    previewDesktop(child: const BulkUploadScreen());
+    previewDesktop(child: _bulkUploadPreview());

@@ -164,26 +164,34 @@ mixin ProductSearchHelpers {
 
   /// Fetches a single chunk of product IDs and returns a map of productId -> Product.
   Future<Map<String, Product>> _fetchChunk(List<String> chunk) async {
-    final snapshot = await ob
-        .collection(Collections.products)
-        .where(Fields.productId, whereIn: chunk)
-        .get();
-
     final productsById = <String, Product>{};
     final fetchedIds = <String>{};
-    for (final doc in snapshot.docs) {
-      if (!doc.exists) continue;
-      final fetchedId = doc.data[Fields.productId] as String? ?? doc.id;
-      fetchedIds.add(fetchedId);
-      try {
-        final product = docToProduct(doc);
-        productsById[product.productId] = product;
-      } catch (e) {
-        AppLogger.d(
-          'OrignaBaseProductRepo: skipping malformed doc ${doc.id}: $e',
-          tag: 'product',
-        );
+
+    try {
+      final snapshot = await ob
+          .collection(Collections.products)
+          .where(Fields.productId, whereIn: chunk)
+          .get();
+
+      for (final doc in snapshot.docs) {
+        if (!doc.exists) continue;
+        final fetchedId = doc.data[Fields.productId] as String? ?? doc.id;
+        fetchedIds.add(fetchedId);
+        try {
+          final product = docToProduct(doc);
+          productsById[product.productId] = product;
+        } catch (e) {
+          AppLogger.d(
+            'OrignaBaseProductRepo: skipping malformed doc ${doc.id}: $e',
+            tag: 'product',
+          );
+        }
       }
+    } on OrignaBaseException catch (e) {
+      AppLogger.d(
+        'OrignaBaseProductRepo: batch product fetch fell back to per-id lookups: $e',
+        tag: 'product',
+      );
     }
 
     final missingIds = chunk

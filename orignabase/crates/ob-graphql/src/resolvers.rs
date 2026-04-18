@@ -51,6 +51,33 @@ fn normalize_data(data: Value) -> Value {
     }
 }
 
+fn doc_is_readable(
+    rules: &RuleEngine,
+    collection: &str,
+    sec_ctx: &SecurityContext,
+    doc: &Value,
+) -> bool {
+    let per_doc_ctx = SecurityContext {
+        user_id: sec_ctx.user_id.clone(),
+        roles: sec_ctx.roles.clone(),
+        authenticated: sec_ctx.authenticated,
+        resource: Some(doc.clone()),
+        incoming: None,
+    };
+    rules.check(collection, "read", &per_doc_ctx).unwrap_or(false)
+}
+
+fn filter_readable_docs(
+    rules: &RuleEngine,
+    collection: &str,
+    sec_ctx: &SecurityContext,
+    docs: Vec<Value>,
+) -> Vec<Value> {
+    docs.into_iter()
+        .filter(|doc| doc_is_readable(rules, collection, sec_ctx, doc))
+        .collect()
+}
+
 pub struct QueryRoot;
 
 #[allow(clippy::too_many_arguments)]
@@ -137,7 +164,7 @@ impl QueryRoot {
             incoming: None,
         };
 
-        if !rules.check(&collection, "read", &sec_ctx).map_err(|e| {
+        if !rules.check(&collection, "list", &sec_ctx).map_err(|e| {
             tracing::error!("DB error: {e}");
             async_graphql::Error::new("Internal server error")
         })? {
@@ -152,49 +179,68 @@ impl QueryRoot {
             .map(|f| f.iter().map(|s| s.as_str()).collect());
 
         // P1-NEW-20: Default limit of 20, capped at 100 to prevent unbounded queries
-        let effective_limit = {
+        let requested_limit = {
             let n = limit.unwrap_or(20);
-            let clamped = n.clamp(1, 100) as usize;
-            Some(if start_after.is_some() {
-                clamped + 1
-            } else {
-                clamped
-            })
+            n.clamp(1, 100) as usize
+        };
+        let fetch_limit = if start_after.is_some() {
+            requested_limit + 1
+        } else {
+            requested_limit
         };
 
-        let query = ob_database::query::QueryTranslator::build_select_ext(
-            &collection,
-            filters.as_ref(),
-            order_by.as_deref(),
-            descending,
-            effective_limit,
-            offset.map(|n| n.max(0) as usize),
-            field_refs.as_deref(),
-            start_after.as_deref(),
-        );
+        let use_simple_list = filters.is_none()
+            && order_by.is_none()
+            && !descending
+            && start_after.is_none()
+            && field_refs.is_none();
+        let mut filtered = Vec::new();
+        let mut current_offset = offset.map(|n| n.max(0) as usize).unwrap_or(0);
 
-        let docs = db.query_raw(&query).await.map_err(|e| {
-            tracing::error!("DB error: {e}");
-            async_graphql::Error::new("Internal server error")
-        })?;
+        while filtered.len() < requested_limit {
+            let docs = if use_simple_list {
+                db.list_documents(&collection, Some(fetch_limit), Some(current_offset))
+                    .await
+                    .map_err(|e| {
+                        tracing::error!("DB error: {e}");
+                        async_graphql::Error::new("Internal server error")
+                    })?
+            } else {
+                let query = ob_database::query::QueryTranslator::build_select_ext(
+                    &collection,
+                    filters.as_ref(),
+                    order_by.as_deref(),
+                    descending,
+                    Some(fetch_limit),
+                    Some(current_offset),
+                    field_refs.as_deref(),
+                    start_after.as_deref(),
+                );
 
-        // Post-fetch ownership filter: re-evaluate rules with each doc as resource
-        // so isOwner() checks work correctly for owner-scoped collections.
-        let filtered: Vec<Value> = docs
-            .into_iter()
-            .filter(|doc| {
-                let per_doc_ctx = SecurityContext {
-                    user_id: sec_ctx.user_id.clone(),
-                    roles: sec_ctx.roles.clone(),
-                    authenticated: sec_ctx.authenticated,
-                    resource: Some(doc.clone()),
-                    incoming: None,
-                };
-                rules
-                    .check(&collection, "read", &per_doc_ctx)
-                    .unwrap_or(false)
-            })
-            .collect();
+                db.query_raw(&query).await.map_err(|e| {
+                    tracing::error!("DB error: {e}");
+                    async_graphql::Error::new("Internal server error")
+                })?
+            };
+
+            if docs.is_empty() {
+                break;
+            }
+
+            let batch_len = docs.len();
+
+            // Post-fetch ownership filter: re-evaluate rules with each doc as resource
+            // so isOwner() checks work correctly for owner-scoped collections.
+            filtered.extend(filter_readable_docs(rules, &collection, &sec_ctx, docs));
+
+            if batch_len < fetch_limit {
+                break;
+            }
+
+            current_offset += batch_len;
+        }
+
+        filtered.truncate(requested_limit);
 
         // P1-NEW-21: Strip sensitive fields from responses to prevent data leakage.
         // Fields like hashed passwords, MFA secrets, and internal tokens must never
@@ -398,6 +444,70 @@ impl QueryRoot {
             tracing::error!("DB error: {e}");
             async_graphql::Error::new("Internal server error")
         })?)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ob_security::parse_rules;
+    use serde_json::json;
+
+    fn test_sec_ctx(user_id: &str) -> SecurityContext {
+        SecurityContext {
+            user_id: Some(user_id.to_string()),
+            roles: vec!["user".to_string()],
+            authenticated: true,
+            resource: None,
+            incoming: None,
+        }
+    }
+
+    #[test]
+    fn filter_readable_docs_keeps_only_owned_documents() {
+        let rules = parse_rules(
+            r#"
+            rules addresses {
+                read: isAuthenticated() && isOwner(resource.userId);
+                list: isAuthenticated();
+            }
+        "#,
+        )
+        .expect("parse rules");
+        let engine = RuleEngine::new(rules);
+        let sec_ctx = test_sec_ctx("user_1");
+        let docs = vec![
+            json!({"id": "a1", "userId": "user_2", "label": "other"}),
+            json!({"id": "a2", "userId": "user_1", "label": "mine"}),
+            json!({"id": "a3", "userId": "user_3", "label": "other2"}),
+        ];
+
+        let filtered = filter_readable_docs(&engine, "addresses", &sec_ctx, docs);
+
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(filtered[0]["id"], "a2");
+    }
+
+    #[test]
+    fn doc_is_readable_rejects_missing_owner_field() {
+        let rules = parse_rules(
+            r#"
+            rules chat_messages {
+                read: isAuthenticated() && isOwner(resource.senderId);
+                list: isAuthenticated();
+            }
+        "#,
+        )
+        .expect("parse rules");
+        let engine = RuleEngine::new(rules);
+        let sec_ctx = test_sec_ctx("user_1");
+
+        assert!(!doc_is_readable(
+            &engine,
+            "chat_messages",
+            &sec_ctx,
+            &json!({"id": "m1", "text": "hello"})
+        ));
     }
 }
 

@@ -1,9 +1,11 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/orders/orders_provider.dart';
 import 'package:origna_gta/features/orders/shipping_approval_viewmodel.dart';
-import 'package:origna_gta/models/generated/models.dart';
+import 'package:origna_gta/models/generated/base_models.dart' as base;
+import 'package:origna_gta/models/generated/models.dart' hide Address;
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/animations.dart';
@@ -754,28 +756,74 @@ class _ApprovalCard extends ConsumerWidget {
 
 // ═══ Widget Previews ═══
 
-@Preview(name: 'Verify Shipping — Mobile', group: 'Screens — Seller Management', size: Size(390, 844))
-Widget previewShippingApprovalScreenMobile() => previewMobile(child: previewScopeLoggedIn(child: ShippingApprovalScreen()));
+const _previewShippingApprovalImageBase = 'https://fastly.picsum.photos/id';
 
-@Preview(name: 'Verify Shipping — Tablet', group: 'Screens — Seller Management', size: Size(768, 1024))
-Widget previewShippingApprovalScreenTablet() => previewTablet(child: previewScopeLoggedIn(child: ShippingApprovalScreen()));
+String _previewShippingApprovalImage(int id, {int width = 900, int height = 900}) =>
+    '$_previewShippingApprovalImageBase/$id/$width/$height.jpg';
+
+final _previewShippingApprovals = [
+  Order(
+    orderId: 'shipping-approval-preview-1',
+    userId: 'buyer-preview-ship',
+    items: [
+      OrderItem(
+        productId: 'approval-product-1',
+        cartItemId: 'approval-cart-1',
+        name: 'Ceramic Serving Platter',
+        description: 'Oversized platter requiring freight packaging.',
+        priceCents: 9400,
+        quantity: 1,
+        imageUrls: [_previewShippingApprovalImage(1040)],
+        sellerId: 'seller-preview-ship',
+        sellerName: 'Clay Studio North',
+        status: DeliveryStatusValues.pending,
+      ),
+    ],
+    totalAmountCents: 10822,
+    subtotalCents: 9400,
+    shippingCostCents: 900,
+    taxAmountCents: 522,
+    taxes: const Taxes(gstCents: 0, pstCents: 0, qstCents: 0, hstCents: 522),
+    orderStatus: OrderStatus.processing,
+    paymentStatus: PaymentStatus.paid,
+    createdAt: DateTime(2026, 4, 16, 9, 45),
+    shippingAddress: base.Address(
+      street: '21 Wellington St E',
+      city: 'Toronto',
+      state: 'ON',
+      postalCode: 'M5E 1C5',
+      country: 'CA',
+    ),
+    shippingApprovalStatus: ShippingApprovalStatus.pending,
+    shippingApprovalRequired: true,
+    actualShippingCents: 2100,
+    pendingTotalCents: 1200,
+  ),
+];
+
+Widget _shippingApprovalPreview({List<Order>? approvals}) => previewScopeLoggedIn(
+  extraOverrides: [
+    pendingShippingApprovalsProvider.overrideWith(
+      (ref) => AsyncValue.data(approvals ?? _previewShippingApprovals),
+    ),
+  ],
+  child: const ShippingApprovalScreen(),
+);
+
+@Preview(name: 'Verify Shipping — Mobile', group: 'Screens — Seller Management', size: Size(390, 844))
+Widget previewShippingApprovalScreenMobile() =>
+    previewMobile(child: _shippingApprovalPreview());
 
 @Preview(name: 'Verify Shipping — Desktop', group: 'Screens — Seller Management', size: Size(1280, 800))
-Widget previewShippingApprovalScreenDesktop() => previewDesktop(child: previewScopeLoggedIn(child: ShippingApprovalScreen()));
-
-@Preview(name: 'Verify Shipping — Web', group: 'Screens — Seller Management', size: Size(1440, 900))
-Widget previewShippingApprovalScreenWeb() => previewWeb(child: previewScopeLoggedIn(child: ShippingApprovalScreen()));
-
-// ── Light ────────────────────────────────────────────────────────────────────
-@Preview(name: 'Verify Shipping Light — Mobile', group: 'Screens — Seller Management', size: Size(390, 844))
-Widget previewShippingApprovalLightMobile() => previewMobile(theme: previewLightTheme, child: previewScopeLoggedIn(child: ShippingApprovalScreen()));
+Widget previewShippingApprovalScreenDesktop() =>
+    previewDesktop(child: _shippingApprovalPreview());
 
 @Preview(name: 'Verify Shipping Light — Desktop', group: 'Screens — Seller Management', size: Size(1280, 800))
-Widget previewShippingApprovalLightDesktop() => previewDesktop(theme: previewLightTheme, child: previewScopeLoggedIn(child: ShippingApprovalScreen()));
+Widget previewShippingApprovalLightDesktop() => previewDesktop(
+  theme: previewLightTheme,
+  child: _shippingApprovalPreview(),
+);
 
-@Preview(name: 'Verify Shipping Light — Tablet', group: 'Screens — Seller Management', size: Size(768, 1024))
-Widget previewShippingApprovalLightTablet() => previewTablet(theme: previewLightTheme, child: previewScopeLoggedIn(child: ShippingApprovalScreen()));
-
-@Preview(name: 'Verify Shipping Light — Web', group: 'Screens — Seller Management', size: Size(1440, 900))
-Widget previewShippingApprovalLightWeb() => previewWeb(theme: previewLightTheme, child: previewScopeLoggedIn(child: ShippingApprovalScreen()));
-
+@Preview(name: 'Verify Shipping Empty — Desktop', group: 'Screens — Seller Management', size: Size(1280, 800))
+Widget previewShippingApprovalEmptyDesktop() =>
+    previewDesktop(child: _shippingApprovalPreview(approvals: const []));

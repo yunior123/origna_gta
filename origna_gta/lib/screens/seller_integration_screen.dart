@@ -12,15 +12,24 @@ import 'package:origna_gta/utils/preview_helpers.dart';
 /// Seller Integration Guide — shows the public API endpoints, seller's product IDs,
 /// and ready-to-use code snippets for activating licenses from their software.
 class SellerIntegrationScreen extends ConsumerWidget {
-  const SellerIntegrationScreen({super.key});
+  final String? previewActivateEndpoint;
+  final String? previewVerifyEndpoint;
+
+  const SellerIntegrationScreen({
+    super.key,
+    this.previewActivateEndpoint,
+    this.previewVerifyEndpoint,
+  });
 
   String? get _activateEndpoint {
+    if (previewActivateEndpoint != null) return previewActivateEndpoint;
     final baseUrl = _safeOrignabaseUrl();
     if (baseUrl == null) return null;
     return '$baseUrl/api/digital/activate-license';
   }
 
   String? get _verifyEndpoint {
+    if (previewVerifyEndpoint != null) return previewVerifyEndpoint;
     final baseUrl = _safeOrignabaseUrl();
     if (baseUrl == null) return null;
     return '$baseUrl/api/digital/verify-license';
@@ -762,6 +771,21 @@ func activateLicense(key: String, platform: String = "macos") async throws -> Bo
 
 // ═══ Widget Previews ═══
 
+const _previewSellerIntegrationActivateEndpoint =
+    'https://api.dev.orignagta.ca/api/digital/activate-license';
+const _previewSellerIntegrationVerifyEndpoint =
+    'https://api.dev.orignagta.ca/api/digital/verify-license';
+
+Widget _sellerIntegrationPreview({
+  String? activateEndpoint,
+  String? verifyEndpoint,
+}) => previewScope(
+  child: SellerIntegrationScreen(
+    previewActivateEndpoint: activateEndpoint,
+    previewVerifyEndpoint: verifyEndpoint,
+  ),
+);
+
 @Preview(
   name: 'Seller Integration Dark — Mobile',
   group: 'SellerIntegrationScreen',
@@ -769,17 +793,10 @@ func activateLicense(key: String, platform: String = "macos") async throws -> Bo
 )
 Widget previewSellerIntegrationDarkMobile() => previewMobile(
   theme: previewDarkTheme,
-  child: previewScope(child: const SellerIntegrationScreen()),
-);
-
-@Preview(
-  name: 'Seller Integration Dark — Tablet',
-  group: 'SellerIntegrationScreen',
-  size: Size(768, 1024),
-)
-Widget previewSellerIntegrationDarkTablet() => previewTablet(
-  theme: previewDarkTheme,
-  child: previewScope(child: const SellerIntegrationScreen()),
+  child: _sellerIntegrationPreview(
+    activateEndpoint: _previewSellerIntegrationActivateEndpoint,
+    verifyEndpoint: _previewSellerIntegrationVerifyEndpoint,
+  ),
 );
 
 @Preview(
@@ -789,38 +806,19 @@ Widget previewSellerIntegrationDarkTablet() => previewTablet(
 )
 Widget previewSellerIntegrationDarkDesktop() => previewDesktop(
   theme: previewDarkTheme,
-  child: previewScope(child: const SellerIntegrationScreen()),
+  child: _sellerIntegrationPreview(
+    activateEndpoint: _previewSellerIntegrationActivateEndpoint,
+    verifyEndpoint: _previewSellerIntegrationVerifyEndpoint,
+  ),
 );
 
 @Preview(
-  name: 'Seller Integration Dark — Web',
+  name: 'Seller Integration Config Required — Desktop',
   group: 'SellerIntegrationScreen',
-  size: Size(1440, 900),
+  size: Size(1280, 800),
 )
-Widget previewSellerIntegrationDarkWeb() => previewWeb(
-  theme: previewDarkTheme,
-  child: previewScope(child: const SellerIntegrationScreen()),
-);
-
-@Preview(
-  name: 'Seller Integration Light — Mobile',
-  group: 'SellerIntegrationScreen',
-  size: Size(390, 844),
-)
-Widget previewSellerIntegrationLightMobile() => previewMobile(
-  theme: previewLightTheme,
-  child: previewScope(child: const SellerIntegrationScreen()),
-);
-
-@Preview(
-  name: 'Seller Integration Light — Tablet',
-  group: 'SellerIntegrationScreen',
-  size: Size(768, 1024),
-)
-Widget previewSellerIntegrationLightTablet() => previewTablet(
-  theme: previewLightTheme,
-  child: previewScope(child: const SellerIntegrationScreen()),
-);
+Widget previewSellerIntegrationConfigRequiredDesktop() =>
+    previewDesktop(theme: previewDarkTheme, child: _sellerIntegrationPreview());
 
 @Preview(
   name: 'Seller Integration Light — Desktop',
@@ -829,15 +827,8 @@ Widget previewSellerIntegrationLightTablet() => previewTablet(
 )
 Widget previewSellerIntegrationLightDesktop() => previewDesktop(
   theme: previewLightTheme,
-  child: previewScope(child: const SellerIntegrationScreen()),
-);
-
-@Preview(
-  name: 'Seller Integration Light — Web',
-  group: 'SellerIntegrationScreen',
-  size: Size(1440, 900),
-)
-Widget previewSellerIntegrationLightWeb() => previewWeb(
-  theme: previewLightTheme,
-  child: previewScope(child: const SellerIntegrationScreen()),
+  child: _sellerIntegrationPreview(
+    activateEndpoint: _previewSellerIntegrationActivateEndpoint,
+    verifyEndpoint: _previewSellerIntegrationVerifyEndpoint,
+  ),
 );

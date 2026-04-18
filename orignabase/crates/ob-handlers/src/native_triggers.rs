@@ -203,7 +203,9 @@ impl NativeTriggerExecutor {
         let normalized_status = normalize_status(new_status);
         let order_record_id = record_id(order_id);
 
-        if normalized_status == OrderStatus::PaymentAuthorized.as_str() || normalized_status == OrderStatus::Processing.as_str() {
+        if normalized_status == OrderStatus::PaymentAuthorized.as_str()
+            || normalized_status == OrderStatus::Processing.as_str()
+        {
             self.cleanup_stock_notifications(after).await;
         }
 

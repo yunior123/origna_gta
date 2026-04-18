@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:origna_gta/utils/preview_helpers.dart';
+import 'package:flutter/widget_previews.dart';
 
 class GradientBadge extends StatelessWidget {
   final String label;
@@ -37,3 +39,40 @@ class GradientBadge extends StatelessWidget {
     );
   }
 }
+
+// === Widget Previews ===
+
+// ═══ Widget Previews ═══
+
+@Preview(name: 'Gradient Badge — Variants', group: 'GradientBadge')
+Widget previewGradientBadgeVariants() => previewGrid(
+  children: [
+    const GradientBadge(label: 'SALE'),
+    const GradientBadge(label: 'HOT', gradient: LinearGradient(colors: [Color(0xFFFF6B6B), Color(0xFFFF8E53)])),
+    const GradientBadge(label: 'NEW', gradient: LinearGradient(colors: [DesignTokens.success, DesignTokens.info)])),
+    GradientBadge(label: 'PREMIUM', gradient: LinearGradient(colors: [DesignTokens.warning, DesignTokens.tertiary])),
+  ],
+);
+
+@Preview(name: 'Gradient Badge — Sizes', group: 'GradientBadge')
+Widget previewGradientBadgeSizes() => previewGrid(
+  children: [
+    const GradientBadge(label: 'Small', fontSize: 9, padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2)),
+    const GradientBadge(label: 'Default', fontSize: 11),
+    const GradientBadge(label: 'Large', fontSize: 13, padding: EdgeInsets.symmetric(horizontal: 12, vertical: 5)),
+  ],
+);
+
+@Preview(name: 'Gradient Badge — Single', group: 'GradientBadge')
+Widget previewGradientBadgeSingle() => previewWrapper(
+  child: const Center(child: GradientBadge(label: '50% OFF')),
+);
+
+@Preview(name: 'Gradient Badge Light — Variants', group: 'GradientBadge')
+Widget previewGradientBadgeVariantsLight() => previewGrid(
+  theme: previewLightTheme,
+  children: [
+    const GradientBadge(label: 'SALE', textColor: DesignTokens.white),
+    const GradientBadge(label: 'NEW', gradient: LinearGradient(colors: [DesignTokens.success, DesignTokens.info]), textColor: DesignTokens.white)),
+  ],
+);

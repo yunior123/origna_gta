@@ -58,26 +58,27 @@ impl QueryTranslator {
             tracing::warn!("Rejected invalid field name in filter: {field}");
             return None;
         }
+        let field_expr = Self::sql_field_expr(field)?;
         let val_str = Self::value_to_surreal(value);
         match op {
-            "_eq" => Some(format!("{field} = {val_str}")),
-            "_neq" => Some(format!("{field} != {val_str}")),
-            "_gt" => Some(format!("{field} > {val_str}")),
-            "_gte" => Some(format!("{field} >= {val_str}")),
-            "_lt" => Some(format!("{field} < {val_str}")),
-            "_lte" => Some(format!("{field} <= {val_str}")),
+            "_eq" => Some(format!("{field_expr} = {val_str}")),
+            "_neq" => Some(format!("{field_expr} != {val_str}")),
+            "_gt" => Some(format!("{field_expr} > {val_str}")),
+            "_gte" => Some(format!("{field_expr} >= {val_str}")),
+            "_lt" => Some(format!("{field_expr} < {val_str}")),
+            "_lte" => Some(format!("{field_expr} <= {val_str}")),
             "_in" => {
                 if let Some(arr) = value.as_array() {
                     let items: Vec<String> = arr.iter().map(Self::value_to_surreal).collect();
-                    Some(format!("{field} IN [{}]", items.join(", ")))
+                    Some(format!("{field_expr} IN [{}]", items.join(", ")))
                 } else {
                     None
                 }
             }
-            "_contains" => Some(format!("{field} CONTAINS {val_str}")),
+            "_contains" => Some(format!("{field_expr} CONTAINS {val_str}")),
             "_starts_with" => value
                 .as_str()
-                .map(|s| format!("string::startsWith({field}, '{}')", escape_sql_string(s))),
+                .map(|s| format!("string::startsWith({field_expr}, '{}')", escape_sql_string(s))),
             _ => {
                 tracing::warn!("Unknown filter operator: {op}");
                 None
@@ -202,7 +203,7 @@ impl QueryTranslator {
         }
 
         if let Some(n) = offset {
-            query.push_str(&format!(" START {n}"));
+            query.push_str(&format!(" OFFSET {n}"));
         }
 
         query
@@ -220,7 +221,7 @@ mod tests {
             "status": { "_eq": "active" }
         });
         let result = QueryTranslator::filters_to_where(&filters);
-        assert_eq!(result, "WHERE status = 'active'");
+        assert_eq!(result, "WHERE data->>'status' = 'active'");
     }
 
     #[test]
@@ -230,8 +231,8 @@ mod tests {
             "status": { "_eq": "active" }
         });
         let result = QueryTranslator::filters_to_where(&filters);
-        assert!(result.contains("price > 100"));
-        assert!(result.contains("status = 'active'"));
+        assert!(result.contains("data->>'price' > 100"));
+        assert!(result.contains("data->>'status' = 'active'"));
         assert!(result.contains(" AND "));
     }
 
@@ -241,7 +242,7 @@ mod tests {
             "category": { "_in": ["electronics", "books"] }
         });
         let result = QueryTranslator::filters_to_where(&filters);
-        assert_eq!(result, "WHERE category IN ['electronics', 'books']");
+        assert_eq!(result, "WHERE data->>'category' IN ['electronics', 'books']");
     }
 
     #[test]
@@ -257,7 +258,7 @@ mod tests {
         );
         assert_eq!(
             query,
-            "SELECT * FROM products WHERE status = 'active' ORDER BY created_at DESC LIMIT 20"
+            "SELECT * FROM products WHERE data->>'status' = 'active' ORDER BY created_at DESC LIMIT 20"
         );
     }
 
@@ -271,42 +272,42 @@ mod tests {
     fn test_neq_filter() {
         let filters = json!({ "status": { "_neq": "deleted" } });
         let result = QueryTranslator::filters_to_where(&filters);
-        assert_eq!(result, "WHERE status != 'deleted'");
+        assert_eq!(result, "WHERE data->>'status' != 'deleted'");
     }
 
     #[test]
     fn test_gte_filter() {
         let filters = json!({ "age": { "_gte": 18 } });
         let result = QueryTranslator::filters_to_where(&filters);
-        assert_eq!(result, "WHERE age >= 18");
+        assert_eq!(result, "WHERE data->>'age' >= 18");
     }
 
     #[test]
     fn test_lte_filter() {
         let filters = json!({ "price": { "_lte": 99.99 } });
         let result = QueryTranslator::filters_to_where(&filters);
-        assert_eq!(result, "WHERE price <= 99.99");
+        assert_eq!(result, "WHERE data->>'price' <= 99.99");
     }
 
     #[test]
     fn test_lt_filter() {
         let filters = json!({ "count": { "_lt": 5 } });
         let result = QueryTranslator::filters_to_where(&filters);
-        assert_eq!(result, "WHERE count < 5");
+        assert_eq!(result, "WHERE data->>'count' < 5");
     }
 
     #[test]
     fn test_contains_filter() {
         let filters = json!({ "name": { "_contains": "test" } });
         let result = QueryTranslator::filters_to_where(&filters);
-        assert_eq!(result, "WHERE name CONTAINS 'test'");
+        assert_eq!(result, "WHERE data->>'name' CONTAINS 'test'");
     }
 
     #[test]
     fn test_starts_with_filter() {
         let filters = json!({ "email": { "_starts_with": "admin" } });
         let result = QueryTranslator::filters_to_where(&filters);
-        assert_eq!(result, "WHERE string::startsWith(email, 'admin')");
+        assert_eq!(result, "WHERE string::startsWith(data->>'email', 'admin')");
     }
 
     #[test]
@@ -335,14 +336,14 @@ mod tests {
     fn test_value_to_surreal_bool() {
         let filters = json!({ "active": { "_eq": true } });
         let result = QueryTranslator::filters_to_where(&filters);
-        assert_eq!(result, "WHERE active = true");
+        assert_eq!(result, "WHERE data->>'active' = true");
     }
 
     #[test]
     fn test_value_to_surreal_null() {
         let filters = json!({ "deleted_at": { "_eq": null } });
         let result = QueryTranslator::filters_to_where(&filters);
-        assert_eq!(result, "WHERE deleted_at = NONE");
+        assert_eq!(result, "WHERE data->>'deleted_at' = NONE");
     }
 
     #[test]
@@ -350,8 +351,15 @@ mod tests {
         // An object value gets serialized via serde_json::to_string
         let filters = json!({ "meta": { "_eq": {"key": "val"} } });
         let result = QueryTranslator::filters_to_where(&filters);
-        assert!(result.contains("meta = "));
+        assert!(result.contains("data->>'meta' = "));
         assert!(result.contains("key"));
+    }
+
+    #[test]
+    fn test_filters_use_id_column_directly() {
+        let filters = json!({ "id": { "_eq": "abc123" } });
+        let result = QueryTranslator::filters_to_where(&filters);
+        assert_eq!(result, "WHERE id = 'abc123'");
     }
 
     #[test]
@@ -366,7 +374,7 @@ mod tests {
         );
         assert_eq!(
             query,
-            "SELECT * FROM products ORDER BY created_at DESC LIMIT 10 START 20"
+            "SELECT * FROM products ORDER BY created_at DESC LIMIT 10 OFFSET 20"
         );
     }
 
@@ -374,7 +382,10 @@ mod tests {
     fn test_build_select_ascending_order() {
         let query =
             QueryTranslator::build_select("events", None, Some("timestamp"), false, None, None);
-        assert_eq!(query, "SELECT * FROM events ORDER BY data->>'timestamp' ASC");
+        assert_eq!(
+            query,
+            "SELECT * FROM events ORDER BY data->>'timestamp' ASC"
+        );
     }
 
     #[test]
@@ -471,7 +482,7 @@ mod tests {
             None,
             Some("order_99"),
         );
-        assert!(query.contains("status = 'active'"));
+        assert!(query.contains("data->>'status' = 'active'"));
         assert!(query.contains("AND"));
         assert!(query.contains("id >"));
     }

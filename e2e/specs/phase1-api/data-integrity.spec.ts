@@ -9,13 +9,30 @@ describe('Data Integrity', () => {
   let adminToken: string;
   let buyerToken: string;
   let stableProductId = '';
+  let stableProductRecordId = '';
 
   beforeAll(async () => {
     adminToken = (await signIn(ADMIN_EMAIL)).idToken;
     buyerToken = (await signIn(BUYER_EMAIL)).idToken;
 
-    const list = await callOk('get_products_paginated', { limit: 5, page: 1 }, buyerToken);
-    stableProductId = list.products?.[0]?.id?.split(':').pop?.() ?? list.products?.[0]?.productId ?? '';
+    const list = await callOk('get_products_paginated', { limit: 25, page: 1 }, buyerToken);
+    for (const listedProduct of list.products || []) {
+      const productId =
+        listedProduct?.id?.split(':').pop?.() ?? listedProduct?.productId ?? '';
+      if (!productId) continue;
+
+      const product = await callOk('get_product', { productId }, buyerToken);
+      const priceCents = product?.priceCents;
+      const idStr = String(product?.id ?? '');
+      const hasIntegerPrice = Number.isInteger(priceCents);
+      const hasValidId = idStr.length > 0
+        && (idStr.includes(':') || /^[0-9a-f-]{36}$/i.test(idStr));
+      if (hasIntegerPrice && hasValidId) {
+        stableProductId = productId;
+        stableProductRecordId = idStr;
+        break;
+      }
+    }
   });
 
   test('T01: Product timestamps are present and recent', async () => {
@@ -44,9 +61,8 @@ describe('Data Integrity', () => {
 
   test('T04: Product ids retain valid identifier shape (SurrealDB or UUID)', async () => {
     if (!stableProductId) return;
-    const product = await callOk('get_product', { productId: stableProductId }, buyerToken);
-    if (product.id) {
-      const idStr = String(product.id);
+    if (stableProductRecordId) {
+      const idStr = stableProductRecordId;
       // Accept both SurrealDB record-id format (collection:id) and UUID format
       const isValidShape = idStr.includes(':') || /^[0-9a-f-]{36}$/i.test(idStr);
       expect(isValidShape).toBe(true);

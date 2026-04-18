@@ -1,6 +1,6 @@
 # Origna GTA — Repo Map
 
-Last updated: 2026-03-29
+Last updated: 2026-04-17
 
 ## Working Directories (CRITICAL)
 
@@ -32,7 +32,7 @@ Unified monorepo for Origna GTA, a Canada-first multi-vendor e-commerce platform
 | Web reverse proxy | Caddy (on VPS) |
 | CI | GitHub Actions |
 | E2E | agent-browser (TypeScript) + Bun agent-browser (116 specs across 7 phases) |
-| Tests | Flutter: 3,173+ passing. Rust: ~3,268 passing + 537 failing (ob-handlers SurrealDB→PG migration in progress). SDK: 531 passing. |
+| Tests | Current verified local gates on 2026-04-17: Flutter analyze `0 issues`; `flutter test --exclude-tags golden` `4696 pass / 0 fail`; `cargo clippy -p ob-auth -- -D warnings` pass; `cargo clippy -p ob-handlers -- -D warnings` pass; `cargo test -p ob-handlers` pass; `cargo test -p ob-core` pass; `cargo test -p orignabase --no-run` pass; full seeded E2E rerun active in `/tmp/origna_e2e_run_all_after_deep_fix.log`. |
 
 No Firebase. No Cloud Functions. No Firestore. All backend is OrignaBase on the VPS.
 

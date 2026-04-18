@@ -1997,6 +1997,15 @@ fn default_limit() -> usize {
     50
 }
 
+fn admin_list_users_query(limit: usize, offset: usize) -> String {
+    format!(
+        "SELECT id, COALESCE(data->>'email', '') AS email, COALESCE(NULLIF(data->>'display_name', ''), '') AS display_name, COALESCE(data->'roles', '[]'::jsonb)::text AS roles, COALESCE(NULLIF(data->>'email_verified', '')::boolean, false) AS email_verified, COALESCE(NULLIF(data->>'mfa_enabled', '')::boolean, false) AS mfa_enabled, created_at, COALESCE(data->'custom_claims', jsonb_build_object())::text AS custom_claims FROM users ORDER BY created_at DESC LIMIT {limit} OFFSET {offset}"
+    )
+}
+
+const ADMIN_GET_USER_QUERY: &str =
+    "SELECT id, COALESCE(data->>'email', '') AS email, COALESCE(NULLIF(data->>'display_name', ''), '') AS display_name, COALESCE(data->'roles', '[]'::jsonb) AS roles, COALESCE(NULLIF(data->>'email_verified', '')::boolean, false) AS email_verified, COALESCE(NULLIF(data->>'mfa_enabled', '')::boolean, false) AS mfa_enabled, created_at, COALESCE(data->'custom_claims', jsonb_build_object()) AS custom_claims, COALESCE(data->>'oauth_provider', '') AS oauth_provider FROM users WHERE id = $uid";
+
 /// GET /admin/users — List users (admin only).
 pub async fn admin_list_users(
     State(state): State<AuthState>,
@@ -2008,10 +2017,7 @@ pub async fn admin_list_users(
     let limit = params.limit.min(100);
     let users = state
         .db
-        .query_raw(&format!(
-            "SELECT id, email, COALESCE(NULLIF(data->>'display_name', ''), '') AS display_name, COALESCE(data->'roles', '[]'::jsonb) AS roles, COALESCE((data->>'email_verified')::boolean, false) AS email_verified, COALESCE((data->>'mfa_enabled')::boolean, false) AS mfa_enabled, created_at, COALESCE(data->'custom_claims', jsonb_build_object()) AS custom_claims FROM users ORDER BY created_at DESC LIMIT {limit} OFFSET {offset}",
-            offset = params.offset,
-        ))
+        .query_raw(&admin_list_users_query(limit, params.offset))
         .await?;
 
     // Count total
@@ -2048,10 +2054,7 @@ pub async fn admin_get_user(
 
     let users = state
         .db
-        .query_bind(
-            "SELECT id, COALESCE(data->>'email', '') AS email, COALESCE(NULLIF(data->>'display_name', ''), '') AS display_name, COALESCE(data->'roles', '[]'::jsonb) AS roles, COALESCE((data->>'email_verified')::boolean, false) AS email_verified, COALESCE((data->>'mfa_enabled')::boolean, false) AS mfa_enabled, created_at, COALESCE(data->'custom_claims', jsonb_build_object()) AS custom_claims, COALESCE(data->>'oauth_provider', '') AS oauth_provider FROM users WHERE id = $uid",
-            json!({ "uid": path.user_id }),
-        )
+        .query_bind(ADMIN_GET_USER_QUERY, json!({ "uid": path.user_id }))
         .await?;
 
     let user = users
@@ -2228,10 +2231,7 @@ pub async fn admin_delete_user(
             .query_bind(query, json!({ "uid": user_id }))
             .await
             .map_err(|e| {
-                tracing::warn!(
-                    "Failed to delete related data for {}: {}",
-                    user_id, e
-                );
+                tracing::warn!("Failed to delete related data for {}: {}", user_id, e);
                 // Don't fail entire deletion if a related delete fails, but log it
             });
     }
@@ -3245,6 +3245,15 @@ mod tests {
         });
         let req: AnonymousUpgradeRequest = serde_json::from_value(json).unwrap();
         assert!(req.display_name.is_none());
+    }
+
+    #[test]
+    fn test_admin_user_queries_tolerate_empty_string_booleans() {
+        let list_query = admin_list_users_query(50, 0);
+        assert!(list_query.contains("NULLIF(data->>'email_verified', '')::boolean"));
+        assert!(list_query.contains("NULLIF(data->>'mfa_enabled', '')::boolean"));
+        assert!(ADMIN_GET_USER_QUERY.contains("NULLIF(data->>'email_verified', '')::boolean"));
+        assert!(ADMIN_GET_USER_QUERY.contains("NULLIF(data->>'mfa_enabled', '')::boolean"));
     }
 
     // ── Magic Link ──────────────────────────────────────────────────

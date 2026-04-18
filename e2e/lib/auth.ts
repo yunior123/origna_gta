@@ -198,29 +198,43 @@ async function repairOrignaBaseUiAccount(
     return;
   }
 
-  const adminToken = await getBootstrapAdminAccessToken();
-  const patchRes = await fetch(
-    `${ORIGNABASE_URL}/admin/users/${encodeURIComponent(String(user.id))}`,
-    {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${adminToken}`,
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const adminToken = await getBootstrapAdminAccessToken();
+    const patchRes = await fetch(
+      `${ORIGNABASE_URL}/admin/users/${encodeURIComponent(String(user.id))}`,
+      {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${adminToken}`,
+        },
+        body: JSON.stringify({
+          display_name: desiredDisplayName,
+          email_verified: true,
+          roles,
+        }),
       },
-      body: JSON.stringify({
-        display_name: desiredDisplayName,
-        email_verified: true,
-        roles,
-      }),
-    },
-  );
-  const patchBody = await patchRes.json().catch(() => ({} as any));
-  if (!patchRes.ok) {
-    if (patchRes.status === 429) {
+    );
+    const patchBody = await patchRes.json().catch(() => ({} as any));
+    if (patchRes.ok || patchRes.status === 429) {
       return;
     }
+
+    const patchError = String(
+      patchBody?.error?.message || patchBody?.message || patchRes.status,
+    );
+    const shouldRefreshAdminToken =
+      attempt == 0 &&
+      (patchRes.status === 401 ||
+        patchRes.status === 403 ||
+        /auth|unauthenticated|authentication required/i.test(patchError));
+    if (shouldRefreshAdminToken) {
+      _orignabaseBootstrapAdminToken = null;
+      continue;
+    }
+
     throw new Error(
-      `Failed to repair OrignaBase UI account ${user.email}: ${patchBody?.error?.message || patchBody?.message || patchRes.status}`,
+      `Failed to repair OrignaBase UI account ${user.email}: ${patchError}`,
     );
   }
 }

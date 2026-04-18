@@ -516,6 +516,7 @@ pub mod fields {
     pub const COUPON_TYPE: &str = "couponType";
     pub const DISCOUNT_TYPE: &str = "discountType";
     pub const COUPON_CODE: &str = "couponCode";
+    pub const IDEMPOTENCY_KEY: &str = "idempotencyKey";
     pub const DISCOUNT_VALUE: &str = "discountValue";
     pub const MIN_ORDER_CENTS: &str = "minOrderCents";
     pub const MAX_USES: &str = "maxUsesTotal";

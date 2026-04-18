@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/routes.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/chat/chat_provider.dart';
 import 'package:origna_gta/features/chat/chat_repository.dart';
 import 'package:origna_gta/features/subscription/subscription_provider.dart';
@@ -333,51 +334,91 @@ class _ProductAvatar extends StatelessWidget {
 
 // ═══ Widget Previews ═══
 
+const _previewChatImageBase = 'https://fastly.picsum.photos/id';
+
+String _previewChatImage(int id, {int width = 900, int height = 900}) =>
+    '$_previewChatImageBase/$id/$width/$height.jpg';
+
+final _previewChatSubscription = SubscriptionInfo(
+  status: SubscriptionStatusValues.premiumActive.first,
+  isPremium: true,
+  currentPeriodEnd: DateTime(2026, 5, 18),
+);
+
+final _previewChatUser = AppAuthUser(
+  uid: 'preview-uid',
+  email: 'preview.chat@origna.ca',
+  emailVerified: true,
+);
+
+final _previewChatThreads = [
+  ChatThread(
+    chatId: 'chat-preview-1',
+    productId: 'product-chat-1',
+    productTitle: 'Stoneware Matcha Bowl',
+    productImageUrl: _previewChatImage(1060),
+    buyerId: 'preview-uid',
+    sellerId: 'seller-chat-1',
+    lastMessage: 'I can ship this tomorrow morning from Montreal.',
+    lastMessageAt: DateTime(2026, 4, 18, 9, 42),
+    buyerUnreadCount: 2,
+  ),
+  ChatThread(
+    chatId: 'chat-preview-2',
+    productId: 'product-chat-2',
+    productTitle: 'Premium Espresso Beans',
+    productImageUrl: _previewChatImage(225),
+    buyerId: 'preview-uid',
+    sellerId: 'seller-chat-2',
+    lastMessage: 'Thanks, I added a fresh roast batch for you.',
+    lastMessageAt: DateTime(2026, 4, 17, 18, 15),
+    buyerUnreadCount: 0,
+  ),
+  ChatThread(
+    chatId: 'chat-preview-3',
+    productId: 'product-chat-3',
+    productTitle: 'Wool Throw Blanket',
+    productImageUrl: _previewChatImage(1074),
+    buyerId: 'buyer-chat-3',
+    sellerId: 'preview-uid',
+    lastMessage: 'The navy colourway is back in stock next week.',
+    lastMessageAt: DateTime(2026, 4, 16, 13, 5),
+    sellerUnreadCount: 3,
+  ),
+];
+
+Widget _chatConversationsPreview({
+  SubscriptionInfo? subscription,
+  List<ChatThread>? threads,
+}) => previewScopeLoggedIn(
+  uid: _previewChatUser.uid,
+  extraOverrides: [
+    currentUserProvider.overrideWith((ref) => _previewChatUser),
+    subscriptionStreamProvider.overrideWith(
+      (ref) => Stream.value(subscription ?? _previewChatSubscription),
+    ),
+    myAllChatsProvider.overrideWith(
+      (ref) => Stream.value(threads ?? _previewChatThreads),
+    ),
+  ],
+  child: const ChatConversationsScreen(),
+);
+
 @Preview(
   name: 'Chat Conversations — Mobile',
   group: 'Screens',
   size: Size(390, 844),
 )
-Widget previewChatConversationsScreenMobile() => previewMobile(
-  child: previewScopeLoggedIn(child: ChatConversationsScreen()),
-);
-
-@Preview(
-  name: 'Chat Conversations — Tablet',
-  group: 'Screens',
-  size: Size(768, 1024),
-)
-Widget previewChatConversationsScreenTablet() => previewTablet(
-  child: previewScopeLoggedIn(child: ChatConversationsScreen()),
-);
+Widget previewChatConversationsScreenMobile() =>
+    previewMobile(child: _chatConversationsPreview());
 
 @Preview(
   name: 'Chat Conversations — Desktop',
   group: 'Screens',
   size: Size(1280, 800),
 )
-Widget previewChatConversationsScreenDesktop() => previewDesktop(
-  child: previewScopeLoggedIn(child: ChatConversationsScreen()),
-);
-
-@Preview(
-  name: 'Chat Conversations — Web',
-  group: 'Screens',
-  size: Size(1440, 900),
-)
-Widget previewChatConversationsScreenWeb() =>
-    previewWeb(child: previewScopeLoggedIn(child: ChatConversationsScreen()));
-
-// ── Light ────────────────────────────────────────────────────────────────────
-@Preview(
-  name: 'Chat Conversations Light — Mobile',
-  group: 'Screens',
-  size: Size(390, 844),
-)
-Widget previewChatConversationsLightMobile() => previewMobile(
-  theme: previewLightTheme,
-  child: previewScopeLoggedIn(child: ChatConversationsScreen()),
-);
+Widget previewChatConversationsScreenDesktop() =>
+    previewDesktop(child: _chatConversationsPreview());
 
 @Preview(
   name: 'Chat Conversations Light — Desktop',
@@ -386,25 +427,17 @@ Widget previewChatConversationsLightMobile() => previewMobile(
 )
 Widget previewChatConversationsLightDesktop() => previewDesktop(
   theme: previewLightTheme,
-  child: previewScopeLoggedIn(child: ChatConversationsScreen()),
+  child: _chatConversationsPreview(),
 );
 
 @Preview(
-  name: 'Chat Conversations Light — Tablet',
+  name: 'Chat Conversations Paywall — Desktop',
   group: 'Screens',
-  size: Size(768, 1024),
+  size: Size(1280, 800),
 )
-Widget previewChatConversationsLightTablet() => previewTablet(
-  theme: previewLightTheme,
-  child: previewScopeLoggedIn(child: ChatConversationsScreen()),
-);
-
-@Preview(
-  name: 'Chat Conversations Light — Web',
-  group: 'Screens',
-  size: Size(1440, 900),
-)
-Widget previewChatConversationsLightWeb() => previewWeb(
-  theme: previewLightTheme,
-  child: previewScopeLoggedIn(child: ChatConversationsScreen()),
+Widget previewChatConversationsPaywallDesktop() => previewDesktop(
+  child: _chatConversationsPreview(
+    subscription: const SubscriptionInfo(status: 'inactive', isPremium: false),
+    threads: const [],
+  ),
 );

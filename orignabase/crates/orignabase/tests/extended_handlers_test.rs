@@ -38,6 +38,63 @@ async fn register_test_user(client: &reqwest::Client) -> (String, String, String
     (token, user_id, email)
 }
 
+async fn login_admin(client: &reqwest::Client) -> String {
+    let resp = client
+        .post(format!("{}/auth/login", base_url()))
+        .json(&json!({
+            "email": "e2e-admin@test.origna.ca",
+            "password": "REDACTED_TEST_PASSWORD"
+        }))
+        .send()
+        .await
+        .expect("admin login failed");
+
+    assert_eq!(resp.status(), 200, "Admin login should succeed");
+    let body: Value = resp.json().await.unwrap();
+    body["access_token"]
+        .as_str()
+        .expect("missing admin access_token")
+        .to_string()
+}
+
+async fn promote_user_roles(
+    client: &reqwest::Client,
+    admin_token: &str,
+    user_id: &str,
+    roles: &[&str],
+) {
+    let resp = client
+        .patch(format!("{}/admin/users/{}", base_url(), user_id))
+        .header("Authorization", format!("Bearer {admin_token}"))
+        .json(&json!({ "roles": roles }))
+        .send()
+        .await
+        .expect("admin role patch failed");
+
+    assert_eq!(resp.status(), 200, "Role patch should succeed");
+}
+
+async fn register_seller_user(client: &reqwest::Client) -> (String, String, String) {
+    let (_token, user_id, email) = register_test_user(client).await;
+    let admin_token = login_admin(client).await;
+    promote_user_roles(client, &admin_token, &user_id, &["user", "seller"]).await;
+
+    let login_resp = client
+        .post(format!("{}/auth/login", base_url()))
+        .json(&json!({ "email": email, "password": "TestPassword123!" }))
+        .send()
+        .await
+        .expect("seller login failed");
+
+    assert_eq!(login_resp.status(), 200, "Seller login should succeed");
+    let body: Value = login_resp.json().await.unwrap();
+    let token = body["access_token"]
+        .as_str()
+        .expect("missing seller access_token")
+        .to_string();
+    (token, user_id, email)
+}
+
 async fn graphql(client: &reqwest::Client, token: Option<&str>, query: &str) -> (u16, Value) {
     let url = format!("{}/graphql", base_url());
     let mut req = client
@@ -61,12 +118,14 @@ async fn graphql(client: &reqwest::Client, token: Option<&str>, query: &str) -> 
 #[ignore = "requires running orignabase instance"]
 async fn test_600_product_create_minimal_fields() {
     let client = reqwest::Client::new();
-    let (token, _user_id, _) = register_test_user(&client).await;
+    let (token, user_id, _) = register_seller_user(&client).await;
 
     let (status, body) = graphql(
         &client,
         Some(&token),
-        r#"mutation { create(collection: "products", data: {name: "Minimal Product", priceCents: 100}) }"#, // ignore-magic
+        &format!(
+            r#"mutation {{ create(collection: "products", data: {{name: "Minimal Product", priceCents: 100, sellerId: "{user_id}"}}) }}"#
+        ),
     )
     .await;
 
@@ -79,21 +138,24 @@ async fn test_600_product_create_minimal_fields() {
 #[ignore = "requires running orignabase instance"]
 async fn test_601_product_create_with_all_fields() {
     let client = reqwest::Client::new();
-    let (token, _user_id, _) = register_test_user(&client).await;
+    let (token, user_id, _) = register_seller_user(&client).await;
 
     let (status, body) = graphql(
         &client,
         Some(&token),
-        r#"mutation { create(collection: "products", data: { // ignore-magic
+        &format!(
+            r#"mutation {{ create(collection: "products", data: {{
             name: "Full Product",
             description: "A product with all fields",
             priceCents: 5999,
             stockQuantity: 50,
+            sellerId: "{user_id}",
             categoryId: "categories:electronics",
             isDigital: false,
             isPerishable: false,
             lifecycleStatus: "active" // ignore-magic
-        }) }"#,
+        }}) }}"#
+        ),
     )
     .await;
 
@@ -108,13 +170,15 @@ async fn test_601_product_create_with_all_fields() {
 #[ignore = "requires running orignabase instance"]
 async fn test_602_product_update_price() {
     let client = reqwest::Client::new();
-    let (token, _user_id, _) = register_test_user(&client).await;
+    let (token, user_id, _) = register_seller_user(&client).await;
 
     // Create product
     let (_, create_body) = graphql(
         &client,
         Some(&token),
-        r#"mutation { create(collection: "products", data: {name: "Price Test", priceCents: 1000}) }"#, // ignore-magic
+        &format!(
+            r#"mutation {{ create(collection: "products", data: {{name: "Price Test", priceCents: 1000, sellerId: "{user_id}"}}) }}"#
+        ),
     )
     .await;
     let product_id = create_body["data"]["create"]["id"] // ignore-magic
@@ -140,13 +204,15 @@ async fn test_602_product_update_price() {
 #[ignore = "requires running orignabase instance"]
 async fn test_603_product_delete() {
     let client = reqwest::Client::new();
-    let (token, _user_id, _) = register_test_user(&client).await;
+    let (token, user_id, _) = register_seller_user(&client).await;
 
     // Create product
     let (_, create_body) = graphql(
         &client,
         Some(&token),
-        r#"mutation { create(collection: "products", data: {name: "Delete Test", priceCents: 100}) }"#, // ignore-magic
+        &format!(
+            r#"mutation {{ create(collection: "products", data: {{name: "Delete Test", priceCents: 100, sellerId: "{user_id}"}}) }}"#
+        ),
     )
     .await;
     let product_id = create_body["data"]["create"]["id"] // ignore-magic
@@ -171,14 +237,16 @@ async fn test_603_product_delete() {
 #[ignore = "requires running orignabase instance"]
 async fn test_604_product_list_with_pagination() {
     let client = reqwest::Client::new();
-    let (token, _user_id, _) = register_test_user(&client).await;
+    let (token, user_id, _) = register_seller_user(&client).await;
 
     // Create multiple products
     for i in 0..3 {
         graphql(
             &client,
             Some(&token),
-            &format!(r#"mutation {{ create(collection: "products", data: {{name: "Paginated Product {i}", priceCents: 100}}) }}"#), // ignore-magic
+            &format!(
+                r#"mutation {{ create(collection: "products", data: {{name: "Paginated Product {i}", priceCents: 100, sellerId: "{user_id}"}}) }}"#
+            ),
         )
         .await;
     }
@@ -204,13 +272,15 @@ async fn test_604_product_list_with_pagination() {
 #[ignore = "requires running orignabase instance"]
 async fn test_605_cart_create_and_read() {
     let client = reqwest::Client::new();
-    let (token, _user_id, _) = register_test_user(&client).await;
+    let (token, user_id, _) = register_test_user(&client).await;
 
     // Create cart
     let (status, body) = graphql(
         &client,
         Some(&token),
-        r#"mutation { create(collection: "carts", data: {items: [{productId: "p1", quantity: 2, priceCents: 1000}]}) }"#,
+        &format!(
+            r#"mutation {{ create(collection: "cart", data: {{userId: "{user_id}", items: [{{productId: "p1", quantity: 2, priceCents: 1000}}]}}) }}"#
+        ),
     )
     .await;
 
@@ -221,7 +291,7 @@ async fn test_605_cart_create_and_read() {
     let (status, body) = graphql(
         &client,
         Some(&token),
-        &format!(r#"{{ get(collection: "carts", id: "{cart_id}") }}"#),
+        &format!(r#"{{ get(collection: "cart", id: "{cart_id}") }}"#),
     )
     .await;
 
@@ -233,13 +303,15 @@ async fn test_605_cart_create_and_read() {
 #[ignore = "requires running orignabase instance"]
 async fn test_606_cart_update_quantity() {
     let client = reqwest::Client::new();
-    let (token, _user_id, _) = register_test_user(&client).await;
+    let (token, user_id, _) = register_test_user(&client).await;
 
     // Create cart
     let (_, create_body) = graphql(
         &client,
         Some(&token),
-        r#"mutation { create(collection: "carts", data: {items: [{productId: "p1", quantity: 1, priceCents: 500}]}) }"#,
+        &format!(
+            r#"mutation {{ create(collection: "cart", data: {{userId: "{user_id}", items: [{{productId: "p1", quantity: 1, priceCents: 500}}]}}) }}"#
+        ),
     )
     .await;
     let cart_id = create_body["data"]["create"]["id"] // ignore-magic
@@ -252,7 +324,7 @@ async fn test_606_cart_update_quantity() {
         &client,
         Some(&token),
         &format!(
-            r#"mutation {{ update(collection: "carts", id: "{cart_id}", data: {{items: [{{productId: "p1", quantity: 5, priceCents: 500}}]}}) }}"#
+            r#"mutation {{ update(collection: "cart", id: "{cart_id}", data: {{items: [{{productId: "p1", quantity: 5, priceCents: 500}}]}}) }}"#
         ),
     )
     .await;
@@ -264,12 +336,12 @@ async fn test_606_cart_update_quantity() {
 #[ignore = "requires running orignabase instance"]
 async fn test_607_cart_delete() {
     let client = reqwest::Client::new();
-    let (token, _user_id, _) = register_test_user(&client).await;
+    let (token, user_id, _) = register_test_user(&client).await;
 
     let (_, create_body) = graphql(
         &client,
         Some(&token),
-        r#"mutation { create(collection: "carts", data: {items: []}) }"#,
+        &format!(r#"mutation {{ create(collection: "cart", data: {{userId: "{user_id}", items: []}}) }}"#),
     )
     .await;
     let cart_id = create_body["data"]["create"]["id"] // ignore-magic
@@ -280,7 +352,7 @@ async fn test_607_cart_delete() {
     let (status, body) = graphql(
         &client,
         Some(&token),
-        &format!(r#"mutation {{ delete(collection: "carts", id: "{cart_id}") }}"#),
+        &format!(r#"mutation {{ delete(collection: "cart", id: "{cart_id}") }}"#),
     )
     .await;
 
@@ -293,12 +365,12 @@ async fn test_607_cart_delete() {
 #[ignore = "requires running orignabase instance"]
 async fn test_608_cart_empty_items() {
     let client = reqwest::Client::new();
-    let (token, _user_id, _) = register_test_user(&client).await;
+    let (token, user_id, _) = register_test_user(&client).await;
 
     let (status, body) = graphql(
         &client,
         Some(&token),
-        r#"mutation { create(collection: "carts", data: {items: []}) }"#,
+        &format!(r#"mutation {{ create(collection: "cart", data: {{userId: "{user_id}", items: []}}) }}"#),
     )
     .await;
 
@@ -334,6 +406,7 @@ async fn test_609_order_create() {
 async fn test_610_order_update_status() {
     let client = reqwest::Client::new();
     let (token, user_id, _) = register_test_user(&client).await;
+    let admin_token = login_admin(&client).await;
 
     // Create order
     let query = format!(
@@ -348,7 +421,7 @@ async fn test_610_order_update_status() {
     // Update status
     let (status, body) = graphql(
         &client,
-        Some(&token),
+        Some(&admin_token),
         &format!(
             r#"mutation {{ update(collection: "orders", id: "{order_id}", data: {{status: "confirmed"}}) }}"# // ignore-magic
         ),
@@ -507,7 +580,7 @@ async fn test_616_invalid_token_on_graphql() {
 #[ignore = "requires running orignabase instance"]
 async fn test_617_sequential_product_operations() {
     let client = reqwest::Client::new();
-    let (token, _user_id, _) = register_test_user(&client).await;
+    let (token, user_id, _) = register_seller_user(&client).await;
 
     // Create, read, update, delete in sequence
     for i in 0..5 {
@@ -515,7 +588,7 @@ async fn test_617_sequential_product_operations() {
             &client,
             Some(&token),
             &format!(
-                r#"mutation {{ create(collection: "products", data: {{name: "Seq Product {i}", priceCents: 100}}) }}"# // ignore-magic
+                r#"mutation {{ create(collection: "products", data: {{name: "Seq Product {i}", priceCents: 100, sellerId: "{user_id}"}}) }}"# // ignore-magic
             ),
         )
         .await;
@@ -574,16 +647,18 @@ async fn test_618_sequential_user_profile_updates() {
 #[ignore = "requires running orignabase instance"]
 async fn test_619_batch_create_products() {
     let client = reqwest::Client::new();
-    let (token, _user_id, _) = register_test_user(&client).await;
+    let (token, user_id, _) = register_seller_user(&client).await;
 
     let (status, body) = graphql(
         &client,
         Some(&token),
-        r#"mutation { batchCreate(collection: "products", docs: [ // ignore-magic
-            {name: "Batch 1", priceCents: 100},
-            {name: "Batch 2", priceCents: 200},
-            {name: "Batch 3", priceCents: 300}
-        ]) }"#,
+        &format!(
+            r#"mutation {{ batchCreate(collection: "products", docs: [
+            {{name: "Batch 1", priceCents: 100, sellerId: "{user_id}"}},
+            {{name: "Batch 2", priceCents: 200, sellerId: "{user_id}"}},
+            {{name: "Batch 3", priceCents: 300, sellerId: "{user_id}"}}
+        ]) }}"#
+        ),
     )
     .await;
 
@@ -597,7 +672,7 @@ async fn test_619_batch_create_products() {
 #[ignore = "requires running orignabase instance"]
 async fn test_620_batch_delete_products() {
     let client = reqwest::Client::new();
-    let (token, _user_id, _) = register_test_user(&client).await;
+    let (token, user_id, _) = register_seller_user(&client).await;
 
     // Create products
     let mut ids = Vec::new();
@@ -606,7 +681,7 @@ async fn test_620_batch_delete_products() {
             &client,
             Some(&token),
             &format!(
-                r#"mutation {{ create(collection: "products", data: {{name: "BatchDel {i}", priceCents: 100}}) }}"# // ignore-magic
+                r#"mutation {{ create(collection: "products", data: {{name: "BatchDel {i}", priceCents: 100, sellerId: "{user_id}"}}) }}"# // ignore-magic
             ),
         )
         .await;

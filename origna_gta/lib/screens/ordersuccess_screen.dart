@@ -30,6 +30,9 @@ class OrderSuccessScreen extends ConsumerStatefulWidget {
   /// True when all items are local-delivery-only (show hours, not days)
   final bool isLocalDelivery;
 
+  /// Preview/test safety switch for analytics + Sentry side effects.
+  final bool enableSideEffects;
+
   const OrderSuccessScreen({
     super.key,
     required this.orderId,
@@ -37,6 +40,7 @@ class OrderSuccessScreen extends ConsumerStatefulWidget {
     this.itemCount = 0,
     this.estimatedShipDays,
     this.isLocalDelivery = false,
+    this.enableSideEffects = true,
   });
 
   @override
@@ -527,6 +531,7 @@ class _OrderSuccessScreenState extends ConsumerState<OrderSuccessScreen> {
         _mascotController.jump();
       }
     });
+    if (!widget.enableSideEffects) return;
     Sentry.addBreadcrumb(
       Breadcrumb(
         message: 'order_success',
@@ -584,7 +589,15 @@ class _Particle {
 
 Widget _orderSuccessContent() => previewScope(
   child: Scaffold(
-    body: Center(child: OrderSuccessScreen(orderId: 'preview-id')),
+    body: Center(
+      child: OrderSuccessScreen(
+        orderId: 'preview-id',
+        valueCad: 126.40,
+        itemCount: 3,
+        estimatedShipDays: 2,
+        enableSideEffects: false,
+      ),
+    ),
   ),
 );
 

@@ -69,7 +69,11 @@ async fn register_seller_user(client: &reqwest::Client) -> (String, String) {
         .await
         .expect("seller register failed");
 
-    assert_eq!(resp.status(), StatusCode::OK, "seller registration should succeed");
+    assert_eq!(
+        resp.status(),
+        StatusCode::OK,
+        "seller registration should succeed"
+    );
     let body: Value = resp.json().await.expect("seller register json");
     let user_id = body["user"]["id"] // ignore-magic
         .as_str()
@@ -77,7 +81,8 @@ async fn register_seller_user(client: &reqwest::Client) -> (String, String) {
         .to_string();
 
     let admin_token = login_admin(client).await;
-    let data = serde_json::to_string(&json!({ "roles": ["seller", "user"] })).expect("serialize roles");
+    let data =
+        serde_json::to_string(&json!({ "roles": ["seller", "user"] })).expect("serialize roles");
     let escaped = serde_json::to_string(&data).expect("escape roles");
     let query =
         format!(r#"mutation {{ update(collection: "users", id: "{user_id}", data: {escaped}) }}"#);
@@ -94,7 +99,11 @@ async fn register_seller_user(client: &reqwest::Client) -> (String, String) {
         .await
         .expect("seller login failed");
 
-    assert_eq!(login_resp.status(), StatusCode::OK, "seller login should succeed");
+    assert_eq!(
+        login_resp.status(),
+        StatusCode::OK,
+        "seller login should succeed"
+    );
     let login_body: Value = login_resp.json().await.expect("seller login json");
     let token = login_body["access_token"] // ignore-magic
         .as_str()
@@ -144,7 +153,12 @@ async fn create_doc(
         .to_string()
 }
 
-async fn list_collection(client: &reqwest::Client, token: &str, collection: &str, limit: usize) -> Value {
+async fn list_collection(
+    client: &reqwest::Client,
+    token: &str,
+    collection: &str,
+    limit: usize,
+) -> Value {
     let query = format!(r#"{{ list(collection: "{collection}", limit: {limit}) }}"#);
     graphql(client, token, &query).await
 }
@@ -177,7 +191,13 @@ async fn test_01_concurrent_same_key_writes_five_parallel_puts() {
         let key = key.clone();
         let admin_token = Arc::clone(&admin_token);
         set.spawn(async move {
-            let resp = admin_put_config(&client, admin_token.as_str(), &key, json!({ "writer": idx })).await; // ignore-magic
+            let resp = admin_put_config(
+                &client,
+                admin_token.as_str(),
+                &key,
+                json!({ "writer": idx }),
+            )
+            .await; // ignore-magic
             let status = resp.status();
             // Concurrent writes may cause 409 Conflict or 500 from PostgreSQL write conflicts
             assert!(

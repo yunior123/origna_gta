@@ -87,7 +87,10 @@ async fn provision_seller(client: &reqwest::Client) -> String {
 
     let verify_query = format!(r#"{{ get(collection: "users", id: "{seller_id}") }}"#);
     let (verify_status, verify_body) = graphql(client, &admin_token, &verify_query).await;
-    assert_eq!(verify_status, 200, "seller verification failed: {verify_body}");
+    assert_eq!(
+        verify_status, 200,
+        "seller verification failed: {verify_body}"
+    );
     assert_eq!(
         verify_body["data"]["get"]["warehouseAddress"]["state"].as_str(),
         Some("ON"),
@@ -241,5 +244,8 @@ async fn test_free_shipping_threshold_75_cad() {
     let shipping_cost = result["totalCostCents"]
         .as_i64()
         .expect("missing totalCostCents");
-    assert_eq!(shipping_cost, 0, "Shipping should be free for orders >= $75 CAD");
+    assert_eq!(
+        shipping_cost, 0,
+        "Shipping should be free for orders >= $75 CAD"
+    );
 }

@@ -308,6 +308,8 @@ class _ModernProductCardState extends State<ModernProductCard>
                                 color: DesignTokens.textSecondary,
                                 fontWeight: FontWeight.w500,
                               ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                             // FAV-L2: only render when label is non-empty (guards against single-country list
                             // with no city/province/country fields → avoids "Ships from: " with blank text)
@@ -338,7 +340,10 @@ class _ModernProductCardState extends State<ModernProductCard>
                             const Spacer(),
                             // Rating
                             if (widget.reviewCount > 0)
-                              Row(
+                              Wrap(
+                                spacing: 4,
+                                runSpacing: 2,
+                                crossAxisAlignment: WrapCrossAlignment.center,
                                 children: [
                                   Icon(
                                     Icons.star_rounded,
@@ -373,71 +378,99 @@ class _ModernProductCardState extends State<ModernProductCard>
                               ),
                             const SizedBox(height: DesignTokens.spacing8),
                             // Price and CTA
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
+                            LayoutBuilder(
+                              builder: (context, constraints) {
+                                final isCompact = constraints.maxWidth < 160;
+                                final priceColumn = Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      '\$${(widget.priceCents / 100).toStringAsFixed(2)}',
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w700,
+                                        color: DesignTokens.primary,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    if (widget.compareAtPriceCents
+                                        case final compareAtCents?)
                                       Text(
-                                        '\$${(widget.priceCents / 100).toStringAsFixed(2)}',
+                                        '\$${(compareAtCents / 100).toStringAsFixed(2)}',
                                         style: const TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w700,
-                                          color: DesignTokens.primary,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                          color: DesignTokens.textSecondary,
+                                          decoration:
+                                              TextDecoration.lineThrough,
+                                          decorationColor: DesignTokens.error,
                                         ),
                                         overflow: TextOverflow.ellipsis,
                                       ),
-                                      if (widget.compareAtPriceCents
-                                          case final compareAtCents?)
-                                        Text(
-                                          '\$${(compareAtCents / 100).toStringAsFixed(2)}',
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w500,
-                                            color: DesignTokens.textSecondary,
-                                            decoration:
-                                                TextDecoration.lineThrough,
-                                            decorationColor: DesignTokens.error,
+                                  ],
+                                );
+
+                                final addToCartButton =
+                                    widget.onAddToCart != null &&
+                                        !widget.isOutOfStock
+                                    ? Semantics(
+                                        button: true,
+                                        label: 'common.add_to_cart_semantics'
+                                            .tr(
+                                              namedArgs: {
+                                                'name': widget.productName,
+                                              },
+                                            ),
+                                        child: GestureDetector(
+                                          onTap: widget.onAddToCart,
+                                          child: Container(
+                                            padding: EdgeInsets.all(
+                                              isCompact ? 12 : 14,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              gradient:
+                                                  DesignTokens.primaryGradient,
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                    DesignTokens.radius8,
+                                                  ),
+                                            ),
+                                            child: const Icon(
+                                              Icons.add,
+                                              size: 20,
+                                              color: DesignTokens.white,
+                                            ),
                                           ),
-                                          overflow: TextOverflow.ellipsis,
                                         ),
+                                      )
+                                    : null;
+
+                                if (isCompact && addToCartButton != null) {
+                                  return Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      priceColumn,
+                                      const SizedBox(height: 8),
+                                      addToCartButton,
                                     ],
-                                  ),
-                                ),
-                                if (widget.onAddToCart != null &&
-                                    !widget.isOutOfStock) ...[
-                                  const SizedBox(width: 8),
-                                  Semantics(
-                                    button: true,
-                                    label: 'common.add_to_cart_semantics'.tr(
-                                      namedArgs: {'name': widget.productName},
-                                    ),
-                                    child: GestureDetector(
-                                      onTap: widget.onAddToCart,
-                                      child: Container(
-                                        padding: const EdgeInsets.all(
-                                          14,
-                                        ), // WCAG 2.5.8: ≥48dp touch target
-                                        decoration: BoxDecoration(
-                                          gradient:
-                                              DesignTokens.primaryGradient,
-                                          borderRadius: BorderRadius.circular(
-                                            DesignTokens.radius8,
-                                          ),
-                                        ),
-                                        child: const Icon(
-                                          Icons.add,
-                                          size: 20,
-                                          color: DesignTokens.white,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ],
+                                  );
+                                }
+
+                                return Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Expanded(child: priceColumn),
+                                    if (addToCartButton != null) ...[
+                                      const SizedBox(width: 8),
+                                      addToCartButton,
+                                    ],
+                                  ],
+                                );
+                              },
                             ),
                           ],
                         ),
@@ -472,9 +505,7 @@ class _ModernProductCardState extends State<ModernProductCard>
   }
 }
 
-
 // === Widget Previews ===
-
 
 // ═══ Widget Previews ═══
 
@@ -633,8 +664,6 @@ Widget previewProductCardVariantsLight() => previewGrid(
     ),
   ],
 );
-
-
 
 // ═══ Widget Previews ═══
 

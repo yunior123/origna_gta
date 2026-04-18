@@ -147,5 +147,30 @@ void main() {
 
       expect(find.byIcon(Icons.shield_outlined), findsOneWidget);
     });
+
+    testWidgets('renders preview endpoints when injected', (tester) async {
+      await tester.pumpWidget(TestWrapper(
+        child: const SellerIntegrationScreen(
+          previewActivateEndpoint:
+              'https://api.dev.orignagta.ca/api/digital/activate-license',
+          previewVerifyEndpoint:
+              'https://api.dev.orignagta.ca/api/digital/verify-license',
+        ),
+      ));
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(
+        find.text(
+          'https://api.dev.orignagta.ca/api/digital/activate-license',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.text(
+          'https://api.dev.orignagta.ca/api/digital/verify-license',
+        ),
+        findsOneWidget,
+      );
+    });
   });
 }

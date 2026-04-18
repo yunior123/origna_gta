@@ -20,50 +20,16 @@ const ADMIN_PASS = TEST_ACCOUNTS.ADMIN_PASS;
 
 async function loginAs(browser: AgentBrowser, email: string, password: string) {
   try {
-    await browser.open(`${WEB_APP_URL}/login`);
-    await browser.waitForFlutter();
-    let snap = await browser.waitForChange({ text: /you@example|vous@exemple|login_email_field/i, timeout: 30_000 });
-
-    const emailInput = browser.findByLabel(snap, /you@example|vous@exemple|login_email_field/i);
-    if (!emailInput) throw new Error('Email input not found');
-    await browser.click(emailInput.ref);
-    await browser.type(email);
-
-    snap = await browser.waitForChange({ text: /login_password_field|••••••••/i, timeout: 10_000 });
-    const passInput = browser.findByLabel(snap, /login_password_field|••••••••/);
-    if (!passInput) throw new Error('Password input not found');
-    await browser.click(passInput.ref);
-    await browser.type(password);
-
-    await browser.press('Tab');
-    await browser.waitForChange({ timeout: 500 });
-    await browser.press('Enter');
-    await browser.waitForChange({ timeout: 5000 });
-    await browser.waitForFlutter();
+    await browser.loginViaApi(email, password);
   } catch (err) {
     console.log(`loginAs warning: ${(err as Error).message}`);
   }
 }
 
-/** Navigate to settings page from home. Returns snapshot or null on failure. */
-async function navigateToSettings(browser: AgentBrowser) {
-  const snap = await browser.snapshot({ interactive: true, compact: true });
-  const settings = browser.findByLabel(snap, /btn-home-settings/);
-  if (!settings) return null;
-  await browser.click(settings.ref);
-  await browser.waitForChange({ timeout: 2000 });
-  try { await browser.waitForFlutter(); } catch { /* timeout ok */ }
-  return browser.snapshot({ interactive: true, compact: true });
-}
-
-/** Navigate to orders page via settings menu. Returns snapshot or null. */
 async function navigateToOrders(browser: AgentBrowser) {
-  const settingsSnap = await navigateToSettings(browser);
-  if (!settingsSnap) return null;
-  const ordersLink = browser.findByLabel(settingsSnap, /menu-my-orders/);
-  if (!ordersLink) return null;
-  await browser.click(ordersLink.ref);
-  await browser.waitForChange({ timeout: 2000 });
+  await browser.open(`${WEB_APP_URL}/#/orders`);
+  try { await browser.waitForFlutter(); } catch { /* timeout ok */ }
+  try { await browser.waitForChange({ timeout: 2000 }); } catch { /* timeout ok */ }
   try { await browser.waitForFlutter(); } catch { /* timeout ok */ }
   return browser.snapshot({ interactive: true, compact: true });
 }

@@ -20,9 +20,43 @@ void main() {
     late OrignaBase ob;
     const buyerEmail = 'e2e-buyer@test.origna.ca';
     const buyerPassword = 'REDACTED_TEST_PASSWORD';
+    final createdAddressIds = <String>[];
 
     bool isExpectedCheckoutError(OrignaBaseException error) =>
         [400, 403, 404, 422].contains(error.statusCode);
+
+    Future<Map<String, dynamic>> ensureShippingAddress() async {
+      final addressSnapshot = await ob
+          .collection(Collections.addresses)
+          .where(Fields.userId, isEqualTo: ob.auth.currentUserId)
+          .get();
+
+      if (addressSnapshot.docs.isNotEmpty) {
+        return Map<String, dynamic>.from(
+          addressSnapshot.docs.first.data as Map,
+        );
+      }
+
+      final addressId =
+          'checkout_live_addr_${DateTime.now().microsecondsSinceEpoch}';
+      final addressData = <String, dynamic>{
+        Fields.userId: ob.auth.currentUserId,
+        'street': '123 Checkout Test St',
+        'city': 'Toronto',
+        'province': 'ON',
+        'postalCode': 'M5V 3A8',
+        'country': 'Canada',
+        'label': 'Checkout Live Test',
+        Fields.isDefault: true,
+      };
+
+      await ob
+          .collection(Collections.addresses)
+          .doc(addressId)
+          .set(addressData);
+      createdAddressIds.add(addressId);
+      return addressData;
+    }
 
     setUpAll(() async {
       container = ProviderContainer();
@@ -31,6 +65,13 @@ void main() {
     });
 
     tearDownAll(() async {
+      for (final addressId in createdAddressIds) {
+        try {
+          await ob.collection(Collections.addresses).doc(addressId).delete();
+        } catch (_) {
+          // Best-effort cleanup only.
+        }
+      }
       ob.auth.signOut();
       container.dispose();
     });
@@ -64,14 +105,7 @@ void main() {
               .collection(Collections.addresses)
               .where(Fields.userId, isEqualTo: ob.auth.currentUserId)
               .get();
-          expect(
-            addressSnapshot.docs,
-            isNotEmpty,
-            reason: 'Should have an address',
-          );
-
-          final addressDoc = addressSnapshot.docs.first;
-          addressData = Map<String, dynamic>.from(addressDoc.data as Map);
+          addressData = await ensureShippingAddress();
         } on OrignaBaseException catch (e) {
           expect(
             isExpectedCheckoutError(e),
@@ -146,12 +180,7 @@ void main() {
             await ob.collection(Collections.cart).doc(doc.id).delete();
           }
 
-          final addressSnapshot = await ob
-              .collection(Collections.addresses)
-              .where(Fields.userId, isEqualTo: ob.auth.currentUserId)
-              .get();
-          final addressDoc = addressSnapshot.docs.first;
-          addressData = Map<String, dynamic>.from(addressDoc.data as Map);
+          addressData = await ensureShippingAddress();
         } on OrignaBaseException catch (e) {
           expect(
             isExpectedCheckoutError(e),

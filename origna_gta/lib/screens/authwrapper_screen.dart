@@ -248,28 +248,63 @@ class _TermsUpdateGateState extends ConsumerState<_TermsUpdateGate> {
 
 // ═══ Widget Previews ═══
 
-@Preview(name: 'Auth Wrapper — Mobile', group: 'Auth Screens', size: Size(390, 844))
-Widget previewAuthWrapperScreenMobile() => previewMobile(child: previewScope(child: AuthWrapper()));
+final _previewAuthUser = AppAuthUser(
+  uid: 'preview-auth-user',
+  email: 'auth.preview@origna.ca',
+  emailVerified: true,
+);
 
-@Preview(name: 'Auth Wrapper — Tablet', group: 'Auth Screens', size: Size(768, 1024))
-Widget previewAuthWrapperScreenTablet() => previewTablet(child: previewScope(child: AuthWrapper()));
+final _previewAuthProfile = UserModel(
+  uid: 'preview-auth-user',
+  email: 'auth.preview@origna.ca',
+  name: 'Jordan Lee',
+  roles: const [UserRole.buyer],
+  createdAt: DateTime(2026, 1, 5),
+  verified: true,
+);
+
+Widget _authWrapperPreview({
+  AppAuthUser? authUser,
+  UserModel? profile,
+  bool needsTermsUpdate = false,
+  String? termsContent,
+}) => previewScope(
+  extraOverrides: [
+    authStateProvider.overrideWith((ref) => Stream.value(authUser)),
+    if (profile != null)
+      userProfileProvider.overrideWith((ref) => Stream.value(profile)),
+    needsTermsUpdateProvider.overrideWith((ref) => needsTermsUpdate),
+    if (termsContent != null)
+      termsProvider.overrideWith((ref) async => termsContent),
+  ],
+  child: const AuthWrapper(),
+);
+
+@Preview(name: 'Auth Wrapper — Mobile', group: 'Auth Screens', size: Size(390, 844))
+Widget previewAuthWrapperScreenMobile() => previewMobile(child: _authWrapperPreview());
 
 @Preview(name: 'Auth Wrapper — Desktop', group: 'Auth Screens', size: Size(1280, 800))
-Widget previewAuthWrapperScreenDesktop() => previewDesktop(child: previewScope(child: AuthWrapper()));
-
-@Preview(name: 'Auth Wrapper — Web', group: 'Auth Screens', size: Size(1440, 900))
-Widget previewAuthWrapperScreenWeb() => previewWeb(child: previewScope(child: AuthWrapper()));
-
-// ── Light ────────────────────────────────────────────────────────────────────
-@Preview(name: 'Auth Wrapper Light — Mobile', group: 'Auth Screens', size: Size(390, 844))
-Widget previewAuthWrapperLightMobile() => previewMobile(theme: previewLightTheme, child: previewScope(child: AuthWrapper()));
-
-@Preview(name: 'Auth Wrapper Light — Tablet', group: 'Auth Screens', size: Size(768, 1024))
-Widget previewAuthWrapperLightTablet() => previewTablet(theme: previewLightTheme, child: previewScope(child: AuthWrapper()));
+Widget previewAuthWrapperScreenDesktop() =>
+    previewDesktop(child: _authWrapperPreview(authUser: _previewAuthUser, profile: _previewAuthProfile));
 
 @Preview(name: 'Auth Wrapper Light — Desktop', group: 'Auth Screens', size: Size(1280, 800))
-Widget previewAuthWrapperLightDesktop() => previewDesktop(theme: previewLightTheme, child: previewScope(child: AuthWrapper()));
+Widget previewAuthWrapperLightDesktop() => previewDesktop(
+  theme: previewLightTheme,
+  child: _authWrapperPreview(
+    authUser: _previewAuthUser,
+    profile: _previewAuthProfile,
+    needsTermsUpdate: true,
+    termsContent:
+        'Updated marketplace terms.\n\n1. Orders are final after capture.\n\n2. Returns require seller approval.\n\n3. Premium subscription fees renew monthly unless cancelled.\n\n4. Payout delays may apply for new sellers.\n\n5. Use of the marketplace implies agreement with Canadian commerce law.\n\n6. Scroll to the bottom before accepting these updated terms.',
+  ),
+);
 
-@Preview(name: 'Auth Wrapper Light — Web', group: 'Auth Screens', size: Size(1440, 900))
-Widget previewAuthWrapperLightWeb() => previewWeb(theme: previewLightTheme, child: previewScope(child: AuthWrapper()));
-
+@Preview(name: 'Auth Wrapper Terms Gate — Desktop', group: 'Auth Screens', size: Size(1280, 800))
+Widget previewAuthWrapperTermsGateDesktop() => previewDesktop(
+  child: _authWrapperPreview(
+    authUser: _previewAuthUser,
+    profile: _previewAuthProfile,
+    needsTermsUpdate: true,
+    termsContent: 'Updated marketplace terms.\n\n1. Orders are final after capture.\n\n2. Returns require seller approval.\n\n3. Premium subscription fees renew monthly unless cancelled.\n\n4. Payout delays may apply for new sellers.\n\n5. Use of the marketplace implies agreement with Canadian commerce law.\n\n6. Scroll to the bottom before accepting these updated terms.',
+  ),
+);

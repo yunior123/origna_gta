@@ -325,25 +325,16 @@ Widget _challengeContent() => previewScope(
   child: const MfaChallengeScreen(challengeToken: 'preview-token'),
 );
 
-// ── Dark ─────────────────────────────────────────────────────────────────────
+// ── Core previews ────────────────────────────────────────────────────────────
 @Preview(name: 'MFA Challenge Dark — Mobile', group: 'MFA Screens', size: Size(390, 844))
 Widget previewMfaChallengeDarkMobile() => previewMobile(child: _challengeContent());
-
-@Preview(name: 'MFA Challenge Dark — Tablet', group: 'MFA Screens', size: Size(768, 1024))
-Widget previewMfaChallengeDarkTablet() => previewTablet(child: _challengeContent());
 
 @Preview(name: 'MFA Challenge Dark — Desktop', group: 'MFA Screens', size: Size(1280, 800))
 Widget previewMfaChallengeDarkDesktop() => previewDesktop(child: _challengeContent());
 
-@Preview(name: 'MFA Challenge Dark — Web', group: 'MFA Screens', size: Size(1440, 900))
-Widget previewMfaChallengeDarkWeb() => previewWeb(child: _challengeContent());
-
-// ── Light ────────────────────────────────────────────────────────────────────
-@Preview(name: 'MFA Challenge Light — Mobile', group: 'MFA Screens', size: Size(390, 844))
-Widget previewMfaChallengeLightMobile() => previewMobile(theme: previewLightTheme, child: _challengeContent());
-
 @Preview(name: 'MFA Challenge Light — Desktop', group: 'MFA Screens', size: Size(1280, 800))
-Widget previewMfaChallengeLightDesktop() => previewDesktop(theme: previewLightTheme, child: _challengeContent());
+Widget previewMfaChallengeLightDesktop() =>
+    previewDesktop(theme: previewLightTheme, child: _challengeContent());
 
 /// No-op MFA ViewModel for previews — prevents backend calls.
 class _PreviewMfaViewModel extends MfaViewModel {

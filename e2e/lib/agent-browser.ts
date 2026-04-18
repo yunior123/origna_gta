@@ -37,7 +37,9 @@ export class AgentBrowser {
   }
 
   private normalizeRef(ref: string): string {
-    return /^@?e\d+$/i.test(ref) ? (ref.startsWith('@') ? ref : `@${ref}`) : ref;
+    // agent-browser element refs are passed as bare eNN tokens. Prefixing them
+    // with '@' makes the CLI treat them like CSS selectors in fill/click flows.
+    return ref.startsWith('@') ? ref.slice(1) : ref;
   }
 
   async open(url: string, timeoutMs = 60_000): Promise<void> {
@@ -53,7 +55,21 @@ export class AgentBrowser {
     if (url.includes('checkout.stripe.com')) {
       this.wasOnStripe = true;
     }
-    this.run(['open', url], timeoutMs);
+    let lastError: unknown = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        this.run(['open', url], timeoutMs);
+        return;
+      } catch (error) {
+        lastError = error;
+        const message = String(error);
+        if (!/Target page, context or browser has been closed|net::ERR_ABORTED/i.test(message) || attempt === 2) {
+          throw error;
+        }
+        await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
+      }
+    }
+    throw lastError instanceof Error ? lastError : new Error(String(lastError));
   }
 
   async clearState(): Promise<void> {
@@ -197,6 +213,13 @@ export class AgentBrowser {
     return false;
   }
 
+  private hasFlutterAppRefs(snap: Snapshot): boolean {
+    return snap.refs.some(ref => {
+      const name = `${ref.name ?? ''} ${ref.text ?? ''}`.trim();
+      return !!name && !/^(Enable accessibility|Privacy Policy|Terms of Service)$/i.test(name);
+    });
+  }
+
   async waitForFlutter(timeout?: number): Promise<void> {
     const ms = timeout ?? (Number(process.env.E2E_FLUTTER_TIMEOUT) || 45_000);
     const start = Date.now();
@@ -204,8 +227,8 @@ export class AgentBrowser {
     while (Date.now() - start < ms) {
       try {
         const snap = await this.snapshot({ interactive: true, compact: true });
-        if (snap.refs.length > 0) return;
-        lastError = `refs.length=${snap.refs.length}`;
+        if (this.hasFlutterAppRefs(snap)) return;
+        lastError = `only bootstrap/html refs visible (${snap.refs.map(ref => ref.name).join(', ').slice(0, 120)})`;
       } catch (e) {
         // Snapshot may fail while page is loading
         lastError = String(e).slice(0, 60);
@@ -235,6 +258,22 @@ export class AgentBrowser {
       await new Promise(r => setTimeout(r, 200));
     }
     throw new Error(`waitForChange timeout: condition not met after ${timeout}ms`);
+  }
+
+  async enableAccessibilityIfPresent(): Promise<boolean> {
+    try {
+      const snap = await this.snapshot({ interactive: true, compact: true });
+      const button = this.findByLabel(snap, /Enable accessibility/i);
+      if (!button) return false;
+
+      await this.click(button.ref);
+      await new Promise(r => setTimeout(r, 2_000));
+      await this.waitForFlutter().catch(() => undefined);
+      await new Promise(r => setTimeout(r, 1_000));
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   async fillAndSubmit(ref: string, text: string): Promise<void> {
@@ -401,6 +440,7 @@ export class AgentBrowser {
     await this.clearState();
     await this.open(WEB_APP_URL, 60_000);
     await this.waitForFlutter();
+    await this.enableAccessibilityIfPresent();
     await new Promise(r => setTimeout(r, 2000));
 
     let snap = await this.snapshot({ compact: true });
@@ -408,6 +448,7 @@ export class AgentBrowser {
     if (!this.hasAnyMarker(snap.raw, successMarkers)) {
       await this.open(`${WEB_APP_URL}/login`, 60_000);
       await this.waitForFlutter();
+      await this.enableAccessibilityIfPresent();
       await new Promise(r => setTimeout(r, 2000));
       await this.safeFill(/email|you@example|login_email/i, email);
       await this.safeFill(/password|login_password|••••••••/i, password);
@@ -420,6 +461,7 @@ export class AgentBrowser {
       // Double check we are home, if not navigate
       await this.open(WEB_APP_URL, 60_000);
       await this.waitForFlutter();
+      await this.enableAccessibilityIfPresent();
       await new Promise(r => setTimeout(r, 3000));
       snap = await this.snapshot({ compact: true });
     }
@@ -431,6 +473,61 @@ export class AgentBrowser {
     }
 
     return snap.raw;
+  }
+
+  async loginViaApi(email: string, password: string): Promise<void> {
+    await this.clearState();
+    await this.open(WEB_APP_URL, 60_000);
+    await this.waitForFlutter();
+    await this.enableAccessibilityIfPresent();
+    await new Promise(r => setTimeout(r, 1000));
+
+    const script = `(async()=>{const r=await fetch(${JSON.stringify(`${ORIGNABASE_URL}/auth/login`)},{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:${JSON.stringify(email)},password:${JSON.stringify(password)}})});const d=await r.json().catch(()=>({}));if(!r.ok||!d.access_token||!d.refresh_token){throw new Error('login failed: '+JSON.stringify({status:r.status,body:d}));}localStorage.setItem('orignabase_access_token',d.access_token);localStorage.setItem('orignabase_refresh_token',d.refresh_token);localStorage.setItem('orignabase_email',${JSON.stringify(email)});return JSON.stringify({ok:true,userId:d.user?.id||null});})()`;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        this.run(['eval', script], 45_000);
+        await this.open(WEB_APP_URL, 60_000);
+        await this.waitForFlutter();
+        await this.enableAccessibilityIfPresent();
+        await new Promise(r => setTimeout(r, 1500));
+        return;
+      } catch (error) {
+        const message = String(error);
+        if (
+          !/Execution context was destroyed|navigation|Failed to fetch|ERR_|NetworkError|net::/i.test(
+            message,
+          ) ||
+          attempt === 2
+        ) {
+          throw error;
+        }
+        await this.clearState();
+        await this.open(WEB_APP_URL, 60_000);
+        await this.waitForFlutter();
+        await this.enableAccessibilityIfPresent();
+        await new Promise(r => setTimeout(r, 1000 + attempt * 500));
+      }
+    }
+  }
+
+  async installAuthSession(email: string, accessToken: string, refreshToken = ''): Promise<void> {
+    await this.clearState();
+    await this.open(WEB_APP_URL, 60_000);
+    await this.waitForFlutter().catch(() => undefined);
+
+    const script = `(function(){localStorage.setItem('orignabase_access_token',${JSON.stringify(accessToken)});localStorage.setItem('orignabase_refresh_token',${JSON.stringify(refreshToken)});localStorage.setItem('orignabase_email',${JSON.stringify(email)});return JSON.stringify({ok:true});})()`;
+    this.run(['eval', script], 15_000);
+
+    await this.open(WEB_APP_URL, 60_000);
+    await this.waitForFlutter().catch(() => undefined);
+    try {
+      await this.waitForChange({
+        text: /btn-home-settings|product-card-|input-home-search|search|home/i,
+        timeout: 20_000,
+      });
+    } catch {
+      await new Promise(r => setTimeout(r, 1_500));
+    }
   }
 
   async navigateToProfileMenu(

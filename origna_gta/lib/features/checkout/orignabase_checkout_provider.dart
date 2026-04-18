@@ -635,7 +635,14 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
 
       if (result[ApiKeys.duplicate] == true) {
         final checkoutUrl = result[ApiKeys.checkoutUrl] as String?;
-        final orderId = result[Fields.orderId] as String;
+        final orderId = result[Fields.orderId] as String?;
+        if (orderId == null || orderId.isEmpty) {
+          state = state.copyWith(isProcessing: false, idempotencyKey: null);
+          return CheckoutError(
+            message: 'checkout.errors.processing_failed'.tr(),
+            code: 'invalid-checkout-response',
+          );
+        }
         if (checkoutUrl != null && checkoutUrl.isNotEmpty) {
           state = state.copyWith(isProcessing: false, idempotencyKey: null);
           return CheckoutSuccess(
@@ -648,9 +655,21 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
         return CheckoutAlreadyProcessed(existingOrderId: orderId);
       }
 
-      final checkoutUrl = result[ApiKeys.checkoutUrl] as String;
-      final orderId = result[Fields.orderId] as String;
-      final sessionId = result[ApiKeys.sessionId] as String;
+      final checkoutUrl = result[ApiKeys.checkoutUrl] as String?;
+      final orderId = result[Fields.orderId] as String?;
+      final sessionId = result[ApiKeys.sessionId] as String?;
+      if (checkoutUrl == null ||
+          checkoutUrl.isEmpty ||
+          orderId == null ||
+          orderId.isEmpty ||
+          sessionId == null ||
+          sessionId.isEmpty) {
+        state = state.copyWith(isProcessing: false, idempotencyKey: null);
+        return CheckoutError(
+          message: 'checkout.errors.processing_failed'.tr(),
+          code: 'invalid-checkout-response',
+        );
+      }
       final serverTaxAmountCents =
           (result[Fields.taxAmountCents] as num?)?.toInt() ?? 0;
 

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/seller/warehouses_viewmodel.dart';
+import 'package:origna_gta/models/generated/base_models.dart' as base;
 import 'package:origna_gta/models/generated/product_models.dart';
 import 'package:origna_gta/utils/utils.dart' show AppError;
 import 'package:origna_gta/utils/design_tokens.dart';
@@ -264,28 +265,60 @@ class _WarehousesList extends ConsumerWidget {
 
 // ═══ Widget Previews ═══
 
-@Preview(name: 'Seller Warehouses — Mobile', group: 'Screens — Seller Management', size: Size(390, 844))
-Widget previewSellerWarehousesScreenMobile() => previewMobile(child: previewScopeLoggedIn(child: SellerWarehousesScreen()));
+final _previewSellerWarehouses = [
+  SellerWarehouse(
+    warehouseId: 'warehouse-preview-1',
+    label: 'Toronto Fulfillment',
+    address: base.Address(
+      street: '250 King St E',
+      city: 'Toronto',
+      state: 'ON',
+      postalCode: 'M5A 1K1',
+      country: 'CA',
+    ),
+    isDefault: true,
+    createdAt: DateTime(2026, 2, 11),
+  ),
+  SellerWarehouse(
+    warehouseId: 'warehouse-preview-2',
+    label: 'Montreal Pickup Studio',
+    type: 'studio',
+    address: base.Address(
+      street: '410 Rue Saint-Nicolas',
+      city: 'Montreal',
+      state: 'QC',
+      postalCode: 'H2Y 2P5',
+      country: 'CA',
+    ),
+    isDefault: false,
+    createdAt: DateTime(2026, 3, 4),
+  ),
+];
 
-@Preview(name: 'Seller Warehouses — Tablet', group: 'Screens — Seller Management', size: Size(768, 1024))
-Widget previewSellerWarehousesScreenTablet() => previewTablet(child: previewScopeLoggedIn(child: SellerWarehousesScreen()));
+Widget _sellerWarehousesPreview({List<SellerWarehouse>? warehouses}) =>
+    previewScopeLoggedIn(
+      extraOverrides: [
+        sellerWarehousesStreamProvider.overrideWith(
+          (ref) => Stream.value(warehouses ?? _previewSellerWarehouses),
+        ),
+      ],
+      child: const SellerWarehousesScreen(),
+    );
+
+@Preview(name: 'Seller Warehouses — Mobile', group: 'Screens — Seller Management', size: Size(390, 844))
+Widget previewSellerWarehousesScreenMobile() =>
+    previewMobile(child: _sellerWarehousesPreview());
 
 @Preview(name: 'Seller Warehouses — Desktop', group: 'Screens — Seller Management', size: Size(1280, 800))
-Widget previewSellerWarehousesScreenDesktop() => previewDesktop(child: previewScopeLoggedIn(child: SellerWarehousesScreen()));
-
-@Preview(name: 'Seller Warehouses — Web', group: 'Screens — Seller Management', size: Size(1440, 900))
-Widget previewSellerWarehousesScreenWeb() => previewWeb(child: previewScopeLoggedIn(child: SellerWarehousesScreen()));
-
-// ── Light ────────────────────────────────────────────────────────────────────
-@Preview(name: 'Seller Warehouses Light — Mobile', group: 'Screens — Seller Management', size: Size(390, 844))
-Widget previewSellerWarehousesLightMobile() => previewMobile(theme: previewLightTheme, child: previewScopeLoggedIn(child: SellerWarehousesScreen()));
-
-@Preview(name: 'Seller Warehouses Light — Tablet', group: 'Screens — Seller Management', size: Size(768, 1024))
-Widget previewSellerWarehousesLightTablet() => previewTablet(theme: previewLightTheme, child: previewScopeLoggedIn(child: SellerWarehousesScreen()));
+Widget previewSellerWarehousesScreenDesktop() =>
+    previewDesktop(child: _sellerWarehousesPreview());
 
 @Preview(name: 'Seller Warehouses Light — Desktop', group: 'Screens — Seller Management', size: Size(1280, 800))
-Widget previewSellerWarehousesLightDesktop() => previewDesktop(theme: previewLightTheme, child: previewScopeLoggedIn(child: SellerWarehousesScreen()));
+Widget previewSellerWarehousesLightDesktop() => previewDesktop(
+  theme: previewLightTheme,
+  child: _sellerWarehousesPreview(),
+);
 
-@Preview(name: 'Seller Warehouses Light — Web', group: 'Screens — Seller Management', size: Size(1440, 900))
-Widget previewSellerWarehousesLightWeb() => previewWeb(theme: previewLightTheme, child: previewScopeLoggedIn(child: SellerWarehousesScreen()));
-
+@Preview(name: 'Seller Warehouses Empty — Desktop', group: 'Screens — Seller Management', size: Size(1280, 800))
+Widget previewSellerWarehousesEmptyDesktop() =>
+    previewDesktop(child: _sellerWarehousesPreview(warehouses: const []));

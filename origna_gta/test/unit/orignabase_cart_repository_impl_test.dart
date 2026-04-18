@@ -55,12 +55,26 @@ class _FakeDocumentRef extends Fake implements DocumentRef {
   @override
   Future<Document?> set(Map<String, dynamic> data) async {
     lastSetData = data;
+    documentValue = _FakeDocument(id, data);
     return documentValue;
   }
 
   @override
   Future<Document?> update(Map<String, dynamic> data) async {
     lastUpdateData = data;
+    final nextData = Map<String, dynamic>.from(documentValue?.data ?? const {});
+    data.forEach((key, value) {
+      if (value is FieldValue) {
+        final marker = value.toApiMap(key)[key] as Map<String, dynamic>;
+        if (marker.containsKey('_increment')) {
+          final current = (nextData[key] as num?)?.toInt() ?? 0;
+          nextData[key] = current + (marker['_increment'] as num).toInt();
+          return;
+        }
+      }
+      nextData[key] = value;
+    });
+    documentValue = _FakeDocument(id, nextData);
     return documentValue;
   }
 
@@ -312,10 +326,11 @@ void main() {
       await repository.addToCart('user_1', 'prod_1', 2);
 
       final docRef = cartRef.docsMap['prod_1']!;
-      expect(docRef.lastSetData?[Fields.quantity], 5);
+      expect(docRef.lastUpdateData?[Fields.quantity].toString(), contains('2'));
+      expect(docRef.documentValue?.get<num>(Fields.quantity)?.toInt(), 5);
     });
 
-    test('clamps quantity to maxCartItemQuantity', () async {
+    test('rejects quantity above maxCartItemQuantity', () async {
       fakeOb.productsCollection.setDoc(
         'prod_1',
         _FakeDocumentRef(
@@ -323,11 +338,10 @@ void main() {
           doc: _FakeDocument('prod_1', {Fields.stockQuantity: 200}),
         ),
       );
-      await repository.addToCart('user_1', 'prod_1', 100);
-
-      final cartRef = fakeOb.usersCollection.cartSubcollection;
-      final docRef = cartRef.docsMap['prod_1']!;
-      expect(docRef.lastSetData?[Fields.quantity], 99);
+      expect(
+        () => repository.addToCart('user_1', 'prod_1', 100),
+        throwsA(isA<ConflictException>()),
+      );
     });
 
     test('handles userId with collection prefix', () async {
@@ -587,7 +601,7 @@ void main() {
       expect(docRef.lastUpdateData?[Fields.quantity], 5);
     });
 
-    test('clamps to maxCartItemQuantity', () async {
+    test('clamps to maxCartItemQuantity on direct quantity update', () async {
       final cartRef = fakeOb.usersCollection.cartSubcollection;
       final cartDoc = _FakeDocument('prod_1', {
         Fields.productId: 'prod_1',

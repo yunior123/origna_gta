@@ -275,7 +275,7 @@ void main() {
       expect(docRef.lastSetData?[Fields.quantity], 99);
     });
 
-    test('clamps quantity above maximum', () async {
+    test('rejects quantity above maximum', () async {
       fakeOb.productsCollection.setDoc(
         'prod_1',
         _FakeDocumentRef(
@@ -283,10 +283,10 @@ void main() {
           doc: _FakeDocument('prod_1', {Fields.stockQuantity: 200}),
         ),
       );
-      await repository.addToCart('user_1', 'prod_1', 150);
-      final cartRef = fakeOb.usersCollection.cartSubcollection;
-      final docRef = cartRef.docsMap['prod_1']!;
-      expect(docRef.lastSetData?[Fields.quantity], 99);
+      expect(
+        () => repository.addToCart('user_1', 'prod_1', 150),
+        throwsA(isA<ConflictException>()),
+      );
     });
 
     test('handles userId with users: prefix', () async {
@@ -339,8 +339,8 @@ void main() {
       await repository.addToCart('user_1', 'prod_1', 2);
 
       final docRef = cartRef.docsMap['prod_1']!;
-      final createdAt = docRef.lastSetData?[Fields.createdAt];
-      expect(createdAt, isNotNull);
+      final createdAt = docRef.documentValue?.data[Fields.createdAt];
+      expect(createdAt, existingTimeStr);
     });
 
     test('sets new createdAt for new items', () async {
