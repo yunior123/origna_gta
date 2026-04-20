@@ -9,7 +9,12 @@ import 'package:origna_gta/features/subscription/subscription_provider.dart';
 import 'package:origna_gta/core/theme_provider.dart';
 import 'package:origna_gta/models/models.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
+import 'package:origna_gta/utils/constants.dart';
 import '../test_utils.dart';
+
+const _sellerSkip = FeatureFlags.kSellerOnboardingEnabled
+    ? null
+    : 'Seller onboarding disabled';
 
 /// Duration long enough to settle FadeSlideIn animations (400ms + max 200ms delay)
 const _animationDuration = Duration(seconds: 1);
@@ -228,14 +233,14 @@ void main() {
       expect(find.byKey(const Key('profile_my_orders_button')), findsOneWidget);
       expect(find.text('My Orders'), findsOneWidget);
 
-      // Buyer should see "Become a Seller"
-      expect(
-        find.byKey(const Key('profile_become_seller_button')),
-        findsOneWidget,
-      );
-      expect(find.text('Become a Seller'), findsOneWidget);
+      if (FeatureFlags.kSellerOnboardingEnabled) {
+        expect(
+          find.byKey(const Key('profile_become_seller_button')),
+          findsOneWidget,
+        );
+        expect(find.text('Become a Seller'), findsOneWidget);
+      }
 
-      // Should NOT show seller-specific buttons
       expect(
         find.byKey(const Key('profile_seller_orders_button')),
         findsNothing,
@@ -395,6 +400,7 @@ void main() {
 
   group('ProfileScreen - Seller', () {
     testWidgets('shows seller-specific menu items', (tester) async {
+      if (!FeatureFlags.kSellerOnboardingEnabled) return;
       tester.view.physicalSize = const Size(800, 2400);
       tester.view.devicePixelRatio = 1.0;
 
@@ -459,14 +465,16 @@ void main() {
       expect(find.text('Platform management'), findsOneWidget);
 
       // Admin also has seller access (admin role implies isSeller)
-      expect(
-        find.byKey(const Key('profile_seller_orders_button')),
-        findsOneWidget,
-      );
-      expect(
-        find.byKey(const Key('profile_seller_dashboard_button')),
-        findsOneWidget,
-      );
+      if (FeatureFlags.kSellerOnboardingEnabled) {
+        expect(
+          find.byKey(const Key('profile_seller_orders_button')),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(const Key('profile_seller_dashboard_button')),
+          findsOneWidget,
+        );
+      }
 
       tester.view.resetPhysicalSize();
       tester.view.resetDevicePixelRatio();
@@ -791,6 +799,7 @@ void main() {
     testWidgets('become seller button navigates to seller registration', (
       tester,
     ) async {
+      if (!FeatureFlags.kSellerOnboardingEnabled) return;
       tester.view.physicalSize = const Size(800, 2400);
       tester.view.devicePixelRatio = 1.0;
 
@@ -818,6 +827,7 @@ void main() {
     });
 
     testWidgets('seller orders button navigates correctly', (tester) async {
+      if (!FeatureFlags.kSellerOnboardingEnabled) return;
       tester.view.physicalSize = const Size(800, 2400);
       tester.view.devicePixelRatio = 1.0;
 
@@ -845,6 +855,7 @@ void main() {
     });
 
     testWidgets('seller dashboard button navigates correctly', (tester) async {
+      if (!FeatureFlags.kSellerOnboardingEnabled) return;
       tester.view.physicalSize = const Size(800, 2400);
       tester.view.devicePixelRatio = 1.0;
 
