@@ -156,7 +156,7 @@ abstract final class BusinessRules {
       30; // No returns/refunds after 30 days post-delivery
   static const maxCaptureAttempts = 3;
   static const defaultCurrency = 'cad';
-  static const allowedShippingCountries = {'Canada', 'CA'};
+  static const allowedShippingCountries = {'Canada', 'CA', 'Cuba', 'CU'};
   static const ordersPageSize =
       50; // Initial load limit for order lists — cursor pagination planned
   static const favoritesPageSize =
@@ -527,9 +527,12 @@ abstract final class ConsentMethodValues {
 /// Valid values for country fields
 abstract final class CountryValues {
   static const canada = 'Canada';
+  static const cuba = 'Cuba';
   static const canadaCode = 'CA';
+  static const cubaCode = 'CU';
 
-  static const all = {canada, canadaCode};
+  static const all = {canada, cuba};
+  static const allCodes = {canadaCode, cubaCode};
 }
 
 /// Valid values for coupon discount types (N-07)
@@ -575,6 +578,7 @@ abstract final class DeliveryTypeValues {
   static const localDelivery = 'local_delivery';
   static const international = 'international';
   static const internationalExpress = 'international_express';
+  static const maritime = 'maritime';
   static const custom = 'custom';
 }
 
@@ -1656,6 +1660,18 @@ abstract final class FilterValues {
 /// Geographic constants
 abstract final class GeoValues {
   static const countryCanada = 'Canada';
+  static const countryCuba = 'Cuba';
+}
+
+abstract final class MaritimeShippingConstants {
+  static const baseRateCents = 2500;
+  static const perKgRateCents = 500;
+  static const minWeightKg = 1.0;
+  static const maxWeightKg = 30.0;
+  static const surchargeHeavyKg = 20.0;
+  static const heavySurchargeCents = 1500;
+  static const estimatedDaysMin = 21;
+  static const estimatedDaysMax = 45;
 }
 
 /// Language preference defaults (ISO 639-1 codes)
@@ -1901,6 +1917,7 @@ abstract final class PlaceholderAddressValues {
   static const defaultState = 'ON';
   static const defaultPostalCode = 'M5V 3A8';
   static const defaultCountry = 'Canada';
+  static const cuba = "Cuba";
 }
 
 /// Default policy/terms version numbers
@@ -1947,7 +1964,24 @@ abstract final class ProvinceCodeValues {
   static const saskatchewan = 'SK';
   static const yukon = 'YT';
 
-  static const all = [
+  static const havana = 'HAB';
+  static const matanzas = 'MAT';
+  static const villaClara = 'VC';
+  static const santiagoDeCuba = 'SC';
+  static const holguin = 'HOL';
+  static const camaguey = 'CMG';
+  static const ciegoDeAvila = 'CAV';
+  static const sanctiSpiritus = 'SSP';
+  static const cienfuegos = 'CFG';
+  static const pinarDelRio = 'PR';
+  static const granma = 'GRA';
+  static const lasTunas = 'LT';
+  static const guantanamo = 'GU';
+  static const isleDeLaJuventud = 'IJ';
+  static const artemisa = 'ART';
+  static const mayabeque = 'MAY';
+
+  static const canadaProvinces = [
     alberta,
     britishColumbia,
     manitoba,
@@ -1963,6 +1997,27 @@ abstract final class ProvinceCodeValues {
     yukon,
   ];
 
+  static const cubaProvinces = [
+    havana,
+    matanzas,
+    villaClara,
+    santiagoDeCuba,
+    holguin,
+    camaguey,
+    ciegoDeAvila,
+    sanctiSpiritus,
+    cienfuegos,
+    pinarDelRio,
+    granma,
+    lasTunas,
+    guantanamo,
+    isleDeLaJuventud,
+    artemisa,
+    mayabeque,
+  ];
+
+  static const all = [...canadaProvinces, ...cubaProvinces];
+
   static const names = {
     alberta: 'Alberta',
     britishColumbia: 'British Columbia',
@@ -1977,7 +2032,30 @@ abstract final class ProvinceCodeValues {
     quebec: 'Quebec',
     saskatchewan: 'Saskatchewan',
     yukon: 'Yukon',
+    havana: 'La Habana',
+    matanzas: 'Matanzas',
+    villaClara: 'Villa Clara',
+    santiagoDeCuba: 'Santiago de Cuba',
+    holguin: 'Holguín',
+    camaguey: 'Camagüey',
+    ciegoDeAvila: 'Ciego de Ávila',
+    sanctiSpiritus: 'Sancti Spíritus',
+    cienfuegos: 'Cienfuegos',
+    pinarDelRio: 'Pinar del Río',
+    granma: 'Granma',
+    lasTunas: 'Las Tunas',
+    guantanamo: 'Guantánamo',
+    isleDeLaJuventud: 'Isla de la Juventud',
+    artemisa: 'Artemisa',
+    mayabeque: 'Mayabeque',
   };
+
+  static Map<String, String> get countryForProvince => {
+    ...{for (var p in canadaProvinces) p: CountryValues.canada},
+    ...{for (var p in cubaProvinces) p: CountryValues.cuba},
+  };
+
+  static Set<String> get isCubaProvince => cubaProvinces.toSet();
 }
 
 /// Action identifiers for rate limiting to prevent magic strings.

@@ -102,6 +102,15 @@ class AddressViewModel extends StateNotifier<AddressState> {
       return;
     }
 
+    // CUBA SHIPPING: Maritime to Havana only.
+    if (state.selectedCountry == CountryValues.cuba &&
+        city.trim().toLowerCase() != "havana") {
+      state = state.copyWith(
+        errorMessage:
+            "Maritime shipping to Cuba currently serves Havana only. Please enter Havana as your city.",
+      );
+      return;
+    }
     state = state.copyWith(isLoading: true, errorMessage: null);
 
     try {
@@ -111,7 +120,7 @@ class AddressViewModel extends StateNotifier<AddressState> {
         city: city.trim(),
         state: state.selectedProvince!,
         postalCode: postalCode.trim().toUpperCase(),
-        country: GeoValues.countryCanada,
+        country: state.selectedCountry ?? CountryValues.canada,
         phoneNumber: phoneNumber.trim(),
         label: state.selectedLabel,
         isDefault: state.isDefault,
@@ -165,6 +174,9 @@ class AddressViewModel extends StateNotifier<AddressState> {
       state = state.copyWith(
         selectedProvince: address.state,
         selectedLabel: address.label ?? AddressLabelValues.home,
+        selectedCountry: address.country.isNotEmpty
+            ? address.country
+            : CountryValues.canada,
         latitude: address.latitude,
         longitude: address.longitude,
         addressId: address.addressId,
@@ -182,4 +194,15 @@ class AddressViewModel extends StateNotifier<AddressState> {
   /// Sets the province code for the address form.
   void setProvince(String province) =>
       state = state.copyWith(selectedProvince: province);
+
+  void setCountry(String country) {
+    state = state.copyWith(
+      selectedCountry: country,
+      selectedProvince: null,
+      latitude: null,
+      longitude: null,
+      showSuggestions: false,
+      addressSuggestions: [],
+    );
+  }
 }

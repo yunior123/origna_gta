@@ -1812,8 +1812,14 @@
     "delete_confirmation": "Supprimer cette adresse ?",
     "limit_reached": "Maximum de 5 adresses atteint. Supprimez-en une pour en ajouter une autre.",
     "set_as_default": "Définir par défaut",
-    "count_subtitle": "{count} adresse(s) sur {max} enregistrée(s)"
-  },
+"count_subtitle": "{count} adresse(s) sur {max} enregistrée(s)",
+"pickup_only": "Retrait uniquement",
+"maritime_shipping": "Transport maritime",
+"cuba_maritime_notice": "L'expédition à Cuba se fait par fret maritime (21-45 jours ouvrables). Tarifs basés sur le poids.",
+"postal_code_cuba": "Code postal cubain (5 chiffres)",
+"valid_postal_cuba": "Entrez un code postal cubain valide (5 chiffres)",
+"valid_phone_cuba": "Entrez un numéro de téléphone cubain valide (préfixe +53)"
+},
   "legal": {
     "privacy_policy": "Politique de confidentialité",
     "terms_of_service": "Conditions d'utilisation",

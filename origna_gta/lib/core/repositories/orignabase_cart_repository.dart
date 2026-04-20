@@ -255,7 +255,7 @@ class OrignaBaseCartRepository implements CartRepository {
       final map = v as Map<String, dynamic>?;
       return map != null &&
           map[Fields.variantId] == variantId &&
-          (map[Fields.isActive] as bool? ?? true);
+          (map['active'] as bool? ?? true);
     });
   }
 

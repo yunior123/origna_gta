@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$AddressState {
 
- bool get isLoading; String? get selectedProvince; String? get selectedLabel; List<Map<String, dynamic>> get addressSuggestions; bool get showSuggestions; double? get latitude; double? get longitude; String? get addressId; String? get errorMessage; bool get isSuccess; bool get isDefault;
+ bool get isLoading; String? get selectedCountry; String? get selectedProvince; String? get selectedLabel; List<Map<String, dynamic>> get addressSuggestions; bool get showSuggestions; double? get latitude; double? get longitude; String? get addressId; String? get errorMessage; bool get isSuccess; bool get isDefault;
 /// Create a copy of AddressState
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +25,16 @@ $AddressStateCopyWith<AddressState> get copyWith => _$AddressStateCopyWithImpl<A
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AddressState&&(identical(other.isLoading, isLoading) || other.isLoading == isLoading)&&(identical(other.selectedProvince, selectedProvince) || other.selectedProvince == selectedProvince)&&(identical(other.selectedLabel, selectedLabel) || other.selectedLabel == selectedLabel)&&const DeepCollectionEquality().equals(other.addressSuggestions, addressSuggestions)&&(identical(other.showSuggestions, showSuggestions) || other.showSuggestions == showSuggestions)&&(identical(other.latitude, latitude) || other.latitude == latitude)&&(identical(other.longitude, longitude) || other.longitude == longitude)&&(identical(other.addressId, addressId) || other.addressId == addressId)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage)&&(identical(other.isSuccess, isSuccess) || other.isSuccess == isSuccess)&&(identical(other.isDefault, isDefault) || other.isDefault == isDefault));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AddressState&&(identical(other.isLoading, isLoading) || other.isLoading == isLoading)&&(identical(other.selectedCountry, selectedCountry) || other.selectedCountry == selectedCountry)&&(identical(other.selectedProvince, selectedProvince) || other.selectedProvince == selectedProvince)&&(identical(other.selectedLabel, selectedLabel) || other.selectedLabel == selectedLabel)&&const DeepCollectionEquality().equals(other.addressSuggestions, addressSuggestions)&&(identical(other.showSuggestions, showSuggestions) || other.showSuggestions == showSuggestions)&&(identical(other.latitude, latitude) || other.latitude == latitude)&&(identical(other.longitude, longitude) || other.longitude == longitude)&&(identical(other.addressId, addressId) || other.addressId == addressId)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage)&&(identical(other.isSuccess, isSuccess) || other.isSuccess == isSuccess)&&(identical(other.isDefault, isDefault) || other.isDefault == isDefault));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,isLoading,selectedProvince,selectedLabel,const DeepCollectionEquality().hash(addressSuggestions),showSuggestions,latitude,longitude,addressId,errorMessage,isSuccess,isDefault);
+int get hashCode => Object.hash(runtimeType,isLoading,selectedCountry,selectedProvince,selectedLabel,const DeepCollectionEquality().hash(addressSuggestions),showSuggestions,latitude,longitude,addressId,errorMessage,isSuccess,isDefault);
 
 @override
 String toString() {
-  return 'AddressState(isLoading: $isLoading, selectedProvince: $selectedProvince, selectedLabel: $selectedLabel, addressSuggestions: $addressSuggestions, showSuggestions: $showSuggestions, latitude: $latitude, longitude: $longitude, addressId: $addressId, errorMessage: $errorMessage, isSuccess: $isSuccess, isDefault: $isDefault)';
+  return 'AddressState(isLoading: $isLoading, selectedCountry: $selectedCountry, selectedProvince: $selectedProvince, selectedLabel: $selectedLabel, addressSuggestions: $addressSuggestions, showSuggestions: $showSuggestions, latitude: $latitude, longitude: $longitude, addressId: $addressId, errorMessage: $errorMessage, isSuccess: $isSuccess, isDefault: $isDefault)';
 }
 
 
@@ -45,7 +45,7 @@ abstract mixin class $AddressStateCopyWith<$Res>  {
   factory $AddressStateCopyWith(AddressState value, $Res Function(AddressState) _then) = _$AddressStateCopyWithImpl;
 @useResult
 $Res call({
- bool isLoading, String? selectedProvince, String? selectedLabel, List<Map<String, dynamic>> addressSuggestions, bool showSuggestions, double? latitude, double? longitude, String? addressId, String? errorMessage, bool isSuccess, bool isDefault
+ bool isLoading, String? selectedCountry, String? selectedProvince, String? selectedLabel, List<Map<String, dynamic>> addressSuggestions, bool showSuggestions, double? latitude, double? longitude, String? addressId, String? errorMessage, bool isSuccess, bool isDefault
 });
 
 
@@ -62,10 +62,11 @@ class _$AddressStateCopyWithImpl<$Res>
 
 /// Create a copy of AddressState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? isLoading = null,Object? selectedProvince = freezed,Object? selectedLabel = freezed,Object? addressSuggestions = null,Object? showSuggestions = null,Object? latitude = freezed,Object? longitude = freezed,Object? addressId = freezed,Object? errorMessage = freezed,Object? isSuccess = null,Object? isDefault = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? isLoading = null,Object? selectedCountry = freezed,Object? selectedProvince = freezed,Object? selectedLabel = freezed,Object? addressSuggestions = null,Object? showSuggestions = null,Object? latitude = freezed,Object? longitude = freezed,Object? addressId = freezed,Object? errorMessage = freezed,Object? isSuccess = null,Object? isDefault = null,}) {
   return _then(_self.copyWith(
 isLoading: null == isLoading ? _self.isLoading : isLoading // ignore: cast_nullable_to_non_nullable
-as bool,selectedProvince: freezed == selectedProvince ? _self.selectedProvince : selectedProvince // ignore: cast_nullable_to_non_nullable
+as bool,selectedCountry: freezed == selectedCountry ? _self.selectedCountry : selectedCountry // ignore: cast_nullable_to_non_nullable
+as String?,selectedProvince: freezed == selectedProvince ? _self.selectedProvince : selectedProvince // ignore: cast_nullable_to_non_nullable
 as String?,selectedLabel: freezed == selectedLabel ? _self.selectedLabel : selectedLabel // ignore: cast_nullable_to_non_nullable
 as String?,addressSuggestions: null == addressSuggestions ? _self.addressSuggestions : addressSuggestions // ignore: cast_nullable_to_non_nullable
 as List<Map<String, dynamic>>,showSuggestions: null == showSuggestions ? _self.showSuggestions : showSuggestions // ignore: cast_nullable_to_non_nullable
@@ -160,10 +161,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( bool isLoading,  String? selectedProvince,  String? selectedLabel,  List<Map<String, dynamic>> addressSuggestions,  bool showSuggestions,  double? latitude,  double? longitude,  String? addressId,  String? errorMessage,  bool isSuccess,  bool isDefault)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( bool isLoading,  String? selectedCountry,  String? selectedProvince,  String? selectedLabel,  List<Map<String, dynamic>> addressSuggestions,  bool showSuggestions,  double? latitude,  double? longitude,  String? addressId,  String? errorMessage,  bool isSuccess,  bool isDefault)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _AddressState() when $default != null:
-return $default(_that.isLoading,_that.selectedProvince,_that.selectedLabel,_that.addressSuggestions,_that.showSuggestions,_that.latitude,_that.longitude,_that.addressId,_that.errorMessage,_that.isSuccess,_that.isDefault);case _:
+return $default(_that.isLoading,_that.selectedCountry,_that.selectedProvince,_that.selectedLabel,_that.addressSuggestions,_that.showSuggestions,_that.latitude,_that.longitude,_that.addressId,_that.errorMessage,_that.isSuccess,_that.isDefault);case _:
   return orElse();
 
 }
@@ -181,10 +182,10 @@ return $default(_that.isLoading,_that.selectedProvince,_that.selectedLabel,_that
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( bool isLoading,  String? selectedProvince,  String? selectedLabel,  List<Map<String, dynamic>> addressSuggestions,  bool showSuggestions,  double? latitude,  double? longitude,  String? addressId,  String? errorMessage,  bool isSuccess,  bool isDefault)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( bool isLoading,  String? selectedCountry,  String? selectedProvince,  String? selectedLabel,  List<Map<String, dynamic>> addressSuggestions,  bool showSuggestions,  double? latitude,  double? longitude,  String? addressId,  String? errorMessage,  bool isSuccess,  bool isDefault)  $default,) {final _that = this;
 switch (_that) {
 case _AddressState():
-return $default(_that.isLoading,_that.selectedProvince,_that.selectedLabel,_that.addressSuggestions,_that.showSuggestions,_that.latitude,_that.longitude,_that.addressId,_that.errorMessage,_that.isSuccess,_that.isDefault);case _:
+return $default(_that.isLoading,_that.selectedCountry,_that.selectedProvince,_that.selectedLabel,_that.addressSuggestions,_that.showSuggestions,_that.latitude,_that.longitude,_that.addressId,_that.errorMessage,_that.isSuccess,_that.isDefault);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -201,10 +202,10 @@ return $default(_that.isLoading,_that.selectedProvince,_that.selectedLabel,_that
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( bool isLoading,  String? selectedProvince,  String? selectedLabel,  List<Map<String, dynamic>> addressSuggestions,  bool showSuggestions,  double? latitude,  double? longitude,  String? addressId,  String? errorMessage,  bool isSuccess,  bool isDefault)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( bool isLoading,  String? selectedCountry,  String? selectedProvince,  String? selectedLabel,  List<Map<String, dynamic>> addressSuggestions,  bool showSuggestions,  double? latitude,  double? longitude,  String? addressId,  String? errorMessage,  bool isSuccess,  bool isDefault)?  $default,) {final _that = this;
 switch (_that) {
 case _AddressState() when $default != null:
-return $default(_that.isLoading,_that.selectedProvince,_that.selectedLabel,_that.addressSuggestions,_that.showSuggestions,_that.latitude,_that.longitude,_that.addressId,_that.errorMessage,_that.isSuccess,_that.isDefault);case _:
+return $default(_that.isLoading,_that.selectedCountry,_that.selectedProvince,_that.selectedLabel,_that.addressSuggestions,_that.showSuggestions,_that.latitude,_that.longitude,_that.addressId,_that.errorMessage,_that.isSuccess,_that.isDefault);case _:
   return null;
 
 }
@@ -216,10 +217,11 @@ return $default(_that.isLoading,_that.selectedProvince,_that.selectedLabel,_that
 
 
 class _AddressState implements AddressState {
-  const _AddressState({this.isLoading = false, this.selectedProvince = ProvinceCodeValues.ontario, this.selectedLabel = AddressLabelValues.home, final  List<Map<String, dynamic>> addressSuggestions = const [], this.showSuggestions = false, this.latitude, this.longitude, this.addressId, this.errorMessage, this.isSuccess = false, this.isDefault = false}): _addressSuggestions = addressSuggestions;
+  const _AddressState({this.isLoading = false, this.selectedCountry = CountryValues.canada, this.selectedProvince = ProvinceCodeValues.ontario, this.selectedLabel = AddressLabelValues.home, final  List<Map<String, dynamic>> addressSuggestions = const [], this.showSuggestions = false, this.latitude, this.longitude, this.addressId, this.errorMessage, this.isSuccess = false, this.isDefault = false}): _addressSuggestions = addressSuggestions;
   
 
 @override@JsonKey() final  bool isLoading;
+@override@JsonKey() final  String? selectedCountry;
 @override@JsonKey() final  String? selectedProvince;
 @override@JsonKey() final  String? selectedLabel;
  final  List<Map<String, dynamic>> _addressSuggestions;
@@ -247,16 +249,16 @@ _$AddressStateCopyWith<_AddressState> get copyWith => __$AddressStateCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AddressState&&(identical(other.isLoading, isLoading) || other.isLoading == isLoading)&&(identical(other.selectedProvince, selectedProvince) || other.selectedProvince == selectedProvince)&&(identical(other.selectedLabel, selectedLabel) || other.selectedLabel == selectedLabel)&&const DeepCollectionEquality().equals(other._addressSuggestions, _addressSuggestions)&&(identical(other.showSuggestions, showSuggestions) || other.showSuggestions == showSuggestions)&&(identical(other.latitude, latitude) || other.latitude == latitude)&&(identical(other.longitude, longitude) || other.longitude == longitude)&&(identical(other.addressId, addressId) || other.addressId == addressId)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage)&&(identical(other.isSuccess, isSuccess) || other.isSuccess == isSuccess)&&(identical(other.isDefault, isDefault) || other.isDefault == isDefault));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AddressState&&(identical(other.isLoading, isLoading) || other.isLoading == isLoading)&&(identical(other.selectedCountry, selectedCountry) || other.selectedCountry == selectedCountry)&&(identical(other.selectedProvince, selectedProvince) || other.selectedProvince == selectedProvince)&&(identical(other.selectedLabel, selectedLabel) || other.selectedLabel == selectedLabel)&&const DeepCollectionEquality().equals(other._addressSuggestions, _addressSuggestions)&&(identical(other.showSuggestions, showSuggestions) || other.showSuggestions == showSuggestions)&&(identical(other.latitude, latitude) || other.latitude == latitude)&&(identical(other.longitude, longitude) || other.longitude == longitude)&&(identical(other.addressId, addressId) || other.addressId == addressId)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage)&&(identical(other.isSuccess, isSuccess) || other.isSuccess == isSuccess)&&(identical(other.isDefault, isDefault) || other.isDefault == isDefault));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,isLoading,selectedProvince,selectedLabel,const DeepCollectionEquality().hash(_addressSuggestions),showSuggestions,latitude,longitude,addressId,errorMessage,isSuccess,isDefault);
+int get hashCode => Object.hash(runtimeType,isLoading,selectedCountry,selectedProvince,selectedLabel,const DeepCollectionEquality().hash(_addressSuggestions),showSuggestions,latitude,longitude,addressId,errorMessage,isSuccess,isDefault);
 
 @override
 String toString() {
-  return 'AddressState(isLoading: $isLoading, selectedProvince: $selectedProvince, selectedLabel: $selectedLabel, addressSuggestions: $addressSuggestions, showSuggestions: $showSuggestions, latitude: $latitude, longitude: $longitude, addressId: $addressId, errorMessage: $errorMessage, isSuccess: $isSuccess, isDefault: $isDefault)';
+  return 'AddressState(isLoading: $isLoading, selectedCountry: $selectedCountry, selectedProvince: $selectedProvince, selectedLabel: $selectedLabel, addressSuggestions: $addressSuggestions, showSuggestions: $showSuggestions, latitude: $latitude, longitude: $longitude, addressId: $addressId, errorMessage: $errorMessage, isSuccess: $isSuccess, isDefault: $isDefault)';
 }
 
 
@@ -267,7 +269,7 @@ abstract mixin class _$AddressStateCopyWith<$Res> implements $AddressStateCopyWi
   factory _$AddressStateCopyWith(_AddressState value, $Res Function(_AddressState) _then) = __$AddressStateCopyWithImpl;
 @override @useResult
 $Res call({
- bool isLoading, String? selectedProvince, String? selectedLabel, List<Map<String, dynamic>> addressSuggestions, bool showSuggestions, double? latitude, double? longitude, String? addressId, String? errorMessage, bool isSuccess, bool isDefault
+ bool isLoading, String? selectedCountry, String? selectedProvince, String? selectedLabel, List<Map<String, dynamic>> addressSuggestions, bool showSuggestions, double? latitude, double? longitude, String? addressId, String? errorMessage, bool isSuccess, bool isDefault
 });
 
 
@@ -284,10 +286,11 @@ class __$AddressStateCopyWithImpl<$Res>
 
 /// Create a copy of AddressState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? isLoading = null,Object? selectedProvince = freezed,Object? selectedLabel = freezed,Object? addressSuggestions = null,Object? showSuggestions = null,Object? latitude = freezed,Object? longitude = freezed,Object? addressId = freezed,Object? errorMessage = freezed,Object? isSuccess = null,Object? isDefault = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? isLoading = null,Object? selectedCountry = freezed,Object? selectedProvince = freezed,Object? selectedLabel = freezed,Object? addressSuggestions = null,Object? showSuggestions = null,Object? latitude = freezed,Object? longitude = freezed,Object? addressId = freezed,Object? errorMessage = freezed,Object? isSuccess = null,Object? isDefault = null,}) {
   return _then(_AddressState(
 isLoading: null == isLoading ? _self.isLoading : isLoading // ignore: cast_nullable_to_non_nullable
-as bool,selectedProvince: freezed == selectedProvince ? _self.selectedProvince : selectedProvince // ignore: cast_nullable_to_non_nullable
+as bool,selectedCountry: freezed == selectedCountry ? _self.selectedCountry : selectedCountry // ignore: cast_nullable_to_non_nullable
+as String?,selectedProvince: freezed == selectedProvince ? _self.selectedProvince : selectedProvince // ignore: cast_nullable_to_non_nullable
 as String?,selectedLabel: freezed == selectedLabel ? _self.selectedLabel : selectedLabel // ignore: cast_nullable_to_non_nullable
 as String?,addressSuggestions: null == addressSuggestions ? _self._addressSuggestions : addressSuggestions // ignore: cast_nullable_to_non_nullable
 as List<Map<String, dynamic>>,showSuggestions: null == showSuggestions ? _self.showSuggestions : showSuggestions // ignore: cast_nullable_to_non_nullable

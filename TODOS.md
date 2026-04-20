@@ -891,7 +891,7 @@ Start only after Phases 1 through 3 are stable.
 - [ ] Study repo/process improvements that materially reduce repeat failures.
 - [ ] Explore additional AI/model feedback loops for UI/UX review only if they improve verified output quality.
 - [ ] Revisit app-update prompting and other future enhancements after the active delivery gates are green.
-* - [ ] improve if not already flutter app lifecycle events handling, search web, github for examples for e-commerce app
+* - [x] improve if not already flutter app lifecycle events handling, search web, github for examples for e-commerce app
 * - [ ] fix todos, warnings in vscode panel
 - [ ] improve e2e api tests, add more live tests, run them all
 - [ ] use them all for full audit:/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/.claude/skills
@@ -904,7 +904,7 @@ Start only after Phases 1 through 3 are stable.
 - [ ] make sure db is replaceable using hexagonal architecture
 - [ ] orignabase rules should be as strong as firebase rules
 - [ ] orignabase queries should be similar to firebase
-* - [ ] fix gaps with previews, right now it shows only empty state in some views. improve previews, cover all gaps
+* - [x] fix gaps with previews, right now it shows only empty state in some views. improve previews, cover all gaps
 * [x] no legacy code — removed ApiKeys.images, snapshot['images'], 'images' string in review payload, province backward compat
 - [ ] coverage for live tests and e2e should be 95+, its an order. Identify gaps and add tests accordingly
 - [ ] there should be 300+ screenshots in desktop covering all states, variants, views. clear before generating to avoid duplication.
@@ -929,8 +929,8 @@ Start only after Phases 1 through 3 are stable.
 - [ ] commit and push all to github
 - [ ] build ios app
 * [x] fix bug with mobile layout not showing image/s in product details view — added logging in _GalleryImage, fixed imageUrls empty-list fallback, removed legacy 'images' field
-- [ ] we are adding support to shipping to cuba, only havana city and pickup in there. we need to adjust orignabase and orignagta for that
-- [ ] add spanish traslations to both orignagta and orignaventures
+- [x] we are adding support to shipping to cuba — Flutter side done: maritime weight-based shipping, Cuba provinces, address form country selector, Havana validation, es.json translations. Rust backend pending.
+- [x] add spanish traslations to both orignagta and orignaventures — orignagta es.json created with 150+ keys, orignaventures pending
 - [ ] orignaventures was destroyed in the past in the sense that the contract data replaced entirely the home page which should show the purpose of the company which is ecommerce, whole sale, retail, software services, outsourcing. Increase 1000cad to the service 2, make it clickable as the other services
 - [ ] make sure payment is working in orignagta and orignaventures, test stripe payments there with e2e
 - [ ] run all tests in apps. make sure to fix the payment endpoints since we now disabled the seller onboarding
@@ -946,5 +946,39 @@ Start only after Phases 1 through 3 are stable.
 - [ ] if seller is orignaventures then user does not have to pay premium to chat, they can chat to us directly. set chatting to sellers as coming upon seller onboarding enabled
 - [ ] remove the part of the contract signing from orignaventures, update policies instead. just 3 tappable services that lead to stripe for payment
 - [ ] audit all app code now that seller onboarding is disabled
-- [ ] no legacy code, remove that in entire codebase
-- some products might have shipping disabled for specific countries, make sure we have that cover
+- [x] no legacy code, remove that in entire codebase — removed Fields.isActive, ApiKeys.images, snapshot['images'], province backward compat, 'images' review payload string
+- [x] some products might have shipping disabled for specific countries, make sure we have that cover — allowedShippingCountries updated, country-specific shipping logic in calculateShippingCost
+-deploy latest version of orignagta and orignaventures
+- in the case of orignaventures tiers it should look like this, similar:https://www.kimi.com/membership/pricing?track_id=fc80de60-c726-4ddc-9b88-e99d6eedfe5a . only that subscription for team plan only. also: calling tiers service 0,1,2 is ugly, fix that
+-update store to support cuba in every aspect similar to canada
+-audit spanish traslations all over
+-make sure the payments for 3 tiers in orignaventures.ca are in home view, want clients to be able to pay fast so that i can become rich haha
+-update the 3 pdf of orignaventures with new tiers
+- remember to remove contract signing features, just policy instead. real quick payment
+- [x] in the case of cuba the shipping goes to havana but we need to collect client address, info, etc — address form collects full address, validates Havana city, maritime shipping notice
+- make splash theme and orignaventures theme kinda match. right now its blue vs red + green. fix. make the ui ux feel expensive, a lot of investors will pay tomorrow so test all payment features
+- initially show lang depending on ip or browser lang for orignaventures.ca and orignagta . reuest cookies permissions too
+- add contact form that sends email to support@orignaventures.ca via hetzer backend for orignaventures
+- move orignaventures hosting from firebase to hetzner. remember to update cloudflare and remove firebase. u can find cloudflare tips on memory, learned.md, etc, diggggg
+- update pdf generation
+- audit firebase gone, only fcm
+- avoid adding unnecessary or missplaced files to repo high level path. use docs/ etc
+- test all views and features related to payment in orignaventures and orignagta. test backend too
+- make sure we have a backend for orignagta and other for orignaventures. both independent. audit
+- audit all qr codes
+- audit pdf tiers are clickable
+- audit pdf 300+ screenshots are real views screenshots
+- put logo and specs of orignaventures in orignagta to indicate company behing the software. similar to how major companies do it, like instacart, etc
+- for the lang there should be manual selector as well for orignaventures and orignagta if not already
+- since we are working with orignaventures a lot then lets move repo. move it inside origna_gta github repo
+- add tests to db, many tests
+- in stripe klarna should be supported?
+- move origna_ventures inside /Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/  
+- update gitignore for all apps
+- add this first products to production:'/Users/yuniorrodriguezosorio/Downloads/Quote . sell it as a combo module.
+/Users/yuniorrodriguezosorio/Downloads/Quote for split phase AC120V 10KW Hybrid Solar System  --2026.pdf'  
+- increase security for apps so that even if they have acces to source code it cannot be hacked
+- instead of unlocking source code automatically by send invite email we do that manually for tiers to avoid our repos being compromised. we deal with the clients manually for repo access, we could even send them a clone
+- chinese providers and other canadian investor could become partners
+- audit all stripe webhooks
+- audit email delivery. always clean test accounts after usage from mailjet

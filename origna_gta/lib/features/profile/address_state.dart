@@ -7,6 +7,7 @@ part 'address_state.freezed.dart';
 abstract class AddressState with _$AddressState {
   const factory AddressState({
     @Default(false) bool isLoading,
+    @Default(CountryValues.canada) String? selectedCountry,
     @Default(ProvinceCodeValues.ontario) String? selectedProvince,
     @Default(AddressLabelValues.home) String? selectedLabel,
     @Default([]) List<Map<String, dynamic>> addressSuggestions,

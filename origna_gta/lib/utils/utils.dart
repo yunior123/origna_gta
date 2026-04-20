@@ -34,7 +34,7 @@ const Map<String, Map<String, double>> provinceTaxRates = {
   'MB': {'GST': 0.05, 'PST': 0.07},
   'NB': {'HST': 0.15},
   'NL': {'HST': 0.15},
-  'NS': {'HST': 0.14}, // Changed from 15% to 14% on April 1, 2025 (CRA)
+  'NS': {'HST': 0.14},
   'NT': {'GST': 0.05},
   'NU': {'GST': 0.05},
   'ON': {'HST': 0.13},
@@ -42,6 +42,7 @@ const Map<String, Map<String, double>> provinceTaxRates = {
   'QC': {'GST': 0.05, 'QST': 0.09975},
   'SK': {'GST': 0.05, 'PST': 0.06},
   'YT': {'GST': 0.05},
+  'HAB': {},
 };
 
 /// Maximum total keywords to generate for search prefixes.
@@ -178,12 +179,17 @@ Map<String, double> calculateDetailedTaxes(Address? address, double total) {
 }
 
 /// Fallback shipping calculation when coordinates are unavailable.
-/// Uses province-based flat rates.
+/// Uses province-based flat rates for Canada.
+/// Cuba uses weight-based maritime shipping calculation.
 double calculateFallbackShipping(
   List<CartItemDetailModel> items,
   String sellerProvince,
   String buyerProvince,
 ) {
+  if (ProvinceCodeValues.cubaProvinces.contains(buyerProvince)) {
+    return _calculateMaritimeShipping(items);
+  }
+
   final totalItems = items.fold(0, (i, item) => i + item.quantity);
   double baseCost = 26.99;
 
@@ -201,6 +207,27 @@ double calculateFallbackShipping(
   return baseCost + additionalItemsCost;
 }
 
+double _calculateMaritimeShipping(List<CartItemDetailModel> items) {
+  double totalWeightKg = 0.0;
+  for (final item in items) {
+    final weightKg = (item.weightKg ?? MaritimeShippingConstants.minWeightKg)
+        .clamp(
+          MaritimeShippingConstants.minWeightKg,
+          MaritimeShippingConstants.maxWeightKg,
+        );
+    totalWeightKg += weightKg * item.quantity;
+  }
+
+  double costCents = MaritimeShippingConstants.baseRateCents.toDouble();
+  costCents += totalWeightKg * MaritimeShippingConstants.perKgRateCents;
+
+  if (totalWeightKg > MaritimeShippingConstants.surchargeHeavyKg) {
+    costCents += MaritimeShippingConstants.heavySurchargeCents.toDouble();
+  }
+
+  return costCents / 100.0;
+}
+
 /// Calculate shipping cost based on distance, quantity, weight, and delivery speed.
 /// Aligns with backend shipping_service.py for deterministic totals.
 /// Returns a Map of sellerId to shipping cost.
@@ -214,6 +241,23 @@ Future<Map<String, double>> calculateShippingCost(
       buyerAddress.latitude == null ||
       buyerAddress.longitude == null) {
     return {};
+  }
+
+  final buyerProvince = buyerAddress.state;
+  final isCubaShipping = ProvinceCodeValues.cubaProvinces.contains(
+    buyerProvince,
+  );
+  if (isCubaShipping) {
+    final Map<String, double> sellerCosts = {};
+    final itemsBySeller = <String, List<CartItemDetailModel>>{};
+    for (var item in items) {
+      itemsBySeller.putIfAbsent(item.sellerId, () => []).add(item);
+    }
+    for (var sellerId in itemsBySeller.keys) {
+      final sellerItems = itemsBySeller[sellerId]!;
+      sellerCosts[sellerId] = _calculateMaritimeShipping(sellerItems);
+    }
+    return sellerCosts;
   }
 
   final Map<String, double> sellerCosts = {};
