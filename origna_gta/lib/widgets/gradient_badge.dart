@@ -48,18 +48,39 @@ class GradientBadge extends StatelessWidget {
 Widget previewGradientBadgeVariants() => previewGrid(
   children: [
     const GradientBadge(label: 'SALE'),
-    const GradientBadge(label: 'HOT', gradient: LinearGradient(colors: [Color(0xFFFF6B6B), Color(0xFFFF8E53)])),
-    const GradientBadge(label: 'NEW', gradient: LinearGradient(colors: [DesignTokens.success, DesignTokens.info)])),
-    GradientBadge(label: 'PREMIUM', gradient: LinearGradient(colors: [DesignTokens.warning, DesignTokens.tertiary])),
+    const GradientBadge(
+      label: 'HOT',
+      gradient: LinearGradient(colors: [Color(0xFFFF6B6B), Color(0xFFFF8E53)]),
+    ),
+    const GradientBadge(
+      label: 'NEW',
+      gradient: LinearGradient(
+        colors: [DesignTokens.success, DesignTokens.info],
+      ),
+    ),
+    GradientBadge(
+      label: 'PREMIUM',
+      gradient: LinearGradient(
+        colors: [DesignTokens.warning, DesignTokens.tertiary],
+      ),
+    ),
   ],
 );
 
 @Preview(name: 'Gradient Badge — Sizes', group: 'GradientBadge')
 Widget previewGradientBadgeSizes() => previewGrid(
   children: [
-    const GradientBadge(label: 'Small', fontSize: 9, padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2)),
+    const GradientBadge(
+      label: 'Small',
+      fontSize: 9,
+      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+    ),
     const GradientBadge(label: 'Default', fontSize: 11),
-    const GradientBadge(label: 'Large', fontSize: 13, padding: EdgeInsets.symmetric(horizontal: 12, vertical: 5)),
+    const GradientBadge(
+      label: 'Large',
+      fontSize: 13,
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+    ),
   ],
 );
 
@@ -73,6 +94,12 @@ Widget previewGradientBadgeVariantsLight() => previewGrid(
   theme: previewLightTheme,
   children: [
     const GradientBadge(label: 'SALE', textColor: DesignTokens.white),
-    const GradientBadge(label: 'NEW', gradient: LinearGradient(colors: [DesignTokens.success, DesignTokens.info]), textColor: DesignTokens.white)),
+    const GradientBadge(
+      label: 'NEW',
+      gradient: LinearGradient(
+        colors: [DesignTokens.success, DesignTokens.info],
+      ),
+      textColor: DesignTokens.white,
+    ),
   ],
 );

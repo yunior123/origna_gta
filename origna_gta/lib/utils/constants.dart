@@ -22,7 +22,8 @@ export 'package:origna_gta/core/schema/schema_constants.dart'
         CategoryIds,
         ApiKeys,
         ProvinceCodeValues,
-        EmailConfig;
+        EmailConfig,
+        FeatureFlags;
 
 // ============================================================================
 // APP CONFIGURATION

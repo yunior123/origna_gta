@@ -2768,3 +2768,7 @@ abstract final class DeepLinkParams {
   /// Value of [mode] when the link is a password-reset action
   static const modeResetPassword = 'resetPassword';
 }
+
+abstract final class FeatureFlags {
+  static const bool kSellerOnboardingEnabled = false;
+}

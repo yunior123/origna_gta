@@ -295,71 +295,75 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
 
           final galleryHeight = _mobileGalleryHeight(context);
 
-          return CustomScrollView(
-            slivers: [
-              SliverAppBar(
-                automaticallyImplyLeading: false,
-                pinned: true,
-                floating: true,
-                backgroundColor: isDark
-                    ? DesignTokens.darkSurface
-                    : DesignTokens.white,
-                titleSpacing: 8,
-                leading: IconButton(
-                  key: const Key('productdetail_back_button'),
-                  tooltip: 'btn-back-product-details',
-                  icon: const Icon(Icons.arrow_back),
-                  onPressed: () => Navigator.pop(context),
-                ),
-                actions: [buildShareButton()],
-              ),
-              SliverToBoxAdapter(
-                child: SizedBox(
-                  height: galleryHeight,
-                  child: buildImageGallery(height: galleryHeight),
-                ),
-              ),
-              SliverToBoxAdapter(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? DesignTokens.darkSurface
-                        : DesignTokens.white,
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(24),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: DesignTokens.black.withValues(alpha: 0.08),
-                        blurRadius: 16,
-                        offset: const Offset(0, -4),
-                      ),
-                    ],
+          return SafeArea(
+            bottom: false,
+            child: CustomScrollView(
+              slivers: [
+                SliverAppBar(
+                  automaticallyImplyLeading: false,
+                  pinned: true,
+                  floating: true,
+                  backgroundColor: isDark
+                      ? DesignTokens.darkSurface
+                      : DesignTokens.white,
+                  titleSpacing: 8,
+                  leading: IconButton(
+                    key: const Key('productdetail_back_button'),
+                    tooltip: 'btn-back-product-details',
+                    icon: const Icon(Icons.arrow_back),
+                    onPressed: () => Navigator.pop(context),
                   ),
-                  child: const SizedBox(height: 20),
+                  actions: [buildShareButton()],
                 ),
-              ),
-              SliverToBoxAdapter(
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      maxWidth: ResponsiveBreakpoints.contentMaxWidth,
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          buildProductInfo(),
-                          const SizedBox(height: 32),
-                          buildBottomSections(),
-                        ],
-                      ),
-                    ),
+                SliverToBoxAdapter(
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: galleryHeight,
+                    child: buildImageGallery(height: galleryHeight),
                   ),
                 ),
-              ),
-            ],
+                SliverToBoxAdapter(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? DesignTokens.darkSurface
+                          : DesignTokens.white,
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(24),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: DesignTokens.black.withValues(alpha: 0.08),
+                          blurRadius: 16,
+                          offset: const Offset(0, -4),
+                        ),
+                      ],
+                    ),
+                    child: const SizedBox(height: 20),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(
+                        maxWidth: ResponsiveBreakpoints.contentMaxWidth,
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            buildProductInfo(),
+                            const SizedBox(height: 32),
+                            buildBottomSections(),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           );
         },
         loading: () => product != null
@@ -585,66 +589,70 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
 
     final galleryHeight = _mobileGalleryHeight(context);
 
-    return CustomScrollView(
-      slivers: [
-        SliverAppBar(
-          pinned: true,
-          backgroundColor: isDark
-              ? DesignTokens.darkSurface
-              : DesignTokens.white,
-          leading: IconButton(
-            key: const Key('productdetail_back_button'),
-            tooltip: 'btn-back-product-details',
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () => Navigator.pop(context),
-          ),
-          actions: [buildShareButton()],
-        ),
-        SliverToBoxAdapter(
-          child: SizedBox(
-            height: galleryHeight,
-            child: buildImageGallery(height: galleryHeight),
-          ),
-        ),
-        SliverToBoxAdapter(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: isDark ? DesignTokens.darkSurface : DesignTokens.white,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(24),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: DesignTokens.black.withValues(alpha: 0.08),
-                  blurRadius: 16,
-                  offset: const Offset(0, -4),
-                ),
-              ],
+    return SafeArea(
+      bottom: false,
+      child: CustomScrollView(
+        slivers: [
+          SliverAppBar(
+            pinned: true,
+            backgroundColor: isDark
+                ? DesignTokens.darkSurface
+                : DesignTokens.white,
+            leading: IconButton(
+              key: const Key('productdetail_back_button'),
+              tooltip: 'btn-back-product-details',
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => Navigator.pop(context),
             ),
-            child: const SizedBox(height: 20),
+            actions: [buildShareButton()],
           ),
-        ),
-        SliverToBoxAdapter(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(
-                maxWidth: ResponsiveBreakpoints.contentMaxWidth,
-              ),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    buildProductInfo(),
-                    const SizedBox(height: 32),
-                    buildBottomSections(),
-                  ],
-                ),
-              ),
+          SliverToBoxAdapter(
+            child: SizedBox(
+              width: double.infinity,
+              height: galleryHeight,
+              child: buildImageGallery(height: galleryHeight),
             ),
           ),
-        ),
-      ],
+          SliverToBoxAdapter(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: isDark ? DesignTokens.darkSurface : DesignTokens.white,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(24),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: DesignTokens.black.withValues(alpha: 0.08),
+                    blurRadius: 16,
+                    offset: const Offset(0, -4),
+                  ),
+                ],
+              ),
+              child: const SizedBox(height: 20),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  maxWidth: ResponsiveBreakpoints.contentMaxWidth,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      buildProductInfo(),
+                      const SizedBox(height: 32),
+                      buildBottomSections(),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1031,21 +1039,24 @@ final _previewSimilarProducts = [
 ];
 
 Widget _productDetailsContent({int stockQuantity = 5}) {
-  final previewProduct = _previewMainProduct.copyWith(stockQuantity: stockQuantity);
+  final previewProduct = _previewMainProduct.copyWith(
+    stockQuantity: stockQuantity,
+  );
   return previewScope(
     extraOverrides: [
-      productByIdProvider('preview-id').overrideWith(
-        (ref) => Future.value(previewProduct),
-      ),
+      productByIdProvider(
+        'preview-id',
+      ).overrideWith((ref) => Future.value(previewProduct)),
       userProfileProvider.overrideWith((ref) => Stream.value(null)),
       subscriptionStreamProvider.overrideWith((ref) => Stream.value(null)),
       qaListProvider('preview-id').overrideWith((ref) => Stream.value([])),
       productRatingsProvider(
         'preview-id',
       ).overrideWith((ref) => Stream.value(const [])),
-      bundledProductsProvider(const ['bundle-case', 'bundle-cable']).overrideWith(
-        (ref) => Future.value(_previewBundledProducts),
-      ),
+      bundledProductsProvider(const [
+        'bundle-case',
+        'bundle-cable',
+      ]).overrideWith((ref) => Future.value(_previewBundledProducts)),
       moreFromSellerProvider((
         sellerId: 'seller-audio',
         excludeProductId: 'preview-id',

@@ -435,7 +435,8 @@ class MooseTips {
     'mascot.moose_tip_secure_payments'.tr(),
     'mascot.moose_tip_local_biz'.tr(),
     'mascot.moose_tip_cart_saves'.tr(),
-    'mascot.moose_tip_become_seller'.tr(),
+    if (FeatureFlags.kSellerOnboardingEnabled)
+      'mascot.moose_tip_become_seller'.tr(),
     'mascot.moose_tip_get_help'.tr(),
     'mascot.moose_tip_made_in_canada'.tr(),
   ];

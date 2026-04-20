@@ -238,7 +238,7 @@ class ProfileScreenLayout extends StatelessWidget {
           subtitle: 'profile.view_purchases'.tr(),
           onTap: () => Navigator.pushNamed(context, AppRoutes.orders),
         ),
-        if (isSeller) ...[
+        if (FeatureFlags.kSellerOnboardingEnabled && isSeller) ...[
           ProfileMenuItem(
             key: const Key('profile_seller_orders_button'),
             icon: Icons.store_outlined,
@@ -264,7 +264,7 @@ class ProfileScreenLayout extends StatelessWidget {
             onTap: () =>
                 Navigator.pushNamed(context, AppRoutes.sellerAnalytics),
           ),
-        ] else
+        ] else if (FeatureFlags.kSellerOnboardingEnabled)
           ProfileMenuItem(
             key: const Key('profile_become_seller_button'),
             icon: Icons.storefront,

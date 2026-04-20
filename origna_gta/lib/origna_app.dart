@@ -222,6 +222,9 @@ List<Route<dynamic>> _onGenerateInitialRoutes(String initialRoute) {
 
   // Handle seller registration return from Stripe Connect
   if (uri != null && uri.path == AppRoutes.sellerReturn) {
+    if (!FeatureFlags.kSellerOnboardingEnabled) {
+      return [SlidePageRoute(page: const AuthWrapper())];
+    }
     return [
       SlidePageRoute(page: const AuthWrapper()),
       SlidePageRoute(
@@ -232,6 +235,9 @@ List<Route<dynamic>> _onGenerateInitialRoutes(String initialRoute) {
 
   // Handle seller registration refresh (user needs to retry)
   if (uri != null && uri.path == AppRoutes.sellerRefresh) {
+    if (!FeatureFlags.kSellerOnboardingEnabled) {
+      return [SlidePageRoute(page: const AuthWrapper())];
+    }
     return [
       SlidePageRoute(page: const AuthWrapper()),
       SlidePageRoute(
@@ -338,6 +344,9 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
 
   // Handle seller registration return
   if (uri.path == AppRoutes.sellerReturn) {
+    if (!FeatureFlags.kSellerOnboardingEnabled) {
+      return SlidePageRoute(page: const AuthWrapper());
+    }
     return SlidePageRoute(
       page: const AuthRequiredGate(child: SellerSetupCompleteScreen()),
     );
@@ -345,6 +354,9 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
 
   // Handle seller registration refresh
   if (uri.path == AppRoutes.sellerRefresh) {
+    if (!FeatureFlags.kSellerOnboardingEnabled) {
+      return SlidePageRoute(page: const AuthWrapper());
+    }
     return SlidePageRoute(
       page: const AuthRequiredGate(child: SellerSetupRefreshScreen()),
     );
@@ -588,6 +600,9 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
 
   // Seller Registration screen
   if (uri.path == AppRoutes.sellerRegistration) {
+    if (!FeatureFlags.kSellerOnboardingEnabled) {
+      return SlidePageRoute(page: const AuthWrapper());
+    }
     return SlidePageRoute(
       settings: settings,
       page: AuthRequiredGate(
@@ -601,6 +616,9 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
 
   // Seller Orders screen
   if (uri.path == AppRoutes.sellerOrders) {
+    if (!FeatureFlags.kSellerOnboardingEnabled) {
+      return SlidePageRoute(page: const AuthWrapper());
+    }
     return SlidePageRoute(
       settings: settings,
       page: AuthRequiredGate(
@@ -614,6 +632,9 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
 
   // Seller Products screen
   if (uri.path == AppRoutes.sellerProducts) {
+    if (!FeatureFlags.kSellerOnboardingEnabled) {
+      return SlidePageRoute(page: const AuthWrapper());
+    }
     return SlidePageRoute(
       settings: settings,
       page: AuthRequiredGate(
@@ -627,6 +648,9 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
 
   // Seller Warehouses screen
   if (uri.path == AppRoutes.sellerWarehouses) {
+    if (!FeatureFlags.kSellerOnboardingEnabled) {
+      return SlidePageRoute(page: const AuthWrapper());
+    }
     return SlidePageRoute(
       settings: settings,
       page: AuthRequiredGate(
@@ -640,6 +664,9 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
 
   // Seller bulk upload screen
   if (uri.path == AppRoutes.sellerBulkUpload) {
+    if (!FeatureFlags.kSellerOnboardingEnabled) {
+      return SlidePageRoute(page: const AuthWrapper());
+    }
     return SlidePageRoute(
       settings: settings,
       page: AuthRequiredGate(
@@ -653,6 +680,9 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
 
   // Seller Integration Guide
   if (uri.path == AppRoutes.sellerIntegration) {
+    if (!FeatureFlags.kSellerOnboardingEnabled) {
+      return SlidePageRoute(page: const AuthWrapper());
+    }
     return SlidePageRoute(
       settings: settings,
       page: AuthRequiredGate(
@@ -666,6 +696,9 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
 
   // Seller Analytics dashboard
   if (uri.path == AppRoutes.sellerAnalytics) {
+    if (!FeatureFlags.kSellerOnboardingEnabled) {
+      return SlidePageRoute(page: const AuthWrapper());
+    }
     return SlidePageRoute(
       settings: settings,
       page: AuthRequiredGate(
@@ -1121,7 +1154,9 @@ class _OrignaAppState extends ConsumerState<OrignaApp>
       // without firing duplicate work on quick foreground hops.
       ref.invalidate(cartItemsProvider);
       ref.invalidate(buyerOrdersProvider);
-      ref.invalidate(sellerOrdersProvider);
+      if (FeatureFlags.kSellerOnboardingEnabled) {
+        ref.invalidate(sellerOrdersProvider);
+      }
       ref.invalidate(favoritesProvider);
       ref.invalidate(userNotificationsProvider);
     } catch (e) {

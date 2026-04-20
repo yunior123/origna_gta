@@ -25,6 +25,10 @@ class _AddProductButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (!FeatureFlags.kSellerOnboardingEnabled) {
+      return const SizedBox.shrink();
+    }
+
     final isProfileLoading = ref.watch(
       userProfileProvider.select((a) => a.isLoading),
     );

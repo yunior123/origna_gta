@@ -49,7 +49,7 @@ class ProductImageGallery extends ConsumerWidget {
             ? BorderRadius.circular(DesignTokens.radius16)
             : null,
       ),
-      clipBehavior: isWideScreen ? Clip.antiAlias : Clip.none,
+      clipBehavior: Clip.antiAlias,
       child: Stack(
         fit: StackFit.expand,
         children: [
