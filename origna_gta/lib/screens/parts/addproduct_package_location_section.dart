@@ -207,6 +207,7 @@ extension _AddProductPackageLocationSection on _AddProductScreenState {
                 onChanged: state.addressVerified
                     ? null
                     : (_) => viewModel.clearCoordinates(),
+                    semanticsLabel: 'input-postal-code',
               ),
             ),
           ],

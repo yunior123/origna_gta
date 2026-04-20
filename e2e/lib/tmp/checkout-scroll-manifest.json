@@ -1,0 +1,32 @@
+{
+  "scenarios": [
+    {
+      "id": "desktop-checkout-buyer-scroll",
+      "filename": "315-checkout-buyer-desktop.png",
+      "persona": "buyer",
+      "url": "/cart",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "steps": [
+        {
+          "action": "scroll",
+          "target": "down",
+          "value": "1800"
+        },
+        {
+          "action": "click",
+          "target": "checkout|proceed|payment|Passer"
+        }
+      ],
+      "anchors": [
+        "paiement",
+        "payment",
+        "address",
+        "adresse",
+        "checkout"
+      ]
+    }
+  ]
+}

@@ -1,3 +1,4 @@
+import 'package:origna_gta/utils/app_logger.dart';
 import 'package:origna_gta/utils/constants.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -198,8 +199,18 @@ class _GalleryImage extends StatelessWidget {
     final resolvedUri = Uri.tryParse(resolvedSource);
     if (resolvedSource.isEmpty ||
         resolvedUri == null ||
-        !resolvedUri.hasScheme ||
-        !(resolvedUri.scheme == 'http' || resolvedUri.scheme == 'https')) {
+        !resolvedUri.hasScheme) {
+      AppLogger.w(
+        'ProductImageGallery: invalid image URL: "$imageSource" -> "$resolvedSource"',
+        tag: 'product',
+      );
+      return const _ImageErrorPlaceholder();
+    }
+    if (resolvedUri.scheme != 'http' && resolvedUri.scheme != 'https') {
+      AppLogger.w(
+        'ProductImageGallery: non-HTTP scheme in URL: "$resolvedSource"',
+        tag: 'product',
+      );
       return const _ImageErrorPlaceholder();
     }
 

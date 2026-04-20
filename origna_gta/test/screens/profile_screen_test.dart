@@ -12,10 +12,6 @@ import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:origna_gta/utils/constants.dart';
 import '../test_utils.dart';
 
-const _sellerSkip = FeatureFlags.kSellerOnboardingEnabled
-    ? null
-    : 'Seller onboarding disabled';
-
 /// Duration long enough to settle FadeSlideIn animations (400ms + max 200ms delay)
 const _animationDuration = Duration(seconds: 1);
 

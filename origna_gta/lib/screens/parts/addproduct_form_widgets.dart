@@ -22,8 +22,9 @@ extension _AddProductFormWidgets on _AddProductScreenState {
     String? errorText,
     String? semanticsLabel,
   }) {
-    return Tooltip(
-      message: semanticsLabel ?? label,
+    return Semantics(
+      label: semanticsLabel ?? label,
+    textField: true,
       child: TextFormField(
         key: key,
         controller: controller,
@@ -491,9 +492,10 @@ extension _AddProductFormWidgets on _AddProductScreenState {
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Tooltip(
-        message:
+      child: Semantics(
+        label:
             'input-add-product-url-${label.toLowerCase().replaceAll(' ', '-')}',
+      textField: true,
         child: TextFormField(
           initialValue: value,
           decoration: InputDecoration(

@@ -16,6 +16,7 @@ import 'package:origna_gta/widgets/mascot/mascot_provider.dart';
 import 'package:origna_gta/widgets/mascot/moose_provider.dart';
 import 'package:origna_gta/widgets/mascot/shop_mascot.dart';
 import 'package:origna_gta/widgets/mascot/canadian_moose.dart';
+import 'package:origna_gta/core/feature_flag_provider.dart';
 import '../test_utils.dart';
 
 @GenerateNiceMocks([MockSpec<ProductRepository>()])
@@ -81,6 +82,7 @@ List<Override> _baseOverrides({
   return [
     currentUserProvider.overrideWithValue(user),
     userProfileProvider.overrideWith((ref) => Stream.value(profile)),
+    featureFlagSellerOnboardingProvider.overrideWithValue(true),
     productRepositoryProvider.overrideWithValue(mockProductRepo),
     cartItemCountProvider.overrideWithValue(cartCount),
     mascotControllerProvider.overrideWithValue(mascotController),
@@ -674,19 +676,21 @@ void main() {
 
       await tester.pumpWidget(
         TestWrapper(
-          overrides: _baseOverrides(
-            mockProductRepo: mockProductRepo,
-            mascotController: mascotController,
-            mooseController: mooseController,
-            userProfile: models.UserModel(
-              uid: 'test_user_123',
-              name: 'Seller',
-              email: 'seller@example.com',
-              roles: const [UserRole.seller],
-              createdAt: DateTime.now(),
+          overrides: [
+            ..._baseOverrides(
+              mockProductRepo: mockProductRepo,
+              mascotController: mascotController,
+              mooseController: mooseController,
+              userProfile: models.UserModel(
+                uid: 'test_user_123',
+                name: 'Seller',
+                email: 'seller@example.com',
+                roles: const [UserRole.seller],
+                createdAt: DateTime.now(),
+              ),
+              homeState: HomeState(isLoading: false, hasMore: false),
             ),
-            homeState: HomeState(isLoading: false, hasMore: false),
-          ),
+          ],
           child: const HomeScreen(),
         ),
       );
@@ -702,19 +706,21 @@ void main() {
 
       await tester.pumpWidget(
         TestWrapper(
-          overrides: _baseOverrides(
-            mockProductRepo: mockProductRepo,
-            mascotController: mascotController,
-            mooseController: mooseController,
-            userProfile: models.UserModel(
-              uid: 'test_user_123',
-              name: 'Admin',
-              email: 'admin@example.com',
-              roles: const [UserRole.admin],
-              createdAt: DateTime.now(),
+          overrides: [
+            ..._baseOverrides(
+              mockProductRepo: mockProductRepo,
+              mascotController: mascotController,
+              mooseController: mooseController,
+              userProfile: models.UserModel(
+                uid: 'test_user_123',
+                name: 'Admin',
+                email: 'admin@example.com',
+                roles: const [UserRole.admin],
+                createdAt: DateTime.now(),
+              ),
+              homeState: HomeState(isLoading: false, hasMore: false),
             ),
-            homeState: HomeState(isLoading: false, hasMore: false),
-          ),
+          ],
           child: const HomeScreen(),
         ),
       );

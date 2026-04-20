@@ -81,7 +81,6 @@ void main() {
       () async {
         final cartRef = ob.collection(Collections.cart);
         dynamic cartSnapshot;
-        dynamic addressSnapshot;
         Map<String, dynamic>? addressData;
 
         try {
@@ -101,10 +100,6 @@ void main() {
             reason: 'Cart should have items',
           );
 
-          addressSnapshot = await ob
-              .collection(Collections.addresses)
-              .where(Fields.userId, isEqualTo: ob.auth.currentUserId)
-              .get();
           addressData = await ensureShippingAddress();
         } on OrignaBaseException catch (e) {
           expect(

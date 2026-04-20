@@ -115,7 +115,6 @@ abstract final class ApiKeys {
   static const available = 'available';
   static const productName = 'productName';
   static const productData = 'productData';
-  static const images = 'images';
   static const testImageUrls = 'testImageUrls';
 
   // === PAYMENT PROVIDER RESPONSE KEYS ===
@@ -1234,9 +1233,6 @@ abstract final class Fields {
 
   /// Alternate name for [minimumOrderQuantity]
   static const minOrderQuantity = 'minOrderQuantity';
-  static const isActive = 'isActive'; // legacy active flag
-  static const title = 'title'; // legacy alias for product name
-  static const province = 'province'; // legacy alias for state
 
   // === LOWERCASE TAX KEYS (used in JSON API responses) ===
   /// Lowercase variant of [GST] for JSON responses

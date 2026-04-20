@@ -77,7 +77,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
       try {
         final snapshot = Map<String, dynamic>.from(widget.product!);
         snapshot[Fields.productId] ??= widget.productId;
-        snapshot[Fields.imageUrls] ??= snapshot['images'] ?? const <String>[];
+        snapshot[Fields.imageUrls] ??= const <String>[];
         snapshot[Fields.createdAt] ??= DateTime.now().toIso8601String();
         initialProduct = Product.fromMap(
           snapshot,
@@ -302,7 +302,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                 SliverAppBar(
                   automaticallyImplyLeading: false,
                   pinned: true,
-                  floating: true,
+                  floating: false,
                   backgroundColor: isDark
                       ? DesignTokens.darkSurface
                       : DesignTokens.white,

@@ -100,10 +100,12 @@ class OrignaBaseProductRepository
   Product docToProduct(Document doc) {
     final data = <String, dynamic>{...doc.data};
 
-    data[Fields.name] ??= data[Fields.title] ?? 'Untitled product';
+    data[Fields.name] ??= 'Untitled product';
     data[Fields.description] ??= '';
-    // Backend may store images as 'images' — map to 'imageUrls' for model
-    data[Fields.imageUrls] ??= data[ApiKeys.images] ?? const <String>[];
+    data[Fields.imageUrls] = switch (data[Fields.imageUrls]) {
+      final List<String> l when l.isNotEmpty => l,
+      _ => const <String>[],
+    };
     data[Fields.sellerId] ??= '';
     // categoryId may arrive as String from backend — coerce to int
     if (data[Fields.categoryId] is String) {
@@ -168,20 +170,16 @@ class OrignaBaseProductRepository
       }
     }
 
-    // Normalize sellerAddress: backend may store 'province' instead of 'state'
-    // (pre-schema-sync data), or have missing required fields. Address.fromJson
-    // requires non-null street, city, state, postalCode — strip invalid addresses
-    // to prevent deserialization crash.
+    // Normalize sellerAddress: ensure required fields exist for Address.fromJson.
+    // Strip invalid addresses (all required fields empty) to prevent deserialization crash.
     final addr = data[Fields.sellerAddress];
     if (addr is Map) {
       final a = Map<String, dynamic>.from(addr.cast<String, dynamic>());
-      // Backward compat: 'province' → 'state'
-      a[Fields.state] ??= a[Fields.province] ?? '';
+      a[Fields.state] ??= '';
       a[Fields.street] ??= '';
       a[Fields.city] ??= '';
       a[Fields.postalCode] ??= '';
       a[Fields.country] ??= CountryValues.canada;
-      // If all required fields are empty, drop the address entirely
       if ((a[Fields.street] as String).isEmpty &&
           (a[Fields.city] as String).isEmpty &&
           (a[Fields.state] as String).isEmpty) {
@@ -455,7 +453,7 @@ class OrignaBaseProductRepository
         Fields.productId: productId,
         Fields.rating: rating,
         Fields.userId: userId,
-        'images': reviewImageUrls,
+        Fields.reviewImageUrls: reviewImageUrls,
         if (reviewText != null && reviewText.isNotEmpty)
           Fields.reviewText: reviewText,
       },

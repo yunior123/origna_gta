@@ -905,42 +905,46 @@ Start only after Phases 1 through 3 are stable.
 - [ ] orignabase rules should be as strong as firebase rules
 - [ ] orignabase queries should be similar to firebase
 * - [ ] fix gaps with previews, right now it shows only empty state in some views. improve previews, cover all gaps
-- [ ] no backward compatibility is needed, make sure no legacy code
+* [x] no legacy code — removed ApiKeys.images, snapshot['images'], 'images' string in review payload, province backward compat
 - [ ] coverage for live tests and e2e should be 95+, its an order. Identify gaps and add tests accordingly
-- [ ] there should be more than 200+ screenshots in desktop covering all states, variants, views. everytime we clear before generating again, to avoid duplication. cover any missing gaps
+- [ ] there should be 300+ screenshots in desktop covering all states, variants, views. clear before generating to avoid duplication.
 - [ ] search rust docs for best practices, create new skills as needed or improve. look for best practices for websockkets server, graphql, etc. audit full codebase.
-- [ ] all screenshots in desktop should match the view they are supposed to represent. make sure login works. make sure to cover all gaps so that investors can see all views and states and variants with enough seeded data. if login fails crash and nuke test suite and investigate
+- [ ] all screenshots in desktop should match the view they represent. make sure login works. cover all gaps so that investors can see all views/states/variants with enough seeded data. if login fails crash and nuke test suite and investigate
 - [ ] make sure there are semantic labels all over, find gaps and fix, add more e2e tests if needed.
 - [ ] make sure to run all phases /Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/e2e/specs . fix as needed
-- [ ] run them all [text](e2e/ai), 
-
-
-- audit screenshots in desktop vs views, widgets gaps
-- audit for not connected elements in app
-- dont stop till all screenshots in desktop, we are gonna show screenshots to investors, so make sure that the screenshots match the view
-- fix gaps with previews, there is missing mockup data for previews
-- /Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/lib/screens' add missing mockups for previews,  fix overflows or issues displaying if any
-- /Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/lib/widgets' add missing mockups for previews, fix overflows or issues displaying if any
--everytime u do a pass u put a star before the element:.claude/skills/harness-loop/SKILL.md . dont stop
--always keep vps updated with latest deployement
--add x or star to mark work done on every pass
--improve all based on gaps, bugs, audit reports
--dont stop till 300+ screenshots on desktop, no excuses
--delete users if not already in mail api to restart free tier of less than 1000 users while we test
--fix testing failures as pro
--commit and push all to github
--build ios app
--fix bug with mobile layout not showing image/s in product details view
--we are adding support to shipping to cuba, only havana city and pickup in there. we need to adjust orignabase and orignagta for that
--add spanish traslations to both orignagta and orignaventures
--orignaventures was destroyed in the past in the sense that the contract data replaced entirely the home page which should show the purpose of the company which is ecommerce, whole sale, retail, software services, outsourcing. Increase 1000cad to the service 2, make it clickable as the other services
--make sure payment is working in orignagta and orignaventures, test stripe payments there with e2e
--run all tests in apps. make sure to fix the payment endpoints since we now disabled the seller onboarding
--add more tests e2e to orignagta and orignaventures, mainly for payment
--fix vscode issues
--seller onboarding is disabled but have in mind that we can still sell as OrignaVentures, we are the only ones selling. the email for company is support@orignaventures.ca
--in orignaventures.ca we are selling services packages with 3 tiers, payment goes via stripe
--update and organize this file
-
-
-      
+- [ ] run them all [text](e2e/ai)
+- [ ] audit screenshots in desktop vs views, widgets gaps
+- [ ] audit for not connected elements in app
+- [ ] dont stop till all screenshots in desktop, we are gonna show screenshots to investors
+- [ ] fix gaps with previews, there is missing mockup data for previews
+- [ ] /Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/lib/screens' add missing mockups for previews, fix overflows or issues displaying if any
+- [ ] /Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/lib/widgets' add missing mockups for previews, fix overflows or issues displaying if any
+- [ ] everytime u do a pass u put a star before the element:.claude/skills/harness-loop/SKILL.md . dont stop
+- [ ] always keep vps updated with latest deployement
+- [ ] add x or star to mark work done on every pass
+- [ ] improve all based on gaps, bugs, audit reports
+- [ ] dont stop till 300+ screenshots on desktop, no excuses
+- [ ] delete users if not already in mail api to restart free tier of less than 1000 users while we test
+- [ ] fix testing failures as pro
+- [ ] commit and push all to github
+- [ ] build ios app
+* [x] fix bug with mobile layout not showing image/s in product details view — added logging in _GalleryImage, fixed imageUrls empty-list fallback, removed legacy 'images' field
+- [ ] we are adding support to shipping to cuba, only havana city and pickup in there. we need to adjust orignabase and orignagta for that
+- [ ] add spanish traslations to both orignagta and orignaventures
+- [ ] orignaventures was destroyed in the past in the sense that the contract data replaced entirely the home page which should show the purpose of the company which is ecommerce, whole sale, retail, software services, outsourcing. Increase 1000cad to the service 2, make it clickable as the other services
+- [ ] make sure payment is working in orignagta and orignaventures, test stripe payments there with e2e
+- [ ] run all tests in apps. make sure to fix the payment endpoints since we now disabled the seller onboarding
+- [ ] add more tests e2e to orignagta and orignaventures, mainly for payment
+- [ ] fix vscode issues
+- [ ] seller onboarding is disabled but have in mind that we can still sell as OrignaVentures, we are the only ones selling the first few years. the email for company is support@orignaventures.ca . seller features remain enabled for orignaventures
+- [ ] in orignaventures.ca we are selling services packages with 3 tiers, payment goes via stripe
+- [ ] update and organize this file
+- [ ] improve and fix generated pdfs in orignaventures, the one with screenshots is crazy
+- [ ] regenerate pdfs, screenshots to desktop
+- [ ] use realistic test products from aliexpress, upload image to cloudflare, search cloudflare for best practices
+- [ ] in service 2 from orignaventures make sure we include 20 human tester = 20x1h of work -> 20 h of QA testing
+- [ ] if seller is orignaventures then user does not have to pay premium to chat, they can chat to us directly. set chatting to sellers as coming upon seller onboarding enabled
+- [ ] remove the part of the contract signing from orignaventures, update policies instead. just 3 tappable services that lead to stripe for payment
+- [ ] audit all app code now that seller onboarding is disabled
+- [ ] no legacy code, remove that in entire codebase
+- some products might have shipping disabled for specific countries, make sure we have that cover

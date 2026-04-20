@@ -98,12 +98,15 @@ class _SellerWarehousesScreenState
             isActionLoading: vmIsLoading,
           ),
         ),
-        floatingActionButton: FloatingActionButton.extended(
-          backgroundColor: DesignTokens.primary,
-          foregroundColor: DesignTokens.white,
-          icon: const Icon(Icons.add_location_alt_outlined),
-          label: Text('seller.add_location'.tr()),
-          onPressed: vmIsLoading ? null : () => _showWarehouseForm(context),
+                floatingActionButton: Semantics(
+          label: 'btn-add-warehouse', button: true,
+          child: FloatingActionButton.extended(
+            backgroundColor: DesignTokens.primary,
+            foregroundColor: DesignTokens.white,
+            icon: const Icon(Icons.add_location_alt_outlined),
+            label: Text('seller.add_location'.tr()),
+            onPressed: vmIsLoading ? null : () => _showWarehouseForm(context),
+          ),
         ),
       ),
     );

@@ -24,6 +24,9 @@ String resolveMediaUrl(String rawSource) {
 
   final baseUrl = ConfigService().imageBaseUrl.trim();
   if (baseUrl.isEmpty) {
+    if (source.contains('/') && !source.startsWith('/')) {
+      return 'https://pub-f9698d0f50d146bcac0e2dc9eb09de57.r2.dev/$source';
+    }
     return source;
   }
 

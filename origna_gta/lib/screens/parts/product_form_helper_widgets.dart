@@ -451,46 +451,58 @@ class _VariantRow extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: TextFormField(
-                  initialValue: price?.toStringAsFixed(2),
-                  decoration: _variantFieldDecoration(
-                    'product.price_dollar'.tr(),
-                    prefixText: '\$ ',
+                child: Semantics(
+                  label: 'input-variant-price',
+                  textField: true,
+                  child: TextFormField(
+                    initialValue: price?.toStringAsFixed(2),
+                    decoration: _variantFieldDecoration(
+                      'product.price_dollar'.tr(),
+                      prefixText: '\$ ',
+                    ),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    onChanged: (v) => onPriceChanged(double.tryParse(v)),
                   ),
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  onChanged: (v) => onPriceChanged(double.tryParse(v)),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: TextFormField(
-                  initialValue: stockQuantity.toString(),
-                  decoration: _variantFieldDecoration('product.stock'.tr()),
-                  keyboardType: TextInputType.number,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
+                child: Semantics(
+                  label: 'input-variant-stock',
+                  textField: true,
+                  child: TextFormField(
+                    initialValue: stockQuantity.toString(),
+                    decoration: _variantFieldDecoration('product.stock'.tr()),
+                    keyboardType: TextInputType.number,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    onChanged: (v) => onStockChanged(int.tryParse(v) ?? 0),
                   ),
-                  onChanged: (v) => onStockChanged(int.tryParse(v) ?? 0),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: TextFormField(
-                  initialValue: sku,
-                  decoration: _variantFieldDecoration('product.sku'.tr()),
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
+                child: Semantics(
+                  label: 'input-variant-sku',
+                  textField: true,
+                  child: TextFormField(
+                    initialValue: sku,
+                    decoration: _variantFieldDecoration('product.sku'.tr()),
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    onChanged: (v) =>
+                        onSkuChanged(v.trim().isEmpty ? null : v.trim()),
                   ),
-                  onChanged: (v) =>
-                      onSkuChanged(v.trim().isEmpty ? null : v.trim()),
                 ),
               ),
             ],

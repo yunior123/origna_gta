@@ -1,0 +1,89 @@
+{
+  "scenarios": [
+    {
+      "id": "desktop-checkout-buyer",
+      "filename": "315-checkout-buyer-desktop.png",
+      "persona": "buyer",
+      "url": "/cart",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "steps": [
+        {
+          "action": "click",
+          "target": "checkout|place order|btn-checkout|Passer"
+        }
+      ],
+      "anchors": [
+        "paiement",
+        "payment",
+        "address",
+        "adresse"
+      ]
+    },
+    {
+      "id": "desktop-seller-orders",
+      "filename": "319-seller-orders-desktop.png",
+      "persona": "seller",
+      "url": "/",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "steps": [
+        {
+          "action": "click",
+          "target": "btn-home-settings"
+        },
+        {
+          "action": "click",
+          "target": "menu-seller-orders"
+        }
+      ],
+      "anchors": [
+        "G\u00e9rer les commandes",
+        "commande",
+        "seller-order"
+      ]
+    },
+    {
+      "id": "desktop-seller-warehouses",
+      "filename": "322-seller-warehouses-desktop.png",
+      "persona": "seller",
+      "url": "/seller/warehouses",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "anchors": [
+        "Add Location",
+        "location",
+        "Retry",
+        "adresse"
+      ]
+    },
+    {
+      "id": "desktop-seller-bulk-upload",
+      "filename": "323-seller-bulk-upload-desktop.png",
+      "persona": "seller",
+      "url": "/seller/products",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "steps": [
+        {
+          "action": "click",
+          "target": "btn-bulk-upload|bulk upload|T\u00e9l\u00e9chargement en masse"
+        }
+      ],
+      "anchors": [
+        "bulk",
+        "CSV",
+        "upload",
+        "t\u00e9l\u00e9verser"
+      ]
+    }
+  ]
+}

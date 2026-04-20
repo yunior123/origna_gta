@@ -1,0 +1,23 @@
+{
+  "scenarios": [
+    {
+      "id": "desktop-cart-buyer",
+      "filename": "314-cart-buyer-desktop.png",
+      "persona": "buyer",
+      "url": "/cart",
+      "viewport": { "width": 1440, "height": 900 },
+      "anchors": ["Panier", "cart", "checkout", "Passer à la caisse"]
+    },
+    {
+      "id": "desktop-checkout-buyer",
+      "filename": "315-checkout-buyer-desktop.png",
+      "persona": "buyer",
+      "url": "/cart",
+      "viewport": { "width": 1440, "height": 900 },
+      "steps": [
+        { "action": "click", "target": "Proceed to Checkout|Passer à la caisse" }
+      ],
+      "anchors": ["paiement", "payment", "address", "adresse"]
+    }
+  ]
+}

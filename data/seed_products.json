@@ -1,0 +1,149 @@
+{
+  "_meta": {
+    "description": "Realistic e-commerce seed products for OrignaGTA Canadian marketplace",
+    "currency": "CAD",
+    "usdToCadRate": 1.35,
+    "totalProducts": 50,
+    "sources": ["FakeStore API", "DummyJSON API", "Manual"],
+    "imageLicensing": {
+      "unsplash": { "commercial_use": true, "attribution_required": false, "notes": "Free for commercial use. No attribution required. Cannot sell photos unmodified or create competing service." },
+      "pexels": { "commercial_use": true, "attribution_required": false, "notes": "Free for commercial use. No attribution required. Cannot redistribute or sell as-is or create competing service." },
+      "pixabay": { "commercial_use": true, "attribution_required": false, "notes": "Free for commercial use. No attribution required. Cannot redistribute or sell images as standalone files." },
+      "dummyjson": { "commercial_use": true, "attribution_required": false, "notes": "Free mock data. Images on cdn.dummyjson.com for dev/testing." },
+      "fakestoreapi": { "commercial_use": true, "attribution_required": false, "notes": "Free mock e-commerce data. Images on fakestoreapi.com for dev/testing." },
+      "recommendation": "Dev/testing: DummyJSON + FakeStore images fine. Production: Unsplash/Pexels/Pixabay API for category images. Real dropshipping: supplier-provided images."
+    },
+    "missingCategories": {
+      "toys_games": "No API source. Manual entries created below.",
+      "automotive_accessories": "DummyJSON has vehicles/cars not accessories. Manual entries created below.",
+      "computer_components": "FakeStore has SSDs/monitors only. Manual entries for GPU/keyboard/mouse below."
+    }
+  },
+  "categories": {
+    "electronics": {
+      "displayName": "Electronics",
+      "products": [
+        {"id":"prod-elec-001","title":"WD 2TB Elements Portable External Hard Drive - USB 3.0","description":"USB 3.0 and USB 2.0 Compatibility. Fast data transfers. Improve PC Performance. High Capacity. Formatted NTFS for Windows 10/8.1/7.","priceCents":8640,"priceDisplay":"$86.40 CAD","image":"https://fakestoreapi.com/img/61IBBVJvSDL._AC_SY879_t.png","source":"fakestoreapi","sourceId":9,"tags":["storage","external-hard-drive","usb-3.0"]},
+        {"id":"prod-elec-002","title":"SanDisk SSD PLUS 1TB Internal SSD - SATA III 6 Gb/s","description":"Easy upgrade for faster boot up, shutdown, application load and response. Read/write speeds of up to 535MB/s/450MB/s.","priceCents":14715,"priceDisplay":"$147.15 CAD","image":"https://fakestoreapi.com/img/61U7T1koQqL._AC_SX679_t.png","source":"fakestoreapi","sourceId":10,"tags":["storage","ssd","internal-drive"]},
+        {"id":"prod-elec-003","title":"Silicon Power 256GB SSD 3D NAND A55 SLC Cache SATA III","description":"3D NAND flash for high transfer speeds. Advanced SLC Cache Technology for performance boost and longer lifespan. 7mm slim design for Ultrabooks.","priceCents":14715,"priceDisplay":"$147.15 CAD","image":"https://fakestoreapi.com/img/71kWymZ+c+L._AC_SX679_t.png","source":"fakestoreapi","sourceId":11,"tags":["storage","ssd","internal-drive"]},
+        {"id":"prod-elec-004","title":"Acer SB220Q bi 21.5\" Full HD IPS Ultra-Thin Monitor","description":"21.5 inches Full HD 1920x1080 IPS display with Radeon FreeSync. Zero-frame design, 4ms response time, 75Hz refresh rate.","priceCents":80985,"priceDisplay":"$809.85 CAD","image":"https://fakestoreapi.com/img/81QpkIctqPL._AC_SX679_t.png","source":"fakestoreapi","sourceId":13,"tags":["monitor","display","ips","fhd"]},
+        {"id":"prod-elec-005","title":"Samsung 49\" CHG90 144Hz Curved Gaming Monitor","description":"49 inch Super Ultrawide 32:9 Curved Gaming Monitor. Quantum Dot QLED Technology, HDR support. 144Hz refresh rate, 1ms response time.","priceCents":134999,"priceDisplay":"$1,349.99 CAD","image":"https://fakestoreapi.com/img/81Zt42ioCgL._AC_SX679_t.png","source":"fakestoreapi","sourceId":14,"tags":["monitor","gaming","curved","ultrawide","qled"]},
+        {"id":"prod-elec-006","title":"Apple Airpods Wireless Earbuds","description":"Seamless wireless audio experience. Easy pairing, high-quality sound, and Siri integration. Perfect for on-the-go listening.","priceCents":17549,"priceDisplay":"$175.49 CAD","image":"https://cdn.dummyjson.com/product-images/mobile-accessories/apple-airpods/thumbnail.webp","source":"dummyjson","sourceId":100,"tags":["headphones","wireless","earbuds","apple"]},
+        {"id":"prod-elec-007","title":"Apple AirPods Max Silver Over-Ear","description":"Premium over-ear headphones with high-fidelity audio, adaptive EQ, and active noise cancellation.","priceCents":74249,"priceDisplay":"$742.49 CAD","image":"https://cdn.dummyjson.com/product-images/mobile-accessories/apple-airpods-max-silver/thumbnail.webp","source":"dummyjson","sourceId":101,"tags":["headphones","over-ear","noise-cancelling","apple"]},
+        {"id":"prod-elec-008","title":"Apple Airpower Wireless Charger","description":"Convenient wireless charging mat for compatible Apple devices. Simply place your devices for effortless charging.","priceCents":10799,"priceDisplay":"$107.99 CAD","image":"https://cdn.dummyjson.com/product-images/mobile-accessories/apple-airpower-wireless-charger/thumbnail.webp","source":"dummyjson","sourceId":102,"tags":["charger","wireless-charging","apple"]},
+        {"id":"prod-elec-009","title":"Amazon Echo Plus Smart Speaker","description":"Smart speaker with built-in Alexa voice control. Premium sound quality and smart home hub.","priceCents":13499,"priceDisplay":"$134.99 CAD","image":"https://cdn.dummyjson.com/product-images/mobile-accessories/amazon-echo-plus/thumbnail.webp","source":"dummyjson","sourceId":99,"tags":["speaker","smart-home","alexa"]},
+        {"id":"prod-elec-010","title":"Apple iPhone Charger Fast Charging Cable","description":"High-quality charger for fast and efficient iPhone charging.","priceCents":2699,"priceDisplay":"$26.99 CAD","image":"https://cdn.dummyjson.com/product-images/mobile-accessories/apple-iphone-charger/thumbnail.webp","source":"dummyjson","sourceId":104,"tags":["charger","cable","iphone"]}
+      ]
+    },
+    "fashion": {
+      "displayName": "Fashion",
+      "products": [
+        {"id":"prod-fash-001","title":"Fjallraven Foldsack No. 1 Backpack Fits 15 Laptops","description":"Perfect pack for everyday use. Padded laptop sleeve up to 15 inches, spacious main compartment for daily essentials.","priceCents":14843,"priceDisplay":"$148.43 CAD","image":"https://fakestoreapi.com/img/81fPKd-2AYL._AC_SL1500_t.png","source":"fakestoreapi","sourceId":1,"tags":["bag","backpack","laptop-bag","mens"]},
+        {"id":"prod-fash-002","title":"Mens Casual Premium Slim Fit T-Shirts","description":"Slim-fitting style, contrast raglan long sleeve, three-button henley placket. Lightweight soft fabric for breathable comfort.","priceCents":3011,"priceDisplay":"$30.11 CAD","image":"https://fakestoreapi.com/img/71-3HjGNDUL._AC_SY879._SX._UX._SY._UY_t.png","source":"fakestoreapi","sourceId":2,"tags":["shirt","tshirt","mens","casual"]},
+        {"id":"prod-fash-003","title":"Mens Cotton Jacket","description":"Great outerwear for Spring/Autumn/Winter. Suitable for working, hiking, camping, cycling, traveling or other outdoors.","priceCents":7559,"priceDisplay":"$75.59 CAD","image":"https://fakestoreapi.com/img/71li-ujtlUL._AC_UX679_t.png","source":"fakestoreapi","sourceId":3,"tags":["jacket","outerwear","mens","cotton"]},
+        {"id":"prod-fash-004","title":"Women's Removable Hooded Faux Leather Moto Biker Jacket","description":"Faux leather for style and comfort. 2 front pockets, 2-in-1 hooded denim style. Button detail on waist.","priceCents":4043,"priceDisplay":"$40.43 CAD","image":"https://fakestoreapi.com/img/81XH0e8fefL._AC_UY879_t.png","source":"fakestoreapi","sourceId":16,"tags":["jacket","womens","faux-leather","biker"]},
+        {"id":"prod-fash-005","title":"Rain Jacket Women Windbreaker Striped Climbing Raincoats","description":"Lightweight for trips or casual wear. Long sleeve hooded, adjustable drawstring waist. Zipper front closure with 2 side pockets.","priceCents":5399,"priceDisplay":"$53.99 CAD","image":"https://fakestoreapi.com/img/71HblAHs5xL._AC_UY879_-2t.png","source":"fakestoreapi","sourceId":17,"tags":["jacket","raincoat","womens","windbreaker"]},
+        {"id":"prod-fash-006","title":"Heshe Women's Leather Bag","description":"Luxurious high-quality leather bag. Timeless design and durable craftsmanship, a versatile accessory.","priceCents":17549,"priceDisplay":"$175.49 CAD","image":"https://cdn.dummyjson.com/product-images/womens-bags/heshe-women's-leather-bag/thumbnail.webp","source":"dummyjson","sourceId":173,"tags":["bag","leather","womens","handbag"]},
+        {"id":"prod-fash-007","title":"White Faux Leather Backpack","description":"Trendy practical backpack for the modern woman. Sleek white design with ample storage.","priceCents":5399,"priceDisplay":"$53.99 CAD","image":"https://cdn.dummyjson.com/product-images/womens-bags/white-faux-leather-backpack/thumbnail.webp","source":"dummyjson","sourceId":175,"tags":["bag","backpack","womens","faux-leather"]},
+        {"id":"prod-fash-008","title":"Nike Air Jordan 1 Red And Black","description":"Iconic basketball sneaker with stylish design and high-performance features. Favorite among sneaker enthusiasts.","priceCents":20249,"priceDisplay":"$202.49 CAD","image":"https://cdn.dummyjson.com/product-images/mens-shoes/nike-air-jordan-1-red-and-black/thumbnail.webp","source":"dummyjson","sourceId":88,"tags":["shoes","sneakers","nike","jordan","mens"]},
+        {"id":"prod-fash-009","title":"Puma Future Rider Trainers","description":"Blend of retro style and modern comfort. Fashionable and comfortable for everyday use.","priceCents":12149,"priceDisplay":"$121.49 CAD","image":"https://cdn.dummyjson.com/product-images/mens-shoes/puma-future-rider-trainers/thumbnail.webp","source":"dummyjson","sourceId":90,"tags":["shoes","trainers","puma","mens"]},
+        {"id":"prod-fash-010","title":"Calvin Klein Heel Shoes","description":"Elegant sophisticated heels for formal occasions. Classic design with high-quality materials.","priceCents":10799,"priceDisplay":"$107.99 CAD","image":"https://cdn.dummyjson.com/product-images/womens-shoes/calvin-klein-heel-shoes/thumbnail.webp","source":"dummyjson","sourceId":186,"tags":["shoes","heels","womens","calvin-klein"]}
+      ]
+    },
+    "home-garden": {
+      "displayName": "Home & Garden",
+      "products": [
+        {"id":"prod-home-001","title":"Decoration Swing","description":"Charming addition to home decor. Intricate details add elegance and whimsy to any room.","priceCents":8099,"priceDisplay":"$80.99 CAD","image":"https://cdn.dummyjson.com/product-images/home-decoration/decoration-swing/thumbnail.webp","source":"dummyjson","sourceId":43,"tags":["decor","swing","home-decoration"]},
+        {"id":"prod-home-002","title":"Family Tree Photo Frame","description":"Sentimental stylish way to display family memories. Multiple photo slots tell the story of your loved ones.","priceCents":4049,"priceDisplay":"$40.49 CAD","image":"https://cdn.dummyjson.com/product-images/home-decoration/family-tree-photo-frame/thumbnail.webp","source":"dummyjson","sourceId":44,"tags":["decor","photo-frame","home-decoration"]},
+        {"id":"prod-home-003","title":"House Showpiece Artificial Plant","description":"Artificial plant bringing nature indoors without maintenance. Adds greenery and style to any space.","priceCents":5399,"priceDisplay":"$53.99 CAD","image":"https://cdn.dummyjson.com/product-images/home-decoration/house-showpiece-plant/thumbnail.webp","source":"dummyjson","sourceId":45,"tags":["decor","plant","artificial","home-decoration"]},
+        {"id":"prod-home-004","title":"Table Lamp Modern Design","description":"Functional decorative lighting for living space. Modern design provides ambient and task lighting.","priceCents":6749,"priceDisplay":"$67.49 CAD","image":"https://cdn.dummyjson.com/product-images/home-decoration/table-lamp/thumbnail.webp","source":"dummyjson","sourceId":47,"tags":["lighting","lamp","home-decoration"]},
+        {"id":"prod-home-005","title":"Carbon Steel Wok","description":"Versatile cooking pan for stir-frying, sauteing, and deep frying. Sturdy construction ensures even heat distribution.","priceCents":4049,"priceDisplay":"$40.49 CAD","image":"https://cdn.dummyjson.com/product-images/kitchen-accessories/carbon-steel-wok/thumbnail.webp","source":"dummyjson","sourceId":52,"tags":["kitchen","cookware","wok"]},
+        {"id":"prod-home-006","title":"Boxed Blender Compact","description":"Powerful compact blender for smoothies and shakes. Convenient design with multiple functions.","priceCents":5399,"priceDisplay":"$53.99 CAD","image":"https://cdn.dummyjson.com/product-images/kitchen-accessories/boxed-blender/thumbnail.webp","source":"dummyjson","sourceId":51,"tags":["kitchen","blender","appliance"]},
+        {"id":"prod-home-007","title":"Microwave Oven Compact","description":"Versatile kitchen appliance for cooking, reheating, and defrosting. Compact size for various kitchen setups.","priceCents":12149,"priceDisplay":"$121.49 CAD","image":"https://cdn.dummyjson.com/product-images/kitchen-accessories/microwave-oven/thumbnail.webp","source":"dummyjson","sourceId":66,"tags":["kitchen","microwave","appliance"]},
+        {"id":"prod-home-008","title":"Plant Pot Modern","description":"Stylish container for plants. Sleek design complements indoor or outdoor garden.","priceCents":2024,"priceDisplay":"$20.24 CAD","image":"https://cdn.dummyjson.com/product-images/home-decoration/plant-pot/thumbnail.webp","source":"dummyjson","sourceId":46,"tags":["garden","plant-pot","home-decoration"]}
+      ]
+    },
+    "sports-outdoors": {
+      "displayName": "Sports & Outdoors",
+      "products": [
+        {"id":"prod-sport-001","title":"American Football","description":"Classic ball for American football. Designed for throwing and catching.","priceCents":2699,"priceDisplay":"$26.99 CAD","image":"https://cdn.dummyjson.com/product-images/sports-accessories/american-football/thumbnail.webp","source":"dummyjson","sourceId":137,"tags":["sports","football","ball"]},
+        {"id":"prod-sport-002","title":"Basketball","description":"Standard ball for basketball games. Suitable for indoor and outdoor play.","priceCents":2024,"priceDisplay":"$20.24 CAD","image":"https://cdn.dummyjson.com/product-images/sports-accessories/basketball/thumbnail.webp","source":"dummyjson","sourceId":140,"tags":["sports","basketball","ball"]},
+        {"id":"prod-sport-003","title":"Tennis Racket","description":"Essential tennis equipment. Frame with strings and grip for precision and power.","priceCents":6749,"priceDisplay":"$67.49 CAD","image":"https://cdn.dummyjson.com/product-images/sports-accessories/tennis-racket/thumbnail.webp","source":"dummyjson","sourceId":152,"tags":["sports","tennis","racket"]},
+        {"id":"prod-sport-004","title":"Baseball Glove","description":"Protective glove for baseball players. Provides comfort and control during the game.","priceCents":3374,"priceDisplay":"$33.74 CAD","image":"https://cdn.dummyjson.com/product-images/sports-accessories/baseball-glove/thumbnail.webp","source":"dummyjson","sourceId":139,"tags":["sports","baseball","glove"]},
+        {"id":"prod-sport-005","title":"Golf Iron Club Set","description":"Golf club designed for various shots. Solid metal head for approach shots and chipping.","priceCents":6749,"priceDisplay":"$67.49 CAD","image":"https://cdn.dummyjson.com/product-images/sports-accessories/iron-golf/thumbnail.webp","source":"dummyjson","sourceId":149,"tags":["sports","golf","club"]}
+      ]
+    },
+    "beauty-health": {
+      "displayName": "Beauty & Health",
+      "products": [
+        {"id":"prod-beauty-001","title":"Essence Mascara Lash Princess","description":"Popular mascara for volumizing and lengthening effects. Long-lasting and cruelty-free formula.","priceCents":1349,"priceDisplay":"$13.49 CAD","image":"https://cdn.dummyjson.com/product-images/beauty/essence-mascara-lash-princess/thumbnail.webp","source":"dummyjson","sourceId":1,"tags":["beauty","mascara","makeup","cruelty-free"]},
+        {"id":"prod-beauty-002","title":"Eyeshadow Palette with Mirror","description":"Versatile range of eyeshadow shades with built-in mirror. Convenient for on-the-go makeup.","priceCents":2699,"priceDisplay":"$26.99 CAD","image":"https://cdn.dummyjson.com/product-images/beauty/eyeshadow-palette-with-mirror/thumbnail.webp","source":"dummyjson","sourceId":2,"tags":["beauty","eyeshadow","makeup","palette"]},
+        {"id":"prod-beauty-003","title":"Red Lipstick Classic","description":"Classic bold choice for lips. Creamy pigmented formula with vibrant long-lasting finish.","priceCents":1754,"priceDisplay":"$17.54 CAD","image":"https://cdn.dummyjson.com/product-images/beauty/red-lipstick/thumbnail.webp","source":"dummyjson","sourceId":4,"tags":["beauty","lipstick","makeup"]},
+        {"id":"prod-beauty-004","title":"Olay Ultra Moisture Shea Butter Body Wash","description":"Luxurious body wash with shea butter. Hydrates and nourishes skin with rich lather.","priceCents":1754,"priceDisplay":"$17.54 CAD","image":"https://cdn.dummyjson.com/product-images/skin-care/olay-ultra-moisture-shea-butter-body-wash/thumbnail.webp","source":"dummyjson","sourceId":119,"tags":["skincare","body-wash","shea-butter"]},
+        {"id":"prod-beauty-005","title":"Vaseline Men Body and Face Lotion","description":"Long-lasting moisture for men's skin. Absorbs quickly, keeps skin hydrated and healthy.","priceCents":1349,"priceDisplay":"$13.49 CAD","image":"https://cdn.dummyjson.com/product-images/skin-care/vaseline-men-body-and-face-lotion/thumbnail.webp","source":"dummyjson","sourceId":120,"tags":["skincare","lotion","mens"]}
+      ]
+    },
+    "jewelry": {
+      "displayName": "Jewelry",
+      "products": [
+        {"id":"prod-jewel-001","title":"John Hardy Legends Naga Gold & Silver Dragon Bracelet","description":"Inspired by the mythical water dragon protecting the ocean's pearl. Wear inward for love and abundance, outward for protection.","priceCents":93825,"priceDisplay":"$938.25 CAD","image":"https://fakestoreapi.com/img/71pWzhdJNwL._AC_UL640_QL65_ML3_t.png","source":"fakestoreapi","sourceId":5,"tags":["jewelry","bracelet","gold","silver","womens"]},
+        {"id":"prod-jewel-002","title":"Solid Gold Petite Micropave Ring","description":"Satisfaction guaranteed. Return or exchange within 30 days.","priceCents":22680,"priceDisplay":"$226.80 CAD","image":"https://fakestoreapi.com/img/61sbMiUnoGL._AC_UL640_QL65_ML3_t.png","source":"fakestoreapi","sourceId":6,"tags":["jewelry","ring","gold","womens"]},
+        {"id":"prod-jewel-003","title":"Green Crystal Earring","description":"Dazzling accessory with vibrant green crystal. Classic design adds elegance for formal occasions.","priceCents":4049,"priceDisplay":"$40.49 CAD","image":"https://cdn.dummyjson.com/product-images/womens-jewellery/green-crystal-earring/thumbnail.webp","source":"dummyjson","sourceId":182,"tags":["jewelry","earring","crystal","womens"]}
+      ]
+    },
+    "smartphones": {
+      "displayName": "Smartphones & Tablets",
+      "products": [
+        {"id":"prod-phone-001","title":"iPhone 13 Pro","description":"Cutting-edge smartphone with powerful camera system, high-performance chip, and stunning display.","priceCents":148499,"priceDisplay":"$1,484.99 CAD","image":"https://cdn.dummyjson.com/product-images/smartphones/iphone-13-pro/thumbnail.webp","source":"dummyjson","sourceId":123,"tags":["smartphone","apple","iphone","pro"]},
+        {"id":"prod-phone-002","title":"Samsung Galaxy S10","description":"Flagship with dynamic AMOLED display, versatile camera system, and powerful performance.","priceCents":94499,"priceDisplay":"$944.99 CAD","image":"https://cdn.dummyjson.com/product-images/smartphones/samsung-galaxy-s10/thumbnail.webp","source":"dummyjson","sourceId":133,"tags":["smartphone","samsung","galaxy","flagship"]},
+        {"id":"prod-phone-003","title":"iPad Mini 2021 Starlight","description":"Compact powerful Apple tablet. Retina display, A-series chip, sleek design.","priceCents":67499,"priceDisplay":"$674.99 CAD","image":"https://cdn.dummyjson.com/product-images/tablets/ipad-mini-2021-starlight/thumbnail.webp","source":"dummyjson","sourceId":159,"tags":["tablet","apple","ipad"]},
+        {"id":"prod-phone-004","title":"Samsung Galaxy Tab S8 Plus Grey","description":"High-performance Android tablet. Large AMOLED display, S Pen support, productivity and entertainment.","priceCents":80999,"priceDisplay":"$809.99 CAD","image":"https://cdn.dummyjson.com/product-images/tablets/samsung-galaxy-tab-s8-plus-grey/thumbnail.webp","source":"dummyjson","sourceId":160,"tags":["tablet","samsung","galaxy-tab","s-pen"]}
+      ]
+    },
+    "laptops": {
+      "displayName": "Laptops & Computers",
+      "products": [
+        {"id":"prod-laptop-001","title":"Apple MacBook Pro 14 Inch Space Grey","description":"Powerful sleek laptop with M1 Pro chip. Exceptional performance and stunning Retina display.","priceCents":269999,"priceDisplay":"$2,699.99 CAD","image":"https://cdn.dummyjson.com/product-images/laptops/apple-macbook-pro-14-inch-space-grey/thumbnail.webp","source":"dummyjson","sourceId":78,"tags":["laptop","apple","macbook-pro","m1"]},
+        {"id":"prod-laptop-002","title":"Lenovo Yoga 920 2-in-1 Convertible","description":"2-in-1 convertible laptop with flexible hinge. Use as laptop or tablet, versatility and portability.","priceCents":148499,"priceDisplay":"$1,484.99 CAD","image":"https://cdn.dummyjson.com/product-images/laptops/lenovo-yoga-920/thumbnail.webp","source":"dummyjson","sourceId":81,"tags":["laptop","lenovo","2-in-1","convertible"]},
+        {"id":"prod-laptop-003","title":"DELL XPS 13 9300 Laptop","description":"Compact powerful device with InfinityEdge display. High-end performance for various tasks.","priceCents":202499,"priceDisplay":"$2,024.99 CAD","image":"https://cdn.dummyjson.com/product-images/laptops/new-dell-xps-13-9300-laptop/thumbnail.webp","source":"dummyjson","sourceId":82,"tags":["laptop","dell","xps","ultrabook"]}
+      ]
+    },
+    "fragrances": {
+      "displayName": "Fragrances",
+      "products": [
+        {"id":"prod-frag-001","title":"Calvin Klein CK One Unisex","description":"Classic unisex fragrance with fresh clean scent. Versatile for everyday wear.","priceCents":6749,"priceDisplay":"$67.49 CAD","image":"https://cdn.dummyjson.com/product-images/fragrances/calvin-klein-ck-one/thumbnail.webp","source":"dummyjson","sourceId":6,"tags":["fragrance","unisex","calvin-klein"]},
+        {"id":"prod-frag-002","title":"Dior J'adore Eau de Parfum","description":"Luxurious floral fragrance with ylang-ylang, rose, and jasmine. Embodies femininity and sophistication.","priceCents":12149,"priceDisplay":"$121.49 CAD","image":"https://cdn.dummyjson.com/product-images/fragrances/dior-j'adore/thumbnail.webp","source":"dummyjson","sourceId":8,"tags":["fragrance","womens","dior","floral"]},
+        {"id":"prod-frag-003","title":"Gucci Bloom Eau de Parfum","description":"Floral captivating fragrance with tuberose, jasmine, and Rangoon creeper. Modern and romantic.","priceCents":10799,"priceDisplay":"$107.99 CAD","image":"https://cdn.dummyjson.com/product-images/fragrances/gucci-bloom-eau-de/thumbnail.webp","source":"dummyjson","sourceId":10,"tags":["fragrance","womens","gucci","floral"]}
+      ]
+    },
+    "sunglasses": {
+      "displayName": "Sunglasses",
+      "products": [
+        {"id":"prod-sun-001","title":"Black Sun Glasses Classic","description":"Classic stylish choice with sleek black frame and tinted lenses. UV protection and fashionable look.","priceCents":4049,"priceDisplay":"$40.49 CAD","image":"https://cdn.dummyjson.com/product-images/sunglasses/black-sun-glasses/thumbnail.webp","source":"dummyjson","sourceId":154,"tags":["sunglasses","uv-protection","black"]},
+        {"id":"prod-sun-002","title":"Classic Sun Glasses UV Protected","description":"Timeless design with neutral frame and UV-protected lenses. Versatile for various occasions.","priceCents":3374,"priceDisplay":"$33.74 CAD","image":"https://cdn.dummyjson.com/product-images/sunglasses/classic-sun-glasses/thumbnail.webp","source":"dummyjson","sourceId":155,"tags":["sunglasses","uv-protection","classic"]}
+      ]
+    },
+    "toys-games": {
+      "displayName": "Toys & Games",
+      "products": [
+        {"id":"prod-toys-001","title":"LEGO Classic Creative Bricks Set 10693","description":"Build and create with 221 pieces in various colors and shapes. Endless creative possibilities. Ages 4+.","priceCents":4499,"priceDisplay":"$44.99 CAD","image":null,"source":"manual","sourceId":null,"tags":["toys","lego","building","creative"]},
+        {"id":"prod-toys-002","title":"Hasbro Monopoly Classic Board Game","description":"The classic family board game. Buy, sell, and trade properties. For 2-8 players, ages 8+.","priceCents":3374,"priceDisplay":"$33.74 CAD","image":null,"source":"manual","sourceId":null,"tags":["toys","board-game","family","monopoly"]}
+      ]
+    },
+    "automotive-accessories": {
+      "displayName": "Automotive Accessories",
+      "products": [
+        {"id":"prod-auto-001","title":"Universal Car Phone Mount Dashboard Holder","description":"Adjustable dashboard phone holder with 360-degree rotation. Compatible with most smartphones. Secure grip for safe driving.","priceCents":2699,"priceDisplay":"$26.99 CAD","image":null,"source":"manual","sourceId":null,"tags":["automotive","phone-mount","dashboard","car-accessory"]},
+        {"id":"prod-auto-002","title":"Dual USB Car Charger 3.4A Quick Charge","description":"Dual port USB car charger with quick charge technology. Compact design fits any car cigarette lighter socket.","priceCents":2024,"priceDisplay":"$20.24 CAD","image":null,"source":"manual","sourceId":null,"tags":["automotive","car-charger","usb","quick-charge"]}
+      ]
+    },
+    "computer-components": {
+      "displayName": "Computer Components",
+      "products": [
+        {"id":"prod-comp-001","title":"NVIDIA GeForce RTX 4060 8GB GDDR6 Graphics Card","description":"Powerful GPU for 1080p gaming. Ray tracing and DLSS 3 support. 8GB GDDR6 memory, PCIe 4.0 interface.","priceCents":47249,"priceDisplay":"$472.49 CAD","image":null,"source":"manual","sourceId":null,"tags":["computer","gpu","nvidia","rtx","gaming"]},
+        {"id":"prod-comp-002","title":"Razer BlackWidow V3 Mechanical Gaming Keyboard","description":"Mechanical gaming keyboard with Razer Green switches. RGB Chroma lighting, fully programmable keys. Durable aluminum construction.","priceCents":20249,"priceDisplay":"$202.49 CAD","image":null,"source":"manual","sourceId":null,"tags":["computer","keyboard","mechanical","gaming","razer"]},
+        {"id":"prod-comp-003","title":"Logitech G502 Hero High Performance Gaming Mouse","description":"High performance gaming mouse with Hero 25K sensor. 11 programmable buttons, adjustable weights, RGB lighting.","priceCents":10799,"priceDisplay":"$107.99 CAD","image":null,"source":"manual","sourceId":null,"tags":["computer","mouse","gaming","logitech"]}
+      ]
+    }
+  }
+}

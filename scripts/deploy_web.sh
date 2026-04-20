@@ -37,17 +37,25 @@ case "$ENV" in
     ORIGNABASE_URL="https://api.orignagta.ca"
     TURNSTILE_KEY="0x4AAAAAACmRNXgZQ1M928iq"
     BUILD_MODE="--release"
-    EXTRA_DART_DEFINES=()
-    ;;
+  EXTRA_DART_DEFINES=()
+  ;;
 esac
 
 cd origna_gta
+if [ ${#EXTRA_DART_DEFINES[@]} -gt 0 ]; then
+  flutter build web ${BUILD_MODE} \
+    --dart-define=ENVIRONMENT=${ENV} \
+    --dart-define=ORIGNABASE_URL=${ORIGNABASE_URL} \
+    "${EXTRA_DART_DEFINES[@]}" \
+    --pwa-strategy=none \
+    --no-tree-shake-icons
+else
 flutter build web ${BUILD_MODE} \
-  --dart-define=ENVIRONMENT=${ENV} \
-  --dart-define=ORIGNABASE_URL=${ORIGNABASE_URL} \
-  "${EXTRA_DART_DEFINES[@]}" \
-  --pwa-strategy=none \
-  --no-tree-shake-icons
+--dart-define=ENVIRONMENT=${ENV} \
+--dart-define=ORIGNABASE_URL=${ORIGNABASE_URL} \
+--pwa-strategy=none \
+--no-tree-shake-icons
+fi
 
 # Inject Turnstile site key
 sed -i '' "s|__TURNSTILE_SITE_KEY__|${TURNSTILE_KEY}|g" build/web/index.html 2>/dev/null || true
