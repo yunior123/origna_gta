@@ -929,6 +929,7 @@ Start only after Phases 1 through 3 are stable.
 -delete users if not already in mail api to restart free tier of less than 3000 users while we test
 -fix testing failures as pro
 -commit and push all to github
+-build ios app
 
 
 
