@@ -930,6 +930,10 @@ Start only after Phases 1 through 3 are stable.
 -fix testing failures as pro
 -commit and push all to github
 -build ios app
+-fix bug with mobile layout not showing image/s in product details view
+-we are adding support to shipping to cuba, only havana city and pickup in there
+-add spanish traslations to both orignagta and orignaventures
+-orignaventures was destroyed in the past in the sense that the contract data replaced entirely the home page which should show the purpose of the company which is ecommerce, whole sale, retail, software services, outsourcing. Increase 1000cad to the service 2, make it clickable as the other services
 
 
 
