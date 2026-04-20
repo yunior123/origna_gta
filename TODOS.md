@@ -926,16 +926,21 @@ Start only after Phases 1 through 3 are stable.
 -add x or star to mark work done on every pass
 -improve all based on gaps, bugs, audit reports
 -dont stop till 300+ screenshots on desktop, no excuses
--delete users if not already in mail api to restart free tier of less than 3000 users while we test
+-delete users if not already in mail api to restart free tier of less than 1000 users while we test
 -fix testing failures as pro
 -commit and push all to github
 -build ios app
 -fix bug with mobile layout not showing image/s in product details view
--we are adding support to shipping to cuba, only havana city and pickup in there
+-we are adding support to shipping to cuba, only havana city and pickup in there. we need to adjust orignabase and orignagta for that
 -add spanish traslations to both orignagta and orignaventures
 -orignaventures was destroyed in the past in the sense that the contract data replaced entirely the home page which should show the purpose of the company which is ecommerce, whole sale, retail, software services, outsourcing. Increase 1000cad to the service 2, make it clickable as the other services
-
-
+-make sure payment is working in orignagta and orignaventures, test stripe payments there with e2e
+-run all tests in apps. make sure to fix the payment endpoints since we now disabled the seller onboarding
+-add more tests e2e to orignagta and orignaventures, mainly for payment
+-fix vscode issues
+-seller onboarding is disabled but have in mind that we can still sell as OrignaVentures, we are the only ones selling. the email for company is support@orignaventures.ca
+-in orignaventures.ca we are selling services packages with 3 tiers, payment goes via stripe
+-update and organize this file
 
 
       
