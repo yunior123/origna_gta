@@ -40,7 +40,9 @@ bool isAllowedUrl(Uri uri) {
   if (uri.scheme != 'http' && uri.scheme != 'https') return false;
 
   final host = uri.host.toLowerCase();
-  return _allowedDomains.any((domain) => host == domain || host.endsWith('.$domain'));
+  return _allowedDomains.any(
+    (domain) => host == domain || host.endsWith('.$domain'),
+  );
 }
 
 /// Launch a URL only if its domain is in the allowlist.
@@ -54,7 +56,10 @@ Future<bool> safeLaunchUrl(
   String? webOnlyWindowName,
 }) async {
   if (!isAllowedUrl(uri)) {
-    AppLogger.w('Blocked launch of untrusted URL: $uri', tag: 'SafeUrlLauncher');
+    AppLogger.w(
+      'Blocked launch of untrusted URL: $uri',
+      tag: 'SafeUrlLauncher',
+    );
     return false;
   }
   return launchUrl(uri, mode: mode, webOnlyWindowName: webOnlyWindowName ?? '');

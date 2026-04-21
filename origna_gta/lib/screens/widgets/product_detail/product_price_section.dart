@@ -61,7 +61,9 @@ class ProductPriceCard extends StatelessWidget {
                       fontSize: 16,
                       color: DesignTokens.white.withValues(alpha: 0.7),
                       decoration: TextDecoration.lineThrough,
-                      decorationColor: DesignTokens.white.withValues(alpha: 0.7),
+                      decorationColor: DesignTokens.white.withValues(
+                        alpha: 0.7,
+                      ),
                     ),
                   ),
                 ] else
@@ -88,10 +90,7 @@ class ProductPriceCard extends StatelessWidget {
           if (product.compareAtPrice case final compareAtDiscount?
               when compareAtDiscount > displayPrice)
             Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 8,
-                vertical: 4,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
                 color: DesignTokens.white.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(8),
@@ -157,8 +156,9 @@ class DeliveryInfoCard extends StatelessWidget {
 
     return ModernCard(
       padding: const EdgeInsets.all(DesignTokens.spacing16),
-      borderRadius:
-          const BorderRadius.all(Radius.circular(DesignTokens.radius12)),
+      borderRadius: const BorderRadius.all(
+        Radius.circular(DesignTokens.radius12),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

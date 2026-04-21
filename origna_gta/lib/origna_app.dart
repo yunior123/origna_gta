@@ -85,6 +85,7 @@ import 'package:origna_gta/widgets/env_preview_banner.dart';
 import 'package:origna_gta/services/app_update_service.dart';
 import 'package:origna_gta/widgets/update_required_dialog.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
+import 'package:origna_gta/widgets/cookie_consent_banner.dart';
 
 /// Handle initial route from URL (critical for web redirects from Stripe)
 List<Route<dynamic>> _onGenerateInitialRoutes(String initialRoute) {
@@ -873,8 +874,15 @@ class _OrignaAppState extends ConsumerState<OrignaApp>
           navigatorKey: _navigatorKey,
           scaffoldMessengerKey:
               OrignaBaseNotificationService.scaffoldMessengerKey,
-          builder: (context, child) =>
+          builder: (context, child) => Stack(
+            children: [
               EnvPreviewBanner(child: child ?? const SizedBox.shrink()),
+              const Align(
+                alignment: Alignment.bottomCenter,
+                child: CookieConsentBanner(),
+              ),
+            ],
+          ),
           // === i18n: easy_localization (Quebec Bill 96 / Loi 96 compliance) ===
           localizationsDelegates: context.localizationDelegates,
           supportedLocales: context.supportedLocales,

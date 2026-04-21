@@ -98,8 +98,9 @@ class _SellerWarehousesScreenState
             isActionLoading: vmIsLoading,
           ),
         ),
-                floatingActionButton: Semantics(
-          label: 'btn-add-warehouse', button: true,
+        floatingActionButton: Semantics(
+          label: 'btn-add-warehouse',
+          button: true,
           child: FloatingActionButton.extended(
             backgroundColor: DesignTokens.primary,
             foregroundColor: DesignTokens.white,
@@ -262,9 +263,7 @@ class _WarehousesList extends ConsumerWidget {
   }
 }
 
-
 // === Widget Previews ===
-
 
 // ═══ Widget Previews ═══
 
@@ -308,20 +307,34 @@ Widget _sellerWarehousesPreview({List<SellerWarehouse>? warehouses}) =>
       child: const SellerWarehousesScreen(),
     );
 
-@Preview(name: 'Seller Warehouses — Mobile', group: 'Screens — Seller Management', size: Size(390, 844))
+@Preview(
+  name: 'Seller Warehouses — Mobile',
+  group: 'Screens — Seller Management',
+  size: Size(390, 844),
+)
 Widget previewSellerWarehousesScreenMobile() =>
     previewMobile(child: _sellerWarehousesPreview());
 
-@Preview(name: 'Seller Warehouses — Desktop', group: 'Screens — Seller Management', size: Size(1280, 800))
+@Preview(
+  name: 'Seller Warehouses — Desktop',
+  group: 'Screens — Seller Management',
+  size: Size(1280, 800),
+)
 Widget previewSellerWarehousesScreenDesktop() =>
     previewDesktop(child: _sellerWarehousesPreview());
 
-@Preview(name: 'Seller Warehouses Light — Desktop', group: 'Screens — Seller Management', size: Size(1280, 800))
-Widget previewSellerWarehousesLightDesktop() => previewDesktop(
-  theme: previewLightTheme,
-  child: _sellerWarehousesPreview(),
-);
+@Preview(
+  name: 'Seller Warehouses Light — Desktop',
+  group: 'Screens — Seller Management',
+  size: Size(1280, 800),
+)
+Widget previewSellerWarehousesLightDesktop() =>
+    previewDesktop(theme: previewLightTheme, child: _sellerWarehousesPreview());
 
-@Preview(name: 'Seller Warehouses Empty — Desktop', group: 'Screens — Seller Management', size: Size(1280, 800))
+@Preview(
+  name: 'Seller Warehouses Empty — Desktop',
+  group: 'Screens — Seller Management',
+  size: Size(1280, 800),
+)
 Widget previewSellerWarehousesEmptyDesktop() =>
     previewDesktop(child: _sellerWarehousesPreview(warehouses: const []));

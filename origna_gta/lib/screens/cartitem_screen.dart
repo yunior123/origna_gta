@@ -652,7 +652,8 @@ class CartItemScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Semantics(
-              label: 'input-cart-item-notes', textField: true,
+              label: 'input-cart-item-notes',
+              textField: true,
               child: TextField(
                 controller: controller,
                 autofocus: true,

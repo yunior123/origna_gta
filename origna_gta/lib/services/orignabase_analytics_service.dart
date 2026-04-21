@@ -41,13 +41,17 @@ class OrignaBaseAnalyticsService {
   /// - [properties]: optional event parameters sent alongside the event.
   ///
   /// Errors are caught and logged — analytics failures must never block UX.
-  Future<void> _track(String eventName, [Map<String, dynamic>? properties]) async {
+  Future<void> _track(
+    String eventName, [
+    Map<String, dynamic>? properties,
+  ]) async {
     if (!_isEnabled) return;
     try {
-      await _ob.request('POST', '/analytics/event', body: {
-        'event_name': eventName,
-        'properties': properties,
-      });
+      await _ob.request(
+        'POST',
+        '/analytics/event',
+        body: {'event_name': eventName, 'properties': properties},
+      );
     } catch (e) {
       AppLogger.w('Failed to track "$eventName": $e', tag: 'analytics');
     }
@@ -76,8 +80,7 @@ class OrignaBaseAnalyticsService {
   Future<void> logViewItemList({
     required String listName,
     required List<Map<String, dynamic>> items,
-  }) =>
-      _track('view_item_list', {'item_list_name': listName, 'items': items});
+  }) => _track('view_item_list', {'item_list_name': listName, 'items': items});
 
   /// Tracks when a user selects an item from a list.
   ///
@@ -90,13 +93,12 @@ class OrignaBaseAnalyticsService {
     required String productName,
     required double priceCad,
     String listName = '',
-  }) =>
-      _track('select_item', {
-        'item_list_name': listName,
-        'items': [
-          {'item_id': productId, 'item_name': productName, 'price': priceCad},
-        ],
-      });
+  }) => _track('select_item', {
+    'item_list_name': listName,
+    'items': [
+      {'item_id': productId, 'item_name': productName, 'price': priceCad},
+    ],
+  });
 
   /// Tracks when a user views a product detail page.
   ///
@@ -107,14 +109,13 @@ class OrignaBaseAnalyticsService {
     required String productId,
     required String productName,
     required double priceCad,
-  }) =>
-      _track('view_item', {
-        'currency': 'CAD',
-        'value': priceCad,
-        'items': [
-          {'item_id': productId, 'item_name': productName, 'price': priceCad},
-        ],
-      });
+  }) => _track('view_item', {
+    'currency': 'CAD',
+    'value': priceCad,
+    'items': [
+      {'item_id': productId, 'item_name': productName, 'price': priceCad},
+    ],
+  });
 
   /// Tracks a search event with PII redaction.
   ///
@@ -139,19 +140,18 @@ class OrignaBaseAnalyticsService {
     required String productName,
     required double priceCad,
     int quantity = 1,
-  }) =>
-      _track('add_to_cart', {
-        'currency': 'CAD',
-        'value': priceCad * quantity,
-        'items': [
-          {
-            'item_id': productId,
-            'item_name': productName,
-            'price': priceCad,
-            'quantity': quantity,
-          },
-        ],
-      });
+  }) => _track('add_to_cart', {
+    'currency': 'CAD',
+    'value': priceCad * quantity,
+    'items': [
+      {
+        'item_id': productId,
+        'item_name': productName,
+        'price': priceCad,
+        'quantity': quantity,
+      },
+    ],
+  });
 
   /// Tracks when a user removes a product from the cart.
   ///
@@ -164,19 +164,18 @@ class OrignaBaseAnalyticsService {
     required String productName,
     required double priceCad,
     int quantity = 1,
-  }) =>
-      _track('remove_from_cart', {
-        'currency': 'CAD',
-        'value': priceCad * quantity,
-        'items': [
-          {
-            'item_id': productId,
-            'item_name': productName,
-            'price': priceCad,
-            'quantity': quantity,
-          },
-        ],
-      });
+  }) => _track('remove_from_cart', {
+    'currency': 'CAD',
+    'value': priceCad * quantity,
+    'items': [
+      {
+        'item_id': productId,
+        'item_name': productName,
+        'price': priceCad,
+        'quantity': quantity,
+      },
+    ],
+  });
 
   // ── Wishlist ──────────────────────────────────────────────────────────────
 
@@ -189,14 +188,13 @@ class OrignaBaseAnalyticsService {
     required String productId,
     required String productName,
     required double priceCad,
-  }) =>
-      _track('add_to_wishlist', {
-        'currency': 'CAD',
-        'value': priceCad,
-        'items': [
-          {'item_id': productId, 'item_name': productName, 'price': priceCad},
-        ],
-      });
+  }) => _track('add_to_wishlist', {
+    'currency': 'CAD',
+    'value': priceCad,
+    'items': [
+      {'item_id': productId, 'item_name': productName, 'price': priceCad},
+    ],
+  });
 
   /// Tracks when a user removes a product from their wishlist.
   ///
@@ -205,11 +203,10 @@ class OrignaBaseAnalyticsService {
   Future<void> logRemoveFromWishlist({
     required String productId,
     required String productName,
-  }) =>
-      _track('remove_from_wishlist', {
-        'item_id': productId,
-        'item_name': productName,
-      });
+  }) => _track('remove_from_wishlist', {
+    'item_id': productId,
+    'item_name': productName,
+  });
 
   // ── Checkout funnel ───────────────────────────────────────────────────────
 
@@ -220,12 +217,11 @@ class OrignaBaseAnalyticsService {
   Future<void> logBeginCheckout({
     required double valueCad,
     required int itemCount,
-  }) =>
-      _track('begin_checkout', {
-        'currency': 'CAD',
-        'value': valueCad,
-        'item_count': itemCount,
-      });
+  }) => _track('begin_checkout', {
+    'currency': 'CAD',
+    'value': valueCad,
+    'item_count': itemCount,
+  });
 
   /// Tracks when a user adds shipping information during checkout.
   ///
@@ -236,13 +232,12 @@ class OrignaBaseAnalyticsService {
     required double valueCad,
     required double shippingCostCad,
     required String shippingTier,
-  }) =>
-      _track('add_shipping_info', {
-        'currency': 'CAD',
-        'value': valueCad,
-        'shipping_cost': shippingCostCad,
-        'shipping_tier': shippingTier,
-      });
+  }) => _track('add_shipping_info', {
+    'currency': 'CAD',
+    'value': valueCad,
+    'shipping_cost': shippingCostCad,
+    'shipping_tier': shippingTier,
+  });
 
   /// Tracks when a user adds payment information during checkout.
   ///
@@ -251,12 +246,11 @@ class OrignaBaseAnalyticsService {
   Future<void> logAddPaymentInfo({
     required double valueCad,
     required String paymentType,
-  }) =>
-      _track('add_payment_info', {
-        'currency': 'CAD',
-        'value': valueCad,
-        'payment_type': paymentType,
-      });
+  }) => _track('add_payment_info', {
+    'currency': 'CAD',
+    'value': valueCad,
+    'payment_type': paymentType,
+  });
 
   /// Tracks a completed purchase.
   ///
@@ -267,22 +261,18 @@ class OrignaBaseAnalyticsService {
     required String orderId,
     required double valueCad,
     required int itemCount,
-  }) =>
-      _track('purchase', {
-        'currency': 'CAD',
-        'value': valueCad,
-        'transaction_id': orderId,
-        'item_count': itemCount,
-      });
+  }) => _track('purchase', {
+    'currency': 'CAD',
+    'value': valueCad,
+    'transaction_id': orderId,
+    'item_count': itemCount,
+  });
 
   /// Tracks a refund for a previous purchase.
   ///
   /// [orderId]: the original order/transaction ID.
   /// [valueCad]: the refunded amount in CAD.
-  Future<void> logRefund({
-    required String orderId,
-    required double valueCad,
-  }) =>
+  Future<void> logRefund({required String orderId, required double valueCad}) =>
       _track('refund', {
         'currency': 'CAD',
         'value': valueCad,
@@ -298,8 +288,7 @@ class OrignaBaseAnalyticsService {
       _track('subscription_started', {'currency': 'CAD', 'value': priceCad});
 
   /// Tracks when a user cancels their subscription.
-  Future<void> logSubscriptionCancelled() =>
-      _track('subscription_cancelled');
+  Future<void> logSubscriptionCancelled() => _track('subscription_cancelled');
 
   // ── Reviews ───────────────────────────────────────────────────────────────
 
@@ -310,8 +299,7 @@ class OrignaBaseAnalyticsService {
   Future<void> logReviewSubmitted({
     required String productId,
     required double rating,
-  }) =>
-      _track('review_submitted', {'item_id': productId, 'rating': rating});
+  }) => _track('review_submitted', {'item_id': productId, 'rating': rating});
 
   // ── Navigation ────────────────────────────────────────────────────────────
 

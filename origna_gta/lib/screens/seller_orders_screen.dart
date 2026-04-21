@@ -238,9 +238,7 @@ class SellerOrdersScreen extends ConsumerWidget {
   }
 }
 
-
 // === Widget Previews ===
-
 
 // ═══ Widget Previews ═══
 
@@ -357,18 +355,34 @@ Widget _sellerOrdersPreview({List<Order>? orders}) => previewScopeLoggedIn(
   child: const SellerOrdersScreen(),
 );
 
-@Preview(name: 'Seller Orders — Mobile', group: 'Screens — Seller Management', size: Size(390, 844))
+@Preview(
+  name: 'Seller Orders — Mobile',
+  group: 'Screens — Seller Management',
+  size: Size(390, 844),
+)
 Widget previewSellerOrdersScreenMobile() =>
     previewMobile(child: _sellerOrdersPreview());
 
-@Preview(name: 'Seller Orders — Desktop', group: 'Screens — Seller Management', size: Size(1280, 800))
+@Preview(
+  name: 'Seller Orders — Desktop',
+  group: 'Screens — Seller Management',
+  size: Size(1280, 800),
+)
 Widget previewSellerOrdersScreenDesktop() =>
     previewDesktop(child: _sellerOrdersPreview());
 
-@Preview(name: 'Seller Orders Light — Desktop', group: 'Screens — Seller Management', size: Size(1280, 800))
+@Preview(
+  name: 'Seller Orders Light — Desktop',
+  group: 'Screens — Seller Management',
+  size: Size(1280, 800),
+)
 Widget previewSellerOrdersLightDesktop() =>
     previewDesktop(theme: previewLightTheme, child: _sellerOrdersPreview());
 
-@Preview(name: 'Seller Orders Empty — Desktop', group: 'Screens — Seller Management', size: Size(1280, 800))
+@Preview(
+  name: 'Seller Orders Empty — Desktop',
+  group: 'Screens — Seller Management',
+  size: Size(1280, 800),
+)
 Widget previewSellerOrdersEmptyDesktop() =>
     previewDesktop(child: _sellerOrdersPreview(orders: const []));

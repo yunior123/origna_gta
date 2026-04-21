@@ -1,6 +1,3 @@
-import 'dart:convert';
-import 'dart:js_interop';
-
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
@@ -8,9 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/features/products/bulk_upload_state.dart';
 import 'package:origna_gta/features/products/bulk_upload_viewmodel.dart';
+import 'package:origna_gta/screens/seller/bulk_upload_file_bridge.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/preview_helpers.dart';
-import 'package:web/web.dart' as web;
 
 /// Bulk product upload screen.
 ///
@@ -202,42 +199,12 @@ class _BulkUploadScreenState extends ConsumerState<BulkUploadScreen> {
     );
   }
 
-  /// Pick CSV file from file system (web: file input).
   Future<void> _pickCsvFile(BulkUploadViewModel viewModel) async {
-    // On web, use HTML file input
-    final input = web.HTMLInputElement()
-      ..type = 'file'
-      ..accept = '.csv'
-      ..click();
-
-    input.onChange.listen((e) async {
-      final files = input.files;
-      if (files != null && files.length > 0) {
-        final file = files.item(0)!;
-        final reader = web.FileReader();
-        reader.readAsText(file);
-
-        reader.onLoadEnd.listen((_) {
-          final content = (reader.result as JSString).toDart;
-          viewModel.parseCsvContent(content);
-        });
-      }
-    });
+    await pickBulkUploadCsvFile(viewModel.parseCsvContent);
   }
 
-  /// Download file (web: trigger download).
   void _downloadFile(String filename, String content) {
-    final bytes = utf8.encode(content);
-    final blob = web.Blob(
-      [bytes.toJS].toJS,
-      web.BlobPropertyBag(type: 'text/csv'),
-    );
-    final url = web.URL.createObjectURL(blob);
-    web.HTMLAnchorElement()
-      ..href = url
-      ..download = filename
-      ..click();
-    web.URL.revokeObjectURL(url);
+    downloadBulkUploadCsvFile(filename: filename, content: content);
   }
 
   /// Build errors table.
@@ -429,16 +396,14 @@ Widget _bulkUploadPreview() => previewScope(
   group: 'BulkUpload',
   size: Size(390, 844),
 )
-Widget previewBulkUploadMobile() =>
-    previewMobile(child: _bulkUploadPreview());
+Widget previewBulkUploadMobile() => previewMobile(child: _bulkUploadPreview());
 
 @Preview(
   name: 'Bulk Upload — Tablet',
   group: 'BulkUpload',
   size: Size(768, 1024),
 )
-Widget previewBulkUploadTablet() =>
-    previewTablet(child: _bulkUploadPreview());
+Widget previewBulkUploadTablet() => previewTablet(child: _bulkUploadPreview());
 
 @Preview(
   name: 'Bulk Upload — Desktop',

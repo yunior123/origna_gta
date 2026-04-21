@@ -13,12 +13,9 @@ import 'package:origna_gta/utils/safe_url_launcher.dart';
 
 import 'auth_repository.dart';
 
-/// Returns the device's preferred language if it's one we support (en/fr), else 'en'.
 String _deviceLanguage() {
   final code = PlatformDispatcher.instance.locale.languageCode;
-  return code == LanguageValues.french
-      ? LanguageValues.french
-      : LanguageValues.english;
+  return LanguageValues.resolve(code);
 }
 
 /// OrignaBase-specific auth exception that mirrors common auth error codes.

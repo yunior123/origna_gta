@@ -24,6 +24,7 @@ Unified monorepo for Origna GTA, a Canada-first multi-vendor e-commerce platform
 | Layer | Directory | Technology |
 |-------|-----------|-----------|
 | Mobile/Web frontend | `origna_gta/` | Flutter 3.x + Dart (347 .dart files), Riverpod, Freezed |
+| Ventures Platform | `origna_ventures/` | Flutter web frontend + Python FastAPI backend |
 | Backend API | `orignabase/` | OrignaBase (Rust, 16 workspace crates, hosted on VPS 204.168.137.16). task_queue uses direct SQL for typed table operations; CRUD uses JSONB document storage. |
 | Database | PostgreSQL 18 (on VPS, via OrignaBase) |
 | Search | Meilisearch v1.12 (on VPS, via OrignaBase) |
@@ -130,6 +131,10 @@ origna_gta/                        # repo root (monorepo: frontend + backend)
 │   ├── reliability-tests/chaos/   # Chaos engineering tests
 │   └── sdks/flutter/orignabase/   # OrignaBase Flutter/Dart SDK
 │       └── example/               # Flutter SDK examples (auth, batch, ecommerce, migration, realtime, todo)
+├── origna_ventures/               # OrignaVentures platform
+│   ├── backend/                   # Python FastAPI backend (app.py, storage)
+│   ├── lib/                       # Flutter frontend code
+│   └── web/                       # Flutter web entrypoint
 ├── scripts/
 │   ├── deploy_web.sh              # VPS web deploy (staged releases)
 │   ├── run_quality_gate.sh        # 80% coverage threshold

@@ -23,24 +23,32 @@ class PrivacyPolicyScreen extends StatelessWidget {
 
 // ─── Flutter Previews ────────────────────────────────────────────────────────
 
-
-
 // === Widget Previews ===
-
 
 // ═══ Widget Previews ═══
 
-@Preview(name: 'Privacy Policy — Mobile', group: 'Screens — Legal', size: Size(390, 844))
+@Preview(
+  name: 'Privacy Policy — Mobile',
+  group: 'Screens — Legal',
+  size: Size(390, 844),
+)
 Widget previewPrivacyPolicyScreenMobile() =>
     previewMobile(child: const PrivacyPolicyScreen());
 
-@Preview(name: 'Privacy Policy — Desktop', group: 'Screens — Legal', size: Size(1280, 800))
+@Preview(
+  name: 'Privacy Policy — Desktop',
+  group: 'Screens — Legal',
+  size: Size(1280, 800),
+)
 Widget previewPrivacyPolicyScreenDesktop() =>
     previewDesktop(child: const PrivacyPolicyScreen());
 
-@Preview(name: 'Privacy Policy Light — Desktop', group: 'Screens — Legal', size: Size(1280, 800))
+@Preview(
+  name: 'Privacy Policy Light — Desktop',
+  group: 'Screens — Legal',
+  size: Size(1280, 800),
+)
 Widget previewPrivacyPolicyLightDesktop() => previewDesktop(
   theme: previewLightTheme,
   child: const PrivacyPolicyScreen(),
 );
-

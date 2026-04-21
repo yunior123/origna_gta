@@ -1678,6 +1678,11 @@ abstract final class MaritimeShippingConstants {
 abstract final class LanguageValues {
   static const english = 'en';
   static const french = 'fr';
+  static const spanish = 'es';
+
+  static const all = {english, french, spanish};
+
+  static String resolve(String code) => all.contains(code) ? code : english;
 }
 
 /// Valid values for license status field

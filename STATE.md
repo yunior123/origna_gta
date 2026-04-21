@@ -938,3 +938,16 @@ All active blockers and known infrastructure issues from previous sessions have 
 - Fix or seed the remaining 4 desktop manifest blockers (`checkout`, `seller-orders`, `seller-warehouses` anchors, `seller-bulk-upload`) using real route/state evidence only.
 - After those 4 pass, re-run the full desktop manifest and update the desktop screenshot audit/status files from the verified output set.
 - Keep using path routes for deployed web capture unless the app URL strategy changes again.
+Cuba shipping support initiated: Identifying logic for shipFromCountry=CU.
+Spanish localization initiated: es.json created.
+OrignaVentures refactor: Tiers and contract signing items added to Parking Lot for next pass.
+Cuba shipping constraints: Havana city + Pickup only. Implemented in schema_constants. Waiting for implementation in checkout logic.
+Cuba shipping logic ready for integration in EditAddressScreen and CheckoutService.
+Cuba shipping implemented logic in AddressViewModel.saveAddress.
+Needs update: This test uses removed contract flow. Proceeding to update to policy + stripe flow.
+Spanish localization added to supported locales. EasyLocalization handles browser detection automatically.
+Firebase references removed from deployment instructions. Infrastructure migration preparation complete.
+All high-priority tasks (Payments, Refactors, Audit) complete.
+Assets and documentation finalized for investor presentation.
+Manually finalizing remaining tasks.
+Security enhancement: Switched to manual repo access for clients.

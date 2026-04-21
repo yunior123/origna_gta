@@ -14,6 +14,7 @@ import 'package:origna_gta/screens/productdetails_screen.dart';
 import 'package:origna_gta/services/orignabase_notification_service.dart';
 import 'package:origna_gta/services/push_transport.dart';
 import 'package:origna_gta/services/session_timeout_service.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/screens/common_screens.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -325,7 +326,11 @@ void main() {
       final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
       nav.pushNamed('/seller/return');
       await pumpFrames(tester);
-      expect(find.byType(AuthRequiredGate), findsWidgets);
+      if (FeatureFlags.kSellerOnboardingEnabled) {
+        expect(find.byType(AuthRequiredGate), findsWidgets);
+      } else {
+        expect(find.byType(AuthWrapper), findsWidgets);
+      }
     });
 
     testWidgets('navigates to seller/refresh route', (tester) async {
@@ -336,7 +341,11 @@ void main() {
       final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
       nav.pushNamed('/seller/refresh');
       await pumpFrames(tester);
-      expect(find.byType(AuthRequiredGate), findsWidgets);
+      if (FeatureFlags.kSellerOnboardingEnabled) {
+        expect(find.byType(AuthRequiredGate), findsWidgets);
+      } else {
+        expect(find.byType(AuthWrapper), findsWidgets);
+      }
     });
 
     testWidgets('navigates to /p/{slug} product by slug', (tester) async {
@@ -480,7 +489,11 @@ void main() {
       final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
       nav.pushNamed('/seller/register');
       await pumpFrames(tester);
-      expect(find.byType(AuthRequiredGate), findsWidgets);
+      if (FeatureFlags.kSellerOnboardingEnabled) {
+        expect(find.byType(AuthRequiredGate), findsWidgets);
+      } else {
+        expect(find.byType(AuthWrapper), findsWidgets);
+      }
     });
 
     testWidgets('navigates to /seller/orders route', (tester) async {
@@ -491,7 +504,11 @@ void main() {
       final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
       nav.pushNamed('/seller/orders');
       await pumpFrames(tester);
-      expect(find.byType(AuthRequiredGate), findsWidgets);
+      if (FeatureFlags.kSellerOnboardingEnabled) {
+        expect(find.byType(AuthRequiredGate), findsWidgets);
+      } else {
+        expect(find.byType(AuthWrapper), findsWidgets);
+      }
     });
 
     testWidgets('navigates to /seller/products route', (tester) async {
@@ -502,7 +519,11 @@ void main() {
       final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
       nav.pushNamed('/seller/products');
       await pumpFrames(tester);
-      expect(find.byType(AuthRequiredGate), findsWidgets);
+      if (FeatureFlags.kSellerOnboardingEnabled) {
+        expect(find.byType(AuthRequiredGate), findsWidgets);
+      } else {
+        expect(find.byType(AuthWrapper), findsWidgets);
+      }
     });
 
     testWidgets('navigates to /seller/warehouses route', (tester) async {
@@ -513,7 +534,11 @@ void main() {
       final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
       nav.pushNamed('/seller/warehouses');
       await pumpFrames(tester);
-      expect(find.byType(AuthRequiredGate), findsWidgets);
+      if (FeatureFlags.kSellerOnboardingEnabled) {
+        expect(find.byType(AuthRequiredGate), findsWidgets);
+      } else {
+        expect(find.byType(AuthWrapper), findsWidgets);
+      }
     });
 
     testWidgets('navigates to /seller/integration route', (tester) async {
@@ -524,7 +549,11 @@ void main() {
       final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
       nav.pushNamed('/seller/integration');
       await pumpFrames(tester);
-      expect(find.byType(AuthRequiredGate), findsWidgets);
+      if (FeatureFlags.kSellerOnboardingEnabled) {
+        expect(find.byType(AuthRequiredGate), findsWidgets);
+      } else {
+        expect(find.byType(AuthWrapper), findsWidgets);
+      }
     });
 
     testWidgets('navigates to /seller/analytics route', (tester) async {
@@ -535,7 +564,11 @@ void main() {
       final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
       nav.pushNamed('/seller/analytics');
       await pumpFrames(tester);
-      expect(find.byType(AuthRequiredGate), findsWidgets);
+      if (FeatureFlags.kSellerOnboardingEnabled) {
+        expect(find.byType(AuthRequiredGate), findsWidgets);
+      } else {
+        expect(find.byType(AuthWrapper), findsWidgets);
+      }
     });
 
     testWidgets('navigates to /admin route', (tester) async {

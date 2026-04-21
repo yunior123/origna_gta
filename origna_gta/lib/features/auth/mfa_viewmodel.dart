@@ -6,8 +6,8 @@ import 'mfa_state.dart';
 
 final mfaViewModelProvider =
     StateNotifierProvider.autoDispose<MfaViewModel, MfaState>(
-  (ref) => MfaViewModel(ref),
-);
+      (ref) => MfaViewModel(ref),
+    );
 
 /// Manages MFA setup, verification, and disable flows for the current user.
 ///
@@ -57,8 +57,10 @@ class MfaViewModel extends StateNotifier<MfaState> {
   Future<void> verifySetup(String code) async {
     state = state.copyWith(isLoading: true, errorMessage: null);
     try {
-      final codes =
-          await _ref.read(orignabaseProvider).auth.verifyMfaSetup(code);
+      final codes = await _ref
+          .read(orignabaseProvider)
+          .auth
+          .verifyMfaSetup(code);
       state = state.copyWith(
         isLoading: false,
         currentStep: 3,
@@ -128,7 +130,10 @@ class MfaViewModel extends StateNotifier<MfaState> {
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
-        errorMessage: AppError.getMessage(e, 'Recovery code verification failed'),
+        errorMessage: AppError.getMessage(
+          e,
+          'Recovery code verification failed',
+        ),
       );
       return false;
     }
@@ -157,6 +162,5 @@ class MfaViewModel extends StateNotifier<MfaState> {
     }
   }
 }
-
 
 // === Widget Previews ===

@@ -315,7 +315,6 @@ class _MfaChallengeScreenState extends ConsumerState<MfaChallengeScreen> {
   }
 }
 
-
 // ═══ Widget Previews ═══
 
 Widget _challengeContent() => previewScope(
@@ -326,13 +325,27 @@ Widget _challengeContent() => previewScope(
 );
 
 // ── Core previews ────────────────────────────────────────────────────────────
-@Preview(name: 'MFA Challenge Dark — Mobile', group: 'MFA Screens', size: Size(390, 844))
-Widget previewMfaChallengeDarkMobile() => previewMobile(child: _challengeContent());
+@Preview(
+  name: 'MFA Challenge Dark — Mobile',
+  group: 'MFA Screens',
+  size: Size(390, 844),
+)
+Widget previewMfaChallengeDarkMobile() =>
+    previewMobile(child: _challengeContent());
 
-@Preview(name: 'MFA Challenge Dark — Desktop', group: 'MFA Screens', size: Size(1280, 800))
-Widget previewMfaChallengeDarkDesktop() => previewDesktop(child: _challengeContent());
+@Preview(
+  name: 'MFA Challenge Dark — Desktop',
+  group: 'MFA Screens',
+  size: Size(1280, 800),
+)
+Widget previewMfaChallengeDarkDesktop() =>
+    previewDesktop(child: _challengeContent());
 
-@Preview(name: 'MFA Challenge Light — Desktop', group: 'MFA Screens', size: Size(1280, 800))
+@Preview(
+  name: 'MFA Challenge Light — Desktop',
+  group: 'MFA Screens',
+  size: Size(1280, 800),
+)
 Widget previewMfaChallengeLightDesktop() =>
     previewDesktop(theme: previewLightTheme, child: _challengeContent());
 
@@ -355,4 +368,3 @@ class _FakeRef implements Ref {
   @override
   dynamic noSuchMethod(Invocation invocation) => null;
 }
-

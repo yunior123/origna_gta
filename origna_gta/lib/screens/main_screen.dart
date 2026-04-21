@@ -76,9 +76,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   }
 }
 
-
 // === Widget Previews ===
-
 
 // ═══ Widget Previews ═══
 
@@ -100,7 +98,8 @@ class _PreviewMainHomeViewModel extends HomeViewModel {
           productId: 'main-preview-1',
           sellerId: 'main-preview-seller',
           name: 'Ontario Maple Breakfast Box',
-          description: 'Curated breakfast staples from independent Canadian makers.',
+          description:
+              'Curated breakfast staples from independent Canadian makers.',
           priceCents: 7400,
           stockQuantity: 12,
           imageUrls: [_previewMainImage(431)],
@@ -117,7 +116,8 @@ class _PreviewMainHomeViewModel extends HomeViewModel {
           productId: 'main-preview-2',
           sellerId: 'main-preview-seller',
           name: 'Montreal Atelier Leather Wallet',
-          description: 'Vegetable-tanned leather wallet with hand-stitched edges.',
+          description:
+              'Vegetable-tanned leather wallet with hand-stitched edges.',
           priceCents: 9800,
           stockQuantity: 6,
           imageUrls: [_previewMainImage(1062)],
@@ -164,14 +164,26 @@ Widget _mainScreenPreview({bool loggedIn = false}) {
   );
 }
 
-@Preview(name: 'Main Screen — Mobile', group: 'Home Screens', size: Size(390, 844))
+@Preview(
+  name: 'Main Screen — Mobile',
+  group: 'Home Screens',
+  size: Size(390, 844),
+)
 Widget previewMainScreenMobile() => previewMobile(child: _mainScreenPreview());
 
-@Preview(name: 'Main Screen — Desktop', group: 'Home Screens', size: Size(1280, 800))
+@Preview(
+  name: 'Main Screen — Desktop',
+  group: 'Home Screens',
+  size: Size(1280, 800),
+)
 Widget previewMainScreenDesktop() =>
     previewDesktop(child: _mainScreenPreview(loggedIn: true));
 
-@Preview(name: 'Main Screen Light — Desktop', group: 'Home Screens', size: Size(1280, 800))
+@Preview(
+  name: 'Main Screen Light — Desktop',
+  group: 'Home Screens',
+  size: Size(1280, 800),
+)
 Widget previewMainScreenLightDesktop() => previewDesktop(
   theme: previewLightTheme,
   child: _mainScreenPreview(loggedIn: true),

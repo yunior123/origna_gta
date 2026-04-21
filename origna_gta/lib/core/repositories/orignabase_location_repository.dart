@@ -23,14 +23,13 @@ class OrignaBaseLocationRepository implements LocationRepository {
   /// Returns up to 5 suggestion feature maps. Returns an empty list on
   /// any error (network, parsing, etc.) to avoid blocking the UI.
   @override
-  Future<List<Map<String, dynamic>>> getAddressSuggestions(
-      String query) async {
+  Future<List<Map<String, dynamic>>> getAddressSuggestions(String query) async {
     try {
-      final result = await _ob
-          .request('POST', ApiEndpoints.addressesSuggestions, body: {
-        'query': query,
-        'limit': 5,
-      });
+      final result = await _ob.request(
+        'POST',
+        ApiEndpoints.addressesSuggestions,
+        body: {'query': query, 'limit': 5},
+      );
       final data = Map<String, dynamic>.from(result as Map);
       final features = (data['features'] as List?) ?? [];
       return features.cast<Map<String, dynamic>>();

@@ -1961,7 +1961,8 @@
   "language": {
     "select_language": "Choisir la langue",
     "english": "English",
-    "french": "Français"
+    "french": "Français",
+    "spanish": "Español"
   },
   "mascot": {
     "tip_browse": "Parcourez les vendeurs locaux du GTA!",
@@ -2626,5 +2627,12 @@
     "bundle_hint": "Liez jusqu'à 5 produits complémentaires",
     "add_bundle": "Ajouter au lot",
     "remove_bundle": "Retirer du lot"
-  }
+  },
+  "cookie": {
+    "consent": "Nous utilisons des cookies pour améliorer votre expérience.",
+    "decline": "Refuser",
+    "accept": "Accepter"
+  },
+  "cookie_consent": "Nous utilisons des cookies pour améliorer votre expérience.",
+  "accept": "Accepter"
 }

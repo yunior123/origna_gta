@@ -385,26 +385,40 @@ List<ImageModel> get _previewImageModels => [
   ),
 ];
 
-Widget _productAddImagesContent({List<ImageModel>? imageModels}) => previewScope(
-  child: Scaffold(
-    body: Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: ProductAddImages(imageModels: imageModels ?? const []),
+Widget _productAddImagesContent({List<ImageModel>? imageModels}) =>
+    previewScope(
+      child: Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: ProductAddImages(imageModels: imageModels ?? const []),
+          ),
+        ),
       ),
-    ),
-  ),
-);
+    );
 
-@Preview(name: 'Product Add Images — Empty Mobile', group: 'Product Widgets', size: Size(390, 844))
+@Preview(
+  name: 'Product Add Images — Empty Mobile',
+  group: 'Product Widgets',
+  size: Size(390, 844),
+)
 Widget previewProductAddImagesMobile() =>
     previewMobile(child: _productAddImagesContent());
 
-@Preview(name: 'Product Add Images — Filled Desktop', group: 'Product Widgets', size: Size(1280, 800))
-Widget previewProductAddImagesDesktop() =>
-    previewDesktop(child: _productAddImagesContent(imageModels: _previewImageModels));
+@Preview(
+  name: 'Product Add Images — Filled Desktop',
+  group: 'Product Widgets',
+  size: Size(1280, 800),
+)
+Widget previewProductAddImagesDesktop() => previewDesktop(
+  child: _productAddImagesContent(imageModels: _previewImageModels),
+);
 
-@Preview(name: 'Product Add Images Light — Filled Desktop', group: 'Product Widgets', size: Size(1280, 800))
+@Preview(
+  name: 'Product Add Images Light — Filled Desktop',
+  group: 'Product Widgets',
+  size: Size(1280, 800),
+)
 Widget previewProductAddImagesLightDesktop() => previewDesktop(
   theme: previewLightTheme,
   child: _productAddImagesContent(imageModels: _previewImageModels),

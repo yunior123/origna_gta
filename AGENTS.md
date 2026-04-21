@@ -3,53 +3,58 @@
 > **Source of truth:** `CLAUDE.md` + `.claude/rules/` — read those for full context.
 > Firebase is GONE. Backend is OrignaBase (Rust VPS + PostgreSQL + Meilisearch).
 
+## Repo Structure
+
+```
+origna_gta/               ← repo root
+├── origna_gta/           ← Flutter e-commerce app (GTA)
+├── origna_ventures/      ← Flutter services app (Ventures)
+├── e2e/                  ← Bun/Playwright E2E tests
+├── .claude/skills/       ← Claude skills
+└── AGENTS.md, CLAUDE.md
+```
+
 ## Build / Lint / Test Commands
 
 ```bash
-# ── Flutter (run from origna_gta/) ────────────────────────────────────────
+# ── OrignaGTA Flutter (run from origna_gta/) ─────────────────────────────
 cd origna_gta
 
-# Static analysis (always run first — catches compile errors fast)
 flutter analyze --no-fatal-infos
-
-# All unit + widget tests (exclude golden tests)
 flutter test --exclude-tags golden
-
-# Single test file
-flutter test test/unit/auth_provider_test.dart
-
-# Single test by name pattern
 flutter test --name "should calculate subtotal correctly"
-
-# Tests with coverage
 flutter test --coverage --reporter=compact --exclude-tags golden
-
-# Golden tests (slow, run separately)
 flutter test test/golden/
-
-# Code generation (freezed, json_serializable)
 flutter pub run build_runner build --delete-conflicting-outputs
-
-# Build for dev
 flutter build web --debug --dart-define=ENVIRONMENT=dev
-
-# Run app
 flutter run --dart-define=ENVIRONMENT=dev
 
-# Widget previews: VS Code sidebar — open .dart file → @Preview widgets appear. Each has own Hot Restart.
+# ── OrignaVentures Flutter (run from origna_ventures/) ───────────────────
+cd origna_ventures
+
+flutter analyze --no-fatal-infos
+flutter test
+flutter build web --debug
+flutter run
+
+# ── OrignaVentures Backend (Python FastAPI) ──────────────────────────────
+cd origna_ventures/backend
+source venv/bin/activate  # or .venv
+uvicorn app:app --reload --port 8001
 
 # ── E2E (run from e2e/) ──────────────────────────────────────────────────
 cd e2e
-bun test specs/phase1-api/          # API smoke tests (35 files)
-bun test specs/phase2-smoke/         # UI smoke tests (13 files)
-bun test specs/phase3-auth-nav/      # Auth flow tests (11 files)
-bun test specs/phase4-product-flows/ # Product tests (21 files)
-bun test specs/phase5-complex-flows/ # Order lifecycle, returns, chat (23 files)
-bun test specs/phase6-stripe/        # Stripe payments, webhooks (13 files)
-bun x tsc --noEmit                  # TypeScript check
+bun test specs/phase1-api/        # API smoke tests (35 files)
+bun test specs/phase2-smoke/      # UI smoke tests (13 files)
+bun test specs/phase3-auth-nav/   # Auth flow tests (11 files)
+bun test specs/phase4-product-flows/  # Product tests (21 files)
+bun test specs/phase5-complex-flows/  # Order lifecycle, returns, chat (23 files)
+bun test specs/phase6-stripe/     # Stripe payments, webhooks (13 files)
+bun x tsc --noEmit
 
 # ── Pre-commit checklist ──────────────────────────────────────────────────
-flutter analyze --no-fatal-infos && flutter test --exclude-tags golden
+cd origna_gta && flutter analyze --no-fatal-infos && flutter test --exclude-tags golden
+cd origna_ventures && flutter analyze --no-fatal-infos
 ```
 
 ## Code Style — Flutter/Dart
@@ -112,21 +117,57 @@ flutter analyze --no-fatal-infos && flutter test --exclude-tags golden
 - ❌ Non-paginated data fetching (always limit + offset)
 - ❌ Any Firebase SDK calls
 
+## Code Style — OrignaVentures
+
+### Architecture
+- Single-page Flutter web app — `StatefulWidget` + `setState`
+- No Riverpod, no MVVM — simpler structure than OrignaGTA
+- All UI in `lib/main.dart` (3317+ lines, single file)
+- Backend: Python FastAPI in `backend/app.py`
+- Theme: `ThemeConfig` class in `lib/theme_config.dart` (unified blue-violet palette with OrignaGTA)
+- Tiers: `TiersConfig` in `lib/tiers_config.dart`
+
+### Conventions
+- Languages: EN/FR/ES via inline `loc.tr(enString, frString, esString)` pattern
+- Money: integer cents, display with `$` prefix
+- No contract signing — 3 tappable service cards → Stripe checkout directly
+- Seller onboarding disabled — OrignaVentures IS the seller (support@orignaventures.ca)
+- Never hardcode colors — use `ThemeConfig.*`
+- Never `print()` — use `debugPrint()` or proper logging
+
 ## Backend (OrignaBase)
 - All data, auth, search through OrignaBase SDK — never raw HTTP
 - Environments: emulator / dev / staging / production
 - Config: `lib/utils/env_config.dart` — never hardcode URLs
 - PostgreSQL timestamp fields: orders use `createdAt`, products use `dateCreated`
 
+## Backend (OrignaVentures)
+- Python FastAPI at `origna_ventures/backend/app.py`
+- Stripe checkout sessions, PDF generation, webhook handling
+- Supports `service_code` (direct) and `contract_id` (legacy) for checkout
+- API base: `https://api.orignagta.ca/ventures/api`
+- Seller: OrignaVentures (support@orignaventures.ca)
+
 ## Key Files Reference
+
+### OrignaGTA
 | Purpose | Path |
 |---------|------|
-| Environment config | `lib/utils/env_config.dart` |
-| Auth providers | `lib/core/providers.dart` |
-| Design tokens | `lib/utils/design_tokens.dart` |
-| Schema constants | `lib/core/schema/schema_constants.dart` |
-| Quality gate | `scripts/run_quality_gate.sh` |
-| Deploy | `scripts/deploy_web.sh` |
+| Environment config | `origna_gta/lib/utils/env_config.dart` |
+| Auth providers | `origna_gta/lib/core/providers.dart` |
+| Design tokens | `origna_gta/lib/utils/design_tokens.dart` |
+| Schema constants | `origna_gta/lib/core/schema/schema_constants.dart` |
+| Quality gate | `origna_gta/scripts/run_quality_gate.sh` |
+| Deploy | `origna_gta/scripts/deploy_web.sh` |
+
+### OrignaVentures
+| Purpose | Path |
+|---------|------|
+| Main app (all UI) | `origna_ventures/lib/main.dart` |
+| Theme config | `origna_ventures/lib/theme_config.dart` |
+| Tiers config | `origna_ventures/lib/tiers_config.dart` |
+| Backend API | `origna_ventures/backend/app.py` |
+| Deploy | `origna_ventures/deploy.sh` |
 
 ## Agent Rules
 - Use subagents aggressively (10+ per session) to keep context clean
@@ -178,7 +219,8 @@ flutter analyze --no-fatal-infos && flutter test --exclude-tags golden
 
 | Project | Stack | Path | Test Command |
 |---------|-------|------|-------------|
-| **origna_gta** | Flutter/Dart, OrignaBase (Rust), Riverpod, Freezed | `~/Documents/GitHub/origna_gta` | `flutter analyze --no-fatal-infos && flutter test` |
+| **origna_gta** | Flutter/Dart, OrignaBase (Rust), Riverpod, Freezed | `~/Documents/GitHub/origna_gta/origna_gta` | `flutter analyze --no-fatal-infos && flutter test` |
+| **origna_ventures** | Flutter/Dart, Python FastAPI, Stripe | `~/Documents/GitHub/origna_gta/origna_ventures` | `flutter analyze --no-fatal-infos` |
 | **orignabase** | Rust (axum, SurrealDB, tower), Docker, Caddy | `~/Documents/GitHub/orignabase` | `cargo clippy -D warnings && cargo test` |
 | **fxcleaner** | Swift/SwiftUI, macOS | `~/Documents/GitHub/fxcleaner` | `cd fxcleaner_swiftui && swift test` |
 | **viral-video-pipeline** | Python 3.12+, Playwright, Google GenAI | `~/Documents/GitHub/viral-video-pipeline` | `pytest` |
@@ -226,6 +268,16 @@ Usage: `delegate <model> "prompt"` from any terminal.
 - Design system: `lib/utils/design_tokens.dart` (no Figma) — ONLY use DesignTokens.*
 - Deploy: `scripts/deploy_web.sh` + inject TURNSTILE_SITE_KEY
 - Firebase is COMPLETELY GONE — backend is OrignaBase (Rust VPS)
+
+## OrignaVentures Quick Facts
+- Single-page Flutter web app — no Riverpod, no MVVM, just StatefulWidget
+- Backend: Python FastAPI (`origna_ventures/backend/app.py`) — Stripe checkout sessions, PDF generation
+- 3 service tiers: OrignaCode ($500 CAD one-time) · OrignaLaunch ($2,000 CAD one-time) · OrignaTeam ($1,000+/month subscription)
+- Company email: support@orignaventures.ca — seller onboarding disabled, OrignaVentures IS the seller
+- Theme: unified with OrignaGTA — blue-violet palette (`ThemeConfig` in `lib/theme_config.dart`)
+- No contract signing — 3 tappable cards → Stripe payment directly
+- Languages: EN/FR/ES (inline `loc.tr(en, fr, es)` pattern)
+- Deploy: `origna_ventures/deploy.sh`
 
 ## Available Skills & Tools
 - **Global catalog**: `~/.claude/AI_TOOLS_GLOBAL.md` — 33 global skills, 21 global agents, slash commands

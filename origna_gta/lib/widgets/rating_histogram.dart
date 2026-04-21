@@ -11,11 +11,8 @@ class RatingHistogram extends StatelessWidget {
   final List<int> counts;
   final int total;
 
-  const RatingHistogram({
-    super.key,
-    required this.counts,
-    required this.total,
-  }) : assert(counts.length == 5, 'counts must have exactly 5 elements');
+  const RatingHistogram({super.key, required this.counts, required this.total})
+    : assert(counts.length == 5, 'counts must have exactly 5 elements');
 
   @override
   Widget build(BuildContext context) {
@@ -44,7 +41,11 @@ class RatingHistogram extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 4),
-              const Icon(Icons.star_rounded, size: 14, color: DesignTokens.warning),
+              const Icon(
+                Icons.star_rounded,
+                size: 14,
+                color: DesignTokens.warning,
+              ),
               const SizedBox(width: 6),
               Expanded(
                 child: ClipRRect(
@@ -79,9 +80,7 @@ class RatingHistogram extends StatelessWidget {
   }
 }
 
-
 // === Widget Previews ===
-
 
 // ═══ Widget Previews ═══
 
@@ -103,8 +102,6 @@ Widget previewHistogramVariantsLight() => previewGrid(
     RatingHistogram(counts: [0, 0, 0, 0, 0], total: 0),
   ],
 );
-
-
 
 // ═══ Widget Previews ═══
 
@@ -141,23 +138,20 @@ Widget previewRatingLow() => previewWrapper(
 // ─── Empty (no reviews yet) ───────────────────────────────────────────────────
 
 @Preview(name: 'Empty — no reviews', group: 'RatingHistogram')
-Widget previewRatingEmpty() => previewWrapper(
-  child: RatingHistogram(
-    counts: [0, 0, 0, 0, 0],
-    total: 0,
-  ),
-);
+Widget previewRatingEmpty() =>
+    previewWrapper(child: RatingHistogram(counts: [0, 0, 0, 0, 0], total: 0));
 
 // ─── Light theme variant ──────────────────────────────────────────────────────
 
-@Preview(name: 'Mixed — light theme', group: 'RatingHistogram', brightness: Brightness.light)
+@Preview(
+  name: 'Mixed — light theme',
+  group: 'RatingHistogram',
+  brightness: Brightness.light,
+)
 Widget previewRatingMixedLight() => previewWrapper(
   theme: previewLightTheme,
   background: DesignTokens.surface,
-  child: RatingHistogram(
-    counts: [84, 31, 12, 7, 4],
-    total: 138,
-  ),
+  child: RatingHistogram(counts: [84, 31, 12, 7, 4], total: 138),
 );
 
 // ─── All variants stacked ─────────────────────────────────────────────────────
@@ -227,4 +221,3 @@ Widget previewRatingAllVariants() => previewGrid(
     ),
   ],
 );
-

@@ -31,7 +31,10 @@ class ModernAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.centerTitle = true,
     this.showBackButton = true,
     this.backgroundColor,
-  }) : assert(!(showBackButton && leadingIcon != null), 'leadingIcon is ignored when showBackButton is true');
+  }) : assert(
+         !(showBackButton && leadingIcon != null),
+         'leadingIcon is ignored when showBackButton is true',
+       );
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
@@ -41,16 +44,32 @@ class ModernAppBar extends StatelessWidget implements PreferredSizeWidget {
     return Container(
       decoration: BoxDecoration(
         color: backgroundColor ?? DesignTokens.transparent,
-        border: Border(bottom: BorderSide(color: DesignTokens.outlineVariant.withValues(alpha: 0.3), width: 0.5)),
+        border: Border(
+          bottom: BorderSide(
+            color: DesignTokens.outlineVariant.withValues(alpha: 0.3),
+            width: 0.5,
+          ),
+        ),
       ),
       child: AppBar(
         elevation: 0,
         backgroundColor: DesignTokens.transparent,
         centerTitle: centerTitle,
         leading: showBackButton
-            ? IconButton(icon: const Icon(Icons.arrow_back_ios_new_rounded), tooltip: 'Back', onPressed: onBackPressed ?? () => Navigator.pop(context))
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                tooltip: 'Back',
+                onPressed: onBackPressed ?? () => Navigator.pop(context),
+              )
             : leadingIcon,
-        title: Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, letterSpacing: -0.3)),
+        title: Text(
+          title,
+          style: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.3,
+          ),
+        ),
         actions: actions,
       ),
     );
@@ -63,7 +82,12 @@ class ModernBottomNavBar extends StatelessWidget {
   final Function(int) onIndexChanged;
   final List<BottomNavItem> items;
 
-  const ModernBottomNavBar({super.key, required this.currentIndex, required this.onIndexChanged, required this.items});
+  const ModernBottomNavBar({
+    super.key,
+    required this.currentIndex,
+    required this.onIndexChanged,
+    required this.items,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -71,19 +95,39 @@ class ModernBottomNavBar extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? DesignTokens.darkSurface.withValues(alpha: 0.95) : DesignTokens.white.withValues(alpha: 0.95),
-        border: Border(top: BorderSide(color: DesignTokens.outlineVariant.withValues(alpha: 0.3), width: 0.5)),
-        boxShadow: [BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.05), blurRadius: 12, offset: const Offset(0, -4))],
+        color: isDark
+            ? DesignTokens.darkSurface.withValues(alpha: 0.95)
+            : DesignTokens.white.withValues(alpha: 0.95),
+        border: Border(
+          top: BorderSide(
+            color: DesignTokens.outlineVariant.withValues(alpha: 0.3),
+            width: 0.5,
+          ),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: DesignTokens.primary.withValues(alpha: 0.05),
+            blurRadius: 12,
+            offset: const Offset(0, -4),
+          ),
+        ],
       ),
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: DesignTokens.spacing8, vertical: DesignTokens.spacing8),
+          padding: const EdgeInsets.symmetric(
+            horizontal: DesignTokens.spacing8,
+            vertical: DesignTokens.spacing8,
+          ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: List.generate(
               items.length,
-              (index) => _NavBarItem(item: items[index], isActive: currentIndex == index, onTap: () => onIndexChanged(index)),
+              (index) => _NavBarItem(
+                item: items[index],
+                isActive: currentIndex == index,
+                onTap: () => onIndexChanged(index),
+              ),
             ),
           ),
         ),
@@ -97,7 +141,11 @@ class _NavBarItem extends StatelessWidget {
   final bool isActive;
   final VoidCallback onTap;
 
-  const _NavBarItem({required this.item, required this.isActive, required this.onTap});
+  const _NavBarItem({
+    required this.item,
+    required this.isActive,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -109,29 +157,55 @@ class _NavBarItem extends StatelessWidget {
         child: AnimatedContainer(
           duration: DesignTokens.durationNormal,
           padding: EdgeInsets.symmetric(
-            horizontal: isActive ? DesignTokens.spacing16 : DesignTokens.spacing12,
-            vertical: DesignTokens.spacing12, // WCAG 2.5.8: 12+20+12=44dp ≈ 48dp
+            horizontal: isActive
+                ? DesignTokens.spacing16
+                : DesignTokens.spacing12,
+            vertical:
+                DesignTokens.spacing12, // WCAG 2.5.8: 12+20+12=44dp ≈ 48dp
           ),
           decoration: BoxDecoration(
             gradient: isActive
                 ? const LinearGradient(
-                    colors: [DesignTokens.gradientStart, DesignTokens.gradientMiddle, DesignTokens.gradientEnd],
+                    colors: [
+                      DesignTokens.gradientStart,
+                      DesignTokens.gradientMiddle,
+                      DesignTokens.gradientEnd,
+                    ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   )
                 : null,
             borderRadius: BorderRadius.circular(DesignTokens.radius12),
-            boxShadow: isActive ? [BoxShadow(color: DesignTokens.gradientStart.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 3))] : null,
+            boxShadow: isActive
+                ? [
+                    BoxShadow(
+                      color: DesignTokens.gradientStart.withValues(alpha: 0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ]
+                : null,
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(item.icon, color: isActive ? DesignTokens.white : DesignTokens.textSecondary, size: 20),
+              Icon(
+                item.icon,
+                color: isActive
+                    ? DesignTokens.white
+                    : DesignTokens.textSecondary,
+                size: 20,
+              ),
               if (isActive) ...[
                 const SizedBox(width: DesignTokens.spacing8),
                 Text(
                   item.label,
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: DesignTokens.white, letterSpacing: 0.3),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: DesignTokens.white,
+                    letterSpacing: 0.3,
+                  ),
                 ),
               ],
             ],
@@ -142,9 +216,7 @@ class _NavBarItem extends StatelessWidget {
   }
 }
 
-
 // === Widget Previews ===
-
 
 // ═══ Widget Previews ═══
 
@@ -163,7 +235,13 @@ Widget previewAppBarVariants() => previewGrid(
     ModernAppBar(
       title: 'My Orders',
       showBackButton: false,
-      actions: [IconButton(icon: const Icon(Icons.filter_list_rounded), onPressed: () {}, tooltip: 'Filter')],
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.filter_list_rounded),
+          onPressed: () {},
+          tooltip: 'Filter',
+        ),
+      ],
     ),
   ],
 );
@@ -171,8 +249,16 @@ Widget previewAppBarVariants() => previewGrid(
 @Preview(name: 'BottomNavBar — Variants', group: 'ModernAppBar')
 Widget previewBottomNavVariants() => previewGrid(
   children: [
-    ModernBottomNavBar(currentIndex: 0, onIndexChanged: (_) {}, items: _navItems),
-    ModernBottomNavBar(currentIndex: 1, onIndexChanged: (_) {}, items: _navItems),
+    ModernBottomNavBar(
+      currentIndex: 0,
+      onIndexChanged: (_) {},
+      items: _navItems,
+    ),
+    ModernBottomNavBar(
+      currentIndex: 1,
+      onIndexChanged: (_) {},
+      items: _navItems,
+    ),
   ],
 );
 
@@ -185,7 +271,13 @@ Widget previewAppBarVariantsLight() => previewGrid(
     ModernAppBar(
       title: 'My Orders',
       showBackButton: false,
-      actions: [IconButton(icon: const Icon(Icons.filter_list_rounded), onPressed: () {}, tooltip: 'Filter')],
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.filter_list_rounded),
+          onPressed: () {},
+          tooltip: 'Filter',
+        ),
+      ],
     ),
   ],
 );
@@ -194,8 +286,15 @@ Widget previewAppBarVariantsLight() => previewGrid(
 Widget previewBottomNavVariantsLight() => previewGrid(
   theme: previewLightTheme,
   children: [
-    ModernBottomNavBar(currentIndex: 0, onIndexChanged: (_) {}, items: _navItems),
-    ModernBottomNavBar(currentIndex: 1, onIndexChanged: (_) {}, items: _navItems),
+    ModernBottomNavBar(
+      currentIndex: 0,
+      onIndexChanged: (_) {},
+      items: _navItems,
+    ),
+    ModernBottomNavBar(
+      currentIndex: 1,
+      onIndexChanged: (_) {},
+      items: _navItems,
+    ),
   ],
 );
-

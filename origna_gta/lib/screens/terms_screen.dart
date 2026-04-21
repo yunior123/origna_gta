@@ -856,16 +856,14 @@ class _TermsPreviewStateHost extends StatelessWidget {
   group: 'Screens — Legal',
   size: Size(390, 844),
 )
-Widget previewTermsScreenMobile() =>
-    previewMobile(child: _termsPreview());
+Widget previewTermsScreenMobile() => previewMobile(child: _termsPreview());
 
 @Preview(
   name: 'Specific Legal Terms — Desktop',
   group: 'Screens — Legal',
   size: Size(1280, 800),
 )
-Widget previewTermsScreenDesktop() =>
-    previewDesktop(child: _termsPreview());
+Widget previewTermsScreenDesktop() => previewDesktop(child: _termsPreview());
 
 @Preview(
   name: 'Specific Legal Terms Loading — Desktop',
@@ -882,10 +880,8 @@ Widget previewTermsScreenLoadingDesktop() => previewDesktop(
   group: 'Screens — Legal',
   size: Size(1280, 800),
 )
-Widget previewTermsScreenLightDesktop() => previewDesktop(
-  theme: previewLightTheme,
-  child: _termsPreview(),
-);
+Widget previewTermsScreenLightDesktop() =>
+    previewDesktop(theme: previewLightTheme, child: _termsPreview());
 
 @Preview(
   name: 'Specific Legal Terms Error — Desktop',

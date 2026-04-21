@@ -398,9 +398,7 @@ class _VideoTile extends StatelessWidget {
   }
 }
 
-
 // === Widget Previews ===
-
 
 // ═══ Widget Previews ═══
 
@@ -408,15 +406,26 @@ Widget _productAddVideoContent() => previewScope(
   child: Scaffold(body: Center(child: ProductAddVideo())),
 );
 
-@Preview(name: 'Product Add Video — Mobile', group: 'Product Screens', size: Size(390, 844))
+@Preview(
+  name: 'Product Add Video — Mobile',
+  group: 'Product Screens',
+  size: Size(390, 844),
+)
 Widget previewProductAddVideoMobile() =>
     previewMobile(child: _productAddVideoContent());
 
-@Preview(name: 'Product Add Video — Desktop', group: 'Product Screens', size: Size(1280, 800))
+@Preview(
+  name: 'Product Add Video — Desktop',
+  group: 'Product Screens',
+  size: Size(1280, 800),
+)
 Widget previewProductAddVideoDesktop() =>
     previewDesktop(child: _productAddVideoContent());
 
-@Preview(name: 'Product Add Video Light — Desktop', group: 'Product Screens', size: Size(1280, 800))
+@Preview(
+  name: 'Product Add Video Light — Desktop',
+  group: 'Product Screens',
+  size: Size(1280, 800),
+)
 Widget previewProductAddVideoLightDesktop() =>
     previewDesktop(theme: previewLightTheme, child: _productAddVideoContent());
-

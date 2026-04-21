@@ -345,8 +345,11 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
 const _previewEditProductSellerId = 'preview-seller';
 const _previewEditProductImageBase = 'https://fastly.picsum.photos/id';
 
-String _previewEditProductImage(int id, {int width = 1200, int height = 1200}) =>
-    '$_previewEditProductImageBase/$id/$width/$height.jpg';
+String _previewEditProductImage(
+  int id, {
+  int width = 1200,
+  int height = 1200,
+}) => '$_previewEditProductImageBase/$id/$width/$height.jpg';
 
 Product _buildPreviewEditProduct() => Product(
   productId: 'preview-edit-product',
@@ -355,10 +358,7 @@ Product _buildPreviewEditProduct() => Product(
   compareAtPriceCents: 5200,
   description:
       'Small-batch soy candle with cedar, amber, and citrus notes for cozy fall inventory screenshots.',
-  imageUrls: [
-    _previewEditProductImage(1060),
-    _previewEditProductImage(1040),
-  ],
+  imageUrls: [_previewEditProductImage(1060), _previewEditProductImage(1040)],
   sellerId: _previewEditProductSellerId,
   categoryId: 1,
   stockQuantity: 18,

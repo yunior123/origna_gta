@@ -10,10 +10,7 @@ final appLifecycleProvider = StateProvider<AppLifecycleState>(
 
 /// Returns true only when the app has genuinely come back from background-ish
 /// states into [AppLifecycleState.resumed].
-bool isResumeTransition(
-  AppLifecycleState? previous,
-  AppLifecycleState next,
-) {
+bool isResumeTransition(AppLifecycleState? previous, AppLifecycleState next) {
   return next == AppLifecycleState.resumed &&
       previous != null &&
       previous != AppLifecycleState.resumed;

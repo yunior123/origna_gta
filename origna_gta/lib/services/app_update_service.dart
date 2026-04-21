@@ -30,20 +30,23 @@ class AppUpdateService {
     try {
       final packageInfo = await PackageInfo.fromPlatform();
       final currentVersion = packageInfo.version; // e.g., "1.1.0"
-      
+
       // Fetch minimum version from OrignaBase config
       final url = '${EnvConfig().orignabaseUrl}/config/min_app_version';
-      final response = await http.get(Uri.parse(url))
+      final response = await http
+          .get(Uri.parse(url))
           .timeout(const Duration(seconds: 5));
-      
+
       if (response.statusCode != 200) return null;
-      
+
       final data = jsonDecode(response.body);
       final minVersion = data['value'] as String?;
       if (minVersion == null) return null;
-      
+
       if (_isVersionLower(currentVersion, minVersion)) {
-        AppLogger.w('App update required: current=$currentVersion, min=$minVersion');
+        AppLogger.w(
+          'App update required: current=$currentVersion, min=$minVersion',
+        );
         return minVersion;
       }
       return null;
@@ -52,7 +55,7 @@ class AppUpdateService {
       return null; // Don't block app on network errors
     }
   }
-  
+
   /// Compares two semantic version strings (major.minor.patch).
   ///
   /// Returns `true` if [current] is strictly lower than [minimum].
@@ -60,7 +63,7 @@ class AppUpdateService {
   static bool _isVersionLower(String current, String minimum) {
     final currentParts = current.split('.').map(int.tryParse).toList();
     final minParts = minimum.split('.').map(int.tryParse).toList();
-    
+
     for (var i = 0; i < 3; i++) {
       final c = i < currentParts.length ? (currentParts[i] ?? 0) : 0;
       final m = i < minParts.length ? (minParts[i] ?? 0) : 0;

@@ -23,7 +23,9 @@ class ModernCard extends StatefulWidget {
     this.onTap,
     this.backgroundColor,
     this.padding = const EdgeInsets.all(DesignTokens.spacing16),
-    this.borderRadius = const BorderRadius.all(Radius.circular(DesignTokens.radius16)),
+    this.borderRadius = const BorderRadius.all(
+      Radius.circular(DesignTokens.radius16),
+    ),
     this.enableHoverScale = true,
     this.width,
     this.height,
@@ -34,7 +36,8 @@ class ModernCard extends StatefulWidget {
   State<ModernCard> createState() => _ModernCardState();
 }
 
-class _ModernCardState extends State<ModernCard> with SingleTickerProviderStateMixin {
+class _ModernCardState extends State<ModernCard>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _elevationAnimation;
   late Animation<double> _scaleAnimation;
@@ -57,9 +60,18 @@ class _ModernCardState extends State<ModernCard> with SingleTickerProviderStateM
                 width: widget.width,
                 height: widget.height,
                 decoration: BoxDecoration(
-                  color: widget.backgroundColor ?? (isDark ? DesignTokens.darkSurfaceVariant.withValues(alpha: 0.6) : DesignTokens.surface),
+                  color:
+                      widget.backgroundColor ??
+                      (isDark
+                          ? DesignTokens.darkSurfaceVariant.withValues(
+                              alpha: 0.6,
+                            )
+                          : DesignTokens.surface),
                   borderRadius: widget.borderRadius,
-                  border: Border.all(color: DesignTokens.white.withValues(alpha: 0.1), width: 1),
+                  border: Border.all(
+                    color: DesignTokens.white.withValues(alpha: 0.1),
+                    width: 1,
+                  ),
                   boxShadow: [
                     BoxShadow(
                       color: DesignTokens.primary.withValues(alpha: 0.1),
@@ -97,13 +109,21 @@ class _ModernCardState extends State<ModernCard> with SingleTickerProviderStateM
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(duration: DesignTokens.durationNormal, vsync: this);
+    _controller = AnimationController(
+      duration: DesignTokens.durationNormal,
+      vsync: this,
+    );
     _elevationAnimation = Tween<double>(begin: 8, end: 16).animate(_controller);
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.02).animate(CurvedAnimation(parent: _controller, curve: DesignTokens.easeOutCubic));
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.02).animate(
+      CurvedAnimation(parent: _controller, curve: DesignTokens.easeOutCubic),
+    );
   }
 
   void _onHover(bool isHovering) {
-    if (!kIsWeb && defaultTargetPlatform != TargetPlatform.macOS && defaultTargetPlatform != TargetPlatform.windows && defaultTargetPlatform != TargetPlatform.linux) {
+    if (!kIsWeb &&
+        defaultTargetPlatform != TargetPlatform.macOS &&
+        defaultTargetPlatform != TargetPlatform.windows &&
+        defaultTargetPlatform != TargetPlatform.linux) {
       return;
     }
     if (widget.enableHoverScale && widget.onTap != null) {
@@ -116,9 +136,7 @@ class _ModernCardState extends State<ModernCard> with SingleTickerProviderStateM
   }
 }
 
-
 // === Widget Previews ===
-
 
 // ═══ Widget Previews ═══
 
@@ -138,25 +156,51 @@ Widget previewCardBasic() => previewWrapper(
                 gradient: DesignTokens.primaryGradient,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.store_outlined, color: DesignTokens.white),
+              child: const Icon(
+                Icons.store_outlined,
+                color: DesignTokens.white,
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Toronto Vintage', style: TextStyle(color: DesignTokens.white, fontWeight: FontWeight.w600, fontSize: 16)),
-                  Text('4.8 ★  ·  142 sales', style: TextStyle(color: DesignTokens.white.withValues(alpha: 0.54), fontSize: 13)),
+                  const Text(
+                    'Toronto Vintage',
+                    style: TextStyle(
+                      color: DesignTokens.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                    ),
+                  ),
+                  Text(
+                    '4.8 ★  ·  142 sales',
+                    style: TextStyle(
+                      color: DesignTokens.white.withValues(alpha: 0.54),
+                      fontSize: 13,
+                    ),
+                  ),
                 ],
               ),
             ),
-            Icon(Icons.chevron_right, color: DesignTokens.white.withValues(alpha: 0.54)),
+            Icon(
+              Icons.chevron_right,
+              color: DesignTokens.white.withValues(alpha: 0.54),
+            ),
           ],
         ),
         const SizedBox(height: 12),
         Divider(color: DesignTokens.white.withValues(alpha: 0.12)),
         const SizedBox(height: 12),
-        Text('Vintage clothing from the 80s and 90s. Authenticated and curated.', style: TextStyle(color: DesignTokens.white.withValues(alpha: 0.7), fontSize: 14, height: 1.5)),
+        Text(
+          'Vintage clothing from the 80s and 90s. Authenticated and curated.',
+          style: TextStyle(
+            color: DesignTokens.white.withValues(alpha: 0.7),
+            fontSize: 14,
+            height: 1.5,
+          ),
+        ),
       ],
     ),
   ),
@@ -167,7 +211,14 @@ Widget previewCardStats() => previewWrapper(
   child: ModernCard(
     child: Column(
       children: [
-        const Text('Order Summary', style: TextStyle(color: DesignTokens.white, fontWeight: FontWeight.w700, fontSize: 18)),
+        const Text(
+          'Order Summary',
+          style: TextStyle(
+            color: DesignTokens.white,
+            fontWeight: FontWeight.w700,
+            fontSize: 18,
+          ),
+        ),
         const SizedBox(height: 16),
         _statRow('Subtotal', '\$89.99'),
         _statRow('Platform Fee (2.5%)', '\$2.25'),
@@ -177,8 +228,22 @@ Widget previewCardStats() => previewWrapper(
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: const [
-            Text('Total', style: TextStyle(color: DesignTokens.white, fontWeight: FontWeight.w700, fontSize: 18)),
-            Text('\$115.94', style: TextStyle(color: DesignTokens.primary, fontWeight: FontWeight.w700, fontSize: 20)),
+            Text(
+              'Total',
+              style: TextStyle(
+                color: DesignTokens.white,
+                fontWeight: FontWeight.w700,
+                fontSize: 18,
+              ),
+            ),
+            Text(
+              '\$115.94',
+              style: TextStyle(
+                color: DesignTokens.primary,
+                fontWeight: FontWeight.w700,
+                fontSize: 20,
+              ),
+            ),
           ],
         ),
       ],
@@ -191,8 +256,21 @@ Widget _statRow(String label, String value) => Padding(
   child: Row(
     mainAxisAlignment: MainAxisAlignment.spaceBetween,
     children: [
-      Text(label, style: TextStyle(color: DesignTokens.white.withValues(alpha: 0.54), fontSize: 14)),
-      Text(value, style: const TextStyle(color: DesignTokens.white, fontSize: 14, fontWeight: FontWeight.w500)),
+      Text(
+        label,
+        style: TextStyle(
+          color: DesignTokens.white.withValues(alpha: 0.54),
+          fontSize: 14,
+        ),
+      ),
+      Text(
+        value,
+        style: const TextStyle(
+          color: DesignTokens.white,
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
     ],
   ),
 );
@@ -210,15 +288,31 @@ Widget previewCardWarning() => previewWrapper(
             color: DesignTokens.warning.withValues(alpha: 0.2),
             shape: BoxShape.circle,
           ),
-          child: const Icon(Icons.warning_amber_rounded, color: DesignTokens.warning, size: 22),
+          child: const Icon(
+            Icons.warning_amber_rounded,
+            color: DesignTokens.warning,
+            size: 22,
+          ),
         ),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Stock running low', style: TextStyle(color: DesignTokens.white, fontWeight: FontWeight.w600)),
-              Text('Only 2 items left in stock.', style: TextStyle(color: DesignTokens.white.withValues(alpha: 0.54), fontSize: 13)),
+              const Text(
+                'Stock running low',
+                style: TextStyle(
+                  color: DesignTokens.white,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Text(
+                'Only 2 items left in stock.',
+                style: TextStyle(
+                  color: DesignTokens.white.withValues(alpha: 0.54),
+                  fontSize: 13,
+                ),
+              ),
             ],
           ),
         ),
@@ -240,15 +334,32 @@ Widget previewCardSuccess() => previewWrapper(
             color: DesignTokens.success.withValues(alpha: 0.2),
             shape: BoxShape.circle,
           ),
-          child: const Icon(Icons.check_circle_outline, color: DesignTokens.success, size: 28),
+          child: const Icon(
+            Icons.check_circle_outline,
+            color: DesignTokens.success,
+            size: 28,
+          ),
         ),
         const SizedBox(width: 16),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Order Placed!', style: TextStyle(color: DesignTokens.white, fontWeight: FontWeight.w700, fontSize: 18)),
-              Text('Your order #ORD-2025-8472 is confirmed.', style: TextStyle(color: DesignTokens.white.withValues(alpha: 0.6), fontSize: 13)),
+              const Text(
+                'Order Placed!',
+                style: TextStyle(
+                  color: DesignTokens.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 18,
+                ),
+              ),
+              Text(
+                'Your order #ORD-2025-8472 is confirmed.',
+                style: TextStyle(
+                  color: DesignTokens.white.withValues(alpha: 0.6),
+                  fontSize: 13,
+                ),
+              ),
             ],
           ),
         ),
@@ -269,12 +380,31 @@ Widget previewCardEmpty() => previewWrapper(
             gradient: DesignTokens.primaryGradient,
             shape: BoxShape.circle,
           ),
-          child: const Icon(Icons.shopping_bag_outlined, color: DesignTokens.white, size: 40),
+          child: const Icon(
+            Icons.shopping_bag_outlined,
+            color: DesignTokens.white,
+            size: 40,
+          ),
         ),
         const SizedBox(height: 16),
-        const Text('No orders yet', style: TextStyle(color: DesignTokens.white, fontWeight: FontWeight.w600, fontSize: 18)),
+        const Text(
+          'No orders yet',
+          style: TextStyle(
+            color: DesignTokens.white,
+            fontWeight: FontWeight.w600,
+            fontSize: 18,
+          ),
+        ),
         const SizedBox(height: 8),
-        Text('Browse the marketplace and\nplace your first order.', textAlign: TextAlign.center, style: TextStyle(color: DesignTokens.white.withValues(alpha: 0.54), fontSize: 14, height: 1.5)),
+        Text(
+          'Browse the marketplace and\nplace your first order.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: DesignTokens.white.withValues(alpha: 0.54),
+            fontSize: 14,
+            height: 1.5,
+          ),
+        ),
       ],
     ),
   ),
@@ -290,17 +420,28 @@ Widget previewCardLight() => previewWrapper(
     child: const Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Product Title', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
+        Text(
+          'Product Title',
+          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
+        ),
         SizedBox(height: 4),
-        Text('By Toronto Vintage  ·  4.8 ★', style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13)),
+        Text(
+          'By Toronto Vintage  ·  4.8 ★',
+          style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13),
+        ),
         SizedBox(height: 12),
-        Text('\$89.99 CAD', style: TextStyle(color: DesignTokens.primary, fontWeight: FontWeight.w700, fontSize: 22)),
+        Text(
+          '\$89.99 CAD',
+          style: TextStyle(
+            color: DesignTokens.primary,
+            fontWeight: FontWeight.w700,
+            fontSize: 22,
+          ),
+        ),
       ],
     ),
   ),
 );
-
-
 
 // ═══ Widget Previews ═══
 
@@ -317,7 +458,10 @@ Widget previewCardComplex() => previewGrid(
               const SizedBox(width: DesignTokens.spacing8),
               Text(
                 'Premium Offer',
-                style: TextStyle(fontWeight: FontWeight.bold, color: DesignTokens.textOnDark),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: DesignTokens.textOnDark,
+                ),
               ),
             ],
           ),
@@ -334,7 +478,10 @@ Widget previewCardVariants() => previewGrid(
   children: [
     const ModernCard(child: Text('Basic Card Content')),
     ModernCard(onTap: () {}, child: const Text('Interactive Card (Hover Me)')),
-    ModernCard(backgroundColor: DesignTokens.primary.withValues(alpha: 0.1), child: const Text('Custom Background Color')),
+    ModernCard(
+      backgroundColor: DesignTokens.primary.withValues(alpha: 0.1),
+      child: const Text('Custom Background Color'),
+    ),
     ModernCard(
       borderRadius: BorderRadius.circular(DesignTokens.radius8),
       padding: const EdgeInsets.all(DesignTokens.spacing8),
@@ -357,7 +504,10 @@ Widget previewCardComplexLight() => previewGrid(
               const SizedBox(width: DesignTokens.spacing8),
               Text(
                 'Premium Offer',
-                style: TextStyle(fontWeight: FontWeight.bold, color: DesignTokens.textOnDark),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: DesignTokens.textOnDark,
+                ),
               ),
             ],
           ),
@@ -375,7 +525,10 @@ Widget previewCardVariantsLight() => previewGrid(
   children: [
     const ModernCard(child: Text('Basic Card Content')),
     ModernCard(onTap: () {}, child: const Text('Interactive Card (Hover Me)')),
-    ModernCard(backgroundColor: DesignTokens.primary.withValues(alpha: 0.1), child: const Text('Custom Background Color')),
+    ModernCard(
+      backgroundColor: DesignTokens.primary.withValues(alpha: 0.1),
+      child: const Text('Custom Background Color'),
+    ),
     ModernCard(
       borderRadius: BorderRadius.circular(DesignTokens.radius8),
       padding: const EdgeInsets.all(DesignTokens.spacing8),
@@ -383,4 +536,3 @@ Widget previewCardVariantsLight() => previewGrid(
     ),
   ],
 );
-

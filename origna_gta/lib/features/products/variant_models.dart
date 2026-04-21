@@ -13,7 +13,14 @@ class ProductVariantEntry {
   final String? sku;
   final bool isActive;
 
-  const ProductVariantEntry({this.variantId = '', required this.optionValues, this.priceCents, this.stockQuantity = 0, this.sku, this.isActive = true});
+  const ProductVariantEntry({
+    this.variantId = '',
+    required this.optionValues,
+    this.priceCents,
+    this.stockQuantity = 0,
+    this.sku,
+    this.isActive = true,
+  });
 
   factory ProductVariantEntry.fromMap(Map<String, dynamic> map) {
     // Support both old 'price' (float) and new 'priceCents' (int)
@@ -34,7 +41,14 @@ class ProductVariantEntry {
   }
 
   @override
-  int get hashCode => Object.hash(variantId, Object.hashAll(optionValues.entries.map((e) => '${e.key}=${e.value}')), priceCents, stockQuantity, sku, isActive);
+  int get hashCode => Object.hash(
+    variantId,
+    Object.hashAll(optionValues.entries.map((e) => '${e.key}=${e.value}')),
+    priceCents,
+    stockQuantity,
+    sku,
+    isActive,
+  );
 
   /// Price in dollars for display purposes.
   double? get priceDollars => priceCents != null ? priceCents! / 100.0 : null;
@@ -60,7 +74,9 @@ class ProductVariantEntry {
     return ProductVariantEntry(
       variantId: variantId ?? this.variantId,
       optionValues: optionValues ?? this.optionValues,
-      priceCents: identical(priceCents, _sentinel) ? this.priceCents : priceCents as int?,
+      priceCents: identical(priceCents, _sentinel)
+          ? this.priceCents
+          : priceCents as int?,
       stockQuantity: stockQuantity ?? this.stockQuantity,
       sku: identical(sku, _sentinel) ? this.sku : sku as String?,
       isActive: isActive ?? this.isActive,
@@ -86,17 +102,26 @@ class VariantOption {
   const VariantOption({required this.name, required this.values});
 
   factory VariantOption.fromMap(Map<String, dynamic> map) {
-    return VariantOption(name: map[Fields.name] as String, values: (map['values'] as List).cast<String>());
+    return VariantOption(
+      name: map[Fields.name] as String,
+      values: (map['values'] as List).cast<String>(),
+    );
   }
 
   @override
   int get hashCode => Object.hash(name, Object.hashAll(values));
 
   @override
-  bool operator ==(Object other) => other is VariantOption && other.name == name && listEquals(other.values, values);
+  bool operator ==(Object other) =>
+      other is VariantOption &&
+      other.name == name &&
+      listEquals(other.values, values);
 
   VariantOption copyWith({String? name, List<String>? values}) {
-    return VariantOption(name: name ?? this.name, values: values ?? this.values);
+    return VariantOption(
+      name: name ?? this.name,
+      values: values ?? this.values,
+    );
   }
 
   Map<String, dynamic> toMap() => {Fields.name: name, 'values': values};

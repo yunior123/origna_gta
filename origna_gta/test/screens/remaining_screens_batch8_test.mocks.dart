@@ -370,6 +370,15 @@ class MockProductRepository extends _i1.Mock implements _i2.ProductRepository {
 /// See the documentation for Mockito's code generation for more information.
 class MockOrderRepository extends _i1.Mock implements _i9.OrderRepository {
   @override
+  _i3.Future<void> cancelOrder(String? orderId) =>
+      (super.noSuchMethod(
+            Invocation.method(#cancelOrder, [orderId]),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
+
+  @override
   _i3.Future<void> approveShippingCost(String? orderId, bool? approved) =>
       (super.noSuchMethod(
             Invocation.method(#approveShippingCost, [orderId, approved]),

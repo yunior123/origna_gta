@@ -750,16 +750,17 @@ class _ApprovalCard extends ConsumerWidget {
 
 // ─── Flutter Previews ────────────────────────────────────────────────────────
 
-
 // === Widget Previews ===
-
 
 // ═══ Widget Previews ═══
 
 const _previewShippingApprovalImageBase = 'https://fastly.picsum.photos/id';
 
-String _previewShippingApprovalImage(int id, {int width = 900, int height = 900}) =>
-    '$_previewShippingApprovalImageBase/$id/$width/$height.jpg';
+String _previewShippingApprovalImage(
+  int id, {
+  int width = 900,
+  int height = 900,
+}) => '$_previewShippingApprovalImageBase/$id/$width/$height.jpg';
 
 final _previewShippingApprovals = [
   Order(
@@ -801,29 +802,44 @@ final _previewShippingApprovals = [
   ),
 ];
 
-Widget _shippingApprovalPreview({List<Order>? approvals}) => previewScopeLoggedIn(
-  extraOverrides: [
-    pendingShippingApprovalsProvider.overrideWith(
-      (ref) => AsyncValue.data(approvals ?? _previewShippingApprovals),
-    ),
-  ],
-  child: const ShippingApprovalScreen(),
-);
+Widget _shippingApprovalPreview({List<Order>? approvals}) =>
+    previewScopeLoggedIn(
+      extraOverrides: [
+        pendingShippingApprovalsProvider.overrideWith(
+          (ref) => AsyncValue.data(approvals ?? _previewShippingApprovals),
+        ),
+      ],
+      child: const ShippingApprovalScreen(),
+    );
 
-@Preview(name: 'Verify Shipping — Mobile', group: 'Screens — Seller Management', size: Size(390, 844))
+@Preview(
+  name: 'Verify Shipping — Mobile',
+  group: 'Screens — Seller Management',
+  size: Size(390, 844),
+)
 Widget previewShippingApprovalScreenMobile() =>
     previewMobile(child: _shippingApprovalPreview());
 
-@Preview(name: 'Verify Shipping — Desktop', group: 'Screens — Seller Management', size: Size(1280, 800))
+@Preview(
+  name: 'Verify Shipping — Desktop',
+  group: 'Screens — Seller Management',
+  size: Size(1280, 800),
+)
 Widget previewShippingApprovalScreenDesktop() =>
     previewDesktop(child: _shippingApprovalPreview());
 
-@Preview(name: 'Verify Shipping Light — Desktop', group: 'Screens — Seller Management', size: Size(1280, 800))
-Widget previewShippingApprovalLightDesktop() => previewDesktop(
-  theme: previewLightTheme,
-  child: _shippingApprovalPreview(),
-);
+@Preview(
+  name: 'Verify Shipping Light — Desktop',
+  group: 'Screens — Seller Management',
+  size: Size(1280, 800),
+)
+Widget previewShippingApprovalLightDesktop() =>
+    previewDesktop(theme: previewLightTheme, child: _shippingApprovalPreview());
 
-@Preview(name: 'Verify Shipping Empty — Desktop', group: 'Screens — Seller Management', size: Size(1280, 800))
+@Preview(
+  name: 'Verify Shipping Empty — Desktop',
+  group: 'Screens — Seller Management',
+  size: Size(1280, 800),
+)
 Widget previewShippingApprovalEmptyDesktop() =>
     previewDesktop(child: _shippingApprovalPreview(approvals: const []));

@@ -100,10 +100,11 @@ class OrignaBaseProductRepository
   Product docToProduct(Document doc) {
     final data = <String, dynamic>{...doc.data};
 
-    data[Fields.name] ??= 'Untitled product';
+    data[Fields.name] ??= data['title'] ?? 'Untitled product';
     data[Fields.description] ??= '';
     data[Fields.imageUrls] = switch (data[Fields.imageUrls]) {
       final List<String> l when l.isNotEmpty => l,
+      List<dynamic> l when l.isNotEmpty => l.cast<String>(),
       _ => const <String>[],
     };
     data[Fields.sellerId] ??= '';

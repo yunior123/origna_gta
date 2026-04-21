@@ -25,7 +25,9 @@ class _AddProductButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final kSellerOnboardingEnabled = ref.watch(featureFlagSellerOnboardingProvider);
+    final kSellerOnboardingEnabled = ref.watch(
+      featureFlagSellerOnboardingProvider,
+    );
     if (!kSellerOnboardingEnabled) {
       return const SizedBox.shrink();
     }

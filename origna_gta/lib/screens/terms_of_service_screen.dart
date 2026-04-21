@@ -23,24 +23,32 @@ class TermsOfServiceScreen extends StatelessWidget {
 
 // ─── Flutter Previews ────────────────────────────────────────────────────────
 
-
-
 // === Widget Previews ===
-
 
 // ═══ Widget Previews ═══
 
-@Preview(name: 'Terms of Service — Mobile', group: 'Screens — Legal', size: Size(390, 844))
+@Preview(
+  name: 'Terms of Service — Mobile',
+  group: 'Screens — Legal',
+  size: Size(390, 844),
+)
 Widget previewTermsOfServiceScreenMobile() =>
     previewMobile(child: const TermsOfServiceScreen());
 
-@Preview(name: 'Terms of Service — Desktop', group: 'Screens — Legal', size: Size(1280, 800))
+@Preview(
+  name: 'Terms of Service — Desktop',
+  group: 'Screens — Legal',
+  size: Size(1280, 800),
+)
 Widget previewTermsOfServiceScreenDesktop() =>
     previewDesktop(child: const TermsOfServiceScreen());
 
-@Preview(name: 'Terms of Service Light — Desktop', group: 'Screens — Legal', size: Size(1280, 800))
+@Preview(
+  name: 'Terms of Service Light — Desktop',
+  group: 'Screens — Legal',
+  size: Size(1280, 800),
+)
 Widget previewTermsOfServiceLightDesktop() => previewDesktop(
   theme: previewLightTheme,
   child: const TermsOfServiceScreen(),
 );
-

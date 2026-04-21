@@ -221,7 +221,6 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
 
 // ─── Flutter Previews ────────────────────────────────────────────────────────
 
-
 // ═══ Widget Previews ═══
 
 class _PreviewSubscriptionRef extends Ref {
@@ -230,8 +229,9 @@ class _PreviewSubscriptionRef extends Ref {
 }
 
 class _PreviewSubscriptionViewModel extends SubscriptionViewModel {
-  _PreviewSubscriptionViewModel([SubscriptionState previewState = const SubscriptionState()])
-    : super(_PreviewSubscriptionRef()) {
+  _PreviewSubscriptionViewModel([
+    SubscriptionState previewState = const SubscriptionState(),
+  ]) : super(_PreviewSubscriptionRef()) {
     state = previewState;
   }
 }
@@ -312,35 +312,64 @@ Widget _subscriptionPremiumCancellingUser() => _subscriptionPreview(
   user: _previewPremiumSubscriptionUser(cancelAtPeriodEnd: true),
   subscriptionInfo: _previewCancelingSubscriptionInfo,
   state: const SubscriptionState(
-    errorMessage: 'Billing portal is temporarily unavailable. Try again in a few minutes.',
+    errorMessage:
+        'Billing portal is temporarily unavailable. Try again in a few minutes.',
   ),
 );
 
-@Preview(name: 'Premium Subscription Plans — Mobile', group: 'Screens — Premium Flow', size: Size(390, 844))
+@Preview(
+  name: 'Premium Subscription Plans — Mobile',
+  group: 'Screens — Premium Flow',
+  size: Size(390, 844),
+)
 Widget previewSubscriptionScreenMobile() =>
     previewMobile(child: _subscriptionFreeUser());
 
-@Preview(name: 'Premium Subscription Plans — Desktop', group: 'Screens — Premium Flow', size: Size(1280, 800))
+@Preview(
+  name: 'Premium Subscription Plans — Desktop',
+  group: 'Screens — Premium Flow',
+  size: Size(1280, 800),
+)
 Widget previewSubscriptionScreenDesktop() =>
     previewDesktop(child: _subscriptionFreeUser());
 
-@Preview(name: 'Premium Subscription Plans Light — Desktop', group: 'Screens — Premium Flow', size: Size(1280, 800))
+@Preview(
+  name: 'Premium Subscription Plans Light — Desktop',
+  group: 'Screens — Premium Flow',
+  size: Size(1280, 800),
+)
 Widget previewSubscriptionLightDesktop() =>
     previewDesktop(theme: previewLightTheme, child: _subscriptionFreeUser());
 
 // ── Premium user states ──────────────────────────────────────────────────────
-@Preview(name: 'Premium Member View Dark — Mobile', group: 'Screens — Premium Flow', size: Size(390, 844))
+@Preview(
+  name: 'Premium Member View Dark — Mobile',
+  group: 'Screens — Premium Flow',
+  size: Size(390, 844),
+)
 Widget previewSubscriptionPremiumMobile() =>
     previewMobile(child: _subscriptionPremiumUser());
 
-@Preview(name: 'Premium Member View Dark — Desktop', group: 'Screens — Premium Flow', size: Size(1280, 800))
+@Preview(
+  name: 'Premium Member View Dark — Desktop',
+  group: 'Screens — Premium Flow',
+  size: Size(1280, 800),
+)
 Widget previewSubscriptionPremiumDesktop() =>
     previewDesktop(child: _subscriptionPremiumUser());
 
-@Preview(name: 'Premium Member View Light — Desktop', group: 'Screens — Premium Flow', size: Size(1280, 800))
+@Preview(
+  name: 'Premium Member View Light — Desktop',
+  group: 'Screens — Premium Flow',
+  size: Size(1280, 800),
+)
 Widget previewSubscriptionPremiumLightDesktop() =>
     previewDesktop(theme: previewLightTheme, child: _subscriptionPremiumUser());
 
-@Preview(name: 'Premium Member Cancelling — Desktop', group: 'Screens — Premium Flow', size: Size(1280, 800))
+@Preview(
+  name: 'Premium Member Cancelling — Desktop',
+  group: 'Screens — Premium Flow',
+  size: Size(1280, 800),
+)
 Widget previewSubscriptionPremiumCancellingDesktop() =>
     previewDesktop(child: _subscriptionPremiumCancellingUser());

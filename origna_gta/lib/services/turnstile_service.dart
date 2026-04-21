@@ -4,7 +4,8 @@ import 'package:flutter/foundation.dart';
 
 // JS interop — only compiled on web.
 // On mobile/desktop this entire block is dead code (kIsWeb guard prevents calls).
-import 'turnstile_service_web.dart' if (dart.library.io) 'turnstile_service_stub.dart';
+import 'turnstile_service_web.dart'
+    if (dart.library.io) 'turnstile_service_stub.dart';
 
 /// Cloudflare Turnstile bot-protection service.
 ///

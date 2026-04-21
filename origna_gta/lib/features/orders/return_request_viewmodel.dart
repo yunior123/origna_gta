@@ -34,8 +34,7 @@ class ReturnRequestViewModel extends StateNotifier<ReturnRequestState> {
   ReturnRequestViewModel(this._ref) : super(const ReturnRequestState());
 
   /// Preview constructor — skips all backend calls.
-  ReturnRequestViewModel.preview(this._ref)
-    : super(const ReturnRequestState());
+  ReturnRequestViewModel.preview(this._ref) : super(const ReturnRequestState());
 
   /// Submit a return request for the given order and items.
   ///

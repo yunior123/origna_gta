@@ -23,7 +23,10 @@ extension _AddProductDeliverySection on _AddProductScreenState {
       decoration: BoxDecoration(
         color: isEnabled
             ? color.withValues(alpha: 0.04)
-            : (isDark ? DesignTokens.darkSurfaceVariant : DesignTokens.surfaceVariant).withValues(alpha: 0.3),
+            : (isDark
+                      ? DesignTokens.darkSurfaceVariant
+                      : DesignTokens.surfaceVariant)
+                  .withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isEnabled

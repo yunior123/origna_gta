@@ -274,7 +274,6 @@ class CartScreen extends ConsumerWidget {
 // - parts/cart_item_widget.dart (_CartItemWidget)
 // - parts/cart_summary_widgets.dart (_CartSummary, _CartTotalDisplay, _CheckoutButton, _FreeShippingBar, CartItemDetailModelExtension)
 
-
 // ═══ Widget Previews ═══
 
 const _previewCartImageBase = 'https://fastly.picsum.photos/id';
@@ -365,9 +364,7 @@ final _previewCartDetails = [
   ),
 ];
 
-Widget _cartPreview({
-  bool empty = false,
-}) => previewScopeLoggedIn(
+Widget _cartPreview({bool empty = false}) => previewScopeLoggedIn(
   uid: _previewCartUser.uid,
   extraOverrides: [
     currentUserProvider.overrideWith((ref) => _previewCartUser),
@@ -380,15 +377,15 @@ Widget _cartPreview({
     unavailableCartItemsProvider.overrideWith(
       (ref) async => empty ? <String>[] : ['cart-product-unavailable'],
     ),
-    cartItemDetailProvider('cart-preview-1').overrideWith(
-      (ref) async => empty ? null : _previewCartDetails[0],
-    ),
-    cartItemDetailProvider('cart-preview-2').overrideWith(
-      (ref) async => empty ? null : _previewCartDetails[1],
-    ),
-    cartItemDetailProvider('cart-preview-unavailable').overrideWith(
-      (ref) async => null,
-    ),
+    cartItemDetailProvider(
+      'cart-preview-1',
+    ).overrideWith((ref) async => empty ? null : _previewCartDetails[0]),
+    cartItemDetailProvider(
+      'cart-preview-2',
+    ).overrideWith((ref) async => empty ? null : _previewCartDetails[1]),
+    cartItemDetailProvider(
+      'cart-preview-unavailable',
+    ).overrideWith((ref) async => null),
   ],
   child: const CartScreen(),
 );
@@ -407,18 +404,38 @@ Widget _cartEmpty() => previewScopeLoggedIn(
 );
 
 // ── Core previews ───────────────────────────────────────────────────────────
-@Preview(name: 'Shopping Cart Dark — Mobile', group: 'Cart Screens', size: Size(390, 844))
+@Preview(
+  name: 'Shopping Cart Dark — Mobile',
+  group: 'Cart Screens',
+  size: Size(390, 844),
+)
 Widget previewCartScreenMobile() => previewMobile(child: _cartDark());
 
-@Preview(name: 'Shopping Cart Dark — Desktop', group: 'Cart Screens', size: Size(1280, 800))
+@Preview(
+  name: 'Shopping Cart Dark — Desktop',
+  group: 'Cart Screens',
+  size: Size(1280, 800),
+)
 Widget previewCartScreenDesktop() => previewDesktop(child: _cartDark());
 
-@Preview(name: 'Shopping Cart Light — Desktop', group: 'Cart Screens', size: Size(1280, 800))
+@Preview(
+  name: 'Shopping Cart Light — Desktop',
+  group: 'Cart Screens',
+  size: Size(1280, 800),
+)
 Widget previewCartScreenLightDesktop() =>
     previewDesktop(theme: previewLightTheme, child: _cartLight());
 
-@Preview(name: 'Shopping Cart Empty — Mobile', group: 'Cart Screens', size: Size(390, 844))
+@Preview(
+  name: 'Shopping Cart Empty — Mobile',
+  group: 'Cart Screens',
+  size: Size(390, 844),
+)
 Widget previewCartScreenEmptyMobile() => previewMobile(child: _cartEmpty());
 
-@Preview(name: 'Shopping Cart Empty — Desktop', group: 'Cart Screens', size: Size(1280, 800))
+@Preview(
+  name: 'Shopping Cart Empty — Desktop',
+  group: 'Cart Screens',
+  size: Size(1280, 800),
+)
 Widget previewCartScreenEmptyDesktop() => previewDesktop(child: _cartEmpty());

@@ -321,9 +321,7 @@ class _SellerRegistrationScreenState
   // Status row builder - reserved for future use if needed
 }
 
-
 // === Widget Previews ===
-
 
 // ═══ Widget Previews ═══
 
@@ -452,10 +450,7 @@ Widget _sellerRegistrationRequirementsPreview() => _sellerRegistrationPreview(
     chargesEnabled: false,
     detailsSubmitted: true,
     hasPendingRequirements: true,
-    pendingRequirements: [
-      'verification.document',
-      'external_account',
-    ],
+    pendingRequirements: ['verification.document', 'external_account'],
   ),
   state: const SellerRegistrationState(
     error: 'Bank account verification needs one more document upload.',
@@ -477,33 +472,91 @@ Widget _sellerRegistrationActivePreview() => _sellerRegistrationPreview(
   ),
 );
 
-@Preview(name: 'Become a Seller — Mobile', group: 'Screens — Seller Management', size: Size(390, 844))
-Widget previewSellerRegistrationScreenMobile() => previewMobile(child: _sellerRegistrationStartPreview());
+@Preview(
+  name: 'Become a Seller — Mobile',
+  group: 'Screens — Seller Management',
+  size: Size(390, 844),
+)
+Widget previewSellerRegistrationScreenMobile() =>
+    previewMobile(child: _sellerRegistrationStartPreview());
 
-@Preview(name: 'Become a Seller — Tablet', group: 'Screens — Seller Management', size: Size(768, 1024))
-Widget previewSellerRegistrationScreenTablet() => previewTablet(child: _sellerRegistrationStartPreview());
+@Preview(
+  name: 'Become a Seller — Tablet',
+  group: 'Screens — Seller Management',
+  size: Size(768, 1024),
+)
+Widget previewSellerRegistrationScreenTablet() =>
+    previewTablet(child: _sellerRegistrationStartPreview());
 
-@Preview(name: 'Become a Seller — Desktop', group: 'Screens — Seller Management', size: Size(1280, 800))
-Widget previewSellerRegistrationScreenDesktop() => previewDesktop(child: _sellerRegistrationIncompletePreview());
+@Preview(
+  name: 'Become a Seller — Desktop',
+  group: 'Screens — Seller Management',
+  size: Size(1280, 800),
+)
+Widget previewSellerRegistrationScreenDesktop() =>
+    previewDesktop(child: _sellerRegistrationIncompletePreview());
 
-@Preview(name: 'Become a Seller — Web', group: 'Screens — Seller Management', size: Size(1440, 900))
-Widget previewSellerRegistrationScreenWeb() => previewWeb(child: _sellerRegistrationPendingPreview());
+@Preview(
+  name: 'Become a Seller — Web',
+  group: 'Screens — Seller Management',
+  size: Size(1440, 900),
+)
+Widget previewSellerRegistrationScreenWeb() =>
+    previewWeb(child: _sellerRegistrationPendingPreview());
 
 // ── Light ────────────────────────────────────────────────────────────────────
-@Preview(name: 'Become a Seller Light — Mobile', group: 'Screens — Seller Management', size: Size(390, 844))
-Widget previewSellerRegistrationLightMobile() => previewMobile(theme: previewLightTheme, child: _sellerRegistrationStartPreview());
+@Preview(
+  name: 'Become a Seller Light — Mobile',
+  group: 'Screens — Seller Management',
+  size: Size(390, 844),
+)
+Widget previewSellerRegistrationLightMobile() => previewMobile(
+  theme: previewLightTheme,
+  child: _sellerRegistrationStartPreview(),
+);
 
-@Preview(name: 'Become a Seller Light — Tablet', group: 'Screens — Seller Management', size: Size(768, 1024))
-Widget previewSellerRegistrationLightTablet() => previewTablet(theme: previewLightTheme, child: _sellerRegistrationStartPreview());
+@Preview(
+  name: 'Become a Seller Light — Tablet',
+  group: 'Screens — Seller Management',
+  size: Size(768, 1024),
+)
+Widget previewSellerRegistrationLightTablet() => previewTablet(
+  theme: previewLightTheme,
+  child: _sellerRegistrationStartPreview(),
+);
 
-@Preview(name: 'Become a Seller Light — Desktop', group: 'Screens — Seller Management', size: Size(1280, 800))
-Widget previewSellerRegistrationLightDesktop() => previewDesktop(theme: previewLightTheme, child: _sellerRegistrationActivePreview());
+@Preview(
+  name: 'Become a Seller Light — Desktop',
+  group: 'Screens — Seller Management',
+  size: Size(1280, 800),
+)
+Widget previewSellerRegistrationLightDesktop() => previewDesktop(
+  theme: previewLightTheme,
+  child: _sellerRegistrationActivePreview(),
+);
 
-@Preview(name: 'Become a Seller Light — Web', group: 'Screens — Seller Management', size: Size(1440, 900))
-Widget previewSellerRegistrationLightWeb() => previewWeb(theme: previewLightTheme, child: _sellerRegistrationActivePreview());
+@Preview(
+  name: 'Become a Seller Light — Web',
+  group: 'Screens — Seller Management',
+  size: Size(1440, 900),
+)
+Widget previewSellerRegistrationLightWeb() => previewWeb(
+  theme: previewLightTheme,
+  child: _sellerRegistrationActivePreview(),
+);
 
-@Preview(name: 'Become a Seller Requirements — Desktop', group: 'Screens — Seller Management', size: Size(1280, 800))
-Widget previewSellerRegistrationRequirementsDesktop() => previewDesktop(child: _sellerRegistrationRequirementsPreview());
+@Preview(
+  name: 'Become a Seller Requirements — Desktop',
+  group: 'Screens — Seller Management',
+  size: Size(1280, 800),
+)
+Widget previewSellerRegistrationRequirementsDesktop() =>
+    previewDesktop(child: _sellerRegistrationRequirementsPreview());
 
-@Preview(name: 'Become a Seller Active — Desktop', group: 'Screens — Seller Management', size: Size(1280, 800))
-Widget previewSellerRegistrationActiveDesktop() => previewDesktop(child: _sellerRegistrationActivePreview());
+@Preview(
+  name: 'Become a Seller Active — Desktop',
+  group: 'Screens — Seller Management',
+  size: Size(1280, 800),
+)
+Widget previewSellerRegistrationActiveDesktop() =>
+    previewDesktop(child: _sellerRegistrationActivePreview());

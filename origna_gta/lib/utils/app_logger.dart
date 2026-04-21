@@ -28,11 +28,13 @@ class AppLogger {
     if (kDebugMode) {
       debugPrint(tag != null ? '⚠️ [$tag] $message' : '⚠️ $message');
     }
-    Sentry.addBreadcrumb(Breadcrumb(
-      message: tag != null ? '[$tag] $message' : message,
-      level: SentryLevel.warning,
-      timestamp: DateTime.now(),
-    ));
+    Sentry.addBreadcrumb(
+      Breadcrumb(
+        message: tag != null ? '[$tag] $message' : message,
+        level: SentryLevel.warning,
+        timestamp: DateTime.now(),
+      ),
+    );
   }
 
   /// Error-level log — prints in debug, captures to Sentry in release.

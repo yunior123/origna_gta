@@ -26,13 +26,27 @@ class QAModel {
   final DateTime? answeredAt;
   final String? answeredBy;
 
-  const QAModel({required this.id, required this.question, required this.authorId, required this.createdAt, this.answer, this.answeredAt, this.answeredBy});
+  const QAModel({
+    required this.id,
+    required this.question,
+    required this.authorId,
+    required this.createdAt,
+    this.answer,
+    this.answeredAt,
+    this.answeredBy,
+  });
 
   factory QAModel.fromMap(String id, Map<String, dynamic> map) {
     return QAModel(
       id: id,
-      question: (map[Fields.questionText] as String?) ?? (map['question'] as String?) ?? '',
-      authorId: (map[Fields.askerId] as String?) ?? (map['authorId'] as String?) ?? '',
+      question:
+          (map[Fields.questionText] as String?) ??
+          (map['question'] as String?) ??
+          '',
+      authorId:
+          (map[Fields.askerId] as String?) ??
+          (map['authorId'] as String?) ??
+          '',
       createdAt: _parseDt(map[Fields.createdAt]) ?? DateTime.now(),
       answer: (map[Fields.answerText] as String?) ?? map['answer'] as String?,
       answeredAt: _parseDt(map[Fields.answeredAt]),
@@ -40,7 +54,15 @@ class QAModel {
     );
   }
 
-  QAModel copyWith({String? id, String? question, String? authorId, DateTime? createdAt, String? answer, DateTime? answeredAt, String? answeredBy}) {
+  QAModel copyWith({
+    String? id,
+    String? question,
+    String? authorId,
+    DateTime? createdAt,
+    String? answer,
+    DateTime? answeredAt,
+    String? answeredBy,
+  }) {
     return QAModel(
       id: id ?? this.id,
       question: question ?? this.question,
@@ -53,11 +75,16 @@ class QAModel {
   }
 
   Map<String, dynamic> toMap() {
-    final map = <String, dynamic>{Fields.questionText: question, Fields.askerId: authorId, Fields.createdAt: FieldValue.serverTimestamp()};
+    final map = <String, dynamic>{
+      Fields.questionText: question,
+      Fields.askerId: authorId,
+      Fields.createdAt: FieldValue.serverTimestamp(),
+    };
 
     if (answer != null) {
       map[Fields.answerText] = answer;
-      map[Fields.answeredAt] = answeredAt?.toIso8601String() ?? FieldValue.serverTimestamp();
+      map[Fields.answeredAt] =
+          answeredAt?.toIso8601String() ?? FieldValue.serverTimestamp();
       if (answeredBy != null) map[Fields.answeredBy] = answeredBy;
     }
 

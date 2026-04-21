@@ -225,6 +225,26 @@ class MockPushMessagingClient extends _i1.Mock
           as _i22.Stream<String>);
 
   @override
+  _i22.Stream<_i2.AppRemoteMessage> get onMessage =>
+      (super.noSuchMethod(
+            Invocation.getter(#onMessage),
+            returnValue: _i22.Stream<_i2.AppRemoteMessage>.empty(),
+            returnValueForMissingStub:
+                _i22.Stream<_i2.AppRemoteMessage>.empty(),
+          )
+          as _i22.Stream<_i2.AppRemoteMessage>);
+
+  @override
+  _i22.Stream<_i2.AppRemoteMessage> get onMessageOpenedApp =>
+      (super.noSuchMethod(
+            Invocation.getter(#onMessageOpenedApp),
+            returnValue: _i22.Stream<_i2.AppRemoteMessage>.empty(),
+            returnValueForMissingStub:
+                _i22.Stream<_i2.AppRemoteMessage>.empty(),
+          )
+          as _i22.Stream<_i2.AppRemoteMessage>);
+
+  @override
   _i22.Future<String?> getToken() =>
       (super.noSuchMethod(
             Invocation.method(#getToken, []),
@@ -294,6 +314,12 @@ class MockPushMessagingClient extends _i1.Mock
                 ),
           )
           as _i22.Future<_i2.AppNotificationSettings>);
+
+  @override
+  void dispose() => super.noSuchMethod(
+    Invocation.method(#dispose, []),
+    returnValueForMissingStub: null,
+  );
 }
 
 /// A class which mocks [NavigatorState].

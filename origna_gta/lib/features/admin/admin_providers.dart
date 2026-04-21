@@ -4,28 +4,39 @@ import 'package:origna_gta/features/admin/admin_repository.dart';
 import 'package:origna_gta/features/admin/orignabase_admin_repository.dart';
 import 'package:origna_gta/utils/utils.dart';
 
-final adminOrdersProvider = StreamProvider.autoDispose.family<List<OrderModel>, String>((ref, status) {
-  return ref.watch(adminRepositoryProvider).watchOrders(status: status);
-});
+final adminOrdersProvider = StreamProvider.autoDispose
+    .family<List<OrderModel>, String>((ref, status) {
+      return ref.watch(adminRepositoryProvider).watchOrders(status: status);
+    });
 
-final adminProductsProvider = StreamProvider.autoDispose.family<List<ProductModel>, String?>((ref, sellerId) {
-  return ref.watch(adminRepositoryProvider).watchProducts(sellerId: sellerId);
-});
+final adminProductsProvider = StreamProvider.autoDispose
+    .family<List<ProductModel>, String?>((ref, sellerId) {
+      return ref
+          .watch(adminRepositoryProvider)
+          .watchProducts(sellerId: sellerId);
+    });
 
-final adminPendingReviewProductsProvider = StreamProvider.autoDispose<List<ProductModel>>((ref) {
-  return ref.watch(adminRepositoryProvider).watchPendingReviewProducts();
-});
+final adminPendingReviewProductsProvider =
+    StreamProvider.autoDispose<List<ProductModel>>((ref) {
+      return ref.watch(adminRepositoryProvider).watchPendingReviewProducts();
+    });
 
 final adminRepositoryProvider = Provider<AdminRepository>((ref) {
   return OrignaBaseAdminRepository(ref.watch(orignabaseProvider));
 });
 
-final adminReviewsProvider = StreamProvider.autoDispose.family<List<Map<String, dynamic>>, ({bool flaggedOnly, bool hasPhotosOnly})>((ref, filters) {
-  return ref.watch(adminRepositoryProvider).watchReviews(
-    flaggedOnly: filters.flaggedOnly,
-    hasPhotosOnly: filters.hasPhotosOnly,
-  );
-});
+final adminReviewsProvider = StreamProvider.autoDispose
+    .family<
+      List<Map<String, dynamic>>,
+      ({bool flaggedOnly, bool hasPhotosOnly})
+    >((ref, filters) {
+      return ref
+          .watch(adminRepositoryProvider)
+          .watchReviews(
+            flaggedOnly: filters.flaggedOnly,
+            hasPhotosOnly: filters.hasPhotosOnly,
+          );
+    });
 
 final adminSellersProvider = StreamProvider.autoDispose<List<UserModel>>((ref) {
   return ref.watch(adminRepositoryProvider).watchSellers();
@@ -37,6 +48,7 @@ final adminUsersProvider = StreamProvider.autoDispose<List<UserModel>>((ref) {
 
 /// Provider for payment providers data (admin tab).
 /// Replaces manual setState-based loading in AdminPaymentProvidersTab.
-final adminPaymentProvidersDataProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
-  return ref.watch(adminRepositoryProvider).getPaymentProviders();
-});
+final adminPaymentProvidersDataProvider =
+    FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
+      return ref.watch(adminRepositoryProvider).getPaymentProviders();
+    });

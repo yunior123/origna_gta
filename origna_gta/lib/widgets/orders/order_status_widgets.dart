@@ -13,7 +13,10 @@ class EmptyOrdersCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: DesignTokens.spacing24, vertical: DesignTokens.spacing40),
+      padding: const EdgeInsets.symmetric(
+        horizontal: DesignTokens.spacing24,
+        vertical: DesignTokens.spacing40,
+      ),
       decoration: BoxDecoration(
         color: DesignTokens.darkCard,
         borderRadius: BorderRadius.circular(DesignTokens.radius16),
@@ -25,19 +28,35 @@ class EmptyOrdersCard extends StatelessWidget {
           Container(
             width: 72,
             height: 72,
-            decoration: BoxDecoration(color: DesignTokens.primary.withValues(alpha: 0.1), shape: BoxShape.circle),
-            child: const Icon(Icons.receipt_long_outlined, color: DesignTokens.primary, size: 34),
+            decoration: BoxDecoration(
+              color: DesignTokens.primary.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.receipt_long_outlined,
+              color: DesignTokens.primary,
+              size: 34,
+            ),
           ),
           const SizedBox(height: DesignTokens.spacing16),
           Text(
             filterLabel != null ? 'No $filterLabel orders' : 'No orders yet',
-            style: const TextStyle(color: DesignTokens.white, fontSize: DesignTokens.fontSizeLg, fontWeight: FontWeight.w700),
+            style: const TextStyle(
+              color: DesignTokens.white,
+              fontSize: DesignTokens.fontSizeLg,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           const SizedBox(height: DesignTokens.spacing8),
           Text(
-            filterLabel != null ? 'You have no orders with "$filterLabel" status.' : 'Your order history will appear here once you make a purchase.',
+            filterLabel != null
+                ? 'You have no orders with "$filterLabel" status.'
+                : 'Your order history will appear here once you make a purchase.',
             textAlign: TextAlign.center,
-            style: const TextStyle(color: DesignTokens.textSecondary, fontSize: DesignTokens.fontSizeSm),
+            style: const TextStyle(
+              color: DesignTokens.textSecondary,
+              fontSize: DesignTokens.fontSizeSm,
+            ),
           ),
         ],
       ),
@@ -55,7 +74,10 @@ class InfoChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(color: DesignTokens.darkSurfaceVariant, borderRadius: BorderRadius.circular(DesignTokens.radius8)),
+      decoration: BoxDecoration(
+        color: DesignTokens.darkSurfaceVariant,
+        borderRadius: BorderRadius.circular(DesignTokens.radius8),
+      ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -63,7 +85,10 @@ class InfoChip extends StatelessWidget {
           const SizedBox(width: 4),
           Text(
             label,
-            style: const TextStyle(color: DesignTokens.textSecondary, fontSize: DesignTokens.fontSizeXs),
+            style: const TextStyle(
+              color: DesignTokens.textSecondary,
+              fontSize: DesignTokens.fontSizeXs,
+            ),
           ),
         ],
       ),
@@ -113,12 +138,19 @@ class OrderSummaryCard extends StatelessWidget {
                 children: [
                   Text(
                     'Order #$orderId',
-                    style: const TextStyle(color: DesignTokens.white, fontSize: DesignTokens.fontSizeMd, fontWeight: FontWeight.w700),
+                    style: const TextStyle(
+                      color: DesignTokens.white,
+                      fontSize: DesignTokens.fontSizeMd,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     date,
-                    style: const TextStyle(color: DesignTokens.textSecondary, fontSize: DesignTokens.fontSizeXs),
+                    style: const TextStyle(
+                      color: DesignTokens.textSecondary,
+                      fontSize: DesignTokens.fontSizeXs,
+                    ),
                   ),
                 ],
               ),
@@ -130,9 +162,13 @@ class OrderSummaryCard extends StatelessWidget {
           const SizedBox(height: DesignTokens.spacing12),
           Row(
             children: [
-              InfoChip(icon: Icons.shopping_bag_outlined, label: '$itemCount item${itemCount == 1 ? '' : 's'}'),
+              InfoChip(
+                icon: Icons.shopping_bag_outlined,
+                label: '$itemCount item${itemCount == 1 ? '' : 's'}',
+              ),
               const SizedBox(width: DesignTokens.spacing8),
-              if (sellerName != null) InfoChip(icon: Icons.storefront_outlined, label: sellerName!),
+              if (sellerName != null)
+                InfoChip(icon: Icons.storefront_outlined, label: sellerName!),
             ],
           ),
           const SizedBox(height: DesignTokens.spacing12),
@@ -141,11 +177,18 @@ class OrderSummaryCard extends StatelessWidget {
             children: [
               const Text(
                 'Total',
-                style: TextStyle(color: DesignTokens.textSecondary, fontSize: DesignTokens.fontSizeSm),
+                style: TextStyle(
+                  color: DesignTokens.textSecondary,
+                  fontSize: DesignTokens.fontSizeSm,
+                ),
               ),
               Text(
                 total,
-                style: const TextStyle(color: DesignTokens.white, fontSize: DesignTokens.fontSizeLg, fontWeight: FontWeight.w700),
+                style: const TextStyle(
+                  color: DesignTokens.white,
+                  fontSize: DesignTokens.fontSizeLg,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ],
           ),
@@ -166,8 +209,12 @@ class StatusBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = status.color;
     final double iconSize = large ? 16 : 13;
-    final double fontSize = large ? DesignTokens.fontSizeSm : DesignTokens.fontSizeXs;
-    final EdgeInsets padding = large ? const EdgeInsets.symmetric(horizontal: 12, vertical: 6) : const EdgeInsets.symmetric(horizontal: 8, vertical: 4);
+    final double fontSize = large
+        ? DesignTokens.fontSizeSm
+        : DesignTokens.fontSizeXs;
+    final EdgeInsets padding = large
+        ? const EdgeInsets.symmetric(horizontal: 12, vertical: 6)
+        : const EdgeInsets.symmetric(horizontal: 8, vertical: 4);
 
     return Container(
       padding: padding,
@@ -183,7 +230,12 @@ class StatusBadge extends StatelessWidget {
           const SizedBox(width: 5),
           Text(
             status.label,
-            style: TextStyle(color: color, fontSize: fontSize, fontWeight: FontWeight.w600, letterSpacing: 0.3),
+            style: TextStyle(
+              color: color,
+              fontSize: fontSize,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.3,
+            ),
           ),
         ],
       ),
@@ -212,8 +264,12 @@ class TimelineStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color nodeColor = isCompleted || isActive ? status.color : DesignTokens.timelineInactiveDark;
-    final Color lineColor = isCompleted ? status.color.withValues(alpha: 0.5) : DesignTokens.timelineInactiveDark;
+    final Color nodeColor = isCompleted || isActive
+        ? status.color
+        : DesignTokens.timelineInactiveDark;
+    final Color lineColor = isCompleted
+        ? status.color.withValues(alpha: 0.5)
+        : DesignTokens.timelineInactiveDark;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -226,18 +282,27 @@ class TimelineStep extends StatelessWidget {
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: nodeColor.withValues(alpha: isActive || isCompleted ? 0.2 : 0.08),
+                  color: nodeColor.withValues(
+                    alpha: isActive || isCompleted ? 0.2 : 0.08,
+                  ),
                   shape: BoxShape.circle,
                   border: Border.all(color: nodeColor, width: isActive ? 2 : 1),
                 ),
-                child: Icon(isCompleted ? Icons.check_rounded : status.icon, color: nodeColor, size: 16),
+                child: Icon(
+                  isCompleted ? Icons.check_rounded : status.icon,
+                  color: nodeColor,
+                  size: 16,
+                ),
               ),
               if (!isLast)
                 Container(
                   width: 2,
                   height: 36,
                   margin: const EdgeInsets.symmetric(vertical: 2),
-                  decoration: BoxDecoration(color: lineColor, borderRadius: BorderRadius.circular(1)),
+                  decoration: BoxDecoration(
+                    color: lineColor,
+                    borderRadius: BorderRadius.circular(1),
+                  ),
                 ),
             ],
           ),
@@ -252,7 +317,9 @@ class TimelineStep extends StatelessWidget {
                 Text(
                   label,
                   style: TextStyle(
-                    color: isActive || isCompleted ? DesignTokens.white : DesignTokens.textSecondary,
+                    color: isActive || isCompleted
+                        ? DesignTokens.white
+                        : DesignTokens.textSecondary,
                     fontSize: DesignTokens.fontSizeSm,
                     fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
                   ),
@@ -260,7 +327,10 @@ class TimelineStep extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   subtitle,
-                  style: const TextStyle(color: DesignTokens.textSecondary, fontSize: DesignTokens.fontSizeXs),
+                  style: const TextStyle(
+                    color: DesignTokens.textSecondary,
+                    fontSize: DesignTokens.fontSizeXs,
+                  ),
                 ),
                 SizedBox(height: isLast ? 0 : DesignTokens.spacing24),
               ],
@@ -321,9 +391,7 @@ extension OrderStatusX on OrderStatus {
   };
 }
 
-
 // === Widget Previews ===
-
 
 // ═══ Widget Previews ═══
 
@@ -344,14 +412,20 @@ Widget previewAllStatusBadges() => previewWrapper(
 
 // ─── 2. All status badges (large, light mode) ────────────────────────────────
 
-@Preview(name: 'Status Badges — Large (light)', group: 'Order Status', brightness: Brightness.light)
+@Preview(
+  name: 'Status Badges — Large (light)',
+  group: 'Order Status',
+  brightness: Brightness.light,
+)
 Widget previewAllStatusBadgesLight() => previewWrapper(
   theme: previewLightTheme,
   background: DesignTokens.surface,
   child: Wrap(
     spacing: DesignTokens.spacing8,
     runSpacing: DesignTokens.spacing8,
-    children: OrderStatus.values.map((s) => StatusBadge(status: s, large: true)).toList(),
+    children: OrderStatus.values
+        .map((s) => StatusBadge(status: s, large: true))
+        .toList(),
   ),
 );
 
@@ -368,7 +442,13 @@ Widget previewEdgeCaseCards() => previewGrid(
       date: 'Mar 1, 2026 · 08:00 AM',
       sellerName: 'Quick Returns Co',
     ),
-    const OrderSummaryCard(orderId: 'F3M7-4410', status: OrderStatus.pending, itemCount: 2, total: '\$145.00', date: 'Mar 3, 2026 · 11:55 PM'),
+    const OrderSummaryCard(
+      orderId: 'F3M7-4410',
+      status: OrderStatus.pending,
+      itemCount: 2,
+      total: '\$145.00',
+      date: 'Mar 3, 2026 · 11:55 PM',
+    ),
   ],
 );
 
@@ -380,7 +460,8 @@ Widget previewEmptyOrders() => previewWrapper(child: const EmptyOrdersCard());
 // ─── 7. Empty state — filtered (cancelled) ───────────────────────────────────
 
 @Preview(name: 'Empty State — Filtered (cancelled)', group: 'Order Status')
-Widget previewEmptyOrdersFiltered() => previewWrapper(child: const EmptyOrdersCard(filterLabel: 'cancelled'));
+Widget previewEmptyOrdersFiltered() =>
+    previewWrapper(child: const EmptyOrdersCard(filterLabel: 'cancelled'));
 
 // ─── 3. Order summary cards — multiple statuses ───────────────────────────────
 
@@ -403,7 +484,13 @@ Widget previewOrderSummaryCards() => previewGrid(
       date: 'Mar 1, 2026 · 02:30 PM',
       sellerName: 'Maple Goods',
     ),
-    const OrderSummaryCard(orderId: 'C9R1-7743', status: OrderStatus.processing, itemCount: 5, total: '\$310.50', date: 'Mar 3, 2026 · 11:00 AM'),
+    const OrderSummaryCard(
+      orderId: 'C9R1-7743',
+      status: OrderStatus.processing,
+      itemCount: 5,
+      total: '\$310.50',
+      date: 'Mar 3, 2026 · 11:00 AM',
+    ),
     const OrderSummaryCard(
       orderId: 'D4L0-1122',
       status: OrderStatus.cancelled,
@@ -431,7 +518,11 @@ Widget previewOrderTimeline() => previewWrapper(
       children: [
         const Text(
           'Order Timeline',
-          style: TextStyle(color: DesignTokens.white, fontSize: DesignTokens.fontSizeLg, fontWeight: FontWeight.w700),
+          style: TextStyle(
+            color: DesignTokens.white,
+            fontSize: DesignTokens.fontSizeLg,
+            fontWeight: FontWeight.w700,
+          ),
         ),
         const SizedBox(height: DesignTokens.spacing20),
         const TimelineStep(
@@ -489,7 +580,11 @@ Widget previewOrderTimelineComplete() => previewWrapper(
           children: [
             const Text(
               'Order Delivered',
-              style: TextStyle(color: DesignTokens.white, fontSize: DesignTokens.fontSizeLg, fontWeight: FontWeight.w700),
+              style: TextStyle(
+                color: DesignTokens.white,
+                fontSize: DesignTokens.fontSizeLg,
+                fontWeight: FontWeight.w700,
+              ),
             ),
             const SizedBox(width: DesignTokens.spacing8),
             const StatusBadge(status: OrderStatus.delivered, large: true),
@@ -542,7 +637,11 @@ Widget previewStatusColorReference() => previewWrapper(
     children: [
       const Text(
         'Order Status — Color Reference',
-        style: TextStyle(color: DesignTokens.white, fontSize: DesignTokens.fontSizeLg, fontWeight: FontWeight.w700),
+        style: TextStyle(
+          color: DesignTokens.white,
+          fontSize: DesignTokens.fontSizeLg,
+          fontWeight: FontWeight.w700,
+        ),
       ),
       const SizedBox(height: DesignTokens.spacing16),
       ...(OrderStatus.values.map(
@@ -553,19 +652,30 @@ Widget previewStatusColorReference() => previewWrapper(
               Container(
                 width: 16,
                 height: 16,
-                decoration: BoxDecoration(color: s.color, shape: BoxShape.circle),
+                decoration: BoxDecoration(
+                  color: s.color,
+                  shape: BoxShape.circle,
+                ),
               ),
               const SizedBox(width: DesignTokens.spacing8),
               SizedBox(
                 width: 110,
                 child: Text(
                   s.label,
-                  style: const TextStyle(color: DesignTokens.white, fontSize: DesignTokens.fontSizeSm, fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                    color: DesignTokens.white,
+                    fontSize: DesignTokens.fontSizeSm,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
               Text(
                 _colorHex(s.color),
-                style: const TextStyle(color: DesignTokens.textSecondary, fontSize: DesignTokens.fontSizeXs, fontFamily: 'monospace'),
+                style: const TextStyle(
+                  color: DesignTokens.textSecondary,
+                  fontSize: DesignTokens.fontSizeXs,
+                  fontFamily: 'monospace',
+                ),
               ),
               const SizedBox(width: DesignTokens.spacing8),
               StatusBadge(status: s),
@@ -581,4 +691,3 @@ String _colorHex(Color c) {
   final v = c.toARGB32();
   return '#${v.toRadixString(16).substring(2).toUpperCase()}';
 }
-

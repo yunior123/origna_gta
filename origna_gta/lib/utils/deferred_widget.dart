@@ -62,7 +62,11 @@ class _DeferredWidgetState extends State<DeferredWidget> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.error_outline, size: 48, color: DesignTokens.error),
+                    Icon(
+                      Icons.error_outline,
+                      size: 48,
+                      color: DesignTokens.error,
+                    ),
                     const SizedBox(height: 16),
                     Text('common.failed_to_load_page'.tr()),
                     const SizedBox(height: 8),
@@ -70,7 +74,9 @@ class _DeferredWidgetState extends State<DeferredWidget> {
                       onPressed: () {
                         setState(() {
                           DeferredWidget._loaded.remove(widget.loader);
-                          _libraryFuture = DeferredWidget.preload(widget.loader);
+                          _libraryFuture = DeferredWidget.preload(
+                            widget.loader,
+                          );
                         });
                       },
                       child: Text('common.retry'.tr()),
@@ -82,9 +88,7 @@ class _DeferredWidgetState extends State<DeferredWidget> {
           }
           return widget.builder();
         }
-        return const Scaffold(
-          body: Center(child: ModernLoadingIndicator()),
-        );
+        return const Scaffold(body: Center(child: ModernLoadingIndicator()));
       },
     );
   }

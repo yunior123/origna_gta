@@ -129,3 +129,16 @@ orignabase/docker/.env.prod
 
 # AI-sync generated
 GEMINI.md
+origna_ventures/build/
+origna_ventures/.dart_tool/
+origna_gta/build/
+
+# --- OrignaVentures ---
+origna_ventures/build/
+origna_ventures/.dart_tool/
+origna_ventures/ios/Pods/
+origna_ventures/macos/Pods/
+origna_ventures/backend/storage/
+origna_ventures/backend/venv/
+origna_ventures/backend/__pycache__/
+origna_ventures/backend/*.db

@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base href="$FLUTTER_BASE_HREF">
+  
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="Origna Ventures - Your Gateway to Innovation and Investment">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="origna ventures">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png">
+
+  <title>Origna Ventures</title>
+  <link rel="manifest" href="manifest.json">
+  
+  <style id="splash-screen-style">
+    html {
+      height: 100%;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100%;
+      background: #0F0F1E;
+      overflow: hidden;
+    }
+
+    #splash {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(ellipse at center, #1F235A 0%, #0F0F1E 100%);
+      animation: fadeIn 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+      overflow: hidden;
+    }
+
+    /* Animated gradient background */
+    #splash::before {
+      content: '';
+      position: absolute;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(102, 126, 234, 0.15) 0%, transparent 50%),
+                  radial-gradient(circle, rgba(118, 75, 162, 0.15) 0%, transparent 50%);
+      animation: gradientShift 8s ease-in-out infinite;
+      opacity: 0.6;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+
+    @keyframes fadeOut {
+      from {
+        opacity: 1;
+      }
+      to {
+        opacity: 0;
+      }
+    }
+
+    @keyframes gradientShift {
+      0%, 100% {
+        transform: translate(-25%, -25%) scale(1);
+      }
+      50% {
+        transform: translate(-30%, -30%) scale(1.1);
+      }
+    }
+
+    /* Floating particles */
+    .particle {
+      position: absolute;
+      background: rgba(255, 255, 255, 0.6);
+      border-radius: 50%;
+      pointer-events: none;
+      animation: float linear infinite;
+    }
+
+    @keyframes float {
+      0% {
+        transform: translateY(100vh) scale(0);
+        opacity: 0;
+      }
+      10% {
+        opacity: 1;
+      }
+      90% {
+        opacity: 1;
+      }
+      100% {
+        transform: translateY(-100px) scale(1);
+        opacity: 0;
+      }
+    }
+
+    .splash-container {
+      text-align: center;
+      animation: slideUp 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+      z-index: 10;
+    }
+
+    @keyframes slideUp {
+      0% {
+        transform: translateY(60px);
+        opacity: 0;
+        filter: blur(10px);
+      }
+      100% {
+        transform: translateY(0);
+        opacity: 1;
+        filter: blur(0);
+      }
+    }
+
+    .center {
+      margin: 0;
+      max-width: 200px;
+      height: auto;
+      animation: logoFloat 3s ease-in-out infinite;
+      filter: drop-shadow(0 0 30px rgba(102, 126, 234, 0.5));
+    }
+
+    @keyframes logoFloat {
+      0%, 100% {
+        transform: translateY(0) scale(1);
+        filter: drop-shadow(0 0 30px rgba(102, 126, 234, 0.5));
+      }
+      50% {
+        transform: translateY(-10px) scale(1.03);
+        filter: drop-shadow(0 0 40px rgba(118, 75, 162, 0.7));
+      }
+    }
+
+    .loading-text {
+      color: #ffffff;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: 4px;
+      margin-top: 30px;
+      text-transform: uppercase;
+      animation: textGlow 2s ease-in-out infinite;
+      background: linear-gradient(90deg, #667eea, #764ba2, #667eea);
+      background-size: 200% 100%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    @keyframes textGlow {
+      0%, 100% {
+        opacity: 0.7;
+        background-position: 0% 50%;
+      }
+      50% {
+        opacity: 1;
+        background-position: 100% 50%;
+      }
+    }
+
+    .progress-bar {
+      width: 250px;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      margin: 30px auto 0;
+      overflow: hidden;
+      position: relative;
+      box-shadow: 0 0 20px rgba(102, 126, 234, 0.3);
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, 
+        rgba(102, 126, 234, 0.8) 0%, 
+        rgba(118, 75, 162, 1) 50%,
+        rgba(102, 126, 234, 0.8) 100%);
+      border-radius: 10px;
+      animation: loading 2.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+      box-shadow: 0 0 15px rgba(118, 75, 162, 0.8);
+    }
+
+    @keyframes loading {
+      0% {
+        width: 0%;
+        margin-left: 0;
+        opacity: 0.5;
+      }
+      50% {
+        width: 100%;
+        margin-left: 0;
+        opacity: 1;
+      }
+      100% {
+        width: 0%;
+        margin-left: 100%;
+        opacity: 0.5;
+      }
+    }
+
+    /* Premium orbit system */
+    .orbit-container {
+      position: relative;
+      width: 350px;
+      height: 350px;
+      margin: 0 auto 40px;
+      filter: drop-shadow(0 0 40px rgba(102, 126, 234, 0.3));
+    }
+
+    .orbit {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      border: 1px solid;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      opacity: 0.3;
+    }
+
+    .orbit-1 {
+      width: 200px;
+      height: 200px;
+      border-color: rgba(102, 126, 234, 0.4);
+      animation: rotateOrbit 10s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    }
+
+    .orbit-2 {
+      width: 260px;
+      height: 260px;
+      border-color: rgba(118, 75, 162, 0.4);
+      animation: rotateOrbit 15s cubic-bezier(0.4, 0, 0.2, 1) infinite reverse;
+    }
+
+    .orbit-3 {
+      width: 320px;
+      height: 320px;
+      border-color: rgba(102, 126, 234, 0.3);
+      animation: rotateOrbit 20s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    }
+
+    @keyframes rotateOrbit {
+      from {
+        transform: translate(-50%, -50%) rotate(0deg);
+      }
+      to {
+        transform: translate(-50%, -50%) rotate(360deg);
+      }
+    }
+
+    .atom {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      background: radial-gradient(circle, #ffffff 0%, rgba(102, 126, 234, 0.8) 100%);
+      border-radius: 50%;
+      box-shadow: 0 0 20px rgba(102, 126, 234, 1),
+                  0 0 40px rgba(118, 75, 162, 0.6),
+                  inset 0 0 10px rgba(255, 255, 255, 0.8);
+      animation: atomGlow 3s ease-in-out infinite alternate;
+    }
+
+    .atom-1 {
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    .atom-2 {
+      top: 50%;
+      right: 0;
+      transform: translateY(-50%);
+    }
+
+    .atom-3 {
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    .atom-4 {
+      top: 50%;
+      left: 0;
+      transform: translateY(-50%);
+    }
+
+    @keyframes atomGlow {
+      0% {
+        box-shadow: 0 0 20px rgba(102, 126, 234, 1),
+                    0 0 40px rgba(118, 75, 162, 0.6),
+                    inset 0 0 10px rgba(255, 255, 255, 0.8);
+        transform: scale(1);
+      }
+      100% {
+        box-shadow: 0 0 30px rgba(118, 75, 162, 1),
+                    0 0 60px rgba(102, 126, 234, 0.8),
+                    inset 0 0 15px rgba(255, 255, 255, 1);
+        transform: scale(1.3);
+      }
+    }
+
+    .logo-core {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 10;
+      animation: coreGlow 4s ease-in-out infinite;
+    }
+
+    @keyframes coreGlow {
+      0%, 100% {
+        filter: drop-shadow(0 0 20px rgba(102, 126, 234, 0.6));
+      }
+      50% {
+        filter: drop-shadow(0 0 40px rgba(118, 75, 162, 0.9));
+      }
+    }
+
+    /* Brand tagline */
+    .tagline {
+      color: rgba(255, 255, 255, 0.5);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 13px;
+      font-weight: 400;
+      letter-spacing: 2px;
+      margin-top: 20px;
+      text-transform: uppercase;
+      animation: fadeInSlow 2s ease-in;
+    }
+
+    @keyframes fadeInSlow {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 0.5;
+        transform: translateY(0);
+      }
+    }
+  </style>
+  <script id="splash-screen-script">
+    function removeSplashFromWeb() {
+      const splash = document.getElementById("splash");
+      if (splash) {
+        splash.style.animation = "fadeOut 0.5s ease-out forwards";
+        setTimeout(() => {
+          splash.remove();
+          document.getElementById("splash-branding")?.remove();
+          document.body.style.background = "transparent";
+        }, 500);
+      }
+    }
+
+    // Timeout de sécurité - retire le splash après 10 secondes maximum
+    setTimeout(() => {
+      removeSplashFromWeb();
+    }, 10000);
+
+    // Écoute l'événement de chargement de Flutter
+    window.addEventListener('flutter-first-frame', function() {
+      removeSplashFromWeb();
+    });
+  </script>
+</head>
+<body>
+  <div id="splash">
+    <!-- Floating particles background -->
+    <script>
+      for(let i = 0; i < 30; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'particle';
+        particle.style.left = Math.random() * 100 + '%';
+        particle.style.width = particle.style.height = (Math.random() * 3 + 1) + 'px';
+        particle.style.animationDuration = (Math.random() * 10 + 10) + 's';
+        particle.style.animationDelay = (Math.random() * 5) + 's';
+        document.getElementById('splash').appendChild(particle);
+      }
+    </script>
+    
+    <div class="splash-container">
+      <div class="orbit-container">
+        <!-- Orbit rings -->
+        <div class="orbit orbit-1">
+          <div class="atom atom-1"></div>
+          <div class="atom atom-3"></div>
+        </div>
+        <div class="orbit orbit-2">
+          <div class="atom atom-2"></div>
+          <div class="atom atom-4"></div>
+        </div>
+        <div class="orbit orbit-3">
+          <div class="atom atom-1"></div>
+          <div class="atom atom-3"></div>
+        </div>
+        
+        <!-- Logo at center -->
+        <div class="logo-core">
+          <picture>
+            <source srcset="splash/img/light-1x.png 1x, splash/img/light-2x.png 2x, splash/img/light-3x.png 3x, splash/img/light-4x.png 4x" media="(prefers-color-scheme: light)">
+            <source srcset="splash/img/dark-1x.png 1x, splash/img/dark-2x.png 2x, splash/img/dark-3x.png 3x, splash/img/dark-4x.png 4x" media="(prefers-color-scheme: dark)">
+            <img class="center" aria-hidden="true" src="splash/img/light-1x.png" alt="">
+          </picture>
+        </div>
+      </div>
+      
+      <div class="loading-text">Origna Ventures</div>
+      <div class="progress-bar">
+        <div class="progress-bar-fill"></div>
+      </div>
+      <div class="tagline">Innovation • Investment • Excellence</div>
+    </div>
+  </div>
+  
+  <script>
+    {{flutter_js}}
+    {{flutter_build_config}}
+    
+    _flutter.loader.load({
+      onEntrypointLoaded: async function(engineInitializer) {
+        const appRunner = await engineInitializer.initializeEngine();
+        await appRunner.runApp();
+      }
+    });
+  </script>
+
+</body>
+</html>

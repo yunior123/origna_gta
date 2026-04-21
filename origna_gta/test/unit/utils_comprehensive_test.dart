@@ -28,13 +28,25 @@ void main() {
 
   group('Tax Utilities', () {
     test('calculateDetailedTaxes should return correct breakdown for ON', () {
-      final addressON = Address(street: '123 Main', city: 'Toronto', state: 'ON', postalCode: 'M1M1M1', country: 'CA');
+      final addressON = Address(
+        street: '123 Main',
+        city: 'Toronto',
+        state: 'ON',
+        postalCode: 'M1M1M1',
+        country: 'CA',
+      );
       final breakdownON = calculateDetailedTaxes(addressON, 100);
       expect(breakdownON['HST'], 13.0);
     });
 
     test('calculateDetailedTaxes should return correct breakdown for QC', () {
-      final addressQC = Address(street: '123 Main', city: 'Montreal', state: 'QC', postalCode: 'H1H1H1', country: 'CA');
+      final addressQC = Address(
+        street: '123 Main',
+        city: 'Montreal',
+        state: 'QC',
+        postalCode: 'H1H1H1',
+        country: 'CA',
+      );
       final breakdownQC = calculateDetailedTaxes(addressQC, 100);
       expect(breakdownQC['GST'], 5.0);
       expect(breakdownQC['QST'], closeTo(9.975, 0.001));
@@ -66,10 +78,16 @@ void main() {
       final valid = validateVideoFile(sizeInBytes: 100, durationInSeconds: 10);
       expect(valid, VideoValidationError.none);
 
-      final tooLarge = validateVideoFile(sizeInBytes: 999999999999, durationInSeconds: 10);
+      final tooLarge = validateVideoFile(
+        sizeInBytes: 999999999999,
+        durationInSeconds: 10,
+      );
       expect(tooLarge, VideoValidationError.tooLarge);
 
-      final tooLong = validateVideoFile(sizeInBytes: 100, durationInSeconds: 999999);
+      final tooLong = validateVideoFile(
+        sizeInBytes: 100,
+        durationInSeconds: 999999,
+      );
       expect(tooLong, VideoValidationError.tooLong);
     });
   });
@@ -101,28 +119,40 @@ void main() {
   });
 
   group('UI Utilities', () {
-    testWidgets('getCrossAxisCount returns expected column count', (tester) async {
-      await tester.pumpWidget(MaterialApp(
-        home: Builder(builder: (context) {
-          final count = getCrossAxisCount(context);
-          expect(count, isNotNull);
-          return const SizedBox();
-        }),
-      ));
+    testWidgets('getCrossAxisCount returns expected column count', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) {
+              final count = getCrossAxisCount(context);
+              expect(count, isNotNull);
+              return const SizedBox();
+            },
+          ),
+        ),
+      );
     });
 
-    testWidgets('showLoginPrompt can be called without crashing', (tester) async {
-      await tester.pumpWidget(TestWrapper(
-        onGenerateRoute: (settings) => MaterialPageRoute(
-          builder: (_) => const Scaffold(body: Text('route')),
+    testWidgets('showLoginPrompt can be called without crashing', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        TestWrapper(
+          onGenerateRoute: (settings) => MaterialPageRoute(
+            builder: (_) => const Scaffold(body: Text('route')),
+          ),
+          child: Builder(
+            builder: (context) {
+              return ElevatedButton(
+                onPressed: () => showLoginPrompt(context),
+                child: const Text('Show'),
+              );
+            },
+          ),
         ),
-        child: Builder(builder: (context) {
-          return ElevatedButton(
-            onPressed: () => showLoginPrompt(context),
-            child: const Text('Show'),
-          );
-        }),
-      ));
+      );
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Show'));
@@ -132,27 +162,34 @@ void main() {
       expect(find.byType(AlertDialog), findsOneWidget);
     });
 
-    testWidgets('showEmailVerificationDialog displays and allows resending email', (tester) async {
-      await tester.pumpWidget(TestWrapper(
-        child: Builder(builder: (context) {
-          return ElevatedButton(
-            onPressed: () => showEmailVerificationDialog(
-              context,
-              email: 'test@example.com',
-              onResend: () {},
+    testWidgets(
+      'showEmailVerificationDialog displays and allows resending email',
+      (tester) async {
+        await tester.pumpWidget(
+          TestWrapper(
+            child: Builder(
+              builder: (context) {
+                return ElevatedButton(
+                  onPressed: () => showEmailVerificationDialog(
+                    context,
+                    email: 'test@example.com',
+                    onResend: () {},
+                  ),
+                  child: const Text('Show'),
+                );
+              },
             ),
-            child: const Text('Show'),
-          );
-        }),
-      ));
-      await tester.pumpAndSettle();
+          ),
+        );
+        await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Show'));
-      await tester.pumpAndSettle();
+        await tester.tap(find.text('Show'));
+        await tester.pumpAndSettle();
 
-      expect(find.text('email_verification.title'), findsOneWidget);
-      expect(find.text('test@example.com'), findsOneWidget);
-    });
+        expect(find.text('email_verification.title'), findsOneWidget);
+        expect(find.text('test@example.com'), findsOneWidget);
+      },
+    );
   });
 
   group('Address Validation', () {
@@ -172,27 +209,57 @@ void main() {
     });
 
     test('hasValidAddress returns false for empty street', () {
-      final address = Address(street: '', city: 'Toronto', state: 'ON', postalCode: 'M5V', country: 'Canada');
+      final address = Address(
+        street: '',
+        city: 'Toronto',
+        state: 'ON',
+        postalCode: 'M5V',
+        country: 'Canada',
+      );
       expect(hasValidAddress(address), isFalse);
     });
 
     test('hasValidAddress returns false for invalid province', () {
-      final address = Address(street: '123 Main', city: 'City', state: 'XX', postalCode: 'M5V', country: 'Canada');
+      final address = Address(
+        street: '123 Main',
+        city: 'City',
+        state: 'XX',
+        postalCode: 'M5V',
+        country: 'Canada',
+      );
       expect(hasValidAddress(address), isFalse);
     });
 
     test('hasValidAddress returns false for empty city', () {
-      final address = Address(street: '123 Main', city: '', state: 'ON', postalCode: 'M5V', country: 'Canada');
+      final address = Address(
+        street: '123 Main',
+        city: '',
+        state: 'ON',
+        postalCode: 'M5V',
+        country: 'Canada',
+      );
       expect(hasValidAddress(address), isFalse);
     });
 
     test('hasValidAddress returns false for empty postalCode', () {
-      final address = Address(street: '123 Main', city: 'Toronto', state: 'ON', postalCode: '', country: 'Canada');
+      final address = Address(
+        street: '123 Main',
+        city: 'Toronto',
+        state: 'ON',
+        postalCode: '',
+        country: 'Canada',
+      );
       expect(hasValidAddress(address), isFalse);
     });
 
     test('hasValidAddress returns false for empty country', () {
-      final address = Address(street: '123 Main', city: 'Toronto', state: 'ON', postalCode: 'M5V', country: '');
+      final address = Address(
+        street: '123 Main',
+        city: 'Toronto',
+        state: 'ON',
+        postalCode: 'M5V',
+        country: '',
+      );
       expect(hasValidAddress(address), isFalse);
     });
   });
@@ -274,13 +341,21 @@ void main() {
 
     test('calculateTieredShipping medium distance standard', () {
       final items = [_makeCartItem(quantity: 1)];
-      final cost = calculateTieredShipping(100.0, items, DeliverySpeed.standard);
+      final cost = calculateTieredShipping(
+        100.0,
+        items,
+        DeliverySpeed.standard,
+      );
       expect(cost, closeTo(9.99, 0.01));
     });
 
     test('calculateTieredShipping long distance standard', () {
       final items = [_makeCartItem(quantity: 1)];
-      final cost = calculateTieredShipping(3000.0, items, DeliverySpeed.standard);
+      final cost = calculateTieredShipping(
+        3000.0,
+        items,
+        DeliverySpeed.standard,
+      );
       expect(cost, closeTo(26.99, 0.01));
     });
 
@@ -304,7 +379,15 @@ void main() {
     });
 
     test('calculateTieredShipping with volumetric weight', () {
-      final items = [_makeCartItem(quantity: 1, weightKg: 0.5, lengthCm: 50, widthCm: 50, heightCm: 50)];
+      final items = [
+        _makeCartItem(
+          quantity: 1,
+          weightKg: 0.5,
+          lengthCm: 50,
+          widthCm: 50,
+          heightCm: 50,
+        ),
+      ];
       final cost = calculateTieredShipping(10.0, items, DeliverySpeed.standard);
       // volWeight = 50*50*50/5000 = 25kg, effectiveWeight = 25 (> 0.5)
       // surcharge = (25-2)*1.5 = 34.5
@@ -319,19 +402,31 @@ void main() {
 
     test('calculateTieredShipping 500km tier', () {
       final items = [_makeCartItem(quantity: 1)];
-      final cost = calculateTieredShipping(300.0, items, DeliverySpeed.standard);
+      final cost = calculateTieredShipping(
+        300.0,
+        items,
+        DeliverySpeed.standard,
+      );
       expect(cost, closeTo(14.99, 0.01));
     });
 
     test('calculateTieredShipping 1200km tier', () {
       final items = [_makeCartItem(quantity: 1)];
-      final cost = calculateTieredShipping(800.0, items, DeliverySpeed.standard);
+      final cost = calculateTieredShipping(
+        800.0,
+        items,
+        DeliverySpeed.standard,
+      );
       expect(cost, closeTo(18.99, 0.01));
     });
 
     test('calculateTieredShipping 2500km tier', () {
       final items = [_makeCartItem(quantity: 1)];
-      final cost = calculateTieredShipping(2000.0, items, DeliverySpeed.standard);
+      final cost = calculateTieredShipping(
+        2000.0,
+        items,
+        DeliverySpeed.standard,
+      );
       expect(cost, closeTo(22.99, 0.01));
     });
 
@@ -349,7 +444,11 @@ void main() {
 
     test('calculateTieredShipping express long distance multiplier', () {
       final items = [_makeCartItem(quantity: 1)];
-      final cost = calculateTieredShipping(3000.0, items, DeliverySpeed.express);
+      final cost = calculateTieredShipping(
+        3000.0,
+        items,
+        DeliverySpeed.express,
+      );
       expect(cost, closeTo(26.99 * 1.6, 0.01));
     });
 
@@ -367,7 +466,11 @@ void main() {
 
     test('calculateTieredShipping sameDay long distance multiplier', () {
       final items = [_makeCartItem(quantity: 1)];
-      final cost = calculateTieredShipping(3000.0, items, DeliverySpeed.sameDay);
+      final cost = calculateTieredShipping(
+        3000.0,
+        items,
+        DeliverySpeed.sameDay,
+      );
       expect(cost, closeTo(26.99 * 2.5, 0.01));
     });
 
@@ -392,13 +495,19 @@ void main() {
     });
 
     test('getMessage filters leaked backend errors', () {
-      final error = OrignaBaseException('FailedPrecondition: something', statusCode: 400);
+      final error = OrignaBaseException(
+        'FailedPrecondition: something',
+        statusCode: 400,
+      );
       final msg = AppError.getMessage(error);
       expect(msg, isNot(contains('FailedPrecondition')));
     });
 
     test('getMessage does not duplicate embedded codes', () {
-      final error = OrignaBaseException('Order not found [ORIGNA-ORD-001]', statusCode: 404);
+      final error = OrignaBaseException(
+        'Order not found [ORIGNA-ORD-001]',
+        statusCode: 404,
+      );
       final msg = AppError.getMessage(error);
       expect(msg, 'Order not found [ORIGNA-ORD-001]');
     });
@@ -410,14 +519,25 @@ void main() {
     });
 
     test('log does not throw', () {
-      expect(() => AppError.log(Exception('test'), context: 'unit-test'), returnsNormally);
+      expect(
+        () => AppError.log(Exception('test'), context: 'unit-test'),
+        returnsNormally,
+      );
     });
 
     test('log with stackTrace does not throw', () {
       try {
         throw Exception('trace');
       } catch (e, s) {
-        expect(() => AppError.log(e, stackTrace: s, context: 'test', extras: {'key': 'val'}), returnsNormally);
+        expect(
+          () => AppError.log(
+            e,
+            stackTrace: s,
+            context: 'test',
+            extras: {'key': 'val'},
+          ),
+          returnsNormally,
+        );
       }
     });
   });
@@ -434,96 +554,176 @@ void main() {
   });
 
   group('provinceTaxRates', () {
-    test('covers all 13 provinces/territories', () {
-      expect(provinceTaxRates.length, 13);
+    test('covers all 29 provinces (13 Canada + 16 Cuba)', () {
+      expect(provinceTaxRates.length, 29);
     });
 
-    test('all provinces have at least GST or HST', () {
-      for (final entry in provinceTaxRates.entries) {
-        expect(entry.value.containsKey('GST') || entry.value.containsKey('HST'), isTrue,
-            reason: '${entry.key} missing GST or HST');
+    test('all Canadian provinces have at least GST or HST', () {
+      const canadianProvinces = [
+        'AB',
+        'BC',
+        'MB',
+        'NB',
+        'NL',
+        'NS',
+        'NT',
+        'NU',
+        'ON',
+        'PE',
+        'QC',
+        'SK',
+        'YT',
+      ];
+      for (final code in canadianProvinces) {
+        final rates = provinceTaxRates[code]!;
+        expect(
+          rates.containsKey('GST') || rates.containsKey('HST'),
+          isTrue,
+          reason: '$code missing GST or HST',
+        );
+      }
+    });
+
+    test('Cuban provinces have no Canadian sales tax', () {
+      const cubanProvinces = [
+        'HAB',
+        'MAT',
+        'VC',
+        'SC',
+        'HOL',
+        'CMG',
+        'CAV',
+        'SSP',
+        'CFG',
+        'PR',
+        'GRA',
+        'LT',
+        'GU',
+        'IJ',
+        'ART',
+        'MAY',
+      ];
+      for (final code in cubanProvinces) {
+        final rates = provinceTaxRates[code]!;
+        expect(
+          rates.isEmpty,
+          isTrue,
+          reason: '$code should have no tax rates (pickup-only)',
+        );
       }
     });
   });
 
   group('Authentication Flow Utilities', () {
-    testWidgets('checkEmailVerifiedOrPrompt with null user returns false', (tester) async {
-      await tester.pumpWidget(TestWrapper(
-        overrides: [
-          currentUserProvider.overrideWithValue(null),
-        ],
-        child: Consumer(builder: (context, ref, _) {
-          return ElevatedButton(
-            onPressed: () async {
-              final result = await checkEmailVerifiedOrPrompt(context, ref);
-              expect(result, isFalse);
+    testWidgets('checkEmailVerifiedOrPrompt with null user returns false', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        TestWrapper(
+          overrides: [currentUserProvider.overrideWithValue(null)],
+          child: Consumer(
+            builder: (context, ref, _) {
+              return ElevatedButton(
+                onPressed: () async {
+                  final result = await checkEmailVerifiedOrPrompt(context, ref);
+                  expect(result, isFalse);
+                },
+                child: const Text('Check'),
+              );
             },
-            child: const Text('Check'),
-          );
-        }),
-      ));
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Check'));
       await tester.pumpAndSettle();
     });
 
-    testWidgets('checkEmailVerifiedOrPrompt with verified user returns true', (tester) async {
+    testWidgets('checkEmailVerifiedOrPrompt with verified user returns true', (
+      tester,
+    ) async {
       final mockAuthRepository = MockAuthRepository();
       when(mockAuthRepository.isEmailVerified()).thenAnswer((_) async => true);
 
-      await tester.pumpWidget(TestWrapper(
-        overrides: [
-          currentUserProvider.overrideWithValue(
-            const AppAuthUser(uid: 'u1', email: 'test@example.com', emailVerified: true),
-          ),
-          authRepositoryProvider.overrideWithValue(mockAuthRepository),
-        ],
-        child: Consumer(builder: (context, ref, _) {
-          return ElevatedButton(
-            onPressed: () async {
-              final result = await checkEmailVerifiedOrPrompt(context, ref);
-              expect(result, isTrue);
+      await tester.pumpWidget(
+        TestWrapper(
+          overrides: [
+            currentUserProvider.overrideWithValue(
+              const AppAuthUser(
+                uid: 'u1',
+                email: 'test@example.com',
+                emailVerified: true,
+              ),
+            ),
+            authRepositoryProvider.overrideWithValue(mockAuthRepository),
+          ],
+          child: Consumer(
+            builder: (context, ref, _) {
+              return ElevatedButton(
+                onPressed: () async {
+                  final result = await checkEmailVerifiedOrPrompt(context, ref);
+                  expect(result, isTrue);
+                },
+                child: const Text('Check'),
+              );
             },
-            child: const Text('Check'),
-          );
-        }),
-      ));
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Check'));
       await tester.pumpAndSettle();
     });
 
-    testWidgets('checkEmailVerifiedOrPrompt with unverified user shows dialog', (tester) async {
-      final mockAuthRepository = MockAuthRepository();
-      when(mockAuthRepository.isEmailVerified()).thenAnswer((_) async => false);
-      when(mockAuthRepository.sendEmailVerification()).thenAnswer((_) async {});
+    testWidgets(
+      'checkEmailVerifiedOrPrompt with unverified user shows dialog',
+      (tester) async {
+        final mockAuthRepository = MockAuthRepository();
+        when(
+          mockAuthRepository.isEmailVerified(),
+        ).thenAnswer((_) async => false);
+        when(
+          mockAuthRepository.sendEmailVerification(),
+        ).thenAnswer((_) async {});
 
-      await tester.pumpWidget(TestWrapper(
-        overrides: [
-          currentUserProvider.overrideWithValue(
-            const AppAuthUser(uid: 'u1', email: 'test@example.com', emailVerified: false),
+        await tester.pumpWidget(
+          TestWrapper(
+            overrides: [
+              currentUserProvider.overrideWithValue(
+                const AppAuthUser(
+                  uid: 'u1',
+                  email: 'test@example.com',
+                  emailVerified: false,
+                ),
+              ),
+              authRepositoryProvider.overrideWithValue(mockAuthRepository),
+            ],
+            child: Consumer(
+              builder: (context, ref, _) {
+                return ElevatedButton(
+                  onPressed: () async {
+                    final result = await checkEmailVerifiedOrPrompt(
+                      context,
+                      ref,
+                    );
+                    expect(result, isFalse);
+                  },
+                  child: const Text('Check'),
+                );
+              },
+            ),
           ),
-          authRepositoryProvider.overrideWithValue(mockAuthRepository),
-        ],
-        child: Consumer(builder: (context, ref, _) {
-          return ElevatedButton(
-            onPressed: () async {
-              final result = await checkEmailVerifiedOrPrompt(context, ref);
-              expect(result, isFalse);
-            },
-            child: const Text('Check'),
-          );
-        }),
-      ));
-      await tester.pumpAndSettle();
+        );
+        await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Check'));
-      await tester.pumpAndSettle();
+        await tester.tap(find.text('Check'));
+        await tester.pumpAndSettle();
 
-      expect(find.text('email_verification.title'), findsOneWidget);
-    });
+        expect(find.text('email_verification.title'), findsOneWidget);
+      },
+    );
   });
 
   // =========================================================================
@@ -627,28 +827,52 @@ void main() {
   // =========================================================================
   group('calculateDetailedTaxes - extended', () {
     test('BC returns GST and PST breakdown', () {
-      final addr = Address(street: '1 St', city: 'Vancouver', state: 'BC', postalCode: 'V5V', country: 'CA');
+      final addr = Address(
+        street: '1 St',
+        city: 'Vancouver',
+        state: 'BC',
+        postalCode: 'V5V',
+        country: 'CA',
+      );
       final b = calculateDetailedTaxes(addr, 200.0);
       expect(b['GST'], 10.0);
       expect(b['PST'], closeTo(14.0, 0.001));
     });
 
     test('unknown province defaults to GST 5%', () {
-      final addr = Address(street: '1 St', city: 'X', state: 'ZZ', postalCode: '000', country: 'CA');
+      final addr = Address(
+        street: '1 St',
+        city: 'X',
+        state: 'ZZ',
+        postalCode: '000',
+        country: 'CA',
+      );
       final b = calculateDetailedTaxes(addr, 100.0);
       expect(b['GST'], 5.0);
       expect(b.length, 1);
     });
 
     test('AB returns only GST', () {
-      final addr = Address(street: '1 St', city: 'Calgary', state: 'AB', postalCode: 'T2T', country: 'CA');
+      final addr = Address(
+        street: '1 St',
+        city: 'Calgary',
+        state: 'AB',
+        postalCode: 'T2T',
+        country: 'CA',
+      );
       final b = calculateDetailedTaxes(addr, 100.0);
       expect(b['GST'], 5.0);
       expect(b.length, 1);
     });
 
     test('zero total returns zero taxes', () {
-      final addr = Address(street: '1 St', city: 'Toronto', state: 'ON', postalCode: 'M5V', country: 'CA');
+      final addr = Address(
+        street: '1 St',
+        city: 'Toronto',
+        state: 'ON',
+        postalCode: 'M5V',
+        country: 'CA',
+      );
       final b = calculateDetailedTaxes(addr, 0.0);
       expect(b['HST'], 0.0);
     });
@@ -742,8 +966,14 @@ void main() {
       final before = DateTime.now();
       final result = dynamicToTimestamp(null);
       final after = DateTime.now();
-      expect(result.millisecondsSinceEpoch, greaterThanOrEqualTo(before.millisecondsSinceEpoch));
-      expect(result.millisecondsSinceEpoch, lessThanOrEqualTo(after.millisecondsSinceEpoch));
+      expect(
+        result.millisecondsSinceEpoch,
+        greaterThanOrEqualTo(before.millisecondsSinceEpoch),
+      );
+      expect(
+        result.millisecondsSinceEpoch,
+        lessThanOrEqualTo(after.millisecondsSinceEpoch),
+      );
     });
 
     test('integer returns DateTime.now() fallback', () {
@@ -768,22 +998,46 @@ void main() {
   // =========================================================================
   group('hasValidAddress - case handling', () {
     test('lowercase province code is accepted', () {
-      final addr = Address(street: '1 St', city: 'Toronto', state: 'on', postalCode: 'M5V', country: 'CA');
+      final addr = Address(
+        street: '1 St',
+        city: 'Toronto',
+        state: 'on',
+        postalCode: 'M5V',
+        country: 'CA',
+      );
       expect(hasValidAddress(addr), isTrue);
     });
 
     test('mixed case province code is accepted', () {
-      final addr = Address(street: '1 St', city: 'Toronto', state: 'On', postalCode: 'M5V', country: 'CA');
+      final addr = Address(
+        street: '1 St',
+        city: 'Toronto',
+        state: 'On',
+        postalCode: 'M5V',
+        country: 'CA',
+      );
       expect(hasValidAddress(addr), isTrue);
     });
 
     test('whitespace-only street returns false', () {
-      final addr = Address(street: '   ', city: 'Toronto', state: 'ON', postalCode: 'M5V', country: 'CA');
+      final addr = Address(
+        street: '   ',
+        city: 'Toronto',
+        state: 'ON',
+        postalCode: 'M5V',
+        country: 'CA',
+      );
       expect(hasValidAddress(addr), isFalse);
     });
 
     test('whitespace-only state returns false', () {
-      final addr = Address(street: '1 St', city: 'Toronto', state: '  ', postalCode: 'M5V', country: 'CA');
+      final addr = Address(
+        street: '1 St',
+        city: 'Toronto',
+        state: '  ',
+        postalCode: 'M5V',
+        country: 'CA',
+      );
       expect(hasValidAddress(addr), isFalse);
     });
   });
@@ -793,7 +1047,11 @@ void main() {
   // =========================================================================
   group('AppError.getMessage - extended', () {
     test('getMessage with explicit code appends it', () {
-      final msg = AppError.getMessage(Exception('test'), null, 'ORIGNA-TEST-001');
+      final msg = AppError.getMessage(
+        Exception('test'),
+        null,
+        'ORIGNA-TEST-001',
+      );
       expect(msg, contains('[ORIGNA-TEST-001]'));
     });
 
@@ -806,17 +1064,23 @@ void main() {
       expect(msg, isNot(contains('query requires an index')));
     });
 
-    test('getMessage for OrignaBaseException with empty message uses fallback', () {
-      final error = OrignaBaseException('', statusCode: 500);
-      final msg = AppError.getMessage(error);
-      expect(msg, isNotEmpty);
-    });
+    test(
+      'getMessage for OrignaBaseException with empty message uses fallback',
+      () {
+        final error = OrignaBaseException('', statusCode: 500);
+        final msg = AppError.getMessage(error);
+        expect(msg, isNotEmpty);
+      },
+    );
 
-    test('getMessage for OrignaBaseException with whitespace message uses fallback', () {
-      final error = OrignaBaseException('   ', statusCode: 500);
-      final msg = AppError.getMessage(error);
-      expect(msg, isNotEmpty);
-    });
+    test(
+      'getMessage for OrignaBaseException with whitespace message uses fallback',
+      () {
+        final error = OrignaBaseException('   ', statusCode: 500);
+        final msg = AppError.getMessage(error);
+        expect(msg, isNotEmpty);
+      },
+    );
 
     test('getMessage with custom fallback string', () {
       final msg = AppError.getMessage(Exception('x'), 'Custom fallback');
@@ -858,47 +1122,74 @@ void main() {
   group('calculateTieredShipping - boundary distances', () {
     test('exactly 15km uses 1.99 tier', () {
       final items = [_makeCartItem(quantity: 1)];
-      expect(calculateTieredShipping(15.0, items, DeliverySpeed.standard), closeTo(1.99, 0.01));
+      expect(
+        calculateTieredShipping(15.0, items, DeliverySpeed.standard),
+        closeTo(1.99, 0.01),
+      );
     });
 
     test('15.01km uses 4.99 tier', () {
       final items = [_makeCartItem(quantity: 1)];
-      expect(calculateTieredShipping(15.01, items, DeliverySpeed.standard), closeTo(4.99, 0.01));
+      expect(
+        calculateTieredShipping(15.01, items, DeliverySpeed.standard),
+        closeTo(4.99, 0.01),
+      );
     });
 
     test('exactly 50km uses 4.99 tier', () {
       final items = [_makeCartItem(quantity: 1)];
-      expect(calculateTieredShipping(50.0, items, DeliverySpeed.standard), closeTo(4.99, 0.01));
+      expect(
+        calculateTieredShipping(50.0, items, DeliverySpeed.standard),
+        closeTo(4.99, 0.01),
+      );
     });
 
     test('50.01km uses 9.99 tier', () {
       final items = [_makeCartItem(quantity: 1)];
-      expect(calculateTieredShipping(50.01, items, DeliverySpeed.standard), closeTo(9.99, 0.01));
+      expect(
+        calculateTieredShipping(50.01, items, DeliverySpeed.standard),
+        closeTo(9.99, 0.01),
+      );
     });
 
     test('exactly 150km uses 9.99 tier', () {
       final items = [_makeCartItem(quantity: 1)];
-      expect(calculateTieredShipping(150.0, items, DeliverySpeed.standard), closeTo(9.99, 0.01));
+      expect(
+        calculateTieredShipping(150.0, items, DeliverySpeed.standard),
+        closeTo(9.99, 0.01),
+      );
     });
 
     test('exactly 500km uses 14.99 tier', () {
       final items = [_makeCartItem(quantity: 1)];
-      expect(calculateTieredShipping(500.0, items, DeliverySpeed.standard), closeTo(14.99, 0.01));
+      expect(
+        calculateTieredShipping(500.0, items, DeliverySpeed.standard),
+        closeTo(14.99, 0.01),
+      );
     });
 
     test('exactly 1200km uses 18.99 tier', () {
       final items = [_makeCartItem(quantity: 1)];
-      expect(calculateTieredShipping(1200.0, items, DeliverySpeed.standard), closeTo(18.99, 0.01));
+      expect(
+        calculateTieredShipping(1200.0, items, DeliverySpeed.standard),
+        closeTo(18.99, 0.01),
+      );
     });
 
     test('exactly 2500km uses 22.99 tier', () {
       final items = [_makeCartItem(quantity: 1)];
-      expect(calculateTieredShipping(2500.0, items, DeliverySpeed.standard), closeTo(22.99, 0.01));
+      expect(
+        calculateTieredShipping(2500.0, items, DeliverySpeed.standard),
+        closeTo(22.99, 0.01),
+      );
     });
 
     test('2500.01km uses 26.99 tier', () {
       final items = [_makeCartItem(quantity: 1)];
-      expect(calculateTieredShipping(2500.01, items, DeliverySpeed.standard), closeTo(26.99, 0.01));
+      expect(
+        calculateTieredShipping(2500.01, items, DeliverySpeed.standard),
+        closeTo(26.99, 0.01),
+      );
     });
   });
 
@@ -943,9 +1234,18 @@ void main() {
 
     test('contains expected values', () {
       expect(VideoValidationError.values, contains(VideoValidationError.none));
-      expect(VideoValidationError.values, contains(VideoValidationError.tooLarge));
-      expect(VideoValidationError.values, contains(VideoValidationError.tooLong));
-      expect(VideoValidationError.values, contains(VideoValidationError.invalidFormat));
+      expect(
+        VideoValidationError.values,
+        contains(VideoValidationError.tooLarge),
+      );
+      expect(
+        VideoValidationError.values,
+        contains(VideoValidationError.tooLong),
+      );
+      expect(
+        VideoValidationError.values,
+        contains(VideoValidationError.invalidFormat),
+      );
     });
   });
 
@@ -1005,8 +1305,45 @@ void main() {
     test('no province has negative tax rate', () {
       for (final entry in provinceTaxRates.entries) {
         for (final rate in entry.value.values) {
-          expect(rate, greaterThan(0), reason: '${entry.key} has non-positive rate');
+          expect(
+            rate,
+            greaterThan(0),
+            reason: '${entry.key} has non-positive rate',
+          );
         }
+      }
+    });
+
+    test('Cuban provinces have empty tax rates', () {
+      const cubanProvinces = [
+        'HAB',
+        'MAT',
+        'VC',
+        'SC',
+        'HOL',
+        'CMG',
+        'CAV',
+        'SSP',
+        'CFG',
+        'PR',
+        'GRA',
+        'LT',
+        'GU',
+        'IJ',
+        'ART',
+        'MAY',
+      ];
+      for (final code in cubanProvinces) {
+        expect(
+          provinceTaxRates[code],
+          isNotNull,
+          reason: '$code missing from map',
+        );
+        expect(
+          provinceTaxRates[code]!.isEmpty,
+          isTrue,
+          reason: '$code should have no tax rates',
+        );
       }
     });
 
@@ -1042,11 +1379,18 @@ CartItemDetailModel _makeCartItem({
     productId: 'p1',
     name: 'Test Product',
     description: 'desc',
-    price: 10.00, priceCents: 1000,
+    price: 10.00,
+    priceCents: 1000,
     imageUrls: [],
     quantity: quantity,
     createdAt: DateTime.now(),
-    sellerAddress: Address(street: '1 St', city: 'Toronto', state: 'ON', postalCode: 'M5V', country: 'CA'),
+    sellerAddress: Address(
+      street: '1 St',
+      city: 'Toronto',
+      state: 'ON',
+      postalCode: 'M5V',
+      country: 'CA',
+    ),
     sellerId: 's1',
     sellerName: 'Seller',
     weightKg: weightKg,

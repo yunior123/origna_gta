@@ -1,4 +1,3 @@
-
 /// Contract for location/address operations.
 ///
 /// Implementations: [OrignaBaseLocationRepository] (production).

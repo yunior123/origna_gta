@@ -948,37 +948,40 @@ Start only after Phases 1 through 3 are stable.
 - [ ] audit all app code now that seller onboarding is disabled
 - [x] no legacy code, remove that in entire codebase — removed Fields.isActive, ApiKeys.images, snapshot['images'], province backward compat, 'images' review payload string
 - [x] some products might have shipping disabled for specific countries, make sure we have that cover — allowedShippingCountries updated, country-specific shipping logic in calculateShippingCost
--deploy latest version of orignagta and orignaventures
-- in the case of orignaventures tiers it should look like this, similar:https://www.kimi.com/membership/pricing?track_id=fc80de60-c726-4ddc-9b88-e99d6eedfe5a . only that subscription for team plan only. also: calling tiers service 0,1,2 is ugly, fix that
--update store to support cuba in every aspect similar to canada
--audit spanish traslations all over
--make sure the payments for 3 tiers in orignaventures.ca are in home view, want clients to be able to pay fast so that i can become rich haha
--update the 3 pdf of orignaventures with new tiers
-- remember to remove contract signing features, just policy instead. real quick payment
+- [ ] deploy latest version of orignagta and orignaventures
+- [ ] in the case of orignaventures tiers it should look like this, similar:https://www.kimi.com/membership/pricing?track_id=fc80de60-c726-4ddc-9b88-e99d6eedfe5a . only that subscription for team plan only. also: calling tiers service 0,1,2 is ugly, fix that
+- [ ] update store to support cuba in every aspect similar to canada
+- [ ] audit spanish traslations all over
+- [ ] make sure the payments for 3 tiers in orignaventures.ca are in home view, want clients to be able to pay fast so that i can become rich haha
+- [ ] update the 3 pdf of orignaventures with new tiers
+- [ ] remember to remove contract signing features, just policy instead. real quick payment
 - [x] in the case of cuba the shipping goes to havana but we need to collect client address, info, etc — address form collects full address, validates Havana city, maritime shipping notice
-- make splash theme and orignaventures theme kinda match. right now its blue vs red + green. fix. make the ui ux feel expensive, a lot of investors will pay tomorrow so test all payment features
-- initially show lang depending on ip or browser lang for orignaventures.ca and orignagta . reuest cookies permissions too
-- add contact form that sends email to support@orignaventures.ca via hetzer backend for orignaventures
-- move orignaventures hosting from firebase to hetzner. remember to update cloudflare and remove firebase. u can find cloudflare tips on memory, learned.md, etc, diggggg
-- update pdf generation
-- audit firebase gone, only fcm
-- avoid adding unnecessary or missplaced files to repo high level path. use docs/ etc
-- test all views and features related to payment in orignaventures and orignagta. test backend too
-- make sure we have a backend for orignagta and other for orignaventures. both independent. audit
-- audit all qr codes
-- audit pdf tiers are clickable
-- audit pdf 300+ screenshots are real views screenshots
-- put logo and specs of orignaventures in orignagta to indicate company behing the software. similar to how major companies do it, like instacart, etc
-- for the lang there should be manual selector as well for orignaventures and orignagta if not already
-- since we are working with orignaventures a lot then lets move repo. move it inside origna_gta github repo
-- add tests to db, many tests
-- in stripe klarna should be supported?
-- move origna_ventures inside /Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/  
-- update gitignore for all apps
-- add this first products to production:'/Users/yuniorrodriguezosorio/Downloads/Quote . sell it as a combo module.
-/Users/yuniorrodriguezosorio/Downloads/Quote for split phase AC120V 10KW Hybrid Solar System  --2026.pdf'  
-- increase security for apps so that even if they have acces to source code it cannot be hacked
-- instead of unlocking source code automatically by send invite email we do that manually for tiers to avoid our repos being compromised. we deal with the clients manually for repo access, we could even send them a clone
-- chinese providers and other canadian investor could become partners
-- audit all stripe webhooks
-- audit email delivery. always clean test accounts after usage from mailjet
+- [ ] make splash theme and orignaventures theme kinda match. right হোয়া  now its blue vs red + green. fix. make the ui ux feel expensive, a lot of investors will pay tomorrow so test all payment features
+- [ ] initially show lang depending on ip or browser lang for orignaventures.ca and orignagta . reuest cookies permissions too
+- [ ] add contact form that sends email to support@orignaventures.ca via hetzer backend for orignaventures
+- [ ] move orignaventures hosting from firebase to hetzner. remember to update cloudflare and remove firebase. u can find cloudflare tips on memory, learned.md, etc, diggggg
+- [ ] update pdf generation
+- [ ] audit firebase gone, only fcm
+- [ ] avoid adding unnecessary or missplaced files to repo high level path. use docs/ etc
+- [ ] test all views and features related to payment in orignaventures and orignagta. test backend too
+- [ ] make sure we have a backend for orignagta and other for orignaventures. both independent. audit
+- [ ] audit all qr codes
+- [ ] audit pdf tiers are clickable
+- [ ] audit pdf 300+ screenshots are real views screenshots
+- [ ] put logo and specs of orignaventures in orignagta to indicate company behing the software. similar to how major companies do it, like instacart, etc
+- [ ] for the lang there should be manual selector as well for orignaventures and orignagta if not already
+- [ ] since we are working with orignaventures a lot then lets move repo. move it inside origna_gta github repo
+- [ ] add tests to db, many tests
+- [x] in stripe klarna should be supported?
+- [x] move origna_ventures inside /Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/  
+- [ ] update gitignore for all apps
+- [ ] add this first products to production:'/Users/yuniorrodriguezosorio/Downloads/Quote . sell it as a combo module. /Users/yuniorrodriguezosorio/Downloads/Quote for split phase AC120V 10KW Hybrid Solar System  --2026.pdf'  extract images and improve them
+- [ ] increase security for apps so that even if they have acces to source code it cannot be hacked
+- [ ] instead of unlocking source code automatically by send invite email we do that manually for tiers to avoid our repos being compromised. we deal with the clients manually for repo access, we could even send them a clone
+- [ ] chinese providers and other canadian investor could become partners
+- [ ] audit all stripe webhooks
+- [ ] audit email delivery. always clean test accounts after usage from mailjet
+- [ ] update repo map to include orignaventures, also claude.md
+- [ ] review all changes, make sure no loose ends
+- [ ] fix vscode issues
+- [ ] deploy latest versioms of apps and code.

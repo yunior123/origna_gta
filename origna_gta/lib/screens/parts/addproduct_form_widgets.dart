@@ -24,7 +24,7 @@ extension _AddProductFormWidgets on _AddProductScreenState {
   }) {
     return Semantics(
       label: semanticsLabel ?? label,
-    textField: true,
+      textField: true,
       child: TextFormField(
         key: key,
         controller: controller,
@@ -107,7 +107,10 @@ extension _AddProductFormWidgets on _AddProductScreenState {
           decoration: BoxDecoration(
             color: value
                 ? DesignTokens.primary.withValues(alpha: 0.06)
-                : (Theme.of(context).brightness == Brightness.dark ? DesignTokens.darkSurfaceVariant : DesignTokens.surfaceVariant).withValues(alpha: 0.5),
+                : (Theme.of(context).brightness == Brightness.dark
+                          ? DesignTokens.darkSurfaceVariant
+                          : DesignTokens.surfaceVariant)
+                      .withValues(alpha: 0.5),
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: value
@@ -495,7 +498,7 @@ extension _AddProductFormWidgets on _AddProductScreenState {
       child: Semantics(
         label:
             'input-add-product-url-${label.toLowerCase().replaceAll(' ', '-')}',
-      textField: true,
+        textField: true,
         child: TextFormField(
           initialValue: value,
           decoration: InputDecoration(
@@ -607,7 +610,9 @@ extension _AddProductFormWidgets on _AddProductScreenState {
                       child: Container(
                         padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
-                          color: Theme.of(context).brightness == Brightness.dark ? DesignTokens.darkSurfaceVariant : DesignTokens.surfaceVariant,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? DesignTokens.darkSurfaceVariant
+                              : DesignTokens.surfaceVariant,
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(

@@ -9,5 +9,5 @@ import 'package:origna_gta/features/support/support_viewmodel.dart';
 /// autoDispose so the conversation is reset when the screen is closed.
 final supportViewModelProvider =
     StateNotifierProvider.autoDispose<SupportViewModel, SupportState>((ref) {
-  return SupportViewModel(ref);
-});
+      return SupportViewModel(ref);
+    });

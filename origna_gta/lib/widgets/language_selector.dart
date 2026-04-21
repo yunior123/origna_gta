@@ -7,13 +7,9 @@ import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:flutter/widget_previews.dart';
 import 'package:origna_gta/utils/preview_helpers.dart';
 
-/// Language selector widget for Quebec Bill 96 compliance.
-/// Allows users to switch between English and French.
-/// Can be placed in profile/settings or app bar.
 class LanguageSelector extends StatelessWidget {
   const LanguageSelector({super.key, this.compact = false});
 
-  /// If true, shows only a flag/icon button instead of full dropdown
   final bool compact;
 
   @override
@@ -28,8 +24,7 @@ class LanguageSelector extends StatelessWidget {
 class _CompactLanguageButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final currentLocale = context.locale;
-    final isEn = currentLocale.languageCode == LanguageValues.english;
+    final currentCode = context.locale.languageCode;
 
     return Semantics(
       label: 'language.select_language'.tr(),
@@ -39,14 +34,12 @@ class _CompactLanguageButton extends ConsumerWidget {
         child: IconButton(
           tooltip: 'language.select_language'.tr(),
           onPressed: () {
-            final newLocale = isEn
-                ? const Locale(LanguageValues.french)
-                : const Locale(LanguageValues.english);
-            context.setLocale(newLocale);
-            _persistLang(ref, newLocale.languageCode);
+            final next = _nextLanguage(currentCode);
+            context.setLocale(Locale(next));
+            _persistLang(ref, next);
           },
           icon: Text(
-            isEn ? 'FR' : 'EN',
+            currentCode.toUpperCase(),
             style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w700,
@@ -57,6 +50,16 @@ class _CompactLanguageButton extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  String _nextLanguage(String current) {
+    final order = [
+      LanguageValues.english,
+      LanguageValues.french,
+      LanguageValues.spanish,
+    ];
+    final idx = order.indexOf(current);
+    return order[(idx + 1) % order.length];
   }
 }
 
@@ -80,6 +83,10 @@ class _LanguageDropdown extends ConsumerWidget {
             value: const Locale(LanguageValues.french),
             child: Text('language.french'.tr()),
           ),
+          DropdownMenuItem(
+            value: const Locale(LanguageValues.spanish),
+            child: Text('language.spanish'.tr()),
+          ),
         ],
         onChanged: (locale) {
           if (locale != null) {
@@ -95,29 +102,24 @@ class _LanguageDropdown extends ConsumerWidget {
 void _persistLang(WidgetRef ref, String langCode) {
   final userId = ref.read(userIdProvider);
   if (userId == null) return;
-  final lang = langCode == LanguageValues.french
-      ? LanguageValues.french
-      : LanguageValues.english;
+  final lang = LanguageValues.resolve(langCode);
   ref
       .read(userRepositoryProvider)
       .updatePreferredLanguage(userId, lang)
-      .catchError((_) {
-        // Fire-and-forget — UI locale is already set; database failure is non-critical
-      });
+      .catchError((_) {});
 }
 
-
 // === Widget Previews ===
-
-
-// ═══ Widget Previews ═══
 
 @Preview(name: 'Language Selector — Variants', group: 'LanguageSelector')
 Widget previewLanguageVariants() => previewScope(
   child: previewGrid(
     children: const [
       Padding(padding: EdgeInsets.all(16), child: LanguageSelector()),
-      Padding(padding: EdgeInsets.all(16), child: LanguageSelector(compact: true)),
+      Padding(
+        padding: EdgeInsets.all(16),
+        child: LanguageSelector(compact: true),
+      ),
     ],
   ),
 );
@@ -128,8 +130,10 @@ Widget previewLanguageVariantsLight() => previewScope(
     theme: previewLightTheme,
     children: const [
       Padding(padding: EdgeInsets.all(16), child: LanguageSelector()),
-      Padding(padding: EdgeInsets.all(16), child: LanguageSelector(compact: true)),
+      Padding(
+        padding: EdgeInsets.all(16),
+        child: LanguageSelector(compact: true),
+      ),
     ],
   ),
 );
-

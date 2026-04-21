@@ -26,11 +26,13 @@ class OrignaBaseDigitalService {
   /// Throws if the license key is invalid, expired, or the download limit
   /// has been reached.
   Future<Map<String, dynamic>> generateBookDownloadSession(
-      String licenseKey) async {
-    final result =
-        await _ob.request('POST', ApiEndpoints.digitalDownloadBook, body: {
-      Fields.licenseKey: licenseKey,
-    });
+    String licenseKey,
+  ) async {
+    final result = await _ob.request(
+      'POST',
+      ApiEndpoints.digitalDownloadBook,
+      body: {Fields.licenseKey: licenseKey},
+    );
     return Map<String, dynamic>.from(result as Map);
   }
 
@@ -45,12 +47,14 @@ class OrignaBaseDigitalService {
   /// Throws if the license key is invalid, the platform is not available for
   /// the product, or the download limit has been reached.
   Future<Map<String, dynamic>> generateSoftwareDownloadSession(
-      String licenseKey, String platform) async {
-    final result =
-        await _ob.request('POST', ApiEndpoints.digitalDownloadSoftware, body: {
-      Fields.licenseKey: licenseKey,
-      Fields.platform: platform,
-    });
+    String licenseKey,
+    String platform,
+  ) async {
+    final result = await _ob.request(
+      'POST',
+      ApiEndpoints.digitalDownloadSoftware,
+      body: {Fields.licenseKey: licenseKey, Fields.platform: platform},
+    );
     return Map<String, dynamic>.from(result as Map);
   }
 }

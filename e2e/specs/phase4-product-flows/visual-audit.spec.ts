@@ -52,6 +52,14 @@ describe('Visual Audit — All Screens', () => {
     await openRoute(browser, '/#/cart');
   });
 
+
+  test("capture additional screens", { timeout: 180_000 }, async () => {
+    const routes = ["/cart", "/favorites", "/profile", "/orders", "/settings", "/shipping-approval", "/pay", "/checkout"];
+    for (const route of routes) {
+        await openRoute(browser, route);
+    }
+  });
+
   test('capture seller/admin routes', { timeout: 90_000 }, async () => {
     try { await browser.close(); } catch { /* ignore */ }
     browser = new AgentBrowser();

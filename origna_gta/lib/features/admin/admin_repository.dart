@@ -12,14 +12,27 @@ abstract class AdminRepository {
   Future<void> refundOrder(String orderId, {String reason = 'Admin refund'});
   Future<void> rejectProduct(String productId, String reason);
   Future<void> setUserSuspended(String userId, bool suspended);
-  Future<void> updatePaymentProvider(String provider, bool enabled, {String? reason});
+  Future<void> updatePaymentProvider(
+    String provider,
+    bool enabled, {
+    String? reason,
+  });
   Future<void> updateProductStock(String productId, int quantity);
-  Future<void> updateUserRoles(String userId, {List<String> add, List<String> remove, String? reason});
+  Future<void> updateUserRoles(
+    String userId, {
+    List<String> add,
+    List<String> remove,
+    String? reason,
+  });
   Future<Map<String, dynamic>> verifyAdminMfa(String code);
   Stream<List<OrderModel>> watchOrders({String? status, int limit});
   Stream<List<ProductModel>> watchProducts({int limit, String? sellerId});
   Stream<List<ProductModel>> watchPendingReviewProducts({int limit});
-  Stream<List<Map<String, dynamic>>> watchReviews({bool flaggedOnly, bool hasPhotosOnly, int limit});
+  Stream<List<Map<String, dynamic>>> watchReviews({
+    bool flaggedOnly,
+    bool hasPhotosOnly,
+    int limit,
+  });
   Stream<List<UserModel>> watchSellers({int limit});
   Stream<List<UserModel>> watchUsers({int limit});
 }

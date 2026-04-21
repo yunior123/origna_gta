@@ -928,5 +928,4 @@ extension SellerWarehouseExtension on SellerWarehouse {
   String get typeLabel => isWarehouse ? 'Warehouse' : 'Personal Address';
 }
 
-
 // === Widget Previews ===

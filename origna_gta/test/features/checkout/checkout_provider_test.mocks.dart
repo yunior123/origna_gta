@@ -38,6 +38,15 @@ class _FakeSellerAccountStatus_0 extends _i1.SmartFake
 /// See the documentation for Mockito's code generation for more information.
 class MockOrderRepository extends _i1.Mock implements _i3.OrderRepository {
   @override
+  _i4.Future<void> cancelOrder(String? orderId) =>
+      (super.noSuchMethod(
+            Invocation.method(#cancelOrder, [orderId]),
+            returnValue: _i4.Future<void>.value(),
+            returnValueForMissingStub: _i4.Future<void>.value(),
+          )
+          as _i4.Future<void>);
+
+  @override
   _i4.Future<void> approveShippingCost(String? orderId, bool? approved) =>
       (super.noSuchMethod(
             Invocation.method(#approveShippingCost, [orderId, approved]),

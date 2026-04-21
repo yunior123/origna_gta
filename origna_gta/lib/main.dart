@@ -116,7 +116,7 @@ void main() {
       // Config and Sentry are initialized in background — the app handles "not ready" state.
       runApp(
         EasyLocalization(
-          supportedLocales: const [Locale('en'), Locale('fr')],
+          supportedLocales: const [Locale('en'), Locale('fr'), Locale('es')],
           path: 'assets/translations',
           fallbackLocale: const Locale('en'),
           child: const ProviderScope(child: OrignaApp()),

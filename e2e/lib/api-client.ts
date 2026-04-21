@@ -1012,6 +1012,8 @@ export async function callCallable(
           path: "/api/warehouses/delete",
           body: { userId, warehouseId: payload?.warehouseId },
         };
+      case "create-service-session":
+        return { path: "/payments/create-service-session", body: payload };
       case "export_my_data":
         return { path: "/api/admin/export-data", body: { userId } };
       case "generate_book_download_session":

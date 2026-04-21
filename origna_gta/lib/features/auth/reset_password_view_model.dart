@@ -4,9 +4,10 @@ import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/repositories/orignabase_auth_repository.dart';
 import 'reset_password_state.dart';
 
-final resetPasswordViewModelProvider = StateNotifierProvider.autoDispose.family<ResetPasswordViewModel, ResetPasswordState, String>((ref, oobCode) {
-  return ResetPasswordViewModel(ref, oobCode);
-});
+final resetPasswordViewModelProvider = StateNotifierProvider.autoDispose
+    .family<ResetPasswordViewModel, ResetPasswordState, String>((ref, oobCode) {
+      return ResetPasswordViewModel(ref, oobCode);
+    });
 
 /// Manages the password reset confirmation flow for a previously issued reset code.
 ///
@@ -24,7 +25,8 @@ class ResetPasswordViewModel extends StateNotifier<ResetPasswordState> {
   final Ref _ref;
   final String _oobCode;
 
-  ResetPasswordViewModel(this._ref, this._oobCode) : super(const ResetPasswordState()) {
+  ResetPasswordViewModel(this._ref, this._oobCode)
+    : super(const ResetPasswordState()) {
     _verifyCode();
   }
 
@@ -51,26 +53,26 @@ class ResetPasswordViewModel extends StateNotifier<ResetPasswordState> {
 
   Future<void> resetPassword(String password, String confirmPassword) async {
     if (password.isEmpty || password.length < 8) {
-      state = state.copyWith(errorMessage: 'auth.validation.password_min_8'.tr());
+      state = state.copyWith(
+        errorMessage: 'auth.validation.password_min_8'.tr(),
+      );
       return;
     }
 
     if (password != confirmPassword) {
-      state = state.copyWith(errorMessage: 'auth.validation.passwords_mismatch'.tr());
+      state = state.copyWith(
+        errorMessage: 'auth.validation.passwords_mismatch'.tr(),
+      );
       return;
     }
 
     state = state.copyWith(isLoading: true, errorMessage: null);
 
     try {
-      await _ref.read(authRepositoryProvider).confirmPasswordReset(
-        _oobCode,
-        password,
-      );
-      state = state.copyWith(
-        isSuccess: true,
-        isLoading: false,
-      );
+      await _ref
+          .read(authRepositoryProvider)
+          .confirmPasswordReset(_oobCode, password);
+      state = state.copyWith(isSuccess: true, isLoading: false);
     } on OrignaBaseAuthException catch (e) {
       state = state.copyWith(
         isLoading: false,

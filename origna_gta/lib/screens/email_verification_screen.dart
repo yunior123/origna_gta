@@ -366,27 +366,24 @@ Widget _emailVerificationPreview({
   group: 'EmailVerification',
   size: Size(390, 844),
 )
-Widget previewEmailVerificationMobile() => previewMobile(
-  child: _emailVerificationPreview(),
-);
+Widget previewEmailVerificationMobile() =>
+    previewMobile(child: _emailVerificationPreview());
 
 @Preview(
   name: 'Email Verification — Desktop',
   group: 'EmailVerification',
   size: Size(1280, 800),
 )
-Widget previewEmailVerificationDesktop() => previewDesktop(
-  child: _emailVerificationPreview(),
-);
+Widget previewEmailVerificationDesktop() =>
+    previewDesktop(child: _emailVerificationPreview());
 
 @Preview(
   name: 'Email Verification Checking — Mobile',
   group: 'EmailVerification',
   size: Size(390, 844),
 )
-Widget previewEmailVerificationCheckingMobile() => previewMobile(
-  child: _emailVerificationPreview(checking: true),
-);
+Widget previewEmailVerificationCheckingMobile() =>
+    previewMobile(child: _emailVerificationPreview(checking: true));
 
 @Preview(
   name: 'Email Verification Light — Desktop',

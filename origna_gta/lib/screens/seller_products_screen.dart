@@ -293,8 +293,11 @@ class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen> {
 
 const _previewSellerProductsImageBase = 'https://fastly.picsum.photos/id';
 
-String _previewSellerProductsImage(int id, {int width = 900, int height = 900}) =>
-    '$_previewSellerProductsImageBase/$id/$width/$height.jpg';
+String _previewSellerProductsImage(
+  int id, {
+  int width = 900,
+  int height = 900,
+}) => '$_previewSellerProductsImageBase/$id/$width/$height.jpg';
 
 final _previewSellerUser = UserModel(
   uid: 'preview-seller',
@@ -366,15 +369,13 @@ final _previewSellerProducts = [
 
 Widget _sellerProductsPreview() => previewScopeLoggedIn(
   extraOverrides: [
-    userProfileProvider.overrideWith(
-      (ref) => Stream.value(_previewSellerUser),
-    ),
+    userProfileProvider.overrideWith((ref) => Stream.value(_previewSellerUser)),
     sellerProductsProvider.overrideWith(
       (ref) => Stream.value(_previewSellerProducts),
     ),
-    sellerUnansweredQaProvider(_previewSellerUser.uid).overrideWith(
-      (ref) => Stream.value(6),
-    ),
+    sellerUnansweredQaProvider(
+      _previewSellerUser.uid,
+    ).overrideWith((ref) => Stream.value(6)),
   ],
   child: const SellerProductsScreen(),
 );
@@ -400,7 +401,5 @@ Widget previewSellerProductsScreenDesktop() =>
   group: 'Screens — Seller Management',
   size: Size(1280, 800),
 )
-Widget previewSellerProductsLightDesktop() => previewDesktop(
-  theme: previewLightTheme,
-  child: _sellerProductsPreview(),
-);
+Widget previewSellerProductsLightDesktop() =>
+    previewDesktop(theme: previewLightTheme, child: _sellerProductsPreview());

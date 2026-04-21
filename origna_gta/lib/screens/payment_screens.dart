@@ -414,23 +414,32 @@ class _OrderSuccessGateState extends ConsumerState<OrderSuccessGate> {
   }
 }
 
-
 // === Widget Previews ===
-
 
 // ═══ Widget Previews ═══
 
-@Preview(name: 'Payment Canceled — Mobile', group: 'Screens — Checkout Flows', size: Size(390, 844))
+@Preview(
+  name: 'Payment Canceled — Mobile',
+  group: 'Screens — Checkout Flows',
+  size: Size(390, 844),
+)
 Widget previewPaymentCanceledScreenMobile() =>
     previewMobile(child: const PaymentCanceledScreen());
 
-@Preview(name: 'Payment Canceled — Desktop', group: 'Screens — Checkout Flows', size: Size(1280, 800))
+@Preview(
+  name: 'Payment Canceled — Desktop',
+  group: 'Screens — Checkout Flows',
+  size: Size(1280, 800),
+)
 Widget previewPaymentCanceledScreenDesktop() =>
     previewDesktop(child: const PaymentCanceledScreen());
 
-@Preview(name: 'Payment Canceled Light — Desktop', group: 'Screens — Checkout Flows', size: Size(1280, 800))
+@Preview(
+  name: 'Payment Canceled Light — Desktop',
+  group: 'Screens — Checkout Flows',
+  size: Size(1280, 800),
+)
 Widget previewPaymentCanceledLightDesktop() => previewDesktop(
   theme: previewLightTheme,
   child: const PaymentCanceledScreen(),
 );
-

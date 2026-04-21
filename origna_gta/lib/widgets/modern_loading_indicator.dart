@@ -188,25 +188,23 @@ class _SpinnerArcPainter extends CustomPainter {
   }
 }
 
-
 // === Widget Previews ===
-
 
 // ═══ Widget Previews ═══
 
 @Preview(name: 'Default spinner', group: 'Loading')
-Widget previewLoadingDefault() => previewWrapper(
-  child: const ModernLoadingIndicator(),
-);
+Widget previewLoadingDefault() =>
+    previewWrapper(child: const ModernLoadingIndicator());
 
 @Preview(name: 'Small spinner', group: 'Loading')
-Widget previewLoadingSmall() => previewWrapper(
-  child: const ModernLoadingIndicator.small(),
-);
+Widget previewLoadingSmall() =>
+    previewWrapper(child: const ModernLoadingIndicator.small());
 
 @Preview(name: 'Full screen overlay', group: 'Loading')
 Widget previewLoadingFullScreen() => previewWrapper(
-  child: const ModernLoadingIndicator.fullScreen(message: 'Processing payment…'),
+  child: const ModernLoadingIndicator.fullScreen(
+    message: 'Processing payment…',
+  ),
 );
 
 @Preview(name: 'Inline (in button context)', group: 'Loading')
@@ -242,8 +240,6 @@ Widget previewLoadingAllSizes() => previewGrid(
   ],
 );
 
-
-
 // ═══ Widget Previews ═══
 
 @Preview(name: 'Modern Loading — Inline', group: 'ModernLoadingIndicator')
@@ -272,8 +268,13 @@ Widget previewLoadingVariants() => previewGrid(
   children: [
     const ModernLoadingIndicator(message: 'Loading content...'),
     const ModernLoadingIndicator.small(),
-    const ModernLoadingIndicator.fullScreen(message: 'Preparing your experience...'),
-    ModernLoadingIndicator(color: DesignTokens.secondary, message: 'Custom Color'),
+    const ModernLoadingIndicator.fullScreen(
+      message: 'Preparing your experience...',
+    ),
+    ModernLoadingIndicator(
+      color: DesignTokens.secondary,
+      message: 'Custom Color',
+    ),
   ],
 );
 
@@ -299,14 +300,21 @@ Widget previewLoadingInlineLight() => previewGrid(
   ],
 );
 
-@Preview(name: 'Modern Loading Light — Variants', group: 'ModernLoadingIndicator')
+@Preview(
+  name: 'Modern Loading Light — Variants',
+  group: 'ModernLoadingIndicator',
+)
 Widget previewLoadingVariantsLight() => previewGrid(
   theme: previewLightTheme,
   children: [
     const ModernLoadingIndicator(message: 'Loading content...'),
     const ModernLoadingIndicator.small(),
-    const ModernLoadingIndicator.fullScreen(message: 'Preparing your experience...'),
-    ModernLoadingIndicator(color: DesignTokens.secondary, message: 'Custom Color'),
+    const ModernLoadingIndicator.fullScreen(
+      message: 'Preparing your experience...',
+    ),
+    ModernLoadingIndicator(
+      color: DesignTokens.secondary,
+      message: 'Custom Color',
+    ),
   ],
 );
-

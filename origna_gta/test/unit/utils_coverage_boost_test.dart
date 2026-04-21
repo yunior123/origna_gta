@@ -357,11 +357,52 @@ void main() {
   });
 
   group('provinceTaxRates', () {
-    test('all provinces have valid rates', () {
-      for (final entry in provinceTaxRates.entries) {
-        final totalRate = entry.value.values.fold(0.0, (a, b) => a + b);
+    test('Canadian provinces have valid rates', () {
+      const canadianProvinces = [
+        'AB',
+        'BC',
+        'MB',
+        'NB',
+        'NL',
+        'NS',
+        'NT',
+        'NU',
+        'ON',
+        'PE',
+        'QC',
+        'SK',
+        'YT',
+      ];
+      for (final code in canadianProvinces) {
+        final rates = provinceTaxRates[code]!;
+        final totalRate = rates.values.fold(0.0, (a, b) => a + b);
         expect(totalRate, greaterThan(0));
-        expect(totalRate, lessThan(0.20)); // No province > 20%
+        expect(totalRate, lessThan(0.20));
+      }
+    });
+
+    test('Cuban provinces have zero tax rates', () {
+      const cubanProvinces = [
+        'HAB',
+        'MAT',
+        'VC',
+        'SC',
+        'HOL',
+        'CMG',
+        'CAV',
+        'SSP',
+        'CFG',
+        'PR',
+        'GRA',
+        'LT',
+        'GU',
+        'IJ',
+        'ART',
+        'MAY',
+      ];
+      for (final code in cubanProvinces) {
+        final rates = provinceTaxRates[code]!;
+        expect(rates.isEmpty, isTrue, reason: '$code should have no tax rates');
       }
     });
 

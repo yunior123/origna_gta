@@ -134,9 +134,12 @@ void main() {
     });
 
     test('ProvinceCodeValues has all provinces', () {
-      expect(ProvinceCodeValues.all.length, 13);
+      expect(ProvinceCodeValues.canadaProvinces.length, 13);
+      expect(ProvinceCodeValues.cubaProvinces.length, 16);
+      expect(ProvinceCodeValues.all.length, 29);
       expect(ProvinceCodeValues.names[ProvinceCodeValues.ontario], 'Ontario');
       expect(ProvinceCodeValues.names[ProvinceCodeValues.quebec], 'Quebec');
+      expect(ProvinceCodeValues.names[ProvinceCodeValues.havana], 'La Habana');
     });
 
     test('NotificationTypes has all types', () {

@@ -569,8 +569,11 @@ Widget previewReturnRequestLight() =>
 const _previewOrderId = 'preview-order-id';
 const _previewReturnRequestImageBase = 'https://fastly.picsum.photos/id';
 
-String _previewReturnRequestImage(int id, {int width = 900, int height = 900}) =>
-    '$_previewReturnRequestImageBase/$id/$width/$height.jpg';
+String _previewReturnRequestImage(
+  int id, {
+  int width = 900,
+  int height = 900,
+}) => '$_previewReturnRequestImageBase/$id/$width/$height.jpg';
 
 Widget _returnRequestContent() => previewScopeLoggedIn(
   extraOverrides: [

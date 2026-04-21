@@ -45,7 +45,9 @@ class OrignaBaseNotificationRepository {
           // doc.id may include collection prefix e.g. "notifications:abc123".
           // batch.update expects only the bare record ID part.
           final bareId = doc.id.contains(':') ? doc.id.split(':').last : doc.id;
-          batch.update(Collections.notifications, bareId, {Fields.isRead: true});
+          batch.update(Collections.notifications, bareId, {
+            Fields.isRead: true,
+          });
         }
         await batch.commit();
       } on OrignaBaseException catch (e) {
@@ -57,10 +59,9 @@ class OrignaBaseNotificationRepository {
         for (final doc in snapshot.docs) {
           final bareId = doc.id.contains(':') ? doc.id.split(':').last : doc.id;
           try {
-            await _ob
-                .collection(Collections.notifications)
-                .doc(bareId)
-                .update({Fields.isRead: true});
+            await _ob.collection(Collections.notifications).doc(bareId).update({
+              Fields.isRead: true,
+            });
           } on ForbiddenException {
             continue;
           } on NotFoundException {

@@ -26,30 +26,40 @@ class OrignaBaseAdminRepository implements AdminRepository {
 
   @override
   Future<void> approveProduct(String productId) async {
-    await _ob.request('POST', ApiEndpoints.adminApproveProduct, body: {
-      Fields.productId: productId,
-    });
+    await _ob.request(
+      'POST',
+      ApiEndpoints.adminApproveProduct,
+      body: {Fields.productId: productId},
+    );
   }
 
   @override
   Future<void> deleteProduct(String productId) async {
-    await _ob.request('POST', ApiEndpoints.productsDelete, body: {
-      Fields.productId: productId,
-    });
+    await _ob.request(
+      'POST',
+      ApiEndpoints.productsDelete,
+      body: {Fields.productId: productId},
+    );
   }
 
   @override
   Future<void> disableAdminMfa(String code) async {
     _requireCurrentUserId();
-    await _ob.request('POST', ApiEndpoints.adminMfaDisable, body: {
-      ApiKeys.code: code,
-    });
+    await _ob.request(
+      'POST',
+      ApiEndpoints.adminMfaDisable,
+      body: {ApiKeys.code: code},
+    );
   }
 
   @override
   Future<Map<String, dynamic>> enableAdminMfa() async {
     _requireCurrentUserId();
-    final result = await _ob.request('POST', ApiEndpoints.adminMfaEnroll, body: {});
+    final result = await _ob.request(
+      'POST',
+      ApiEndpoints.adminMfaEnroll,
+      body: {},
+    );
     return Map<String, dynamic>.from(result as Map);
   }
 
@@ -63,8 +73,11 @@ class OrignaBaseAdminRepository implements AdminRepository {
   @override
   Future<Map<String, dynamic>> getPaymentProviders() async {
     _requireCurrentUserId();
-    final result =
-        await _ob.request('POST', ApiEndpoints.paymentsProvidersList, body: {});
+    final result = await _ob.request(
+      'POST',
+      ApiEndpoints.paymentsProvidersList,
+      body: {},
+    );
     final data = Map<String, dynamic>.from(result as Map);
     final providers = data[ApiKeys.providers];
     if (providers is List) {
@@ -78,100 +91,127 @@ class OrignaBaseAdminRepository implements AdminRepository {
         normalized[id] = <String, dynamic>{
           ApiKeys.enabled: provider[ApiKeys.enabled] == true,
           ApiKeys.configured: configured,
-          ApiKeys.missingKeys: configured ? const <String>[] : <String>['webhook'],
+          ApiKeys.missingKeys: configured
+              ? const <String>[]
+              : <String>['webhook'],
           'mode': provider['mode'],
         };
       }
-      return {ApiKeys.success: data[ApiKeys.success] == true, ApiKeys.providers: normalized};
+      return {
+        ApiKeys.success: data[ApiKeys.success] == true,
+        ApiKeys.providers: normalized,
+      };
     }
     return data;
   }
 
   @override
   Future<void> flagReview(String reviewId, {required bool flagged}) async {
-    await _ob.request('POST', ApiEndpoints.adminFlagReview, body: {
-      Fields.reviewId: reviewId,
-      Fields.flagged: flagged,
-    });
+    await _ob.request(
+      'POST',
+      ApiEndpoints.adminFlagReview,
+      body: {Fields.reviewId: reviewId, Fields.flagged: flagged},
+    );
   }
 
   @override
-  Future<void> refundOrder(String orderId,
-      {String reason = 'Admin refund'}) async {
-    await _ob.request('POST', ApiEndpoints.ordersRefundsItem, body: {
-      Fields.orderId: orderId,
-      Fields.reason: reason,
-    });
+  Future<void> refundOrder(
+    String orderId, {
+    String reason = 'Admin refund',
+  }) async {
+    await _ob.request(
+      'POST',
+      ApiEndpoints.ordersRefundsItem,
+      body: {Fields.orderId: orderId, Fields.reason: reason},
+    );
   }
 
   @override
   Future<void> rejectProduct(String productId, String reason) async {
-    await _ob.request('POST', ApiEndpoints.adminRejectProduct, body: {
-      Fields.productId: productId,
-      Fields.reason: reason,
-    });
+    await _ob.request(
+      'POST',
+      ApiEndpoints.adminRejectProduct,
+      body: {Fields.productId: productId, Fields.reason: reason},
+    );
   }
 
   @override
   Future<void> setUserSuspended(String userId, bool suspended) async {
     if (suspended) {
-      await _ob.request('POST', ApiEndpoints.adminSuspendSeller, body: {
-        Fields.sellerId: userId,
-        ApiKeys.reason: 'Suspended by admin',
-      });
+      await _ob.request(
+        'POST',
+        ApiEndpoints.adminSuspendSeller,
+        body: {Fields.sellerId: userId, ApiKeys.reason: 'Suspended by admin'},
+      );
     } else {
-      await _ob.request('POST', ApiEndpoints.adminUnsuspendSeller, body: {
-        Fields.sellerId: userId,
-        ApiKeys.reason: 'Unsuspended by admin',
-      });
+      await _ob.request(
+        'POST',
+        ApiEndpoints.adminUnsuspendSeller,
+        body: {Fields.sellerId: userId, ApiKeys.reason: 'Unsuspended by admin'},
+      );
     }
   }
 
   @override
-  Future<void> updatePaymentProvider(String provider, bool enabled,
-      {String? reason}) async {
+  Future<void> updatePaymentProvider(
+    String provider,
+    bool enabled, {
+    String? reason,
+  }) async {
     _requireCurrentUserId();
-    await _ob.request('POST', ApiEndpoints.paymentsProvidersUpdate, body: {
-      'providerName': provider,
-      ApiKeys.enabled: enabled,
-    });
+    await _ob.request(
+      'POST',
+      ApiEndpoints.paymentsProvidersUpdate,
+      body: {'providerName': provider, ApiKeys.enabled: enabled},
+    );
   }
 
   @override
   Future<void> updateProductStock(String productId, int quantity) async {
-    await _ob.request('POST', ApiEndpoints.adminUpdateStock, body: {
-      Fields.productId: productId,
-      Fields.stockQuantity: quantity,
-    });
+    await _ob.request(
+      'POST',
+      ApiEndpoints.adminUpdateStock,
+      body: {Fields.productId: productId, Fields.stockQuantity: quantity},
+    );
   }
 
   @override
-  Future<void> updateUserRoles(String userId,
-      {List<String> add = const [],
-      List<String> remove = const [],
-      String? reason}) async {
-    await _ob.request('POST', ApiEndpoints.adminUpdateRoles, body: {
-      Fields.targetUserId: userId,
-      ApiKeys.add: add,
-      ApiKeys.remove: remove,
-      ApiKeys.reason: reason ?? 'No reason provided',
-    });
+  Future<void> updateUserRoles(
+    String userId, {
+    List<String> add = const [],
+    List<String> remove = const [],
+    String? reason,
+  }) async {
+    await _ob.request(
+      'POST',
+      ApiEndpoints.adminUpdateRoles,
+      body: {
+        Fields.targetUserId: userId,
+        ApiKeys.add: add,
+        ApiKeys.remove: remove,
+        ApiKeys.reason: reason ?? 'No reason provided',
+      },
+    );
   }
 
   @override
   Future<Map<String, dynamic>> verifyAdminMfa(String code) async {
     _requireCurrentUserId();
-    final result = await _ob.request('POST', ApiEndpoints.adminMfaVerify, body: {
-      ApiKeys.code: code,
-    });
+    final result = await _ob.request(
+      'POST',
+      ApiEndpoints.adminMfaVerify,
+      body: {ApiKeys.code: code},
+    );
     return Map<String, dynamic>.from(result as Map);
   }
 
   @override
   Future<void> deleteReview(String reviewId) async {
-    await _ob.request('POST', ApiEndpoints.adminDeleteReview, body: {
-      Fields.reviewId: reviewId,
-    });
+    await _ob.request(
+      'POST',
+      ApiEndpoints.adminDeleteReview,
+      body: {Fields.reviewId: reviewId},
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -200,8 +240,10 @@ class OrignaBaseAdminRepository implements AdminRepository {
   }
 
   @override
-  Stream<List<ProductModel>> watchProducts(
-      {int limit = 100, String? sellerId}) {
+  Stream<List<ProductModel>> watchProducts({
+    int limit = 100,
+    String? sellerId,
+  }) {
     return _poll<ProductModel>(
       fetch: () async {
         Query query = _ob.collection(Collections.products);
@@ -213,8 +255,7 @@ class OrignaBaseAdminRepository implements AdminRepository {
             .limit(limit)
             .get();
         return snapshot.docs.map((doc) {
-          return ProductModel.fromMap(
-              {Fields.productId: doc.id, ...doc.data});
+          return ProductModel.fromMap({Fields.productId: doc.id, ...doc.data});
         }).toList();
       },
     );
@@ -226,22 +267,26 @@ class OrignaBaseAdminRepository implements AdminRepository {
       fetch: () async {
         final snapshot = await _ob
             .collection(Collections.products)
-            .where(Fields.lifecycleStatus,
-                isEqualTo: ProductLifecycleStatusValues.underReview)
+            .where(
+              Fields.lifecycleStatus,
+              isEqualTo: ProductLifecycleStatusValues.underReview,
+            )
             .orderBy(Fields.createdAt, descending: true)
             .limit(limit)
             .get();
         return snapshot.docs.map((doc) {
-          return ProductModel.fromMap(
-              {Fields.productId: doc.id, ...doc.data});
+          return ProductModel.fromMap({Fields.productId: doc.id, ...doc.data});
         }).toList();
       },
     );
   }
 
   @override
-  Stream<List<Map<String, dynamic>>> watchReviews(
-      {bool flaggedOnly = false, bool hasPhotosOnly = false, int limit = 100}) {
+  Stream<List<Map<String, dynamic>>> watchReviews({
+    bool flaggedOnly = false,
+    bool hasPhotosOnly = false,
+    int limit = 100,
+  }) {
     return _poll<Map<String, dynamic>>(
       fetch: () async {
         Query query = _ob.collection(Collections.productRatings);
@@ -273,8 +318,7 @@ class OrignaBaseAdminRepository implements AdminRepository {
             .limit(limit)
             .get();
         return snapshot.docs
-            .map((doc) =>
-                UserModel.fromMap({Fields.uid: doc.id, ...doc.data}))
+            .map((doc) => UserModel.fromMap({Fields.uid: doc.id, ...doc.data}))
             .toList();
       },
     );
@@ -290,8 +334,7 @@ class OrignaBaseAdminRepository implements AdminRepository {
             .limit(limit)
             .get();
         return snapshot.docs
-            .map((doc) =>
-                UserModel.fromMap({Fields.uid: doc.id, ...doc.data}))
+            .map((doc) => UserModel.fromMap({Fields.uid: doc.id, ...doc.data}))
             .toList();
       },
     );

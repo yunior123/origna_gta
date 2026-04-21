@@ -1960,7 +1960,8 @@
   "language": {
     "select_language": "Select Language",
     "english": "English",
-    "french": "Fran\u00e7ais"
+    "french": "Français",
+    "spanish": "Español"
   },
   "mascot": {
     "tip_browse": "Browse local GTA sellers!",
@@ -2625,6 +2626,11 @@
     "bundle_hint": "Link up to 5 complementary products",
     "add_bundle": "Add to Bundle",
     "remove_bundle": "Remove from Bundle"
+  },
+  "cookie": {
+    "consent": "We use cookies to improve your experience.",
+    "decline": "Decline",
+    "accept": "Accept"
   },
   "cookie_consent": "We use cookies to improve your experience.",
   "accept": "Accept"

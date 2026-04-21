@@ -322,7 +322,6 @@ class _ProductCardState extends ConsumerState<ProductCard>
   }
 }
 
-
 // ═══ Widget Previews ═══
 
 Widget _productCardContent() {

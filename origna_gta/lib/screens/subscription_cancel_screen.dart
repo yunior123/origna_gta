@@ -171,23 +171,32 @@ class SubscriptionCancelScreen extends StatelessWidget {
   }
 }
 
-
 // === Widget Previews ===
-
 
 // ═══ Widget Previews ═══
 
-@Preview(name: 'Cancel Subscription — Mobile', group: 'Screens — Premium Flow', size: Size(390, 844))
+@Preview(
+  name: 'Cancel Subscription — Mobile',
+  group: 'Screens — Premium Flow',
+  size: Size(390, 844),
+)
 Widget previewSubscriptionCancelScreenMobile() =>
     previewMobile(child: const SubscriptionCancelScreen());
 
-@Preview(name: 'Cancel Subscription — Desktop', group: 'Screens — Premium Flow', size: Size(1280, 800))
+@Preview(
+  name: 'Cancel Subscription — Desktop',
+  group: 'Screens — Premium Flow',
+  size: Size(1280, 800),
+)
 Widget previewSubscriptionCancelScreenDesktop() =>
     previewDesktop(child: const SubscriptionCancelScreen());
 
-@Preview(name: 'Cancel Subscription Light — Desktop', group: 'Screens — Premium Flow', size: Size(1280, 800))
+@Preview(
+  name: 'Cancel Subscription Light — Desktop',
+  group: 'Screens — Premium Flow',
+  size: Size(1280, 800),
+)
 Widget previewSubscriptionCancelLightDesktop() => previewDesktop(
   theme: previewLightTheme,
   child: const SubscriptionCancelScreen(),
 );
-

@@ -883,6 +883,7 @@ async fn create_checkout_session(
         ("success_url".to_string(), success_url),
         ("cancel_url".to_string(), cancel_url),
         ("payment_method_types[0]".to_string(), "card".to_string()),
+        ("payment_method_types[1]".to_string(), "klarna".to_string()),
         (
             "payment_intent_data[capture_method]".to_string(),
             "manual".to_string(),

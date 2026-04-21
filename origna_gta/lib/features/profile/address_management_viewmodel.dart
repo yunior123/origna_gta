@@ -5,9 +5,12 @@ import 'package:origna_gta/core/providers.dart';
 ///
 /// Auto-disposed — fresh state per address book session.
 final addressManagementViewModelProvider =
-    StateNotifierProvider.autoDispose<AddressManagementViewModel, AsyncValue<void>>((ref) {
-  return AddressManagementViewModel(ref);
-});
+    StateNotifierProvider.autoDispose<
+      AddressManagementViewModel,
+      AsyncValue<void>
+    >((ref) {
+      return AddressManagementViewModel(ref);
+    });
 
 /// Manages the address book: delete and set default address.
 ///

@@ -149,7 +149,7 @@ extension _AddProductDeliveryChildrenSection on _AddProductScreenState {
                 controller: _sameDayPriceController,
                 label: 'product.price_dollar'.tr(),
                 keyboardType: TextInputType.number,
-              semanticsLabel: 'input-same-day-price',
+                semanticsLabel: 'input-same-day-price',
               ),
             ],
           ),
@@ -182,7 +182,7 @@ extension _AddProductDeliveryChildrenSection on _AddProductScreenState {
           label: 'product.weight'.tr(),
           icon: Icons.scale_rounded,
           keyboardType: TextInputType.number,
-        semanticsLabel: 'input-weight',
+          semanticsLabel: 'input-weight',
         ),
         const SizedBox(height: 12),
         Row(

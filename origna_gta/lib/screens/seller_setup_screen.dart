@@ -785,64 +785,60 @@ Widget _sellerSetupRefreshPreview() => previewScopeLoggedIn(
   group: 'Screens — Seller Management',
   size: Size(390, 844),
 )
-Widget previewSellerSetupCompleteScreenMobile() =>
-    previewMobile(
-      child: _sellerSetupCompletePreview(
-        const SellerAccountStatus(
-          isSeller: true,
-          chargesEnabled: true,
-          detailsSubmitted: true,
-        ),
-      ),
-    );
+Widget previewSellerSetupCompleteScreenMobile() => previewMobile(
+  child: _sellerSetupCompletePreview(
+    const SellerAccountStatus(
+      isSeller: true,
+      chargesEnabled: true,
+      detailsSubmitted: true,
+    ),
+  ),
+);
 
 @Preview(
   name: 'Seller Onboarding Success — Tablet',
   group: 'Screens — Seller Management',
   size: Size(768, 1024),
 )
-Widget previewSellerSetupCompleteScreenTablet() =>
-    previewTablet(
-      child: _sellerSetupCompletePreview(
-        const SellerAccountStatus(
-          isSeller: true,
-          chargesEnabled: true,
-          detailsSubmitted: true,
-        ),
-      ),
-    );
+Widget previewSellerSetupCompleteScreenTablet() => previewTablet(
+  child: _sellerSetupCompletePreview(
+    const SellerAccountStatus(
+      isSeller: true,
+      chargesEnabled: true,
+      detailsSubmitted: true,
+    ),
+  ),
+);
 
 @Preview(
   name: 'Seller Onboarding Success — Desktop',
   group: 'Screens — Seller Management',
   size: Size(1280, 800),
 )
-Widget previewSellerSetupCompleteScreenDesktop() =>
-    previewDesktop(
-      child: _sellerSetupCompletePreview(
-        const SellerAccountStatus(
-          isSeller: true,
-          chargesEnabled: true,
-          detailsSubmitted: true,
-        ),
-      ),
-    );
+Widget previewSellerSetupCompleteScreenDesktop() => previewDesktop(
+  child: _sellerSetupCompletePreview(
+    const SellerAccountStatus(
+      isSeller: true,
+      chargesEnabled: true,
+      detailsSubmitted: true,
+    ),
+  ),
+);
 
 @Preview(
   name: 'Seller Onboarding Success — Web',
   group: 'Screens — Seller Management',
   size: Size(1440, 900),
 )
-Widget previewSellerSetupCompleteScreenWeb() =>
-    previewWeb(
-      child: _sellerSetupCompletePreview(
-        const SellerAccountStatus(
-          isSeller: true,
-          chargesEnabled: true,
-          detailsSubmitted: true,
-        ),
-      ),
-    );
+Widget previewSellerSetupCompleteScreenWeb() => previewWeb(
+  child: _sellerSetupCompletePreview(
+    const SellerAccountStatus(
+      isSeller: true,
+      chargesEnabled: true,
+      detailsSubmitted: true,
+    ),
+  ),
+);
 
 @Preview(
   name: 'Seller Onboarding Refresh — Mobile',
@@ -903,10 +899,7 @@ Widget previewSellerSetupRequirementsDesktop() => previewDesktop(
       chargesEnabled: false,
       detailsSubmitted: false,
       hasPendingRequirements: true,
-      pendingRequirements: [
-        'verification.document',
-        'external_account',
-      ],
+      pendingRequirements: ['verification.document', 'external_account'],
     ),
   ),
 );

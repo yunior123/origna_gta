@@ -1,0 +1,28 @@
+services:
+  origna-ventures-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: origna-ventures-api
+    env_file: .env
+    volumes:
+      - ./data/storage:/app/storage
+    ports:
+      - "127.0.0.1:8083:8080"
+    networks:
+      - orignabase_default
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+networks:
+  orignabase_default:
+    external: true

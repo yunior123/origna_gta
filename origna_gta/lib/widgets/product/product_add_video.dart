@@ -411,7 +411,9 @@ Widget _productAddVideoContent({bool showExistingPlaceholder = false}) =>
                         ),
                       ),
                       const SizedBox(height: 12),
-                      ProductAddVideo(existingVideoUrl: 'https://example.com/preview.mp4'),
+                      ProductAddVideo(
+                        existingVideoUrl: 'https://example.com/preview.mp4',
+                      ),
                     ],
                   )
                 : ProductAddVideo(),
@@ -420,15 +422,28 @@ Widget _productAddVideoContent({bool showExistingPlaceholder = false}) =>
       ),
     );
 
-@Preview(name: 'Product Add Video — Empty Mobile', group: 'Product Widgets', size: Size(390, 844))
+@Preview(
+  name: 'Product Add Video — Empty Mobile',
+  group: 'Product Widgets',
+  size: Size(390, 844),
+)
 Widget previewProductAddVideoMobile() =>
     previewMobile(child: _productAddVideoContent());
 
-@Preview(name: 'Product Add Video — Existing Desktop', group: 'Product Widgets', size: Size(1280, 800))
-Widget previewProductAddVideoDesktop() =>
-    previewDesktop(child: _productAddVideoContent(showExistingPlaceholder: true));
+@Preview(
+  name: 'Product Add Video — Existing Desktop',
+  group: 'Product Widgets',
+  size: Size(1280, 800),
+)
+Widget previewProductAddVideoDesktop() => previewDesktop(
+  child: _productAddVideoContent(showExistingPlaceholder: true),
+);
 
-@Preview(name: 'Product Add Video Light — Existing Desktop', group: 'Product Widgets', size: Size(1280, 800))
+@Preview(
+  name: 'Product Add Video Light — Existing Desktop',
+  group: 'Product Widgets',
+  size: Size(1280, 800),
+)
 Widget previewProductAddVideoLightDesktop() => previewDesktop(
   theme: previewLightTheme,
   child: _productAddVideoContent(showExistingPlaceholder: true),

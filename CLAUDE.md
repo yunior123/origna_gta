@@ -26,6 +26,17 @@ flutter pub run build_runner build --delete-conflicting-outputs  # codegen
 bun test specs/phase1-api/
 bun x tsc --noEmit
 
+# OrignaVentures FastAPI Backend (from origna_ventures/backend/)
+cd origna_ventures/backend
+source venv/bin/activate
+pip install -r requirements.txt
+uvicorn app:app --reload --port 8000
+
+# OrignaVentures Flutter Frontend (from origna_ventures/)
+cd origna_ventures
+flutter analyze --no-fatal-infos
+flutter build web
+
 # OrignaBase Rust (from orignabase/)
 cargo clippy -D warnings && cargo test
 cargo test -p ob-auth # single crate

@@ -8,7 +8,8 @@ import 'orignabase_seller_registration_view_model.dart';
 
 /// Backward-compatible aliases — screens use these names.
 final paymentProviderStatusProvider = obPaymentProviderStatusProvider;
-final sellerRegistrationViewModelProvider = obSellerRegistrationViewModelProvider;
+final sellerRegistrationViewModelProvider =
+    obSellerRegistrationViewModelProvider;
 
 /// Backward-compatible typedef.
 typedef SellerRegistrationViewModel = OrignaBaseSellerRegistrationViewModel;

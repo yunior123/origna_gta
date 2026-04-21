@@ -41,7 +41,8 @@ class ModernButton extends StatefulWidget {
   State<ModernButton> createState() => _ModernButtonState();
 }
 
-class _ModernButtonState extends State<ModernButton> with SingleTickerProviderStateMixin {
+class _ModernButtonState extends State<ModernButton>
+    with SingleTickerProviderStateMixin {
   late AnimationController _scaleController;
   late Animation<double> _scaleAnimation;
 
@@ -79,13 +80,23 @@ class _ModernButtonState extends State<ModernButton> with SingleTickerProviderSt
             width: widget.fullWidth ? double.infinity : widget.width,
             height: widget.height,
             decoration: BoxDecoration(
-              gradient: widget.isPrimary && !widget.isOutlined && !isDisabled ? DesignTokens.primaryGradient : null,
+              gradient: widget.isPrimary && !widget.isOutlined && !isDisabled
+                  ? DesignTokens.primaryGradient
+                  : null,
               color:
                   widget.backgroundColor ??
-                  (widget.isOutlined ? DesignTokens.transparent : (!widget.isPrimary ? DesignTokens.surface : (isDisabled ? DesignTokens.textDisabled : null))),
+                  (widget.isOutlined
+                      ? DesignTokens.transparent
+                      : (!widget.isPrimary
+                            ? DesignTokens.surface
+                            : (isDisabled ? DesignTokens.textDisabled : null))),
               borderRadius: BorderRadius.circular(DesignTokens.radius16),
-              border: widget.isOutlined ? Border.all(color: DesignTokens.primary, width: 1.5) : null,
-              boxShadow: !widget.isOutlined && widget.isPrimary && !isDisabled ? DesignTokens.shadowMd : null,
+              border: widget.isOutlined
+                  ? Border.all(color: DesignTokens.primary, width: 1.5)
+                  : null,
+              boxShadow: !widget.isOutlined && widget.isPrimary && !isDisabled
+                  ? DesignTokens.shadowMd
+                  : null,
             ),
             child: Material(
               color: DesignTokens.transparent,
@@ -94,9 +105,16 @@ class _ModernButtonState extends State<ModernButton> with SingleTickerProviderSt
                 borderRadius: BorderRadius.circular(DesignTokens.radius16),
                 child: Center(
                   child: widget.isLoading
-                      ? ModernLoadingIndicator(size: 20, color: widget.isPrimary && !widget.isOutlined ? DesignTokens.white : DesignTokens.primary)
+                      ? ModernLoadingIndicator(
+                          size: 20,
+                          color: widget.isPrimary && !widget.isOutlined
+                              ? DesignTokens.white
+                              : DesignTokens.primary,
+                        )
                       : Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: DesignTokens.spacing12),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: DesignTokens.spacing12,
+                          ),
                           child: FittedBox(
                             fit: BoxFit.scaleDown,
                             child: Row(
@@ -104,10 +122,21 @@ class _ModernButtonState extends State<ModernButton> with SingleTickerProviderSt
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 if (widget.imageIcon != null) ...[
-                                  Image.asset(widget.imageIcon!, width: 20, height: 20),
+                                  Image.asset(
+                                    widget.imageIcon!,
+                                    width: 20,
+                                    height: 20,
+                                  ),
                                   const SizedBox(width: DesignTokens.spacing8),
                                 ] else if (widget.icon != null) ...[
-                                  Icon(widget.icon, color: widget.isPrimary && !widget.isOutlined ? DesignTokens.white : DesignTokens.primary, size: 18),
+                                  Icon(
+                                    widget.icon,
+                                    color:
+                                        widget.isPrimary && !widget.isOutlined
+                                        ? DesignTokens.white
+                                        : DesignTokens.primary,
+                                    size: 18,
+                                  ),
                                   const SizedBox(width: DesignTokens.spacing8),
                                 ],
                                 Text(
@@ -118,7 +147,10 @@ class _ModernButtonState extends State<ModernButton> with SingleTickerProviderSt
                                     fontSize: 15,
                                     fontWeight: FontWeight.w600,
                                     letterSpacing: 0.5,
-                                    color: widget.isPrimary && !widget.isOutlined ? DesignTokens.white : DesignTokens.primary,
+                                    color:
+                                        widget.isPrimary && !widget.isOutlined
+                                        ? DesignTokens.white
+                                        : DesignTokens.primary,
                                   ),
                                 ),
                               ],
@@ -143,14 +175,17 @@ class _ModernButtonState extends State<ModernButton> with SingleTickerProviderSt
   @override
   void initState() {
     super.initState();
-    _scaleController = AnimationController(duration: DesignTokens.durationFast, vsync: this);
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(CurvedAnimation(parent: _scaleController, curve: Curves.easeInOut));
+    _scaleController = AnimationController(
+      duration: DesignTokens.durationFast,
+      vsync: this,
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
+      CurvedAnimation(parent: _scaleController, curve: Curves.easeInOut),
+    );
   }
 }
 
-
 // === Widget Previews ===
-
 
 // ═══ Widget Previews ═══
 
@@ -158,31 +193,25 @@ class _ModernButtonState extends State<ModernButton> with SingleTickerProviderSt
 
 @Preview(name: 'Primary — dark', group: 'Buttons')
 Widget previewPrimaryButtonDark() => previewWrapper(
-  child: ModernButton(
-    label: 'Checkout',
-    onPressed: () {},
-  ),
+  child: ModernButton(label: 'Checkout', onPressed: () {}),
 );
 
-@Preview(name: 'Primary — light', group: 'Buttons', brightness: Brightness.light)
+@Preview(
+  name: 'Primary — light',
+  group: 'Buttons',
+  brightness: Brightness.light,
+)
 Widget previewPrimaryButtonLight() => previewWrapper(
   theme: previewLightTheme,
   background: DesignTokens.surface,
-  child: ModernButton(
-    label: 'Checkout',
-    onPressed: () {},
-  ),
+  child: ModernButton(label: 'Checkout', onPressed: () {}),
 );
 
 // ─── Loading State ────────────────────────────────────────────────────────────
 
 @Preview(name: 'Loading', group: 'Buttons')
 Widget previewButtonLoading() => previewWrapper(
-  child: ModernButton(
-    label: 'Processing…',
-    isLoading: true,
-    onPressed: () {},
-  ),
+  child: ModernButton(label: 'Processing…', isLoading: true, onPressed: () {}),
 );
 
 // ─── Disabled State ───────────────────────────────────────────────────────────
@@ -234,7 +263,11 @@ Widget previewButtonSecondary() => previewWrapper(
 Widget previewButtonAllStates() => previewGrid(
   children: [
     ModernButton(label: 'Primary', onPressed: () {}),
-    ModernButton(label: 'With Icon', icon: Icons.shopping_bag_outlined, onPressed: () {}),
+    ModernButton(
+      label: 'With Icon',
+      icon: Icons.shopping_bag_outlined,
+      onPressed: () {},
+    ),
     ModernButton(label: 'Outlined', isOutlined: true, onPressed: () {}),
     ModernButton(label: 'Secondary', isPrimary: false, onPressed: () {}),
     ModernButton(label: 'Loading…', isLoading: true, onPressed: () {}),
@@ -242,17 +275,24 @@ Widget previewButtonAllStates() => previewGrid(
   ],
 );
 
-
-
 // ═══ Widget Previews ═══
 
 @Preview(name: 'Modern Button — States', group: 'ModernButton')
 Widget previewButtonStates() => previewGrid(
   children: [
-    ModernButton(label: 'With Icon', icon: Icons.shopping_basket_rounded, onPressed: () {}),
+    ModernButton(
+      label: 'With Icon',
+      icon: Icons.shopping_basket_rounded,
+      onPressed: () {},
+    ),
     ModernButton(label: 'Loading State', isLoading: true, onPressed: () {}),
     ModernButton(label: 'Custom Height', height: 60, onPressed: () {}),
-    ModernButton(label: 'Fixed Width', fullWidth: false, width: 200, onPressed: () {}),
+    ModernButton(
+      label: 'Fixed Width',
+      fullWidth: false,
+      width: 200,
+      onPressed: () {},
+    ),
   ],
 );
 
@@ -270,10 +310,19 @@ Widget previewButtonTypes() => previewGrid(
 Widget previewButtonStatesLight() => previewGrid(
   theme: previewLightTheme,
   children: [
-    ModernButton(label: 'With Icon', icon: Icons.shopping_basket_rounded, onPressed: () {}),
+    ModernButton(
+      label: 'With Icon',
+      icon: Icons.shopping_basket_rounded,
+      onPressed: () {},
+    ),
     ModernButton(label: 'Loading State', isLoading: true, onPressed: () {}),
     ModernButton(label: 'Custom Height', height: 60, onPressed: () {}),
-    ModernButton(label: 'Fixed Width', fullWidth: false, width: 200, onPressed: () {}),
+    ModernButton(
+      label: 'Fixed Width',
+      fullWidth: false,
+      width: 200,
+      onPressed: () {},
+    ),
   ],
 );
 
@@ -287,4 +336,3 @@ Widget previewButtonTypesLight() => previewGrid(
     const ModernButton(label: 'Disabled Button', onPressed: null),
   ],
 );
-

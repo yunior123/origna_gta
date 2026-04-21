@@ -4,29 +4,42 @@ import 'package:origna_gta/features/qa/qa_repository.dart';
 import 'package:origna_gta/features/subscription/subscription_provider.dart';
 import 'package:origna_gta/models/qa_model.dart';
 
-final qaControllerProvider = StateNotifierProvider.autoDispose<QAController, AsyncValue<void>>((ref) {
-  return QAController(ref.watch(qaRepositoryProvider), ref);
-});
+final qaControllerProvider =
+    StateNotifierProvider.autoDispose<QAController, AsyncValue<void>>((ref) {
+      return QAController(ref.watch(qaRepositoryProvider), ref);
+    });
 
-final qaListProvider = StreamProvider.autoDispose.family<List<QAModel>, String>((ref, productId) {
-  final repo = ref.watch(qaRepositoryProvider);
-  return repo.watchQA(productId);
-});
+final qaListProvider = StreamProvider.autoDispose.family<List<QAModel>, String>(
+  (ref, productId) {
+    final repo = ref.watch(qaRepositoryProvider);
+    return repo.watchQA(productId);
+  },
+);
 
 /// Streams the count of unanswered Q&A questions for a product. Used for the seller badge.
-final unansweredQaCountProvider = StreamProvider.autoDispose.family<int, String>((ref, productId) {
-  final repo = ref.watch(qaRepositoryProvider);
-  return repo.watchQA(productId).map((list) => list.where((q) => q.answer == null || q.answer!.isEmpty).length);
-});
+final unansweredQaCountProvider = StreamProvider.autoDispose
+    .family<int, String>((ref, productId) {
+      final repo = ref.watch(qaRepositoryProvider);
+      return repo
+          .watchQA(productId)
+          .map(
+            (list) =>
+                list.where((q) => q.answer == null || q.answer!.isEmpty).length,
+          );
+    });
 
 /// Controller for product Q&A: submit questions, post answers, load threads.
 class QAController extends StateNotifier<AsyncValue<void>> {
   final QARepository _repository;
   final Ref _ref;
 
-  QAController(this._repository, this._ref) : super(const AsyncValue.data(null));
+  QAController(this._repository, this._ref)
+    : super(const AsyncValue.data(null));
 
-  Future<void> answerQuestion({required String qaId, required String answer}) async {
+  Future<void> answerQuestion({
+    required String qaId,
+    required String answer,
+  }) async {
     state = const AsyncValue.loading();
     try {
       final userId = _ref.read(userIdProvider);

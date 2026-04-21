@@ -593,7 +593,8 @@ final _previewNotificationsMixed = [
   AppNotification(
     id: 'notif-payment',
     title: 'Payment method needs attention',
-    body: 'Please review your saved card before your next subscription renewal.',
+    body:
+        'Please review your saved card before your next subscription renewal.',
     type: NotificationTypes.paymentIssue,
     isRead: true,
     createdAt: DateTime.now().subtract(const Duration(days: 10)),

@@ -12,18 +12,19 @@ class ModernSnackbar {
     Duration duration = const Duration(seconds: 3),
     IconData? icon,
   }) {
-    final IconData resolvedIcon = icon ??
+    final IconData resolvedIcon =
+        icon ??
         (isSuccess
             ? Icons.check_circle_outline_rounded
             : isError
-                ? Icons.error_outline_rounded
-                : Icons.info_outline_rounded);
+            ? Icons.error_outline_rounded
+            : Icons.info_outline_rounded);
 
     final Color iconColor = isSuccess
         ? DesignTokens.success
         : isError
-            ? DesignTokens.error
-            : DesignTokens.accent;
+        ? DesignTokens.error
+        : DesignTokens.accent;
 
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()

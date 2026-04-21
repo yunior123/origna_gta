@@ -159,10 +159,13 @@ class CircuitBreaker {
     if (_state == CircuitState.halfOpen) {
       // Any failure in half-open goes back to open
       _transitionTo(CircuitState.open);
-        AppLogger.d('HALF_OPEN → OPEN', tag: 'CircuitBreaker[$name]');
+      AppLogger.d('HALF_OPEN → OPEN', tag: 'CircuitBreaker[$name]');
     } else if (_failureCount >= config.failureThreshold) {
       _transitionTo(CircuitState.open);
-        AppLogger.d('CLOSED → OPEN ($_failureCount failures)', tag: 'CircuitBreaker[$name]');
+      AppLogger.d(
+        'CLOSED → OPEN ($_failureCount failures)',
+        tag: 'CircuitBreaker[$name]',
+      );
     }
   }
 
@@ -218,12 +221,12 @@ class CircuitBreakerMetrics {
   });
 
   Map<String, dynamic> toJson() => {
-        'state': state.name,
-        'failureCount': failureCount,
-        'successCount': successCount,
-        'lastFailureTime': lastFailureTime?.toIso8601String(),
-        'secondsUntilRetry': secondsUntilRetry,
-      };
+    'state': state.name,
+    'failureCount': failureCount,
+    'successCount': successCount,
+    'lastFailureTime': lastFailureTime?.toIso8601String(),
+    'secondsUntilRetry': secondsUntilRetry,
+  };
 }
 
 /// Exception thrown when circuit breaker is open
@@ -247,10 +250,7 @@ class CircuitBreakerRegistry {
   static final Map<String, CircuitBreaker> _breakers = {};
 
   /// Get or create a circuit breaker
-  static CircuitBreaker get(
-    String name, {
-    CircuitBreakerConfig? config,
-  }) {
+  static CircuitBreaker get(String name, {CircuitBreakerConfig? config}) {
     return _breakers.putIfAbsent(
       name,
       () => CircuitBreaker(

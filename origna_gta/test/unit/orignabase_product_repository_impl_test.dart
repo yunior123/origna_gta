@@ -620,7 +620,7 @@ void main() {
       expect(fakeOb.lastRequestBody?[Fields.orderId], 'order_1');
       expect(fakeOb.lastRequestBody?[Fields.productId], 'prod_1');
       expect(fakeOb.lastRequestBody?[Fields.rating], 5);
-      expect(fakeOb.lastRequestBody?['images'], isEmpty);
+      expect(fakeOb.lastRequestBody?[Fields.reviewImageUrls], isEmpty);
       expect(fakeOb.lastRequestBody?[Fields.reviewText], 'Great!');
     });
 

@@ -127,6 +127,15 @@ class _FakeWriteBatch_13 extends _i1.SmartFake implements _i15.WriteBatch {
 /// See the documentation for Mockito's code generation for more information.
 class MockOrderRepository extends _i1.Mock implements _i16.OrderRepository {
   @override
+  _i17.Future<void> cancelOrder(String? orderId) =>
+      (super.noSuchMethod(
+            Invocation.method(#cancelOrder, [orderId]),
+            returnValue: _i17.Future<void>.value(),
+            returnValueForMissingStub: _i17.Future<void>.value(),
+          )
+          as _i17.Future<void>);
+
+  @override
   _i17.Future<void> approveShippingCost(String? orderId, bool? approved) =>
       (super.noSuchMethod(
             Invocation.method(#approveShippingCost, [orderId, approved]),

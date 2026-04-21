@@ -64,7 +64,14 @@ class _ModernTextFieldState extends State<ModernTextField> {
         if (widget.label != null) ...[
           Text(
             widget.label!,
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary, letterSpacing: 0.3),
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: isDark
+                  ? DesignTokens.textOnDark
+                  : DesignTokens.textPrimary,
+              letterSpacing: 0.3,
+            ),
           ),
           const SizedBox(height: DesignTokens.spacing8),
         ],
@@ -87,12 +94,22 @@ class _ModernTextFieldState extends State<ModernTextField> {
             decoration: InputDecoration(
               hintText: widget.hint,
               hintStyle: TextStyle(
-                color: isDark ? DesignTokens.textOnDarkSecondary : DesignTokens.textDisabled,
+                color: isDark
+                    ? DesignTokens.textOnDarkSecondary
+                    : DesignTokens.textDisabled,
                 fontSize: 14,
               ),
               filled: true,
-              fillColor: isDark ? DesignTokens.darkCard : DesignTokens.surfaceVariant.withValues(alpha: 0.7),
-              prefixIcon: widget.prefixIcon != null ? Icon(widget.prefixIcon, color: DesignTokens.primary, size: 20) : null,
+              fillColor: isDark
+                  ? DesignTokens.darkCard
+                  : DesignTokens.surfaceVariant.withValues(alpha: 0.7),
+              prefixIcon: widget.prefixIcon != null
+                  ? Icon(
+                      widget.prefixIcon,
+                      color: DesignTokens.primary,
+                      size: 20,
+                    )
+                  : null,
               suffixIcon: widget.suffixIcon != null
                   ? Semantics(
                       button: true,
@@ -102,7 +119,13 @@ class _ModernTextFieldState extends State<ModernTextField> {
                         height: 48,
                         child: GestureDetector(
                           onTap: widget.onSuffixTap,
-                          child: Center(child: Icon(widget.suffixIcon, color: DesignTokens.primary, size: 20)),
+                          child: Center(
+                            child: Icon(
+                              widget.suffixIcon,
+                              color: DesignTokens.primary,
+                              size: 20,
+                            ),
+                          ),
                         ),
                       ),
                     )
@@ -113,7 +136,10 @@ class _ModernTextFieldState extends State<ModernTextField> {
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                borderSide: BorderSide(color: DesignTokens.outline.withValues(alpha: 0.2), width: 1),
+                borderSide: BorderSide(
+                  color: DesignTokens.outline.withValues(alpha: 0.2),
+                  width: 1,
+                ),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(DesignTokens.radius12),
@@ -127,10 +153,18 @@ class _ModernTextFieldState extends State<ModernTextField> {
                 borderRadius: BorderRadius.circular(DesignTokens.radius12),
                 borderSide: BorderSide(color: DesignTokens.error, width: 2),
               ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: DesignTokens.spacing16, vertical: DesignTokens.spacing12),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: DesignTokens.spacing16,
+                vertical: DesignTokens.spacing12,
+              ),
               counterText: widget.showCounter ? null : '',
             ),
-            style: TextStyle(fontSize: 15, color: isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary),
+            style: TextStyle(
+              fontSize: 15,
+              color: isDark
+                  ? DesignTokens.textOnDark
+                  : DesignTokens.textPrimary,
+            ),
           ),
         ),
       ],
@@ -161,27 +195,53 @@ class _ModernTextFieldState extends State<ModernTextField> {
   }
 }
 
-
 // === Widget Previews ===
-
 
 // ═══ Widget Previews ═══
 
 @Preview(name: 'Modern TextField — Variants', group: 'ModernTextField')
 Widget previewTextFieldVariants() => previewGrid(
   children: [
-    const ModernTextField(label: 'Email Address', hint: 'enter@email.com', prefixIcon: Icons.email_outlined),
-    const ModernTextField(label: 'Password', hint: '••••••••', isPassword: true, prefixIcon: Icons.lock_outline_rounded),
-    const ModernTextField(label: 'Search', hint: 'Search for products...', prefixIcon: Icons.search_rounded),
+    const ModernTextField(
+      label: 'Email Address',
+      hint: 'enter@email.com',
+      prefixIcon: Icons.email_outlined,
+    ),
+    const ModernTextField(
+      label: 'Password',
+      hint: '••••••••',
+      isPassword: true,
+      prefixIcon: Icons.lock_outline_rounded,
+    ),
+    const ModernTextField(
+      label: 'Search',
+      hint: 'Search for products...',
+      prefixIcon: Icons.search_rounded,
+    ),
   ],
 );
 
 @Preview(name: 'Modern TextField — States', group: 'ModernTextField')
 Widget previewTextFieldStates() => previewGrid(
   children: [
-    const ModernTextField(label: 'Bio', hint: 'Tell us about yourself...', isMultiline: true, minLines: 3, maxLines: 5),
-    const ModernTextField(label: 'Username', hint: 'yunior123', maxLength: 20, showCounter: true),
-    ModernTextField(label: 'Validation Error', hint: 'Wrong input', validator: (v) => 'This field is required'),
+    const ModernTextField(
+      label: 'Bio',
+      hint: 'Tell us about yourself...',
+      isMultiline: true,
+      minLines: 3,
+      maxLines: 5,
+    ),
+    const ModernTextField(
+      label: 'Username',
+      hint: 'yunior123',
+      maxLength: 20,
+      showCounter: true,
+    ),
+    ModernTextField(
+      label: 'Validation Error',
+      hint: 'Wrong input',
+      validator: (v) => 'This field is required',
+    ),
   ],
 );
 
@@ -189,9 +249,22 @@ Widget previewTextFieldStates() => previewGrid(
 Widget previewTextFieldVariantsLight() => previewGrid(
   theme: previewLightTheme,
   children: [
-    const ModernTextField(label: 'Email Address', hint: 'enter@email.com', prefixIcon: Icons.email_outlined),
-    const ModernTextField(label: 'Password', hint: '••••••••', isPassword: true, prefixIcon: Icons.lock_outline_rounded),
-    const ModernTextField(label: 'Search', hint: 'Search for products...', prefixIcon: Icons.search_rounded),
+    const ModernTextField(
+      label: 'Email Address',
+      hint: 'enter@email.com',
+      prefixIcon: Icons.email_outlined,
+    ),
+    const ModernTextField(
+      label: 'Password',
+      hint: '••••••••',
+      isPassword: true,
+      prefixIcon: Icons.lock_outline_rounded,
+    ),
+    const ModernTextField(
+      label: 'Search',
+      hint: 'Search for products...',
+      prefixIcon: Icons.search_rounded,
+    ),
   ],
 );
 
@@ -199,13 +272,26 @@ Widget previewTextFieldVariantsLight() => previewGrid(
 Widget previewTextFieldStatesLight() => previewGrid(
   theme: previewLightTheme,
   children: [
-    const ModernTextField(label: 'Bio', hint: 'Tell us about yourself...', isMultiline: true, minLines: 3, maxLines: 5),
-    const ModernTextField(label: 'Username', hint: 'yunior123', maxLength: 20, showCounter: true),
-    ModernTextField(label: 'Validation Error', hint: 'Wrong input', validator: (v) => 'This field is required'),
+    const ModernTextField(
+      label: 'Bio',
+      hint: 'Tell us about yourself...',
+      isMultiline: true,
+      minLines: 3,
+      maxLines: 5,
+    ),
+    const ModernTextField(
+      label: 'Username',
+      hint: 'yunior123',
+      maxLength: 20,
+      showCounter: true,
+    ),
+    ModernTextField(
+      label: 'Validation Error',
+      hint: 'Wrong input',
+      validator: (v) => 'This field is required',
+    ),
   ],
 );
-
-
 
 // ═══ Widget Previews ═══
 
@@ -301,4 +387,3 @@ Widget previewTextFieldLight() => previewWrapper(
     prefixIcon: Icons.email_outlined,
   ),
 );
-

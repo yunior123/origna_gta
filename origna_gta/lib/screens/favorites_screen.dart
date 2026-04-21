@@ -416,7 +416,9 @@ final _previewDenseFavoriteProducts = [
 Widget _favorites({List<Product>? products}) => previewScopeLoggedIn(
   uid: _previewFavoritesUser.uid,
   extraOverrides: [
-    userProfileProvider.overrideWith((ref) => Stream.value(_previewFavoritesUser)),
+    userProfileProvider.overrideWith(
+      (ref) => Stream.value(_previewFavoritesUser),
+    ),
     favoritedProductsProvider.overrideWith(
       (ref) => Future.value(products ?? _previewFavoriteProducts),
     ),
@@ -427,7 +429,9 @@ Widget _favorites({List<Product>? products}) => previewScopeLoggedIn(
 Widget _favoritesEmpty() => previewScopeLoggedIn(
   uid: _previewFavoritesUser.uid,
   extraOverrides: [
-    userProfileProvider.overrideWith((ref) => Stream.value(_previewFavoritesUser)),
+    userProfileProvider.overrideWith(
+      (ref) => Stream.value(_previewFavoritesUser),
+    ),
     favoritedProductsProvider.overrideWith((ref) => Future.value([])),
   ],
   child: const FavoritesScreen(),

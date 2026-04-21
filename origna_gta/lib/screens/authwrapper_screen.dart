@@ -242,9 +242,7 @@ class _TermsUpdateGateState extends ConsumerState<_TermsUpdateGate> {
   }
 }
 
-
 // === Widget Previews ===
-
 
 // ═══ Widget Previews ═══
 
@@ -280,14 +278,31 @@ Widget _authWrapperPreview({
   child: const AuthWrapper(),
 );
 
-@Preview(name: 'Auth Wrapper — Mobile', group: 'Auth Screens', size: Size(390, 844))
-Widget previewAuthWrapperScreenMobile() => previewMobile(child: _authWrapperPreview());
+@Preview(
+  name: 'Auth Wrapper — Mobile',
+  group: 'Auth Screens',
+  size: Size(390, 844),
+)
+Widget previewAuthWrapperScreenMobile() =>
+    previewMobile(child: _authWrapperPreview());
 
-@Preview(name: 'Auth Wrapper — Desktop', group: 'Auth Screens', size: Size(1280, 800))
-Widget previewAuthWrapperScreenDesktop() =>
-    previewDesktop(child: _authWrapperPreview(authUser: _previewAuthUser, profile: _previewAuthProfile));
+@Preview(
+  name: 'Auth Wrapper — Desktop',
+  group: 'Auth Screens',
+  size: Size(1280, 800),
+)
+Widget previewAuthWrapperScreenDesktop() => previewDesktop(
+  child: _authWrapperPreview(
+    authUser: _previewAuthUser,
+    profile: _previewAuthProfile,
+  ),
+);
 
-@Preview(name: 'Auth Wrapper Light — Desktop', group: 'Auth Screens', size: Size(1280, 800))
+@Preview(
+  name: 'Auth Wrapper Light — Desktop',
+  group: 'Auth Screens',
+  size: Size(1280, 800),
+)
 Widget previewAuthWrapperLightDesktop() => previewDesktop(
   theme: previewLightTheme,
   child: _authWrapperPreview(
@@ -299,12 +314,17 @@ Widget previewAuthWrapperLightDesktop() => previewDesktop(
   ),
 );
 
-@Preview(name: 'Auth Wrapper Terms Gate — Desktop', group: 'Auth Screens', size: Size(1280, 800))
+@Preview(
+  name: 'Auth Wrapper Terms Gate — Desktop',
+  group: 'Auth Screens',
+  size: Size(1280, 800),
+)
 Widget previewAuthWrapperTermsGateDesktop() => previewDesktop(
   child: _authWrapperPreview(
     authUser: _previewAuthUser,
     profile: _previewAuthProfile,
     needsTermsUpdate: true,
-    termsContent: 'Updated marketplace terms.\n\n1. Orders are final after capture.\n\n2. Returns require seller approval.\n\n3. Premium subscription fees renew monthly unless cancelled.\n\n4. Payout delays may apply for new sellers.\n\n5. Use of the marketplace implies agreement with Canadian commerce law.\n\n6. Scroll to the bottom before accepting these updated terms.',
+    termsContent:
+        'Updated marketplace terms.\n\n1. Orders are final after capture.\n\n2. Returns require seller approval.\n\n3. Premium subscription fees renew monthly unless cancelled.\n\n4. Payout delays may apply for new sellers.\n\n5. Use of the marketplace implies agreement with Canadian commerce law.\n\n6. Scroll to the bottom before accepting these updated terms.',
   ),
 );

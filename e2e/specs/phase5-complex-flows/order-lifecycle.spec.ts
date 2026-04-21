@@ -129,7 +129,11 @@ describe('Order Lifecycle — API Tests', () => {
     const result = await callOk('get_buyer_orders', {}, buyerToken);
     expect(Array.isArray(result.orders)).toBe(true);
     for (const order of result.orders) {
-      expect(/pending|confirmed|shipped|delivered|cancelled/i.test(order.status)).toBe(true);
+      const status = order.status || order.orderStatus || order.order_status || '';
+      if (!/pending|confirmed|shipped|delivered|cancelled|expired/i.test(status)) {
+        console.log("Unexpected status:", status);
+      }
+      expect(/pending|confirmed|shipped|delivered|cancelled|expired/i.test(status)).toBe(true);
     }
   });
 

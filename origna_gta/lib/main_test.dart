@@ -18,14 +18,20 @@ import 'package:origna_gta/utils/env_config.dart';
 bool _appInitialized = false;
 
 /// Helper: run a future with a timeout, log success or failure.
-Future<void> _timedStep(String name, Future<void> Function() action,
-    {Duration timeout = const Duration(seconds: 10)}) async {
+Future<void> _timedStep(
+  String name,
+  Future<void> Function() action, {
+  Duration timeout = const Duration(seconds: 10),
+}) async {
   AppLogger.d('$name ...', tag: 'test');
   try {
     await action().timeout(timeout);
     AppLogger.d('$name done', tag: 'test');
   } on TimeoutException {
-    AppLogger.w('$name TIMED OUT after ${timeout.inSeconds}s — skipping', tag: 'test');
+    AppLogger.w(
+      '$name TIMED OUT after ${timeout.inSeconds}s — skipping',
+      tag: 'test',
+    );
   } catch (e) {
     AppLogger.e('$name ERROR: $e', tag: 'test', error: e);
   }
@@ -93,10 +99,7 @@ Future<void> mainTest() async {
       if (message.contains(
         'Invalid state transition from AppLifecycleState.hidden to AppLifecycleState.resumed',
       )) {
-        AppLogger.w(
-          'Ignored web lifecycle assertion in test run',
-          tag: 'test',
-        );
+        AppLogger.w('Ignored web lifecycle assertion in test run', tag: 'test');
         return true;
       }
       return false;

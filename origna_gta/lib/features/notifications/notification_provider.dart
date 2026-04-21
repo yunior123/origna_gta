@@ -14,5 +14,5 @@ class NotificationPermissionNotifier extends StateNotifier<bool> {
 // cause stale "denied" state after navigation.
 final notificationPermissionProvider =
     StateNotifierProvider<NotificationPermissionNotifier, bool>(
-  (ref) => NotificationPermissionNotifier(),
-);
+      (ref) => NotificationPermissionNotifier(),
+    );

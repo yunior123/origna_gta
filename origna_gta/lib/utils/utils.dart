@@ -23,10 +23,11 @@ export 'package:origna_gta/models/models.dart';
 // ERROR HANDLING UTILITIES
 // ============================================================================
 
-/// Canadian provincial/territorial tax rates for client-side estimation.
+/// Provincial/territorial tax rates for client-side estimation.
 ///
-/// Keys are 2-letter province codes. Values map tax type to rate.
+/// Canadian provinces use 2-letter codes; Cuban provinces use 3-letter codes.
 /// HST provinces have a single combined rate; others split GST + PST/QST.
+/// Cuban provinces have no Canadian sales tax (pickup-only).
 /// NOTE: These are frontend estimates only — the backend uses Stripe Tax API.
 const Map<String, Map<String, double>> provinceTaxRates = {
   'AB': {'GST': 0.05},
@@ -42,7 +43,23 @@ const Map<String, Map<String, double>> provinceTaxRates = {
   'QC': {'GST': 0.05, 'QST': 0.09975},
   'SK': {'GST': 0.05, 'PST': 0.06},
   'YT': {'GST': 0.05},
+  // Cuban provinces — pickup-only, no Canadian sales tax applies
   'HAB': {},
+  'MAT': {},
+  'VC': {},
+  'SC': {},
+  'HOL': {},
+  'CMG': {},
+  'CAV': {},
+  'SSP': {},
+  'CFG': {},
+  'PR': {},
+  'GRA': {},
+  'LT': {},
+  'GU': {},
+  'IJ': {},
+  'ART': {},
+  'MAY': {},
 };
 
 /// Maximum total keywords to generate for search prefixes.

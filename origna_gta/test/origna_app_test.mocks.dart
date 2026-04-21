@@ -56,6 +56,24 @@ class MockPushMessagingClient extends _i1.Mock
           as _i4.Stream<String>);
 
   @override
+  _i4.Stream<_i2.AppRemoteMessage> get onMessage =>
+      (super.noSuchMethod(
+            Invocation.getter(#onMessage),
+            returnValue: _i4.Stream<_i2.AppRemoteMessage>.empty(),
+            returnValueForMissingStub: _i4.Stream<_i2.AppRemoteMessage>.empty(),
+          )
+          as _i4.Stream<_i2.AppRemoteMessage>);
+
+  @override
+  _i4.Stream<_i2.AppRemoteMessage> get onMessageOpenedApp =>
+      (super.noSuchMethod(
+            Invocation.getter(#onMessageOpenedApp),
+            returnValue: _i4.Stream<_i2.AppRemoteMessage>.empty(),
+            returnValueForMissingStub: _i4.Stream<_i2.AppRemoteMessage>.empty(),
+          )
+          as _i4.Stream<_i2.AppRemoteMessage>);
+
+  @override
   _i4.Future<String?> getToken() =>
       (super.noSuchMethod(
             Invocation.method(#getToken, []),
@@ -125,6 +143,12 @@ class MockPushMessagingClient extends _i1.Mock
                 ),
           )
           as _i4.Future<_i2.AppNotificationSettings>);
+
+  @override
+  void dispose() => super.noSuchMethod(
+    Invocation.method(#dispose, []),
+    returnValueForMissingStub: null,
+  );
 }
 
 /// A class which mocks [ProductRepository].

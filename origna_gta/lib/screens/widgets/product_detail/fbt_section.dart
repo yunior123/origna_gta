@@ -223,8 +223,7 @@ class _FBTProductItem extends StatelessWidget {
                     width: 80,
                     height: 80,
                     fit: BoxFit.cover,
-                    errorWidget: (context, url, error) =>
-                        _imagePlaceholder(),
+                    errorWidget: (context, url, error) => _imagePlaceholder(),
                   )
                 : _imagePlaceholder(),
           ),

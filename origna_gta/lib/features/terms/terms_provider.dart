@@ -3,7 +3,8 @@ import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/services/orignabase_conf_service.dart';
 
 // ignore: prefer_interpolation_to_compose_strings — interpolation needed for constant reference in multiline string
-final String _defaultTermsContent = '''
+final String _defaultTermsContent =
+    '''
 Welcome to OrignaGTA. By accessing or using our platform, you agree to be bound by these Terms and Conditions.
 
 1. ACCEPTANCE OF TERMS
@@ -101,7 +102,9 @@ By using OrignaGTA, you acknowledge that you have read and understood these Term
 
 final termsProvider = FutureProvider<String>((ref) async {
   try {
-    final content = await OrignaBaseConfigService().getString('terms_and_conditions');
+    final content = await OrignaBaseConfigService().getString(
+      'terms_and_conditions',
+    );
     if (content.isNotEmpty) {
       return content;
     }
