@@ -831,9 +831,9 @@ def send_mailjet_email(
 ) -> Dict[str, Any]:
     if not settings.mailjet_api_key or not settings.mailjet_secret_key:
         raise HTTPException(status_code=500, detail="Mailjet credentials missing")
-    
+
     is_sandbox = settings.environment.lower() not in ["production", "prod"]
-    
+
     response = requests.post(
         settings.mailjet_api_url,
         auth=(settings.mailjet_api_key, settings.mailjet_secret_key),
@@ -850,7 +850,7 @@ def send_mailjet_email(
                     "TextPart": text_body,
                     "HTMLPart": html_body,
                 }
-            ]
+            ],
         },
         timeout=30,
     )
@@ -936,7 +936,11 @@ def maybe_unlock_repo_after_payment(
     # User explicitly requested manual processing instead of automatic invite via GitHub API
     conn.execute(
         "UPDATE contracts SET repo_unlock_status = ?, repo_unlock_error = ? WHERE id = ?",
-        ("manual_processing_required", "Manual processing required for security.", contract_id),
+        (
+            "manual_processing_required",
+            "Manual processing required for security.",
+            contract_id,
+        ),
     )
 
 

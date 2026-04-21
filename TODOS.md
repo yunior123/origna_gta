@@ -958,7 +958,7 @@ Start only after Phases 1 through 3 are stable.
 - [x] in the case of cuba the shipping goes to havana but we need to collect client address, info, etc — address form collects full address, validates Havana city, maritime shipping notice
 - [ ] make splash theme and orignaventures theme kinda match. right হোয়া  now its blue vs red + green. fix. make the ui ux feel expensive, a lot of investors will pay tomorrow so test all payment features
 - [ ] initially show lang depending on ip or browser lang for orignaventures.ca and orignagta . reuest cookies permissions too
-- [ ] add contact form that sends email to support@orignaventures.ca via hetzer backend for orignaventures
+- [x] add contact form that sends email to support@orignaventures.ca via hetzer backend for orignaventures
 - [ ] move orignaventures hosting from firebase to hetzner. remember to update cloudflare and remove firebase. u can find cloudflare tips on memory, learned.md, etc, diggggg
 - [ ] update pdf generation
 - [ ] audit firebase gone, only fcm

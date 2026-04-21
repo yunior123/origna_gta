@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:origna_gta/screens/profile_screen.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/routes.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/features/subscription/subscription_provider.dart';
 import 'package:origna_gta/core/theme_provider.dart';
@@ -893,11 +894,18 @@ void main() {
         userProfile: buyerUserModel,
       );
 
-      expect(
-        find.byKey(const Key('profile_become_seller_button')),
-        findsOneWidget,
-      );
-      expect(find.text('Become a Seller'), findsOneWidget);
+      if (FeatureFlags.kSellerOnboardingEnabled) {
+        expect(
+          find.byKey(const Key('profile_become_seller_button')),
+          findsOneWidget,
+        );
+        expect(find.text('Become a Seller'), findsOneWidget);
+      } else {
+        expect(
+          find.byKey(const Key('profile_become_seller_button')),
+          findsNothing,
+        );
+      }
 
       tester.view.resetPhysicalSize();
       tester.view.resetDevicePixelRatio();
@@ -931,6 +939,12 @@ void main() {
     ) async {
       tester.view.physicalSize = const Size(800, 2400);
       tester.view.devicePixelRatio = 1.0;
+
+      if (!FeatureFlags.kSellerOnboardingEnabled) {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+        return;
+      }
 
       String? navigatedRoute;
       await pumpProfileScreen(
