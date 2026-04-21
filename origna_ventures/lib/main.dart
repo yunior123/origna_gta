@@ -448,9 +448,9 @@ class _CorporateHero extends StatelessWidget {
           const SizedBox(height: 16),
           Text(
             loc.tr(
-              'We build ecommerce platforms, deliver custom software solutions, and provide remote professional services — from code to launch and beyond.',
-              'Nous construisons des plateformes ecommerce, livrons des solutions logicielles sur mesure et fournissons des services professionnels à distance — du code au lancement, et au-delà.',
-              'Construimos plataformas de comercio electrónico, entregamos soluciones de software personalizadas y proporcionamos servicios profesionales remotos — del código al lanzamiento y más allá.',
+              'Origna Ventures is a company dedicated to ecommerce, wholesale, retail, software services, and outsourcing. We build platforms, deliver custom solutions, and provide remote professional services.',
+              "Origna Ventures est une entreprise dédiée au commerce électronique, à la vente en gros, au détail, aux services logiciels et à l'externalisation. Nous construisons des plateformes et fournissons des services professionnels à distance.",
+              'Origna Ventures es una empresa dedicada al comercio electrónico, venta al por mayor, venta al por menor, servicios de software y subcontratación. Construimos plataformas y proporcionamos servicios profesionales remotos.',
             ),
             style: TextStyle(
               color: Colors.white70,
@@ -753,8 +753,14 @@ class _HomePricingCard extends StatelessWidget {
     return GlassContainer(
       color: isPopular ? color.withValues(alpha: 0.05) : Colors.white,
       borderRadius: BorderRadius.circular(24),
-      child: Stack(
-        children: [
+      child: InkWell(
+        borderRadius: BorderRadius.circular(24),
+        onTap: () => Navigator.of(context).pushNamed(
+          '/pay',
+          arguments: {'serviceCode': serviceCode},
+        ),
+        child: Stack(
+          children: [
           Padding(
             padding: const EdgeInsets.all(24),
             child: Column(
@@ -913,6 +919,7 @@ class _HomePricingCard extends StatelessWidget {
               ),
             ),
         ],
+        ),
       ),
     );
   }

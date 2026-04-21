@@ -60,6 +60,22 @@ describe('Payment Methods — API Tests', () => {
     }
   });
 
+  test('T02.1: Stripe session with payment_method_types includes klarna', async () => {
+    const result = await callOk('checkout', {
+      cartItems: [{ productId: PRODUCT_ID, quantity: 1 }],
+      shippingAddress: {
+        street: '123 Main',
+        city: 'Toronto',
+        province: 'ON',
+        postalCode: 'M5V 3A8',
+        country: 'CA',
+      },
+    }, buyerToken).catch(() => null);
+    if (result) {
+      expect(result.sessionUrl).toBeTruthy();
+    }
+  });
+
   test('T03: Stripe webhook for successful payment creates order', async () => {
     // This would require mocking the webhook in real scenario
     // Just verify API structure

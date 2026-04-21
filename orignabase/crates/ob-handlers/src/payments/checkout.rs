@@ -74,6 +74,7 @@ pub struct CheckoutResponse {
 
 const VALID_PROVINCES: &[&str] = &[
     "AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC", "SK", "YT",
+    "HAB", "MAT", "VC", "SC", "HOL", "CMG", "CAV", "SSP", "CFG", "PR", "GRA", "LT", "GU", "IJ", "ART", "MAY",
 ];
 const MAX_CART_ITEMS: usize = 30;
 const MAX_ITEM_QUANTITY: u32 = 100;
@@ -99,6 +100,8 @@ fn province_tax_rate_bps(province: &str) -> u64 {
         "SK" => 1100, // 5% GST + 6% PST = 11%
         // GST only
         "AB" | "NT" | "NU" | "YT" => 500, // 5% GST
+        // Cuba (no tax)
+        p if crate::shipping_calc::cuba::is_cuba_province(p) => 0,
         _ => 500,                         // Default to GST only
     }
 }
@@ -171,6 +174,17 @@ fn calculate_shipping_cost_cents(
                 )));
             }
         }
+    }
+
+    // Cuba maritime shipping logic (ignores free shipping threshold)
+    if crate::shipping_calc::cuba::is_cuba_province(buyer_province) {
+        let mut total_weight_kg = 0.0;
+        for item in items {
+            let weight = crate::shipping_calc::cuba::parse_weight_kg(item);
+            let qty = item.get(fields::QUANTITY).and_then(|v| v.as_u64()).unwrap_or(1) as f64;
+            total_weight_kg += weight * qty;
+        }
+        return Ok(crate::shipping_calc::cuba::calculate_cuba_maritime_total_cents(total_weight_kg));
     }
 
     // Free shipping threshold
@@ -533,9 +547,9 @@ async fn create_checkout_session(
     validate_string("postalCode", &req.shipping_address.postal_code, 20)?;
 
     let country = normalize_country(&req.shipping_address.country);
-    if country != "CA" && country != "CANADA" {
+    if country != "CA" && country != "CANADA" && country != "CU" && country != "CUBA" {
         return Err(ob_core::Error::Validation(
-            "Shipping is only available within Canada".into(),
+            "Shipping is only available within Canada and Cuba".into(),
         ));
     }
 
@@ -548,10 +562,12 @@ async fn create_checkout_session(
     }
 
     let postal = normalize_postal_code(&req.shipping_address.postal_code);
-    if !is_valid_canadian_postal(&postal) {
-        return Err(ob_core::Error::Validation(
-            "Invalid Canadian postal code format".into(),
-        ));
+    if country == "CA" || country == "CANADA" {
+        if !is_valid_canadian_postal(&postal) {
+            return Err(ob_core::Error::Validation(
+                "Invalid Canadian postal code format".into(),
+            ));
+        }
     }
 
     // --- Server-side product validation (parameterized) ---
@@ -679,6 +695,10 @@ async fn create_checkout_session(
             .unwrap_or("")
             .to_string();
 
+        let weight_kg = product
+            .get("weightKg")
+            .and_then(|v| v.as_f64());
+
         validated_items.push(serde_json::json!({
             fields::PRODUCT_ID: cart_item.product_id,
             fields::QUANTITY: cart_item.quantity,
@@ -694,6 +714,7 @@ async fn create_checkout_session(
             fields::IS_LOCAL_DELIVERY_ONLY: is_local_delivery_only,
             fields::SHIP_FROM_PROVINCE: ship_from_province,
             fields::SHIP_FROM_COUNTRY: ship_from_country,
+            "weightKg": weight_kg,
         }));
     }
 
@@ -734,33 +755,34 @@ async fn create_checkout_session(
                 )));
             }
 
-            // Verify seller has completed Stripe Connect onboarding
-            let onboarding_completed = seller
-                .get(fields::ONBOARDING_COMPLETED)
-                .and_then(|v| v.as_bool())
-                .unwrap_or(false);
-            if !onboarding_completed {
-                return Err(ob_core::Error::Validation(format!(
-                    "Seller {} has not completed Stripe Connect onboarding. Cannot accept orders from this seller.",
-                    seller_id
-                )));
-            }
+            // // Verify seller has completed Stripe Connect onboarding
+            // // We are bypassing this check since seller onboarding is currently disabled.
+            // let onboarding_completed = seller
+            //     .get(fields::ONBOARDING_COMPLETED)
+            //     .and_then(|v| v.as_bool())
+            //     .unwrap_or(false);
+            // if !onboarding_completed {
+            //     return Err(ob_core::Error::Validation(format!(
+            //         "Seller {} has not completed Stripe Connect onboarding. Cannot accept orders from this seller.",
+            //         seller_id
+            //     )));
+            // }
 
             // Verify both charges and payouts are enabled
-            let charges_enabled = seller
-                .get(fields::CHARGES_ENABLED)
-                .and_then(|v| v.as_bool())
-                .unwrap_or(false);
-            let payouts_enabled = seller
-                .get(fields::PAYOUTS_ENABLED)
-                .and_then(|v| v.as_bool())
-                .unwrap_or(false);
-            if !charges_enabled || !payouts_enabled {
-                return Err(ob_core::Error::Validation(format!(
-                    "Seller {} cannot currently accept payments.",
-                    seller_id
-                )));
-            }
+            // let charges_enabled = seller
+            //     .get(fields::CHARGES_ENABLED)
+            //     .and_then(|v| v.as_bool())
+            //     .unwrap_or(false);
+            // let payouts_enabled = seller
+            //     .get(fields::PAYOUTS_ENABLED)
+            //     .and_then(|v| v.as_bool())
+            //     .unwrap_or(false);
+            // if !charges_enabled || !payouts_enabled {
+            //     return Err(ob_core::Error::Validation(format!(
+            //         "Seller {} cannot currently accept payments.",
+            //         seller_id
+            //     )));
+            // }
         }
 
         // Cache seller_profiles for Connect account lookup later

@@ -1,58 +1,61 @@
 #!/bin/bash
-
-# Deploy script for Origna Ventures to Firebase Hosting
-# This script builds the Flutter web app and deploys it to Firebase
+# Deploy OrignaVentures Flutter web to Hetzner VPS
+# Usage: ./deploy.sh [--skip-build]
+# VPS: root@204.168.137.16 | Served by Caddy at /var/www/orignaventures/production/current
 
 set -e
 
-echo "🚀 Starting deployment process..."
+VPS="root@204.168.137.16"
+VPS_DIR="/var/www/orignaventures/production/current"
+SSH_KEY="$HOME/.ssh/id_ed25519"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+BLUE='\033[0;34m'
+NC='\033[0m'
 
-# Check if Flutter is installed
-if ! command -v flutter &> /dev/null; then
-    echo -e "${RED}❌ Flutter is not installed. Please install Flutter first.${NC}"
-    exit 1
+log()  { echo -e "${BLUE}▶ $1${NC}"; }
+ok()   { echo -e "${GREEN}✓ $1${NC}"; }
+warn() { echo -e "${YELLOW}⚠ $1${NC}"; }
+fail() { echo -e "${RED}✗ $1${NC}"; exit 1; }
+
+# ── Pre-flight ────────────────────────────────────────────────────────────────
+command -v flutter &>/dev/null || fail "Flutter not found"
+command -v rsync   &>/dev/null || fail "rsync not found"
+[ -f "$SSH_KEY" ]              || fail "SSH key not found at $SSH_KEY"
+
+cd "$SCRIPT_DIR"
+
+# ── Build ─────────────────────────────────────────────────────────────────────
+if [[ "$1" != "--skip-build" ]]; then
+  log "Building Flutter web (release)..."
+  flutter pub get
+  flutter build web --release \
+    --dart-define=ENVIRONMENT=production
+  ok "Build complete → build/web/"
+else
+  warn "Skipping build (--skip-build)"
 fi
 
-echo -e "${GREEN}✓ Flutter found${NC}"
+[ -d "build/web" ] || fail "build/web not found — run without --skip-build"
 
-# Check if Firebase CLI is installed
-if ! command -v firebase &> /dev/null; then
-    echo -e "${YELLOW}⚠ Firebase CLI not found. Installing...${NC}"
-    npm install -g firebase-tools
-fi
+# ── Deploy ────────────────────────────────────────────────────────────────────
+log "Deploying to Hetzner VPS ($VPS)..."
+ssh -i "$SSH_KEY" "$VPS" "mkdir -p $VPS_DIR"
+rsync -az --delete --progress \
+  -e "ssh -i $SSH_KEY" \
+  build/web/ \
+  "$VPS:$VPS_DIR/"
+ok "Files synced to $VPS_DIR"
 
-echo -e "${GREEN}✓ Firebase CLI ready${NC}"
+# ── Verify ────────────────────────────────────────────────────────────────────
+log "Verifying deployment..."
+DEPLOYED_FILES=$(ssh -i "$SSH_KEY" "$VPS" "ls $VPS_DIR | wc -l")
+ok "Deployed $DEPLOYED_FILES files"
 
-# Clean previous builds
-echo "🧹 Cleaning previous builds..."
-flutter clean
-
-# Get dependencies
-echo "📦 Getting dependencies..."
-flutter pub get
-
-# Build for web
-echo "🔨 Building Flutter web app..."
-flutter build web --release
-
-# Check if build was successful
-if [ ! -d "build/web" ]; then
-    echo -e "${RED}❌ Build failed. build/web directory not found.${NC}"
-    exit 1
-fi
-
-echo -e "${GREEN}✓ Build successful${NC}"
-
-# Deploy to Firebase
-echo "🌐 Deploying to Firebase Hosting..."
-
-firebase deploy --only hosting
-
-echo -e "${GREEN}🎉 Deployment complete!${NC}"
-echo -e "${GREEN}Your site is live at: https://orignaventures.ca${NC}"
+echo ""
+echo -e "${GREEN}🎉 OrignaVentures deployed!${NC}"
+echo -e "   Live at: ${BLUE}https://orignaventures.ca${NC}"
+echo -e "   Check Cloudflare DNS: orignaventures.ca A → 204.168.137.16 (proxied=false)"

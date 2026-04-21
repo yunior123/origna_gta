@@ -90,7 +90,7 @@ SERVICE_CATALOG = {
     "origna_launch": {
         "name_en": "OrignaLaunch",
         "name_fr": "OrignaLaunch",
-        "price_cad": 2000,
+        "price_cad": 3000,
         "summary_en": "Lifetime software access + launch + first-year hosting + first-year store enrollment + 20 human testers (20h QA).",
         "summary_fr": "Accès logiciel à vie + lancement + hébergement première année + inscription boutique première année + 20 testeurs humains (20h QA).",
     },
