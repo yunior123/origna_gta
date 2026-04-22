@@ -523,6 +523,82 @@ Docker Compose at `/opt/orignabase/` on VPS. Binary built with `cargo build --re
 
 ---
 
+## OrignaVentures
+
+### Directory Structure
+
+```
+origna_ventures/
+├── lib/
+│   ├── main.dart           # 3688-line single-file Flutter web app (all UI, routing, state)
+│   ├── theme_config.dart   # ThemeConfig — unified blue-violet palette (matches OrignaGTA DesignTokens)
+│   ├── tiers_config.dart   # TiersConfig — 3 service tier definitions (code, launch, team)
+│   └── localization.dart   # loc.tr(en, fr, es) inline trilingual helper
+├── backend/
+│   ├── app.py              # 1320-line FastAPI backend (Stripe, PDF, webhooks, email)
+│   ├── requirements.txt    # Python dependencies
+│   ├── venv/               # Python virtual environment
+│   ├── contracts.db        # SQLite database for contract/order storage
+│   └── generated/          # PDF output directory
+├── web/                    # Flutter web entrypoint
+├── deploy.sh               # rsync deploy to Hetzner VPS
+└── SECURITY.md             # Security policy (admin API key, auth requirements)
+```
+
+### Backend Architecture (FastAPI)
+
+- **Framework**: Python FastAPI at `origna_ventures/backend/app.py` (1320 lines)
+- **Database**: SQLite (`contracts.db`) — lightweight, file-based
+- **Payments**: Stripe Checkout Sessions (one-time + subscription), webhook handling
+- **Email**: Mailjet (order confirmations, contract notifications)
+- **PDF Generation**: `reportlab` — generates service contracts on the fly
+- **API Base**: `https://api.orignagta.ca/ventures/api`
+- **Checkout modes**: `service_code` (direct tier purchase) and `contract_id` (legacy)
+- **Security**: Admin API key required for `/api/contracts` and `/api/contracts/{id}/pdf` endpoints; email test endpoint requires admin auth
+- **Seller**: OrignaVentures IS the seller (support@orignaventures.ca) — no seller onboarding
+
+### Flutter Architecture
+
+- **Pattern**: Single-page `StatefulWidget` + `setState` — **no Riverpod, no MVVM**
+- **All UI** in `lib/main.dart` (3688 lines, single file) — routes managed via in-app navigation
+- **Theme**: `ThemeConfig` class (`lib/theme_config.dart`) — unified blue-violet palette with OrignaGTA
+- **Tiers**: `TiersConfig` class (`lib/tiers_config.dart`) — defines 3 service tier cards
+- **Languages**: EN/FR/ES via inline `loc.tr(enString, frString, esString)` pattern
+- **No contract signing** — 3 tappable service cards → Stripe checkout directly
+
+### Key Files
+
+| Purpose | Path |
+|---------|------|
+| Main app (all UI + routing) | `origna_ventures/lib/main.dart` |
+| Theme config (blue-violet palette) | `origna_ventures/lib/theme_config.dart` |
+| Service tier definitions | `origna_ventures/lib/tiers_config.dart` |
+| FastAPI backend (Stripe, PDF, webhooks) | `origna_ventures/backend/app.py` |
+| Deploy script (rsync to VPS) | `origna_ventures/deploy.sh` |
+| Security policy | `origna_ventures/SECURITY.md` |
+
+### Service Tiers
+
+| Tier | Price | Type | Description |
+|------|-------|------|-------------|
+| OrignaCode | $500 CAD | One-time | Code review & optimization service |
+| OrignaLaunch | $3,000 CAD | One-time | Full app launch package |
+| OrignaTeam | $1,000 CAD/month | Subscription | Ongoing development team support |
+
+### Deploy
+
+- **Method**: `./deploy.sh` — rsync to Hetzner VPS at `204.168.137.16`
+- **Target**: `/var/www/orignaventures/production/current` (Caddy serves as static site)
+- **Backend**: FastAPI runs on port 8001, Caddy reverse-proxies `/ventures/api/`
+- **No Firebase** — all hosting and backend on Hetzner VPS
+
+### Repository Access
+
+- **Manual processing only** — no auto GitHub invite for collaborators
+- Access requests handled manually by Yunior
+
+---
+
 ## Known Issues
 
 - **537 ob-handler test failures** — SurrealDB→PostgreSQL query migration in progress. The `ob-handlers` crate tests use SurrealDB-specific query syntax (e.g., `RETURN AFTER`, `type::thing()`, `CREATE CONTENT`, `??` coalesce) that must be translated to PostgreSQL equivalents. See `HANDLER_MIGRATION_STRATEGY.md` for the full migration plan and translation patterns.

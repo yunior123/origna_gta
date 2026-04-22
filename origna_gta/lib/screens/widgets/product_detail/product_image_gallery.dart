@@ -1,12 +1,12 @@
 import 'package:origna_gta/utils/app_logger.dart';
 import 'package:origna_gta/utils/constants.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/features/products/product_detail_viewmodel.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/media_url_resolver.dart';
 import 'package:origna_gta/widgets/modern_skeleton_loader.dart';
+import 'package:origna_gta/widgets/web_cached_image.dart';
 
 /// Image gallery with PageView for product images and optional video thumbnail.
 /// Used in both mobile (SliverAppBar) and desktop (side-by-side) layouts.
@@ -55,39 +55,57 @@ class ProductImageGallery extends ConsumerWidget {
         fit: StackFit.expand,
         children: [
           imageUrls.isNotEmpty || hasVideo
-              ? PageView.builder(
-                  itemCount: totalMediaCount,
-                  onPageChanged: viewModel.setImageIndex,
-                  itemBuilder: (context, index) {
-                    if (hasVideo && index == 0) {
-                      return _VideoThumbnail(
-                        imageUrls: imageUrls,
-                        onTap: onVideoTap,
-                      );
-                    }
-
-                    final imgIndex = hasVideo ? index - 1 : index;
-                    return Semantics(
-                      label: 'product.image_semantics'.tr(
-                        namedArgs: {
-                          'n': '${imgIndex + 1}',
-                          'total': '${imageUrls.length}',
-                        },
-                      ),
-                      button: true,
-                      image: true,
-                      child: GestureDetector(
-                        onTap: () => onImageTap?.call(imageUrls, imgIndex),
-                        child: SizedBox.expand(
-                          child: _GalleryImage(
-                            imageSource: imageUrls[imgIndex],
-                            fit: BoxFit.cover,
+              ? (!hasVideo && imageUrls.length == 1
+                    ? Semantics(
+                        label: 'product.image_semantics'.tr(
+                          namedArgs: const {'n': '1', 'total': '1'},
+                        ),
+                        button: true,
+                        image: true,
+                        child: GestureDetector(
+                          onTap: () => onImageTap?.call(imageUrls, 0),
+                          child: SizedBox.expand(
+                            child: _GalleryImage(
+                              imageSource: imageUrls.first,
+                              fit: BoxFit.cover,
+                            ),
                           ),
                         ),
-                      ),
-                    );
-                  },
-                )
+                      )
+                    : PageView.builder(
+                        itemCount: totalMediaCount,
+                        onPageChanged: viewModel.setImageIndex,
+                        itemBuilder: (context, index) {
+                          if (hasVideo && index == 0) {
+                            return _VideoThumbnail(
+                              imageUrls: imageUrls,
+                              onTap: onVideoTap,
+                            );
+                          }
+
+                          final imgIndex = hasVideo ? index - 1 : index;
+                          return Semantics(
+                            label: 'product.image_semantics'.tr(
+                              namedArgs: {
+                                'n': '${imgIndex + 1}',
+                                'total': '${imageUrls.length}',
+                              },
+                            ),
+                            button: true,
+                            image: true,
+                            child: GestureDetector(
+                              onTap: () =>
+                                  onImageTap?.call(imageUrls, imgIndex),
+                              child: SizedBox.expand(
+                                child: _GalleryImage(
+                                  imageSource: imageUrls[imgIndex],
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ))
               : const _ImageErrorPlaceholder(),
           Positioned(
             bottom: 16,
@@ -214,13 +232,19 @@ class _GalleryImage extends StatelessWidget {
       return const _ImageErrorPlaceholder();
     }
 
-    return CachedNetworkImage(
+    return WebCachedNetworkImage(
       imageUrl: resolvedSource,
       fit: fit,
       width: width,
       height: height,
       placeholder: (context, url) => ModernSkeletonLoader.imagePlaceholder(),
-      errorWidget: (context, url, error) => const _ImageErrorPlaceholder(),
+      errorWidget: (context, url, error) {
+        AppLogger.w(
+          'ProductImageGallery: CachedNetworkImage error for "$url": $error',
+          tag: 'product',
+        );
+        return const _ImageErrorPlaceholder();
+      },
     );
   }
 }

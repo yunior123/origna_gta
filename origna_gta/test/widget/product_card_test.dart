@@ -6,6 +6,7 @@ import 'package:mockito/annotations.dart';
 import 'package:origna_gta/screens/product_card_screen.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/repositories/product_repository.dart';
+import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:origna_gta/features/products/products_provider.dart';
 import 'package:origna_gta/features/qa/qa_provider.dart';
@@ -31,7 +32,10 @@ void main() {
   setUp(() {
     mockCart = MockCartController();
     mockFavController = MockFavoritesController();
-    mockCurrentUser = const AppAuthUser(uid: 'user_123', email: 'test@example.com');
+    mockCurrentUser = const AppAuthUser(
+      uid: 'user_123',
+      email: 'test@example.com',
+    );
     mockRepo = MockProductRepository();
 
     initTestMocks();
@@ -67,6 +71,7 @@ void main() {
     manual_models.UserModel? userModel,
     AppAuthUser? currentUser,
     int? trendingRank,
+    Route<dynamic>? Function(RouteSettings)? onGenerateRoute,
   }) {
     return TestWrapper(
       overrides: [
@@ -75,8 +80,11 @@ void main() {
         favoritesControllerProvider.overrideWithValue(mockFavController),
         currentUserProvider.overrideWithValue(currentUser),
         favoritesProvider.overrideWith((ref) => Stream.value({'other_prod'})),
-        unansweredQaCountProvider(product.productId).overrideWith((ref) => Stream.value(0)),
+        unansweredQaCountProvider(
+          product.productId,
+        ).overrideWith((ref) => Stream.value(0)),
       ],
+      onGenerateRoute: onGenerateRoute,
       child: Scaffold(
         body: ProductCard(
           productId: product.productId,
@@ -110,7 +118,9 @@ void main() {
     });
 
     testWidgets('shows trending rank badge', (tester) async {
-      await tester.pumpWidget(createTestWidget(product: testProduct, trendingRank: 1));
+      await tester.pumpWidget(
+        createTestWidget(product: testProduct, trendingRank: 1),
+      );
       await tester.pump();
       await tester.pump(const Duration(seconds: 1));
 
@@ -118,7 +128,10 @@ void main() {
     });
 
     testWidgets('shows digital type label', (tester) async {
-      final digitalProduct = testProduct.copyWith(isDigital: true, digitalType: DigitalTypeValues.software);
+      final digitalProduct = testProduct.copyWith(
+        isDigital: true,
+        digitalType: DigitalTypeValues.software,
+      );
       await tester.pumpWidget(createTestWidget(product: digitalProduct));
       await tester.pump();
       await tester.pump(const Duration(seconds: 1));
@@ -127,7 +140,9 @@ void main() {
     });
 
     testWidgets('toggling favorite requires login', (tester) async {
-      await tester.pumpWidget(createTestWidget(product: testProduct, currentUser: null));
+      await tester.pumpWidget(
+        createTestWidget(product: testProduct, currentUser: null),
+      );
       await tester.pump();
       await tester.pump(const Duration(seconds: 1));
 
@@ -140,25 +155,29 @@ void main() {
     });
 
     testWidgets('can toggle favorite when logged in', (tester) async {
-      await tester.pumpWidget(createTestWidget(product: testProduct, currentUser: mockCurrentUser));
+      await tester.pumpWidget(
+        createTestWidget(product: testProduct, currentUser: mockCurrentUser),
+      );
       await tester.pump();
       await tester.pump(const Duration(seconds: 1));
 
       final favBtn = find.bySemanticsLabel('btn-favorite-prod_123');
       await tester.tap(favBtn, warnIfMissed: true);
-      
+
       // Pump long enough for animations and microtasks
       for (int i = 0; i < 10; i++) {
         await tester.pump(const Duration(milliseconds: 100));
       }
-      
+
       verify(mockFavController.toggleFavorite('prod_123')).called(1);
     });
 
     testWidgets('can add to cart when logged in', (tester) async {
       when(mockCart.addToCart(any, any)).thenAnswer((_) async => true);
-      
-      await tester.pumpWidget(createTestWidget(product: testProduct, currentUser: mockCurrentUser));
+
+      await tester.pumpWidget(
+        createTestWidget(product: testProduct, currentUser: mockCurrentUser),
+      );
       await tester.pump();
       await tester.pump(const Duration(seconds: 1));
 
@@ -173,7 +192,9 @@ void main() {
 
     testWidgets('shows admin actions for admin user', (tester) async {
       final adminUserModel = testUserModel.copyWith(roles: [UserRole.admin]);
-      await tester.pumpWidget(createTestWidget(product: testProduct, userModel: adminUserModel));
+      await tester.pumpWidget(
+        createTestWidget(product: testProduct, userModel: adminUserModel),
+      );
       await tester.pump();
       await tester.pump(const Duration(seconds: 1));
 
@@ -183,7 +204,9 @@ void main() {
 
     testWidgets('shows owner actions for seller owner', (tester) async {
       final ownerUserModel = testUserModel.copyWith(uid: 'seller_123');
-      await tester.pumpWidget(createTestWidget(product: testProduct, userModel: ownerUserModel));
+      await tester.pumpWidget(
+        createTestWidget(product: testProduct, userModel: ownerUserModel),
+      );
       await tester.pump();
       await tester.pump(const Duration(seconds: 1));
 
@@ -194,8 +217,10 @@ void main() {
     testWidgets('can delete product after confirmation', (tester) async {
       final adminUserModel = testUserModel.copyWith(roles: [UserRole.admin]);
       when(mockRepo.deleteProduct(any)).thenAnswer((_) async => Future.value());
-      
-      await tester.pumpWidget(createTestWidget(product: testProduct, userModel: adminUserModel));
+
+      await tester.pumpWidget(
+        createTestWidget(product: testProduct, userModel: adminUserModel),
+      );
       await tester.pump();
       await tester.pump(const Duration(seconds: 1));
 
@@ -209,6 +234,40 @@ void main() {
       await tester.pump(const Duration(seconds: 1));
 
       verify(mockRepo.deleteProduct('prod_123')).called(1);
+    });
+
+    testWidgets('tap navigates to product detail route with typed arguments', (
+      tester,
+    ) async {
+      RouteSettings? pushedSettings;
+
+      await tester.pumpWidget(
+        createTestWidget(
+          product: testProduct,
+          onGenerateRoute: (settings) {
+            pushedSettings = settings;
+            if (settings.name == AppRoutes.productByIdPath('prod_123')) {
+              return MaterialPageRoute<void>(
+                settings: settings,
+                builder: (_) => const Scaffold(body: Text('detail-route')),
+              );
+            }
+            return null;
+          },
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+
+      await tester.tap(find.bySemanticsLabel('product-card-prod_123'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('detail-route'), findsOneWidget);
+      expect(pushedSettings?.name, AppRoutes.productByIdPath('prod_123'));
+      expect(pushedSettings?.arguments, isA<ProductDetailsArgs>());
+      final args = pushedSettings!.arguments! as ProductDetailsArgs;
+      expect(args.productId, 'prod_123');
+      expect(args.product?['productId'], 'prod_123');
     });
   });
 }

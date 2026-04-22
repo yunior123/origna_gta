@@ -1,0 +1,21 @@
+{
+  "recommendations": [
+    "Dart-Code.dart-code",
+    "Dart-Code.flutter",
+    "rust-lang.rust-analyzer",
+    "ms-python.python",
+    "ms-python.vscode-pylint",
+    "oven-sh.bun-vscode",
+    "bradlc.vscode-tailwindcss",
+    "streetsidesoftware.code-spell-checker",
+    "eamodio.gitlens",
+    "tamasfe.even-better-toml",
+    "serayuzgur.crates",
+    "EditorConfig.EditorConfig",
+    "ms-azuretools.vscode-docker",
+    "cweijan.vscode-postgresql-client2"
+  ],
+  "unwantedRecommendations": [
+    "ms-java.vscode-java-pack"
+  ]
+}

@@ -431,6 +431,8 @@
     "browse_all_categories": "Toutes les catégories →",
     "privacy_policy": "Politique de confidentialité",
     "terms_of_service": "Conditions d'utilisation",
+    "platform_by_origna_ventures": "Une plateforme d’Origna Ventures Inc.",
+    "company_details": "NE 708286364TZ0001 · support@orignaventures.ca",
     "copyright": "© {year} Origna GTA. Tous droits réservés.",
     "sort_by": "Trier par",
     "sort_relevance": "Plus pertinent",
@@ -1169,8 +1171,10 @@
         "inbox_empty_desc": "Chattez avec les vendeurs pour commencer une conversation",
         "unread_badge": "{count}",
         "last_seen": "il y a {time}",
-        "tap_to_chat": "Appuyez pour ouvrir la conversation",
-        "type_a_message": "Tapez un message..."
+      "tap_to_chat": "Appuyez pour ouvrir la conversation",
+      "type_a_message": "Tapez un message...",
+      "coming_soon": "Bientôt disponible",
+      "seller_onboarding_disabled": "Clavardage avec les vendeurs tiers bientôt disponible"
     },
     "seller_integration": {
         "title": "Guide d'intégration pour les développeurs",
@@ -2115,10 +2119,12 @@
     "inbox_empty_desc": "Chattez avec les vendeurs pour commencer une conversation",
     "unread_badge": "{count}",
     "last_seen": "il y a {time}",
-    "tap_to_chat": "Appuyez pour ouvrir la conversation",
-    "type_a_message": "Tapez un message..."
-  },
-  "seller_integration": {
+      "tap_to_chat": "Appuyez pour ouvrir la conversation",
+      "type_a_message": "Tapez un message...",
+      "coming_soon": "Bientôt disponible",
+      "seller_onboarding_disabled": "Clavardage avec les vendeurs tiers bientôt disponible"
+    },
+    "seller_integration": {
     "title": "Guide d'intégration pour les développeurs",
     "how_licensing_works": "Comment fonctionnent les licences sur Origna",
     "intro_p1": "Lorsqu'un acheteur acquiert votre logiciel sur Origna, une clé de licence unique (format : XXXX-XXXX-XXXX-XXXX) est générée automatiquement et envoyée par e-mail.",

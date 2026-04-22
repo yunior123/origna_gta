@@ -562,12 +562,10 @@ async fn create_checkout_session(
     }
 
     let postal = normalize_postal_code(&req.shipping_address.postal_code);
-    if country == "CA" || country == "CANADA" {
-        if !is_valid_canadian_postal(&postal) {
-            return Err(ob_core::Error::Validation(
-                "Invalid Canadian postal code format".into(),
-            ));
-        }
+    if (country == "CA" || country == "CANADA") && !is_valid_canadian_postal(&postal) {
+        return Err(ob_core::Error::Validation(
+            "Invalid Canadian postal code format".into(),
+        ));
     }
 
     // --- Server-side product validation (parameterized) ---
@@ -1425,13 +1423,21 @@ mod tests {
     }
 
     #[test]
-    fn test_all_13_provinces_and_territories_are_valid() {
-        assert_eq!(VALID_PROVINCES.len(), 13);
-        let expected = vec![
+    fn test_canada_and_cuba_provinces_are_valid() {
+        let expected_canada = vec![
             "AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC", "SK", "YT",
         ];
-        for p in &expected {
+        let expected_cuba = vec![
+            "HAB", "MAT", "VC", "SC", "HOL", "CMG", "CAV", "SSP", "CFG", "PR", "GRA", "LT", "GU", "IJ", "ART", "MAY",
+        ];
+
+        assert_eq!(VALID_PROVINCES.len(), expected_canada.len() + expected_cuba.len());
+
+        for p in &expected_canada {
             assert!(VALID_PROVINCES.contains(p), "Missing province: {}", p);
+        }
+        for p in &expected_cuba {
+            assert!(VALID_PROVINCES.contains(p), "Missing Cuba province: {}", p);
         }
     }
 

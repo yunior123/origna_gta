@@ -20,45 +20,73 @@ const DIGITAL_PRODUCT_ID = TEST_PRODUCTS.DIGITAL;
 const UI_TIMEOUT = 90_000;
 const MOBILE_VIEWPORT = { width: 390, height: 844 };
 
-function readWindowMetrics() {
-  const result = Bun.spawnSync([
-    'agent-browser',
-    'eval',
-    `JSON.stringify({ width: window.innerWidth, height: window.innerHeight, href: window.location.href })`,
-  ], {
-    env: { ...process.env, AGENT_BROWSER_ENGINE: process.env.AGENT_BROWSER_ENGINE ?? 'chrome' },
-    timeout: 5_000,
+function runAgentEval(script: string, timeout = 5_000): string {
+  const result = Bun.spawnSync(['agent-browser', 'eval', script], {
+    env: {
+      ...process.env,
+      AGENT_BROWSER_ENGINE: process.env.AGENT_BROWSER_ENGINE ?? 'chrome',
+    },
+    timeout,
   });
 
-  const raw = result.stdout.toString().trim();
+  if (result.exitCode !== 0) {
+    throw new Error(
+      `agent-browser eval failed: ${
+        result.stderr.toString().trim() || result.stdout.toString().trim()
+      }`,
+    );
+  }
+
+  return result.stdout.toString().trim();
+}
+
+function readWindowMetrics() {
+  const raw = runAgentEval(
+    `JSON.stringify({
+      width: window.innerWidth,
+      height: window.innerHeight,
+      href: window.location.href,
+      historyLength: window.history.length,
+    })`,
+  );
   if (!raw) return {};
 
   try {
-    return JSON.parse(raw) as { width?: number; height?: number; href?: string };
+    return JSON.parse(raw) as {
+      width?: number;
+      height?: number;
+      href?: string;
+      historyLength?: number;
+    };
   } catch {
     try {
-      return JSON.parse(JSON.parse(raw)) as { width?: number; height?: number; href?: string };
+      return JSON.parse(JSON.parse(raw)) as {
+        width?: number;
+        height?: number;
+        href?: string;
+        historyLength?: number;
+      };
     } catch {
       const unwrapped = raw.replace(/^"|"$/g, '');
-      return JSON.parse(unwrapped || '{}') as { width?: number; height?: number; href?: string };
+      return JSON.parse(unwrapped || '{}') as {
+        width?: number;
+        height?: number;
+        href?: string;
+        historyLength?: number;
+      };
     }
   }
 }
 
 async function setMobileViewport() {
-  Bun.spawnSync([
-    'agent-browser',
-    'eval',
+  runAgentEval(
     `window.resizeTo(${MOBILE_VIEWPORT.width}, ${MOBILE_VIEWPORT.height}); JSON.stringify({ width: window.innerWidth, height: window.innerHeight })`,
-  ], {
-    env: { ...process.env, AGENT_BROWSER_ENGINE: process.env.AGENT_BROWSER_ENGINE ?? 'chrome' },
-    timeout: 5_000,
-  });
+  );
 }
 
 async function openProductSnapshot(browser: AgentBrowser, productId: string) {
   try {
-    await browser.open(`${WEB_APP_URL}/#/product/${productId}`, 30_000);
+    await browser.open(`${WEB_APP_URL}/product/${productId}`, 30_000);
   } catch {
     return null;
   }
@@ -238,7 +266,7 @@ describe('Product Detail — UI Tests', () => {
 
   test('T21: Mobile product detail displays at least one product image', { timeout: UI_TIMEOUT }, async () => {
     try {
-      await browser.open(`${WEB_APP_URL}/#/product/${PRODUCT_ID}`, 30_000);
+      await browser.open(`${WEB_APP_URL}/product/${PRODUCT_ID}`, 30_000);
     } catch {
       return;
     }

@@ -2653,6 +2653,12 @@ abstract final class UIMessages {
   static const sessionExpiredTitle = 'Session Expired';
 }
 
+/// Seller-related constants — platform seller IDs and feature flags.
+abstract final class SellerConstants {
+  static const orignaVenturesSellerId = 'origna_ventures';
+  static const sellerOnboardingEnabled = false;
+}
+
 /// Valid values for roles array
 abstract final class UserRoleValues {
   static const admin = 'admin';

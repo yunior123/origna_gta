@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
@@ -14,7 +15,7 @@ import 'tiers_config.dart' show TierDefinition, TierId;
 
 const _supportEmail = 'support@orignaventures.ca';
 const _supportPhone = '4167865517';
-const venturesApiBase = 'https://api.orignagta.ca/ventures/api';
+const venturesApiBase = 'https://api.orignaventures.ca/api';
 const _fullDeckPdfUrl =
     'https://orignaventures.ca/docs/origna_ventures_full_presentation.pdf';
 const _demoUrl = 'https://dev.orignagta.ca';
@@ -158,19 +159,30 @@ class _SinglePageState extends State<_SinglePage> {
 
   void _scrollTo(GlobalKey key) {
     final targetContext = key.currentContext;
-    if (targetContext == null) {
+    final listContext = _listKey.currentContext;
+    if (targetContext == null ||
+        listContext == null ||
+        !_scrollCtrl.hasClients) {
       if (_scrollRetryCount < _maxScrollRetries) {
         _scrollRetryCount++;
         WidgetsBinding.instance.addPostFrameCallback((_) => _scrollTo(key));
       }
       return;
     }
+
+    final targetBox = targetContext.findRenderObject() as RenderBox?;
+    final listBox = listContext.findRenderObject() as RenderBox?;
+    if (targetBox == null || listBox == null) return;
+
     _scrollRetryCount = 0;
-    Scrollable.ensureVisible(
-      targetContext,
+    final targetOffset =
+        targetBox.localToGlobal(Offset.zero, ancestor: listBox).dy +
+            _scrollCtrl.offset;
+
+    _scrollCtrl.animateTo(
+      math.max(0, targetOffset - 20),
       duration: const Duration(milliseconds: 500),
       curve: Curves.easeInOutCubic,
-      alignment: 0.0,
     );
   }
 
@@ -269,6 +281,7 @@ class _Header extends StatelessWidget {
               _NavLink(
                 label: locale.tr('Pricing', 'Tarifs', 'Precios'),
                 onTap: onPricingTap,
+                semanticsLabel: 'btn-nav-pricing',
               ),
               const SizedBox(width: 16),
             ],
@@ -283,21 +296,30 @@ class _Header extends StatelessWidget {
 class _NavLink extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
+  final String? semanticsLabel;
 
-  const _NavLink({required this.label, required this.onTap});
+  const _NavLink({
+    required this.label,
+    required this.onTap,
+    this.semanticsLabel,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return TextButton(
-      onPressed: onTap,
-      style: TextButton.styleFrom(
-        foregroundColor: Colors.white.withValues(alpha: 0.65),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w500),
+    return Semantics(
+      button: true,
+      label: semanticsLabel,
+      child: TextButton(
+        onPressed: onTap,
+        style: TextButton.styleFrom(
+          foregroundColor: Colors.white.withValues(alpha: 0.65),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w500),
+        ),
       ),
     );
   }
@@ -357,13 +379,31 @@ class _LocaleToggle extends StatelessWidget {
         fillColor: ThemeConfig.primary,
         borderColor: Colors.transparent,
         selectedBorderColor: Colors.transparent,
-        children: const [
-          Text('EN',
-              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
-          Text('FR',
-              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
-          Text('ES',
-              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+        children: [
+          Semantics(
+            button: true,
+            label: 'btn-locale-en',
+            child: Text(
+              'EN',
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+            ),
+          ),
+          Semantics(
+            button: true,
+            label: 'btn-locale-fr',
+            child: Text(
+              'FR',
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+            ),
+          ),
+          Semantics(
+            button: true,
+            label: 'btn-locale-es',
+            child: Text(
+              'ES',
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+            ),
+          ),
         ],
       ),
     );
@@ -560,11 +600,13 @@ class _HeroContent extends StatelessWidget {
               label: locale.tr('View plans', 'Voir les forfaits', 'Ver planes'),
               onTap: onGetStarted,
               filled: true,
+              semanticsLabel: 'btn-hero-view-plans',
             ),
             _HeroCTA(
               label: locale.tr('Live demo', 'Demo live', 'Demo en vivo'),
               onTap: () => launchUrl(Uri.parse(_demoUrl)),
               filled: false,
+              semanticsLabel: 'btn-hero-live-demo',
             ),
           ],
         ),
@@ -809,41 +851,59 @@ class _HeroCTA extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
   final bool filled;
+  final String semanticsLabel;
 
   const _HeroCTA({
     required this.label,
     required this.onTap,
     required this.filled,
+    required this.semanticsLabel,
   });
 
   @override
   Widget build(BuildContext context) {
     if (filled) {
-      return FilledButton(
-        onPressed: onTap,
-        style: FilledButton.styleFrom(
-          backgroundColor: ThemeConfig.primary,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+      return Semantics(
+        button: true,
+        label: semanticsLabel,
+        child: FilledButton(
+          onPressed: onTap,
+          style: FilledButton.styleFrom(
+            backgroundColor: ThemeConfig.primary,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            textStyle: const TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 14,
+            ),
+          ),
+          child: Text(label),
         ),
-        child: Text(label),
       );
     }
 
-    return OutlinedButton(
-      onPressed: onTap,
-      style: OutlinedButton.styleFrom(
-        foregroundColor: Colors.white.withValues(alpha: 0.85),
-        side:
-            BorderSide(color: Colors.white.withValues(alpha: 0.25), width: 1.5),
-        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+    return Semantics(
+      button: true,
+      label: semanticsLabel,
+      child: OutlinedButton(
+        onPressed: onTap,
+        style: OutlinedButton.styleFrom(
+          foregroundColor: Colors.white.withValues(alpha: 0.85),
+          side: BorderSide(
+            color: Colors.white.withValues(alpha: 0.25),
+            width: 1.5,
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+        ),
+        child: Text(label),
       ),
-      child: Text(label),
     );
   }
 }
@@ -1308,6 +1368,8 @@ class _TierCardState extends State<_TierCard>
             ? loc.tr('Launch my app', 'Lancer mon application', 'Lanzar mi app')
             : loc.tr(
                 'Book the team', 'Reserver l\'equipe', 'Reservar el equipo');
+    final buyButtonSemanticsLabel = 'btn-tier-buy-${t.serviceCode}';
+    final deckButtonSemanticsLabel = 'btn-tier-deck-${t.serviceCode}';
 
     final card = AnimatedBuilder(
       animation: _glowController,
@@ -1506,60 +1568,71 @@ class _TierCardState extends State<_TierCard>
                         const SizedBox(height: 8),
                         SizedBox(
                           width: double.infinity,
-                          child: FilledButton(
-                            style: FilledButton.styleFrom(
-                              backgroundColor: t.color,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                          child: Semantics(
+                            button: true,
+                            label: buyButtonSemanticsLabel,
+                            child: FilledButton(
+                              style: FilledButton.styleFrom(
+                                backgroundColor: t.color,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                textStyle: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 14,
+                                ),
                               ),
-                              textStyle: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 14,
-                              ),
+                              onPressed: _loading ? null : _handleBuy,
+                              child: _loading
+                                  ? SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white.withValues(
+                                          alpha: 0.8,
+                                        ),
+                                      ),
+                                    )
+                                  : Text(ctaLabel),
                             ),
-                            onPressed: _loading ? null : _handleBuy,
-                            child: _loading
-                                ? SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color:
-                                          Colors.white.withValues(alpha: 0.8),
-                                    ),
-                                  )
-                                : Text(ctaLabel),
                           ),
                         ),
                         if (t.tierId == TierId.orignaCode) ...[
                           const SizedBox(height: 12),
                           Center(
-                            child: InkWell(
-                              borderRadius: BorderRadius.circular(6),
-                              onTap: () =>
-                                  launchUrl(Uri.parse(_fullDeckPdfUrl)),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 4,
-                                ),
-                                child: Text(
-                                  loc.tr(
-                                    'View the investor deck ->',
-                                    'Voir le deck investisseur ->',
-                                    'Ver el deck para inversionistas ->',
+                            child: Semantics(
+                              button: true,
+                              label: deckButtonSemanticsLabel,
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(6),
+                                onTap: () =>
+                                    launchUrl(Uri.parse(_fullDeckPdfUrl)),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 4,
                                   ),
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: isPopular
-                                        ? Colors.white.withValues(alpha: 0.35)
-                                        : ThemeConfig.textMuted,
-                                    decoration: TextDecoration.underline,
-                                    decorationColor: isPopular
-                                        ? Colors.white.withValues(alpha: 0.35)
-                                        : ThemeConfig.textMuted,
+                                  child: Text(
+                                    loc.tr(
+                                      'View the investor deck ->',
+                                      'Voir le deck investisseur ->',
+                                      'Ver el deck para inversionistas ->',
+                                    ),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: isPopular
+                                          ? Colors.white.withValues(alpha: 0.35)
+                                          : ThemeConfig.textMuted,
+                                      decoration: TextDecoration.underline,
+                                      decorationColor: isPopular
+                                          ? Colors.white.withValues(alpha: 0.35)
+                                          : ThemeConfig.textMuted,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -1604,15 +1677,32 @@ class _TierCardState extends State<_TierCard>
             }),
           )
           .timeout(const Duration(seconds: 30));
-      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      final body = _decodeCheckoutBody(response.body);
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw _CheckoutException(
+          (body['message'] ?? body['detail'])?.toString() ??
+              loc.tr(
+                'Checkout failed. Please try again.',
+                'Echec du paiement. Reessayez.',
+                'Error en el pago. Intentelo de nuevo.',
+              ),
+        );
+      }
       final url = body['checkoutUrl'] as String?;
       if (url != null && url.isNotEmpty) {
+        final checkoutUri = Uri.parse(url);
         if (kIsWeb) {
-          browser_env.openUrl(url);
+          final launched = await launchUrl(
+            checkoutUri,
+            webOnlyWindowName: '_self',
+          );
+          if (!launched) {
+            throw Exception('Could not open Stripe checkout');
+          }
           return;
         } else {
           final launched = await launchUrl(
-            Uri.parse(url),
+            checkoutUri,
             mode: LaunchMode.externalApplication,
           );
           if (!launched) {
@@ -1642,6 +1732,14 @@ class _TierCardState extends State<_TierCard>
           });
         }
       }
+    } on _CheckoutException catch (e) {
+      debugPrint('OrignaVentures: checkout rejected: ${e.message}');
+      if (mounted) {
+        setState(() {
+          _status = e.message;
+          _success = false;
+        });
+      }
     } catch (e) {
       debugPrint('OrignaVentures: checkout error: $e');
       if (mounted) {
@@ -1660,6 +1758,19 @@ class _TierCardState extends State<_TierCard>
       }
     }
   }
+}
+
+Map<String, dynamic> _decodeCheckoutBody(String rawBody) {
+  if (rawBody.isEmpty) return <String, dynamic>{};
+  final decoded = jsonDecode(rawBody);
+  if (decoded is Map<String, dynamic>) return decoded;
+  return <String, dynamic>{'detail': decoded.toString()};
+}
+
+class _CheckoutException implements Exception {
+  final String message;
+
+  const _CheckoutException(this.message);
 }
 
 class _FloatingGlassGlow extends StatelessWidget {
@@ -2419,23 +2530,31 @@ class _CookieConsentBanner extends StatelessWidget {
               spacing: 8,
               runSpacing: 8,
               children: [
-                OutlinedButton(
-                  onPressed: onDecline,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.white70,
-                    side: BorderSide(
-                      color: Colors.white.withValues(alpha: 0.18),
+                Semantics(
+                  button: true,
+                  label: 'btn-cookie-decline',
+                  child: OutlinedButton(
+                    onPressed: onDecline,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white70,
+                      side: BorderSide(
+                        color: Colors.white.withValues(alpha: 0.18),
+                      ),
                     ),
+                    child: Text(locale.tr('Decline', 'Refuser', 'Rechazar')),
                   ),
-                  child: Text(locale.tr('Decline', 'Refuser', 'Rechazar')),
                 ),
-                FilledButton(
-                  onPressed: onAccept,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: ThemeConfig.gold,
-                    foregroundColor: ThemeConfig.primaryDark,
+                Semantics(
+                  button: true,
+                  label: 'btn-cookie-accept',
+                  child: FilledButton(
+                    onPressed: onAccept,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: ThemeConfig.gold,
+                      foregroundColor: ThemeConfig.primaryDark,
+                    ),
+                    child: Text(locale.tr('Accept', 'Accepter', 'Aceptar')),
                   ),
-                  child: Text(locale.tr('Accept', 'Accepter', 'Aceptar')),
                 ),
               ],
             ),

@@ -15,16 +15,13 @@ from reportlab.platypus import Table, TableStyle
 
 BASE_URL = "https://orignaventures.ca"
 DEMO_URL = "https://dev.orignagta.ca"
-CONTRACT_URL = f"{BASE_URL}/contract"
-PAYMENT_URL = f"{BASE_URL}/pay"
-DECK_URL = f"{BASE_URL}/deck"
-DONATE_URL = f"{BASE_URL}/donate"
+PRICING_URL = BASE_URL
+DECK_URL = f"{BASE_URL}/docs/origna_ventures_full_presentation.pdf"
+ONEPAGER_URL = f"{BASE_URL}/docs/origna_ventures_onepager.pdf"
+CONTACT_URL = f"{BASE_URL}/#contact"
 SUPPORT_EMAIL = "support@orignaventures.ca"
 SUPPORT_PHONE = "4167865517"
-COMPANY = "1001475263 ONTARIO CORPORATION"
-BN = "708286364TZ0001"
-ONTARIO_CORP_NUMBER = "1001475263"
-INCORPORATION_DATE_FR = "23 janvier 2026"
+COMPANY = "Origna Ventures Services"
 RED = colors.HexColor("#C60000")
 GREEN = colors.HexColor("#0C8A43")
 DARK = colors.HexColor("#111111")
@@ -40,6 +37,10 @@ GOLD_C = colors.HexColor("#C8983A")
 GRBLUE = colors.HexColor("#1A5276")
 CHURCH_C = colors.HexColor("#4A235A")
 GREEN_C = colors.HexColor("#1E6B2E")
+
+
+def display_phone(number: str) -> str:
+    return f"({number[:3]}) {number[3:6]}-{number[6:]}"
 
 
 COMPARISON_ROWS = [
@@ -66,7 +67,7 @@ COMPARISON_ROWS = [
     ),
     (
         "OrignaGTA",
-        "500 CAD code, 1,000 CAD launch, or 1,000+ CAD/month team",
+        "500 CAD code, 3,000 CAD launch, or 1,000 CAD/month team",
         "Yes",
         "Web + iOS + Android + desktop",
         "Custom ecommerce ownership with source-code delivery",
@@ -313,6 +314,7 @@ def make_qr(url: str) -> ImageReader:
 
 def qr_card(
     c: canvas.Canvas,
+    url: str,
     qr_img: ImageReader,
     x: float,
     y_top: float,
@@ -334,6 +336,7 @@ def qr_card(
         ct(c, line2, mid_x, y_top - card_h + 3.6, "Helvetica", 4.4, MUTED)
     else:
         ct(c, line1, mid_x, y_top - card_h + 4.0, "Helvetica-Bold", 5.0, DKRED)
+    c.linkURL(url, (x, y_top - card_h, x + card_w, y_top), relative=0)
     return y_top - card_h
 
 
@@ -427,16 +430,16 @@ def create_onepager(path: Path) -> None:
     )
     lt(
         c,
-        "1001475263 ONTARIO CORPORATION  ·  BN 708286364TZ0001  ·  Founded Jan 23, 2026  ·  Ontario Active",
+        "Fast checkout for software delivery, launches, and monthly build support.",
         margin + 52,
         height - 40,
         "Helvetica",
-        6,
+        6.6,
         colors.HexColor("#FFCCCC"),
     )
     lt(
         c,
-        "NAICS 41 — Wholesale Commerce  ·  Ontario, Canada  ·  support@orignaventures.ca",
+        "Ontario, Canada  ·  support@orignaventures.ca  ·  Stripe checkout in CAD",
         margin + 52,
         height - 51,
         "Helvetica",
@@ -463,7 +466,7 @@ def create_onepager(path: Path) -> None:
     )
     rt(
         c,
-        "orignaventures.ca  ·  dev.orignagta.ca",
+        "orignaventures.ca  ·  docs + pricing + demo",
         width - margin,
         height - 51,
         "Helvetica",
@@ -485,14 +488,14 @@ def create_onepager(path: Path) -> None:
             "$348 USD / yr",
             "$240 USD / yr",
             "$252 USD / yr",
-            "500–1,000 CAD\nOne-time only",
+            "500–3,000 CAD\nOne-time options",
         ],
         [
             "Equivalent monthly",
             "~$29 USD / mo",
             "~$20 USD / mo",
             "~$21 USD / mo",
-            "$0 / mo after purchase",
+            "Code or Launch:\nNo monthly sub",
         ],
         ["Transaction fees", "0.5–2% + apps", "N/A", "N/A", "No platform fee"],
         [
@@ -500,7 +503,7 @@ def create_onepager(path: Path) -> None:
             "Extra cost",
             "Separate billing",
             "Extra backend/cloud",
-            "Hetzner 8 GB\nYear 1 included",
+            "Hetzner 8 GB RAM + 80 GB disk\nYear 1 included",
         ],
         [
             "Source code",
@@ -528,7 +531,7 @@ def create_onepager(path: Path) -> None:
             "$600–1,800+ USD",
             "$480–2,400+ USD",
             "$500–1,200+ USD",
-            "500–1,000 CAD\nfinal pricing",
+            "500–3,000 CAD\ncode or launch",
         ],
     ]
     row_h = 23
@@ -570,61 +573,64 @@ def create_onepager(path: Path) -> None:
     card_h = 155
     card_top = cy
     services = [
-        (
-            "STARTER",
-            "OrignaCode",
-            "500 CAD · One-time",
-            GRBLUE,
-            [
-                ("What you get", "Full Flutter + Rust + PostgreSQL source code"),
-                ("Repo access", "Private GitHub / Bitbucket repo"),
-                ("Updates", "Lifetime source code updates"),
-                ("Hosting", "Client deploys and hosts"),
-                ("License", "Commercial use allowed, no software reselling"),
-                ("Contract", "Electronic contract + audit trail"),
-                ("Refund", "Full refund before repo access"),
-                ("Payment", "Stripe Checkout in CAD"),
-            ],
-        ),
-        (
-            "POPULAR",
-            "OrignaLaunch",
-            "1,000 CAD · One-time",
-            DKRED,
-            [
-                ("Includes", "Everything in OrignaCode"),
-                ("Hosting", "Hetzner 8 GB VPS — Year 1 included"),
-                ("Apple", "Apple Developer year 1 included"),
-                ("Google Play", "Google Play registration included"),
-                ("Deploy", "Web + desktop + iOS + Android launch"),
-                ("Support", "4 weeks of post-launch support included"),
-                ("Timeline", "Live within about 1–2 weeks"),
-                ("Repo", "Auto-unlock after sign + cleared payment"),
-            ],
-        ),
-        (
-            "TEAM",
-            "OrignaTeam",
-            "1,000+ CAD / month",
-            GREEN_C,
-            [
-                ("What you get", "Dedicated developer support on your project"),
-                ("Tracking", "Working time can be tracked with standard tools"),
-                ("Scope", "Ecommerce · vibe-coded apps · web · mobile"),
-                ("Requirement", "Daily standup with assigned developer(s)"),
-                ("Billing", "API, store, hosting, and testing billed as needed"),
-                ("Refund", "Within 24 h before repo unlock"),
-                ("Cadence", "Monthly, weekly, or day-rate arrangements"),
-                ("Onboarding", "Starts within 48 h of signed contract"),
-            ],
-        ),
+    (
+        "STARTER",
+        "OrignaCode",
+        "500 CAD · One-time",
+        GRBLUE,
+        [
+            ("What you get", "Full Flutter + Rust + PostgreSQL source code"),
+            ("Repo access", "Private GitHub / Bitbucket repo"),
+            ("Updates", "Lifetime source code updates"),
+            ("Hosting", "Client deploys and hosts"),
+            ("License", "Commercial use allowed, no software reselling"),
+            ("Refund", "Full refund before repo access"),
+            ("Payment", "Stripe Checkout in CAD"),
+        ],
+        PRICING_URL,
+    ),
+    (
+        "POPULAR",
+        "OrignaLaunch",
+            "3,000 CAD · One-time",
+        DKRED,
+        [
+            ("Includes", "Everything in OrignaCode"),
+            ("Hosting", "Hetzner VPS (8 GB RAM + 80 GB disk) — Year 1 included"),
+            ("QA Testing", "20 human testers (20h QA) included"),
+            ("Apple", "Apple Developer year 1 included"),
+            ("Google Play", "Google Play registration included"),
+            ("Deploy", "Web + desktop + iOS + Android launch"),
+            ("Support", "4 weeks of post-launch support included"),
+            ("Timeline", "Live within about 1–2 weeks"),
+        ],
+        PRICING_URL,
+    ),
+    (
+        "TEAM",
+        "OrignaTeam",
+            "1,000 CAD / month",
+        GREEN_C,
+        [
+            ("What you get", "Dedicated developer support on your project"),
+            ("Tracking", "Working time can be tracked with standard tools"),
+            ("Scope", "Ecommerce · vibe-coded apps · web · mobile"),
+            ("Requirement", "Daily standup with assigned developer(s)"),
+            ("Billing", "API, store, hosting, and testing billed as needed"),
+            ("Refund", "Within 24 h of payment, before work begins"),
+            ("Cadence", "Monthly, weekly, or day-rate arrangements"),
+            ("Onboarding", "Starts within 48 h of payment"),
+        ],
+        PRICING_URL,
+    ),
     ]
-    for idx, (tag, name, price, color, bullets) in enumerate(services):
+    for idx, (tag, name, price, color, bullets, pay_url) in enumerate(services):
         sx = margin + idx * (card_w + gap)
+        card_bottom = card_top - card_h
         rrect(
             c,
             sx,
-            card_top - card_h,
+            card_bottom,
             card_w,
             card_h,
             r=5,
@@ -660,6 +666,12 @@ def create_onepager(path: Path) -> None:
             lt(c, f"{label}:", sx + 6, by, "Helvetica-Bold", 5.1, color)
             fit_text(c, val, sx + 54, by, card_w - 62, size=5.1, leading=6.2)
             by -= 8.8
+        qr_sz = 22
+        qr_x = sx + card_w - qr_sz - 6
+        qr_y = card_bottom + 4
+        c.drawImage(make_qr(pay_url), qr_x, qr_y, qr_sz, qr_sz, preserveAspectRatio=True, mask="auto")
+        lt(c, "Scan for pricing ->", sx + 6, qr_y + 7, "Helvetica", 4.4, MUTED)
+        c.linkURL(pay_url, (sx, card_bottom, sx + card_w, card_top), relative=0)
     cy = card_top - card_h - 8
 
     cy = sec(
@@ -667,62 +679,62 @@ def create_onepager(path: Path) -> None:
         margin,
         cy,
         width - 2 * margin,
-        "PROGRAMS — Referral · Giving · Sponsorship · Partnership",
+        "DELIVERY MODEL — Ownership · Launch · Team · Support",
     )
     program_w = (avail - 3 * gap) / 4
     program_h = 128
     program_top = cy
     programs = [
         (
-            "REFERRAL",
+            "OWNERSHIP",
             RED,
-            "Earn 50 CAD",
-            "per qualified sale",
+            "Source-code ownership",
+            "You keep the repo and roadmap",
             [
-                ("Trigger", "Referred client pays 500 CAD or more"),
-                ("Reward", "50 CAD with no referral cap"),
-                ("Payout", "Within 30 days of cleared payment"),
-                ("How", "Unique referral link per person"),
-                ("Stack", "Stacks with partner revenue share"),
+                ("Codebase", "Flutter frontend + Rust services + PostgreSQL stack"),
+                ("Access", "Private GitHub or Bitbucket delivery"),
+                ("Control", "No platform lock-in or theme rent"),
+                ("Use case", "Best for technical founders and in-house teams"),
+                ("Refund", "Available before repo unlock"),
             ],
         ),
         (
-            "COMMUNITY",
+            "LAUNCH",
             CHURCH_C,
-            "10% of Net Profits",
-            "donated to church/community",
+            "Go live fast",
+            "Hosting + stores + QA included",
             [
-                ("Giving", "10% net profit to church/community programs"),
-                ("Values", "Faith-driven, people-first business"),
-                ("Reporting", "Annual donation report published"),
-                ("Scope", "Local churches and community organizations"),
-                ("Proof", "Donation QR at the bottom of the page"),
+                ("Hosting", "Hetzner VPS year 1 included"),
+                ("Stores", "Apple + Google submission help included"),
+                ("QA", "20 human testers included"),
+                ("Deploy", "Web, desktop, iOS, and Android"),
+                ("Timeline", "Typical launch in 1 to 2 weeks"),
             ],
         ),
         (
-            "SPONSORSHIP",
+            "TEAM",
             GOLD_C,
-            "Brand Visibility",
-            "Flat fee · no revenue share",
+            "Dedicated developer",
+            "1,000 CAD/month",
             [
-                ("Bronze", "500/yr — logo + newsletter"),
-                ("Silver", "1,500/yr — partner page + campaigns"),
-                ("Gold", "5,000/yr — banner + co-marketing"),
-                ("Benefit", "Certificate and meeting visibility"),
-                ("Note", "No equity or profit share"),
+                ("Cadence", "Monthly engagement with direct execution"),
+                ("Coverage", "Ecommerce, web, mobile, desktop"),
+                ("QA", "100+ hours QA coverage per month"),
+                ("Ops", "API, hosting, and external costs billed separately"),
+                ("Start", "Usually within 48 hours"),
             ],
         ),
         (
-            "PARTNER",
+            "SUPPORT",
             GREEN_C,
-            "5% Revenue Share",
-            "+ free OrignaLaunch",
+            "Direct access",
+            "Builder, not agency layers",
             [
-                ("Gift", "Free OrignaLaunch (POPULAR tier) for the partner"),
-                ("Rev share", "5% of net revenue brought in"),
-                ("Referral", "50 CAD bonus stacked on top"),
-                ("Assets", "Co-branded materials + dashboard"),
-                ("Tiers", "Affiliate · Reseller · Strategic"),
+                ("Checkout", "Stripe-hosted checkout in CAD"),
+                ("Contact", "Support form and email on the main site"),
+                ("Policies", "Public policy + payment terms, no contract maze"),
+                ("Follow-up", "Launch support and onboarding are explicit"),
+                ("Demo", "Live app demo available before purchase"),
             ],
         ),
     ]
@@ -766,15 +778,13 @@ def create_onepager(path: Path) -> None:
         margin,
         cy,
         width - 2 * margin,
-        "SCAN TO ACT — Contract · Pay · Company · App · Deck · Donate",
+        "SCAN TO ACT — Pricing · Demo · Deck · Contact",
     )
     qr_items = [
-        (CONTRACT_URL, "CONTRACT", "Electronic signing"),
-        (PAYMENT_URL, "PAY NOW", "Stripe Checkout"),
-        (BASE_URL, "COMPANY", "orignaventures.ca"),
+        (PRICING_URL, "PRICING", "orignaventures.ca"),
         (DEMO_URL, "APP DEMO", "dev.orignagta.ca"),
-        (DECK_URL, "FULL DECK", "300+ screenshots"),
-        (DONATE_URL, "DONATE", "Support the mission"),
+        (DECK_URL, "FULL DECK", "presentation PDF"),
+        (CONTACT_URL, "CONTACT", "support + form"),
     ]
     qr_size = 50
     pad = 4
@@ -783,7 +793,7 @@ def create_onepager(path: Path) -> None:
     qr_top = cy
     for idx, (url, line1, line2) in enumerate(qr_items):
         qx = margin + spacing + idx * (card_w + spacing)
-        qr_card(c, make_qr(url), qx, qr_top, qr_size, line1, line2)
+        qr_card(c, url, make_qr(url), qx, qr_top, qr_size, line1, line2)
     card_h = pad + qr_size + pad + 14
     cy = qr_top - card_h - 6
 
@@ -815,13 +825,13 @@ def create_onepager(path: Path) -> None:
         lt(c, line, ax, ay - 12 - idx * 9, "Helvetica", 5.3, MUTED)
 
     mx = margin + col_w + gap + 6
-    lt(c, "SIGNING AND PAYMENT FLOW", mx, ay, "Helvetica-Bold", 6.5, DKRED)
+    lt(c, "BUYER FLOW", mx, ay, "Helvetica-Bold", 6.5, DKRED)
     for idx, line in enumerate(
         [
-            "Service payments are handled by Stripe Checkout in CAD.",
-            "Contract signing is electronic and tracked separately from payment.",
-            "Signed contract + cleared payment are both required before repo unlock.",
-            "GitHub username is collected for automatic private-repo delivery.",
+            "Homepage tier cards lead directly to Stripe Checkout in CAD.",
+            "No contract-signing detour in the public site flow.",
+            "Repo delivery and onboarding happen after verified payment.",
+            "Support contact stays visible before and after checkout.",
         ]
     ):
         lt(c, line, mx, ay - 12 - idx * 9, "Helvetica", 5.3, MUTED)
@@ -838,13 +848,13 @@ def create_onepager(path: Path) -> None:
         stroke=CHURCH_C,
         lw=0.6,
     )
-    lt(c, "COMMUNITY GIVING", rx, ay, "Helvetica-Bold", 6.5, CHURCH_C)
+    lt(c, "WHY CLIENTS BUY", rx, ay, "Helvetica-Bold", 6.5, CHURCH_C)
     for idx, line in enumerate(
         [
-            "Service payments go to Origna Ventures; separate donations follow a separate flow.",
-            "10% of Origna Ventures net profits are reserved for church and community giving.",
-            "No charitable tax receipt is promised unless a qualified recipient is explicitly identified.",
-            "Donation reporting can be published annually for partners and sponsors.",
+            "Faster than agency procurement for early-stage launches.",
+            "More ownership than Shopify-style platform dependence.",
+            "Clear tiering: code, launch, or embedded team support.",
+            "Cross-platform delivery without rebuying the product per channel.",
         ]
     ):
         lt(c, line, rx, ay - 12 - idx * 9, "Helvetica", 5.4, CHURCH_C)
@@ -855,7 +865,7 @@ def create_onepager(path: Path) -> None:
     c.rect(0, footer_h - 2, width, 2, fill=1, stroke=0)
     ct(
         c,
-        f"{SUPPORT_EMAIL}   |   SMS preferred: ({SUPPORT_PHONE[:3]}) {SUPPORT_PHONE[3:6]}-{SUPPORT_PHONE[6:]}   |   orignaventures.ca   |   dev.orignagta.ca",
+        f"{SUPPORT_EMAIL}   |   SMS preferred: {display_phone(SUPPORT_PHONE)}   |   orignaventures.ca   |   dev.orignagta.ca",
         width / 2,
         13,
         "Helvetica",
@@ -864,7 +874,7 @@ def create_onepager(path: Path) -> None:
     )
     ct(
         c,
-        "1001475263 Ontario Corporation · NAICS 41 · Ontario, Canada · Active since January 23, 2026",
+        "Pricing-first software services · code ownership, launch delivery, and monthly build support",
         width / 2,
         4.5,
         "Helvetica",
@@ -920,15 +930,17 @@ def is_presentation_screenshot(path: Path) -> bool:
         return False
     try:
         with Image.open(path) as image:
+            image.verify()
+        with Image.open(path) as image:
             width, height = image.size
     except Exception:
         return False
-    if width < 700 or height < 500:
+    if width < 400 or height < 300:
         return False
     area = width * height
-    if area < 600_000:
+    if area < 200_000:
         return False
-    if width == height and width <= 1024:
+    if width == height and width <= 512:
         return False
     return True
 
@@ -969,13 +981,13 @@ def create_full_deck(
     c.drawString(26, h - 108, "Why this deck matters")
     c.setFont("Helvetica", 11)
     bullets = [
-        "Custom ecommerce ownership instead of long-term platform rent.",
-        "Source-code delivery and repo access for buyers.",
-        "Cross-platform product surface: web, iOS, Android, desktop.",
-        "Operational stack proof: Flutter, Rust, PostgreSQL, Stripe, Mailjet, webhooks.",
-        f"Corporate identity: {COMPANY} · BN {BN} · support@orignaventures.ca · SMS {SUPPORT_PHONE}.",
-        "Offer set: 500 CAD lifetime software, 1,000 CAD launch, or 1,000+ CAD/month outsourcing.",
-        "Included assets: comparison, legal profile, QR navigation, and validated full-screen design proof.",
+        "Pricing-first service landing page with direct Stripe checkout from tier cards.",
+        "Source-code delivery and repo ownership for buyers who choose OrignaCode or OrignaLaunch.",
+        "Cross-platform product surface: web, iOS, Android, and desktop from one stack.",
+        "Operational stack proof: Flutter, Rust, PostgreSQL, Stripe, Mailjet, and webhook handling.",
+        f"Public contact path: {SUPPORT_EMAIL} · SMS {display_phone(SUPPORT_PHONE)}.",
+        "Offer set: 500 CAD code, 3,000 CAD launch, or 1,000 CAD/month dedicated team.",
+        "Included assets: live demo, pricing proof, PDF deck, and validated UI screenshots.",
     ]
     y = h - 132
     for bullet in bullets:
@@ -984,17 +996,18 @@ def create_full_deck(
         y -= 22
 
     qrs = [
-        ("Website", BASE_URL),
+        ("Pricing", PRICING_URL),
         ("Demo", DEMO_URL),
-        ("Contract", CONTRACT_URL),
-        ("Payment", PAYMENT_URL),
-        ("Donate", DONATE_URL),
+        ("One-pager", ONEPAGER_URL),
+        ("Deck", DECK_URL),
+        ("Contact", CONTACT_URL),
     ]
     qx = 30
     for label, url in qrs:
         c.drawImage(make_qr(url), qx, 40, 66, 66, preserveAspectRatio=True, mask="auto")
         c.setFont("Helvetica-Bold", 8)
         c.drawCentredString(qx + 33, 30, label)
+        c.linkURL(url, (qx, 30, qx + 66, 106), relative=0)
         qx += 95
     c.showPage()
 
@@ -1003,50 +1016,71 @@ def create_full_deck(
     margin_x = 18
     margin_y = 18
     gap = 12
+    header_h = 96
+    footer_h = 18
     cell_w = (w - margin_x * 2 - gap * (cols - 1)) / cols
-    cell_h = (h - 96 - margin_y * 2 - gap * (rows - 1)) / rows
+    cell_h = (h - header_h - footer_h - margin_y * 2 - gap * (rows - 1)) / rows
 
+    total_pages = (len(screenshots) + cols * rows - 1) // (cols * rows)
     for start in range(0, len(screenshots), cols * rows):
+        page_num = start // (cols * rows) + 2
         page_files = screenshots[start : start + cols * rows]
         draw_header(
             c,
             w,
             h,
-            f"OrignaGTA UI proof — screenshots {start + 1} to {start + len(page_files)}",
-            "Design system, ecommerce flows, seller tools, carts, orders, chat, auth, profile, checkout, admin surfaces.",
+            f"Product proof — screenshots {start + 1}\u2013{start + len(page_files)} of {len(screenshots)}",
+            "Validated UI captures showing real product breadth, states, flows, and execution quality.",
         )
         for index, image_path in enumerate(page_files):
             col = index % cols
             row = index // cols
             x = margin_x + col * (cell_w + gap)
-            y = h - 96 - (row + 1) * cell_h - row * gap
+            y = h - header_h - margin_y - row * (cell_h + gap) - cell_h
             c.setFillColor(LIGHT)
-            c.roundRect(x, y, cell_w, cell_h, 14, stroke=0, fill=1)
+            c.roundRect(x, y, cell_w, cell_h, 10, stroke=0, fill=1)
             c.setStrokeColor(BORDER)
-            c.roundRect(x, y, cell_w, cell_h, 14, stroke=1, fill=0)
+            c.roundRect(x, y, cell_w, cell_h, 10, stroke=1, fill=0)
             c.setFillColor(DARK)
-            c.setFont("Helvetica-Bold", 8)
-            c.drawString(x + 10, y + cell_h - 14, image_path.name[:58])
+            c.setFont("Helvetica-Bold", 7)
+            c.drawString(x + 8, y + cell_h - 12, image_path.name[:60])
+            img_drawn = False
             try:
                 img = ImageReader(str(image_path))
                 iw, ih = img.getSize()
-                max_w = cell_w - 20
-                max_h = cell_h - 30
+                if iw < 1 or ih < 1:
+                    raise ValueError(f"Invalid image dimensions {iw}x{ih}")
+                max_w = cell_w - 16
+                max_h = cell_h - 26
                 scale = min(max_w / iw, max_h / ih)
                 draw_w = iw * scale
                 draw_h = ih * scale
                 c.drawImage(
                     img,
                     x + (cell_w - draw_w) / 2,
-                    y + 8,
+                    y + 6,
                     draw_w,
                     draw_h,
                     preserveAspectRatio=True,
                     mask="auto",
                 )
+                img_drawn = True
             except Exception:
-                c.setFont("Helvetica", 10)
-                c.drawString(x + 10, y + 18, "Unable to render screenshot")
+                pass
+            if not img_drawn:
+                c.setFillColor(MUTED)
+                c.setFont("Helvetica", 9)
+                c.drawCentredString(
+                    x + cell_w / 2, y + cell_h / 2, "Unable to render screenshot"
+                )
+        c.setFillColor(MUTED)
+        c.setFont("Helvetica", 6.5)
+        c.drawString(margin_x, footer_h / 2 - 2, f"{COMPANY} · {SUPPORT_EMAIL}")
+        c.drawRightString(
+            w - margin_x,
+            footer_h / 2 - 2,
+            f"Page {page_num} of {total_pages + 1} · orignaventures.ca",
+        )
         c.showPage()
 
     c.save()

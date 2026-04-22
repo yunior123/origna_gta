@@ -123,10 +123,10 @@ export const TEST_PRODUCTS = {
 // ════════════════════════════════════════════════════════════════════
 
 export const VENTURES_WEB_URL = process.env.VENTURES_TARGET_URL ?? 'https://orignaventures.ca';
-export const VENTURES_API_BASE = process.env.VENTURES_API_URL ?? 'https://api.orignagta.ca/ventures/api';
+export const VENTURES_API_BASE = process.env.VENTURES_API_URL ?? 'https://api.orignaventures.ca';
 
 export const VENTURES_TIERS = {
   ORIGNA_CODE: { code: 'origna_code', name: 'OrignaCode', priceCents: 500_00 },
-  ORIGNA_LAUNCH: { code: 'origna_launch', name: 'OrignaLaunch', priceCents: 2000_00 },
+  ORIGNA_LAUNCH: { code: 'origna_launch', name: 'OrignaLaunch', priceCents: 3000_00 },
   ORIGNA_TEAM: { code: 'origna_team', name: 'OrignaTeam', priceCents: 1000_00 },
 } as const;

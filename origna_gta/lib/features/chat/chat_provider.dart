@@ -14,6 +14,12 @@ import 'chat_state.dart';
 
 export 'chat_state.dart';
 
+bool _isOrignaVenturesSeller(String sellerId) =>
+    sellerId == SellerConstants.orignaVenturesSellerId;
+
+bool _canOpenSellerChatWithoutPremium({required bool isOvSeller}) =>
+    isOvSeller || SellerConstants.sellerOnboardingEnabled;
+
 // ─── Repository ────────────────────────────────────────────────────────────
 
 final chatRepositoryProvider = Provider<OrignaBaseChatRepository>((ref) {
@@ -59,6 +65,7 @@ final myAllChatsProvider = StreamProvider.autoDispose<List<ChatThread>>((ref) {
 
 final chatViewModelProvider = StateNotifierProvider.autoDispose
     .family<ChatViewModel, ChatState, String>((ref, productId) {
+      ref.keepAlive();
       return ChatViewModel(ref, productId);
     });
 
@@ -79,28 +86,32 @@ class ChatViewModel extends StateNotifier<ChatState> {
   Future<void> openChat() async {
     if (state.chatId != null || state.isLoading) return;
 
-    // Proactive Premium Check
-    SubscriptionInfo? subInfo;
-    final subState = _ref.read(subscriptionStreamProvider);
+    final isOvSeller = await _isOrignaVenturesProduct();
+    if (!mounted) return;
 
-    if (subState is AsyncData<SubscriptionInfo?>) {
-      subInfo = subState.value;
-    } else {
-      // If loading or error, try to get the future value
-      try {
-        subInfo = await _ref.read(subscriptionStreamProvider.future);
-      } catch (e) {
-        AppLogger.w(
-          'ChatViewModel: subscription check failed, falling back to non-premium',
-          tag: 'chat',
-          error: e,
-        );
+    if (!_canOpenSellerChatWithoutPremium(isOvSeller: isOvSeller)) {
+      SubscriptionInfo? subInfo;
+      final subState = _ref.read(subscriptionStreamProvider);
+
+      if (subState is AsyncData<SubscriptionInfo?>) {
+        subInfo = subState.value;
+      } else {
+        try {
+          subInfo = await _ref.read(subscriptionStreamProvider.future);
+        } catch (e) {
+          AppLogger.w(
+            'ChatViewModel: subscription check failed, falling back to non-premium',
+            tag: 'chat',
+            error: e,
+          );
+        }
       }
-    }
+      if (!mounted) return;
 
-    if (subInfo == null || !subInfo.isPremium) {
-      state = state.copyWith(isPremiumRequired: true);
-      return;
+      if (subInfo == null || !subInfo.isPremium) {
+        state = state.copyWith(isPremiumRequired: true);
+        return;
+      }
     }
 
     state = state.copyWith(
@@ -112,8 +123,10 @@ class ChatViewModel extends StateNotifier<ChatState> {
       final chatId = await _ref
           .read(chatRepositoryProvider)
           .getOrCreateChat(_productId);
+      if (!mounted) return;
       state = state.copyWith(isLoading: false, chatId: chatId);
     } on OrignaBaseException catch (e) {
+      if (!mounted) return;
       final isSelfChat = e.message.contains('yourself');
       final isPremiumErr = e.message.toLowerCase().contains('premium');
       state = state.copyWith(
@@ -123,7 +136,27 @@ class ChatViewModel extends StateNotifier<ChatState> {
         errorMessage: (isSelfChat || isPremiumErr) ? null : e.message,
       );
     } catch (e) {
+      if (!mounted) return;
       state = state.copyWith(isLoading: false, errorMessage: _parseError(e));
+    }
+  }
+
+  Future<bool> _isOrignaVenturesProduct() async {
+    try {
+      final ob = _ref.read(orignabaseProvider);
+      final doc = await ob
+          .collection(Collections.products)
+          .doc(_productId)
+          .get();
+      final sellerId = doc?.get<String>(Fields.sellerId) ?? '';
+      return _isOrignaVenturesSeller(sellerId);
+    } catch (e) {
+      AppLogger.w(
+        'ChatViewModel: seller lookup failed, assuming non-OV',
+        tag: 'chat',
+        error: e,
+      );
+      return false;
     }
   }
 
@@ -152,9 +185,12 @@ class ChatViewModel extends StateNotifier<ChatState> {
     try {
       await _ref.read(chatRepositoryProvider).sendMessage(chatId, trimmed);
     } catch (e) {
+      if (!mounted) return;
       state = state.copyWith(errorMessage: _parseError(e));
     } finally {
-      state = state.copyWith(isLoading: false);
+      if (mounted) {
+        state = state.copyWith(isLoading: false);
+      }
     }
   }
 
@@ -173,7 +209,9 @@ class ChatViewModel extends StateNotifier<ChatState> {
     if (e is OrignaBaseException) {
       final msg = e.message;
       if (msg.toLowerCase().contains('premium')) {
-        return 'A Premium membership is required to chat with sellers.';
+        return SellerConstants.sellerOnboardingEnabled
+            ? 'Chat is temporarily unavailable for this seller.'
+            : 'A Premium membership is required to chat with sellers.';
       }
       if (msg.contains('rate') || msg.contains('exhausted')) {
         return 'Too many messages. Please slow down.';

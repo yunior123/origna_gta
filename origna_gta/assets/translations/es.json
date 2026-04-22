@@ -827,7 +827,9 @@
       "unread_badge": "{count}",
       "last_seen": "{time} ago",
       "tap_to_chat": "Tap to open conversation",
-      "type_a_message": "Type a message..."
+      "type_a_message": "Type a message...",
+      "coming_soon": "Próximamente",
+      "seller_onboarding_disabled": "Chat con vendedores externos próximamente"
     },
     "seller_integration": {
       "title": "Developer Integration Guide",
@@ -1884,6 +1886,8 @@
     "browse_all_categories": "Browse all categories →",
     "privacy_policy": "Privacy Policy",
     "terms_of_service": "Terms of Service",
+    "platform_by_origna_ventures": "Una plataforma de Origna Ventures Inc.",
+    "company_details": "BN 708286364TZ0001 · support@orignaventures.ca",
     "copyright": "© {year} Origna GTA. All rights reserved.",
     "sort_by": "Sort by",
     "sort_relevance": "Most Relevant",
@@ -2246,13 +2250,15 @@
     "inbox_empty_desc": "Chat with sellers about products to start a conversation",
     "unread_badge": "{count}",
     "last_seen": "{time} ago",
-    "tap_to_chat": "Tap to open conversation",
-    "type_a_message": "Type a message..."
-  },
-  "seller_integration": {
-    "title": "Developer Integration Guide",
-    "how_licensing_works": "How licensing works on Origna",
-    "intro_p1": "When a buyer purchases your software on Origna, a unique license key (format: XXXX-XXXX-XXXX-XXXX) is automatically generated and emailed to them.",
+      "tap_to_chat": "Tap to open conversation",
+      "type_a_message": "Type a message...",
+      "coming_soon": "Próximamente",
+      "seller_onboarding_disabled": "Chat con vendedores externos próximamente"
+    },
+    "seller_integration": {
+      "title": "Developer Integration Guide",
+      "how_licensing_works": "How licensing works on Origna",
+      "intro_p1": "When a buyer purchases your software on Origna, a unique license key (format: XXXX-XXXX-XXXX-XXXX) is automatically generated and emailed to them.",
     "intro_p2": "Your app calls two public endpoints — no API key, no SDK, no login required. Just a plain HTTPS POST from anywhere: Swift, Python, Electron, Unity.",
     "step_1": "Buyer enters their license key in your app",
     "step_2": "Your app calls POST /activate_license",

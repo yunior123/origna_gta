@@ -1,5 +1,10 @@
 {
-	email admin@orignagta.ca
+ email admin@orignagta.ca
+
+ # Trust Cloudflare proxy headers for real client IP
+ # When CF proxy is enabled, requests come from CF IPs —
+ # Caddy must trust these to extract CF-Connecting-IP
+ trusted_proxies cloudflare
 }
 
 (api_security_headers) {
@@ -102,16 +107,59 @@ dev.orignagta.ca {
 }
 
 staging.orignagta.ca {
-	import site_security_headers
-	import site_cache_rules
-	encode zstd gzip
+  import site_security_headers
+  import site_cache_rules
+  encode zstd gzip
 
-	# Backend health probe — bypass SPA fallback
-	handle /health {
-		reverse_proxy orignabase:8080
-	}
+  # Backend health probe — bypass SPA fallback
+  handle /health {
+    reverse_proxy orignabase:8080
+  }
 
-	root * /var/www/orignagta/staging/current
-	try_files {path} {path}/ /index.html
-	file_server
+  root * /var/www/orignagta/staging/current
+  try_files {path} {path}/ /index.html
+  file_server
+}
+
+api.orignaventures.ca {
+  import api_security_headers
+  encode zstd gzip
+
+  @cors_allowed header_regexp Origin ^https://(www\.)?orignaventures\.ca$
+
+  @preflight method OPTIONS
+  handle @preflight {
+    header Access-Control-Allow-Origin "{http.request.header.Origin}"
+    header Access-Control-Allow-Methods "GET, POST, OPTIONS"
+    header Access-Control-Allow-Headers "Content-Type, Authorization, Stripe-Signature"
+    header Access-Control-Max-Age "86400"
+    respond "" 204
+  }
+
+  handle @cors_allowed {
+    header Access-Control-Allow-Origin "{http.request.header.Origin}"
+    header Access-Control-Allow-Methods "GET, POST, OPTIONS"
+    header Access-Control-Allow-Headers "Content-Type, Authorization, Stripe-Signature"
+    header Vary "Origin"
+    reverse_proxy origna-ventures-api:8080 {
+      header_down -Access-Control-Allow-Origin
+      header_down -Access-Control-Allow-Methods
+      header_down -Access-Control-Allow-Headers
+      header_down -Access-Control-Allow-Credentials
+      header_down -Access-Control-Max-Age
+      header_down -Vary
+    }
+  }
+
+  reverse_proxy origna-ventures-api:8080
+}
+
+orignaventures.ca, www.orignaventures.ca {
+  import site_security_headers
+  import site_cache_rules
+  encode zstd gzip
+
+  root * /var/www/orignaventures/production/current
+  try_files {path} {path}/ /index.html
+  file_server
 }

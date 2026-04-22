@@ -11,6 +11,9 @@ import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/notifications/notification_provider.dart';
 import 'package:origna_gta/services/push_transport.dart';
+import 'package:origna_gta/services/browser_navigation_stub.dart'
+    if (dart.library.js_interop) 'package:origna_gta/services/browser_navigation_web.dart'
+    as browser_navigation;
 import 'package:origna_gta/utils/app_logger.dart';
 import 'package:origna_gta/utils/utils.dart';
 
@@ -409,8 +412,12 @@ class OrignaBaseNotificationService {
       case NotificationTypes.backInStock:
         final productId = data[Fields.productId] as String?;
         if (productId != null && productId.isNotEmpty) {
+          if (kIsWeb && browser_navigation.supportsBrowserNavigation) {
+            browser_navigation.navigateToPath(AppRoutes.productByIdPath(productId));
+            break;
+          }
           navigator.pushNamed(
-            AppRoutes.productDetails,
+            AppRoutes.productByIdPath(productId),
             arguments: ProductDetailsArgs(productId: productId),
           );
         }

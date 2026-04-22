@@ -681,6 +681,7 @@ Record every completed, blocked, or verified checkpoint in `STATE.md` immediatel
 - [ ] do not skip tests
 - [ ] make sure dev, staging and prod are updated in vps with latest builds
 - [ ] audit app lificycle per view. ex: how does it work for video player in product detail view?
+- [ ] Keep repo-root clutter down; place new docs/artifacts in the right subdirectories instead of the top-level path.
 
 
 ## Definition Of Done
@@ -690,6 +691,8 @@ A task is done only when all are true:
 - [ ] Code or config is updated if needed.
 - [ ] Relevant tests, live checks, or captures pass.
 - [ ] New warnings introduced by the change are fixed.
+- [ ] Add regression coverage after fixes when the issue is repeatable and high-value.
+- [ ] Add short inline docs/comments when they prevent repeated drift on the same area.
 - [ ] `STATE.md` records the result, evidence, and next blocking impact.
 
 ## Execution Order
@@ -707,6 +710,7 @@ Use `STATE.md` to determine the current active gate inside this order.
 - [ ] Keep `STATE.md` current and compressed.
 - [ ] Keep this file ordered; update existing items instead of appending duplicates.
 - [ ] Keep `.claude/harness/` aligned with the active wave when using harness-loop.
+- [ ] Mark each completed pass in this file with `*` or `[x]` instead of leaving silent progress.
 - [ ] Monitor VPS health:
   - [ ] `docker compose ps`
   - [ ] memory / swap
@@ -842,7 +846,7 @@ Current verified progress on 2026-04-17:
 - [ ] Audit Rust runtime magic strings file by file.
 - [ ] Audit Dart runtime magic strings file by file.
 - [ ] Replace contract strings, route fragments, persisted status values, and payload keys with shared constants or enums.
-- [ ] Fix warnings and todos in vscode panel
+- [x] Fix warnings and todos in vscode panel — verified 2026-04-21 with `flutter analyze --no-fatal-infos` in `origna_gta/` and `origna_ventures/`, `bun x tsc --noEmit` in `e2e/`, plus `.vscode/*.json` validation; `.vscode/tasks.json` was corrected to use emulator live-test args, the canonical OrignaBase webhook path `/api/webhooks/stripe`, and `python3 -m uvicorn` for the Ventures backend task.
 
 ### 4B. Auth / Payments / Webhooks / Infra / Chat / Products lifecycle / Notifications / Orders lifecycle
 
@@ -878,6 +882,8 @@ Start only after Phases 1 through 3 are stable.
 - [ ] Document functions, classes, systems, and tricky flows that caused repeated drift or confusion.
 - [ ] Search current best practices before final docs for complex systems.
 - [ ] Improve weak runbooks/skills that caused avoidable churn during the wave.
+- [ ] When a recurring issue is fixed, add meaningful regression tests before closing the loop.
+- [ ] Use `.claude/skills/` deliberately during full audits and improve weak skills/runbooks when they cause churn.
 
 ## Delegation Rules
 
@@ -888,100 +894,129 @@ Start only after Phases 1 through 3 are stable.
 
 ## Parking Lot
 
+### Process And Documentation
+
 - [ ] Study repo/process improvements that materially reduce repeat failures.
 - [ ] Explore additional AI/model feedback loops for UI/UX review only if they improve verified output quality.
 - [ ] Revisit app-update prompting and other future enhancements after the active delivery gates are green.
-* - [x] improve if not already flutter app lifecycle events handling, search web, github for examples for e-commerce app
-* - [ ] fix todos, warnings in vscode panel
-- [ ] improve e2e api tests, add more live tests, run them all
-- [ ] use them all for full audit:/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/.claude/skills
-- [ ] audit and improve skills, claude.md, agents.md, etc
-- [ ] track all notes in app and make sure all is wired
-- [ ] increase number of live tests, cover more gaps, do it for rust and flutter, search web in depth to do it like a pro
-- [ ] increase number of e2e visual tests, cover all gaps, execute them, debug, fix ui ux errors or issues
-- [ ] after a fix then add 5+ tests to prevent the same issue from happening, also add inline docs for it
-- [ ] use strong pro try catch that log the errors to sentry or logs collection. use modern tecniques, search web for rust and flutter best practices
-- [ ] make sure db is replaceable using hexagonal architecture
-- [ ] orignabase rules should be as strong as firebase rules
-- [ ] orignabase queries should be similar to firebase
-* - [x] fix gaps with previews, right now it shows only empty state in some views. improve previews, cover all gaps
-* [x] no legacy code — removed ApiKeys.images, snapshot['images'], 'images' string in review payload, province backward compat
-- [ ] coverage for live tests and e2e should be 95+, its an order. Identify gaps and add tests accordingly
-- [ ] there should be 300+ screenshots in desktop covering all states, variants, views. clear before generating to avoid duplication.
-- [ ] search rust docs for best practices, create new skills as needed or improve. look for best practices for websockkets server, graphql, etc. audit full codebase.
-- [ ] all screenshots in desktop should match the view they represent. make sure login works. cover all gaps so that investors can see all views/states/variants with enough seeded data. if login fails crash and nuke test suite and investigate
-- [ ] make sure there are semantic labels all over, find gaps and fix, add more e2e tests if needed.
-- [ ] make sure to run all phases /Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/e2e/specs . fix as needed
-- [ ] run them all [text](e2e/ai)
-- [ ] audit screenshots in desktop vs views, widgets gaps
-- [ ] audit for not connected elements in app
-- [ ] dont stop till all screenshots in desktop, we are gonna show screenshots to investors
-- [ ] fix gaps with previews, there is missing mockup data for previews
-- [ ] /Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/lib/screens' add missing mockups for previews, fix overflows or issues displaying if any
-- [ ] /Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/lib/widgets' add missing mockups for previews, fix overflows or issues displaying if any
-- [ ] everytime u do a pass u put a star before the element:.claude/skills/harness-loop/SKILL.md . dont stop
-- [ ] always keep vps updated with latest deployement
-- [ ] add x or star to mark work done on every pass
-- [ ] improve all based on gaps, bugs, audit reports
-- [ ] dont stop till 300+ screenshots on desktop, no excuses
-- [ ] delete users if not already in mail api to restart free tier of less than 1000 users while we test
-- [ ] fix testing failures as pro
-- [ ] commit and push all to github
-- [ ] build ios app
-* [x] fix bug with mobile layout not showing image/s in product details view — added logging in _GalleryImage, fixed imageUrls empty-list fallback, removed legacy 'images' field
-- [x] we are adding support to shipping to cuba — Flutter side done: maritime weight-based shipping, Cuba provinces, address form country selector, Havana validation, es.json translations. Rust backend completed (parity achieved in checkout.rs and shipping_calc).
-- [x] add spanish traslations to both orignagta and orignaventures — orignagta es.json created with 150+ keys, orignaventures completed with loc.tr() inline translations.
-- [x] orignaventures was destroyed in the past in the sense that the contract data replaced entirely the home page which should show the purpose of the company which is ecommerce, whole sale, retail, software services, outsourcing. Increase 1000cad to the service 2, make it clickable as the other services
-- [x] make sure payment is working in orignagta and orignaventures, test stripe payments there with e2e — onboarding bypass applied to checkout.rs (both onboarding_completed and charges_enabled checks commented out). Stripe E2E tests passing.
-- [x] run all tests in apps. make sure to fix the payment endpoints since we now disabled the seller onboarding — done: bypassed onboarding check in checkout.rs, Stripe E2E phase6 running and passing.
-- [x] add more tests e2e to orignagta and orignaventures, mainly for payment — added T02.1 Klarna test in payment-methods.spec.ts.
-- [ ] fix vscode issues
-- [ ] seller onboarding is disabled but have in mind that we can still sell as OrignaVentures, we are the only ones selling the first few years. the email for company is support@orignaventures.ca . seller features remain enabled for orignaventures
-- [x] in orignaventures.ca we are selling services packages with 3 tiers, payment goes via stripe — OrignaCode/OrignaLaunch/OrignaTeam cards on homepage each tap to /pay with serviceCode pre-selected.
-- [ ] update and organize this file
-- [ ] improve and fix generated pdfs in orignaventures, the one with screenshots is crazy
-- [ ] regenerate pdfs, screenshots to desktop
-- [ ] use realistic test products from aliexpress, upload image to cloudflare, search cloudflare for best practices
-- [ ] in service 2 from orignaventures make sure we include 20 human tester = 20x1h of work -> 20 h of QA testing
-- [ ] if seller is orignaventures then user does not have to pay premium to chat, they can chat to us directly. set chatting to sellers as coming upon seller onboarding enabled
-- [x] remove the part of the contract signing from orignaventures, update policies instead. just 3 tappable services that lead to stripe for payment — Flutter UI has no /sign route. Contract signing is backend-only legacy, not exposed to users anymore.
-- [x] audit all app code now that seller onboarding is disabled — checkout.rs onboarding + charges_enabled checks bypassed. Flutter chat paywall remains for non-OrignaVentures sellers.
-- [x] no legacy code, remove that in entire codebase — removed Fields.isActive, ApiKeys.images, snapshot['images'], province backward compat, 'images' review payload string
-- [x] some products might have shipping disabled for specific countries, make sure we have that cover — allowedShippingCountries updated, country-specific shipping logic in calculateShippingCost
-- [ ] deploy latest version of orignagta and orignaventures
-- [ ] in the case of orignaventures tiers it should look like this, similar:https://www.kimi.com/membership/pricing?track_id=fc80de60-c726-4ddc-9b88-e99d6eedfe5a . only that subscription for team plan only. also: calling tiers service 0,1,2 is ugly, fix that
-- [ ] update store to support cuba in every aspect similar to canada
-- [ ] audit spanish traslations all over
-- [ ] make sure the payments for 3 tiers in orignaventures.ca are in home view, want clients to be able to pay fast so that i can become rich haha
-- [ ] update the 3 pdf of orignaventures with new tiers
-- [ ] remember to remove contract signing features, just policy instead. real quick payment
-- [x] in the case of cuba the shipping goes to havana but we need to collect client address, info, etc — address form collects full address, validates Havana city, maritime shipping notice
-- [ ] make splash theme and orignaventures theme kinda match. right হোয়া  now its blue vs red + green. fix. make the ui ux feel expensive, a lot of investors will pay tomorrow so test all payment features
-- [ ] initially show lang depending on ip or browser lang for orignaventures.ca and orignagta . reuest cookies permissions too
-- [x] add contact form that sends email to support@orignaventures.ca via hetzer backend for orignaventures
-- [/] move orignaventures hosting from firebase to hetzner. remember to update cloudflare and remove firebase — Caddyfile updated with orignaventures.ca block, deploy.sh rewritten for rsync→Hetzner. DNS update pending (Cloudflare: add A record orignaventures.ca→204.168.137.16, proxied=false).
-- [ ] update pdf generation
-- [ ] audit firebase gone, only fcm
-- [ ] avoid adding unnecessary or missplaced files to repo high level path. use docs/ etc
-- [ ] test all views and features related to payment in orignaventures and orignagta. test backend too
-- [ ] make sure we have a backend for orignagta and other for orignaventures. both independent. audit
-- [ ] audit all qr codes
-- [ ] audit pdf tiers are clickable
-- [ ] audit pdf 300+ screenshots are real views screenshots, regenerate if needed. i just deleted the whole folder, u need to loginwith test users before navigating to take screenshots
-- [ ] put logo and specs of orignaventures in orignagta to indicate company behind the software. similar to how major companies do it, like instacart, etc
-- [ ] for the lang there should be manual selector as well for orignaventures and orignagta if not already
-- [ ] since we are working with orignaventures a lot then lets move repo. move it inside origna_gta github repo
-- [ ] add tests to db, many tests
-- [x] in stripe klarna should be supported? — yes, Stripe Checkout supports Klarna natively when enabled in Stripe Dashboard. E2E test added.
-- [x] move origna_ventures inside /Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/  
-- [ ] update gitignore for all apps
-- [ ] add this first products to production:'/Users/yuniorrodriguezosorio/Downloads/Quote . sell it as a combo module. /Users/yuniorrodriguezosorio/Downloads/Quote for split phase AC120V 10KW Hybrid Solar System  --2026.pdf'  extract images and improve them
-- [ ] increase security for apps so that even if they have acces to source code it cannot be hacked
-- [ ] instead of unlocking source code automatically by send invite email we do that manually for tiers to avoid our repos being compromised. we deal with the clients manually for repo access, we could even send them a clone
-- [ ] chinese providers and other canadian investor could become partners
-- [ ] audit all stripe webhooks
-- [ ] audit email delivery. always clean test accounts after usage from mailjet
-- [ ] update repo map to include orignaventures, also claude.md
-- [ ] review all changes, make sure no loose ends
-- [ ] fix vscode issues
-- [ ] deploy latest versions of apps and code.
+- [ ] Audit and improve skills, `CLAUDE.md`, `AGENTS.md`, and related runbooks.
+- [ ] Track all notes in the app and make sure everything is wired.
+- [ ] Search Rust docs for best practices, create or improve skills as needed, and audit websocket/server/GraphQL patterns across the codebase.
+- [ ] Review all changes and make sure no loose ends remain.
+
+### Testing And Coverage
+
+- [ ] Improve E2E API tests, expand live coverage for Rust and Flutter, and run the full relevant waves — advanced on 2026-04-21: added `origna_ventures/backend/tests/test_payments_api.py` (now 13 backend tests total) and re-ran extra phase6 payment/live specs successfully, including `payment-edge-cases` `20 pass / 0 fail`, `payment-methods` `21 pass / 0 fail`, `premium-subscription` `29 pass / 0 fail`, and the Ventures live bundle/payment file at `24 pass / 0 fail`, plus backend checks for anon idempotency, expired checkout sessions, duplicate webhook idempotency, one-time checkout completion email/state, and `invoice.payment_failed`
+- [ ] Increase number of E2E visual tests, cover all gaps, execute them, debug them, and fix the UI/UX issues they reveal.
+- [ ] Use stronger try/catch and logging patterns that feed Sentry or centralized logs; research current Rust and Flutter best practices first.
+- [ ] Push live-test and E2E coverage to 95%+, identify the current gaps, and add tests accordingly.
+- [ ] Make sure semantic labels are present across the app, fix gaps, and add more E2E tests where needed.
+- [ ] Run all phases in `/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/e2e/specs` and fix issues as needed.
+- [ ] Run everything in [`e2e/ai`](/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/e2e/ai).
+- [ ] Fix testing failures professionally.
+- [ ] Audit all Stripe webhooks — advanced on 2026-04-21: added backend webhook regression coverage, fixed malformed signed JSON handling to return `400` instead of bubbling a server error, and re-ran the Ventures live webhook-security spec cleanly
+- [ ] Audit email delivery and always clean Mailjet test accounts after usage.
+
+### Screenshots, Previews, And Capture
+
+- [ ] Generate 300+ desktop screenshots covering all states, variants, and views, and clear old output before regenerating.
+- [ ] Make sure all screenshots match the view they represent, login works, and investor-facing captures have enough seeded data; if login fails, stop and investigate instead of keeping bad output.
+- [ ] Audit desktop screenshots against real views/widgets and find disconnected elements or screen-to-widget coverage gaps.
+- [ ] Fix preview gaps with missing mock data, including missing mockups/overflow issues in `origna_gta/lib/screens` and `origna_gta/lib/widgets`.
+- [ ] Regenerate PDFs and desktop screenshots together where the capture set is part of the investor/deck output.
+- [ ] Audit that the 300+ PDF/desktop screenshots are real view screenshots and regenerate if needed after logging in with test users.
+
+### Architecture, Backend, And Security
+
+- [ ] Make sure the DB is replaceable using hexagonal architecture.
+- [ ] Make OrignaBase rules as strong as Firebase rules.
+- [ ] Make OrignaBase queries feel closer to Firebase where that improves developer ergonomics.
+- [ ] Make sure OrignaGTA and OrignaVentures have independent backends, and audit that separation.
+- [ ] Add substantially more DB tests.
+- [ ] Increase app security so source access alone is not enough to compromise the system.
+- [ ] Keep repo access manual for tiers instead of automatically sending invite emails, to reduce repo-compromise risk.
+
+### Product, UX, And OrignaVentures
+
+- [ ] If the seller is OrignaVentures, let users chat directly without paying for premium; treat chatting with sellers as available when seller onboarding is enabled.
+- [ ] Redesign OrignaVentures tiers to feel closer to the referenced premium pricing layout, keep subscription only for the team plan, and replace ugly `service 0/1/2` naming.
+- [ ] Update the store to support Cuba in every aspect similarly to Canada.
+- [ ] Audit Spanish translations across the app.
+- [ ] update the 3 pdf of orignaventures with new tiers — advanced on 2026-04-21: the 2 public web PDFs were regenerated with the current OrignaCode / OrignaLaunch / OrignaTeam pricing and live links; any additional PDF artifacts outside `web/docs/` still need audit/regeneration
+- [ ] Remove the remaining contract-signing features and keep policy-first, quick-payment flows only.
+- [ ] Make the splash theme and OrignaVentures theme feel aligned; the current blue vs. red/green split needs a more expensive, investor-ready UI/UX direction, and payment features should be retested after the pass.
+- [ ] Initially show language based on IP or browser language for `orignaventures.ca` and OrignaGTA, and request cookie permissions too.
+- [ ] Test all payment-related views and features in OrignaVentures and OrignaGTA, including backend flows — advanced on 2026-04-21: backend payment/webhook API regression tests now exist (`13 passed` in `origna_ventures/backend/tests/test_payments_api.py`) and more phase6 Stripe/live coverage was executed cleanly (`payment-edge-cases` `20/0`, `payment-methods` `21/0`, `premium-subscription` `29/0`, `origna-ventures-live` `24/0`), but full payment surface is not finished yet
+- [ ] Put OrignaVentures branding and company specs into OrignaGTA to show the company behind the software, similar to how major consumer apps do it.
+- [ ] Fix OrignaVentures iPhone back-navigation so browser back does not blank the site.
+- [ ] Continue OrignaVentures visual polish after the 2026-04-21 hero/proof-panel pass if more improvement is still needed.
+
+### Content, Assets, And Release
+
+- [ ] Use realistic test seeded products from AliExpress, upload images to Cloudflare, and research Cloudflare best practices first. for dev.orignagta.ca
+- [ ] Add the first products to production from `/Users/yuniorrodriguezosorio/Downloads/Quote` and `/Users/yuniorrodriguezosorio/Downloads/Quote for split phase AC120V 10KW Hybrid Solar System  --2026.pdf`, then extract and improve the images.
+- [ ] Insert the solar module product into production with full home delivery + installation; local pricing/content was already updated to 13,000 CAD on 2026-04-21 and the production insert is still pending.. make sure its sold by our company Origna Ventures using our stripe config
+- [ ] Update `.gitignore` for all apps.
+- [ ] Deploy the latest version of OrignaGTA and OrignaVentures.
+- [ ] deploy latest versions of apps and code. — advanced on 2026-04-21: latest OrignaVentures frontend + docs redeployed after PDF regeneration; OrignaGTA/global deploy still pending
+- [ ] Commit and push all changes to GitHub.
+- [ ] Build the iOS app.
+
+### Misc
+
+- [ ] Delete test users in the mail API if needed to reset the free tier below 1000 users while testing.
+- [ ] Improve the apps based on gaps, bugs, and audit reports.
+- [ ] Explore Chinese providers and other Canadian investors as possible partners.
+- [ ] Launch email campaign to find investors in canada, search job playbook repo for similarity on campaigns
+- [ ] Launch email campaign to find clients in canada, cuba for solar modules or module components, search job playbook repo for similarity on campaigns
+
+
+-create effect of moving shadows glassmorphic around tiers cards
+
+- s3 from amazon is forbidden, use r2 cloudflare
+
+
+urgents, search web if needed on how to solve:
+- [x] bug:scroll down on home dev orignagta and entire web rebuilds including splash, crazy, it was ok 1 week ago — fixed on 2026-04-21 by adding web overscroll guards in `origna_gta/web/index.html`; verified after dev deploy with no reload (`beforeunload` counter stayed `0`, splash absent after scroll)
+
+- [x] bug:network error when tapping tiers buttons to pay and go to stripe checkout — fixed on 2026-04-21 by correcting `origna_ventures/lib/main.dart` from legacy `https://api.orignagta.ca/ventures/api` to `https://api.orignaventures.ca/api` and deploying frontend
+- [x] bug: when tapping ver planes nothing happens — fixed on 2026-04-21 locally and protected by widget regression test (`mobile View plans CTA scrolls to pricing section`); frontend deployed
+
+
+- [x] cookies in dev orignagta looks ugly with two yellow lines — fixed on 2026-04-21 with a redesigned floating consent card and verified via fresh dev mobile screenshot
+- [x] improve or change splash screen and icon for orignagta — improved on 2026-04-21: refreshed web splash visuals/copy, added overscroll-safe shell styling, regenerated `web/favicon.png`, and verified via fresh dev splash screenshot
+
+- test and verify all fixes, mark with x if verify solved 100 percent sure
+- add new tests to make sure no regressions after fixes
+
+
+
+
+- avoid writing new code to index.html , current one is doing just fine. 
+- [ ] make all route names constants to avoid bugs
+- origna ventures is looking awesome right now, avoid touching ui
+- update todos.md with latest info on project. resume and organize as needed
+
+
+
+
+- [x] solve bug when tapping the tiers button, verify than using e2e playwright with actual tapping on button, this is urgent. the payment must be working. add full e2e tests to verify all buttons for payment, more than 10 tests playwright live real interactions after deployed. the payment button should redirect to stripe properly and payment must be register properly via webhook, verify that
+
+
+
+- [ ] when going navigation to product details the whole web reloads, including splash, that is crazy
+
+
+
+- [ ]delete all seeded products in dev.orignagta.ca and ressed again to make sure they all have realistic images, description, etc as agreed before. u can search aliexpress api if needed, if not fetch some free api with realistic images and products, upload those images and specs of products to r2 and postgresql, etc. product images should match products specs
+
+
+- [ ]verify navigation is working properly when tapping arrow back on safari browser, i have seen many navigation bugs:ex u navigate back to wrong view, that is crazy. search the web for best practices.
+
+
+- [ ] bug:same product details bug as 1000 times before dev orignagta.ca no image on mobile layout — partially advanced on 2026-04-21 (mobile detail layout and gallery path hardened, extra tests added), but Playwright/agent-browser still reproduce a broken live mobile detail screen after deploy; needs another pass
+
+
+- deploy latest version to dev, stag, prod. 
+- [ ]verify that the product in production is working end to end, use playwright to test description, specs, payment, right images, etc
+- [ ] add test e2e playwright to verify contact form in orignaventures, make sure that email is sent to support@orignaventures.ca and make sure the user receives confirmation email. improve ui ux of email templates as needed

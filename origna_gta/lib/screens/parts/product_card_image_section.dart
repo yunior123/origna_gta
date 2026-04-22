@@ -91,6 +91,9 @@ class _ProductCardImageSection extends ConsumerWidget {
                                     width: double.infinity,
                                     height: double.infinity,
                                     fit: BoxFit.cover,
+                                    imageRenderMethodForWeb: kIsWeb
+                                        ? ImageRenderMethodForWeb.HtmlImage
+                                        : ImageRenderMethodForWeb.HttpGet,
                                     placeholder: (context, url) =>
                                         ModernSkeletonLoader.imagePlaceholder(),
                                     errorWidget: (context, url, error) =>

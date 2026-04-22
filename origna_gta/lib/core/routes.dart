@@ -54,6 +54,8 @@ class AppRoutes {
   static const String mfaChallenge = '/mfa/challenge';
   static const String securitySettings = '/security-settings';
   static const String returnRequest = '/orders/return-request';
+  static String productByIdPath(String productId) => '$productById/$productId';
+  static String productBySlugPath(String slug) => '$productBySlug/$slug';
   AppRoutes._(); // Prevent instantiation
 }
 

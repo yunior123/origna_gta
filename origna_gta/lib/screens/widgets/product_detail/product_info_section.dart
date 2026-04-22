@@ -27,7 +27,8 @@ class SellerInfoCard extends ConsumerWidget {
         false;
     final currentUserId = ref.watch(obUserIdProvider);
     final isOwnProduct = currentUserId == product.sellerId;
-
+    final isOvSeller =
+        product.sellerId == SellerConstants.orignaVenturesSellerId;
     return ModernCard(
       padding: const EdgeInsets.all(14),
       child: Column(
@@ -78,6 +79,18 @@ class SellerInfoCard extends ConsumerWidget {
                           Navigator.pushNamed(context, AppRoutes.login);
                           return;
                         }
+                        if (isOvSeller ||
+                            SellerConstants.sellerOnboardingEnabled) {
+                          Navigator.pushNamed(
+                            context,
+                            AppRoutes.chat,
+                            arguments: ChatArgs(
+                              productId: product.productId,
+                              productTitle: product.name,
+                            ),
+                          );
+                          return;
+                        }
                         if (isPremium) {
                           Navigator.pushNamed(
                             context,
@@ -93,9 +106,7 @@ class SellerInfoCard extends ConsumerWidget {
                             isScrollControlled: true,
                             backgroundColor: DesignTokens.transparent,
                             builder: (context) => Container(
-                              height:
-                                  MediaQuery.sizeOf(context).height *
-                                  0.7, // height fraction — no responsive utility available
+                              height: MediaQuery.sizeOf(context).height * 0.7,
                               decoration: BoxDecoration(
                                 color: Theme.of(
                                   context,
@@ -302,12 +313,15 @@ class TrustBadges extends ConsumerWidget {
                 children: [
                   Icon(b.icon, size: 12, color: b.color),
                   const SizedBox(width: 4),
-                  Text(
-                    b.label,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: b.color,
+                  Flexible(
+                    child: Text(
+                      b.label,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: b.color,
+                      ),
                     ),
                   ),
                 ],

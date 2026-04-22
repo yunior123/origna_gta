@@ -377,10 +377,11 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
   // /product/{id} — product detail by ID (E2E deep link, notification taps)
   if (uri.path.startsWith('${AppRoutes.productById}/')) {
     final productId = uri.path.substring('${AppRoutes.productById}/'.length);
+    final args = settings.arguments as ProductDetailsArgs?;
     if (productId.isNotEmpty) {
       return SlidePageRoute(
         settings: settings,
-        page: ProductDetailScreen(productId: productId),
+        page: ProductDetailScreen(productId: productId, product: args?.product),
       );
     }
   }
@@ -1286,11 +1287,11 @@ class _OrignaAppState extends ConsumerState<OrignaApp>
       final segs = uri.pathSegments;
       // /p/{slug} — product share link
       if (segs.length >= 2 && segs[0] == 'p') {
-        navigator.pushNamed('/p/${segs[1]}');
+        navigator.pushNamed(AppRoutes.productBySlugPath(segs[1]));
         return;
       }
       // Route the deep link through the existing route handler
-      final path = uri.path.isNotEmpty ? uri.path : '/';
+      final path = uri.path.isNotEmpty ? uri.path : AppRoutes.home;
       final query = uri.query.isNotEmpty ? '?${uri.query}' : '';
       navigator.pushNamed('$path$query');
     }

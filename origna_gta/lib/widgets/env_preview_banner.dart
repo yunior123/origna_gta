@@ -36,11 +36,47 @@ class EnvPreviewBanner extends StatelessWidget {
 
     if (bannerText == null) return child;
 
-    return Banner(
-      message: bannerText,
-      location: BannerLocation.topEnd,
-      color: bannerColor,
-      child: child,
+    return Stack(
+      children: [
+        child,
+        Positioned(
+          top: 12,
+          right: 12,
+          child: IgnorePointer(
+            child: SafeArea(
+              bottom: false,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: bannerColor.withValues(alpha: 0.94),
+                  borderRadius: BorderRadius.circular(999),
+                  boxShadow: [
+                    BoxShadow(
+                      color: DesignTokens.black.withValues(alpha: 0.18),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 7,
+                  ),
+                  child: Text(
+                    bannerText,
+                    style: const TextStyle(
+                      color: DesignTokens.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

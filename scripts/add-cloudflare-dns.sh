@@ -1,37 +1,116 @@
 #!/bin/bash
-# Add docs subdomains to Cloudflare DNS
-# Usage: CLOUDFLARE_API_TOKEN=xxx ./add-cloudflare-dns.sh
+# Enable Cloudflare proxy (DDoS protection) for all Origna domains
+# Usage: CLOUDFLARE_API_TOKEN=xxx ./add-cloudflare-dns.sh [--ventures-only] [--gta-only]
 
 set -euo pipefail
 
 TOKEN="${CLOUDFLARE_API_TOKEN:?Set CLOUDFLARE_API_TOKEN first}"
+VPS_IP="${VPS_IP:-204.168.137.16}"
+MODE="${1:---all}"
 
-# Get zone ID for orignagta.ca
-  "https://api.cloudflare.com/client/v4/zones?name=orignagta.ca" \
-  | python3 -c "import sys,json; print(json.load(sys.stdin)['result'][0]['id'])")
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+NC='\033[0m'
 
-echo "Zone ID: $ZONE_ID"
+ok() { echo -e "${GREEN}✓ $1${NC}"; }
+fail() { echo -e "${RED}✗ $1${NC}"; exit 1; }
 
-# Add docs.orignagta.ca
-curl -s -X POST "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records" \
-  -H "Content-Type: application/json" \
-  --data '{
-    "type": "A",
-    "name": "docs",
-    "content": "${VPS_IP:-204.168.137.16}",
-    "ttl": 1,
-    "proxied": true
-  }' | python3 -c "import sys,json; r=json.load(sys.stdin); print(f'docs.orignagta.ca: {\"OK\" if r[\"success\"] else r[\"errors\"]}')"
+# Upsert a DNS record: create if missing, update if exists with different content/proxied
+upsert_record() {
+    local zone_id="$1" zone_name="$2" name="$3" rtype="$4" content="$5" proxied="$6"
 
-# Add mcp.docs.orignagta.ca
-curl -s -X POST "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records" \
-  -H "Content-Type: application/json" \
-  --data '{
-    "type": "A",
-    "name": "mcp.docs",
-    "content": "${VPS_IP:-204.168.137.16}",
-    "ttl": 1,
-    "proxied": true
-  }' | python3 -c "import sys,json; r=json.load(sys.stdin); print(f'mcp.docs.orignagta.ca: {\"OK\" if r[\"success\"] else r[\"errors\"]}')"
+    local fqdn="${name}.${zone_name}"
+    [ "$name" = "@" ] && fqdn="$zone_name"
 
-echo "Done! Both subdomains added with Cloudflare proxy."
+    local existing
+        "https://api.cloudflare.com/client/v4/zones/$zone_id/dns_records?name=$fqdn&type=$rtype" 2>/dev/null || echo '{"result":[]}')
+
+    local record_id
+    record_id=$(echo "$existing" | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+results = data.get('result', [])
+if results:
+    print(results[0]['id'])
+else:
+    print('')
+" 2>/dev/null)
+
+    if [ -n "$record_id" ]; then
+        local current_proxied
+        current_proxied=$(echo "$existing" | python3 -c "
+import sys, json
+print(str(json.load(sys.stdin)['result'][0].get('proxied', False)).lower())
+" 2>/dev/null)
+        local current_content
+        current_content=$(echo "$existing" | python3 -c "
+import sys, json
+print(json.load(sys.stdin)['result'][0].get('content', ''))
+" 2>/dev/null)
+
+        if [ "$current_proxied" = "$proxied" ] && [ "$current_content" = "$content" ]; then
+            ok "$fqdn already correct (proxied=$proxied, $content)"
+            return 0
+        fi
+
+        curl -sf -X PATCH "https://api.cloudflare.com/client/v4/zones/$zone_id/dns_records/$record_id" \
+            -H "Content-Type: application/json" \
+            --data "{\"content\":\"$content\",\"proxied\":$proxied}" | python3 -c "
+import sys, json
+r = json.load(sys.stdin)
+print(f'  $fqdn: {\"OK\" if r[\"success\"] else r[\"errors\"]}')" 2>/dev/null
+        ok "$fqdn updated → proxied=$proxied"
+    else
+        curl -sf -X POST "https://api.cloudflare.com/client/v4/zones/$zone_id/dns_records" \
+            -H "Content-Type: application/json" \
+            --data "{\"type\":\"$rtype\",\"name\":\"$name\",\"content\":\"$content\",\"ttl\":1,\"proxied\":$proxied}" | python3 -c "
+import sys, json
+r = json.load(sys.stdin)
+print(f'  $fqdn: {\"OK\" if r[\"success\"] else r[\"errors\"]}')" 2>/dev/null
+        ok "$fqdn created → proxied=$proxied"
+    fi
+}
+
+# ── OrignaGTA zone ──────────────────────────────────────────────────────────────
+
+if [ "$MODE" = "--all" ] || [ "$MODE" = "--gta-only" ]; then
+    echo -e "${BLUE}▶ Setting up orignagta.ca zone...${NC}"
+        "https://api.cloudflare.com/client/v4/zones?name=orignagta.ca" \
+        | python3 -c "import sys,json; print(json.load(sys.stdin)['result'][0]['id'])")
+    echo "  Zone ID: $GTA_ZONE"
+
+    upsert_record "$GTA_ZONE" "orignagta.ca" "@" "A" "$VPS_IP" "true"
+    upsert_record "$GTA_ZONE" "orignagta.ca" "www" "A" "$VPS_IP" "true"
+    upsert_record "$GTA_ZONE" "orignagta.ca" "api" "A" "$VPS_IP" "true"
+    upsert_record "$GTA_ZONE" "orignagta.ca" "dev" "A" "$VPS_IP" "true"
+    upsert_record "$GTA_ZONE" "orignagta.ca" "staging" "A" "$VPS_IP" "true"
+    upsert_record "$GTA_ZONE" "orignagta.ca" "docs" "A" "$VPS_IP" "true"
+    upsert_record "$GTA_ZONE" "orignagta.ca" "mcp.docs" "A" "$VPS_IP" "true"
+fi
+
+# ── OrignaVentures zone ─────────────────────────────────────────────────────────
+
+if [ "$MODE" = "--all" ] || [ "$MODE" = "--ventures-only" ]; then
+    echo -e "${BLUE}▶ Setting up orignaventures.ca zone...${NC}"
+        "https://api.cloudflare.com/client/v4/zones?name=orignaventures.ca" \
+        | python3 -c "import sys,json; zones=json.load(sys.stdin)['result']; print(zones[0]['id'] if zones else '')" 2>/dev/null || echo "")
+
+    if [ -z "$VENTURES_ZONE" ]; then
+        echo -e "${RED}⚠ orignaventures.ca zone not found in Cloudflare. Create it first:${NC}"
+        echo "  1. Log into Cloudflare dashboard"
+        echo "  2. Add site orignaventures.ca"
+        echo "  3. Select Free plan"
+        echo "  4. Re-run this script with --ventures-only"
+    else
+        echo "  Zone ID: $VENTURES_ZONE"
+        upsert_record "$VENTURES_ZONE" "orignaventures.ca" "@" "A" "$VPS_IP" "true"
+        upsert_record "$VENTURES_ZONE" "orignaventures.ca" "www" "A" "$VPS_IP" "true"
+        upsert_record "$VENTURES_ZONE" "orignaventures.ca" "api" "A" "$VPS_IP" "true"
+    fi
+fi
+
+echo ""
+echo -e "${GREEN}Done! Cloudflare proxy (DDoS protection) enabled for all domains.${NC}"
+echo -e "  Note: SSL/TLS mode must be 'Full (strict)' in Cloudflare dashboard."
+echo -e "  Note: Caddy already has Let's Encrypt certs — CF will validate origin."

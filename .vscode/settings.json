@@ -1,34 +1,91 @@
 {
-	"launch": {
-		"configurations": [],
-		"compounds": []
-	},
-	"debug.onTaskErrors": "debugAnyway",
-	"playwright.reuseBrowser": false,
-	"playwright.showTrace": false,
-	"playwright.useTestServer": false,
-	"chat.agent.maxRequests": 200,
-	"diffEditor.maxComputationTime": 0,
-	"typescript.tsserver.maxTsServerMemory": 3072,
-	"terminal.integrated.scrollback": 10000,
-	"terminal.integrated.copyOnSelection": true,
-	"terminal.integrated.cursorStyle": "line",
-	"terminal.integrated.cursorBlinking": true,
-	"terminal.integrated.showExitAlert": false,
-	"terminal.integrated.enableMultiLinePasteWarning": false,
-	"dart.flutterSdkPath": null,
-	"dart.sdkPath": null,
-	"dart.openDevTools": "flutter",
-	"dart.debugExternalPackageLibraries": false,
-	"dart.debugSdkLibraries": false,
-	"rust-analyzer.check.command": "clippy",
-	"rust-analyzer.cargo.features": "all",
-	"explorer.exclude": {
-		"**/.dart_tool": true,
-		"**/.github": true,
-		"**/.idea": true,
-		"**/.pytest_cache": true,
-		"**/__pycache__": true,
-		"**/target": true
-	}
+  "launch": {
+    "configurations": [],
+    "compounds": []
+  },
+  "debug.onTaskErrors": "debugAnyway",
+  "playwright.reuseBrowser": false,
+  "playwright.showTrace": false,
+  "playwright.useTestServer": false,
+  "chat.agent.maxRequests": 200,
+  "diffEditor.maxComputationTime": 0,
+  "typescript.tsserver.maxTsServerMemory": 3072,
+  "terminal.integrated.scrollback": 10000,
+  "terminal.integrated.copyOnSelection": true,
+  "terminal.integrated.cursorStyle": "line",
+  "terminal.integrated.cursorBlinking": true,
+  "terminal.integrated.showExitAlert": false,
+  "terminal.integrated.enableMultiLinePasteWarning": false,
+  "dart.lineLength": 120,
+  "dart.flutterSdkPath": null,
+  "dart.sdkPath": null,
+  "dart.openDevTools": "flutter",
+  "dart.debugExternalPackageLibraries": false,
+  "dart.debugSdkLibraries": false,
+  "dart.warnWhenEditingFilesOutsideWorkspace": false,
+  "editor.formatOnSave": true,
+  "editor.rulers": [120],
+  "files.associations": {
+    "*.ob": "rust"
+  },
+  "[dart]": {
+    "editor.defaultFormatter": "Dart-Code.dart-code"
+  },
+  "[rust]": {
+    "editor.defaultFormatter": "rust-lang.rust-analyzer"
+  },
+  "rust-analyzer.check.command": "clippy",
+  "rust-analyzer.cargo.features": "all",
+  "rust-analyzer.cargo.checkAllTargets": true,
+  "files.exclude": {
+    "**/.dart_tool": true,
+    "**/build": true,
+    "**/target": true,
+    "**/.github": true,
+    "**/.idea": true,
+    "**/.pytest_cache": true,
+    "**/__pycache__": true,
+    "**/node_modules": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/build": true,
+    "**/target": true,
+    "**/.dart_tool": true,
+    "**/.github": true,
+    "**/.idea": true,
+    "**/.pytest_cache": true,
+    "**/__pycache__": true
+  },
+  "explorer.exclude": {
+    "**/.dart_tool": true,
+    "**/.github": true,
+    "**/.idea": true,
+    "**/.pytest_cache": true,
+    "**/__pycache__": true,
+    "**/target": true
+  },
+  "problems.autoClose": true,
+  "python.analysis.extraPaths": [
+    "${workspaceFolder}/origna_ventures/backend"
+  ],
+  "python.defaultInterpreterPath": "${workspaceFolder}/origna_ventures/backend/venv/bin/python",
+  "python.terminal.activateEnvironment": true,
+  "python.analysis.diagnosticMode": "openFilesOnly",
+  "python.analysis.typeCheckingMode": "off",
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.autopep8",
+    "editor.formatOnSave": true,
+    "editor.tabSize": 4
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
+  },
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  }
 }

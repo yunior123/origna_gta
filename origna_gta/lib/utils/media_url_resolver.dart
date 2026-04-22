@@ -22,17 +22,18 @@ String resolveMediaUrl(String rawSource) {
     return source;
   }
 
+  final normalizedPath = source.startsWith('/') ? source.substring(1) : source;
+
   final baseUrl = ConfigService().imageBaseUrl.trim();
   if (baseUrl.isEmpty) {
-    if (source.contains('/') && !source.startsWith('/')) {
-      return 'https://pub-f9698d0f50d146bcac0e2dc9eb09de57.r2.dev/$source';
+    if (normalizedPath.contains('/')) {
+      return 'https://pub-f9698d0f50d146bcac0e2dc9eb09de57.r2.dev/$normalizedPath';
     }
-    return source;
+    return normalizedPath;
   }
 
   final normalizedBase = baseUrl.endsWith('/')
       ? baseUrl.substring(0, baseUrl.length - 1)
       : baseUrl;
-  final normalizedPath = source.startsWith('/') ? source.substring(1) : source;
   return '$normalizedBase/$normalizedPath';
 }

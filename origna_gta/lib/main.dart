@@ -13,6 +13,13 @@ import 'package:origna_gta/utils/app_logger.dart';
 import 'package:origna_gta/utils/env_config.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
+Locale _detectBrowserLocale() {
+  final code = PlatformDispatcher.instance.locale.languageCode.toLowerCase();
+  if (code.startsWith('fr')) return const Locale('fr');
+  if (code.startsWith('es')) return const Locale('es');
+  return const Locale('en');
+}
+
 /// Keep the semantics handle alive so it doesn't get GC'd in release mode.
 /// Without this, ensureSemantics() has no lasting effect.
 SemanticsHandle? _semanticsHandle;
@@ -114,14 +121,16 @@ void main() {
 
       // Start runApp immediately so Flutter renders at the earliest possible moment.
       // Config and Sentry are initialized in background — the app handles "not ready" state.
-      runApp(
-        EasyLocalization(
-          supportedLocales: const [Locale('en'), Locale('fr'), Locale('es')],
-          path: 'assets/translations',
-          fallbackLocale: const Locale('en'),
-          child: const ProviderScope(child: OrignaApp()),
-        ),
-      );
+    runApp(
+      EasyLocalization(
+        supportedLocales: const [Locale('en'), Locale('fr'), Locale('es')],
+        path: 'assets/translations',
+        fallbackLocale: const Locale('en'),
+        startLocale: _detectBrowserLocale(),
+        saveLocale: true,
+        child: const ProviderScope(child: OrignaApp()),
+      ),
+    );
 
       // Background: fetch remote config (safe defaults already set).
       // 10s timeout — slow network should not block the rendered app.

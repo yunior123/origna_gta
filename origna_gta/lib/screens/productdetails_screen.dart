@@ -1,10 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/widget_previews.dart';
 import 'package:origna_gta/utils/preview_helpers.dart';
 import 'package:origna_gta/features/products/stock_notification_provider.dart';
 import 'package:origna_gta/features/qa/qa_provider.dart';
 import 'package:origna_gta/features/subscription/subscription_provider.dart';
 import 'package:origna_gta/models/generated/models.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
@@ -21,6 +22,7 @@ import 'package:origna_gta/utils/responsive_layout.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
+import 'package:origna_gta/widgets/web_cached_image.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:origna_gta/widgets/modern_skeleton_loader.dart';
@@ -51,6 +53,11 @@ class ProductDetailScreen extends ConsumerStatefulWidget {
 
 class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
   String? _lastRecordedProductId;
+  String? _lastScrollResetProductId;
+  final List<Timer> _pendingMobileScrollResetTimers = <Timer>[];
+  final ScrollController _mobileScrollController = ScrollController(
+    keepScrollOffset: false,
+  );
 
   double _mobileGalleryHeight(BuildContext context) =>
       (MediaQuery.sizeOf(context).height * 0.45).clamp(320.0, 480.0);
@@ -58,7 +65,18 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
   @override
   void didUpdateWidget(covariant ProductDetailScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.productId != widget.productId) _lastRecordedProductId = null;
+    if (oldWidget.productId != widget.productId) {
+      _lastRecordedProductId = null;
+      _lastScrollResetProductId = null;
+      _resetMobileScrollToTop();
+    }
+  }
+
+  @override
+  void dispose() {
+    _cancelPendingMobileScrollResets();
+    _mobileScrollController.dispose();
+    super.dispose();
   }
 
   void _recordRecentlyViewedOnce(String productId) {
@@ -67,6 +85,45 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     WidgetsBinding.instance.addPostFrameCallback(
       (_) => _recordRecentlyViewed(productId),
     );
+  }
+
+  void _resetMobileScrollToTop() {
+    _cancelPendingMobileScrollResets();
+
+    const delays = <Duration>[
+      Duration.zero,
+      Duration(milliseconds: 16),
+      Duration(milliseconds: 120),
+      Duration(milliseconds: 400),
+      Duration(milliseconds: 1000),
+    ];
+
+    for (final delay in delays) {
+      final timer = Timer(delay, () {
+        if (!mounted || !_mobileScrollController.hasClients) return;
+        final position = _mobileScrollController.position;
+        if (position.pixels == 0) return;
+        _mobileScrollController.jumpTo(0);
+      });
+      _pendingMobileScrollResetTimers.add(timer);
+    }
+  }
+
+  void _cancelPendingMobileScrollResets() {
+    for (final timer in _pendingMobileScrollResetTimers) {
+      timer.cancel();
+    }
+    _pendingMobileScrollResetTimers.clear();
+  }
+
+  void _ensureMobileScrollResetOnce(String productId) {
+    if (_lastScrollResetProductId == productId) return;
+    _lastScrollResetProductId = productId;
+    _resetMobileScrollToTop();
+  }
+
+  Widget _wrapWithDevLayoutProbe(BuildContext context, Widget child) {
+    return child;
   }
 
   /// Builds the best available product snapshot so the detail screen can render
@@ -157,6 +214,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
             );
           }
           _recordRecentlyViewedOnce(resolvedProductId);
+          _ensureMobileScrollResetOnce(resolvedProductId);
           final imageUrls = product.imageUrls;
           final hasVideo =
               product.videoUrl != null && product.videoUrl!.isNotEmpty;
@@ -231,138 +289,86 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
               : const SizedBox.shrink();
 
           if (isWideScreen) {
-            return SingleChildScrollView(
-              child: Column(
-                children: [
-                  SafeArea(
-                    bottom: false,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      child: Row(
-                        children: [
-                          IconButton(
-                            key: const Key('productdetail_back_button'),
-                            tooltip: 'btn-back-product-details',
-                            icon: const Icon(Icons.arrow_back),
-                            onPressed: () => Navigator.pop(context),
-                          ),
-                          const Spacer(),
-                          buildShareButton(),
-                        ],
-                      ),
-                    ),
-                  ),
-                  Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(
-                        maxWidth: ResponsiveBreakpoints.contentMaxWidth,
-                      ),
+            return _wrapWithDevLayoutProbe(
+              context,
+              SingleChildScrollView(
+                child: Column(
+                  children: [
+                    SafeArea(
+                      bottom: false,
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
                         child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(
-                              flex: 5,
-                              child: buildImageGallery(height: 480, wide: true),
+                            IconButton(
+                              key: const Key('productdetail_back_button'),
+                              tooltip: 'btn-back-product-details',
+                              icon: const Icon(Icons.arrow_back),
+                              onPressed: () => Navigator.pop(context),
                             ),
-                            const SizedBox(width: 32),
-                            Expanded(flex: 5, child: buildProductInfo()),
+                            const Spacer(),
+                            buildShareButton(),
                           ],
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 32),
-                  Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(
-                        maxWidth: ResponsiveBreakpoints.contentMaxWidth,
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: buildBottomSections(),
+                    Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(
+                          maxWidth: ResponsiveBreakpoints.contentMaxWidth,
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                flex: 5,
+                                child: buildImageGallery(
+                                  height: 480,
+                                  wide: true,
+                                ),
+                              ),
+                              const SizedBox(width: 32),
+                              Expanded(flex: 5, child: buildProductInfo()),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 32),
+                    Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(
+                          maxWidth: ResponsiveBreakpoints.contentMaxWidth,
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: buildBottomSections(),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             );
           }
 
           final galleryHeight = _mobileGalleryHeight(context);
 
-          return SafeArea(
-            bottom: false,
-            child: CustomScrollView(
-              slivers: [
-                SliverAppBar(
-                  automaticallyImplyLeading: false,
-                  pinned: true,
-                  floating: false,
-                  backgroundColor: isDark
-                      ? DesignTokens.darkSurface
-                      : DesignTokens.white,
-                  titleSpacing: 8,
-                  leading: IconButton(
-                    key: const Key('productdetail_back_button'),
-                    tooltip: 'btn-back-product-details',
-                    icon: const Icon(Icons.arrow_back),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                  actions: [buildShareButton()],
-                ),
-                SliverToBoxAdapter(
-                  child: SizedBox(
-                    width: double.infinity,
-                    height: galleryHeight,
-                    child: buildImageGallery(height: galleryHeight),
-                  ),
-                ),
-                SliverToBoxAdapter(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? DesignTokens.darkSurface
-                          : DesignTokens.white,
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(24),
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: DesignTokens.black.withValues(alpha: 0.08),
-                          blurRadius: 16,
-                          offset: const Offset(0, -4),
-                        ),
-                      ],
-                    ),
-                    child: const SizedBox(height: 20),
-                  ),
-                ),
-                SliverToBoxAdapter(
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(
-                        maxWidth: ResponsiveBreakpoints.contentMaxWidth,
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            buildProductInfo(),
-                            const SizedBox(height: 32),
-                            buildBottomSections(),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+          return _wrapWithDevLayoutProbe(
+            context,
+            _buildMobileProductLayout(
+              context: context,
+              isDark: isDark,
+              galleryHeight: galleryHeight,
+              shareButton: buildShareButton(),
+              imageGallery: buildImageGallery(height: galleryHeight),
+              productInfo: buildProductInfo(),
+              bottomSections: buildBottomSections(),
             ),
           );
         },
@@ -458,6 +464,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     bool canManage,
   ) {
     _recordRecentlyViewedOnce(productId);
+    _ensureMobileScrollResetOnce(productId);
     final imageUrls = product.imageUrls;
     final hasVideo = product.videoUrl != null && product.videoUrl!.isNotEmpty;
     final isWideScreen = !ResponsiveBreakpoints.isMobile(context);
@@ -525,16 +532,111 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
         : const SizedBox.shrink();
 
     if (isWideScreen) {
-      return SingleChildScrollView(
-        child: Column(
-          children: [
-            SafeArea(
-              bottom: false,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
+      return _wrapWithDevLayoutProbe(
+        context,
+        SingleChildScrollView(
+          child: Column(
+            children: [
+              SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        key: const Key('productdetail_back_button'),
+                        tooltip: 'btn-back-product-details',
+                        icon: const Icon(Icons.arrow_back),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                      const Spacer(),
+                      buildShareButton(),
+                    ],
+                  ),
                 ),
+              ),
+              Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(
+                    maxWidth: ResponsiveBreakpoints.contentMaxWidth,
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          flex: 5,
+                          child: buildImageGallery(height: 480, wide: true),
+                        ),
+                        const SizedBox(width: 32),
+                        Expanded(flex: 5, child: buildProductInfo()),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 32),
+              Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(
+                    maxWidth: ResponsiveBreakpoints.contentMaxWidth,
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: buildBottomSections(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final galleryHeight = _mobileGalleryHeight(context);
+
+    return _wrapWithDevLayoutProbe(
+      context,
+      _buildMobileProductLayout(
+        context: context,
+        isDark: isDark,
+        galleryHeight: galleryHeight,
+        shareButton: buildShareButton(),
+        imageGallery: buildImageGallery(height: galleryHeight),
+        productInfo: buildProductInfo(),
+        bottomSections: buildBottomSections(),
+      ),
+    );
+  }
+
+  Widget _buildMobileProductLayout({
+    required BuildContext context,
+    required bool isDark,
+    required double galleryHeight,
+    required Widget shareButton,
+    required Widget imageGallery,
+    required Widget productInfo,
+    required Widget bottomSections,
+  }) {
+    return SafeArea(
+      bottom: false,
+      child: ListView(
+        key: ValueKey('product-detail-mobile-scroll-${widget.productId}'),
+        controller: _mobileScrollController,
+        primary: false,
+        padding: EdgeInsets.zero,
+        physics: const ClampingScrollPhysics(),
+        children: [
+          Material(
+            color: isDark ? DesignTokens.darkSurface : DesignTokens.white,
+            child: SafeArea(
+              bottom: false,
+              child: SizedBox(
+                height: kToolbarHeight,
                 child: Row(
                   children: [
                     IconButton(
@@ -544,109 +646,47 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                       onPressed: () => Navigator.pop(context),
                     ),
                     const Spacer(),
-                    buildShareButton(),
+                    shareButton,
                   ],
                 ),
               ),
             ),
-            Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(
-                  maxWidth: ResponsiveBreakpoints.contentMaxWidth,
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        flex: 5,
-                        child: buildImageGallery(height: 480, wide: true),
-                      ),
-                      const SizedBox(width: 32),
-                      Expanded(flex: 5, child: buildProductInfo()),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 32),
-            Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(
-                  maxWidth: ResponsiveBreakpoints.contentMaxWidth,
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: buildBottomSections(),
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    final galleryHeight = _mobileGalleryHeight(context);
-
-    return SafeArea(
-      bottom: false,
-      child: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            pinned: true,
-            backgroundColor: isDark
-                ? DesignTokens.darkSurface
-                : DesignTokens.white,
-            leading: IconButton(
-              key: const Key('productdetail_back_button'),
-              tooltip: 'btn-back-product-details',
-              icon: const Icon(Icons.arrow_back),
-              onPressed: () => Navigator.pop(context),
-            ),
-            actions: [buildShareButton()],
           ),
-          SliverToBoxAdapter(
-            child: SizedBox(
-              width: double.infinity,
-              height: galleryHeight,
-              child: buildImageGallery(height: galleryHeight),
-            ),
+          SizedBox(
+            width: double.infinity,
+            height: galleryHeight,
+            child: imageGallery,
           ),
-          SliverToBoxAdapter(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: isDark ? DesignTokens.darkSurface : DesignTokens.white,
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(24),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: DesignTokens.black.withValues(alpha: 0.08),
-                    blurRadius: 16,
-                    offset: const Offset(0, -4),
-                  ),
-                ],
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: isDark ? DesignTokens.darkSurface : DesignTokens.white,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(24),
               ),
-              child: const SizedBox(height: 20),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(
-                  maxWidth: ResponsiveBreakpoints.contentMaxWidth,
+              boxShadow: [
+                BoxShadow(
+                  color: DesignTokens.black.withValues(alpha: 0.08),
+                  blurRadius: 16,
+                  offset: const Offset(0, -4),
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      buildProductInfo(),
-                      const SizedBox(height: 32),
-                      buildBottomSections(),
-                    ],
-                  ),
+              ],
+            ),
+            child: const SizedBox(height: 20),
+          ),
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(
+                maxWidth: ResponsiveBreakpoints.contentMaxWidth,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    productInfo,
+                    const SizedBox(height: 32),
+                    bottomSections,
+                  ],
                 ),
               ),
             ),
@@ -719,7 +759,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                 minScale: 0.5,
                 maxScale: 4.0,
                 child: Center(
-                  child: CachedNetworkImage(
+                  child: WebCachedNetworkImage(
                     imageUrl: resolveMediaUrl(imageUrls[i]),
                     width: double.infinity,
                     height: double.infinity,

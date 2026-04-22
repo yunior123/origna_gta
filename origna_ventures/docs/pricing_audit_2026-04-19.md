@@ -9,7 +9,7 @@ This audit reflects the external services visibly used across `origna_gta`, `ori
 | Service | Price | Notes |
 |---|---:|---|
 | OrignaCode | 500 CAD one-time | Source code, private repo delivery, lifetime source updates, no resale |
-| OrignaLaunch | 1,000 CAD one-time | Includes OrignaCode, Hetzner year 1, Apple Developer year 1, Google Play registration, store deployment, 4 weeks support |
+| OrignaLaunch | 3,000 CAD one-time | Includes OrignaCode, Hetzner year 1, Apple Developer year 1, Google Play registration, store deployment, 4 weeks support |
 | OrignaTeam | 1,000+ CAD / month | Dedicated developer outsourcing, daily meeting required, time tracking supported, third-party/API costs billed separately |
 
 ## Competitor framing
@@ -19,7 +19,7 @@ This audit reflects the external services visibly used across `origna_gta`, `ori
 | Shopify Basic | 37 CAD/month billed yearly | Still adds transaction fees and app ecosystem costs |
 | Replit Core | 25 USD/month or 20 USD/month billed annually | Credit model, deployment/build budget still applies |
 | Lovable Pro | 25 USD/month or 21 USD/month annually | Frontend/prototyping friendly, third-party services billed separately |
-| OrignaGTA | 500 CAD or 1,000 CAD one-time, or 1,000+ CAD/month | Source ownership + cross-platform + custom backend |
+| OrignaGTA | 500 CAD or 3,000 CAD one-time, or 1,000+ CAD/month | Source ownership + cross-platform + custom backend |
 
 ## External services used by the stack
 
@@ -40,13 +40,13 @@ This audit reflects the external services visibly used across `origna_gta`, `ori
 
 Included by default:
 
-- Hetzner 8 GB server for year 1
+- Hetzner server (8 GB RAM + 80 GB disk) for year 1
 - Apple Developer Program year 1
 - Google Play registration fee
 - App Store + Play deployment work
 - 4 weeks of post-launch support
 
-Optional upgrades, not assumed mandatory in the 1,000 CAD base:
+Optional upgrades, not assumed mandatory in the 3,000 CAD base:
 
 - Mailjet Premium
 - Sentry Team or Business
@@ -66,6 +66,7 @@ Optional upgrades, not assumed mandatory in the 1,000 CAD base:
 
 ## Live URL status snapshot
 
-- `https://orignaventures.ca` resolves and redirects to `https://www.orignaventures.ca/`
-- `https://www.orignaventures.ca/{contract,pay,deck,donate,outsourcing,partner}` now resolve on the deployed Flutter site; route-specific browser QA is still recommended after deploy
+- `https://orignaventures.ca` resolves successfully
+- `https://www.orignaventures.ca/` resolves successfully
+- route-specific browser QA is still recommended after deploy for any legacy/public paths that were historically exposed
 - `https://dev.orignagta.ca/` is live

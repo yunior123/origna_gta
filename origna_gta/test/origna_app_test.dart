@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/core/repositories/product_repository.dart';
 import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/origna_app.dart';
@@ -64,9 +65,11 @@ void main() {
         provisional: anyNamed('provisional'),
         sound: anyNamed('sound'),
       ),
-    ).thenAnswer((_) async => const AppNotificationSettings(
-          authorizationStatus: AppNotificationAuthorizationStatus.authorized,
-        ));
+    ).thenAnswer(
+      (_) async => const AppNotificationSettings(
+        authorizationStatus: AppNotificationAuthorizationStatus.authorized,
+      ),
+    );
     when(mockMessaging.getToken()).thenAnswer((_) async => 'fake-token');
     when(mockMessaging.onTokenRefresh).thenAnswer((_) => const Stream.empty());
     when(mockMessaging.getInitialMessage()).thenAnswer((_) async => null);
@@ -135,28 +138,28 @@ void main() {
       }
 
       // 1. Login
-      nav!.pushNamed('/login');
+      nav!.pushNamed(AppRoutes.login);
       await pumpRobust();
       expect(find.byType(LoginScreen), findsOneWidget);
       nav.pop();
       await pumpRobust();
 
       // 2. Privacy Policy
-      nav.pushNamed('/privacy-policy');
+      nav.pushNamed(AppRoutes.privacyPolicy);
       await pumpRobust();
       expect(find.byType(PrivacyPolicyScreen), findsOneWidget);
       nav.pop();
       await pumpRobust();
 
       // 3. Cart
-      nav.pushNamed('/cart');
+      nav.pushNamed(AppRoutes.cart);
       await pumpRobust();
       expect(find.textContaining('sign in'), findsWidgets);
       nav.pop();
       await pumpRobust();
 
       // 4. Product Slug
-      nav.pushNamed('/p/test-product-slug');
+      nav.pushNamed(AppRoutes.productBySlugPath('test-product-slug'));
       await pumpRobust();
       expect(find.byType(ProductDetailScreen), findsOneWidget);
     });

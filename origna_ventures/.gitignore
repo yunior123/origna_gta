@@ -6,6 +6,8 @@ build/
 *.iml
 .packages
 pubspec.lock
+.pub-cache/
+.pub/
 
 # Python
 __pycache__/
@@ -13,13 +15,27 @@ __pycache__/
 *.pyo
 venv/
 .venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
 
-# Environment
+# Environment & secrets
 .env
+.env.*
+!.env.example
 backend/.env
+*.pem
+*.key
+*.jks
+*.keystore
+*-key.json
+credentials*
+service-account*.json
+secrets/
 
 # Storage
-backend/storage/*.db
+backend/storage/
+backend/*.db
 
 # Generated output
 output/
@@ -27,9 +43,21 @@ output/
 # Images (large assets)
 images/
 
-# macOS
+# Coverage
+coverage/
+
+# OS
 .DS_Store
+Thumbs.db
+desktop.ini
 
 # IDE
 .vscode/
 .idea/
+
+# Backup / temp
+*.bak
+*.backup
+*.orig
+*.swp
+*~

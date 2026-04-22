@@ -81,3 +81,11 @@ sysctl vm.swapusage && vm_stat | grep "Pages free"
 - Update STATE.md after every test/deploy run.
 
 ---
+
+## TODO Verification Notes (Apr 2026)
+
+- On 2026-04-21, both Flutter apps analyzed clean locally: `origna_gta/origna_gta` and `origna_ventures` each returned `No issues found!`.
+- The OrignaVentures single-page shell already covers several formerly-open TODOs: homepage is the default view, tier cards live on the homepage, Stripe checkout is launched directly from those cards, and the manual EN/FR/ES selector is reactive in `origna_ventures/lib/main.dart`.
+- Repo documentation for `origna_ventures/` is already present in `docs/REPO_MAP.md`, `CLAUDE.md`, and `AGENTS.md`; re-check TODOs against code/docs before assuming they are still open.
+
+---

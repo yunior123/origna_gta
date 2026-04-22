@@ -1,260 +1,156 @@
 # Security Audit Report - Origna Ventures Website
 
-**Date**: 31 January 2026  
-**Auditor**: Security Review  
-**Project**: orignaventures.ca Flutter Web Application
+**Date**: 21 April 2026
+**Auditor**: Security Review
+**Project**: orignaventures.ca Flutter Web Application + FastAPI Backend
 
-## 🔒 Executive Summary
+## Executive Summary
 
-Security audit completed with **HIGH** security rating after implementing all recommended fixes.
-
----
-
-## ✅ Security Improvements Implemented
-
-### 1. **Input Validation & Sanitization** ✅
-
-#### Before:
-- Minimal validation
-- No sanitization
-- No length limits
-- Weak regex patterns
-
-#### After:
-- ✅ **Strict validation** for all form fields
-- ✅ **Input sanitization** to prevent XSS
-- ✅ **Length limits** enforced (configurable constants)
-- ✅ **Strong regex** patterns for email, phone, name validation
-- ✅ **Character filtering** - removed dangerous characters: `< > " { } \ | ^ \` [ ]`
-
-```dart
-// Constants added for security
-const int kMaxMessageLength = 1000;
-const int kMaxNameLength = 100;
-const int kMaxEmailLength = 100;
-const int kMaxPhoneLength = 20;
-const int kMaxCompanyLength = 100;
-```
-
-### 2. **Sensitive Data Protection** ✅
-
-#### Before:
-- Hardcoded phone number in multiple places
-- No centralized configuration
-
-#### After:
-- ✅ **Centralized configuration** with constants
-- ✅ **Easy to update** - change in one place
-- ✅ **Better maintainability**
-
-```dart
-const String kWhatsAppNumber = '14167865517';
-```
-
-### 3. **HTTP Security Headers** ✅
-
-Added comprehensive security headers in `firebase.json`:
-
-```json
-"X-Content-Type-Options": "nosniff"       // Prevent MIME sniffing
-"X-Frame-Options": "DENY"                 // Prevent clickjacking
-"X-XSS-Protection": "1; mode=block"       // XSS protection
-"Referrer-Policy": "strict-origin-when-cross-origin"  // Privacy
-"Permissions-Policy": "geolocation=(), microphone=(), camera=()"  // Restrict APIs
-```
-
-### 4. **Content Security Policy (CSP)** ✅
-
-Added strict CSP in `web/index.html`:
-- ✅ Scripts only from same origin + inline (Flutter requirement)
-- ✅ Styles from same origin + inline
-- ✅ Images from self, data URIs, and HTTPS
-- ✅ Connections restricted to WhatsApp and Firebase only
-
-### 5. **.gitignore Security** ✅
-
-Enhanced `.gitignore` to prevent committing sensitive files:
-
-```gitignore
-# Security - Never commit these
-*.key
-*.pem
-*-key.json
-service-account*.json
-.env
-.env.*
-secrets/
-private/
-.firebase/
-```
-
-### 6. **Error Handling** ✅
-
-- ✅ **Try-catch blocks** added for URL launching
-- ✅ **Silent failures** for better UX
-- ✅ **Debug logging** for development
-- ✅ **User-friendly error messages**
+Security audit completed with **HIGH** security rating after implementing critical fixes across the FastAPI backend and Flutter frontend. Firebase has been fully removed — backend is Python FastAPI with SQLite, deployed to Hetzner VPS via Caddy.
 
 ---
 
-## 🛡️ Security Features by Category
+## Architecture
 
-### **A. Input Security**
-| Feature | Status | Details |
-|---------|--------|---------|
-| Name validation | ✅ | Regex: letters, spaces, hyphens, apostrophes only |
-| Email validation | ✅ | RFC 5322 compliant, length-limited |
-| Phone validation | ✅ | 10-15 digits, format checking |
-| Message validation | ✅ | Min 10 chars, max 1000 chars |
-| Input sanitization | ✅ | Removes HTML/script injection characters |
-| Length limits | ✅ | All fields have max length |
-
-### **B. Web Security**
-| Feature | Status | Details |
-|---------|--------|---------|
-| XSS Protection | ✅ | Input sanitization + CSP headers |
-| Clickjacking Protection | ✅ | X-Frame-Options: DENY |
-| MIME Sniffing Protection | ✅ | X-Content-Type-Options: nosniff |
-| Content Security Policy | ✅ | Strict CSP implemented |
-| HTTPS Only | ✅ | Firebase Hosting enforces HTTPS |
-
-### **C. Data Privacy**
-| Feature | Status | Details |
-|---------|--------|---------|
-| No database storage | ✅ | All data goes directly to WhatsApp |
-| No cookies | ✅ | No tracking or session storage |
-| No analytics | ✅ | No third-party trackers |
-| Client-side only | ✅ | No backend to compromise |
-| Form cleared after submit | ✅ | Data not retained in memory |
-
-### **D. Secrets Management**
-| Feature | Status | Details |
-|---------|--------|---------|
-| GitHub Secrets | ✅ | FIREBASE_SERVICE_ACCOUNT stored securely |
-| No hardcoded secrets | ✅ | Service accounts not in code |
-| .gitignore protection | ✅ | Key files excluded from repo |
-| Environment separation | ✅ | Firebase project ID in .firebaserc |
+- **Frontend**: Flutter web (single-page app) — served by Caddy at `/var/www/orignaventures/production/current`
+- **Backend**: Python FastAPI (`backend/app.py`) — Stripe checkout, PDF generation (reportlab), Mailjet email, SQLite
+- **Database**: SQLite (`contracts.db`) with WAL mode for concurrent access safety
+- **Deployment**: rsync to Hetzner VPS (204.168.137.16), Caddy reverse proxy, no Firebase
+- **Payment**: Stripe Checkout Sessions (3 service tiers)
+- **Email**: Mailjet for order confirmations and contract notifications
 
 ---
 
-## 📊 Risk Assessment
+## Security Fixes Applied (April 2026)
+
+### Critical Fixes
+
+| # | Vulnerability | Fix |
+|---|--------------|-----|
+| 1 | Unauthenticated `/api/contracts` — anyone could list all client data | Added `require_admin_key()` |
+| 2 | Unauthenticated `/api/contracts/{id}/pdf` — anyone could download contracts | Added admin auth + path traversal protection |
+| 3 | Unauthenticated `/api/email/test` with XSS in HTML email body | Added admin auth + `html_escape()` |
+| 4 | IP spoofing via `X-Forwarded-For` — bypassed all rate limits | `TRUSTED_PROXY_COUNT` env var |
+| 5 | SQLite without WAL mode — concurrent access corruption risk | `PRAGMA journal_mode=WAL` |
+| 6 | Rate limiter memory leak — unbounded growth | Periodic cleanup every 100 requests |
+| 7 | `invite_github_collaborator()` still in codebase | Deleted entirely — manual repo access only |
+| 8 | Missing `checkout.session.expired` webhook handler | Added handler — contract → `expired` |
+| 9 | Mailjet API response exposure in email test endpoint | Only return `{"success": True}` |
+| 10 | PDF path traversal — no containment check | `is_relative_to(storage_dir)` check |
+| 11 | No `contract_id` format validation | Regex `^ovc_[0-9a-f]{16}$` |
+| 12 | Webhook email XSS — raw URL in `href` | `html_escape(pdf_url)` |
+
+### Manual Repository Access Policy
+
+GitHub collaborator auto-invite has been **permanently removed**. Repository access is handled manually:
+- Client requests access after payment
+- Support team sends a clone or grants access manually
+- No automated email with GitHub invite
+
+---
+
+## Security Features by Category
+
+### A. Input Security
+| Feature | Status | Details |
+|---------|--------|---------|
+| Name validation | DONE | Regex: letters, spaces, hyphens, apostrophes only |
+| Email validation | DONE | RFC 5322 compliant, length-limited |
+| Phone validation | DONE | 10-15 digits, format checking |
+| Message validation | DONE | Min 10 chars, max 1000 chars |
+| Input sanitization | DONE | Removes HTML/script injection characters |
+| Length limits | DONE | All fields have max length |
+| Contract ID validation | DONE | Strict regex `^ovc_[0-9a-f]{16}$` |
+
+### B. Web Security
+| Feature | Status | Details |
+|---------|--------|---------|
+| XSS Protection | DONE | Input sanitization + html_escape |
+| Clickjacking Protection | DONE | X-Frame-Options: DENY |
+| MIME Sniffing Protection | DONE | X-Content-Type-Options: nosniff |
+| Content Security Policy | DONE | Strict CSP implemented |
+| HTTPS Only | DONE | Caddy enforces HTTPS |
+| Path Traversal | DONE | is_relative_to() containment check |
+| Rate Limiting | DONE | Per-IP with trusted proxy count |
+| Admin API Key | DONE | Required for protected admin endpoints; see `docs/admin_api_runbook.md` |
+
+### C. Data Privacy
+| Feature | Status | Details |
+|---------|--------|---------|
+| SQLite WAL mode | DONE | Safe concurrent access |
+| No cookies | DONE | No tracking or session storage |
+| No analytics | DONE | No third-party trackers |
+| Form cleared after submit | DONE | Data not retained in memory |
+| No Mailjet response exposure | DONE | Stripped in API responses |
+
+### D. Secrets Management
+| Feature | Status | Details |
+|---------|--------|---------|
+| STRIPE_WEBHOOK_SECRET | DONE | Environment variable, not in code |
+| ADMIN_API_KEY | DONE | Environment variable, not in code |
+| MAILJET_API_KEY/PUBLIC | DONE | Environment variables, not in code |
+| No hardcoded secrets | DONE | All secrets via env vars |
+| .gitignore protection | DONE | Key files excluded from repo |
+
+---
+
+## Risk Assessment
 
 | Category | Risk Level | Mitigation |
 |----------|------------|------------|
-| XSS Attacks | **LOW** | Input sanitization + CSP |
-| SQL Injection | **NONE** | No database |
-| CSRF | **NONE** | No sessions/cookies |
-| Data Breaches | **LOW** | No data storage |
-| DDoS | **MEDIUM** | Firebase CDN + rate limiting |
-| Man-in-the-Middle | **LOW** | HTTPS enforced |
-| Code Injection | **LOW** | Strong validation |
+| XSS Attacks | LOW | Input sanitization + html_escape + CSP |
+| SQL Injection | NONE | Parameterized queries (SQLite) |
+| CSRF | LOW | No sessions/cookies; Stripe handles auth |
+| Data Breaches | LOW | SQLite + admin auth on sensitive endpoints |
+| DDoS | MEDIUM | Caddy + rate limiting per IP |
+| Man-in-the-Middle | LOW | HTTPS enforced by Caddy |
+| Path Traversal | LOW | is_relative_to() containment |
+| IP Spoofing | LOW | TRUSTED_PROXY_COUNT env var |
 
 ---
 
-## ⚠️ Remaining Considerations
+## Remaining Considerations
 
-### 1. **Rate Limiting** (Recommended)
-Currently no rate limiting on form submissions. Consider adding:
-- Client-side: Disable button for X seconds after submission
-- Server-side: Firebase Functions for advanced protection
-
-### 2. **CAPTCHA** (Optional)
-For production with high traffic, consider:
-- Google reCAPTCHA v3
-- hCaptcha
-- Cloudflare Turnstile
-
-### 3. **Monitoring** (Recommended)
+### 1. Monitoring (Recommended)
 Set up monitoring for:
-- Firebase Hosting analytics
-- Error tracking (Sentry, Crashlytics)
+- Error tracking (Sentry)
 - Performance monitoring
+- Uptime alerts
 
-### 4. **DDoS Protection** (Firebase Provides)
-Firebase Hosting includes:
-- ✅ Global CDN
-- ✅ Automatic SSL
-- ✅ DDoS mitigation at edge
+### 2. DDoS Protection
+Caddy provides:
+- HTTPS enforcement
+- Connection limiting
+- Consider Cloudflare proxy for high-traffic scenarios
 
----
-
-## 🎯 Security Best Practices Followed
-
-✅ **Principle of Least Privilege** - Only necessary permissions granted  
-✅ **Defense in Depth** - Multiple layers of security  
-✅ **Secure by Default** - Strict validation enabled  
-✅ **Input Validation** - All inputs validated and sanitized  
-✅ **Output Encoding** - URL encoding for WhatsApp messages  
-✅ **Error Handling** - Graceful failure without exposing internals  
-✅ **Security Headers** - Comprehensive HTTP security headers  
-✅ **HTTPS Only** - All traffic encrypted  
-✅ **No Sensitive Data in Code** - Configuration separated  
-✅ **Dependency Management** - Flutter SDK kept up to date  
+### 3. Regular Audits
+- Quarterly security reviews
+- Dependency updates
+- Monitor CVEs
 
 ---
 
-## 📝 Recommendations for Production
+## Service Tiers
 
-### Immediate (Before Launch)
-1. ✅ **Enable Firebase App Check** - Protect against bot traffic
-2. ✅ **Set up monitoring** - Firebase Performance + Analytics
-3. ✅ **Test all validations** - Try to break the form
+| Tier | Price | Type |
+|------|-------|------|
+| OrignaCode | $500 CAD | One-time |
+| OrignaLaunch | $3,000 CAD | One-time |
+| OrignaTeam | $1,000 CAD/month | Subscription |
 
-### Short-term (First Month)
-1. **Add rate limiting** - Prevent spam
-2. **Implement CAPTCHA** - If spam becomes an issue
-3. **Set up alerts** - For errors and unusual traffic
-
-### Long-term (Ongoing)
-1. **Regular security audits** - Quarterly reviews
-2. **Dependency updates** - Keep Flutter and packages updated
-3. **Monitor CVEs** - Watch for security vulnerabilities
-4. **Review logs** - Check for suspicious activity
+Seller: OrignaVentures (support@orignaventures.ca) — no seller onboarding, OrignaVentures IS the seller.
 
 ---
 
-## 🔐 Firebase Security Checklist
-
-- ✅ Service account stored as GitHub Secret
-- ✅ .firebaserc not containing sensitive data
-- ✅ firebase.json configured with security headers
-- ✅ HTTPS enforced by default
-- ✅ Security rules (N/A - hosting only, no database)
-- ✅ Access restricted to authorized users in Firebase Console
-
----
-
-## 📞 Security Contact
+## Security Contact
 
 For security issues or concerns:
+- **Email**: support@orignaventures.ca
 - **Website**: orignaventures.ca
-- **Emergency**: Review GitHub repository security tab
+
+Operational runbook:
+- `docs/admin_api_runbook.md` — protected admin endpoint usage, bearer auth, curl smoke checks
 
 ---
 
-## 🎉 Conclusion
-
-**Overall Security Rating: HIGH** ✅
-
-The website has been secured with industry-standard security practices:
-- ✅ Comprehensive input validation and sanitization
-- ✅ Strong HTTP security headers
-- ✅ Content Security Policy implemented
-- ✅ No data storage = no data breach risk
-- ✅ HTTPS enforced
-- ✅ Secrets properly managed
-
-The application is **PRODUCTION READY** from a security perspective.
-
----
-
-**Next Steps:**
-1. Review this report
-2. Test all security features
-3. Deploy to production
-4. Set up monitoring
-5. Schedule regular security reviews
-
----
-
-*Last Updated: 31 January 2026*
+*Last Updated: 21 April 2026*

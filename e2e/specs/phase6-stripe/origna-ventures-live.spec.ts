@@ -2,15 +2,93 @@
  * OrignaVentures — Live Tier + Payment E2E Tests
  * =================================================
  * Tests the 3-tier service checkout flow against the Ventures backend API.
- * Tiers: OrignaCode ($500), OrignaLaunch ($2000), OrignaTeam ($1000/mo).
+ * Tiers: OrignaCode ($500), OrignaLaunch ($3000), OrignaTeam ($1000/mo).
  * No contract signing — serviceCode-based direct Stripe checkout.
  */
 import { test, expect, describe } from 'bun:test';
+import { chromium, devices, type Browser, type BrowserContext, type Page } from 'playwright';
 import { VENTURES_API_BASE, VENTURES_WEB_URL, VENTURES_TIERS } from '../../lib/config.js';
 
 const TEST_EMAIL = 'e2e-test@orignaventures.ca';
+const VENTURES_MOBILE = devices['iPhone 12'];
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
+async function openVenturesPage(
+  viewport: 'desktop' | 'mobile',
+): Promise<{ browser: Browser; context: BrowserContext; page: Page }> {
+  const browser = await chromium.launch({ headless: true });
+  const context = await browser.newContext(
+    viewport === 'mobile'
+      ? { ...VENTURES_MOBILE }
+      : { viewport: { width: 1440, height: 1200 } },
+  );
+  const page = await context.newPage();
+  await page.goto(VENTURES_WEB_URL, { waitUntil: 'networkidle', timeout: 60_000 });
+  await page.waitForTimeout(3_000);
+  await enableFlutterSemantics(page);
+  return { browser, context, page };
+}
+
+async function closeVenturesPage(browser: Browser, context: BrowserContext) {
+  await context.close();
+  await browser.close();
+}
+
+async function waitForSelector(page: Page, selector: string) {
+  await page.waitForSelector(selector, { timeout: 20_000 });
+  return page.locator(selector).first();
+}
+
+async function enableFlutterSemantics(page: Page) {
+  const accessibilityToggle = page.locator('[aria-label="Enable accessibility"]');
+  if (await accessibilityToggle.count()) {
+    const box = await accessibilityToggle.first().boundingBox();
+    if (box) {
+      await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    } else {
+      await accessibilityToggle.first().click({ force: true });
+    }
+    await page.waitForTimeout(1_500);
+  }
+}
+
+async function acceptCookiesIfVisible(page: Page) {
+  const acceptButton = page.locator('[aria-label="btn-cookie-accept"]');
+  if (await acceptButton.count()) {
+    await acceptButton.first().click();
+    await page.waitForTimeout(800);
+  }
+}
+
+async function goToPricing(page: Page, viewport: 'desktop' | 'mobile') {
+  await acceptCookiesIfVisible(page);
+  const selector = '[aria-label="btn-hero-view-plans"]';
+  const trigger = await waitForSelector(page, selector);
+  await trigger.click();
+  await page.waitForTimeout(1_500);
+}
+
+async function expectCheckoutRedirect(
+  page: Page,
+  buttonLabel: string,
+) {
+  const checkoutResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes('/payments/create-checkout-session') &&
+      response.request().method() === 'POST',
+    { timeout: 30_000 },
+  );
+  const stripeNavigationPromise = page.waitForURL(/https:\/\/checkout\.stripe\.com\/.*/, {
+    timeout: 30_000,
+  });
+
+  const button = await waitForSelector(page, `[aria-label="${buttonLabel}"]`);
+  await button.click();
+
+  const checkoutResponse = await checkoutResponsePromise;
+  expect(checkoutResponse.status()).toBe(200);
+  await stripeNavigationPromise;
+  expect(page.url()).toContain('checkout.stripe.com');
+}
 
 async function venturesFetch(path: string, options: RequestInit = {}) {
   const url = `${VENTURES_API_BASE}${path}`;
@@ -24,46 +102,103 @@ async function venturesFetch(path: string, options: RequestInit = {}) {
   return res;
 }
 
-async function createCheckoutSession(serviceCode: string, payerEmail: string) {
-  const res = await venturesFetch('/payments/create-checkout-session', {
+async function venturesApiFetch(path: string, options: RequestInit = {}) {
+  return venturesFetch(`/api${path}`, options);
+}
+
+async function readMeta() {
+  const res = await venturesApiFetch('/meta');
+  const body = await res.json().catch(() => null);
+  const servicesRaw = body?.services ?? {};
+  const services = Array.isArray(servicesRaw)
+    ? servicesRaw
+    : Object.entries(servicesRaw).map(([code, value]) => ({ code, ...(value as Record<string, unknown>) }));
+  return { status: res.status, body, services };
+}
+
+function serviceMap(services: Array<Record<string, unknown>>) {
+  return new Map(services.map((service) => [service.code ?? service.service_code, service]));
+}
+
+async function createCheckoutSession(serviceCode: string, payerEmail?: string) {
+  const body: Record<string, string> = { service_code: serviceCode };
+  if (payerEmail) body.payer_email = payerEmail;
+  const res = await venturesApiFetch('/payments/create-checkout-session', {
     method: 'POST',
-    body: JSON.stringify({ service_code: serviceCode, payer_email: payerEmail }),
+    body: JSON.stringify(body),
   });
   return { status: res.status, body: await res.json().catch(() => null) };
 }
 
-// ─── Tier Configuration Tests ───────────────────────────────────────────────
+async function readVenturesBundle() {
+  const res = await fetch(`${VENTURES_WEB_URL}/main.dart.js`);
+  return { status: res.status, body: await res.text() };
+}
 
 describe('OrignaVentures — Tier Configuration', () => {
-  test('Home page renders and mentions all 3 tier names', async () => {
+  test('Home page renders and shell branding is present', async () => {
     const res = await fetch(VENTURES_WEB_URL);
     expect(res.status).toBe(200);
-    const html = await res.text();
-    const lower = html.toLowerCase();
-    expect(lower).toContain('orignacode');
-    expect(lower).toContain('orignalaunch');
-    expect(lower).toContain('orignateam');
+    const html = (await res.text()).toLowerCase();
+    expect(html).toContain('origna ventures');
+    expect(html).toContain('<title>origna ventures</title>');
+  });
+
+  test('Service catalog exposes all 3 tier names', async () => {
+    const { status, services } = await readMeta();
+    expect(status).toBe(200);
+    const codes = services.map((s: any) => s.code ?? s.service_code);
+    expect(codes).toContain('origna_code');
+    expect(codes).toContain('origna_launch');
+    expect(codes).toContain('origna_team');
+  });
+
+  test('Service catalog exposes correct prices', async () => {
+    const { status, services } = await readMeta();
+    expect(status).toBe(200);
+    const byCode = serviceMap(services as Array<Record<string, unknown>>);
+    expect(byCode.get('origna_code')?.price_cad ?? byCode.get('origna_code')?.priceCad).toBe(500);
+    expect(byCode.get('origna_launch')?.price_cad ?? byCode.get('origna_launch')?.priceCad).toBe(3000);
+    expect(byCode.get('origna_team')?.price_cad ?? byCode.get('origna_team')?.priceCad).toBe(1000);
+  });
+
+  test('Service catalog summaries reflect launch support and monthly team outsourcing', async () => {
+    const { status, body, services } = await readMeta();
+    expect(status).toBe(200);
+    expect(body?.supportEmail).toBe('support@orignaventures.ca');
+    const byCode = serviceMap(services as Array<Record<string, unknown>>);
+    expect(String(byCode.get('origna_launch')?.summary_en ?? '')).toContain('20 human testers');
+    expect(String(byCode.get('origna_launch')?.summary_en ?? '')).toContain('first-year');
+    expect(String(byCode.get('origna_launch')?.summary_en ?? '')).toContain('hosting');
+    expect(String(byCode.get('origna_team')?.summary_en ?? '')).toContain('1,000 CAD/month');
+    expect(String(byCode.get('origna_team')?.summary_en ?? '')).toContain('Dedicated developer outsourcing');
   });
 
   test('Home page no longer mentions old tier names (Essential/Professional/Enterprise)', async () => {
     const res = await fetch(VENTURES_WEB_URL);
-    const html = await res.text();
-    const lower = html.toLowerCase();
-    expect(lower).not.toContain('essential');
-    expect(lower).not.toContain('professional');
-    expect(lower).not.toContain('enterprise');
+    const html = (await res.text()).toLowerCase();
+    expect(html).not.toContain('essential');
+    expect(html).not.toContain('professional');
+    expect(html).not.toContain('enterprise');
   });
 
-  test('Home page mentions correct prices', async () => {
-    const res = await fetch(VENTURES_WEB_URL);
-    const html = await res.text();
-    expect(html).toContain('500');
-    expect(html).toContain('2,000');
-    expect(html).toContain('1,000');
+  test('Deployed Flutter bundle includes the upgraded hero proof copy', async () => {
+    const { status, body } = await readVenturesBundle();
+    expect(status).toBe(200);
+    expect(body).toContain('Production-ready source code handoff');
+    expect(body).toContain('Checkout, hosting, QA, and launch support included');
+    expect(body).toContain('Direct access to the builder, not an agency maze');
+  });
+
+  test('Deployed Flutter bundle includes Ventures contact and pricing labels', async () => {
+    const { status, body } = await readVenturesBundle();
+    expect(status).toBe(200);
+    expect(body).toContain('support@orignaventures.ca');
+    expect(body).toContain('OrignaLaunch');
+    expect(body).toContain('OrignaTeam');
+    expect(body).toContain('MOST CHOSEN');
   });
 });
-
-// ─── Backend Health Tests ───────────────────────────────────────────────────
 
 describe('OrignaVentures — Backend Health', () => {
   test('Health endpoint returns 200', async () => {
@@ -72,77 +207,74 @@ describe('OrignaVentures — Backend Health', () => {
   });
 
   test('API health endpoint returns 200', async () => {
-    const res = await venturesFetch('/health');
+    const res = await venturesApiFetch('/health');
     expect(res.status).toBe(200);
   });
 
   test('Meta endpoint returns service catalog', async () => {
-    const res = await venturesFetch('/meta');
-    if (res.status === 200) {
-      const body = await res.json().catch(() => null);
-      if (body?.services) {
-        const codes = body.services.map((s: any) => s.code ?? s.service_code);
-        expect(codes).toContain('origna_code');
-        expect(codes).toContain('origna_launch');
-        expect(codes).toContain('origna_team');
-      }
-    } else {
-      // Meta endpoint may not exist — acceptable
-      expect(res.status).toBeLessThan(500);
-    }
+    const { status, services } = await readMeta();
+    expect(status).toBe(200);
+    const codes = services.map((s: any) => s.code ?? s.service_code);
+    expect(codes).toContain('origna_code');
+    expect(codes).toContain('origna_launch');
+    expect(codes).toContain('origna_team');
   });
 });
 
-// ─── Checkout Session Tests ─────────────────────────────────────────────────
-
 describe('OrignaVentures — Checkout Session API', () => {
   test('OrignaCode ($500) creates valid Stripe checkout session', async () => {
-    const { status, body } = await createCheckoutSession(
-      VENTURES_TIERS.ORIGNA_CODE.code,
-      TEST_EMAIL,
-    );
+    const { status, body } = await createCheckoutSession(VENTURES_TIERS.ORIGNA_CODE.code, TEST_EMAIL);
     if (status === 200 && body) {
       expect(body.provider).toBe('stripe');
       expect(body.checkoutUrl).toContain('checkout.stripe.com');
       expect(body.sessionId).toBeTruthy();
       expect(body.status).toBe('awaiting_payment');
     } else if (status === 429) {
-      console.log('Rate limited — acceptable');
       expect(true).toBe(true);
     } else {
-      console.log(`Unexpected status ${status}: ${JSON.stringify(body)}`);
-      // Server may not have Stripe keys configured in test env
       expect(status).toBeLessThan(500);
     }
   }, 30_000);
 
-  test('OrignaLaunch ($2000) creates valid Stripe checkout session', async () => {
-    const { status, body } = await createCheckoutSession(
-      VENTURES_TIERS.ORIGNA_LAUNCH.code,
-      TEST_EMAIL,
-    );
+  test('OrignaLaunch ($3000) creates valid Stripe checkout session', async () => {
+    const { status, body } = await createCheckoutSession(VENTURES_TIERS.ORIGNA_LAUNCH.code, TEST_EMAIL);
     if (status === 200 && body) {
       expect(body.provider).toBe('stripe');
       expect(body.checkoutUrl).toContain('checkout.stripe.com');
     } else if (status === 429) {
-      console.log('Rate limited — acceptable');
+      expect(true).toBe(true);
     } else {
       expect(status).toBeLessThan(500);
     }
   }, 30_000);
 
   test('OrignaTeam ($1000/mo) creates valid Stripe checkout session', async () => {
-    const { status, body } = await createCheckoutSession(
-      VENTURES_TIERS.ORIGNA_TEAM.code,
-      TEST_EMAIL,
-    );
+    const { status, body } = await createCheckoutSession(VENTURES_TIERS.ORIGNA_TEAM.code, TEST_EMAIL);
     if (status === 200 && body) {
       expect(body.provider).toBe('stripe');
       expect(body.checkoutUrl).toContain('checkout.stripe.com');
+      expect(body.sessionId).toBeTruthy();
+      expect(body.status).toBe('awaiting_payment');
     } else if (status === 429) {
-      console.log('Rate limited — acceptable');
+      expect(true).toBe(true);
     } else {
       expect(status).toBeLessThan(500);
+    }
+  }, 30_000);
+
+  test('All three tiers return the same checkout response contract', async () => {
+    for (const tier of Object.values(VENTURES_TIERS)) {
+      const { status, body } = await createCheckoutSession(tier.code, TEST_EMAIL);
+      if (status === 200 && body) {
+        expect(body.provider).toBe('stripe');
+        expect(body.status).toBe('awaiting_payment');
+        expect(body.sessionId).toBeTruthy();
+        expect(body.checkoutUrl).toContain('checkout.stripe.com');
+      } else if (status === 429) {
+        expect(true).toBe(true);
+      } else {
+        expect(status).toBeLessThan(500);
+      }
     }
   }, 30_000);
 
@@ -151,16 +283,20 @@ describe('OrignaVentures — Checkout Session API', () => {
     expect(status === 422 || status === 404 || status === 400).toBe(true);
   });
 
-  test('Missing payer_email returns 422', async () => {
-    const res = await venturesFetch('/payments/create-checkout-session', {
-      method: 'POST',
-      body: JSON.stringify({ service_code: 'origna_code' }),
-    });
-    expect(res.status === 422 || res.status === 400).toBe(true);
+  test('Missing payer_email is tolerated when service_code is valid', async () => {
+    const { status, body } = await createCheckoutSession('origna_code');
+    if (status === 200 && body) {
+      expect(body.provider).toBe('stripe');
+      expect(body.sessionId).toBeTruthy();
+    } else if (status === 429) {
+      expect(true).toBe(true);
+    } else {
+      expect(status).toBeLessThan(500);
+    }
   });
 
-  test('Missing service_code returns 422', async () => {
-    const res = await venturesFetch('/payments/create-checkout-session', {
+  test('Missing service_code returns 422 or 400', async () => {
+    const res = await venturesApiFetch('/payments/create-checkout-session', {
       method: 'POST',
       body: JSON.stringify({ payer_email: TEST_EMAIL }),
     });
@@ -168,82 +304,57 @@ describe('OrignaVentures — Checkout Session API', () => {
   });
 });
 
-// ─── Webhook Security Tests ─────────────────────────────────────────────────
-
 describe('OrignaVentures — Webhook Security', () => {
   test('Webhook rejects unsigned request', async () => {
-    const res = await venturesFetch('/stripe/webhook', {
+    const res = await venturesApiFetch('/stripe/webhook', {
       method: 'POST',
-      body: JSON.stringify({
-        id: 'evt_test',
-        type: 'checkout.session.completed',
-        data: { object: { id: 'cs_test' } },
-      }),
+      body: JSON.stringify({ id: 'evt_test', type: 'checkout.session.completed', data: { object: { id: 'cs_test' } } }),
     });
     expect(res.status).toBeGreaterThanOrEqual(400);
     expect(res.status).toBeLessThan(500);
   });
 
   test('Webhook rejects invalid signature', async () => {
-    const res = await venturesFetch('/stripe/webhook', {
+    const res = await venturesApiFetch('/stripe/webhook', {
       method: 'POST',
-      body: JSON.stringify({
-        id: 'evt_test_bad_sig',
-        type: 'checkout.session.completed',
-        data: { object: { id: 'cs_test' } },
-      }),
-      headers: {
-        'Stripe-Signature': 't=1234567890,v1=invalid_signature_here',
-      },
+      body: JSON.stringify({ id: 'evt_test_bad_sig', type: 'checkout.session.completed', data: { object: { id: 'cs_test' } } }),
+      headers: { 'Stripe-Signature': 't=1234567890,v1=invalid_signature_here' },
     });
     expect(res.status).toBeGreaterThanOrEqual(400);
     expect(res.status).toBeLessThan(500);
   });
 
   test('Webhook rejects replay attack with old timestamp', async () => {
-    const res = await venturesFetch('/stripe/webhook', {
+    const res = await venturesApiFetch('/stripe/webhook', {
       method: 'POST',
-      body: JSON.stringify({
-        id: 'evt_test_replay',
-        type: 'checkout.session.completed',
-        data: { object: { id: 'cs_test' } },
-      }),
-      headers: {
-        'Stripe-Signature': `t=1577836800,v1=fake_sig_replay`,
-      },
+      body: JSON.stringify({ id: 'evt_test_replay', type: 'checkout.session.completed', data: { object: { id: 'cs_test' } } }),
+      headers: { 'Stripe-Signature': 't=1577836800,v1=fake_sig_replay' },
     });
     expect(res.status).toBeGreaterThanOrEqual(400);
     expect(res.status).toBeLessThan(500);
   });
 
   test('Webhook rejects non-POST methods', async () => {
-    const getRes = await venturesFetch('/stripe/webhook', { method: 'GET' });
+    const getRes = await venturesApiFetch('/stripe/webhook', { method: 'GET' });
     expect(getRes.status).toBeGreaterThanOrEqual(400);
 
-    const putRes = await venturesFetch('/stripe/webhook', {
-      method: 'PUT',
-      body: '{}',
-    });
+    const putRes = await venturesApiFetch('/stripe/webhook', { method: 'PUT', body: '{}' });
     expect(putRes.status).toBeGreaterThanOrEqual(400);
   });
 
   test('Webhook returns non-5xx for malformed JSON', async () => {
-    const res = await venturesFetch('/stripe/webhook', {
+    const res = await venturesApiFetch('/stripe/webhook', {
       method: 'POST',
       body: 'not json {{{',
-      headers: {
-        'Stripe-Signature': `t=${Math.floor(Date.now() / 1000)},v1=test`,
-      },
+      headers: { 'Stripe-Signature': `t=${Math.floor(Date.now() / 1000)},v1=test` },
     });
     expect(res.status).toBeLessThan(500);
   });
 });
 
-// ─── Contact Form Tests ─────────────────────────────────────────────────────
-
 describe('OrignaVentures — Contact API', () => {
   test('Contact endpoint requires valid payload', async () => {
-    const res = await venturesFetch('/contact', {
+    const res = await venturesApiFetch('/contact', {
       method: 'POST',
       body: JSON.stringify({ name: '', email: 'bad', message: '' }),
     });
@@ -251,7 +362,158 @@ describe('OrignaVentures — Contact API', () => {
   });
 
   test('Contact endpoint rejects GET', async () => {
-    const res = await venturesFetch('/contact', { method: 'GET' });
+    const res = await venturesApiFetch('/contact', { method: 'GET' });
     expect(res.status).toBeGreaterThanOrEqual(400);
   });
+});
+
+describe('OrignaVentures — Live Payment Buttons (Playwright)', () => {
+  test('PW01: mobile home exposes cookie accept button', async () => {
+    const { browser, context, page } = await openVenturesPage('mobile');
+    try {
+      await waitForSelector(page, '[aria-label="btn-cookie-accept"]');
+    } finally {
+      await closeVenturesPage(browser, context);
+    }
+  }, 60_000);
+
+  test('PW02: mobile home exposes cookie decline button', async () => {
+    const { browser, context, page } = await openVenturesPage('mobile');
+    try {
+      await waitForSelector(page, '[aria-label="btn-cookie-decline"]');
+    } finally {
+      await closeVenturesPage(browser, context);
+    }
+  }, 60_000);
+
+  test('PW03: mobile hero exposes view plans button', async () => {
+    const { browser, context, page } = await openVenturesPage('mobile');
+    try {
+      await waitForSelector(page, '[aria-label="btn-hero-view-plans"]');
+    } finally {
+      await closeVenturesPage(browser, context);
+    }
+  }, 60_000);
+
+  test('PW04: mobile cookie accept dismisses the banner', async () => {
+    const { browser, context, page } = await openVenturesPage('mobile');
+    try {
+      const acceptButton = await waitForSelector(page, '[aria-label="btn-cookie-accept"]');
+      await acceptButton.click();
+      await page.waitForTimeout(1_000);
+      expect(await page.locator('[aria-label="btn-cookie-accept"]').count()).toBe(0);
+    } finally {
+      await closeVenturesPage(browser, context);
+    }
+  }, 60_000);
+
+  test('PW05: mobile pricing reveals investor deck button', async () => {
+    const { browser, context, page } = await openVenturesPage('mobile');
+    try {
+      await goToPricing(page, 'mobile');
+      await waitForSelector(page, '[aria-label="btn-tier-deck-origna_code"]');
+    } finally {
+      await closeVenturesPage(browser, context);
+    }
+  }, 60_000);
+
+  test('PW06: mobile pricing reveals OrignaCode buy button', async () => {
+    const { browser, context, page } = await openVenturesPage('mobile');
+    try {
+      await goToPricing(page, 'mobile');
+      await waitForSelector(page, '[aria-label="btn-tier-buy-origna_code"]');
+    } finally {
+      await closeVenturesPage(browser, context);
+    }
+  }, 60_000);
+
+  test('PW07: mobile pricing reveals OrignaLaunch buy button', async () => {
+    const { browser, context, page } = await openVenturesPage('mobile');
+    try {
+      await goToPricing(page, 'mobile');
+      await waitForSelector(page, '[aria-label="btn-tier-buy-origna_launch"]');
+    } finally {
+      await closeVenturesPage(browser, context);
+    }
+  }, 60_000);
+
+  test('PW08: mobile pricing reveals OrignaTeam buy button', async () => {
+    const { browser, context, page } = await openVenturesPage('mobile');
+    try {
+      await goToPricing(page, 'mobile');
+      await waitForSelector(page, '[aria-label="btn-tier-buy-origna_team"]');
+    } finally {
+      await closeVenturesPage(browser, context);
+    }
+  }, 60_000);
+
+  test('PW09: mobile pricing reveals investor deck button', async () => {
+    const { browser, context, page } = await openVenturesPage('mobile');
+    try {
+      await goToPricing(page, 'mobile');
+      await waitForSelector(page, '[aria-label="btn-tier-deck-origna_code"]');
+    } finally {
+      await closeVenturesPage(browser, context);
+    }
+  }, 60_000);
+
+  test('PW10: mobile pricing reveals OrignaCode buy button', async () => {
+    const { browser, context, page } = await openVenturesPage('mobile');
+    try {
+      await goToPricing(page, 'mobile');
+      await waitForSelector(page, '[aria-label="btn-tier-buy-origna_code"]');
+    } finally {
+      await closeVenturesPage(browser, context);
+    }
+  }, 60_000);
+
+  test('PW11: mobile pricing reveals OrignaLaunch buy button', async () => {
+    const { browser, context, page } = await openVenturesPage('mobile');
+    try {
+      await goToPricing(page, 'mobile');
+      await waitForSelector(page, '[aria-label="btn-tier-buy-origna_launch"]');
+    } finally {
+      await closeVenturesPage(browser, context);
+    }
+  }, 60_000);
+
+  test('PW12: mobile pricing reveals OrignaTeam buy button', async () => {
+    const { browser, context, page } = await openVenturesPage('mobile');
+    try {
+      await goToPricing(page, 'mobile');
+      await waitForSelector(page, '[aria-label="btn-tier-buy-origna_team"]');
+    } finally {
+      await closeVenturesPage(browser, context);
+    }
+  }, 60_000);
+
+  test('PW13: mobile OrignaCode button creates Stripe checkout and redirects', async () => {
+    const { browser, context, page } = await openVenturesPage('mobile');
+    try {
+      await goToPricing(page, 'mobile');
+      await expectCheckoutRedirect(page, 'btn-tier-buy-origna_code');
+    } finally {
+      await closeVenturesPage(browser, context);
+    }
+  }, 60_000);
+
+  test('PW14: mobile OrignaLaunch button creates Stripe checkout and redirects', async () => {
+    const { browser, context, page } = await openVenturesPage('mobile');
+    try {
+      await goToPricing(page, 'mobile');
+      await expectCheckoutRedirect(page, 'btn-tier-buy-origna_launch');
+    } finally {
+      await closeVenturesPage(browser, context);
+    }
+  }, 60_000);
+
+  test('PW15: mobile OrignaTeam button creates Stripe checkout and redirects', async () => {
+    const { browser, context, page } = await openVenturesPage('mobile');
+    try {
+      await goToPricing(page, 'mobile');
+      await expectCheckoutRedirect(page, 'btn-tier-buy-origna_team');
+    } finally {
+      await closeVenturesPage(browser, context);
+    }
+  }, 60_000);
 });

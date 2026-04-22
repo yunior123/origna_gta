@@ -1,10 +1,12 @@
 # =============================================================================
-# OrignaGta .gitignore — Comprehensive
+# OrignaGTA Monorepo .gitignore — Comprehensive
 # =============================================================================
 
 # --- OS artifacts ---
 .DS_Store
 Thumbs.db
+desktop.ini
+ehthumbs.db
 
 # --- Logs ---
 logs/
@@ -12,13 +14,6 @@ logs/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-firebase-debug.log*
-firebase-debug.*.log*
-
-# --- Firebase cache & exports ---
-.firebase/
-firebase-export-*/
-emulator-data/
 
 # --- Runtime data ---
 pids
@@ -54,63 +49,79 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 venv/
+.venv/
 *.egg-info/
 
 # --- Environment variables & secrets ---
 .env
 .env.local
-functions/.env
-functions/.env.local
-functions/serviceAccountKey.json
-functions/serviceAccountKey*.json
-functions/stripe.txt
-
-# --- Dependency directories ---
-node_modules/
+.env.*.local
+*.env
+!.env.example
+!.env.dev
+!.env.local.example
+*.pem
+*.key
+*.jks
+*.keystore
+*-key.json
+credentials*
+service-account*.json
+secrets/
+secrets-*.json
+TOOLS.md
 
 # --- Agent Browser ---
 .agent-browser/
 e2e-agent-browser/node_modules/
 
 # --- Firebase artifacts (Firebase is GONE — block re-introduction) ---
+.firebase/
+firebase-export-*/
+emulator-data/
+firebase-debug.log*
+firebase-debug.*.log*
 origna_gta/android/app/google-services.json
 origna_gta/ios/GoogleService-Info.plist
 origna_gta/ios/Pods/
 origna_gta/macos/Pods/
 
-# --- Flutter build/test artifacts ---
+# --- OrignaGTA Flutter ---
 origna_gta/build/
 origna_gta/.dart_tool/
+origna_gta/.pub-cache/
+origna_gta/.pub/
+origna_gta/.flutter-plugins
+origna_gta/.flutter-plugins-dependencies
 origna_gta/test-results/
 origna_gta/.gradle-home/
 origna_gta/nanobanana-output/
+origna_gta/pubspec_overrides.yaml
+origna_gta/coverage-html/
+origna_gta/android/key.properties
+origna_gta/android/app/debug/
+origna_gta/android/app/profile/
+origna_gta/android/app/release/
 
-# --- Test results (root) ---
-test-results/
+# --- OrignaVentures Flutter + Python ---
+origna_ventures/build/
+origna_ventures/.dart_tool/
+origna_ventures/.flutter-plugins
+origna_ventures/.flutter-plugins-dependencies
+origna_ventures/*.iml
+origna_ventures/ios/Pods/
+origna_ventures/macos/Pods/
+origna_ventures/backend/storage/
+origna_ventures/backend/venv/
+origna_ventures/backend/.venv/
+origna_ventures/backend/__pycache__/
+origna_ventures/backend/*.db
+origna_ventures/backend/.env
+origna_ventures/output/
+origna_ventures/images/
+origna_ventures/coverage/
 
-# --- Pre-push hooks ---
-scripts/pre_push_validation.sh
-
-# --- Audit output & cache ---
-audit/output/
-audit/.doc_cache/
-functions/visual_audit/
-
-# --- Backup / temporary files ---
-*.bak
-*.backup
-*.orig
-*.swp
-*~
-
-# --- Credentials / secrets ---
-TOOLS.md
-
-# --- Telegram bot (contains secrets) ---
-telegram_bot/
-telegram_bot.py
-
-# --- OrignaBase Rust build artifacts ---
+# --- OrignaBase Rust ---
 orignabase/target/
 orignabase/*.profraw
 orignabase/data/keys/
@@ -121,28 +132,50 @@ orignabase/secrets-*.json
 orignabase/docker/.env
 orignabase/docker/.env.staging
 orignabase/docker/.env.prod
+orignabase/local_test_data/
+
+# --- Test results (root) ---
+test-results/
+
+# --- E2E ---
+e2e/node_modules/
+e2e/dist/
+e2e/test-results/
+
+# --- Audit output & cache ---
+audit/output/
+audit/.doc_cache/
+functions/visual_audit/
+
+# --- Pre-push hooks ---
+scripts/pre_push_validation.sh
+
+# --- Backup / temporary files ---
+*.bak
+*.backup
+*.orig
+*.swp
+*.swo
+*~
+
+# --- Telegram bot (contains secrets) ---
+telegram_bot/
+telegram_bot.py
 
 # --- IDE ---
+.idea/
+*.iml
 # .vscode/ is kept for shared tasks/settings
 .worktrees/
 .playwright-mcp/
 
-# AI-sync generated
+# --- AI tool artifacts ---
+.agent/
+.kilo/
+.opencode/
 GEMINI.md
-
-# --- OrignaVentures ---
-origna_ventures/build/
-origna_ventures/.dart_tool/
-origna_ventures/.flutter-plugins
-origna_ventures/.flutter-plugins-dependencies
-origna_ventures/*.iml
-origna_ventures/ios/Pods/
-origna_ventures/macos/Pods/
-origna_ventures/backend/storage/
-origna_ventures/backend/venv/
-origna_ventures/backend/__pycache__/
-origna_ventures/backend/*.db
-origna_ventures/backend/.env
-origna_ventures/output/
-origna_ventures/images/
-origna_gta/build/
+extracted_images/
+data.ms/
+meili_data/
+data/
+dumps/

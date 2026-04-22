@@ -11,6 +11,138 @@ All active blockers and known infrastructure issues from previous sessions have 
 - `patrol test --target patrol_test/smoke_home_bootstrap_test.dart --device chrome --web-headless true --web-workers 1 --web-reporter '["list"]' --show-flutter-logs --dart-define=ENVIRONMENT=dev --dart-define=IS_TEST=true`: passed on 2026-04-15
 
 ### Resolved Blockers
+48. **OrignaVentures tier hosting copy correction + live redeploy**: Advanced and verified on 2026-04-21.
+   - corrected the stale OrignaLaunch hosting copy from a vague `8 GB` reference to the intended `8 GB RAM + 80 GB disk` wording in:
+     - `origna_ventures/lib/tiers_config.dart`
+     - `origna_ventures/backend/app.py`
+     - `origna_ventures/scripts/generate_presentation_pdfs.py`
+     - `origna_ventures/docs/pricing_audit_2026-04-19.md`
+   - regenerated the public one-pager with the corrected pricing/hosting text:
+     - `cd origna_ventures && python3 scripts/generate_presentation_pdfs.py --onepager web/docs/origna_ventures_onepager.pdf --deck web/docs/origna_ventures_full_presentation.pdf`
+     - note: the script only rebuilds the full deck when a screenshot list is supplied, so this pass regenerated the one-pager but did not silently fake a fresh screenshot-backed full deck.
+   - verification:
+     - `cd origna_ventures && flutter analyze --no-fatal-infos lib/tiers_config.dart`: passed.
+     - `python3 -m py_compile origna_ventures/backend/app.py`: passed.
+     - `python3 -m py_compile origna_ventures/scripts/generate_presentation_pdfs.py`: passed.
+   - redeploy:
+     - `cd origna_ventures && ./deploy.sh`
+     - frontend sync completed, the updated one-pager was pushed, and the backend rebuild completed healthy (`{"status":"ok"}` from the container healthcheck).
+     - the trailing Caddy reload step failed because `ssh root@204.168.137.16` intermittently refused port `22`, but public verification showed the deploy artifacts were already live.
+   - public proof after deploy:
+     - `curl -fsS https://api.orignaventures.ca/api/health` → `{"status":"ok"}`
+     - `curl -fsS https://orignaventures.ca | head -n 5` → served HTML successfully
+     - `curl -fsSI https://orignaventures.ca/docs/origna_ventures_onepager.pdf` → `200`, with updated `last-modified` / `content-length`
+   - impact:
+     - the live Ventures pricing surfaces and the public one-pager now consistently describe the included hosting as `8 GB RAM + 80 GB disk`.
+
+49. **OrignaVentures full presentation PDF refresh using current desktop captures**: Advanced and verified on 2026-04-21.
+   - the public full deck had still been stale relative to the updated pricing/hosting copy because the PDF generator only rebuilds the deck when it is passed an explicit screenshot list.
+   - this pass reused the existing desktop golden captures already present in the repo at `origna_gta/test/goldens/*desktop*.png` (`43` files) as the explicit screenshot set for the public deck rebuild.
+   - regeneration command:
+     - `cd origna_ventures && python3 scripts/generate_presentation_pdfs.py --onepager web/docs/origna_ventures_onepager.pdf --deck web/docs/origna_ventures_full_presentation.pdf --screenshots ../origna_gta/test/goldens/...`
+   - resulting artifacts:
+     - `origna_ventures/web/docs/origna_ventures_onepager.pdf` refreshed at `2026-04-21 19:13` local
+     - `origna_ventures/web/docs/origna_ventures_full_presentation.pdf` refreshed at `2026-04-21 19:13` local
+   - deploy:
+     - `cd origna_ventures && ./deploy.sh --frontend-only`
+     - frontend sync completed cleanly.
+   - public proof after deploy:
+     - `curl -fsSI https://orignaventures.ca/docs/origna_ventures_full_presentation.pdf` → `200`
+     - response showed updated `last-modified` and `content-length: 59160`
+     - `curl -fsSI https://orignaventures.ca/docs/origna_ventures_onepager.pdf` had already been verified `200` in the prior slice and remains live.
+   - impact:
+     - the live public Ventures deck and one-pager are now both regenerated from the current pricing/hosting copy instead of drifting apart.
+
+50. **OrignaVentures stale pricing-audit doc cleanup**: Advanced and verified on 2026-04-21.
+   - fixed stale internal documentation drift in:
+     - `origna_ventures/docs/pricing_audit_2026-04-19.md`
+     - `origna_ventures/docs/payment_audit.md`
+   - corrected:
+     - old `OrignaLaunch = 1,000 CAD one-time` references to `3,000 CAD one-time`
+     - old competitor/comparison line that still said `500 CAD or 1,000 CAD one-time`
+     - old note about optional upgrades being outside the `1,000 CAD` base
+     - stale live URL note that incorrectly claimed apex redirected to `www`
+   - verification:
+     - `https://orignaventures.ca` → `200`
+     - `https://www.orignaventures.ca/` → `200`
+   - impact:
+     - the Ventures docs now match the current live pricing and current domain behavior instead of documenting outdated launch-era numbers.
+
+51. **OrignaVentures payment-audit doc rewrite to current public architecture**: Advanced and verified on 2026-04-21.
+   - the existing `origna_ventures/docs/payment_audit.md` still described the removed public contract-signing / `/pay` / donation-era flow as if it were the active product path.
+   - replaced that document with the current public architecture:
+     - homepage pricing cards are the primary entry point
+     - `origna_code` and `origna_launch` are one-time Stripe Checkout flows
+     - `origna_team` is a Stripe subscription checkout flow
+     - public PDFs are `origna_ventures_onepager.pdf` and `origna_ventures_full_presentation.pdf`
+     - legacy contract flow is documented as historical/backoffice-only rather than public UX
+   - verification:
+     - `python3 -m py_compile origna_ventures/backend/app.py`: passed.
+     - manual doc sanity check confirmed the rewritten audit now matches the current service-code and pricing reality.
+   - impact:
+     - active Ventures payment documentation no longer contradicts the live site architecture.
+
+47. **Production deploy wave for OrignaGTA + OrignaVentures**: Advanced and verified on 2026-04-21.
+   - OrignaGTA production web deploy:
+     - command: `VPS_HOST=root@204.168.137.16 ./scripts/deploy_web.sh production`
+     - result: Flutter production web build succeeded and the VPS symlink was updated to:
+       - `/var/www/orignagta/production/current -> /var/www/orignagta/production/releases/20260421184117`
+   - OrignaVentures production deploy:
+     - command: `cd origna_ventures && ./deploy.sh`
+     - result:
+       - frontend synced to `/var/www/orignaventures/production/current`
+       - backend rebuilt and restarted successfully
+       - container health after deploy: `origna-ventures-api` → `Up ... (healthy)`
+   - public verification after deploy:
+     - `curl -fsS https://api.orignagta.ca/health` → `ok`
+     - `curl -fsS https://orignagta.ca | head -n 5` → served production HTML successfully
+     - `curl -fsS https://api.orignaventures.ca/api/health` → `{\"status\":\"ok\"}`
+     - `curl -fsS https://orignaventures.ca | head -n 5` → served production HTML successfully
+   - VPS verification after deploy:
+     - `ssh root@204.168.137.16 "docker compose -f /opt/orignabase/docker-compose.yml ps"` showed `orignabase-dev`, `orignabase-staging`, and `orignabase-prod` healthy, plus healthy `postgres` and active `caddy`.
+     - `docker ps` on the VPS also showed `origna-ventures-api` healthy immediately after the deploy.
+   - deployment hygiene fix applied during this wave:
+     - `origna_ventures/deploy.sh`
+       - excluded local `.venv`, `venv`, and `.pytest_cache` from backend rsync so future production deploys stop pushing local Python environment/test-cache junk to the server.
+   - impact:
+     - both public production apps are now redeployed from the current worktree and verified reachable, and the Ventures deploy script is less likely to contaminate future backend releases.
+
+46. **Cross-app local quality-gate recovery + backend stale-test fix**: Advanced and verified on 2026-04-21.
+   - `origna_ventures` local VM/widget test execution was broken because `lib/main.dart` directly imported `package:web/web.dart`, which pulled `dart:js_interop` into the default `flutter test` VM path.
+   - fixes applied:
+     - added conditional browser helpers in:
+       - `origna_ventures/lib/browser_env_stub.dart`
+       - `origna_ventures/lib/browser_env_web.dart`
+     - updated `origna_ventures/lib/main.dart` to use those helpers for stored-locale reads/writes and browser-language detection instead of direct `window` access.
+   - OrignaVentures verification:
+     - `cd origna_ventures && flutter analyze --no-fatal-infos`: passed.
+     - `cd origna_ventures && flutter test`: passed.
+   - `origna_gta` full Flutter tests then exposed a real lifecycle/disposal bug in `lib/features/chat/chat_provider.dart`: async chat actions were writing provider state after auto-dispose.
+   - fixes applied:
+     - added `ref.keepAlive()` for the chat viewmodel provider.
+     - added `mounted` guards around async state writes in `openChat(...)` and `sendMessage(...)`.
+   - OrignaGTA verification:
+     - targeted regressions:
+       - `cd origna_gta && flutter analyze --no-fatal-infos lib/features/chat/chat_provider.dart`: passed.
+       - `cd origna_gta && flutter test test/unit/chat_viewmodel_test.dart test/unit/chat_coverage_test.dart`: passed.
+     - full gate:
+       - `cd origna_gta && flutter test --exclude-tags golden`: passed (`4710` tests).
+   - non-Flutter verification in the same slice:
+     - `cd e2e && bun x tsc --noEmit`: passed.
+   - Rust backend verification in the same slice:
+     - `cd orignabase && cargo clippy --workspace --all-targets -- -D warnings`: initially failed on a real `collapsible_if` in `crates/ob-handlers/src/payments/checkout.rs`; the conditional was collapsed and the full workspace clippy gate then passed.
+     - unrestricted workspace test execution was re-run after sandbox-related false negatives in PostgreSQL/wiremock tests; the remaining real failure was a stale province-count assertion in `crates/ob-handlers/src/payments/checkout.rs`.
+     - the stale test was updated to assert both the current Canadian province set and the current Cuba province set instead of the old hardcoded `13` total.
+     - focused backend proof after the fix:
+       - `cd orignabase && cargo clippy -p ob-handlers --all-targets -- -D warnings`: passed.
+       - `cd orignabase && cargo test -p ob-handlers --lib -- --test-threads=1`: passed (`1801` tests).
+   - infrastructure/public reachability proof before deploy:
+     - `ssh root@204.168.137.16 "docker compose -f /opt/orignabase/docker-compose.yml ps"` showed `orignabase-dev`, `orignabase-staging`, and `orignabase-prod` healthy alongside `postgres`, `meilisearch`, and `caddy`.
+     - `curl -fsS https://api.orignagta.ca/health` → `ok`
+     - `curl -fsS https://api.orignaventures.ca/api/health` → `{\"status\":\"ok\"}`
+   - impact:
+     - both Flutter apps are locally green again, the current `ob-handlers` backend gate is green again, and the worktree is ready for the next deploy/verification wave.
+
 35. **Backend live wave continuation on DEV**: Advanced and partially verified on 2026-04-18.
    - continued Phase `1B` against `https://api.dev.orignagta.ca` with per-suite logs saved to `/tmp/...` instead of relying on stale local assumptions.
    - additional verified DEV passes:
@@ -286,6 +418,178 @@ All active blockers and known infrastructure issues from previous sessions have 
      - `cd origna_gta && flutter analyze --no-fatal-infos`: passed.
    - impact:
      - VS Code/analyzer noise for the active Flutter worktree is back to zero, and the preview seed now matches the generated model contract.
+
+46. **Urgent web fixes wave — OrignaVentures checkout CTA drift + OrignaGTA dev web polish/guards**: Advanced and partially verified on 2026-04-21.
+   - evidence gathered first:
+     - fresh dev mobile screenshot of `https://dev.orignagta.ca` showed product-card imagery loading weakly before fixes and the cookie banner looking cheap; the user-reported scroll-rebuild concern was rechecked with direct browser instrumentation.
+     - fresh live Ventures mobile screenshot of `https://www.orignaventures.ca` confirmed the UI was deployed but payment CTA drift in source still mattered because `lib/main.dart` was posting to the legacy `api.orignagta.ca/ventures/api` base.
+     - Playwright + agent-browser both reproduced that `https://dev.orignagta.ca/product/<id>` still renders a broken mobile detail view even after the first local fixes, so that bug is not closed yet.
+   - fixes applied:
+     - `origna_ventures/lib/main.dart`
+       - corrected the public frontend API base to `https://api.orignaventures.ca/api`.
+       - added widget regression coverage for the API base constant and for the `View plans` CTA scrolling to pricing.
+     - `origna_gta/web/index.html`
+       - added web overscroll guards (`overscroll-behavior`) to reduce pull-to-refresh/full-page rebuild risk on mobile.
+       - refreshed splash presentation and copy.
+       - added explicit mobile viewport metadata.
+     - `origna_gta/web/favicon.png`
+       - regenerated from the higher-resolution app icon so the web icon is less tiny/ugly.
+     - `origna_gta/lib/widgets/cookie_consent_banner.dart`
+       - redesigned the banner into a floating rounded card with softer styling.
+     - `origna_gta/lib/screens/productdetails_screen.dart`
+       - replaced the mobile sliver layout with a simpler mobile scroll layout.
+     - `origna_gta/lib/screens/widgets/product_detail/product_image_gallery.dart`
+       - simplified the single-image path to avoid forcing a `PageView` for the common one-image mobile case.
+     - `origna_gta/lib/screens/widgets/product_detail/product_info_section.dart`
+       - hardened trust badges against mobile overflow.
+     - added regression tests:
+       - `origna_ventures/test/widget_test.dart`
+       - `origna_gta/test/widget/product_details_screen_coverage_test.dart`
+   - deployment + verification:
+     - deployed Ventures frontend: `cd origna_ventures && ./deploy.sh --frontend-only`
+     - deployed OrignaGTA dev web twice during the fix wave:
+       - `VPS_HOST=root@204.168.137.16 ./scripts/deploy_web.sh dev`
+     - verified good outcomes:
+       - `cd origna_ventures && flutter analyze --no-fatal-infos`: passed.
+       - `cd origna_ventures && flutter test test/widget_test.dart`: passed.
+       - `cd e2e && bun test specs/phase6-stripe/origna-ventures-live.spec.ts --timeout 120000`: passed.
+       - `cd origna_gta && flutter analyze --no-fatal-infos`: passed.
+       - `cd origna_gta && flutter test test/widget/product_details_screen_coverage_test.dart`: passed.
+       - dev home scroll check after deploy: `beforeunload` counter stayed `0`, `splash:false` after scroll.
+       - fresh dev screenshots confirmed the improved cookie banner and refreshed splash shell.
+     - still failing / not yet closed:
+       - Playwright screenshot `/tmp/pw-dev-product-mobile.png` still shows the mobile product detail page broken on deployed dev (`Buy Now`/`Add to Cart` visible, price visible, but main mobile detail content/image still missing).
+   - impact:
+     - the Ventures CTA network error and the OrignaGTA dev home/cookie/splash polish items are materially improved and deployed.
+     - the OrignaGTA mobile product-detail regression remains real and needs another focused pass before it can be marked done.
+
+45. **OrignaVentures Stripe webhook audit + regression hardening**: Advanced and verified on 2026-04-21.
+   - evidence gathered first:
+     - backend coverage still protected checkout creation better than webhook ingestion.
+     - `origna_ventures/backend/app.py` decoded webhook JSON before any explicit JSON error handling, so a correctly signed malformed payload could bubble into a server-side failure path instead of returning a clean client error.
+   - fixes applied:
+     - extended `origna_ventures/backend/tests/test_payments_api.py` from 5 to 9 tests total.
+     - added webhook regression coverage for:
+       - `checkout.session.completed` payment/subscription updates
+       - duplicate event idempotency
+       - `invoice.payment_failed` → `past_due`
+       - malformed signed JSON payload rejection
+     - updated `origna_ventures/backend/app.py` so signed malformed webhook payloads now return `400 Invalid JSON payload` instead of throwing unhandled decode/json errors.
+   - verification:
+     - `cd origna_ventures/backend && source .venv/bin/activate && pytest tests/test_payments_api.py`: passed (`9 passed`).
+     - `cd e2e && bun test specs/phase6-stripe/origna-ventures-live.spec.ts --timeout 120000`: passed (`20 pass / 0 fail`).
+     - `cd origna_ventures && python3 -m py_compile backend/app.py`: passed.
+   - impact:
+     - the Ventures webhook path is now materially better protected against regressions and malformed signed input, and both local backend tests and live webhook-security checks are green.
+
+44. **OrignaVentures hero polish pass + solar product prep update**: Advanced and verified on 2026-04-21.
+   - evidence gathered first:
+     - `agent-browser open https://www.orignaventures.ca && sleep 8 && agent-browser screenshot /tmp/orignaventures-fresh-home-8s.png`
+     - the fresh live screenshot showed the page is structurally solid, but the hero still leaned slightly cheap in copy/tone: a green status dot, overly dev-centric tech line, and some supporting text that could feel more premium.
+     - repo search also confirmed the first-production solar product seed script lived in `scripts/add_hybrid_solar_system.ts` and was still priced at 15,000 CAD without installation/home-delivery wording.
+   - fixes applied:
+     - updated `origna_ventures/lib/main.dart` hero copy/tone:
+       - status pill now uses brand blue instead of green and reads `Toronto, Canada · Fast launch partner`
+       - tech line now reads `Flutter · Rust · Stripe · PostgreSQL` with brand gradient styling
+       - proof panel copy now emphasizes premium delivery / clean shipping / faster conversion
+       - mini-card descriptions are clearer and more premium
+     - updated `scripts/add_hybrid_solar_system.ts`:
+       - title now includes `Home Delivery + Installation`
+       - description now explicitly includes full delivery to the client's home and installation
+       - price lowered to `13,000 CAD`
+       - keywords expanded for installation/delivery discoverability
+   - verification:
+     - `cd origna_ventures && flutter analyze --no-fatal-infos`: passed.
+   - impact:
+     - Ventures local UI is moving toward a more premium investor/client-facing tone without risky layout rewrites, and the solar seed script now matches the requested commercial offer more closely; neither change is live yet because deployment/insertion is still pending.
+
+43. **OrignaVentures backend payment regression suite + extra phase6 coverage**: Advanced and verified on 2026-04-21.
+   - evidence gathered first:
+     - `origna_ventures/test/widget_test.dart` had already been corrected, but the backend still had no dedicated automated payment regression suite.
+     - phase6 Stripe coverage existed, but more targeted payment runs were still worth rechecking after the Ventures subscription payload fix.
+   - fixes applied:
+     - created `origna_ventures/backend/.venv` for isolated backend verification.
+     - added `origna_ventures/backend/tests/test_payments_api.py` with 5 backend regression tests covering:
+       - one-time Stripe checkout payload composition
+       - monthly subscription Stripe checkout payload composition
+       - admin auth protection for `/api/contracts`
+       - invalid `service_code` rejection
+       - payment row persistence after checkout-session creation
+   - verification:
+     - `cd origna_ventures/backend && source .venv/bin/activate && pytest tests/test_payments_api.py`: passed (`5 passed`).
+     - `cd e2e && bun test specs/phase6-stripe/payment-edge-cases.spec.ts --timeout 120000`: passed (`20 pass / 0 fail`).
+     - `cd e2e && bun test specs/phase6-stripe/premium-subscription.spec.ts --timeout 120000`: passed (`29 pass / 0 fail`).
+     - `cd origna_ventures && python3 -m py_compile backend/app.py`: passed.
+   - impact:
+     - the recent Ventures payment fixes are no longer protected only by E2E smoke coverage; there is now fast local backend regression coverage for the Stripe payload and admin-protection paths that drifted.
+
+42. **OrignaVentures local regression-test pass after payment/UI fixes**: Advanced and verified on 2026-04-21.
+   - evidence gathered first:
+     - the default `origna_ventures/test/widget_test.dart` was still the stock counter placeholder and failed immediately.
+   - fixes applied:
+     - replaced the stock placeholder with real tier-catalog regression tests in `origna_ventures/test/widget_test.dart`.
+     - covered service-code set, launch-tier popularity/price, team subscription price, and code-tier starter pricing.
+   - verification:
+     - `cd origna_ventures && flutter test test/widget_test.dart`: passed (`4 tests`).
+     - `cd origna_ventures && flutter analyze --no-fatal-infos`: passed.
+   - impact:
+     - OrignaVentures now has a minimal real regression suite protecting the pricing/tier configuration that has drifted repeatedly.
+
+41. **OrignaVentures visual polish pass (pre-deploy, agent-browser evidence)**: Advanced and verified on 2026-04-21.
+   - evidence gathered first:
+     - `agent-browser open https://www.orignaventures.ca`
+     - `agent-browser screenshot /tmp/orignaventures-home.png`
+     - `agent-browser set viewport 390 844 && agent-browser reload && agent-browser screenshot /tmp/orignaventures-mobile-home.png`
+   - findings from the live screenshots:
+     - the current live design is directionally correct, but the hero stats feel visually detached, mobile section spacing is a bit loose, and the pricing intro lacks compact trust cues.
+     - the page is not catastrophically broken; this called for a careful polish pass, not a structural rewrite.
+   - fixes applied in the local worktree:
+     - converted hero stats into compact glass-style metric cards for better grouping.
+     - reduced mobile vertical spacing across pricing, partner, why, and contact sections.
+     - added compact trust pills above pricing (`1-2 week launch`, `Source ownership`, `Canadian invoicing`).
+     - changed pricing CTA copy from generic `Get started` to tier-specific actions (`Buy source code`, `Launch my app`, `Book the team`).
+   - verification:
+     - `cd origna_ventures && flutter analyze --no-fatal-infos`: passed.
+     - `cd e2e && bun x tsc --noEmit`: passed.
+   - impact:
+     - the Ventures landing page is locally more cohesive and expensive-looking without changing navigation or payment flow contracts; live visual verification still requires deploy because SSH to the VPS later failed with `Connection refused`.
+
+40. **OrignaVentures payment test drift + subscription checkout fix (pre-deploy)**: Advanced and verified on 2026-04-21.
+   - evidence gathered first:
+     - `cd e2e && bun test specs/phase6-stripe/payment-methods.spec.ts --timeout 120000`: passed (`21 pass / 0 fail`).
+     - `cd e2e && bun test specs/phase6-stripe/origna-ventures-live.spec.ts --timeout 120000`: failed against live with stale test assumptions and one real backend issue.
+     - direct live checks confirmed `GET https://api.orignaventures.ca/api/meta` returns a `services` object map and `POST /api/payments/create-checkout-session` succeeds for `origna_launch` but returned `500` for `origna_team`.
+   - findings:
+     - `e2e/lib/config.ts` still pointed Ventures API to the old `https://api.orignagta.ca/ventures/api` path and still encoded the outdated `OrignaLaunch` price (`2000_00`).
+     - `e2e/specs/phase6-stripe/origna-ventures-live.spec.ts` assumed homepage HTML would contain hydrated tier text, assumed `/meta` returned an array, and hit missing `/api` prefixes for Ventures endpoints.
+     - `origna_ventures/backend/app.py` built `origna_team` checkout sessions using `mode=subscription` with one-time payment payload fields (`submit_type=pay`, no recurring price data), which caused the real live `500` for the team plan.
+   - fixes applied in the worktree:
+     - updated `e2e/lib/config.ts` to use `https://api.orignaventures.ca` and `OrignaLaunch` at `3000_00`.
+     - rewrote `e2e/specs/phase6-stripe/origna-ventures-live.spec.ts` to use correct `/api/...` routes, normalize the `services` object map from `/api/meta`, and validate current tier pricing/health behavior.
+     - fixed `origna_ventures/backend/app.py` so `origna_team` uses a proper Stripe subscription payload with monthly recurring price data instead of one-time checkout fields.
+   - verification:
+     - `cd origna_ventures && python3 -m py_compile backend/app.py`: passed.
+     - `cd e2e && bun x tsc --noEmit`: passed.
+   - impact:
+     - Ventures payment tests and backend code now match the current architecture, but the `origna_team` live checkout bug remains present on production until the Ventures backend is deployed.
+
+39. **VS Code task/config cleanup slice**: Advanced and verified on 2026-04-21.
+   - evidence gathered first:
+     - `cd origna_gta && flutter analyze --no-fatal-infos`: passed.
+     - `cd origna_ventures && flutter analyze --no-fatal-infos`: passed.
+     - `cd e2e && bun x tsc --noEmit`: passed.
+     - `jq empty .vscode/{launch,tasks,settings,extensions}.json`: passed.
+   - findings:
+     - `.vscode/tasks.json` still pointed Stripe CLI to `localhost:8080/stripe/webhook` while the verified OrignaBase local endpoint is `localhost:8080/api/webhooks/stripe`.
+     - the shared live-test task was using dev-hosted defines instead of the documented local emulator flow.
+     - the OrignaVentures backend task depended on bare `uvicorn` being on PATH instead of using `python3 -m uvicorn`.
+   - fixes applied:
+     - updated `Stripe: Forward Webhooks (Dev — port 8080)` to forward to `/api/webhooks/stripe`.
+     - updated `Flutter: Test (Live)` to run `test/live/` with `ENVIRONMENT=emulator` and `ORIGNABASE_URL=http://127.0.0.1:8080`.
+     - updated `OrignaVentures: Backend` to use `python3 -m uvicorn app:app --reload --port 8001`.
+     - marked the corresponding `TODOS.md` parking-lot VS Code items as complete with evidence.
+   - impact:
+     - VS Code launch/tasks now align with the verified local backend, Stripe CLI, and live-test workflow instead of stale dev-path assumptions.
 
 37. **Preview dedupe / legal + auth wrapper + main + MFA challenge + product-add-video slice**: Advanced and verified on 2026-04-18.
    - `lib/widgets/legal_screen_body.dart`, `lib/screens/login_screen.dart`, `lib/screens/main_screen.dart`, `lib/screens/authwrapper_screen.dart`, `lib/screens/mfa_challenge_screen.dart`, and `lib/screens/productaddvideo_screen.dart` still carried repeated tablet/web/light-mobile preview permutations after earlier preview cleanup.
@@ -938,6 +1242,25 @@ All active blockers and known infrastructure issues from previous sessions have 
 - Fix or seed the remaining 4 desktop manifest blockers (`checkout`, `seller-orders`, `seller-warehouses` anchors, `seller-bulk-upload`) using real route/state evidence only.
 - After those 4 pass, re-run the full desktop manifest and update the desktop screenshot audit/status files from the verified output set.
 - Keep using path routes for deployed web capture unless the app URL strategy changes again.
+
+## Parking Lot History
+### 2026-04-21 tracker cleanup
+- `TODOS.md` parking-lot cleanup completed:
+  - kept active parking-lot items limited to pending work only.
+  - moved reusable process instructions into the reusable runbook sections (`Core Rules`, `Definition Of Done`, `Phase 0`, and `Phase 6`) instead of leaving them duplicated in Parking Lot.
+  - removed completed items from the active parking lot so the file reflects current pending work rather than mixed history.
+- completed/verified items intentionally moved out of the active queue during this cleanup included:
+  - Flutter app lifecycle handling follow-up.
+  - VS Code warnings/task cleanup verification.
+  - preview gap fixes and preview realism passes already verified earlier in this ledger.
+  - legacy-code cleanup items already verified earlier in this ledger.
+  - mobile product-details image fallback fix.
+  - Cuba shipping Flutter/Rust parity delivery.
+  - Spanish translation addition for OrignaGTA and OrignaVentures.
+  - OrignaVentures pricing/homepage/payment simplification items already verified on 2026-04-21.
+  - payment/homepage fast-checkout, QR/PDF clickability, contact form, Firebase removal audit, and Hetzner migration items already verified on 2026-04-21.
+  - repo-map / CLAUDE / AGENTS updates already verified on 2026-04-21.
+  - Ventures UI cleanup items `2` through `20` from the sub-list were removed from the active queue because they were already verified live on 2026-04-21.
 Cuba shipping support initiated: Identifying logic for shipFromCountry=CU.
 Spanish localization initiated: es.json created.
 OrignaVentures refactor: Tiers and contract signing items added to Parking Lot for next pass.

@@ -532,23 +532,20 @@ mod tests {
     // update these assertions.
 
     #[test]
-    fn test_not_expression_currently_ignored() {
-        // Due to parser bug, `!isAuthenticated()` parses as `isAuthenticated()`
+    fn test_not_expression() {
         let rules = parse_rules(
             r#"
-            rules products {
-                read: !isAuthenticated();
-            }
-        "#,
+rules products {
+    read: !isAuthenticated();
+}
+"#,
         )
         .unwrap();
         let engine = RuleEngine::new(rules);
-        // Authenticated → the `!` is lost, so result is true (not negated)
         let ctx = test_ctx(true, vec![]);
-        assert!(engine.check("products", "read", &ctx).unwrap());
-        // Unauthenticated → false (not negated)
+        assert!(!engine.check("products", "read", &ctx).unwrap());
         let ctx2 = test_ctx(false, vec![]);
-        assert!(!engine.check("products", "read", &ctx2).unwrap());
+        assert!(engine.check("products", "read", &ctx2).unwrap());
     }
 
     #[test]

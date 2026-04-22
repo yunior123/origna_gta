@@ -10,6 +10,7 @@ services:
     ports:
       - "127.0.0.1:8083:8080"
     networks:
+      - ventures-net
       - orignabase_default
     restart: unless-stopped
     healthcheck:
@@ -24,5 +25,7 @@ services:
           memory: 256M
 
 networks:
+  ventures-net:
+    driver: bridge
   orignabase_default:
     external: true

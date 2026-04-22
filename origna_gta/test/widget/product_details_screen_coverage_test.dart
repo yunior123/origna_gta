@@ -19,6 +19,7 @@ import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/models/models.dart' as models;
 import 'package:origna_gta/models/qa_model.dart';
 import 'package:origna_gta/screens/productdetails_screen.dart';
+import 'package:origna_gta/screens/widgets/product_detail/product_image_gallery.dart';
 import 'package:origna_gta/widgets/premium_paywall_widget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -133,9 +134,34 @@ void main() {
           excludeProductId: 'p1',
           categoryId: 1,
         )).overrideWith((ref) => Future.value(const <Product>[])),
+        moreFromSellerProvider((
+          sellerId: 's1',
+          excludeProductId: 'p1',
+        )).overrideWith((ref) => Future.value(const <Product>[])),
+        moreFromSellerProvider((
+          sellerId: 's1',
+          excludeProductId: 'p2',
+        )).overrideWith((ref) => Future.value(const <Product>[])),
+        moreFromSellerProvider((
+          sellerId: 'u1',
+          excludeProductId: 'p1',
+        )).overrideWith((ref) => Future.value(const <Product>[])),
         ...overrides,
       ],
       child: child,
+    );
+  }
+
+  Widget createMobileDetailScreen(Product product) {
+    return createTestApp(
+      overrides: [
+        productByIdProvider(product.productId).overrideWith((ref) => product),
+        currentUserProvider.overrideWithValue(mockUser),
+      ],
+      child: ProductDetailScreen(
+        productId: product.productId,
+        product: product.toJson(),
+      ),
     );
   }
 
@@ -447,6 +473,76 @@ void main() {
 
       expect(find.byIcon(Icons.camera_alt_outlined), findsNothing);
     });
+
+    testWidgets(
+      'mobile detail layout keeps gallery and back button visible for remote images',
+      (tester) async {
+        tester.view.physicalSize = const Size(390, 844);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        final remoteImageProduct = baseProduct.copyWith(
+          imageUrls: const ['https://example.com/product.jpg'],
+          name: 'Solar Inverter',
+        );
+
+        await tester.pumpWidget(createMobileDetailScreen(remoteImageProduct));
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
+
+        expect(find.text('Solar Inverter'), findsOneWidget);
+        expect(find.byType(ProductImageGallery), findsOneWidget);
+        expect(find.byType(ListView), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'mobile detail route resets scroll position when switching products',
+      (tester) async {
+        tester.view.physicalSize = const Size(390, 844);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        final productOne = baseProduct.copyWith(
+          productId: 'p1',
+          name: 'Solar Inverter',
+          imageUrls: const ['https://example.com/inverter.jpg'],
+        );
+        final productTwo = baseProduct.copyWith(
+          productId: 'p2',
+          name: 'Battery Pack',
+          imageUrls: const ['https://example.com/battery.jpg'],
+        );
+
+        await tester.pumpWidget(createMobileDetailScreen(productOne));
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
+
+        final initialScrollable = tester.state<ScrollableState>(
+          find.byType(Scrollable).first,
+        );
+        expect(initialScrollable.position.pixels, 0);
+
+        initialScrollable.position.jumpTo(500);
+        await tester.pump();
+        expect(initialScrollable.position.pixels, 500);
+
+        await tester.pumpWidget(createMobileDetailScreen(productTwo));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 1100));
+
+        expect(find.text('Battery Pack'), findsOneWidget);
+        expect(
+          tester
+              .state<ScrollableState>(find.byType(Scrollable).first)
+              .position
+              .pixels,
+          0,
+        );
+      },
+    );
 
     testWidgets('records recently viewed product IDs without duplicates', (
       tester,

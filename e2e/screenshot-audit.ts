@@ -1,16 +1,16 @@
 import { AgentBrowser } from './lib/agent-browser.ts';
 
-const DESKTOP = '/Users/yuniorrodriguezosorio/Desktop/origna-audit-2026-03-31';
+const OUT_DIR = process.env.SCREENSHOT_OUT_DIR || '/tmp/origna-audit-2026-03-31';
 const b = new AgentBrowser({ headed: false });
 
 async function ss(name: string) {
-  await b.screenshot(`${DESKTOP}/${name}.png`);
+  await b.screenshot(`${OUT_DIR}/${name}.png`);
   console.log(`  ✓ ${name}`);
 }
 
 try {
   const { mkdirSync } = await import('node:fs');
-  mkdirSync(DESKTOP, { recursive: true });
+  mkdirSync(OUT_DIR, { recursive: true });
 
   // Pages that don't require auth
   const pages = [

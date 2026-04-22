@@ -27,6 +27,7 @@ import 'package:origna_gta/widgets/mascot/shop_mascot.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:origna_gta/widgets/shared/cart_badge.dart';
+import 'package:origna_gta/widgets/language_selector.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:origna_gta/widgets/modern_skeleton_loader.dart';
 import 'package:flutter/widget_previews.dart';
@@ -186,7 +187,38 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   alpha: 0.2,
                                 ),
                               ),
-                              const SizedBox(height: 12),
+                              const SizedBox(height: 16),
+                              // Origna Ventures Company Specs
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.business,
+                                    size: 16,
+                                    color: DesignTokens.textSecondary,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'home.platform_by_origna_ventures'.tr(),
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: DesignTokens.textSecondary,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'home.company_details'.tr(),
+                                style: TextStyle(
+                                  color: DesignTokens.textSecondary.withValues(
+                                    alpha: 0.7,
+                                  ),
+                                  fontSize: 11,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
                               Wrap(
                                 alignment: WrapAlignment.center,
                                 spacing: 8,
@@ -196,9 +228,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                     button: true,
                                     child: TextButton(
                                       onPressed: () {
-                                        // Navigate to privacy policy URL
-                                        // On web: goes to /privacy-policy (OAuth compliance)
-                                        // On mobile: shows in-app screen
                                         openPrivacyPolicy(context);
                                       },
                                       style: TextButton.styleFrom(
@@ -223,9 +252,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                     button: true,
                                     child: TextButton(
                                       onPressed: () {
-                                        // Navigate to terms URL
-                                        // On web: goes to /terms-of-service (OAuth compliance)
-                                        // On mobile: shows in-app screen
                                         openTermsOfService(context);
                                       },
                                       style: TextButton.styleFrom(
@@ -239,7 +265,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 8),
+                              const SizedBox(height: 12),
+                              // Language Selector
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.language,
+                                    size: 16,
+                                    color: DesignTokens.textSecondary,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'language.select_language'.tr(),
+                                    style: TextStyle(
+                                      color: DesignTokens.textSecondary,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const LanguageSelector(),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
                               Text(
                                 'home.copyright'.tr(
                                   namedArgs: {

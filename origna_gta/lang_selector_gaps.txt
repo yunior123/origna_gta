@@ -1,0 +1,20 @@
+Spanish translation audit on 2026-04-21
+
+- Missing keys compared with `assets/translations/en.json`: 0
+- Keys whose Spanish value is still identical to English: 2307
+- Highest-impact untranslated surfaces observed in the audit:
+  - `admin.*`
+  - `app.*`
+  - large parts of `auth.*`
+  - large parts of `checkout.*`
+  - large parts of `product.*`
+  - large parts of `seller.*`
+  - large parts of `subscription.*`
+
+Notes
+
+- This is a localization completeness problem, not a schema-gap problem.
+- The current Spanish file is structurally complete but still contains a large
+  amount of English copy.
+- Immediate priority should be user-facing purchase/auth flows before admin-only
+  strings.

@@ -4,6 +4,15 @@
 
 Flutter e-commerce app (Canada-first multi-vendor marketplace). Backend: OrignaBase (Rust VPS). **Firebase is GONE.**
 
+```
+origna_gta/              ← repo root
+├── origna_gta/          ← Flutter e-commerce app (GTA)
+├── origna_ventures/     ← Flutter services app (Ventures)
+├── e2e/                 ← Bun/Playwright E2E tests
+├── .claude/skills/      ← Claude skills
+└── AGENTS.md, CLAUDE.md
+```
+
 > This is a routing file. Detailed rules auto-load from `.claude/rules/`. Read `docs/REPO_MAP.md` for full architecture.
 
 ---
@@ -26,16 +35,17 @@ flutter pub run build_runner build --delete-conflicting-outputs  # codegen
 bun test specs/phase1-api/
 bun x tsc --noEmit
 
+# OrignaVentures Flutter (from origna_ventures/)
+cd origna_ventures
+flutter analyze --no-fatal-infos
+flutter build web --release --dart-define=ENVIRONMENT=production
+./deploy.sh [--skip-build] [--backend-only] [--frontend-only]
+
 # OrignaVentures FastAPI Backend (from origna_ventures/backend/)
 cd origna_ventures/backend
 source venv/bin/activate
 pip install -r requirements.txt
-uvicorn app:app --reload --port 8000
-
-# OrignaVentures Flutter Frontend (from origna_ventures/)
-cd origna_ventures
-flutter analyze --no-fatal-infos
-flutter build web
+uvicorn app:app --reload --port 8001
 
 # OrignaBase Rust (from orignabase/)
 cargo clippy -D warnings && cargo test
@@ -68,12 +78,33 @@ cd e2e && ORIGNABASE_URL=http://127.0.0.1:8080 bun run lib/seed-dev.ts
 | Repo map | `docs/REPO_MAP.md` |
 | Quality gate | `scripts/run_quality_gate.sh` |
 
+### OrignaVentures Key Files
+
+| Purpose | Path |
+|---------|------|
+| Main app | `origna_ventures/lib/main.dart` |
+| Theme config | `origna_ventures/lib/theme_config.dart` |
+| Tiers config | `origna_ventures/lib/tiers_config.dart` |
+| Backend API | `origna_ventures/backend/app.py` |
+| Deploy script | `origna_ventures/deploy.sh` |
+
 ## Architecture
 
 - MVVM: Screens → ViewModels → Services → OrignaBase SDK
 - State: Riverpod providers (`lib/providers/`), AsyncNotifier for async state
 - Models: `freezed` for all value types. Money = integer cents, never float.
 - Backend: OrignaBase SDK only — never raw HTTP to PostgreSQL/Meilisearch
+
+### OrignaVentures
+
+- Single-page Flutter web app — `StatefulWidget` + `setState`
+- No Riverpod, no MVVM — simpler structure
+- Languages: EN/FR/ES via inline `loc.tr(en, fr, es)` pattern
+- Money: integer cents, display with `$` prefix
+- 3 tiers: OrignaCode ($500 CAD), OrignaLaunch ($3,000 CAD), OrignaTeam ($1,000 CAD/month)
+- Never hardcode colors — use `ThemeConfig.*`
+- Never `print()` — use `debugPrint()`
+- Backend: Python FastAPI — Stripe checkout, PDF generation (reportlab), Mailjet email
 
 ## Common Pitfalls (DO NOT)
 

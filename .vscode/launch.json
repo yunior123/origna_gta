@@ -1,102 +1,125 @@
 {
-    "version": "0.2.0",
-    "configurations": [
-        // =====================================================================
-        // FLUTTER — DEV (api.dev.orignagta.ca)
-        // =====================================================================
-        {
-            "name": "🔬 Flutter Dev (Debug)",
-            "type": "dart",
-            "request": "launch",
-            "program": "lib/main.dart",
-            "cwd": "${workspaceFolder}/origna_gta",
-            "toolArgs": [
-                "-d", "chrome",
-                "--web-port", "3000",
-                "--dart-define=ENVIRONMENT=dev",
-                "--dart-define=ORIGNABASE_URL=https://api.dev.orignagta.ca"
-            ]
-        },
-        {
-            "name": "🔬 Flutter Dev (Release)",
-            "type": "dart",
-            "request": "launch",
-            "program": "lib/main.dart",
-            "cwd": "${workspaceFolder}/origna_gta",
-            "flutterMode": "release",
-            "toolArgs": [
-                "-d", "chrome",
-                "--web-port", "3000",
-                "--dart-define=ENVIRONMENT=dev",
-                "--dart-define=ORIGNABASE_URL=https://api.dev.orignagta.ca"
-            ]
-        },
-        {
-            "name": "📱 Flutter Dev (iOS Simulator)",
-            "type": "dart",
-            "request": "launch",
-            "program": "lib/main.dart",
-            "cwd": "${workspaceFolder}/origna_gta",
-            "toolArgs": [
-                "--dart-define=ENVIRONMENT=dev",
-                "--dart-define=ORIGNABASE_URL=https://api.dev.orignagta.ca"
-            ]
-        },
-        // =====================================================================
-        // FLUTTER — STAGING (api.staging.orignagta.ca)
-        // =====================================================================
-        {
-            "name": "🧪 Flutter Staging (Debug)",
-            "type": "dart",
-            "request": "launch",
-            "program": "lib/main.dart",
-            "cwd": "${workspaceFolder}/origna_gta",
-            "toolArgs": [
-                "-d", "chrome",
-                "--web-port", "3001",
-                "--dart-define=ENVIRONMENT=staging",
-                "--dart-define=ORIGNABASE_URL=https://api.staging.orignagta.ca"
-            ]
-        },
-        // =====================================================================
-        // FLUTTER — PRODUCTION (api.orignagta.ca)
-        // =====================================================================
-        {
-            "name": "🌐 Flutter Production (Debug)",
-            "type": "dart",
-            "request": "launch",
-            "program": "lib/main.dart",
-            "cwd": "${workspaceFolder}/origna_gta",
-            "toolArgs": [
-                "-d", "chrome",
-                "--dart-define=ENVIRONMENT=production",
-                "--dart-define=ORIGNABASE_URL=https://api.orignagta.ca"
-            ]
-        },
-        {
-            "name": "🌐 Flutter Production (Release)",
-            "type": "dart",
-            "request": "launch",
-            "program": "lib/main.dart",
-            "cwd": "${workspaceFolder}/origna_gta",
-            "flutterMode": "release",
-            "toolArgs": [
-                "-d", "chrome",
-                "--dart-define=ENVIRONMENT=production",
-                "--dart-define=ORIGNABASE_URL=https://api.orignagta.ca"
-            ]
-        },
-        // =====================================================================
-        // ORIGNABASE — Rust backend (local dev)
-        // =====================================================================
-        {
-            "name": "🦀 OrignaBase (cargo run)",
-            "type": "lldb",
-            "request": "launch",
-            "program": "${workspaceFolder}/../orignabase/target/debug/orignabase",
-            "args": [],
-            "cwd": "${workspaceFolder}/../orignabase",
-            "preLaunchTask": "OrignaBase: Build (Debug)"
-        }
-    ]
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "🔬 Flutter Dev (Debug)",
+      "type": "dart",
+      "request": "launch",
+      "program": "lib/main.dart",
+      "cwd": "${workspaceFolder}/origna_gta",
+      "toolArgs": [
+        "-d",
+        "chrome",
+        "--web-port",
+        "3000",
+        "--dart-define=ENVIRONMENT=dev",
+        "--dart-define=ORIGNABASE_URL=https://api.dev.orignagta.ca"
+      ]
+    },
+    {
+      "name": "🔬 Flutter Dev (Release)",
+      "type": "dart",
+      "request": "launch",
+      "program": "lib/main.dart",
+      "cwd": "${workspaceFolder}/origna_gta",
+      "flutterMode": "release",
+      "toolArgs": [
+        "-d",
+        "chrome",
+        "--web-port",
+        "3000",
+        "--dart-define=ENVIRONMENT=dev",
+        "--dart-define=ORIGNABASE_URL=https://api.dev.orignagta.ca"
+      ]
+    },
+    {
+      "name": "📱 Flutter Dev (iOS Simulator)",
+      "type": "dart",
+      "request": "launch",
+      "program": "lib/main.dart",
+      "cwd": "${workspaceFolder}/origna_gta",
+      "toolArgs": [
+        "--dart-define=ENVIRONMENT=dev",
+        "--dart-define=ORIGNABASE_URL=https://api.dev.orignagta.ca"
+      ]
+    },
+    {
+      "name": "🧪 Flutter Staging (Debug)",
+      "type": "dart",
+      "request": "launch",
+      "program": "lib/main.dart",
+      "cwd": "${workspaceFolder}/origna_gta",
+      "toolArgs": [
+        "-d",
+        "chrome",
+        "--web-port",
+        "3001",
+        "--dart-define=ENVIRONMENT=staging",
+        "--dart-define=ORIGNABASE_URL=https://api.staging.orignagta.ca"
+      ]
+    },
+    {
+      "name": "🌐 Flutter Production (Debug)",
+      "type": "dart",
+      "request": "launch",
+      "program": "lib/main.dart",
+      "cwd": "${workspaceFolder}/origna_gta",
+      "toolArgs": [
+        "-d",
+        "chrome",
+        "--dart-define=ENVIRONMENT=production",
+        "--dart-define=ORIGNABASE_URL=https://api.orignagta.ca"
+      ]
+    },
+    {
+      "name": "🌐 Flutter Production (Release)",
+      "type": "dart",
+      "request": "launch",
+      "program": "lib/main.dart",
+      "cwd": "${workspaceFolder}/origna_gta",
+      "flutterMode": "release",
+      "toolArgs": [
+        "-d",
+        "chrome",
+        "--dart-define=ENVIRONMENT=production",
+        "--dart-define=ORIGNABASE_URL=https://api.orignagta.ca"
+      ]
+    },
+    {
+      "name": "🚀 OrignaVentures (Debug)",
+      "type": "dart",
+      "request": "launch",
+      "program": "lib/main.dart",
+      "cwd": "${workspaceFolder}/origna_ventures",
+      "toolArgs": [
+        "-d",
+        "chrome",
+        "--web-port",
+        "3003",
+        "--dart-define=ENVIRONMENT=dev"
+      ]
+    },
+    {
+      "name": "🚀 OrignaVentures (Production)",
+      "type": "dart",
+      "request": "launch",
+      "program": "lib/main.dart",
+      "cwd": "${workspaceFolder}/origna_ventures",
+      "flutterMode": "release",
+      "toolArgs": [
+        "-d",
+        "chrome",
+        "--dart-define=ENVIRONMENT=production"
+      ]
+    },
+    {
+      "name": "🦀 OrignaBase (cargo run)",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceFolder}/orignabase/target/debug/orignabase",
+      "args": [],
+      "cwd": "${workspaceFolder}/orignabase",
+      "preLaunchTask": "OrignaBase: Build (Debug)"
+    }
+  ]
 }

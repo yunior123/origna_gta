@@ -13,7 +13,6 @@ import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
-import 'package:origna_gta/widgets/premium_paywall_widget.dart';
 import 'package:flutter/widget_previews.dart';
 import 'package:origna_gta/utils/preview_helpers.dart';
 
@@ -38,25 +37,10 @@ class ChatConversationsScreen extends ConsumerWidget {
         ),
         body: subscriptionAsync.when(
           loading: () => const Center(child: ModernLoadingIndicator()),
-          // CHAT-SEC-1: On subscription stream error, default to paywall.
-          // Never grant chat access when premium status cannot be verified.
-          error: (_, _) => Center(
-            child: SingleChildScrollView(
-              child: PremiumPaywallWidget(featureName: 'chat.inbox_title'.tr()),
-            ),
-          ),
+          error: (_, _) => const _ChatInboxBody(isPremium: false),
           data: (sub) {
             final isPremium = sub?.isPremium ?? false;
-            if (!isPremium) {
-              return Center(
-                child: SingleChildScrollView(
-                  child: PremiumPaywallWidget(
-                    featureName: 'chat.inbox_title'.tr(),
-                  ),
-                ),
-              );
-            }
-            return _ChatInboxBody();
+            return _ChatInboxBody(isPremium: isPremium);
           },
         ),
       ),
@@ -65,7 +49,8 @@ class ChatConversationsScreen extends ConsumerWidget {
 }
 
 class _ChatInboxBody extends ConsumerWidget {
-  const _ChatInboxBody();
+  final bool isPremium;
+  const _ChatInboxBody({required this.isPremium});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -86,6 +71,13 @@ class _ChatInboxBody extends ConsumerWidget {
         ),
       ),
       data: (threads) {
+        final ovThreads = threads
+            .where((t) => _isOrignaVenturesSeller(t.sellerId))
+            .toList();
+        final otherThreads = threads
+            .where((t) => !_isOrignaVenturesSeller(t.sellerId))
+            .toList();
+
         if (threads.isEmpty) {
           return AnimatedEmptyState(
             icon: Icons.chat_bubble_outline_rounded,
@@ -94,13 +86,20 @@ class _ChatInboxBody extends ConsumerWidget {
           );
         }
 
+        final canChatAllSellers =
+            isPremium || SellerConstants.sellerOnboardingEnabled;
+        final visibleThreads = canChatAllSellers ? threads : ovThreads;
+        final comingSoonThreads = canChatAllSellers
+            ? <ChatThread>[]
+            : otherThreads;
+
         return RefreshIndicator(
           color: DesignTokens.primary,
           onRefresh: () async => ref.invalidate(myAllChatsProvider),
           child: ListView.separated(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.symmetric(vertical: 8),
-            itemCount: threads.length,
+            itemCount: visibleThreads.length + comingSoonThreads.length,
             separatorBuilder: (_, _) => Divider(
               height: 1,
               indent: 76,
@@ -108,24 +107,37 @@ class _ChatInboxBody extends ConsumerWidget {
               color: DesignTokens.outlineVariant.withValues(alpha: 0.5),
             ),
             itemBuilder: (context, index) {
-              final thread = threads[index];
-              final isBuyer = thread.buyerId == uid;
-              final unreadCount = isBuyer
-                  ? thread.buyerUnreadCount
-                  : thread.sellerUnreadCount;
+              if (index < visibleThreads.length) {
+                final thread = visibleThreads[index];
+                final isBuyer = thread.buyerId == uid;
+                final unreadCount = isBuyer
+                    ? thread.buyerUnreadCount
+                    : thread.sellerUnreadCount;
+                return FadeSlideIn(
+                  delay: Duration(milliseconds: 30 * index.clamp(0, 10)),
+                  child: _ChatThreadTile(
+                    thread: thread,
+                    unreadCount: unreadCount,
+                    onTap: () => Navigator.pushNamed(
+                      context,
+                      AppRoutes.chat,
+                      arguments: ChatArgs(
+                        productId: thread.productId,
+                        productTitle: thread.productTitle,
+                      ),
+                    ),
+                  ),
+                );
+              }
+              final comingIndex = index - visibleThreads.length;
+              final thread = comingSoonThreads[comingIndex];
               return FadeSlideIn(
                 delay: Duration(milliseconds: 30 * index.clamp(0, 10)),
                 child: _ChatThreadTile(
                   thread: thread,
-                  unreadCount: unreadCount,
-                  onTap: () => Navigator.pushNamed(
-                    context,
-                    AppRoutes.chat,
-                    arguments: ChatArgs(
-                      productId: thread.productId,
-                      productTitle: thread.productTitle,
-                    ),
-                  ),
+                  unreadCount: 0,
+                  isComingSoon: true,
+                  onTap: () {},
                 ),
               );
             },
@@ -136,27 +148,32 @@ class _ChatInboxBody extends ConsumerWidget {
   }
 }
 
+bool _isOrignaVenturesSeller(String sellerId) =>
+    sellerId == SellerConstants.orignaVenturesSellerId;
+
 class _ChatThreadTile extends StatelessWidget {
   final ChatThread thread;
   final int unreadCount;
   final VoidCallback onTap;
+  final bool isComingSoon;
 
   const _ChatThreadTile({
     required this.thread,
     required this.unreadCount,
     required this.onTap,
+    this.isComingSoon = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final hasUnread = unreadCount > 0;
+    final hasUnread = !isComingSoon && unreadCount > 0;
 
     return Semantics(
-      button: true,
+      button: !isComingSoon,
       label: 'chat-thread-${thread.chatId}',
       child: InkWell(
-        onTap: onTap,
+        onTap: isComingSoon ? null : onTap,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(
@@ -180,15 +197,44 @@ class _ChatThreadTile extends StatelessWidget {
                               fontWeight: hasUnread
                                   ? FontWeight.w700
                                   : FontWeight.w600,
-                              color: isDark
-                                  ? DesignTokens.textOnDark
-                                  : DesignTokens.textPrimary,
+                              color: isComingSoon
+                                  ? DesignTokens.textSecondary
+                                  : (isDark
+                                        ? DesignTokens.textOnDark
+                                        : DesignTokens.textPrimary),
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        if (thread.lastMessageAt != null) ...[
+                        if (isComingSoon) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: DesignTokens.primary.withValues(
+                                alpha: 0.12,
+                              ),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: DesignTokens.primary.withValues(
+                                  alpha: 0.3,
+                                ),
+                              ),
+                            ),
+                            child: Text(
+                              'chat.coming_soon'.tr(),
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: DesignTokens.primary,
+                              ),
+                            ),
+                          ),
+                        ] else if (thread.lastMessageAt != null) ...[
                           const SizedBox(width: 8),
                           Text(
                             _formatTime(thread.lastMessageAt!),
@@ -210,14 +256,21 @@ class _ChatThreadTile extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            thread.lastMessage ?? 'chat.tap_to_chat'.tr(),
+                            isComingSoon
+                                ? 'chat.seller_onboarding_disabled'.tr()
+                                : (thread.lastMessage ??
+                                      'chat.tap_to_chat'.tr()),
                             style: TextStyle(
                               fontSize: 13,
-                              color: hasUnread
-                                  ? (isDark
-                                        ? DesignTokens.textOnDark
-                                        : DesignTokens.textPrimary)
-                                  : DesignTokens.textSecondary,
+                              color: isComingSoon
+                                  ? DesignTokens.textSecondary.withValues(
+                                      alpha: 0.7,
+                                    )
+                                  : (hasUnread
+                                        ? (isDark
+                                              ? DesignTokens.textOnDark
+                                              : DesignTokens.textPrimary)
+                                        : DesignTokens.textSecondary),
                               fontWeight: hasUnread
                                   ? FontWeight.w500
                                   : FontWeight.w400,
@@ -226,7 +279,7 @@ class _ChatThreadTile extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        if (hasUnread) ...[
+                        if (!isComingSoon && hasUnread) ...[
                           const SizedBox(width: 8),
                           Container(
                             constraints: const BoxConstraints(minWidth: 20),
@@ -256,7 +309,9 @@ class _ChatThreadTile extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Icon(
-                Icons.chevron_right_rounded,
+                isComingSoon
+                    ? Icons.lock_outline_rounded
+                    : Icons.chevron_right_rounded,
                 size: 20,
                 color: DesignTokens.textSecondary,
               ),

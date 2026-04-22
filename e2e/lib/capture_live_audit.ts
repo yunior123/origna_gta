@@ -4,7 +4,7 @@ import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { AgentBrowser, type CapturePersona } from './agent-browser.js';
 
-const OUT_DIR = '/Users/yuniorrodriguezosorio/Desktop/origna-design-review-2026-03-26';
+const OUT_DIR = process.env.SCREENSHOT_OUT_DIR || '/tmp/origna-design-review';
 
 const SCREEN_KEYWORDS: Record<string, string[]> = {
   'menu-my-orders': ['Commandes', 'commandes', 'order-card', 'Aucune commande'],

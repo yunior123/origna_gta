@@ -431,6 +431,8 @@
     "browse_all_categories": "Browse all categories \u2192",
     "privacy_policy": "Privacy Policy",
     "terms_of_service": "Terms of Service",
+    "platform_by_origna_ventures": "A platform by Origna Ventures Inc.",
+    "company_details": "BN 708286364TZ0001 · support@orignaventures.ca",
     "copyright": "\u00a9 {year} Origna GTA. All rights reserved.",
     "sort_by": "Sort by",
     "sort_relevance": "Most Relevant",
@@ -1170,7 +1172,9 @@
       "unread_badge": "{count}",
       "last_seen": "{time} ago",
       "tap_to_chat": "Tap to open conversation",
-      "type_a_message": "Type a message..."
+      "type_a_message": "Type a message...",
+      "coming_soon": "Coming soon",
+      "seller_onboarding_disabled": "Third-party seller chat coming soon"
     },
     "seller_integration": {
       "title": "Developer Integration Guide",
@@ -2115,7 +2119,9 @@
     "unread_badge": "{count}",
     "last_seen": "{time} ago",
     "tap_to_chat": "Tap to open conversation",
-    "type_a_message": "Type a message..."
+    "type_a_message": "Type a message...",
+    "coming_soon": "Coming soon",
+    "seller_onboarding_disabled": "Third-party seller chat coming soon"
   },
   "seller_integration": {
     "title": "Developer Integration Guide",

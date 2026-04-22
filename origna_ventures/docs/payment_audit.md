@@ -1,130 +1,111 @@
 # Origna Ventures Payment Audit
 
-Date: 2026-04-19
+Date: 2026-04-21
 
-## What was tested
+## Current public payment architecture
 
-### Stripe
-- Local Origna Ventures FastAPI backend on `127.0.0.1:8787`
-- Real Stripe test secret loaded from local authenticated Stripe CLI via:
-  - `origna_gta/orignabase/scripts/stripe-cli-env.sh test`
-- Contract signing endpoint:
-  - `POST /api/contracts/sign`
-- Checkout creation endpoint:
-  - `POST /api/payments/create-checkout-session`
-- Webhook processing endpoint:
-  - `POST /api/stripe/webhook`
+- Public website: `https://orignaventures.ca`
+- Public API: `https://api.orignaventures.ca`
+- Payment model:
+  - `OrignaCode` -> one-time Stripe Checkout
+  - `OrignaLaunch` -> one-time Stripe Checkout
+  - `OrignaTeam` -> monthly Stripe subscription Checkout
+- Public UX:
+  - homepage pricing cards are the primary payment entry point
+  - cards post directly to `/api/payments/create-checkout-session`
+  - public users are not routed through legacy `/pay`, `/contract`, `/deck`, or donation pages
 
-### Mailjet
-- Remote dev Mailjet credentials pulled from VPS `/opt/orignabase/.env.dev`
-- Tested through:
-  - `POST /api/email/test`
+## What is verified
 
-### PDF / QR artifacts
-- One-pager generated:
-  - `output/origna_ventures_onepager.pdf`
-- Full deck generated:
-  - `output/origna_ventures_full_deck.pdf`
-- QR targets currently embedded:
-  - `https://orignaventures.ca/contract`
-  - `https://orignaventures.ca/pay`
-  - `https://orignaventures.ca`
-  - `https://dev.orignagta.ca`
-  - `https://orignaventures.ca/deck`
-  - `https://orignaventures.ca/donate`
+### Stripe checkout
 
-## Results
+- Backend service codes are:
+  - `origna_code`
+  - `origna_launch`
+  - `origna_team`
+- Backend service catalog pricing is:
+  - `OrignaCode`: `500 CAD`
+  - `OrignaLaunch`: `3,000 CAD`
+  - `OrignaTeam`: `1,000 CAD / month`
+- The backend now uses:
+  - one-time checkout payloads for `origna_code` and `origna_launch`
+  - recurring subscription payloads for `origna_team`
 
-### PASS — contract signing
-- Contract signing succeeded.
-- Signed PDF generated and stored locally.
-- PDF download endpoint now returns real `application/pdf` file content.
-- Audit fields captured in backend model:
-  - typed signature
-  - consent checkbox
-  - timestamp
-  - IP
-  - user agent
-  - SHA-256 digest
+### Public UX
 
-### PASS — Stripe checkout session creation
-- Stripe Checkout session creation succeeded with real Stripe test key.
-- Verified output included:
-  - provider `stripe`
-  - status `awaiting_payment`
-  - valid `cs_test_...` session ID
-  - live checkout URL from `checkout.stripe.com`
-- Re-verified on deployed production endpoint `https://api.orignagta.ca/ventures/api/payments/create-checkout-session` after backend redeploy.
+- Homepage tier cards are the intended public checkout path.
+- Current naming is:
+  - `OrignaCode`
+  - `OrignaLaunch`
+  - `OrignaTeam`
+- No public `service 0/1/2` naming should remain in active user-facing flows.
 
-### PASS — webhook verification + contract payment status update
-- Posted a signed `checkout.session.completed` payload to local webhook.
-- Signature verification passed.
-- Contract status updated in SQLite from pending to `paid`.
+### PDFs
 
-### FAIL — Mailjet credentials
-- Remote dev Mailjet credentials returned:
-  - `401 Unauthorized`
-- Result:
-  - Mailjet is not currently usable from the tested credentials set.
-- This blocks reliable signed-contract confirmation emails and payment-confirmation emails.
+- Public one-pager:
+  - `https://orignaventures.ca/docs/origna_ventures_onepager.pdf`
+- Public full presentation:
+  - `https://orignaventures.ca/docs/origna_ventures_full_presentation.pdf`
+- Public PDF pricing/copy was refreshed again on 2026-04-21 to match:
+  - `500 CAD`
+  - `3,000 CAD`
+  - `1,000 CAD / month`
+  - `8 GB RAM + 80 GB disk`
 
-## Audit findings
+## Historical / legacy notes
 
-### 1. Pricing drift existed between business terms and code
-Fixed in code during audit:
-- `OrignaCode`: `500 CAD`
-- `OrignaLaunch`: `1,000 CAD`
-- `OrignaTeam`: `1,000+ CAD / month`
+- Contract signing still exists in backend/history terms, but it is not the intended public purchase flow anymore.
+- Public payment routing should be treated as pricing-card -> Stripe Checkout.
+- Manual repository access remains policy:
+  - no automated GitHub collaborator invite flow
+  - no automatic source-code unlock by email
 
-Updated in:
-- `backend/app.py`
-- `lib/main.dart`
-- `scripts/generate_presentation_pdfs.py`
+## Findings
 
-### 2. QR payment flow is generic, not invoice-specific
-Current QR codes point to generic landing pages like `/pay`.
-That is good for brochure/deck discovery, but not enough for a true payable invoice QR.
+### 1. Pricing drift existed and was corrected
 
-Recommended production split:
-- brochure QR → generic `/pay`
-- contract QR → `/contract`
-- real payment QR → unique Stripe Checkout URL generated per signed contract
+Corrected source-of-truth locations include:
 
-### 3. Venn removed from active payment flow
-The active payment flow is now Stripe-only.
-All contract payment handoff should create a Stripe Checkout session and redirect there.
+- `origna_ventures/lib/tiers_config.dart`
+- `origna_ventures/lib/main.dart`
+- `origna_ventures/backend/app.py`
+- `origna_ventures/scripts/generate_presentation_pdfs.py`
+- related audit docs
 
-### 4. Stripe CLI docs are present, but current best payment path is:
-- sign contract
-- create Stripe Checkout session
-- redirect to Stripe hosted checkout
-- receive `checkout.session.completed`
-- unlock repo access after verified payment
+### 2. Public payment docs had drifted toward removed routes
 
-### 5. PDF output is working
-Generated successfully:
-- `output/origna_ventures_onepager.pdf`
-- `output/origna_ventures_full_deck.pdf`
-- Production backend now serves real PDF bytes from `GET /ventures/api/contracts/{id}/pdf` with `content-type: application/pdf` after redeploy.
+Outdated references to `/pay`, `/contract`, `/deck`, and donation-era flows were historical, not current public architecture.
 
-## Recommended next changes
+Current public expectation:
+
+- pricing card -> checkout session creation
+- redirect to Stripe-hosted checkout
+- webhook-driven fulfillment/state update
+
+### 3. Mailjet remains an operational dependency to verify separately
+
+- Mailjet is still relevant for confirmations/notifications.
+- Credential validity and delivery behavior should be verified with current production secrets, not stale dev assumptions.
+
+## Recommended next checks
 
 ### High priority
-1. Replace invalid Mailjet credentials with working ones.
-2. Generate contract-specific payment QR after checkout session creation.
-3. Persist checkout URL on contract record.
-4. Add repo unlock automation after paid webhook.
-5. Keep all public payment UX Stripe-only unless a real second provider is fully implemented.
+
+1. Re-run live payment verification against all three public service codes.
+2. Re-verify webhook handling on the currently deployed production backend.
+3. Verify current Mailjet delivery with valid production credentials.
 
 ### Medium priority
-1. Add admin page to list signed/pending/paid contracts.
-2. Add signed contract + receipt email templates in both EN/FR.
-3. Add GitHub org invite flow after payment confirmation.
-4. Add explicit refund / pre-unlock cancellation state transitions.
+
+1. Keep public PDFs and homepage pricing copy regenerated together after any tier change.
+2. Keep legacy contract/admin flows documented as internal/backoffice only.
+3. Add explicit evidence links/logs when live Stripe or Mailjet passes are re-run.
 
 ## Files involved
-- `backend/app.py`
-- `lib/main.dart`
-- `scripts/generate_presentation_pdfs.py`
-- `output/origna_ventures_onepager.pdf`
-- `output/origna_ventures_full_deck.pdf`
+
+- `origna_ventures/backend/app.py`
+- `origna_ventures/lib/main.dart`
+- `origna_ventures/lib/tiers_config.dart`
+- `origna_ventures/scripts/generate_presentation_pdfs.py`
+- `origna_ventures/web/docs/origna_ventures_onepager.pdf`
+- `origna_ventures/web/docs/origna_ventures_full_presentation.pdf`

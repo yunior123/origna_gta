@@ -349,10 +349,17 @@ class ProfileScreenLayout extends StatelessWidget {
           title: 'profile.language'.tr(),
           subtitle: context.locale.languageCode == 'fr'
               ? 'language.french'.tr()
-              : 'language.english'.tr(),
+              : context.locale.languageCode == 'es'
+                  ? 'language.spanish'.tr()
+                  : 'language.english'.tr(),
           onTap: () {
-            final newLocale = context.locale.languageCode == 'fr' ? 'en' : 'fr';
-            onLanguageChange(newLocale);
+            final current = context.locale.languageCode;
+            final next = current == 'en'
+                ? 'fr'
+                : current == 'fr'
+                    ? 'es'
+                    : 'en';
+            onLanguageChange(next);
           },
         ),
         ProfileThemeToggle(

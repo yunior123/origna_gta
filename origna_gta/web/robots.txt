@@ -1,0 +1,34 @@
+# robots.txt for Origna GTA
+# https://orignagta.ca/robots.txt
+
+User-agent: *
+Allow: /
+
+# Sitemap location
+Sitemap: https://orignagta.ca/sitemap.xml
+
+# Disallow admin and private areas
+Disallow: /admin/
+Disallow: /seller-dashboard/
+Disallow: /checkout/
+Disallow: /cart/
+Disallow: /orders/
+Disallow: /profile/
+Disallow: /wallet/
+Disallow: /notifications/
+
+# Allow public product pages
+Allow: /p/
+Allow: /products/
+Allow: /search
+Allow: /category/
+
+# Crawl-delay for non-Bing/Google bots
+User-agent: AhrefsBot
+Crawl-delay: 10
+
+User-agent: SemrushBot
+Crawl-delay: 10
+
+User-agent: MJ12bot
+Crawl-delay: 10

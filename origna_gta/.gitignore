@@ -6,7 +6,10 @@ pubspec_overrides.yaml
 *.log
 *.pyc
 *.swp
+*.swo
 .DS_Store
+Thumbs.db
+desktop.ini
 .atom/
 .agent/
 .build/
@@ -17,21 +20,19 @@ pubspec_overrides.yaml
 migrate_working_dir/
 nanobanana-output/
 test/goldens/
+test-results/
+
 # IntelliJ related
 *.iml
 *.ipr
 *.iws
 .idea/
 
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
-
 # Flutter/Dart/Pub related
 **/doc/api/
 **/ios/Flutter/.last_build_id
 .dart_tool/
+.flutter-plugins
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
@@ -54,12 +55,30 @@ patrol_test/test_bundle.dart
 
 # Analysis and Coverage outputs
 *.info
-*.txt
-!dart_fields.txt
-!dart_values.txt
+coverage-html/
 
-# Android signing / Firebase
+# Android signing / Firebase (Firebase is GONE)
 android/key.properties
 android/*.jks
+android/*.keystore
 android/app/google-services.json
-coverage-html/
+ios/GoogleService-Info.plist
+
+# Environment variables & secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*-key.json
+credentials*
+service-account*.json
+secrets/
+
+# Backup / temp
+*.bak
+*.backup
+*.orig
+*~
+
+# Generated Dart (freezed + json_serializable) — committed to repo, do NOT ignore

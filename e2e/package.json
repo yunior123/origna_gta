@@ -16,7 +16,10 @@
     "test:stripe": "./run-tests.sh pay",
     "test:ai": "bun test ai/specs/ --timeout 120000",
     "test:ai:update-baselines": "UPDATE_BASELINES=true bun test ai/specs/visual-regression.spec.ts --timeout 120000",
-    "typecheck": "bun x tsc --noEmit"
+    "typecheck": "bun x tsc --noEmit",
+    "capture:desktop:manifest": "MANIFEST_FILE=desktop-capture-manifest.json SCREENSHOT_OUT_DIR=/tmp/origna-desktop-captures bun run lib/manifest-runner.ts",
+    "capture:desktop:audit": "SCREENSHOT_OUT_DIR=/tmp/origna-design-review bun run lib/capture_live_audit.ts",
+    "capture:smoke:audit": "SCREENSHOT_OUT_DIR=/tmp/origna-screenshot-audit bun run screenshot-audit.ts"
   },
   "type": "module"
 }
