@@ -59,53 +59,75 @@ class _CookieConsentBannerState extends State<CookieConsentBanner> {
 
     return Semantics(
       label: 'cookie.consent'.tr(),
-      child: Container(
-        decoration: BoxDecoration(
-          color: DesignTokens.darkBackground,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.3),
-              blurRadius: 8,
-              offset: const Offset(0, -2),
-            ),
-          ],
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-        child: SafeArea(
-          top: false,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'cookie.consent'.tr(),
-                style: const TextStyle(color: DesignTokens.white, fontSize: 13),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  TextButton(
-                    onPressed: _decline,
-                    style: TextButton.styleFrom(
-                      foregroundColor: DesignTokens.white.withValues(
-                        alpha: 0.7,
-                      ),
-                    ),
-                    child: Text('cookie.decline'.tr()),
-                  ),
-                  const SizedBox(width: 16),
-                  FilledButton(
-                    onPressed: _accept,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: DesignTokens.primary,
-                      foregroundColor: DesignTokens.white,
-                    ),
-                    child: Text('cookie.accept'.tr()),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          child: Material(
+            color: Colors.transparent,
+            child: Container(
+              decoration: BoxDecoration(
+                color: DesignTokens.darkBackground.withValues(alpha: 0.96),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: DesignTokens.white.withValues(alpha: 0.08),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: DesignTokens.black.withValues(alpha: 0.28),
+                    blurRadius: 24,
+                    offset: const Offset(0, 10),
                   ),
                 ],
               ),
-            ],
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'cookie.consent'.tr(),
+                    style: const TextStyle(
+                      color: DesignTokens.textOnDark,
+                      fontSize: 13,
+                      height: 1.45,
+                      fontWeight: FontWeight.w500,
+                      decoration: TextDecoration.none,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      TextButton(
+                        onPressed: _decline,
+                        style: TextButton.styleFrom(
+                          foregroundColor: DesignTokens.textOnDarkSecondary,
+                          minimumSize: const Size(88, 40),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                        ),
+                        child: Text('cookie.decline'.tr()),
+                      ),
+                      const SizedBox(width: 12),
+                      FilledButton(
+                        onPressed: _accept,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: DesignTokens.primary,
+                          foregroundColor: DesignTokens.white,
+                          minimumSize: const Size(104, 40),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                        ),
+                        child: Text('cookie.accept'.tr()),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),

@@ -1,62 +1,27 @@
 import 'dart:convert';
+import 'dart:ui';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 
-import 'download_helper_stub.dart'
-    if (dart.library.html) 'download_helper_web.dart';
+import 'browser_env_stub.dart'
+    if (dart.library.js_interop) 'browser_env_web.dart' as browser_env;
+
 import 'theme_config.dart';
+import 'tiers_config.dart' show TierDefinition, TierId;
+
+const _supportEmail = 'support@orignaventures.ca';
+const _supportPhone = '4167865517';
+const venturesApiBase = 'https://api.orignagta.ca/ventures/api';
+const _fullDeckPdfUrl =
+    'https://orignaventures.ca/docs/origna_ventures_full_presentation.pdf';
+const _demoUrl = 'https://dev.orignagta.ca';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const OrignaVenturesApp());
-}
-
-const _brandPrimary = ThemeConfig.primary;
-const _brandDark = ThemeConfig.darkBackground;
-const _brandGreen = ThemeConfig.success;
-const _brandLight = ThemeConfig.surface;
-const _supportEmail = 'support@orignaventures.ca';
-const _supportPhone = '4167865517';
-const _companyLegal = '1001475263 ONTARIO CORPORATION';
-const _companyBn = '708286364TZ0001';
-const _baseUrl = 'https://orignaventures.ca';
-const _demoUrl = 'https://dev.orignagta.ca';
-const _apiBase = 'https://api.orignagta.ca/ventures/api';
-const _onepagerPdfUrl =
-    'https://orignaventures.ca/docs/origna_ventures_onepager.pdf';
-const _fullDeckPdfUrl =
-    'https://orignaventures.ca/docs/origna_ventures_full_presentation.pdf';
-const _apkUrl = String.fromEnvironment(
-  'APK_URL',
-  defaultValue: 'https://dev.orignagta.ca',
-);
-const _donationUrl = String.fromEnvironment('DONATION_URL', defaultValue: '');
-const _donationReportUrl = _onepagerPdfUrl;
-const _smsUrl = 'sms:$_supportPhone';
-const _telUrl = 'tel:$_supportPhone';
-const _mailtoUrl = 'mailto:$_supportEmail';
-const _whatsappUrl = 'https://wa.me/1$_supportPhone';
-
-String _sanitizeRoute(String path) {
-  if (path.isEmpty) return '/';
-  final normalized = path.endsWith('/') && path.length > 1
-      ? path.substring(0, path.length - 1)
-      : path;
-  switch (normalized) {
-    case '/':
-    case '/software':
-    case '/services':
-    case '/pay':
-    case '/deck':
-    case '/donate':
-    case '/partner':
-    case '/contact':
-      return normalized;
-    default:
-      return '/';
-  }
 }
 
 class OrignaVenturesApp extends StatefulWidget {
@@ -70,59 +35,67 @@ class _OrignaVenturesAppState extends State<OrignaVenturesApp> {
   LocaleMode locale = LocaleMode.en;
 
   @override
+  void initState() {
+    super.initState();
+    _initLocale();
+  }
+
+  void _initLocale() {
+    if (!kIsWeb) return;
+    try {
+      final stored = browser_env.getStoredLocale();
+      if (stored != null) {
+        final mode = LocaleMode.values.firstWhere(
+          (m) => m.name == stored,
+          orElse: () => LocaleMode.en,
+        );
+        if (mode != locale) {
+          setState(() => locale = mode);
+        }
+        return;
+      }
+      _detectBrowserLocale();
+    } catch (_) {
+      _detectBrowserLocale();
+    }
+  }
+
+  void _detectBrowserLocale() {
+    if (!kIsWeb) return;
+    try {
+      final rawLanguage = browser_env.getBrowserLanguage();
+      if (rawLanguage == null) return;
+      final lang = rawLanguage.toLowerCase();
+      if (lang.isEmpty) return;
+      final detected = lang.startsWith('fr')
+          ? LocaleMode.fr
+          : lang.startsWith('es')
+              ? LocaleMode.es
+              : LocaleMode.en;
+      if (detected != locale) {
+        setState(() => locale = detected);
+      }
+    } catch (_) {}
+  }
+
+  void _setLocale(LocaleMode value) {
+    setState(() => locale = value);
+    if (!kIsWeb) return;
+    try {
+      browser_env.setStoredLocale(value.name);
+    } catch (_) {}
+  }
+
+  @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Origna Ventures Services',
-      initialRoute: _sanitizeRoute(Uri.base.path),
-      routes: {
-        '/': (_) => SiteShell(
-              locale: locale,
-              onLocaleChanged: _setLocale,
-              child: const HomePage(),
-            ),
-        '/software': (_) => SiteShell(
-              locale: locale,
-              onLocaleChanged: _setLocale,
-              child: const SoftwarePage(),
-            ),
-        '/services': (_) => SiteShell(
-              locale: locale,
-              onLocaleChanged: _setLocale,
-              child: const ServicesPage(),
-            ),
-        '/pay': (_) => SiteShell(
-              locale: locale,
-              onLocaleChanged: _setLocale,
-              child: const PayPage(),
-            ),
-        '/deck': (_) => SiteShell(
-              locale: locale,
-              onLocaleChanged: _setLocale,
-              child: const DeckPage(),
-            ),
-        '/donate': (_) => SiteShell(
-              locale: locale,
-              onLocaleChanged: _setLocale,
-              child: const DonatePage(),
-            ),
-        '/partner': (_) => SiteShell(
-              locale: locale,
-              onLocaleChanged: _setLocale,
-              child: const PartnerPage(),
-            ),
-        '/contact': (_) => SiteShell(
-              locale: locale,
-              onLocaleChanged: _setLocale,
-              child: const ContactPage(),
-            ),
-      },
+      title: 'Origna Ventures',
+      home: _SinglePage(locale: locale, onLocaleChanged: _setLocale),
       theme: ThemeConfig.lightTheme(),
       darkTheme: ThemeConfig.darkTheme(),
     );
   }
-
-  void _setLocale(LocaleMode value) => setState(() => locale = value);
 }
 
 enum LocaleMode { en, fr, es }
@@ -132,211 +105,345 @@ extension LocaleModeTr on LocaleMode {
       this == LocaleMode.fr ? fr : (this == LocaleMode.es ? (es ?? en) : en);
 }
 
-class SiteShell extends StatelessWidget {
+class _SinglePage extends StatefulWidget {
   final LocaleMode locale;
   final ValueChanged<LocaleMode> onLocaleChanged;
-  final Widget child;
 
-  const SiteShell({
-    super.key,
-    required this.locale,
-    required this.onLocaleChanged,
-    required this.child,
-  });
+  const _SinglePage({required this.locale, required this.onLocaleChanged});
 
-  String tr(String en, String fr, [String? es]) => locale == LocaleMode.fr
-      ? fr
-      : (locale == LocaleMode.es ? (es ?? en) : en);
+  @override
+  State<_SinglePage> createState() => _SinglePageState();
+}
 
-  static const _navItems = [
-    ('/', 'Home'),
-    ('/software', 'Software'),
-    ('/services', 'Services'),
-    ('/pay', 'Pay'),
-    ('/deck', 'Deck'),
-    ('/partner', 'Partner'),
-    ('/donate', 'Donate'),
-    ('/contact', 'Contact'),
-  ];
+class _SinglePageState extends State<_SinglePage> {
+  final _scrollCtrl = ScrollController();
+  final _listKey = GlobalKey();
+  final _contactKey = GlobalKey();
+  final _pricingKey = GlobalKey();
+  bool _showCookieBanner = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCookieConsent();
+  }
+
+  void _loadCookieConsent() {
+    if (!kIsWeb) return;
+    try {
+      final consent = browser_env.getCookieConsentAccepted();
+      setState(() => _showCookieBanner = consent == null);
+    } catch (_) {
+      setState(() => _showCookieBanner = true);
+    }
+  }
+
+  void _setCookieConsent(bool accepted) {
+    if (kIsWeb) {
+      try {
+        browser_env.setCookieConsentAccepted(accepted);
+      } catch (_) {}
+    }
+    setState(() => _showCookieBanner = false);
+  }
+
+  @override
+  void dispose() {
+    _scrollCtrl.dispose();
+    super.dispose();
+  }
+
+  int _scrollRetryCount = 0;
+  static const _maxScrollRetries = 10;
+
+  void _scrollTo(GlobalKey key) {
+    final targetContext = key.currentContext;
+    if (targetContext == null) {
+      if (_scrollRetryCount < _maxScrollRetries) {
+        _scrollRetryCount++;
+        WidgetsBinding.instance.addPostFrameCallback((_) => _scrollTo(key));
+      }
+      return;
+    }
+    _scrollRetryCount = 0;
+    Scrollable.ensureVisible(
+      targetContext,
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeInOutCubic,
+      alignment: 0.0,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final locale = widget.locale;
     final width = MediaQuery.sizeOf(context).width;
     final isMobile = width < 720;
+
     return Scaffold(
-      body: Column(
+      backgroundColor: ThemeConfig.surface,
+      bottomNavigationBar: _showCookieBanner
+          ? _CookieConsentBanner(
+              locale: locale,
+              onAccept: () => _setCookieConsent(true),
+              onDecline: () => _setCookieConsent(false),
+            )
+          : null,
+      body: ListView(
+        key: _listKey,
+        controller: _scrollCtrl,
+        cacheExtent: 3000,
+        padding: EdgeInsets.zero,
         children: [
-          Container(
-            color: _brandDark,
-            padding: EdgeInsets.symmetric(
-              horizontal: isMobile ? 14 : 20,
-              vertical: 10,
+          _Header(
+            locale: locale,
+            onLocaleChanged: widget.onLocaleChanged,
+            onPricingTap: () => _scrollTo(_pricingKey),
+          ),
+          _HeroSection(
+            locale: locale,
+            isMobile: isMobile,
+            onGetStarted: () => _scrollTo(_pricingKey),
+          ),
+          _PricingSection(
+            key: _pricingKey,
+            locale: locale,
+            isMobile: isMobile,
+          ),
+          _PartnerSection(locale: locale, isMobile: isMobile),
+          _WhySection(locale: locale, isMobile: isMobile),
+          _ContactFormBlock(
+            key: _contactKey,
+            locale: locale,
+            isMobile: isMobile,
+          ),
+          _Footer(locale: locale),
+        ],
+      ),
+    );
+  }
+}
+
+class _Header extends StatelessWidget {
+  final LocaleMode locale;
+  final ValueChanged<LocaleMode> onLocaleChanged;
+  final VoidCallback onPricingTap;
+
+  const _Header({
+    required this.locale,
+    required this.onLocaleChanged,
+    required this.onPricingTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isMobile = MediaQuery.sizeOf(context).width < 720;
+    return Container(
+      decoration: const BoxDecoration(
+        color: ThemeConfig.darkBackground,
+        border: Border(
+          bottom: BorderSide(color: ThemeConfig.darkBorder),
+        ),
+      ),
+      padding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 16 : 28,
+        vertical: 12,
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: Row(
+          children: [
+            const _LogoBadge(),
+            const SizedBox(width: 10),
+            Text(
+              'Origna Ventures',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+                fontSize: isMobile ? 15 : 18,
+                letterSpacing: -0.3,
+              ),
             ),
-            child: SafeArea(
-              bottom: false,
-              child: Column(
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const _TrebolBadge(),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Origna Ventures Services',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w800,
-                                fontSize: isMobile ? 17 : 20,
-                                height: 1.1,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '$_companyLegal · BN $_companyBn',
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: isMobile ? 11 : 12,
-                                height: 1.25,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (isMobile) ...[
-                        const SizedBox(width: 8),
-                        ToggleButtons(
-                          isSelected: [
-                            locale == LocaleMode.en,
-                            locale == LocaleMode.fr,
-                            locale == LocaleMode.es,
-                          ],
-                          onPressed: (index) =>
-                              onLocaleChanged(LocaleMode.values[index]),
-                          constraints: const BoxConstraints(
-                            minHeight: 32,
-                            minWidth: 32,
-                          ),
-                          borderRadius: BorderRadius.circular(10),
-                          color: Colors.white70,
-                          selectedColor: Colors.white,
-                          fillColor: _brandPrimary,
-                          children: const [Text('EN'), Text('FR'), Text('ES')],
-                        ),
-                        PopupMenuButton<String>(
-                          tooltip: 'menu',
-                          color: Colors.white,
-                          icon: const Icon(Icons.menu, color: Colors.white),
-                          onSelected: (route) =>
-                              Navigator.of(context).pushNamed(route),
-                          itemBuilder: (context) => [
-                            for (final item in _navItems)
-                              PopupMenuItem<String>(
-                                value: item.$1,
-                                child: Text(item.$2),
-                              ),
-                          ],
-                        ),
-                      ],
-                    ],
-                  ),
-                  if (!isMobile) ...[
-                    const SizedBox(height: 12),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
+            const Spacer(),
+            if (!isMobile) ...[
+              _NavLink(
+                label: locale.tr('Pricing', 'Tarifs', 'Precios'),
+                onTap: onPricingTap,
+              ),
+              const SizedBox(width: 16),
+            ],
+            _LocaleToggle(locale: locale, onChanged: onLocaleChanged),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NavLink extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+
+  const _NavLink({required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return TextButton(
+      onPressed: onTap,
+      style: TextButton.styleFrom(
+        foregroundColor: Colors.white.withValues(alpha: 0.65),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w500),
+      ),
+    );
+  }
+}
+
+class _LogoBadge extends StatelessWidget {
+  const _LogoBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 34,
+      height: 34,
+      decoration: BoxDecoration(
+        gradient: ThemeConfig.brandGradient,
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [
+          BoxShadow(
+            color: ThemeConfig.primary.withValues(alpha: 0.4),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: const Center(
+        child: Icon(Icons.rocket_launch_rounded, size: 18, color: Colors.white),
+      ),
+    );
+  }
+}
+
+class _LocaleToggle extends StatelessWidget {
+  final LocaleMode locale;
+  final ValueChanged<LocaleMode> onChanged;
+
+  const _LocaleToggle({required this.locale, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    final isMobile = MediaQuery.sizeOf(context).width < 720;
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+      ),
+      child: ToggleButtons(
+        isSelected: LocaleMode.values.map((m) => m == locale).toList(),
+        onPressed: (i) => onChanged(LocaleMode.values[i]),
+        constraints: BoxConstraints(
+          minHeight: isMobile ? 30 : 32,
+          minWidth: isMobile ? 30 : 36,
+        ),
+        borderRadius: BorderRadius.circular(8),
+        color: Colors.white.withValues(alpha: 0.45),
+        selectedColor: Colors.white,
+        fillColor: ThemeConfig.primary,
+        borderColor: Colors.transparent,
+        selectedBorderColor: Colors.transparent,
+        children: const [
+          Text('EN',
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+          Text('FR',
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+          Text('ES',
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroSection extends StatelessWidget {
+  final LocaleMode locale;
+  final bool isMobile;
+  final VoidCallback onGetStarted;
+
+  const _HeroSection({
+    required this.locale,
+    required this.isMobile,
+    required this.onGetStarted,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(gradient: ThemeConfig.heroGradient),
+      child: Stack(
+        children: [
+          const Positioned.fill(child: _GridPattern()),
+          Positioned(
+            top: -80,
+            right: isMobile ? -60 : 60,
+            child: _GlowOrb(
+              color: ThemeConfig.primary.withValues(alpha: 0.25),
+              size: isMobile ? 200 : 340,
+            ),
+          ),
+          Positioned(
+            bottom: -40,
+            left: isMobile ? -40 : 80,
+            child: _GlowOrb(
+              color: ThemeConfig.secondary.withValues(alpha: 0.18),
+              size: isMobile ? 160 : 260,
+            ),
+          ),
+          Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: isMobile ? 20 : 40,
+              vertical: isMobile ? 40 : 80,
+            ),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: isMobile ? 860 : 1180),
+                child: isMobile
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          for (final item in _navItems.take(5))
-                            _NavChip(label: item.$2, route: item.$1),
-                          ToggleButtons(
-                            isSelected: [
-                              locale == LocaleMode.en,
-                              locale == LocaleMode.fr,
-                              locale == LocaleMode.es,
-                            ],
-                            onPressed: (index) =>
-                                onLocaleChanged(LocaleMode.values[index]),
-                            constraints: const BoxConstraints(
-                              minHeight: 36,
-                              minWidth: 44,
+                          _HeroContent(
+                              locale: locale,
+                              isMobile: true,
+                              onGetStarted: onGetStarted),
+                          const SizedBox(height: 20),
+                          _HeroProofPanel(locale: locale, isMobile: true),
+                        ],
+                      )
+                    : Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Expanded(
+                            flex: 11,
+                            child: _HeroContent(
+                              locale: locale,
+                              isMobile: false,
+                              onGetStarted: onGetStarted,
                             ),
-                            borderRadius: BorderRadius.circular(10),
-                            color: Colors.white70,
-                            selectedColor: Colors.white,
-                            fillColor: _brandPrimary,
-                            children: const [
-                              Text('EN'),
-                              Text('FR'),
-                              Text('ES'),
-                            ],
+                          ),
+                          const SizedBox(width: 36),
+                          Expanded(
+                            flex: 9,
+                            child: _HeroProofPanel(
+                                locale: locale, isMobile: false),
                           ),
                         ],
                       ),
-                    ),
-                  ],
-                ],
               ),
-            ),
-          ),
-          Expanded(
-            child: Stack(
-              children: [
-                Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 1180),
-                    child: child,
-                  ),
-                ),
-                Positioned(
-                  bottom: 24,
-                  right: 24,
-                  child: FloatingActionButton(
-                    heroTag: 'whatsapp',
-                    backgroundColor: const Color(0xFF25D366),
-                    onPressed: () => launchUrl(
-                      Uri.parse(_whatsappUrl),
-                      mode: LaunchMode.externalApplication,
-                    ),
-                    child: const Icon(
-                      Icons.chat,
-                      color: Colors.white,
-                      size: 28,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            color: _brandLight,
-            padding: EdgeInsets.symmetric(
-              horizontal: isMobile ? 14 : 20,
-              vertical: 18,
-            ),
-            child: Wrap(
-              spacing: 18,
-              runSpacing: 12,
-              alignment: isMobile ? WrapAlignment.start : WrapAlignment.center,
-              children: [
-                Text('${tr('Support', 'Support', 'Soporte')} · $_supportEmail'),
-                Text(
-                  '${tr('SMS preferred', 'SMS préféré', 'SMS preferido')} · $_supportPhone',
-                ),
-                Text(_baseUrl),
-                Text(_demoUrl),
-                Text(
-                  tr(
-                    'Service payments are made to Origna Ventures. Separate donations support church/community giving.',
-                    'Les paiements de service sont faits à Origna Ventures. Les dons séparés soutiennent l’église/la communauté.',
-                    'Los pagos de servicio se hacen a Origna Ventures. Las donaciones separadas apoyan la iglesia/comunidad.',
-                  ),
-                ),
-              ],
             ),
           ),
         ],
@@ -345,376 +452,350 @@ class SiteShell extends StatelessWidget {
   }
 }
 
-class _NavChip extends StatelessWidget {
-  final String label;
-  final String route;
+class _HeroContent extends StatelessWidget {
+  final LocaleMode locale;
+  final bool isMobile;
+  final VoidCallback onGetStarted;
 
-  const _NavChip({required this.label, required this.route});
-
-  @override
-  Widget build(BuildContext context) {
-    return ActionChip(
-      label: Text(label),
-      backgroundColor: Colors.white.withValues(alpha: 0.08),
-      labelStyle: const TextStyle(color: Colors.white),
-      onPressed: () => Navigator.of(context).pushNamed(route),
-    );
-  }
-}
-
-class _TrebolBadge extends StatelessWidget {
-  const _TrebolBadge();
+  const _HeroContent({
+    required this.locale,
+    required this.isMobile,
+    required this.onGetStarted,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 42,
-      height: 42,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: const Center(
-        child: Text('☘', style: TextStyle(fontSize: 24, color: _brandGreen)),
-      ),
-    );
-  }
-}
-
-class HomePage extends StatelessWidget {
-  const HomePage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final locale = context.findAncestorWidgetOfExactType<SiteShell>()!.locale;
-    final loc = locale;
-    final isMobile = MediaQuery.sizeOf(context).width < 720;
-    return ListView(
-      padding: EdgeInsets.all(isMobile ? 14 : 24),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _CorporateHero(loc: loc),
-        const SizedBox(height: 24),
-        _HomePricingSection(loc: loc),
-        const SizedBox(height: 24),
-        _AboutSection(loc: loc),
-        const SizedBox(height: 24),
-        _MenuCardsSection(loc: loc),
-        const SizedBox(height: 24),
-        _WhySection(loc: loc),
-        const SizedBox(height: 24),
-        _ContactFormSection(loc: loc),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                ThemeConfig.primary.withValues(alpha: 0.25),
+                ThemeConfig.secondary.withValues(alpha: 0.25),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: ThemeConfig.primary.withValues(alpha: 0.4),
+            ),
+          ),
+          child: Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 7,
+            children: [
+              Container(
+                width: 6,
+                height: 6,
+                margin: const EdgeInsets.only(bottom: 2),
+                decoration: const BoxDecoration(
+                  color: ThemeConfig.primaryLight,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              Text(
+                locale.tr(
+                  'Toronto, Canada · Fast launch partner',
+                  'Toronto, Canada · Partenaire de lancement rapide',
+                  'Toronto, Canada · Socio de lanzamiento rapido',
+                ),
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.85),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(height: isMobile ? 20 : 28),
+        Text(
+          locale.tr(
+            'Software Services\n& Ecommerce',
+            'Services Logiciels\n& Commerce Electronique',
+            'Servicios de Software\n& Comercio Electronico',
+          ),
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w900,
+            fontSize: isMobile ? 32 : 56,
+            height: 1.06,
+            letterSpacing: -1.8,
+          ),
+        ),
+        SizedBox(height: isMobile ? 10 : 14),
+        GradientText(
+          'Flutter · Rust · Stripe · PostgreSQL',
+          gradient: ThemeConfig.brandGradient,
+          style: TextStyle(
+            fontWeight: FontWeight.w800,
+            fontSize: isMobile ? 16 : 22,
+            letterSpacing: -0.5,
+          ),
+        ),
+        SizedBox(height: isMobile ? 14 : 20),
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 700),
+          child: Text(
+            locale.tr(
+              'Source code, full-stack launch packages, and dedicated developer subscriptions. Built for speed, deployed with confidence.',
+              'Code source, forfaits de lancement complets et abonnements developpeur dedie. Concu pour la vitesse, deploye en toute confiance.',
+              'Codigo fuente, paquetes de lanzamiento completos y suscripciones de desarrollador dedicado. Construido para la velocidad, desplegado con confianza.',
+            ),
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.65),
+              fontSize: isMobile ? 14 : 17,
+              height: 1.6,
+            ),
+          ),
+        ),
+        SizedBox(height: isMobile ? 20 : 36),
+        Wrap(
+          spacing: 12,
+          runSpacing: 10,
+          children: [
+            _HeroCTA(
+              label: locale.tr('View plans', 'Voir les forfaits', 'Ver planes'),
+              onTap: onGetStarted,
+              filled: true,
+            ),
+            _HeroCTA(
+              label: locale.tr('Live demo', 'Demo live', 'Demo en vivo'),
+              onTap: () => launchUrl(Uri.parse(_demoUrl)),
+              filled: false,
+            ),
+          ],
+        ),
+        SizedBox(height: isMobile ? 22 : 48),
+        Wrap(
+          spacing: isMobile ? 12 : 16,
+          runSpacing: 12,
+          children: [
+            _HeroStat(value: '1-2', unit: locale.tr('wks', 'sem', 'sem')),
+            _HeroStat(
+              value: '4',
+              unit: locale.tr('platforms', 'plateformes', 'plataformas'),
+            ),
+            _HeroStat(
+              value: '20+',
+              unit: locale.tr('QA testers', 'testeurs QA', 'evaluadores QA'),
+            ),
+          ],
+        ),
       ],
     );
   }
 }
 
-class _CorporateHero extends StatelessWidget {
-  final LocaleMode loc;
-  const _CorporateHero({required this.loc});
+class _HeroProofPanel extends StatelessWidget {
+  final LocaleMode locale;
+  final bool isMobile;
+
+  const _HeroProofPanel({required this.locale, required this.isMobile});
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = MediaQuery.sizeOf(context).width < 720;
-    return Container(
-      padding: EdgeInsets.all(isMobile ? 18 : 28),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: [_brandPrimary, _brandDark]),
-        borderRadius: BorderRadius.circular(24),
+    final chips = [
+      locale.tr('Web', 'Web', 'Web'),
+      locale.tr('iOS', 'iOS', 'iOS'),
+      locale.tr('Android', 'Android', 'Android'),
+      locale.tr('Desktop', 'Bureau', 'Escritorio'),
+      'Stripe',
+      'Hetzner',
+    ];
+    final deliverables = [
+      locale.tr(
+        'Production-ready source code handoff',
+        'Remise du code source pret pour la production',
+        'Entrega de codigo fuente listo para produccion',
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _CornerToken(symbol: '☘', color: _brandGreen),
-              _CornerToken(symbol: '🫎', color: Colors.white),
-            ],
-          ),
-          const SizedBox(height: 18),
-          Text(
-            loc.tr(
-              'Origna Ventures — Software Services & Ecommerce',
-              'Origna Ventures — Services logiciels et commerce électronique',
-              'Origna Ventures — Servicios de software y comercio electrónico',
-            ),
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: isMobile ? 24 : 32,
-              fontWeight: FontWeight.w900,
-              height: 1.15,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            loc.tr(
-              'Origna Ventures is a company dedicated to ecommerce, wholesale, retail, software services, and outsourcing. We build platforms, deliver custom solutions, and provide remote professional services.',
-              "Origna Ventures est une entreprise dédiée au commerce électronique, à la vente en gros, au détail, aux services logiciels et à l'externalisation. Nous construisons des plateformes et fournissons des services professionnels à distance.",
-              'Origna Ventures es una empresa dedicada al comercio electrónico, venta al por mayor, venta al por menor, servicios de software y subcontratación. Construimos plataformas y proporcionamos servicios profesionales remotos.',
-            ),
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: isMobile ? 14 : 16,
-              height: 1.5,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              _HeroBadge(
-                label: loc.tr(
-                  'Ecommerce software',
-                  'Logiciel ecommerce',
-                  'Software de comercio electrónico',
-                ),
-              ),
-              _HeroBadge(
-                label: loc.tr(
-                  'Remote services',
-                  'Services à distance',
-                  'Servicios remotos',
-                ),
-              ),
-              _HeroBadge(
-                label: loc.tr(
-                  'Flutter + Rust + PostgreSQL',
-                  'Flutter + Rust + PostgreSQL',
-                  'Flutter + Rust + PostgreSQL',
-                ),
-              ),
-              _HeroBadge(
-                label: loc.tr(
-                  'Toronto, Canada based',
-                  'Basé à Toronto, Canada',
-                  'Basado en Toronto, Canadá',
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: _brandPrimary,
-                ),
-                onPressed: () => Navigator.of(context).pushNamed('/software'),
-                child: Text(
-                  loc.tr('Our software', 'Nos logiciels', 'Nuestro software'),
-                ),
-              ),
-              OutlinedButton(
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  side: const BorderSide(color: Colors.white),
-                ),
-                onPressed: () => Navigator.of(context).pushNamed('/services'),
-                child: Text(
-                  loc.tr('Our services', 'Nos services', 'Nuestros servicios'),
-                ),
-              ),
-              OutlinedButton(
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  side: const BorderSide(color: Colors.white),
-                ),
-                onPressed: () => launchUrl(Uri.parse(_demoUrl)),
-                child: Text(
-                  loc.tr('View live demo', 'Voir la démo', 'Ver demo en vivo'),
-                ),
-              ),
-            ],
-          ),
-        ],
+      locale.tr(
+        'Checkout, hosting, QA, and launch support included',
+        'Paiement, hebergement, QA et support de lancement inclus',
+        'Checkout, hosting, QA y soporte de lanzamiento incluidos',
       ),
-    );
-  }
-}
+      locale.tr(
+        'Direct access to the builder, not an agency maze',
+        'Acces direct au createur, sans labyrinthe dagence',
+        'Acceso directo al creador, sin laberinto de agencia',
+      ),
+    ];
 
-class _HomePricingSection extends StatelessWidget {
-  final LocaleMode loc;
-  const _HomePricingSection({required this.loc});
-
-  @override
-  Widget build(BuildContext context) {
-    final isMobile = MediaQuery.sizeOf(context).width < 720;
-    final cardWidth = isMobile ? double.infinity : 340.0;
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          loc.tr(
-            'Choose your plan',
-            'Choisissez votre forfait',
-            'Elija su plan',
-          ),
-          style: TextStyle(
-            fontWeight: FontWeight.w900,
-            fontSize: isMobile ? 24 : 30,
-            color: _brandDark,
+        GlassContainer(
+          blur: 20,
+          padding: EdgeInsets.all(isMobile ? 18 : 22),
+          borderRadius: BorderRadius.circular(28),
+          color: const Color(0xFF141437),
+          opacity: 0.78,
+          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      gradient: ThemeConfig.brandGradient,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Icon(
+                      Icons.rocket_launch_rounded,
+                      color: Colors.white,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          locale.tr(
+                            'Premium launch delivery',
+                            'Livraison premium prete au lancement',
+                            'Entrega premium lista para lanzamiento',
+                          ),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          locale.tr(
+                            'Built to look expensive, ship cleanly, and convert faster.',
+                            'Concu pour paraitre premium, etre livre proprement et convertir plus vite.',
+                            'Disenado para verse premium, entregarse limpio y convertir mas rapido.',
+                          ),
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.58),
+                            fontSize: 12.5,
+                            height: 1.45,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final chip in chips) _HeroTechChip(label: chip),
+                ],
+              ),
+              const SizedBox(height: 20),
+              for (final item in deliverables)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        margin: const EdgeInsets.only(top: 2),
+                        width: 20,
+                        height: 20,
+                        decoration: BoxDecoration(
+                          color: ThemeConfig.accent.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(
+                            color: ThemeConfig.accent.withValues(alpha: 0.25),
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.check_rounded,
+                          size: 13,
+                          color: ThemeConfig.accent,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          item,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.82),
+                            fontSize: 13.5,
+                            height: 1.45,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.04),
+                  borderRadius: BorderRadius.circular(18),
+                  border:
+                      Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _HeroMetricBlock(
+                        label: locale.tr(
+                            'Typical start', 'Debut typique', 'Inicio tipico'),
+                        value: locale.tr('48 h', '48 h', '48 h'),
+                      ),
+                    ),
+                    Container(
+                      width: 1,
+                      height: 36,
+                      color: Colors.white.withValues(alpha: 0.1),
+                    ),
+                    Expanded(
+                      child: _HeroMetricBlock(
+                        label: locale.tr(
+                            'Launch target', 'Cible live', 'Objetivo live'),
+                        value: locale.tr(
+                            '1-2 weeks', '1-2 semaines', '1-2 semanas'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 8),
-        Text(
-          loc.tr(
-            'Three clear tiers. Pay securely via Stripe. No recurring fees for code or launch.',
-            'Trois forfaits clairs. Paiement sécurisé via Stripe. Pas de frais récurrents pour le code ou le lancement.',
-            'Tres niveles claros. Pago seguro via Stripe. Sin tarifas recurrentes por código o lanzamiento.',
-          ),
-          style: const TextStyle(
-            color: Colors.black54,
-            height: 1.45,
-            fontSize: 15,
-          ),
-        ),
-        const SizedBox(height: 20),
-        Wrap(
-          spacing: 16,
-          runSpacing: 16,
+        SizedBox(height: isMobile ? 14 : 18),
+        Row(
           children: [
-            SizedBox(
-              width: cardWidth,
-              child: _HomePricingCard(
-                tier: loc.tr('STARTER', 'DÉBUTANT', 'INICIAL'),
-                title: 'OrignaCode',
-                price: '500',
-                priceSuffix: loc.tr(
-                  'CAD one-time',
-                  'CAD paiement unique',
-                  'CAD pago único',
-                ),
-                tagline: loc.tr(
-                  'Get the source code. Deploy it yourself.',
-                  'Obtenez le code source. Déployez vous-même.',
-                  'Obtenga el código fuente. Despliéguelo usted mismo.',
-                ),
-                bullets: loc == LocaleMode.fr
-                    ? [
-                        'Code source Flutter + Rust + PostgreSQL à vie',
-                        'Accès au dépôt GitHub ou Bitbucket privé',
-                        'Mises à jour du code source à vie incluses',
-                        'Vous hébergez et déploiez vous-même',
-                        'Licence commerciale (revente interdite)',
-                        'Remboursement complet avant déverrouillage du dépôt',
-                      ]
-                    : (loc == LocaleMode.es
-                        ? [
-                            'Código fuente Flutter + Rust + PostgreSQL para siempre',
-                            'Acceso al repositorio privado GitHub o Bitbucket',
-                            'Actualizaciones de código fuente de por vida incluidas',
-                            'Usted aloja y despliega en su propia infraestructura',
-                            'Licencia comercial (no reventa de software)',
-                            'Reembolso completo antes del desbloqueo del repositorio',
-                          ]
-                        : [
-                            'Full Flutter + Rust + PostgreSQL source code, forever',
-                            'Private GitHub or Bitbucket repo access',
-                            'Lifetime source-code updates included',
-                            'You host and deploy on your own infrastructure',
-                            'Commercial license (no software reselling)',
-                            'Full refund before repo unlock',
-                          ]),
-                color: const Color(0xFF0B57D0),
-                serviceCode: 'origna_code',
-                isPopular: false,
-              ),
-            ),
-            SizedBox(
-              width: cardWidth,
-              child: _HomePricingCard(
-                tier: loc.tr('POPULAR', 'POPULAIRE', 'POPULAR'),
+            Expanded(
+              child: _HeroMiniCard(
+                eyebrow:
+                    locale.tr('MOST CHOSEN', 'LE PLUS CHOISI', 'MAS ELEGIDO'),
                 title: 'OrignaLaunch',
-                price: '3,000',
-                priceSuffix: loc.tr(
-                  'CAD one-time',
-                  'CAD paiement unique',
-                  'CAD pago único',
+                detail: locale.tr(
+                  'Code, hosting, store setup, and QA included',
+                  'Code, hebergement, mise en place boutique et QA inclus',
+                  'Codigo, hosting, tienda configurada y QA incluidos',
                 ),
-                tagline: loc.tr(
-                  'We launch everything for you. Code + hosting + stores.',
-                  'On lance tout pour vous. Code + hébergement + stores.',
-                  'Lanzamos todo por usted. Código + alojamiento + tiendas.',
-                ),
-                bullets: loc == LocaleMode.fr
-                    ? [
-                        'Tout d\'OrignaCode inclus',
-                        'Serveur VPS 8 Go Hetzner — année 1 incluse',
-                        'Déploiement App Store + Play Store inclus',
-                        'Déploiement web + desktop inclus',
-                        '20 testeurs humains (20 h QA)',
-                        '4 semaines de support après lancement',
-                        'Live en 1 à 2 semaines',
-                      ]
-                    : (loc == LocaleMode.es
-                        ? [
-                            'Todo de OrignaCode incluido',
-                            'Alojamiento VPS 8 GB Hetzner — Año 1 incluido',
-                            'Despliegue App Store + Play Store incluido',
-                            'Despliegue web + escritorio incluido',
-                            '20 probadores humanos (20 h QA)',
-                            '4 semanas de soporte después del lanzamiento',
-                            'En vivo en 1 a 2 semanas',
-                          ]
-                        : [
-                            'Everything in OrignaCode included',
-                            'Hetzner 8 GB VPS hosting — Year 1 included',
-                            'App Store + Play Store deployment included',
-                            'Web + desktop deployment included',
-                            '20 human testers (20h QA)',
-                            '4 weeks of post-launch support',
-                            'Live in about 1–2 weeks',
-                          ]),
-                color: _brandPrimary,
-                serviceCode: 'origna_launch',
-                isPopular: true,
+                accent: ThemeConfig.secondary,
               ),
             ),
-            SizedBox(
-              width: cardWidth,
-              child: _HomePricingCard(
-                tier: loc.tr('TEAM', 'ÉQUIPE', 'EQUIPO'),
+            const SizedBox(width: 14),
+            Expanded(
+              child: _HeroMiniCard(
+                eyebrow: locale.tr('MONTHLY', 'MENSUEL', 'MENSUAL'),
                 title: 'OrignaTeam',
-                price: '2,000+',
-                priceSuffix: loc.tr('CAD / month', 'CAD / mois', 'CAD / mes'),
-                tagline: loc.tr(
-                  'Dedicated developer on your project. Cancel anytime.',
-                  'Développeur dédié sur votre projet. Annulez en tout temps.',
-                  'Desarrollador dedicado en su proyecto. Cancele en cualquier momento.',
+                detail: locale.tr(
+                  'Dedicated product + engineering subscription',
+                  'Abonnement produit + ingenierie dedie',
+                  'Suscripcion dedicada de producto + ingenieria',
                 ),
-                bullets: loc == LocaleMode.fr
-                    ? [
-                        'Développeur assigné à votre projet',
-                        'Standup quotidien avec votre développeur',
-                        'Ecommerce, apps, web, mobile, desktop',
-                        '100+ heures de tests QA par mois',
-                        'Démarrage sous 48 h',
-                        'API, hébergement et tests facturés séparément',
-                      ]
-                    : (loc == LocaleMode.es
-                        ? [
-                            'Desarrollador dedicado asignado a su proyecto',
-                            'Standup diario con su desarrollador',
-                            'Comercio electrónico, apps, web, móvil, escritorio',
-                            '100+ horas de cobertura de pruebas QA por mes',
-                            'Inicio dentro de 48 h',
-                            'API, alojamiento y pruebas facturados por separado',
-                          ]
-                        : [
-                            'Dedicated developer assigned to your project',
-                            'Daily standup with your developer',
-                            'Ecommerce, apps, web, mobile, desktop',
-                            '100+ hours of QA testing coverage per month',
-                            'Starts within 48 h',
-                            'API, hosting, and testing billed separately',
-                          ]),
-                color: _brandGreen,
-                serviceCode: 'origna_team',
-                isPopular: false,
+                accent: ThemeConfig.accent,
               ),
             ),
           ],
@@ -724,289 +805,205 @@ class _HomePricingSection extends StatelessWidget {
   }
 }
 
-class _HomePricingCard extends StatelessWidget {
-  final String tier;
-  final String title;
-  final String price;
-  final String priceSuffix;
-  final String tagline;
-  final List<String> bullets;
-  final Color color;
-  final String serviceCode;
-  final bool isPopular;
-  const _HomePricingCard({
-    required this.tier,
-    required this.title,
-    required this.price,
-    required this.priceSuffix,
-    required this.tagline,
-    required this.bullets,
-    required this.color,
-    required this.serviceCode,
-    required this.isPopular,
+class _HeroCTA extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+  final bool filled;
+
+  const _HeroCTA({
+    required this.label,
+    required this.onTap,
+    required this.filled,
   });
 
   @override
   Widget build(BuildContext context) {
-    final loc = context.findAncestorWidgetOfExactType<SiteShell>()?.locale ??
-        LocaleMode.en;
-    return GlassContainer(
-      color: isPopular ? color.withValues(alpha: 0.05) : Colors.white,
-      borderRadius: BorderRadius.circular(24),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(24),
-        onTap: () => Navigator.of(context).pushNamed(
-          '/pay',
-          arguments: {'serviceCode': serviceCode},
+    if (filled) {
+      return FilledButton(
+        onPressed: onTap,
+        style: FilledButton.styleFrom(
+          backgroundColor: ThemeConfig.primary,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
         ),
-        child: Stack(
-          children: [
-          Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 5,
-                  ),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    tier,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      color: color,
-                      fontSize: 11,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w900,
-                    color: color,
-                    fontSize: 22,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  tagline,
-                  style: const TextStyle(
-                    color: Colors.black54,
-                    fontSize: 13,
-                    height: 1.4,
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.06),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
-                    children: [
-                      Text(
-                        price,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w900,
-                          fontSize: 30,
-                          color: color,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          priceSuffix,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                            color: Colors.black54,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                for (final bullet in bullets)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.only(top: 5, right: 8),
-                          child: Icon(
-                            Icons.check_circle,
-                            size: 16,
-                            color: color,
-                          ),
-                        ),
-                        Expanded(
-                          child: Text(
-                            bullet,
-                            style: const TextStyle(height: 1.45, fontSize: 13),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                const SizedBox(height: 14),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: color,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                    onPressed: () => Navigator.of(context).pushNamed(
-                      '/pay',
-                      arguments: {'serviceCode': serviceCode},
-                    ),
-                    child: Text(
-                      loc.tr('Get $title', 'Choisir $title', 'Obtener $title'),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 15,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (isPopular)
-            Positioned(
-              top: 0,
-              right: 0,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 7,
-                ),
-                decoration: BoxDecoration(
-                  color: color,
-                  borderRadius: const BorderRadius.only(
-                    topRight: Radius.circular(24),
-                    bottomLeft: Radius.circular(16),
-                  ),
-                ),
-                child: Text(
-                  loc.tr('BEST VALUE', 'MEILLEURE VALEUR', 'MEJOR VALOR'),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 10,
-                    letterSpacing: 1,
-                  ),
-                ),
-              ),
-            ),
-        ],
+        child: Text(label),
+      );
+    }
+
+    return OutlinedButton(
+      onPressed: onTap,
+      style: OutlinedButton.styleFrom(
+        foregroundColor: Colors.white.withValues(alpha: 0.85),
+        side:
+            BorderSide(color: Colors.white.withValues(alpha: 0.25), width: 1.5),
+        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+      ),
+      child: Text(label),
+    );
+  }
+}
+
+class _HeroTechChip extends StatelessWidget {
+  final String label;
+
+  const _HeroTechChip({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: Colors.white.withValues(alpha: 0.82),
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );
   }
 }
 
-class _AboutSection extends StatelessWidget {
-  final LocaleMode loc;
-  const _AboutSection({required this.loc});
+class _HeroStat extends StatelessWidget {
+  final String value;
+  final String unit;
+
+  const _HeroStat({required this.value, required this.unit});
 
   @override
   Widget build(BuildContext context) {
-    return _SectionCard(
-      title: loc.tr(
-        'About Origna Ventures',
-        'À propos d\'Origna Ventures',
-        'Sobre Origna Ventures',
+    return Container(
+      constraints: const BoxConstraints(minWidth: 92),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
-      subtitle: loc.tr(
-        'Ontario corporation specializing in software and ecommerce services.',
-        'Entreprise ontarienne spécialisée en logiciels et services ecommerce.',
-        'Corporación de Ontario especializada en servicios de software y comercio electrónico.',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 28,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -1,
+            ),
+          ),
+          Text(
+            unit,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.55),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroMetricBlock extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _HeroMetricBlock({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.52),
+              fontSize: 11.5,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroMiniCard extends StatelessWidget {
+  final String eyebrow;
+  final String title;
+  final String detail;
+  final Color accent;
+
+  const _HeroMiniCard({
+    required this.eyebrow,
+    required this.title,
+    required this.detail,
+    required this.accent,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            loc.tr(
-              'Origna Ventures is an Ontario-registered corporation (1001475263 ONTARIO CORPORATION, BN 708286364TZ0001) that designs, develops, and deploys ecommerce platforms and custom software solutions. We also provide remote professional services — customer service, data entry, software development, and more — to help businesses operate efficiently in the digital age.',
-              'Origna Ventures est une société enregistrée en Ontario (1001475263 ONTARIO CORPORATION, BN 708286364TZ0001) qui conçoit, développe et déploie des plateformes ecommerce et des solutions logicielles sur mesure. Nous offrons également des services professionnels à distance — service client, saisie de données, développement logiciel et plus encore — pour aider les entreprises à fonctionner efficacement à l\'ère numérique.',
-              'Origna Ventures es una corporación registrada en Ontario (1001475263 ONTARIO CORPORATION, BN 708286364TZ0001) que diseña, desarrolla e implanta plataformas de comercio electrónico y soluciones de software personalizadas. También ofrecemos servicios profesionales remotos — servicio al cliente, entrada de datos, desarrollo de software y más — para ayudar a las empresas a operar eficientemente en la era digital.',
+            eyebrow,
+            style: TextStyle(
+              color: accent,
+              fontSize: 10.5,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.7,
             ),
-            style: const TextStyle(height: 1.5, fontSize: 15),
           ),
-          const SizedBox(height: 14),
-          Wrap(
-            spacing: 16,
-            runSpacing: 12,
-            children: [
-              _AboutChip(
-                icon: Icons.code,
-                label: loc.tr(
-                  'Software development',
-                  'Développement logiciel',
-                  'Desarrollo de software',
-                ),
-              ),
-              _AboutChip(
-                icon: Icons.storefront,
-                label: loc.tr(
-                  'Ecommerce platforms',
-                  'Plateformes ecommerce',
-                  'Plataformas de comercio electrónico',
-                ),
-              ),
-              _AboutChip(
-                icon: Icons.support_agent,
-                label: loc.tr(
-                  'Remote customer service',
-                  'Service client à distance',
-                  'Servicio al cliente remoto',
-                ),
-              ),
-              _AboutChip(
-                icon: Icons.keyboard,
-                label: loc.tr(
-                  'Data entry',
-                  'Saisie de données',
-                  'Entrada de datos',
-                ),
-              ),
-              _AboutChip(
-                icon: Icons.cloud_upload,
-                label: loc.tr(
-                  'Cloud deployment',
-                  'Déploiement cloud',
-                  'Despliegue en la nube',
-                ),
-              ),
-              _AboutChip(
-                icon: Icons.phone_in_talk,
-                label: loc.tr(
-                  'Remote work',
-                  'Travail à distance',
-                  'Trabajo remoto',
-                ),
-              ),
-            ],
+          const SizedBox(height: 10),
+          Text(
+            title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            detail,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.6),
+              fontSize: 12.5,
+              height: 1.4,
+            ),
           ),
         ],
       ),
@@ -1014,343 +1011,1101 @@ class _AboutSection extends StatelessWidget {
   }
 }
 
-class _AboutChip extends StatelessWidget {
+class _InlinePill extends StatelessWidget {
   final IconData icon;
   final String label;
-  const _AboutChip({required this.icon, required this.label});
+
+  const _InlinePill({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: ThemeConfig.divider),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: ThemeConfig.primary),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: const TextStyle(
+              color: ThemeConfig.textPrimary,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GridPattern extends StatelessWidget {
+  const _GridPattern();
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      painter: _DotGridPainter(),
+      child: const SizedBox.expand(),
+    );
+  }
+}
+
+class _DotGridPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.035)
+      ..style = PaintingStyle.fill;
+    const spacing = 32.0;
+    const radius = 1.2;
+    for (double x = 0; x < size.width; x += spacing) {
+      for (double y = 0; y < size.height; y += spacing) {
+        canvas.drawCircle(Offset(x, y), radius, paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _GlowOrb extends StatelessWidget {
+  final Color color;
+  final double size;
+
+  const _GlowOrb({required this.color, required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: RadialGradient(
+          colors: [color, color.withValues(alpha: 0)],
+        ),
+      ),
+    );
+  }
+}
+
+class _PricingSection extends StatelessWidget {
+  final LocaleMode locale;
+  final bool isMobile;
+
+  const _PricingSection({
+    super.key,
+    required this.locale,
+    required this.isMobile,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    return Container(
+      color: ThemeConfig.surface,
+      padding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 16 : 32,
+        vertical: isMobile ? 32 : 72,
+      ),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1100),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              _SectionLabel(label: locale.tr('PRICING', 'TARIFS', 'PRECIOS')),
+              const SizedBox(height: 12),
+              Text(
+                locale.tr(
+                  'Choose the operating model',
+                  'Choisissez le modele operatoire',
+                  'Elija el modelo operativo',
+                ),
+                style: TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: isMobile ? 26 : 38,
+                  letterSpacing: -1,
+                  color: ThemeConfig.textPrimary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                locale.tr(
+                  'Secure Stripe checkout · Policy-first delivery · Canadian company',
+                  'Paiement Stripe securise · Livraison orientee politiques · Entreprise canadienne',
+                  'Pago Stripe seguro · Entrega orientada por politicas · Empresa canadiense',
+                ),
+                style: const TextStyle(
+                  color: ThemeConfig.textSecondary,
+                  fontSize: 15,
+                  height: 1.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 14),
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  _InlinePill(
+                    icon: Icons.bolt_rounded,
+                    label: locale.tr(
+                        '1-2 week launch',
+                        'Lancement en 1-2 semaines',
+                        'Lanzamiento en 1-2 semanas'),
+                  ),
+                  _InlinePill(
+                    icon: Icons.workspace_premium_rounded,
+                    label: locale.tr(
+                      'Source ownership',
+                      'Propriete du code',
+                      'Propiedad del codigo',
+                    ),
+                  ),
+                  _InlinePill(
+                    icon: Icons.verified_user_rounded,
+                    label: locale.tr(
+                      'Canadian invoicing',
+                      'Facturation canadienne',
+                      'Facturacion canadiense',
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: isMobile ? 24 : 40),
+              if (isMobile)
+                Column(
+                  children: TierDefinition.tiers
+                      .map(
+                        (t) => Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: _TierCard(
+                            tier: t,
+                            locale: locale,
+                            isMobile: true,
+                            width: screenWidth - 32,
+                          ),
+                        ),
+                      )
+                      .toList(),
+                )
+              else
+                IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (int i = 0; i < TierDefinition.tiers.length; i++) ...[
+                        if (i > 0) const SizedBox(width: 16),
+                        Expanded(
+                          child: _TierCard(
+                            tier: TierDefinition.tiers[i],
+                            locale: locale,
+                            isMobile: false,
+                            width: null,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TierCard extends StatefulWidget {
+  final TierDefinition tier;
+  final LocaleMode locale;
+  final bool isMobile;
+  final double? width;
+
+  const _TierCard({
+    required this.tier,
+    required this.locale,
+    required this.isMobile,
+    required this.width,
+  });
+
+  @override
+  State<_TierCard> createState() => _TierCardState();
+}
+
+class _TierCardState extends State<_TierCard>
+    with SingleTickerProviderStateMixin {
+  bool _loading = false;
+  String? _status;
+  bool _success = false;
+  late final AnimationController _glowController;
+
+  @override
+  void initState() {
+    super.initState();
+    _glowController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 10),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _glowController.dispose();
+    super.dispose();
+  }
+
+  List<String> _bullets() {
+    final loc = widget.locale;
+    return loc == LocaleMode.fr
+        ? widget.tier.bullets.fr
+        : (loc == LocaleMode.es
+            ? widget.tier.bullets.es
+            : widget.tier.bullets.en);
+  }
+
+  String _label() {
+    final loc = widget.locale;
+    return loc == LocaleMode.fr
+        ? widget.tier.tierLabel.fr
+        : (loc == LocaleMode.es
+            ? widget.tier.tierLabel.es
+            : widget.tier.tierLabel.en);
+  }
+
+  String _tagline() {
+    final loc = widget.locale;
+    return loc == LocaleMode.fr
+        ? widget.tier.tagline.fr
+        : (loc == LocaleMode.es
+            ? widget.tier.tagline.es
+            : widget.tier.tagline.en);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = widget.tier;
+    final loc = widget.locale;
+    final isPopular = t.isPopular;
+    final priceSuffix = t.isSubscription
+        ? loc.tr('CAD / month', 'CAD / mois', 'CAD / mes')
+        : loc.tr('CAD one-time', 'CAD paiement unique', 'CAD pago unico');
+    final ctaLabel = t.tierId == TierId.orignaCode
+        ? loc.tr('Buy source code', 'Acheter le code source',
+            'Comprar codigo fuente')
+        : t.tierId == TierId.orignaLaunch
+            ? loc.tr('Launch my app', 'Lancer mon application', 'Lanzar mi app')
+            : loc.tr(
+                'Book the team', 'Reserver l\'equipe', 'Reservar el equipo');
+
+    final card = AnimatedBuilder(
+      animation: _glowController,
+      builder: (context, _) {
+        final value = _glowController.value;
+        final glowOffsetA = Offset(
+          lerpDouble(-36, 34, value)!,
+          lerpDouble(-24, 22, (value * 0.85) % 1)!,
+        );
+        final glowOffsetB = Offset(
+          lerpDouble(28, -30, (value * 0.9) % 1)!,
+          lerpDouble(30, -26, (value * 1.1) % 1)!,
+        );
+
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned.fill(
+              child: IgnorePointer(
+                child: OverflowBox(
+                  maxWidth: double.infinity,
+                  maxHeight: double.infinity,
+                  child: Stack(
+                    children: [
+                      _FloatingGlassGlow(
+                        offset: glowOffsetA,
+                        size: isPopular ? 156 : 128,
+                        color:
+                            t.color.withValues(alpha: isPopular ? 0.22 : 0.14),
+                      ),
+                      _FloatingGlassGlow(
+                        offset: glowOffsetB,
+                        size: isPopular ? 132 : 116,
+                        color: ThemeConfig.gold.withValues(
+                          alpha: isPopular ? 0.14 : 0.08,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Container(
+              width: widget.width,
+              decoration: BoxDecoration(
+                color: isPopular
+                    ? const Color(0xFF0F0F2E)
+                    : ThemeConfig.surfaceElevated.withValues(alpha: 0.84),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: isPopular
+                      ? t.color.withValues(alpha: 0.6)
+                      : Colors.white.withValues(alpha: 0.52),
+                  width: isPopular ? 1.5 : 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: t.color.withValues(alpha: isPopular ? 0.22 : 0.08),
+                    blurRadius: isPopular ? 40 : 24,
+                    offset: const Offset(0, 10),
+                  ),
+                  BoxShadow(
+                    color:
+                        Colors.black.withValues(alpha: isPopular ? 0.12 : 0.05),
+                    blurRadius: 18,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(24),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                  child: Padding(
+                    padding: EdgeInsets.all(widget.isMobile ? 20 : 26),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            _Chip(
+                                label: _label(),
+                                color: t.color,
+                                bright: isPopular),
+                            if (isPopular) ...[
+                              _Chip(
+                                label: loc.tr(
+                                  'MOST SELECTED',
+                                  'LE PLUS CHOISI',
+                                  'EL MAS ELEGIDO',
+                                ),
+                                color: t.color,
+                                filled: true,
+                              ),
+                            ],
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          t.name,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 22,
+                            letterSpacing: -0.5,
+                            color: isPopular
+                                ? Colors.white
+                                : ThemeConfig.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _tagline(),
+                          style: TextStyle(
+                            color: isPopular
+                                ? Colors.white.withValues(alpha: 0.6)
+                                : ThemeConfig.textSecondary,
+                            fontSize: 13.5,
+                            height: 1.4,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        Wrap(
+                          crossAxisAlignment: WrapCrossAlignment.end,
+                          spacing: 6,
+                          runSpacing: 4,
+                          children: [
+                            Text(
+                              '\$${t.displayPrice()}',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w900,
+                                fontSize: 38,
+                                letterSpacing: -2,
+                                color: isPopular ? Colors.white : t.color,
+                                height: 1,
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 6),
+                              child: Text(
+                                priceSuffix,
+                                style: TextStyle(
+                                  color: isPopular
+                                      ? Colors.white.withValues(alpha: 0.45)
+                                      : ThemeConfig.textMuted,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                        Divider(
+                          color: isPopular
+                              ? Colors.white.withValues(alpha: 0.1)
+                              : ThemeConfig.divider,
+                          height: 1,
+                        ),
+                        const SizedBox(height: 16),
+                        for (final b in _bullets())
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  margin: const EdgeInsets.only(top: 2),
+                                  padding: const EdgeInsets.all(2),
+                                  decoration: BoxDecoration(
+                                    color: t.color.withValues(alpha: 0.15),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    Icons.check_rounded,
+                                    size: 12,
+                                    color: t.color,
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    b,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: isPopular
+                                          ? Colors.white.withValues(alpha: 0.75)
+                                          : ThemeConfig.textSecondary,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton(
+                            style: FilledButton.styleFrom(
+                              backgroundColor: t.color,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              textStyle: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14,
+                              ),
+                            ),
+                            onPressed: _loading ? null : _handleBuy,
+                            child: _loading
+                                ? SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color:
+                                          Colors.white.withValues(alpha: 0.8),
+                                    ),
+                                  )
+                                : Text(ctaLabel),
+                          ),
+                        ),
+                        if (t.tierId == TierId.orignaCode) ...[
+                          const SizedBox(height: 12),
+                          Center(
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(6),
+                              onTap: () =>
+                                  launchUrl(Uri.parse(_fullDeckPdfUrl)),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 4,
+                                ),
+                                child: Text(
+                                  loc.tr(
+                                    'View the investor deck ->',
+                                    'Voir le deck investisseur ->',
+                                    'Ver el deck para inversionistas ->',
+                                  ),
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: isPopular
+                                        ? Colors.white.withValues(alpha: 0.35)
+                                        : ThemeConfig.textMuted,
+                                    decoration: TextDecoration.underline,
+                                    decorationColor: isPopular
+                                        ? Colors.white.withValues(alpha: 0.35)
+                                        : ThemeConfig.textMuted,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                        if (_status != null) ...[
+                          const SizedBox(height: 12),
+                          _StatusBanner(message: _status!, success: _success),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (isPopular && !widget.isMobile) {
+      return Transform.scale(scale: 1.03, child: card);
+    }
+    return card;
+  }
+
+  Future<void> _handleBuy() async {
+    final loc = widget.locale;
+    setState(() {
+      _loading = true;
+      _status = null;
+    });
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$venturesApiBase/payments/create-checkout-session'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'service_code': widget.tier.serviceCode,
+              'payment_provider': 'stripe',
+            }),
+          )
+          .timeout(const Duration(seconds: 30));
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      final url = body['checkoutUrl'] as String?;
+      if (url != null && url.isNotEmpty) {
+        if (kIsWeb) {
+          browser_env.openUrl(url);
+          return;
+        } else {
+          final launched = await launchUrl(
+            Uri.parse(url),
+            mode: LaunchMode.externalApplication,
+          );
+          if (!launched) {
+            throw Exception('Could not open Stripe checkout');
+          }
+        }
+        if (mounted) {
+          setState(() {
+            _status = loc.tr(
+              'Redirecting to Stripe...',
+              'Redirection vers Stripe...',
+              'Redirigiendo a Stripe...',
+            );
+            _success = true;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _status = (body['message'] ?? body['detail'])?.toString() ??
+                loc.tr(
+                  'Something went wrong.',
+                  'Une erreur est survenue.',
+                  'Algo salio mal.',
+                );
+            _success = false;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('OrignaVentures: checkout error: $e');
+      if (mounted) {
+        setState(() {
+          _status = loc.tr(
+            'Network error. Please try again.',
+            'Erreur reseau. Reessayez.',
+            'Error de red. Intentelo de nuevo.',
+          );
+          _success = false;
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _loading = false);
+      }
+    }
+  }
+}
+
+class _FloatingGlassGlow extends StatelessWidget {
+  final Offset offset;
+  final double size;
+  final Color color;
+
+  const _FloatingGlassGlow({
+    required this.offset,
+    required this.size,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Transform.translate(
+      offset: offset,
+      child: Align(
+        alignment: Alignment.center,
+        child: IgnorePointer(
+          child: Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  color,
+                  color.withValues(alpha: color.a * 0.45),
+                  Colors.transparent,
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Chip extends StatelessWidget {
+  final String label;
+  final Color color;
+  final bool filled;
+  final bool bright;
+
+  const _Chip({
+    required this.label,
+    required this.color,
+    this.filled = false,
+    this.bright = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: filled ? color : color.withValues(alpha: bright ? 0.2 : 0.1),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: filled ? Colors.white : color,
+          fontWeight: FontWeight.w800,
+          fontSize: 10,
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
+  }
+}
+
+class _PartnerSection extends StatelessWidget {
+  final LocaleMode locale;
+  final bool isMobile;
+
+  const _PartnerSection({required this.locale, required this.isMobile});
+
+  @override
+  Widget build(BuildContext context) {
+    final loc = locale;
+    return Container(
+      color: const Color(0xFF08081A),
+      padding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 16 : 32,
+        vertical: isMobile ? 32 : 72,
+      ),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 900),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _SectionLabel(
+                label: loc.tr('PARTNER PROGRAM', 'PROGRAMME PARTENAIRES',
+                    'PROGRAMA SOCIOS'),
+                light: true,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                loc.tr('Earn while you refer', 'Gagnez en referant',
+                    'Gane refiriendo'),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                  fontSize: isMobile ? 24 : 34,
+                  letterSpacing: -1,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                loc.tr(
+                  'Free OrignaLaunch + 5% net revenue + \$50 CAD per client. No cap.',
+                  'OrignaLaunch gratuit + 5% du revenu net + 50 \$ CAD par client. Aucune limite.',
+                  'OrignaLaunch gratis + 5% de ingresos netos + \$50 CAD por cliente. Sin limite.',
+                ),
+                style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.6), height: 1.5),
+              ),
+              SizedBox(height: isMobile ? 22 : 28),
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  _PartnerBenefit(
+                    icon: Icons.link_rounded,
+                    text: loc.tr('Unique referral link',
+                        'Lien de parrainage unique', 'Link de referido unico'),
+                  ),
+                  _PartnerBenefit(
+                    icon: Icons.attach_money_rounded,
+                    text: loc.tr('\$50 CAD per client', '50 \$ CAD par client',
+                        '\$50 CAD por cliente'),
+                  ),
+                  _PartnerBenefit(
+                    icon: Icons.card_giftcard_rounded,
+                    text: loc.tr(
+                      'Free OrignaLaunch (\$3,000 value)',
+                      'OrignaLaunch gratuit (3 000 \$ CAD)',
+                      'OrignaLaunch gratis (\$3,000 CAD)',
+                    ),
+                  ),
+                  _PartnerBenefit(
+                    icon: Icons.dashboard_rounded,
+                    text: loc.tr('Revenue dashboard', 'Tableau de bord revenus',
+                        'Panel de ingresos'),
+                  ),
+                  _PartnerBenefit(
+                    icon: Icons.check_circle_outline_rounded,
+                    text: loc.tr('No sign-up fee', 'Aucun frais',
+                        'Sin costo de registro'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(12),
+                  border:
+                      Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.mail_outline_rounded,
+                        color: ThemeConfig.primaryLight, size: 16),
+                    const SizedBox(width: 10),
+                    Flexible(
+                      child: Text(
+                        loc.tr(
+                          'Apply via SMS: $_supportPhone  ·  email: $_supportEmail',
+                          'Postulez par SMS: $_supportPhone  ·  courriel: $_supportEmail',
+                          'Aplique por SMS: $_supportPhone  ·  correo: $_supportEmail',
+                        ),
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.55),
+                          fontSize: 12.5,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PartnerBenefit extends StatelessWidget {
+  final IconData icon;
+  final String text;
+
+  const _PartnerBenefit({required this.icon, required this.text});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: _brandPrimary.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _brandPrimary.withValues(alpha: 0.15)),
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 18, color: _brandPrimary),
+          Icon(icon, size: 16, color: ThemeConfig.primaryLight),
           const SizedBox(width: 8),
-          Text(
-            label,
-            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-          ),
+          Text(text, style: const TextStyle(color: Colors.white, fontSize: 13)),
         ],
       ),
     );
   }
 }
 
-class _MenuCardsSection extends StatelessWidget {
-  final LocaleMode loc;
-  const _MenuCardsSection({required this.loc});
+class _WhySection extends StatelessWidget {
+  final LocaleMode locale;
+  final bool isMobile;
+
+  const _WhySection({required this.locale, required this.isMobile});
 
   @override
   Widget build(BuildContext context) {
-    return _SectionCard(
-      title: loc.tr('What we offer', 'Ce que nous offrons', 'Lo que ofrecemos'),
-      subtitle: loc.tr(
-        'Explore our software solutions and professional services.',
-        'Explorez nos solutions logicielles et nos services professionnels.',
-        'Explore nuestras soluciones de software y servicios profesionales.',
+    final loc = locale;
+    final features = [
+      (
+        Icons.code_rounded,
+        loc.tr('Full source code included', 'Code source complet inclus',
+            'Codigo fuente completo incluido'),
+        loc.tr('All IP is yours from day one.', 'Toute la PI vous appartient.',
+            'Toda la IP es suya desde el dia 1.'),
       ),
-      child: Wrap(
-        spacing: 16,
-        runSpacing: 16,
-        children: [
-          _MenuCard(
-            icon: Icons.shopping_cart,
-            color: _brandPrimary,
-            title: loc.tr(
-              'Ecommerce software',
-              'Logiciel ecommerce',
-              'Software de comercio electrónico',
-            ),
-            description: loc.tr(
-              'Custom ecommerce platforms built with Flutter + Rust + PostgreSQL. Source code included, cross-platform deployment.',
-              'Plateformes ecommerce sur mesure avec Flutter + Rust + PostgreSQL. Code source inclus, déploiement multiplateforme.',
-              'Plataformas de comercio electrónico personalizadas con Flutter + Rust + PostgreSQL. Código fuente incluido, despliegue multiplataforma.',
-            ),
-            route: '/software',
+      (
+        Icons.phone_android_rounded,
+        loc.tr('iOS · Android · Web · Desktop', 'iOS · Android · Web · Bureau',
+            'iOS · Android · Web · Escritorio'),
+        loc.tr(
+            'One codebase, all platforms.',
+            'Une base de code, toutes les plateformes.',
+            'Una base de codigo, todas las plataformas.'),
+      ),
+      (
+        Icons.groups_rounded,
+        loc.tr('Dedicated remote team', 'Equipe distante dediee',
+            'Equipo remoto dedicado'),
+        loc.tr(
+            'Daily standups & direct Slack access.',
+            'Standups quotidiens et acces Slack direct.',
+            'Standups diarios y acceso directo a Slack.'),
+      ),
+      (
+        Icons.bolt_rounded,
+        loc.tr('Live in 1-2 weeks', 'En ligne en 1-2 semaines',
+            'En vivo en 1-2 semanas'),
+        loc.tr('Fast, iterative launches.', 'Lancements rapides et iteratifs.',
+            'Lanzamientos rapidos e iterativos.'),
+      ),
+      (
+        Icons.verified_user_rounded,
+        loc.tr(
+            'Secure by design', 'Securise par conception', 'Seguro por diseno'),
+        loc.tr(
+            'Rust backend + HTTPS + HST-compliant invoices.',
+            'Backend Rust + HTTPS + factures conformes a la TVH.',
+            'Backend Rust + HTTPS + facturas conformes.'),
+      ),
+      (
+        Icons.receipt_long_rounded,
+        loc.tr('Transparent pricing', 'Tarification transparente',
+            'Precios transparentes'),
+        loc.tr('HST included. No surprise fees.',
+            'TVH incluse. Aucune surprise.', 'HST incluido. Sin sorpresas.'),
+      ),
+    ];
+
+    return Container(
+      color: ThemeConfig.surface,
+      padding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 16 : 32,
+        vertical: isMobile ? 32 : 72,
+      ),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1000),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              _SectionLabel(
+                  label: loc.tr('WHY US', 'POURQUOI NOUS', 'POR QUE?')),
+              const SizedBox(height: 12),
+              Text(
+                loc.tr('Why Origna Ventures', 'Pourquoi Origna Ventures',
+                    'Por que Origna Ventures'),
+                style: TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: isMobile ? 26 : 36,
+                  letterSpacing: -1,
+                  color: ThemeConfig.textPrimary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: isMobile ? 24 : 36),
+              LayoutBuilder(
+                builder: (ctx, constraints) {
+                  final cols = constraints.maxWidth > 600 ? 2 : 1;
+                  return _FeatureGrid(features: features, cols: cols);
+                },
+              ),
+            ],
           ),
-          _MenuCard(
-            icon: Icons.work_outline,
-            color: _brandGreen,
-            title: loc.tr(
-              'Remote services',
-              'Services à distance',
-              'Servicios remotos',
-            ),
-            description: loc.tr(
-              'Customer service, data entry, software development and more — delivered by a dedicated remote team.',
-              'Service client, saisie de données, développement logiciel et plus — exécutés par une équipe dédiée à distance.',
-              'Servicio al cliente, entrada de datos, desarrollo de software y más — entregados por un equipo remoto dedicado.',
-            ),
-            route: '/services',
-          ),
-          _MenuCard(
-            icon: Icons.handshake_outlined,
-            color: const Color(0xFF0B57D0),
-            title: loc.tr(
-              'Partner program',
-              'Partenariat',
-              'Programa de socios',
-            ),
-            description: loc.tr(
-              'Free OrignaLaunch + 5% of net revenue + stacked referral bonus.',
-              'OrignaLaunch gratuit + 5 % des revenus nets + bonus de référencement cumulatif.',
-              'OrignaLaunch gratis + 5% de ingresos netos + bono de referido acumulativo.',
-            ),
-            route: '/partner',
-          ),
-        ],
+        ),
       ),
     );
   }
 }
 
-class _MenuCard extends StatelessWidget {
+class _FeatureGrid extends StatelessWidget {
+  final List<(IconData, String, String)> features;
+  final int cols;
+
+  const _FeatureGrid({required this.features, required this.cols});
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = (features.length / cols).ceil();
+    return Column(
+      children: [
+        for (int r = 0; r < rows; r++) ...[
+          if (r > 0) const SizedBox(height: 14),
+          Row(
+            children: [
+              for (int c = 0; c < cols; c++) ...[
+                if (c > 0) const SizedBox(width: 14),
+                Expanded(
+                  child: () {
+                    final i = r * cols + c;
+                    if (i >= features.length) return const SizedBox();
+                    return _FeatureCard(
+                      icon: features[i].$1,
+                      title: features[i].$2,
+                      desc: features[i].$3,
+                    );
+                  }(),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _FeatureCard extends StatelessWidget {
   final IconData icon;
-  final Color color;
   final String title;
-  final String description;
-  final String route;
-  const _MenuCard({
+  final String desc;
+
+  const _FeatureCard({
     required this.icon,
-    required this.color,
     required this.title,
-    required this.description,
-    required this.route,
+    required this.desc,
   });
 
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.sizeOf(context).width;
-    final cardWidth = width < 720 ? width - 28 : 340.0;
-    return SizedBox(
-      width: cardWidth,
-      child: GlassContainer(
-        borderRadius: BorderRadius.circular(20),
-        padding: EdgeInsets.zero,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap: () => Navigator.of(context).pushNamed(route),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: ThemeConfig.surfaceElevated,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: ThemeConfig.divider),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              gradient: ThemeConfig.brandGradient,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 20, color: Colors.white),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Icon(icon, color: color, size: 24),
-                ),
-                const SizedBox(height: 14),
                 Text(
                   title,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w900,
-                    fontSize: 18,
-                    color: color,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    color: ThemeConfig.textPrimary,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 4),
                 Text(
-                  description,
-                  style: const TextStyle(height: 1.45, color: Colors.black54),
-                ),
-                const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Text(
-                      currentLocale(
-                        context,
-                      ).tr('Learn more', 'En savoir plus', 'Más información'),
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        color: color,
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Icon(Icons.arrow_forward, size: 16, color: color),
-                  ],
+                  desc,
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    color: ThemeConfig.textSecondary,
+                    height: 1.4,
+                  ),
                 ),
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-LocaleMode currentLocale(BuildContext context) {
-  final shell = context.findAncestorWidgetOfExactType<SiteShell>();
-  return shell?.locale ?? LocaleMode.en;
-}
-
-class _WhySection extends StatelessWidget {
-  final LocaleMode loc;
-  const _WhySection({required this.loc});
-
-  @override
-  Widget build(BuildContext context) {
-    final items = [
-      (
-        Icons.verified,
-        loc.tr(
-          'Source code included',
-          'Code source inclus',
-          'Código fuente incluido',
-        ),
-        loc.tr(
-          'You own your platform. No vendor lock-in.',
-          'Vous possédez votre plateforme. Pas de verrouillage vendeur.',
-          'Usted es dueño de su plataforma. Sin dependencia del proveedor.',
-        ),
-      ),
-      (
-        Icons.phone_android,
-        loc.tr(
-          'Native cross-platform',
-          'Multiplateforme natif',
-          'Multiplataforma nativo',
-        ),
-        loc.tr(
-          'Web, iOS, Android, and desktop — one codebase.',
-          'Web, iOS, Android et desktop — une seule base de code.',
-          'Web, iOS, Android y escritorio — una sola base de código.',
-        ),
-      ),
-      (
-        Icons.people_outline,
-        loc.tr(
-          'Dedicated remote team',
-          'Équipe dédiée à distance',
-          'Equipo remoto dedicado',
-        ),
-        loc.tr(
-          'Developers, CSRs, and data entry staff assigned to your project.',
-          'Développeurs, CSR et saisie de données assignés à votre projet.',
-          'Desarrolladores, CSR y personal de entrada de datos asignados a su proyecto.',
-        ),
-      ),
-      (
-        Icons.rocket_launch,
-        loc.tr('Fast launch', 'Lancement rapide', 'Lanzamiento rápido'),
-        loc.tr(
-          'Live in 1–2 weeks with OrignaLaunch.',
-          'En ligne en 1 à 2 semaines avec OrignaLaunch.',
-          'En vivo en 1–2 semanas con OrignaLaunch.',
-        ),
-      ),
-      (
-        Icons.security,
-        loc.tr(
-          'Security & compliance',
-          'Sécurité et conformité',
-          'Seguridad y cumplimiento',
-        ),
-        loc.tr(
-          'PostgreSQL, Stripe, JWT RS256 auth, and PIPEDA compliance.',
-          'PostgreSQL, Stripe, auth JWT RS256, et conformité PIPEDA.',
-          'PostgreSQL, Stripe, autenticación JWT RS256 y cumplimiento PIPEDA.',
-        ),
-      ),
-      (
-        Icons.attach_money,
-        loc.tr(
-          'Transparent pricing',
-          'Prix transparents',
-          'Precios transparentes',
-        ),
-        loc.tr(
-          'No recurring fees for code. Cancel services anytime.',
-          'Pas de frais récurrents pour le code. Annulez les services en tout temps.',
-          'Sin tarifas recurrentes por código. Cancele servicios en cualquier momento.',
-        ),
-      ),
-    ];
-    return _SectionCard(
-      title: loc.tr(
-        'Why Origna Ventures',
-        'Pourquoi Origna Ventures',
-        'Por qué Origna Ventures',
-      ),
-      subtitle: loc.tr(
-        'Proprietary software, flexible services, real delivery.',
-        'Logiciel propriétaire, services flexibles, livraison réelle.',
-        'Software propietario, servicios flexibles, entrega real.',
-      ),
-      child: Wrap(
-        spacing: 16,
-        runSpacing: 16,
-        children: [
-          for (final item in items)
-            SizedBox(
-              width: MediaQuery.sizeOf(context).width < 720
-                  ? MediaQuery.sizeOf(context).width - 28
-                  : 340.0,
-              child: GlassContainer(
-                borderRadius: BorderRadius.circular(18),
-                padding: EdgeInsets.zero,
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(item.$1, color: _brandPrimary, size: 22),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              item.$2,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 15,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              item.$3,
-                              style: const TextStyle(
-                                color: Colors.black54,
-                                height: 1.4,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
         ],
       ),
     );
   }
 }
 
-/// Full inline contact form that POSTs to the Hetzner backend.
-class _ContactFormSection extends StatefulWidget {
-  final LocaleMode loc;
-  const _ContactFormSection({required this.loc});
+class _ContactFormBlock extends StatefulWidget {
+  final LocaleMode locale;
+  final bool isMobile;
+
+  const _ContactFormBlock({
+    super.key,
+    required this.locale,
+    required this.isMobile,
+  });
 
   @override
-  State<_ContactFormSection> createState() => _ContactFormSectionState();
+  State<_ContactFormBlock> createState() => _ContactFormBlockState();
 }
 
-class _ContactFormSectionState extends State<_ContactFormSection> {
+class _ContactFormBlockState extends State<_ContactFormBlock> {
   final _nameCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _companyCtrl = TextEditingController();
@@ -1369,225 +2124,335 @@ class _ContactFormSectionState extends State<_ContactFormSection> {
     super.dispose();
   }
 
+  Map<String, String> _serviceItems() {
+    final loc = widget.locale;
+    return {
+      'general': loc.tr(
+        'General inquiry',
+        'Renseignement general',
+        'Consulta general',
+      ),
+      'origna_code': 'OrignaCode (\$500 CAD)',
+      'origna_launch': 'OrignaLaunch (\$3,000 CAD)',
+      'origna_team': loc.tr(
+        'OrignaTeam (\$1,000 CAD/mo)',
+        'OrignaTeam (1 000 \$ CAD/mois)',
+        'OrignaTeam (\$1,000 CAD/mes)',
+      ),
+      'partnership': loc.tr('Partnership', 'Partenariat', 'Asociacion'),
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final loc = widget.locale;
+    final items = _serviceItems();
+    return Container(
+      color: ThemeConfig.darkBackground,
+      padding: EdgeInsets.symmetric(
+        horizontal: widget.isMobile ? 16 : 32,
+        vertical: widget.isMobile ? 32 : 72,
+      ),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 720),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _SectionLabel(
+                  label: loc.tr('CONTACT', 'CONTACT', 'CONTACTO'), light: true),
+              const SizedBox(height: 12),
+              Text(
+                loc.tr('Get in touch', 'Contactez-nous', 'Contactenos'),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                  fontSize: widget.isMobile ? 26 : 36,
+                  letterSpacing: -1,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                loc.tr(
+                  'We reply within 24 hours.',
+                  'Nous repondons en moins de 24 heures.',
+                  'Respondemos en menos de 24 horas.',
+                ),
+                style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.5), height: 1.4),
+              ),
+              SizedBox(height: widget.isMobile ? 24 : 32),
+              _formRow([
+                _DarkField(
+                  controller: _nameCtrl,
+                  label: loc.tr(
+                      'Full name *', 'Nom complet *', 'Nombre completo *'),
+                ),
+                _DarkField(
+                  controller: _emailCtrl,
+                  label: loc.tr('Email *', 'Courriel *', 'Correo *'),
+                  keyboardType: TextInputType.emailAddress,
+                ),
+              ], isMobile: widget.isMobile),
+              const SizedBox(height: 14),
+              _formRow([
+                _DarkField(
+                  controller: _companyCtrl,
+                  label: loc.tr('Company', 'Entreprise', 'Empresa'),
+                ),
+                _DarkDropdown(
+                  value: _service,
+                  label: loc.tr('Service interest', "Service d'interet",
+                      'Servicio de interes'),
+                  items: items,
+                  onChanged: (v) {
+                    if (v != null) {
+                      setState(() => _service = v);
+                    }
+                  },
+                ),
+              ], isMobile: widget.isMobile),
+              const SizedBox(height: 14),
+              _DarkField(
+                controller: _msgCtrl,
+                label: loc.tr('Message *', 'Message *', 'Mensaje *'),
+                maxLines: 5,
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: widget.isMobile ? double.infinity : null,
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: ThemeConfig.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 14),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    textStyle: const TextStyle(
+                        fontWeight: FontWeight.w700, fontSize: 14),
+                  ),
+                  onPressed: _loading ? null : () => _submit(loc),
+                  icon: _loading
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Icon(Icons.send_rounded, size: 18),
+                  label: Text(
+                    _loading
+                        ? loc.tr('Sending...', 'Envoi...', 'Enviando...')
+                        : loc.tr('Send message', 'Envoyer', 'Enviar mensaje'),
+                  ),
+                ),
+              ),
+              if (_result != null) ...[
+                const SizedBox(height: 14),
+                _StatusBanner(message: _result!, success: _success),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _formRow(List<Widget> fields, {required bool isMobile}) {
+    if (isMobile) {
+      return Column(
+        children: fields
+            .map((f) =>
+                Padding(padding: const EdgeInsets.only(bottom: 14), child: f))
+            .toList(),
+      );
+    }
+    return Row(
+      children: [
+        for (int i = 0; i < fields.length; i++) ...[
+          if (i > 0) const SizedBox(width: 14),
+          Expanded(child: fields[i]),
+        ],
+      ],
+    );
+  }
+
   Future<void> _submit(LocaleMode loc) async {
-    if (_nameCtrl.text.trim().length < 2) {
+    final name = _nameCtrl.text.trim();
+    final email = _emailCtrl.text.trim();
+    final msg = _msgCtrl.text.trim();
+
+    if (name.length < 2) {
       setState(() {
-        _result = loc.tr('Enter your name.', 'Entrez votre nom.', 'Ingrese su nombre.');
+        _result = loc.tr(
+            'Enter your name.', 'Entrez votre nom.', 'Ingrese su nombre.');
         _success = false;
       });
       return;
     }
-    if (!_emailCtrl.text.contains('@')) {
+    if (!email.contains('@') || !email.contains('.')) {
       setState(() {
-        _result = loc.tr('Enter a valid email.', 'Entrez un courriel valide.', 'Ingrese un correo válido.');
+        _result = loc.tr(
+          'Enter a valid email.',
+          'Entrez un courriel valide.',
+          'Ingrese un correo valido.',
+        );
         _success = false;
       });
       return;
     }
-    if (_msgCtrl.text.trim().length < 10) {
+    if (msg.length < 10) {
       setState(() {
-        _result = loc.tr('Message too short.', 'Message trop court.', 'Mensaje demasiado corto.');
+        _result = loc.tr(
+          'Message too short (min 10 characters).',
+          'Message trop court (min 10 caracteres).',
+          'Mensaje muy corto (min 10 caracteres).',
+        );
         _success = false;
       });
       return;
     }
+
     setState(() {
       _loading = true;
       _result = null;
     });
+
     try {
-      final resp = await http.post(
-        Uri.parse('$_apiBase/contact'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'name': _nameCtrl.text.trim(),
-          'email': _emailCtrl.text.trim(),
-          'company': _companyCtrl.text.trim(),
-          'service': _service,
-          'message': _msgCtrl.text.trim(),
-        }),
-      );
+      final resp = await http
+          .post(
+            Uri.parse('$venturesApiBase/contact'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'name': name,
+              'email': email,
+              'company': _companyCtrl.text.trim(),
+              'service': _service,
+              'message': msg,
+            }),
+          )
+          .timeout(const Duration(seconds: 15));
+
       final body = jsonDecode(resp.body) as Map<String, dynamic>;
       if (resp.statusCode == 200 && body['status'] == 'ok') {
+        _nameCtrl.clear();
+        _emailCtrl.clear();
+        _companyCtrl.clear();
+        _msgCtrl.clear();
         setState(() {
           _success = true;
           _result = loc.tr(
-            'Message sent! We will reply to ${_emailCtrl.text.trim()} shortly.',
-            'Message envoyé! Nous répondrons à ${_emailCtrl.text.trim()} sous peu.',
-            'Mensaje enviado. Le responderemos a ${_emailCtrl.text.trim()} pronto.',
+            "Message sent! We'll be in touch within 24 hours.",
+            'Message envoye! Nous vous repondrons dans les 24 heures.',
+            'Mensaje enviado. Le responderemos en menos de 24 horas.',
           );
-          _nameCtrl.clear();
-          _emailCtrl.clear();
-          _companyCtrl.clear();
-          _msgCtrl.clear();
         });
       } else {
         setState(() {
           _success = false;
-          _result = body['detail']?.toString() ?? loc.tr('Something went wrong.', 'Une erreur est survenue.', 'Algo salió mal.');
+          _result = (body['detail'] ?? body['message'])?.toString() ??
+              loc.tr(
+                'Something went wrong. Please try again.',
+                'Une erreur est survenue. Veuillez reessayer.',
+                'Algo salio mal. Por favor, intentelo de nuevo.',
+              );
         });
       }
     } catch (_) {
       setState(() {
         _success = false;
-        _result = loc.tr('Network error. Try again.', 'Erreur réseau. Réessayez.', 'Error de red. Inténtelo de nuevo.');
+        _result = loc.tr(
+          'Network error. Please try again.',
+          'Erreur reseau. Reessayez.',
+          'Error de red. Intentelo de nuevo.',
+        );
       });
     } finally {
-      setState(() => _loading = false);
+      if (mounted) {
+        setState(() => _loading = false);
+      }
     }
   }
+}
+
+class _CookieConsentBanner extends StatelessWidget {
+  final LocaleMode locale;
+  final VoidCallback onAccept;
+  final VoidCallback onDecline;
+
+  const _CookieConsentBanner({
+    required this.locale,
+    required this.onAccept,
+    required this.onDecline,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final loc = widget.loc;
-    final isMobile = MediaQuery.sizeOf(context).width < 720;
     return Container(
-      padding: EdgeInsets.all(isMobile ? 18 : 28),
-      decoration: BoxDecoration(
-        color: _brandDark,
-        borderRadius: BorderRadius.circular(24),
+      decoration: const BoxDecoration(
+        color: ThemeConfig.darkBackground,
+        border: Border(top: BorderSide(color: ThemeConfig.darkBorder)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            loc.tr('Contact us', 'Contactez-nous', 'Contáctenos'),
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w900,
-              fontSize: 22,
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
+      child: SafeArea(
+        top: false,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Text(
+                locale.tr(
+                  'We use essential cookies to remember language, keep checkout stable, and improve launch analytics.',
+                  'Nous utilisons des temoins essentiels pour memoriser la langue, stabiliser le paiement et ameliorer l analytique de lancement.',
+                  'Usamos cookies esenciales para recordar el idioma, mantener estable el pago y mejorar la analitica de lanzamiento.',
+                ),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  height: 1.45,
+                ),
+              ),
             ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            loc.tr(
-              'We reply within 24 hours.',
-              'Nous répondons en moins de 24 heures.',
-              'Respondemos en menos de 24 horas.',
+            const SizedBox(width: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                OutlinedButton(
+                  onPressed: onDecline,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white70,
+                    side: BorderSide(
+                      color: Colors.white.withValues(alpha: 0.18),
+                    ),
+                  ),
+                  child: Text(locale.tr('Decline', 'Refuser', 'Rechazar')),
+                ),
+                FilledButton(
+                  onPressed: onAccept,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: ThemeConfig.gold,
+                    foregroundColor: ThemeConfig.primaryDark,
+                  ),
+                  child: Text(locale.tr('Accept', 'Accepter', 'Aceptar')),
+                ),
+              ],
             ),
-            style: const TextStyle(color: Colors.white70, height: 1.4),
-          ),
-          const SizedBox(height: 20),
-          Wrap(
-            spacing: 14,
-            runSpacing: 14,
-            children: [
-              SizedBox(
-                width: isMobile ? double.infinity : 280,
-                child: _GlassTextField(
-                  controller: _nameCtrl,
-                  label: loc.tr('Full name *', 'Nom complet *', 'Nombre completo *'),
-                ),
-              ),
-              SizedBox(
-                width: isMobile ? double.infinity : 280,
-                child: _GlassTextField(
-                  controller: _emailCtrl,
-                  label: loc.tr('Email *', 'Courriel *', 'Correo *'),
-                  keyboardType: TextInputType.emailAddress,
-                ),
-              ),
-              SizedBox(
-                width: isMobile ? double.infinity : 280,
-                child: _GlassTextField(
-                  controller: _companyCtrl,
-                  label: loc.tr('Company', 'Entreprise', 'Empresa'),
-                ),
-              ),
-              SizedBox(
-                width: isMobile ? double.infinity : 280,
-                child: _GlassDropdown(
-                  value: _service,
-                  label: loc.tr('Service interest', 'Service d\'intérêt', 'Servicio de interés'),
-                  items: {
-                    'general': loc.tr('General inquiry', 'Renseignement général', 'Consulta general'),
-                    'origna_code': 'OrignaCode (\$500 CAD)',
-                    'origna_launch': 'OrignaLaunch (\$3,000 CAD)',
-                    'origna_team': 'OrignaTeam (\$2,000+/mo CAD)',
-                    'partnership': loc.tr('Partnership', 'Partenariat', 'Asociación'),
-                  },
-                  onChanged: (v) => setState(() => _service = v ?? _service),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          _GlassTextField(
-            controller: _msgCtrl,
-            label: loc.tr('Message *', 'Message *', 'Mensaje *'),
-            maxLines: 4,
-          ),
-          const SizedBox(height: 18),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              FilledButton.icon(
-                style: FilledButton.styleFrom(
-                  backgroundColor: _brandPrimary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                ),
-                onPressed: _loading ? null : () => _submit(loc),
-                icon: _loading
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(Icons.send),
-                label: Text(
-                  _loading
-                      ? loc.tr('Sending…', 'Envoi…', 'Enviando…')
-                      : loc.tr('Send message', 'Envoyer', 'Enviar mensaje'),
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-              ),
-              OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  side: const BorderSide(color: Colors.white38),
-                ),
-                onPressed: () => launchUrl(
-                  Uri.parse(_whatsappUrl),
-                  mode: LaunchMode.externalApplication,
-                ),
-                icon: const Icon(Icons.chat_bubble_outline),
-                label: Text(loc.tr('WhatsApp', 'WhatsApp', 'WhatsApp')),
-              ),
-              OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  side: const BorderSide(color: Colors.white38),
-                ),
-                onPressed: () => launchUrl(Uri.parse(_mailtoUrl)),
-                icon: const Icon(Icons.email_outlined),
-                label: Text(loc.tr('Email', 'Courriel', 'Correo')),
-              ),
-            ],
-          ),
-          if (_result != null) ...[
-            const SizedBox(height: 14),
-            _StatusBanner(message: _result!, success: _success),
           ],
-        ],
+        ),
       ),
     );
   }
 }
 
-/// Dark-themed text field for use on dark backgrounds.
-class _GlassTextField extends StatelessWidget {
+class _DarkField extends StatelessWidget {
   final TextEditingController controller;
   final String label;
   final TextInputType? keyboardType;
   final int maxLines;
 
-  const _GlassTextField({
+  const _DarkField({
     required this.controller,
     required this.label,
     this.keyboardType,
@@ -1600,33 +2465,40 @@ class _GlassTextField extends StatelessWidget {
       controller: controller,
       keyboardType: keyboardType,
       maxLines: maxLines,
-      style: const TextStyle(color: Colors.white),
+      style: const TextStyle(color: Colors.white, fontSize: 14),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(color: Colors.white60),
+        labelStyle: TextStyle(
+            color: Colors.white.withValues(alpha: 0.45), fontSize: 13),
+        floatingLabelStyle: TextStyle(
+          color: ThemeConfig.primaryLight.withValues(alpha: 0.9),
+          fontSize: 12,
+        ),
         enabledBorder: OutlineInputBorder(
-          borderSide: const BorderSide(color: Colors.white24),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.12)),
           borderRadius: BorderRadius.circular(12),
         ),
         focusedBorder: OutlineInputBorder(
-          borderSide: BorderSide(color: ThemeConfig.primary),
+          borderSide:
+              const BorderSide(color: ThemeConfig.primaryLight, width: 1.5),
           borderRadius: BorderRadius.circular(12),
         ),
         filled: true,
-        fillColor: Colors.white.withValues(alpha: 0.07),
+        fillColor: Colors.white.withValues(alpha: 0.05),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       ),
     );
   }
 }
 
-/// Dark-themed dropdown for use on dark backgrounds.
-class _GlassDropdown extends StatelessWidget {
+class _DarkDropdown extends StatefulWidget {
   final String value;
   final String label;
   final Map<String, String> items;
   final ValueChanged<String?> onChanged;
 
-  const _GlassDropdown({
+  const _DarkDropdown({
     required this.value,
     required this.label,
     required this.items,
@@ -1634,1840 +2506,102 @@ class _GlassDropdown extends StatelessWidget {
   });
 
   @override
+  State<_DarkDropdown> createState() => _DarkDropdownState();
+}
+
+class _DarkDropdownState extends State<_DarkDropdown> {
+  late String _current;
+
+  @override
+  void initState() {
+    super.initState();
+    _current = widget.value;
+  }
+
+  @override
+  void didUpdateWidget(covariant _DarkDropdown oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.value != widget.value) {
+      _current = widget.value;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (!widget.items.containsKey(_current)) {
+      _current = widget.items.keys.first;
+    }
     return DropdownButtonFormField<String>(
-      initialValue: value,
-      dropdownColor: const Color(0xFF1A1A2E),
-      style: const TextStyle(color: Colors.white),
-      items: items.entries
-          .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
+      initialValue: _current,
+      isExpanded: true,
+      items: widget.items.entries
+          .map(
+            (e) => DropdownMenuItem(
+              value: e.key,
+              child: Text(
+                e.value,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          )
           .toList(),
-      onChanged: onChanged,
+      onChanged: (v) {
+        if (v != null) {
+          setState(() => _current = v);
+        }
+        widget.onChanged(v);
+      },
       decoration: InputDecoration(
-        labelText: label,
-        labelStyle: const TextStyle(color: Colors.white60),
+        labelText: widget.label,
+        labelStyle: TextStyle(
+            color: Colors.white.withValues(alpha: 0.45), fontSize: 13),
+        floatingLabelStyle: TextStyle(
+          color: ThemeConfig.primaryLight.withValues(alpha: 0.9),
+          fontSize: 12,
+        ),
         enabledBorder: OutlineInputBorder(
-          borderSide: const BorderSide(color: Colors.white24),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.12)),
           borderRadius: BorderRadius.circular(12),
         ),
         focusedBorder: OutlineInputBorder(
-          borderSide: BorderSide(color: ThemeConfig.primary),
+          borderSide:
+              const BorderSide(color: ThemeConfig.primaryLight, width: 1.5),
           borderRadius: BorderRadius.circular(12),
         ),
         filled: true,
-        fillColor: Colors.white.withValues(alpha: 0.07),
+        fillColor: Colors.white.withValues(alpha: 0.05),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       ),
+      dropdownColor: const Color(0xFF1A1A38),
+      style: const TextStyle(color: Colors.white, fontSize: 14),
+      iconEnabledColor: Colors.white.withValues(alpha: 0.4),
     );
   }
 }
 
-class _HeroBadge extends StatelessWidget {
+class _SectionLabel extends StatelessWidget {
   final String label;
-  const _HeroBadge({required this.label});
+  final bool light;
+
+  const _SectionLabel({required this.label, this.light = false});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+        color: ThemeConfig.primary.withValues(alpha: light ? 0.2 : 0.1),
+        borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
         label,
-        style: const TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.w600,
-          fontSize: 12,
+        style: TextStyle(
+          color: light ? ThemeConfig.primaryLight : ThemeConfig.primary,
+          fontWeight: FontWeight.w700,
+          fontSize: 11,
+          letterSpacing: 1.2,
         ),
-      ),
-    );
-  }
-}
-
-class _CornerToken extends StatelessWidget {
-  final String symbol;
-  final Color color;
-  const _CornerToken({required this.symbol, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 44,
-      height: 44,
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Center(
-        child: Text(symbol, style: TextStyle(fontSize: 22, color: color)),
-      ),
-    );
-  }
-}
-
-class _ComparisonSection extends StatelessWidget {
-  final LocaleMode loc;
-  const _ComparisonSection({required this.loc});
-
-  @override
-  Widget build(BuildContext context) {
-    final rows = [
-      [
-        'Shopify',
-        '≈ 468–1,788 CAD/yr + transaction/app fees',
-        loc.tr('No', 'Non', 'No'),
-        loc.tr('Partial', 'Partiel', 'Parcial'),
-        loc.tr('No', 'Non', 'No'),
-      ],
-      [
-        'Replit',
-        '≈ 300+ CAD/yr + build/ops time',
-        loc.tr(
-            'Yes, but DIY', 'Oui, mais bricolé', 'Sí, pero hágalo usted mismo'),
-        loc.tr('Not native', 'Pas natif', 'No nativo'),
-        loc.tr('No', 'Non', 'No'),
-      ],
-      [
-        'Lovable',
-        '≈ 600+ CAD/yr + backend costs',
-        loc.tr('Limited', 'Limité', 'Limitado'),
-        loc.tr('No', 'Non', 'No'),
-        loc.tr('No', 'Non', 'No'),
-      ],
-      [
-        'OrignaGTA',
-        '500 CAD code / 2,000 CAD launch / 1,000+ CAD team',
-        loc.tr('Yes', 'Oui', 'Sí'),
-        loc.tr('Yes', 'Oui', 'Sí'),
-        loc.tr('Yes', 'Oui', 'Sí'),
-      ],
-    ];
-    return _SectionCard(
-      title: loc.tr(
-        'Market comparison',
-        'Comparatif marché',
-        'Comparativa de mercado',
-      ),
-      subtitle: loc.tr(
-        'Pricing, source-code ownership, and cross-platform delivery.',
-        'Prix, propriété du code source et livraison multiplateforme.',
-        'Precios, propiedad del código fuente y entrega multiplataforma.',
-      ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: DataTable(
-          columns: [
-            DataColumn(label: Text(loc.tr('Solution', 'Solution', 'Solución'))),
-            DataColumn(label: Text(loc.tr('Cost', 'Coût', 'Costo'))),
-            DataColumn(
-              label: Text(
-                loc.tr('Source code', 'Code source', 'Código fuente'),
-              ),
-            ),
-            DataColumn(
-              label: Text(
-                loc.tr('Mobile/Desktop', 'Mobile/Desktop', 'Móvil/Escritorio'),
-              ),
-            ),
-            DataColumn(
-              label: Text(
-                loc.tr(
-                  'Hosting year 1',
-                  'Hébergement année 1',
-                  'Alojamiento año 1',
-                ),
-              ),
-            ),
-          ],
-          rows: rows
-              .map(
-                (row) => DataRow(
-                  cells: row
-                      .map(
-                        (cell) =>
-                            DataCell(SizedBox(width: 180, child: Text(cell))),
-                      )
-                      .toList(),
-                ),
-              )
-              .toList(),
-        ),
-      ),
-    );
-  }
-}
-
-class _ServicesSection extends StatelessWidget {
-  final LocaleMode loc;
-  const _ServicesSection({required this.loc});
-
-  @override
-  Widget build(BuildContext context) {
-    return _SectionCard(
-      title: loc.tr(
-        'Choose your package',
-        'Choisissez votre forfait',
-        'Elija su paquete',
-      ),
-      subtitle: loc.tr(
-        'Three clear tiers. No recurring fees for code or launch. Cancel team anytime.',
-        'Trois forfaits clairs. Pas de frais récurrents pour le code ou le lancement. Annulez l\'équipe en tout temps.',
-        'Tres niveles claros. Sin tarifas recurrentes por código o lanzamiento. Cancele equipo en cualquier momento.',
-      ),
-      child: Wrap(
-        spacing: 16,
-        runSpacing: 16,
-        children: [
-          _ServiceCard(
-            tier: loc.tr('STARTER', 'DÉBUTANT', 'INICIAL'),
-            title: 'OrignaCode',
-            price: '500 CAD',
-            priceSuffix: loc.tr('one-time', 'paiement unique', 'pago único'),
-            tagline: loc.tr(
-              'Get the source code. Deploy it yourself.',
-              'Obtenez le code source. Déployez vous-même.',
-              'Obtenga el código fuente. Despliéguelo usted mismo.',
-            ),
-            bullets: loc == LocaleMode.fr
-                ? [
-                    'Code source Flutter + Rust + PostgreSQL à vie',
-                    'Accès au dépôt GitHub ou Bitbucket privé',
-                    'Mises à jour du code source à vie',
-                    'Vous hébergez et déploiez vous-même',
-                    'Licence commerciale (revente du logiciel interdite)',
-                    'Remboursement complet avant déverrouillage du dépôt',
-                  ]
-                : (loc == LocaleMode.es
-                    ? [
-                        'Código fuente Flutter + Rust + PostgreSQL para siempre',
-                        'Acceso al repositorio privado GitHub o Bitbucket',
-                        'Actualizaciones de código fuente de por vida incluidas',
-                        'Usted aloja y despliega en su propia infraestructura',
-                        'Licencia comercial (no reventa de software)',
-                        'Reembolso completo antes del desbloqueo del repositorio',
-                      ]
-                    : [
-                        'Full Flutter + Rust + PostgreSQL source code, forever',
-                        'Private GitHub or Bitbucket repo access',
-                        'Lifetime source-code updates included',
-                        'You host and deploy on your own infrastructure',
-                        'Commercial license (no software reselling)',
-                        'Full refund before repo unlock',
-                      ]),
-            color: const Color(0xFF0B57D0),
-            serviceCode: 'origna_code',
-            isPopular: false,
-          ),
-          _ServiceCard(
-            tier: loc.tr('POPULAR', 'POPULAIRE', 'POPULAR'),
-            title: 'OrignaLaunch',
-            price: '2,000 CAD',
-            priceSuffix: loc.tr('one-time', 'paiement unique', 'pago único'),
-            tagline: loc.tr(
-              'We launch everything for you. Code + hosting + stores.',
-              'On lance tout pour vous. Code + hébergement + stores.',
-              'Lanzamos todo por usted. Código + alojamiento + tiendas.',
-            ),
-            bullets: loc == LocaleMode.fr
-                ? [
-                    'Tout d\'OrignaCode inclus',
-                    'Serveur VPS 8 Go Hetzner — année 1 incluse',
-                    'Déploiement App Store + Play Store inclus',
-                    'Déploiement web + desktop inclus',
-                    '20 testeurs humains (20 h QA)',
-                    '4 semaines de support après lancement',
-                    'Live en 1 à 2 semaines',
-                    'Paiement validé → dépôt déverrouillé auto',
-                  ]
-                : (loc == LocaleMode.es
-                    ? [
-                        'Todo de OrignaCode incluido',
-                        'Alojamiento VPS 8 GB Hetzner — Año 1 incluido',
-                        'Despliegue App Store + Play Store incluido',
-                        'Despliegue web + escritorio incluido',
-                        '20 probadores humanos (20 h QA)',
-                        '4 semanas de soporte después del lanzamiento',
-                        'En vivo en 1 a 2 semanas',
-                        'Pago validado → repositorio desbloqueado automáticamente',
-                      ]
-                    : [
-                        'Everything in OrignaCode included',
-                        'Hetzner 8 GB VPS hosting — Year 1 included',
-                        'App Store + Play Store deployment included',
-                        'Web + desktop deployment included',
-                        '20 human testers (20h QA)',
-                        '4 weeks of post-launch support',
-                        'Live in about 1–2 weeks',
-                        'Cleared payment → auto repo unlock',
-                      ]),
-            color: _brandPrimary,
-            serviceCode: 'origna_launch',
-            isPopular: true,
-          ),
-          _ServiceCard(
-            tier: loc.tr('TEAM', 'ÉQUIPE', 'EQUIPO'),
-            title: 'OrignaTeam',
-            price: '1,000+ CAD',
-            priceSuffix: loc.tr(
-              '/ month · cancel anytime',
-              '/ mois · annulez en tout temps',
-              '/ mes · cancele en cualquier momento',
-            ),
-            tagline: loc.tr(
-              'Dedicated developer on your project.',
-              'Développeur dédié sur votre projet.',
-              'Desarrollador dedicado en su proyecto.',
-            ),
-            bullets: loc == LocaleMode.fr
-                ? [
-                    'Développeur assigné à votre projet',
-                    'Standup quotidien avec votre développeur',
-                    'Ecommerce, apps, web, mobile, desktop',
-                    'Démarrage sous 48 h après paiement',
-                    'API, hébergement et tests facturés séparément — voir détails',
-                    'Remboursement sous 24 h avant déverrouillage',
-                  ]
-                : (loc == LocaleMode.es
-                    ? [
-                        'Desarrollador dedicado asignado a su proyecto',
-                        'Standup diario con su desarrollador',
-                        'Comercio electrónico, apps, web, móvil, escritorio',
-                        'Inicio dentro de 48 h después del pago',
-                        'API, alojamiento y pruebas facturados por separado — ver detalles',
-                        'Reembolso dentro de 24 h antes del desbloqueo del repositorio',
-                      ]
-                    : [
-                        'Dedicated developer assigned to your project',
-                        'Daily standup with your developer',
-                        'Ecommerce, apps, web, mobile, desktop',
-                        'Starts within 48 h of cleared payment',
-                        'API, hosting, and testing billed separately — see details',
-                        'Refund within 24 h before repo unlock',
-                      ]),
-            color: _brandGreen,
-            serviceCode: 'origna_team',
-            isPopular: false,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ServiceCard extends StatelessWidget {
-  final String tier;
-  final String title;
-  final String price;
-  final String priceSuffix;
-  final String tagline;
-  final List<String> bullets;
-  final Color color;
-  final String serviceCode;
-  final bool isPopular;
-  const _ServiceCard({
-    required this.tier,
-    required this.title,
-    required this.price,
-    required this.priceSuffix,
-    required this.tagline,
-    required this.bullets,
-    required this.color,
-    required this.serviceCode,
-    required this.isPopular,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final loc = context.findAncestorWidgetOfExactType<SiteShell>()?.locale ??
-        LocaleMode.en;
-    final width = MediaQuery.sizeOf(context).width;
-    final cardWidth = width < 720 ? width - 28 : 340.0;
-    return SizedBox(
-      width: cardWidth,
-      child: Card(
-        color: Colors.white,
-        elevation: isPopular ? 4 : 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: isPopular
-              ? BorderSide(color: color, width: 2)
-              : BorderSide(color: color.withValues(alpha: 0.22)),
-        ),
-        child: Stack(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: color.withValues(alpha: 0.10),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      tier,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        color: color,
-                        fontSize: 10,
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w900,
-                      color: color,
-                      fontSize: 20,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    tagline,
-                    style: const TextStyle(
-                      color: Colors.black54,
-                      fontSize: 13,
-                      height: 1.4,
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: color.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.baseline,
-                      textBaseline: TextBaseline.alphabetic,
-                      children: [
-                        Text(
-                          price,
-                          style: TextStyle(
-                            fontWeight: FontWeight.w900,
-                            fontSize: 26,
-                            color: color,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            priceSuffix,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 12,
-                              color: Colors.black54,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  for (final bullet in bullets)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.only(top: 5, right: 8),
-                            child: Icon(
-                              Icons.check_circle,
-                              size: 16,
-                              color: color,
-                            ),
-                          ),
-                          Expanded(
-                            child: Text(
-                              bullet,
-                              style: const TextStyle(
-                                height: 1.45,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      style: FilledButton.styleFrom(
-                        backgroundColor: color,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                      onPressed: () => Navigator.of(context).pushNamed(
-                        '/pay',
-                        arguments: {'serviceCode': serviceCode},
-                      ),
-                      child: Text(
-                        loc.tr(
-                            'Get $title', 'Choisir $title', 'Obtener $title'),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (isPopular)
-              Positioned(
-                top: 0,
-                right: 0,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: color,
-                    borderRadius: const BorderRadius.only(
-                      topRight: Radius.circular(20),
-                      bottomLeft: Radius.circular(14),
-                    ),
-                  ),
-                  child: Text(
-                    loc.tr('POPULAR', 'POPULAIRE', 'POPULAR'),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 10,
-                      letterSpacing: 1,
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ProgramsSection extends StatelessWidget {
-  final LocaleMode loc;
-  const _ProgramsSection({required this.loc});
-
-  @override
-  Widget build(BuildContext context) {
-    return _SectionCard(
-      title: loc.tr('Programs', 'Programmes', 'Programas'),
-      subtitle: loc.tr(
-        'Referral, partner, sponsorship, and community giving.',
-        'Referral, partenariat, commandite et don communautaire.',
-        'Referidos, socios, patrocinio y donaciones comunitarias.',
-      ),
-      child: Wrap(
-        spacing: 16,
-        runSpacing: 16,
-        children: [
-          _MiniProgramCard(
-            title: loc.tr('Referral', 'Référencement', 'Referido'),
-            content: loc.tr(
-              '50 CAD when a referred person/business pays 500 CAD or more.',
-              '50 CAD quand une personne ou entreprise paie 500 CAD ou plus.',
-              '50 CAD cuando una persona/empresa referida paga 500 CAD o más.',
-            ),
-          ),
-          _MiniProgramCard(
-            title: loc.tr('Partner', 'Partenaire', 'Socio'),
-            content: loc.tr(
-              'Free OrignaLaunch + 5% of generated net revenue + stacked 50 CAD referral bonus.',
-              'OrignaLaunch gratuit + 5 % du revenu net généré + bonus referral de 50 CAD.',
-              'OrignaLaunch gratis + 5% de ingresos netos + bono de referido acumulativo de 50 CAD.',
-            ),
-          ),
-          _MiniProgramCard(
-            title: loc.tr('Sponsorship', 'Commandite', 'Patrocinio'),
-            content: loc.tr(
-              'Bronze 500 / Silver 1,500 / Gold 5,000 CAD yearly for visibility and co-marketing.',
-              'Bronze 500 / Argent 1 500 / Or 5 000 CAD par an pour visibilité et co-marketing.',
-              'Bronce 500 / Plata 1,500 / Oro 5,000 CAD anuales para visibilidad y co-marketing.',
-            ),
-          ),
-          _MiniProgramCard(
-            title: loc.tr(
-              'Community giving',
-              'Don communautaire',
-              'Donaciones comunitarias',
-            ),
-            content: loc.tr(
-              'Service payments go to Origna Ventures. Separate donations and 10% of net profits support church/community programs.',
-              'Les paiements de service vont à Origna Ventures. Les dons séparés et 10 % des profits nets soutiennent l\'église / les programmes communautaires.',
-              'Los pagos de servicio van a Origna Ventures. Las donaciones separadas y el 10% de las ganancias netas apoyan programas de iglesia/comunidad.',
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MiniProgramCard extends StatelessWidget {
-  final String title;
-  final String content;
-  const _MiniProgramCard({required this.title, required this.content});
-
-  @override
-  Widget build(BuildContext context) {
-    final width = MediaQuery.sizeOf(context).width;
-    return SizedBox(
-      width: width < 720 ? width - 28 : 280,
-      child: Card(
-        color: Colors.white,
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
-          side: BorderSide(color: Colors.black.withValues(alpha: 0.06)),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 42,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: _brandPrimary.withValues(alpha: 0.8),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 16,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(content, style: const TextStyle(height: 1.45)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _QrSection extends StatelessWidget {
-  final LocaleMode loc;
-  const _QrSection({required this.loc});
-
-  @override
-  Widget build(BuildContext context) {
-    return _SectionCard(
-      title: loc.tr('Quick actions', 'Actions rapides', 'Acciones rápidas'),
-      subtitle: loc.tr(
-        'Payment, Android APK, demo, deck, donation, partner.',
-        'Paiement, APK Android, démo, deck, don, partenaire.',
-        'Pago, APK Android, demo, presentación, donación, socio.',
-      ),
-      child: Wrap(
-        spacing: 12,
-        runSpacing: 12,
-        children: [
-          _ActionTile(
-            label: loc.tr('Payment', 'Paiement', 'Pago'),
-            route: '/pay',
-          ),
-          _ActionTile(
-            label: loc.tr('Android APK', 'APK Android', 'APK Android'),
-            external: _apkUrl,
-          ),
-          _ActionTile(
-            label: loc.tr('Live demo', 'Démo live', 'Demo en vivo'),
-            external: _demoUrl,
-          ),
-          _ActionTile(
-            label: loc.tr('300+ deck', 'Deck 300+', 'Presentación 300+'),
-            route: '/deck',
-          ),
-          _ActionTile(
-            label: loc.tr('Partner', 'Partenaire', 'Socio'),
-            route: '/partner',
-          ),
-          _ActionTile(
-            label: loc.tr('Donate', 'Faire un don', 'Donar'),
-            route: '/donate',
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ActionTile extends StatelessWidget {
-  final String label;
-  final String? route;
-  final String? external;
-  const _ActionTile({required this.label, this.route, this.external});
-
-  @override
-  Widget build(BuildContext context) {
-    final width = MediaQuery.sizeOf(context).width;
-    return SizedBox(
-      width: width < 720 ? width - 28 : 180,
-      child: FilledButton.tonal(
-        style: FilledButton.styleFrom(
-          backgroundColor: Colors.white,
-          foregroundColor: _brandDark,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          side: BorderSide(color: Colors.black.withValues(alpha: 0.08)),
-        ),
-        onPressed: () async {
-          if (external != null) {
-            await launchUrl(Uri.parse(external!));
-          } else if (route != null) {
-            Navigator.of(context).pushNamed(route!);
-          }
-        },
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          child: Text(label, textAlign: TextAlign.center),
-        ),
-      ),
-    );
-  }
-}
-
-class PayPage extends StatefulWidget {
-  const PayPage({super.key});
-
-  @override
-  State<PayPage> createState() => _PayPageState();
-}
-
-class _PayPageState extends State<PayPage> {
-  final _email = TextEditingController();
-  String _serviceCode = 'origna_launch';
-  bool _loading = false;
-  String? _status;
-
-  @override
-  Widget build(BuildContext context) {
-    final loc = context.findAncestorWidgetOfExactType<SiteShell>()!.locale;
-    final isMobile = MediaQuery.sizeOf(context).width < 720;
-    final args = ModalRoute.of(context)?.settings.arguments;
-    if (args is Map) {
-      if (args['serviceCode'] is String) {
-        _serviceCode = args['serviceCode'] as String;
-      }
-      if (args['payerEmail'] is String && _email.text.isEmpty) {
-        _email.text = args['payerEmail'] as String;
-      }
-    }
-    return ListView(
-      padding: EdgeInsets.all(isMobile ? 14 : 24),
-      children: [
-        _JourneyStepper(step: 1, loc: loc),
-        const SizedBox(height: 14),
-        _SectionCard(
-          title: loc.tr('Secure payment', 'Paiement sécurisé', 'Pago seguro'),
-          subtitle: loc.tr(
-            'Secure live Stripe payment with fast checkout redirect.',
-            'Paiement Stripe sécurisé en direct avec redirection rapide vers la caisse.',
-            'Pago seguro por Stripe con redirección rápida al checkout.',
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8F8F8),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: Colors.black.withValues(alpha: 0.08),
-                  ),
-                ),
-                child: Text(
-                  loc.tr(
-                    'Select your service and enter your email, then continue directly to Stripe. Service payments are made to Origna Ventures in CAD; this page is not a donation flow.',
-                    'Choisissez votre service et entrez votre courriel, puis continuez directement vers Stripe. Les paiements de service sont faits à Origna Ventures en CAD; cette page n\'est pas un flux de don.',
-                    'Seleccione su servicio e ingrese su correo, luego continúe directamente a Stripe. Los pagos de servicio se realizan a Origna Ventures en CAD; esta página no es un flujo de donación.',
-                  ),
-                  style: const TextStyle(height: 1.45),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Wrap(
-                spacing: 16,
-                runSpacing: 16,
-                children: [
-                  SizedBox(
-                    width:
-                        isMobile ? MediaQuery.sizeOf(context).width - 76 : 340,
-                    child: DropdownButtonFormField<String>(
-                      initialValue: _serviceCode,
-                      items: [
-                        DropdownMenuItem(
-                          value: 'origna_code',
-                          child: Text(
-                            loc.tr(
-                              'OrignaCode · 500 + 65 HST = 565 CAD',
-                              'OrignaCode · 500 + 65 HST = 565 CAD',
-                              'OrignaCode · 500 + 65 HST = 565 CAD',
-                            ),
-                          ),
-                        ),
-                        DropdownMenuItem(
-                          value: 'origna_launch',
-                          child: Text(
-                            loc.tr(
-                              'OrignaLaunch · 3,000 + 390 HST = 3,390 CAD',
-                              'OrignaLaunch · 3 000 + 390 HST = 3 390 CAD',
-                              'OrignaLaunch · 3.000 + 390 HST = 3.390 CAD',
-                            ),
-                          ),
-                        ),
-                        DropdownMenuItem(
-                          value: 'origna_team',
-                          child: Text(
-                            loc.tr(
-                              'OrignaTeam · 2,000+ + HST CAD / month',
-                              'OrignaTeam · 2 000+ + HST CAD / mois',
-                              'OrignaTeam · 2.000+ + HST CAD / mes',
-                            ),
-                          ),
-                        ),
-                      ],
-                      onChanged: (value) =>
-                          setState(() => _serviceCode = value ?? _serviceCode),
-                      decoration: InputDecoration(
-                        labelText: loc.tr('Service', 'Service', 'Servicio'),
-                        border: const OutlineInputBorder(),
-                      ),
-                    ),
-                  ),
-                  SizedBox(
-                    width:
-                        isMobile ? MediaQuery.sizeOf(context).width - 76 : 340,
-                    child: TextField(
-                      controller: _email,
-                      decoration: InputDecoration(
-                        labelText: loc.tr(
-                          'Payer email',
-                          'Courriel payeur',
-                          'Correo del pagador',
-                        ),
-                        border: const OutlineInputBorder(),
-                      ),
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 12,
-                    ),
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                        color: Colors.black.withValues(alpha: 0.12),
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                      color: Colors.white,
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.lock_outline, size: 18),
-                        SizedBox(width: 8),
-                        Text('Stripe'),
-                      ],
-                    ),
-                  ),
-                  FilledButton(
-                    onPressed: _loading ? null : () => _startPayment(loc),
-                    child: Text(
-                      _loading
-                          ? (loc.tr('Loading…', 'Chargement…', 'Cargando…'))
-                          : (loc.tr(
-                              'Pay now',
-                              'Payer maintenant',
-                              'Pagar ahora',
-                            )),
-                    ),
-                  ),
-                ],
-              ),
-              if (_status != null) ...[
-                const SizedBox(height: 12),
-                _StatusBanner(
-                  message: _status!,
-                  success: _status!.toLowerCase().contains('stripe') ||
-                      _status!.toLowerCase().contains('redirection'),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Future<void> _startPayment(LocaleMode loc) async {
-    if (_email.text.trim().isEmpty) {
-      setState(() {
-        _status = loc.tr(
-          'Enter your payer email.',
-          'Entrez votre courriel de payeur.',
-          'Ingrese su correo de pagador.',
-        );
-      });
-      return;
-    }
-    setState(() {
-      _loading = true;
-      _status = null;
-    });
-    final response = await http.post(
-      Uri.parse('$_apiBase/payments/create-checkout-session'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'service_code': _serviceCode,
-        'payer_email': _email.text.trim(),
-        'payment_provider': 'stripe',
-      }),
-    );
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
-    setState(() => _loading = false);
-    if (body['checkoutUrl'] != null) {
-      await launchUrl(
-        Uri.parse(body['checkoutUrl'] as String),
-        mode: LaunchMode.externalApplication,
-      );
-      setState(
-        () => _status = loc.tr(
-          'Redirecting to Stripe.',
-          'Redirection vers Stripe.',
-          'Redirigiendo a Stripe.',
-        ),
-      );
-      return;
-    }
-    setState(() => _status = body['message']?.toString() ?? body.toString());
-  }
-}
-
-class DeckPage extends StatelessWidget {
-  const DeckPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final loc = context.findAncestorWidgetOfExactType<SiteShell>()!.locale;
-    return ListView(
-      padding: EdgeInsets.all(MediaQuery.sizeOf(context).width < 720 ? 14 : 24),
-      children: [
-        _SectionCard(
-          title: loc.tr(
-            'Full screenshot deck',
-            'Deck complet des captures',
-            'Presentación completa de capturas',
-          ),
-          subtitle: loc.tr(
-            'Generated from the Python deck script with codebase stats + features + local screenshots.',
-            'Généré depuis le script Python avec statistiques codebase + features + captures locales.',
-            'Generado desde el script Python con estadísticas del código + funcionalidades + capturas locales.',
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('• 464,386 total lines of code'),
-              const Text(
-                '• 814 Dart files · 182 Rust files · 150 TypeScript files',
-              ),
-              const Text(
-                '• Full-screen captures are filtered from real lib/screens routes only',
-              ),
-              const Text('• Flutter web + iOS + Android + desktop'),
-              const Text(
-                '• Rust backend + PostgreSQL + Stripe + Mailjet + Turnstile + webhooks',
-              ),
-              const SizedBox(height: 16),
-              Text(
-                loc.tr(
-                  'The final deck includes: business overview, comparison, technical architecture, API/pricing audit, feature highlights, then validated full-screen captures from real app screens.',
-                  'Le deck final inclut : aperçu business, comparatif marché, architecture technique, audit API/prix, fonctionnalités, puis des captures plein écran validées provenant des vrais écrans de l\'app.',
-                  'La presentación final incluye: visión del negocio, comparación, arquitectura técnica, auditoría API/precios, destacados de funcionalidades, luego capturas de pantalla validadas de las pantallas reales de la app.',
-                ),
-              ),
-              const SizedBox(height: 18),
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: [
-                  FilledButton(
-                    onPressed: () => launchUrl(Uri.parse(_onepagerPdfUrl)),
-                    child: Text(
-                      loc.tr(
-                        'View one-pager PDF',
-                        'Afficher le one-pager PDF',
-                        'Ver PDF de una página',
-                      ),
-                    ),
-                  ),
-                  OutlinedButton(
-                    onPressed: () => triggerDownload(_onepagerPdfUrl),
-                    child: Text(
-                      loc.tr(
-                        'Download one-pager',
-                        'Télécharger le one-pager',
-                        'Descargar PDF de una página',
-                      ),
-                    ),
-                  ),
-                  FilledButton(
-                    onPressed: () => launchUrl(Uri.parse(_fullDeckPdfUrl)),
-                    child: Text(
-                      loc.tr(
-                        'View full deck PDF',
-                        'Afficher le deck PDF',
-                        'Ver presentación PDF completa',
-                      ),
-                    ),
-                  ),
-                  OutlinedButton(
-                    onPressed: () => triggerDownload(_fullDeckPdfUrl),
-                    child: Text(
-                      loc.tr(
-                        'Download full deck',
-                        'Télécharger le deck',
-                        'Descargar presentación completa',
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class DonatePage extends StatelessWidget {
-  const DonatePage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final loc = context.findAncestorWidgetOfExactType<SiteShell>()!.locale;
-    return ListView(
-      padding: EdgeInsets.all(MediaQuery.sizeOf(context).width < 720 ? 14 : 24),
-      children: [
-        _SectionCard(
-          title: loc.tr(
-            'Community giving',
-            'Don communautaire',
-            'Donaciones comunitarias',
-          ),
-          subtitle: loc.tr(
-            'Service payments go to Origna Ventures. Separate donations and 10% of net profits support church/community giving.',
-            'Les paiements de service vont à Origna Ventures. Les dons séparés et 10 % des profits nets soutiennent l\'église / la communauté.',
-            'Los pagos de servicios van a Origna Ventures. Las donaciones separadas y el 10 % de las ganancias netas apoyan donaciones a la iglesia/comunidad.',
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                loc.tr(
-                  'This page is only for separate donations. Payments for OrignaCode, OrignaLaunch, and OrignaTeam go to Origna Ventures through Stripe directly. Unless a qualified recipient is explicitly identified, this flow does not promise a tax receipt.',
-                  'Cette page sert uniquement aux dons séparés. Les paiements pour OrignaCode, OrignaLaunch et OrignaTeam sont faits à Origna Ventures via Stripe directement. Sauf indication contraire d\'un organisme admissible, ce flux ne promet aucun reçu fiscal.',
-                  'Esta página es solo para donaciones separadas. Los pagos de OrignaCode, OrignaLaunch y OrignaTeam se hacen a Origna Ventures a través de Stripe directamente. Salvo que se identifique explícitamente un destinatario calificado, este flujo no promete un recibo fiscal.',
-                ),
-                style: const TextStyle(color: Colors.black87, height: 1.45),
-              ),
-              const SizedBox(height: 18),
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: [
-                  if (_donationUrl.isNotEmpty)
-                    FilledButton.icon(
-                      onPressed: () => launchUrl(Uri.parse(_donationUrl)),
-                      icon: const Icon(Icons.favorite),
-                      label: Text(
-                        loc.tr(
-                          'Make a separate donation',
-                          'Faire un don séparé',
-                          'Hacer una donación separada',
-                        ),
-                      ),
-                    )
-                  else
-                    FilledButton.icon(
-                      onPressed: () => launchUrl(Uri.parse(_smsUrl)),
-                      icon: const Icon(Icons.favorite_outline),
-                      label: Text(
-                        loc.tr(
-                          'Request a separate donation link',
-                          'Demander un lien de don séparé',
-                          'Solicitar un enlace de donación separada',
-                        ),
-                      ),
-                    ),
-                  OutlinedButton.icon(
-                    onPressed: () => launchUrl(Uri.parse(_smsUrl)),
-                    icon: const Icon(Icons.sms_outlined),
-                    label: Text(
-                      loc.tr('Donate by SMS', 'Don par SMS', 'Donar por SMS'),
-                    ),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: () => launchUrl(Uri.parse(_mailtoUrl)),
-                    icon: const Icon(Icons.email_outlined),
-                    label: Text(
-                      loc.tr(
-                        'Donate by email',
-                        'Don par courriel',
-                        'Donar por correo',
-                      ),
-                    ),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: () => launchUrl(Uri.parse(_telUrl)),
-                    icon: const Icon(Icons.phone_outlined),
-                    label: Text(loc.tr('Call', 'Appeler', 'Llamar')),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: () => launchUrl(Uri.parse(_donationReportUrl)),
-                    icon: const Icon(Icons.picture_as_pdf_outlined),
-                    label: Text(loc.tr('View PDF', 'Voir le PDF', 'Ver PDF')),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Text(
-                loc.tr(
-                  'Service payments: Origna Ventures · Separate donations: request the recipient/link by SMS at $_supportPhone or by email at $_supportEmail',
-                  'Paiements de service : Origna Ventures · Dons séparés : demandez le destinataire/lien par SMS au $_supportPhone ou par courriel à $_supportEmail',
-                  'Pagos de servicios: Origna Ventures · Donaciones separadas: solicite el destinatario/enlace por SMS al $_supportPhone o por correo electrónico a $_supportEmail',
-                ),
-                style: const TextStyle(fontWeight: FontWeight.w700),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class SoftwarePage extends StatelessWidget {
-  const SoftwarePage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final loc = context.findAncestorWidgetOfExactType<SiteShell>()!.locale;
-    return ListView(
-      padding: EdgeInsets.all(MediaQuery.sizeOf(context).width < 720 ? 14 : 24),
-      children: [
-        _JourneyStepper(step: 0, loc: loc),
-        const SizedBox(height: 18),
-        _ComparisonSection(loc: loc),
-        const SizedBox(height: 24),
-        _ServicesSection(loc: loc),
-        const SizedBox(height: 24),
-        _ProgramsSection(loc: loc),
-        const SizedBox(height: 24),
-        _QrSection(loc: loc),
-      ],
-    );
-  }
-}
-
-class ServicesPage extends StatelessWidget {
-  const ServicesPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final loc = context.findAncestorWidgetOfExactType<SiteShell>()!.locale;
-    final isMobile = MediaQuery.sizeOf(context).width < 720;
-    return ListView(
-      padding: EdgeInsets.all(isMobile ? 14 : 24),
-      children: [
-        _SectionCard(
-          title: loc.tr(
-            'Remote professional services',
-            'Services professionnels à distance',
-            'Servicios profesionales remotos',
-          ),
-          subtitle: loc.tr(
-            'Dedicated team for customer service, data entry, software development, and more.',
-            'Équipe dédiée pour service client, saisie de données, développement logiciel et plus encore.',
-            'Equipo dedicado para servicio al cliente, entrada de datos, desarrollo de software y más.',
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Wrap(
-                spacing: 16,
-                runSpacing: 16,
-                children: [
-                  _RemoteServiceCard(
-                    icon: Icons.support_agent,
-                    title: loc.tr(
-                      'Customer Service (CSR)',
-                      'Service client (CSR)',
-                      'Servicio al cliente (CSR)',
-                    ),
-                    description: loc.tr(
-                      'Remote representatives for inbound and outbound support, email, chat, and phone.',
-                      'Représentants à distance pour support entrant et sortant, courriel, chat et téléphone.',
-                      'Representantes remotos para soporte entrante y saliente, correo, chat y teléfono.',
-                    ),
-                    color: _brandPrimary,
-                  ),
-                  _RemoteServiceCard(
-                    icon: Icons.code,
-                    title: loc.tr(
-                      'Software development',
-                      'Développement logiciel',
-                      'Desarrollo de software',
-                    ),
-                    description: loc.tr(
-                      'Dedicated developers for ecommerce, apps, web, mobile, and desktop. Flutter, Rust, PostgreSQL.',
-                      'Développeurs dédiés pour ecommerce, apps, web, mobile et desktop. Flutter, Rust, PostgreSQL.',
-                      'Desarrolladores dedicados para comercio electrónico, apps, web, móvil y escritorio. Flutter, Rust, PostgreSQL.',
-                    ),
-                    color: const Color(0xFF0B57D0),
-                  ),
-                  _RemoteServiceCard(
-                    icon: Icons.keyboard,
-                    title: loc.tr(
-                      'Data entry',
-                      'Saisie de données',
-                      'Entrada de datos',
-                    ),
-                    description: loc.tr(
-                      'Fast, accurate operators for data input, updates, and database management.',
-                      'Opérateurs rapides et précis pour la saisie, la mise à jour et la gestion de bases de données.',
-                      'Operadores rápidos y precisos para entrada de datos, actualizaciones y gestión de bases de datos.',
-                    ),
-                    color: _brandGreen,
-                  ),
-                  _RemoteServiceCard(
-                    icon: Icons.analytics_outlined,
-                    title: loc.tr(
-                      'Data analysis',
-                      'Analyse de données',
-                      'Análisis de datos',
-                    ),
-                    description: loc.tr(
-                      'Remote analysts for reports, dashboards, and insights from your data.',
-                      'Analystes à distance pour rapports, tableaux de bord et insights à partir de vos données.',
-                      'Analistas remotos para informes, paneles e insights de sus datos.',
-                    ),
-                    color: const Color(0xFF8E24AA),
-                  ),
-                  _RemoteServiceCard(
-                    icon: Icons.translate,
-                    title: loc.tr(
-                      'Translation & localization',
-                      'Traduction et localisation',
-                      'Traducción y localización',
-                    ),
-                    description: loc.tr(
-                      'EN/FR/ES translation and cultural adaptation for software, sites, and documents.',
-                      'Traduction EN/FR/ES et adaptation culturelle pour logiciels, sites et documents.',
-                      'Traducción EN/FR/ES y adaptación cultural para software, sitios y documentos.',
-                    ),
-                    color: const Color(0xFF00838F),
-                  ),
-                  _RemoteServiceCard(
-                    icon: Icons.campaign_outlined,
-                    title: loc.tr(
-                      'Digital marketing',
-                      'Marketing numérique',
-                      'Marketing digital',
-                    ),
-                    description: loc.tr(
-                      'Social media management, SEO, ads, and content creation delivered remotely.',
-                      'Gestion de médias sociaux, référencement, publicités et création de contenu à distance.',
-                      'Gestión de redes sociales, SEO, anuncios y creación de contenido entregados de forma remota.',
-                    ),
-                    color: const Color(0xFFFF6F00),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 24),
-        _OutsourcingDetailsSection(loc: loc),
-      ],
-    );
-  }
-}
-
-class _RemoteServiceCard extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String description;
-  final Color color;
-  const _RemoteServiceCard({
-    required this.icon,
-    required this.title,
-    required this.description,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final width = MediaQuery.sizeOf(context).width;
-    final cardWidth = width < 720 ? width - 28 : 340.0;
-    return SizedBox(
-      width: cardWidth,
-      child: Card(
-        color: Colors.white,
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: color.withValues(alpha: 0.22)),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Icon(icon, color: color, size: 24),
-              ),
-              const SizedBox(height: 14),
-              Text(
-                title,
-                style: TextStyle(
-                  fontWeight: FontWeight.w900,
-                  fontSize: 17,
-                  color: color,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                description,
-                style: const TextStyle(height: 1.45, color: Colors.black54),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _OutsourcingDetailsSection extends StatelessWidget {
-  final LocaleMode loc;
-  const _OutsourcingDetailsSection({required this.loc});
-
-  @override
-  Widget build(BuildContext context) {
-    return _SectionCard(
-      title: loc.tr(
-        'OrignaTeam · Outsourcing',
-        'OrignaTeam · Externalisation',
-        'OrignaTeam · Externalización',
-      ),
-      subtitle: loc.tr(
-        'Dedicated developer for ecommerce, apps, web, mobile, and desktop.',
-        'Développeur dédié pour ecommerce, apps, web, mobile et desktop.',
-        'Desarrollador dedicado para comercio electrónico, apps, web, móvil y escritorio.',
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: _brandGreen.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: _brandGreen.withValues(alpha: 0.24)),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
-              children: [
-                Text(
-                  '1,000+ CAD',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w900,
-                    fontSize: 26,
-                    color: _brandGreen,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    loc.tr(
-                      '/ month · cancel anytime',
-                      '/ mois · annulez en tout temps',
-                      '/ mes · cancele en cualquier momento',
-                    ),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 12,
-                      color: Colors.black54,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 18),
-          Text(
-            loc.tr("What's included", 'Ce qui est inclus', 'Qué está incluido'),
-            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
-          ),
-          const SizedBox(height: 10),
-          for (final bullet in (loc == LocaleMode.fr
-              ? [
-                  'Développeur assigné à votre projet — pas de file d\'attente',
-                  'Standup quotidien avec votre développeur',
-                  'Ecommerce, apps vibe-coded, web, mobile, desktop',
-                  'Démarrage sous 48 h après paiement',
-                  '100+ heures de tests QA par mois',
-                  'Remboursement sous 24 h avant déverrouillage du dépôt',
-                ]
-              : (loc == LocaleMode.es
-                  ? [
-                      'Desarrollador dedicado asignado a su proyecto — sin fila',
-                      'Standup diario con su desarrollador',
-                      'Comercio electrónico, apps vibe-coded, web, móvil, escritorio',
-                      'Inicio dentro de 48 h después del pago',
-                      '100+ horas de cobertura de pruebas QA por mes',
-                      'Reembolso dentro de 24 h antes del desbloqueo del repositorio',
-                    ]
-                  : [
-                      'Dedicated developer assigned to your project — no queue',
-                      'Daily standup with your developer',
-                      'Ecommerce, vibe-coded apps, web, mobile, desktop',
-                      'Starts within 48 h of cleared payment',
-                      '100+ hours of QA testing coverage per month',
-                      'Refund within 24 h before repo unlock',
-                    ])))
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(top: 5, right: 8),
-                    child: Icon(
-                      Icons.check_circle,
-                      size: 16,
-                      color: _brandGreen,
-                    ),
-                  ),
-                  Expanded(
-                    child: Text(bullet, style: const TextStyle(height: 1.45)),
-                  ),
-                ],
-              ),
-            ),
-          const SizedBox(height: 18),
-          Text(
-            loc.tr(
-              'Billed separately',
-              'Frais séparés',
-              'Facturado por separado',
-            ),
-            style: const TextStyle(
-              fontWeight: FontWeight.w800,
-              fontSize: 16,
-              color: Colors.black54,
-            ),
-          ),
-          const SizedBox(height: 10),
-          for (final bullet in (loc == LocaleMode.fr
-              ? [
-                  'API et hébergement (VPS, domaines, certificats SSL)',
-                  'Tests web/mobile (environ 900 CAD)',
-                  'Mailjet, Stripe et autres intégrations tierces',
-                  'Stores (Apple Developer 119 CAD/an, Google Play 35 CAD)',
-                  'Mise à jour et maintenance au-delà de la portée convenue',
-                  'Services cloud tiers (Meilisearch, stockage, CDN)',
-                  'Travail au-delà du forfait mensuel (facturé à l\'heure)',
-                  'Toute dépense tierce liée au projet non listée ci-dessus',
-                ]
-              : (loc == LocaleMode.es
-                  ? [
-                      'API y alojamiento (VPS, dominios, certificados SSL)',
-                      'Pruebas web/móvil (aproximadamente 900 CAD)',
-                      'Mailjet, Stripe y otras integraciones de terceros',
-                      'Tiendas (Apple Developer 119 CAD/año, Google Play 35 CAD)',
-                      'Actualizaciones y mantenimiento más allá del alcance acordado',
-                      'Servicios en la nube de terceros (Meilisearch, almacenamiento, CDN)',
-                      'Trabajo más allá de la retención mensual (facturado por hora)',
-                      'Cualquier gasto de terceros relacionado con el proyecto no listado arriba',
-                    ]
-                  : [
-                      'API and hosting (VPS, domains, SSL certificates)',
-                      'Web/mobile testing (approximately 900 CAD)',
-                      'Mailjet, Stripe, and other third-party integrations',
-                      'Stores (Apple Developer 119 CAD/yr, Google Play 35 CAD)',
-                      'Updates and maintenance beyond agreed scope',
-                      'Third-party cloud services (Meilisearch, storage, CDN)',
-                      'Work beyond monthly retainer (billed hourly)',
-                      'Any project-related third-party expense not listed above',
-                    ])))
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(top: 5, right: 8),
-                    child: Icon(
-                      Icons.info_outline,
-                      size: 16,
-                      color: Colors.black38,
-                    ),
-                  ),
-                  Expanded(
-                    child: Text(
-                      bullet,
-                      style: const TextStyle(
-                        height: 1.45,
-                        color: Colors.black54,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          const SizedBox(height: 18),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: _brandGreen,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
-              onPressed: () => Navigator.of(
-                context,
-              ).pushNamed('/pay', arguments: {'serviceCode': 'origna_team'}),
-              child: Text(
-                loc.tr(
-                  'Get OrignaTeam',
-                  'Choisir OrignaTeam',
-                  'Obtener OrignaTeam',
-                ),
-                style: const TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 15,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class PartnerPage extends StatelessWidget {
-  const PartnerPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final loc = context.findAncestorWidgetOfExactType<SiteShell>()!.locale;
-    final isMobile = MediaQuery.sizeOf(context).width < 720;
-    return ListView(
-      padding: EdgeInsets.all(isMobile ? 14 : 24),
-      children: [
-        _SectionCard(
-          title: loc.tr(
-            'Partner program',
-            'Programme partenaire',
-            'Programa de socios',
-          ),
-          subtitle: loc.tr(
-            'Free OrignaLaunch + 5% of net revenue + stacked referral bonus.',
-            'OrignaLaunch gratuit + 5 % des revenus nets + bonus referral cumulatif.',
-            'OrignaLaunch gratis + 5% de ingresos netos + bono de referido acumulativo.',
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Wrap(
-                spacing: 16,
-                runSpacing: 16,
-                children: [
-                  _PartnerTierCard(
-                    tier: loc.tr('AFFILIATE', 'AFFILIÉ', 'AFILIADO'),
-                    color: const Color(0xFF5F6368),
-                    bullets: loc == LocaleMode.fr
-                        ? [
-                            'Lien de référencement unique',
-                            '50 CAD par client qualifié (500+ CAD)',
-                            'Aucun frais d\'inscription',
-                            'Rapport mensuel de performance',
-                          ]
-                        : (loc == LocaleMode.es
-                            ? [
-                                'Enlace de referido único para compartir',
-                                '50 CAD por cliente calificado (500+ CAD)',
-                                'Sin tarifa de registro',
-                                'Informe mensual de rendimiento',
-                              ]
-                            : [
-                                'Unique referral link for sharing',
-                                '50 CAD per qualified client (500+ CAD)',
-                                'No sign-up fee',
-                                'Monthly performance report',
-                              ]),
-                  ),
-                  _PartnerTierCard(
-                    tier: loc.tr('RESELLER', 'REVENDEUR', 'REVENDEDOR'),
-                    color: _brandPrimary,
-                    bullets: loc == LocaleMode.fr
-                        ? [
-                            'Tout d\'Affilié inclus',
-                            '5 % du revenu net généré',
-                            'OrignaLaunch gratuit (valeur 1 000 CAD)',
-                            'Matériel de co-marketing fourni',
-                            'Tableau de bord des revenus',
-                          ]
-                        : (loc == LocaleMode.es
-                            ? [
-                                'Todo de Afiliado incluido',
-                                '5% de ingresos netos generados',
-                                'OrignaLaunch gratis (valor de 2,000 CAD)',
-                                'Materiales de co-marketing proporcionados',
-                                'Acceso al panel de ingresos',
-                              ]
-                            : [
-                                'Everything in Affiliate included',
-                                '5% of generated net revenue',
-                                'Free OrignaLaunch (2,000 CAD value)',
-                                'Co-branded marketing materials provided',
-                                'Revenue dashboard access',
-                              ]),
-                  ),
-                  _PartnerTierCard(
-                    tier: loc.tr('STRATEGIC', 'STRATÉGIQUE', 'ESTRATÉGICO'),
-                    color: _brandGreen,
-                    bullets: loc == LocaleMode.fr
-                        ? [
-                            'Tout de Revendeur inclus',
-                            'Appels stratégiques trimestriels',
-                            'Accès anticipé aux nouvelles fonctionnalités',
-                            'Conditions de partage de revenus personnalisées',
-                            'Support prioritaire',
-                          ]
-                        : (loc == LocaleMode.es
-                            ? [
-                                'Todo de Revendedor incluido',
-                                'Llamadas de planificación estratégica trimestrales',
-                                'Acceso anticipado a nuevas funciones',
-                                'Términos personalizados de participación en ingresos',
-                                'Canal de soporte prioritario',
-                              ]
-                            : [
-                                'Everything in Reseller included',
-                                'Quarterly strategic planning calls',
-                                'Early access to new features',
-                                'Custom revenue-share terms',
-                                'Priority support channel',
-                              ]),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 18),
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Text(
-                  loc == LocaleMode.fr
-                      ? 'Le bonus referral de 50 CAD s\'empile sur le partage de revenus. Aucune limite sur le nombre de referrals. Les paiements dans les 30 jours suivant le paiement validé du client. Appliquez via SMS au $_supportPhone ou par courriel à $_supportEmail.'
-                      : (loc == LocaleMode.es
-                          ? 'El bono de referido de 50 CAD se acumula sobre la participación de ingresos. Sin límite en el número de referidos. Pago dentro de los 30 días del pago validado del cliente. Aplique por SMS al $_supportPhone o por correo a $_supportEmail.'
-                          : 'The 50 CAD referral bonus stacks on top of revenue share. No cap on the number of referrals. Payout within 30 days of the referred client\'s cleared payment. Apply by SMS at $_supportPhone or by email at $_supportEmail.'),
-                  style: const TextStyle(color: Colors.black54, height: 1.45),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _PartnerTierCard extends StatelessWidget {
-  final String tier;
-  final Color color;
-  final List<String> bullets;
-  const _PartnerTierCard({
-    required this.tier,
-    required this.color,
-    required this.bullets,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final width = MediaQuery.sizeOf(context).width;
-    final cardWidth = width < 720 ? width - 28 : 340.0;
-    return SizedBox(
-      width: cardWidth,
-      child: Card(
-        color: Colors.white,
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: color.withValues(alpha: 0.22)),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  tier,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    color: color,
-                    fontSize: 10,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              for (final bullet in bullets)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(top: 5, right: 8),
-                        child: Icon(Icons.check_circle, size: 16, color: color),
-                      ),
-                      Expanded(
-                        child: Text(
-                          bullet,
-                          style: const TextStyle(height: 1.45),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _JourneyStepper extends StatelessWidget {
-  final int step;
-  final LocaleMode loc;
-
-  const _JourneyStepper({required this.step, required this.loc});
-
-  @override
-  Widget build(BuildContext context) {
-    final labels = [
-      loc.tr('Choose package', 'Choisir le forfait', 'Elija paquete'),
-      loc.tr('Pay with Stripe', 'Payer avec Stripe', 'Pague con Stripe'),
-      loc.tr(
-        'GitHub repo invite',
-        'Invitation dépôt GitHub',
-        'Invitación al repo de GitHub',
-      ),
-    ];
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
-      ),
-      child: Wrap(
-        spacing: 12,
-        runSpacing: 12,
-        children: [
-          for (var i = 0; i < labels.length; i++)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              decoration: BoxDecoration(
-                color: i <= step
-                    ? _brandPrimary.withValues(alpha: i == step ? 0.12 : 0.08)
-                    : Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: i <= step
-                      ? _brandPrimary.withValues(alpha: 0.24)
-                      : Colors.black.withValues(alpha: 0.08),
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CircleAvatar(
-                    radius: 13,
-                    backgroundColor: i <= step ? _brandPrimary : Colors.black26,
-                    child: Text(
-                      '${i + 1}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    labels[i],
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: i <= step ? _brandDark : Colors.black54,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-        ],
       ),
     );
   }
@@ -3481,93 +2615,138 @@ class _StatusBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final color = success ? ThemeConfig.success : ThemeConfig.error;
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: success
-            ? _brandGreen.withValues(alpha: 0.10)
-            : _brandPrimary.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: success
-              ? _brandGreen.withValues(alpha: 0.24)
-              : _brandPrimary.withValues(alpha: 0.24),
-        ),
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
-      child: Text(
-        message,
-        style: TextStyle(
-          color: success ? _brandGreen : _brandPrimary,
-          fontWeight: FontWeight.w700,
-          height: 1.35,
-        ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            success ? Icons.check_circle_rounded : Icons.error_outline_rounded,
+            size: 18,
+            color: color,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(color: color, fontSize: 13, height: 1.4),
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _SectionCard extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final Widget child;
-  const _SectionCard({
-    required this.title,
-    required this.subtitle,
-    required this.child,
-  });
+class _Footer extends StatelessWidget {
+  final LocaleMode locale;
+
+  const _Footer({required this.locale});
 
   @override
   Widget build(BuildContext context) {
     final isMobile = MediaQuery.sizeOf(context).width < 720;
-    return Card(
-      elevation: 0,
-      color: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24),
-        side: BorderSide(color: Colors.black.withValues(alpha: 0.06)),
+    return Container(
+      color: const Color(0xFF06060F),
+      padding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 20 : 40,
+        vertical: isMobile ? 24 : 32,
       ),
-      child: Padding(
-        padding: EdgeInsets.all(isMobile ? 18 : 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: isMobile ? 19 : 26,
-                fontWeight: FontWeight.w900,
-                color: _brandDark,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 900),
+          child: Column(
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Row(
+                          children: [
+                            _LogoBadge(),
+                            SizedBox(width: 8),
+                            Text(
+                              'Origna Ventures',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 15,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          locale.tr(
+                            'Software services, ecommerce, retail, and wholesale.',
+                            'Services logiciels, commerce electronique, detail et gros.',
+                            'Servicios de software, comercio electronico, retail y mayorista.',
+                          ),
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.3),
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (!isMobile)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          _supportEmail,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.45),
+                            fontSize: 12,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          _supportPhone,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.3),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                ],
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              subtitle,
-              style: const TextStyle(color: Colors.black54, height: 1.45),
-            ),
-            const SizedBox(height: 18),
-            child,
-          ],
+              if (isMobile) ...[
+                const SizedBox(height: 14),
+                Text(
+                  _supportEmail,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.45),
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 24),
+              Divider(color: Colors.white.withValues(alpha: 0.07), height: 1),
+              const SizedBox(height: 16),
+              Text(
+                '© ${DateTime.now().year} Origna Ventures. All rights reserved.',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  fontSize: 12,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
       ),
-    );
-  }
-}
-
-/// Standalone /contact page — full contact form.
-class ContactPage extends StatelessWidget {
-  const ContactPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final loc = context.findAncestorWidgetOfExactType<SiteShell>()!.locale;
-    final isMobile = MediaQuery.sizeOf(context).width < 720;
-    return ListView(
-      padding: EdgeInsets.all(isMobile ? 14 : 24),
-      children: [
-        _ContactFormSection(loc: loc),
-        const SizedBox(height: 24),
-      ],
     );
   }
 }

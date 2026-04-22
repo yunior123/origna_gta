@@ -5,6 +5,7 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="description" content="Origna GTA – Your marketplace for buying and selling across the Greater Toronto Area and all of Canada. Discover products, connect with sellers, and shop securely.">
 
 
@@ -30,7 +31,7 @@
   <link rel="manifest" href="manifest.json">
 
   <!-- Stripe JS (defer to not block initial paint) -->
-  <script src="https://js.stripe.com/v3/" defer></script>
+  <script src="https://js.stripe.com/v3/" defer integrity="sha384-0sU4e96DEaZcW0cI+hzjbelrNySf8WlzA/vC6mHlyYKQV5l0wLjap1bCo0neuvPB" crossorigin="anonymous"></script>
   <!-- Guard: prevents passkeys_web plugin from crashing if bundle.js hasn't loaded yet.
        Stubs all 7 methods from interop.dart; real SDK overwrites on production load. -->
   <script>
@@ -47,7 +48,7 @@
     }
   </script>
   <!-- Passkeys Web SDK (required by passkeys_web package for WebAuthn/FIDO2) -->
-  <script src="https://github.com/corbado/flutter-passkeys/releases/download/2.4.0/bundle.js" type="application/javascript"></script>
+  <script src="https://github.com/corbado/flutter-passkeys/releases/download/2.4.0/bundle.js" type="application/javascript" integrity="sha384-lJXabVIVTplZn8Gq0rr7HchxKSYaVleDXbBqiFCwr5wJ9cQnHZGdx89nnZX9xHca" crossorigin="anonymous"></script>
 
   <!-- Cloudflare Turnstile — invisible widget for bot protection on registration.
        Site key: injected via __TURNSTILE_SITE_KEY__ at build time (CI/CD replaces placeholder).
@@ -118,17 +119,36 @@
       });
     })();
   </script>
+  <style>
+    html, body {
+      overscroll-behavior-y: none;
+      overscroll-behavior-x: none;
+      background: #0F0F1E;
+    }
+
+    body {
+      margin: 0;
+    }
+
+    @keyframes splash-load {
+      0% { transform: translateX(-110%); }
+      100% { transform: translateX(310%); }
+    }
+  </style>
 </head>
 <body>
-  <!-- Logo shown while Flutter loads — no fixed positioning, Flutter canvas paints over it -->
-  <div id="loading" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:#fff;">
-    <img src="splash/img/light-1x.png" alt="Origna GTA" width="120" height="120" style="object-fit:contain;">
-    <div style="margin-top:24px;width:140px;height:3px;background:#e8e8e8;border-radius:3px;overflow:hidden;">
-      <div style="height:100%;width:40%;background:#1a1a2e;border-radius:3px;animation:l 1s ease-in-out infinite;"></div>
+  <div id="splash" style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at top right,rgba(123,147,255,0.20),transparent 28%),radial-gradient(circle at bottom left,rgba(92,225,230,0.10),transparent 34%),linear-gradient(160deg,#0B1022 0%,#171C47 46%,#5E6AD2 100%);transition:opacity 250ms ease;">
+    <div style="width:min(88vw,420px);text-align:center;color:white;font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+      <div style="width:104px;height:104px;margin:0 auto 24px;border-radius:30px;display:grid;place-items:center;background:linear-gradient(135deg,rgba(255,255,255,0.14),rgba(255,255,255,0.06));border:1px solid rgba(255,255,255,0.18);backdrop-filter:blur(14px);box-shadow:0 24px 60px rgba(14,19,48,0.35),inset 0 1px 0 rgba(255,255,255,0.16);">
+        <img src="icons/Icon-192.png" alt="Origna GTA" style="width:60px;height:60px;object-fit:contain;filter:drop-shadow(0 10px 22px rgba(0,0,0,0.20));">
+      </div>
+      <h1 style="margin:0;font-size:30px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:rgba(255,255,255,0.97);">Origna GTA</h1>
+      <p style="margin:12px auto 0;max-width:340px;font-size:13px;line-height:1.6;color:rgba(255,255,255,0.68);letter-spacing:0.01em;">Marketplace commerce with a cleaner, faster launch experience across the Greater Toronto Area and all of Canada.</p>
+      <div style="width:min(70vw,240px);height:4px;margin:20px auto 0;border-radius:999px;overflow:hidden;background:rgba(255,255,255,0.12);">
+        <div style="width:50%;height:100%;border-radius:999px;background:linear-gradient(90deg,#7B93FF,#9FAEFF,#5CE1E6);animation:splash-load 1.15s ease-in-out infinite;"></div>
+      </div>
     </div>
-    <style>@keyframes l{0%{transform:translateX(-100%)}100%{transform:translateX(350%)}}</style>
   </div>
-
   <!-- Cloudflare Turnstile invisible widget mount point (hidden, 0×0) -->
   <div id="cf-turnstile-container" style="position:absolute;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none;" aria-hidden="true"></div>
 
@@ -140,15 +160,19 @@
   </nav>
 
   <script src="flutter_bootstrap.js" async></script>
-  <script>
-    (function () {
-      function hideSplash() {
-        var el = document.getElementById('loading');
-        if (el) el.style.display = 'none';
-      }
-      window.addEventListener('flutter-first-frame', hideSplash);
-      setTimeout(hideSplash, 8000); // 8s fallback for slow cold loads
-    })();
-  </script>
+<script>
+  (function () {
+    function removeSplash() {
+      var el = document.getElementById('splash');
+      if (!el) return;
+      el.style.opacity = '0';
+      el.style.pointerEvents = 'none';
+      setTimeout(function () { el.remove(); }, 260);
+    }
+
+    window.addEventListener('flutter-first-frame', removeSplash);
+    setTimeout(removeSplash, 8000);
+  })();
+</script>
 </body>
 </html>

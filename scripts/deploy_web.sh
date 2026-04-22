@@ -24,7 +24,7 @@ case "$ENV" in
   dev)
     ORIGNABASE_URL="https://api.dev.orignagta.ca"
     TURNSTILE_KEY="1x00000000000000000000AA"
-    BUILD_MODE="--debug"
+    BUILD_MODE="--profile"
     EXTRA_DART_DEFINES=(--dart-define=FORCE_SEMANTICS=true)
     ;;
   staging)
