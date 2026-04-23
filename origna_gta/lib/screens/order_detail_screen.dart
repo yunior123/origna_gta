@@ -2,6 +2,7 @@ import 'package:origna_gta/utils/preview_helpers.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/features/orders/orders_provider.dart';
 import 'package:origna_gta/models/generated/base_models.dart' as generated_base;
@@ -30,7 +31,7 @@ class OrderDetailScreen extends ConsumerWidget {
     return OrderDetailScreenLayout(
       orderAsync: orderAsync,
       onRefresh: () => ref.invalidate(orderByIdProvider(orderId)),
-      onBack: () => Navigator.of(context).pop(),
+      onBack: () => appPopOrGo(context, AppRoutes.orders),
     );
   }
 }

@@ -6,6 +6,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:origna_gta/core/lifecycle_provider.dart';
 import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:origna_gta/core/providers.dart';
@@ -15,6 +16,7 @@ import 'package:origna_gta/core/theme_provider.dart';
 // Deferred imports for code splitting — reduces initial JS bundle on Flutter Web
 import 'package:origna_gta/features/admin/admin_panel_screen.dart'
     deferred as admin_panel;
+import 'package:origna_gta/features/admin/tabs/admin_sellers_tab.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:origna_gta/features/orders/orders_provider.dart';
 import 'package:origna_gta/features/products/products_provider.dart';
@@ -75,7 +77,6 @@ import 'package:origna_gta/services/session_timeout_service.dart';
 import 'package:origna_gta/services/web_auth_redirect_stub.dart'
     if (dart.library.js_interop) 'package:origna_gta/services/web_auth_redirect_web.dart';
 import 'package:origna_gta/utils/app_logger.dart';
-import 'package:origna_gta/utils/animations.dart';
 import 'package:origna_gta/utils/deferred_widget.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/utils.dart';
@@ -87,636 +88,291 @@ import 'package:origna_gta/widgets/update_required_dialog.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:origna_gta/widgets/cookie_consent_banner.dart';
 
-/// Handle initial route from URL (critical for web redirects from Stripe)
-List<Route<dynamic>> _onGenerateInitialRoutes(String initialRoute) {
-  AppLogger.d('Initial route: $initialRoute', tag: 'router');
+final _validResetPasswordOobCode = RegExp(r'^[A-Za-z0-9\-_]{10,512}$');
 
-  // On Web, Uri.base contains the full URL with query parameters which Flutter
-  // sometimes omits from the initialRoute string depending on the lifecycle.
-  final uri = kIsWeb ? Uri.base : Uri.tryParse(initialRoute);
-
-  if (uri != null) {
-    AppLogger.d(
-      'Parsed URI path: ${uri.path}, query: ${uri.queryParameters}',
-      tag: 'router',
-    );
-  }
-
-  // Handle auth action URLs (like password reset)
-  if (uri != null &&
-      uri.queryParameters[DeepLinkParams.mode] ==
-          DeepLinkParams.modeResetPassword) {
-    final oobCode = uri.queryParameters[DeepLinkParams.oobCode];
-    final validOobCode = RegExp(r'^[A-Za-z0-9\-_]{10,512}$');
-    if (oobCode != null && validOobCode.hasMatch(oobCode)) {
-      return [
-        SlidePageRoute(page: const AuthWrapper()),
-        SlidePageRoute(page: ResetPasswordScreen(oobCode: oobCode)),
-      ];
-    }
-  }
-
-  // Handle product by slug deep link (/p/{slug})
-  if (uri != null && uri.path.startsWith('${AppRoutes.productBySlug}/')) {
-    final slug = uri.path.substring('${AppRoutes.productBySlug}/'.length);
-    if (slug.isNotEmpty) {
-      return [
-        SlidePageRoute(page: const AuthWrapper()),
-        SlidePageRoute(
-          settings: RouteSettings(name: initialRoute),
-          page: _ProductBySlugScreen(slug: slug),
-        ),
-      ];
-    }
-  }
-
-  // Handle product by ID deep link (/product/{id}) — used by E2E tests
-  if (uri != null && uri.path.startsWith('${AppRoutes.productById}/')) {
-    final productId = uri.path.substring('${AppRoutes.productById}/'.length);
-    if (productId.isNotEmpty) {
-      return [
-        SlidePageRoute(page: const AuthWrapper()),
-        SlidePageRoute(
-          settings: RouteSettings(name: initialRoute),
-          page: ProductDetailScreen(productId: productId),
-        ),
-      ];
-    }
-  }
-
-  // Handle payment success redirect from Stripe
-  if (uri != null &&
-      (uri.path == AppRoutes.paymentSuccess ||
-          uri.path.endsWith(AppRoutes.paymentSuccess))) {
-    final sessionId = uri.queryParameters[DeepLinkParams.sessionId];
-    if (sessionId != null && sessionId.isNotEmpty) {
-      return [
-        SlidePageRoute(page: const AuthWrapper()),
-        SlidePageRoute(
-          page: AuthRequiredGate(child: OrderSuccessGate(sessionId: sessionId)),
-        ),
-      ];
-    }
-    return [
-      SlidePageRoute(page: const AuthWrapper()),
-      SlidePageRoute(
-        page: ErrorScreen(message: 'errors.invalid_payment_link'.tr()),
-      ),
-    ];
-  }
-
-  // Handle privacy policy route
-  if (uri != null && uri.path == AppRoutes.privacyPolicy) {
-    return [
-      SlidePageRoute(page: const AuthWrapper()),
-      SlidePageRoute(
-        page: DeferredWidget(
-          loader: privacy.loadLibrary,
-          builder: () => privacy.PrivacyPolicyScreen(),
-        ),
-      ),
-    ];
-  }
-  if (uri != null && uri.path == AppRoutes.termsOfService) {
-    return [
-      SlidePageRoute(page: const AuthWrapper()),
-      SlidePageRoute(
-        page: DeferredWidget(
-          loader: terms.loadLibrary,
-          builder: () => terms.TermsOfServiceScreen(),
-        ),
-      ),
-    ];
-  }
-
-  // Handle payment cancellation redirect
-  if (uri != null && uri.path == AppRoutes.paymentCancel) {
-    return [
-      SlidePageRoute(page: const AuthWrapper()),
-      SlidePageRoute(
-        page: const AuthRequiredGate(child: PaymentCanceledScreen()),
-      ),
-    ];
-  }
-
-  // Handle subscription success redirect from Stripe
-  if (uri != null && uri.path == AppRoutes.subscriptionSuccess) {
-    return [
-      SlidePageRoute(page: const AuthWrapper()),
-      SlidePageRoute(
-        settings: RouteSettings(name: initialRoute),
-        page: const AuthRequiredGate(child: SubscriptionSuccessScreen()),
-      ),
-    ];
-  }
-
-  // Handle subscription cancel redirect from Stripe
-  if (uri != null && uri.path == AppRoutes.subscriptionCancel) {
-    return [
-      SlidePageRoute(page: const AuthWrapper()),
-      SlidePageRoute(
-        settings: RouteSettings(name: initialRoute),
-        page: const AuthRequiredGate(child: SubscriptionCancelScreen()),
-      ),
-    ];
-  }
-
-  // Handle seller registration return from Stripe Connect
-  if (uri != null && uri.path == AppRoutes.sellerReturn) {
-    if (!FeatureFlags.kSellerOnboardingEnabled) {
-      return [SlidePageRoute(page: const AuthWrapper())];
-    }
-    return [
-      SlidePageRoute(page: const AuthWrapper()),
-      SlidePageRoute(
-        page: const AuthRequiredGate(child: SellerSetupCompleteScreen()),
-      ),
-    ];
-  }
-
-  // Handle seller registration refresh (user needs to retry)
-  if (uri != null && uri.path == AppRoutes.sellerRefresh) {
-    if (!FeatureFlags.kSellerOnboardingEnabled) {
-      return [SlidePageRoute(page: const AuthWrapper())];
-    }
-    return [
-      SlidePageRoute(page: const AuthWrapper()),
-      SlidePageRoute(
-        page: const AuthRequiredGate(child: SellerSetupRefreshScreen()),
-      ),
-    ];
-  }
-
-  // Handle Admin Panel direct access (to ensure AdminRequiredGate takes effect)
-  if (uri != null && uri.path == AppRoutes.adminPanel) {
-    return [
-      SlidePageRoute(page: const AuthWrapper()),
-      SlidePageRoute(
-        page: AuthRequiredGate(
-          child: AdminRequiredGate(
-            child: DeferredWidget(
-              loader: admin_panel.loadLibrary,
-              builder: () => admin_panel.AdminPanelScreen(),
-            ),
-          ),
-        ),
-      ),
-    ];
-  }
-
-  // Handle any other registered route as a deep link so direct URL navigation works.
-  // Push AuthWrapper (home) as the base, then the target route on top.
-  if (uri != null && uri.path.isNotEmpty && uri.path != AppRoutes.home) {
-    final route = _onGenerateRoute(RouteSettings(name: uri.toString()));
-    if (route != null) {
-      return [SlidePageRoute(page: const AuthWrapper()), route];
-    }
-  }
-
-  // Default: show AuthWrapper (home)
-  return [SlidePageRoute(page: const AuthWrapper())];
+GoRoute _appRoute({
+  required String path,
+  required Widget Function(GoRouterState state) builder,
+  bool animated = true,
+}) {
+  return GoRoute(
+    path: path,
+    pageBuilder: (context, state) =>
+        _buildRouterPage(state, builder(state), animated: animated),
+  );
 }
 
-Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
-  final uri = Uri.tryParse(settings.name ?? '');
-
-  if (uri == null) return null;
-
-  // Handle auth action URLs (like password reset) dynamically via deep links
-  if (uri.queryParameters[DeepLinkParams.mode] ==
-      DeepLinkParams.modeResetPassword) {
-    final oobCode = uri.queryParameters[DeepLinkParams.oobCode];
-    final validOobCode = RegExp(r'^[A-Za-z0-9\-_]{10,512}$');
-    if (oobCode != null && validOobCode.hasMatch(oobCode)) {
-      return SlidePageRoute(
-        settings: settings,
-        page: ResetPasswordScreen(oobCode: oobCode),
-      );
-    }
+Widget _buildHomeScreen(GoRouterState state) {
+  final oobCode = state.uri.queryParameters[DeepLinkParams.oobCode];
+  if (state.uri.queryParameters[DeepLinkParams.mode] ==
+          DeepLinkParams.modeResetPassword &&
+      oobCode != null &&
+      _validResetPasswordOobCode.hasMatch(oobCode)) {
+    return ResetPasswordScreen(oobCode: oobCode);
   }
+  return const AuthWrapper();
+}
 
-  // Handle home route - used when navigating back from deep links
-  if (uri.path == AppRoutes.home || uri.path.isEmpty) {
-    return SlidePageRoute(
-      settings: const RouteSettings(name: '/'),
-      page: const AuthWrapper(),
-    );
+Widget _buildFeatureFlaggedSellerScreen(Widget child) {
+  if (!FeatureFlags.kSellerOnboardingEnabled) {
+    return const AuthWrapper();
   }
+  return AuthRequiredGate(child: child);
+}
 
-  // Handle privacy policy route
-  if (uri.path == AppRoutes.privacyPolicy) {
-    return SlidePageRoute(
-      page: DeferredWidget(
+List<RouteBase> _buildAppRoutes() {
+  return [
+    _appRoute(path: AppRoutes.home, builder: _buildHomeScreen, animated: false),
+    _appRoute(
+      path: AppRoutes.privacyPolicy,
+      builder: (_) => DeferredWidget(
         loader: privacy.loadLibrary,
         builder: () => privacy.PrivacyPolicyScreen(),
       ),
-    );
-  }
-  if (uri.path == AppRoutes.termsOfService) {
-    return SlidePageRoute(
-      page: DeferredWidget(
+    ),
+    _appRoute(
+      path: AppRoutes.termsOfService,
+      builder: (_) => DeferredWidget(
         loader: terms.loadLibrary,
         builder: () => terms.TermsOfServiceScreen(),
       ),
-    );
-  }
-
-  // Handle payment success deep link
-  if (uri.path == AppRoutes.paymentSuccess) {
-    final sessionId = uri.queryParameters[DeepLinkParams.sessionId];
-
-    if (sessionId == null || sessionId.isEmpty) {
-      return SlidePageRoute(
-        page: ErrorScreen(message: 'errors.invalid_payment_link'.tr()),
-      );
-    }
-
-    return SlidePageRoute(
-      page: AuthRequiredGate(child: OrderSuccessGate(sessionId: sessionId)),
-    );
-  }
-
-  // Handle payment cancellation deep link
-  if (uri.path == AppRoutes.paymentCancel) {
-    return SlidePageRoute(
-      page: const AuthRequiredGate(child: PaymentCanceledScreen()),
-    );
-  }
-
-  // Handle seller registration return
-  if (uri.path == AppRoutes.sellerReturn) {
-    if (!FeatureFlags.kSellerOnboardingEnabled) {
-      return SlidePageRoute(page: const AuthWrapper());
-    }
-    return SlidePageRoute(
-      page: const AuthRequiredGate(child: SellerSetupCompleteScreen()),
-    );
-  }
-
-  // Handle seller registration refresh
-  if (uri.path == AppRoutes.sellerRefresh) {
-    if (!FeatureFlags.kSellerOnboardingEnabled) {
-      return SlidePageRoute(page: const AuthWrapper());
-    }
-    return SlidePageRoute(
-      page: const AuthRequiredGate(child: SellerSetupRefreshScreen()),
-    );
-  }
-
-  // /p/{slug} — shareable product deep link
-  if (uri.path.startsWith('${AppRoutes.productBySlug}/')) {
-    final slug = uri.path.substring('${AppRoutes.productBySlug}/'.length);
-    if (slug.isNotEmpty) {
-      return SlidePageRoute(
-        settings: settings,
-        page: _ProductBySlugScreen(slug: slug),
-      );
-    }
-  }
-
-  // /product/{id} — product detail by ID (E2E deep link, notification taps)
-  if (uri.path.startsWith('${AppRoutes.productById}/')) {
-    final productId = uri.path.substring('${AppRoutes.productById}/'.length);
-    final args = settings.arguments as ProductDetailsArgs?;
-    if (productId.isNotEmpty) {
-      return SlidePageRoute(
-        settings: settings,
-        page: ProductDetailScreen(productId: productId, product: args?.product),
-      );
-    }
-  }
-
-  // Login screen
-  if (uri.path == AppRoutes.login) {
-    return SlidePageRoute(settings: settings, page: const LoginScreen());
-  }
-
-  // MFA Challenge screen
-  if (uri.path == AppRoutes.mfaChallenge) {
-    final args = settings.arguments as MfaChallengeArgs?;
-    if (args == null) {
-      return SlidePageRoute(
-        settings: const RouteSettings(name: '/'),
-        page: const AuthWrapper(),
-      );
-    }
-    return SlidePageRoute(
-      settings: settings,
-      page: MfaChallengeScreen(challengeToken: args.challengeToken),
-    );
-  }
-
-  // MFA Setup screen
-  if (uri.path == AppRoutes.mfaSetup) {
-    return SlidePageRoute(
-      settings: settings,
-      page: const AuthRequiredGate(child: MfaSetupScreen()),
-    );
-  }
-
-  // Security Settings screen
-  if (uri.path == AppRoutes.securitySettings) {
-    return SlidePageRoute(
-      settings: settings,
-      page: const AuthRequiredGate(child: SecuritySettingsScreen()),
-    );
-  }
-
-  // Cart screen
-  if (uri.path == AppRoutes.cart) {
-    return SlidePageRoute(
-      settings: settings,
-      page: const AuthRequiredGate(child: CartScreen()),
-    );
-  }
-
-  // Profile screen
-  if (uri.path == AppRoutes.profile) {
-    return SlidePageRoute(
-      settings: settings,
-      page: const AuthRequiredGate(child: ProfileScreen()),
-    );
-  }
-
-  // Orders screen
-  if (uri.path == AppRoutes.orders) {
-    return SlidePageRoute(
-      settings: settings,
-      page: const AuthRequiredGate(child: OrdersScreen()),
-    );
-  }
-
-  // Order Detail screen
-  if (uri.path == AppRoutes.orderDetail) {
-    // Accept orderId from typed args or query params (for deep-links)
-    final args = settings.arguments as OrderDetailArgs?;
-    final orderId =
-        args?.orderId ?? uri.queryParameters[DeepLinkParams.orderId];
-    if (orderId == null || orderId.isEmpty) {
-      return SlidePageRoute(
-        settings: settings,
-        page: const AuthRequiredGate(child: OrdersScreen()),
-      );
-    }
-    return SlidePageRoute(
-      settings: settings,
-      page: AuthRequiredGate(child: OrderDetailScreen(orderId: orderId)),
-    );
-  }
-
-  // Return Request screen
-  if (uri.path == AppRoutes.returnRequest) {
-    final args = settings.arguments as ReturnRequestArgs?;
-    final orderId =
-        args?.orderId ?? uri.queryParameters[DeepLinkParams.orderId];
-    if (orderId == null || orderId.isEmpty) {
-      return SlidePageRoute(
-        settings: settings,
-        page: const AuthRequiredGate(child: OrdersScreen()),
-      );
-    }
-    return SlidePageRoute(
-      settings: settings,
-      page: AuthRequiredGate(child: ReturnRequestScreen(orderId: orderId)),
-    );
-  }
-
-  // Add Product screen
-  if (uri.path == AppRoutes.addProduct) {
-    return SlidePageRoute(
-      settings: settings,
-      page: AuthRequiredGate(
+    ),
+    _appRoute(
+      path: AppRoutes.paymentSuccess,
+      builder: (state) {
+        final sessionId = state.uri.queryParameters[DeepLinkParams.sessionId];
+        if (sessionId == null || sessionId.isEmpty) {
+          return ErrorScreen(message: 'errors.invalid_payment_link'.tr());
+        }
+        return AuthRequiredGate(child: OrderSuccessGate(sessionId: sessionId));
+      },
+    ),
+    _appRoute(
+      path: AppRoutes.paymentCancel,
+      builder: (_) => const AuthRequiredGate(child: PaymentCanceledScreen()),
+    ),
+    _appRoute(
+      path: AppRoutes.sellerReturn,
+      builder: (_) =>
+          _buildFeatureFlaggedSellerScreen(const SellerSetupCompleteScreen()),
+    ),
+    _appRoute(
+      path: AppRoutes.sellerRefresh,
+      builder: (_) =>
+          _buildFeatureFlaggedSellerScreen(const SellerSetupRefreshScreen()),
+    ),
+    _appRoute(
+      path: AppRoutes.productBySlugPattern,
+      builder: (state) => _ProductBySlugScreen(
+        slug: state.pathParameters[AppRoutes.productSlugParam]!,
+      ),
+    ),
+    _appRoute(
+      path: AppRoutes.productByIdPattern,
+      builder: (state) {
+        final args = state.extra as ProductDetailsArgs?;
+        return ProductDetailScreen(
+          productId: state.pathParameters[AppRoutes.productIdParam]!,
+          product: args?.product,
+        );
+      },
+    ),
+    _appRoute(path: AppRoutes.login, builder: (_) => const LoginScreen()),
+    _appRoute(
+      path: AppRoutes.mfaChallenge,
+      builder: (state) {
+        final args = state.extra as MfaChallengeArgs?;
+        if (args == null) return const AuthWrapper();
+        return MfaChallengeScreen(challengeToken: args.challengeToken);
+      },
+    ),
+    _appRoute(
+      path: AppRoutes.mfaSetup,
+      builder: (_) => const AuthRequiredGate(child: MfaSetupScreen()),
+    ),
+    _appRoute(
+      path: AppRoutes.securitySettings,
+      builder: (_) => const AuthRequiredGate(child: SecuritySettingsScreen()),
+    ),
+    _appRoute(
+      path: AppRoutes.cart,
+      builder: (_) => const AuthRequiredGate(child: CartScreen()),
+    ),
+    _appRoute(
+      path: AppRoutes.profile,
+      builder: (_) => const AuthRequiredGate(child: ProfileScreen()),
+    ),
+    _appRoute(
+      path: AppRoutes.orders,
+      builder: (_) => const AuthRequiredGate(child: OrdersScreen()),
+    ),
+    _appRoute(
+      path: AppRoutes.orderDetail,
+      builder: (state) {
+        final args = state.extra as OrderDetailArgs?;
+        final orderId =
+            args?.orderId ?? state.uri.queryParameters[DeepLinkParams.orderId];
+        if (orderId == null || orderId.isEmpty) {
+          return const AuthRequiredGate(child: OrdersScreen());
+        }
+        return AuthRequiredGate(child: OrderDetailScreen(orderId: orderId));
+      },
+    ),
+    _appRoute(
+      path: AppRoutes.returnRequest,
+      builder: (state) {
+        final args = state.extra as ReturnRequestArgs?;
+        final orderId =
+            args?.orderId ?? state.uri.queryParameters[DeepLinkParams.orderId];
+        if (orderId == null || orderId.isEmpty) {
+          return const AuthRequiredGate(child: OrdersScreen());
+        }
+        return AuthRequiredGate(child: ReturnRequestScreen(orderId: orderId));
+      },
+    ),
+    _appRoute(
+      path: AppRoutes.addProduct,
+      builder: (_) => AuthRequiredGate(
         child: DeferredWidget(
           loader: add_product.loadLibrary,
           builder: () => add_product.AddProductScreen(),
         ),
       ),
-    );
-  }
-
-  // Edit Product screen
-  if (uri.path == AppRoutes.editProduct) {
-    final args = settings.arguments as EditProductArgs?;
-    if (args == null) {
-      return SlidePageRoute(
-        settings: const RouteSettings(name: '/'),
-        page: const AuthWrapper(),
-      );
-    }
-    return SlidePageRoute(
-      settings: settings,
-      page: AuthRequiredGate(
-        child: DeferredWidget(
-          loader: edit_product.loadLibrary,
-          builder: () => edit_product.EditProductScreen(product: args.product),
-        ),
-      ),
-    );
-  }
-
-  // Product Details screen
-  if (uri.path == AppRoutes.productDetails) {
-    final args = settings.arguments as ProductDetailsArgs?;
-    if (args == null) {
-      return SlidePageRoute(
-        settings: const RouteSettings(name: '/'),
-        page: const AuthWrapper(),
-      );
-    }
-    return SlidePageRoute(
-      settings: settings,
-      page: ProductDetailScreen(
-        productId: args.productId,
-        product: args.product,
-      ),
-    );
-  }
-
-  // Address Management screen
-  if (uri.path == AppRoutes.addressManagement) {
-    return SlidePageRoute(
-      settings: settings,
-      page: const AuthRequiredGate(child: AddressManagementScreen()),
-    );
-  }
-
-  // Add/Edit Address screen
-  if (uri.path == AppRoutes.addEditAddress) {
-    final address = settings.arguments as Address?;
-    return SlidePageRoute(
-      settings: settings,
-      page: AuthRequiredGate(child: AddEditAddressScreen(address: address)),
-    );
-  }
-
-  // Checkout screen
-  if (uri.path == AppRoutes.checkout) {
-    final args = settings.arguments as CheckoutArgs?;
-    if (args == null) {
-      return SlidePageRoute(
-        settings: const RouteSettings(name: '/'),
-        page: const AuthWrapper(),
-      );
-    }
-    return SlidePageRoute(
-      settings: settings,
-      page: AuthRequiredGate(
-        child: DeferredWidget(
-          loader: checkout.loadLibrary,
-          builder: () => checkout.CheckoutScreen(
-            items: args.items,
-            totalCents: args.totalCents,
+    ),
+    _appRoute(
+      path: AppRoutes.editProduct,
+      builder: (state) {
+        final args = state.extra as EditProductArgs?;
+        if (args == null) return const AuthWrapper();
+        return AuthRequiredGate(
+          child: DeferredWidget(
+            loader: edit_product.loadLibrary,
+            builder: () =>
+                edit_product.EditProductScreen(product: args.product),
           ),
-        ),
+        );
+      },
+    ),
+    _appRoute(
+      path: AppRoutes.productDetails,
+      builder: (state) {
+        final args = state.extra as ProductDetailsArgs?;
+        if (args == null) return const AuthWrapper();
+        return ProductDetailScreen(
+          productId: args.productId,
+          product: args.product,
+        );
+      },
+    ),
+    _appRoute(
+      path: AppRoutes.addressManagement,
+      builder: (_) => const AuthRequiredGate(child: AddressManagementScreen()),
+    ),
+    _appRoute(
+      path: AppRoutes.addEditAddress,
+      builder: (state) => AuthRequiredGate(
+        child: AddEditAddressScreen(address: state.extra as Address?),
       ),
-    );
-  }
-
-  // Order Success screen (internal post-payment navigation)
-  if (uri.path == AppRoutes.orderSuccess) {
-    final orderId = settings.arguments as String?;
-    if (orderId == null) {
-      return SlidePageRoute(
-        settings: const RouteSettings(name: '/'),
-        page: const AuthWrapper(),
-      );
-    }
-    return SlidePageRoute(
-      settings: settings,
-      page: AuthRequiredGate(child: OrderSuccessScreen(orderId: orderId)),
-    );
-  }
-
-  // Shipping Approval screen
-  if (uri.path == AppRoutes.shippingApproval) {
-    return SlidePageRoute(
-      settings: settings,
-      page: AuthRequiredGate(
+    ),
+    _appRoute(
+      path: AppRoutes.checkout,
+      builder: (state) {
+        final args = state.extra as CheckoutArgs?;
+        if (args == null) return const AuthWrapper();
+        return AuthRequiredGate(
+          child: DeferredWidget(
+            loader: checkout.loadLibrary,
+            builder: () => checkout.CheckoutScreen(
+              items: args.items,
+              totalCents: args.totalCents,
+            ),
+          ),
+        );
+      },
+    ),
+    _appRoute(
+      path: AppRoutes.orderSuccess,
+      builder: (state) {
+        final orderId = state.extra as String?;
+        if (orderId == null || orderId.isEmpty) return const AuthWrapper();
+        return AuthRequiredGate(child: OrderSuccessScreen(orderId: orderId));
+      },
+    ),
+    _appRoute(
+      path: AppRoutes.shippingApproval,
+      builder: (_) => AuthRequiredGate(
         child: DeferredWidget(
           loader: shipping_approval.loadLibrary,
           builder: () => shipping_approval.ShippingApprovalScreen(),
         ),
       ),
-    );
-  }
-
-  // Seller Registration screen
-  if (uri.path == AppRoutes.sellerRegistration) {
-    if (!FeatureFlags.kSellerOnboardingEnabled) {
-      return SlidePageRoute(page: const AuthWrapper());
-    }
-    return SlidePageRoute(
-      settings: settings,
-      page: AuthRequiredGate(
-        child: DeferredWidget(
+    ),
+    _appRoute(
+      path: AppRoutes.sellerRegistration,
+      builder: (_) => _buildFeatureFlaggedSellerScreen(
+        DeferredWidget(
           loader: seller_reg.loadLibrary,
           builder: () => seller_reg.SellerRegistrationScreen(),
         ),
       ),
-    );
-  }
-
-  // Seller Orders screen
-  if (uri.path == AppRoutes.sellerOrders) {
-    if (!FeatureFlags.kSellerOnboardingEnabled) {
-      return SlidePageRoute(page: const AuthWrapper());
-    }
-    return SlidePageRoute(
-      settings: settings,
-      page: AuthRequiredGate(
-        child: DeferredWidget(
+    ),
+    _appRoute(
+      path: AppRoutes.sellerOrders,
+      builder: (_) => _buildFeatureFlaggedSellerScreen(
+        DeferredWidget(
           loader: seller_orders.loadLibrary,
           builder: () => seller_orders.SellerOrdersScreen(),
         ),
       ),
-    );
-  }
-
-  // Seller Products screen
-  if (uri.path == AppRoutes.sellerProducts) {
-    if (!FeatureFlags.kSellerOnboardingEnabled) {
-      return SlidePageRoute(page: const AuthWrapper());
-    }
-    return SlidePageRoute(
-      settings: settings,
-      page: AuthRequiredGate(
-        child: DeferredWidget(
+    ),
+    _appRoute(
+      path: AppRoutes.sellerProducts,
+      builder: (_) => _buildFeatureFlaggedSellerScreen(
+        DeferredWidget(
           loader: seller_products.loadLibrary,
           builder: () => seller_products.SellerProductsScreen(),
         ),
       ),
-    );
-  }
-
-  // Seller Warehouses screen
-  if (uri.path == AppRoutes.sellerWarehouses) {
-    if (!FeatureFlags.kSellerOnboardingEnabled) {
-      return SlidePageRoute(page: const AuthWrapper());
-    }
-    return SlidePageRoute(
-      settings: settings,
-      page: AuthRequiredGate(
-        child: DeferredWidget(
+    ),
+    _appRoute(
+      path: AppRoutes.sellerWarehouses,
+      builder: (_) => _buildFeatureFlaggedSellerScreen(
+        DeferredWidget(
           loader: seller_warehouses.loadLibrary,
           builder: () => seller_warehouses.SellerWarehousesScreen(),
         ),
       ),
-    );
-  }
-
-  // Seller bulk upload screen
-  if (uri.path == AppRoutes.sellerBulkUpload) {
-    if (!FeatureFlags.kSellerOnboardingEnabled) {
-      return SlidePageRoute(page: const AuthWrapper());
-    }
-    return SlidePageRoute(
-      settings: settings,
-      page: AuthRequiredGate(
-        child: DeferredWidget(
+    ),
+    _appRoute(
+      path: AppRoutes.sellerBulkUpload,
+      builder: (_) => _buildFeatureFlaggedSellerScreen(
+        DeferredWidget(
           loader: seller_bulk_upload.loadLibrary,
           builder: () => seller_bulk_upload.BulkUploadScreen(),
         ),
       ),
-    );
-  }
-
-  // Seller Integration Guide
-  if (uri.path == AppRoutes.sellerIntegration) {
-    if (!FeatureFlags.kSellerOnboardingEnabled) {
-      return SlidePageRoute(page: const AuthWrapper());
-    }
-    return SlidePageRoute(
-      settings: settings,
-      page: AuthRequiredGate(
-        child: DeferredWidget(
+    ),
+    _appRoute(
+      path: AppRoutes.sellerIntegration,
+      builder: (_) => _buildFeatureFlaggedSellerScreen(
+        DeferredWidget(
           loader: seller_integration.loadLibrary,
           builder: () => seller_integration.SellerIntegrationScreen(),
         ),
       ),
-    );
-  }
-
-  // Seller Analytics dashboard
-  if (uri.path == AppRoutes.sellerAnalytics) {
-    if (!FeatureFlags.kSellerOnboardingEnabled) {
-      return SlidePageRoute(page: const AuthWrapper());
-    }
-    return SlidePageRoute(
-      settings: settings,
-      page: AuthRequiredGate(
-        child: DeferredWidget(
+    ),
+    _appRoute(
+      path: AppRoutes.sellerAnalytics,
+      builder: (_) => _buildFeatureFlaggedSellerScreen(
+        DeferredWidget(
           loader: seller_analytics.loadLibrary,
           builder: () => seller_analytics.SellerAnalyticsScreen(),
         ),
       ),
-    );
-  }
-
-  // Admin Panel screen — requires admin role verification
-  if (uri.path == AppRoutes.adminPanel) {
-    return SlidePageRoute(
-      settings: settings,
-      page: AuthRequiredGate(
+    ),
+    _appRoute(
+      path: AppRoutes.adminPanel,
+      builder: (_) => AuthRequiredGate(
         child: AdminRequiredGate(
           child: DeferredWidget(
             loader: admin_panel.loadLibrary,
@@ -724,106 +380,112 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
           ),
         ),
       ),
-    );
-  }
-
-  // Favorites screen
-  if (uri.path == AppRoutes.favorites) {
-    return SlidePageRoute(
-      settings: settings,
-      page: const AuthRequiredGate(child: FavoritesScreen()),
-    );
-  }
-
-  // Subscription screen
-  if (uri.path == AppRoutes.subscription) {
-    return SlidePageRoute(
-      settings: settings,
-      page: const AuthRequiredGate(child: SubscriptionScreen()),
-    );
-  }
-
-  // Subscription success (redirect from Stripe)
-  if (uri.path == AppRoutes.subscriptionSuccess) {
-    return SlidePageRoute(
-      settings: settings,
-      page: const AuthRequiredGate(child: SubscriptionSuccessScreen()),
-    );
-  }
-
-  // Subscription cancel (redirect from Stripe)
-  if (uri.path == AppRoutes.subscriptionCancel) {
-    return SlidePageRoute(
-      settings: settings,
-      page: const AuthRequiredGate(child: SubscriptionCancelScreen()),
-    );
-  }
-
-  // Chat screen
-  if (uri.path == AppRoutes.chat) {
-    final args = settings.arguments as ChatArgs?;
-    // Support deep-link via URL query params: /chat?productId=X&productTitle=Y
-    final resolvedArgs =
-        args ??
-        (uri.queryParameters.containsKey(DeepLinkParams.productId)
-            ? ChatArgs(
-                productId: uri.queryParameters[DeepLinkParams.productId]!,
-                productTitle:
-                    uri.queryParameters[DeepLinkParams.productTitle] ?? '',
-              )
-            : null);
-    if (resolvedArgs == null) {
-      return SlidePageRoute(
-        settings: const RouteSettings(name: '/'),
-        page: const AuthWrapper(),
-      );
-    }
-    return SlidePageRoute(
-      settings: settings,
-      page: AuthRequiredGate(
-        child: ChatScreen(
-          productId: resolvedArgs.productId,
-          productTitle: resolvedArgs.productTitle,
+    ),
+    _appRoute(
+      path: AppRoutes.adminSellerProductsPattern,
+      builder: (state) => AuthRequiredGate(
+        child: AdminRequiredGate(
+          child: AdminSellerProductsScreen(
+            sellerId: state.pathParameters[AppRoutes.sellerIdParam]!,
+            sellerName: state.uri.queryParameters['name'] ?? '',
+          ),
         ),
       ),
-    );
-  }
-
-  if (uri.path == AppRoutes.chatInbox) {
-    return SlidePageRoute(
-      settings: settings,
-      page: const AuthRequiredGate(child: ChatConversationsScreen()),
-    );
-  }
-
-  if (uri.path == AppRoutes.notifications) {
-    return SlidePageRoute(
-      settings: settings,
-      page: const AuthRequiredGate(child: NotificationsScreen()),
-    );
-  }
-
-  // Customer Support screen
-  if (uri.path == AppRoutes.support) {
-    return SlidePageRoute(
-      settings: settings,
-      page: AuthRequiredGate(
+    ),
+    _appRoute(
+      path: AppRoutes.favorites,
+      builder: (_) => const AuthRequiredGate(child: FavoritesScreen()),
+    ),
+    _appRoute(
+      path: AppRoutes.subscription,
+      builder: (_) => const AuthRequiredGate(child: SubscriptionScreen()),
+    ),
+    _appRoute(
+      path: AppRoutes.subscriptionSuccess,
+      builder: (_) =>
+          const AuthRequiredGate(child: SubscriptionSuccessScreen()),
+    ),
+    _appRoute(
+      path: AppRoutes.subscriptionCancel,
+      builder: (_) => const AuthRequiredGate(child: SubscriptionCancelScreen()),
+    ),
+    _appRoute(
+      path: AppRoutes.chat,
+      builder: (state) {
+        final args = state.extra as ChatArgs?;
+        final resolvedArgs =
+            args ??
+            (state.uri.queryParameters.containsKey(DeepLinkParams.productId)
+                ? ChatArgs(
+                    productId:
+                        state.uri.queryParameters[DeepLinkParams.productId]!,
+                    productTitle:
+                        state.uri.queryParameters[DeepLinkParams
+                            .productTitle] ??
+                        '',
+                  )
+                : null);
+        if (resolvedArgs == null) return const AuthWrapper();
+        return AuthRequiredGate(
+          child: ChatScreen(
+            productId: resolvedArgs.productId,
+            productTitle: resolvedArgs.productTitle,
+          ),
+        );
+      },
+    ),
+    _appRoute(
+      path: AppRoutes.chatInbox,
+      builder: (_) => const AuthRequiredGate(child: ChatConversationsScreen()),
+    ),
+    _appRoute(
+      path: AppRoutes.notifications,
+      builder: (_) => const AuthRequiredGate(child: NotificationsScreen()),
+    ),
+    _appRoute(
+      path: AppRoutes.support,
+      builder: (_) => AuthRequiredGate(
         child: DeferredWidget(
           loader: support_chat.loadLibrary,
           builder: () => support_chat.SupportScreen(),
         ),
       ),
-    );
+    ),
+  ];
+}
+
+Page<void> _buildRouterPage(
+  GoRouterState state,
+  Widget child, {
+  bool animated = true,
+}) {
+  if (!animated) {
+    return NoTransitionPage<void>(key: state.pageKey, child: child);
   }
 
-  // Default fallback: redirect unknown routes to home
-  AppLogger.w(
-    'Unknown route: ${uri.path} — redirecting to home',
-    tag: 'router',
-  );
-  return SlidePageRoute(
-    settings: const RouteSettings(name: '/'),
-    page: const AuthWrapper(),
+  return CustomTransitionPage<void>(
+    key: state.pageKey,
+    child: child,
+    transitionDuration: const Duration(milliseconds: 300),
+    reverseTransitionDuration: const Duration(milliseconds: 250),
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      final slideTween = Tween<Offset>(
+        begin: const Offset(1, 0),
+        end: Offset.zero,
+      ).chain(CurveTween(curve: Curves.easeOutCubic));
+      final fadeTween = Tween<double>(
+        begin: 0,
+        end: 1,
+      ).chain(CurveTween(curve: Curves.easeOut));
+
+      return SlideTransition(
+        position: animation.drive(slideTween),
+        child: FadeTransition(
+          opacity: animation.drive(fadeTween),
+          child: child,
+        ),
+      );
+    },
   );
 }
 
@@ -851,6 +513,7 @@ class _OrignaAppState extends ConsumerState<OrignaApp>
   DateTime? _pausedAt; // Track when app went to background
   bool _resumeRefreshInFlight = false;
   AppLifecycleState? _lastLifecycleState;
+  late final GoRouter _router;
   // FIX-5 (HIGH): Use the shared navigatorKey from OrignaBaseNotificationService so
   // notification tap handlers can push routes headlessly (without BuildContext).
   // The private _navigatorKey is replaced by the static singleton key.
@@ -871,10 +534,10 @@ class _OrignaAppState extends ConsumerState<OrignaApp>
         onPointerMove: (_) => _sessionTimeout.recordActivity(),
         onPointerSignal: (_) =>
             _sessionTimeout.recordActivity(), // mouse wheel / trackpad scroll
-        child: MaterialApp(
-          navigatorKey: _navigatorKey,
+        child: MaterialApp.router(
           scaffoldMessengerKey:
               OrignaBaseNotificationService.scaffoldMessengerKey,
+          routerConfig: _router,
           builder: (context, child) => Stack(
             children: [
               EnvPreviewBanner(child: child ?? const SizedBox.shrink()),
@@ -899,13 +562,6 @@ class _OrignaAppState extends ConsumerState<OrignaApp>
           onGenerateTitle: (ctx) => 'app.title'.tr(),
           debugShowCheckedModeBanner: !kReleaseMode && !envConfig.isProduction,
           themeMode: themeMode,
-          // Handle initial URL from web (e.g., Stripe redirect to /payment-success)
-          onGenerateInitialRoutes: _onGenerateInitialRoutes,
-          onGenerateRoute: _onGenerateRoute,
-          onUnknownRoute: (_) => SlidePageRoute(
-            settings: const RouteSettings(name: '/'),
-            page: const AuthWrapper(),
-          ),
           // ── Light Theme ──────────────────────────────────────────────────────
           theme: ThemeData(
             useMaterial3: true,
@@ -1179,6 +835,12 @@ class _OrignaAppState extends ConsumerState<OrignaApp>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _router = GoRouter(
+      navigatorKey: _navigatorKey,
+      routes: _buildAppRoutes(),
+      errorPageBuilder: (context, state) =>
+          _buildRouterPage(state, const AuthWrapper(), animated: false),
+    );
 
     // Check for required app updates (mobile/tablet only)
     if (!kIsWeb) {
@@ -1207,25 +869,33 @@ class _OrignaAppState extends ConsumerState<OrignaApp>
     );
 
     // Listen for incoming deep links (Universal Links / URL schemes on iOS)
+    // app_links has no web implementation — skip entirely on web to avoid
+    // MissingPluginException from the method channel.
     if (!kIsWeb) {
-      final appLinks = AppLinks();
+      try {
+        final appLinks = AppLinks();
 
-      // Handle initial link if app was closed
-      appLinks
-          .getInitialLink()
-          .then((uri) {
-            if (uri != null) {
-              _handleDeepLink(uri);
-            }
-          })
-          .catchError((e) {
-            AppLogger.w('getInitialLink failed: $e', tag: 'deeplink');
-          });
+        appLinks
+            .getInitialLink()
+            .then((uri) {
+              if (uri != null) {
+                _handleDeepLink(uri);
+              }
+            })
+            .catchError((e) {
+              AppLogger.w('getInitialLink failed: $e', tag: 'deeplink');
+            });
 
-      _deepLinkSubscription = appLinks.uriLinkStream.listen((Uri uri) {
-        AppLogger.d('Incoming deep link: $uri', tag: 'deeplink');
-        _handleDeepLink(uri);
-      });
+        _deepLinkSubscription = appLinks.uriLinkStream.listen((Uri uri) {
+          AppLogger.d('Incoming deep link: $uri', tag: 'deeplink');
+          _handleDeepLink(uri);
+        });
+      } catch (e) {
+        AppLogger.w(
+          'Deep link init skipped (plugin unavailable): $e',
+          tag: 'deeplink',
+        );
+      }
     }
 
     // Listen to auth state changes — store subscription for cleanup
@@ -1287,13 +957,13 @@ class _OrignaAppState extends ConsumerState<OrignaApp>
       final segs = uri.pathSegments;
       // /p/{slug} — product share link
       if (segs.length >= 2 && segs[0] == 'p') {
-        navigator.pushNamed(AppRoutes.productBySlugPath(segs[1]));
+        _router.push(AppRoutes.productBySlugPath(segs[1]));
         return;
       }
       // Route the deep link through the existing route handler
       final path = uri.path.isNotEmpty ? uri.path : AppRoutes.home;
       final query = uri.query.isNotEmpty ? '?${uri.query}' : '';
-      navigator.pushNamed('$path$query');
+      _router.push('$path$query');
     }
   }
 }
@@ -1332,9 +1002,11 @@ class _ProductBySlugScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 24),
                       TextButton(
-                        onPressed: () => Navigator.of(
+                        onPressed: () => appPushNamedAndRemoveUntil(
                           context,
-                        ).pushNamedAndRemoveUntil(AppRoutes.home, (_) => false),
+                          AppRoutes.home,
+                          (_) => false,
+                        ),
                         child: Text('product.browse'.tr()),
                       ),
                     ],

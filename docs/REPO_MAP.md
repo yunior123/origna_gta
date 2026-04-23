@@ -1,6 +1,58 @@
 # Origna GTA — Repo Map
 
-Last updated: 2026-04-17
+Last updated: 2026-04-22
+
+## External Documentation References
+
+### Flutter & Dart
+- **Flutter Version**: 3.41.5 (latest stable)
+- **Dart Version**: 3.11.0
+- **Key Resources**:
+  - [Flutter API Docs](https://api.flutter.dev)
+  - [Flutter 3.41 Release Notes](https://docs.flutter.dev/release/whats-new)
+  - [Effective Dart Guide](https://dart.dev/effective-dart)
+  - [Dart Language Tour](https://dart.dev/language)
+- **Latest Features in Use**:
+  - Dot shorthands syntax (Dart 3.10+)
+  - Hot reload on web (stable, no longer experimental)
+  - Web development config file support
+  - Widget Previewer (experimental)
+  - Flutter Widget Property Editor
+
+### Rust
+- **Rust Version**: 1.90.0 (edition 2024)
+- **Key Resources**:
+  - [The Rust Programming Language Book](https://doc.rust-lang.org/stable/book/)
+  - [Rust By Example](https://doc.rust-lang.org/rust-by-example/)
+  - [Rust API Documentation](https://doc.rust-lang.org/std/)
+- **Patterns Used**:
+  - Memory safety without garbage collection
+  - Zero-cost abstractions
+  - Ownership, borrowing, and lifetimes
+  - Pattern matching and `Result<T, E>` error handling
+
+### Stripe
+- **API Base**: `https://api.stripe.com`
+- **Key Resources**:
+  - [Stripe API Reference](https://docs.stripe.com/api)
+  - [Checkout Sessions API](https://docs.stripe.com/api/checkout/sessions/create)
+  - [Webhooks Testing](https://docs.stripe.com/webhooks/test)
+  - [Error Handling](https://docs.stripe.com/error-low-level)
+  - [API Keys](https://docs.stripe.com/keys)
+- **Current Implementation**:
+  - Stripe Checkout Sessions (not Payment Links)
+  - `automatic_tax` + `tax_id_collection` for tax handling
+  - Webhook verification with raw body signature
+  - Idempotency keys per-request
+  - Server-authoritative pricing (not client-sent)
+
+### Mailjet
+- **API**: REST API for email delivery
+- **Features Used**:
+  - Transactional email sending
+  - HTML/text multipart emails
+  - PDF attachments (receipts)
+  - Async dispatch for concurrency
 
 ## Working Directories (CRITICAL)
 
@@ -23,7 +75,7 @@ Unified monorepo for Origna GTA, a Canada-first multi-vendor e-commerce platform
 
 | Layer | Directory | Technology |
 |-------|-----------|-----------|
-| Mobile/Web frontend | `origna_gta/` | Flutter 3.x + Dart (347 .dart files), Riverpod, Freezed |
+| Mobile/Web frontend | `origna_gta/` | Flutter 3.x + Dart (782 tracked `.dart` files under `origna_gta/`), Riverpod, Freezed |
 | Ventures Platform | `origna_ventures/` | Flutter web frontend + Python FastAPI backend |
 | Backend API | `orignabase/` | OrignaBase (Rust, 16 workspace crates, hosted on VPS 204.168.137.16). task_queue uses direct SQL for typed table operations; CRUD uses JSONB document storage. |
 | Database | PostgreSQL 18 (on VPS, via OrignaBase) |
@@ -32,10 +84,26 @@ Unified monorepo for Origna GTA, a Canada-first multi-vendor e-commerce platform
 | Bot protection | Cloudflare Turnstile |
 | Web reverse proxy | Caddy (on VPS) |
 | CI | GitHub Actions |
-| E2E | agent-browser (TypeScript) + Bun agent-browser (116 specs across 7 phases) |
+| E2E | agent-browser (TypeScript) + Bun agent-browser (118 tracked spec files under `e2e/specs/`) |
 | Tests | Current verified local gates on 2026-04-17: Flutter analyze `0 issues`; `flutter test --exclude-tags golden` `4696 pass / 0 fail`; `cargo clippy -p ob-auth -- -D warnings` pass; `cargo clippy -p ob-handlers -- -D warnings` pass; `cargo test -p ob-handlers` pass; `cargo test -p ob-core` pass; `cargo test -p orignabase --no-run` pass; full seeded E2E rerun active in `/tmp/origna_e2e_run_all_after_deep_fix.log`. |
 
 No Firebase. No Cloud Functions. No Firestore. All backend is OrignaBase on the VPS.
+
+## Inventory Source Of Truth
+
+For exhaustive file-by-file coverage, use:
+- `docs/REPO_INVENTORY.md` — generated from `git ls-files`
+- `docs/REPO_MAP.md` — human-readable architecture/navigation map
+
+Verified inventory snapshot on 2026-04-22:
+- total tracked files: `5437`
+- tracked files by major top-level area:
+  - `orignabase/` → `3865`
+  - `origna_gta/` → `996`
+  - `e2e/` → `176`
+  - `origna_ventures/` → `52`
+  - `docs/` → `40`
+  - `scripts/` → `21`
 
 ---
 
@@ -141,7 +209,8 @@ origna_gta/                        # repo root (monorepo: frontend + backend)
 │   ├── deploy_mcp_docs.sh         # MCP docs deploy to VPS
 │   └── add-cloudflare-dns.sh      # Cloudflare DNS management
 ├── docs/
-│   ├── REPO_MAP.md                # This file
+│   ├── REPO_MAP.md                # High-level architecture + navigation map
+│   ├── REPO_INVENTORY.md          # Machine-generated tracked-file inventory (`git ls-files`)
 │   └── plans/                     # Architecture plans
 ├── docs-site/                     # Next.js 14 + Nextra documentation site
 ├── .claude/                       # Claude Code configuration
@@ -195,7 +264,8 @@ origna_gta/                        # repo root (monorepo: frontend + backend)
 ├── AGENTS.md                      # Agent coding guide (build/test/style)
 ├── CLAUDE.md                      # Claude Code routing rules
 ├── STATE.md                       # Current project state & blockers
-├── TODOS.md                       # Active tasks
+├── TODOS.md                       # Pointer file; active workboard lives in `CORE.md`
+├── CORE.md                        # Active workboard
 ├── BUGS.md                        # Known issues
 ├── LIVE_TESTS_STATUS.md           # Live test execution report
 ├── Caddyfile                      # VPS reverse proxy config

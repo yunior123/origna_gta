@@ -194,7 +194,8 @@ class _EmailVerificationRequiredScreenState
                         onPressed: () async {
                           await ref.read(authActionsProvider).signOut();
                           if (context.mounted) {
-                            Navigator.of(context).pushNamedAndRemoveUntil(
+                            appPushNamedAndRemoveUntil(
+                              context,
                               AppRoutes.home,
                               (route) => false,
                             );
@@ -285,9 +286,11 @@ class _EmailVerificationRequiredScreenState
                 behavior: SnackBarBehavior.floating,
               ),
             );
-            Navigator.of(
+            appPushNamedAndRemoveUntil(
               context,
-            ).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
+              AppRoutes.home,
+              (route) => false,
+            );
           }
         } else {
           if (mounted) {

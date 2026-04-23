@@ -97,7 +97,7 @@ class AddressViewModel extends StateNotifier<AddressState> {
 
     if (state.latitude == null || state.longitude == null) {
       state = state.copyWith(
-        errorMessage: 'Please select a valid address from the suggestions',
+        errorMessage: 'address.valid_address_from_suggestions',
       );
       return;
     }
@@ -106,8 +106,7 @@ class AddressViewModel extends StateNotifier<AddressState> {
     if (state.selectedCountry == CountryValues.cuba &&
         city.trim().toLowerCase() != "havana") {
       state = state.copyWith(
-        errorMessage:
-            "Maritime shipping to Cuba currently serves Havana only. Please enter Havana as your city.",
+        errorMessage: 'address.cuba_havana_only',
       );
       return;
     }
@@ -141,7 +140,7 @@ class AddressViewModel extends StateNotifier<AddressState> {
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
-        errorMessage: AppError.getMessage(e, 'Failed to save address'),
+        errorMessage: AppError.getMessage(e, 'address.save_failed'),
       );
     }
   }

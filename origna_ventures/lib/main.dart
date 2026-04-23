@@ -4,6 +4,7 @@ import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 
@@ -15,6 +16,7 @@ import 'tiers_config.dart' show TierDefinition, TierId;
 
 const _supportEmail = 'support@orignaventures.ca';
 const _supportPhone = '4167865517';
+const _whatsAppPhoneIntl = '14167865517';
 const venturesApiBase = 'https://api.orignaventures.ca/api';
 const _fullDeckPdfUrl =
     'https://orignaventures.ca/docs/origna_ventures_full_presentation.pdf';
@@ -23,6 +25,9 @@ const _demoUrl = 'https://dev.orignagta.ca';
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const OrignaVenturesApp());
+  if (kIsWeb) {
+    SemanticsBinding.instance.ensureSemantics();
+  }
 }
 
 class OrignaVenturesApp extends StatefulWidget {
@@ -186,6 +191,11 @@ class _SinglePageState extends State<_SinglePage> {
     );
   }
 
+  Future<void> _launchWhatsApp() async {
+    final uri = Uri.parse('https://wa.me/$_whatsAppPhoneIntl');
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
   @override
   Widget build(BuildContext context) {
     final locale = widget.locale;
@@ -194,6 +204,13 @@ class _SinglePageState extends State<_SinglePage> {
 
     return Scaffold(
       backgroundColor: ThemeConfig.surface,
+      floatingActionButton: isMobile
+          ? _WhatsAppFloatingButton(
+              locale: locale,
+              onTap: _launchWhatsApp,
+            )
+          : null,
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       bottomNavigationBar: _showCookieBanner
           ? _CookieConsentBanner(
               locale: locale,
@@ -231,6 +248,101 @@ class _SinglePageState extends State<_SinglePage> {
           ),
           _Footer(locale: locale),
         ],
+      ),
+    );
+  }
+}
+
+class _WhatsAppFloatingButton extends StatelessWidget {
+  final LocaleMode locale;
+  final Future<void> Function() onTap;
+
+  const _WhatsAppFloatingButton({required this.locale, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: locale.tr(
+        'Open WhatsApp chat with Origna Ventures',
+        'Ouvrir la discussion WhatsApp avec Origna Ventures',
+        'Abrir chat de WhatsApp con Origna Ventures',
+      ),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: ThemeConfig.success.withValues(alpha: 0.28),
+              blurRadius: 28,
+              offset: const Offset(0, 14),
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(24),
+            onTap: onTap,
+            child: Ink(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF25D366), Color(0xFF128C7E)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.2),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.16),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.forum_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'WhatsApp',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                      Text(
+                        locale.tr('Chat with us', 'Parlez-nous',
+                            'Chatea con nosotros'),
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.92),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -1309,6 +1421,7 @@ class _TierCardState extends State<_TierCard>
   bool _loading = false;
   String? _status;
   bool _success = false;
+  int _teamDeveloperCount = 1;
   late final AnimationController _glowController;
 
   @override
@@ -1353,11 +1466,32 @@ class _TierCardState extends State<_TierCard>
             : widget.tier.tagline.en);
   }
 
+  String _formatPrice(int priceCents) {
+    final dollars = priceCents ~/ 100;
+    return dollars >= 1000
+        ? '${dollars ~/ 1000},${(dollars % 1000).toString().padLeft(3, '0')}'
+        : dollars.toString();
+  }
+
+  String _teamDeveloperLabel(LocaleMode loc) {
+    if (_teamDeveloperCount == 1) {
+      return loc.tr('1 developer', '1 developpeur', '1 desarrollador');
+    }
+    return loc.tr(
+      '$_teamDeveloperCount developers',
+      '$_teamDeveloperCount developpeurs',
+      '$_teamDeveloperCount desarrolladores',
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = widget.tier;
     final loc = widget.locale;
     final isPopular = t.isPopular;
+    final displayedPriceCents = t.tierId == TierId.orignaTeam
+        ? t.priceCents * _teamDeveloperCount
+        : t.priceCents;
     final priceSuffix = t.isSubscription
         ? loc.tr('CAD / month', 'CAD / mois', 'CAD / mes')
         : loc.tr('CAD one-time', 'CAD paiement unique', 'CAD pago unico');
@@ -1499,7 +1633,7 @@ class _TierCardState extends State<_TierCard>
                           runSpacing: 4,
                           children: [
                             Text(
-                              '\$${t.displayPrice()}',
+                              '\$${_formatPrice(displayedPriceCents)}',
                               style: TextStyle(
                                 fontWeight: FontWeight.w900,
                                 fontSize: 38,
@@ -1522,6 +1656,92 @@ class _TierCardState extends State<_TierCard>
                             ),
                           ],
                         ),
+                        if (t.tierId == TierId.orignaTeam) ...[
+                          const SizedBox(height: 14),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.06),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.12),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        loc.tr(
+                                          'Team size',
+                                          'Taille de l\'equipe',
+                                          'Tamano del equipo',
+                                        ),
+                                        style: TextStyle(
+                                          color: isPopular
+                                              ? Colors.white
+                                                  .withValues(alpha: 0.7)
+                                              : ThemeConfig.textSecondary,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        '${_teamDeveloperLabel(loc)} · ${loc.tr("server-priced at 1,000 CAD each", "tarification serveur a 1 000 CAD chacun", "precio del servidor a 1,000 CAD cada uno")}',
+                                        style: TextStyle(
+                                          color: isPopular
+                                              ? Colors.white
+                                                  .withValues(alpha: 0.55)
+                                              : ThemeConfig.textMuted,
+                                          fontSize: 12,
+                                          height: 1.4,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                IconButton(
+                                  tooltip: loc.tr(
+                                    'Decrease team size',
+                                    'Reduire la taille de l\'equipe',
+                                    'Reducir tamano del equipo',
+                                  ),
+                                  onPressed: _teamDeveloperCount > 1
+                                      ? () =>
+                                          setState(() => _teamDeveloperCount--)
+                                      : null,
+                                  icon: const Icon(Icons.remove_rounded),
+                                ),
+                                Text(
+                                  '$_teamDeveloperCount',
+                                  style: TextStyle(
+                                    color: isPopular
+                                        ? Colors.white
+                                        : ThemeConfig.textPrimary,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 18,
+                                  ),
+                                ),
+                                IconButton(
+                                  tooltip: loc.tr(
+                                    'Increase team size',
+                                    'Augmenter la taille de l\'equipe',
+                                    'Aumentar tamano del equipo',
+                                  ),
+                                  onPressed: _teamDeveloperCount < 20
+                                      ? () =>
+                                          setState(() => _teamDeveloperCount++)
+                                      : null,
+                                  icon: const Icon(Icons.add_rounded),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 20),
                         Divider(
                           color: isPopular
@@ -1674,6 +1894,10 @@ class _TierCardState extends State<_TierCard>
             body: jsonEncode({
               'service_code': widget.tier.serviceCode,
               'payment_provider': 'stripe',
+              'locale': loc.name,
+              'developer_count': widget.tier.tierId == TierId.orignaTeam
+                  ? _teamDeveloperCount
+                  : 1,
             }),
           )
           .timeout(const Duration(seconds: 30));
@@ -2298,10 +2522,12 @@ class _ContactFormBlockState extends State<_ContactFormBlock> {
                   controller: _nameCtrl,
                   label: loc.tr(
                       'Full name *', 'Nom complet *', 'Nombre completo *'),
+                  semanticsLabel: 'input-contact-name',
                 ),
                 _DarkField(
                   controller: _emailCtrl,
                   label: loc.tr('Email *', 'Courriel *', 'Correo *'),
+                  semanticsLabel: 'input-contact-email',
                   keyboardType: TextInputType.emailAddress,
                 ),
               ], isMobile: widget.isMobile),
@@ -2310,11 +2536,13 @@ class _ContactFormBlockState extends State<_ContactFormBlock> {
                 _DarkField(
                   controller: _companyCtrl,
                   label: loc.tr('Company', 'Entreprise', 'Empresa'),
+                  semanticsLabel: 'input-contact-company',
                 ),
                 _DarkDropdown(
                   value: _service,
                   label: loc.tr('Service interest', "Service d'interet",
                       'Servicio de interes'),
+                  semanticsLabel: 'select-contact-service',
                   items: items,
                   onChanged: (v) {
                     if (v != null) {
@@ -2327,41 +2555,49 @@ class _ContactFormBlockState extends State<_ContactFormBlock> {
               _DarkField(
                 controller: _msgCtrl,
                 label: loc.tr('Message *', 'Message *', 'Mensaje *'),
+                semanticsLabel: 'input-contact-message',
                 maxLines: 5,
               ),
               const SizedBox(height: 20),
-              SizedBox(
-                width: widget.isMobile ? double.infinity : null,
-                child: FilledButton.icon(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: ThemeConfig.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 24, vertical: 14),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                    textStyle: const TextStyle(
-                        fontWeight: FontWeight.w700, fontSize: 14),
-                  ),
-                  onPressed: _loading ? null : () => _submit(loc),
-                  icon: _loading
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white),
-                        )
-                      : const Icon(Icons.send_rounded, size: 18),
-                  label: Text(
-                    _loading
-                        ? loc.tr('Sending...', 'Envoi...', 'Enviando...')
-                        : loc.tr('Send message', 'Envoyer', 'Enviar mensaje'),
+              Semantics(
+                button: true,
+                label: 'btn-contact-submit',
+                child: SizedBox(
+                  width: widget.isMobile ? double.infinity : null,
+                  child: FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: ThemeConfig.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 24, vertical: 14),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      textStyle: const TextStyle(
+                          fontWeight: FontWeight.w700, fontSize: 14),
+                    ),
+                    onPressed: _loading ? null : () => _submit(loc),
+                    icon: _loading
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Icon(Icons.send_rounded, size: 18),
+                    label: Text(
+                      _loading
+                          ? loc.tr('Sending...', 'Envoi...', 'Enviando...')
+                          : loc.tr('Send message', 'Envoyer', 'Enviar mensaje'),
+                    ),
                   ),
                 ),
               ),
               if (_result != null) ...[
                 const SizedBox(height: 14),
-                _StatusBanner(message: _result!, success: _success),
+                Semantics(
+                  label: 'status-contact-result',
+                  child: _StatusBanner(message: _result!, success: _success),
+                ),
               ],
             ],
           ),
@@ -2447,6 +2683,13 @@ class _ContactFormBlockState extends State<_ContactFormBlock> {
 
       final body = jsonDecode(resp.body) as Map<String, dynamic>;
       if (resp.statusCode == 200 && body['status'] == 'ok') {
+        final emails = body['emails'] is Map<String, dynamic>
+            ? body['emails'] as Map<String, dynamic>
+            : <String, dynamic>{};
+        final confirmation = emails['confirmation'] is Map<String, dynamic>
+            ? emails['confirmation'] as Map<String, dynamic>
+            : <String, dynamic>{};
+        final confirmationStatus = confirmation['status']?.toString();
         _nameCtrl.clear();
         _emailCtrl.clear();
         _companyCtrl.clear();
@@ -2454,9 +2697,15 @@ class _ContactFormBlockState extends State<_ContactFormBlock> {
         setState(() {
           _success = true;
           _result = loc.tr(
-            "Message sent! We'll be in touch within 24 hours.",
-            'Message envoye! Nous vous repondrons dans les 24 heures.',
-            'Mensaje enviado. Le responderemos en menos de 24 horas.',
+            confirmationStatus == 'sent'
+                ? "Message sent! We also emailed your confirmation and will reply within 24 hours."
+                : "Message sent! We'll be in touch within 24 hours.",
+            confirmationStatus == 'sent'
+                ? 'Message envoye! Nous avons aussi envoye votre confirmation et nous repondrons dans les 24 heures.'
+                : 'Message envoye! Nous vous repondrons dans les 24 heures.',
+            confirmationStatus == 'sent'
+                ? 'Mensaje enviado. Tambien enviamos su confirmacion y responderemos en menos de 24 horas.'
+                : 'Mensaje enviado. Le responderemos en menos de 24 horas.',
           );
         });
       } else {
@@ -2568,44 +2817,50 @@ class _CookieConsentBanner extends StatelessWidget {
 class _DarkField extends StatelessWidget {
   final TextEditingController controller;
   final String label;
+  final String? semanticsLabel;
   final TextInputType? keyboardType;
   final int maxLines;
 
   const _DarkField({
     required this.controller,
     required this.label,
+    this.semanticsLabel,
     this.keyboardType,
     this.maxLines = 1,
   });
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      keyboardType: keyboardType,
-      maxLines: maxLines,
-      style: const TextStyle(color: Colors.white, fontSize: 14),
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: TextStyle(
-            color: Colors.white.withValues(alpha: 0.45), fontSize: 13),
-        floatingLabelStyle: TextStyle(
-          color: ThemeConfig.primaryLight.withValues(alpha: 0.9),
-          fontSize: 12,
+    return Semantics(
+      textField: true,
+      label: semanticsLabel ?? label,
+      child: TextField(
+        controller: controller,
+        keyboardType: keyboardType,
+        maxLines: maxLines,
+        style: const TextStyle(color: Colors.white, fontSize: 14),
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: TextStyle(
+              color: Colors.white.withValues(alpha: 0.45), fontSize: 13),
+          floatingLabelStyle: TextStyle(
+            color: ThemeConfig.primaryLight.withValues(alpha: 0.9),
+            fontSize: 12,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.12)),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderSide:
+                const BorderSide(color: ThemeConfig.primaryLight, width: 1.5),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          filled: true,
+          fillColor: Colors.white.withValues(alpha: 0.05),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         ),
-        enabledBorder: OutlineInputBorder(
-          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.12)),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderSide:
-              const BorderSide(color: ThemeConfig.primaryLight, width: 1.5),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        filled: true,
-        fillColor: Colors.white.withValues(alpha: 0.05),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       ),
     );
   }
@@ -2614,12 +2869,14 @@ class _DarkField extends StatelessWidget {
 class _DarkDropdown extends StatefulWidget {
   final String value;
   final String label;
+  final String? semanticsLabel;
   final Map<String, String> items;
   final ValueChanged<String?> onChanged;
 
   const _DarkDropdown({
     required this.value,
     required this.label,
+    this.semanticsLabel,
     required this.items,
     required this.onChanged,
   });
@@ -2650,51 +2907,54 @@ class _DarkDropdownState extends State<_DarkDropdown> {
     if (!widget.items.containsKey(_current)) {
       _current = widget.items.keys.first;
     }
-    return DropdownButtonFormField<String>(
-      initialValue: _current,
-      isExpanded: true,
-      items: widget.items.entries
-          .map(
-            (e) => DropdownMenuItem(
-              value: e.key,
-              child: Text(
-                e.value,
-                overflow: TextOverflow.ellipsis,
+    return Semantics(
+      label: widget.semanticsLabel ?? widget.label,
+      child: DropdownButtonFormField<String>(
+        initialValue: _current,
+        isExpanded: true,
+        items: widget.items.entries
+            .map(
+              (e) => DropdownMenuItem(
+                value: e.key,
+                child: Text(
+                  e.value,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-            ),
-          )
-          .toList(),
-      onChanged: (v) {
-        if (v != null) {
-          setState(() => _current = v);
-        }
-        widget.onChanged(v);
-      },
-      decoration: InputDecoration(
-        labelText: widget.label,
-        labelStyle: TextStyle(
-            color: Colors.white.withValues(alpha: 0.45), fontSize: 13),
-        floatingLabelStyle: TextStyle(
-          color: ThemeConfig.primaryLight.withValues(alpha: 0.9),
-          fontSize: 12,
+            )
+            .toList(),
+        onChanged: (v) {
+          if (v != null) {
+            setState(() => _current = v);
+          }
+          widget.onChanged(v);
+        },
+        decoration: InputDecoration(
+          labelText: widget.label,
+          labelStyle: TextStyle(
+              color: Colors.white.withValues(alpha: 0.45), fontSize: 13),
+          floatingLabelStyle: TextStyle(
+            color: ThemeConfig.primaryLight.withValues(alpha: 0.9),
+            fontSize: 12,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.12)),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderSide:
+                const BorderSide(color: ThemeConfig.primaryLight, width: 1.5),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          filled: true,
+          fillColor: Colors.white.withValues(alpha: 0.05),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         ),
-        enabledBorder: OutlineInputBorder(
-          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.12)),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderSide:
-              const BorderSide(color: ThemeConfig.primaryLight, width: 1.5),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        filled: true,
-        fillColor: Colors.white.withValues(alpha: 0.05),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        dropdownColor: const Color(0xFF1A1A38),
+        style: const TextStyle(color: Colors.white, fontSize: 14),
+        iconEnabledColor: Colors.white.withValues(alpha: 0.4),
       ),
-      dropdownColor: const Color(0xFF1A1A38),
-      style: const TextStyle(color: Colors.white, fontSize: 14),
-      iconEnabledColor: Colors.white.withValues(alpha: 0.4),
     );
   }
 }

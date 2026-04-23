@@ -137,7 +137,7 @@ class SellerOrdersScreen extends ConsumerWidget {
                 icon: const Icon(Icons.integration_instructions_outlined),
                 tooltip: 'seller_integration.title'.tr(),
                 onPressed: () =>
-                    Navigator.pushNamed(context, AppRoutes.sellerIntegration),
+                    appPushNamed(context, AppRoutes.sellerIntegration),
               ),
             ),
           ],

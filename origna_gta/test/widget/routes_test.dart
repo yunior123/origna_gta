@@ -127,6 +127,15 @@ void main() {
       expect(AppRoutes.productById, '/product');
     });
 
+    test('route patterns are centralized', () {
+      expect(AppRoutes.productBySlugPattern, '/p/:slug');
+      expect(AppRoutes.productByIdPattern, '/product/:productId');
+      expect(
+        AppRoutes.adminSellerProductsPattern,
+        '/admin/sellers/:sellerId/products',
+      );
+    });
+
     test('subscription route is correct', () {
       expect(AppRoutes.subscription, '/subscription');
     });

@@ -149,6 +149,6 @@ extension _EditProductSubmitSection on _EditProductScreenState {
         backgroundColor: DesignTokens.success,
       ),
     );
-    Navigator.pop(context, true);
+    appPop(context, true);
   }
 }

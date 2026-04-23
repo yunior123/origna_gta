@@ -634,7 +634,7 @@ Widget _localizationShell({
   }
 
   return EasyLocalization(
-    supportedLocales: const [Locale('en'), Locale('fr')],
+    supportedLocales: const [Locale('en'), Locale('fr'), Locale('es')],
     path: 'packages/origna_gta/assets/translations',
     fallbackLocale: const Locale('en'),
     startLocale: locale,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:origna_gta/core/routes.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
@@ -508,7 +509,7 @@ class CartTotalDisplay extends ConsumerWidget {
             const SizedBox(height: 24),
             ModernButton(
               label: 'common.understood'.tr(),
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => appPop(context),
             ),
           ],
         ),
@@ -565,7 +566,7 @@ class CartTotalDisplay extends ConsumerWidget {
             label: 'btn-cart-note-cancel',
             button: true,
             child: TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => appPop(context),
               style: TextButton.styleFrom(
                 foregroundColor: DesignTokens.textSecondary,
               ),
@@ -580,7 +581,7 @@ class CartTotalDisplay extends ConsumerWidget {
               ref.read(deliveryInstructionsProvider.notifier).state = controller
                   .text
                   .trim();
-              Navigator.pop(context);
+              appPop(context);
             },
           ),
         ],

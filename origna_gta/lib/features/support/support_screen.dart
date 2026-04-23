@@ -77,7 +77,7 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
     if (currentUser == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (context.mounted) {
-          Navigator.of(context).pushReplacementNamed(AppRoutes.login);
+          appPushReplacementNamed(context,AppRoutes.login);
         }
       });
       return const Scaffold(body: ModernLoadingIndicator(centered: true));

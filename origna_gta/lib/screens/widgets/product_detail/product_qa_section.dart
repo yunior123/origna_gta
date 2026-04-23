@@ -1,5 +1,6 @@
 import 'package:origna_gta/utils/constants.dart';
 import 'package:flutter/material.dart';
+import 'package:origna_gta/core/routes.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/features/qa/qa_provider.dart';
 import 'package:origna_gta/features/subscription/subscription_provider.dart';
@@ -191,7 +192,7 @@ class _QASectionState extends ConsumerState<QASection> {
             button: true,
             label: 'btn-cancel-qa-question',
             child: TextButton(
-              onPressed: () => Navigator.pop(ctx),
+              onPressed: () => appPop(ctx),
               style: TextButton.styleFrom(
                 foregroundColor: DesignTokens.textSecondary,
               ),
@@ -208,7 +209,7 @@ class _QASectionState extends ConsumerState<QASection> {
               onPressed: () async {
                 final text = controller.text.trim();
                 if (text.isEmpty) return;
-                Navigator.pop(ctx);
+                appPop(ctx);
                 final messenger = ScaffoldMessenger.of(context);
                 await ref
                     .read(qaControllerProvider.notifier)
@@ -403,7 +404,7 @@ class _QACard extends ConsumerWidget {
             button: true,
             label: 'btn-cancel-qa-answer',
             child: TextButton(
-              onPressed: () => Navigator.pop(ctx),
+              onPressed: () => appPop(ctx),
               style: TextButton.styleFrom(
                 foregroundColor: DesignTokens.textSecondary,
               ),
@@ -422,7 +423,7 @@ class _QACard extends ConsumerWidget {
                   ref
                       .read(qaControllerProvider.notifier)
                       .answerQuestion(qaId: qa.id, answer: controller.text);
-                  Navigator.pop(ctx);
+                  appPop(ctx);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('qa.answer_submitted'.tr())),
                   );

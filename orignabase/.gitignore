@@ -30,8 +30,10 @@ local_test_data/
 # IDE
 .idea/
 *.iml
+.tags
 
 # Backup / temp
 *.backup
 *.orig
+*.md.bak
 *~

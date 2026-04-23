@@ -26,6 +26,9 @@ Thumbs.db
 # Cache
 .npm/
 .eslintcache
+*.md.bak
 
 # Test artifacts
 test-results/
+ai/baselines/
+ai/reports/

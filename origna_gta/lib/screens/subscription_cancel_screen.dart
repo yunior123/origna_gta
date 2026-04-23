@@ -107,9 +107,10 @@ class SubscriptionCancelScreen extends StatelessWidget {
                             child: SizedBox(
                               width: double.infinity,
                               child: ElevatedButton.icon(
-                                onPressed: () => Navigator.of(
+                                onPressed: () => appPushReplacementNamed(
                                   context,
-                                ).pushReplacementNamed(AppRoutes.subscription),
+                                  AppRoutes.subscription,
+                                ),
                                 icon: const Icon(Icons.workspace_premium),
                                 label: Text(
                                   'subscription.upgrade_to_premium'.tr(),
@@ -140,11 +141,11 @@ class SubscriptionCancelScreen extends StatelessWidget {
                             child: SizedBox(
                               width: double.infinity,
                               child: TextButton(
-                                onPressed: () => Navigator.of(context)
-                                    .pushNamedAndRemoveUntil(
-                                      AppRoutes.home,
-                                      (route) => false,
-                                    ),
+                                onPressed: () => appPushNamedAndRemoveUntil(
+                                  context,
+                                  AppRoutes.home,
+                                  (route) => false,
+                                ),
                                 style: TextButton.styleFrom(
                                   foregroundColor: DesignTokens.textSecondary,
                                   padding: const EdgeInsets.symmetric(

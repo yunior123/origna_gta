@@ -404,7 +404,7 @@ class _SubscriptionActions extends StatelessWidget {
             button: true,
             label: 'btn-keep-premium',
             child: TextButton(
-              onPressed: () => Navigator.pop(ctx),
+              onPressed: () => appPop(ctx),
               child: Text('subscription.keep_premium'.tr()),
             ),
           ),
@@ -413,7 +413,7 @@ class _SubscriptionActions extends StatelessWidget {
             label: 'btn-confirm-cancel-subscription',
             child: TextButton(
               onPressed: () {
-                Navigator.pop(ctx);
+                appPop(ctx);
                 vm.cancelSubscription();
               },
               child: Text(

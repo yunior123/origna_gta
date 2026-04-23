@@ -276,7 +276,7 @@ extension _EditProductSharedWidgets on _EditProductScreenState {
                   button: true,
                   label: 'btn-close-info-sheet',
                   child: GestureDetector(
-                    onTap: () => Navigator.pop(ctx),
+                    onTap: () => appPop(ctx),
                     child: Container(
                       padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
@@ -308,7 +308,7 @@ extension _EditProductSharedWidgets on _EditProductScreenState {
               child: Tooltip(
                 message: 'btn-edit-product-got-it',
                 child: ElevatedButton(
-                  onPressed: () => Navigator.pop(ctx),
+                  onPressed: () => appPop(ctx),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: DesignTokens.primary,
                     foregroundColor: DesignTokens.white,

@@ -2,6 +2,7 @@ import 'package:origna_gta/utils/preview_helpers.dart';
 import 'dart:async';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:origna_gta/core/routes.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/utils/app_logger.dart';
@@ -450,7 +451,7 @@ class _MessageBubble extends StatelessWidget {
                         leading: const Icon(Icons.copy_outlined),
                         title: Text('chat.copy_message'.tr()),
                         onTap: () {
-                          Navigator.pop(context);
+                          appPop(context);
                           Clipboard.setData(ClipboardData(text: message.text));
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
@@ -470,7 +471,7 @@ class _MessageBubble extends StatelessWidget {
                           style: TextStyle(color: DesignTokens.error),
                         ),
                         onTap: () {
-                          Navigator.pop(context);
+                          appPop(context);
                           // Delegate deletion to parent via callback stored in context
                           _ChatDeleteScope.of(context)?.onDelete(message.id);
                         },

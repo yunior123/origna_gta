@@ -1822,7 +1822,10 @@
 "cuba_maritime_notice": "L'expédition à Cuba se fait par fret maritime (21-45 jours ouvrables). Tarifs basés sur le poids.",
 "postal_code_cuba": "Code postal cubain (5 chiffres)",
 "valid_postal_cuba": "Entrez un code postal cubain valide (5 chiffres)",
-"valid_phone_cuba": "Entrez un numéro de téléphone cubain valide (préfixe +53)"
+"valid_phone_cuba": "Entrez un numéro de téléphone cubain valide (préfixe +53)",
+"valid_address_from_suggestions": "Veuillez sélectionner une adresse valide dans les suggestions",
+"cuba_havana_only": "L'expédition maritime vers Cuba dessert actuellement uniquement La Havane. Veuillez indiquer La Havane comme ville.",
+"save_failed": "Échec de l'enregistrement de l'adresse"
 },
   "legal": {
     "privacy_policy": "Politique de confidentialité",

@@ -163,7 +163,7 @@ class _UnansweredQaBadge extends ConsumerWidget {
                     )
                   : 'seller.no_pending_questions'.tr(),
               onPressed: () =>
-                  Navigator.pushNamed(context, AppRoutes.sellerOrders),
+                  appPushNamed(context, AppRoutes.sellerOrders),
             ),
           ),
           if (count > 0)

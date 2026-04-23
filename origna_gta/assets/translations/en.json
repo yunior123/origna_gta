@@ -1821,7 +1821,10 @@
 "cuba_maritime_notice": "Shipping to Cuba is via maritime freight (21-45 business days). Weight-based rates apply.",
 "postal_code_cuba": "Cuban postal code (5 digits)",
 "valid_postal_cuba": "Enter a valid Cuban postal code (5 digits)",
-"valid_phone_cuba": "Enter a valid Cuban phone number (+53 prefix)"
+"valid_phone_cuba": "Enter a valid Cuban phone number (+53 prefix)",
+"valid_address_from_suggestions": "Please select a valid address from the suggestions",
+"cuba_havana_only": "Maritime shipping to Cuba currently serves Havana only. Please enter Havana as your city.",
+"save_failed": "Failed to save address"
 },
   "legal": {
     "privacy_policy": "Privacy Policy",

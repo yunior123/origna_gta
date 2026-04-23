@@ -145,13 +145,13 @@ class TierDefinition {
         es: 'EQUIPO DEDICADO'
       ),
       tagline: (
-        en: 'A retained product team for iterative work after launch.',
-        fr: 'Une equipe produit retaineree pour iterer apres le lancement.',
-        es: 'Un equipo de producto retenido para iterar despues del lanzamiento.',
+        en: 'A retained product team for iterative work after launch, from 1 to 20 developers.',
+        fr: 'Une equipe produit retenue pour iterer apres le lancement, de 1 a 20 developpeurs.',
+        es: 'Un equipo de producto retenido para iterar despues del lanzamiento, de 1 a 20 desarrolladores.',
       ),
       bullets: (
         en: [
-          'Monthly subscription with one retained developer on your roadmap',
+          'Monthly subscription from 1 to 20 retained developers on your roadmap',
           'Daily standup and weekly planning cadence',
           'Ecommerce, apps, web, mobile, and desktop support',
           '100+ hours of QA testing coverage per month',
@@ -159,7 +159,7 @@ class TierDefinition {
           'Third-party API, hosting, and ad spend billed separately',
         ],
         fr: [
-          'Abonnement mensuel avec un developpeur dedie a votre roadmap',
+          'Abonnement mensuel de 1 a 20 developpeurs dedies a votre roadmap',
           'Standup quotidien et cadence hebdomadaire de planification',
           'Ecommerce, apps, web, mobile et desktop',
           '100+ heures de tests QA par mois',
@@ -167,7 +167,7 @@ class TierDefinition {
           'API tiers, hebergement et depenses publicitaires factures separement',
         ],
         es: [
-          'Suscripcion mensual con un desarrollador retenido en su roadmap',
+          'Suscripcion mensual de 1 a 20 desarrolladores retenidos en su roadmap',
           'Standup diario y ritmo semanal de planificacion',
           'Comercio electronico, apps, web, movil y escritorio',
           '100+ horas de cobertura de pruebas QA por mes',

@@ -135,16 +135,7 @@ class CartScreen extends ConsumerWidget {
                       child: ModernButton(
                         label: 'common.go_shopping'.tr(),
                         icon: Icons.arrow_back,
-                        onPressed: () {
-                          if (Navigator.canPop(context)) {
-                            Navigator.pop(context);
-                          } else {
-                            Navigator.of(context).pushNamedAndRemoveUntil(
-                              AppRoutes.home,
-                              (route) => false,
-                            );
-                          }
-                        },
+                        onPressed: () => appPopOrGo(context, AppRoutes.home),
                       ),
                     ),
                   );

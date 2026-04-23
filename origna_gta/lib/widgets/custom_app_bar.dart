@@ -1,4 +1,5 @@
 import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:origna_gta/utils/preview_helpers.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -161,7 +162,9 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                 _buildIconButton(
                   icon: Icons.arrow_back,
                   tooltip: 'common.back'.tr(),
-                  onPressed: onBackPressed ?? () => Navigator.of(context).pop(),
+                  onPressed:
+                      onBackPressed ??
+                      () => appPopOrGo(context, AppRoutes.home),
                 ),
 
               // Title (+ optional subtitle)

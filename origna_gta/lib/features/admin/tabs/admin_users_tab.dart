@@ -1,5 +1,6 @@
 // ignore_for_file: depend_on_referenced_packages
 import 'package:flutter/material.dart';
+import 'package:origna_gta/core/routes.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
@@ -493,7 +494,7 @@ class _UserCard extends ConsumerWidget {
                 button: true,
                 label: 'btn-dialog-cancel',
                 child: TextButton(
-                  onPressed: () => Navigator.pop(ctx, false),
+                  onPressed: () => appPop(ctx, false),
                   child: Text('common.cancel'.tr()),
                 ),
               ),
@@ -501,7 +502,7 @@ class _UserCard extends ConsumerWidget {
                 button: true,
                 label: 'btn-dialog-confirm-remove-seller',
                 child: FilledButton(
-                  onPressed: () => Navigator.pop(ctx, true),
+                  onPressed: () => appPop(ctx, true),
                   style: FilledButton.styleFrom(
                     backgroundColor: DesignTokens.warning,
                   ),
@@ -542,7 +543,7 @@ class _UserCard extends ConsumerWidget {
                 button: true,
                 label: 'btn-dialog-cancel',
                 child: TextButton(
-                  onPressed: () => Navigator.pop(ctx, false),
+                  onPressed: () => appPop(ctx, false),
                   child: Text('common.cancel'.tr()),
                 ),
               ),
@@ -550,7 +551,7 @@ class _UserCard extends ConsumerWidget {
                 button: true,
                 label: 'btn-dialog-confirm-make-admin',
                 child: FilledButton(
-                  onPressed: () => Navigator.pop(ctx, true),
+                  onPressed: () => appPop(ctx, true),
                   style: FilledButton.styleFrom(
                     backgroundColor: DesignTokens.secondary,
                   ),
@@ -592,7 +593,7 @@ class _UserCard extends ConsumerWidget {
                 button: true,
                 label: 'btn-dialog-cancel',
                 child: TextButton(
-                  onPressed: () => Navigator.pop(ctx, false),
+                  onPressed: () => appPop(ctx, false),
                   child: Text('common.cancel'.tr()),
                 ),
               ),
@@ -600,7 +601,7 @@ class _UserCard extends ConsumerWidget {
                 button: true,
                 label: 'btn-dialog-confirm-suspend',
                 child: FilledButton(
-                  onPressed: () => Navigator.pop(ctx, true),
+                  onPressed: () => appPop(ctx, true),
                   style: FilledButton.styleFrom(
                     backgroundColor: DesignTokens.error,
                   ),

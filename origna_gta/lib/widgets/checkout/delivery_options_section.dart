@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:origna_gta/core/routes.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/features/checkout/checkout_provider.dart';
 import 'package:origna_gta/utils/constants.dart';
@@ -364,7 +365,7 @@ class DeliveryOptionsSection extends ConsumerWidget {
             label: 'btn-delivery-options-close',
             button: true,
             child: TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => appPop(context),
               child: Text('common.close'.tr()),
             ),
           ),

@@ -1,6 +1,7 @@
 import 'package:origna_gta/utils/preview_helpers.dart';
 import 'package:flutter/material.dart';
 
+import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:flutter/widget_previews.dart';
 
@@ -59,7 +60,9 @@ class ModernAppBar extends StatelessWidget implements PreferredSizeWidget {
             ? IconButton(
                 icon: const Icon(Icons.arrow_back_ios_new_rounded),
                 tooltip: 'Back',
-                onPressed: onBackPressed ?? () => Navigator.pop(context),
+                onPressed:
+                    onBackPressed ??
+                    () => appPopOrGo(context, AppRoutes.home),
               )
             : leadingIcon,
         title: Text(

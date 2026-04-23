@@ -38,7 +38,7 @@ class PremiumMenuItem extends StatelessWidget {
         child: GestureDetector(
           onTap: () {
             HapticFeedback.lightImpact();
-            Navigator.pushNamed(context, AppRoutes.subscription);
+            appPushNamed(context, AppRoutes.subscription);
           },
           behavior: HitTestBehavior.opaque,
           child: Semantics(

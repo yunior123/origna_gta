@@ -116,7 +116,7 @@ void main() {
         ...overrides,
       ],
       child: EasyLocalization(
-        supportedLocales: const [Locale('en'), Locale('fr')],
+        supportedLocales: const [Locale('en'), Locale('fr'), Locale('es')],
         path: 'assets/translations',
         assetLoader: MockAssetLoader(),
         startLocale: const Locale('en'),
@@ -129,6 +129,17 @@ void main() {
     for (int i = 0; i < count; i++) {
       await tester.pump(const Duration(milliseconds: 500));
     }
+  }
+
+  Future<void> navigateTo(
+    WidgetTester tester,
+    String route, {
+    Object? arguments,
+    int pumpCount = 8,
+  }) async {
+    final context = OrignaBaseNotificationService.navigatorKey.currentContext!;
+    appPushNamed(context, route, arguments: arguments);
+    await pumpFrames(tester, count: pumpCount);
   }
 
   group('OrignaApp widget', () {
@@ -150,7 +161,7 @@ void main() {
     });
   });
 
-  group('_onGenerateRoute via Navigator', () {
+  group('GoRouter navigation', () {
     test('product route helpers build canonical web paths', () {
       expect(
         AppRoutes.productByIdPath('prod_123'),
@@ -160,6 +171,8 @@ void main() {
         AppRoutes.productBySlugPath('solar-inverter'),
         '${AppRoutes.productBySlug}/solar-inverter',
       );
+      expect(AppRoutes.productByIdPattern, '${AppRoutes.productById}/:productId');
+      expect(AppRoutes.productBySlugPattern, '${AppRoutes.productBySlug}/:slug');
     });
 
     testWidgets('navigates to login route', (tester) async {
@@ -167,9 +180,7 @@ void main() {
         await tester.pumpWidget(createTestApp());
         await tester.pump(const Duration(seconds: 2));
       });
-      final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
-      nav.pushNamed(AppRoutes.login);
-      await pumpFrames(tester);
+      await navigateTo(tester, AppRoutes.login);
       expect(find.byType(LoginScreen), findsOneWidget);
     });
 
@@ -178,9 +189,7 @@ void main() {
         await tester.pumpWidget(createTestApp());
         await tester.pump(const Duration(seconds: 2));
       });
-      final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
-      nav.pushNamed('/');
-      await pumpFrames(tester);
+      await navigateTo(tester, AppRoutes.home);
       expect(find.byType(AuthWrapper), findsWidgets);
     });
 
@@ -189,9 +198,7 @@ void main() {
         await tester.pumpWidget(createTestApp());
         await tester.pump(const Duration(seconds: 2));
       });
-      final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
-      nav.pushNamed(AppRoutes.cart);
-      await pumpFrames(tester);
+      await navigateTo(tester, AppRoutes.cart);
       expect(find.byType(AuthRequiredGate), findsWidgets);
     });
 
@@ -200,9 +207,7 @@ void main() {
         await tester.pumpWidget(createTestApp());
         await tester.pump(const Duration(seconds: 2));
       });
-      final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
-      nav.pushNamed(AppRoutes.profile);
-      await pumpFrames(tester);
+      await navigateTo(tester, AppRoutes.profile);
       expect(find.byType(AuthRequiredGate), findsWidgets);
     });
 
@@ -211,9 +216,7 @@ void main() {
         await tester.pumpWidget(createTestApp());
         await tester.pump(const Duration(seconds: 2));
       });
-      final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
-      nav.pushNamed(AppRoutes.orders);
-      await pumpFrames(tester);
+      await navigateTo(tester, AppRoutes.orders);
       expect(find.byType(AuthRequiredGate), findsWidgets);
     });
 
@@ -224,9 +227,7 @@ void main() {
         await tester.pumpWidget(createTestApp());
         await tester.pump(const Duration(seconds: 2));
       });
-      final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
-      nav.pushNamed(AppRoutes.orderDetail);
-      await pumpFrames(tester);
+      await navigateTo(tester, AppRoutes.orderDetail);
       // Without orderId, falls back to OrdersScreen
       expect(find.byType(AuthRequiredGate), findsWidgets);
     });
@@ -236,11 +237,10 @@ void main() {
         await tester.pumpWidget(createTestApp());
         await tester.pump(const Duration(seconds: 2));
       });
-      final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
-      nav.pushNamed(
+      await navigateTo(
+        tester,
         '${AppRoutes.orderDetail}?${DeepLinkParams.orderId}=order123',
       );
-      await pumpFrames(tester);
       expect(find.byType(AuthRequiredGate), findsWidgets);
     });
 
@@ -251,9 +251,7 @@ void main() {
         await tester.pumpWidget(createTestApp());
         await tester.pump(const Duration(seconds: 2));
       });
-      final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
-      nav.pushNamed(AppRoutes.returnRequest);
-      await pumpFrames(tester);
+      await navigateTo(tester, AppRoutes.returnRequest);
       expect(find.byType(AuthRequiredGate), findsWidgets);
     });
 
@@ -262,9 +260,7 @@ void main() {
         await tester.pumpWidget(createTestApp());
         await tester.pump(const Duration(seconds: 2));
       });
-      final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
-      nav.pushNamed(AppRoutes.favorites);
-      await pumpFrames(tester);
+      await navigateTo(tester, AppRoutes.favorites);
       expect(find.byType(AuthRequiredGate), findsWidgets);
     });
 
@@ -273,9 +269,7 @@ void main() {
         await tester.pumpWidget(createTestApp());
         await tester.pump(const Duration(seconds: 2));
       });
-      final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
-      nav.pushNamed(AppRoutes.subscription);
-      await pumpFrames(tester);
+      await navigateTo(tester, AppRoutes.subscription);
       expect(find.byType(AuthRequiredGate), findsWidgets);
     });
 
@@ -284,9 +278,7 @@ void main() {
         await tester.pumpWidget(createTestApp());
         await tester.pump(const Duration(seconds: 2));
       });
-      final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
-      nav.pushNamed(AppRoutes.subscriptionSuccess);
-      await pumpFrames(tester);
+      await navigateTo(tester, AppRoutes.subscriptionSuccess);
       expect(find.byType(AuthRequiredGate), findsWidgets);
     });
 
@@ -295,9 +287,7 @@ void main() {
         await tester.pumpWidget(createTestApp());
         await tester.pump(const Duration(seconds: 2));
       });
-      final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
-      nav.pushNamed(AppRoutes.subscriptionCancel);
-      await pumpFrames(tester);
+      await navigateTo(tester, AppRoutes.subscriptionCancel);
       expect(find.byType(AuthRequiredGate), findsWidgets);
     });
 
@@ -306,9 +296,7 @@ void main() {
         await tester.pumpWidget(createTestApp());
         await tester.pump(const Duration(seconds: 2));
       });
-      final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
-      nav.pushNamed(AppRoutes.paymentCancel);
-      await pumpFrames(tester);
+      await navigateTo(tester, AppRoutes.paymentCancel);
       expect(find.byType(AuthRequiredGate), findsWidgets);
     });
 
@@ -319,9 +307,7 @@ void main() {
         await tester.pumpWidget(createTestApp());
         await tester.pump(const Duration(seconds: 2));
       });
-      final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
-      nav.pushNamed(AppRoutes.paymentSuccess);
-      await pumpFrames(tester);
+      await navigateTo(tester, AppRoutes.paymentSuccess);
       expect(find.byType(ErrorScreen), findsOneWidget);
     });
 
@@ -330,11 +316,10 @@ void main() {
         await tester.pumpWidget(createTestApp());
         await tester.pump(const Duration(seconds: 2));
       });
-      final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
-      nav.pushNamed(
+      await navigateTo(
+        tester,
         '${AppRoutes.paymentSuccess}?${DeepLinkParams.sessionId}=sess_123',
       );
-      await pumpFrames(tester);
       expect(find.byType(AuthRequiredGate), findsWidgets);
     });
 
@@ -343,9 +328,7 @@ void main() {
         await tester.pumpWidget(createTestApp());
         await tester.pump(const Duration(seconds: 2));
       });
-      final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
-      nav.pushNamed(AppRoutes.sellerReturn);
-      await pumpFrames(tester);
+      await navigateTo(tester, AppRoutes.sellerReturn);
       if (FeatureFlags.kSellerOnboardingEnabled) {
         expect(find.byType(AuthRequiredGate), findsWidgets);
       } else {
@@ -358,9 +341,7 @@ void main() {
         await tester.pumpWidget(createTestApp());
         await tester.pump(const Duration(seconds: 2));
       });
-      final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
-      nav.pushNamed(AppRoutes.sellerRefresh);
-      await pumpFrames(tester);
+      await navigateTo(tester, AppRoutes.sellerRefresh);
       if (FeatureFlags.kSellerOnboardingEnabled) {
         expect(find.byType(AuthRequiredGate), findsWidgets);
       } else {
@@ -373,9 +354,7 @@ void main() {
         await tester.pumpWidget(createTestApp());
         await tester.pump(const Duration(seconds: 2));
       });
-      final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
-      nav.pushNamed(AppRoutes.productBySlugPath('test-slug'));
-      await pumpFrames(tester);
+      await navigateTo(tester, AppRoutes.productBySlugPath('test-slug'));
       // Should navigate to product detail screen via slug resolution
       expect(find.byType(ProductDetailScreen), findsOneWidget);
     });
@@ -385,9 +364,7 @@ void main() {
         await tester.pumpWidget(createTestApp());
         await tester.pump(const Duration(seconds: 2));
       });
-      final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
-      nav.pushNamed(AppRoutes.productByIdPath('prod_123'));
-      await pumpFrames(tester);
+      await navigateTo(tester, AppRoutes.productByIdPath('prod_123'));
       expect(find.byType(ProductDetailScreen), findsOneWidget);
     });
 
@@ -417,15 +394,14 @@ void main() {
         await tester.pump(const Duration(seconds: 2));
       });
 
-      final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
-      nav.pushNamed(
+      await navigateTo(
+        tester,
         AppRoutes.productByIdPath('prod_123'),
         arguments: ProductDetailsArgs(
           productId: product.productId,
           product: product.toJson(),
         ),
       );
-      await pumpFrames(tester);
 
       expect(find.byType(ProductDetailScreen), findsOneWidget);
       await tester.tap(find.byKey(const Key('productdetail_back_button')));
@@ -440,9 +416,7 @@ void main() {
         await tester.pumpWidget(createTestApp());
         await tester.pump(const Duration(seconds: 2));
       });
-      final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
-      nav.pushNamed(AppRoutes.addressManagement);
-      await pumpFrames(tester);
+      await navigateTo(tester, AppRoutes.addressManagement);
       expect(find.byType(AuthRequiredGate), findsWidgets);
     });
 
@@ -451,9 +425,7 @@ void main() {
         await tester.pumpWidget(createTestApp());
         await tester.pump(const Duration(seconds: 2));
       });
-      final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
-      nav.pushNamed(AppRoutes.addProduct);
-      await pumpFrames(tester);
+      await navigateTo(tester, AppRoutes.addProduct);
       expect(find.byType(AuthRequiredGate), findsWidgets);
     });
 
@@ -462,9 +434,7 @@ void main() {
         await tester.pumpWidget(createTestApp());
         await tester.pump(const Duration(seconds: 2));
       });
-      final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
-      nav.pushNamed(AppRoutes.addEditAddress);
-      await pumpFrames(tester);
+      await navigateTo(tester, AppRoutes.addEditAddress);
       expect(find.byType(AuthRequiredGate), findsWidgets);
     });
 
@@ -473,9 +443,7 @@ void main() {
         await tester.pumpWidget(createTestApp());
         await tester.pump(const Duration(seconds: 2));
       });
-      final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
-      nav.pushNamed(AppRoutes.chatInbox);
-      await pumpFrames(tester);
+      await navigateTo(tester, AppRoutes.chatInbox);
       expect(find.byType(AuthRequiredGate), findsWidgets);
     });
 
@@ -484,9 +452,7 @@ void main() {
         await tester.pumpWidget(createTestApp());
         await tester.pump(const Duration(seconds: 2));
       });
-      final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
-      nav.pushNamed(AppRoutes.notifications);
-      await pumpFrames(tester);
+      await navigateTo(tester, AppRoutes.notifications);
       expect(find.byType(AuthRequiredGate), findsWidgets);
     });
 
@@ -497,9 +463,7 @@ void main() {
         await tester.pumpWidget(createTestApp());
         await tester.pump(const Duration(seconds: 2));
       });
-      final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
-      nav.pushNamed(AppRoutes.chat);
-      await pumpFrames(tester);
+      await navigateTo(tester, AppRoutes.chat);
       // Without ChatArgs or productId query param, falls back to AuthWrapper
       expect(find.byType(AuthWrapper), findsWidgets);
     });
@@ -509,9 +473,10 @@ void main() {
         await tester.pumpWidget(createTestApp());
         await tester.pump(const Duration(seconds: 2));
       });
-      final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
-      nav.pushNamed('${AppRoutes.chat}?productId=p1&productTitle=Test');
-      await pumpFrames(tester);
+      await navigateTo(
+        tester,
+        '${AppRoutes.chat}?productId=p1&productTitle=Test',
+      );
       expect(find.byType(AuthRequiredGate), findsWidgets);
     });
 
@@ -522,9 +487,7 @@ void main() {
         await tester.pumpWidget(createTestApp());
         await tester.pump(const Duration(seconds: 2));
       });
-      final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
-      nav.pushNamed(AppRoutes.editProduct);
-      await pumpFrames(tester);
+      await navigateTo(tester, AppRoutes.editProduct);
       expect(find.byType(AuthWrapper), findsWidgets);
     });
 
@@ -535,9 +498,7 @@ void main() {
         await tester.pumpWidget(createTestApp());
         await tester.pump(const Duration(seconds: 2));
       });
-      final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
-      nav.pushNamed(AppRoutes.productDetails);
-      await pumpFrames(tester);
+      await navigateTo(tester, AppRoutes.productDetails);
       expect(find.byType(AuthWrapper), findsWidgets);
     });
 
@@ -548,9 +509,7 @@ void main() {
         await tester.pumpWidget(createTestApp());
         await tester.pump(const Duration(seconds: 2));
       });
-      final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
-      nav.pushNamed(AppRoutes.checkout);
-      await pumpFrames(tester);
+      await navigateTo(tester, AppRoutes.checkout);
       expect(find.byType(AuthWrapper), findsWidgets);
     });
 
@@ -561,9 +520,7 @@ void main() {
         await tester.pumpWidget(createTestApp());
         await tester.pump(const Duration(seconds: 2));
       });
-      final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
-      nav.pushNamed(AppRoutes.orderSuccess);
-      await pumpFrames(tester);
+      await navigateTo(tester, AppRoutes.orderSuccess);
       expect(find.byType(AuthWrapper), findsWidgets);
     });
 
@@ -572,9 +529,7 @@ void main() {
         await tester.pumpWidget(createTestApp());
         await tester.pump(const Duration(seconds: 2));
       });
-      final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
-      nav.pushNamed(AppRoutes.sellerRegistration);
-      await pumpFrames(tester);
+      await navigateTo(tester, AppRoutes.sellerRegistration);
       if (FeatureFlags.kSellerOnboardingEnabled) {
         expect(find.byType(AuthRequiredGate), findsWidgets);
       } else {
@@ -587,9 +542,7 @@ void main() {
         await tester.pumpWidget(createTestApp());
         await tester.pump(const Duration(seconds: 2));
       });
-      final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
-      nav.pushNamed(AppRoutes.sellerOrders);
-      await pumpFrames(tester);
+      await navigateTo(tester, AppRoutes.sellerOrders);
       if (FeatureFlags.kSellerOnboardingEnabled) {
         expect(find.byType(AuthRequiredGate), findsWidgets);
       } else {
@@ -602,9 +555,7 @@ void main() {
         await tester.pumpWidget(createTestApp());
         await tester.pump(const Duration(seconds: 2));
       });
-      final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
-      nav.pushNamed(AppRoutes.sellerProducts);
-      await pumpFrames(tester);
+      await navigateTo(tester, AppRoutes.sellerProducts);
       if (FeatureFlags.kSellerOnboardingEnabled) {
         expect(find.byType(AuthRequiredGate), findsWidgets);
       } else {
@@ -617,9 +568,7 @@ void main() {
         await tester.pumpWidget(createTestApp());
         await tester.pump(const Duration(seconds: 2));
       });
-      final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
-      nav.pushNamed(AppRoutes.sellerWarehouses);
-      await pumpFrames(tester);
+      await navigateTo(tester, AppRoutes.sellerWarehouses);
       if (FeatureFlags.kSellerOnboardingEnabled) {
         expect(find.byType(AuthRequiredGate), findsWidgets);
       } else {
@@ -632,9 +581,7 @@ void main() {
         await tester.pumpWidget(createTestApp());
         await tester.pump(const Duration(seconds: 2));
       });
-      final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
-      nav.pushNamed(AppRoutes.sellerIntegration);
-      await pumpFrames(tester);
+      await navigateTo(tester, AppRoutes.sellerIntegration);
       if (FeatureFlags.kSellerOnboardingEnabled) {
         expect(find.byType(AuthRequiredGate), findsWidgets);
       } else {
@@ -647,9 +594,7 @@ void main() {
         await tester.pumpWidget(createTestApp());
         await tester.pump(const Duration(seconds: 2));
       });
-      final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
-      nav.pushNamed(AppRoutes.sellerAnalytics);
-      await pumpFrames(tester);
+      await navigateTo(tester, AppRoutes.sellerAnalytics);
       if (FeatureFlags.kSellerOnboardingEnabled) {
         expect(find.byType(AuthRequiredGate), findsWidgets);
       } else {
@@ -662,9 +607,7 @@ void main() {
         await tester.pumpWidget(createTestApp());
         await tester.pump(const Duration(seconds: 2));
       });
-      final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
-      nav.pushNamed(AppRoutes.adminPanel);
-      await pumpFrames(tester);
+      await navigateTo(tester, AppRoutes.adminPanel);
       expect(find.byType(AuthRequiredGate), findsWidgets);
     });
 
@@ -673,9 +616,7 @@ void main() {
         await tester.pumpWidget(createTestApp());
         await tester.pump(const Duration(seconds: 2));
       });
-      final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
-      nav.pushNamed(AppRoutes.shippingApproval);
-      await pumpFrames(tester);
+      await navigateTo(tester, AppRoutes.shippingApproval);
       expect(find.byType(AuthRequiredGate), findsWidgets);
     });
 
@@ -684,9 +625,7 @@ void main() {
         await tester.pumpWidget(createTestApp());
         await tester.pump(const Duration(seconds: 2));
       });
-      final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
-      nav.pushNamed(AppRoutes.support);
-      await pumpFrames(tester);
+      await navigateTo(tester, AppRoutes.support);
       expect(find.byType(AuthRequiredGate), findsWidgets);
     });
 
@@ -695,9 +634,7 @@ void main() {
         await tester.pumpWidget(createTestApp());
         await tester.pump(const Duration(seconds: 2));
       });
-      final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
-      nav.pushNamed(AppRoutes.sellerBulkUpload);
-      await pumpFrames(tester);
+      await navigateTo(tester, AppRoutes.sellerBulkUpload);
       if (FeatureFlags.kSellerOnboardingEnabled) {
         expect(find.byType(AuthRequiredGate), findsWidgets);
       } else {
@@ -710,9 +647,7 @@ void main() {
         await tester.pumpWidget(createTestApp());
         await tester.pump(const Duration(seconds: 2));
       });
-      final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
-      nav.pushNamed(AppRoutes.privacyPolicy);
-      await pumpFrames(tester);
+      await navigateTo(tester, AppRoutes.privacyPolicy);
       expect(find.byType(PrivacyPolicyScreen), findsOneWidget);
     });
 
@@ -721,9 +656,7 @@ void main() {
         await tester.pumpWidget(createTestApp());
         await tester.pump(const Duration(seconds: 2));
       });
-      final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
-      nav.pushNamed(AppRoutes.termsOfService);
-      await pumpFrames(tester, count: 16);
+      await navigateTo(tester, AppRoutes.termsOfService, pumpCount: 16);
       expect(find.byType(DeferredWidget), findsOneWidget);
     });
 
@@ -732,9 +665,7 @@ void main() {
         await tester.pumpWidget(createTestApp());
         await tester.pump(const Duration(seconds: 2));
       });
-      final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
-      nav.pushNamed(AppRoutes.mfaSetup);
-      await pumpFrames(tester);
+      await navigateTo(tester, AppRoutes.mfaSetup);
       expect(find.byType(AuthRequiredGate), findsWidgets);
     });
 
@@ -745,9 +676,7 @@ void main() {
         await tester.pumpWidget(createTestApp());
         await tester.pump(const Duration(seconds: 2));
       });
-      final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
-      nav.pushNamed(AppRoutes.mfaChallenge);
-      await pumpFrames(tester);
+      await navigateTo(tester, AppRoutes.mfaChallenge);
       expect(find.byType(AuthWrapper), findsWidgets);
     });
 
@@ -756,9 +685,7 @@ void main() {
         await tester.pumpWidget(createTestApp());
         await tester.pump(const Duration(seconds: 2));
       });
-      final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
-      nav.pushNamed(AppRoutes.securitySettings);
-      await pumpFrames(tester);
+      await navigateTo(tester, AppRoutes.securitySettings);
       expect(find.byType(AuthRequiredGate), findsWidgets);
     });
 
@@ -767,9 +694,7 @@ void main() {
         await tester.pumpWidget(createTestApp());
         await tester.pump(const Duration(seconds: 2));
       });
-      final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
-      nav.pushNamed('/totally-unknown-route');
-      await pumpFrames(tester);
+      await navigateTo(tester, '/totally-unknown-route');
       expect(find.byType(AuthWrapper), findsWidgets);
     });
 
@@ -778,10 +703,7 @@ void main() {
         await tester.pumpWidget(createTestApp());
         await tester.pump(const Duration(seconds: 2));
       });
-      final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
-      // An unparseable route name
-      nav.pushNamed(':not-a-route');
-      await pumpFrames(tester);
+      await navigateTo(tester, ':not-a-route');
       // Should fall back to home
       expect(find.byType(AuthWrapper), findsWidgets);
     });
@@ -797,18 +719,6 @@ void main() {
       expect(materialApp.theme, isNotNull);
       expect(materialApp.darkTheme, isNotNull);
       expect(materialApp.themeMode, ThemeMode.dark);
-    });
-  });
-
-  group('OrignaApp onUnknownRoute', () {
-    testWidgets('onUnknownRoute returns AuthWrapper', (tester) async {
-      await tester.runAsync(() async {
-        await tester.pumpWidget(createTestApp());
-        await tester.pump(const Duration(seconds: 2));
-      });
-      // Verify the MaterialApp has onUnknownRoute configured
-      final materialApp = tester.widget<MaterialApp>(find.byType(MaterialApp));
-      expect(materialApp.onUnknownRoute, isNotNull);
     });
   });
 }

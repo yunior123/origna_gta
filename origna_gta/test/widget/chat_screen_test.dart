@@ -51,7 +51,7 @@ void main() {
     return ProviderScope(
       overrides: overrides,
       child: EasyLocalization(
-        supportedLocales: const [Locale('en'), Locale('fr')],
+        supportedLocales: const [Locale('en'), Locale('fr'), Locale('es')],
         path: 'assets/translations',
         fallbackLocale: const Locale('en'),
         startLocale: const Locale('en'),

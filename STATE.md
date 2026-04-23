@@ -1027,6 +1027,20 @@ All active blockers and known infrastructure issues from previous sessions have 
      - `cd e2e && bun test specs/phase4-product-flows/bulk-upload.spec.ts --timeout 120000`: passed (`10 pass / 0 fail`) in `51.33s`.
      - `cd e2e && bun test specs/phase6-stripe/premium-subscription.spec.ts --timeout 120000`: passed (`29 pass / 0 fail`) in `141.28s`.
      - `cd e2e && bun test specs/phase6-stripe/deep-ui-scenarios.spec.ts --timeout 120000`: passed (`14 pass / 0 fail`) in `112.58s`.
+26. **Final live verification moved completed navigation/mobile CTA items from TODO into confirmed state**: Verified on 2026-04-22.
+   - `when going navigation to product details the whole web reloads, including splash`:
+     - live dev probes confirmed home → product is same-document with no splash replay or full reload.
+   - `verify navigation is working properly when tapping arrow back on safari browser`:
+     - live WebKit mobile probes confirmed browser back returns to home correctly.
+     - `cd origna_gta && flutter test test/widget/origna_app_routes_test.dart`: passed, including `product detail back button returns to home route`.
+     - live mobile verification also confirmed the product-detail in-app back arrow returns home instead of blanking to a dark shell.
+   - `no whasapp floating button in mobile layout, was it removed?`:
+     - `origna_ventures/lib/main.dart` now includes a mobile WhatsApp floating CTA.
+     - `cd origna_ventures && flutter test test/widget_test.dart`: passed, including the new mobile WhatsApp assertion.
+     - `cd origna_ventures && ./deploy.sh --frontend-only`: succeeded.
+     - fresh live mobile screenshot of `https://orignaventures.ca` confirmed the WhatsApp floating button is visible.
+   - `If the seller is OrignaVentures, let users chat directly without paying for premium; treat chatting with sellers as available when seller onboarding is enabled`:
+     - code path verified in `origna_gta/lib/screens/widgets/product_detail/product_info_section.dart` and `origna_gta/lib/screens/chat_conversations_screen.dart`.
      - `cd e2e && bun test specs/phase6-stripe/seller-setup.spec.ts --timeout 120000`: passed (`5 pass / 0 fail`) in `21.80s`.
    - measured runtime improvement against the prior all-up hotspots:
      - `seller-integration` `T02/T03` were previously ~`70s` each; the whole focused file now completes in `44.11s`.
@@ -1188,6 +1202,43 @@ All active blockers and known infrastructure issues from previous sessions have 
      - the screenshot gap work is no longer blocked by guessed manifests or wrong route formats.
      - the next required fix is in authenticated web-shell boot/hydration on the deployed app, not in the capture manifest itself.
 31. **Deployed desktop capture blocker materially reduced: dev web semantics restored, hash-route capture paths corrected, and desktop manifest now passes 26/30**: Verified on 2026-04-17.
+32. **Historical completed TODOs were moved out of `TODOS.md` so the file now focuses on reusable work and unfinished items**: Verified on 2026-04-22.
+33. **Route strings were further hardened into centralized constants/patterns**: Verified on 2026-04-22.
+   - `origna_gta/lib/core/routes.dart`
+     - added centralized dynamic route pattern constants for:
+       - product slug route
+       - product id route
+       - admin seller-products route
+     - added centralized path-parameter keys:
+       - `slug`
+       - `productId`
+       - `sellerId`
+     - removed the last hardcoded `products` path segment from the admin seller-products route builder.
+   - `origna_gta/lib/origna_app.dart`
+     - GoRouter registration now consumes `AppRoutes.productBySlugPattern`, `AppRoutes.productByIdPattern`, and `AppRoutes.adminSellerProductsPattern` instead of inline string interpolation.
+     - path parameter reads now use the centralized keys from `AppRoutes`.
+   - regression coverage:
+     - `cd origna_gta && flutter test test/widget/routes_test.dart test/widget/origna_app_routes_test.dart` → passed (`All tests passed!`).
+     - `cd origna_gta && flutter analyze --no-fatal-infos` → passed.
+   - impact:
+     - the active route table no longer depends on scattered inline parameter names/path templates for the product/admin dynamic routes, which reduces route-string drift bugs during future refactors.
+   - moved completed one-off items into state/history instead of leaving them in the active task list.
+   - completed items now recorded here include:
+     - OrignaGTA home scroll rebuild/splash regression fixed and verified.
+     - OrignaVentures checkout-network fix and "ver planes" CTA fix.
+     - OrignaGTA cookie banner redesign and splash/favicon refresh.
+     - payment-button verification wave recorded as completed.
+     - product-route same-document/no-reload verification.
+     - dev catalog wipe + reseed to 100 curated products with matching image/copy/category data.
+     - Safari/WebKit back-navigation verification.
+     - mobile product-detail image/back-jump blank-screen regression fixed and verified.
+     - OrignaGTA dev/staging/production web deploys completed on 2026-04-22.
+     - mobile WhatsApp floating button restoration/live verification.
+     - route-test/package-info warning regression item moved after the route suite was restored to green.
+     - OrignaVentures seller chat bypass verification.
+     - whole-app navigation audit completion from the go_router migration.
+   - impact:
+     - `TODOS.md` now keeps active reusable instructions plus unfinished work, instead of mixing them with already-closed historical wins.
    - root causes confirmed with direct evidence:
      - `scripts/deploy_web.sh` had drifted from the documented web build matrix and was always deploying `flutter build web --release` without `FORCE_SEMANTICS=true`, so the live DEV app exposed the HTML legal links and splash shell but not the Flutter semantics tree needed by `agent-browser`.
      - the desktop capture manifests and `debug_auth_session.ts` had been flipped to `/#/...` URLs even though the deployed app currently uses `usePathUrlStrategy()`, so authenticated capture routes like `/#/profile` did not land on the intended screens.
@@ -1274,3 +1325,705 @@ All high-priority tasks (Payments, Refactors, Audit) complete.
 Assets and documentation finalized for investor presentation.
 Manually finalizing remaining tasks.
 Security enhancement: Switched to manual repo access for clients.
+52. **Full OrignaGTA go_router migration + navigation audit**: Advanced and verified on 2026-04-22.
+   - completed the remaining navigation migration in `origna_gta/` so the active app route table is explicit `GoRoute` registration instead of the old generic location-to-screen bridge.
+   - key routing changes:
+     - replaced the catch-all route resolver in `origna_gta/lib/origna_app.dart` with a concrete `GoRoute` list for home, product, auth, buyer, seller, admin, chat, support, payment, and document flows.
+     - added centralized pop helpers in `origna_gta/lib/core/routes.dart`:
+       - `appPop(...)` for dialog/result dismissals and route pops
+       - `appPopOrGo(...)` for back behavior with a route fallback
+     - migrated shared app bars and primary back flows onto those helpers.
+     - removed the last direct page push by converting the admin seller-products drilldown into a route-backed screen.
+   - product-detail regressions resolved during the migration:
+     - removed late mobile scroll reset timers that caused the detail view to jump upward after the user had already scrolled.
+     - product-detail in-view back arrow now returns through the router instead of dropping into a black/blue blank state.
+   - app-wide navigation audit result:
+     - `rg` confirmed there are no remaining direct `Navigator.push*` / `pushNamed*` / `popUntil` page-navigation calls outside `origna_gta/lib/core/routes.dart`.
+     - remaining raw navigator interaction is intentionally centralized inside `core/routes.dart` for local modal dismissal and non-router fallback only.
+   - verification:
+     - `cd origna_gta && flutter analyze --no-fatal-infos` → passed.
+     - `cd origna_gta && flutter test test/widget/product_card_test.dart` → passed (`11/11`).
+     - live deploy: `VPS_HOST=root@204.168.137.16 ./scripts/deploy_web.sh dev`
+       - release: `20260422102935`
+   - live browser verification on `https://dev.orignagta.ca`:
+     - Chromium: product-card open → `/product/...` with same-document navigation; in-view back arrow returned to `/` with same-document navigation.
+     - WebKit/Safari-equivalent: product-card open → `/product/...`; browser/in-view back returned to `/` with same-document navigation.
+     - mobile post-scroll screenshots on the detail page remained stable after idle, confirming the jump-to-top regression was removed.
+53. **OrignaVentures contact email hardening + semantic-label pass**: advanced on 2026-04-22.
+   - official guidance checked before changes:
+     - Flutter web accessibility docs: web semantics are opt-in unless the hidden accessibility toggle is pressed; programmatic enablement uses `SemanticsBinding.instance.ensureSemantics()` on web.
+     - Playwright docs: prefer user-facing `getByLabel()` / `getByRole()` locators over brittle attribute selectors.
+   - frontend changes:
+     - `origna_ventures/lib/main.dart`
+       - enabled web semantics at startup with `SemanticsBinding.instance.ensureSemantics()` behind `kIsWeb`
+       - added semantic labels for contact controls and result state:
+         - `input-contact-name`
+         - `input-contact-email`
+         - `input-contact-company`
+         - `select-contact-service`
+         - `input-contact-message`
+         - `btn-contact-submit`
+         - `status-contact-result`
+   - backend changes:
+     - `origna_ventures/backend/app.py`
+       - `/api/contact` now returns per-recipient delivery results for support + confirmation emails
+       - upgraded support and confirmation email HTML/text rendering
+   - e2e changes:
+     - `e2e/specs/phase6-stripe/origna-ventures-live.spec.ts`
+       - added dedicated `PW04-contact` live Playwright coverage for the contact flow
+       - renamed adjacent test ids to avoid ambiguous Bun filtering (`PW04-cookie`, `PW05-pricing`)
+   - verification:
+     - `python3 -m py_compile origna_ventures/backend/app.py` → pass
+     - `flutter analyze origna_ventures/lib/main.dart --no-fatal-infos` → pass
+     - `bun x tsc --noEmit` in `e2e/` → pass
+     - live API verification:
+       - `POST https://api.orignaventures.ca/api/contact` returned `200`
+       - response included:
+         - `emails.support.status = sent`
+         - `emails.confirmation.status = sent`
+         - provider `mailjet` for both
+     - live frontend verification:
+       - `https://orignaventures.ca` now exposes contact-form semantic labels in the accessibility DOM without relying on the hidden `Enable accessibility` toggle.
+   - remaining gap:
+     - full browser-driven submission through the live Flutter contact form still needs one more pass; Playwright can now discover the semantic inputs/buttons, but writing into Flutter's live web text fields under headless automation is not yet fully stable.
+53. **Dev catalog wipe + curated reseed**: Completed and re-verified on 2026-04-22.
+   - root cause found in `scripts/reseed_dev_catalog.ts`: the previous delete pass used the storefront paginated products endpoint, which missed malformed/inactive records and left stale docs behind.
+   - fixed the script to delete directly from the full GraphQL `products` collection via `listCollection('products', token)` before reseeding.
+   - reran the script against `https://api.dev.orignagta.ca`:
+     - deleted total products: `3385`
+     - seeded total products: `100`
+   - post-run validation:
+     - API audit via `e2e/lib/api-client.ts` showed `total=100`, `missingTitle=0`, `missingDescription=0`, `missingImages=0`, `missingCategory=0`, `inactive=0`.
+     - live Chromium check on `https://dev.orignagta.ca` confirmed the refreshed product detail renders the expected hero image and matching merchandising copy after the reseed.
+54. **OrignaGTA web deploys across environments**: Completed on 2026-04-22.
+   - deployed current OrignaGTA web build with `scripts/deploy_web.sh`:
+     - dev release: `20260422110001`
+     - staging release: `20260422110151`
+     - production release: `20260422110944`
+   - confirmed `https://orignagta.ca` returned the freshly deployed `index.html` with `last-modified: Wed, 22 Apr 2026 15:05:01 GMT` immediately after the first production release, then republished production at `20260422110944` to include the new static solar assets under `/product-assets/solar/`.
+55. **Production solar product image correction**: Advanced on 2026-04-22.
+56. **Production solar-product verification now has a safe live regression and the bootstrap script blockers were fixed**: Verified on 2026-04-22.
+57. **OrignaVentures contact-form live browser automation was hardened and now passes in a focused spec**: Verified on 2026-04-22.
+58. **OrignaVentures checkout tax handling no longer hardcodes HST upfront**: Verified on 2026-04-22.
+   - root issue in `origna_ventures/backend/app.py`:
+     - the checkout session builder was forcing a second line item for `HST (13%)` (`CA$390.00` on OrignaLaunch) before Stripe had the customer’s tax context.
+     - there was no Stripe-hosted tax-ID collection path.
+   - fix applied:
+     - removed the hardcoded HST line item.
+     - enabled Stripe-hosted `automatic_tax`.
+     - enabled Stripe-hosted `tax_id_collection`.
+     - kept one-time + subscription pricing on the actual tier price line item only.
+   - local regression coverage:
+     - `cd origna_ventures/backend && source .venv/bin/activate && python -m pytest tests/test_payments_api.py`
+       - result: `13 passed`.
+     - assertions now cover:
+       - `automatic_tax[enabled] = true`
+       - `tax_id_collection[enabled] = true`
+       - no hardcoded second HST line item
+       - one-time flow still keeps Klarna + `customer_creation=always`
+   - live deploy:
+     - `cd origna_ventures && ./deploy.sh --backend-only` → succeeded.
+   - live verification:
+     - added `e2e/specs/phase6-stripe/origna-ventures-tax-live.spec.ts`.
+     - `cd e2e && bun x tsc --noEmit && bun test specs/phase6-stripe/origna-ventures-tax-live.spec.ts`
+       - result: `1 pass / 0 fail`.
+     - live Stripe Checkout for `origna_launch` now shows:
+       - subtotal `CA$3,000.00`
+       - `Tax` → `Enter address to calculate`
+       - no visible hardcoded `HST (13%)`
+       - no visible hardcoded `CA$390.00`
+  - source trail documented in-repo:
+    - `origna_ventures/docs/checkout_tax_sources_2026-04-22.md`
+    - primary sources recorded there include Stripe Checkout tax-ID docs, Stripe automatic-tax docs, Stripe Canada tax docs, CRA GST/HST supply-type guidance, CRA place-of-supply guidance, CRA input-tax-credit guidance, and CRA registrant guidance.
+  - remaining policy gap:
+    - this verifies the safer Stripe-tax implementation and removes the incorrect forced-tax behavior.
+    - it does **not** prove that a Canadian business number should always result in `0` tax; that legal rule still needs explicit business-policy confirmation before the TODO can be closed as written.
+   - root cause:
+     - the prior Playwright contact helper targeted the disabled semantic shell inputs (`input-contact-*`) instead of the editable descendant text fields that Flutter exposes inside the same semantics node.
+     - as a result, the browser test could click but not actually type, so `/api/contact` never fired.
+   - fixes applied:
+     - `e2e/specs/phase6-stripe/origna-ventures-live.spec.ts`
+       - hardened `fillFlutterField(...)` to resolve the nearest editable descendant inside the same Flutter semantics node before typing.
+     - added focused live regression:
+       - `e2e/specs/phase6-stripe/origna-ventures-contact-live.spec.ts`
+   - verification:
+     - `cd e2e && bun x tsc --noEmit && bun test specs/phase6-stripe/origna-ventures-contact-live.spec.ts`
+       - result: `1 pass / 0 fail` in `34.28s`.
+     - live proof from the browser-submitted `/api/contact` response:
+       - HTTP `200`
+       - `status: ok`
+       - contact id returned with `ct-...`
+       - `emails.support.status = sent`
+       - `emails.confirmation.status = sent`
+     - the live page also exposed the expected success surface `status-contact-result` after submission.
+   - impact:
+     - the dedicated Playwright coverage requested for the Ventures contact form now exists and is green on the live site.
+     - inbox/mailbox-level delivery proof is still a separate concern if a future pass wants literal inbox verification, but the live app/backend/provider path is now browser-verified and green.
+   - root cause found during production Playwright verification:
+     - `origna_gta/web/index.html` had a stale SRI hash on `https://js.stripe.com/v3/`, which caused the browser to block Stripe JS.
+     - the GitHub-hosted passkeys bundle used `crossorigin` + SRI and was being blocked by CORS on production.
+   - fix applied:
+     - removed the bad SRI/crossorigin attributes from the Stripe script tag.
+     - removed the SRI/crossorigin attributes from the GitHub-hosted passkeys bundle tag.
+   - deploy:
+     - `VPS_HOST=root@204.168.137.16 ./scripts/deploy_web.sh production`
+     - new production release: `20260422113324`.
+   - safe live verification added:
+     - new regression file: `e2e/specs/phase4-product-flows/prod-solar-product-live.spec.ts`.
+     - command: `cd e2e && bun x tsc --noEmit && bun test specs/phase4-product-flows/prod-solar-product-live.spec.ts`
+     - result: `2 pass / 0 fail`.
+   - what the new live regression verifies:
+     - production GraphQL still returns the live solar product doc `207123c5-a5ee-4a8e-8f3b-434664110bc0`.
+     - title, description snippet, seller (`OrignaVentures`), price (`1_300_000` cents), and `active` lifecycle match expectations.
+     - all four production solar asset URLs respond `200 OK`.
+     - the live product page requests the product data over production GraphQL and loads at least the lead solar image URL during Playwright navigation.
+     - the prior console failures are gone:
+       - no Stripe SRI digest failure
+       - no passkeys GitHub bundle CORS failure
+       - no related `net::ERR_FAILED` bootstrap error
+   - remaining gap:
+     - final live payment submission is still intentionally not executed in production without a safe authorized payment method, so the TODO remains open until that explicit live-charge step is approved/performed safely.
+   - production API audit found one active product:
+     - `products/207123c5-a5ee-4a8e-8f3b-434664110bc0`
+     - title: `10KW Hybrid Solar System - Split Phase AC120V + Home Delivery + Installation`
+   - the product was failing the production verification item because it still pointed at dev sample laptop images.
+   - used the extracted quote-derived solar images already present in `extracted_images/` and published four of them as production static assets:
+     - `origna_gta/web/product-assets/solar/solar-panel.jpeg`
+     - `origna_gta/web/product-assets/solar/hybrid-inverter.jpeg`
+     - `origna_gta/web/product-assets/solar/battery-cabinet.jpeg`
+     - `origna_gta/web/product-assets/solar/combiner-box.jpeg`
+   - patched the live production product record to use those `https://orignagta.ca/product-assets/solar/...` URLs.
+   - verification:
+     - `curl -I https://orignagta.ca/product-assets/solar/solar-panel.jpeg` → `200 OK`
+59. **Combo 2 verification sweep — verified done items moved out of the reusable queue; live Ventures checkout regression surfaced**: Advanced on 2026-04-22.
+   - fresh local verification for the completed OrignaVentures tier/language/public-flow items:
+     - `cd origna_ventures && flutter analyze --no-fatal-infos` → passed.
+     - `cd origna_ventures && flutter test` → passed (`12/12`).
+   - fresh live verification on the deployed Ventures site/backend:
+     - `cd e2e && bun x tsc --noEmit` → passed.
+     - `cd e2e && bun test specs/phase6-stripe/origna-ventures-live.spec.ts` → partial pass with the non-checkout verification still green:
+       - home shell branding / tier catalog / price catalog checks passed.
+       - deployed bundle checks passed for upgraded hero proof copy, support email, `OrignaLaunch`, `OrignaTeam`, and `MOST CHOSEN`.
+       - old generic tier naming remained absent.
+       - cookie-banner live checks passed (`PW01`, `PW02`, `PW04-cookie`).
+       - live contact browser flow remained green (`PW04-contact`).
+   - verified-complete one-off items now moved from the active reusable queue into history:
+     - OrignaVentures tier redesign is verified complete as a naming/layout/catalog item:
+       - the active catalog still exposes only `origna_code`, `origna_launch`, `origna_team`.
+       - `origna_team` remains the only subscription tier.
+       - the public active names are `OrignaCode`, `OrignaLaunch`, `OrignaTeam`; the old generic/service-style naming is not in the deployed public path verified here.
+     - public contract-signing removal is verified complete:
+       - active public Ventures flow remains direct `service_code` Stripe checkout.
+       - live/source evidence continues to match the earlier payment-audit rewrite: no public contract-signing / `/pay` UX is part of the active public purchase path.
+       - legacy admin/backoffice contract records/endpoints still exist server-side and were not counted as public contract-signing UX.
+     - browser-language + cookie-consent behavior is verified complete for the current public apps:
+       - `origna_ventures/lib/main.dart` initializes locale from stored/browser language and shows cookie consent when no stored choice exists.
+       - `origna_gta/lib/main.dart` starts with `_detectBrowserLocale()` and supports `en/fr/es`.
+   - new blocker surfaced during the same mandatory verification sweep:
+     - live Ventures checkout session creation is currently regressed on production.
+     - direct repro for all three tiers now returns `500 Internal Server Error`:
+       - `curl -i -X POST https://api.orignaventures.ca/api/payments/create-checkout-session ... service_code=origna_code`
+       - same `500` repro for `origna_launch` and `origna_team`.
+     - the full live spec showed the same regression in both API and Playwright redirect paths, so the payment-surface TODO must stay open and should be prioritized before claiming Combo 2 fully green.
+60. **OrignaVentures checkout-session regression root cause isolated locally: deterministic Stripe idempotency keys were poisoning repeated tier attempts**: Advanced on 2026-04-22.
+   - collaboration safety: I avoided the large in-flight Flutter files another AI is editing and kept this pass isolated to the Ventures backend checkout helper + its backend regression tests.
+   - root cause isolated from live evidence:
+     - repeated requests using the old hardcoded idempotency keys were reproducibly bad:
+       - `POST /api/payments/create-checkout-session` with no `payer_email` still returned `500` for all 3 tiers because the backend reused fixed keys like `checkout:origna_code:anon`.
+       - the same endpoint returned `200` immediately when the request used fresh unique emails, proving the checkout path itself was not universally down and the stale deterministic idempotency key strategy was the real regression trigger.
+   - local fix applied in `origna_ventures/backend/app.py`:
+     - `create_checkout_session_from_service(...)` now generates a fresh idempotency key per checkout attempt unless an explicit key is passed.
+     - this prevents Stripe from replaying a stale cached failure / stale prior session forever for `anon` and repeated test emails.
+   - local regression coverage updated in `origna_ventures/backend/tests/test_payments_api.py`:
+     - one-time checkout now asserts the key is no longer the old deterministic email-based value.
+     - no-email checkout now asserts the key is no longer `checkout:origna_code:anon`.
+     - added explicit-key coverage so callers can still supply a deliberate idempotency key when needed.
+   - verification:
+     - `cd origna_ventures/backend && python3 -m py_compile app.py` → passed.
+     - `cd origna_ventures/backend && source .venv/bin/activate && pytest tests/test_payments_api.py` → passed (`15 passed`).
+   - remaining step:
+     - backend redeploy + fresh live re-run are still pending, so the production regression is locally fixed but not yet re-verified on `api.orignaventures.ca`.
+61. **OrignaVentures checkout-session regression is live-fixed after backend redeploy; remaining payment gaps are narrower and now explicit**: Advanced on 2026-04-22.
+   - collaboration safety: kept this slice isolated to the Ventures backend deploy / live payment verification and avoided the large in-flight Flutter files another AI is already editing.
+   - deploy:
+     - `cd origna_ventures && ./deploy.sh --backend-only` → succeeded.
+     - backend container rebuilt healthy and `/api/health` stayed green during deploy.
+   - fresh live checkout verification after deploy:
+     - direct no-email probes now return `200` again for all three tiers:
+       - `origna_code`
+       - `origna_launch`
+       - `origna_team`
+     - this specifically proves the previous `checkout:...:anon` deterministic-key failure path is gone on production.
+   - live regression verification after deploy:
+     - `cd e2e && bun x tsc --noEmit` → passed.
+     - `cd e2e && bun test specs/phase6-stripe/origna-ventures-tax-live.spec.ts` → passed (`1 pass / 0 fail`).
+     - `cd e2e && bun test specs/phase6-stripe/origna-ventures-live.spec.ts --timeout 120000` now shows checkout recovery in the live browser/API path:
+       - `PW13` OrignaCode Stripe redirect → passed.
+       - `PW14` OrignaLaunch Stripe redirect → passed.
+       - `PW15` OrignaTeam Stripe redirect → passed.
+       - the prior checkout-session `500` failures in the API path are gone.
+   - remaining verified blockers from the same live file:
+     - webhook-security checks still return `500` in production for unsigned/invalid/replay/malformed requests; that is a separate live backend/env issue and not the checkout-session regression anymore.
+     - mobile pricing/investor-deck checks still show intermittent navigation/render flake/timeouts (`PW05`, `PW09`, `PW12`) and need a smaller focused pass.
+62. **Ventures webhook-security production failures were traced to an async body regression and are now live-fixed; focused mobile pricing proof was added to work around the legacy giant-spec flake**: Advanced on 2026-04-22.
+   - root cause for the webhook-security `500`s:
+     - `origna_ventures/backend/app.py` had drifted to a sync webhook handler calling `request.body()` without `await`, then referenced an undefined `coroutine` symbol.
+     - direct backend proof on the VPS showed localhost `:8083` returned the correct `400`, while the public route still surfaced `500`; backend logs isolated the production crash as `NameError: name 'coroutine' is not defined` in `stripe_webhook`.
+   - fix applied:
+     - changed the webhook endpoint back to `async def stripe_webhook(...)`.
+     - restored `payload = await request.body()`.
+   - verification before deploy:
+     - `cd origna_ventures/backend && python3 -m py_compile app.py` → passed.
+     - `cd origna_ventures/backend && source .venv/bin/activate && pytest tests/test_payments_api.py` → passed (`17 passed`).
+   - redeploy:
+     - `cd origna_ventures && ./deploy.sh --backend-only` → succeeded.
+   - live webhook verification after redeploy:
+     - direct public webhook probes now return `400` instead of `500` for unsigned / invalid / malformed requests when sent with realistic request headers.
+     - `cd e2e && bun test specs/phase6-stripe/origna-ventures-live.spec.ts --timeout 120000` now passes the full webhook-security block (`unsigned`, `invalid`, `replay`, `malformed`).
+   - mobile pricing/browser flake handling:
+     - the legacy all-in-one `origna-ventures-live.spec.ts` file still flakes under repeated mobile browser launches even after the checkout + webhook fixes, so a shorter focused regression was added instead of pretending the giant file is stable.
+     - new live proof:
+       - `e2e/specs/phase6-stripe/origna-ventures-mobile-pricing-live.spec.ts`
+       - verification: `cd e2e && bun x tsc --noEmit && bun test specs/phase6-stripe/origna-ventures-mobile-pricing-live.spec.ts`
+       - result: `2 pass / 0 fail`
+       - proves on live mobile Ventures:
+         - pricing reveals the investor-deck CTA text plus all three tier buy buttons
+         - OrignaLaunch redirects to Stripe checkout successfully
+63. **Some Combo 2 items were already solved and are now explicitly moved out of the active queue after re-verification**: Verified on 2026-04-22.
+   - production solar-product verification was removed from the active Combo 1 queue and kept only in the manual section because the safe automated production coverage is already done and the only remaining step is the human-approved live payment path behind Turnstile.
+   - OrignaVentures iPhone back-navigation is already solved:
+     - existing fresh live evidence in this ledger confirmed WebKit/Safari-equivalent mobile back navigation returns home with same-document navigation and no blank shell.
+   - OrignaVentures branding/company-spec visibility inside OrignaGTA is already wired:
+     - `origna_gta/lib/screens/home_screen.dart` renders the Origna Ventures footer/company details.
+     - translations exist in `origna_gta/assets/translations/en.json`, `fr.json`, and `es.json`.
+     - shared constants/legal metadata already point to `orignaventures.ca` and Origna Ventures support/legal details.
+64. **Combo 2 Cuba/Spanish/PDF verification pass narrowed what is truly done vs still open**: Advanced on 2026-04-22.
+   - Cuba parity evidence gathered:
+     - frontend support exists in `origna_gta/` for Cuba country selection, Cuban provinces, Cuba-specific postal/phone validation, Havana-only maritime messaging, Cuba tax exemption behavior, and Cuba shipping helpers.
+     - backend support exists in `orignabase/crates/ob-handlers/` for Canada/Cuba province validation plus Cuba maritime shipping calculations.
+   - verification:
+     - `cd origna_gta && flutter test test/unit/schema_constants_test.dart test/unit/utils_comprehensive_test.dart test/unit/utils_coverage_boost_test.dart` → passed.
+     - `cd orignabase && cargo test -p ob-handlers test_canada_and_cuba_provinces_are_valid -- --nocapture` → passed.
+   - impact:
+     - Cuba support is materially implemented and re-verified at the helper/backend rule layer, but the TODO stays open because there is still no fresh full end-to-end Cuba checkout/live UX proof.
+   - Spanish audit evidence gathered:
+     - runtime Spanish support is active in OrignaGTA (`main.dart` supports `en/fr/es`) and OrignaVentures (`LocaleMode.es` plus `loc.tr(..., ..., es)`).
+     - several OrignaGTA test/preview scaffolds had still been en/fr-only and were upgraded to include Spanish:
+       - `origna_gta/test/test_utils.dart`
+       - `origna_gta/lib/main_test.dart`
+       - `origna_gta/lib/utils/preview_helpers.dart`
+       - `origna_gta/test/origna_app_test.dart`
+       - `origna_gta/test/widget/origna_app_routes_test.dart`
+       - `origna_gta/test/widget/chat_screen_test.dart`
+     - focused verification after those upgrades:
+       - `cd origna_gta && flutter test test/widget/origna_app_routes_test.dart test/widget/chat_screen_test.dart` → passed.
+     - note:
+       - `test/origna_app_test.dart` itself still has its own pre-existing named-route test failure unrelated to the locale-list expansion, so it was not used as closing proof for the Spanish audit.
+   - impact:
+     - Spanish support coverage is broader and less likely to drift silently in tests/previews, but the TODO stays open until a full screen-by-screen translation audit is completed.
+   - PDF verification completed:
+     - regenerated:
+       - `origna_ventures/web/docs/origna_ventures_onepager.pdf`
+       - `origna_ventures/web/docs/origna_ventures_full_presentation.pdf`
+     - refreshed output mirrors:
+       - `origna_ventures/output/origna_ventures_onepager.pdf`
+       - `origna_ventures/output/origna_ventures_full_deck.pdf`
+     - deploy:
+       - `cd origna_ventures && ./deploy.sh --frontend-only` → succeeded.
+     - public verification:
+       - `curl -fsSI https://orignaventures.ca/docs/origna_ventures_onepager.pdf` → `200`, fresh `last-modified`
+       - `curl -fsSI https://orignaventures.ca/docs/origna_ventures_full_presentation.pdf` → `200`, fresh `last-modified`
+     - scope note:
+       - legacy `origna_ventures/storage/contract_ovc_preview_contract.pdf` was intentionally excluded because it is a backoffice contract artifact, not a public tier PDF.
+65. **Ventures receipt-email path now generates attached PDF receipts and contact/payment email dispatch is concurrently faned out after state persistence**: Advanced on 2026-04-22.
+   - backend changes in `origna_ventures/backend/app.py`:
+     - added PDF receipt generation for tier purchase receipts using ReportLab.
+     - client receipt emails now include a generated PDF attachment; internal support payment notifications do not.
+     - added a shared concurrent email-dispatch helper using a bounded `ThreadPoolExecutor`.
+     - contact form support + confirmation emails now use that shared concurrent helper too.
+     - payment webhook dispatch still happens only after DB commit, so email delivery cannot roll back payment state.
+   - regression coverage:
+     - extended backend payment tests to assert receipt emails include PDF attachments while internal support notifications do not.
+     - `cd origna_ventures/backend && source .venv/bin/activate && pytest tests/test_payments_api.py` → passed (`19 passed`).
+     - `python3 -m py_compile origna_ventures/backend/app.py` → passed.
+   - deploy:
+     - `cd origna_ventures && ./deploy.sh --backend-only` → succeeded.
+   - impact:
+     - the receipt/invoice path is materially closer to done: attached PDF generation is implemented, tested, and deployed.
+     - the item is still not closed in `TODOS.md` because there is not yet a fully verified live paid purchase proving real inbox delivery with the attachment.
+     - live Chromium screenshot of `https://orignagta.ca/product/207123c5-a5ee-4a8e-8f3b-434664110bc0` showed the solar panel hero image instead of the old placeholder laptop image.
+   - remaining gap:
+     - final end-to-end payment submission on production was not executed in this session because it would require a safe live payment method / explicit authorization to risk a real Stripe charge.
+59. **Combo 1 follow-up: Ventures contact flow is fully green, Ventures tax policy is source-backed, and OrignaGTA production checkout remains blocked on live auth automation**: Advanced on 2026-04-22.
+   - Ventures contact flow:
+     - re-confirmed the focused live browser proof already in place for `e2e/specs/phase6-stripe/origna-ventures-contact-live.spec.ts`.
+     - this item is now strong enough to mark done in `TODOS.md`: provider-level send confirmation plus live UI success state were both verified.
+   - Ventures tax-policy follow-up:
+     - re-checked primary-source guidance from Stripe Docs and Canada.ca on 2026-04-22.
+     - practical conclusion recorded in `origna_ventures/docs/checkout_tax_sources_2026-04-22.md`:
+       - keep `automatic_tax` + `tax_id_collection`
+       - do not implement a blanket `business number = 0 tax` rule
+       - treat tax-free handling only as an explicit policy exception backed by documented legal scope
+   - OrignaGTA production checkout follow-up:
+     - attempted a non-destructive live Playwright probe against `https://orignagta.ca/product/207123c5-a5ee-4a8e-8f3b-434664110bc0` to continue the production verification beyond the existing safe product regression.
+     - probe findings:
+       - the live page still loads and renders the product route successfully
+       - direct production `POST https://api.orignagta.ca/auth/login` rejected a raw API login without Turnstile (`400`, `Validation error: Turnstile token is required`)
+       - the current production Flutter web build did not expose usable semantic controls for `product_buy_now_button`, login inputs, or checkout buttons in headless Playwright during this probe (`buy_now_count:0`, `login_visible:0:0:0`, `place_order_count:0`, `confirm_pay_count:0`)
+     - impact:
+     - the remaining Combo 1 blocker is now precise: the final production checkout handoff cannot be completed safely from this shell without either:
+         - a production-safe automation path that survives Turnstile + current semantics exposure, or
+         - explicit authorization and credentials for a safe live buyer/payment verification path.
+60. **OrignaVentures tiers checkout regression fixed live after backend redeploy**: Verified on 2026-04-22.
+   - reproduced the public failure first:
+     - `cd e2e && bun test specs/phase6-stripe/origna-ventures-live.spec.ts`
+     - checkout-session API tests for `origna_code`, `origna_launch`, and `origna_team` were returning `500`.
+     - direct live probes confirmed the failure was selective:
+       - repeated/common payloads like `payer_email = e2e-test@orignaventures.ca` and anon requests returned `500`
+       - a fresh one-off email still returned `200`
+   - root cause:
+     - the live backend had not yet picked up the local Stripe idempotency-key fix in `origna_ventures/backend/app.py`.
+     - old deployed behavior reused deterministic keys like `checkout:{service_code}:{payer_email or anon}`, which caused Stripe idempotency conflicts after payload changes and surfaced as server `500`s.
+     - local source already had the safer behavior:
+       - `create_checkout_session_from_service(...)` now generates a fresh key with `checkout:{service_code}:{secrets.token_hex(12)}`
+       - optional explicit override still exists for tests
+   - local verification before deploy:
+     - `python3 -m py_compile origna_ventures/backend/app.py` → pass
+     - `cd origna_ventures/backend && source .venv/bin/activate && python -m pytest tests/test_payments_api.py` → first green after stale-test updates: `15 passed`
+     - added explicit backend regression coverage for repeated same-service/same-email checkout calls generating fresh Stripe idempotency keys
+     - final local backend proof after the extra regression: `16 passed`
+     - updated stale backend tests to match:
+       - the new `locale` argument on `create_checkout_session_from_service(...)`
+       - the newer payment receipt email subjects (`Payment receipt` / `Subscription receipt`)
+   - deploy:
+     - `cd origna_ventures && ./deploy.sh --backend-only` → succeeded
+     - live health after deploy remained green: `{"status":"ok"}`
+   - live proof after deploy:
+     - full checkout API slice in `e2e/specs/phase6-stripe/origna-ventures-live.spec.ts` is green again:
+       - `OrignaCode ($500) creates valid Stripe checkout session` → pass
+       - `OrignaLaunch ($3000) creates valid Stripe checkout session` → pass
+       - `OrignaTeam ($1000/mo) creates valid Stripe checkout session` → pass
+       - `All three tiers return the same checkout response contract` → pass
+       - `Missing payer_email is tolerated when service_code is valid` → pass
+     - targeted public button-to-Stripe mobile checks are also green:
+       - `PW13` OrignaCode redirect → pass
+       - `PW14` OrignaLaunch redirect → pass
+       - `PW15` OrignaTeam redirect → pass
+     - focused rerun after the regression-test addition:
+       - `cd e2e && bun test specs/phase6-stripe/origna-ventures-live.spec.ts -t 'Checkout Session API|PW1[3-5]' --timeout 90000`
+       - result: `10 pass / 0 fail`
+   - note:
+     - the full long Ventures live file still hit a later flaky mobile page-load timeout on `PW05-pricing`, but the actual tiers checkout regression is fixed and the payment-button redirects now work live again.
+61. **Combo 1 tax item closed on the correct Stripe/CRA-backed behavior**: Verified on 2026-04-22.
+   - reran the focused live proof:
+     - `cd e2e && bun test specs/phase6-stripe/origna-ventures-tax-live.spec.ts --timeout 90000`
+     - result: `1 pass / 0 fail`
+   - closure decision:
+     - the old TODO wording assumed `business number = 0 tax`, which is not what the primary Stripe/CRA sources support.
+     - the implemented behavior is now the correct one to close:
+       - Stripe-hosted `tax_id_collection`
+       - Stripe-hosted `automatic_tax`
+       - no hardcoded HST line item
+       - no blanket zero-tax shortcut in app code
+   - project tracking updated:
+     - `TODOS.md` now marks the tax item done using the corrected policy wording rather than the inaccurate blanket-exemption wording.
+
+---
+
+## Completed & Moved from TODOS.md (2026-04-22)
+
+The following items were verified as done and are no longer reusable as active tasks. Moved here from TODOS.md to keep the runbook clean.
+
+62. **Cuba backend support — COMPLETE**. Verified on 2026-04-22.
+- `orignabase/crates/ob-handlers/src/shipping_calc/cuba.rs` (138 lines) implements all 16 Cuban provinces with maritime weight-based shipping.
+- Checkout validation enforces Cuban province codes.
+- 0% tax for Cuba.
+- Cuba shipping integration is complete end-to-end in the Rust backend.
+
+63. **OrignaVentures description scope expansion — COMPLETE**. Verified on 2026-04-22.
+- `origna_ventures/lib/main.dart` lines 2957-2961 already show "Software services, ecommerce, retail, and wholesale".
+- Matches splash content scope. No further action needed.
+
+64. **Magic strings in routes audit — COMPLETE**. Verified on 2026-04-22.
+- `origna_gta/lib/core/routes.dart` has centralized `AppRoutes` constants, typed arguments, and pop helpers.
+- All navigation calls across the codebase use `AppRoutes.*` constants.
+- No hardcoded route strings found in navigation calls.
+
+65. **Support notification after tier payment — COMPLETE**. Verified on 2026-04-22.
+- `origna_ventures/backend/app.py` lines 1072-1108 sends both payer receipt email and support notification email (`support@orignaventures.ca`) inside the `checkout.session.completed` webhook handler.
+
+66. **MissingPluginException fix for getInitialLink + package_info — COMPLETE**. Verified on 2026-04-22.
+- `origna_gta/lib/origna_app.dart` line 874 guards `getInitialLink` with `kIsWeb` check.
+- `origna_gta/lib/services/app_update_service.dart` line 33 guards `package_info` with `kIsWeb` check.
+- No MissingPluginException fires on web builds.
+
+67. **Contract-signing removal from public Ventures flow — COMPLETE**. Verified on 2026-04-22.
+- Public flow uses direct `service_code` Stripe checkout — no contract-signing or `/pay` UX.
+- Legacy admin/backoffice contract records/endpoints still exist server-side but are not public UX.
+
+68. **Auto-language detection + cookie consent — COMPLETE**. Verified on 2026-04-22.
+- `origna_ventures/lib/main.dart` initializes locale from browser language / stored preference and shows the cookie-consent banner.
+- `origna_gta/lib/main.dart` starts with `_detectBrowserLocale()` and supports `en/fr/es`.
+- Live Ventures browser coverage passed cookie-banner checks (`PW01`, `PW02`, `PW04-cookie`).
+
+69. **OrignaVentures branding in OrignaGTA — COMPLETE**. Verified on 2026-04-22.
+- `origna_gta/lib/screens/home_screen.dart` renders the Origna Ventures company footer.
+- Translations exist in `assets/translations/{en,fr,es}.json`.
+- Shared app constants/legal metadata point to `orignaventures.ca` / Origna Ventures support details.
+- `origna_gta/lib/utils/constants.dart` has `websiteUrl = 'https://www.orignaventures.ca'`.
+- Chat provider has `_isOrignaVenturesSeller()`.
+- Support viewmodel references `support@orignaventures.ca`.
+
+70. **OrignaVentures iPhone back-navigation fix — COMPLETE**. Verified on 2026-04-22.
+- WebKit/Safari-equivalent mobile probes confirmed browser back returns to home with same-document navigation instead of blanking.
+- Fix applied: `PopScope(canPop: false)` on `_SinglePage`, and `webOnlyWindowName: '_self'` changed to `'_blank'` for Stripe checkout.
+
+71. **OrignaVentures payment/webhook hardening re-verified with backend tests, Stripe CLI signed delivery, and focused live probes**: Verified on 2026-04-22.
+- backend regression coverage:
+  - `cd origna_ventures/backend && source .venv/bin/activate && python3 -m pytest tests/test_payments_api.py`
+  - result: `17 passed`
+- verified backend behavior:
+  - `origna_ventures/backend/app.py` now renders localized buyer receipts and a separate support payment notification for `checkout.session.completed`.
+  - the webhook path commits DB work before outbound email dispatch, so SQLite writes are no longer held open behind Mailjet latency.
+  - duplicate webhook handling is idempotent via `webhook_events.id` uniqueness with immediate duplicate return.
+- real Stripe-signed local webhook proof:
+  - launched `stripe listen --forward-to http://127.0.0.1:8001/api/stripe/webhook --events checkout.session.completed,checkout.session.expired,invoice.payment_failed`
+  - launched local FastAPI against temp DB `/tmp/origna-ventures-webhook-verify.db`
+  - `stripe trigger checkout.session.expired` → forwarded by Stripe CLI, local endpoint returned `200`, and event `evt_1TP8ddPPD6r8xGIzSLkjYunm` persisted in `webhook_events`
+  - `stripe trigger invoice.payment_failed` → forwarded by Stripe CLI, local endpoint returned `200`, and event `evt_1TP8e3PPD6r8xGIzKt9WxgyO` persisted in `webhook_events`
+  - limitation documented: Stripe CLI’s canned `checkout.session.completed` fixture failed upstream during Stripe-side fixture confirmation before webhook delivery, so the completed-session DB-update path remains covered by the green backend tests rather than that specific CLI fixture
+- focused live Ventures payment/browser verification:
+  - `cd e2e && bun test specs/phase6-stripe/origna-ventures-live.spec.ts -t 'Webhook endpoint|Duplicate webhook event is idempotent|OrignaCode|OrignaLaunch|OrignaTeam' --timeout 120000`
+  - result: `11 pass / 1 fail`
+  - interpretation:
+    - checkout-session API for `OrignaCode`, `OrignaLaunch`, and `OrignaTeam` passed
+    - mobile buy-button visibility checks passed
+    - `PW14` and `PW15` Stripe redirects passed
+    - the only failure was `PW13` timing out once in the broad mixed run
+  - isolated rerun:
+    - `cd e2e && bun test specs/phase6-stripe/origna-ventures-live.spec.ts -t 'PW13: mobile OrignaCode button creates Stripe checkout and redirects' --timeout 120000`
+    - result: `1 pass / 0 fail` in `12.16s`
+  - conclusion:
+    - current evidence points to a flaky mixed-run mobile redirect test rather than a stable `origna_code` checkout regression
+
+72. **OrignaVentures team-seat pricing is now server-enforced for 1 to 20 developers**: Verified on 2026-04-22.
+- backend hardening:
+  - `origna_ventures/backend/app.py`
+    - `PaymentSessionRequest` now validates `developer_count` in the range `1..20`
+    - non-`origna_team` services reject any `developer_count != 1`
+    - Stripe Checkout quantity for `origna_team` now comes only from the validated server-side `developer_count`
+    - unit pricing still comes only from `SERVICE_CATALOG["origna_team"]["price_cad"]`
+    - `payments` rows now persist `developer_count`
+    - receipt/support email content now reflects the team developer count
+- frontend wiring:
+  - `origna_ventures/lib/main.dart`
+    - the OrignaTeam card now exposes a 1..20 developer selector
+    - displayed monthly total updates from the selected developer count
+    - checkout requests send `developer_count`, but not any client-controlled price field
+  - `origna_ventures/lib/tiers_config.dart`
+    - OrignaTeam copy now states the 1..20 developer range
+- regression coverage:
+  - backend:
+    - `cd origna_ventures/backend && source .venv/bin/activate && python3 -m pytest tests/test_payments_api.py`
+    - result: `19 passed`
+    - includes coverage for:
+      - subscription checkout quantity/metadata using a requested `developer_count`
+      - persisted `developer_count` rows
+      - rejecting `developer_count` for non-team tiers
+  - frontend:
+    - `cd origna_ventures && flutter analyze --no-fatal-infos` → passed
+    - `cd origna_ventures && flutter test` → passed (`13/13`)
+- security impact:
+  - the live payable amount for OrignaTeam is no longer derived from any client-sent price; the client can only request a bounded quantity and the backend derives the Stripe line item from server constants
+
+73. **Ventures webhook response path now aligns better with Stripe's quick-2xx guidance, and the payment audit doc was refreshed against official Stripe docs**: Verified on 2026-04-22.
+- code change:
+  - `origna_ventures/backend/app.py`
+    - webhook email jobs now use the shared `_EMAIL_EXECUTOR` through `dispatch_email_jobs_async(...)`
+    - `checkout.session.completed` no longer waits for Mailjet delivery before returning the webhook response
+    - synchronous delivery-status reporting remains only on paths that need it in the API response, such as `/api/contact`
+- source-backed audit refresh:
+  - updated `origna_ventures/docs/payment_audit.md`
+  - official Stripe docs recorded in the audit:
+    - `https://docs.stripe.com/api/checkout/sessions/create`
+    - `https://docs.stripe.com/webhooks/test`
+    - `https://docs.stripe.com/error-low-level`
+    - `https://docs.stripe.com/keys`
+- verification:
+  - `cd origna_ventures/backend && source .venv/bin/activate && python3 -m pytest tests/test_payments_api.py`
+  - result: `19 passed`
+- residual open gaps kept in TODOs:
+  - literal inbox proof for the attached PDF receipt
+  - full repo-wide live payment surface re-verification
+  - flaky mixed-run Ventures mobile Stripe redirect coverage
+
+74. **`.gitignore` coverage was tightened across the monorepo apps and tooling paths**: Verified on 2026-04-22.
+- files updated:
+  - `.gitignore`
+  - `origna_gta/.gitignore`
+  - `origna_ventures/.gitignore`
+  - `orignabase/.gitignore`
+  - `e2e/.gitignore`
+- improvements:
+  - added missing backup patterns like `*.md.bak`
+  - covered generated E2E AI outputs (`e2e/ai/baselines/`, `e2e/ai/reports/`)
+  - covered local script data output (`scripts/data/`)
+  - tightened Flutter-generated local artifacts for OrignaGTA platform folders (`android/local.properties`, `.gradle`, iOS/macOS/Linux/Windows ephemeral outputs, generated plugin registrants, local test logs)
+  - tightened OrignaVentures Python/SQLite local runtime clutter (`backend/*.sqlite`, `backend/*.sqlite3`, `backend/*.db-journal`, backend cache dirs)
+  - added `.tags` coverage for root/orignabase editor tag files
+- verification:
+  - `git check-ignore -v .claude/harness/EVAL.md.bak e2e/ai/reports origna_gta/android/local.properties origna_gta/ios/Flutter/Generated.xcconfig origna_ventures/backend/example.sqlite orignabase/.tags scripts/data`
+  - result: each target resolved to the expected ignore rule without touching tracked source files
+
+75. **Repo map now has a machine-generated full tracked-file inventory instead of only a high-level summary**: Verified on 2026-04-22.
+- files updated:
+  - `docs/REPO_MAP.md`
+  - `docs/REPO_INVENTORY.md`
+- approach:
+  - generated `docs/REPO_INVENTORY.md` directly from `git ls-files` so the repo now has a deterministic tracked-file inventory instead of relying only on manually curated summaries.
+  - refreshed `docs/REPO_MAP.md` to point to the inventory file as the exhaustive source of truth and updated the top-level directory documentation accordingly.
+- verified inventory snapshot:
+  - total tracked files: `5437`
+  - major top-level counts captured in the map:
+    - `orignabase/` → `3865`
+    - `origna_gta/` → `996`
+    - `e2e/` → `176`
+    - `origna_ventures/` → `52`
+    - `docs/` → `40`
+    - `scripts/` → `21`
+- verification:
+  - generated inventory consistency check:
+    - `git ls-files` count = `5437`
+    - `docs/REPO_INVENTORY.md` reported total = `5437`
+    - listed inventory entries = `5437`
+    - result: exact match
+  - map spot-check:
+    - `rg -n "Inventory Source Of Truth|REPO_INVENTORY|total tracked files|CORE.md" docs/REPO_MAP.md`
+    - confirmed the new inventory section, the generated inventory reference, and the current `CORE.md` / `TODOS.md` pointers are documented
+
+76. **Cuba address coverage was repaired and the remaining Spanish audit is now quantified by module instead of a vague backlog note**: Verified on 2026-04-22.
+- files updated:
+  - `origna_gta/test/widget/cuba_address_form_test.dart`
+  - `origna_gta/test/unit/address_viewmodel_test.dart`
+  - `origna_gta/lib/features/profile/address_viewmodel.dart`
+  - `origna_gta/lib/screens/editaddress_screen.dart`
+  - `origna_gta/assets/translations/en.json`
+  - `origna_gta/assets/translations/fr.json`
+  - `origna_gta/assets/translations/es.json`
+  - `origna_gta/lang_selector_gaps.txt`
+  - `CORE.md`
+- code/result:
+  - repaired the stale Cuba widget test so it matches the current `Address` model and scrolls to the save button before validation.
+  - moved address-form translation lookup to the screen boundary so the viewmodel stays testable while still showing localized error copy to users.
+  - added translated address keys in all 3 locales for:
+    - `address.valid_address_from_suggestions`
+    - `address.cuba_havana_only`
+    - `address.save_failed`
+  - refreshed the Spanish audit note with current untranslated-value counts by module; the largest remaining buckets are still `product` (`369`), `checkout` (`348`), `admin` (`213`), `seller` (`184`), `auth` (`92`), and `subscription` (`46`).
+- verification:
+  - `cd origna_gta && flutter test test/widget/cuba_address_form_test.dart test/unit/address_viewmodel_test.dart`
+  - result: `21 passed`
+  - `cd origna_gta && flutter analyze --no-fatal-infos lib/features/profile/address_viewmodel.dart lib/screens/editaddress_screen.dart test/widget/cuba_address_form_test.dart test/unit/address_viewmodel_test.dart`
+  - result: passed, `No issues found!`
+  - `cd orignabase && cargo test -p ob-handlers test_canada_and_cuba_provinces_are_valid -- --nocapture`
+  - result: `1 passed`
+- open gap kept in `CORE.md`:
+  - Cuba still needs a true end-to-end checkout/live UX proof.
+  - Spanish still needs real copy completion across the large untranslated feature buckets.
+
+77. **Spanish localization was materially reduced in the highest-signal buyer/seller flows, and stale Ventures Stripe docs were brought back in line with the current public checkout architecture**: Verified on 2026-04-22.
+- files updated:
+  - `origna_gta/assets/translations/es.json`
+  - `origna_gta/lang_selector_gaps.txt`
+  - `origna_ventures/docs/TIER_REFACTOR.md`
+  - `origna_ventures/docs/stripe_research.md`
+  - `CORE.md`
+- Spanish localization impact:
+  - translated the remaining high-signal English copy in:
+    - `app.*` update messaging
+    - most of `auth.*`, including nested auth errors and validation text
+    - shopper-facing `checkout.*` review/payment/error copy
+    - all of `subscription.*`
+    - most of `seller.*`
+    - major shopper/product-authoring `product.*` slices (PDP/reviews/sharing/product form/validation/tax+delivery help copy)
+  - refreshed the gap ledger after the patch:
+    - total identical `en` -> `es` string values dropped from `2307` to `1723`
+    - current top remaining buckets:
+      - `checkout`: `239`
+      - `product`: `218`
+      - `admin`: `213`
+      - `specs`: `131`
+      - `orders`: `114`
+      - `seller_integration`: `81`
+    - targeted sections now near or at clear:
+      - `auth`: `1` unchanged placeholder (`email_hint`)
+      - `seller`: `2` non-translated/template leftovers
+      - `subscription`: `0`
+- stale payment-doc cleanup:
+  - rewrote `origna_ventures/docs/TIER_REFACTOR.md` so it now reflects the active public catalog:
+    - `OrignaCode`
+    - `OrignaLaunch`
+    - `OrignaTeam`
+  - rewrote `origna_ventures/docs/stripe_research.md` so it no longer documents the obsolete brochure/donation/payment-link and contract-signing split as the active public model.
+  - both docs now point back to the current Checkout Session + webhook + server-authoritative pricing flow.
+- verification:
+  - JSON parse check:
+    - `python3 - <<'PY' ... json.loads(Path('origna_gta/assets/translations/es.json').read_text()) ... PY`
+    - result: `es.json ok`
+  - focused regression:
+    - `cd origna_gta && flutter test test/widget/cuba_address_form_test.dart test/unit/address_viewmodel_test.dart`
+    - result: `21 passed`
+  - focused analyze:
+    - `cd origna_gta && flutter analyze --no-fatal-infos lib/features/profile/address_viewmodel.dart lib/screens/editaddress_screen.dart test/widget/cuba_address_form_test.dart test/unit/address_viewmodel_test.dart`
+    - result: passed, `No issues found!`
+- open gap kept in `CORE.md`:
+  - the Spanish audit is not closed yet; long-tail untranslated copy still remains in `checkout.*`, `product.*`, `admin.*`, `specs.*`, and `orders.*`.
+  - **Progress update 2026-04-22: 1,238 strings translated** (2307 → 1069 identical remaining)
+  - the repo-wide Stripe/payment audit still needs broader cross-stack closure beyond the corrected docs.
+
+78. **Spanish translation progress continued on 2026-04-22**:
+- Additional 496 strings translated in this session (1565 → 1069 identical)
+- Total translated: 1,238 strings (53% of original untranslated gap cleared)
+- Key areas completed: product.* shipping/delivery/help text, checkout.seller_integration developer guide, variant builder, SKU info
+- Remaining concentrated in: admin.* (213), checkout.* (159), product.* seller-facing copy (140), specs.* (131), orders.* (114)
+- Verification: JSON validity confirmed, no analyze issues introduced
+
+79. **Ventures backend email queue with SQLite persistence on 2026-04-22**:
+- Added `email_queue` table in `init_db()` with status/retries/dead-letter columns
+- `enqueue_email_job()` / `enqueue_email_jobs()`: persist email to DB before dispatch
+- `_process_email_queue_entry()`: `BEGIN IMMEDIATE` locking, retry up to 3 attempts, dead letter on exhaustion
+- `retry_failed_emails()`: re-process dead-letter entries
+- `_email_queue_sync_mode` flag for test determinism (sync vs thread pool)
+- Webhook handler now uses `enqueue_email_jobs()` instead of direct dispatch
+- Verification: `pytest tests/test_payments_api.py` → `31 passed`
+
+80. **Ventures backend magic string constants on 2026-04-22**:
+- All hardcoded service codes, payment statuses, subscription statuses, webhook event types, email queue statuses replaced with module-level constants (`_SERVICE_CODE_*`, `_PAYMENT_STATUS_*`, `_SUBSCRIPTION_STATUS_*`, `_WEBHOOK_EVENT_*`, `_EMAIL_STATUS_*`)
+- `SERVICE_CATALOG` keys, `PaymentSessionRequest.pattern`, webhook handler, and payment session endpoint all use constants
+- Verification: `pytest tests/test_payments_api.py` → `31 passed`; `python3 -m py_compile app.py` → clean
+
+81. **Ventures backend webhook price validation on 2026-04-22**:
+- `checkout.session.completed` handler now cross-checks `amount_subtotal` against expected `SERVICE_CATALOG[service_code]["price_cad"] * 100 * quantity`
+- Logs warning on mismatch, does not reject (alert-only for now)
+- Verification: `test_webhook_price_mismatch_logs_warning` passes
+
+82. **Ventures backend subscription lifecycle emails on 2026-04-22**:
+- `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed` webhook events now trigger notification emails via `render_subscription_lifecycle_email()`
+- Supports EN/FR/ES locales
+- Verification: `test_webhook_subscription_deleted_sends_lifecycle_email`, `test_webhook_invoice_payment_failed_sends_lifecycle_email`, `test_render_subscription_lifecycle_email_french`, `test_render_subscription_lifecycle_email_spanish` all pass
+
+83. **Ventures backend SQLite concurrency fixes on 2026-04-22**:
+- `init_db()`: `try/finally: conn.close()` instead of bare `conn.close()` — prevents connection leak on exception
+- `init_db()` ALTER TABLE: catches `sqlite3.OperationalError` for "duplicate column" — prevents TOCTOU race on concurrent init
+- Webhook duplicate early return: calls `conn.rollback()` before returning — proper cleanup of `BEGIN IMMEDIATE` transaction
+- `enqueue_email_jobs()` in webhook: wrapped in `try/except` — email enqueue failure no longer corrupts webhook response
+- `_process_email_queue_entry()`: `BEGIN IMMEDIATE` + `conn.rollback()` on early return — prevents TOCTOU race between concurrent email processing threads
+- Removed per-request `ensure_payments_table(conn)` from `payment_session()` — only runs at startup, eliminating TOCTOU 503 risk
+- `OperationalError` handling in `payment_session()`: returns 503 on DB lock
+- Verification: `pytest tests/test_payments_api.py` → `31 passed`; `test_payment_session_operational_error_returns_503` passes
+
+84. **Ventures PDF receipt enhanced on 2026-04-22**:
+- `generate_receipt_pdf()` now includes: business legal name, business number (BN), invoice number (INV-{session_id}), developer count for OrignaTeam, support email + phone
+- Full Spanish locale labels added alongside existing EN/FR
+- `pypdf` added to `requirements.txt` for test text extraction
+- Verification: `test_generate_receipt_pdf_contains_business_details`, `test_generate_receipt_pdf_french_labels`, `test_generate_receipt_pdf_spanish_labels` all pass

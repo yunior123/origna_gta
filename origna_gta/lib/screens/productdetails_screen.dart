@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/widget_previews.dart';
 import 'package:origna_gta/utils/preview_helpers.dart';
 import 'package:origna_gta/features/products/stock_notification_provider.dart';
@@ -8,6 +9,7 @@ import 'package:origna_gta/features/subscription/subscription_provider.dart';
 import 'package:origna_gta/models/generated/models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/features/products/product_detail_viewmodel.dart';
@@ -55,12 +57,19 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
   String? _lastRecordedProductId;
   String? _lastScrollResetProductId;
   final List<Timer> _pendingMobileScrollResetTimers = <Timer>[];
-  final ScrollController _mobileScrollController = ScrollController(
-    keepScrollOffset: false,
-  );
+  late ScrollController _mobileScrollController;
 
   double _mobileGalleryHeight(BuildContext context) =>
       (MediaQuery.sizeOf(context).height * 0.45).clamp(320.0, 480.0);
+
+  ScrollController _createMobileScrollController() =>
+      ScrollController(keepScrollOffset: false);
+
+  @override
+  void initState() {
+    super.initState();
+    _mobileScrollController = _createMobileScrollController();
+  }
 
   @override
   void didUpdateWidget(covariant ProductDetailScreen oldWidget) {
@@ -68,6 +77,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     if (oldWidget.productId != widget.productId) {
       _lastRecordedProductId = null;
       _lastScrollResetProductId = null;
+      _mobileScrollController.dispose();
+      _mobileScrollController = _createMobileScrollController();
       _resetMobileScrollToTop();
     }
   }
@@ -94,8 +105,6 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
       Duration.zero,
       Duration(milliseconds: 16),
       Duration(milliseconds: 120),
-      Duration(milliseconds: 400),
-      Duration(milliseconds: 1000),
     ];
 
     for (final delay in delays) {
@@ -307,7 +316,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                               key: const Key('productdetail_back_button'),
                               tooltip: 'btn-back-product-details',
                               icon: const Icon(Icons.arrow_back),
-                              onPressed: () => Navigator.pop(context),
+                              onPressed: () => _handleBackNavigation(context),
                             ),
                             const Spacer(),
                             buildShareButton(),
@@ -550,7 +559,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                         key: const Key('productdetail_back_button'),
                         tooltip: 'btn-back-product-details',
                         icon: const Icon(Icons.arrow_back),
-                        onPressed: () => Navigator.pop(context),
+                        onPressed: () => _handleBackNavigation(context),
                       ),
                       const Spacer(),
                       buildShareButton(),
@@ -624,74 +633,76 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
   }) {
     return SafeArea(
       bottom: false,
-      child: ListView(
+      child: SingleChildScrollView(
         key: ValueKey('product-detail-mobile-scroll-${widget.productId}'),
         controller: _mobileScrollController,
-        primary: false,
         padding: EdgeInsets.zero,
         physics: const ClampingScrollPhysics(),
-        children: [
-          Material(
-            color: isDark ? DesignTokens.darkSurface : DesignTokens.white,
-            child: SafeArea(
-              bottom: false,
-              child: SizedBox(
-                height: kToolbarHeight,
-                child: Row(
-                  children: [
-                    IconButton(
-                      key: const Key('productdetail_back_button'),
-                      tooltip: 'btn-back-product-details',
-                      icon: const Icon(Icons.arrow_back),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                    const Spacer(),
-                    shareButton,
-                  ],
-                ),
-              ),
-            ),
-          ),
-          SizedBox(
-            width: double.infinity,
-            height: galleryHeight,
-            child: imageGallery,
-          ),
-          DecoratedBox(
-            decoration: BoxDecoration(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Material(
               color: isDark ? DesignTokens.darkSurface : DesignTokens.white,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(24),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: DesignTokens.black.withValues(alpha: 0.08),
-                  blurRadius: 16,
-                  offset: const Offset(0, -4),
-                ),
-              ],
-            ),
-            child: const SizedBox(height: 20),
-          ),
-          Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(
-                maxWidth: ResponsiveBreakpoints.contentMaxWidth,
-              ),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    productInfo,
-                    const SizedBox(height: 32),
-                    bottomSections,
-                  ],
+              child: SafeArea(
+                bottom: false,
+                child: SizedBox(
+                  height: kToolbarHeight,
+                  child: Row(
+                    children: [
+                      IconButton(
+                        key: const Key('productdetail_back_button'),
+                        tooltip: 'btn-back-product-details',
+                        icon: const Icon(Icons.arrow_back),
+                        onPressed: () => _handleBackNavigation(context),
+                      ),
+                      const Spacer(),
+                      shareButton,
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+            SizedBox(
+              width: double.infinity,
+              height: galleryHeight,
+              child: imageGallery,
+            ),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: isDark ? DesignTokens.darkSurface : DesignTokens.white,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(24),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: DesignTokens.black.withValues(alpha: 0.08),
+                    blurRadius: 16,
+                    offset: const Offset(0, -4),
+                  ),
+                ],
+              ),
+              child: const SizedBox(height: 20),
+            ),
+            Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  maxWidth: ResponsiveBreakpoints.contentMaxWidth,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      productInfo,
+                      const SizedBox(height: 32),
+                      bottomSections,
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -739,6 +750,10 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     );
   }
 
+  void _handleBackNavigation(BuildContext context) {
+    appPopOrGo(context, AppRoutes.home);
+  }
+
   void _showImageDialog(
     BuildContext context,
     List<String> imageUrls,
@@ -759,19 +774,36 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                 minScale: 0.5,
                 maxScale: 4.0,
                 child: Center(
-                  child: WebCachedNetworkImage(
-                    imageUrl: resolveMediaUrl(imageUrls[i]),
-                    width: double.infinity,
-                    height: double.infinity,
-                    fit: BoxFit.contain,
-                    placeholder: (c, u) =>
-                        ModernSkeletonLoader.imagePlaceholder(),
-                    errorWidget: (c, u, e) => const Icon(
-                      Icons.image_not_supported,
-                      size: 100,
-                      color: DesignTokens.white,
-                    ),
-                  ),
+                  child: kIsWeb
+                      ? Image.network(
+                          resolveMediaUrl(imageUrls[i]),
+                          width: double.infinity,
+                          height: double.infinity,
+                          fit: BoxFit.contain,
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return ModernSkeletonLoader.imagePlaceholder();
+                          },
+                          errorBuilder: (context, error, stackTrace) =>
+                              const Icon(
+                                Icons.image_not_supported,
+                                size: 100,
+                                color: DesignTokens.white,
+                              ),
+                        )
+                      : WebCachedNetworkImage(
+                          imageUrl: resolveMediaUrl(imageUrls[i]),
+                          width: double.infinity,
+                          height: double.infinity,
+                          fit: BoxFit.contain,
+                          placeholder: (c, u) =>
+                              ModernSkeletonLoader.imagePlaceholder(),
+                          errorWidget: (c, u, e) => const Icon(
+                            Icons.image_not_supported,
+                            size: 100,
+                            color: DesignTokens.white,
+                          ),
+                        ),
                 ),
               ),
             ),
@@ -790,7 +822,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                     color: DesignTokens.white,
                     size: 28,
                   ),
-                  onPressed: () => Navigator.pop(ctx),
+                  onPressed: () => appPop(ctx),
                 ),
               ),
             ),

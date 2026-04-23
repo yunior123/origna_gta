@@ -556,12 +556,12 @@ bool isValidTaxCode(String? taxCode) {
 
 /// Opens Privacy Policy page in-app on all platforms.
 void openPrivacyPolicy(BuildContext context) {
-  Navigator.pushNamed(context, AppRoutes.privacyPolicy);
+  appPushNamed(context, AppRoutes.privacyPolicy);
 }
 
 /// Opens Terms of Service page in-app on all platforms.
 void openTermsOfService(BuildContext context) {
-  Navigator.pushNamed(context, AppRoutes.termsOfService);
+  appPushNamed(context, AppRoutes.termsOfService);
 }
 
 int? parseMoneyToCents(String? input) {
@@ -711,7 +711,7 @@ void showEmailVerificationDialog(
             child: TextButton.icon(
               onPressed: () {
                 onResend();
-                Navigator.pop(ctx);
+                appPop(ctx);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text('email_verification.sent_success'.tr()),
@@ -731,7 +731,7 @@ void showEmailVerificationDialog(
           button: true,
           label: 'btn-dialog-got-it',
           child: ElevatedButton(
-            onPressed: () => Navigator.pop(ctx),
+            onPressed: () => appPop(ctx),
             style: ElevatedButton.styleFrom(
               backgroundColor: DesignTokens.primary,
               foregroundColor: DesignTokens.white,
@@ -757,10 +757,6 @@ void showLoginPrompt(
   String text = 'auth.sign_in_cart_required',
 }) {
   // Capture the ROOT navigator from the CALLER's context before showing dialog.
-  // rootNavigator: true is required in Flutter Web to update the browser URL.
-  // Without it, a nested navigator (e.g., inside a tab) handles the push
-  // and the browser URL is never updated, breaking deep-linking and E2E tests.
-  final navigator = Navigator.of(context, rootNavigator: true);
   showDialog(
     context: context,
     builder: (dialogContext) => AlertDialog(
@@ -772,7 +768,7 @@ void showLoginPrompt(
           label: 'btn-dialog-cancel',
           child: TextButton(
             key: const Key('login_dialog_cancel_button'),
-            onPressed: () => Navigator.pop(dialogContext),
+            onPressed: () => appPop(dialogContext),
             child: Text('common.cancel'.tr()),
           ),
         ),
@@ -782,8 +778,8 @@ void showLoginPrompt(
           child: ElevatedButton(
             key: const Key('login_dialog_sign_in_button'),
             onPressed: () {
-              Navigator.pop(dialogContext);
-              navigator.pushNamed(AppRoutes.login);
+              appPop(dialogContext);
+              appPushNamed(context, AppRoutes.login);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: DesignTokens.primary,

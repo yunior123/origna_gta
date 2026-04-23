@@ -474,7 +474,7 @@ class _OrderSuccessScreenState extends ConsumerState<OrderSuccessScreen> {
                               label: 'orders.continue_shopping'.tr(),
                               icon: Icons.shopping_bag_outlined,
                               onPressed: () =>
-                                  Navigator.of(context).pushNamedAndRemoveUntil(
+                                  appPushNamedAndRemoveUntil(context,
                                     AppRoutes.home,
                                     (route) => false,
                                   ),
@@ -493,7 +493,7 @@ class _OrderSuccessScreenState extends ConsumerState<OrderSuccessScreen> {
                               isPrimary: false,
                               isOutlined: true,
                               onPressed: () {
-                                Navigator.of(context).pushNamedAndRemoveUntil(
+                                appPushNamedAndRemoveUntil(context,
                                   AppRoutes.orders,
                                   (route) =>
                                       route.settings.name == AppRoutes.home,

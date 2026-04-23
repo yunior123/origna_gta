@@ -500,7 +500,7 @@ class PendingApprovalsBanner extends StatelessWidget {
             label: 'btn-pending-shipping-approval',
             child: InkWell(
               onTap: () =>
-                  Navigator.pushNamed(context, AppRoutes.shippingApproval),
+                  appPushNamed(context, AppRoutes.shippingApproval),
               borderRadius: BorderRadius.circular(DesignTokens.radius16),
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -940,7 +940,7 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
                     icon: Icons.assignment_return_outlined,
                     label: 'returns.request_return'.tr(),
                     color: DesignTokens.warning,
-                    onTap: () => Navigator.of(context).pushNamed(
+                    onTap: () => appPushNamed(context,
                       AppRoutes.returnRequest,
                       arguments: ReturnRequestArgs(orderId: order.orderId),
                     ),
@@ -2364,7 +2364,7 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
+            onPressed: () => appPop(dialogContext),
             child: Text(
               'common.go_back'.tr(),
               style: TextStyle(color: DesignTokens.textSecondary),
@@ -2375,7 +2375,7 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
             label: 'btn-confirm-cancel-order',
             child: TextButton(
               onPressed: () async {
-                Navigator.pop(dialogContext);
+                appPop(dialogContext);
                 final messenger = ScaffoldMessenger.of(context);
                 final success = await ref
                     .read(buyerOrdersViewModelProvider.notifier)
@@ -2448,7 +2448,7 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
             ? SnackBarAction(
                 label: 'cart.view_cart'.tr(),
                 textColor: DesignTokens.white,
-                onPressed: () => Navigator.pushNamed(context, AppRoutes.cart),
+                onPressed: () => appPushNamed(context, AppRoutes.cart),
               )
             : null,
       ),

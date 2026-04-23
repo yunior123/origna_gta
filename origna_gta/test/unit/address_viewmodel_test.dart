@@ -294,6 +294,30 @@ void main() {
       verify(mockUserRepo.updateBuyerAddress('existing123', any)).called(1);
     });
 
+    test('saveAddress handles Cuba as Havana-only maritime flow', () async {
+      final vm = container.read(addressViewModelProvider.notifier);
+      vm.setCountry(CountryValues.cuba);
+      vm.selectAddress({
+        'properties': {'state_code': ProvinceCodeValues.havana},
+        'geometry': {
+          'coordinates': [-82.3666, 23.1136],
+        },
+      });
+
+      await vm.saveAddress(
+        street: '123 Malecon',
+        apartment: '',
+        city: 'Santiago de Cuba',
+        postalCode: '10100',
+        phoneNumber: '+5355512345',
+      );
+
+      final state = container.read(addressViewModelProvider);
+      expect(state.isSuccess, isFalse);
+      expect(state.errorMessage, 'address.cuba_havana_only');
+      verifyNever(mockUserRepo.addBuyerAddress(any));
+    });
+
     test('saveAddress handles error gracefully', () async {
       final vm = container.read(addressViewModelProvider.notifier);
       vm.selectAddress({

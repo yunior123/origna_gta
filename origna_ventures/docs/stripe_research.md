@@ -1,41 +1,42 @@
 # Stripe research notes
 
-Date: 2026-04-19
+Date: 2026-04-22
 
-## Sources checked
-- `https://docs.stripe.com/payment-links`
-- `https://docs.stripe.com/payments/checkout`
-- local repo guide: `origna_gta/docs/stripe-cli-guide.md`
+This file records the current Origna Ventures Stripe direction. Earlier notes that centered the public flow on donation/brochure Payment Links or post-signature contract checkout are historical and no longer describe the live public tiers flow.
 
-## Key findings
+## Current production-aligned model
 
-### Payment Links
-Stripe documents Payment Links as a shareable hosted payment surface that can be sent on websites, email, social media, and QR-driven flows.
+- Public service cards create Stripe Checkout Sessions from the Ventures backend.
+- The active public catalog is:
+  - `origna_code`
+  - `origna_launch`
+  - `origna_team`
+- Checkout metadata is service-oriented and can include server-validated extras such as `developer_count` for `origna_team`.
+- Tax handling uses Stripe-hosted `automatic_tax` plus `tax_id_collection`.
+- Fulfillment and email side effects happen after verified webhook events.
 
-Relevant extracted points:
-- "Accept payments with shareable links"
-- Stripe-hosted payment page
-- QR-compatible sharing/use cases are mentioned in Stripe docs navigation and invoice/payment sharing contexts
+## Why Checkout Sessions, not static Payment Links
 
-Best use for Origna Ventures:
-- static brochure/payment QR
-- sponsor/donation QR
-- generic payment collection pages
+- The live flow needs request-time metadata such as `service_code`, buyer email, locale context, and bounded `developer_count`.
+- The backend must remain authoritative over pricing and quantity so client-side source access cannot manipulate payable amounts.
+- The webhook layer needs a stable path for idempotency, receipt generation, support notifications, and future fulfillment logic.
 
-### Checkout
-Stripe Checkout is Stripe's hosted checkout flow for collecting payment with a better per-transaction context than a static public payment link.
+## Webhook guidance in use
 
-Best use for Origna Ventures:
-- contract-specific payment after signing
-- attach metadata like `contract_id`, `service_code`, and `client_email`
-- fulfill/unlock access after webhook confirmation
+- verify signed raw webhook payloads
+- deduplicate repeated deliveries
+- return `2xx` quickly and avoid blocking the webhook response on email delivery
+- keep fulfillment and receipts keyed off successful Stripe events
 
-### Recommended production split
-- brochure QR / donation QR / public sponsor QR → Stripe Payment Links
-- signed contract payment → Stripe Checkout Session
-- fulfillment / repo unlock → Stripe webhook (`checkout.session.completed`)
+## Official Stripe docs reviewed
 
-## Local project evidence
-- local Stripe test secret successfully created Checkout sessions in Origna Ventures backend
-- local signed webhook test successfully updated contract status to `paid`
-- local Mailjet test still failed with `401 Unauthorized` using current dev credentials pulled from VPS config
+- `https://docs.stripe.com/api/checkout/sessions/create`
+- `https://docs.stripe.com/webhooks/test`
+- `https://docs.stripe.com/error-low-level`
+- `https://docs.stripe.com/keys`
+
+## Local repo evidence
+
+- `origna_ventures/backend/app.py`
+- `origna_ventures/docs/payment_audit.md`
+- `STATE.md`

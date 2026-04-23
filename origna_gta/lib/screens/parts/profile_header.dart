@@ -236,7 +236,7 @@ class ProfileScreenLayout extends StatelessWidget {
           semanticLabel: 'menu-my-orders',
           title: 'profile.my_orders'.tr(),
           subtitle: 'profile.view_purchases'.tr(),
-          onTap: () => Navigator.pushNamed(context, AppRoutes.orders),
+          onTap: () => appPushNamed(context, AppRoutes.orders),
         ),
         if (FeatureFlags.kSellerOnboardingEnabled && isSeller) ...[
           ProfileMenuItem(
@@ -245,7 +245,7 @@ class ProfileScreenLayout extends StatelessWidget {
             semanticLabel: 'menu-seller-orders',
             title: 'profile.seller_orders'.tr(),
             subtitle: 'profile.manage_sales'.tr(),
-            onTap: () => Navigator.pushNamed(context, AppRoutes.sellerOrders),
+            onTap: () => appPushNamed(context, AppRoutes.sellerOrders),
           ),
           ProfileMenuItem(
             key: const Key('profile_seller_dashboard_button'),
@@ -253,7 +253,7 @@ class ProfileScreenLayout extends StatelessWidget {
             semanticLabel: 'menu-seller-dashboard',
             title: 'profile.seller_dashboard'.tr(),
             subtitle: 'profile.manage_products_account'.tr(),
-            onTap: () => Navigator.pushNamed(context, AppRoutes.sellerProducts),
+            onTap: () => appPushNamed(context, AppRoutes.sellerProducts),
           ),
           ProfileMenuItem(
             key: const Key('profile_seller_analytics_button'),
@@ -262,7 +262,7 @@ class ProfileScreenLayout extends StatelessWidget {
             title: 'profile.seller_analytics'.tr(),
             subtitle: 'profile.view_sales_insights'.tr(),
             onTap: () =>
-                Navigator.pushNamed(context, AppRoutes.sellerAnalytics),
+                appPushNamed(context, AppRoutes.sellerAnalytics),
           ),
         ] else if (FeatureFlags.kSellerOnboardingEnabled)
           ProfileMenuItem(
@@ -272,7 +272,7 @@ class ProfileScreenLayout extends StatelessWidget {
             title: 'profile.become_seller'.tr(),
             subtitle: 'profile.start_selling'.tr(),
             onTap: () =>
-                Navigator.pushNamed(context, AppRoutes.sellerRegistration),
+                appPushNamed(context, AppRoutes.sellerRegistration),
           ),
         if (isAdmin)
           ProfileMenuItem(
@@ -281,7 +281,7 @@ class ProfileScreenLayout extends StatelessWidget {
             semanticLabel: 'menu-admin-panel',
             title: 'profile.admin_panel'.tr(),
             subtitle: 'profile.platform_management'.tr(),
-            onTap: () => Navigator.pushNamed(context, AppRoutes.adminPanel),
+            onTap: () => appPushNamed(context, AppRoutes.adminPanel),
           ),
       ],
     );
@@ -299,7 +299,7 @@ class ProfileScreenLayout extends StatelessWidget {
             semanticLabel: 'menu-notifications',
             title: 'profile.notifications'.tr(),
             subtitle: 'profile.manage_notifications'.tr(),
-            onTap: () => Navigator.pushNamed(context, AppRoutes.notifications),
+            onTap: () => appPushNamed(context, AppRoutes.notifications),
           ),
         ProfileMenuItem(
           key: const Key('profile_messages_button'),
@@ -307,7 +307,7 @@ class ProfileScreenLayout extends StatelessWidget {
           semanticLabel: 'menu-my-messages',
           title: 'chat.inbox_title'.tr(),
           subtitle: 'chat.inbox_subtitle'.tr(),
-          onTap: () => Navigator.pushNamed(context, AppRoutes.chatInbox),
+          onTap: () => appPushNamed(context, AppRoutes.chatInbox),
         ),
         ProfileMenuItem(
           key: const Key('profile_favorites_button'),
@@ -315,7 +315,7 @@ class ProfileScreenLayout extends StatelessWidget {
           semanticLabel: 'menu-favorites',
           title: 'favorites.my_favorites'.tr(),
           subtitle: 'profile.your_saved_products'.tr(),
-          onTap: () => Navigator.pushNamed(context, AppRoutes.favorites),
+          onTap: () => appPushNamed(context, AppRoutes.favorites),
         ),
         ProfileMenuItem(
           key: const Key('profile_address_button'),
@@ -324,7 +324,7 @@ class ProfileScreenLayout extends StatelessWidget {
           title: 'profile.address'.tr(),
           subtitle: 'profile.manage_delivery_address'.tr(),
           onTap: () =>
-              Navigator.pushNamed(context, AppRoutes.addressManagement),
+              appPushNamed(context, AppRoutes.addressManagement),
         ),
         ProfileMenuItem(
           key: const Key('profile_terms_button'),
@@ -404,7 +404,7 @@ class ProfileScreenLayout extends StatelessWidget {
           semanticLabel: 'menu-get-help',
           title: 'support.get_help_title'.tr(),
           subtitle: 'support.get_help_subtitle'.tr(),
-          onTap: () => Navigator.pushNamed(context, AppRoutes.support),
+          onTap: () => appPushNamed(context, AppRoutes.support),
         ),
         _buildAppInfoSection(context, isDark),
       ],

@@ -1,6 +1,6 @@
 # Origna Ventures Payment Audit
 
-Date: 2026-04-21
+Date: 2026-04-22
 
 ## Current public payment architecture
 
@@ -87,13 +87,45 @@ Current public expectation:
 - Mailjet is still relevant for confirmations/notifications.
 - Credential validity and delivery behavior should be verified with current production secrets, not stale dev assumptions.
 
+### 4. Stripe-docs alignment verified on 2026-04-22
+
+Official Stripe docs checked during this pass:
+
+- Checkout Session create API:
+  - https://docs.stripe.com/api/checkout/sessions/create
+- Webhook testing and best practices:
+  - https://docs.stripe.com/webhooks/test
+- Low-level error handling / idempotency guidance:
+  - https://docs.stripe.com/error-low-level
+- API keys and separation of secrets:
+  - https://docs.stripe.com/keys
+
+Current alignment after the 2026-04-22 fixes:
+
+- Ventures checkout uses unique per-request Stripe idempotency keys.
+- Ventures webhook verifies the signed raw request body and enforces Stripe's timestamp recency window.
+- Ventures checkout now uses Stripe-hosted `automatic_tax` and `tax_id_collection` instead of a hardcoded HST line item.
+- Ventures webhook now commits DB state before email work and no longer waits for email delivery before returning the webhook response.
+- Ventures buyer receipt email now includes a PDF attachment in backend-tested flows.
+- Ventures `OrignaTeam` quantity/pricing is server-authoritative via validated `developer_count` and fixed server-side unit pricing.
+
+Repo-wide audit notes:
+
+- OrignaGTA / OrignaBase checkout already uses server-authoritative subtotal, shipping, tax, and idempotency-key handling in Rust.
+- OrignaGTA tax is still calculated server-side from validated address/shipping context rather than delegated to Stripe Tax; that is a deliberate architecture choice, not an unverified client-side calculation.
+- The remaining payment gaps are operational/live-surface gaps, not core Stripe-signature or price-tampering bugs:
+  - the giant legacy Ventures mobile live suite remains flaky under repeated browser launches
+  - full production buyer-charge proof for OrignaGTA remains manual due Turnstile / real-payment constraints
+  - inbox-level proof for the attached Ventures PDF receipt is still not captured from a real completed paid flow
+
 ## Recommended next checks
 
 ### High priority
 
 1. Re-run live payment verification against all three public service codes.
 2. Re-verify webhook handling on the currently deployed production backend.
-3. Verify current Mailjet delivery with valid production credentials.
+3. Verify current Mailjet delivery with valid production credentials and literal inbox receipt evidence.
+4. Re-run the focused mobile Stripe redirect cases after deploy to confirm the mixed-run `PW13` timeout remains only a flake.
 
 ### Medium priority
 

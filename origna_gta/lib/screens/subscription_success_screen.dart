@@ -219,11 +219,11 @@ class _SubscriptionSuccessScreenState
                           label: 'btn-subscription-success-done',
                           button: true,
                           child: TextButton(
-                            onPressed: () =>
-                                Navigator.of(context).pushNamedAndRemoveUntil(
-                                  AppRoutes.home,
-                                  (route) => false,
-                                ),
+                            onPressed: () => appPushNamedAndRemoveUntil(
+                              context,
+                              AppRoutes.home,
+                              (route) => false,
+                            ),
                             child: Text('common.back_to_home'.tr()),
                           ),
                         ),
@@ -380,11 +380,11 @@ class _SubscriptionSuccessScreenState
                               label: 'btn-start-shopping',
                               child: ModernButton(
                                 label: 'subscription.start_shopping'.tr(),
-                                onPressed: () => Navigator.of(context)
-                                    .pushNamedAndRemoveUntil(
-                                      AppRoutes.home,
-                                      (route) => false,
-                                    ),
+                                onPressed: () => appPushNamedAndRemoveUntil(
+                                  context,
+                                  AppRoutes.home,
+                                  (route) => false,
+                                ),
                                 icon: Icons.shopping_bag_outlined,
                               ),
                             ),

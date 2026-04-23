@@ -1,5 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:origna_gta/core/routes.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -520,14 +521,14 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
+            onPressed: () => appPop(dialogContext),
             child: Text('common.cancel'.tr()),
           ),
           TextButton(
             onPressed: () async {
               final code = disableMfaController.text.trim();
               if (code.length != 6) return;
-              Navigator.pop(dialogContext);
+              appPop(dialogContext);
               final viewModel = ref.read(
                 adminActionsViewModelProvider.notifier,
               );

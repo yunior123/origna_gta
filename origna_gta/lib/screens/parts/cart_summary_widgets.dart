@@ -80,8 +80,7 @@ class _CheckoutButton extends ConsumerWidget {
             0,
             (total, item) => total + (item.priceCents * item.quantity),
           );
-          Navigator.pushNamed(
-            context,
+          appPushNamed(context,
             AppRoutes.checkout,
             arguments: CheckoutArgs(
               items: itemsWithDetails,

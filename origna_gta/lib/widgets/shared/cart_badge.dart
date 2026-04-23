@@ -131,7 +131,7 @@ class _CartBadgeState extends ConsumerState<CartBadge>
             if (!verified) return;
           }
           if (!context.mounted) return;
-          Navigator.pushNamed(context, AppRoutes.cart);
+          appPushNamed(context, AppRoutes.cart);
         },
       ),
     );

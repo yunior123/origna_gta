@@ -44,17 +44,11 @@ class _QaBadgeButton extends ConsumerWidget {
               tooltip: count > 0
                   ? 'qa.pending_questions'.tr(namedArgs: {'count': '$count'})
                   : 'qa.no_pending_questions'.tr(),
-              onPressed: () {
-                final productPath = AppRoutes.productByIdPath(productId);
-                Navigator.pushNamed(
-                  context,
-                  productPath,
-                  arguments: ProductDetailsArgs(
-                    productId: productId,
-                    product: product.toJson(),
-                  ),
-                );
-              },
+              onPressed: () => _openProductDetails(
+                context,
+                productId: productId,
+                product: product.toJson(),
+              ),
               padding: EdgeInsets.all(isCompact ? 4 : 8),
               constraints: BoxConstraints(
                 minWidth: isCompact ? 32 : 48,

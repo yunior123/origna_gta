@@ -124,9 +124,8 @@ class AuthRequiredGate extends ConsumerWidget {
                           child: ModernButton(
                             label: 'auth.sign_in'.tr(),
                             icon: Icons.login_rounded,
-                            onPressed: () => Navigator.of(
-                              context,
-                            ).pushNamed(AppRoutes.login),
+                            onPressed: () =>
+                                appPushNamed(context, AppRoutes.login),
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -135,11 +134,11 @@ class AuthRequiredGate extends ConsumerWidget {
                           child: Tooltip(
                             message: 'btn-common-go-home',
                             child: TextButton(
-                              onPressed: () =>
-                                  Navigator.of(context).pushNamedAndRemoveUntil(
-                                    AppRoutes.home,
-                                    (route) => false,
-                                  ),
+                              onPressed: () => appPushNamedAndRemoveUntil(
+                                context,
+                                AppRoutes.home,
+                                (route) => false,
+                              ),
                               child: Text(
                                 'seller.go_home'.tr(),
                                 style: TextStyle(
@@ -240,11 +239,11 @@ class AuthRequiredGate extends ConsumerWidget {
                           icon: Icons.home_outlined,
                           isPrimary: false,
                           isOutlined: true,
-                          onPressed: () =>
-                              Navigator.of(context).pushNamedAndRemoveUntil(
-                                AppRoutes.home,
-                                (route) => false,
-                              ),
+                          onPressed: () => appPushNamedAndRemoveUntil(
+                            context,
+                            AppRoutes.home,
+                            (route) => false,
+                          ),
                         ),
                       ],
                     ),

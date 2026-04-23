@@ -1,5 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:origna_gta/core/routes.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/features/admin/admin_providers.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
@@ -503,7 +504,7 @@ class _AdminPaymentProvidersTabState
               button: true,
               label: 'btn-dialog-got-it',
               child: ElevatedButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () => appPop(context),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: DesignTokens.primary,
                   foregroundColor: DesignTokens.white,
@@ -558,7 +559,7 @@ class _AdminPaymentProvidersTabState
             child: TextButton(
               onPressed: () {
                 _reasonController.clear();
-                Navigator.pop(context);
+                appPop(context);
               },
               child: Text('common.cancel'.tr()),
             ),
@@ -570,7 +571,7 @@ class _AdminPaymentProvidersTabState
               onPressed: () {
                 final reason = _reasonController.text;
                 _reasonController.clear();
-                Navigator.pop(context, reason);
+                appPop(context, reason);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: enable
@@ -606,7 +607,7 @@ class _AdminPaymentProvidersTabState
       await adminRepo.updatePaymentProvider(provider, enable, reason: reason);
 
       if (!mounted) return;
-      Navigator.pop(context); // Close loading dialog
+      appPop(context); // Close loading dialog
 
       // Invalidate provider to reload data via Riverpod
       ref.invalidate(adminPaymentProvidersDataProvider);
@@ -626,7 +627,7 @@ class _AdminPaymentProvidersTabState
       );
     } catch (e) {
       if (!mounted) return;
-      Navigator.pop(context); // Close loading dialog
+      appPop(context); // Close loading dialog
 
       // Extract meaningful error message
       String errorMessage = AppError.getMessage(

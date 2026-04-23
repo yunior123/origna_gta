@@ -167,9 +167,11 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen>
                   ),
                   const SizedBox(height: 24),
                   FilledButton.icon(
-                    onPressed: () => Navigator.of(
+                    onPressed: () => appPushNamedAndRemoveUntil(
                       context,
-                    ).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false),
+                      AppRoutes.home,
+                      (route) => false,
+                    ),
                     icon: const Icon(Icons.home_rounded),
                     label: Text('admin.go_home'.tr()),
                   ),
@@ -469,7 +471,7 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen>
                         key: const Key('admin_back_button'),
                         icon: const Icon(Icons.arrow_back_rounded),
                         tooltip: 'Back',
-                        onPressed: () => Navigator.of(context).pop(),
+                        onPressed: () => appPop(context),
                       ),
                       const SizedBox(width: 8),
                       Icon(

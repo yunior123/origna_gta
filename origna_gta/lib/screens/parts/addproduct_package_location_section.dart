@@ -117,7 +117,7 @@ extension _AddProductPackageLocationSection on _AddProductScreenState {
           child: OutlinedButton.icon(
             key: const Key('addproduct_manage_warehouses_button'),
             onPressed: () =>
-                Navigator.of(context).pushNamed(AppRoutes.sellerWarehouses),
+                appPushNamed(context,AppRoutes.sellerWarehouses),
             icon: const Icon(Icons.add_location_alt_rounded, size: 18),
             label: Text('product.warehouse_add_button'.tr()),
             style: OutlinedButton.styleFrom(
@@ -261,7 +261,7 @@ extension _AddProductPackageLocationSection on _AddProductScreenState {
               child: TextButton.icon(
                 key: const Key('addproduct_manage_warehouses_button'),
                 onPressed: () =>
-                    Navigator.of(context).pushNamed(AppRoutes.sellerWarehouses),
+                    appPushNamed(context,AppRoutes.sellerWarehouses),
                 icon: const Icon(Icons.settings_rounded, size: 14),
                 label: Text(
                   'product.warehouse_manage'.tr(),

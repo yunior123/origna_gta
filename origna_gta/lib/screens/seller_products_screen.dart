@@ -82,7 +82,7 @@ class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen> {
                 icon: const Icon(Icons.cloud_upload_outlined),
                 tooltip: tr('bulk_upload_title'),
                 onPressed: () =>
-                    Navigator.pushNamed(context, AppRoutes.sellerBulkUpload),
+                    appPushNamed(context, AppRoutes.sellerBulkUpload),
               ),
             ),
             Semantics(
@@ -92,7 +92,7 @@ class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen> {
                 icon: const Icon(Icons.add_box_outlined),
                 tooltip: tr('seller.add_product'),
                 onPressed: () =>
-                    Navigator.pushNamed(context, AppRoutes.addProduct),
+                    appPushNamed(context, AppRoutes.addProduct),
               ),
             ),
           ],
@@ -122,7 +122,7 @@ class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen> {
                   label: tr('seller.add_product'),
                   icon: Icons.add_box_outlined,
                   onPressed: () =>
-                      Navigator.pushNamed(context, AppRoutes.addProduct),
+                      appPushNamed(context, AppRoutes.addProduct),
                   fullWidth: false,
                   width: 260,
                 ),
@@ -187,8 +187,7 @@ class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen> {
                                   HapticFeedback.mediumImpact();
                                   bulkVm.toggleSelection(product.productId);
                                 },
-                                onEdit: () => Navigator.pushNamed(
-                                  context,
+                                onEdit: () => appPushNamed(context,
                                   AppRoutes.editProduct,
                                   arguments: EditProductArgs(product: product),
                                 ),
@@ -228,7 +227,7 @@ class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen> {
             button: true,
             label: 'btn-cancel-archive',
             child: TextButton(
-              onPressed: () => Navigator.pop(ctx),
+              onPressed: () => appPop(ctx),
               child: Text(tr('common.cancel')),
             ),
           ),
@@ -240,7 +239,7 @@ class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen> {
                 backgroundColor: DesignTokens.error,
               ),
               onPressed: () {
-                Navigator.pop(ctx);
+                appPop(ctx);
                 vm.bulkAction('archive');
               },
               child: Text(tr('seller.archive')),

@@ -1,5 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:origna_gta/core/routes.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/orders/orders_provider.dart';
@@ -694,7 +695,7 @@ class _ApprovalCard extends ConsumerWidget {
             button: true,
             label: 'btn-go-back-cancel-order',
             child: TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
+              onPressed: () => appPop(dialogContext),
               child: Text(
                 'seller.go_back'.tr(),
                 style: TextStyle(color: DesignTokens.textSecondary),
@@ -718,7 +719,7 @@ class _ApprovalCard extends ConsumerWidget {
                 label: 'btn-confirm-cancel-order',
                 child: InkWell(
                   onTap: () {
-                    Navigator.pop(dialogContext);
+                    appPop(dialogContext);
                     ref
                         .read(shippingApprovalViewModelProvider.notifier)
                         .approveShippingCost(order.orderId, false);

@@ -40,7 +40,8 @@ function isAllowedImageUrl(url: string): boolean {
   return (
     /^https:\/\/pub-[^.]+\.r2\.dev\//.test(url) ||
     /^https:\/\/([a-z0-9-]+\.)?orignagta\.ca\//.test(url) ||
-    /^https:\/\/([a-z0-9-]+\.)?origna\.ca\//.test(url)
+    /^https:\/\/([a-z0-9-]+\.)?origna\.ca\//.test(url) ||
+    /^(dev\/)?products\//.test(url)
   );
 }
 

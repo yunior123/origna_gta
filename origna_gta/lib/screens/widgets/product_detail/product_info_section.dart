@@ -76,13 +76,12 @@ class SellerInfoCard extends ConsumerWidget {
                       height: 40,
                       onPressed: () {
                         if (currentUserId == null) {
-                          Navigator.pushNamed(context, AppRoutes.login);
+                          appPushNamed(context, AppRoutes.login);
                           return;
                         }
                         if (isOvSeller ||
                             SellerConstants.sellerOnboardingEnabled) {
-                          Navigator.pushNamed(
-                            context,
+                          appPushNamed(context,
                             AppRoutes.chat,
                             arguments: ChatArgs(
                               productId: product.productId,
@@ -92,8 +91,7 @@ class SellerInfoCard extends ConsumerWidget {
                           return;
                         }
                         if (isPremium) {
-                          Navigator.pushNamed(
-                            context,
+                          appPushNamed(context,
                             AppRoutes.chat,
                             arguments: ChatArgs(
                               productId: product.productId,

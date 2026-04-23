@@ -81,9 +81,8 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                     label: 'reset_password_go_to_login_button',
                     child: ModernButton(
                       label: 'auth.go_to_login'.tr(),
-                      onPressed: () => Navigator.of(
-                        context,
-                      ).pushReplacementNamed(AppRoutes.home),
+                      onPressed: () =>
+                          appPushReplacementNamed(context, AppRoutes.home),
                     ),
                   ),
                 ],

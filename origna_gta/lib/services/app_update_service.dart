@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:origna_gta/utils/env_config.dart';
 import 'package:origna_gta/utils/app_logger.dart';
@@ -26,7 +27,10 @@ class AppUpdateService {
   /// - Network errors and timeouts (5s) are caught and return `null` to avoid
   ///   blocking app startup on transient connectivity issues.
   /// - Non-200 HTTP responses also return `null`.
+  /// - On web, returns `null` immediately — `package_info_plus` has no web
+  ///   implementation and would throw MissingPluginException.
   static Future<String?> checkForUpdate() async {
+    if (kIsWeb) return null;
     try {
       final packageInfo = await PackageInfo.fromPlatform();
       final currentVersion = packageInfo.version; // e.g., "1.1.0"

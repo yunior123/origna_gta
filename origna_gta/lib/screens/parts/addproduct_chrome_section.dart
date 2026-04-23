@@ -62,7 +62,7 @@ extension _AddProductChromeSection on _AddProductScreenState {
         children: [
           IconButton(
             key: const Key('addproduct_back_button'),
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => appPop(context),
             tooltip: 'product.go_back'.tr(),
             icon: Container(
               padding: const EdgeInsets.all(8),
@@ -160,7 +160,7 @@ extension _AddProductChromeSection on _AddProductScreenState {
         duration: const Duration(seconds: 5),
       ),
     );
-    Navigator.pop(context);
+    appPop(context);
   }
 
   /// PROD-C1: Clears all text controllers so the form is blank when re-entering after a successful submit.

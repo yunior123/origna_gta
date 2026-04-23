@@ -1,5 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:origna_gta/core/routes.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
@@ -184,7 +185,7 @@ class TermsScreen extends ConsumerWidget {
             Semantics(
               label: 'btn-terms-go-back',
               child: TextButton.icon(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () => appPop(context),
                 icon: const Icon(
                   Icons.arrow_back,
                   color: DesignTokens.white,
@@ -299,7 +300,7 @@ class _TermsBodyState extends State<_TermsBody> {
             size: 20,
           ),
         ),
-        onPressed: () => Navigator.pop(context),
+        onPressed: () => appPop(context),
       ),
       flexibleSpace: FlexibleSpaceBar(
         collapseMode: CollapseMode.parallax,

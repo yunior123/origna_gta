@@ -244,7 +244,7 @@ class _WarehousesList extends ConsumerWidget {
             button: true,
             label: 'btn-dialog-cancel',
             child: TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
+              onPressed: () => appPop(ctx, false),
               child: Text('common.cancel'.tr()),
             ),
           ),
@@ -252,7 +252,7 @@ class _WarehousesList extends ConsumerWidget {
             button: true,
             label: 'btn-dialog-confirm-delete',
             child: TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
+              onPressed: () => appPop(ctx, true),
               style: TextButton.styleFrom(foregroundColor: DesignTokens.error),
               child: Text('common.delete'.tr()),
             ),

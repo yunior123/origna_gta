@@ -246,6 +246,7 @@ void main() {
       resetViewport(tester);
     });
 
+
     testWidgets('shows tagline text', (tester) async {
       setMobileViewport(tester);
 

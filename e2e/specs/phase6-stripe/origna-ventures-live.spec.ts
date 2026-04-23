@@ -16,16 +16,40 @@ async function openVenturesPage(
   viewport: 'desktop' | 'mobile',
 ): Promise<{ browser: Browser; context: BrowserContext; page: Page }> {
   const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext(
+  let context = await browser.newContext(
     viewport === 'mobile'
       ? { ...VENTURES_MOBILE }
       : { viewport: { width: 1440, height: 1200 } },
   );
-  const page = await context.newPage();
-  await page.goto(VENTURES_WEB_URL, { waitUntil: 'networkidle', timeout: 60_000 });
-  await page.waitForTimeout(3_000);
-  await enableFlutterSemantics(page);
-  return { browser, context, page };
+
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const page = await context.newPage();
+    try {
+      await page.goto(VENTURES_WEB_URL, {
+        waitUntil: 'domcontentloaded',
+        timeout: 60_000,
+      });
+      await page.waitForLoadState('load', { timeout: 20_000 }).catch(() => {});
+      await page.waitForTimeout(2_000);
+      await enableFlutterSemantics(page);
+      return { browser, context, page };
+    } catch (error) {
+      await page.close().catch(() => {});
+      if (attempt == 2) {
+        await context.close().catch(() => {});
+        await browser.close().catch(() => {});
+        throw error;
+      }
+      await context.close().catch(() => {});
+      context = await browser.newContext(
+        viewport === 'mobile'
+          ? { ...VENTURES_MOBILE }
+          : { viewport: { width: 1440, height: 1200 } },
+      );
+    }
+  }
+
+  throw new Error('openVenturesPage retry loop exhausted');
 }
 
 async function closeVenturesPage(browser: Browser, context: BrowserContext) {
@@ -34,7 +58,12 @@ async function closeVenturesPage(browser: Browser, context: BrowserContext) {
 }
 
 async function waitForSelector(page: Page, selector: string) {
-  await page.waitForSelector(selector, { timeout: 20_000 });
+  try {
+    await page.waitForSelector(selector, { timeout: 20_000 });
+  } catch (_) {
+    await page.waitForTimeout(2_000);
+    await page.waitForSelector(selector, { timeout: 20_000 });
+  }
   return page.locator(selector).first();
 }
 
@@ -65,6 +94,32 @@ async function goToPricing(page: Page, viewport: 'desktop' | 'mobile') {
   const trigger = await waitForSelector(page, selector);
   await trigger.click();
   await page.waitForTimeout(1_500);
+  if (viewport === 'mobile') {
+    await page.evaluate(() => window.scrollBy(0, 900));
+    await page.waitForTimeout(1_000);
+  }
+}
+
+async function fillFlutterField(page: Page, label: string, value: string) {
+  const semanticField = page.locator(`[aria-label="${label}"]`).first();
+  await semanticField.waitFor({ state: 'visible', timeout: 20_000 });
+
+  const editableDescendant = semanticField
+    .locator('xpath=ancestor::flt-semantics[1]')
+    .locator('input:not([disabled]), textarea:not([disabled])')
+    .first();
+  if (await editableDescendant.count()) {
+    await editableDescendant.click();
+    await page.waitForTimeout(250);
+    await page.keyboard.type(value);
+    return;
+  }
+
+  const box = await semanticField.boundingBox();
+  if (!box) throw new Error(`No bounding box for ${label}`);
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await page.waitForTimeout(250);
+  await page.keyboard.type(value);
 }
 
 async function expectCheckoutRedirect(
@@ -96,6 +151,7 @@ async function venturesFetch(path: string, options: RequestInit = {}) {
     ...options,
     headers: {
       'Content-Type': 'application/json',
+      Origin: VENTURES_WEB_URL,
       ...options.headers,
     },
   });
@@ -395,7 +451,50 @@ describe('OrignaVentures — Live Payment Buttons (Playwright)', () => {
     }
   }, 60_000);
 
-  test('PW04: mobile cookie accept dismisses the banner', async () => {
+  test('PW04-contact: desktop contact form submits and reports support + confirmation emails', async () => {
+    const unique = Date.now();
+    const contactEmail = `e2e-contact+${unique}@orignaventures.ca`;
+    const { browser, context, page } = await openVenturesPage('desktop');
+    try {
+      await acceptCookiesIfVisible(page);
+      await page.evaluate(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'instant' }));
+      await page.waitForTimeout(1_500);
+
+      await fillFlutterField(page, 'input-contact-name', `E2E Contact ${unique}`);
+      await fillFlutterField(page, 'input-contact-email', contactEmail);
+      await fillFlutterField(page, 'input-contact-company', 'Origna Ventures E2E');
+      await fillFlutterField(
+        page,
+        'input-contact-message',
+        `Live contact form verification ${unique}. Please ignore this automated support check.`,
+      );
+
+      const responsePromise = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/contact') &&
+          response.request().method() === 'POST',
+        { timeout: 30_000 },
+      );
+
+      const submit = page.getByRole('button', { name: 'btn-contact-submit' }).first();
+      await submit.waitFor({ state: 'visible', timeout: 20_000 });
+      await submit.click();
+
+      const response = await responsePromise;
+      expect(response.status()).toBe(200);
+      const body = await response.json();
+      expect(body?.status).toBe('ok');
+      expect(body?.emails?.support?.status).toBe('sent');
+      expect(body?.emails?.confirmation?.status).toBe('sent');
+
+      const status = page.getByLabel('status-contact-result').first();
+      await status.waitFor({ state: 'visible', timeout: 20_000 });
+    } finally {
+      await closeVenturesPage(browser, context);
+    }
+  }, 90_000);
+
+  test('PW04-cookie: mobile cookie accept dismisses the banner', async () => {
     const { browser, context, page } = await openVenturesPage('mobile');
     try {
       const acceptButton = await waitForSelector(page, '[aria-label="btn-cookie-accept"]');
@@ -407,7 +506,7 @@ describe('OrignaVentures — Live Payment Buttons (Playwright)', () => {
     }
   }, 60_000);
 
-  test('PW05: mobile pricing reveals investor deck button', async () => {
+  test('PW05-pricing: mobile pricing reveals investor deck button', async () => {
     const { browser, context, page } = await openVenturesPage('mobile');
     try {
       await goToPricing(page, 'mobile');

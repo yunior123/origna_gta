@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:origna_gta/core/routes.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart'
     show CarrierValues;
@@ -200,7 +201,7 @@ void showUpdateShippingDialog(
               button: true,
               label: 'btn-cancel-update-shipping',
               child: TextButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () => appPop(context),
                 child: Text(
                   'common.cancel'.tr(),
                   style: TextStyle(color: DesignTokens.textSecondary),
@@ -219,7 +220,7 @@ void showUpdateShippingDialog(
                     final note = carrierValue == CarrierValues.other
                         ? carrierNoteController.text.trim()
                         : null;
-                    Navigator.pop(context);
+                    appPop(context);
                     ref
                         .read(sellerOrdersViewModelProvider.notifier)
                         .updateShippingAndCapture(

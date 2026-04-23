@@ -373,8 +373,7 @@ class _ReviewCardState extends ConsumerState<ReviewCard> {
                               label: 'btn-review-photos-premium',
                               button: true,
                               child: GestureDetector(
-                                onTap: () => Navigator.pushNamed(
-                                  context,
+                                onTap: () => appPushNamed(context,
                                   AppRoutes.subscription,
                                 ),
                                 child: Column(
@@ -551,7 +550,7 @@ class _ReviewCardState extends ConsumerState<ReviewCard> {
                     color: DesignTokens.white,
                     size: 28,
                   ),
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () => appPop(context),
                 ),
               ),
             ),

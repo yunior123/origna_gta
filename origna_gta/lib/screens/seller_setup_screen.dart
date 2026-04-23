@@ -97,7 +97,8 @@ class SellerSetupRefreshScreen extends StatelessWidget {
                             label: 'seller.continue_setup'.tr(),
                             icon: Icons.arrow_forward_rounded,
                             onPressed: () {
-                              Navigator.of(context).pushReplacementNamed(
+                              appPushReplacementNamed(
+                                context,
                                 AppRoutes.sellerRegistration,
                               );
                             },
@@ -109,11 +110,11 @@ class SellerSetupRefreshScreen extends StatelessWidget {
                           label: 'btn-seller-setup-back-home',
                           button: true,
                           child: TextButton(
-                            onPressed: () =>
-                                Navigator.of(context).pushNamedAndRemoveUntil(
-                                  AppRoutes.home,
-                                  (route) => false,
-                                ),
+                            onPressed: () => appPushNamedAndRemoveUntil(
+                              context,
+                              AppRoutes.home,
+                              (route) => false,
+                            ),
                             child: Text(
                               'seller.back_to_home'.tr(),
                               style: TextStyle(
@@ -327,9 +328,11 @@ class _SellerSetupCompleteScreenState
             label: 'btn-seller-setup-go-home',
             button: true,
             child: TextButton(
-              onPressed: () => Navigator.of(
+              onPressed: () => appPushNamedAndRemoveUntil(
                 context,
-              ).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false),
+                AppRoutes.home,
+                (route) => false,
+              ),
               child: Text(
                 'seller.go_home'.tr(),
                 style: TextStyle(
@@ -458,11 +461,10 @@ class _SellerSetupCompleteScreenState
                   ? 'seller.submit_documents'.tr()
                   : 'seller.continue_setup'.tr(),
               icon: Icons.arrow_forward_rounded,
-              onPressed: () {
-                Navigator.of(
-                  context,
-                ).pushReplacementNamed(AppRoutes.sellerRegistration);
-              },
+              onPressed: () => appPushReplacementNamed(
+                context,
+                AppRoutes.sellerRegistration,
+              ),
               height: 54,
               backgroundColor: DesignTokens.warning,
             ),
@@ -736,10 +738,7 @@ class _SellerSetupCompleteScreenState
     ref.invalidate(userProfileProvider);
 
     if (mounted) {
-      // Use pushNamedAndRemoveUntil to properly update browser URL on web
-      Navigator.of(
-        context,
-      ).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
+      appPushNamedAndRemoveUntil(context, AppRoutes.home, (route) => false);
     }
   }
 }

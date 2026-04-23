@@ -87,7 +87,7 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
           label: 'btn-profile-delete-cancel',
           button: true,
           child: TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => appPop(context),
             style: TextButton.styleFrom(
               foregroundColor: DesignTokens.textSecondary,
             ),
@@ -128,7 +128,7 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
     ) {
       if (!mounted) return;
       if (next.isDeleted) {
-        Navigator.pop(context);
+        appPop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('auth.account_deleted'.tr()),
@@ -299,7 +299,7 @@ class _EmailVerificationRequiredViewState
                   onPressed: () async {
                     await ref.read(authActionsProvider).signOut();
                     if (context.mounted) {
-                      Navigator.of(context).pushNamedAndRemoveUntil(
+                      appPushNamedAndRemoveUntil(context,
                         AppRoutes.home,
                         (route) => false,
                       );

@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:origna_gta/core/routes.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/admin/admin_actions_viewmodel.dart';
@@ -638,7 +639,7 @@ class _ProductCard extends ConsumerWidget {
             button: true,
             label: 'btn-cancel-approve',
             child: TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
+              onPressed: () => appPop(ctx, false),
               child: Text('common.cancel'.tr()),
             ),
           ),
@@ -646,7 +647,7 @@ class _ProductCard extends ConsumerWidget {
             button: true,
             label: 'btn-confirm-approve',
             child: FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
+              onPressed: () => appPop(ctx, true),
               child: Text('admin.products.approve_action'.tr()),
             ),
           ),
@@ -796,7 +797,7 @@ class _ProductCard extends ConsumerWidget {
             button: true,
             label: 'btn-cancel-delete-product',
             child: TextButton(
-              onPressed: () => Navigator.pop(ctx),
+              onPressed: () => appPop(ctx),
               child: Text('common.cancel'.tr()),
             ),
           ),
@@ -805,7 +806,7 @@ class _ProductCard extends ConsumerWidget {
             label: 'btn-confirm-delete-product',
             child: FilledButton(
               onPressed: () async {
-                Navigator.pop(ctx);
+                appPop(ctx);
                 final messenger = ScaffoldMessenger.of(context);
                 final success = await ref
                     .read(adminActionsViewModelProvider.notifier)
@@ -907,7 +908,7 @@ class _ProductCard extends ConsumerWidget {
             button: true,
             label: 'btn-close-digital-urls',
             child: TextButton(
-              onPressed: () => Navigator.pop(ctx),
+              onPressed: () => appPop(ctx),
               child: Text('common.close'.tr()),
             ),
           ),
@@ -962,7 +963,7 @@ class _ProductCard extends ConsumerWidget {
             button: true,
             label: 'btn-cancel-reject-product',
             child: TextButton(
-              onPressed: () => Navigator.pop(ctx),
+              onPressed: () => appPop(ctx),
               child: Text('common.cancel'.tr()),
             ),
           ),
@@ -973,7 +974,7 @@ class _ProductCard extends ConsumerWidget {
               onPressed: () async {
                 final reason = reasonController.text.trim();
                 if (reason.isEmpty) return;
-                Navigator.pop(ctx);
+                appPop(ctx);
                 final messenger = ScaffoldMessenger.of(context);
                 final success = await ref
                     .read(adminActionsViewModelProvider.notifier)
@@ -1034,7 +1035,7 @@ class _ProductCard extends ConsumerWidget {
             button: true,
             label: 'btn-cancel-set-stock',
             child: TextButton(
-              onPressed: () => Navigator.pop(ctx),
+              onPressed: () => appPop(ctx),
               child: Text('common.cancel'.tr()),
             ),
           ),
@@ -1044,7 +1045,7 @@ class _ProductCard extends ConsumerWidget {
             child: ElevatedButton(
               onPressed: () {
                 final newStock = int.tryParse(controller.text) ?? 0;
-                Navigator.pop(ctx);
+                appPop(ctx);
                 _setStock(context, ref, newStock);
               },
               child: Text('common.update'.tr()),
@@ -1129,7 +1130,7 @@ class _ProductCard extends ConsumerWidget {
               button: true,
               label: 'btn-close-seller-info',
               child: TextButton(
-                onPressed: () => Navigator.pop(ctx),
+                onPressed: () => appPop(ctx),
                 child: Text('common.close'.tr()),
               ),
             ),

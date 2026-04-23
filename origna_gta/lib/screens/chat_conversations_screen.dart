@@ -118,8 +118,7 @@ class _ChatInboxBody extends ConsumerWidget {
                   child: _ChatThreadTile(
                     thread: thread,
                     unreadCount: unreadCount,
-                    onTap: () => Navigator.pushNamed(
-                      context,
+                    onTap: () => appPushNamed(context,
                       AppRoutes.chat,
                       arguments: ChatArgs(
                         productId: thread.productId,

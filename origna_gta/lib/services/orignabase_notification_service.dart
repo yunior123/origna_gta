@@ -11,9 +11,6 @@ import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/notifications/notification_provider.dart';
 import 'package:origna_gta/services/push_transport.dart';
-import 'package:origna_gta/services/browser_navigation_stub.dart'
-    if (dart.library.js_interop) 'package:origna_gta/services/browser_navigation_web.dart'
-    as browser_navigation;
 import 'package:origna_gta/utils/app_logger.dart';
 import 'package:origna_gta/utils/utils.dart';
 
@@ -390,8 +387,8 @@ class OrignaBaseNotificationService {
     final data = message.data;
     final type = data[Fields.type] as String?;
 
-    final navigator = navigatorKey.currentState;
-    if (navigator == null) return;
+    final context = navigatorKey.currentContext;
+    if (context == null) return;
 
     switch (type) {
       case NotificationTypes.orderStatus:
@@ -401,22 +398,20 @@ class OrignaBaseNotificationService {
       case NotificationTypes.refundIssued:
         final orderId = data[Fields.orderId] as String?;
         if (orderId != null && orderId.isNotEmpty) {
-          navigator.pushNamed(
+          appPushNamed(
+            context,
             AppRoutes.orderDetail,
             arguments: OrderDetailArgs(orderId: orderId),
           );
         } else {
-          navigator.pushNamed(AppRoutes.orders);
+          appPushNamed(context, AppRoutes.orders);
         }
 
       case NotificationTypes.backInStock:
         final productId = data[Fields.productId] as String?;
         if (productId != null && productId.isNotEmpty) {
-          if (kIsWeb && browser_navigation.supportsBrowserNavigation) {
-            browser_navigation.navigateToPath(AppRoutes.productByIdPath(productId));
-            break;
-          }
-          navigator.pushNamed(
+          appPushNamed(
+            context,
             AppRoutes.productByIdPath(productId),
             arguments: ProductDetailsArgs(productId: productId),
           );
@@ -426,7 +421,8 @@ class OrignaBaseNotificationService {
         final productId = data[Fields.productId] as String?;
         final productTitle = data[Fields.productTitle] as String? ?? '';
         if (productId != null && productId.isNotEmpty) {
-          navigator.pushNamed(
+          appPushNamed(
+            context,
             AppRoutes.chat,
             arguments: ChatArgs(
               productId: productId,
@@ -434,27 +430,28 @@ class OrignaBaseNotificationService {
             ),
           );
         } else {
-          navigator.pushNamed(AppRoutes.chatInbox);
+          appPushNamed(context, AppRoutes.chatInbox);
         }
 
       case NotificationTypes.messageReport:
-        navigator.pushNamed(AppRoutes.chatInbox);
+        appPushNamed(context, AppRoutes.chatInbox);
 
       case NotificationTypes.perishableOrderUrgent:
         final orderId = data[Fields.orderId] as String?;
         if (orderId != null && orderId.isNotEmpty) {
-          navigator.pushNamed(
+          appPushNamed(
+            context,
             AppRoutes.orderDetail,
             arguments: OrderDetailArgs(orderId: orderId),
           );
         } else {
-          navigator.pushNamed(AppRoutes.sellerOrders);
+          appPushNamed(context, AppRoutes.sellerOrders);
         }
 
       case NotificationTypes.promo:
       case NotificationTypes.system:
       case NotificationTypes.account:
-        navigator.pushNamed(AppRoutes.notifications);
+        appPushNamed(context, AppRoutes.notifications);
 
       default:
         AppLogger.d(

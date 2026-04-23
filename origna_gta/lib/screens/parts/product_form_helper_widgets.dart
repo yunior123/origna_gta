@@ -120,7 +120,7 @@ class _AddVariantOptionButton extends StatelessWidget {
             Semantics(
               label: 'btn-cancel-add-variant',
               child: TextButton(
-                onPressed: () => Navigator.pop(ctx),
+                onPressed: () => appPop(ctx),
                 child: Text('common.cancel'.tr()),
               ),
             ),
@@ -135,7 +135,7 @@ class _AddVariantOptionButton extends StatelessWidget {
                 if (name.isNotEmpty && values.isNotEmpty) {
                   onAdd(name, values);
                 }
-                Navigator.pop(ctx);
+                appPop(ctx);
               },
               child: Text('common.add'.tr()),
             ),
@@ -362,7 +362,7 @@ class _VariantOptionCard extends StatelessWidget {
           Semantics(
             label: 'btn-cancel-edit-variant',
             child: TextButton(
-              onPressed: () => Navigator.pop(ctx),
+              onPressed: () => appPop(ctx),
               child: Text('common.cancel'.tr()),
             ),
           ),
@@ -377,7 +377,7 @@ class _VariantOptionCard extends StatelessWidget {
               if (newName.isNotEmpty && newValues.isNotEmpty) {
                 onUpdate(newName, newValues);
               }
-              Navigator.pop(ctx);
+              appPop(ctx);
             },
             child: Text('common.save'.tr()),
           ),

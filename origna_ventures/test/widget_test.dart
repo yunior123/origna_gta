@@ -107,7 +107,8 @@ void main() {
     expect(find.text('support@orignaventures.ca'), findsWidgets);
   });
 
-  testWidgets('mobile View plans CTA scrolls to pricing section', (tester) async {
+  testWidgets('mobile View plans CTA scrolls to pricing section',
+      (tester) async {
     addTearDown(() {
       tester.view.resetPhysicalSize();
       tester.view.resetDevicePixelRatio();
@@ -136,5 +137,36 @@ void main() {
     expect(find.text('\$500'), findsOneWidget);
     expect(find.text('\$3,000'), findsOneWidget);
     expect(find.text('\$1,000'), findsOneWidget);
+  });
+
+  testWidgets('team tier supports adjusting developer count up to priced total',
+      (tester) async {
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    await _pumpApp(tester, size: const Size(1440, 1600));
+
+    expect(find.text('Team size'), findsOneWidget);
+    expect(find.textContaining('1 developer'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Increase team size').first);
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.textContaining('2 developers'), findsOneWidget);
+    expect(find.text('\$2,000'), findsOneWidget);
+  });
+
+  testWidgets('mobile renders WhatsApp floating button', (tester) async {
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    await _pumpApp(tester, size: const Size(393, 844));
+
+    expect(find.text('WhatsApp'), findsOneWidget);
+    expect(find.text('Chat with us'), findsOneWidget);
   });
 }

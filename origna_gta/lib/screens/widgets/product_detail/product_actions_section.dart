@@ -326,6 +326,7 @@ class _AddToCartButtonState extends ConsumerState<AddToCartButton> {
         container: true,
         child: Column(
           key: const Key('product_own_product_message'),
+          mainAxisSize: MainAxisSize.min,
           children: [
             ModernButton(
               label: 'product.own_product_title'.tr(),
@@ -353,6 +354,7 @@ class _AddToCartButtonState extends ConsumerState<AddToCartButton> {
         container: true,
         child: Column(
           key: const Key('product_variant_selection_required'),
+          mainAxisSize: MainAxisSize.min,
           children: [
             ModernButton(
               label: 'product.select_all_options'.tr(),
@@ -382,6 +384,7 @@ class _AddToCartButtonState extends ConsumerState<AddToCartButton> {
         container: true,
         child: Column(
           key: const Key('product_notify_section'),
+          mainAxisSize: MainAxisSize.min,
           children: [
             ModernButton(
               key: const Key('product_notify_me_button'),
@@ -415,6 +418,7 @@ class _AddToCartButtonState extends ConsumerState<AddToCartButton> {
     }
 
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
         ModernButton(
           label: 'product.buy_now'.tr(),
@@ -510,7 +514,7 @@ class _AddToCartButtonState extends ConsumerState<AddToCartButton> {
         0,
         (total, item) => total + (item.priceCents * item.quantity),
       );
-      Navigator.pushNamed(
+      appPushNamed(
         context,
         AppRoutes.checkout,
         arguments: CheckoutArgs(items: cartDetails, totalCents: subtotalCents),

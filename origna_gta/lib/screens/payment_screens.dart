@@ -117,16 +117,7 @@ class PaymentCanceledScreen extends StatelessWidget {
                         child: ModernButton(
                           label: 'payment.back_to_shopping'.tr(),
                           icon: Icons.shopping_bag_outlined,
-                          onPressed: () {
-                            if (Navigator.of(context).canPop()) {
-                              Navigator.of(context).pop();
-                            } else {
-                              Navigator.of(context).pushNamedAndRemoveUntil(
-                                AppRoutes.home,
-                                (route) => false,
-                              );
-                            }
-                          },
+                          onPressed: () => appPopOrGo(context, AppRoutes.home),
                         ),
                       ),
                     ),
@@ -386,7 +377,7 @@ class _OrderSuccessGateState extends ConsumerState<OrderSuccessGate> {
                       label: 'orders.view_my_orders'.tr(),
                       icon: Icons.receipt_long_outlined,
                       onPressed: () =>
-                          Navigator.of(context).pushNamedAndRemoveUntil(
+                          appPushNamedAndRemoveUntil(context,
                             AppRoutes.orders,
                             (route) => route.isFirst,
                           ),
@@ -398,7 +389,7 @@ class _OrderSuccessGateState extends ConsumerState<OrderSuccessGate> {
                       isPrimary: false,
                       isOutlined: true,
                       onPressed: () =>
-                          Navigator.of(context).pushNamedAndRemoveUntil(
+                          appPushNamedAndRemoveUntil(context,
                             AppRoutes.home,
                             (route) => false,
                           ),

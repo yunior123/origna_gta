@@ -1,6 +1,7 @@
 import 'package:origna_gta/utils/preview_helpers.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:origna_gta/core/routes.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
@@ -587,7 +588,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
       if (!mounted) return;
       if (next.isSuccess) {
         final messenger = ScaffoldMessenger.of(context);
-        Navigator.pop(context);
+        appPop(context);
         messenger.showSnackBar(
           SnackBar(
             content: Text('address.saved_success'.tr()),
@@ -601,7 +602,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
       } else if (next.errorMessage != null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(next.errorMessage!),
+            content: Text(_displayErrorMessage(next.errorMessage!)),
             backgroundColor: DesignTokens.error,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
@@ -657,6 +658,11 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
         ),
       ],
     );
+  }
+
+  String _displayErrorMessage(String message) {
+    final isTranslationKey = RegExp(r'^[a-z_]+\.[a-z0-9_]+$').hasMatch(message);
+    return isTranslationKey ? message.tr() : message;
   }
 
   Widget _buildTextField({

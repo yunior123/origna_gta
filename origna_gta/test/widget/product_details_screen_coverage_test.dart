@@ -493,7 +493,11 @@ void main() {
 
         expect(find.text('Solar Inverter'), findsOneWidget);
         expect(find.byType(ProductImageGallery), findsOneWidget);
-        expect(find.byType(ListView), findsOneWidget);
+        expect(
+          find.byKey(const Key('productdetail_back_button')),
+          findsOneWidget,
+        );
+        expect(find.byType(SingleChildScrollView), findsOneWidget);
       },
     );
 
@@ -516,7 +520,21 @@ void main() {
           imageUrls: const ['https://example.com/battery.jpg'],
         );
 
-        await tester.pumpWidget(createMobileDetailScreen(productOne));
+        final overrides = [
+          productByIdProvider('p1').overrideWith((ref) => productOne),
+          productByIdProvider('p2').overrideWith((ref) => productTwo),
+          currentUserProvider.overrideWithValue(mockUser),
+        ];
+
+        await tester.pumpWidget(
+          createTestApp(
+            overrides: overrides,
+            child: ProductDetailScreen(
+              productId: productOne.productId,
+              product: productOne.toJson(),
+            ),
+          ),
+        );
         await tester.pump();
         await tester.pump(const Duration(seconds: 1));
 
@@ -529,7 +547,15 @@ void main() {
         await tester.pump();
         expect(initialScrollable.position.pixels, 500);
 
-        await tester.pumpWidget(createMobileDetailScreen(productTwo));
+        await tester.pumpWidget(
+          createTestApp(
+            overrides: overrides,
+            child: ProductDetailScreen(
+              productId: productTwo.productId,
+              product: productTwo.toJson(),
+            ),
+          ),
+        );
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 1100));
 

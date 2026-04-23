@@ -61,13 +61,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       isExportLoading: isExportLoading,
       themeMode: themeMode,
       isPremium: isPremium,
-      onSignIn: () => Navigator.pushNamed(context, AppRoutes.login),
+      onSignIn: () => appPushNamed(context, AppRoutes.login),
       onSignOut: () async {
         await viewModel.signOut();
         if (context.mounted) {
-          Navigator.of(
-            context,
-          ).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
+          appPushNamedAndRemoveUntil(context, AppRoutes.home, (route) => false);
         }
       },
       onDeleteAccountRequested: () => showDialog(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:origna_gta/core/routes.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/features/admin/admin_providers.dart';
 import 'package:origna_gta/models/enum_extensions.dart';
@@ -401,7 +402,7 @@ class _AdminOrderCard extends StatelessWidget {
                   button: true,
                   label: 'btn-cancel-refund',
                   child: TextButton(
-                    onPressed: isLoading ? null : () => Navigator.pop(ctx),
+                    onPressed: isLoading ? null : () => appPop(ctx),
                     child: Text('common.cancel'.tr()),
                   ),
                 ),
@@ -417,7 +418,7 @@ class _AdminOrderCard extends StatelessWidget {
                               await ref
                                   .read(adminRepositoryProvider)
                                   .refundOrder(order.orderId);
-                              if (ctx.mounted) Navigator.pop(ctx);
+                              if (ctx.mounted) appPop(ctx);
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(

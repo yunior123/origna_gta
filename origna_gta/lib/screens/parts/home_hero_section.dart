@@ -14,7 +14,7 @@ class _NotificationBellButton extends StatelessWidget {
           size: 24,
         ),
         tooltip: 'Notifications',
-        onPressed: () => Navigator.pushNamed(context, AppRoutes.notifications),
+        onPressed: () => appPushNamed(context, AppRoutes.notifications),
       ),
     );
   }
@@ -108,7 +108,7 @@ class _AddProductButton extends ConsumerWidget {
             );
             return;
           }
-          Navigator.pushNamed(context, AppRoutes.addProduct);
+          appPushNamed(context, AppRoutes.addProduct);
         },
       ),
     );

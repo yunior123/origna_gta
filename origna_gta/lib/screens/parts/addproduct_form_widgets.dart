@@ -606,7 +606,7 @@ extension _AddProductFormWidgets on _AddProductScreenState {
                     button: true,
                     label: 'btn-close-info-sheet',
                     child: GestureDetector(
-                      onTap: () => Navigator.pop(ctx),
+                      onTap: () => appPop(ctx),
                       child: Container(
                         padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(

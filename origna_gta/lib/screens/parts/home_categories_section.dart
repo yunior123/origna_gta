@@ -164,7 +164,7 @@ class _SettingsButtonState extends ConsumerState<_SettingsButton>
                     );
                     return;
                   }
-                  Navigator.pushNamed(context, AppRoutes.profile);
+                  appPushNamed(context, AppRoutes.profile);
                 },
               ),
             ),
@@ -461,7 +461,7 @@ class _SortAndFilterRow extends ConsumerWidget {
                       button: true,
                       child: TextButton(
                         onPressed: () {
-                          Navigator.pop(ctx);
+                          appPop(ctx);
                           homeNotifier.clearPriceFilter();
                         },
                         style: TextButton.styleFrom(
@@ -521,7 +521,7 @@ class _SortAndFilterRow extends ConsumerWidget {
                         backgroundColor: DesignTokens.primary,
                       ),
                       onPressed: () {
-                        Navigator.pop(ctx);
+                        appPop(ctx);
                         final minC = (rangeMin * 100).round();
                         final maxC = (rangeMax * 100).round();
                         homeNotifier.onPriceFilterChanged(
@@ -582,7 +582,7 @@ class _SortAndFilterRow extends ConsumerWidget {
                         )
                       : null,
                   onTap: () {
-                    Navigator.pop(context);
+                    appPop(context);
                     homeNotifier.onSortChanged(option);
                   },
                 ),

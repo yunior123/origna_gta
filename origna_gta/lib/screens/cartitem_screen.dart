@@ -2,6 +2,7 @@ import 'package:origna_gta/utils/preview_helpers.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:origna_gta/core/routes.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
@@ -646,7 +647,7 @@ class CartItemScreen extends StatelessWidget {
                 IconButton(
                   icon: const Icon(Icons.close_rounded),
                   tooltip: 'common.close'.tr(),
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () => appPop(context),
                 ),
               ],
             ),
@@ -689,7 +690,7 @@ class CartItemScreen extends StatelessWidget {
                             cartItemId,
                             note.isEmpty ? null : note,
                           );
-                      Navigator.pop(context);
+                      appPop(context);
                     },
                     child: Text(
                       'cart.item_note_save'.tr(),

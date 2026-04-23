@@ -110,7 +110,7 @@ void main() {
         ...overrides,
       ],
       child: EasyLocalization(
-        supportedLocales: const [Locale('en'), Locale('fr')],
+        supportedLocales: const [Locale('en'), Locale('fr'), Locale('es')],
         path: 'assets/translations',
         assetLoader: MockAssetLoader(),
         startLocale: const Locale('en'),

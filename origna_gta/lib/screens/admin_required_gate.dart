@@ -82,7 +82,7 @@ class AdminRequiredGate extends ConsumerWidget {
                       isPrimary: false,
                       isOutlined: true,
                       onPressed: () =>
-                          Navigator.of(context).pushNamedAndRemoveUntil(
+                          appPushNamedAndRemoveUntil(context,
                             AppRoutes.home,
                             (route) => false,
                           ),

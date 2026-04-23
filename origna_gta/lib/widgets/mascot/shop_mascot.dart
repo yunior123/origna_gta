@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/utils/app_logger.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
@@ -835,7 +836,7 @@ class _ShopMascotState extends State<ShopMascot> with TickerProviderStateMixin {
             label: 'btn-mascot-contact-close',
             button: true,
             child: TextButton(
-              onPressed: () => Navigator.pop(ctx),
+              onPressed: () => appPop(ctx),
               child: Text(
                 'common.close'.tr(),
                 style: TextStyle(color: DesignTokens.primary),

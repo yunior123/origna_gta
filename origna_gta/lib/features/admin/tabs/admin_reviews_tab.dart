@@ -1,5 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:origna_gta/core/routes.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/admin/admin_providers.dart';
@@ -339,7 +340,7 @@ class _ReviewCard extends ConsumerWidget {
             button: true,
             label: 'btn-dialog-cancel',
             child: TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
+              onPressed: () => appPop(ctx, false),
               child: Text('common.cancel'.tr()),
             ),
           ),
@@ -347,7 +348,7 @@ class _ReviewCard extends ConsumerWidget {
             button: true,
             label: 'btn-dialog-confirm-delete-review',
             child: TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
+              onPressed: () => appPop(ctx, true),
               style: TextButton.styleFrom(foregroundColor: DesignTokens.error),
               child: Text('common.delete'.tr()),
             ),

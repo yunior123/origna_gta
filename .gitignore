@@ -141,6 +141,8 @@ test-results/
 e2e/node_modules/
 e2e/dist/
 e2e/test-results/
+e2e/ai/baselines/
+e2e/ai/reports/
 
 # --- Audit output & cache ---
 audit/output/
@@ -156,6 +158,7 @@ scripts/pre_push_validation.sh
 *.orig
 *.swp
 *.swo
+*.md.bak
 *~
 
 # --- Telegram bot (contains secrets) ---
@@ -165,6 +168,7 @@ telegram_bot.py
 # --- IDE ---
 .idea/
 *.iml
+.tags
 # .vscode/ is kept for shared tasks/settings
 .worktrees/
 .playwright-mcp/
@@ -179,3 +183,4 @@ data.ms/
 meili_data/
 data/
 dumps/
+scripts/data/

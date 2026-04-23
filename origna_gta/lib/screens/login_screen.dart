@@ -16,7 +16,6 @@ import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import 'package:origna_gta/features/auth/login_state.dart';
 import 'package:origna_gta/features/auth/login_viewmodel.dart';
-import 'mfa_challenge_screen.dart';
 import 'package:flutter/widget_previews.dart';
 
 part 'parts/login_form_panel.dart';
@@ -121,11 +120,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     _loginSubscription = ref.listenManual(loginViewModelProvider, (_, next) {
       if (!mounted) return;
       if (next.mfaRequired && next.challengeToken != null) {
-        Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) =>
-                MfaChallengeScreen(challengeToken: next.challengeToken!),
-          ),
+        appPushNamed(
+          context,
+          AppRoutes.mfaChallenge,
+          arguments: MfaChallengeArgs(challengeToken: next.challengeToken!),
         );
       } else if (next.isSuccess) {
         _onAuthSuccess();
@@ -173,9 +171,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         behavior: SnackBarBehavior.floating,
       ),
     );
-    Navigator.of(
-      context,
-    ).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
+    appPushNamedAndRemoveUntil(context, AppRoutes.home, (route) => false);
   }
 
   void _showForgotPasswordDialog(BuildContext context) {
@@ -235,7 +231,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                 Tooltip(
                   message: 'btn-forgot-cancel',
                   child: TextButton(
-                    onPressed: () => Navigator.pop(dialogContext),
+                    onPressed: () => appPop(dialogContext),
                     style: TextButton.styleFrom(
                       foregroundColor: DesignTokens.textSecondary,
                     ),
@@ -269,7 +265,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                   .read(loginViewModelProvider.notifier)
                                   .resetPassword(emailController.text.trim());
                               if (dialogContext.mounted) {
-                                Navigator.pop(dialogContext);
+                                appPop(dialogContext);
                                 messenger.showSnackBar(
                                   SnackBar(
                                     content: Text('auth.reset_link_sent'.tr()),

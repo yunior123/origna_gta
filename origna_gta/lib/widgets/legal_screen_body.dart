@@ -1,6 +1,7 @@
 import 'package:origna_gta/utils/preview_helpers.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/animations.dart';
@@ -221,7 +222,7 @@ class _LegalScreenBodyState extends State<LegalScreenBody> {
             size: 20,
           ),
         ),
-        onPressed: () => Navigator.pop(context),
+        onPressed: () => appPop(context),
       ),
       flexibleSpace: FlexibleSpaceBar(
         collapseMode: CollapseMode.parallax,

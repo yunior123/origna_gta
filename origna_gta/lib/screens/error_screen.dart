@@ -87,7 +87,7 @@ class ErrorScreen extends StatelessWidget {
                       label: 'seller.go_home'.tr(),
                       icon: Icons.home_outlined,
                       onPressed: () =>
-                          Navigator.of(context).pushNamedAndRemoveUntil(
+                          appPushNamedAndRemoveUntil(context,
                             AppRoutes.home,
                             (route) => false,
                           ),

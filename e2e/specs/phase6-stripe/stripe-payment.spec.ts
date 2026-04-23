@@ -15,8 +15,6 @@ import {
   getProductStock,
   completeStripeCheckout,
   extractSessionId,
-  writeDoc,
-  toSurrealDBFields,
 } from '../../lib/api-client.js';
 import { TEST_ACCOUNTS, STRIPE_PM_TOKENS } from '../../lib/config.js';
 
@@ -63,22 +61,38 @@ async function pollOrderStatus(
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const STABLE_PRODUCT_ID = 'e2e_product_test_seller';
 const BUYER_EMAIL = TEST_ACCOUNTS.BUYER_EMAIL;
 
 describe('Stripe Payment Flow', () => {
   let buyerAuth: Awaited<ReturnType<typeof signIn>>;
+  let checkoutProductId = '';
 
   beforeAll(async () => {
     buyerAuth = await signIn(BUYER_EMAIL, TEST_ACCOUNTS.BUYER_PASS);
+    const products = await listCollection('products', buyerAuth.idToken);
+    const checkoutProduct = products.find((product: any) => {
+      const status = String(product.lifecycleStatus ?? product.status ?? '').toLowerCase();
+      const stock = Number(product.stockQuantity ?? 0);
+      const priceCents = Number(product.priceCents ?? 0);
+      const isDigital = Boolean(product.isDigital ?? false);
+      return status === 'active' && stock >= 5 && priceCents > 0 && !isDigital;
+    });
 
-    // Reset stable product stock so checkout tests don't fail with "Insufficient stock"
-    const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
-    await writeDoc(`products/${STABLE_PRODUCT_ID}`, toSurrealDBFields({ stockQuantity: 200 }), adminAuth.idToken, true);
+    if (!checkoutProduct?.id) {
+      throw new Error('No active physical dev product is available for Stripe checkout tests');
+    }
+
+    checkoutProductId = String(checkoutProduct.id);
+    console.log(`Using checkout product ${checkoutProductId} for Stripe payment tests`);
   });
 
   test('Full checkout -> Stripe payment -> order confirmed', async () => {
-    const { data } = await buildCheckoutPayload(buyerAuth.localId, STABLE_PRODUCT_ID, 1, buyerAuth.idToken);
+    const { data } = await buildCheckoutPayload(
+      buyerAuth.localId,
+      checkoutProductId,
+      1,
+      buyerAuth.idToken,
+    );
     const uniqueData = { ...data, idempotencyKey: `full-test-${Date.now()}-${Math.random().toString(36).slice(2)}` };
     const result = await callOk('create_checkout_session', uniqueData, buyerAuth.idToken);
 
@@ -119,7 +133,12 @@ describe('Stripe Payment Flow', () => {
   }, 180_000);
 
   test('Order document has correct structure after payment', async () => {
-    const { data } = await buildCheckoutPayload(buyerAuth.localId, STABLE_PRODUCT_ID, 1, buyerAuth.idToken);
+    const { data } = await buildCheckoutPayload(
+      buyerAuth.localId,
+      checkoutProductId,
+      1,
+      buyerAuth.idToken,
+    );
     const uniqueData = { ...data, idempotencyKey: `struct-test-${Date.now()}-${Math.random().toString(36).slice(2)}` };
     const result = await callOk('create_checkout_session', uniqueData, buyerAuth.idToken);
 
@@ -168,9 +187,14 @@ describe('Stripe Payment Flow', () => {
   }, 60_000);
 
   test('Stock decremented by exact ordered quantity after payment', async () => {
-    const stockBefore = await getProductStock(STABLE_PRODUCT_ID, buyerAuth.idToken);
+    const stockBefore = await getProductStock(checkoutProductId, buyerAuth.idToken);
 
-    const { data } = await buildCheckoutPayload(buyerAuth.localId, STABLE_PRODUCT_ID, 1, buyerAuth.idToken);
+    const { data } = await buildCheckoutPayload(
+      buyerAuth.localId,
+      checkoutProductId,
+      1,
+      buyerAuth.idToken,
+    );
     const uniqueData = { ...data, idempotencyKey: `stock-test-${Date.now()}-${Math.random().toString(36).slice(2)}` };
     const result = await callOk('create_checkout_session', uniqueData, buyerAuth.idToken);
 
@@ -192,7 +216,7 @@ describe('Stripe Payment Flow', () => {
       result.orderId, ['confirmed', 'processing'], buyerAuth.idToken, 30_000,
     );
 
-    const stockAfter = await getProductStock(STABLE_PRODUCT_ID, buyerAuth.idToken);
+    const stockAfter = await getProductStock(checkoutProductId, buyerAuth.idToken);
     if (reached) {
       // Webhook fired — stock should have decremented
       expect(stockAfter).toBeLessThan(stockBefore);
@@ -205,14 +229,24 @@ describe('Stripe Payment Flow', () => {
   }, 180_000);
 
   test('Checkout URL redirects to Stripe hosted page', async () => {
-    const { data } = await buildCheckoutPayload(buyerAuth.localId, STABLE_PRODUCT_ID, 1, buyerAuth.idToken);
+    const { data } = await buildCheckoutPayload(
+      buyerAuth.localId,
+      checkoutProductId,
+      1,
+      buyerAuth.idToken,
+    );
     const result = await callOk('create_checkout_session', data, buyerAuth.idToken);
 
     expect(result.checkoutUrl).toContain('checkout.stripe.com');
   }, 30_000);
 
   test('Duplicate checkout with same idempotency key returns valid orders', async () => {
-    const { data } = await buildCheckoutPayload(buyerAuth.localId, STABLE_PRODUCT_ID, 1, buyerAuth.idToken);
+    const { data } = await buildCheckoutPayload(
+      buyerAuth.localId,
+      checkoutProductId,
+      1,
+      buyerAuth.idToken,
+    );
     const idempotencyKey = `dedup-test-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const dedupData = { ...data, idempotencyKey };
 
@@ -249,7 +283,12 @@ describe('Stripe Payment Flow', () => {
   }, 30_000);
 
   test('[BONUS] Cart is cleared after successful order creation', async () => {
-    const { data } = await buildCheckoutPayload(buyerAuth.localId, STABLE_PRODUCT_ID, 1, buyerAuth.idToken);
+    const { data } = await buildCheckoutPayload(
+      buyerAuth.localId,
+      checkoutProductId,
+      1,
+      buyerAuth.idToken,
+    );
     const uniqueData = { ...data, idempotencyKey: `cart-test-${Date.now()}-${Math.random().toString(36).slice(2)}` };
     const result = await callOk('create_checkout_session', uniqueData, buyerAuth.idToken);
 

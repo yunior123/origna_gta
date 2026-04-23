@@ -306,7 +306,7 @@ class _BulkUploadScreenState extends ConsumerState<BulkUploadScreen> {
           label: 'btn-view-products',
           child: ElevatedButton(
             onPressed: () {
-              Navigator.of(context).pushNamed(AppRoutes.sellerProducts);
+              appPushNamed(context,AppRoutes.sellerProducts);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: DesignTokens.primary,

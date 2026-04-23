@@ -70,8 +70,7 @@ class AddressManagementScreen extends ConsumerWidget {
                     : 'address.add_address'.tr(),
                 onPressed: atAddressLimit
                     ? null
-                    : () => Navigator.pushNamed(
-                        context,
+                    : () => appPushNamed(context,
                         AppRoutes.addEditAddress,
                       ),
               ),
@@ -128,8 +127,7 @@ class AddressManagementScreen extends ConsumerWidget {
                           label: 'address.add_address'.tr(),
                           icon: Icons.add_location_alt_outlined,
                           onPressed: () {
-                            Navigator.pushNamed(
-                              context,
+                            appPushNamed(context,
                               AppRoutes.addEditAddress,
                             );
                           },
@@ -301,8 +299,7 @@ class AddressManagementScreen extends ConsumerWidget {
                 onSelected: (value) async {
                   HapticFeedback.lightImpact();
                   if (value == 'edit') {
-                    Navigator.pushNamed(
-                      context,
+                    appPushNamed(context,
                       AppRoutes.addEditAddress,
                       arguments: address,
                     );
@@ -318,7 +315,7 @@ class AddressManagementScreen extends ConsumerWidget {
                             button: true,
                             label: 'btn-cancel-delete-address',
                             child: TextButton(
-                              onPressed: () => Navigator.pop(context, false),
+                              onPressed: () => appPop(context, false),
                               child: Text('common.cancel'.tr()),
                             ),
                           ),
@@ -326,7 +323,7 @@ class AddressManagementScreen extends ConsumerWidget {
                             button: true,
                             label: 'btn-confirm-delete-address',
                             child: TextButton(
-                              onPressed: () => Navigator.pop(context, true),
+                              onPressed: () => appPop(context, true),
                               child: Text(
                                 'common.delete'.tr(),
                                 style: const TextStyle(

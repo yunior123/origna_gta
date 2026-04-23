@@ -1,5 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:origna_gta/core/routes.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/features/admin/admin_actions_viewmodel.dart';
 import 'package:origna_gta/features/admin/admin_providers.dart';
@@ -457,7 +458,7 @@ class _SellerCard extends ConsumerWidget {
             button: true,
             label: 'btn-dialog-cancel',
             child: TextButton(
-              onPressed: () => Navigator.pop(ctx),
+              onPressed: () => appPop(ctx),
               child: Text('common.cancel'.tr()),
             ),
           ),
@@ -466,7 +467,7 @@ class _SellerCard extends ConsumerWidget {
             label: 'btn-dialog-confirm-suspend-seller',
             child: FilledButton(
               onPressed: () async {
-                Navigator.pop(ctx);
+                appPop(ctx);
                 final messenger = ScaffoldMessenger.of(context);
                 final success = await ref
                     .read(adminActionsViewModelProvider.notifier)
@@ -534,34 +535,19 @@ class _SellerCard extends ConsumerWidget {
   }
 
   void _viewSellerProducts(BuildContext context, String sellerId, String name) {
-    Navigator.of(context).push(
-      PageRouteBuilder(
-        pageBuilder: (_, _, _) =>
-            _SellerProductsScreen(sellerId: sellerId, sellerName: name),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          final curve = CurvedAnimation(
-            parent: animation,
-            curve: Curves.easeOutCubic,
-          );
-          return SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(1, 0),
-              end: Offset.zero,
-            ).animate(curve),
-            child: child,
-          );
-        },
-        transitionDuration: const Duration(milliseconds: 280),
-      ),
+    appPushNamed(
+      context,
+      AppRoutes.adminSellerProductsPath(sellerId, sellerName: name),
     );
   }
 }
 
-class _SellerProductsScreen extends ConsumerWidget {
+class AdminSellerProductsScreen extends ConsumerWidget {
   final String sellerId;
   final String sellerName;
 
-  const _SellerProductsScreen({
+  const AdminSellerProductsScreen({
+    super.key,
     required this.sellerId,
     required this.sellerName,
   });

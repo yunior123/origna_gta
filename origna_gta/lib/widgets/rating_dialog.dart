@@ -137,7 +137,7 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
           button: true,
           label: 'rating.cancel_label'.tr(),
           child: TextButton(
-            onPressed: isSubmitting ? null : () => Navigator.pop(context),
+            onPressed: isSubmitting ? null : () => appPop(context),
             child: Text('common.cancel'.tr()),
           ),
         ),
@@ -263,8 +263,8 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
               message: 'rating.upgrade_photos_tooltip'.tr(),
               child: GestureDetector(
                 onTap: () {
-                  Navigator.of(context).pop();
-                  Navigator.of(context).pushNamed(AppRoutes.subscription);
+                  appPop(context);
+                  appPushNamed(context,AppRoutes.subscription);
                 },
                 child: Container(
                   width: double.infinity,

@@ -56,14 +56,9 @@ class LoginScreenLayout extends StatelessWidget {
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
-        // Always navigate to home when back is pressed on login — covers both
-        // in-app back and browser back button on Flutter Web. Using
-        // pushNamedAndRemoveUntil ensures the browser URL updates to '/' and
-        // clears the Flutter route stack, preventing the tab-close bug where
-        // Navigator.pop() pops the widget but the browser back stays on /login.
-        Navigator.of(
-          context,
-        ).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
+        // Always navigate home when back is pressed on login so browser URL
+        // and app state reset together under GoRouter.
+        appPushNamedAndRemoveUntil(context, AppRoutes.home, (route) => false);
       },
       child: Scaffold(
         body: Container(
@@ -646,16 +641,7 @@ class LoginScreenLayout extends StatelessWidget {
                         Icons.arrow_back,
                         color: DesignTokens.textPrimary,
                       ),
-                      onPressed: () {
-                        if (Navigator.of(context).canPop()) {
-                          Navigator.of(context).pop();
-                        } else {
-                          Navigator.of(context).pushNamedAndRemoveUntil(
-                            AppRoutes.home,
-                            (route) => false,
-                          );
-                        }
-                      },
+                      onPressed: () => appPopOrGo(context, AppRoutes.home),
                     ),
                   ),
                 ),

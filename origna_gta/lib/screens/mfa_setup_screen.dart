@@ -4,6 +4,7 @@ import 'dart:convert';
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:origna_gta/core/routes.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/features/auth/mfa_state.dart';
@@ -519,7 +520,7 @@ class _MfaSetupScreenState extends ConsumerState<MfaSetupScreen> {
             backgroundColor: DesignTokens.success,
           ),
         );
-        Navigator.pop(context, true); // true = MFA was enabled
+        appPop(context, true); // true = MFA was enabled
       }
     });
 

@@ -109,7 +109,7 @@ class _CheckoutButton extends ConsumerWidget {
         items: items,
         subtotalCents: subtotalCents,
         onConfirm: () {
-          Navigator.of(context).pop();
+          appPop(context);
           _startCheckout(context, ref);
         },
       ),

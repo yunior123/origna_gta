@@ -14,6 +14,7 @@ import 'package:origna_gta/features/products/product_actions_viewmodel.dart';
 import 'package:origna_gta/features/products/products_provider.dart';
 import 'package:origna_gta/features/qa/qa_provider.dart';
 import 'package:origna_gta/models/generated/models.dart';
+import 'package:origna_gta/utils/app_logger.dart';
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/media_url_resolver.dart';
@@ -25,6 +26,19 @@ import 'package:origna_gta/widgets/modern_skeleton_loader.dart';
 part 'parts/product_card_image_section.dart';
 part 'parts/product_card_info_section.dart';
 part 'parts/product_card_helper_widgets.dart';
+
+void _openProductDetails(
+  BuildContext context, {
+  required String productId,
+  Map<String, dynamic>? product,
+}) {
+  AppLogger.d('Opening product details for $productId', tag: 'product-card');
+  appPushNamed(
+    context,
+    AppRoutes.productByIdPath(productId),
+    arguments: ProductDetailsArgs(productId: productId, product: product),
+  );
+}
 
 /// Product grid card: image, title, price, rating, favorite toggle. Navigates to detail on tap.
 class ProductCard extends ConsumerStatefulWidget {
@@ -97,18 +111,18 @@ class _ProductCardState extends ConsumerState<ProductCard>
     return Semantics(
       label: 'product-card-${widget.productId}',
       container: true,
+      button: true,
+      onTap: () => _openProductDetails(
+        context,
+        productId: widget.productId,
+        product: widget.product.toJson(),
+      ),
       child: GestureDetector(
-        onTap: () {
-          final productPath = AppRoutes.productByIdPath(widget.productId);
-          Navigator.pushNamed(
-            context,
-            productPath,
-            arguments: ProductDetailsArgs(
-              productId: widget.productId,
-              product: widget.product.toJson(),
-            ),
-          );
-        },
+        onTap: () => _openProductDetails(
+          context,
+          productId: widget.productId,
+          product: widget.product.toJson(),
+        ),
         child: Container(
           decoration: BoxDecoration(
             color: isDark ? DesignTokens.darkCard : DesignTokens.white,
@@ -254,7 +268,7 @@ class _ProductCardState extends ConsumerState<ProductCard>
   }
 
   void _editProduct(BuildContext context) {
-    Navigator.pushNamed(
+    appPushNamed(
       context,
       AppRoutes.editProduct,
       arguments: EditProductArgs(product: widget.product),
@@ -274,7 +288,7 @@ class _ProductCardState extends ConsumerState<ProductCard>
             button: true,
             label: 'btn-cancel-delete-product',
             child: TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
+              onPressed: () => appPop(dialogContext),
               child: Text('common.cancel'.tr()),
             ),
           ),
@@ -283,7 +297,7 @@ class _ProductCardState extends ConsumerState<ProductCard>
             label: 'btn-confirm-delete-product',
             child: ElevatedButton(
               onPressed: () {
-                Navigator.pop(dialogContext);
+                appPop(dialogContext);
                 _deleteProduct();
               },
               style: ElevatedButton.styleFrom(

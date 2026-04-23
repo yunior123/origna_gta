@@ -1,6 +1,7 @@
 import 'package:origna_gta/utils/constants.dart';
 import 'package:chewie/chewie.dart';
 import 'package:flutter/material.dart';
+import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:video_player/video_player.dart';
@@ -73,7 +74,7 @@ class _VideoPlayerDialogState extends State<VideoPlayerDialog> {
                     color: DesignTokens.white,
                     size: 28,
                   ),
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () => appPop(context),
                 ),
               ),
             ),

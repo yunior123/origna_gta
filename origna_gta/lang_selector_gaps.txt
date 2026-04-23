@@ -1,20 +1,34 @@
-Spanish translation audit on 2026-04-21
+Spanish translation audit on 2026-04-22 (refreshed)
 
 - Missing keys compared with `assets/translations/en.json`: 0
-- Keys whose Spanish value is still identical to English: 2307
+- Keys whose Spanish value is still identical to English: 1723
+- Highest untranslated module counts from the latest scan:
+  - `checkout`: 239
+  - `product`: 218
+  - `admin`: 213
+  - `specs`: 131
+  - `orders`: 114
+  - `seller_integration`: 81
 - Highest-impact untranslated surfaces observed in the audit:
   - `admin.*`
-  - `app.*`
-  - large parts of `auth.*`
-  - large parts of `checkout.*`
-  - large parts of `product.*`
-  - large parts of `seller.*`
-  - large parts of `subscription.*`
+  - large parts of `checkout.seller_integration.*`
+  - remaining `product.*` long-tail seller/product-authoring copy
+  - `specs.*`, `orders.*`, `profile.*`, `legal.*`
 
 Notes
 
 - This is a localization completeness problem, not a schema-gap problem.
 - The current Spanish file is structurally complete but still contains a large
   amount of English copy.
-- Immediate priority should be user-facing purchase/auth flows before admin-only
-  strings.
+- High-signal progress completed in this refresh:
+  - `auth.*` reduced to a single unchanged placeholder (`email_hint`)
+  - `subscription.*` fully translated
+  - `seller.*` reduced to non-translatable/template leftovers
+  - shopper-facing `product.*` PDP/reviews/form copy and `checkout.*` payment/review/error copy were translated in the current pass
+- Immediate priority should now be remaining shopper/admin long-tail surfaces,
+  especially `checkout.seller_integration.*`, `product.*`, and `admin.*`.
+- The address flow is no longer part of the hardcoded-English gap:
+  - `address.valid_address_from_suggestions`
+  - `address.cuba_havana_only`
+  - `address.save_failed`
+  now exist in `en/fr/es` and are translated at the screen boundary.

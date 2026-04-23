@@ -31,7 +31,7 @@
   <link rel="manifest" href="manifest.json">
 
   <!-- Stripe JS (defer to not block initial paint) -->
-  <script src="https://js.stripe.com/v3/" defer integrity="sha384-0sU4e96DEaZcW0cI+hzjbelrNySf8WlzA/vC6mHlyYKQV5l0wLjap1bCo0neuvPB" crossorigin="anonymous"></script>
+  <script src="https://js.stripe.com/v3/" defer></script>
   <!-- Guard: prevents passkeys_web plugin from crashing if bundle.js hasn't loaded yet.
        Stubs all 7 methods from interop.dart; real SDK overwrites on production load. -->
   <script>
@@ -48,7 +48,7 @@
     }
   </script>
   <!-- Passkeys Web SDK (required by passkeys_web package for WebAuthn/FIDO2) -->
-  <script src="https://github.com/corbado/flutter-passkeys/releases/download/2.4.0/bundle.js" type="application/javascript" integrity="sha384-lJXabVIVTplZn8Gq0rr7HchxKSYaVleDXbBqiFCwr5wJ9cQnHZGdx89nnZX9xHca" crossorigin="anonymous"></script>
+  <script src="https://github.com/corbado/flutter-passkeys/releases/download/2.4.0/bundle.js" type="application/javascript"></script>
 
   <!-- Cloudflare Turnstile — invisible widget for bot protection on registration.
        Site key: injected via __TURNSTILE_SITE_KEY__ at build time (CI/CD replaces placeholder).

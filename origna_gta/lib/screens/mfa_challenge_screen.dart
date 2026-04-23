@@ -60,9 +60,7 @@ class _MfaChallengeScreenState extends ConsumerState<MfaChallengeScreen> {
     if (!mounted) return;
 
     if (success) {
-      Navigator.of(
-        context,
-      ).pushNamedAndRemoveUntil(AppRoutes.home, (_) => false);
+      appPushNamedAndRemoveUntil(context, AppRoutes.home, (_) => false);
       return;
     }
 
@@ -90,9 +88,7 @@ class _MfaChallengeScreenState extends ConsumerState<MfaChallengeScreen> {
   }
 
   void _navigateToLogin() {
-    Navigator.of(
-      context,
-    ).pushNamedAndRemoveUntil(AppRoutes.login, (_) => false);
+    appPushNamedAndRemoveUntil(context, AppRoutes.login, (_) => false);
   }
 
   @override

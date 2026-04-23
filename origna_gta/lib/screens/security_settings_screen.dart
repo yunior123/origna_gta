@@ -147,7 +147,7 @@ class _SecuritySettingsScreenState
   }
 
   Future<void> _enableMfa() async {
-    final result = await Navigator.pushNamed(context, AppRoutes.mfaSetup);
+    final result = await appPushNamed(context, AppRoutes.mfaSetup);
     if (result == true && mounted) {
       ref.read(mfaViewModelProvider.notifier).checkStatus();
     }
@@ -228,7 +228,7 @@ class _SecuritySettingsScreenState
             button: true,
             label: 'btn-dialog-cancel',
             child: TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
+              onPressed: () => appPop(dialogContext),
               child: Text('common.cancel'.tr()),
             ),
           ),
@@ -239,7 +239,7 @@ class _SecuritySettingsScreenState
               onPressed: () async {
                 final code = codeController.text.trim();
                 if (code.length != 6) return;
-                Navigator.pop(dialogContext);
+                appPop(dialogContext);
                 final viewModel = ref.read(mfaViewModelProvider.notifier);
                 await viewModel.disable(code);
                 if (mounted) {

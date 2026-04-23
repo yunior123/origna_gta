@@ -65,7 +65,7 @@ Future<void> mainTest() async {
     AppLogger.d('Re-running app (already initialized)', tag: 'test');
     runApp(
       EasyLocalization(
-        supportedLocales: const [Locale('en'), Locale('fr')],
+        supportedLocales: const [Locale('en'), Locale('fr'), Locale('es')],
         path: 'assets/translations',
         fallbackLocale: const Locale('en'),
         child: const ProviderScope(child: OrignaApp()),
@@ -111,7 +111,7 @@ Future<void> mainTest() async {
   AppLogger.d('Step 5: runApp()', tag: 'test');
   runApp(
     EasyLocalization(
-      supportedLocales: const [Locale('en'), Locale('fr')],
+      supportedLocales: const [Locale('en'), Locale('fr'), Locale('es')],
       path: 'assets/translations',
       fallbackLocale: const Locale('en'),
       child: const ProviderScope(child: OrignaApp()),

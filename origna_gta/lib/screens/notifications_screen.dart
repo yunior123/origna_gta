@@ -2,6 +2,7 @@ import 'package:origna_gta/utils/preview_helpers.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/repositories/notification_repository.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
@@ -40,7 +41,7 @@ class NotificationsScreen extends ConsumerWidget {
       notificationsAsync: notificationsAsync,
       uid: uid,
       onRefresh: () async => ref.invalidate(userNotificationsProvider),
-      onBack: () => Navigator.of(context).pop(),
+      onBack: () => appPopOrGo(context, AppRoutes.home),
       onMarkAllRead: () => _markAll(context, uid, ref),
       onMarkRead: (n) => _markRead(n, uid, ref),
     );
