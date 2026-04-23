@@ -119,7 +119,11 @@ Rules:
 ### Release / delivery
 - [ ] Deploy the latest version of OrignaGTA and OrignaVentures.
   - Advanced state: OrignaGTA production was redeployed again as release `20260422113324`; latest OrignaVentures frontend/docs were already redeployed earlier; a final both-apps pass is still pending.
-- [ ] Commit and push all changes to GitHub.
+- [x] Commit and push all changes to GitHub.
+- Verified on 2026-04-22: Latest commits pushed:
+  - `c3efdb61` docs: Mark Cuba support as verified in CORE.md
+  - `619c60be` docs: Correct Spanish translation status in CORE.md and STATE.md  
+  - `95c9fecf` feat: Spanish translations, Ventures payment hardening, solar product live
 - [ ] Build the iOS app.
 
 ## P2 — Manual QA / human-required checkpoints
