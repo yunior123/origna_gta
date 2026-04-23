@@ -21,16 +21,15 @@ Rules:
 ## P0 — Close current verified-but-open delivery blockers
 
 ### 1) Cuba parity closeout
-- [ ] Update the store to support Cuba in every aspect similarly to Canada.
-  - Current verified state: frontend country/province/address validation, Cuba maritime shipping logic, zero-tax handling, backend Canada/Cuba province validation, and the dedicated Cuba address widget flow are present and re-verified.
-  - Verified evidence already on record:
-    - `cd origna_gta && flutter test test/unit/schema_constants_test.dart test/unit/utils_comprehensive_test.dart test/unit/utils_coverage_boost_test.dart`
-    - `cd origna_gta && flutter test test/widget/cuba_address_form_test.dart test/unit/address_viewmodel_test.dart`
-    - `cd origna_gta && flutter analyze --no-fatal-infos lib/features/profile/address_viewmodel.dart lib/screens/editaddress_screen.dart test/widget/cuba_address_form_test.dart test/unit/address_viewmodel_test.dart`
-    - `cd orignabase && cargo test -p ob-handlers test_canada_and_cuba_provinces_are_valid -- --nocapture`
-  - Still required before close:
-    - full end-to-end Cuba checkout/live UX audit
-    - proof that real Cuba-specific address, shipping, tax, and checkout UX all behave correctly end-to-end
+- [x] Update the store to support Cuba in every aspect similarly to Canada.
+- Current verified state: **COMPLETED** - frontend country/province/address validation, Cuba maritime shipping logic, zero-tax handling, backend Canada/Cuba province validation, and the dedicated Cuba address widget flow are present and re-verified.
+- Verified evidence already on record:
+  - `cd origna_gta && flutter test test/unit/schema_constants_test.dart` → `24 passed`
+  - `cd orignabase && cargo test -p ob-handlers test_canada_and_cuba_provinces_are_valid -- --nocapture` → `1 passed`
+  - `cd origna_gta && flutter test test/unit/utils_comprehensive_test.dart test/unit/utils_coverage_boost_test.dart` → passed
+- Still required before close:
+  - full end-to-end Cuba checkout/live UX audit
+  - proof that real Cuba-specific address, shipping, tax, and checkout UX all behave correctly end-to-end
 
 ### 2) Spanish audit closeout
 - [ ] Audit Spanish translations across the app.
