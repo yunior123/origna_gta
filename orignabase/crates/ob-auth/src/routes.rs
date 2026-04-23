@@ -2003,8 +2003,7 @@ fn admin_list_users_query(limit: usize, offset: usize) -> String {
     )
 }
 
-const ADMIN_GET_USER_QUERY: &str =
-    "SELECT id, COALESCE(data->>'email', '') AS email, COALESCE(NULLIF(data->>'display_name', ''), '') AS display_name, COALESCE(data->'roles', '[]'::jsonb) AS roles, COALESCE(NULLIF(data->>'email_verified', '')::boolean, false) AS email_verified, COALESCE(NULLIF(data->>'mfa_enabled', '')::boolean, false) AS mfa_enabled, created_at, COALESCE(data->'custom_claims', jsonb_build_object()) AS custom_claims, COALESCE(data->>'oauth_provider', '') AS oauth_provider FROM users WHERE id = $uid";
+const ADMIN_GET_USER_QUERY: &str = "SELECT id, COALESCE(data->>'email', '') AS email, COALESCE(NULLIF(data->>'display_name', ''), '') AS display_name, COALESCE(data->'roles', '[]'::jsonb) AS roles, COALESCE(NULLIF(data->>'email_verified', '')::boolean, false) AS email_verified, COALESCE(NULLIF(data->>'mfa_enabled', '')::boolean, false) AS mfa_enabled, created_at, COALESCE(data->'custom_claims', jsonb_build_object()) AS custom_claims, COALESCE(data->>'oauth_provider', '') AS oauth_provider FROM users WHERE id = $uid";
 
 /// GET /admin/users — List users (admin only).
 pub async fn admin_list_users(

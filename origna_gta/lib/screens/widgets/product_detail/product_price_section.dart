@@ -336,6 +336,10 @@ String localizedDeliveryEstimate(Product product) {
     );
   }
 
+  if (deliveryInfo.isInternational || deliveryInfo.maxDays >= 28) {
+    return 'product.delivery_within_weeks_or_longer'.tr();
+  }
+
   return 'product.delivery_business_days'.tr(
     namedArgs: {
       'min': deliveryInfo.minDays.toString(),
@@ -348,7 +352,7 @@ String localizedDeliveryEstimate(Product product) {
 String localizedShipsFrom(Product product) {
   final region = product.deliveryInfo.supplierRegion;
   if (region == null || region.trim().isEmpty || region.startsWith('Unknown')) {
-    return 'product.delivery_unknown_origin'.tr();
+    return 'product.delivery_to_canada_cuba'.tr();
   }
-  return region;
+  return '${'product.delivery_to_canada_cuba'.tr()} · $region';
 }

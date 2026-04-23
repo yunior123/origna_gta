@@ -113,7 +113,12 @@ const MAX_EARLY_CANCELS: i64 = 3;
 const EARLY_CANCEL_DAYS: i64 = 7;
 
 fn normalize_subscription_interval(interval: Option<&str>) -> Result<&'static str, ob_core::Error> {
-    match interval.unwrap_or("monthly").trim().to_ascii_lowercase().as_str() {
+    match interval
+        .unwrap_or("monthly")
+        .trim()
+        .to_ascii_lowercase()
+        .as_str()
+    {
         "month" | "monthly" => Ok("month"),
         "year" | "yearly" | "annual" | "annually" => Ok("year"),
         other => Err(ob_core::Error::Validation(format!(
@@ -500,7 +505,10 @@ async fn create_subscription(
                 "items[0][price_data][unit_amount]",
                 &PREMIUM_PRICE_CENTS.to_string(),
             ),
-            ("items[0][price_data][recurring][interval]", recurring_interval),
+            (
+                "items[0][price_data][recurring][interval]",
+                recurring_interval,
+            ),
             (
                 "items[0][price_data][product_data][name]",
                 "Origna Premium Subscription",
@@ -2347,7 +2355,10 @@ mod tests {
         )
         .await
         .unwrap_err();
-        assert!(err.to_string().contains("interval must be one of monthly/yearly"));
+        assert!(
+            err.to_string()
+                .contains("interval must be one of monthly/yearly")
+        );
     }
 
     // -----------------------------------------------------------------------

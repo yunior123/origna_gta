@@ -533,7 +533,7 @@ async fn calculate_shipping(
                     .into(),
             ));
         }
-        
+
         // Cuba Maritime routing
         if cuba::is_cuba_province(buyer_province) {
             let (seller_cost, seller_breakdown) = cuba::calculate_cuba_maritime_itemized(
@@ -542,7 +542,7 @@ async fn calculate_shipping(
                 |it| effective_weight(it),
                 |it| it.quantity.max(1) as f64,
             );
-            
+
             total_shipping += seller_cost;
             overall_breakdown.extend(seller_breakdown);
             continue;
@@ -621,9 +621,10 @@ async fn calculate_shipping(
     // Apply free shipping threshold ($75 CAD) - Not applicable for Cuba maritime
     let mut final_shipping = total_shipping;
     let is_cuba = cuba::is_cuba_province(buyer_province);
-    if !is_cuba && req
-        .subtotal_cents
-        .is_some_and(|s| s >= business_rules::FREE_SHIPPING_THRESHOLD_CENTS)
+    if !is_cuba
+        && req
+            .subtotal_cents
+            .is_some_and(|s| s >= business_rules::FREE_SHIPPING_THRESHOLD_CENTS)
     {
         final_shipping = 0;
     }

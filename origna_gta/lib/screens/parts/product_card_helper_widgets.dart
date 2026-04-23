@@ -114,31 +114,25 @@ class _DeliveryEstimate extends StatelessWidget {
       return _chip('product.delivery_local'.tr(), DesignTokens.info, fontSize);
     }
 
-    final isInternational =
-        product.shipFromCountry != null &&
-        product.shipFromCountry!.isNotEmpty &&
-        product.shipFromCountry!.toUpperCase() != 'CA' &&
-        product.shipFromCountry!.toUpperCase() != 'CANADA';
+    final deliveryInfo = product.deliveryInfo;
+    final isInternational = deliveryInfo.isInternational;
+    final hasLongLeadTime = deliveryInfo.maxDays >= 28;
 
-    if (isInternational || product.estimatedShipDays > 7) {
-      final int min = product.estimatedShipDays;
-      final int max = min + 10;
+    if (isInternational || hasLongLeadTime) {
       return _chip(
-        'product.delivery_intl_days'.tr(
-          namedArgs: {'min': '$min', 'max': '$max'},
-        ),
+        'product.delivery_within_weeks_or_longer'.tr(),
         DesignTokens.textSecondary,
         fontSize,
       );
     }
 
-    // Standard Canadian delivery estimate: estimatedShipDays + 2 transit days.
-    final deliveryDate = DateTime.now().add(
-      Duration(days: product.estimatedShipDays + 2),
-    );
-    final formatted = DateFormat('MMM d').format(deliveryDate);
     return _chip(
-      'product.delivery_get_by'.tr(namedArgs: {'date': formatted}),
+      'product.delivery_business_days'.tr(
+        namedArgs: {
+          'min': '${deliveryInfo.minDays}',
+          'max': '${deliveryInfo.maxDays}',
+        },
+      ),
       DesignTokens.success,
       fontSize,
     );

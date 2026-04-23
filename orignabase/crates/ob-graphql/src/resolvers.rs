@@ -64,7 +64,9 @@ fn doc_is_readable(
         resource: Some(doc.clone()),
         incoming: None,
     };
-    rules.check(collection, "read", &per_doc_ctx).unwrap_or(false)
+    rules
+        .check(collection, "read", &per_doc_ctx)
+        .unwrap_or(false)
 }
 
 fn filter_readable_docs(

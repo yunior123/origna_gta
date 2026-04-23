@@ -81,7 +81,7 @@ class OrignaBaseQARepository implements QARepository {
         })
         .catchError((Object e, StackTrace st) {
           AppError.log(e, stackTrace: st, context: 'ob_qa.watchQA.init');
-          controller.addError(e);
+          controller.add(const <QAModel>[]);
         });
 
     // Realtime updates

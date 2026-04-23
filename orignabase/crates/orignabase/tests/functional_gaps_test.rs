@@ -452,7 +452,8 @@ live_test!(address_list_addresses, {
     })
     .await;
     assert!(
-        items.iter()
+        items
+            .iter()
             .any(|item| item["label"] == label && item["street"] == street), // ignore-magic
         "address should be present in list"
     );
@@ -803,7 +804,14 @@ live_test!(order_create_order, {
     let client = reqwest::Client::new();
     let (seller_token, seller_id, _) = register_seller_user(&client).await;
     let (buyer_token, buyer_id, _email) = register_test_user(&client).await;
-    let product_id = create_product(&client, &seller_token, &seller_id, "Gap Order Product", 2500).await;
+    let product_id = create_product(
+        &client,
+        &seller_token,
+        &seller_id,
+        "Gap Order Product",
+        2500,
+    )
+    .await;
     let created = create_doc(
         &client,
         &buyer_token,
@@ -830,8 +838,14 @@ live_test!(order_transition_pending_to_processing, {
     let admin_token = login_admin(&client).await;
     let (seller_token, seller_id, _) = register_seller_user(&client).await;
     let (buyer_token, buyer_id, _) = register_test_user(&client).await;
-    let product_id =
-        create_product(&client, &seller_token, &seller_id, "Gap Order Pending", 3100).await;
+    let product_id = create_product(
+        &client,
+        &seller_token,
+        &seller_id,
+        "Gap Order Pending",
+        3100,
+    )
+    .await;
     let created = create_doc(
         &client,
         &buyer_token,
@@ -902,8 +916,14 @@ live_test!(order_transition_shipped_to_delivered, {
     let admin_token = login_admin(&client).await;
     let (seller_token, seller_id, _) = register_seller_user(&client).await;
     let (buyer_token, buyer_id, _) = register_test_user(&client).await;
-    let product_id =
-        create_product(&client, &seller_token, &seller_id, "Gap Order Deliver", 5100).await;
+    let product_id = create_product(
+        &client,
+        &seller_token,
+        &seller_id,
+        "Gap Order Deliver",
+        5100,
+    )
+    .await;
     let created = create_doc(
         &client,
         &buyer_token,
@@ -1020,7 +1040,8 @@ live_test!(qa_post_question, {
     let client = reqwest::Client::new();
     let (seller_token, seller_id, _) = register_seller_user(&client).await;
     let (token, user_id, _email) = register_test_user(&client).await;
-    let product_id = create_product(&client, &seller_token, &seller_id, "Gap QA Product", 1999).await;
+    let product_id =
+        create_product(&client, &seller_token, &seller_id, "Gap QA Product", 1999).await;
     let created = create_doc(
         &client,
         &token,
@@ -1041,8 +1062,14 @@ live_test!(qa_post_answer, {
     let client = reqwest::Client::new();
     let (seller_token, seller_id, _) = register_seller_user(&client).await;
     let (token, user_id, _) = register_test_user(&client).await;
-    let product_id =
-        create_product(&client, &seller_token, &seller_id, "Gap QA Answer Product", 2099).await;
+    let product_id = create_product(
+        &client,
+        &seller_token,
+        &seller_id,
+        "Gap QA Answer Product",
+        2099,
+    )
+    .await;
     let created = create_doc(
         &client,
         &token,
@@ -1072,8 +1099,14 @@ live_test!(qa_list_questions_and_answers, {
     let client = reqwest::Client::new();
     let (seller_token, seller_id, _) = register_seller_user(&client).await;
     let (token, user_id, _) = register_test_user(&client).await;
-    let product_id =
-        create_product(&client, &seller_token, &seller_id, "Gap QA List Product", 2199).await;
+    let product_id = create_product(
+        &client,
+        &seller_token,
+        &seller_id,
+        "Gap QA List Product",
+        2199,
+    )
+    .await;
     let created = create_doc(
         &client,
         &token,
@@ -1095,7 +1128,8 @@ live_test!(qa_list_questions_and_answers, {
     })
     .await;
     assert!(
-        items.iter()
+        items
+            .iter()
             .any(|item| item["question"] == question && item["answer"] == answer), // ignore-magic
         "qa entry should be listed"
     );
@@ -1106,8 +1140,14 @@ live_test!(qa_delete_question, {
     let admin_token = login_admin(&client).await;
     let (seller_token, seller_id, _) = register_seller_user(&client).await;
     let (token, user_id, _) = register_test_user(&client).await;
-    let product_id =
-        create_product(&client, &seller_token, &seller_id, "Gap QA Delete Product", 2299).await;
+    let product_id = create_product(
+        &client,
+        &seller_token,
+        &seller_id,
+        "Gap QA Delete Product",
+        2299,
+    )
+    .await;
     let created = create_doc(
         &client,
         &token,
@@ -1559,7 +1599,8 @@ live_test!(chat_list_messages_in_conversation, {
     })
     .await;
     assert!(
-        items.iter()
+        items
+            .iter()
             .any(|item| item["text"] == text && item["conversationId"] == conversation_id), // ignore-magic
         "message should be present in conversation listing"
     );

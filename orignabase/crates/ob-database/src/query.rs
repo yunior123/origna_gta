@@ -76,9 +76,12 @@ impl QueryTranslator {
                 }
             }
             "_contains" => Some(format!("{field_expr} CONTAINS {val_str}")),
-            "_starts_with" => value
-                .as_str()
-                .map(|s| format!("string::startsWith({field_expr}, '{}')", escape_sql_string(s))),
+            "_starts_with" => value.as_str().map(|s| {
+                format!(
+                    "string::startsWith({field_expr}, '{}')",
+                    escape_sql_string(s)
+                )
+            }),
             _ => {
                 tracing::warn!("Unknown filter operator: {op}");
                 None
@@ -242,7 +245,10 @@ mod tests {
             "category": { "_in": ["electronics", "books"] }
         });
         let result = QueryTranslator::filters_to_where(&filters);
-        assert_eq!(result, "WHERE data->>'category' IN ['electronics', 'books']");
+        assert_eq!(
+            result,
+            "WHERE data->>'category' IN ['electronics', 'books']"
+        );
     }
 
     #[test]

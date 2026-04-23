@@ -726,25 +726,20 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
       );
     }
     final deliveryInfo = product.deliveryInfo;
-    if (deliveryInfo.isInternational) {
+    if (deliveryInfo.isInternational || deliveryInfo.maxDays >= 28) {
       return DeliveryChip(
         icon: Icons.flight_outlined,
-        label: 'product.delivery_intl'.tr(
-          namedArgs: {
-            'min': deliveryInfo.minDays.toString(),
-            'max': deliveryInfo.maxDays.toString(),
-          },
-        ),
+        label: 'product.delivery_within_weeks_or_longer'.tr(),
         color: DesignTokens.textSecondary,
       );
     }
-    final arrivalDate = DateTime.now().add(
-      Duration(days: deliveryInfo.minDays + 2),
-    );
     return DeliveryChip(
       icon: Icons.local_shipping_outlined,
-      label: 'product.delivery_get_by'.tr(
-        namedArgs: {'date': DateFormat('MMM d').format(arrivalDate)},
+      label: 'product.delivery_business_days'.tr(
+        namedArgs: {
+          'min': deliveryInfo.minDays.toString(),
+          'max': deliveryInfo.maxDays.toString(),
+        },
       ),
       color: DesignTokens.success,
     );

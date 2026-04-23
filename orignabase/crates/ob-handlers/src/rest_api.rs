@@ -86,44 +86,69 @@ async fn get_products(
     State(state): State<HandlersState>,
     Query(qs): Query<SearchProductsQuery>,
 ) -> Result<Json<serde_json::Value>, ob_core::Error> {
-    // Build parameterized query to prevent SQL injection
+    // Products are stored under the document `data` payload in SurrealDB,
+    // so all filters must address `data->>'field'` instead of top-level fields.
     let mut query = format!(
-        "SELECT * FROM {} WHERE lifecycleStatus = 'active'",
-        collections::PRODUCTS
+        "SELECT * FROM {} WHERE data->>'{}' = $status",
+        collections::PRODUCTS,
+        fields::LIFECYCLE_STATUS,
     );
     let mut bind_params = serde_json::Map::new();
+    bind_params.insert("status".into(), json!(lifecycle_status::ACTIVE));
 
-    if qs.q.is_some() {
-        query.push_str(" AND (name ~ $search OR description ~ $search)");
-        bind_params.insert("search".into(), json!(qs.q));
+    if let Some(search) = qs.q.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
+        query.push_str(&format!(
+            " AND (data->>'{}' ~~* $search OR data->>'{}' ~~* $search)",
+            fields::TITLE,
+            fields::DESCRIPTION,
+        ));
+        bind_params.insert("search".into(), json!(format!("%{search}%")));
     }
-    if qs.category.is_some() {
-        query.push_str(" AND categoryId = $category");
-        bind_params.insert("category".into(), json!(qs.category));
+    if let Some(category) = qs
+        .category
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+    {
+        query.push_str(&format!(" AND data->>'{}' = $category", fields::CATEGORY));
+        bind_params.insert("category".into(), json!(category));
     }
     if let Some(min) = qs.min_price {
-        query.push_str(" AND priceCents >= $min_price");
+        query.push_str(&format!(
+            " AND (data->>'{}')::\"numeric\" >= ($min_price)::\"numeric\"",
+            fields::PRICE_CENTS,
+        ));
         bind_params.insert("min_price".into(), json!(min));
     }
     if let Some(max) = qs.max_price {
-        query.push_str(" AND priceCents <= $max_price");
+        query.push_str(&format!(
+            " AND (data->>'{}')::\"numeric\" <= ($max_price)::\"numeric\"",
+            fields::PRICE_CENTS,
+        ));
         bind_params.insert("max_price".into(), json!(max));
     }
 
     match qs.sort.as_deref() {
-        Some("price_asc") => query.push_str(" ORDER BY priceCents ASC"),
-        Some("price_desc") => query.push_str(" ORDER BY priceCents DESC"),
-        Some("newest") => query.push_str(" ORDER BY dateCreated DESC"),
-        Some("oldest") => query.push_str(" ORDER BY dateCreated ASC"),
-        _ => query.push_str(" ORDER BY dateCreated DESC"),
+        Some("price_asc") => query.push_str(&format!(
+            " ORDER BY (data->>'{}')::\"numeric\" ASC, data->>'{}' DESC",
+            fields::PRICE_CENTS,
+            fields::CREATED_AT,
+        )),
+        Some("price_desc") => query.push_str(&format!(
+            " ORDER BY (data->>'{}')::\"numeric\" DESC, data->>'{}' DESC",
+            fields::PRICE_CENTS,
+            fields::CREATED_AT,
+        )),
+        Some("oldest") => query.push_str(&format!(" ORDER BY data->>'{}' ASC", fields::CREATED_AT)),
+        Some("newest") | None => {
+            query.push_str(&format!(" ORDER BY data->>'{}' DESC", fields::CREATED_AT))
+        }
+        Some(_) => query.push_str(&format!(" ORDER BY data->>'{}' DESC", fields::CREATED_AT)),
     }
 
-    // Clamp limit to prevent abuse
     let limit = qs.limit.clamp(1, 100);
     let offset = qs.offset.max(0);
-    query.push_str(" LIMIT $limit OFFSET $offset");
-    bind_params.insert("limit".into(), json!(limit));
-    bind_params.insert("offset".into(), json!(offset));
+    query.push_str(&format!(" LIMIT {} OFFSET {}", limit, offset));
 
     let results = state
         .db
@@ -580,6 +605,89 @@ mod tests {
         let auth = AuthContext::anonymous();
         let result = require_authenticated(&auth);
         assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_get_products_filters_active_category_and_search() {
+        let state = HandlersState {
+            config: Arc::new(Config::load(None).unwrap()),
+            db: DatabaseClient::new_mem().await,
+            http_client: reqwest::Client::new(),
+            stripe_client: None,
+            stripe_base_url: "https://api.stripe.com/v1".into(),
+            turnstile_secret_key: None,
+        };
+
+        state
+            .db
+            .upsert_document(
+                "products",
+                "phone_active",
+                json!({
+                    "productId": "phone_active",
+                    "name": "Phone Max",
+                    "description": "Premium phone with OLED display",
+                    "categoryId": 1,
+                    "lifecycleStatus": "active",
+                    "priceCents": 129900,
+                    "createdAt": "2026-04-22T10:00:00Z",
+                }),
+            )
+            .await
+            .unwrap();
+        state
+            .db
+            .upsert_document(
+                "products",
+                "book_active",
+                json!({
+                    "productId": "book_active",
+                    "name": "Design Book",
+                    "description": "A design systems handbook",
+                    "categoryId": 14,
+                    "lifecycleStatus": "active",
+                    "priceCents": 4900,
+                    "createdAt": "2026-04-21T10:00:00Z",
+                }),
+            )
+            .await
+            .unwrap();
+        state
+            .db
+            .upsert_document(
+                "products",
+                "phone_draft",
+                json!({
+                    "productId": "phone_draft",
+                    "name": "Phone Draft",
+                    "description": "Hidden draft phone",
+                    "categoryId": 1,
+                    "lifecycleStatus": "draft",
+                    "priceCents": 99900,
+                    "createdAt": "2026-04-23T10:00:00Z",
+                }),
+            )
+            .await
+            .unwrap();
+
+        let Json(resp) = get_products(
+            State(state),
+            Query(SearchProductsQuery {
+                q: Some("phone".into()),
+                category: Some("1".into()),
+                min_price: Some(100000),
+                max_price: Some(140000),
+                sort: Some("price_desc".into()),
+                limit: 10,
+                offset: 0,
+            }),
+        )
+        .await
+        .unwrap();
+
+        let products = resp.as_array().unwrap();
+        assert_eq!(products.len(), 1);
+        assert_eq!(products[0]["productId"], "phone_active");
     }
 
     #[tokio::test]

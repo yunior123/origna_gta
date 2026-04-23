@@ -73,8 +73,8 @@ pub struct CheckoutResponse {
 }
 
 const VALID_PROVINCES: &[&str] = &[
-    "AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC", "SK", "YT",
-    "HAB", "MAT", "VC", "SC", "HOL", "CMG", "CAV", "SSP", "CFG", "PR", "GRA", "LT", "GU", "IJ", "ART", "MAY",
+    "AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC", "SK", "YT", "HAB", "MAT",
+    "VC", "SC", "HOL", "CMG", "CAV", "SSP", "CFG", "PR", "GRA", "LT", "GU", "IJ", "ART", "MAY",
 ];
 const MAX_CART_ITEMS: usize = 30;
 const MAX_ITEM_QUANTITY: u32 = 100;
@@ -102,7 +102,7 @@ fn province_tax_rate_bps(province: &str) -> u64 {
         "AB" | "NT" | "NU" | "YT" => 500, // 5% GST
         // Cuba (no tax)
         p if crate::shipping_calc::cuba::is_cuba_province(p) => 0,
-        _ => 500,                         // Default to GST only
+        _ => 500, // Default to GST only
     }
 }
 
@@ -181,10 +181,15 @@ fn calculate_shipping_cost_cents(
         let mut total_weight_kg = 0.0;
         for item in items {
             let weight = crate::shipping_calc::cuba::parse_weight_kg(item);
-            let qty = item.get(fields::QUANTITY).and_then(|v| v.as_u64()).unwrap_or(1) as f64;
+            let qty = item
+                .get(fields::QUANTITY)
+                .and_then(|v| v.as_u64())
+                .unwrap_or(1) as f64;
             total_weight_kg += weight * qty;
         }
-        return Ok(crate::shipping_calc::cuba::calculate_cuba_maritime_total_cents(total_weight_kg));
+        return Ok(
+            crate::shipping_calc::cuba::calculate_cuba_maritime_total_cents(total_weight_kg),
+        );
     }
 
     // Free shipping threshold
@@ -693,9 +698,7 @@ async fn create_checkout_session(
             .unwrap_or("")
             .to_string();
 
-        let weight_kg = product
-            .get("weightKg")
-            .and_then(|v| v.as_f64());
+        let weight_kg = product.get("weightKg").and_then(|v| v.as_f64());
 
         validated_items.push(serde_json::json!({
             fields::PRODUCT_ID: cart_item.product_id,
@@ -1428,10 +1431,14 @@ mod tests {
             "AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC", "SK", "YT",
         ];
         let expected_cuba = vec![
-            "HAB", "MAT", "VC", "SC", "HOL", "CMG", "CAV", "SSP", "CFG", "PR", "GRA", "LT", "GU", "IJ", "ART", "MAY",
+            "HAB", "MAT", "VC", "SC", "HOL", "CMG", "CAV", "SSP", "CFG", "PR", "GRA", "LT", "GU",
+            "IJ", "ART", "MAY",
         ];
 
-        assert_eq!(VALID_PROVINCES.len(), expected_canada.len() + expected_cuba.len());
+        assert_eq!(
+            VALID_PROVINCES.len(),
+            expected_canada.len() + expected_cuba.len()
+        );
 
         for p in &expected_canada {
             assert!(VALID_PROVINCES.contains(p), "Missing province: {}", p);

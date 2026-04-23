@@ -154,6 +154,9 @@ class _DeliveryWindowCard extends StatelessWidget {
     if (isLocalDelivery) {
       // Local / same-day: show in hours (2–4h window)
       windowLabel = 'orders.delivery_window_hours'.tr();
+    } else if (estimatedShipDays >= 28) {
+      // International orders: show weeks estimate
+      windowLabel = 'orders.estimated_delivery_international'.tr();
     } else {
       final now = DateTime.now();
       // Processing time: +1 day
@@ -473,11 +476,11 @@ class _OrderSuccessScreenState extends ConsumerState<OrderSuccessScreen> {
                             child: ModernButton(
                               label: 'orders.continue_shopping'.tr(),
                               icon: Icons.shopping_bag_outlined,
-                              onPressed: () =>
-                                  appPushNamedAndRemoveUntil(context,
-                                    AppRoutes.home,
-                                    (route) => false,
-                                  ),
+                              onPressed: () => appPushNamedAndRemoveUntil(
+                                context,
+                                AppRoutes.home,
+                                (route) => false,
+                              ),
                             ),
                           ),
                         ),
@@ -493,7 +496,8 @@ class _OrderSuccessScreenState extends ConsumerState<OrderSuccessScreen> {
                               isPrimary: false,
                               isOutlined: true,
                               onPressed: () {
-                                appPushNamedAndRemoveUntil(context,
+                                appPushNamedAndRemoveUntil(
+                                  context,
                                   AppRoutes.orders,
                                   (route) =>
                                       route.settings.name == AppRoutes.home,

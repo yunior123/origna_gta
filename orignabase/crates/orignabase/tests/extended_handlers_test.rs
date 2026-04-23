@@ -341,7 +341,9 @@ async fn test_607_cart_delete() {
     let (_, create_body) = graphql(
         &client,
         Some(&token),
-        &format!(r#"mutation {{ create(collection: "cart", data: {{userId: "{user_id}", items: []}}) }}"#),
+        &format!(
+            r#"mutation {{ create(collection: "cart", data: {{userId: "{user_id}", items: []}}) }}"#
+        ),
     )
     .await;
     let cart_id = create_body["data"]["create"]["id"] // ignore-magic
@@ -370,7 +372,9 @@ async fn test_608_cart_empty_items() {
     let (status, body) = graphql(
         &client,
         Some(&token),
-        &format!(r#"mutation {{ create(collection: "cart", data: {{userId: "{user_id}", items: []}}) }}"#),
+        &format!(
+            r#"mutation {{ create(collection: "cart", data: {{userId: "{user_id}", items: []}}) }}"#
+        ),
     )
     .await;
 
