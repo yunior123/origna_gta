@@ -34,21 +34,8 @@ Rules:
 
 ### 2) Spanish audit closeout
 - [ ] Audit Spanish translations across the app.
-- Current verified state: runtime Spanish support exists in OrignaGTA and OrignaVentures; OrignaGTA test/preview scaffolds were upgraded to include Spanish; address-flow hardcoded English errors were replaced with translated `address.*` keys in `en/fr/es`; the highest-signal `auth`, `subscription`, `seller`, and shopper-facing `checkout` / `product` copy received a direct Spanish pass.
-- Latest progress on 2026-04-22: **742 strings translated** (2307 → 1565 identical en→es values remaining)
-- Verified evidence already on record:
-  - `supportedLocales` includes `es`
-  - OrignaVentures supports `LocaleMode.es` and `loc.tr(..., ..., es)`
-  - test/preview helpers updated in `test_utils.dart`, `main_test.dart`, `preview_helpers.dart`, `origna_app_test.dart`, `origna_app_routes_test.dart`, and `chat_screen_test.dart`
-  - `origna_gta/lang_selector_gaps.txt` now records the latest untranslated-value counts by module:
-    - `admin`: `213`
-    - `checkout`: `159`
-    - `product`: `140`
-    - `specs`: `131`
-    - `orders`: `114`
-    - `supplier`: `104`
-- Still required before close:
-  - finish the remaining long-tail English surfaces concentrated in `admin.*`, `checkout.*`, `product.*`, `specs.*`, `orders.*`, `supplier.*`
+- Current verified state: **NOT STARTED** - Spanish translations exist in repo but no verified progress has been committed. All `product.*`, `checkout.*`, `auth.*`, `seller.*`, `admin.*`, `specs.*`, `orders.*` remain untranslated at 2,307 identical strings.
+- Verified evidence on record: None - pending implementation and commit.
 
 ### 3) Payment system closeout
 - [ ] Test all payment-related views and features in OrignaVentures and OrignaGTA, including backend flows.

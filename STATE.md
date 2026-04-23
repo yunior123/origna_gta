@@ -1977,8 +1977,9 @@ The following items were verified as done and are no longer reusable as active t
     - `cd origna_gta && flutter analyze --no-fatal-infos lib/features/profile/address_viewmodel.dart lib/screens/editaddress_screen.dart test/widget/cuba_address_form_test.dart test/unit/address_viewmodel_test.dart`
     - result: passed, `No issues found!`
 - open gap kept in `CORE.md`:
-  - the Spanish audit is not closed yet; long-tail untranslated copy still remains in `checkout.*`, `product.*`, `admin.*`, `specs.*`, and `orders.*`.
-  - **Progress update 2026-04-22: 1,238 strings translated** (2307 → 1069 identical remaining)
+  - Spanish translation audit marked as **NOT STARTED** - no verified progress committed to repo.
+  - All 2,307 strings remain untranslated in production `es.json`.
+  - Translation work was attempted but not successfully committed; needs fresh implementation.
   - the repo-wide Stripe/payment audit still needs broader cross-stack closure beyond the corrected docs.
 
 78. **Spanish translation progress continued on 2026-04-22**:
