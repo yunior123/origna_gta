@@ -9,6 +9,9 @@ import {
 } from '../../lib/api-client.js';
 import { DEFAULT_PASS, TEST_ACCOUNTS } from '../../lib/config.js';
 
+const VALID_TEST_IMAGE_URL =
+  'https://pub-f9698d0f50d146bcac0e2dc9eb09de57.r2.dev/dev/products/samples/digital-1.jpg';
+
 describe('Security — Payment & Checkout Fixes', () => {
   let sellerToken = '';
   let buyerToken = '';
@@ -139,8 +142,9 @@ describe('Security — Payment & Checkout Fixes', () => {
       priceCents: 5000,
       stockQuantity: 10,
       description: 'Test',
-      categoryId: 'electronics',
+      categoryId: 1,
       lifecycleStatus: 'draft',
+      imageUrls: [VALID_TEST_IMAGE_URL],
     }, sellerToken);
     const updated = await callOk('update_product', {
       productId: created.productId || created.id,
@@ -155,8 +159,10 @@ describe('Security — Payment & Checkout Fixes', () => {
       priceCents: 3000,
       stockQuantity: 10,
       description: 'Expires quickly',
-      categoryId: 'grocery',
+      categoryId: 19,
       isPerishable: true,
+      lifecycleStatus: 'draft',
+      imageUrls: [VALID_TEST_IMAGE_URL],
     }, sellerToken);
     expect(result.productId || result.id).toBeTruthy();
   });

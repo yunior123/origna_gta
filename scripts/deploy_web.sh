@@ -41,6 +41,17 @@ case "$ENV" in
   ;;
 esac
 
+GOOGLE_WEB_CLIENT_ID_VALUE="${GOOGLE_WEB_CLIENT_ID:-}"
+if [ -z "${GOOGLE_WEB_CLIENT_ID_VALUE}" ] && [ "${ALLOW_PLACEHOLDER_GOOGLE_WEB_CLIENT_ID:-0}" != "1" ]; then
+  echo "Error: GOOGLE_WEB_CLIENT_ID must be set for web deploys."
+  echo "Set ALLOW_PLACEHOLDER_GOOGLE_WEB_CLIENT_ID=1 only for intentionally local/non-OAuth builds."
+  exit 1
+fi
+
+if [ -z "${GOOGLE_WEB_CLIENT_ID_VALUE}" ]; then
+  GOOGLE_WEB_CLIENT_ID_VALUE="__GOOGLE_WEB_CLIENT_ID__"
+fi
+
 cd origna_gta
 if [ ${#EXTRA_DART_DEFINES[@]} -gt 0 ]; then
   flutter build web ${BUILD_MODE} \
@@ -57,6 +68,8 @@ flutter build web ${BUILD_MODE} \
 --no-tree-shake-icons
 fi
 
+# Inject Google Sign-In web client ID
+sed -i '' "s|__GOOGLE_WEB_CLIENT_ID__|${GOOGLE_WEB_CLIENT_ID_VALUE}|g" build/web/index.html 2>/dev/null || true
 # Inject Turnstile site key
 sed -i '' "s|__TURNSTILE_SITE_KEY__|${TURNSTILE_KEY}|g" build/web/index.html 2>/dev/null || true
 cd ..
@@ -74,6 +87,18 @@ ssh "${VPS_HOST}" "
 
 echo "Successfully deployed to VPS for ${ENV}. Release: ${TIMESTAMP}"
 echo "Current link: ${CURRENT_LINK}"
+
+if [ "${SKIP_SCROLL_REGRESSION_CHECK:-0}" != "1" ]; then
+  echo "Running post-deploy scroll/cart regression checks..."
+  (
+    cd e2e
+    bun x tsc --noEmit
+    bun test specs/phase1-api/dev-product-browse-live.spec.ts
+    bun test specs/phase4-product-flows/search-filters-sort.spec.ts
+    bun test specs/phase4-product-flows/subcategory-filtering.spec.ts
+    bun test specs/phase5-complex-flows/cart-badge-add-to-cart.spec.ts
+  )
+fi
 
 # ── WebP on Cloudflare R2 ──────────────────────────────────────────────────
 # Product images are stored in Cloudflare R2. To enable WebP format:

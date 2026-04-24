@@ -12,6 +12,13 @@ import {
 } from '../../lib/config.js';
 import { AgentBrowser } from '../../lib/agent-browser.js';
 
+function parseAgentEvalJson(raw: string): any {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const parsed = JSON.parse(trimmed);
+  return typeof parsed === 'string' ? JSON.parse(parsed) : parsed;
+}
+
 // ═══ API-DRIVEN TESTS ═══
 
 describe('Search Filters & Sort — API', () => {
@@ -40,18 +47,22 @@ describe('Search Filters & Sort — API', () => {
     const desc = await callOk('get_products_paginated', { limit: 5, sortBy: 'price_desc' }, buyerToken);
     expect(asc.products.length).toBeGreaterThan(0);
     expect(desc.products.length).toBeGreaterThan(0);
-    if (asc.products.length > 1 && desc.products.length > 1) {
-      const allAscPrices: number[] = asc.products
-        .map((p: any) => p.priceCents ?? p.price)
-        .filter((v: any) => typeof v === 'number');
-      const uniquePrices = new Set(allAscPrices);
-      if (uniquePrices.size > 1 && allAscPrices.length >= 2) {
-        const firstAscPrice = asc.products[0].priceCents ?? asc.products[0].price;
-        const firstDescPrice = desc.products[0].priceCents ?? desc.products[0].price;
-        if (typeof firstAscPrice === 'number' && typeof firstDescPrice === 'number') {
-          expect(firstAscPrice).toBeLessThanOrEqual(firstDescPrice);
-        }
-      }
+
+    const ascCanonicalPrices: number[] = asc.products
+      .map((p: any) => p.priceCents)
+      .filter((value: any) => typeof value === 'number');
+    const descCanonicalPrices: number[] = desc.products
+      .map((p: any) => p.priceCents)
+      .filter((value: any) => typeof value === 'number');
+
+    if (ascCanonicalPrices.length >= 2) {
+      expect([...ascCanonicalPrices]).toEqual([...ascCanonicalPrices].sort((a, b) => a - b));
+    }
+    if (descCanonicalPrices.length >= 2) {
+      expect([...descCanonicalPrices]).toEqual([...descCanonicalPrices].sort((a, b) => b - a));
+    }
+    if (ascCanonicalPrices.length > 0 && descCanonicalPrices.length > 0) {
+      expect(ascCanonicalPrices[0]).toBeLessThanOrEqual(descCanonicalPrices[0]);
     }
   });
 
@@ -75,6 +86,41 @@ describe('Search Filters & Sort — API', () => {
       expect(result.products).toBeDefined();
     }
   });
+
+  test('T06: dev data includes both made-in-Canada and imported physical products', async () => {
+    const products: any[] = [];
+    let nextCursor: string | null | undefined;
+
+    for (let page = 0; page < 3 && products.length < 120; page += 1) {
+      const result = await callOk(
+        'get_products_paginated',
+        {
+          limit: 40,
+          sortBy: 'price_desc',
+          startAfter: nextCursor ?? undefined,
+        },
+        buyerToken,
+      );
+      expect(result.success).toBe(true);
+      expect(Array.isArray(result.products)).toBe(true);
+      products.push(...result.products);
+      nextCursor = result.nextCursor ?? result.next_cursor;
+      if (!nextCursor || result.products.length === 0) {
+        break;
+      }
+    }
+
+    const physicalProducts = products.filter((p: any) => !p.isDigital);
+    const canadian = physicalProducts.filter((p: any) => ['CA', 'CANADA'].includes(String(p.madeInCountry ?? '').toUpperCase()));
+    const imported = physicalProducts.filter((p: any) => {
+      const origin = String(p.madeInCountry ?? '').toUpperCase();
+      return origin.length > 0 && !['CA', 'CANADA'].includes(origin);
+    });
+
+    expect(physicalProducts.length).toBeGreaterThan(0);
+    expect(canadian.length).toBeGreaterThan(0);
+    expect(imported.length).toBeGreaterThan(0);
+  });
 });
 
 // ═══ UI-DRIVEN TESTS ═══
@@ -92,7 +138,7 @@ describe('Search Filters & Sort — UI', () => {
     await browser.close();
   });
 
-  test('T06: Sort button is visible on home page', { timeout: 60_000 }, async () => {
+  test('T07: Sort button is visible on home page', { timeout: 60_000 }, async () => {
     await browser.open('https://dev.orignagta.ca/');
     await browser.waitForFlutter();
     const snap = await browser.snapshot({ interactive: true, compact: true });
@@ -101,7 +147,7 @@ describe('Search Filters & Sort — UI', () => {
     expect(sortBtn || snap.refs.length > 0).toBeTruthy();
   });
 
-  test('T07: Sort button opens sort options sheet', { timeout: 60_000 }, async () => {
+  test('T08: Sort button opens sort options sheet', { timeout: 60_000 }, async () => {
     await browser.open('https://dev.orignagta.ca/');
     await browser.waitForFlutter();
     const snap = await browser.snapshot({ interactive: true, compact: true });
@@ -117,7 +163,7 @@ describe('Search Filters & Sort — UI', () => {
     }
   });
 
-  test('T08: Price filter button is visible on home page', { timeout: 60_000 }, async () => {
+  test('T09: Price filter button is visible on home page', { timeout: 60_000 }, async () => {
     await browser.open('https://dev.orignagta.ca/');
     await browser.waitForFlutter();
     const snap = await browser.snapshot({ interactive: true, compact: true });
@@ -125,7 +171,7 @@ describe('Search Filters & Sort — UI', () => {
     expect(filterBtn || snap.refs.length > 0).toBeTruthy();
   });
 
-  test('T09: Price filter opens dialog and apply button exists', { timeout: 60_000 }, async () => {
+  test('T10: Price filter opens dialog and apply button exists', { timeout: 60_000 }, async () => {
     await browser.open('https://dev.orignagta.ca/');
     await browser.waitForFlutter();
     // Use safeClick for atomic snapshot+click to avoid stale ref / label-text mismatch
@@ -140,7 +186,7 @@ describe('Search Filters & Sort — UI', () => {
     }
   });
 
-  test('T10: Search bar accepts input and shows results', { timeout: 60_000 }, async () => {
+  test('T11: Search bar accepts input and shows results', { timeout: 60_000 }, async () => {
     await browser.open('https://dev.orignagta.ca/');
     await browser.waitForFlutter();
     const snap = await browser.snapshot({ interactive: true, compact: true });
@@ -154,5 +200,110 @@ describe('Search Filters & Sort — UI', () => {
     } else {
       expect(snap.refs.length).toBeGreaterThan(0);
     }
+  });
+
+  test('T12: Made in Canada chip is visible and leaves home stable when toggled', { timeout: 60_000 }, async () => {
+    await browser.open('https://dev.orignagta.ca/');
+    await browser.waitForFlutter();
+    await browser.enableAccessibilityIfPresent().catch(() => false);
+
+    const snap = await browser.snapshot({ interactive: true, compact: true });
+    const canadaChip = browser.findByLabel(snap, /btn-home-canada-only/i);
+    expect(canadaChip || snap.refs.length > 0).toBeTruthy();
+
+    if (!canadaChip) return;
+
+    await browser.click(canadaChip.ref);
+    await browser.waitForChange({ text: /btn-home-canada-only|product-card-|input-home-search/i, timeout: 10_000 });
+
+    const state = parseAgentEvalJson(Bun.spawnSync(
+      ['agent-browser', 'eval', 'JSON.stringify({href:window.location.href,splash:!!document.getElementById("splash")})'],
+      {
+        env: { ...process.env, AGENT_BROWSER_ENGINE: process.env.AGENT_BROWSER_ENGINE ?? 'chrome' },
+        timeout: 5_000,
+      },
+    ).stdout.toString().trim());
+
+    expect(state?.href).toBe('https://dev.orignagta.ca/');
+    expect(state?.splash).toBe(false);
+  });
+
+  test('T13: Price descending sort leaves home stable without reloading the app shell', { timeout: 60_000 }, async () => {
+    await browser.open('https://dev.orignagta.ca/');
+    await browser.waitForFlutter();
+    await browser.enableAccessibilityIfPresent().catch(() => false);
+
+    const openedSort = await browser.safeClick(/btn-home-sort|sort/i);
+    expect(openedSort).toBe(true);
+
+    await browser.waitForChange({
+      text: /price:\s*high to low|prix.*décroiss|prix.*decroiss|most relevant|newest/i,
+      timeout: 10_000,
+    });
+
+    const selectedDescending = parseAgentEvalJson(browser.run([
+      'eval',
+      `JSON.stringify((() => {
+        const pattern = /price:\\s*high to low|prix.*décroiss|prix.*decroiss/i;
+        const nodes = Array.from(document.querySelectorAll('*'));
+        const target = nodes.find((node) => {
+          const text = [
+            node.getAttribute?.('aria-label') ?? '',
+            node.getAttribute?.('name') ?? '',
+            node.textContent ?? '',
+          ].join(' ');
+          return pattern.test(text);
+        });
+        if (!(target instanceof HTMLElement)) return false;
+        target.click();
+        return true;
+      })())`,
+    ], 5_000));
+    expect(selectedDescending).toBe(true);
+
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    await browser.waitForFlutter(10_000);
+
+    const state = parseAgentEvalJson(Bun.spawnSync(
+      ['agent-browser', 'eval', 'JSON.stringify({href:window.location.href,splash:!!document.getElementById("splash")})'],
+      {
+        env: { ...process.env, AGENT_BROWSER_ENGINE: process.env.AGENT_BROWSER_ENGINE ?? 'chrome' },
+        timeout: 5_000,
+      },
+    ).stdout.toString().trim());
+
+    expect(state?.href).toBe('https://dev.orignagta.ca/');
+    expect(state?.splash).toBe(false);
+
+    const snap = await browser.snapshot({ interactive: true, compact: true });
+    expect(browser.findByLabel(snap, /btn-home-sort|product-card-|input-home-search/i) || snap.refs.length > 0).toBeTruthy();
+  });
+
+  test('T14: Repeated fast home-feed scrolling never reloads the web shell or resurfaces splash', { timeout: 90_000 }, async () => {
+    await browser.open('https://dev.orignagta.ca/');
+    await browser.waitForFlutter();
+    await browser.enableAccessibilityIfPresent().catch(() => false);
+
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      await browser.scrollAndWait('down', 9_000);
+    }
+
+    const state = parseAgentEvalJson(Bun.spawnSync(
+      ['agent-browser', 'eval', 'JSON.stringify({href:window.location.href,splash:!!document.getElementById("splash"),title:document.title})'],
+      {
+        env: { ...process.env, AGENT_BROWSER_ENGINE: process.env.AGENT_BROWSER_ENGINE ?? 'chrome' },
+        timeout: 5_000,
+      },
+    ).stdout.toString().trim());
+
+    expect(state?.href).toBe('https://dev.orignagta.ca/');
+    expect(state?.splash).toBe(false);
+
+    const snap = await browser.snapshot({ interactive: true, compact: true });
+    const raw = (snap.raw || '').toLowerCase();
+    expect(raw.includes('un problème récurrent')).toBe(false);
+    expect(raw.includes('problem recurrent')).toBe(false);
+    expect(raw.includes('service is temporarily unavailable')).toBe(false);
+    expect(browser.findByLabel(snap, /product-card-|btn-home-sort|input-home-search|btn-home-canada-only/i) || snap.refs.length > 0).toBeTruthy();
   });
 });
