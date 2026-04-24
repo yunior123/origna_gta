@@ -107,17 +107,19 @@ struct GoogleOAuthStateClaims {
 }
 
 fn google_client_id_configured(state: &AuthState) -> bool {
-    state
-        .google_client_id
-        .as_deref()
-        .is_some_and(|value| !value.trim().is_empty())
+    state.google_client_id.as_deref().is_some_and(|value| {
+        let trimmed = value.trim();
+        !trimmed.is_empty()
+            && trimmed.contains('.')
+            && trimmed.ends_with(".apps.googleusercontent.com")
+    })
 }
 
 fn google_client_secret_configured(state: &AuthState) -> bool {
-    state
-        .google_client_secret
-        .as_deref()
-        .is_some_and(|value| !value.trim().is_empty())
+    state.google_client_secret.as_deref().is_some_and(|value| {
+        let trimmed = value.trim();
+        !trimmed.is_empty() && trimmed.starts_with("GOCSPX-")
+    })
 }
 
 fn google_web_provider_enabled(state: &AuthState) -> bool {
@@ -358,10 +360,12 @@ pub async fn register(
     // Send verification email if email service is configured
     let verification_token = jwt::issue_verification_token(&user_id, &state.jwt_keys)?;
 
-    if let Some(ref email_service) = state.email_service {
-        let _ = email_service
+    if let Some(ref email_service) = state.email_service
+        && let Err(error) = email_service
             .send_verification_email(&body.email, &verification_token, &state.base_url, "en")
-            .await;
+            .await
+    {
+        tracing::warn!(email = %body.email, %error, "Failed to send verification email");
     }
 
     // Strip password hash from response
@@ -790,12 +794,12 @@ pub async fn google_oauth_start(
     let client_id = state
         .google_client_id
         .as_deref()
-        .filter(|value| !value.trim().is_empty())
+        .filter(|_| google_client_id_configured(&state))
         .ok_or_else(|| Error::Config("Google OAuth client ID not configured".into()))?;
     let _client_secret = state
         .google_client_secret
         .as_deref()
-        .filter(|value| !value.trim().is_empty())
+        .filter(|_| google_client_secret_configured(&state))
         .ok_or_else(|| Error::Config("Google OAuth client secret not configured".into()))?;
 
     let redirect_to = validate_google_redirect_target(&state, &query.redirect_to)?;
@@ -903,6 +907,7 @@ pub async fn google_sign_in(
     let client_id = state
         .google_client_id
         .as_deref()
+        .filter(|_| google_client_id_configured(&state))
         .ok_or_else(|| Error::Config("Google OAuth not configured".into()))?;
 
     let user_info = oauth::verify_google_id_token(&body.id_token, client_id).await?;
@@ -1115,7 +1120,7 @@ pub async fn forgot_password(
     let users = state
         .db
         .query_bind(
-            "SELECT id FROM users WHERE email = $email",
+            "SELECT id, data->>'email' AS email, data->>'preferredLanguage' AS \"preferredLanguage\" FROM users WHERE email = $email",
             json!({ "email": body.email }),
         )
         .await?;
@@ -1156,9 +1161,12 @@ pub async fn forgot_password(
     if let Some(ref email_service) = state.email_service {
         let email = user["email"].as_str().unwrap_or_default();
         let lang = user["preferredLanguage"].as_str().unwrap_or("en");
-        let _ = email_service
+        if let Err(error) = email_service
             .send_reset_email(email, &reset_token, &state.base_url, lang)
-            .await;
+            .await
+        {
+            tracing::warn!(email = %email, %error, "Failed to send reset email");
+        }
         Ok(Json(json!({
             "message": "If the email exists, a reset link has been sent",
         })))
@@ -1381,9 +1389,12 @@ pub async fn send_verification(
 
     if let Some(ref email_service) = state.email_service {
         let lang = user["preferredLanguage"].as_str().unwrap_or("en");
-        let _ = email_service
+        if let Err(error) = email_service
             .send_verification_email(&body.email, &verification_token, &state.base_url, lang)
-            .await;
+            .await
+        {
+            tracing::warn!(email = %body.email, %error, "Failed to resend verification email");
+        }
     }
 
     Ok(Json(
@@ -3097,7 +3108,7 @@ mod tests {
             jwt_keys: JwtKeys::from_secret("test-secret"),
             access_ttl: 900,
             refresh_ttl: 604800,
-            google_client_id: Some("google-client-id".into()),
+            google_client_id: Some("test-client.apps.googleusercontent.com".into()),
             google_client_secret: None,
             apple_team_id: None,
             apple_key_id: None,
@@ -3124,14 +3135,45 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_auth_providers_rejects_invalid_google_client_id_format() {
+        let state = AuthState {
+            db: ob_database::DatabaseClient::new_mem().await,
+            jwt_keys: JwtKeys::from_secret("test-secret"),
+            access_ttl: 900,
+            refresh_ttl: 604800,
+            google_client_id: Some("a1f5ad754-779c-4c45-b6f2-ac185df13e19".into()),
+            google_client_secret: Some("GOCSPX-test-secret".into()),
+            apple_team_id: None,
+            apple_key_id: None,
+            apple_service_id: None,
+            apple_private_key: None,
+            oidc_issuer_url: None,
+            oidc_client_id: None,
+            email_service: None,
+            require_email_verification: false,
+            totp_encryption_key: None,
+            base_url: "https://example.com".into(),
+            oauth_state_nonces: Arc::new(dashmap::DashMap::new()),
+            test_mode: std::env::var("OB_TEST_MODE").unwrap_or_default() == "1",
+            turnstile_secret_key: None,
+            http_client: reqwest::Client::new(),
+        };
+
+        let Json(response) = auth_providers(State(state)).await;
+        assert!(!response.google.enabled);
+        assert!(!response.google.client_id_configured);
+        assert!(response.google.client_secret_configured);
+    }
+
+    #[tokio::test]
     async fn test_google_oauth_start_rejects_unapproved_redirect_origin() {
         let state = AuthState {
             db: ob_database::DatabaseClient::new_mem().await,
             jwt_keys: JwtKeys::from_secret("test-secret"),
             access_ttl: 900,
             refresh_ttl: 604800,
-            google_client_id: Some("google-client-id".into()),
-            google_client_secret: Some("google-secret".into()),
+            google_client_id: Some("test-client.apps.googleusercontent.com".into()),
+            google_client_secret: Some("GOCSPX-test-secret".into()),
             apple_team_id: None,
             apple_key_id: None,
             apple_service_id: None,

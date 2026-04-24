@@ -410,6 +410,7 @@ abstract final class Collections {
   static const refunds = 'refunds';
   static const webhookLogs = 'webhook_logs';
   static const webhookEvents = 'webhook_events';
+  static const errorEvents = 'error_events';
   static const securityAlerts = 'security_alerts';
   static const rateLimits = 'rate_limits';
   static const config = 'config';
@@ -1185,6 +1186,16 @@ abstract final class Fields {
   static const reversalErrors = 'reversalErrors';
   static const payoutId = 'payoutId';
   static const errorCode = 'errorCode';
+  static const internalEventId = 'internalEventId';
+  static const stackTrace = 'stackTrace';
+  static const environment = 'environment';
+  static const source = 'source';
+  static const routeOrAction = 'routeOrAction';
+  static const internalDetails = 'internalDetails';
+  static const userFacingMessage = 'userFacingMessage';
+  static const metadata = 'metadata';
+  static const sentryEventId = 'sentryEventId';
+  static const fingerprint = 'fingerprint';
   static const targetUserId = 'targetUserId';
   static const oldRoles = 'oldRoles';
   static const newRoles = 'new_roles';
@@ -1221,8 +1232,16 @@ abstract final class Fields {
   static const publicUrl = 'publicUrl';
   static const paths = 'paths';
   static const ttlSecs = 'ttl_secs';
+  // Storage API response keys
+  static const urls = 'urls';
+  static const uploadUrlPath = 'upload_url';
+  static const storagePath = 'path';
 
-  // === ALTERNATE FIELD NAMES (used in database deserialization fallbacks) ===
+  // === ALTERNATE DELIVERY OPTION SCHEMA FIELDS (legacy speed/isEnabled/price) ===
+  static const isEnabled = 'isEnabled';
+  static const speed = 'speed';
+
+  // === ALTERNATE FIELD NAMES
   /// Alternate name for [confirmedByBuyer]
   static const buyerConfirmed = 'buyerConfirmed';
 
@@ -2822,6 +2841,16 @@ abstract final class ApiEndpoints {
 
   /// Route matrix (distance calculation) — POST body: { sources, targets }
   static const geocodeRouteMatrix = '/api/geocode/route-matrix';
+
+  // --- Storage ---
+  static const storagePresignUpload = '/storage/presign/upload';
+  static const storageBatchDelete = '/storage/batch-delete';
+
+  // --- Auth Providers ---
+  static const authProviders = '/auth/providers';
+
+  // --- Bulk ---
+  static const productsBulk = '/api/products/bulk';
 }
 
 // =============================================================================
@@ -2852,6 +2881,10 @@ abstract final class DeepLinkParams {
   // --- Mode values ---
   /// Value of [mode] when the link is a password-reset action
   static const modeResetPassword = 'resetPassword';
+
+  // --- OAuth callback fragment keys (web hash fragment) ---
+  static const obAccessToken = 'ob_access_token';
+  static const obRefreshToken = 'ob_refresh_token';
 }
 
 abstract final class FeatureFlags {

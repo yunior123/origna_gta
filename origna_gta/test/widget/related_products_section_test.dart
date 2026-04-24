@@ -6,7 +6,6 @@ import 'package:origna_gta/features/products/products_provider.dart';
 import 'package:origna_gta/models/generated/product_models.dart';
 import 'package:origna_gta/screens/widgets/product_detail/related_products_section.dart';
 
-
 import '../test_utils.dart';
 
 void main() {
@@ -125,6 +124,16 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(SimilarProductsSection), findsOneWidget);
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is Text &&
+              ((widget.data?.contains('Something went wrong') ?? false) ||
+                  (widget.data?.contains('errors.something_went_wrong') ??
+                      false)),
+        ),
+        findsOneWidget,
+      );
     });
   });
 }

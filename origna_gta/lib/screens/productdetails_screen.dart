@@ -726,6 +726,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
       );
     }
     final deliveryInfo = product.deliveryInfo;
+    final exactDays = deliveryInfo.minDays == deliveryInfo.maxDays
+        ? deliveryInfo.minDays
+        : null;
     if (deliveryInfo.isInternational || deliveryInfo.maxDays >= 28) {
       return DeliveryChip(
         icon: Icons.flight_outlined,
@@ -735,12 +738,16 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     }
     return DeliveryChip(
       icon: Icons.local_shipping_outlined,
-      label: 'product.delivery_business_days'.tr(
-        namedArgs: {
-          'min': deliveryInfo.minDays.toString(),
-          'max': deliveryInfo.maxDays.toString(),
-        },
-      ),
+      label: exactDays != null
+          ? 'product.delivery_business_days_exact'.tr(
+              namedArgs: {'days': exactDays.toString()},
+            )
+          : 'product.delivery_business_days'.tr(
+              namedArgs: {
+                'min': deliveryInfo.minDays.toString(),
+                'max': deliveryInfo.maxDays.toString(),
+              },
+            ),
       color: DesignTokens.success,
     );
   }

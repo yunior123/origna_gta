@@ -288,18 +288,26 @@ class HomeViewModel extends StateNotifier<HomeState> {
       final newProducts = result.products
           .where((p) => !existingIds.contains(p.productId))
           .toList();
+      final didCursorAdvance =
+          isInitialLoad || result.lastDocumentId != state.lastDocumentId;
+      final shouldStopPaginating =
+          !isInitialLoad &&
+          (!didCursorAdvance ||
+              (newProducts.isEmpty && result.products.isNotEmpty));
 
       state = state.copyWith(
         products: isInitialLoad
             ? result.products
             : [...state.products, ...newProducts],
-        lastDocumentId: result.lastDocumentId ?? state.lastDocumentId,
-        hasMore: effectiveHasMore,
+        lastDocumentId: isInitialLoad
+            ? result.lastDocumentId
+            : (result.lastDocumentId ?? state.lastDocumentId),
+        hasMore: shouldStopPaginating ? false : effectiveHasMore,
         isLoading: false,
         isLoadingMore: false,
       );
-    } catch (e) {
-      AppLogger.d('❌ Error loading products: $e', tag: 'home');
+    } catch (e, st) {
+      AppError.log(e, stackTrace: st, context: 'home.loadProducts');
       if (!mounted) return;
       state = state.copyWith(
         isLoading: false,
@@ -308,7 +316,6 @@ class HomeViewModel extends StateNotifier<HomeState> {
           e,
           'home.error_loading_products'.tr(),
         ),
-        hasMore: state.products.isEmpty ? false : state.hasMore,
       );
     }
   }

@@ -81,14 +81,72 @@ import 'package:origna_gta/utils/deferred_widget.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
-import 'package:origna_gta/utils/env_config.dart';
-import 'package:origna_gta/widgets/env_preview_banner.dart';
 import 'package:origna_gta/services/app_update_service.dart';
 import 'package:origna_gta/widgets/update_required_dialog.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:origna_gta/widgets/cookie_consent_banner.dart';
 
 final _validResetPasswordOobCode = RegExp(r'^[A-Za-z0-9\-_]{10,512}$');
+
+Map<String, String> extractWebOAuthCallbackParams(Uri uri) {
+  if (uri.fragment.isNotEmpty) {
+    return Uri.splitQueryString(uri.fragment);
+  }
+
+  final query = uri.queryParameters;
+  if (query.containsKey(DeepLinkParams.obAccessToken) ||
+      query.containsKey(DeepLinkParams.obRefreshToken)) {
+    return query.map((key, value) => MapEntry(key, value));
+  }
+
+  return const <String, String>{};
+}
+
+String cleanedWebOAuthCallbackUrl(Uri uri) {
+  final filteredQuery = Map<String, String>.from(uri.queryParameters)
+    ..remove(DeepLinkParams.obAccessToken)
+    ..remove(DeepLinkParams.obRefreshToken)
+    ..remove('ob_provider')
+    ..remove('ob_error')
+    ..remove('ob_error_description');
+
+  final hasDefaultPort =
+      (uri.scheme == 'https' && uri.port == 443) ||
+      (uri.scheme == 'http' && uri.port == 80);
+
+  return Uri(
+    scheme: uri.scheme,
+    userInfo: uri.userInfo,
+    host: uri.host,
+    port: uri.hasPort && !hasDefaultPort ? uri.port : null,
+    path: uri.path,
+    queryParameters: filteredQuery.isEmpty ? null : filteredQuery,
+  ).toString();
+}
+
+String resolvedWebOAuthCallbackRoute(Uri uri) {
+  final cleanedUri = Uri.parse(cleanedWebOAuthCallbackUrl(uri));
+  if (cleanedUri.path == AppRoutes.login) {
+    final redirect = cleanedUri.queryParameters['redirect'];
+    if (redirect != null && redirect.isNotEmpty) {
+      final redirectUri = Uri.parse(redirect);
+      return Uri(
+        path: redirectUri.path.isEmpty ? AppRoutes.home : redirectUri.path,
+        queryParameters: redirectUri.queryParameters.isEmpty
+            ? null
+            : redirectUri.queryParameters,
+      ).toString();
+    }
+    return AppRoutes.home;
+  }
+
+  return Uri(
+    path: cleanedUri.path.isEmpty ? AppRoutes.home : cleanedUri.path,
+    queryParameters: cleanedUri.queryParameters.isEmpty
+        ? null
+        : cleanedUri.queryParameters,
+  ).toString();
+}
 
 GoRoute _appRoute({
   required String path,
@@ -540,7 +598,7 @@ class _OrignaAppState extends ConsumerState<OrignaApp>
           routerConfig: _router,
           builder: (context, child) => Stack(
             children: [
-              EnvPreviewBanner(child: child ?? const SizedBox.shrink()),
+              child ?? const SizedBox.shrink(),
               const Align(
                 alignment: Alignment.bottomCenter,
                 child: CookieConsentBanner(),
@@ -560,7 +618,7 @@ class _OrignaAppState extends ConsumerState<OrignaApp>
             physics: const ClampingScrollPhysics(),
           ),
           onGenerateTitle: (ctx) => 'app.title'.tr(),
-          debugShowCheckedModeBanner: !kReleaseMode && !envConfig.isProduction,
+          debugShowCheckedModeBanner: false,
           themeMode: themeMode,
           // ── Light Theme ──────────────────────────────────────────────────────
           theme: ThemeData(
@@ -933,10 +991,8 @@ class _OrignaAppState extends ConsumerState<OrignaApp>
     if (!kIsWeb) return;
 
     final uri = Uri.base;
-    if (uri.fragment.isEmpty) return;
-
-    final fragment = Uri.splitQueryString(uri.fragment);
-    final accessToken = fragment['ob_access_token'];
+    final callbackParams = extractWebOAuthCallbackParams(uri);
+    final accessToken = callbackParams[DeepLinkParams.obAccessToken];
     if (accessToken == null || accessToken.isEmpty) return;
 
     ref
@@ -944,11 +1000,16 @@ class _OrignaAppState extends ConsumerState<OrignaApp>
         .auth
         .restoreSession(
           accessToken: accessToken,
-          refreshToken: fragment['ob_refresh_token'],
+          refreshToken: callbackParams[DeepLinkParams.obRefreshToken],
         );
 
-    final cleaned = uri.replace(fragment: '').toString();
-    clearWebAuthCallbackFragment(cleaned);
+    final cleanedUrl = cleanedWebOAuthCallbackUrl(uri);
+    final cleanedRoute = resolvedWebOAuthCallbackRoute(uri);
+    clearWebAuthCallbackFragment(cleanedUrl);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _router.go(cleanedRoute);
+    });
   }
 
   void _handleDeepLink(Uri uri) {

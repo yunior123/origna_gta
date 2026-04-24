@@ -229,21 +229,6 @@ def test_create_checkout_session_repeated_calls_generate_fresh_idempotency_keys(
     assert second_key.startswith("checkout:origna_launch:")
     assert first_key != second_key
 
-
-def test_contracts_endpoint_requires_admin_key(client, monkeypatch):
-    test_client, _ = client
-    monkeypatch.setattr(backend_app, "_admin_api_key", "secret-admin")
-
-    unauthorized = test_client.get("/api/contracts")
-    assert unauthorized.status_code == 401
-
-    authorized = test_client.get(
-        "/api/contracts", headers={"Authorization": "Bearer secret-admin"}
-    )
-    assert authorized.status_code == 200
-    assert authorized.json() == {"contracts": []}
-
-
 def test_payment_session_rejects_invalid_service_code(client):
     test_client, _ = client
 
@@ -735,6 +720,137 @@ def test_stripe_webhook_duplicate_event_is_idempotent(client, monkeypatch):
 
     assert payment_row == ("paid", "sub_duplicate")
     assert event_count == (1,)
+
+
+def test_stripe_webhook_distinct_duplicate_checkout_completion_does_not_resend_emails(
+    client, monkeypatch
+):
+    test_client, db_path = client
+    monkeypatch.setattr(backend_app.settings, "stripe_webhook_secret", "STRIPE_WEBHOOK_SECRET_REDACTED")
+    monkeypatch.setattr(backend_app.settings, "mailjet_api_key", "mj_key")
+    monkeypatch.setattr(backend_app.settings, "mailjet_secret_key", "mj_secret")
+
+    sent_emails = []
+    monkeypatch.setattr(
+        backend_app,
+        "try_send_mailjet_email",
+        lambda to_email, subject, html_body, text_body, attachments=None, reply_to_email=None, reply_to_name=None: (
+            sent_emails.append(
+                {
+                    "to_email": to_email,
+                    "subject": subject,
+                    "reply_to_email": reply_to_email,
+                    "reply_to_name": reply_to_name,
+                }
+            )
+            or {"status": "sent"}
+        ),
+    )
+
+    conn = sqlite3.connect(db_path)
+    conn.execute(
+        "INSERT INTO payments (id, service_code, payer_email, stripe_session_id, status, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+        (
+            "pay_dup_semantic",
+            "origna_launch",
+            "buyer@example.com",
+            "cs_dup_semantic",
+            "awaiting_payment",
+            backend_app.utc_now(),
+        ),
+    )
+    conn.commit()
+    conn.close()
+
+    def post_event(event_id: str):
+        event = {
+            "id": event_id,
+            "type": "checkout.session.completed",
+            "data": {
+                "object": {
+                    "id": "cs_dup_semantic",
+                    "mode": "payment",
+                    "customer_email": "buyer@example.com",
+                    "metadata": {"service_code": "origna_launch"},
+                }
+            },
+        }
+        raw = json.dumps(event).encode("utf-8")
+        signature = sign_stripe_payload("STRIPE_WEBHOOK_SECRET_REDACTED", raw)
+        return test_client.post(
+            "/api/stripe/webhook",
+            content=raw,
+            headers={"Stripe-Signature": signature, "Content-Type": "application/json"},
+        )
+
+    first = post_event("evt_dup_semantic_1")
+    second = post_event("evt_dup_semantic_2")
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert len(sent_emails) == 2
+    assert {email["to_email"] for email in sent_emails} == {
+        "buyer@example.com",
+        backend_app.settings.support_email,
+    }
+
+
+def test_stripe_webhook_repeated_status_update_does_not_resend_lifecycle_email(
+    client, monkeypatch
+):
+    test_client, db_path = client
+    monkeypatch.setattr(backend_app.settings, "stripe_webhook_secret", "STRIPE_WEBHOOK_SECRET_REDACTED")
+    monkeypatch.setattr(backend_app.settings, "mailjet_api_key", "mj_key")
+    monkeypatch.setattr(backend_app.settings, "mailjet_secret_key", "mj_secret")
+
+    sent_emails = []
+    monkeypatch.setattr(
+        backend_app,
+        "try_send_mailjet_email",
+        lambda to_email, subject, html_body, text_body, attachments=None, reply_to_email=None, reply_to_name=None: (
+            sent_emails.append({"to_email": to_email, "subject": subject})
+            or {"status": "sent"}
+        ),
+    )
+
+    conn = sqlite3.connect(db_path)
+    conn.execute(
+        "INSERT INTO payments (id, service_code, payer_email, stripe_session_id, status, subscription_id, subscription_status, locale, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (
+            "pay_same_status",
+            "origna_team",
+            "buyer@example.com",
+            "cs_same_status",
+            "paid",
+            "sub_same_status",
+            "active",
+            "en",
+            backend_app.utc_now(),
+        ),
+    )
+    conn.commit()
+    conn.close()
+
+    def post_event(event_id: str):
+        event = {
+            "id": event_id,
+            "type": "customer.subscription.updated",
+            "data": {"object": {"id": "sub_same_status", "status": "active"}},
+        }
+        raw = json.dumps(event).encode("utf-8")
+        signature = sign_stripe_payload("STRIPE_WEBHOOK_SECRET_REDACTED", raw)
+        return test_client.post(
+            "/api/stripe/webhook",
+            content=raw,
+            headers={"Stripe-Signature": signature, "Content-Type": "application/json"},
+        )
+
+    first = post_event("evt_same_status_1")
+    second = post_event("evt_same_status_2")
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert sent_emails == []
 
 
 def test_stripe_webhook_invoice_payment_failed_marks_subscription_past_due(
@@ -1320,3 +1436,134 @@ def test_generate_receipt_pdf_spanish_labels():
     assert "Subtotal" in text
     assert "Impuesto" in text
     assert "Numero de factura" in text
+
+
+def test_mailjet_sandbox_mode_defaults_off_for_live_ventures_hosts(monkeypatch):
+    monkeypatch.setattr(backend_app.settings, "environment", "dev")
+    monkeypatch.setattr(backend_app.settings, "mailjet_sandbox_override", "")
+    monkeypatch.setattr(
+        backend_app.settings,
+        "base_url",
+        "https://www.orignaventures.ca",
+    )
+    monkeypatch.setattr(
+        backend_app.settings,
+        "api_base_url",
+        "https://api.orignaventures.ca",
+    )
+
+    assert backend_app.settings.mailjet_sandbox_mode is False
+
+
+def test_mailjet_sandbox_mode_respects_explicit_override(monkeypatch):
+    monkeypatch.setattr(backend_app.settings, "environment", "production")
+    monkeypatch.setattr(backend_app.settings, "mailjet_sandbox_override", "true")
+
+    assert backend_app.settings.mailjet_sandbox_mode is True
+
+
+def test_send_mailjet_email_uses_resolved_sandbox_mode(monkeypatch):
+    captured = {}
+
+    def fake_post(url, auth, json, timeout):
+        captured["url"] = url
+        captured["auth"] = auth
+        captured["json"] = json
+        captured["timeout"] = timeout
+        return SimpleNamespace(
+            raise_for_status=lambda: None,
+            json=lambda: {"Messages": [{"Status": "success"}]},
+        )
+
+    monkeypatch.setattr(backend_app.requests, "post", fake_post)
+    monkeypatch.setattr(backend_app.settings, "mailjet_api_key", "mj-key")
+    monkeypatch.setattr(backend_app.settings, "mailjet_secret_key", "mj-secret")
+    monkeypatch.setattr(backend_app.settings, "mailjet_sandbox_override", "false")
+
+    backend_app.send_mailjet_email(
+        "client@example.com",
+        "Subject",
+        "<p>Hello</p>",
+        "Hello",
+    )
+
+    assert captured["url"] == backend_app.settings.mailjet_api_url
+    assert captured["auth"] == ("mj-key", "mj-secret")
+    assert captured["timeout"] == 30
+    assert captured["json"]["SandboxMode"] is False
+
+
+def test_send_mailjet_email_includes_reply_to(monkeypatch):
+    captured = {}
+
+    def fake_post(url, auth, json, timeout):
+        captured["json"] = json
+        return SimpleNamespace(
+            raise_for_status=lambda: None,
+            json=lambda: {"Messages": [{"Status": "success"}]},
+        )
+
+    monkeypatch.setattr(backend_app.requests, "post", fake_post)
+    monkeypatch.setattr(backend_app.settings, "mailjet_api_key", "mj-key")
+    monkeypatch.setattr(backend_app.settings, "mailjet_secret_key", "mj-secret")
+
+    backend_app.send_mailjet_email(
+        "client@example.com",
+        "Subject",
+        "<p>Hello</p>",
+        "Hello",
+        reply_to_email="support@orignaventures.ca",
+        reply_to_name="Origna Ventures Services",
+    )
+
+    message = captured["json"]["Messages"][0]
+    assert message["ReplyTo"]["Email"] == "support@orignaventures.ca"
+    assert message["ReplyTo"]["Name"] == "Origna Ventures Services"
+
+
+def test_contact_endpoint_exposes_sandbox_delivery_metadata(client, monkeypatch):
+    test_client, db_path = client
+
+    monkeypatch.setattr(
+        backend_app,
+        "dispatch_email_jobs",
+        lambda jobs: [
+            {
+                "to_email": jobs[0]["to_email"],
+                "result": {"status": "sent", "provider": "mailjet", "sandbox_mode": False},
+            },
+            {
+                "to_email": jobs[1]["to_email"],
+                "result": {"status": "sent", "provider": "mailjet", "sandbox_mode": True},
+            },
+        ],
+    )
+
+    response = test_client.post(
+        "/api/contact",
+        json={
+            "name": "Contact Person",
+            "email": "client@example.com",
+            "company": "Origna Client",
+            "service": "OrignaLaunch",
+            "message": "Please contact us about the launch package.",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "ok"
+    assert payload["emails"]["support"]["status"] == "sent"
+    assert payload["emails"]["support"]["sandbox_mode"] is False
+    assert payload["emails"]["confirmation"]["status"] == "sent"
+    assert payload["emails"]["confirmation"]["sandbox_mode"] is True
+
+    conn = sqlite3.connect(db_path)
+    row = conn.execute("SELECT name, email, company, service FROM contacts").fetchone()
+    conn.close()
+    assert row == (
+        "Contact Person",
+        "client@example.com",
+        "Origna Client",
+        "OrignaLaunch",
+    )

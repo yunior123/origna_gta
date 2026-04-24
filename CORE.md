@@ -33,8 +33,14 @@ Rules:
 
 ### 2) Spanish audit closeout
 - [ ] Audit Spanish translations across the app.
-- Current verified state: **NOT STARTED** - Spanish translations exist in repo but no verified progress has been committed. All `product.*`, `checkout.*`, `auth.*`, `seller.*`, `admin.*`, `specs.*`, `orders.*` remain untranslated at 2,307 identical strings.
-- Verified evidence on record: None - pending implementation and commit.
+- Current verified state: **IN PROGRESS** - high-signal buyer/seller/auth/subscription strings were translated on 2026-04-22, but the app is still not fully audited end-to-end.
+- Verified evidence already on record:
+  - `STATE.md` items `76` and `77`
+  - untranslated-value count dropped from `2307` to `1723`
+  - current largest remaining buckets: `checkout` (`239`), `product` (`218`), `admin` (`213`), `specs` (`131`), `orders` (`114`), `seller_integration` (`81`)
+- Still required before close:
+  - screen-by-screen Spanish QA across the remaining high-count modules
+  - regression coverage for any newly translated high-risk checkout/order/auth flows
 
 ### 3) Payment system closeout
 - [ ] Test all payment-related views and features in OrignaVentures and OrignaGTA, including backend flows.
@@ -51,6 +57,7 @@ Rules:
     - full repo-wide payment audit across OrignaGTA + OrignaVentures
     - close the flaky mixed mobile live suite behavior
     - complete fresh end-to-end payment verification for the remaining surfaces
+    - re-verify OrignaGTA order email / receipt / status flow with current seeded data instead of relying on older passing slices alone
 
 ### 4) Receipt/invoice closeout
 - [ ] Send invoice receipt to clients after buying tiers, attached PDF included similar to OrignaGTA; email should be in English or French depending on user language or both.
@@ -88,6 +95,7 @@ Rules:
 - Still required before close:
   - broader SQLite write/load/concurrency stress testing under real concurrent load
   - remaining Stripe-doc alignment across repo
+  - fresh live confirmation that the contact form still sends both support and client-facing emails
 
 ### 6) Payment hardening follow-up audits
 - [ ] Audit payment system in entire repo as per latest Stripe docs.
@@ -102,6 +110,26 @@ Rules:
 - Still required:
   - OrignaGTA Flutter frontend magic string audit (schema_constants.dart coverage gaps)
   - full repo-wide payment audit across OrignaGTA + OrignaVentures
+
+### 7) Search + auth recovery closeout
+- [ ] Restore current dev/runtime search and auth paths before broader polish work.
+- Current verified state: **IN PROGRESS** — dev catalog still has active products in all 21 storefront categories, but two items stay explicitly open until re-verified live:
+  - Google web auth is intentionally marked disabled until a real Google OAuth web client ID (`*.apps.googleusercontent.com`) is installed on the server.
+  - home cart badge/add-to-cart immediate refresh remains a red live-audit item until the optimistic badge update is re-verified.
+- Still required before full close:
+  - re-verify dev search/category click flow after the latest backend query fix
+  - install real Google web OAuth server config, then re-enable and verify Google sign-in/up
+  - close the home cart badge/add-to-cart immediate refresh live audit
+  - broader staging/production parity verification is still pending
+
+### 7B) Error observability hardening
+- [x] Add an internal error-event path that links user-facing codes to support/debug context.
+- Current verified state: **COMPLETED** — `AppError.log()` now writes to Sentry and best-effort persists structured internal events to OrignaBase `error_events` with `SE-YYYYMMDD-XXXXXX` support IDs, `ORIGNA-*` user-facing code, stack trace, environment, user context, and metadata.
+
+### 8) Delivery messaging closeout
+- [x] Replace stale shopper delivery messaging and re-verify country coverage.
+- Current verified state: **COMPLETED** — `DeliveryRegion` enum centralizes Canada/Cuba/international detection; `_buildEstimatedDelivery()` shows "4-8 weeks or longer" for international/28+ days; `_buildSellerPackage()` shows Cuba flag + "Delivery to Canada & Cuba"; order-success screen uses policy copy for non-local physical orders.
+- Verified evidence: `flutter test test/unit/delivery_region_test.dart test/widget/ordersuccess_screen_test.dart` → passed; `flutter analyze` → passed on affected files.
 
 ## P1 — Product, design, and release work
 

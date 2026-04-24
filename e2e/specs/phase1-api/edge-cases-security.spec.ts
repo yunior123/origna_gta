@@ -20,6 +20,7 @@ import {
   callCallable,
   callExpectError,
   writeDoc,
+  deleteDoc,
   buildCheckoutPayload,
   getTestProduct,
   ensureTwoSellerProducts,
@@ -36,6 +37,8 @@ const BUYER_EMAIL = TEST_ACCOUNTS.BUYER_EMAIL;
 const SELLER_EMAIL = TEST_ACCOUNTS.SELLER_EMAIL;
 const ADMIN_EMAIL = TEST_ACCOUNTS.ADMIN_EMAIL;
 const ADMIN_PASS = TEST_ACCOUNTS.ADMIN_PASS;
+const VALID_TEST_IMAGE_URL =
+  'https://pub-f9698d0f50d146bcac0e2dc9eb09de57.r2.dev/dev/products/samples/electronics-1.jpg';
 
 /** Build a raw checkout payload without reading from SurrealDB (for negative tests). */
 function rawCheckoutPayload(buyerUid: string, productId: string, quantity: number, sellerId = TEST_UIDS.SELLER) {
@@ -132,22 +135,26 @@ describe('2. Quantity Validation', () => {
       lifecycleStatus: 'active',
       stockQuantity: liveStock,
       categoryId: 1,
-      imageUrls: [],
+      imageUrls: [VALID_TEST_IMAGE_URL],
       keywords: [],
       rating: 0,
     }, adminAuth.idToken);
 
-    // Request exactly one more than available
-    const excessQty = liveStock + 1;
+    try {
+      // Request exactly one more than available
+      const excessQty = liveStock + 1;
 
-    const { data } = await buildCheckoutPayload(buyerAuth.localId, productId, excessQty, buyerAuth.idToken);
-    data.items[0].quantity = excessQty;
-    data.subtotalCents = Math.round(10.00 * excessQty * 100);
+      const { data } = await buildCheckoutPayload(buyerAuth.localId, productId, excessQty, buyerAuth.idToken);
+      data.items[0].quantity = excessQty;
+      data.subtotalCents = Math.round(10.00 * excessQty * 100);
 
-    const error = await callExpectError('create_checkout_session', data, buyerAuth.idToken);
-    // Backend: "resource-exhausted" (stock) or "invalid-argument" (qty limit) — both correct
-    // May also return not-found if seeded product isn't visible
-    expect(['resource-exhausted', 'invalid-argument', 'not-found']).toContain(error.code);
+      const error = await callExpectError('create_checkout_session', data, buyerAuth.idToken);
+      // Backend: "resource-exhausted" (stock) or "invalid-argument" (qty limit) — both correct
+      // May also return not-found if seeded product isn't visible
+      expect(['resource-exhausted', 'invalid-argument', 'not-found']).toContain(error.code);
+    } finally {
+      await deleteDoc(`products/${productId}`, adminAuth.idToken).catch(() => {});
+    }
   });
 
   test('Checkout rejected for quantity = 0', { timeout: 60_000 }, async () => {

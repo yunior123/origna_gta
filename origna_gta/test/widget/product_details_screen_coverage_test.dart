@@ -320,6 +320,7 @@ void main() {
 
     testWidgets('renders international delivery disclaimer', (tester) async {
       final intlProduct = baseProduct.copyWith(
+        shipFromCountry: 'China',
         supplier: const SupplierInfo(
           type: SupplierTypeValues.aliexpress,
           hasTracking: true,
@@ -338,7 +339,7 @@ void main() {
       await tester.pump(const Duration(seconds: 1));
 
       expect(find.byIcon(Icons.public_rounded), findsOneWidget);
-      expect(find.text('China'), findsOneWidget);
+      expect(find.textContaining('China'), findsOneWidget);
     });
 
     testWidgets('shows video playback button when video present', (

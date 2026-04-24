@@ -237,19 +237,17 @@ async fn apply_coupon(
     }
 
     // Per-user usage check
-    let coupon_id = code.clone();
-    let user_usage_query = format!(
-        "SELECT count() AS count FROM {} WHERE couponId = $coupon_id AND userId = $user_id GROUP ALL",
-        collections::COUPON_USES,
-    );
+    let coupon_id = ob_core::escape_sql_string(&code);
+    let escaped_user_id = ob_core::escape_sql_string(&user_id);
     let user_usage: Vec<serde_json::Value> = state
         .db
-        .query_bind_value(
-            &user_usage_query,
-            serde_json::json!({
-                "coupon_id": coupon_id,
-                "user_id": user_id,
-            }),
+        .query_raw(
+            &format!(
+                "SELECT COUNT(*) AS count FROM {} WHERE COALESCE(NULLIF(data->>'couponId', ''), data->>'coupon_id') = '{}' AND COALESCE(NULLIF(data->>'userId', ''), data->>'user_id') = '{}'",
+                collections::COUPON_USES,
+                coupon_id,
+                escaped_user_id,
+            ),
         )
         .await
         .unwrap_or_default();
@@ -1721,6 +1719,59 @@ mod tests {
                     "couponId": &code,
                     "userId": &user_id,
                     "orderId": "ord_001",
+                }),
+            )
+            .await
+            .unwrap();
+
+        let err = apply_coupon(
+            State(state),
+            auth(&user_id, "user"),
+            Json(ApplyCouponRequest {
+                code: code.clone(),
+                order_subtotal_cents: 5_000,
+                seller_ids: None,
+                user_id: user_id.clone(),
+            }),
+        )
+        .await
+        .unwrap_err();
+
+        assert!(err.to_string().contains("maximum uses for this coupon"));
+    }
+
+    #[tokio::test]
+    async fn test_apply_coupon_rejects_when_user_reaches_per_user_limit_with_snake_case_usage_keys()
+    {
+        let state = setup_state().await;
+        let user_id = uuid::Uuid::new_v4().to_string();
+        let code = format!("USX{}", &uuid::Uuid::new_v4().to_string()[..5]).to_uppercase();
+        state
+            .db
+            .upsert_document(
+                collections::COUPONS,
+                &code,
+                json!({
+                    "isActive": true,
+                    fields::COUPON_TYPE: "percentage",
+                    fields::DISCOUNT_VALUE: 10.0,
+                    fields::MAX_USES: 10,
+                    fields::USED_COUNT: 1,
+                    "maxUsesPerUser": 1,
+                }),
+            )
+            .await
+            .unwrap();
+        let use_id = uuid::Uuid::new_v4().to_string();
+        state
+            .db
+            .upsert_document(
+                collections::COUPON_USES,
+                &use_id,
+                json!({
+                    "coupon_id": &code,
+                    "user_id": &user_id,
+                    "order_id": "ord_001",
                 }),
             )
             .await

@@ -107,7 +107,7 @@ extension _AddProductSpecsSection on _AddProductScreenState {
                     child: Tooltip(
                       message: 'input-add-product-spec-key-$index',
                       child: TextFormField(
-                        initialValue: spec['key'],
+                        initialValue: spec[Fields.specKey],
                         decoration: InputDecoration(
                           labelText: 'Key',
                           labelStyle: TextStyle(
@@ -132,7 +132,7 @@ extension _AddProductSpecsSection on _AddProductScreenState {
                         ),
                         style: TextStyle(color: inputTextColor, fontSize: 14),
                         onChanged: (v) =>
-                            viewModel.updateSpec(index, v, spec['value'] ?? ''),
+                            viewModel.updateSpec(index, v, spec[Fields.specValue] ?? ''),
                       ),
                     ),
                   ),
@@ -141,7 +141,7 @@ extension _AddProductSpecsSection on _AddProductScreenState {
                     child: Tooltip(
                       message: 'input-add-product-spec-value-$index',
                       child: TextFormField(
-                        initialValue: spec['value'],
+                        initialValue: spec[Fields.specValue],
                         decoration: InputDecoration(
                           labelText: 'Value',
                           labelStyle: TextStyle(
@@ -166,7 +166,7 @@ extension _AddProductSpecsSection on _AddProductScreenState {
                         ),
                         style: TextStyle(color: inputTextColor, fontSize: 14),
                         onChanged: (v) =>
-                            viewModel.updateSpec(index, spec['key'] ?? '', v),
+                            viewModel.updateSpec(index, spec[Fields.specKey] ?? '', v),
                       ),
                     ),
                   ),
@@ -225,7 +225,7 @@ extension _AddProductSpecsSection on _AddProductScreenState {
 
     // Find existing value in specEntries for this template key
     final existingIndex = state.specEntries.indexWhere(
-      (e) => e['key'] == template.key,
+      (e) => e[Fields.specKey] == template.key,
     );
 
     if (template.valueType == SpecValueTypeValues.boolean) {

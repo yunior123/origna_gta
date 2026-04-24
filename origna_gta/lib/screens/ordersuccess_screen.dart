@@ -154,16 +154,10 @@ class _DeliveryWindowCard extends StatelessWidget {
     if (isLocalDelivery) {
       // Local / same-day: show in hours (2–4h window)
       windowLabel = 'orders.delivery_window_hours'.tr();
-    } else if (estimatedShipDays >= 28) {
-      // International orders: show weeks estimate
-      windowLabel = 'orders.estimated_delivery_international'.tr();
     } else {
-      final now = DateTime.now();
-      // Processing time: +1 day
-      final earliest = now.add(Duration(days: estimatedShipDays + 1));
-      final latest = now.add(Duration(days: estimatedShipDays + 3));
-      final fmt = DateFormat('MMM d');
-      windowLabel = '${fmt.format(earliest)} – ${fmt.format(latest)}';
+      // Physical orders use the product-level policy language rather than
+      // promising a specific date that often drifts in live data.
+      windowLabel = 'orders.estimated_delivery_international'.tr();
     }
 
     return Container(

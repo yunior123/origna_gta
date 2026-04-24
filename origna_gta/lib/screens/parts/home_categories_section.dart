@@ -204,8 +204,12 @@ class _SettingsButtonState extends ConsumerState<_SettingsButton>
 
 class _SortAndFilterRow extends ConsumerWidget {
   final HomeViewModel homeNotifier;
+  final VoidCallback onFilterChange;
 
-  const _SortAndFilterRow({required this.homeNotifier});
+  const _SortAndFilterRow({
+    required this.homeNotifier,
+    required this.onFilterChange,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -352,7 +356,10 @@ class _SortAndFilterRow extends ConsumerWidget {
                         label: 'btn-close-price-filter',
                         button: true,
                         child: GestureDetector(
-                          onTap: homeNotifier.clearPriceFilter,
+                          onTap: () {
+                            onFilterChange();
+                            homeNotifier.clearPriceFilter();
+                          },
                           child: Icon(
                             Icons.close_rounded,
                             size: 12,
@@ -373,7 +380,10 @@ class _SortAndFilterRow extends ConsumerWidget {
             button: true,
             toggled: canadaOnly,
             child: GestureDetector(
-              onTap: homeNotifier.onToggleCanadaOnly,
+              onTap: () {
+                onFilterChange();
+                homeNotifier.onToggleCanadaOnly();
+              },
               child: AnimatedContainer(
                 duration: DesignTokens.durationFast,
                 padding: const EdgeInsets.symmetric(
@@ -462,6 +472,7 @@ class _SortAndFilterRow extends ConsumerWidget {
                       child: TextButton(
                         onPressed: () {
                           appPop(ctx);
+                          onFilterChange();
                           homeNotifier.clearPriceFilter();
                         },
                         style: TextButton.styleFrom(
@@ -522,6 +533,7 @@ class _SortAndFilterRow extends ConsumerWidget {
                       ),
                       onPressed: () {
                         appPop(ctx);
+                        onFilterChange();
                         final minC = (rangeMin * 100).round();
                         final maxC = (rangeMax * 100).round();
                         homeNotifier.onPriceFilterChanged(
@@ -549,7 +561,7 @@ class _SortAndFilterRow extends ConsumerWidget {
           top: Radius.circular(DesignTokens.radius16),
         ),
       ),
-      builder: (_) => SafeArea(
+      builder: (sheetContext) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: Column(
@@ -582,7 +594,8 @@ class _SortAndFilterRow extends ConsumerWidget {
                         )
                       : null,
                   onTap: () {
-                    appPop(context);
+                    appPop(sheetContext);
+                    onFilterChange();
                     homeNotifier.onSortChanged(option);
                   },
                 ),

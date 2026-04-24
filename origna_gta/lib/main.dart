@@ -8,9 +8,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:origna_gta/origna_app.dart';
 import 'package:orignabase/orignabase.dart';
+import 'package:origna_gta/services/error_event_service.dart';
 import 'package:origna_gta/services/orignabase_conf_service.dart';
 import 'package:origna_gta/utils/app_logger.dart';
 import 'package:origna_gta/utils/env_config.dart';
+import 'package:origna_gta/utils/utils.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
 Locale _detectBrowserLocale() {
@@ -105,6 +107,14 @@ void main() {
 
       // Initialize OrignaBase SDK (sync — no network call).
       final ob = OrignaBase.initialize(url: envConfig.orignabaseUrl);
+      final environment = envConfig.isProduction
+          ? 'production'
+          : envConfig.isStaging
+          ? 'staging'
+          : envConfig.isDev
+          ? 'dev'
+          : 'emulator';
+      ErrorEventService.initialize(ob, environment: environment);
 
       // Set global Flutter error handler before runApp.
       FlutterError.onError = (FlutterErrorDetails details) {
@@ -113,8 +123,15 @@ void main() {
         if (kIsWeb && message.contains('disposed EngineFlutterView')) {
           return;
         }
-        // Log to Sentry
-        Sentry.captureException(details.exception, stackTrace: details.stack);
+        AppError.log(
+          details.exception,
+          stackTrace: details.stack,
+          context: 'FlutterError.onError',
+          extras: {
+            'library': details.library,
+            'context': details.context?.toDescription(),
+          },
+        );
         // Let Flutter still show errors in debug
         FlutterError.presentError(details);
       };
@@ -198,8 +215,11 @@ void main() {
       );
     },
     (exception, stackTrace) async {
-      // Capture unhandled errors to Sentry
-      await Sentry.captureException(exception, stackTrace: stackTrace);
+      AppError.log(
+        exception,
+        stackTrace: stackTrace,
+        context: 'runZonedGuarded',
+      );
     },
   );
 }

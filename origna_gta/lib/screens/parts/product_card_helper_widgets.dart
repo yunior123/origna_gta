@@ -117,11 +117,24 @@ class _DeliveryEstimate extends StatelessWidget {
     final deliveryInfo = product.deliveryInfo;
     final isInternational = deliveryInfo.isInternational;
     final hasLongLeadTime = deliveryInfo.maxDays >= 28;
+    final exactDays = deliveryInfo.minDays == deliveryInfo.maxDays
+        ? deliveryInfo.minDays
+        : null;
 
     if (isInternational || hasLongLeadTime) {
       return _chip(
         'product.delivery_within_weeks_or_longer'.tr(),
         DesignTokens.textSecondary,
+        fontSize,
+      );
+    }
+
+    if (exactDays != null) {
+      return _chip(
+        'product.delivery_business_days_exact'.tr(
+          namedArgs: {'days': '$exactDays'},
+        ),
+        DesignTokens.success,
         fontSize,
       );
     }

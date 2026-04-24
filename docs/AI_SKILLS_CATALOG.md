@@ -1,7 +1,7 @@
 # AI Skills & Tools Catalog — OrignaGTA
 
 > Definitive reference for all AI agents: Claude, Codex, Gemini, Copilot, OpenCode, Kilo.
-> Last updated: 2026-03-23
+> Last updated: 2026-04-23
 
 ## How to Use
 
@@ -10,12 +10,13 @@
 - **Agents** are dispatched as subagents for specialized tasks
 - **Rules** are always loaded and enforced automatically
 - **Plugin systems** (CCG, GSD, gstack) provide orchestrated workflows
+- Start every substantial task with `docs/REPO_MAP.md`, `AGENTS.md`, and `CLAUDE.md` before deeper skill routing.
 
 ## Counts
 
 | Category | Count |
 |----------|-------|
-| Project Skills | 34 |
+| Project Skills | 35 |
 | Global Skills | 34+ |
 | gstack Skills | 28 |
 | Project Commands | 37 |
@@ -175,7 +176,7 @@
 
 ---
 
-## Project Skills (34) — Auto-Invoked
+## Project Skills (35) — Auto-Invoked
 
 | Skill | Description | When It Activates |
 |-------|-------------|-------------------|
@@ -195,6 +196,7 @@
 | `order-lifecycle` | Order state transitions, stock management, notifications, returns, multi-seller | Order-related work |
 | `orignabase-dev` | OrignaBase Rust BaaS development (crate architecture, testing, GraphQL, SDK protocol) | Backend Rust development |
 | `orignabase-devops` | OrignaBase VPS deployment (server setup, PostgreSQL, nginx, TLS, backups, monitoring) | DevOps/deployment tasks |
+| `orignabase-rust-debug` | Evidence-first workflow for Rust 500s, panics, auth/OAuth regressions, SQL/query drift, stale deploys, and Meilisearch failures | Backend runtime failures, live/server debugging |
 | `orignabase-flutter-sdk` | OrignaBase Flutter/Dart SDK (Firestore-compatible API, GraphQL, FieldValue, Query builder) | SDK integration work |
 | `ralph-loop` | Autonomous multi-hour coding loop with commits between iterations | Bulk implementation, overnight work |
 | `responsive-design` | Responsive layouts (breakpoints, grid systems, responsive text, spacing) | Layout/responsive work |

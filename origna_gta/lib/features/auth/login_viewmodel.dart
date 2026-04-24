@@ -130,6 +130,7 @@ class LoginViewModel extends StateNotifier<LoginState> {
         errorMessage: _friendlyAuthError(e),
       );
     } catch (e) {
+      AppLogger.w('Login: Apple sign-in failed', tag: 'auth', error: e);
       if (_disposed) return;
       state = state.copyWith(isLoading: false);
       if (!e.toString().contains('cancelled') &&
@@ -310,6 +311,7 @@ class LoginViewModel extends StateNotifier<LoginState> {
         errorMessage: _friendlyAuthError(e),
       );
     } catch (e) {
+      AppLogger.w('Login: Google sign-in failed', tag: 'auth', error: e);
       if (_disposed) return;
       state = state.copyWith(isLoading: false);
       if (!e.toString().contains('popup-closed') &&

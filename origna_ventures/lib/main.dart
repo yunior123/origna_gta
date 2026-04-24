@@ -61,7 +61,9 @@ class _OrignaVenturesAppState extends State<OrignaVenturesApp> {
         return;
       }
       _detectBrowserLocale();
-    } catch (_) {
+    } catch (e) {
+      debugPrint(
+          'OrignaVentures: stored locale read failed, detecting from browser: $e');
       _detectBrowserLocale();
     }
   }
@@ -81,7 +83,9 @@ class _OrignaVenturesAppState extends State<OrignaVenturesApp> {
       if (detected != locale) {
         setState(() => locale = detected);
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('OrignaVentures: browser locale detection failed: $e');
+    }
   }
 
   void _setLocale(LocaleMode value) {
@@ -89,7 +93,9 @@ class _OrignaVenturesAppState extends State<OrignaVenturesApp> {
     if (!kIsWeb) return;
     try {
       browser_env.setStoredLocale(value.name);
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('OrignaVentures: locale storage write failed: $e');
+    }
   }
 
   @override
@@ -139,7 +145,9 @@ class _SinglePageState extends State<_SinglePage> {
     try {
       final consent = browser_env.getCookieConsentAccepted();
       setState(() => _showCookieBanner = consent == null);
-    } catch (_) {
+    } catch (e) {
+      debugPrint(
+          'OrignaVentures: cookie consent read failed, showing banner: $e');
       setState(() => _showCookieBanner = true);
     }
   }
@@ -148,7 +156,9 @@ class _SinglePageState extends State<_SinglePage> {
     if (kIsWeb) {
       try {
         browser_env.setCookieConsentAccepted(accepted);
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('OrignaVentures: cookie consent write failed: $e');
+      }
     }
     setState(() => _showCookieBanner = false);
   }
@@ -2690,6 +2700,7 @@ class _ContactFormBlockState extends State<_ContactFormBlock> {
             ? emails['confirmation'] as Map<String, dynamic>
             : <String, dynamic>{};
         final confirmationStatus = confirmation['status']?.toString();
+        final confirmationSandboxMode = confirmation['sandbox_mode'] == true;
         _nameCtrl.clear();
         _emailCtrl.clear();
         _companyCtrl.clear();
@@ -2697,13 +2708,13 @@ class _ContactFormBlockState extends State<_ContactFormBlock> {
         setState(() {
           _success = true;
           _result = loc.tr(
-            confirmationStatus == 'sent'
+            confirmationStatus == 'sent' && !confirmationSandboxMode
                 ? "Message sent! We also emailed your confirmation and will reply within 24 hours."
                 : "Message sent! We'll be in touch within 24 hours.",
-            confirmationStatus == 'sent'
+            confirmationStatus == 'sent' && !confirmationSandboxMode
                 ? 'Message envoye! Nous avons aussi envoye votre confirmation et nous repondrons dans les 24 heures.'
                 : 'Message envoye! Nous vous repondrons dans les 24 heures.',
-            confirmationStatus == 'sent'
+            confirmationStatus == 'sent' && !confirmationSandboxMode
                 ? 'Mensaje enviado. Tambien enviamos su confirmacion y responderemos en menos de 24 horas.'
                 : 'Mensaje enviado. Le responderemos en menos de 24 horas.',
           );
@@ -2719,7 +2730,8 @@ class _ContactFormBlockState extends State<_ContactFormBlock> {
               );
         });
       }
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[ContactForm] Network/submit error: $e');
       setState(() {
         _success = false;
         _result = loc.tr(

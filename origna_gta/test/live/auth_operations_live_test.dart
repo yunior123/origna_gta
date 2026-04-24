@@ -85,12 +85,11 @@ void main() {
           'REDACTED_TEST_PASSWORD',
         );
 
-        // Get current user to ensure token exists
-        var userId = ob.auth.currentUserId;
-        expect(userId, isNotEmpty);
+        // Force a real refresh instead of only checking cached auth state.
+        final refreshed = await ob.auth.refreshToken();
+        expect(refreshed.isAuthenticated, isTrue);
 
-        // Verify token is still valid
-        userId = ob.auth.currentUserId;
+        var userId = ob.auth.currentUserId;
         expect(userId, isNotEmpty, reason: 'Token should be valid');
       },
       timeout: const Timeout(Duration(minutes: 2)),

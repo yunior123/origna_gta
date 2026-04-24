@@ -162,7 +162,7 @@ services:
         limits:
           memory: 256M
 
-  volumes:
+volumes:
   postgres_data:
   meili_data:
   caddy_data:

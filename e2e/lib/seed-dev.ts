@@ -968,6 +968,11 @@ async function upsertUsers(admin: AuthBundle, seller: AuthBundle, buyer: AuthBun
     await writeDoc(`users/${user.id}`, {
       email: user.email,
       displayName: user.displayName,
+      role: user.roles.includes('admin')
+        ? 'admin'
+        : user.roles.includes('seller')
+          ? 'seller'
+          : 'buyer',
       roles: user.roles,
       isPremium: user.isPremium ?? false,
       premiumSince: user.isPremium ? isoDaysAgo(60) : null,
@@ -1485,7 +1490,7 @@ async function seedProducts(
       priceCents: product.priceCents,
       compareAtPrice: Number(((product.priceCents + 900) / 100).toFixed(2)),
       stockQuantity: product.stockQuantity,
-      lifecycleStatus: product.lifecycleStatus,
+      lifecycleStatus: String(product.lifecycleStatus).toLowerCase(),
       sellerDashboardStatus: product.lifecycleStatus === 'active' ? 'active' : product.lifecycleStatus === 'draft' ? 'draft' : 'inactive',
       sellerAddress: sellerAddress(product.categoryName, product.shipFromCountry),
       shipFromCountry: product.shipFromCountry,
@@ -3665,7 +3670,7 @@ async function seedAdminProducts(admin: AuthBundle, sellerId: string) {
       priceCents: 2499,
       compareAtPrice: 39.99,
       stockQuantity: p.stockQuantity,
-      lifecycleStatus: p.lifecycleStatus,
+      lifecycleStatus: String(p.lifecycleStatus).toLowerCase(),
       sellerDashboardStatus: p.lifecycleStatus === 'active' ? 'active' : p.lifecycleStatus === 'under_review' ? 'draft' : 'inactive',
       isDigital: false,
       isPerishable: false,

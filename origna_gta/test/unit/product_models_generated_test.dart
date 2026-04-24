@@ -472,6 +472,35 @@ void main() {
       expect(out['createdAt'], now.toIso8601String());
     });
 
+    test(
+      'delivery info honors explicit estimatedShipDays when supplier data is absent',
+      () {
+        final model = Product.fromJson({
+          ..._minimalProductJson(),
+          'estimatedShipDays': 35,
+        });
+
+        expect(model.estimatedDeliveryDays.minDays, 35);
+        expect(model.estimatedDeliveryDays.maxDays, 46);
+        expect(model.deliveryInfo.minDays, 35);
+        expect(model.deliveryInfo.maxDays, 46);
+      },
+    );
+
+    test(
+      'explicit domestic estimatedShipDays expands to a delivery window',
+      () {
+        final model = Product.fromJson({
+          ..._minimalProductJson(),
+          'estimatedShipDays': 3,
+          'shipFromCountry': 'CA',
+        });
+
+        expect(model.estimatedDeliveryDays.minDays, 3);
+        expect(model.estimatedDeliveryDays.maxDays, 5);
+      },
+    );
+
     test('roundtrip with ALL optional fields populated', () {
       final updatedAt = DateTime(2026, 3, 9, 15, 0);
       final trendingAt = DateTime(2026, 3, 8);
@@ -1274,6 +1303,16 @@ void main() {
       expect(p.deliveryEstimateText, '10-20 business days');
     });
 
+    test(
+      'deliveryEstimateText with exact estimatedShipDays avoids x-x copy',
+      () {
+        final p = _makeProduct(
+          supplier: const SupplierInfo(type: 'local', shippingDays: '3-3'),
+        );
+        expect(p.deliveryEstimateText, '3 business days');
+      },
+    );
+
     test('estimatedDeliveryDays uses supplier type defaults', () {
       final p = _makeProduct(
         supplier: const SupplierInfo(type: SupplierTypeValues.temu),
@@ -1286,7 +1325,7 @@ void main() {
     test('estimatedDeliveryDays falls back to default range', () {
       final range = _makeProduct().estimatedDeliveryDays;
       expect(range.minDays, 3);
-      expect(range.maxDays, 7);
+      expect(range.maxDays, 5);
     });
   });
 

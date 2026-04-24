@@ -72,6 +72,31 @@ void main() {
       expect(find.byIcon(Icons.forum_outlined), findsOneWidget);
     });
 
+    testWidgets('renders a visible error message when loading fails', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        buildWidget(
+          productId: 'p1',
+          sellerId: 'seller1',
+          currentUserId: 'user1',
+          hasError: true,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is Text &&
+              ((widget.data?.contains('Something went wrong') ?? false) ||
+                  (widget.data?.contains('errors.something_went_wrong') ??
+                      false)),
+        ),
+        findsOneWidget,
+      );
+    });
+
     testWidgets('renders single question', (tester) async {
       final qaList = [
         QAModel(
@@ -470,7 +495,7 @@ void main() {
   });
 
   group('QASection - Error Handling', () {
-    testWidgets('renders error message on failure', (tester) async {
+    testWidgets('falls back to empty state on failure', (tester) async {
       await tester.pumpWidget(
         buildWidget(
           productId: 'p1',
@@ -482,6 +507,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(QASection), findsOneWidget);
+      expect(find.byIcon(Icons.forum_outlined), findsOneWidget);
     });
 
     testWidgets('error state does not crash widget', (tester) async {

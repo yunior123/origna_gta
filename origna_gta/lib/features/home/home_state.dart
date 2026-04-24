@@ -37,23 +37,21 @@ abstract class HomeState with _$HomeState {
     // GAP #7 — Whether the search overlay is visible
     @Default(false) bool showSearchOverlay,
 
-    // Canada-only toggle: client-side filter for products shipping from Canada
+    // Made-in-Canada toggle: client-side filter for products whose origin is Canada
     @Default(false) bool canadaOnly,
   }) = _HomeState;
 
   /// Whether a price range filter is currently active.
   bool get hasPriceFilter => minPriceCents != null || maxPriceCents != null;
 
-  /// Returns products filtered by the Canada-only toggle (client-side).
+  static bool _isCanadaOrigin(String? value) {
+    final normalized = value?.trim().toUpperCase();
+    return normalized == 'CA' || normalized == 'CANADA';
+  }
+
+  /// Returns products filtered by the made-in-Canada toggle (client-side).
   List<Product> get displayedProducts {
     if (!canadaOnly) return products;
-    return products
-        .where(
-          (p) =>
-              p.shipFromCountry?.toUpperCase() == 'CA' ||
-              (p.shipFromCountries?.any((c) => c.toUpperCase() == 'CA') ??
-                  false),
-        )
-        .toList();
+    return products.where((p) => _isCanadaOrigin(p.madeInCountry)).toList();
   }
 }

@@ -9,6 +9,7 @@ import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/services/analytics_service.dart'
     show analyticsServiceProvider;
+import 'package:origna_gta/utils/app_logger.dart';
 import 'package:origna_gta/utils/utils.dart';
 
 // ============================================================================
@@ -333,6 +334,11 @@ final productRatingsProvider = StreamProvider.autoDispose
               )
               .toList();
         } catch (e) {
+          AppLogger.w(
+            'ProductRatings: fetch failed, returning empty',
+            tag: 'product',
+            error: e,
+          );
           return const [];
         }
       }

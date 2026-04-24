@@ -252,25 +252,25 @@ class ShippingQuantityDiscount {
 
   const ShippingQuantityDiscount({
     required this.minQuantity,
-    this.discountType = 'percent',
+    this.discountType = DiscountTypeValues.percent,
     required this.discountValue,
     this.label,
   });
 
   factory ShippingQuantityDiscount.fromMap(Map<String, dynamic> map) {
     return ShippingQuantityDiscount(
-      minQuantity: (map['minQuantity'] as num?)?.toInt() ?? 0,
-      discountType: map['discountType'] as String? ?? 'percent',
-      discountValue: (map['discountValue'] as num?)?.toDouble() ?? 0.0,
-      label: map['label'] as String?,
+      minQuantity: (map[Fields.minQuantity] as num?)?.toInt() ?? 0,
+      discountType: map[Fields.discountType] as String? ?? DiscountTypeValues.percent,
+      discountValue: (map[Fields.discountValue] as num?)?.toDouble() ?? 0.0,
+      label: map[Fields.label] as String?,
     );
   }
 
   Map<String, dynamic> toMap() => {
-    'minQuantity': minQuantity,
-    'discountType': discountType,
-    'discountValue': discountValue,
-    if (label != null) 'label': label,
+    Fields.minQuantity: minQuantity,
+    Fields.discountType: discountType,
+    Fields.discountValue: discountValue,
+    if (label != null) Fields.label: label,
   };
 }
 
@@ -326,14 +326,14 @@ class SellerDeliveryOption {
     }
 
     // Alternate schema (speed/isEnabled/price)
-    final isEnabled = map['isEnabled'] as bool? ?? false;
+    final isEnabled = map[Fields.isEnabled] as bool? ?? false;
     if (!isEnabled) return null;
 
-    final altSpeed = map['speed'] as String? ?? DeliverySpeed.standard.value;
-    final altDays = (map['estimatedDays'] as num?)?.toInt() ?? 5;
-    final altPriceCents = map.containsKey('priceCents')
-        ? (map['priceCents'] as num?)?.toInt() ?? 0
-        : (((map['price'] as num?)?.toDouble() ?? 0.0) * 100).round();
+    final altSpeed = map[Fields.speed] as String? ?? DeliverySpeed.standard.value;
+    final altDays = (map[Fields.estimatedDays] as num?)?.toInt() ?? 5;
+    final altPriceCents = map.containsKey(Fields.priceCents)
+        ? (map[Fields.priceCents] as num?)?.toInt() ?? 0
+        : (((map[Fields.price] as num?)?.toDouble() ?? 0.0) * 100).round();
 
     final displayName = DeliverySpeed.fromValue(altSpeed).displayName;
     return SellerDeliveryOption(

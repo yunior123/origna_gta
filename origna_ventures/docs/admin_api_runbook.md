@@ -33,44 +33,7 @@ Expected behavior:
 
 ## Endpoints
 
-### 1. List contracts
-
-Route:
-
-```text
-GET /api/contracts
-```
-
-Example:
-
-```bash
-curl -s \
-  "$ORIGNA_VENTURES_API_BASE_URL/contracts"
-```
-
-Example response shape:
-
-```json
-{
-  "contracts": [
-    {
-      "id": "ovc_...",
-      "service_code": "origna_launch",
-      "client_company": "Origna Ventures Services",
-      "client_email": "support@orignaventures.ca",
-      "payer_email": "support@orignaventures.ca",
-      "github_username": "",
-      "status": "paid",
-      "repo_unlock_status": "manual",
-      "repo_unlock_error": "",
-      "github_invitation_id": "",
-      "created_at": "2026-04-21T...Z"
-    }
-  ]
-}
-```
-
-### 2. Send admin email test
+### 1. Send admin email test
 
 Route:
 
@@ -116,14 +79,19 @@ curl -s "$ORIGNA_VENTURES_API_BASE_URL/health"
 Should return `401`:
 
 ```bash
-curl -i -s "$ORIGNA_VENTURES_API_BASE_URL/contracts"
+curl -i -s -X POST \
+  -H "Content-Type: application/json" \
+  "$ORIGNA_VENTURES_API_BASE_URL/email/test" \
+  -d '{"to_email":"support@orignaventures.ca","subject":"Unauthorized test","body":"blocked"}'
 ```
 
 Should return `200`:
 
 ```bash
-curl -i -s \
-  "$ORIGNA_VENTURES_API_BASE_URL/contracts"
+curl -i -s -X POST \
+  -H "Content-Type: application/json" \
+  "$ORIGNA_VENTURES_API_BASE_URL/email/test" \
+  -d '{"to_email":"support@orignaventures.ca","subject":"Authorized test","body":"ok"}'
 ```
 
 ## Secrets handling
@@ -157,8 +125,8 @@ ORIGNA_TRUSTED_PROXY_COUNT=1
 
 ## Verified live status
 
-Verified on 2026-04-21:
+Verified on 2026-04-23:
 
-- `/api/contracts` returns `401` without bearer auth
-- `/api/contracts` returns `200` with the configured bearer token
+- `/api/email/test` returns `401` without bearer auth
+- `/api/email/test` returns `200` with the configured bearer token
 - backend health returns `{"status":"ok"}`

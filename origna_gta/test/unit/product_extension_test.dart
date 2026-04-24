@@ -25,6 +25,14 @@ void main() {
       expect(localProduct.deliveryEstimateText, contains('local'));
     });
 
+    test('deliveryEstimateText avoids duplicate exact-day ranges', () {
+      final exactDaysProduct = baseProduct.copyWith(
+        supplier: const SupplierInfo(type: 'local', shippingDays: '3-3'),
+      );
+      expect(exactDaysProduct.deliveryEstimateText, '3 business days');
+      expect(exactDaysProduct.deliveryEstimateText, isNot(contains('3-3')));
+    });
+
     test('isLowStock', () {
       expect(baseProduct.isLowStock, isFalse);
 

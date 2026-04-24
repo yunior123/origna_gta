@@ -23,18 +23,21 @@ echo "Deploying web for ${ENV} to ${VPS_HOST} with release ${TIMESTAMP}"
 case "$ENV" in
   dev)
     ORIGNABASE_URL="https://api.dev.orignagta.ca"
+    WEB_APP_URL="https://dev.orignagta.ca"
     TURNSTILE_KEY="1x00000000000000000000AA"
     BUILD_MODE="--profile"
     EXTRA_DART_DEFINES=(--dart-define=FORCE_SEMANTICS=true)
     ;;
   staging)
     ORIGNABASE_URL="https://api.staging.orignagta.ca"
+    WEB_APP_URL="https://staging.orignagta.ca"
     TURNSTILE_KEY="0x4AAAAAACmRNCDQqc20J_1T"
     BUILD_MODE="--profile"
     EXTRA_DART_DEFINES=(--dart-define=FORCE_SEMANTICS=true)
     ;;
   production)
     ORIGNABASE_URL="https://api.orignagta.ca"
+    WEB_APP_URL="https://orignagta.ca"
     TURNSTILE_KEY="0x4AAAAAACmRNXgZQ1M928iq"
     BUILD_MODE="--release"
   EXTRA_DART_DEFINES=()
@@ -93,10 +96,10 @@ if [ "${SKIP_SCROLL_REGRESSION_CHECK:-0}" != "1" ]; then
   (
     cd e2e
     bun x tsc --noEmit
-    bun test specs/phase1-api/dev-product-browse-live.spec.ts
-    bun test specs/phase4-product-flows/search-filters-sort.spec.ts
-    bun test specs/phase4-product-flows/subcategory-filtering.spec.ts
-    bun test specs/phase5-complex-flows/cart-badge-add-to-cart.spec.ts
+    E2E_TARGET_URL="${WEB_APP_URL}" ORIGNABASE_URL="${ORIGNABASE_URL}" bun test specs/phase1-api/dev-product-browse-live.spec.ts
+    E2E_TARGET_URL="${WEB_APP_URL}" ORIGNABASE_URL="${ORIGNABASE_URL}" bun test specs/phase4-product-flows/search-filters-sort.spec.ts
+    E2E_TARGET_URL="${WEB_APP_URL}" ORIGNABASE_URL="${ORIGNABASE_URL}" bun test specs/phase4-product-flows/subcategory-filtering.spec.ts
+    E2E_TARGET_URL="${WEB_APP_URL}" ORIGNABASE_URL="${ORIGNABASE_URL}" bun test specs/phase5-complex-flows/cart-badge-add-to-cart.spec.ts
   )
 fi
 

@@ -244,6 +244,7 @@ pub struct ListProductsRequest {
     #[serde(default = "default_limit")]
     pub limit: u32,
     pub category: Option<String>,
+    pub subcategory: Option<String>,
     pub seller_id: Option<String>,
     pub order_by: Option<String>,
     #[serde(default = "default_order_direction")]
@@ -990,12 +991,91 @@ async fn list_products(
         ));
     }
 
+    if let Some(ref subcategory) = req.subcategory {
+        conditions.push(format!(
+            "data->>'{}' = '{}'",
+            ob_core::constants::fields::SUBCATEGORY,
+            ob_core::escape_sql_string(subcategory)
+        ));
+    }
+
     if let Some(ref seller_id) = req.seller_id {
         conditions.push(format!(
             "data->>'{}' = '{}'",
             fields::SELLER_ID,
             ob_core::escape_sql_string(seller_id)
         ));
+    }
+
+    if let Some(ref start_after) = req.start_after {
+        let id_cmp = if req.order_direction == "asc" {
+            ">"
+        } else {
+            "<"
+        };
+        let escaped_id = ob_core::escape_sql_string(start_after);
+        let order_field_expr = match order_by {
+            fields::PRICE_CENTS | fields::AVG_RATING => {
+                format!("NULLIF(data->>'{}', '')::numeric", order_by)
+            }
+            _ => format!("data->>'{}'", order_by),
+        };
+        let cursor_rows = state
+            .db
+            .query_raw(&format!(
+                "SELECT {} AS cursor_value FROM {} WHERE id = '{}'",
+                order_field_expr,
+                collections::PRODUCTS,
+                escaped_id,
+            ))
+            .await
+            .unwrap_or_default();
+        let cursor_value = cursor_rows.first().and_then(|row| row.get("cursor_value"));
+
+        if matches!(order_by, fields::PRICE_CENTS | fields::AVG_RATING) {
+            if let Some(cursor_num) = cursor_value.and_then(|v| v.as_f64()) {
+                let order_cmp = if req.order_direction == "asc" {
+                    ">"
+                } else {
+                    "<"
+                };
+                let include_nulls_clause = if order_by == fields::AVG_RATING {
+                    format!(" OR {order_field_expr} IS NULL")
+                } else {
+                    String::new()
+                };
+                conditions.push(format!(
+                    "({expr} {cmp} {cursor} OR ({expr} = {cursor} AND id {id_cmp} '{id}'){include_nulls_clause})",
+                    expr = order_field_expr,
+                    cmp = order_cmp,
+                    cursor = cursor_num,
+                    id_cmp = id_cmp,
+                    id = escaped_id,
+                ));
+            } else {
+                conditions.push(format!(
+                    "({expr} IS NULL AND id {id_cmp} '{id}')",
+                    expr = order_field_expr,
+                    id_cmp = id_cmp,
+                    id = escaped_id,
+                ));
+            }
+        } else if let Some(cursor_string) = cursor_value.and_then(|v| v.as_str()) {
+            let escaped_value = ob_core::escape_sql_string(cursor_string);
+            let order_cmp = if req.order_direction == "asc" {
+                ">"
+            } else {
+                "<"
+            };
+            conditions.push(format!(
+                "({expr} {cmp} '{cursor}' OR ({expr} = '{cursor}' AND id {id_cmp} '{id}'))",
+                expr = order_field_expr,
+                cmp = order_cmp,
+                cursor = escaped_value,
+                id_cmp = id_cmp,
+                id = escaped_id,
+            ));
+        }
     }
 
     let where_clause = if conditions.is_empty() {
@@ -1012,11 +1092,20 @@ async fn list_products(
 
     // Fetch limit+1 to detect hasMore
     let fetch_limit = limit + 1;
+    let order_expr = match order_by {
+        fields::PRICE_CENTS | fields::AVG_RATING => {
+            format!(
+                "NULLIF(data->>'{}', '')::numeric {} NULLS LAST",
+                order_by, order_dir
+            )
+        }
+        _ => format!("data->>'{}' {}", order_by, order_dir),
+    };
     let query = format!(
-        "SELECT * FROM {}{} ORDER BY data->>'{}' {} LIMIT {}",
+        "SELECT * FROM {}{} ORDER BY {}, id {} LIMIT {}",
         collections::PRODUCTS,
         where_clause,
-        order_by,
+        order_expr,
         order_dir,
         fetch_limit,
     );
@@ -1945,6 +2034,7 @@ mod tests {
                 page: 1,
                 limit: 1,
                 category: None,
+                subcategory: None,
                 seller_id: None,
                 order_by: None,
                 order_direction: "desc".into(),
@@ -1969,6 +2059,7 @@ mod tests {
                 page: 1,
                 limit: 20,
                 category: None,
+                subcategory: None,
                 seller_id: None,
                 order_by: None,
                 order_direction: "sideways".into(),
@@ -2023,6 +2114,7 @@ mod tests {
                 page: 1,
                 limit: 10,
                 category: Some(cat.clone()),
+                subcategory: None,
                 seller_id: Some(s1.clone()),
                 order_by: Some(fields::CREATED_AT.into()),
                 order_direction: "desc".into(),
@@ -2034,6 +2126,185 @@ mod tests {
 
         assert_eq!(resp.total_fetched, 1);
         assert_eq!(resp.products[0]["id"], id1.as_str());
+    }
+
+    #[tokio::test]
+    async fn test_list_products_filters_subcategory() {
+        let state = setup_state().await;
+        let u = uuid::Uuid::new_v4().to_string();
+        let id1 = format!("p_subcat_1_{u}");
+        let id2 = format!("p_subcat_2_{u}");
+
+        for (id, subcategory) in [(id1.as_str(), "Audio"), (id2.as_str(), "Phones")] {
+            state
+                .db
+                .upsert_document(
+                    collections::PRODUCTS,
+                    id,
+                    serde_json::json!({
+                        fields::CATEGORY: "1",
+                        ob_core::constants::fields::SUBCATEGORY: subcategory,
+                        fields::LIFECYCLE_STATUS: "active",
+                        fields::CREATED_AT: "2026-01-01T00:00:00Z",
+                    }),
+                )
+                .await
+                .unwrap();
+        }
+
+        let Json(resp) = list_products(
+            State(state),
+            Json(ListProductsRequest {
+                page: 1,
+                limit: 10,
+                category: Some("1".into()),
+                subcategory: Some("Audio".into()),
+                seller_id: None,
+                order_by: Some(fields::CREATED_AT.into()),
+                order_direction: "desc".into(),
+                start_after: None,
+            }),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(resp.total_fetched, 1);
+        assert_eq!(resp.products[0]["id"], id1.as_str());
+        assert_eq!(
+            resp.products[0][ob_core::constants::fields::SUBCATEGORY],
+            "Audio"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_list_products_honors_start_after_cursor() {
+        let state = setup_state().await;
+        let u = uuid::Uuid::new_v4().to_string();
+        let seller_id = format!("seller_cursor_{u}");
+        let id1 = format!("p_cursor_1_{u}");
+        let id2 = format!("p_cursor_2_{u}");
+        let id3 = format!("p_cursor_3_{u}");
+
+        for (id, created_at) in [
+            (id1.as_str(), "2026-01-03T00:00:00Z"),
+            (id2.as_str(), "2026-01-02T00:00:00Z"),
+            (id3.as_str(), "2026-01-01T00:00:00Z"),
+        ] {
+            state
+                .db
+                .upsert_document(
+                    collections::PRODUCTS,
+                    id,
+                    serde_json::json!({
+                        fields::LIFECYCLE_STATUS: "active",
+                        fields::SELLER_ID: seller_id,
+                        fields::CREATED_AT: created_at,
+                    }),
+                )
+                .await
+                .unwrap();
+        }
+
+        let Json(page1) = list_products(
+            State(state.clone()),
+            Json(ListProductsRequest {
+                page: 1,
+                limit: 2,
+                category: None,
+                subcategory: None,
+                seller_id: Some(seller_id.clone()),
+                order_by: Some(fields::CREATED_AT.into()),
+                order_direction: "desc".into(),
+                start_after: None,
+            }),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(page1.products.len(), 2);
+        let next_cursor = page1.next_cursor.clone().expect("next cursor");
+
+        let Json(page2) = list_products(
+            State(state),
+            Json(ListProductsRequest {
+                page: 1,
+                limit: 2,
+                category: None,
+                subcategory: None,
+                seller_id: Some(seller_id),
+                order_by: Some(fields::CREATED_AT.into()),
+                order_direction: "desc".into(),
+                start_after: Some(next_cursor),
+            }),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(page2.products.len(), 1);
+        assert_eq!(page2.products[0]["id"], id3.as_str());
+    }
+
+    #[tokio::test]
+    async fn test_list_products_honors_start_after_cursor_when_cursor_field_is_null() {
+        let state = setup_state().await;
+        let u = uuid::Uuid::new_v4().to_string();
+        let seller_id = format!("seller_avg_cursor_{u}");
+        let id1 = format!("p_avg_cursor_1_{u}");
+        let id2 = format!("p_avg_cursor_2_{u}");
+
+        for id in [id1.as_str(), id2.as_str()] {
+            state
+                .db
+                .upsert_document(
+                    collections::PRODUCTS,
+                    id,
+                    serde_json::json!({
+                        fields::LIFECYCLE_STATUS: "active",
+                        fields::SELLER_ID: seller_id,
+                    }),
+                )
+                .await
+                .unwrap();
+        }
+
+        let Json(page1) = list_products(
+            State(state.clone()),
+            Json(ListProductsRequest {
+                page: 1,
+                limit: 1,
+                category: None,
+                subcategory: None,
+                seller_id: Some(seller_id.clone()),
+                order_by: Some(fields::AVG_RATING.into()),
+                order_direction: "desc".into(),
+                start_after: None,
+            }),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(page1.products.len(), 1);
+        let first_id = page1.products[0]["id"].as_str().unwrap().to_string();
+        let next_cursor = page1.next_cursor.clone().expect("next cursor");
+
+        let Json(page2) = list_products(
+            State(state),
+            Json(ListProductsRequest {
+                page: 1,
+                limit: 1,
+                category: None,
+                subcategory: None,
+                seller_id: Some(seller_id),
+                order_by: Some(fields::AVG_RATING.into()),
+                order_direction: "desc".into(),
+                start_after: Some(next_cursor),
+            }),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(page2.products.len(), 1);
+        assert_ne!(page2.products[0]["id"].as_str(), Some(first_id.as_str()));
     }
 
     #[tokio::test]
@@ -2554,6 +2825,7 @@ mod tests {
                 page: 1,
                 limit: 20,
                 category: None,
+                subcategory: None,
                 seller_id: None,
                 order_by: Some("bad_field".into()),
                 order_direction: "desc".into(),
@@ -2595,6 +2867,7 @@ mod tests {
                 page: 1,
                 limit: 10,
                 category: None,
+                subcategory: None,
                 seller_id: Some(unique_seller),
                 order_by: None,
                 order_direction: "asc".into(),

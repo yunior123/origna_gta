@@ -46,9 +46,17 @@ void main() {
         minPriceCents: anyNamed('minPriceCents'),
         maxPriceCents: anyNamed('maxPriceCents'),
       ),
-    ).thenAnswer((_) async => ProductQueryResult(products: [createTestProduct('init', 'initial product')], lastDocumentId: null, hasMore: true));
+    ).thenAnswer(
+      (_) async => ProductQueryResult(
+        products: [createTestProduct('init', 'initial product')],
+        lastDocumentId: null,
+        hasMore: true,
+      ),
+    );
 
-    container = ProviderContainer(overrides: [productRepositoryProvider.overrideWithValue(mockRepo)]);
+    container = ProviderContainer(
+      overrides: [productRepositoryProvider.overrideWithValue(mockRepo)],
+    );
 
     // Keep alive and wait for initial load
     container.listen(homeViewModelProvider, (_, _) {});
@@ -107,7 +115,10 @@ void main() {
     test('onSubcategorySelected updates state and reloads', () {
       final viewModel = container.read(homeViewModelProvider.notifier);
       viewModel.onSubcategorySelected('test_sub');
-      expect(container.read(homeViewModelProvider).selectedSubcategory, 'test_sub');
+      expect(
+        container.read(homeViewModelProvider).selectedSubcategory,
+        'test_sub',
+      );
     });
 
     test('loadProducts handles error', () async {
@@ -132,8 +143,64 @@ void main() {
       await viewModel.loadProducts();
 
       final state = container.read(homeViewModelProvider);
-      expect(state.errorMessage, isNotNull, reason: 'Error should be set. State: isLoading=${state.isLoading}, hasMore=${state.hasMore}');
+      expect(
+        state.errorMessage,
+        isNotNull,
+        reason:
+            'Error should be set. State: isLoading=${state.isLoading}, hasMore=${state.hasMore}',
+      );
       expect(state.isLoading, isFalse);
+      expect(state.hasMore, isTrue);
+    });
+
+    test('load more error preserves pagination state for retry', () async {
+      final p1 = createTestProduct('1', 'P1');
+      final p2 = createTestProduct('2', 'P2');
+      final viewModel = container.read(homeViewModelProvider.notifier);
+
+      reset(mockRepo);
+      when(
+        mockRepo.fetchProducts(
+          searchQuery: anyNamed('searchQuery'),
+          categoryId: anyNamed('categoryId'),
+          subcategory: anyNamed('subcategory'),
+          lastDocumentId: anyNamed('lastDocumentId'),
+          pageSize: anyNamed('pageSize'),
+          sortOption: anyNamed('sortOption'),
+          minPriceCents: anyNamed('minPriceCents'),
+          maxPriceCents: anyNamed('maxPriceCents'),
+        ),
+      ).thenAnswer(
+        (_) async => ProductQueryResult(
+          products: [p1, p2],
+          lastDocumentId: 'cursor-1',
+          hasMore: true,
+        ),
+      );
+
+      await viewModel.refresh();
+
+      reset(mockRepo);
+      when(
+        mockRepo.fetchProducts(
+          searchQuery: anyNamed('searchQuery'),
+          categoryId: anyNamed('categoryId'),
+          subcategory: anyNamed('subcategory'),
+          lastDocumentId: anyNamed('lastDocumentId'),
+          pageSize: anyNamed('pageSize'),
+          sortOption: anyNamed('sortOption'),
+          minPriceCents: anyNamed('minPriceCents'),
+          maxPriceCents: anyNamed('maxPriceCents'),
+        ),
+      ).thenThrow(Exception('Transient page 2 failure'));
+
+      await viewModel.loadProducts();
+
+      final state = container.read(homeViewModelProvider);
+      expect(state.products.length, 2);
+      expect(state.lastDocumentId, 'cursor-1');
+      expect(state.hasMore, isTrue);
+      expect(state.errorMessage, isNotNull);
     });
 
     test('loadProducts filters duplicate IDs', () async {
@@ -154,7 +221,13 @@ void main() {
           minPriceCents: anyNamed('minPriceCents'),
           maxPriceCents: anyNamed('maxPriceCents'),
         ),
-      ).thenAnswer((_) async => ProductQueryResult(products: [p1, p2], lastDocumentId: null, hasMore: true));
+      ).thenAnswer(
+        (_) async => ProductQueryResult(
+          products: [p1, p2],
+          lastDocumentId: null,
+          hasMore: true,
+        ),
+      );
 
       await viewModel.refresh();
       expect(container.read(homeViewModelProvider).products.length, 2);
@@ -184,8 +257,71 @@ void main() {
 
       await viewModel.loadProducts();
       final products = container.read(homeViewModelProvider).products;
-      expect(products.length, 3, reason: 'IDs: ${products.map((p) => p.productId).toList()}');
+      expect(
+        products.length,
+        3,
+        reason: 'IDs: ${products.map((p) => p.productId).toList()}',
+      );
     });
+
+    test(
+      'loadProducts stops pagination when cursor does not advance',
+      () async {
+        final p1 = createTestProduct('1', 'P1');
+        final p2 = createTestProduct('2', 'P2');
+        final viewModel = container.read(homeViewModelProvider.notifier);
+
+        reset(mockRepo);
+        when(
+          mockRepo.fetchProducts(
+            searchQuery: anyNamed('searchQuery'),
+            categoryId: anyNamed('categoryId'),
+            subcategory: anyNamed('subcategory'),
+            lastDocumentId: anyNamed('lastDocumentId'),
+            pageSize: anyNamed('pageSize'),
+            sortOption: anyNamed('sortOption'),
+            minPriceCents: anyNamed('minPriceCents'),
+            maxPriceCents: anyNamed('maxPriceCents'),
+          ),
+        ).thenAnswer(
+          (_) async => ProductQueryResult(
+            products: [p1, p2],
+            lastDocumentId: 'cursor-1',
+            hasMore: true,
+          ),
+        );
+
+        await viewModel.refresh();
+        expect(container.read(homeViewModelProvider).hasMore, isTrue);
+
+        reset(mockRepo);
+        when(
+          mockRepo.fetchProducts(
+            searchQuery: anyNamed('searchQuery'),
+            categoryId: anyNamed('categoryId'),
+            subcategory: anyNamed('subcategory'),
+            lastDocumentId: anyNamed('lastDocumentId'),
+            pageSize: anyNamed('pageSize'),
+            sortOption: anyNamed('sortOption'),
+            minPriceCents: anyNamed('minPriceCents'),
+            maxPriceCents: anyNamed('maxPriceCents'),
+          ),
+        ).thenAnswer(
+          (_) async => ProductQueryResult(
+            products: [p2],
+            lastDocumentId: 'cursor-1',
+            hasMore: true,
+          ),
+        );
+
+        await viewModel.loadProducts();
+
+        final state = container.read(homeViewModelProvider);
+        expect(state.products.length, 2);
+        expect(state.hasMore, isFalse);
+        expect(state.lastDocumentId, 'cursor-1');
+      },
+    );
 
     test('onSearchFocusChanged updates overlay and suggestions', () {
       final viewModel = container.read(homeViewModelProvider.notifier);
@@ -199,7 +335,9 @@ void main() {
     test('refresh resets state and reloads', () async {
       final viewModel = container.read(homeViewModelProvider.notifier);
       await viewModel.refresh();
-      verify(mockRepo.fetchProducts(searchQuery: anyNamed('searchQuery'))).called(greaterThan(0));
+      verify(
+        mockRepo.fetchProducts(searchQuery: anyNamed('searchQuery')),
+      ).called(greaterThan(0));
     });
 
     test('onToggleCanadaOnly toggles state', () {
@@ -212,7 +350,10 @@ void main() {
     test('onSortChanged updates state and reloads', () {
       final viewModel = container.read(homeViewModelProvider.notifier);
       viewModel.onSortChanged(SortOption.priceHighToLow);
-      expect(container.read(homeViewModelProvider).selectedSort, SortOption.priceHighToLow);
+      expect(
+        container.read(homeViewModelProvider).selectedSort,
+        SortOption.priceHighToLow,
+      );
     });
 
     test('onPriceFilterChanged updates state and reloads', () {
@@ -234,7 +375,10 @@ void main() {
       viewModel.onSearchSubmitted('test term');
 
       expect(container.read(homeViewModelProvider).showSearchOverlay, isFalse);
-      expect(container.read(homeViewModelProvider).recentSearches, contains('test term'));
+      expect(
+        container.read(homeViewModelProvider).recentSearches,
+        contains('test term'),
+      );
     });
   });
 }

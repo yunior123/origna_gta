@@ -153,7 +153,7 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
   /// Adds an empty spec entry (key-value pair) to the list.
   void addSpec() {
     final entries = List<Map<String, String>>.from(state.specEntries);
-    entries.add({'key': '', 'value': ''});
+    entries.add({Fields.specKey: '', Fields.specValue: ''});
     state = state.copyWith(specEntries: entries);
   }
 
@@ -169,17 +169,17 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     String key,
     String value, {
     String? group,
-    String valueType = 'text',
+    String valueType = SpecValueTypeValues.text,
     String? unit,
   }) {
     final entries = List<Map<String, String>>.from(state.specEntries);
     final entry = <String, String>{
-      'key': key,
-      'value': value,
-      'valueType': valueType,
+      Fields.specKey: key,
+      Fields.specValue: value,
+      Fields.specValueType: valueType,
     };
-    if (group != null) entry['group'] = group;
-    if (unit != null) entry['unit'] = unit;
+    if (group != null) entry[Fields.specGroup] = group;
+    if (unit != null) entry[Fields.specUnit] = unit;
     entries.add(entry);
     state = state.copyWith(specEntries: entries);
   }
@@ -197,7 +197,7 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
   void updateSpec(int index, String key, String value) {
     final entries = List<Map<String, String>>.from(state.specEntries);
     if (index >= 0 && index < entries.length) {
-      entries[index] = {...entries[index], 'key': key, 'value': value};
+      entries[index] = {...entries[index], Fields.specKey: key, Fields.specValue: value};
       state = state.copyWith(specEntries: entries);
     }
   }

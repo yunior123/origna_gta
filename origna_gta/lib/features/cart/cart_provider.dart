@@ -8,6 +8,7 @@ import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/services/analytics_service.dart'
     show analyticsServiceProvider;
 import 'package:origna_gta/utils/constants.dart';
+import 'package:origna_gta/utils/app_logger.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
@@ -19,16 +20,22 @@ final cartControllerProvider = Provider.autoDispose<CartController>((ref) {
   return CartController(ref);
 });
 
+final _cartItemCountOptimisticProvider = StateProvider<int?>((ref) {
+  return null;
+});
+
 /// Total number of items in the cart (sum of all item quantities).
 ///
 /// Returns 0 while loading or when cart is empty. Used by the cart badge
 /// icon in the bottom navigation bar.
 final cartItemCountProvider = Provider.autoDispose<int>((ref) {
+  final optimisticCount = ref.watch(_cartItemCountOptimisticProvider);
   final cartItems = ref.watch(cartItemsProvider);
-  return cartItems.maybeWhen(
+  final streamCount = cartItems.maybeWhen(
     data: (items) => items.fold(0, (total, item) => total + item.quantity),
     orElse: () => 0,
   );
+  return optimisticCount ?? streamCount;
 });
 
 /// Provider for cart item creation date (used to avoid rebuilding item UI on quantity changes)
@@ -451,6 +458,14 @@ class CartController {
   CartRepository get _repository => _ref.read(cartRepositoryProvider);
   String? get _userId => _ref.read(userIdProvider);
 
+  void _invalidateCartState() {
+    _ref.invalidate(cartItemsProvider);
+    _ref.invalidate(cartItemCountProvider);
+    _ref.invalidate(cartWithDetailsProvider);
+    _ref.invalidate(cartShippingValidationProvider);
+    _ref.invalidate(_cartProductsBatchProvider);
+  }
+
   /// Adds a product to the user's cart.
   ///
   /// Parameters:
@@ -482,6 +497,10 @@ class CartController {
         if (!valid) return false;
       }
 
+      final currentDisplayedCount = _ref.read(cartItemCountProvider);
+      _ref.read(_cartItemCountOptimisticProvider.notifier).state =
+          currentDisplayedCount + quantity;
+
       await _repository.addToCart(
         userId,
         productId,
@@ -491,6 +510,20 @@ class CartController {
       if (_disposed) {
         return true;
       }
+      _invalidateCartState();
+      unawaited(
+        _ref
+            .read(cartItemsProvider.future)
+            .then((_) {
+              if (_disposed) return;
+              _ref.invalidate(_cartItemCountOptimisticProvider);
+            })
+            .catchError((_) {
+              if (_disposed) return;
+              _ref.read(_cartItemCountOptimisticProvider.notifier).state =
+                  currentDisplayedCount;
+            }),
+      );
       if (productName != null && priceCad != null) {
         unawaited(
           _ref
@@ -505,6 +538,7 @@ class CartController {
       }
       return true;
     } catch (e, st) {
+      _ref.invalidate(_cartItemCountOptimisticProvider);
       Sentry.captureException(e, stackTrace: st);
       return false;
     }
@@ -531,12 +565,21 @@ class CartController {
   Future<void> clearCart() async {
     final userId = _userId;
     if (userId == null) return;
-    await _repository.clearCart(userId);
+    _ref.read(_cartItemCountOptimisticProvider.notifier).state = 0;
+    try {
+      await _repository.clearCart(userId);
+    } catch (_) {
+      _ref.invalidate(_cartItemCountOptimisticProvider);
+      rethrow;
+    }
+    if (_disposed) return;
+    _ref.invalidate(_cartItemCountOptimisticProvider);
+    _invalidateCartState();
   }
 
   /// Forces a refresh of the cart item stream by invalidating the provider.
   void refreshCart() {
-    _ref.invalidate(cartItemsProvider);
+    _invalidateCartState();
   }
 
   /// Removes a specific item from the user's cart.
@@ -546,7 +589,10 @@ class CartController {
   Future<void> removeFromCart(String cartItemId) async {
     final userId = _userId;
     if (userId == null) return;
+    _ref.invalidate(_cartItemCountOptimisticProvider);
     await _repository.removeFromCart(userId, cartItemId);
+    if (_disposed) return;
+    _invalidateCartState();
   }
 
   /// Saves a cart item to favorites and removes it from the cart.
@@ -561,6 +607,7 @@ class CartController {
     if (userId == null) return false;
 
     try {
+      _ref.invalidate(_cartItemCountOptimisticProvider);
       await _ref
           .read(productRepositoryProvider)
           .toggleFavorite(userId, productId);
@@ -572,12 +619,18 @@ class CartController {
           await _ref
               .read(productRepositoryProvider)
               .toggleFavorite(userId, productId);
-        } catch (_) {
-          // Best-effort rollback
+        } catch (e) {
+          AppLogger.w(
+            'Cart: favorite rollback failed on cart removal',
+            tag: 'cart',
+            error: e,
+          );
         }
         Sentry.captureException(e, stackTrace: st);
         return false;
       }
+      if (_disposed) return true;
+      _invalidateCartState();
       return true;
     } catch (e, st) {
       Sentry.captureException(e, stackTrace: st);
@@ -594,6 +647,8 @@ class CartController {
     final userId = _userId;
     if (userId == null) return;
     await _repository.updateBuyerNote(userId, cartItemId, note);
+    if (_disposed) return;
+    _invalidateCartState();
   }
 
   /// Updates the quantity of an item in the cart.
@@ -606,7 +661,10 @@ class CartController {
     if (userId == null) return false;
 
     try {
+      _ref.invalidate(_cartItemCountOptimisticProvider);
       await _repository.updateQuantity(userId, cartItemId, newQuantity);
+      if (_disposed) return true;
+      _invalidateCartState();
       return true;
     } catch (e, st) {
       Sentry.captureException(e, stackTrace: st);

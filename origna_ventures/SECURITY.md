@@ -14,10 +14,10 @@ Security audit completed with **HIGH** security rating after implementing critic
 
 - **Frontend**: Flutter web (single-page app) — served by Caddy at `/var/www/orignaventures/production/current`
 - **Backend**: Python FastAPI (`backend/app.py`) — Stripe checkout, PDF generation (reportlab), Mailjet email, SQLite
-- **Database**: SQLite (`contracts.db`) with WAL mode for concurrent access safety
+- **Database**: SQLite with WAL mode for concurrent access safety
 - **Deployment**: rsync to Hetzner VPS (204.168.137.16), Caddy reverse proxy, no Firebase
 - **Payment**: Stripe Checkout Sessions (3 service tiers)
-- **Email**: Mailjet for order confirmations and contract notifications
+- **Email**: Mailjet for contact confirmations and payment notifications
 
 ---
 
@@ -27,18 +27,14 @@ Security audit completed with **HIGH** security rating after implementing critic
 
 | # | Vulnerability | Fix |
 |---|--------------|-----|
-| 1 | Unauthenticated `/api/contracts` — anyone could list all client data | Added `require_admin_key()` |
-| 2 | Unauthenticated `/api/contracts/{id}/pdf` — anyone could download contracts | Added admin auth + path traversal protection |
-| 3 | Unauthenticated `/api/email/test` with XSS in HTML email body | Added admin auth + `html_escape()` |
-| 4 | IP spoofing via `X-Forwarded-For` — bypassed all rate limits | `TRUSTED_PROXY_COUNT` env var |
-| 5 | SQLite without WAL mode — concurrent access corruption risk | `PRAGMA journal_mode=WAL` |
-| 6 | Rate limiter memory leak — unbounded growth | Periodic cleanup every 100 requests |
-| 7 | `invite_github_collaborator()` still in codebase | Deleted entirely — manual repo access only |
-| 8 | Missing `checkout.session.expired` webhook handler | Added handler — contract → `expired` |
-| 9 | Mailjet API response exposure in email test endpoint | Only return `{"success": True}` |
-| 10 | PDF path traversal — no containment check | `is_relative_to(storage_dir)` check |
-| 11 | No `contract_id` format validation | Regex `^ovc_[0-9a-f]{16}$` |
-| 12 | Webhook email XSS — raw URL in `href` | `html_escape(pdf_url)` |
+| 1 | Unauthenticated `/api/email/test` with XSS in HTML email body | Added admin auth + `html_escape()` |
+| 2 | IP spoofing via `X-Forwarded-For` — bypassed all rate limits | `TRUSTED_PROXY_COUNT` env var |
+| 3 | SQLite without WAL mode — concurrent access corruption risk | `PRAGMA journal_mode=WAL` |
+| 4 | Rate limiter memory leak — unbounded growth | Periodic cleanup every 100 requests |
+| 5 | `invite_github_collaborator()` still in codebase | Deleted entirely — manual repo access only |
+| 6 | Missing `checkout.session.expired` webhook handler | Added handler for direct checkout sessions |
+| 7 | Mailjet API response exposure in email test endpoint | Only return `{"success": True}` |
+| 8 | Webhook email HTML injection risk | Escaped outbound content and tightened reply-to handling |
 
 ### Manual Repository Access Policy
 
@@ -60,7 +56,7 @@ GitHub collaborator auto-invite has been **permanently removed**. Repository acc
 | Message validation | DONE | Min 10 chars, max 1000 chars |
 | Input sanitization | DONE | Removes HTML/script injection characters |
 | Length limits | DONE | All fields have max length |
-| Contract ID validation | DONE | Strict regex `^ovc_[0-9a-f]{16}$` |
+| Contact payload validation | DONE | Pydantic validation + length limits |
 
 ### B. Web Security
 | Feature | Status | Details |

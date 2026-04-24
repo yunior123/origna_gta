@@ -936,7 +936,7 @@ class ProductModel {
     this.digitalType,
     this.digitalBuilds,
     this.approvalRejectionReason,
-    this.lifecycleStatus = 'draft',
+    this.lifecycleStatus = ProductLifecycleStatusValues.draft,
   }) : deliveryOptions =
            deliveryOptions ?? SellerDeliveryOption.defaultOptions(),
        searchKeywords = keywords;

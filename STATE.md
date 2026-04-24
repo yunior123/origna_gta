@@ -2028,3 +2028,66 @@ The following items were verified as done and are no longer reusable as active t
 - Full Spanish locale labels added alongside existing EN/FR
 - `pypdf` added to `requirements.txt` for test text extraction
 - Verification: `test_generate_receipt_pdf_contains_business_details`, `test_generate_receipt_pdf_french_labels`, `test_generate_receipt_pdf_spanish_labels` all pass
+
+86. **[Bug1 Fix] AppError.getMessage() now filters raw backend "internal server error" strings; HomeViewModel uses AppError.log() instead of AppLogger.d() for product fetch errors**: Verified on 2026-04-23.
+
+87. **[Bug2 Fix] SimilarProductsSection logs errors via AppLogger.w() before hiding with SizedBox.shrink()**: Verified on 2026-04-23.
+
+88. **[Bug3 Fix] OrignaVentures contact form catch(_) replaced with catch(e) + debugPrint; 5 other swallowed catches in main.dart also fixed**: Verified on 2026-04-23.
+
+89. **[Bug4 Fix] DeliveryRegion enum created (lib/utils/delivery_region.dart) — centralizes Canada/Cuba/international detection; order_widgets._buildEstimatedDelivery shows "4-8 weeks or longer" for international/28+ days; _buildSellerPackage shows Cuba flag + "Delivery to Canada & Cuba"**: Verified on 2026-04-23.
+
+90. **[Error Logging Audit] 38 swallowed catch blocks fixed: 29 in origna_gta (AppLogger.w/e/d + AppError.log), 9 in origna_ventures (debugPrint). No more silent catch(_){} blocks.**: Verified on 2026-04-23.
+
+91. **[Browse + Stripe Hardening] Dev browse/category/scroll regressions and Ventures webhook/email idempotency hardened**: Verified on 2026-04-23.
+- browse/query hardening:
+  - `origna_gta/lib/core/repositories/product_search_helpers.dart` now ignores invalid subcategory/category combinations instead of issuing impossible filter pairs.
+  - `origna_gta/lib/features/home/home_viewmodel.dart` now stops pagination when the cursor does not advance or a pagination error occurs, preventing repeated failing scroll loads on the home feed.
+- seed catalog hardening:
+  - `scripts/reseed_dev_catalog.ts` now validates category/subcategory pairs against the storefront taxonomy and fails fast unless all 21 categories are represented.
+  - several seed subcategories were normalized to the app’s canonical taxonomy so category/subcategory live E2E can rely on valid catalog data.
+- Ventures payment/email hardening:
+  - `origna_ventures/backend/app.py` now avoids resending checkout receipts/support notifications when a later Stripe webhook repeats the same paid session under a different event id.
+  - subscription lifecycle emails are now gated on actual status change, preventing duplicate customer emails on repeated `customer.subscription.updated` / `invoice.payment_failed` deliveries.
+  - contact emails now set explicit reply-to metadata for support and customer confirmation flows.
+  - legacy contract-era admin/docs surfaces were removed from OrignaVentures (`/api/contracts`, admin runbook references, and contract bootstrap schema creation).
+- verification:
+  - `cd origna_gta/origna_gta && flutter test test/unit/product_search_helpers_test.dart test/unit/home_viewmodel_test.dart` → passed.
+  - `cd e2e && bun x tsc --noEmit` → passed.
+  - `cd e2e && bun test specs/phase1-api/dev-product-browse-live.spec.ts` → `6 pass / 0 fail` live against `https://api.dev.orignagta.ca/graphql`.
+  - `cd e2e && bun test specs/phase4-product-flows/subcategory-filtering.spec.ts` → `11 pass / 0 fail`, including live category click, subcategory click, and new home-scroll pagination check on `https://dev.orignagta.ca/`.
+  - `cd e2e && bun test specs/phase6-stripe/origna-ventures-contact-live.spec.ts` → `1 pass / 0 fail`, live contact endpoint reported both support and confirmation emails as sent with sandbox disabled.
+- remaining limits:
+  - full live payment completion, inbox delivery confirmation inside `yr62813@gmail.com`, and buyer-side order/tracking/delivery verification were not fully automated here because that requires real mailbox/card-side observation beyond the current shell.
+
+85. **Search SQL translator fix + delivery policy regressions verified on 2026-04-22**:
+- reproduced current DEV failures directly:
+  - `curl -i 'https://api.dev.orignagta.ca/products?search=solar'` → `500 DATABASE_ERROR`
+  - `curl -i 'https://api.dev.orignagta.ca/products?category=1'` → `500 DATABASE_ERROR`
+  - direct GraphQL probe to `list(collection: "products", filters: { lifecycleStatus: {_eq: "active"}, categoryId: {_eq: 1}}, orderBy: "createdAt", descending: true, limit: 5)` → `{"errors":[{"message":"Internal server error"}]}`
+- root cause isolated locally in `orignabase/crates/ob-database/src/query.rs`:
+  - numeric JSONB fields were being emitted as text comparisons (`data->>'field' = 1`)
+  - `_contains` still generated invalid PostgreSQL `CONTAINS`
+  - `_starts_with` still generated invalid `string::startsWith(...)`
+  - numeric JSONB order-by fields were sorting lexicographically instead of with numeric casts
+- fixes applied:
+  - added typed SQL generation for numeric and boolean JSONB filters
+  - rewrote `_contains` to PostgreSQL-safe JSONB-array-or-ILIKE logic
+  - rewrote `_starts_with` to `ILIKE 'prefix%'`
+  - switched numeric-looking JSONB order fields to `NULLIF(data->>'field', '')::numeric`
+  - updated `orignabase/crates/ob-database/tests/comprehensive_db_tests.rs` expectations to match the corrected SQL
+- local verification:
+  - `cd orignabase && cargo test -p ob-database query::tests -- --nocapture` → `31 passed`
+  - `cd orignabase && cargo test -p ob-database --test comprehensive_db_tests -- --nocapture` → `51 passed`
+- Flutter-side follow-up:
+  - `origna_gta/lib/screens/ordersuccess_screen.dart` now uses the policy copy (`4–8 weeks or longer`) for non-local physical orders instead of promising a specific date
+  - added `origna_gta/test/unit/delivery_region_test.dart`
+  - extended `origna_gta/test/widget/ordersuccess_screen_test.dart`
+  - verification:
+    - `cd origna_gta && flutter test test/unit/delivery_region_test.dart test/widget/ordersuccess_screen_test.dart test/unit/orignabase_auth_repository_impl_test.dart` → passed
+    - `cd origna_gta && flutter analyze --no-fatal-infos lib/screens/ordersuccess_screen.dart lib/widgets/order_widgets.dart lib/utils/delivery_region.dart lib/core/repositories/orignabase_auth_repository.dart test/widget/ordersuccess_screen_test.dart test/unit/delivery_region_test.dart test/unit/orignabase_auth_repository_impl_test.dart` → passed
+- Ventures contact flow re-verified because the user reported it broken:
+  - live probe: `POST https://api.orignaventures.ca/api/contact` returned `{"status":"ok","emails":{"support":{"status":"sent"},"confirmation":{"status":"sent"}}}`
+  - local backend regression: `cd origna_ventures/backend && pytest tests/test_payments_api.py -k contact -q` → `1 passed`
+- deploy blocker:
+  - SSH to the VPS intermittently recovered, but pushing the local `orignabase/` tree back to `/opt/orignabase/source` via `rsync` repeatedly failed with intermittent `Connection refused` on port `22`, so the DEV search fix is verified locally but not yet live-deployed from this shell.

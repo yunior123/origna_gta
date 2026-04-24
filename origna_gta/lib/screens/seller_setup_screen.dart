@@ -6,6 +6,7 @@ import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/features/seller/seller_account_status_viewmodel.dart';
 import 'package:origna_gta/models/models.dart';
+import 'package:origna_gta/utils/app_logger.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
@@ -731,7 +732,11 @@ class _SellerSetupCompleteScreenState
       // This ensures chargesEnabled, payoutsEnabled, onboardingCompleted are updated
       await ref.read(refreshSellerStatusProvider(null).future);
     } catch (e) {
-      // Ignore errors - we'll still navigate home
+      AppLogger.w(
+        'SellerSetup: Stripe status sync failed, navigating home anyway',
+        tag: 'seller',
+        error: e,
+      );
     }
 
     // Refresh user profile to get updated seller status from database

@@ -5,6 +5,7 @@ import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/services/orignabase_analytics_service.dart';
+import 'package:origna_gta/utils/app_logger.dart';
 
 import 'subscription_state.dart';
 
@@ -104,6 +105,11 @@ class OrignaBaseSubscriptionViewModel extends StateNotifier<SubscriptionState> {
 
       state = state.copyWith(isLoading: false, checkoutUrl: url);
     } catch (e) {
+      AppLogger.w(
+        'Subscription: create checkout failed',
+        tag: 'subscription',
+        error: e,
+      );
       state = state.copyWith(isLoading: false, errorMessage: _parseError(e));
     }
   }
@@ -122,6 +128,7 @@ class OrignaBaseSubscriptionViewModel extends StateNotifier<SubscriptionState> {
 
       state = state.copyWith(isLoading: false);
     } catch (e) {
+      AppLogger.w('Subscription: cancel failed', tag: 'subscription', error: e);
       state = state.copyWith(isLoading: false, errorMessage: _parseError(e));
     }
   }
@@ -136,6 +143,11 @@ class OrignaBaseSubscriptionViewModel extends StateNotifier<SubscriptionState> {
       await _ob.request('POST', ApiEndpoints.subscriptionsReactivate, body: {});
       state = state.copyWith(isLoading: false);
     } catch (e) {
+      AppLogger.w(
+        'Subscription: reactivate failed',
+        tag: 'subscription',
+        error: e,
+      );
       state = state.copyWith(isLoading: false, errorMessage: _parseError(e));
     }
   }
@@ -159,6 +171,11 @@ class OrignaBaseSubscriptionViewModel extends StateNotifier<SubscriptionState> {
         },
       );
     } catch (e) {
+      AppLogger.w(
+        'Subscription: notification prefs update failed',
+        tag: 'subscription',
+        error: e,
+      );
       state = state.copyWith(errorMessage: _parseError(e));
     }
   }

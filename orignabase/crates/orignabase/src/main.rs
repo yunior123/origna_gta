@@ -27,6 +27,7 @@ use ob_search::{SearchClient, SearchConfig};
 use ob_security::{RuleEngine, parse_rules};
 use ob_storage::routes::{StorageState, storage_router};
 use ob_storage::{LocalStorage, ResumableUploadManager, SignedUrlGenerator};
+use std::backtrace::Backtrace;
 use std::collections::HashMap;
 use std::future::pending;
 use std::path::Path;
@@ -1343,7 +1344,8 @@ async fn serve(config: Config) -> Result<()> {
 }
 
 fn install_panic_hook() {
-    std::panic::set_hook(Box::new(|panic_info| {
+    let previous_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |panic_info| {
         let location = panic_info
             .location()
             .map(|loc| format!("{}:{}", loc.file(), loc.line()))
@@ -1354,7 +1356,14 @@ fn install_panic_hook() {
             .map(|msg| (*msg).to_string())
             .or_else(|| panic_info.payload().downcast_ref::<String>().cloned())
             .unwrap_or_else(|| "non-string panic payload".to_string());
-        tracing::error!(location = %location, panic = %payload, "Unhandled panic");
+        let backtrace = Backtrace::force_capture();
+        tracing::error!(
+            location = %location,
+            panic = %payload,
+            backtrace = %backtrace,
+            "Unhandled panic"
+        );
+        previous_hook(panic_info);
     }));
 }
 

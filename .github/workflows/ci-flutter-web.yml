@@ -27,8 +27,12 @@ jobs:
           flutter build web --debug \
             --dart-define=ENVIRONMENT=dev \
             --dart-define=ORIGNABASE_URL=https://api.dev.orignagta.ca
+          sed -i "s|__GOOGLE_WEB_CLIENT_ID__|${GOOGLE_WEB_CLIENT_ID}|g" build/web/index.html
+          sed -i "s|__TURNSTILE_SITE_KEY__|${TURNSTILE_SITE_KEY}|g" build/web/index.html
         env:
           FLUTTER_WEB_USE_SKIA: "true"
+          GOOGLE_WEB_CLIENT_ID: "test-client.apps.googleusercontent.com"
+          TURNSTILE_SITE_KEY: "1x00000000000000000000AA"
 
       - name: Flutter analyze
         run: cd origna_gta && flutter analyze --no-fatal-infos

@@ -125,13 +125,17 @@ class DeliveryChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
+    return Wrap(
+      spacing: 5,
+      runSpacing: 2,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         Icon(icon, size: 14, color: color),
-        const SizedBox(width: 5),
         Text(
           label,
+          maxLines: 2,
+          softWrap: true,
+          overflow: TextOverflow.ellipsis,
           style: TextStyle(
             fontSize: 12,
             color: color,
@@ -322,12 +326,20 @@ class _DeliveryInfoRow extends StatelessWidget {
 /// Delivery estimate text helper.
 String localizedDeliveryEstimate(Product product) {
   final deliveryInfo = product.deliveryInfo;
+  final exactDays = deliveryInfo.minDays == deliveryInfo.maxDays
+      ? deliveryInfo.minDays
+      : null;
 
   if (product.isDigital) {
     return 'product.delivery_instant'.tr();
   }
 
   if (product.isLocalDeliveryOnly) {
+    if (exactDays != null) {
+      return 'product.delivery_local_business_days_exact'.tr(
+        namedArgs: {'days': exactDays.toString()},
+      );
+    }
     return 'product.delivery_local_business_days'.tr(
       namedArgs: {
         'min': deliveryInfo.minDays.toString(),
@@ -338,6 +350,12 @@ String localizedDeliveryEstimate(Product product) {
 
   if (deliveryInfo.isInternational || deliveryInfo.maxDays >= 28) {
     return 'product.delivery_within_weeks_or_longer'.tr();
+  }
+
+  if (exactDays != null) {
+    return 'product.delivery_business_days_exact'.tr(
+      namedArgs: {'days': exactDays.toString()},
+    );
   }
 
   return 'product.delivery_business_days'.tr(

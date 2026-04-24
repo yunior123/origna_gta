@@ -1,13 +1,14 @@
 import { describe, expect, test } from 'bun:test';
+import { ORIGNABASE_URL } from '../../lib/config.js';
 
-const DEV_API_URL = 'https://api.dev.orignagta.ca/graphql';
+const GRAPHQL_URL = `${ORIGNABASE_URL}/graphql`;
 const ALL_CATEGORY_IDS = Array.from({ length: 21 }, (_, index) => index + 1);
 
 async function listProducts(
   filters: Record<string, unknown>,
   options: { limit?: number; startAfter?: string } = {},
 ) {
-  const response = await fetch(DEV_API_URL, {
+  const response = await fetch(GRAPHQL_URL, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
@@ -29,7 +30,7 @@ async function listProducts(
 }
 
 async function listProductsPage(offset: number) {
-  const response = await fetch(DEV_API_URL, {
+  const response = await fetch(GRAPHQL_URL, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({

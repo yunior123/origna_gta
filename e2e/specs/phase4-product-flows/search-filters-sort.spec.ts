@@ -9,8 +9,11 @@ import {
 } from '../../lib/api-client.js';
 import {
   TEST_ACCOUNTS,
+  WEB_APP_URL,
 } from '../../lib/config.js';
 import { AgentBrowser } from '../../lib/agent-browser.js';
+
+const HOME_URL = WEB_APP_URL.endsWith('/') ? WEB_APP_URL : `${WEB_APP_URL}/`;
 
 function parseAgentEvalJson(raw: string): any {
   const trimmed = raw.trim();
@@ -139,7 +142,7 @@ describe('Search Filters & Sort — UI', () => {
   });
 
   test('T07: Sort button is visible on home page', { timeout: 60_000 }, async () => {
-    await browser.open('https://dev.orignagta.ca/');
+    await browser.open(HOME_URL);
     await browser.waitForFlutter();
     const snap = await browser.snapshot({ interactive: true, compact: true });
     const sortBtn = browser.findByLabel(snap, /btn-home-sort|sort/i);
@@ -148,7 +151,7 @@ describe('Search Filters & Sort — UI', () => {
   });
 
   test('T08: Sort button opens sort options sheet', { timeout: 60_000 }, async () => {
-    await browser.open('https://dev.orignagta.ca/');
+    await browser.open(HOME_URL);
     await browser.waitForFlutter();
     const snap = await browser.snapshot({ interactive: true, compact: true });
     const sortBtn = browser.findByLabel(snap, /btn-home-sort|sort/i);
@@ -164,7 +167,7 @@ describe('Search Filters & Sort — UI', () => {
   });
 
   test('T09: Price filter button is visible on home page', { timeout: 60_000 }, async () => {
-    await browser.open('https://dev.orignagta.ca/');
+    await browser.open(HOME_URL);
     await browser.waitForFlutter();
     const snap = await browser.snapshot({ interactive: true, compact: true });
     const filterBtn = browser.findByLabel(snap, /btn-home-filter|filter|price/i);
@@ -172,7 +175,7 @@ describe('Search Filters & Sort — UI', () => {
   });
 
   test('T10: Price filter opens dialog and apply button exists', { timeout: 60_000 }, async () => {
-    await browser.open('https://dev.orignagta.ca/');
+    await browser.open(HOME_URL);
     await browser.waitForFlutter();
     // Use safeClick for atomic snapshot+click to avoid stale ref / label-text mismatch
     if (await browser.safeClick(/btn-home-filter|btn-home-price-filter/i)) {
@@ -187,7 +190,7 @@ describe('Search Filters & Sort — UI', () => {
   });
 
   test('T11: Search bar accepts input and shows results', { timeout: 60_000 }, async () => {
-    await browser.open('https://dev.orignagta.ca/');
+    await browser.open(HOME_URL);
     await browser.waitForFlutter();
     const snap = await browser.snapshot({ interactive: true, compact: true });
     const searchInput = browser.findByLabel(snap, /input-home-search|search/i);
@@ -203,7 +206,7 @@ describe('Search Filters & Sort — UI', () => {
   });
 
   test('T12: Made in Canada chip is visible and leaves home stable when toggled', { timeout: 60_000 }, async () => {
-    await browser.open('https://dev.orignagta.ca/');
+    await browser.open(HOME_URL);
     await browser.waitForFlutter();
     await browser.enableAccessibilityIfPresent().catch(() => false);
 
@@ -224,12 +227,12 @@ describe('Search Filters & Sort — UI', () => {
       },
     ).stdout.toString().trim());
 
-    expect(state?.href).toBe('https://dev.orignagta.ca/');
+    expect(state?.href).toBe(HOME_URL);
     expect(state?.splash).toBe(false);
   });
 
   test('T13: Price descending sort leaves home stable without reloading the app shell', { timeout: 60_000 }, async () => {
-    await browser.open('https://dev.orignagta.ca/');
+    await browser.open(HOME_URL);
     await browser.waitForFlutter();
     await browser.enableAccessibilityIfPresent().catch(() => false);
 
@@ -272,7 +275,7 @@ describe('Search Filters & Sort — UI', () => {
       },
     ).stdout.toString().trim());
 
-    expect(state?.href).toBe('https://dev.orignagta.ca/');
+    expect(state?.href).toBe(HOME_URL);
     expect(state?.splash).toBe(false);
 
     const snap = await browser.snapshot({ interactive: true, compact: true });
@@ -280,7 +283,7 @@ describe('Search Filters & Sort — UI', () => {
   });
 
   test('T14: Repeated fast home-feed scrolling never reloads the web shell or resurfaces splash', { timeout: 90_000 }, async () => {
-    await browser.open('https://dev.orignagta.ca/');
+    await browser.open(HOME_URL);
     await browser.waitForFlutter();
     await browser.enableAccessibilityIfPresent().catch(() => false);
 
@@ -296,7 +299,7 @@ describe('Search Filters & Sort — UI', () => {
       },
     ).stdout.toString().trim());
 
-    expect(state?.href).toBe('https://dev.orignagta.ca/');
+    expect(state?.href).toBe(HOME_URL);
     expect(state?.splash).toBe(false);
 
     const snap = await browser.snapshot({ interactive: true, compact: true });

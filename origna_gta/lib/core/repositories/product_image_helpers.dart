@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/utils/app_logger.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 
 /// Extracted image upload helpers for [OrignaBaseProductRepository].
 ///
@@ -18,20 +19,20 @@ mixin ProductImageHelpers {
     final path = 'products/$fileName';
     final result = await ob.request(
       'POST',
-      '/storage/presign/upload',
+      ApiEndpoints.storagePresignUpload,
       body: {
-        'paths': [path],
-        'ttl_secs': 3600,
+        Fields.paths: [path],
+        Fields.ttlSecs: 3600,
       },
     );
     final resultMap = Map<String, dynamic>.from((result as Map?) ?? {});
     final urls = List<Map<String, dynamic>>.from(
-      (resultMap['urls'] as List?) ?? [],
+      (resultMap[Fields.urls] as List?) ?? [],
     );
     if (urls.isEmpty) return null;
     return {
-      'uploadUrl': urls[0]['upload_url'] as String,
-      'publicUrl': urls[0]['path'] as String,
+      Fields.uploadUrl: urls[0][Fields.uploadUrlPath] as String,
+      Fields.publicUrl: urls[0][Fields.storagePath] as String,
     };
   }
 
@@ -43,20 +44,20 @@ mixin ProductImageHelpers {
     final path = 'products/videos/$fileName';
     final result = await ob.request(
       'POST',
-      '/storage/presign/upload',
+      ApiEndpoints.storagePresignUpload,
       body: {
-        'paths': [path],
-        'ttl_secs': 3600,
+        Fields.paths: [path],
+        Fields.ttlSecs: 3600,
       },
     );
     final resultMap = Map<String, dynamic>.from((result as Map?) ?? {});
     final urls = List<Map<String, dynamic>>.from(
-      (resultMap['urls'] as List?) ?? [],
+      (resultMap[Fields.urls] as List?) ?? [],
     );
     if (urls.isEmpty) return null;
     return {
-      'uploadUrl': urls[0]['upload_url'] as String,
-      'publicUrl': urls[0]['path'] as String,
+      Fields.uploadUrl: urls[0][Fields.uploadUrlPath] as String,
+      Fields.publicUrl: urls[0][Fields.storagePath] as String,
     };
   }
 
@@ -77,8 +78,8 @@ mixin ProductImageHelpers {
         try {
           await ob.request(
             'POST',
-            '/storage/batch-delete',
-            body: {'paths': urls},
+            ApiEndpoints.storageBatchDelete,
+            body: {Fields.paths: urls},
           );
         } catch (e) {
           AppLogger.w(
@@ -107,13 +108,13 @@ mixin ProductImageHelpers {
 
     final result = await ob.request(
       'POST',
-      '/storage/presign/upload',
-      body: {'paths': paths, 'ttl_secs': 3600},
+      ApiEndpoints.storagePresignUpload,
+      body: {Fields.paths: paths, Fields.ttlSecs: 3600},
     );
 
     final resultMap = Map<String, dynamic>.from((result as Map?) ?? {});
     final urls = List<Map<String, dynamic>>.from(
-      (resultMap['urls'] as List?) ?? [],
+      (resultMap[Fields.urls] as List?) ?? [],
     );
 
     final uploadFutures = urls.asMap().entries.map((entry) async {
@@ -122,12 +123,12 @@ mixin ProductImageHelpers {
       try {
         final response = await httpClient
             .put(
-              Uri.parse(urlInfo['upload_url'] as String),
+              Uri.parse(urlInfo[Fields.uploadUrlPath] as String),
               body: images[i],
               headers: {'Content-Type': 'image/jpeg'},
             )
             .timeout(const Duration(seconds: 30));
-        if (response.statusCode == 200) return urlInfo['path'] as String;
+        if (response.statusCode == 200) return urlInfo[Fields.storagePath] as String;
         return null;
       } catch (e) {
         AppLogger.w(

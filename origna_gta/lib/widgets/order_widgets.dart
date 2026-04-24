@@ -13,6 +13,7 @@ import 'package:origna_gta/features/orders/orders_provider.dart';
 import 'package:origna_gta/models/enum_extensions.dart';
 import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:origna_gta/utils/delivery_region.dart';
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/modern_card.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
@@ -499,8 +500,7 @@ class PendingApprovalsBanner extends StatelessWidget {
             button: true,
             label: 'btn-pending-shipping-approval',
             child: InkWell(
-              onTap: () =>
-                  appPushNamed(context, AppRoutes.shippingApproval),
+              onTap: () => appPushNamed(context, AppRoutes.shippingApproval),
               borderRadius: BorderRadius.circular(DesignTokens.radius16),
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -940,7 +940,8 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
                     icon: Icons.assignment_return_outlined,
                     label: 'returns.request_return'.tr(),
                     color: DesignTokens.warning,
-                    onTap: () => appPushNamed(context,
+                    onTap: () => appPushNamed(
+                      context,
                       AppRoutes.returnRequest,
                       arguments: ReturnRequestArgs(orderId: order.orderId),
                     ),
@@ -1102,15 +1103,40 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
   Widget _buildEstimatedDelivery(
     OrderItem item,
     DateTime orderDate,
-    bool isCanada,
+    DeliveryRegion deliveryRegion,
     bool isDark,
   ) {
-    // International adds ~7 additional business days on top of seller's estimate
-    final extraDays = isCanada ? 0 : 7;
-    // Calculate from the order creation date, not DateTime.now()
-    final earliest = orderDate.add(
-      Duration(days: item.estimatedShipDays + extraDays),
+    final estimatedShipDays = item.estimatedShipDays;
+    final policyEstimate = deliveryRegion.localizedDeliveryEstimate(
+      estimatedShipDays: estimatedShipDays,
     );
+
+    if (policyEstimate.isNotEmpty) {
+      return Row(
+        children: [
+          Icon(
+            Icons.access_time_rounded,
+            size: 13,
+            color: DesignTokens.textSecondary,
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              policyEstimate,
+              style: const TextStyle(
+                fontSize: 11,
+                color: DesignTokens.textSecondary,
+                fontWeight: FontWeight.w500,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      );
+    }
+
+    final earliest = orderDate.add(Duration(days: estimatedShipDays));
     final latest = earliest.add(const Duration(days: 3));
     final fmt = DateFormat('MMM d');
     final rangeStr = '${fmt.format(earliest)} – ${fmt.format(latest)}';
@@ -1640,9 +1666,7 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
         ? first.sellerName!
         : 'orders.unknown_seller'.tr();
     final country = first.sellerAddress?.country ?? '';
-    final isCanada =
-        country.toLowerCase().contains('canada') ||
-        country.toLowerCase() == 'ca';
+    final deliveryRegion = DeliveryRegion.fromCountry(country);
 
     final hasPerishable = items.any((i) => i.isPerishable);
 
@@ -1725,12 +1749,12 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
                         vertical: 5,
                       ),
                       decoration: BoxDecoration(
-                        color: isCanada
+                        color: deliveryRegion.isDomestic
                             ? DesignTokens.canadaRed.withValues(alpha: 0.08)
                             : DesignTokens.primary.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: isCanada
+                          color: deliveryRegion.isDomestic
                               ? DesignTokens.canadaRed.withValues(alpha: 0.2)
                               : DesignTokens.primary.withValues(alpha: 0.2),
                         ),
@@ -1739,18 +1763,16 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            isCanada ? '🇨🇦' : '🌍',
+                            deliveryRegion.flagEmoji,
                             style: const TextStyle(fontSize: 14),
                           ),
                           const SizedBox(width: 5),
                           Text(
-                            isCanada
-                                ? 'orders.ships_from_canada'.tr()
-                                : 'orders.ships_international'.tr(),
+                            deliveryRegion.localizedLabel(),
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w600,
-                              color: isCanada
+                              color: deliveryRegion.isDomestic
                                   ? DesignTokens.canadaRed
                                   : DesignTokens.primary,
                             ),
@@ -1921,7 +1943,7 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
               child: _buildEstimatedDelivery(
                 first,
                 order.createdAt,
-                isCanada,
+                deliveryRegion,
                 isDark,
               ),
             ),

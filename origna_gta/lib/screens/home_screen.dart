@@ -57,6 +57,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   final FocusNode _searchFocusNode = FocusNode();
   final ScrollController _scrollController = ScrollController();
   bool _isPaginating = false;
+  bool _paginationTriggerArmed = true;
 
   @override
   Widget build(BuildContext context) {
@@ -141,17 +142,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                       // Sort + Price filter row (GAP #1, GAP #2)
                       SliverToBoxAdapter(
-                        child: _SortAndFilterRow(homeNotifier: homeNotifier),
+                        child: _SortAndFilterRow(
+                          homeNotifier: homeNotifier,
+                          onFilterChange: _resetHomeScrollForFilterChange,
+                        ),
                       ),
 
                       // Category Chips
                       SliverToBoxAdapter(
-                        child: _CategoryChips(homeNotifier: homeNotifier),
+                        child: _CategoryChips(
+                          homeNotifier: homeNotifier,
+                          onFilterChange: _resetHomeScrollForFilterChange,
+                        ),
                       ),
 
                       // Subcategory Chips (shown when a category is selected)
                       SliverToBoxAdapter(
-                        child: _SubcategoryChips(homeNotifier: homeNotifier),
+                        child: _SubcategoryChips(
+                          homeNotifier: homeNotifier,
+                          onFilterChange: _resetHomeScrollForFilterChange,
+                        ),
                       ),
 
                       // GAP #6 — Recently Viewed horizontal section
@@ -460,21 +470,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             ],
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        Flexible(
-                          child: SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            physics: const ClampingScrollPhysics(),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const _SettingsButton(),
-                                _NotificationBellButton(),
-                                const _AddProductButton(),
-                                const CartBadge.animated(),
-                              ],
-                            ),
-                          ),
+                        const SizedBox(width: 12),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const _SettingsButton(),
+                            _NotificationBellButton(),
+                            const _AddProductButton(),
+                            const CartBadge.animated(),
+                          ],
                         ),
                       ],
                     ),
@@ -683,12 +687,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     try {
       final position = _scrollController.position;
-      if (position.pixels >= position.maxScrollExtent - 300) {
+      final extentAfter = position.extentAfter;
+      if (extentAfter > 600) {
+        _paginationTriggerArmed = true;
+      }
+      if (!_paginationTriggerArmed) return;
+
+      if (extentAfter <= 300) {
         final state = ref.read(homeViewModelProvider);
         if (state.products.isNotEmpty &&
             !state.isLoadingMore &&
             state.hasMore) {
           _isPaginating = true;
+          _paginationTriggerArmed = false;
           Future.microtask(() async {
             try {
               await ref.read(homeViewModelProvider.notifier).loadProducts();
@@ -700,6 +711,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               );
             } finally {
               _isPaginating = false;
+              if (!mounted || !_scrollController.hasClients) return;
+              final nextState = ref.read(homeViewModelProvider);
+              final nextExtentAfter = _scrollController.position.extentAfter;
+              if (nextExtentAfter > 600) {
+                _paginationTriggerArmed = true;
+              } else if (nextExtentAfter <= 300 &&
+                  nextState.products.isNotEmpty &&
+                  !nextState.isLoadingMore &&
+                  nextState.hasMore) {
+                _paginationTriggerArmed = true;
+                Future.microtask(_onScroll);
+              }
             }
           });
         }
@@ -710,6 +733,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         stackTrace: st,
         context: 'HomeScreen._onScroll.pagination',
       );
+    }
+  }
+
+  void _resetHomeScrollForFilterChange() {
+    _paginationTriggerArmed = true;
+
+    if (_searchFocusNode.hasFocus) {
+      _searchFocusNode.unfocus();
+    }
+    if (!_scrollController.hasClients) return;
+
+    try {
+      _scrollController.jumpTo(0);
+    } catch (_) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_scrollController.hasClients) {
+          _scrollController.jumpTo(0);
+        }
+      });
     }
   }
 }

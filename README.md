@@ -6,11 +6,11 @@ Origna GTA is a Canada-first multi-vendor e-commerce platform where buyers brows
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | Flutter 3.x + Dart, Riverpod, Freezed |
+| Frontend | Flutter 3.41.5 + Dart 3.11.0, Riverpod, Freezed |
 | Backend API | OrignaBase (Rust, VPS `204.168.137.16`) |
-| Database | PostgreSQL (via OrignaBase) |
+| Database | PostgreSQL 18 (via OrignaBase) |
 | Search | Meilisearch v1.12 (via OrignaBase) |
-| Payments | Stripe (Checkout + Connect + webhooks) |
+| Payments | Stripe Checkout + Connect + webhooks |
 | Bot protection | Cloudflare Turnstile |
 | Web proxy | Caddy (on VPS) |
 | E2E tests | agent-browser (TypeScript) |
@@ -20,7 +20,26 @@ No Firebase. No Cloud Functions. No Firestore.
 This repo contains:
 - Flutter app: `origna_gta/`
 - agent-browser E2E suite: `e2e/`
+- Ventures frontend/backend: `origna_ventures/`
+- OrignaBase Rust backend workspace: `orignabase/`
 - VPS deploy scripts: `scripts/`
+
+## Core Docs For Humans And Agents
+
+- Repo map: `docs/REPO_MAP.md`
+- Agent rules: `AGENTS.md`
+- Routing/context file: `CLAUDE.md`
+- Error codes and support-event model: `docs/ERROR_CODES.md`
+- AI skills inventory: `docs/AI_SKILLS_CATALOG.md`
+
+## External References In Active Use
+
+- Flutter: https://docs.flutter.dev/
+- Rust: https://doc.rust-lang.org/stable/book/
+- Stripe Checkout Sessions: https://docs.stripe.com/api/checkout/sessions
+- Mailjet Send API v3.1: https://documentation.mailjet.com/hc/en-us/articles/16886347025947-Mailjet-Templating-Language
+- PostgreSQL current docs: https://www.postgresql.org/docs/current/
+- Sentry Flutter: https://docs.sentry.io/platforms/flutter/
 
 ## Backend contract
 - `orignabaseUrl` is the only primary backend for auth, data, and business logic in the active app path.

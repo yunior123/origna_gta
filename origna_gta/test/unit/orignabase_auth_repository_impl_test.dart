@@ -105,7 +105,11 @@ class _FakeAuth extends Fake implements OrignaBaseAuth {
   Stream<AuthState> get authStateChanges => authStateChangesValue;
 
   @override
-  Future<AuthState> register(String email, String password) async {
+  Future<AuthState> register(
+    String email,
+    String password, {
+    String? turnstileToken,
+  }) async {
     if (registerThrowException != null) {
       throw registerThrowException!;
     }
@@ -120,7 +124,11 @@ class _FakeAuth extends Fake implements OrignaBaseAuth {
   }
 
   @override
-  Future<AuthState> signInWithEmail(String email, String password) async {
+  Future<AuthState> signInWithEmail(
+    String email,
+    String password, {
+    String? turnstileToken,
+  }) async {
     if (signInThrowException != null) {
       throw signInThrowException!;
     }
@@ -279,6 +287,21 @@ class _FakeCollectionRef extends Fake implements CollectionRef {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  group('normalizedWebRedirectUri', () {
+    test('removes fragment-only hash from login URL', () {
+      final uri = Uri.parse('https://orignagta.ca/login#');
+      expect(normalizedWebRedirectUri(uri).toString(), 'https://orignagta.ca/login');
+    });
+
+    test('preserves path and query while dropping fragment payload', () {
+      final uri = Uri.parse('https://orignagta.ca/login?ts=123#access_token=abc');
+      expect(
+        normalizedWebRedirectUri(uri).toString(),
+        'https://orignagta.ca/login?ts=123',
+      );
+    });
+  });
 
   late _FakeOrignaBase fakeOb;
   late OrignaBaseAuthRepository repository;

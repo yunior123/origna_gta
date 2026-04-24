@@ -121,8 +121,12 @@ class _AddProductButton extends ConsumerWidget {
 
 class _CategoryChips extends ConsumerWidget {
   final HomeViewModel homeNotifier;
+  final VoidCallback onFilterChange;
 
-  const _CategoryChips({required this.homeNotifier});
+  const _CategoryChips({
+    required this.homeNotifier,
+    required this.onFilterChange,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -210,6 +214,7 @@ class _CategoryChips extends ConsumerWidget {
               color: DesignTokens.transparent,
               child: InkWell(
                 onTap: () {
+                  onFilterChange();
                   homeNotifier.onCategorySelected(
                     isAll ? null : category!.categoryId,
                   );
@@ -245,8 +250,12 @@ class _CategoryChips extends ConsumerWidget {
 
 class _SubcategoryChips extends ConsumerWidget {
   final HomeViewModel homeNotifier;
+  final VoidCallback onFilterChange;
 
-  const _SubcategoryChips({required this.homeNotifier});
+  const _SubcategoryChips({
+    required this.homeNotifier,
+    required this.onFilterChange,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -303,9 +312,12 @@ class _SubcategoryChips extends ConsumerWidget {
                     color: DesignTokens.transparent,
                     child: InkWell(
                       borderRadius: BorderRadius.circular(DesignTokens.radius8),
-                      onTap: () => homeNotifier.onSubcategorySelected(
-                        isAll ? null : subcategory,
-                      ),
+                      onTap: () {
+                        onFilterChange();
+                        homeNotifier.onSubcategorySelected(
+                          isAll ? null : subcategory,
+                        );
+                      },
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,

@@ -1,6 +1,6 @@
 # Origna GTA — Repo Map
 
-Last updated: 2026-04-22
+Last updated: 2026-04-23
 
 ## External Documentation References
 
@@ -20,11 +20,12 @@ Last updated: 2026-04-22
   - Flutter Widget Property Editor
 
 ### Rust
-- **Rust Version**: 1.90.0 (edition 2024)
+- **Rust Version**: 1.90.0 stable (edition 2024)
 - **Key Resources**:
   - [The Rust Programming Language Book](https://doc.rust-lang.org/stable/book/)
   - [Rust By Example](https://doc.rust-lang.org/rust-by-example/)
-  - [Rust API Documentation](https://doc.rust-lang.org/std/)
+  - [Rust `Result` API](https://doc.rust-lang.org/std/result/enum.Result.html)
+  - [Tokio tracing guide](https://tokio.rs/tokio/topics/tracing)
 - **Patterns Used**:
   - Memory safety without garbage collection
   - Zero-cost abstractions
@@ -35,36 +36,67 @@ Last updated: 2026-04-22
 - **API Base**: `https://api.stripe.com`
 - **Key Resources**:
   - [Stripe API Reference](https://docs.stripe.com/api)
-  - [Checkout Sessions API](https://docs.stripe.com/api/checkout/sessions/create)
-  - [Webhooks Testing](https://docs.stripe.com/webhooks/test)
-  - [Error Handling](https://docs.stripe.com/error-low-level)
-  - [API Keys](https://docs.stripe.com/keys)
+  - [Checkout](https://docs.stripe.com/payments/checkout)
+  - [Checkout automatic tax](https://docs.stripe.com/payments/checkout/automatic_taxes)
+  - [How Checkout works](https://docs.stripe.com/payments/checkout/how-checkout-works)
+  - [Webhooks testing](https://docs.stripe.com/webhooks/test)
+  - [Error handling](https://docs.stripe.com/error-low-level)
+  - [API keys](https://docs.stripe.com/keys)
 - **Current Implementation**:
   - Stripe Checkout Sessions (not Payment Links)
   - `automatic_tax` + `tax_id_collection` for tax handling
   - Webhook verification with raw body signature
   - Idempotency keys per-request
   - Server-authoritative pricing (not client-sent)
+  - Checkout tax handling now follows Stripe's current address guidance: shipping address takes priority when collected, otherwise billing/customer address is used
+  - Google Pay availability on Stripe Tax + Checkout depends on shipping-address collection or an existing saved shipping address
 
 ### Mailjet
-- **API**: REST API for email delivery
+- **API**: Send API v3.1 (`https://api.mailjet.com/v3.1/send`)
+- **Key Resources**:
+  - [Mailjet Help Center](https://documentation.mailjet.com/hc/en-us)
+  - [Mailjet templating language](https://documentation.mailjet.com/hc/en-us/articles/16886347025947-Mailjet-Templating-Language)
+  - [Mailjet email automation examples](https://documentation.mailjet.com/hc/en-us/articles/35021196504219-Email-Automation)
+  - [Mailjet daily send limit controls](https://documentation.mailjet.com/hc/en-us/articles/43977536821147-Daily-Send-Limit-for-Mailjet-API-keys)
 - **Features Used**:
   - Transactional email sending
   - HTML/text multipart emails
   - PDF attachments (receipts)
   - Async dispatch for concurrency
+  - `SandboxMode` must be disabled on live hosts or production sends will silently stay non-deliverable
+  - For Send API v3.1, template variables belong under `Variables`; template-language toggles remain opt-in
+
+### PostgreSQL
+- **Current Major Version**: PostgreSQL 18
+- **Key Resources**:
+  - [PostgreSQL current documentation](https://www.postgresql.org/docs/current/)
+  - [PostgreSQL 18 release notes](https://www.postgresql.org/docs/current/release-18.html)
+  - [PostgreSQL JSON/JSONB](https://www.postgresql.org/docs/current/datatype-json.html)
+- **Operational Notes**:
+  - OrignaBase persists product/user/order documents in PostgreSQL JSONB.
+  - Current query-risk areas: numeric casts, `data->>'field'` extraction, and stale Surreal-style syntax in translated SQL.
+
+### Sentry
+- **SDK**: `sentry_flutter`
+- **Key Resources**:
+  - [Sentry Flutter setup](https://docs.sentry.io/platforms/flutter/)
+  - [Sentry Flutter user feedback](https://docs.sentry.io/platforms/dart/guides/flutter/user-feedback)
+  - [Sentry Flutter debug files](https://docs.sentry.io/platforms/flutter/data-management/debug-files/)
+- **Operational Notes**:
+  - Keep user-facing `ORIGNA-*` codes separate from internal support event IDs.
+  - Pair feedback with the captured Sentry event ID when collecting user crash reports.
 
 ## Working Directories (CRITICAL)
 
 ```bash
-# Flutter commands — run from origna_gta/origna_gta/ (NOT repo root)
-cd origna_gta/origna_gta && flutter analyze && flutter test
+# Flutter commands — run from repo_root/origna_gta/ (NOT repo root)
+cd origna_gta && flutter analyze && flutter test
 
-# Rust/Cargo commands — run from origna_gta/orignabase/ (NOT repo root)
-cd origna_gta/orignabase && cargo clippy -- -D warnings && cargo test
+# Rust/Cargo commands — run from repo_root/orignabase/ (NOT repo root)
+cd orignabase && cargo clippy -- -D warnings && cargo test
 
-# E2E commands — run from origna_gta/e2e/
-cd origna_gta/e2e && bun test
+# E2E commands — run from repo_root/e2e/
+cd e2e && bun test
 ```
 
 The repo root (`origna_gta/`) has NO Cargo.toml and NO pubspec.yaml. Running `cargo` or `flutter` from the root will fail with "could not find Cargo.toml" or "pubspec.yaml not found".
@@ -88,6 +120,14 @@ Unified monorepo for Origna GTA, a Canada-first multi-vendor e-commerce platform
 | Tests | Current verified local gates on 2026-04-17: Flutter analyze `0 issues`; `flutter test --exclude-tags golden` `4696 pass / 0 fail`; `cargo clippy -p ob-auth -- -D warnings` pass; `cargo clippy -p ob-handlers -- -D warnings` pass; `cargo test -p ob-handlers` pass; `cargo test -p ob-core` pass; `cargo test -p orignabase --no-run` pass; full seeded E2E rerun active in `/tmp/origna_e2e_run_all_after_deep_fix.log`. |
 
 No Firebase. No Cloud Functions. No Firestore. All backend is OrignaBase on the VPS.
+
+## Upstream Notes (2026-04-23)
+
+- **PostgreSQL**: Current stable docs are PostgreSQL 18; the official docs page currently lists `18 / Current`, and the release notes call out AIO, skip scan, `uuidv7()`, virtual generated columns, and OAuth support.
+- **Rust**: Current standard docs expose `std::panic` items such as `catch_unwind`, `set_hook`, `take_hook`, and `update_hook`; these are the first references to use when auditing panic handling.
+- **Tokio / tracing**: Tokio's tracing guide still recommends registering a subscriber as early as possible in `main` and using structured spans/events instead of plain logs.
+- **Sentry Flutter**: Sentry's Flutter guide still centers on `sentry_flutter` plus tracing/profiling options; troubleshooting docs note keeping the SDK current for platform-level fixes.
+- **Google OAuth on web**: OrignaGTA now treats a Google web client ID as valid only when it matches the expected `.apps.googleusercontent.com` shape, and the web deploy must replace `__GOOGLE_WEB_CLIENT_ID__` at build time.
 
 ## Inventory Source Of Truth
 
@@ -429,6 +469,13 @@ orignabase (single binary, 15 workspace crates)
 - **Docker Compose**: `/opt/orignabase/` on VPS
 - **Config**: `orignabase.toml` + env var overrides
 
+### Observability
+
+- **Sentry**: Flutter-side crash capture, breadcrumbs, and release diagnostics
+- **Internal error events**: `error_events` collection in OrignaBase
+- **User-facing codes**: `ORIGNA-{DOMAIN}-{NUMBER}`
+- **Internal support IDs**: `SE-YYYYMMDD-XXXXXX`
+
 ### Security Features
 
 - RS256 JWT with key rotation support
@@ -439,6 +486,7 @@ orignabase (single binary, 15 workspace crates)
 - Security rules DSL (25+ collections, default-deny)
 - Webhook deduplication (Stripe events)
 - CORS origin whitelist (no `Any`)
+- Structured internal error persistence from Flutter into `error_events`
 
 ### Key Env Overrides
 
@@ -480,6 +528,7 @@ Key conventions:
 - Money: integer cents (`subtotalCents`, `taxAmountCents`, `totalAmountCents`)
 - Timestamps: `createdAt` (orders/users/payouts), `dateCreated` (products/cart)
 - Status strings: defined in `schema_constants.dart` enums — no magic strings
+- Observability fields: `errorCode`, `internalEventId`, `stackTrace`, `environment`, `source`, `routeOrAction`, `metadata`
 
 ---
 
@@ -566,6 +615,21 @@ Build commands per env:
 
 Docker Compose at `/opt/orignabase/` on VPS. Binary built with `cargo build --release`. Non-root user (orignabase:1000). Health check configured.
 
+### Current Verified Runtime State
+
+- Dev search/category browsing is green.
+- Dev `/auth/providers` now reports Google web auth enabled/configured.
+- Dev catalog currently has active products in all 21 storefront categories.
+- Ventures contact/email live path is returning support + confirmation delivery with `sandbox_mode=false`.
+
+### Official Provider References
+
+- Stripe Checkout: `https://docs.stripe.com/payments/checkout`
+- Mailjet Send API v3.1: `https://dev.mailjet.com/email/guides/send-api-v31/`
+- PostgreSQL JSON/JSONB: `https://www.postgresql.org/docs/current/datatype-json.html`
+- Meilisearch Search API: `https://www.meilisearch.com/docs/reference/api/search`
+- Sentry Flutter SDK: `https://docs.sentry.io/platforms/dart/guides/flutter/`
+
 ---
 
 ## Quality Gates
@@ -583,6 +647,8 @@ Docker Compose at `/opt/orignabase/` on VPS. Binary built with `cargo build --re
 |------|---------|
 | `CLAUDE.md` | Claude Code routing rules (42 lines) |
 | `AGENTS.md` | Full coding guide: MVVM, build/test/style (136 lines) |
+| `docs/AI_COORDINATION.md` | Multi-agent ownership, leases, and handoff rules |
+| `WORK_CLAIMS.md` | Live path ownership registry to avoid overlapping edits |
 | `.claude/rules/` | 6 domain rules auto-loaded per file type |
 | `.claude/agents/` | 15 specialized subagents for delegation |
 | `.claude/commands/` | 24 slash commands |

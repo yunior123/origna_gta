@@ -128,8 +128,18 @@ void main() {
 
       expect(find.byType(OrignaApp), findsOneWidget);
 
-      final nav = OrignaBaseNotificationService.navigatorKey.currentState;
-      expect(nav, isNotNull, reason: 'Navigator state should not be null');
+      expect(
+        OrignaBaseNotificationService.navigatorKey.currentState,
+        isNotNull,
+        reason: 'Navigator state should not be null',
+      );
+      expect(
+        OrignaBaseNotificationService.navigatorKey.currentContext,
+        isNotNull,
+        reason: 'Navigator context should not be null',
+      );
+      final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
+      final navContext = OrignaBaseNotificationService.navigatorKey.currentContext!;
 
       Future<void> pumpRobust() async {
         for (int i = 0; i < 5; i++) {
@@ -138,28 +148,28 @@ void main() {
       }
 
       // 1. Login
-      nav!.pushNamed(AppRoutes.login);
+      appPushNamed(navContext, AppRoutes.login);
       await pumpRobust();
       expect(find.byType(LoginScreen), findsOneWidget);
       nav.pop();
       await pumpRobust();
 
       // 2. Privacy Policy
-      nav.pushNamed(AppRoutes.privacyPolicy);
+      appPushNamed(navContext, AppRoutes.privacyPolicy);
       await pumpRobust();
       expect(find.byType(PrivacyPolicyScreen), findsOneWidget);
       nav.pop();
       await pumpRobust();
 
       // 3. Cart
-      nav.pushNamed(AppRoutes.cart);
+      appPushNamed(navContext, AppRoutes.cart);
       await pumpRobust();
       expect(find.textContaining('sign in'), findsWidgets);
       nav.pop();
       await pumpRobust();
 
       // 4. Product Slug
-      nav.pushNamed(AppRoutes.productBySlugPath('test-product-slug'));
+      appPushNamed(navContext, AppRoutes.productBySlugPath('test-product-slug'));
       await pumpRobust();
       expect(find.byType(ProductDetailScreen), findsOneWidget);
     });

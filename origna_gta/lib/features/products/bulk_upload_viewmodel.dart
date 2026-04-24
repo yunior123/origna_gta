@@ -1,8 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/orignabase_provider.dart';
+import 'package:origna_gta/utils/app_logger.dart';
 import 'package:origna_gta/utils/csv_parser.dart';
 
 import 'bulk_upload_state.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 
 /// Riverpod provider for [BulkUploadViewModel].
 ///
@@ -92,6 +94,7 @@ class BulkUploadViewModel extends StateNotifier<BulkUploadState> {
         totalCount: rows.length,
       );
     } catch (e) {
+      AppLogger.w('BulkUpload: CSV parsing failed', tag: 'product', error: e);
       state = state.copyWith(
         errorMessage: 'CSV parsing error: ${e.toString()}',
       );
@@ -137,7 +140,7 @@ class BulkUploadViewModel extends StateNotifier<BulkUploadState> {
       // Call bulk upload endpoint via SDK
       final response = await sdk.request(
         'POST',
-        '/api/products/bulk',
+        ApiEndpoints.productsBulk,
         body: requestBody,
       );
 
@@ -173,6 +176,7 @@ class BulkUploadViewModel extends StateNotifier<BulkUploadState> {
             : '',
       );
     } catch (e) {
+      AppLogger.w('BulkUpload: upload failed', tag: 'product', error: e);
       state = state.copyWith(
         isUploading: false,
         errorMessage: 'Upload error: ${e.toString()}',

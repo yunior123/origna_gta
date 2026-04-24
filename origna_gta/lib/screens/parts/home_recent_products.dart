@@ -81,21 +81,31 @@ class _RecentlyViewedSectionState
   Future<void> _loadRecentlyViewed() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final raw = prefs.getString(LocalStorageKeys.recentlyViewed);
-      if (raw == null) {
-        if (mounted) {
-          ref.read(_recentProductsLoadedProvider.notifier).state = true;
-        }
-        return;
+      List<String>? legacyIds;
+      try {
+        legacyIds = prefs.getStringList(LocalStorageKeys.recentlyViewed);
+      } catch (_) {
+        legacyIds = null;
       }
-      final decoded = jsonDecode(raw);
-      if (decoded is! List) {
-        if (mounted) {
-          ref.read(_recentProductsLoadedProvider.notifier).state = true;
+      String? raw;
+      if (legacyIds == null) {
+        try {
+          raw = prefs.getString(LocalStorageKeys.recentlyViewed);
+        } catch (_) {
+          raw = null;
         }
-        return;
       }
-      final ids = decoded.cast<String>().take(10).toList();
+      final ids = legacyIds != null
+          ? legacyIds.take(10).toList()
+          : raw == null
+          ? <String>[]
+          : (() {
+              final decoded = jsonDecode(raw!);
+              if (decoded is! List) {
+                return <String>[];
+              }
+              return decoded.cast<String>().take(10).toList();
+            })();
       if (ids.isEmpty) {
         if (mounted) {
           ref.read(_recentProductsLoadedProvider.notifier).state = true;

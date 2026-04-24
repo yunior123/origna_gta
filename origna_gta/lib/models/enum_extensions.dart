@@ -26,13 +26,13 @@ extension DeliveryStatusExtension on DeliveryStatus {
   String get value {
     switch (this) {
       case DeliveryStatus.pending:
-        return 'pending';
+        return DeliveryStatusValues.pending;
       case DeliveryStatus.shipped:
-        return 'shipped';
+        return DeliveryStatusValues.shipped;
       case DeliveryStatus.delivered:
-        return 'delivered';
+        return DeliveryStatusValues.delivered;
       case DeliveryStatus.refunded:
-        return 'refunded';
+        return DeliveryStatusValues.refunded;
     }
   }
 
@@ -89,29 +89,29 @@ extension OrderStatusExtension on OrderStatus {
   String get value {
     switch (this) {
       case OrderStatus.pending:
-        return 'pending';
+        return OrderStatusValues.pending;
       case OrderStatus.confirmed:
-        return 'confirmed';
+        return OrderStatusValues.confirmed;
       case OrderStatus.processing:
-        return 'processing';
+        return OrderStatusValues.processing;
       case OrderStatus.shipped:
-        return 'shipped';
+        return OrderStatusValues.shipped;
       case OrderStatus.inTransit:
-        return 'in_transit';
+        return OrderStatusValues.inTransit;
       case OrderStatus.delivered:
-        return 'delivered';
+        return OrderStatusValues.delivered;
       case OrderStatus.cancelled:
-        return 'cancelled';
+        return OrderStatusValues.cancelled;
       case OrderStatus.failed:
-        return 'failed';
+        return OrderStatusValues.failed;
       case OrderStatus.expired:
-        return 'expired';
+        return OrderStatusValues.expired;
       case OrderStatus.disputed:
-        return 'disputed';
+        return OrderStatusValues.disputed;
       case OrderStatus.refunded:
-        return 'refunded';
+        return OrderStatusValues.refunded;
       case OrderStatus.partiallyRefunded:
-        return 'partially_refunded';
+        return OrderStatusValues.partiallyRefunded;
     }
   }
 
@@ -190,39 +190,39 @@ extension PaymentStatusExtension on PaymentStatus {
   String get value {
     switch (this) {
       case PaymentStatus.awaitingPayment:
-        return 'awaiting_payment';
+        return PaymentStatusValues.awaitingPayment;
       case PaymentStatus.processing:
-        return 'processing';
+        return PaymentStatusValues.processing;
       case PaymentStatus.paid:
-        return 'paid';
+        return PaymentStatusValues.paid;
       case PaymentStatus.authorized:
-        return 'authorized';
+        return PaymentStatusValues.authorized;
       case PaymentStatus.captured:
-        return 'captured';
+        return PaymentStatusValues.captured;
       case PaymentStatus.paymentFailed:
-        return 'payment_failed';
+        return PaymentStatusValues.paymentFailed;
       case PaymentStatus.refunded:
-        return 'refunded';
+        return PaymentStatusValues.refunded;
       case PaymentStatus.partiallyRefunded:
-        return 'partially_refunded';
+        return PaymentStatusValues.partiallyRefunded;
       case PaymentStatus.voided:
-        return 'voided';
+        return PaymentStatusValues.voided;
       case PaymentStatus.sessionExpired:
-        return 'session_expired';
+        return PaymentStatusValues.sessionExpired;
       case PaymentStatus.cancelled:
-        return 'cancelled';
+        return PaymentStatusValues.cancelled;
       case PaymentStatus.authorizationExpired:
-        return 'authorization_expired';
+        return PaymentStatusValues.authorizationExpired;
       case PaymentStatus.disputed:
-        return 'disputed';
+        return PaymentStatusValues.disputed;
       case PaymentStatus.capturing:
-        return 'capturing';
+        return PaymentStatusValues.capturing;
       case PaymentStatus.cancelling:
-        return 'cancelling';
+        return PaymentStatusValues.cancelling;
       case PaymentStatus.expiring:
-        return 'expiring';
+        return PaymentStatusValues.expiring;
       case PaymentStatus.cancelFailed:
-        return 'cancel_failed';
+        return PaymentStatusValues.cancelFailed;
     }
   }
 
@@ -283,13 +283,13 @@ extension ShippingApprovalStatusExtension on ShippingApprovalStatus {
   String get value {
     switch (this) {
       case ShippingApprovalStatus.notRequired:
-        return 'not_required';
+        return ShippingApprovalStatusValues.notRequired;
       case ShippingApprovalStatus.pending:
-        return 'pending';
+        return ShippingApprovalStatusValues.pending;
       case ShippingApprovalStatus.approved:
-        return 'approved';
+        return ShippingApprovalStatusValues.approved;
       case ShippingApprovalStatus.rejected:
-        return 'rejected';
+        return ShippingApprovalStatusValues.rejected;
     }
   }
 

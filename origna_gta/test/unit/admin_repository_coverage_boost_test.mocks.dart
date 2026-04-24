@@ -505,38 +505,70 @@ class MockOrignaBaseAuth extends _i1.Mock implements _i3.OrignaBaseAuth {
           as _i3.AuthState);
 
   @override
-  _i17.Future<_i3.AuthState> register(String? email, String? password) =>
+  _i17.Future<_i3.AuthState> register(
+    String? email,
+    String? password, {
+    String? turnstileToken,
+  }) =>
       (super.noSuchMethod(
-            Invocation.method(#register, [email, password]),
+            Invocation.method(
+              #register,
+              [email, password],
+              {#turnstileToken: turnstileToken},
+            ),
             returnValue: _i17.Future<_i3.AuthState>.value(
               _FakeAuthState_13(
                 this,
-                Invocation.method(#register, [email, password]),
+                Invocation.method(
+                  #register,
+                  [email, password],
+                  {#turnstileToken: turnstileToken},
+                ),
               ),
             ),
             returnValueForMissingStub: _i17.Future<_i3.AuthState>.value(
               _FakeAuthState_13(
                 this,
-                Invocation.method(#register, [email, password]),
+                Invocation.method(
+                  #register,
+                  [email, password],
+                  {#turnstileToken: turnstileToken},
+                ),
               ),
             ),
           )
           as _i17.Future<_i3.AuthState>);
 
   @override
-  _i17.Future<_i3.AuthState> signInWithEmail(String? email, String? password) =>
+  _i17.Future<_i3.AuthState> signInWithEmail(
+    String? email,
+    String? password, {
+    String? turnstileToken,
+  }) =>
       (super.noSuchMethod(
-            Invocation.method(#signInWithEmail, [email, password]),
+            Invocation.method(
+              #signInWithEmail,
+              [email, password],
+              {#turnstileToken: turnstileToken},
+            ),
             returnValue: _i17.Future<_i3.AuthState>.value(
               _FakeAuthState_13(
                 this,
-                Invocation.method(#signInWithEmail, [email, password]),
+                Invocation.method(
+                  #signInWithEmail,
+                  [email, password],
+                  {#turnstileToken: turnstileToken},
+                ),
               ),
             ),
             returnValueForMissingStub: _i17.Future<_i3.AuthState>.value(
               _FakeAuthState_13(
                 this,
-                Invocation.method(#signInWithEmail, [email, password]),
+                Invocation.method(
+                  #signInWithEmail,
+                  [email, password],
+                  {#turnstileToken: turnstileToken},
+                ),
               ),
             ),
           )

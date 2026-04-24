@@ -2,6 +2,7 @@
  * FIXED AgentBrowser v4 — Reduced clearState timeout + better error messages
  */
 import type { Snapshot, SnapshotRef } from './types.js';
+import { signIn } from './auth.js';
 import { ORIGNABASE_URL, TEST_ACCOUNTS, WEB_APP_URL } from './config.js';
 
 export type CapturePersona = 'buyer' | 'seller' | 'admin';
@@ -63,7 +64,7 @@ export class AgentBrowser {
       } catch (error) {
         lastError = error;
         const message = String(error);
-        if (!/Target page, context or browser has been closed|net::ERR_ABORTED/i.test(message) || attempt === 2) {
+        if (!/Target page, context or browser has been closed|net::ERR_ABORTED|interrupted by another navigation/i.test(message) || attempt === 2) {
           throw error;
         }
         await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
@@ -476,38 +477,12 @@ export class AgentBrowser {
   }
 
   async loginViaApi(email: string, password: string): Promise<void> {
-    await this.clearState();
-    await this.open(WEB_APP_URL, 60_000);
-    await this.waitForFlutter();
-    await this.enableAccessibilityIfPresent();
-    await new Promise(r => setTimeout(r, 1000));
-
-    const script = `(async()=>{const r=await fetch(${JSON.stringify(`${ORIGNABASE_URL}/auth/login`)},{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:${JSON.stringify(email)},password:${JSON.stringify(password)}})});const d=await r.json().catch(()=>({}));if(!r.ok||!d.access_token||!d.refresh_token){throw new Error('login failed: '+JSON.stringify({status:r.status,body:d}));}localStorage.setItem('orignabase_access_token',d.access_token);localStorage.setItem('orignabase_refresh_token',d.refresh_token);localStorage.setItem('orignabase_email',${JSON.stringify(email)});return JSON.stringify({ok:true,userId:d.user?.id||null});})()`;
-    for (let attempt = 0; attempt < 3; attempt++) {
-      try {
-        this.run(['eval', script], 45_000);
-        await this.open(WEB_APP_URL, 60_000);
-        await this.waitForFlutter();
-        await this.enableAccessibilityIfPresent();
-        await new Promise(r => setTimeout(r, 1500));
-        return;
-      } catch (error) {
-        const message = String(error);
-        if (
-          !/Execution context was destroyed|navigation|Failed to fetch|ERR_|NetworkError|net::/i.test(
-            message,
-          ) ||
-          attempt === 2
-        ) {
-          throw error;
-        }
-        await this.clearState();
-        await this.open(WEB_APP_URL, 60_000);
-        await this.waitForFlutter();
-        await this.enableAccessibilityIfPresent();
-        await new Promise(r => setTimeout(r, 1000 + attempt * 500));
-      }
-    }
+    const auth = await signIn(email, password);
+    await this.installAuthSession(
+      auth.email ?? email,
+      auth.idToken,
+      auth.refreshToken ?? '',
+    );
   }
 
   async installAuthSession(email: string, accessToken: string, refreshToken = ''): Promise<void> {
@@ -520,6 +495,7 @@ export class AgentBrowser {
 
     await this.open(WEB_APP_URL, 60_000);
     await this.waitForFlutter().catch(() => undefined);
+    await this.dismissBlockingPostLoginDialogs();
     try {
       await this.waitForChange({
         text: /btn-home-settings|product-card-|input-home-search|search|home/i,
@@ -527,6 +503,22 @@ export class AgentBrowser {
       });
     } catch {
       await new Promise(r => setTimeout(r, 1_500));
+    }
+  }
+
+  private async dismissBlockingPostLoginDialogs(): Promise<void> {
+    try {
+      const snap = await this.snapshot({ interactive: true, compact: true });
+      const acceptButton = this.findByLabel(
+        snap,
+        /btn-terms-accept|\baccept\b|\baccepter\b/i,
+      );
+      if (acceptButton) {
+        await this.click(acceptButton.ref);
+        await new Promise(r => setTimeout(r, 1500));
+      }
+    } catch {
+      // Non-fatal: some sessions won\'t show any blocking dialog.
     }
   }
 

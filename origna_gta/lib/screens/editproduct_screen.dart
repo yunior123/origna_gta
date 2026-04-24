@@ -286,9 +286,9 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     // Initialize delivery options
     final standardOpt = _findOption(
       p.deliveryOptions,
-      'standard',
+      DeliveryTypeValues.standard,
       SellerDeliveryOption(
-        type: 'standard',
+        type: DeliveryTypeValues.standard,
         description: 'product.standard_delivery'.tr(),
         costCents: 0,
         estimatedDays: 5,
@@ -296,9 +296,9 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     );
     final expressOpt = _findOption(
       p.deliveryOptions,
-      'express',
+      DeliveryTypeValues.express,
       SellerDeliveryOption(
-        type: 'express',
+        type: DeliveryTypeValues.express,
         description: 'product.express_delivery'.tr(),
         costCents: 999,
         estimatedDays: 2,
@@ -306,9 +306,9 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     );
     final sameDayOpt = _findOption(
       p.deliveryOptions,
-      'same_day',
+      DeliveryTypeValues.sameDay,
       SellerDeliveryOption(
-        type: 'same_day',
+        type: DeliveryTypeValues.sameDay,
         description: 'product.same_day_delivery'.tr(),
         costCents: 1499,
         estimatedDays: 0,

@@ -22,6 +22,7 @@ type SeedProduct = {
   imageUrls: string[];
   sellerName: string;
   sellerId: string;
+  madeInCountry: string;
   shipFromCountry: string;
   shipFromProvince: string;
   shipFromCity: string;
@@ -55,14 +56,111 @@ type SeedTemplate = {
   editions: string[];
   specs?: SeedProduct['specs'];
   freeShipping?: boolean;
+  madeInCountry?: string;
   shipFromCountry?: string;
   shipFromProvince?: string;
   shipFromCity?: string;
   isDigital?: boolean;
 };
 
+const VALID_SUBCATEGORIES_BY_CATEGORY: Record<number, string[]> = {
+  1: ['Smartphones', 'Laptops', 'Tablets', 'Cameras', 'Audio', 'Gaming', 'Smart Home', 'Wearables'],
+  2: ['Laptops', 'Desktops', 'Monitors', 'Components', 'Networking', 'Accessories'],
+  3: ['Consoles', 'Video Games', 'Controllers', 'Headsets', 'PC Gaming', 'VR'],
+  4: ['Furniture', 'Decor', 'Kitchen', 'Bedding', 'Lighting', 'Garden & Outdoor', 'Storage'],
+  5: ["Men's Clothing", "Women's Clothing", "Kids' Clothing", 'Outerwear', 'Activewear', 'Underwear'],
+  6: ['Sneakers', 'Boots', 'Sandals', 'Bags', 'Belts', 'Hats', 'Sunglasses'],
+  7: ['Watches', 'Necklaces', 'Rings', 'Earrings', 'Bracelets', 'Fine Jewelry'],
+  8: ['Skincare', 'Haircare', 'Makeup', 'Fragrance', "Men's Grooming"],
+  9: ['Vitamins & Supplements', 'Medical Devices', 'Personal Care', 'Diet & Nutrition'],
+  10: ['Fitness', 'Outdoor Recreation', 'Team Sports', 'Water Sports', 'Winter Sports', 'Cycling'],
+  11: ['Car Accessories', 'Motorcycle', 'Tools & Equipment', 'Replacement Parts', 'Car Care'],
+  12: ['Power Tools', 'Hand Tools', 'Hardware', 'Plumbing', 'Electrical', 'Building Materials'],
+  13: ['Pens & Pencils', 'Paper', 'Binders & Folders', 'Desk Accessories', 'Printers & Ink', 'School Supplies'],
+  14: ['Fiction', 'Non-Fiction', 'Children', 'Textbooks', 'Comics & Graphic Novels', 'Audiobooks'],
+  15: ['Guitars', 'Keyboards', 'Drums', 'Recording Equipment', 'DJ Gear', 'Accessories'],
+  16: ['Puzzles & Board Games', 'Building Toys', 'Dolls & Playsets', 'Action Figures', 'Outdoor Play'],
+  17: ['Baby Clothing', 'Feeding', 'Nursery', 'Strollers', 'Toys', 'Diapering'],
+  18: ['Dogs', 'Cats', 'Fish', 'Birds', 'Small Animals', 'Reptiles'],
+  19: ['Snacks', 'Beverages', 'Health Foods', 'Specialty Foods', 'Baking', 'Pantry Staples'],
+  20: ['Painting', 'Sculpture', 'Photography', 'Mixed Media', 'Antiques', 'Coins & Stamps'],
+  21: ['Software', 'eBooks', 'Digital Art', 'Audio & Music', 'Courses & Tutorials', 'Templates'],
+};
+
+function validateCatalogTemplates(templates: SeedTemplate[]): void {
+  const seenCategories = new Set<number>();
+
+  for (const template of templates) {
+    seenCategories.add(template.categoryId);
+    const validSubcategories = VALID_SUBCATEGORIES_BY_CATEGORY[template.categoryId];
+    if (!validSubcategories) {
+      throw new Error(`Missing category validation config for categoryId=${template.categoryId} (${template.key})`);
+    }
+    if (!validSubcategories.includes(template.subcategory)) {
+      throw new Error(
+        `Invalid subcategory "${template.subcategory}" for categoryId=${template.categoryId} (${template.key}). Valid values: ${validSubcategories.join(', ')}`,
+      );
+    }
+  }
+
+  const missingCategories = Array.from({ length: 21 }, (_, index) => index + 1).filter(
+    (categoryId) => !seenCategories.has(categoryId),
+  );
+  if (missingCategories.length > 0) {
+    throw new Error(`Seed catalog must cover all 21 categories. Missing: ${missingCategories.join(', ')}`);
+  }
+}
+
 function sellerLabel(email: string): string {
   return email === ADMIN_EMAIL ? 'OrignaVentures' : 'Northline Market';
+}
+
+function deriveMadeInCountry(
+  template: SeedTemplate,
+  editionIndex: number,
+): string {
+  if (template.madeInCountry != null) return template.madeInCountry;
+  if (template.isDigital ?? false) return 'CA';
+  switch (editionIndex % 4) {
+    case 0:
+      return 'CA';
+    case 1:
+      return 'CN';
+    case 2:
+      return 'CA';
+    default:
+      return 'MX';
+  }
+}
+
+function validateMadeInCanadaCoverage(products: SeedProduct[]): void {
+  const physicalProducts = products.filter((product) => !(product.isDigital ?? false));
+  const canadian = physicalProducts.filter((product) => product.madeInCountry === 'CA');
+  const imported = physicalProducts.filter((product) => product.madeInCountry !== 'CA');
+
+  if (canadian.length == 0 || imported.length == 0) {
+    throw new Error(
+      `Seed catalog must include both Canada-made and imported physical products. ` +
+          `canadian=${canadian.length} imported=${imported.length}`,
+    );
+  }
+
+  const categoryCoverage = new Map<number, Set<string>>();
+  for (const product of physicalProducts) {
+    const coverage = categoryCoverage.get(product.categoryId) ?? new Set<string>();
+    coverage.add(product.madeInCountry === 'CA' ? 'CA' : 'INTL');
+    categoryCoverage.set(product.categoryId, coverage);
+  }
+
+  const missingMixedCategories = Array.from(categoryCoverage.entries())
+    .filter(([, coverage]) => coverage.size < 2)
+    .map(([categoryId]) => categoryId);
+  if (missingMixedCategories.length > 0) {
+    throw new Error(
+      'Physical seed categories must include both made-in-Canada and imported samples. ' +
+        `Missing mixed coverage for categoryIds: ${missingMixedCategories.join(', ')}`,
+    );
+  }
 }
 
 function buildCatalog(sellers: Array<{ localId: string; email: string }>): SeedProduct[] {
@@ -121,7 +219,7 @@ function buildCatalog(sellers: Array<{ localId: string; email: string }>): SeedP
       priceCents: 89999,
       categoryId: 1,
       categoryName: 'Electronics',
-      subcategory: 'Phones',
+      subcategory: 'Smartphones',
       imageUrls: [`${DEV_R2_BASE}/electronics-3.jpg`],
       keywords: ['smartphone', '5g', 'oled', 'camera'],
       editions: ['128GB', '256GB', '256GB Pro Camera', '512GB', '512GB Matte Blue'],
@@ -167,7 +265,7 @@ function buildCatalog(sellers: Array<{ localId: string; email: string }>): SeedP
       priceCents: 6999,
       categoryId: 5,
       categoryName: 'Fashion',
-      subcategory: 'Tops',
+      subcategory: "Men's Clothing",
       imageUrls: [`${DEV_R2_BASE}/clothing-1.jpg`],
       keywords: ['sweater', 'knit', 'casual', 'layering'],
       editions: ['Heather Gray', 'Forest Green', 'Sand Beige', 'Navy', 'Charcoal'],
@@ -188,7 +286,7 @@ function buildCatalog(sellers: Array<{ localId: string; email: string }>): SeedP
       priceCents: 11999,
       categoryId: 6,
       categoryName: 'Shoes & Accessories',
-      subcategory: 'Travel',
+      subcategory: 'Bags',
       imageUrls: [`${DEV_R2_BASE}/clothing-2.jpg`],
       keywords: ['bag', 'duffel', 'travel', 'carry-on'],
       editions: ['Black Canvas', 'Olive Canvas', 'Stone Gray', 'Weekend Pack', 'Carry-On Pro'],
@@ -210,7 +308,7 @@ function buildCatalog(sellers: Array<{ localId: string; email: string }>): SeedP
       priceCents: 14999,
       categoryId: 7,
       categoryName: 'Jewelry & Watches',
-      subcategory: 'Timepieces',
+      subcategory: 'Watches',
       imageUrls: [`${DEV_R2_BASE}/clothing-3.jpg`],
       keywords: ['watch', 'quartz', 'field watch', 'timepiece'],
       editions: ['Black Dial', 'Sand Dial', 'Steel Bracelet', 'Leather Strap', 'Weekend Edition'],
@@ -252,7 +350,7 @@ function buildCatalog(sellers: Array<{ localId: string; email: string }>): SeedP
       priceCents: 3299,
       categoryId: 19,
       categoryName: 'Groceries',
-      subcategory: 'Produce',
+      subcategory: 'Health Foods',
       imageUrls: [`${DEV_R2_BASE}/food-1.jpg`],
       keywords: ['produce', 'vegetables', 'local', 'meal prep'],
       editions: ['Family Box', 'Dinner Box', 'Chef Box', 'Veggie Box', 'Fresh Box'],
@@ -273,7 +371,7 @@ function buildCatalog(sellers: Array<{ localId: string; email: string }>): SeedP
       priceCents: 2499,
       categoryId: 19,
       categoryName: 'Groceries',
-      subcategory: 'Produce',
+      subcategory: 'Beverages',
       imageUrls: [`${DEV_R2_BASE}/food-2.jpg`],
       keywords: ['fruit', 'apples', 'fresh', 'snack'],
       editions: ['6-Pack', '10-Pack', 'Family Share', 'School Week Box', 'Crunch Pack'],
@@ -285,7 +383,7 @@ function buildCatalog(sellers: Array<{ localId: string; email: string }>): SeedP
       priceCents: 899,
       categoryId: 19,
       categoryName: 'Groceries',
-      subcategory: 'Pantry',
+      subcategory: 'Pantry Staples',
       imageUrls: [`${DEV_R2_BASE}/food-3.jpg`],
       keywords: ['bread', 'sourdough', 'bakery', 'artisan'],
       editions: ['Classic Loaf', 'Sesame Crust', 'Whole Wheat', 'Sandwich Slice', 'Weekend Bake'],
@@ -297,7 +395,7 @@ function buildCatalog(sellers: Array<{ localId: string; email: string }>): SeedP
       priceCents: 1899,
       categoryId: 19,
       categoryName: 'Groceries',
-      subcategory: 'Specialty',
+      subcategory: 'Specialty Foods',
       imageUrls: [`${DEV_R2_BASE}/food-4.jpg`],
       keywords: ['burger', 'meal kit', 'dinner', 'specialty'],
       editions: ['Classic Kit', 'Family Kit', 'Cheese Kit', 'BBQ Kit', 'Party Kit'],
@@ -330,10 +428,23 @@ function buildCatalog(sellers: Array<{ localId: string; email: string }>): SeedP
       priceCents: 2599,
       categoryId: 8,
       categoryName: 'Beauty',
-      subcategory: 'Tools',
+      subcategory: 'Skincare',
       imageUrls: [`${DEV_R2_BASE}/home-2.jpg`],
       keywords: ['travel bottles', 'beauty', 'toiletry', 'organizer'],
       editions: ['4-Piece Set', '6-Piece Set', 'Weekend Set', 'Gym Set', 'Family Set'],
+    },
+    {
+      key: 'console-dock',
+      titleBase: 'ArcStation Gaming Dock',
+      descriptionBase: 'Compact gaming dock with RGB accents, headset hook, controller charging, and tidy cable routing for desktop setups.',
+      priceCents: 15999,
+      categoryId: 3,
+      categoryName: 'Gaming',
+      subcategory: 'PC Gaming',
+      imageUrls: [`${DEV_R2_BASE}/electronics-4.jpg`],
+      keywords: ['gaming', 'dock', 'rgb', 'controller'],
+      editions: ['Dual Controller', 'Streamer Kit', 'Desk Setup', 'RGB Edition', 'Tournament Pack'],
+      freeShipping: true,
     },
     {
       key: 'pour-over',
@@ -342,7 +453,7 @@ function buildCatalog(sellers: Array<{ localId: string; email: string }>): SeedP
       priceCents: 5499,
       categoryId: 4,
       categoryName: 'Home & Kitchen',
-      subcategory: 'Cookware',
+      subcategory: 'Kitchen',
       imageUrls: [`${DEV_R2_BASE}/home-3.jpg`],
       keywords: ['coffee', 'pour over', 'kitchen', 'brew kit'],
       editions: ['Starter Kit', 'Black Ceramic', 'Natural Ceramic', 'Gift Box', 'Countertop Set'],
@@ -354,7 +465,7 @@ function buildCatalog(sellers: Array<{ localId: string; email: string }>): SeedP
       priceCents: 16999,
       categoryId: 11,
       categoryName: 'Automotive',
-      subcategory: 'Safety',
+      subcategory: 'Car Accessories',
       imageUrls: [`${DEV_R2_BASE}/auto-1.jpg`],
       keywords: ['dash cam', 'automotive', '4k', 'safety'],
       editions: ['Front Camera', 'Front + Rear', 'Parking Mode', 'Winter Kit', 'Road Trip Kit'],
@@ -375,10 +486,48 @@ function buildCatalog(sellers: Array<{ localId: string; email: string }>): SeedP
       priceCents: 8499,
       categoryId: 12,
       categoryName: 'Tools',
-      subcategory: 'DIY',
+      subcategory: 'Hardware',
       imageUrls: [`${DEV_R2_BASE}/auto-2.jpg`],
       keywords: ['emergency kit', 'car', 'winter', 'tools'],
       editions: ['Compact Kit', 'Family Kit', 'Truck Kit', 'Snow Belt Kit', 'Roadside Pro'],
+    },
+    {
+      key: 'massage-gun',
+      titleBase: 'Pulse Recovery Massage Gun',
+      descriptionBase: 'Portable recovery massager with multiple intensity settings for post-workout relief and daily mobility sessions.',
+      priceCents: 12999,
+      categoryId: 9,
+      categoryName: 'Health',
+      subcategory: 'Personal Care',
+      imageUrls: [`${DEV_R2_BASE}/home-2.jpg`],
+      keywords: ['health', 'recovery', 'massage gun', 'wellness'],
+      editions: ['Travel Case', 'Deep Tissue', 'Quiet Motor', 'Gym Bundle', 'Recovery Pro'],
+      freeShipping: true,
+    },
+    {
+      key: 'training-mat',
+      titleBase: 'GripCore Training Mat',
+      descriptionBase: 'Dense non-slip exercise mat for stretching, bodyweight training, and compact home-gym sessions.',
+      priceCents: 4999,
+      categoryId: 10,
+      categoryName: 'Sports',
+      subcategory: 'Fitness',
+      imageUrls: [`${DEV_R2_BASE}/clothing-4.jpg`],
+      keywords: ['sports', 'fitness', 'mat', 'training'],
+      editions: ['6mm Black', '8mm Graphite', 'Travel Strap', 'Studio Pack', 'Home Gym Set'],
+    },
+    {
+      key: 'desk-organizer',
+      titleBase: 'Modular Desk Organizer Rail',
+      descriptionBase: 'Office organization rail with trays, pen cups, and document dividers for cleaner desks and quicker daily setup.',
+      priceCents: 6999,
+      categoryId: 13,
+      categoryName: 'Office',
+      subcategory: 'Desk Accessories',
+      imageUrls: [`${DEV_R2_BASE}/home-1.jpg`],
+      keywords: ['office', 'desk', 'organizer', 'workspace'],
+      editions: ['Starter Rail', 'Dual Tray', 'Executive Desk', 'Focus Kit', 'Office Pack'],
+      freeShipping: true,
     },
     {
       key: 'book',
@@ -387,10 +536,72 @@ function buildCatalog(sellers: Array<{ localId: string; email: string }>): SeedP
       priceCents: 4499,
       categoryId: 14,
       categoryName: 'Books',
-      subcategory: 'Reference',
+      subcategory: 'Non-Fiction',
       imageUrls: [`${DEV_R2_BASE}/books-1.jpg`],
       keywords: ['book', 'design', 'reference', 'hardcover'],
       editions: ['Volume I', 'Volume II', 'Collector Edition', 'Studio Edition', 'Gift Edition'],
+    },
+    {
+      key: 'keyboard',
+      titleBase: 'Aurora 61 MIDI Keyboard',
+      descriptionBase: 'USB-powered compact MIDI keyboard with velocity-sensitive keys, pads, and transport controls for songwriting on the go.',
+      priceCents: 21999,
+      categoryId: 15,
+      categoryName: 'Music',
+      subcategory: 'Keyboards',
+      imageUrls: [`${DEV_R2_BASE}/books-1.jpg`],
+      keywords: ['music', 'midi', 'keyboard', 'studio'],
+      editions: ['61-Key', 'Producer Bundle', 'Travel Studio', 'Bedroom Studio', 'Creator Pack'],
+      freeShipping: true,
+    },
+    {
+      key: 'block-set',
+      titleBase: 'Story Builder Block Set',
+      descriptionBase: 'Creative construction set with colorful pieces designed for imaginative builds, cooperative play, and screen-free afternoons.',
+      priceCents: 3799,
+      categoryId: 16,
+      categoryName: 'Toys',
+      subcategory: 'Building Toys',
+      imageUrls: [`${DEV_R2_BASE}/home-3.jpg`],
+      keywords: ['toys', 'blocks', 'kids', 'creative play'],
+      editions: ['Starter Box', 'Adventure Box', 'Family Pack', 'Mega Box', 'Weekend Build'],
+    },
+    {
+      key: 'lunch-kit',
+      titleBase: 'Little Explorer Lunch Kit',
+      descriptionBase: 'Insulated kids lunch kit with labeled containers, leak-resistant seals, and easy-grip handles for school days.',
+      priceCents: 3299,
+      categoryId: 17,
+      categoryName: 'Baby & Kids',
+      subcategory: 'Feeding',
+      imageUrls: [`${DEV_R2_BASE}/clothing-1.jpg`],
+      keywords: ['kids', 'lunch kit', 'school', 'baby'],
+      editions: ['Blue Dino', 'Forest Camp', 'Pastel Pack', 'School Bundle', 'Snack Set'],
+    },
+    {
+      key: 'pet-bed',
+      titleBase: 'CloudNest Pet Bed',
+      descriptionBase: 'Washable pet bed with supportive padding and raised edges for naps, crate use, and cozy living-room corners.',
+      priceCents: 5899,
+      categoryId: 18,
+      categoryName: 'Pet Supplies',
+      subcategory: 'Dogs',
+      imageUrls: [`${DEV_R2_BASE}/home-2.jpg`],
+      keywords: ['pet', 'bed', 'dog', 'cat'],
+      editions: ['Small', 'Medium', 'Large', 'Calming Cover', 'Washable Set'],
+    },
+    {
+      key: 'print-set',
+      titleBase: 'Gallery Wall Print Set',
+      descriptionBase: 'Curated art print bundle for gallery walls, studio corners, and gift-ready framing with modern color palettes.',
+      priceCents: 9400,
+      categoryId: 20,
+      categoryName: 'Art',
+      subcategory: 'Photography',
+      imageUrls: [`${DEV_R2_BASE}/books-1.jpg`],
+      keywords: ['art', 'prints', 'gallery wall', 'collectibles'],
+      editions: ['Neutral Set', 'Bold Set', 'Minimal Set', 'Studio Set', 'Collector Set'],
+      freeShipping: true,
     },
     {
       key: 'landing-page',
@@ -422,10 +633,13 @@ function buildCatalog(sellers: Array<{ localId: string; email: string }>): SeedP
     },
   ];
 
+  validateCatalogTemplates(templates);
+
   const products: SeedProduct[] = [];
   let index = 0;
   for (const template of templates) {
-    for (const edition of template.editions) {
+    for (var editionIndex = 0; editionIndex < template.editions.length; editionIndex += 1) {
+      const edition = template.editions[editionIndex];
       const seller = sellers[index % sellers.length];
       products.push({
         title: `${template.titleBase} — ${edition}`,
@@ -438,6 +652,7 @@ function buildCatalog(sellers: Array<{ localId: string; email: string }>): SeedP
         imageUrls: template.imageUrls,
         sellerName: sellerLabel(seller.email),
         sellerId: seller.localId,
+        madeInCountry: deriveMadeInCountry(template, editionIndex),
         shipFromCountry: template.shipFromCountry ?? 'CA',
         shipFromProvince: template.shipFromProvince ?? 'ON',
         shipFromCity: template.shipFromCity ?? 'Toronto',
@@ -449,6 +664,7 @@ function buildCatalog(sellers: Array<{ localId: string; email: string }>): SeedP
       index += 1;
     }
   }
+  validateMadeInCanadaCoverage(products);
   return products;
 }
 
@@ -509,6 +725,7 @@ async function createProducts(products: SeedProduct[], token: string) {
           sellerId: product.sellerId,
           sellerName: product.sellerName,
           sellerStripeAccountId: null,
+          madeInCountry: product.madeInCountry,
           shipFromCity: product.shipFromCity,
           shipFromProvince: product.shipFromProvince,
           shipFromCountry: product.shipFromCountry,

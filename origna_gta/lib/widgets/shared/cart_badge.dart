@@ -108,13 +108,19 @@ class _CartBadgeState extends ConsumerState<CartBadge>
   Widget build(BuildContext context) {
     final isLoggedIn = ref.watch(currentUserProvider.select((u) => u != null));
     final cartCount = ref.watch(cartItemCountProvider);
-    final resolvedTooltip =
+    final cartLabel = cartCount > 0 ? 'btn-cart cart-badge-count-$cartCount' : 'btn-cart';
+    final baseTooltip =
         widget.tooltip ??
         (widget.animated ? 'home.shopping_cart'.tr() : 'common.cart'.tr());
+    final resolvedTooltip = cartCount > 0
+        ? 'cart-badge-count-$cartCount'
+        : baseTooltip;
 
     Widget iconButton = Semantics(
+      key: ValueKey('cart-badge-button-$cartCount'),
       button: true,
-      label: 'btn-cart',
+      label: cartLabel,
+      value: cartCount > 0 ? '$cartCount' : null,
       child: IconButton(
         key: const Key('cart_badge_button'),
         tooltip: resolvedTooltip,
@@ -175,6 +181,7 @@ class _CartBadgeState extends ConsumerState<CartBadge>
     }
 
     Widget stack = Stack(
+      key: ValueKey('cart-badge-stack-$cartCount'),
       clipBehavior: Clip.none,
       children: [iconButton, ?badge],
     );
@@ -187,36 +194,42 @@ class _CartBadgeState extends ConsumerState<CartBadge>
   }
 
   Widget _buildBadgeCircle(int cartCount) {
-    return Container(
-      padding: EdgeInsets.all(widget.showBadgeBorder ? 5 : 4),
-      decoration: BoxDecoration(
-        color: DesignTokens.textOnPrimary,
-        shape: BoxShape.circle,
-        border: widget.showBadgeBorder
-            ? Border.all(color: DesignTokens.primary, width: 2)
-            : null,
-        boxShadow: widget.showBadgeBorder
-            ? [
-                BoxShadow(
-                  color: DesignTokens.primary.withValues(alpha: 0.4),
-                  blurRadius: 8,
-                  spreadRadius: 2,
-                ),
-              ]
-            : null,
-      ),
-      constraints: BoxConstraints(
-        minWidth: widget.showBadgeBorder ? 20 : 18,
-        minHeight: widget.showBadgeBorder ? 20 : 18,
-      ),
-      child: Text(
-        cartCount > 99 ? '99+' : '$cartCount',
-        style: const TextStyle(
-          color: DesignTokens.primary,
-          fontSize: 10,
-          fontWeight: FontWeight.bold,
+    final displayCount = cartCount > 99 ? '99+' : '$cartCount';
+    return Semantics(
+      container: true,
+      label: 'cart-badge-count-$displayCount',
+      value: '$cartCount',
+      child: Container(
+        padding: EdgeInsets.all(widget.showBadgeBorder ? 5 : 4),
+        decoration: BoxDecoration(
+          color: DesignTokens.textOnPrimary,
+          shape: BoxShape.circle,
+          border: widget.showBadgeBorder
+              ? Border.all(color: DesignTokens.primary, width: 2)
+              : null,
+          boxShadow: widget.showBadgeBorder
+              ? [
+                  BoxShadow(
+                    color: DesignTokens.primary.withValues(alpha: 0.4),
+                    blurRadius: 8,
+                    spreadRadius: 2,
+                  ),
+                ]
+              : null,
         ),
-        textAlign: TextAlign.center,
+        constraints: BoxConstraints(
+          minWidth: widget.showBadgeBorder ? 20 : 18,
+          minHeight: widget.showBadgeBorder ? 20 : 18,
+        ),
+        child: Text(
+          displayCount,
+          style: const TextStyle(
+            color: DesignTokens.primary,
+            fontSize: 10,
+            fontWeight: FontWeight.bold,
+          ),
+          textAlign: TextAlign.center,
+        ),
       ),
     );
   }

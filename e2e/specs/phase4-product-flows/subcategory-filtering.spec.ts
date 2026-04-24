@@ -12,8 +12,12 @@ import {
 } from '../../lib/api-client.js';
 import {
   TEST_ACCOUNTS,
+  WEB_APP_URL,
 } from '../../lib/config.js';
 import { AgentBrowser } from '../../lib/agent-browser.js';
+
+const HOME_URL = WEB_APP_URL.endsWith('/') ? WEB_APP_URL : `${WEB_APP_URL}/`;
+const ADD_PRODUCT_URL = `${HOME_URL}#/seller/add-product`;
 
 const ADMIN_EMAIL = TEST_ACCOUNTS.ADMIN_EMAIL;
 const ADMIN_PASS = TEST_ACCOUNTS.ADMIN_PASS;
@@ -189,6 +193,17 @@ describe('Subcategory Filtering — API', () => {
 describe('Subcategory Filtering — UI', () => {
   let browser: AgentBrowser;
 
+  async function openHomeAndWait() {
+    await browser.open(HOME_URL);
+    await browser.waitForFlutter();
+    await browser.enableAccessibilityIfPresent().catch(() => false);
+    await browser.waitForChange({
+      text: /category-chip-|input-home-search|product-card-/i,
+      timeout: 15_000,
+    });
+    return browser.snapshot({ interactive: true, compact: true });
+  }
+
   beforeAll(() => {
     browser = new AgentBrowser();
   });
@@ -199,45 +214,54 @@ describe('Subcategory Filtering — UI', () => {
     await browser.close();
   });
 
-  test('T06: Click category chip — subcategory chips appear', { timeout: 60_000 }, async () => {
-    await browser.open('https://dev.orignagta.ca/');
-    await browser.waitForFlutter();
-    const snap = await browser.snapshot({ interactive: true, compact: true });
-    const categoryChip = browser.findByLabel(snap, /category-chip-1|category-chip/);
-    if (categoryChip) {
-      await browser.click(categoryChip.ref);
-      await browser.waitForChange({ timeout: 2000 });
-      const snap2 = await browser.snapshot({ interactive: true, compact: true });
-      // After clicking category, subcategory chips or filters should appear
-      expect(snap2.refs.length).toBeGreaterThan(0);
-    } else {
-      expect(snap.refs.length).toBeGreaterThan(0);
-    }
+  test('T06: Click category chip — subcategory chips appear without load errors', { timeout: 60_000 }, async () => {
+    const snap = await openHomeAndWait();
+    expect(snap.refs.length).toBeGreaterThan(0);
+
+    const clicked = await browser.safeClick(/category-chip-1|category-chip-[0-9]+/i);
+    expect(clicked).toBe(true);
+
+    const snap2 = await browser.waitForChange({
+      text: /subcategory-chip-|product-card-|input-home-search/i,
+      timeout: 10_000,
+    });
+    expect(snap2.refs.length).toBeGreaterThan(0);
+
+    const raw = (snap2.raw || '').toLowerCase();
+    expect(raw.includes('failed to load products')).toBe(false);
+    expect(raw.includes('service is temporarily unavailable')).toBe(false);
   });
 
-  test('T07: Click subcategory chip — products filter', { timeout: 60_000 }, async () => {
-    await browser.open('https://dev.orignagta.ca/');
-    await browser.waitForFlutter();
-    const snap = await browser.snapshot({ interactive: true, compact: true });
-    // First click a category
-    const categoryChip = browser.findByLabel(snap, /category-chip-1|category-chip/);
-    if (categoryChip) {
-      await browser.click(categoryChip.ref);
-      await browser.waitForChange({ timeout: 2000 });
-      const snap2 = await browser.snapshot({ interactive: true, compact: true });
-      const subcatChip = browser.findByLabel(snap2, /subcategory-chip|subcat/i);
-      if (subcatChip) {
-        await browser.click(subcatChip.ref);
-        await browser.waitForChange({ timeout: 2000 });
-        const snap3 = await browser.snapshot({ interactive: true, compact: true });
-        expect(snap3.refs.length).toBeGreaterThan(0);
-      }
-    }
+  test('T07: Click subcategory chip — products filter without backend errors', { timeout: 60_000 }, async () => {
+    const snap = await openHomeAndWait();
+    expect(snap.refs.length).toBeGreaterThan(0);
+
+    const categoryClicked = await browser.safeClick(/category-chip-1|category-chip-[0-9]+/i);
+    expect(categoryClicked).toBe(true);
+
+    await browser.waitForChange({
+      text: /subcategory-chip-|product-card-|input-home-search/i,
+      timeout: 10_000,
+    });
+
+    const subcategoryClicked = await browser.safeClick(/subcategory-chip-(?!all)[^ ]+/i).catch(() => false);
+    expect(subcategoryClicked).toBe(true);
+
+    const snap3 = await browser.waitForChange({
+      text: /subcategory-chip-|product-card-|input-home-search/i,
+      timeout: 10_000,
+    });
+    expect(snap3.refs.length).toBeGreaterThan(0);
+
+    const raw = (snap3.raw || '').toLowerCase();
+    expect(raw.includes('failed to load products')).toBe(false);
+    expect(raw.includes('service is temporarily unavailable')).toBe(false);
+
     expect(snap.refs.length).toBeGreaterThan(0);
   });
 
   test('T08: Click "All" subcategory — shows all category products', { timeout: 60_000 }, async () => {
-    await browser.open('https://dev.orignagta.ca/');
+    await browser.open(HOME_URL);
     await browser.waitForFlutter();
     const snap = await browser.snapshot({ interactive: true, compact: true });
     const allChip = browser.findByLabel(snap, /all|subcategory-chip-all/i);
@@ -252,7 +276,7 @@ describe('Subcategory Filtering — UI', () => {
   });
 
   test('T09: Switch category — subcategory resets', { timeout: 60_000 }, async () => {
-    await browser.open('https://dev.orignagta.ca/');
+    await browser.open(HOME_URL);
     await browser.waitForFlutter();
     const snap = await browser.snapshot({ interactive: true, compact: true });
     const chips = browser.findAllByLabel(snap, /category-chip/);
@@ -277,7 +301,7 @@ describe('Subcategory Filtering — UI', () => {
   });
 
   test('T10: Subcategory dropdown exists on add product screen (seller)', { timeout: 60_000 }, async () => {
-    try { await browser.open('https://dev.orignagta.ca/#/seller/add-product'); } catch { return; }
+    try { await browser.open(ADD_PRODUCT_URL); } catch { return; }
     try { await browser.waitForFlutter(); } catch { return; }
     const snap = await browser.snapshot({ interactive: true, compact: true });
     const subcatDropdown = browser.findByLabel(snap, /subcategory|input-subcategory|dropdown-subcategory/i);
@@ -285,5 +309,20 @@ describe('Subcategory Filtering — UI', () => {
     if (subcatDropdown) {
       expect(subcatDropdown).toBeTruthy();
     }
+  });
+
+  test('T11: Home feed scroll pagination does not surface load failures', { timeout: 90_000 }, async () => {
+    const snap = await openHomeAndWait();
+    expect(snap.refs.length).toBeGreaterThan(0);
+
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      await browser.scrollAndWait('down', 8_000);
+    }
+
+    const after = await browser.snapshot({ interactive: true, compact: true });
+    const raw = (after.raw || '').toLowerCase();
+    expect(raw.includes('failed to load products')).toBe(false);
+    expect(raw.includes('service is temporarily unavailable')).toBe(false);
+    expect(raw.includes('impossible de charger les produits')).toBe(false);
   });
 });

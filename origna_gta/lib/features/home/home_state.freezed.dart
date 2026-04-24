@@ -19,7 +19,7 @@ mixin _$HomeState {
  int? get minPriceCents; int? get maxPriceCents;// GAP #7 — Recent searches (persisted in SharedPreferences)
  List<String> get recentSearches;// GAP #7 — Search autocomplete suggestions (transient, not persisted)
  List<String> get searchSuggestions;// GAP #7 — Whether the search overlay is visible
- bool get showSearchOverlay;// Canada-only toggle: client-side filter for products shipping from Canada
+ bool get showSearchOverlay;// Made-in-Canada toggle: client-side filter for products whose origin is Canada
  bool get canadaOnly;
 /// Create a copy of HomeState
 /// with the given fields replaced by the non-null parameter values.
@@ -270,7 +270,7 @@ class _HomeState extends HomeState {
 
 // GAP #7 — Whether the search overlay is visible
 @override@JsonKey() final  bool showSearchOverlay;
-// Canada-only toggle: client-side filter for products shipping from Canada
+// Made-in-Canada toggle: client-side filter for products whose origin is Canada
 @override@JsonKey() final  bool canadaOnly;
 
 /// Create a copy of HomeState

@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from urllib.parse import urlparse
 
 import logging
 import requests
@@ -93,6 +94,7 @@ class Settings:
         "ORIGNA_STRIPE_CANCEL_URL", "https://orignaventures.ca/?status=cancelled"
     )
     environment: str = os.getenv("ENVIRONMENT", "dev")
+    mailjet_sandbox_override: str = os.getenv("ORIGNA_MAILJET_SANDBOX_MODE", "")
     mailjet_api_key: str = os.getenv("ORIGNA_MAILJET_API_KEY", "")
     mailjet_secret_key: str = os.getenv("ORIGNA_MAILJET_SECRET_KEY", "")
     mailjet_api_url: str = os.getenv(
@@ -110,6 +112,28 @@ class Settings:
     github_permission: str = os.getenv("ORIGNA_GITHUB_PERMISSION", "pull")
     github_api_version: str = os.getenv("ORIGNA_GITHUB_API_VERSION", "2022-11-28")
     admin_api_key: str = os.getenv("ORIGNA_ADMIN_API_KEY", "")
+
+    @property
+    def mailjet_sandbox_mode(self) -> bool:
+        override = self.mailjet_sandbox_override.strip().lower()
+        if override:
+            return override in {"1", "true", "yes", "on"}
+
+        environment = self.environment.strip().lower()
+        if environment in {"production", "prod"}:
+            return False
+
+        for candidate in (self.base_url, self.api_base_url):
+            host = urlparse(candidate).hostname or ""
+            normalized = host.lower()
+            if normalized in {
+                "orignaventures.ca",
+                "www.orignaventures.ca",
+                "api.orignaventures.ca",
+            }:
+                return False
+
+        return True
 
 
 settings = Settings()
@@ -712,6 +736,8 @@ def dispatch_email_jobs(
                     job["html_body"],
                     job["text_body"],
                     attachments=job.get("attachments"),
+                    reply_to_email=job.get("reply_to_email"),
+                    reply_to_name=job.get("reply_to_name"),
                 ),
             }
         ]
@@ -726,6 +752,8 @@ def dispatch_email_jobs(
                 job["html_body"],
                 job["text_body"],
                 job.get("attachments"),
+                job.get("reply_to_email"),
+                job.get("reply_to_name"),
             ): job["to_email"]
             for job in jobs
         }
@@ -748,6 +776,8 @@ def dispatch_email_jobs_async(jobs: List[Dict[str, Any]]) -> None:
             job["html_body"],
             job["text_body"],
             job.get("attachments"),
+            job.get("reply_to_email"),
+            job.get("reply_to_name"),
         )
 
         def _log_result(done_future, to_email=job["to_email"]):
@@ -926,6 +956,8 @@ def try_send_mailjet_email(
     html_body: str,
     text_body: str,
     attachments: Optional[List[Dict[str, str]]] = None,
+    reply_to_email: Optional[str] = None,
+    reply_to_name: Optional[str] = None,
 ) -> Dict[str, Any]:
     if not settings.mailjet_api_key or not settings.mailjet_secret_key:
         return {"status": "skipped", "reason": "mailjet_not_configured"}
@@ -936,13 +968,21 @@ def try_send_mailjet_email(
             html_body,
             text_body,
             attachments=attachments,
+            reply_to_email=reply_to_email,
+            reply_to_name=reply_to_name,
         )
-        return {"status": "sent", "provider": "mailjet", "response": provider_response}
+        return {
+            "status": "sent",
+            "provider": "mailjet",
+            "sandbox_mode": settings.mailjet_sandbox_mode,
+            "response": provider_response,
+        }
     except Exception as exc:
         return {
             "status": "failed",
             "reason": exc.__class__.__name__,
             "message": str(exc)[:240],
+            "sandbox_mode": settings.mailjet_sandbox_mode,
         }
 
 
@@ -1076,39 +1116,6 @@ def init_db() -> None:
     try:
         conn.executescript(
             """
-CREATE TABLE IF NOT EXISTS contracts (
-    id TEXT PRIMARY KEY,
-    service_code TEXT NOT NULL,
-    locale TEXT NOT NULL,
-    client_name TEXT NOT NULL,
-    client_email TEXT NOT NULL,
-    client_company TEXT NOT NULL,
-    client_phone TEXT NOT NULL,
-    client_address TEXT NOT NULL,
-    signer_full_name TEXT NOT NULL,
-    signer_title TEXT NOT NULL,
-    github_username TEXT,
-    bitbucket_username TEXT,
-    referral_code TEXT,
-    typed_signature TEXT NOT NULL,
-    consent_checked INTEGER NOT NULL,
-    consent_version TEXT NOT NULL,
-    signer_ip TEXT NOT NULL,
-    user_agent TEXT NOT NULL,
-    document_sha256 TEXT NOT NULL,
-    pdf_path TEXT NOT NULL,
-    status TEXT NOT NULL,
-    stripe_session_id TEXT,
-    stripe_payment_status TEXT,
-    payer_email TEXT,
-    provider TEXT,
-    repo_unlock_status TEXT,
-    repo_unlock_error TEXT,
-    github_invitation_id TEXT,
-    created_at TEXT NOT NULL,
-    signed_at TEXT NOT NULL
-);
-
 CREATE TABLE IF NOT EXISTS webhook_events (
     id TEXT PRIMARY KEY,
     event_type TEXT NOT NULL,
@@ -1129,35 +1136,9 @@ CREATE TABLE IF NOT EXISTS email_queue (
     last_error TEXT,
     created_at TEXT NOT NULL
 );
-"""
+        """
         )
         ensure_payments_table(conn)
-        conn.commit()
-        existing = {
-            row["name"]
-            for row in conn.execute("PRAGMA table_info(contracts)").fetchall()
-        }
-        for column, ddl in [
-            ("payer_email", "ALTER TABLE contracts ADD COLUMN payer_email TEXT"),
-            (
-                "repo_unlock_status",
-                "ALTER TABLE contracts ADD COLUMN repo_unlock_status TEXT",
-            ),
-            (
-                "repo_unlock_error",
-                "ALTER TABLE contracts ADD COLUMN repo_unlock_error TEXT",
-            ),
-            (
-                "github_invitation_id",
-                "ALTER TABLE contracts ADD COLUMN github_invitation_id TEXT",
-            ),
-        ]:
-            if column not in existing:
-                try:
-                    conn.execute(ddl)
-                except sqlite3.OperationalError as exc:
-                    if "duplicate column" not in str(exc).lower():
-                        raise
         conn.commit()
     finally:
         conn.close()
@@ -1200,12 +1181,16 @@ def submit_contact(payload: ContactFormRequest, request: Request) -> Dict[str, A
                     "subject": subject,
                     "html_body": support_html,
                     "text_body": support_text,
+                    "reply_to_email": payload.email,
+                    "reply_to_name": payload.name,
                 },
                 {
                     "to_email": payload.email,
                     "subject": "We received your message — Origna Ventures",
                     "html_body": confirmation_html,
                     "text_body": confirmation_text,
+                    "reply_to_email": settings.support_email,
+                    "reply_to_name": settings.mailjet_from_name,
                 },
             ]
         )
@@ -1339,17 +1324,17 @@ def send_mailjet_email(
     html_body: str,
     text_body: str,
     attachments: Optional[List[Dict[str, str]]] = None,
+    reply_to_email: Optional[str] = None,
+    reply_to_name: Optional[str] = None,
 ) -> Dict[str, Any]:
     if not settings.mailjet_api_key or not settings.mailjet_secret_key:
         raise HTTPException(status_code=500, detail="Mailjet credentials missing")
-
-    is_sandbox = settings.environment.lower() not in ["production", "prod"]
 
     response = requests.post(
         settings.mailjet_api_url,
         auth=(settings.mailjet_api_key, settings.mailjet_secret_key),
         json={
-            "SandboxMode": is_sandbox,
+            "SandboxMode": settings.mailjet_sandbox_mode,
             "Messages": [
                 {
                     "From": {
@@ -1361,6 +1346,16 @@ def send_mailjet_email(
                     "TextPart": text_body,
                     "HTMLPart": html_body,
                     "Attachments": attachments or [],
+                    **(
+                        {
+                            "ReplyTo": {
+                                "Email": reply_to_email,
+                                "Name": reply_to_name or reply_to_email,
+                            }
+                        }
+                        if reply_to_email
+                        else {}
+                    ),
                 }
             ],
         },
@@ -1587,6 +1582,14 @@ async def stripe_webhook(request: Request) -> Dict[str, Any]:
 
             if event_type == _WEBHOOK_EVENT_CHECKOUT_COMPLETED:
                 session = event.get("data", {}).get("object", {})
+                payment_row = conn.execute(
+                    "SELECT status FROM payments WHERE stripe_session_id = ?",
+                    (session.get("id"),),
+                ).fetchone()
+                payment_already_paid = (
+                    payment_row is not None
+                    and payment_row["status"] == _PAYMENT_STATUS_PAID
+                )
                 service_code = session.get("metadata", {}).get(
                     "service_code", "unknown"
                 )
@@ -1677,7 +1680,7 @@ async def stripe_webhook(request: Request) -> Dict[str, Any]:
                             "UPDATE payments SET subscription_id = ? WHERE stripe_session_id = ?",
                             (subscription_id, session.get("id")),
                         )
-                if payer_email:
+                if payer_email and not payment_already_paid:
                     receipt_subject, receipt_html, receipt_text = (
                         render_payment_receipt_email(
                             locale=client_locale,
@@ -1731,14 +1734,15 @@ async def stripe_webhook(request: Request) -> Dict[str, Any]:
                         developer_count=parsed_developer_count,
                     )
                 )
-                pending_emails.append(
-                    {
-                        "to_email": settings.support_email,
-                        "subject": support_subject,
-                        "html_body": support_html,
-                        "text_body": support_text,
-                    }
-                )
+                if not payment_already_paid:
+                    pending_emails.append(
+                        {
+                            "to_email": settings.support_email,
+                            "subject": support_subject,
+                            "html_body": support_html,
+                            "text_body": support_text,
+                        }
+                    )
 
             elif event_type == _WEBHOOK_EVENT_CHECKOUT_EXPIRED:
                 session = event.get("data", {}).get("object", {})
@@ -1759,15 +1763,19 @@ async def stripe_webhook(request: Request) -> Dict[str, Any]:
                 sub_id = subscription.get("id")
                 sub_status = subscription.get("status", "unknown")
                 if sub_id:
+                    payer_row = conn.execute(
+                        "SELECT payer_email, service_code, locale, subscription_status FROM payments WHERE subscription_id = ?",
+                        (sub_id,),
+                    ).fetchone()
+                    status_changed = (
+                        payer_row is None
+                        or payer_row["subscription_status"] != sub_status
+                    )
                     conn.execute(
                         "UPDATE payments SET subscription_status = ? WHERE subscription_id = ?",
                         (sub_status, sub_id),
                     )
-                    payer_row = conn.execute(
-                        "SELECT payer_email, service_code, locale FROM payments WHERE subscription_id = ?",
-                        (sub_id,),
-                    ).fetchone()
-                    if payer_row and payer_row["payer_email"]:
+                    if status_changed and payer_row and payer_row["payer_email"]:
                         lifecycle_subject, lifecycle_html, lifecycle_text = (
                             render_subscription_lifecycle_email(
                                 locale=payer_row["locale"] or "en",
@@ -1790,15 +1798,20 @@ async def stripe_webhook(request: Request) -> Dict[str, Any]:
                 invoice = event.get("data", {}).get("object", {})
                 sub_id = invoice.get("subscription")
                 if sub_id:
+                    payer_row = conn.execute(
+                        "SELECT payer_email, service_code, locale, subscription_status FROM payments WHERE subscription_id = ?",
+                        (sub_id,),
+                    ).fetchone()
+                    status_changed = (
+                        payer_row is None
+                        or payer_row["subscription_status"]
+                        != _SUBSCRIPTION_STATUS_PAST_DUE
+                    )
                     conn.execute(
                         "UPDATE payments SET subscription_status = ? WHERE subscription_id = ?",
                         (_SUBSCRIPTION_STATUS_PAST_DUE, sub_id),
                     )
-                    payer_row = conn.execute(
-                        "SELECT payer_email, service_code, locale FROM payments WHERE subscription_id = ?",
-                        (sub_id,),
-                    ).fetchone()
-                    if payer_row and payer_row["payer_email"]:
+                    if status_changed and payer_row and payer_row["payer_email"]:
                         lifecycle_subject, lifecycle_html, lifecycle_text = (
                             render_subscription_lifecycle_email(
                                 locale=payer_row["locale"] or "en",
@@ -1841,13 +1854,3 @@ async def stripe_webhook(request: Request) -> Dict[str, Any]:
             )
 
     return {"status": "ok", "eventId": event_id, "type": event_type}
-
-
-@app.get("/api/contracts")
-def list_contracts(request: Request) -> Dict[str, Any]:
-    require_admin_key(request)
-    with db_conn() as conn:
-        rows = conn.execute(
-            "SELECT id, service_code, client_company, client_email, payer_email, github_username, status, repo_unlock_status, repo_unlock_error, github_invitation_id, created_at FROM contracts ORDER BY created_at DESC LIMIT 100"
-        ).fetchall()
-    return {"contracts": [dict(row) for row in rows]}

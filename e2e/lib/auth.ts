@@ -108,8 +108,25 @@ export function isStableMappedAccount(email: string): boolean {
 /**
  * Resolve the stable UI alias email for a test account without touching the account state.
  */
+function isLocalOrignaBaseUrl(): boolean {
+  try {
+    const host = new URL(ORIGNABASE_URL).hostname.toLowerCase();
+    return (
+      host === 'localhost' ||
+      host === '127.0.0.1' ||
+      host === '0.0.0.0' ||
+      host === '::1' ||
+      host === '[::1]'
+    );
+  } catch {
+    return false;
+  }
+}
+
 export function resolveUiEmail(email: string): string {
-  if (!isStableMappedAccount(email)) return email.trim().toLowerCase();
+  if (isLocalOrignaBaseUrl() || !isStableMappedAccount(email)) {
+    return email.trim().toLowerCase();
+  }
   return uiAliasForRoles(rolesForEmail(email.trim().toLowerCase()));
 }
 
@@ -191,6 +208,7 @@ async function repairOrignaBaseUiAccount(
   user: OrignaBaseUserSummary,
   roles: string[],
   desiredDisplayName: string,
+  accessToken?: string,
 ): Promise<void> {
   const actualRoles = user.roles ?? [];
   const needsRepair = user.email_verified !== true || !hasRequiredRoles(actualRoles, roles);
@@ -233,6 +251,29 @@ async function repairOrignaBaseUiAccount(
       continue;
     }
 
+    if (isLocalOrignaBaseUrl() && accessToken) {
+      const graphqlRes = await fetch(`${ORIGNABASE_URL}/graphql`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          query:
+            'mutation($id:String!,$roles:JSON!,$displayName:String!){ update(collection: "users", id: $id, data: { roles: $roles, email_verified: true, display_name: $displayName }) }',
+          variables: {
+            id: String(user.id),
+            roles,
+            displayName: desiredDisplayName,
+          },
+        }),
+      });
+      const graphqlBody = await graphqlRes.json().catch(() => ({} as any));
+      if (graphqlRes.ok && !graphqlBody?.errors?.length) {
+        return;
+      }
+    }
+
     throw new Error(
       `Failed to repair OrignaBase UI account ${user.email}: ${patchError}`,
     );
@@ -250,9 +291,11 @@ export async function ensureOrignaBaseUiAccount(email: string, password: string)
   if (cached) return cached;
 
   const roles = rolesForEmail(requestedEmail);
-  const candidateEmails = isStableMappedAccount(requestedEmail)
-    ? [uiAliasForRoles(roles), uiFallbackAliasForRoles(roles)]
-    : [requestedEmail, uiFallbackAliasForRoles(roles)];
+  const candidateEmails = isLocalOrignaBaseUrl()
+    ? [requestedEmail]
+    : isStableMappedAccount(requestedEmail)
+      ? [uiAliasForRoles(roles), uiFallbackAliasForRoles(roles)]
+      : [requestedEmail, uiFallbackAliasForRoles(roles)];
   let normalizedEmail = candidateEmails[0];
   let loginRes: Response | null = null;
   let loginBody: any = {};
@@ -331,7 +374,16 @@ export async function ensureOrignaBaseUiAccount(email: string, password: string)
     },
     roles,
     displayName,
+    accessToken,
   );
+  await fetch(`${ORIGNABASE_URL}/api/users/profile/update`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({ termsVersion: '1.0' }),
+  }).catch(() => {});
 
   const resolved = { email: normalizedEmail, password };
   _orignabaseUiAccountCache.set(cacheKey, resolved);
@@ -410,7 +462,7 @@ function _jwtExpiresAtMs(jwt: string): number {
  * Caches tokens in memory AND on disk (shared across workers) until JWT expiry minus 60s safety margin.
  */
 export async function signIn(email: string, password: string = DEFAULT_PASS): Promise<AuthData> {
-  const cacheKey = `${email}:${password}`;
+  const cacheKey = `${ORIGNABASE_URL}|${email}:${password}`;
   _loadDiskTokens();
   const cached = _authCache.get(cacheKey);
   if (cached && Date.now() < cached.expiresAt) return cached.data;

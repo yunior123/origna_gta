@@ -502,37 +502,37 @@ mod query_builder_tests {
             },
             FilterCase {
                 filters: json!({"age": {"_gt": 18}}),
-                expected_clause: "WHERE data->>'age' > 18",
+                expected_clause: "WHERE NULLIF(data->>'age', '')::numeric > 18",
                 description: "greater than",
             },
             FilterCase {
                 filters: json!({"price": {"_lte": 99.99}}),
-                expected_clause: "WHERE data->>'price' <= 99.99",
+                expected_clause: "WHERE NULLIF(data->>'price', '')::numeric <= 99.99",
                 description: "less than or equal",
             },
             FilterCase {
                 filters: json!({"deleted": {"_neq": true}}),
-                expected_clause: "WHERE data->>'deleted' != true",
+                expected_clause: "WHERE NULLIF(data->>'deleted', '')::boolean != true",
                 description: "not equal boolean",
             },
             FilterCase {
                 filters: json!({"category": {"_in": ["electronics", "books"]}}),
-                expected_clause: "WHERE data->>'category' IN ['electronics', 'books']",
+                expected_clause: "WHERE data->>'category' IN ('electronics', 'books')",
                 description: "in array",
             },
             FilterCase {
                 filters: json!({"name": {"_contains": "john"}}),
-                expected_clause: "WHERE data->>'name' CONTAINS 'john'",
+                expected_clause: "WHERE ((jsonb_typeof(data->'name') = 'array' AND data->'name' ? 'john') OR COALESCE(data->>'name', '') ILIKE '%john%')",
                 description: "string contains",
             },
             FilterCase {
                 filters: json!({"email": {"_starts_with": "admin"}}),
-                expected_clause: "WHERE string::startsWith(data->>'email', 'admin')",
+                expected_clause: "WHERE COALESCE(data->>'email', '') ILIKE 'admin%'",
                 description: "starts with",
             },
             FilterCase {
                 filters: json!({"deleted_at": {"_eq": null}}),
-                expected_clause: "WHERE data->>'deleted_at' = NONE",
+                expected_clause: "WHERE data->>'deleted_at' IS NULL",
                 description: "null equality",
             },
         ];
@@ -554,7 +554,7 @@ mod query_builder_tests {
             "status": {"_eq": "active"}
         });
         let result = QueryTranslator::filters_to_where(&filters);
-        assert!(result.contains("data->>'price' > 100"));
+        assert!(result.contains("NULLIF(data->>'price', '')::numeric > 100"));
         assert!(result.contains("data->>'status' = 'active'"));
         assert!(result.contains(" AND "));
     }
@@ -616,7 +616,7 @@ mod query_builder_tests {
                 expected_contains: vec![
                     "SELECT * FROM products",
                     "WHERE data->>'status' = 'active'",
-                    "ORDER BY data->>'price' DESC",
+                    "ORDER BY NULLIF(data->>'price', '')::numeric DESC",
                     "LIMIT 20",
                 ],
                 should_not_contain: vec!["START"],

@@ -15,7 +15,6 @@ import 'package:origna_gta/core/repositories/product_repository.dart';
 import 'package:origna_gta/core/repositories/user_repository.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/models/models.dart';
-import 'package:origna_gta/services/orignabase_conf_service.dart';
 import 'package:origna_gta/utils/app_logger.dart';
 import 'package:origna_gta/utils/env_config.dart';
 import 'package:origna_gta/utils/utils.dart';
@@ -151,7 +150,7 @@ final googleAuthAvailabilityProvider =
 
       final ob = ref.watch(orignabaseProvider);
       try {
-        final response = await ob.request('GET', '/auth/providers');
+        final response = await ob.request('GET', ApiEndpoints.authProviders);
         final google = response['google'];
         return PublicAuthProviderAvailability.fromJson(
           google is Map<String, dynamic>
@@ -162,16 +161,13 @@ final googleAuthAvailabilityProvider =
         );
       } catch (e) {
         AppLogger.w(
-          'googleAuthAvailabilityProvider: /auth/providers fetch failed, falling back to config',
+          'googleAuthAvailabilityProvider: /auth/providers fetch failed; disabling web Google auth',
           tag: 'auth',
           error: e,
         );
-        final clientId = (await OrignaBaseConfigService().getString(
-          RemoteConfigKeys.googleWebClientId,
-        )).trim();
-        return PublicAuthProviderAvailability(
-          enabled: clientId.isNotEmpty,
-          clientIdConfigured: clientId.isNotEmpty,
+        return const PublicAuthProviderAvailability(
+          enabled: false,
+          clientIdConfigured: false,
           clientSecretConfigured: false,
         );
       }

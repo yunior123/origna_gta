@@ -1,5 +1,6 @@
 import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart' show ApiEndpoints;
+import 'package:origna_gta/utils/app_logger.dart';
 
 import 'location_repository.dart';
 
@@ -34,7 +35,11 @@ class OrignaBaseLocationRepository implements LocationRepository {
       final features = (data['features'] as List?) ?? [];
       return features.cast<Map<String, dynamic>>();
     } catch (e) {
-      // Fail soft — address suggestions are non-critical.
+      AppLogger.w(
+        'Location: address suggestions failed',
+        tag: 'location',
+        error: e,
+      );
       return [];
     }
   }

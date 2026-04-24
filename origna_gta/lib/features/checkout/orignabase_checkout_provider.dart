@@ -13,6 +13,7 @@ import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:origna_gta/services/orignabase_analytics_service.dart';
 import 'package:origna_gta/utils/circuit_breaker.dart';
 import 'package:origna_gta/utils/constants.dart';
+import 'package:origna_gta/utils/app_logger.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:uuid/uuid.dart';
 
@@ -346,13 +347,19 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
       );
 
       calculateTaxes(subtotalCents, shippingCostCents: (cost * 100).round());
-    } on CircuitBreakerOpenException catch (_) {
+    } on CircuitBreakerOpenException catch (e) {
+      AppLogger.w(
+        'Checkout: shipping circuit breaker open',
+        tag: 'checkout',
+        error: e,
+      );
       if (!mounted) return;
       state = state.copyWith(
         shippingError: 'checkout.errors.shipping_unavailable'.tr(),
         isCalculatingShipping: false,
       );
     } catch (e) {
+      AppLogger.w('Checkout: shipping calc failed', tag: 'checkout', error: e);
       if (!mounted) return;
       state = state.copyWith(
         shippingError: 'checkout.errors.shipping_calc_failed'.tr(),
@@ -529,6 +536,11 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
               );
             }
           } catch (e) {
+            AppLogger.w(
+              'Checkout: biometric auth error',
+              tag: 'checkout',
+              error: e,
+            );
             state = state.copyWith(isProcessing: false);
             return CheckoutError(
               message: 'checkout.errors.biometric_error'.tr(),

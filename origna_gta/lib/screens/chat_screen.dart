@@ -179,8 +179,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       WidgetsBinding.instance.addPostFrameCallback(
                         (_) => _scrollToBottom(),
                       );
-                    } catch (_) {
-                      // Only restore text if input is empty — don't overwrite what the user typed next
+                    } catch (e) {
+                      AppLogger.w(
+                        'ChatScreen: send message failed',
+                        tag: 'chat',
+                        error: e,
+                      );
                       if (_textController.text.trim().isEmpty) {
                         _textController.text = text;
                       }

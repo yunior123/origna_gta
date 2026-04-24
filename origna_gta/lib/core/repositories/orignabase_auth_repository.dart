@@ -10,12 +10,26 @@ import 'package:origna_gta/utils/app_logger.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:origna_gta/utils/safe_url_launcher.dart';
+import 'package:origna_gta/services/turnstile_service.dart';
 
 import 'auth_repository.dart';
 
 String _deviceLanguage() {
   final code = PlatformDispatcher.instance.locale.languageCode;
   return LanguageValues.resolve(code);
+}
+
+Uri normalizedWebRedirectUri(Uri uri) {
+  final hasDefaultPort =
+      (uri.scheme == 'https' && uri.port == 443) ||
+      (uri.scheme == 'http' && uri.port == 80);
+  return Uri(
+    scheme: uri.scheme,
+    host: uri.host,
+    port: uri.hasPort && !hasDefaultPort ? uri.port : null,
+    path: uri.path.isEmpty ? '/' : uri.path,
+    queryParameters: uri.queryParameters.isEmpty ? null : uri.queryParameters,
+  );
 }
 
 /// OrignaBase-specific auth exception that mirrors common auth error codes.
@@ -55,6 +69,23 @@ class OrignaBaseAuthRepository implements AuthRepository {
   /// Used to enforce a freshness window for sensitive operations like account deletion.
   int? _lastReAuthenticatedAt;
 
+  Future<String?> _getTurnstileTokenIfNeeded() async {
+    if (!kIsWeb) return null;
+    final token = await TurnstileService.getToken();
+    if (token == null || token.isEmpty) {
+      throw OrignaBaseAuthException(
+        code: 'turnstile-unavailable',
+        message: 'Security check not ready. Please try again.',
+      );
+    }
+    return token;
+  }
+
+  void _resetTurnstileIfNeeded() {
+    if (!kIsWeb) return;
+    TurnstileService.reset();
+  }
+
   // ---------------------------------------------------------------------------
   // Auth methods
   // ---------------------------------------------------------------------------
@@ -91,7 +122,12 @@ class OrignaBaseAuthRepository implements AuthRepository {
     }
 
     try {
-      final authState = await _ob.auth.register(trimmedEmail, password);
+      final turnstileToken = await _getTurnstileTokenIfNeeded();
+      final authState = await _ob.auth.register(
+        trimmedEmail,
+        password,
+        turnstileToken: turnstileToken,
+      );
 
       if (authState.isAuthenticated && authState.userId != null) {
         // Create user profile document
@@ -116,6 +152,8 @@ class OrignaBaseAuthRepository implements AuthRepository {
       }
     } catch (e) {
       _rethrowAsAuthException(e);
+    } finally {
+      _resetTurnstileIfNeeded();
     }
   }
 
@@ -145,17 +183,23 @@ class OrignaBaseAuthRepository implements AuthRepository {
     }
 
     try {
+      final turnstileToken = await _getTurnstileTokenIfNeeded();
       AuthState authState;
       var attempt = 0;
       while (true) {
         try {
-          authState = await _ob.auth.signInWithEmail(trimmedEmail, password);
+          authState = await _ob.auth.signInWithEmail(
+            trimmedEmail,
+            password,
+            turnstileToken: turnstileToken,
+          );
           break;
         } on RateLimitException {
           // SECURITY: Never retry on 429 — amplifies brute-force attacks.
           rethrow;
-        } on NetworkException catch (_) {
+        } on NetworkException catch (e) {
           attempt += 1;
+          AppLogger.d('Auth: network error, retry $attempt/3: $e', tag: 'auth');
           if (attempt >= 3) rethrow;
           await Future<void>.delayed(Duration(milliseconds: 500 * attempt));
         }
@@ -188,6 +232,8 @@ class OrignaBaseAuthRepository implements AuthRepository {
       }
     } catch (e) {
       _rethrowAsAuthException(e);
+    } finally {
+      _resetTurnstileIfNeeded();
     }
   }
 
@@ -212,15 +258,17 @@ class OrignaBaseAuthRepository implements AuthRepository {
         // See: https://pub.dev/packages/google_sign_in_web — "authenticate is not supported on the web"
         bool? googleEnabledOnBackend;
         try {
-          final providers = await _ob.request('GET', '/auth/providers');
+          final providers = await _ob.request('GET', ApiEndpoints.authProviders);
           final google = providers['google'];
           googleEnabledOnBackend = google is Map && google['enabled'] == true;
         } on OrignaBaseAuthException {
           rethrow;
-        } catch (_) {
-          // /auth/providers is unavailable (404 or network error) — treat as
-          // unknown; attempt the redirect directly and let it fail there if
-          // Google OAuth is not configured on the backend.
+        } catch (e) {
+          AppLogger.w(
+            'Auth: /auth/providers unavailable, Google OAuth unknown',
+            tag: 'auth',
+            error: e,
+          );
           googleEnabledOnBackend = null;
         }
 
@@ -234,7 +282,7 @@ class OrignaBaseAuthRepository implements AuthRepository {
 
         // googleEnabledOnBackend is true (provider check passed) or null
         // (/auth/providers endpoint missing). Either way, attempt the redirect.
-        final redirectTo = Uri.base.replace(fragment: '');
+        final redirectTo = normalizedWebRedirectUri(Uri.base);
         final startUrl = Uri.parse(
           '${_ob.url}/auth/google/start',
         ).replace(queryParameters: {'redirect_to': redirectTo.toString()});

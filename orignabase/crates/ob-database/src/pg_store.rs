@@ -779,7 +779,24 @@ fn rewrite_bare_fields_in_where(query: &str) -> String {
     };
 
     let before_where = &query[..where_idx + 6];
-    let where_clause = &query[where_idx + 6..];
+    let after_where = &query[where_idx + 6..];
+
+    // Only rewrite the actual WHERE predicate. Stop before ORDER/GROUP/LIMIT/OFFSET
+    // so SQL casts like ::numeric in trailing clauses are never re-tokenized.
+    let end_candidates = [
+        " ORDER BY ",
+        " GROUP BY ",
+        " LIMIT ",
+        " OFFSET ",
+        " RETURNING ",
+    ];
+    let where_end = end_candidates
+        .iter()
+        .filter_map(|needle| after_where.to_uppercase().find(needle))
+        .min()
+        .unwrap_or(after_where.len());
+    let where_clause = &after_where[..where_end];
+    let after_clause = &after_where[where_end..];
 
     // Find common comparison patterns: field = 'value' or field = value
     let mut result = String::with_capacity(where_clause.len() + 64);
@@ -804,7 +821,7 @@ fn rewrite_bare_fields_in_where(query: &str) -> String {
         let word = &trimmed[..word_end];
         let word_upper = word.to_uppercase();
 
-        // Skip SQL keywords
+        // Skip SQL keywords / type names
         let keywords = [
             "AND",
             "OR",
@@ -845,11 +862,25 @@ fn rewrite_bare_fields_in_where(query: &str) -> String {
             "RIGHT",
             "INNER",
             "OUTER",
+            "NUMERIC",
+            "BOOLEAN",
+            "JSONB",
+            "TEXT",
+            "INTEGER",
+            "BIGINT",
+            "TIMESTAMP",
+            "TIMESTAMPTZ",
+            "DATE",
+            "TIME",
+            "DOUBLE",
+            "PRECISION",
         ];
 
+        let preceding = &remaining[..prefix_ws];
         if keywords.contains(&word_upper.as_str())
             || standard_columns.contains(&word.to_lowercase().as_str())
             || word.starts_with("data")
+            || preceding.ends_with("::")
         {
             result.push_str(&remaining[..prefix_ws + word_end]);
             remaining = &remaining[prefix_ws + word_end..];
@@ -879,7 +910,7 @@ fn rewrite_bare_fields_in_where(query: &str) -> String {
         }
     }
 
-    format!("{before_where}{result}")
+    format!("{before_where}{result}{after_clause}")
 }
 
 /// Extract the primary table name from a SQL query (FROM, DELETE FROM, UPDATE).
@@ -962,6 +993,23 @@ pub(crate) fn bind_json_value<'q>(
 /// Standard columns that are always present — extra columns are SQL aliases.
 const STANDARD_COLUMNS: &[&str] = &["data", "id", "created_at", "updated_at"];
 
+fn inject_document_metadata(
+    obj: &mut serde_json::Map<String, Value>,
+    id: Option<String>,
+    created_at: Option<chrono::DateTime<chrono::Utc>>,
+    updated_at: Option<chrono::DateTime<chrono::Utc>>,
+) {
+    if let Some(id) = id {
+        obj.insert("id".to_string(), Value::String(id));
+    }
+    if let Some(ts) = created_at {
+        obj.insert("createdAt".to_string(), Value::String(ts.to_rfc3339()));
+    }
+    if let Some(ts) = updated_at {
+        obj.insert("updatedAt".to_string(), Value::String(ts.to_rfc3339()));
+    }
+}
+
 fn rows_to_values(rows: Vec<sqlx::postgres::PgRow>) -> AppResult<Vec<Value>> {
     use sqlx::{Column, Row};
 
@@ -971,15 +1019,14 @@ fn rows_to_values(rows: Vec<sqlx::postgres::PgRow>) -> AppResult<Vec<Value>> {
         if let Ok(val) = row.try_get::<Value, _>("data") {
             let mut result = val;
             if let Some(obj) = result.as_object_mut() {
-                if let Ok(id) = row.try_get::<String, _>("id") {
-                    obj.insert("id".to_string(), Value::String(id));
-                }
-                if let Ok(ts) = row.try_get::<chrono::DateTime<chrono::Utc>, _>("created_at") {
-                    obj.insert("createdAt".to_string(), Value::String(ts.to_rfc3339()));
-                }
-                if let Ok(ts) = row.try_get::<chrono::DateTime<chrono::Utc>, _>("updated_at") {
-                    obj.insert("updatedAt".to_string(), Value::String(ts.to_rfc3339()));
-                }
+                inject_document_metadata(
+                    obj,
+                    row.try_get::<String, _>("id").ok(),
+                    row.try_get::<chrono::DateTime<chrono::Utc>, _>("created_at")
+                        .ok(),
+                    row.try_get::<chrono::DateTime<chrono::Utc>, _>("updated_at")
+                        .ok(),
+                );
                 // Extract SQL aliases (e.g. COALESCE(...) AS roles) — these are
                 // computed columns from raw queries that don't live in the JSONB data.
                 for col in row.columns() {
@@ -1064,20 +1111,11 @@ impl DatabaseStore for PgDatabaseStore {
 
         // Inject the id and timestamps into the result
         if let Some(obj) = result.as_object_mut() {
-            obj.insert("id".to_string(), Value::String(row.get::<String, _>("id")));
-            obj.insert(
-                "createdAt".to_string(),
-                Value::String(
-                    row.get::<chrono::DateTime<chrono::Utc>, _>("created_at")
-                        .to_rfc3339(),
-                ),
-            );
-            obj.insert(
-                "updatedAt".to_string(),
-                Value::String(
-                    row.get::<chrono::DateTime<chrono::Utc>, _>("updated_at")
-                        .to_rfc3339(),
-                ),
+            inject_document_metadata(
+                obj,
+                Some(row.get::<String, _>("id")),
+                Some(row.get::<chrono::DateTime<chrono::Utc>, _>("created_at")),
+                Some(row.get::<chrono::DateTime<chrono::Utc>, _>("updated_at")),
             );
         }
 
@@ -1106,20 +1144,11 @@ impl DatabaseStore for PgDatabaseStore {
             .unwrap_or(Value::Object(Default::default()));
 
         if let Some(obj) = result.as_object_mut() {
-            obj.insert("id".to_string(), Value::String(row.get("id")));
-            obj.insert(
-                "createdAt".to_string(),
-                Value::String(
-                    row.get::<chrono::DateTime<chrono::Utc>, _>("created_at")
-                        .to_rfc3339(),
-                ),
-            );
-            obj.insert(
-                "updatedAt".to_string(),
-                Value::String(
-                    row.get::<chrono::DateTime<chrono::Utc>, _>("updated_at")
-                        .to_rfc3339(),
-                ),
+            inject_document_metadata(
+                obj,
+                Some(row.get("id")),
+                Some(row.get::<chrono::DateTime<chrono::Utc>, _>("created_at")),
+                Some(row.get::<chrono::DateTime<chrono::Utc>, _>("updated_at")),
             );
         }
 
@@ -1153,13 +1182,11 @@ impl DatabaseStore for PgDatabaseStore {
             .unwrap_or(Value::Object(Default::default()));
 
         if let Some(obj) = result.as_object_mut() {
-            obj.insert("id".to_string(), Value::String(row.get("id")));
-            obj.insert(
-                "updatedAt".to_string(),
-                Value::String(
-                    row.get::<chrono::DateTime<chrono::Utc>, _>("updated_at")
-                        .to_rfc3339(),
-                ),
+            inject_document_metadata(
+                obj,
+                Some(row.get("id")),
+                Some(row.get::<chrono::DateTime<chrono::Utc>, _>("created_at")),
+                Some(row.get::<chrono::DateTime<chrono::Utc>, _>("updated_at")),
             );
         }
 
@@ -1189,13 +1216,11 @@ impl DatabaseStore for PgDatabaseStore {
             .unwrap_or(Value::Object(Default::default()));
 
         if let Some(obj) = result.as_object_mut() {
-            obj.insert("id".to_string(), Value::String(row.get("id")));
-            obj.insert(
-                "updatedAt".to_string(),
-                Value::String(
-                    row.get::<chrono::DateTime<chrono::Utc>, _>("updated_at")
-                        .to_rfc3339(),
-                ),
+            inject_document_metadata(
+                obj,
+                Some(row.get("id")),
+                Some(row.get::<chrono::DateTime<chrono::Utc>, _>("created_at")),
+                Some(row.get::<chrono::DateTime<chrono::Utc>, _>("updated_at")),
             );
         }
 
@@ -1254,20 +1279,11 @@ impl DatabaseStore for PgDatabaseStore {
                 .unwrap_or(Value::Object(Default::default()));
 
             if let Some(obj) = val.as_object_mut() {
-                obj.insert("id".to_string(), Value::String(row.get("id")));
-                obj.insert(
-                    "createdAt".to_string(),
-                    Value::String(
-                        row.get::<chrono::DateTime<chrono::Utc>, _>("created_at")
-                            .to_rfc3339(),
-                    ),
-                );
-                obj.insert(
-                    "updatedAt".to_string(),
-                    Value::String(
-                        row.get::<chrono::DateTime<chrono::Utc>, _>("updated_at")
-                            .to_rfc3339(),
-                    ),
+                inject_document_metadata(
+                    obj,
+                    Some(row.get("id")),
+                    Some(row.get::<chrono::DateTime<chrono::Utc>, _>("created_at")),
+                    Some(row.get::<chrono::DateTime<chrono::Utc>, _>("updated_at")),
                 );
             }
             results.push(val);
@@ -1635,6 +1651,13 @@ impl DatabaseStore for PgDatabaseStore {
 mod tests {
     use super::*;
 
+    #[test]
+    fn test_rewrite_bare_fields_in_where_preserves_numeric_casts() {
+        let query = "SELECT * FROM products WHERE data->>'lifecycleStatus' = 'active' AND NULLIF(data->>'categoryId', '')::numeric = 1 ORDER BY created_at DESC LIMIT 21 OFFSET 0";
+        let rewritten = rewrite_bare_fields_in_where(query);
+        assert_eq!(rewritten, query);
+    }
+
     /// These tests require a running PostgreSQL instance.
     /// Run: docker exec -i orignabase-pg psql -U orignabase -d orignabase < migrations/001_full_schema.sql
     async fn test_store() -> PgDatabaseStore {
@@ -1658,6 +1681,37 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_pg_metadata_timestamps_override_stale_payload_values() {
+        let store = test_store().await;
+        let stale_created = "2000-01-01T00:00:00Z";
+        let stale_updated = "2000-01-02T00:00:00Z";
+        let created = store
+            .create_document(
+                "test_metadata_override",
+                serde_json::json!({
+                    "name": "Timestamp Canonical",
+                    "createdAt": stale_created,
+                    "updatedAt": stale_updated,
+                }),
+            )
+            .await
+            .unwrap();
+
+        let created_at = created["createdAt"].as_str().unwrap();
+        let updated_at = created["updatedAt"].as_str().unwrap();
+
+        assert_ne!(created_at, stale_created);
+        assert_ne!(updated_at, stale_updated);
+
+        let fetched = store
+            .get_document("test_metadata_override", created["id"].as_str().unwrap())
+            .await
+            .unwrap();
+        assert_eq!(fetched["createdAt"], created["createdAt"]);
+        assert_eq!(fetched["updatedAt"], created["updatedAt"]);
+    }
+
+    #[tokio::test]
     async fn test_pg_update() {
         let store = test_store().await;
         let data = serde_json::json!({"name": "Alice", "age": 30});
@@ -1670,6 +1724,39 @@ mod tests {
             .unwrap();
         assert_eq!(updated["age"], 31);
         assert_eq!(updated["name"], "Alice"); // preserved
+    }
+
+    #[tokio::test]
+    async fn test_pg_update_overrides_stale_timestamp_payload_values() {
+        let store = test_store().await;
+        let created = store
+            .create_document(
+                "test_update_timestamp_override",
+                serde_json::json!({"name": "Alice"}),
+            )
+            .await
+            .unwrap();
+        let id = created["id"].as_str().unwrap().to_string();
+        let original_created_at = created["createdAt"].clone();
+
+        let updated = store
+            .update_document(
+                "test_update_timestamp_override",
+                &id,
+                serde_json::json!({
+                    "createdAt": "2000-01-01T00:00:00Z",
+                    "updatedAt": "2000-01-02T00:00:00Z",
+                    "age": 31
+                }),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(updated["createdAt"], original_created_at);
+        assert_ne!(
+            updated["updatedAt"],
+            serde_json::json!("2000-01-02T00:00:00Z")
+        );
     }
 
     #[tokio::test]
@@ -1693,6 +1780,38 @@ mod tests {
             .unwrap();
         assert_eq!(updated["value"], "light");
         assert_eq!(updated["key"], "theme"); // merged from previous
+    }
+
+    #[tokio::test]
+    async fn test_pg_upsert_overrides_stale_timestamp_payload_values() {
+        let store = test_store().await;
+        let created = store
+            .upsert_document(
+                "test_upsert_timestamp_override",
+                "theme_key",
+                serde_json::json!({"key": "theme", "value": "dark"}),
+            )
+            .await
+            .unwrap();
+
+        let updated = store
+            .upsert_document(
+                "test_upsert_timestamp_override",
+                "theme_key",
+                serde_json::json!({
+                    "value": "light",
+                    "createdAt": "2000-01-01T00:00:00Z",
+                    "updatedAt": "2000-01-02T00:00:00Z"
+                }),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(updated["createdAt"], created["createdAt"]);
+        assert_ne!(
+            updated["updatedAt"],
+            serde_json::json!("2000-01-02T00:00:00Z")
+        );
     }
 
     #[tokio::test]

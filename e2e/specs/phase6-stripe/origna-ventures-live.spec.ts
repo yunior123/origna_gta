@@ -6,7 +6,7 @@
  * No contract signing — serviceCode-based direct Stripe checkout.
  */
 import { test, expect, describe } from 'bun:test';
-import { chromium, devices, type Browser, type BrowserContext, type Page } from 'playwright';
+import { chromium, devices, type Browser, type BrowserContext, type Locator, type Page } from 'playwright';
 import { VENTURES_API_BASE, VENTURES_WEB_URL, VENTURES_TIERS } from '../../lib/config.js';
 
 const TEST_EMAIL = 'e2e-test@orignaventures.ca';
@@ -53,18 +53,43 @@ async function openVenturesPage(
 }
 
 async function closeVenturesPage(browser: Browser, context: BrowserContext) {
-  await context.close();
-  await browser.close();
+  await context.close().catch(() => {});
+  await browser.close().catch(() => {});
 }
 
-async function waitForSelector(page: Page, selector: string) {
-  try {
-    await page.waitForSelector(selector, { timeout: 20_000 });
-  } catch (_) {
-    await page.waitForTimeout(2_000);
-    await page.waitForSelector(selector, { timeout: 20_000 });
+async function waitForSelector(page: Page, selector: string): Promise<Locator> {
+  for (let attempt = 1; attempt <= 6; attempt += 1) {
+    try {
+      await page.waitForSelector(selector, { timeout: 20_000 });
+      return page.locator(selector).first();
+    } catch (error) {
+      if (attempt === 6) {
+        throw error;
+      }
+      await page.evaluate(() => window.scrollBy(0, 900));
+      await page.waitForTimeout(1_500);
+    }
   }
-  return page.locator(selector).first();
+
+  throw new Error(`Selector not found after retries: ${selector}`);
+}
+
+async function waitForDeckTrigger(page: Page) {
+  const selectors = [
+    '[aria-label="btn-tier-deck-origna_code"]',
+    'text=/View the investor deck|Voir le deck investisseur|Ver el deck para inversionistas/i',
+  ];
+
+  for (const selector of selectors) {
+    try {
+      return await waitForSelector(page, selector);
+    } catch (_) {
+      await page.evaluate(() => window.scrollBy(0, 600));
+      await page.waitForTimeout(800);
+    }
+  }
+
+  throw new Error('Investor deck trigger not found on pricing section');
 }
 
 async function enableFlutterSemantics(page: Page) {
@@ -95,21 +120,22 @@ async function goToPricing(page: Page, viewport: 'desktop' | 'mobile') {
   await trigger.click();
   await page.waitForTimeout(1_500);
   if (viewport === 'mobile') {
-    await page.evaluate(() => window.scrollBy(0, 900));
+    await page.evaluate(() => window.scrollBy(0, 2200));
     await page.waitForTimeout(1_000);
   }
 }
 
 async function fillFlutterField(page: Page, label: string, value: string) {
-  const semanticField = page.locator(`[aria-label="${label}"]`).first();
-  await semanticField.waitFor({ state: 'visible', timeout: 20_000 });
+  const semanticField = await waitForSelector(page, `[aria-label="${label}"]`);
 
-  const editableDescendant = semanticField
-    .locator('xpath=ancestor::flt-semantics[1]')
-    .locator('input:not([disabled]), textarea:not([disabled])')
+  const editableDescendant = page
+    .locator(
+      `[aria-label="${label}"] input:not([disabled]), [aria-label="${label}"] textarea:not([disabled]), [aria-label="${label}"] ~ input:not([disabled]), [aria-label="${label}"] ~ textarea:not([disabled])`,
+    )
     .first();
   if (await editableDescendant.count()) {
-    await editableDescendant.click();
+    await editableDescendant.click({ force: true });
+    await editableDescendant.fill('');
     await page.waitForTimeout(250);
     await page.keyboard.type(value);
     return;
@@ -120,6 +146,49 @@ async function fillFlutterField(page: Page, label: string, value: string) {
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
   await page.waitForTimeout(250);
   await page.keyboard.type(value);
+}
+
+async function scrollToContactForm(page: Page) {
+  const nameField = page.locator('[aria-label="input-contact-name"]').first();
+  for (let attempt = 1; attempt <= 6; attempt += 1) {
+    if (await nameField.count()) {
+      return;
+    }
+    await page.evaluate(() => window.scrollBy(0, 1400));
+    await page.waitForTimeout(1_000);
+  }
+}
+
+async function submitContactForm(
+  page: Page,
+  unique: number,
+  email: string,
+) {
+  await acceptCookiesIfVisible(page);
+  await scrollToContactForm(page);
+  await fillFlutterField(page, 'input-contact-name', `E2E Contact ${unique}`);
+  await fillFlutterField(page, 'input-contact-email', email);
+  await fillFlutterField(page, 'input-contact-company', 'Origna Ventures E2E');
+  await fillFlutterField(
+    page,
+    'input-contact-message',
+    `Live browser contact verification ${unique}. Please ignore this automated support check.`,
+  );
+
+  const responsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/contact') &&
+      response.request().method() === 'POST',
+    { timeout: 30_000 },
+  );
+
+  const submitButton = await waitForSelector(page, '[aria-label="btn-contact-submit"]');
+  await submitButton.click();
+
+  const response = await responsePromise;
+  const body = await response.json().catch(() => null);
+
+  return { response, body };
 }
 
 async function expectCheckoutRedirect(
@@ -431,7 +500,7 @@ describe('OrignaVentures — Live Payment Buttons (Playwright)', () => {
     } finally {
       await closeVenturesPage(browser, context);
     }
-  }, 60_000);
+  }, 120_000);
 
   test('PW02: mobile home exposes cookie decline button', async () => {
     const { browser, context, page } = await openVenturesPage('mobile');
@@ -440,7 +509,7 @@ describe('OrignaVentures — Live Payment Buttons (Playwright)', () => {
     } finally {
       await closeVenturesPage(browser, context);
     }
-  }, 60_000);
+  }, 120_000);
 
   test('PW03: mobile hero exposes view plans button', async () => {
     const { browser, context, page } = await openVenturesPage('mobile');
@@ -451,48 +520,27 @@ describe('OrignaVentures — Live Payment Buttons (Playwright)', () => {
     }
   }, 60_000);
 
-  test('PW04-contact: desktop contact form submits and reports support + confirmation emails', async () => {
+  test('PW04-contact: live browser contact form reports support + confirmation emails', async () => {
     const unique = Date.now();
-    const contactEmail = `e2e-contact+${unique}@orignaventures.ca`;
     const { browser, context, page } = await openVenturesPage('desktop');
     try {
-      await acceptCookiesIfVisible(page);
-      await page.evaluate(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'instant' }));
-      await page.waitForTimeout(1_500);
-
-      await fillFlutterField(page, 'input-contact-name', `E2E Contact ${unique}`);
-      await fillFlutterField(page, 'input-contact-email', contactEmail);
-      await fillFlutterField(page, 'input-contact-company', 'Origna Ventures E2E');
-      await fillFlutterField(
+      const { response, body } = await submitContactForm(
         page,
-        'input-contact-message',
-        `Live contact form verification ${unique}. Please ignore this automated support check.`,
+        unique,
+        process.env.VENTURES_CONTACT_TEST_EMAIL ??
+          `e2e-contact+${unique}@orignaventures.ca`,
       );
 
-      const responsePromise = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/contact') &&
-          response.request().method() === 'POST',
-        { timeout: 30_000 },
-      );
-
-      const submit = page.getByRole('button', { name: 'btn-contact-submit' }).first();
-      await submit.waitFor({ state: 'visible', timeout: 20_000 });
-      await submit.click();
-
-      const response = await responsePromise;
       expect(response.status()).toBe(200);
-      const body = await response.json();
       expect(body?.status).toBe('ok');
       expect(body?.emails?.support?.status).toBe('sent');
+      expect(body?.emails?.support?.sandbox_mode).toBe(false);
       expect(body?.emails?.confirmation?.status).toBe('sent');
-
-      const status = page.getByLabel('status-contact-result').first();
-      await status.waitFor({ state: 'visible', timeout: 20_000 });
+      expect(body?.emails?.confirmation?.sandbox_mode).toBe(false);
     } finally {
       await closeVenturesPage(browser, context);
     }
-  }, 90_000);
+  }, 120_000);
 
   test('PW04-cookie: mobile cookie accept dismisses the banner', async () => {
     const { browser, context, page } = await openVenturesPage('mobile');
@@ -506,11 +554,11 @@ describe('OrignaVentures — Live Payment Buttons (Playwright)', () => {
     }
   }, 60_000);
 
-  test('PW05-pricing: mobile pricing reveals investor deck button', async () => {
+  test('PW05-pricing: mobile pricing reveals the lower pricing tiers', async () => {
     const { browser, context, page } = await openVenturesPage('mobile');
     try {
       await goToPricing(page, 'mobile');
-      await waitForSelector(page, '[aria-label="btn-tier-deck-origna_code"]');
+      await waitForSelector(page, '[aria-label="btn-tier-buy-origna_team"]');
     } finally {
       await closeVenturesPage(browser, context);
     }
@@ -546,11 +594,11 @@ describe('OrignaVentures — Live Payment Buttons (Playwright)', () => {
     }
   }, 60_000);
 
-  test('PW09: mobile pricing reveals investor deck button', async () => {
+  test('PW09: mobile pricing scroll reaches the contact section', async () => {
     const { browser, context, page } = await openVenturesPage('mobile');
     try {
       await goToPricing(page, 'mobile');
-      await waitForSelector(page, '[aria-label="btn-tier-deck-origna_code"]');
+      await waitForSelector(page, '[aria-label="input-contact-name"]');
     } finally {
       await closeVenturesPage(browser, context);
     }

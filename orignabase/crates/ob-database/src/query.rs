@@ -13,6 +13,27 @@ use serde_json::Value;
 pub struct QueryTranslator;
 
 impl QueryTranslator {
+    fn is_probably_numeric_field(field: &str) -> bool {
+        matches!(
+            field,
+            "age"
+                | "price"
+                | "priceCents"
+                | "categoryId"
+                | "rating"
+                | "fraudScore"
+                | "avgResponseTimeHours"
+                | "avgShipDays"
+                | "positiveRatePct"
+                | "totalReviews"
+        ) || field.ends_with("Cents")
+            || field.ends_with("Count")
+            || field.ends_with("Quantity")
+            || field.ends_with("Pct")
+            || field.ends_with("Hours")
+            || field.ends_with("Days")
+    }
+
     fn sql_field_expr(field: &str) -> Option<String> {
         if validate_identifier(field).is_err() {
             tracing::warn!("Rejected invalid field name in query builder: {field}");
@@ -23,8 +44,46 @@ impl QueryTranslator {
             "id" => "id".to_string(),
             "createdAt" | "created_at" => "created_at".to_string(),
             "updatedAt" | "updated_at" => "updated_at".to_string(),
+            _ if Self::is_probably_numeric_field(field) => {
+                format!("NULLIF(data->>'{field}', '')::numeric")
+            }
             _ => format!("data->>'{field}'"),
         })
+    }
+
+    fn sql_json_value_expr(field: &str) -> Option<String> {
+        if validate_identifier(field).is_err() {
+            tracing::warn!("Rejected invalid field name in query builder: {field}");
+            return None;
+        }
+
+        Some(match field {
+            "id" => "to_jsonb(id)".to_string(),
+            "createdAt" | "created_at" => "to_jsonb(created_at)".to_string(),
+            "updatedAt" | "updated_at" => "to_jsonb(updated_at)".to_string(),
+            _ => format!("data->'{field}'"),
+        })
+    }
+
+    fn sql_typed_field_expr(field: &str, value: &Value) -> Option<String> {
+        if validate_identifier(field).is_err() {
+            tracing::warn!("Rejected invalid field name in query builder: {field}");
+            return None;
+        }
+
+        match value {
+            Value::Number(_) => Some(match field {
+                "createdAt" | "created_at" => "EXTRACT(EPOCH FROM created_at)".to_string(),
+                "updatedAt" | "updated_at" => "EXTRACT(EPOCH FROM updated_at)".to_string(),
+                "id" => "id".to_string(),
+                _ => format!("NULLIF(data->>'{field}', '')::numeric"),
+            }),
+            Value::Bool(_) => Some(match field {
+                "id" => "id".to_string(),
+                _ => format!("NULLIF(data->>'{field}', '')::boolean"),
+            }),
+            _ => Self::sql_field_expr(field),
+        }
     }
 
     /// Convert a filter map to a SQL WHERE clause.
@@ -58,30 +117,74 @@ impl QueryTranslator {
             tracing::warn!("Rejected invalid field name in filter: {field}");
             return None;
         }
-        let field_expr = Self::sql_field_expr(field)?;
-        let val_str = Self::value_to_surreal(value);
         match op {
-            "_eq" => Some(format!("{field_expr} = {val_str}")),
-            "_neq" => Some(format!("{field_expr} != {val_str}")),
-            "_gt" => Some(format!("{field_expr} > {val_str}")),
-            "_gte" => Some(format!("{field_expr} >= {val_str}")),
-            "_lt" => Some(format!("{field_expr} < {val_str}")),
-            "_lte" => Some(format!("{field_expr} <= {val_str}")),
+            "_eq" => {
+                let field_expr = Self::sql_typed_field_expr(field, value)?;
+                let val_str = Self::value_to_surreal(value);
+                if value.is_null() {
+                    Some(format!("{field_expr} IS NULL"))
+                } else {
+                    Some(format!("{field_expr} = {val_str}"))
+                }
+            }
+            "_neq" => {
+                let field_expr = Self::sql_typed_field_expr(field, value)?;
+                let val_str = Self::value_to_surreal(value);
+                if value.is_null() {
+                    Some(format!("{field_expr} IS NOT NULL"))
+                } else {
+                    Some(format!("{field_expr} != {val_str}"))
+                }
+            }
+            "_gt" => {
+                let field_expr = Self::sql_typed_field_expr(field, value)?;
+                let val_str = Self::value_to_surreal(value);
+                Some(format!("{field_expr} > {val_str}"))
+            }
+            "_gte" => {
+                let field_expr = Self::sql_typed_field_expr(field, value)?;
+                let val_str = Self::value_to_surreal(value);
+                Some(format!("{field_expr} >= {val_str}"))
+            }
+            "_lt" => {
+                let field_expr = Self::sql_typed_field_expr(field, value)?;
+                let val_str = Self::value_to_surreal(value);
+                Some(format!("{field_expr} < {val_str}"))
+            }
+            "_lte" => {
+                let field_expr = Self::sql_typed_field_expr(field, value)?;
+                let val_str = Self::value_to_surreal(value);
+                Some(format!("{field_expr} <= {val_str}"))
+            }
             "_in" => {
                 if let Some(arr) = value.as_array() {
+                    let expr_hint = arr.first().unwrap_or(&Value::Null);
+                    let field_expr = Self::sql_typed_field_expr(field, expr_hint)?;
                     let items: Vec<String> = arr.iter().map(Self::value_to_surreal).collect();
-                    Some(format!("{field_expr} IN [{}]", items.join(", ")))
+                    Some(format!("{field_expr} IN ({})", items.join(", ")))
                 } else {
                     None
                 }
             }
-            "_contains" => Some(format!("{field_expr} CONTAINS {val_str}")),
-            "_starts_with" => value.as_str().map(|s| {
+            "_contains" => value.as_str().map(|s| {
+                let escaped = escape_sql_string(s);
+                let json_expr = Self::sql_json_value_expr(field)
+                    .unwrap_or_else(|| format!("data->'{field}'"));
+                let text_expr = Self::sql_field_expr(field)
+                    .unwrap_or_else(|| format!("data->>'{field}'"));
                 format!(
-                    "string::startsWith({field_expr}, '{}')",
-                    escape_sql_string(s)
+                    "((jsonb_typeof({json_expr}) = 'array' AND {json_expr} ? '{escaped}') OR COALESCE({text_expr}, '') ILIKE '%{escaped}%')"
                 )
             }),
+            "_starts_with" => {
+                let field_expr = Self::sql_field_expr(field)?;
+                value.as_str().map(|s| {
+                    format!(
+                        "COALESCE({field_expr}, '') ILIKE '{}%'",
+                        escape_sql_string(s)
+                    )
+                })
+            }
             _ => {
                 tracing::warn!("Unknown filter operator: {op}");
                 None
@@ -93,9 +196,15 @@ impl QueryTranslator {
         match value {
             Value::String(s) => format!("'{}'", escape_sql_string(s)),
             Value::Number(n) => n.to_string(),
-            Value::Bool(b) => b.to_string(),
-            Value::Null => "NONE".to_string(),
-            _ => value.to_string(),
+            Value::Bool(b) => {
+                if *b {
+                    "true".to_string()
+                } else {
+                    "false".to_string()
+                }
+            }
+            Value::Null => "NULL".to_string(),
+            _ => format!("'{}'", escape_sql_string(&value.to_string())),
         }
     }
 
@@ -234,7 +343,7 @@ mod tests {
             "status": { "_eq": "active" }
         });
         let result = QueryTranslator::filters_to_where(&filters);
-        assert!(result.contains("data->>'price' > 100"));
+        assert!(result.contains("NULLIF(data->>'price', '')::numeric > 100"));
         assert!(result.contains("data->>'status' = 'active'"));
         assert!(result.contains(" AND "));
     }
@@ -247,7 +356,7 @@ mod tests {
         let result = QueryTranslator::filters_to_where(&filters);
         assert_eq!(
             result,
-            "WHERE data->>'category' IN ['electronics', 'books']"
+            "WHERE data->>'category' IN ('electronics', 'books')"
         );
     }
 
@@ -285,35 +394,38 @@ mod tests {
     fn test_gte_filter() {
         let filters = json!({ "age": { "_gte": 18 } });
         let result = QueryTranslator::filters_to_where(&filters);
-        assert_eq!(result, "WHERE data->>'age' >= 18");
+        assert_eq!(result, "WHERE NULLIF(data->>'age', '')::numeric >= 18");
     }
 
     #[test]
     fn test_lte_filter() {
         let filters = json!({ "price": { "_lte": 99.99 } });
         let result = QueryTranslator::filters_to_where(&filters);
-        assert_eq!(result, "WHERE data->>'price' <= 99.99");
+        assert_eq!(result, "WHERE NULLIF(data->>'price', '')::numeric <= 99.99");
     }
 
     #[test]
     fn test_lt_filter() {
         let filters = json!({ "count": { "_lt": 5 } });
         let result = QueryTranslator::filters_to_where(&filters);
-        assert_eq!(result, "WHERE data->>'count' < 5");
+        assert_eq!(result, "WHERE NULLIF(data->>'count', '')::numeric < 5");
     }
 
     #[test]
     fn test_contains_filter() {
         let filters = json!({ "name": { "_contains": "test" } });
         let result = QueryTranslator::filters_to_where(&filters);
-        assert_eq!(result, "WHERE data->>'name' CONTAINS 'test'");
+        assert_eq!(
+            result,
+            "WHERE ((jsonb_typeof(data->'name') = 'array' AND data->'name' ? 'test') OR COALESCE(data->>'name', '') ILIKE '%test%')"
+        );
     }
 
     #[test]
     fn test_starts_with_filter() {
         let filters = json!({ "email": { "_starts_with": "admin" } });
         let result = QueryTranslator::filters_to_where(&filters);
-        assert_eq!(result, "WHERE string::startsWith(data->>'email', 'admin')");
+        assert_eq!(result, "WHERE COALESCE(data->>'email', '') ILIKE 'admin%'");
     }
 
     #[test]
@@ -342,14 +454,38 @@ mod tests {
     fn test_value_to_surreal_bool() {
         let filters = json!({ "active": { "_eq": true } });
         let result = QueryTranslator::filters_to_where(&filters);
-        assert_eq!(result, "WHERE data->>'active' = true");
+        assert_eq!(result, "WHERE NULLIF(data->>'active', '')::boolean = true");
+    }
+
+    #[test]
+    fn test_bool_false_filter_does_not_match_missing_values() {
+        let filters = json!({ "active": { "_eq": false } });
+        let result = QueryTranslator::filters_to_where(&filters);
+        assert_eq!(result, "WHERE NULLIF(data->>'active', '')::boolean = false");
+    }
+
+    #[test]
+    fn test_bool_not_true_filter_does_not_treat_missing_as_false() {
+        let filters = json!({ "deleted": { "_neq": true } });
+        let result = QueryTranslator::filters_to_where(&filters);
+        assert_eq!(
+            result,
+            "WHERE NULLIF(data->>'deleted', '')::boolean != true"
+        );
+    }
+
+    #[test]
+    fn test_numeric_eq_filter_uses_numeric_cast() {
+        let filters = json!({ "categoryId": { "_eq": 1 } });
+        let result = QueryTranslator::filters_to_where(&filters);
+        assert_eq!(result, "WHERE NULLIF(data->>'categoryId', '')::numeric = 1");
     }
 
     #[test]
     fn test_value_to_surreal_null() {
         let filters = json!({ "deleted_at": { "_eq": null } });
         let result = QueryTranslator::filters_to_where(&filters);
-        assert_eq!(result, "WHERE data->>'deleted_at' = NONE");
+        assert_eq!(result, "WHERE data->>'deleted_at' IS NULL");
     }
 
     #[test]
@@ -505,7 +641,7 @@ mod tests {
             None,
             None,
         );
-        assert!(query.contains("ORDER BY data->>'priceCents' DESC"));
+        assert!(query.contains("ORDER BY NULLIF(data->>'priceCents', '')::numeric DESC"));
     }
 
     #[test]

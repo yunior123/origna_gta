@@ -77,11 +77,16 @@ describe('Product CRUD API', () => {
     const auth = await signIn(SELLER_EMAIL);
     const created = await callOk('create_product', productPayload(`Test Product ${uid()}`), auth.idToken);
     createdProductIds.push(created.productId || created.id);
+    const activated = await callOk('update_product_status', {
+      productId: created.productId || created.id,
+      status: 'active',
+    }, auth.idToken);
     const deactivated = await callOk('update_product_status', {
       productId: created.productId || created.id,
       status: 'inactive',
     }, auth.idToken);
 
+    expect(activated.success || activated.updated).toBeTruthy();
     expect(deactivated.success || deactivated.updated).toBeTruthy();
   });
 

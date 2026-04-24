@@ -386,6 +386,23 @@ void main() {
       ).called(1);
     });
 
+    test('ignores invalid subcategory when categoryId is set', () async {
+      when(mockSnapshot.docs).thenReturn([]);
+      when(
+        mockQuery.where(Fields.categoryId, isEqualTo: 1),
+      ).thenReturn(mockQuery);
+      when(mockQuery.limit(any)).thenReturn(mockQuery);
+      when(
+        mockQuery.orderBy(any, descending: anyNamed('descending')),
+      ).thenReturn(mockQuery);
+      when(mockQuery.get()).thenAnswer((_) async => mockSnapshot);
+
+      final helper = _TestSearch(ob: mockOb, converter: makeProduct);
+      await helper.fetchProductsImpl(categoryId: 1, subcategory: 'NotReal');
+
+      verifyNever(mockQuery.where(Fields.subcategory, isEqualTo: 'NotReal'));
+    });
+
     test('handles lastDocumentId for pagination', () async {
       when(mockSnapshot.docs).thenReturn([]);
       when(mockQuery.limit(any)).thenReturn(mockQuery);

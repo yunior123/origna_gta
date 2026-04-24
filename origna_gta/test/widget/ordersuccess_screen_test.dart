@@ -106,6 +106,18 @@ void main() {
       expect(find.text('orders.estimated_delivery'.tr()), findsOneWidget);
     });
 
+    testWidgets('shows delivery policy copy for non-local physical orders', (
+      tester,
+    ) async {
+      await tester.pumpWidget(createTestWidget(estimatedShipDays: 5));
+      await pumpScreen(tester);
+
+      expect(
+        find.text('orders.estimated_delivery_international'.tr()),
+        findsOneWidget,
+      );
+    });
+
     testWidgets('shows delivery icon when estimatedShipDays provided', (
       tester,
     ) async {

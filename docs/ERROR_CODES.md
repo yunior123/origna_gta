@@ -2,6 +2,11 @@
 
 Format: `ORIGNA-{DOMAIN}-{NUMBER}`
 
+Internal support event IDs use a separate format such as `SE-20260423-014587`.
+These are stored in the internal `error_events` collection and linked to the
+user-facing `ORIGNA-*` code, stack trace, environment, auth context, route or
+action, and support metadata.
+
 Users see codes appended to error messages, e.g.:
 > "Card declined [ORIGNA-PAY-001]"
 
@@ -187,6 +192,35 @@ Append the code in the error message body so the Flutter SDK surfaces it automat
 ```
 `AppError.getMessage()` detects the `[ORIGNA-*]` pattern and avoids double-coding.
 
+### Internal Error Events
+
+- Collection: `error_events`
+- Primary fields:
+  - `internalEventId` — support/debug event ID such as `SE-20260423-014587`
+  - `errorCode` — user-facing `ORIGNA-*` code
+  - `userFacingMessage` — sanitized message shown to the user
+  - `errorType` / `errorMessage` / `stackTrace`
+  - `environment` / `source` / `routeOrAction` / `severity` / `status`
+  - `userId` / `email`
+  - `metadata` / `fingerprint` / `createdAt`
+- Recommended flow:
+  - capture the exception in Sentry
+  - persist an `error_events` row with the same fingerprint and a durable internal event ID
+  - show only the sanitized `ORIGNA-*` code to the user
+  - if the UI collects feedback, attach `associatedEventId` from Sentry plus the user's contact details and reproduction notes
+- Write path:
+  - `AppError.log()` captures to Sentry and best-effort persists a structured
+    event through `ErrorEventService`
+  - top-level unhandled Flutter and zone errors also flow through `AppError.log()`
+
+### Official References
+
+- Stripe Checkout: `https://docs.stripe.com/payments/checkout`
+- Mailjet Send API v3.1: `https://dev.mailjet.com/email/guides/send-api-v31/`
+- PostgreSQL JSON/JSONB: `https://www.postgresql.org/docs/current/datatype-json.html`
+- Sentry Flutter SDK: `https://docs.sentry.io/platforms/dart/guides/flutter/`
+- Sentry user feedback: `https://docs.sentry.io/platforms/dart/guides/flutter/user-feedback`
+
 ---
 
-*Last updated: 2026-03-16 — 9 domains, 54 codes*
+*Last updated: 2026-04-23 — 9 domains, 54 codes, internal error-event pipeline documented*

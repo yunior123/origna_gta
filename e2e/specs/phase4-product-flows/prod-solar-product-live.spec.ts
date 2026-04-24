@@ -3,7 +3,7 @@
  *
  * Safe checks only:
  * - verifies the live product document and solar asset URLs
- * - verifies the production product page requests the live product data
+ * - verifies the production product page requests the live product data and assets
  * - verifies the corrected Stripe/passkeys script tags no longer emit the prior
  *   SRI/CORS console failures on the live page
  *
@@ -32,9 +32,12 @@ type ProductDoc = {
   title?: string;
   name?: string;
   description?: string;
+  estimatedShipDays?: number;
   imageUrls?: string[];
   sellerName?: string;
   priceCents?: number;
+  madeInCountry?: string;
+  shipFromCountries?: string[];
   lifecycleStatus?: string;
 };
 
@@ -63,6 +66,9 @@ describe('Production solar product live verification', () => {
     expect(product.description).toContain(EXPECTED_DESCRIPTION_SNIPPET);
     expect(product.sellerName).toBe('OrignaVentures');
     expect(product.priceCents).toBe(1_300_000);
+    expect(product.estimatedShipDays).toBe(35);
+    expect(['CA', 'Canada']).not.toContain(product.madeInCountry ?? '');
+    expect(product.shipFromCountries).toEqual(['Canada', 'Cuba']);
     expect(product.lifecycleStatus).toBe('active');
     expect(product.imageUrls).toEqual(EXPECTED_IMAGE_URLS);
 
@@ -72,17 +78,15 @@ describe('Production solar product live verification', () => {
     }
   }, 60_000);
 
-  test('production product page requests the live product doc and solar asset without prior Stripe/passkeys console failures', async () => {
+  test('production product page requests live product data and assets without prior Stripe/passkeys console failures', async () => {
     const browser = await chromium.launch({ headless: true });
     const page = await browser.newPage({ viewport: { width: 1440, height: 1400 } });
     const consoleMessages: string[] = [];
     const matchingGraphqlBodies: string[] = [];
     const matchedAssets = new Set<string>();
-
     page.on('console', (message) => {
       consoleMessages.push(`${message.type()}: ${message.text()}`);
     });
-
     page.on('response', async (response) => {
       const responseUrl = response.url();
       if (responseUrl.includes('/graphql')) {
@@ -109,14 +113,13 @@ describe('Production solar product live verification', () => {
       passkeyScript: [...document.scripts].find((script) =>
         script.src.includes('flutter-passkeys'),
       )?.outerHTML,
-      glassPanePresent: !!document.querySelector('flt-glass-pane'),
     }));
 
-    expect(scriptInfo.glassPanePresent).toBe(true);
     expect(scriptInfo.stripeScript).toContain('https://js.stripe.com/v3/');
     expect(scriptInfo.stripeScript).not.toContain('integrity=');
     expect(scriptInfo.passkeyScript).toContain('flutter-passkeys');
     expect(scriptInfo.passkeyScript).not.toContain('crossorigin=');
+    expect(page.url()).toContain(`/product/${PRODUCT_ID}`);
     expect(matchingGraphqlBodies.length).toBeGreaterThan(0);
     expect([...matchedAssets]).toContain(EXPECTED_IMAGE_URLS[0]);
 

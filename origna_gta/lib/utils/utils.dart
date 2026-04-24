@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:origna_gta/core/compat/timestamp.dart';
 import 'package:orignabase/orignabase.dart'
     show OrignaBase, OrignaBaseException;
@@ -10,6 +12,7 @@ import 'package:origna_gta/core/repositories/orignabase_auth_repository.dart';
 import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/models/models.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
+import 'package:origna_gta/services/error_event_service.dart';
 import 'package:origna_gta/utils/responsive_layout.dart';
 import 'package:origna_gta/utils/app_logger.dart';
 import 'package:origna_gta/utils/constants.dart';
@@ -453,8 +456,8 @@ DateTime? parseDateTime(dynamic value) {
     // Handle legacy or third-party timestamp-like objects
     final converted = (value as dynamic).toDate();
     if (converted is DateTime) return converted;
-  } catch (_) {
-    // Ignore objects that do not expose a toDate() method returning DateTime
+  } catch (e) {
+    AppLogger.d('toDateTime: toDate() cast failed: $e', tag: 'utils');
   }
   return null;
 }
@@ -964,16 +967,40 @@ class AppError {
     String rawMsg;
 
     if (error is OrignaBaseException) {
-      final msg = error.message;
-      // Filter out leaked backend errors
-      if (msg.contains('FailedPrecondition') ||
-          msg.contains('The query requires an index')) {
+      final msg = error.message.toLowerCase();
+      // Filter out leaked backend errors — never show raw internals to users
+      if (msg.contains('failedprecondition') ||
+          msg.contains('the query requires an index') ||
+          msg.contains('internal server error') ||
+          msg.contains('internal error') ||
+          msg.contains('500') ||
+          msg.contains('unexpected error') ||
+          msg.contains('unhandled exception') ||
+          msg.contains('stack trace') ||
+          msg.contains('panic') ||
+          msg.contains('database error') ||
+          msg.contains('connection refused') ||
+          msg.contains('econnrefused') ||
+          msg.contains('econnreset') ||
+          msg.contains('etimedout') ||
+          msg.contains('socket hang up') ||
+          msg.contains('fetch error') ||
+          msg.contains('rpc error')) {
         rawMsg = 'errors.service_unavailable'.tr();
       } else {
-        rawMsg = msg.isNotEmpty ? msg : actualFallback;
+        // Only allow known-safe backend messages through; if the message
+        // looks like a raw exception (contains 'exception', 'error:', or
+        // type names), fall back to generic.
+        final originalMsg = error.message;
+        final looksUnsafe =
+            originalMsg.contains('Exception') ||
+            originalMsg.contains('Error:') ||
+            originalMsg.contains('at ') && originalMsg.contains('.dart:');
+        rawMsg = (originalMsg.isNotEmpty && !looksUnsafe)
+            ? originalMsg
+            : actualFallback;
       }
-    } else if (error is OrignaBaseAuthException ||
-        error is OrignaBaseException) {
+    } else if (error is OrignaBaseAuthException) {
       rawMsg = 'errors.service_unavailable'.tr();
     } else {
       // NEVER expose raw e.toString() — it can contain stack traces,
@@ -1004,20 +1031,42 @@ class AppError {
     Map<String, dynamic>? extras,
   }) {
     final contextPrefix = context != null ? '[$context] ' : '';
-    AppLogger.e('$contextPrefix$error', error: error, stackTrace: stackTrace);
+    AppLogger.e('$contextPrefix$error', stackTrace: stackTrace);
+    final code = _inferCode(error);
+    final userFacingMessage = getMessage(error, null, code);
 
-    // Send to Sentry (non-blocking)
-    Sentry.captureException(
-      error,
-      stackTrace: stackTrace,
-      withScope: (scope) {
-        if (context != null) {
-          scope.setTag('context', context);
-        }
-        if (extras != null) {
-          scope.setContexts('extras', extras);
-        }
-      },
+    // Send to Sentry and persist the paired Sentry event ID for support/debugging.
+    unawaited(
+      () async {
+        final sentryId = await Sentry.captureException(
+          error,
+          stackTrace: stackTrace,
+          withScope: (scope) {
+            if (context != null) {
+              scope.setTag('context', context);
+            }
+            if (extras != null) {
+              scope.setContexts('extras', extras);
+            }
+            if (code != null) {
+              scope.setTag('error_code', code);
+            }
+          },
+        );
+
+        final normalizedSentryId =
+            sentryId == SentryId.empty() ? null : sentryId.toString();
+
+        await ErrorEventService.record(
+          error: error is Object ? error : Exception('$error'),
+          userFacingCode: code,
+          userFacingMessage: userFacingMessage,
+          sentryEventId: normalizedSentryId,
+          stackTrace: stackTrace,
+          context: context,
+          extras: extras,
+        );
+      }(),
     );
   }
 

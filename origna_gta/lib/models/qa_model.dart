@@ -1,5 +1,6 @@
 import 'package:orignabase/orignabase.dart' show FieldValue;
 import 'package:origna_gta/core/schema/schema_constants.dart';
+import 'package:origna_gta/utils/app_logger.dart';
 
 DateTime? _parseDt(dynamic value) {
   if (value == null) return null;
@@ -11,7 +12,9 @@ DateTime? _parseDt(dynamic value) {
     try {
       final converted = maybeDate.toDate();
       if (converted is DateTime) return converted;
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.d('QA model: toDate() cast failed: $e', tag: 'qa');
+    }
   }
   return null;
 }

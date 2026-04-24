@@ -10,9 +10,10 @@ import {
   readDoc, parseDoc, listCollection,
   buildCheckoutPayload,
   getTestProduct,
+  createDummyProduct,
 } from '../../lib/api-client.js';
 import {
-  TEST_ACCOUNTS, TEST_UIDS, ORIGNABASE_URL,
+  TEST_ACCOUNTS, TEST_PRODUCTS, TEST_UIDS, ORIGNABASE_URL,
 } from '../../lib/config.js';
 
 const BUYER_EMAIL = TEST_ACCOUNTS.BUYER_EMAIL;
@@ -45,13 +46,26 @@ function expectRejected(error: { code: string; message: string }, _label: string
   ).toBe(true);
 }
 
-/** Get the product owned by the SELLER for self-purchase test. */
-async function getSellerOwnProduct(sellerIdToken: string): Promise<{ id: string; sellerId: string }> {
-  const productId = 'e2e_product_test_seller';
-  const doc = await readDoc(`products/${productId}`, sellerIdToken);
-  const data = parseDoc(doc);
-  if (!data) throw new Error(`Seller product ${productId} not found`);
-  return { id: productId, sellerId: data.sellerId ?? TEST_UIDS.SELLER };
+/** Get a stable product owned by the seller for self-purchase validation. */
+async function getSellerOwnProduct(adminToken: string): Promise<{ id: string; sellerId: string }> {
+  let product: any = null;
+  try {
+    const doc = await readDoc(`products/${TEST_PRODUCTS.DIGITAL}`, adminToken);
+    product = parseDoc(doc);
+  } catch {
+    // Recreate the stable fixture below.
+  }
+  if (!product) {
+    await createDummyProduct(TEST_UIDS.SELLER, 'B', TEST_PRODUCTS.DIGITAL);
+    const recreated = await readDoc(`products/${TEST_PRODUCTS.DIGITAL}`, adminToken);
+    product = parseDoc(recreated);
+  }
+  if (product.sellerId !== TEST_UIDS.SELLER) {
+    throw new Error(
+      `Stable product ${TEST_PRODUCTS.DIGITAL} is owned by ${product.sellerId}, expected ${TEST_UIDS.SELLER}`,
+    );
+  }
+  return { id: TEST_PRODUCTS.DIGITAL, sellerId: product.sellerId };
 }
 
 describe('Checkout Validation', () => {
@@ -162,7 +176,7 @@ describe('Checkout Validation', () => {
   });
 
   test('Rejects self-purchase (buyer is the seller of the product)', { timeout: 120_000 }, async () => {
-    const sellerOwnProduct = await getSellerOwnProduct(sellerAuth.idToken);
+    const sellerOwnProduct = await getSellerOwnProduct(adminAuth.idToken);
     const { data } = await buildCheckoutPayload(sellerAuth.localId, sellerOwnProduct.id, 1, sellerAuth.idToken);
     const error = await callExpectError('create_checkout_session', data, sellerAuth.idToken);
     expectRejected(error, 'Self-purchase should be rejected');

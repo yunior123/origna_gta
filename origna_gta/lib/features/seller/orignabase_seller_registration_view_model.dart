@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
+import 'package:origna_gta/utils/app_logger.dart';
 import 'package:origna_gta/utils/safe_url_launcher.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -107,6 +108,11 @@ class OrignaBaseSellerRegistrationViewModel
         error: _cleanErrorMessage(e, 'Failed to open Stripe Dashboard'),
       );
     } catch (e) {
+      AppLogger.w(
+        'SellerReg: Stripe Dashboard open failed',
+        tag: 'seller',
+        error: e,
+      );
       state = state.copyWith(
         error: 'Could not open Stripe Dashboard. Please try again.',
       );
@@ -148,6 +154,11 @@ class OrignaBaseSellerRegistrationViewModel
         error: _cleanErrorMessage(e, 'Failed to refresh account status'),
       );
     } catch (e) {
+      AppLogger.w(
+        'SellerReg: account status refresh failed',
+        tag: 'seller',
+        error: e,
+      );
       if (_disposed) return;
       state = state.copyWith(
         isLoading: false,
@@ -198,6 +209,7 @@ class OrignaBaseSellerRegistrationViewModel
       );
       _isOperationInProgress = false;
     } catch (e) {
+      AppLogger.e('SellerReg: create account failed', tag: 'seller', error: e);
       if (_disposed) return;
       state = state.copyWith(
         isLoading: false,
@@ -261,6 +273,7 @@ class OrignaBaseSellerRegistrationViewModel
         error: _cleanErrorMessage(e, 'Failed to generate onboarding link'),
       );
     } catch (e) {
+      AppLogger.w('SellerReg: onboarding link failed', tag: 'seller', error: e);
       if (!_disposed) {
         state = state.copyWith(
           isLoading: false,

@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/repositories/orignabase_auth_repository.dart';
+import 'package:origna_gta/utils/app_logger.dart';
 import 'reset_password_state.dart';
 
 final resetPasswordViewModelProvider = StateNotifierProvider.autoDispose
@@ -79,6 +80,7 @@ class ResetPasswordViewModel extends StateNotifier<ResetPasswordState> {
         errorMessage: _getLocalizedError(e.code),
       );
     } catch (e) {
+      AppLogger.w('ResetPassword: unexpected error', tag: 'auth', error: e);
       state = state.copyWith(
         isLoading: false,
         errorMessage: 'auth.errors.generic_error'.tr(),

@@ -23,8 +23,8 @@ origna_gta/              ← repo root
 # CRITICAL: Always cd to the right subdirectory first!
 # Repo root has NO Cargo.toml and NO pubspec.yaml.
 
-# Flutter (from origna_gta/origna_gta/ — NOT repo root)
-cd origna_gta/origna_gta  # or use absolute path
+# Flutter (from repo_root/origna_gta/ — NOT repo root)
+cd origna_gta
 flutter analyze --no-fatal-infos && flutter test --exclude-tags golden
 flutter test test/unit/auth_provider_test.dart          # single test
 flutter test --name "should calculate subtotal"         # pattern match
@@ -47,7 +47,8 @@ source venv/bin/activate
 pip install -r requirements.txt
 uvicorn app:app --reload --port 8001
 
-# OrignaBase Rust (from orignabase/)
+# OrignaBase Rust (from repo_root/orignabase/)
+cd orignabase
 cargo clippy -D warnings && cargo test
 cargo test -p ob-auth # single crate
 cargo test -- --ignored # run #[ignore] integration tests
@@ -118,6 +119,8 @@ cd e2e && ORIGNABASE_URL=http://127.0.0.1:8080 bun run lib/seed-dev.ts
 - ✅ Flutter Widget Previews — SwiftUI-style per-view in VS Code sidebar. Open a .dart file → sidebar auto-shows @Preview widgets for THAT file only. Toggle "Filter previews by selected file" at bottom-left. Each preview has own Hot Restart. Embedded Inspector via gear icon. No terminal commands needed. Old `start-preview.sh` deleted.
 - ❌ Relative imports (`../`) — use `package:origna_gta/...`
 - ❌ `MediaQuery.of(context).size.width` for layout — use responsive utilities
+- ✅ Hosted web builds must replace both `__TURNSTILE_SITE_KEY__` and `__GOOGLE_WEB_CLIENT_ID__` in `origna_gta/web/index.html`
+- ✅ Google web OAuth is only considered configured when the client ID is a real `.apps.googleusercontent.com` value and the secret is present
 
 ## Agent Rules
 
@@ -162,10 +165,45 @@ cd e2e && ORIGNABASE_URL=http://127.0.0.1:8080 bun run lib/seed-dev.ts
 Make them audit full codebase in depth. Use all agents and skills for it.
 - fix stale data issues, resseed db if needed
 - always monitor disk space in my mac:256gb
+- always document your sources: ex. stripe docs, flutter pub dev, rust lang docs, etc
+- bonus points if u increase security while working on particular tasks, bonus also for improving the code
+- before saying or claiming to have completed a task first run e2e tests on it to make sure it was solved and mark as done if so.
+- fix errors instead of hiding them. at least log the errors if its a real error
+- we might add more countries for delivery in the future so make sure the architecture is strong
+- use get by label and get by role for testing e2e with either agent-browser cli or playwright
+- use at least this:use real yr62813@gmail.com for testing e2e ui interactions live.
+- we are a mixture of amazon + instacart
+
+## Current Hot Path
+
+- `dev.orignagta.ca` search/category failures map to backend deploy/runtime drift until a fresh live recheck proves otherwise. The current repo fix is the PostgreSQL query translator cast/contains update plus full dev catalog reseed.
+- Google web auth is still an active live issue until both conditions are true:
+  - `/auth/providers` only reports Google enabled for a valid `.apps.googleusercontent.com` client ID
+  - the deployed login page no longer contains the literal `__GOOGLE_WEB_CLIENT_ID__`
+- Email/password login API works on dev; registration still needs a fresh browser-level verification because direct API probes without Turnstile are not representative of the web flow.
+- OrignaVentures contact/email sending is live-green again; direct live API responses report support + confirmation emails with `sandbox_mode=false`.
+- Production checkout/payment verification remains a manual final gate; use non-destructive probes unless explicit approval is given for a real charge.
+- Remaining active investigation item: home cart badge update after add-to-cart still needs deeper live audit.
+
+## Observability
+
+- User-facing codes: `ORIGNA-{DOMAIN}-{NUMBER}`
+- Internal support/debug IDs: `SE-YYYYMMDD-XXXXXX`
+- Flutter app writes structured internal events to OrignaBase `error_events` via `AppError.log()` and also forwards errors to Sentry.
+- Reference docs: `docs/ERROR_CODES.md` and `docs/REPO_MAP.md`
 
 ## MCP
 
 Project `.mcp.json`: dart-mcp, flutter-pilot, github. Cloudflare MCP available via user-level config.
+
+## Parallel AI Coordination
+
+- Before editing, read `WORK_CLAIMS.md`.
+- Claim exact paths, not broad themes.
+- Active backlog lives in `CORE.md`.
+- Verified outcomes go to `STATE.md`.
+- Coordination rules live in `docs/AI_COORDINATION.md`.
+- `CLAUDE.md`, `AGENTS.md`, `CORE.md`, `STATE.md`, and `WORK_CLAIMS.md` are single-owner files; never let multiple agents edit them concurrently.
 
 ## AI Skills Catalog
 

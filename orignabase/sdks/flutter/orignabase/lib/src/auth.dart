@@ -141,10 +141,16 @@ class OrignaBaseAuth {
       : AuthState.unauthenticated;
 
   /// Register a new user with email and password.
-  Future<AuthState> register(String email, String password) async {
+  Future<AuthState> register(
+    String email,
+    String password, {
+    String? turnstileToken,
+  }) async {
     final response = await _client.request('POST', '/auth/register', body: {
       'email': email,
       'password': password,
+      if (turnstileToken != null && turnstileToken.isNotEmpty)
+        'turnstile_token': turnstileToken,
     });
 
     return _handleAuthResponse(response);
@@ -154,10 +160,16 @@ class OrignaBaseAuth {
   ///
   /// If MFA is enabled, returns an [AuthState] with [mfaRequired] = true.
   /// Use [verifyMfaChallenge] with the [AuthState.challengeToken] to complete.
-  Future<AuthState> signInWithEmail(String email, String password) async {
+  Future<AuthState> signInWithEmail(
+    String email,
+    String password, {
+    String? turnstileToken,
+  }) async {
     final response = await _client.request('POST', '/auth/login', body: {
       'email': email,
       'password': password,
+      if (turnstileToken != null && turnstileToken.isNotEmpty)
+        'turnstile_token': turnstileToken,
     });
 
     return _handleAuthResponseWithMfa(response);

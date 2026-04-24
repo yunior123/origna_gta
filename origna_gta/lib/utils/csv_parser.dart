@@ -1,3 +1,5 @@
+import 'package:origna_gta/utils/app_logger.dart';
+
 // Represents a single CSV row parsed into a map.
 typedef CsvRow = Map<String, dynamic>;
 
@@ -234,7 +236,8 @@ int _parseCentsPrice(String priceStr) {
     // Has decimal point → assume dollars
     final dollars = double.parse(trimmed);
     return (dollars * 100).round();
-  } catch (_) {
+  } catch (e) {
+    AppLogger.d('CSV: price parse failed for "$priceStr": $e', tag: 'csv');
     throw FormatException('Invalid price: "$priceStr"');
   }
 }
@@ -247,7 +250,8 @@ int _parseInt(String str, {required String fieldName}) {
       return 0;
     }
     return int.parse(trimmed);
-  } catch (_) {
+  } catch (e) {
+    AppLogger.d('CSV: int parse failed for $fieldName: $e', tag: 'csv');
     throw FormatException('Invalid $fieldName: "$str" (expected integer)');
   }
 }
@@ -264,7 +268,8 @@ double? _parseDouble(
       return optional ? null : 0.0;
     }
     return double.parse(trimmed);
-  } catch (_) {
+  } catch (e) {
+    AppLogger.d('CSV: double parse failed for $fieldName: $e', tag: 'csv');
     if (optional) {
       return null;
     }

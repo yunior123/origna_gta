@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/features/products/products_provider.dart';
 import 'package:origna_gta/screens/product_card_screen.dart';
+import 'package:origna_gta/utils/app_logger.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
 /// Horizontal scrolling row of similar products in the same category.
@@ -45,7 +47,7 @@ class SimilarProductsSection extends ConsumerWidget {
             ),
             const SizedBox(height: 12),
             SizedBox(
-              height: 220,
+              height: 260,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: products.length,
@@ -53,11 +55,12 @@ class SimilarProductsSection extends ConsumerWidget {
                 itemBuilder: (context, idx) {
                   final p = products[idx];
                   return SizedBox(
-                    width: 150,
+                    width: 170,
                     child: ProductCard(
                       productId: p.productId,
                       product: p,
                       userModel: null,
+                      heroTagPrefix: 'related_product_image',
                     ),
                   );
                 },
@@ -72,13 +75,24 @@ class SimilarProductsSection extends ConsumerWidget {
           child: ModernLoadingIndicator(size: 20),
         ),
       ),
-      error: (err, st) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Text(
-          'errors.something_went_wrong'.tr(),
-          style: TextStyle(color: DesignTokens.error, fontSize: 13),
-        ),
-      ),
+      error: (err, st) {
+        AppError.log(
+          err,
+          stackTrace: st,
+          context: 'SimilarProductsSection.load',
+          extras: {'productId': productId, 'categoryId': categoryId},
+        );
+        AppLogger.w('Similar products fetch failed', error: err);
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Text(
+            'errors.something_went_wrong'.tr(),
+            style: TextStyle(
+              color: isDark ? DesignTokens.white : DesignTokens.textPrimary,
+            ),
+          ),
+        );
+      },
     );
   }
 }

@@ -29,6 +29,47 @@ const _internationalSupplierTypes = SupplierTypeValues.international;
   };
 }
 
+bool _isDomesticCountryCode(String? country) {
+  final normalized = country?.trim().toLowerCase();
+  if (normalized == null || normalized.isEmpty) {
+    return true;
+  }
+
+  return normalized == 'ca' ||
+      normalized == 'canada' ||
+      normalized == 'cu' ||
+      normalized == 'cuba';
+}
+
+({int minDays, int maxDays}) _rangeFromExplicitEstimatedDays(
+  int estimatedShipDays, {
+  required bool isLocalDeliveryOnly,
+  required bool isInternational,
+}) {
+  if (estimatedShipDays <= 0) {
+    return const (minDays: 3, maxDays: 7);
+  }
+
+  if (isLocalDeliveryOnly) {
+    final maxDays = estimatedShipDays <= 2 ? 3 : estimatedShipDays + 2;
+    return (minDays: 1, maxDays: maxDays);
+  }
+
+  if (isInternational || estimatedShipDays >= 14) {
+    final bufferDays = (estimatedShipDays * 0.3).round().clamp(7, 14).toInt();
+    return (
+      minDays: estimatedShipDays,
+      maxDays: estimatedShipDays + bufferDays,
+    );
+  }
+
+  if (estimatedShipDays <= 3) {
+    return (minDays: estimatedShipDays, maxDays: estimatedShipDays + 2);
+  }
+
+  return (minDays: estimatedShipDays, maxDays: estimatedShipDays + 3);
+}
+
 /// Get supplier region for display
 String? _getSupplierRegion(String? supplierType) {
   return switch (supplierType) {
@@ -774,6 +815,9 @@ extension ProductExtension on Product {
     final range = estimatedDeliveryDays;
     if (isDigital) return 'Instant delivery';
     if (isLocalDeliveryOnly) return '1-3 business days (local)';
+    if (range.minDays == range.maxDays) {
+      return '${range.minDays} business day${range.minDays == 1 ? '' : 's'}';
+    }
     return '${range.minDays}-${range.maxDays} business days';
   }
 
@@ -803,10 +847,25 @@ extension ProductExtension on Product {
   /// Get estimated delivery days range for buyers
   /// Returns a record (minDays, maxDays) based on supplier type
   ({int minDays, int maxDays}) get estimatedDeliveryDays {
+    final shippingDays = supplier?.shippingDays;
     final supplierType = supplier?.type;
+    final originCountry =
+        sellerAddress?.country ?? shipFromCountry ?? madeInCountry;
+    final isInternationalByOrigin = !_isDomesticCountryCode(originCountry);
+    final hasExplicitEstimatedDays =
+        estimatedShipDays > 0 &&
+        (shippingDays == null || shippingDays.isEmpty) &&
+        supplierType == null;
+
+    if (hasExplicitEstimatedDays) {
+      return _rangeFromExplicitEstimatedDays(
+        estimatedShipDays,
+        isLocalDeliveryOnly: isLocalDeliveryOnly,
+        isInternational: isInternationalByOrigin,
+      );
+    }
 
     // If supplier has explicit shipping days, parse that
-    final shippingDays = supplier?.shippingDays;
     if (shippingDays != null && shippingDays.contains('-')) {
       final parts = shippingDays.split('-');
       if (parts.length >= 2) {

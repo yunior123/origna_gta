@@ -513,8 +513,11 @@ class OrignaBaseProductRepository
           );
         }
       }
-    } on UnimplementedError catch (_) {
-      // In-memory XFile (tests) — skip file-system size check
+    } on UnimplementedError catch (e) {
+      AppLogger.d(
+        'Product: XFile.length unavailable (in-memory), skipping size check: $e',
+        tag: 'product',
+      );
     }
     final bytes = await videoFile.readAsBytes();
     final ext = videoFile.name.split('.').last.toLowerCase();

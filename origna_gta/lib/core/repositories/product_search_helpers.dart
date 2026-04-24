@@ -46,6 +46,11 @@ mixin ProductSearchHelpers {
     int? minPriceCents,
     int? maxPriceCents,
   }) async {
+    final normalizedSubcategory = _normalizeSubcategoryFilter(
+      categoryId: categoryId,
+      subcategory: subcategory,
+    );
+
     Query query = ob
         .collection(Collections.products)
         .where(
@@ -65,8 +70,8 @@ mixin ProductSearchHelpers {
     if (categoryId != null) {
       query = query.where(Fields.categoryId, isEqualTo: categoryId);
     }
-    if (subcategory != null && subcategory.isNotEmpty) {
-      query = query.where(Fields.subcategory, isEqualTo: subcategory);
+    if (normalizedSubcategory != null) {
+      query = query.where(Fields.subcategory, isEqualTo: normalizedSubcategory);
     }
     if (sellerId != null && sellerId.isNotEmpty) {
       query = query.where(Fields.sellerId, isEqualTo: sellerId);
@@ -124,6 +129,22 @@ mixin ProductSearchHelpers {
       lastDocumentId: products.isNotEmpty ? products.last.productId : null,
       hasMore: hasMore,
     );
+  }
+
+  String? _normalizeSubcategoryFilter({
+    required int? categoryId,
+    required String? subcategory,
+  }) {
+    if (subcategory == null) return null;
+
+    final trimmed = subcategory.trim();
+    if (trimmed.isEmpty) return null;
+    if (categoryId == null) return trimmed;
+
+    final validSubcategories = SubcategoryConstants.forCategoryId(categoryId);
+    if (validSubcategories.isEmpty) return trimmed;
+
+    return validSubcategories.contains(trimmed) ? trimmed : null;
   }
 
   /// Fetches multiple products by their IDs in parallel chunks of 30.

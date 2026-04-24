@@ -5,8 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/features/qa/qa_provider.dart';
 import 'package:origna_gta/features/subscription/subscription_provider.dart';
 import 'package:origna_gta/models/qa_model.dart';
+import 'package:origna_gta/utils/app_logger.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:origna_gta/widgets/modern_textfield.dart';
@@ -110,10 +112,28 @@ class _QASectionState extends ConsumerState<QASection> {
             );
           },
           loading: () => const Center(child: ModernLoadingIndicator()),
-          error: (e, _) => Text(
-            'errors.something_went_wrong'.tr(),
-            style: const TextStyle(color: DesignTokens.error),
-          ),
+          error: (e, st) {
+            AppError.log(
+              e,
+              stackTrace: st,
+              context: 'QASection.loadQuestions',
+              extras: {
+                'productId': widget.productId,
+                'sellerId': widget.sellerId,
+              },
+            );
+            AppLogger.w(
+              'QASection: failed to load product questions',
+              error: e,
+            );
+            return _emptyState(
+              context,
+              currentUserId,
+              isSeller,
+              isPremium,
+              message: 'errors.something_went_wrong'.tr(),
+            );
+          },
         ),
       ],
     );
@@ -123,8 +143,9 @@ class _QASectionState extends ConsumerState<QASection> {
     BuildContext context,
     String? currentUserId,
     bool isSeller,
-    bool isPremium,
-  ) {
+    bool isPremium, {
+    String? message,
+  }) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -143,7 +164,7 @@ class _QASectionState extends ConsumerState<QASection> {
           ),
           const SizedBox(height: 16),
           Text(
-            'qa.no_questions'.tr(),
+            message ?? 'qa.no_questions'.tr(),
             textAlign: TextAlign.center,
             style: const TextStyle(color: DesignTokens.textSecondary),
           ),

@@ -410,6 +410,45 @@ void main() {
       container.dispose();
     });
 
+    test('addToCart invalidates cart stream for badge refresh', () async {
+      when(mockCartRepo.watchCart(testUserId))
+          .thenAnswer((_) => Stream.value([testCartItem]));
+      when(mockCartRepo.getProductSellerId(testProductId))
+          .thenAnswer((_) async => 'seller_456');
+      when(
+        mockCartRepo.addToCart(
+          testUserId,
+          testProductId,
+          1,
+          variantId: anyNamed('variantId'),
+        ),
+      ).thenAnswer((_) async {});
+
+      when(mockProductRepo.fetchProductsByIds([testProductId]))
+          .thenAnswer((_) async => []);
+
+      container = ProviderContainer(
+        overrides: [
+          cartRepositoryProvider.overrideWithValue(mockCartRepo),
+          productRepositoryProvider.overrideWithValue(mockProductRepo),
+          userIdProvider.overrideWithValue(testUserId),
+        ],
+      );
+
+      await container.read(cartItemsProvider.future);
+
+      final controller = container.read(cartControllerProvider);
+      final result = await controller.addToCart(testProductId, 1);
+
+      expect(result, isTrue);
+
+      await container.read(cartItemsProvider.future);
+
+      verify(mockCartRepo.watchCart(testUserId)).called(2);
+
+      container.dispose();
+    });
+
     test('updateBuyerNote calls repository', () async {
       when(mockCartRepo.watchCart(testUserId))
           .thenAnswer((_) => Stream.value([]));
