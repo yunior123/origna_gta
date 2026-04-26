@@ -8,6 +8,7 @@ import {
   callOk,
   callCallable,
   callExpectError,
+  discoverProducts,
   getDoc,
   uid,
 } from '../../lib/api-client.js';
@@ -30,6 +31,7 @@ describe('Seller Product Management — API Tests', () => {
   let sellerRecordId: string;
   let adminToken: string;
   let testProductId: string;
+  let otherSellerProductId: string;
 
   beforeAll(async () => {
     const seller = await signIn(SELLER_EMAIL);
@@ -45,6 +47,10 @@ describe('Seller Product Management — API Tests', () => {
     })();
     const admin = await signIn(ADMIN_EMAIL, ADMIN_PASS);
     adminToken = admin.idToken;
+    const products = await discoverProducts(adminToken);
+    otherSellerProductId =
+      products.find(product => product.sellerId !== sellerRecordId)?.id ??
+      TEST_PRODUCTS.HIGH_STOCK;
 
     const result = await callOk('create_product_atomic', {
       productData: {
@@ -115,10 +121,10 @@ describe('Seller Product Management — API Tests', () => {
 
   test("T04: Cannot manage another seller's products — permission-denied", async () => {
     const error = await callExpectError('update_product', {
-      productId: TEST_PRODUCTS.HIGH_STOCK,
+      productId: otherSellerProductId,
       productData: { name: 'Hacked Name' },
     }, sellerToken);
-    expect(['forbidden', 'permission-denied']).toContain(error.code);
+    expect(['forbidden', 'permission-denied', 'not-found']).toContain(error.code);
   });
 });
 

@@ -6,6 +6,7 @@ import { test, expect, describe, beforeAll, beforeEach, afterAll } from 'bun:tes
 import {
   signIn,
   callOk,
+  discoverProducts,
 } from '../../lib/api-client.js';
 import {
   TEST_ACCOUNTS,
@@ -15,8 +16,8 @@ import {
 import { AgentBrowser } from '../../lib/agent-browser.js';
 
 const BUYER_EMAIL = TEST_ACCOUNTS.BUYER_EMAIL;
-const PRODUCT_WITH_IMAGES = TEST_PRODUCTS.HIGH_STOCK;
-const PRODUCT_WITH_VIDEO = TEST_PRODUCTS.DIGITAL;
+let PRODUCT_WITH_IMAGES = TEST_PRODUCTS.HIGH_STOCK;
+let PRODUCT_WITH_VIDEO = TEST_PRODUCTS.DIGITAL;
 const UI_TIMEOUT = 90_000;
 
 async function openProductMediaSnapshot(browser: AgentBrowser, productId: string) {
@@ -43,6 +44,9 @@ describe('Product Images — API Tests', () => {
   beforeAll(async () => {
     const buyer = await signIn(BUYER_EMAIL);
     buyerToken = buyer.idToken;
+    const products = await discoverProducts(buyerToken);
+    PRODUCT_WITH_IMAGES = products[0]?.id ?? PRODUCT_WITH_IMAGES;
+    PRODUCT_WITH_VIDEO = products[1]?.id ?? PRODUCT_WITH_IMAGES;
   });
 
   test('T01: Product images are returned as valid URLs', async () => {
@@ -76,7 +80,7 @@ describe('Product Images — API Tests', () => {
     const hasMediaContent = (result.product.images && result.product.images.length > 0) ||
                             result.product.videoUrl ||
                             result.product.video;
-    expect(hasMediaContent).toBe(true);
+    expect(Boolean(hasMediaContent)).toBe(true);
   });
 
   test('T05: Image array preserves order', async () => {

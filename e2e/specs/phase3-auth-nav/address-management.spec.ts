@@ -198,6 +198,8 @@ describe('Address Management — UI', () => {
       expect(snap.refs.length).toBeGreaterThan(0);
       return;
     }
+    try { browser.run(['scrollintoview', addressMenu.ref], 5_000); } catch { /* best-effort */ }
+    await new Promise(resolve => setTimeout(resolve, 500));
     await browser.click(addressMenu.ref);
 
     snap = await browser.waitForChange({ text: /address|adresse|btn-add-address/i, timeout: 15_000 });
@@ -229,6 +231,8 @@ describe('Address Management — UI', () => {
       expect(snap.refs.length).toBeGreaterThan(0);
       return;
     }
+    try { browser.run(['scrollintoview', addressMenu.ref], 5_000); } catch { /* best-effort */ }
+    await new Promise(resolve => setTimeout(resolve, 500));
     await browser.click(addressMenu.ref);
 
     snap = await browser.waitForChange({ text: /address|adresse|btn-add-address/i, timeout: 15_000 });

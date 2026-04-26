@@ -31,6 +31,26 @@ export {
   getPublicConfigValue,
 } from "./auth.js";
 
+async function fetchWithNetworkRetry(
+  url: string,
+  init: RequestInit,
+  attempts = 4,
+): Promise<Response> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      return await fetch(url, init);
+    } catch (error) {
+      lastError = error;
+      const waitMs = 500 * (attempt + 1);
+      if (attempt < attempts - 1) {
+        await new Promise((resolve) => setTimeout(resolve, waitMs));
+      }
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error(String(lastError));
+}
+
 // ════════════════════════════════════════════════════════════════════
 // GRAPHQL HELPERS
 // ════════════════════════════════════════════════════════════════════
@@ -162,7 +182,7 @@ export async function obGraphQL(
     "Content-Type": "application/json",
   };
   if (token) headers["Authorization"] = `Bearer ${token}`;
-  const res = await fetch(`${ORIGNABASE_URL}/graphql`, {
+  const res = await fetchWithNetworkRetry(`${ORIGNABASE_URL}/graphql`, {
     method: "POST",
     headers,
     body: JSON.stringify({ query, variables }),
@@ -1593,7 +1613,7 @@ export async function callCallable(
     : `${ORIGNABASE_URL}/${fn}`;
 
   try {
-    const res = await fetch(url, {
+    const res = await fetchWithNetworkRetry(url, {
       method: ported?.method ?? "POST",
       headers: {
         "Content-Type": "application/json",

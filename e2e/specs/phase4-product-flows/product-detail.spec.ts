@@ -6,6 +6,7 @@ import { test, expect, describe, beforeAll, beforeEach, afterAll } from 'bun:tes
 import {
   signIn,
   callOk,
+  discoverProducts,
 } from '../../lib/api-client.js';
 import {
   TEST_ACCOUNTS,
@@ -15,8 +16,8 @@ import {
 import { AgentBrowser } from '../../lib/agent-browser.js';
 
 const BUYER_EMAIL = TEST_ACCOUNTS.BUYER_EMAIL;
-const PRODUCT_ID = TEST_PRODUCTS.HIGH_STOCK;
-const DIGITAL_PRODUCT_ID = TEST_PRODUCTS.DIGITAL;
+let PRODUCT_ID = TEST_PRODUCTS.HIGH_STOCK;
+let DIGITAL_PRODUCT_ID = TEST_PRODUCTS.DIGITAL;
 const UI_TIMEOUT = 90_000;
 const MOBILE_VIEWPORT = { width: 390, height: 844 };
 
@@ -108,6 +109,9 @@ describe('Product Detail — API Tests', () => {
   beforeAll(async () => {
     const buyer = await signIn(BUYER_EMAIL);
     buyerToken = buyer.idToken;
+    const products = await discoverProducts(buyerToken);
+    PRODUCT_ID = products[0]?.id ?? PRODUCT_ID;
+    DIGITAL_PRODUCT_ID = products[1]?.id ?? DIGITAL_PRODUCT_ID;
   });
 
   test('T01: Get product details — returns required fields', async () => {

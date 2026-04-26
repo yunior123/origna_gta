@@ -172,6 +172,36 @@
     const observer = new MutationObserver(() => applyOverscrollGuards());
     observer.observe(document.documentElement, { childList: true, subtree: true });
     applyOverscrollGuards();
+
+    let touchStartY = 0;
+    window.addEventListener("touchstart", (event) => {
+      if (event.touches.length !== 1) return;
+      touchStartY = event.touches[0].clientY;
+    }, { passive: true });
+
+    window.addEventListener("touchmove", (event) => {
+      if (event.touches.length !== 1) return;
+      const deltaY = touchStartY - event.touches[0].clientY;
+      if (shouldBlockViewportOverscroll(deltaY)) {
+        event.preventDefault();
+      }
+    }, { passive: false });
+
+    window.addEventListener("wheel", (event) => {
+      if (shouldBlockViewportOverscroll(event.deltaY)) {
+        event.preventDefault();
+      }
+    }, { passive: false });
+
+    function shouldBlockViewportOverscroll(deltaY) {
+      const scroller = document.scrollingElement || document.documentElement;
+      if (!scroller) return false;
+      const scrollingDown = deltaY > 0;
+      const scrollingUp = deltaY < 0;
+      const atTop = scroller.scrollTop <= 0;
+      const atBottom = Math.ceil(scroller.scrollTop + window.innerHeight) >= scroller.scrollHeight;
+      return (scrollingUp && atTop) || (scrollingDown && atBottom);
+    }
   </script>
 </head>
 <body>

@@ -77,6 +77,15 @@ sed -i '' "s|__GOOGLE_WEB_CLIENT_ID__|${GOOGLE_WEB_CLIENT_ID_VALUE}|g" build/web
 sed -i '' "s|__TURNSTILE_SITE_KEY__|${TURNSTILE_KEY}|g" build/web/index.html 2>/dev/null || true
 cd ..
 
+if [ "${SKIP_LOCAL_REGRESSION_CHECK:-0}" != "1" ]; then
+  echo "Running local home scroll/image regression checks before deploy..."
+  (
+    cd origna_gta
+    flutter analyze --no-fatal-infos
+    flutter test test/unit/home_viewmodel_test.dart test/screens/home_screen_test.dart
+  )
+fi
+
 ssh "${VPS_HOST}" "mkdir -p ${REMOTE_BASE}/releases && chmod -R 755 ${REMOTE_BASE}"
 
 rsync -avz --delete origna_gta/build/web/ "${VPS_HOST}:${RELEASE_DIR}/"
@@ -97,6 +106,7 @@ if [ "${SKIP_SCROLL_REGRESSION_CHECK:-0}" != "1" ]; then
     cd e2e
     bun x tsc --noEmit
     E2E_TARGET_URL="${WEB_APP_URL}" ORIGNABASE_URL="${ORIGNABASE_URL}" bun test specs/phase1-api/dev-product-browse-live.spec.ts
+    E2E_TARGET_URL="${WEB_APP_URL}" ORIGNABASE_URL="${ORIGNABASE_URL}" bun test specs/phase2-smoke/smoke-home-profile.spec.ts -t "A08b"
     E2E_TARGET_URL="${WEB_APP_URL}" ORIGNABASE_URL="${ORIGNABASE_URL}" bun test specs/phase4-product-flows/search-filters-sort.spec.ts
     E2E_TARGET_URL="${WEB_APP_URL}" ORIGNABASE_URL="${ORIGNABASE_URL}" bun test specs/phase4-product-flows/subcategory-filtering.spec.ts
     E2E_TARGET_URL="${WEB_APP_URL}" ORIGNABASE_URL="${ORIGNABASE_URL}" bun test specs/phase5-complex-flows/cart-badge-add-to-cart.spec.ts

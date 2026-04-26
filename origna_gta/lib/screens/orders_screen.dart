@@ -220,7 +220,8 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                 subtitle: 'orders.no_orders_desc'.tr(),
                 showMascot: true,
                 action: ModernButton(
-                  label: 'cart.start_shopping'.tr(),
+                  label: 'start_shopping'.tr(),
+                  semanticsLabel: 'orders-start-shopping',
                   icon: Icons.storefront_outlined,
                   onPressed: () => appGoNamed(context, AppRoutes.home),
                 ),

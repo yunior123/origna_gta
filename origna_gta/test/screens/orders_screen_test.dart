@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:origna_gta/screens/orders_screen.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/features/orders/orders_provider.dart';
+import 'package:origna_gta/widgets/modern_button.dart';
 import '../test_utils.dart';
 
 void main() {
@@ -31,6 +32,14 @@ void main() {
       await tester.pump(const Duration(milliseconds: 500));
 
       expect(find.text('My Orders'), findsOneWidget);
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is ModernButton &&
+              widget.semanticsLabel == 'orders-start-shopping',
+        ),
+        findsOneWidget,
+      );
     });
   });
 }

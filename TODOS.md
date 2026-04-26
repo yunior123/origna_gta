@@ -50,11 +50,6 @@ DONE:
 
 - bug: when clicking prix decroissont in filter the whole web reloads
 
-
-
-NOT DONE:
-Do all please, gonna out now, so do all work, use swarm if needed, when i get back all should be done. u can use bash sleep mechanism to wake yourself up, like a whip to keep yourself working. continue. do all . search web and github for latest and best practices of whatever u are working on, u can create new skills for it too. Use swarm with high and medium effort if needed. xchat is not working but u can use exa or other search tool. u can search state.md for history on regressions to avoid them, check memory too as needed. Solve bugs ans issues first
-
 - build ios app to my connected phone 
 - run all e2e tests, rust tests, flutter tests, priority goes to live tests
 - make sure that all seeded products contain images 
@@ -62,8 +57,15 @@ Do all please, gonna out now, so do all work, use swarm if needed, when i get ba
 
 - 1. this one has happened like 100 plus times, when scrolling in home view dev.orignagta it says: un problem recurrent a survenu, it happens when scrolling products, update: still happening, this is fucking crazy, now it load full web including splash. update: it no longers says previews error but instead after scrolling too fast to the bottom it loads the whole web including splash
 - priority, its urgent: images on all products 2. fucking scroll bug, why the fuck we have so many regression issues, make sure no deploy is done with out checking test for scroll regression passing, and that product seeded have images. 
-- 8. add testing to prevent errors from happening again after solving. 
 - weird bug in orignaventures website: when scrolling up it loads the whole web including splash, super weird.
+- clean r2 bucket and reseed to avoid junky old files
+- make sure that our error system is strong, we are supposed to have big table that contains error code vs stacktrace and bug or error info: ex. SE014587-Server Error -> The server failed on user login, this was the stacktrace...., this was the email... time... (internal only used with sentry and also logged in db). does it make sense? i have seen big companies do it like that, it allows users to give better feedback with error code, description, user contact info, ... . many big companies do it like that when the app crashes. to make sure we track all errors. sentry is also good.
+
+
+NOT DONE:
+Do all please, gonna out now, so do all work, use swarm if needed, when i get back all should be done. u can use bash sleep mechanism to wake yourself up, like a whip to keep yourself working. continue. do all . search web and github for latest and best practices of whatever u are working on, u can create new skills for it too. Use swarm with high and medium effort if needed. xchat is not working but u can use exa or other search tool. u can search state.md for history on regressions to avoid them, check memory too as needed. Solve bugs ans issues first
+
+- 8. add testing to prevent errors from happening again after solving.
 
 Note: make sure to deploy latest version before e2e testing. commit and push after each issue verification
 
@@ -71,7 +73,6 @@ Note: make sure to deploy latest version before e2e testing. commit and push aft
 LATER:
 
 
-- make sure that our error system is strong, we are supposed to have big table that contains error code vs stacktrace and bug or error info: ex. SE014587-Server Error -> The server failed on user login, this was the stacktrace...., this was the email... time... (internal only used with sentry and also logged in db). does it make sense? i have seen big companies do it like that, it allows users to give better feedback with error code, description, user contact info, ... . many big companies do it like that when the app crashes. to make sure we track all errors. sentry is also good.
 
 - You are a senior DevOps/SRE engineer. Your task is to fully set up the
 Postal open-source mail delivery server (https://postalserver.io) on our hetzner, Caddy

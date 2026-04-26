@@ -16,14 +16,22 @@ import {
   callOk,
   signIn,
 } from '../../lib/api-client.js';
+import { signInOrignaBase } from '../../lib/auth.js';
 import { TEST_ACCOUNTS, DEFAULT_PASS, WEB_APP_URL, ORIGNABASE_URL } from '../../lib/config.js';
 
 const TARGET_URL = WEB_APP_URL;
 
 /** Helper: login via browser UI with waitForChange patterns. */
 async function loginViaBrowserUI(browser: AgentBrowser, email: string, password: string): Promise<void> {
+  const auth = await signInOrignaBase(email, password);
   try {
-    await browser.loginViaApi(email, password);
+    await browser.clearState();
+    await browser.open(TARGET_URL);
+    await browser.waitForFlutter().catch(() => undefined);
+    browser.run([
+      'eval',
+      `(function(){localStorage.setItem('orignabase_access_token',${JSON.stringify(auth.idToken)});localStorage.setItem('orignabase_refresh_token',${JSON.stringify(auth.refreshToken ?? '')});localStorage.setItem('orignabase_email',${JSON.stringify(auth.email ?? email)});return JSON.stringify({ok:true});})()`,
+    ], 10_000);
   } catch {
     try {
       await browser.open(`${TARGET_URL}/login`);

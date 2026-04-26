@@ -257,13 +257,28 @@ touchStartY = event.touches[0].clientY;
 
 window.addEventListener('touchmove', function (event) {
 if (event.touches.length !== 1) return;
-var scroller = document.scrollingElement || document.documentElement;
 var currentY = event.touches[0].clientY;
-var isPullingDown = currentY > touchStartY + 12;
-if (isPullingDown && scroller && scroller.scrollTop <= 0) {
+var deltaY = touchStartY - currentY;
+if (shouldBlockViewportOverscroll(deltaY)) {
 event.preventDefault();
 }
 }, { passive: false });
+
+window.addEventListener('wheel', function (event) {
+if (shouldBlockViewportOverscroll(event.deltaY)) {
+event.preventDefault();
+}
+}, { passive: false });
+
+function shouldBlockViewportOverscroll(deltaY) {
+var scroller = document.scrollingElement || document.documentElement;
+if (!scroller) return false;
+var scrollingDown = deltaY > 0;
+var scrollingUp = deltaY < 0;
+var atTop = scroller.scrollTop <= 0;
+var atBottom = Math.ceil(scroller.scrollTop + window.innerHeight) >= scroller.scrollHeight;
+return (scrollingUp && atTop) || (scrollingDown && atBottom);
+}
 })();
 </script>
 </body>

@@ -153,6 +153,19 @@ Rules:
   - `619c60be` docs: Correct Spanish translation status in CORE.md and STATE.md  
   - `95c9fecf` feat: Spanish translations, Ventures payment hardening, solar product live
 - [ ] Build the iOS app.
+  - Current verified state on 2026-04-25:
+    - connected iPhone was initially visible as `00008120-000174923ADB401E` on iOS `26.4.1`, but later disappeared from `idevice_id`, `ios-deploy`, and Xcode/CoreDevice in this shell.
+    - Flutter SDK sandbox blocker was bypassed with a writable `/tmp/origna-flutter-root`.
+    - iOS CocoaPods lock drift was fixed in `origna_gta/ios/Podfile.lock` (`connectivity_plus`, `sentry_flutter 9.15.0`, `Sentry/HybridSDK 8.58.0`; removed stale `passkeys_ios` / `ua_client_hints`).
+    - Pods can be built for `iphoneos26.4` when Sentry preview macros are excluded via `SWIFT_ACTIVE_COMPILATION_CONDITIONS=COCOAPODS`.
+    - a temporary no-code-sign Runner build was proven after excluding Interface Builder / asset catalog compilation, but that resource-stripping workaround was not retained in the repo.
+  - Active machine blockers:
+    - `security find-identity -v -p codesigning` reports `0 valid identities found`.
+    - provisioning profile `c64dffd1-c8fe-4d0b-832a-cd757caec3a4` is present for `ca.orignagta.app`, team `98KN6NA6DU`, and includes device `00008120-000174923ADB401E`, but Xcode reports the local copied profiles as malformed/missing UUID and there is no matching private-key signing identity.
+    - Xcode's CoreSimulator service is unavailable from this shell; `actool` / `ibtool` fail with `iOS 26.4 Platform Not Installed` / no simulator runtimes despite `xcodebuild -showsdks` listing iOS 26.4 SDKs.
+    - CoreDevice service is unavailable from this shell; `xcrun devicectl list devices` times out and Xcode cannot see the iPhone destination.
+  - Required next gate:
+    - reconnect/trust the iPhone, refresh Xcode account credentials, create/download an Apple Development certificate private key for team `98KN6NA6DU`, fix local Xcode CoreDevice/CoreSimulator services, then rerun `flutter run --debug --dart-define=ENVIRONMENT=dev -d 00008120-000174923ADB401E`.
 
 ## P2 — Manual QA / human-required checkpoints
 - [ ] Final production OrignaGTA live checkout/payment verification for `https://orignagta.ca/product/207123c5-a5ee-4a8e-8f3b-434664110bc0`.

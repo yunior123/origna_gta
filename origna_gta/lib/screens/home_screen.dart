@@ -700,6 +700,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             state.hasMore) {
           _isPaginating = true;
           _paginationTriggerArmed = false;
+          final previousProductCount = state.products.length;
           Future.microtask(() async {
             try {
               await ref.read(homeViewModelProvider.notifier).loadProducts();
@@ -711,17 +712,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               );
             } finally {
               _isPaginating = false;
-              if (!mounted || !_scrollController.hasClients) return;
-              final nextState = ref.read(homeViewModelProvider);
-              final nextExtentAfter = _scrollController.position.extentAfter;
-              if (nextExtentAfter > 600) {
-                _paginationTriggerArmed = true;
-              } else if (nextExtentAfter <= 300 &&
-                  nextState.products.isNotEmpty &&
-                  !nextState.isLoadingMore &&
-                  nextState.hasMore) {
-                _paginationTriggerArmed = true;
-                Future.microtask(_onScroll);
+              if (mounted && _scrollController.hasClients) {
+                final nextState = ref.read(homeViewModelProvider);
+                final nextExtentAfter = _scrollController.position.extentAfter;
+                final productsAdvanced =
+                    nextState.products.length > previousProductCount;
+                if (nextExtentAfter > 600) {
+                  _paginationTriggerArmed = true;
+                } else if (productsAdvanced &&
+                    nextExtentAfter <= 300 &&
+                    nextState.products.isNotEmpty &&
+                    !nextState.isLoadingMore &&
+                    nextState.hasMore) {
+                  _paginationTriggerArmed = true;
+                  Future.microtask(_onScroll);
+                }
               }
             }
           });

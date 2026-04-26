@@ -36,10 +36,14 @@ class _ProductCardImageSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final currentImageIndex = ref.watch(
-      _productCardImageIndexProvider(productId),
-    );
-    final imageUrls = product.imageUrls;
+    final imageUrls = product.imageUrls
+        .map((url) => url.trim())
+        .where(_isValidImageUrl)
+        .map(resolveMediaUrl)
+        .toList(growable: false);
+    final currentImageIndex = imageUrls.length > 1
+        ? ref.watch(_productCardImageIndexProvider(productId))
+        : 0;
     final favIconSize = isCompact ? 18.0 : 20.0;
 
     return Expanded(
@@ -54,86 +58,105 @@ class _ProductCardImageSection extends ConsumerWidget {
                 top: Radius.circular(isCompact ? 12 : 16),
               ),
               child: SizedBox.expand(
-                child: imageUrls.isNotEmpty
-                    ? Stack(
-                        children: [
-                          PageView.builder(
-                            itemCount: imageUrls.length,
-                            onPageChanged: (index) =>
-                                ref
-                                        .read(
-                                          _productCardImageIndexProvider(
-                                            productId,
-                                          ).notifier,
-                                        )
-                                        .state =
-                                    index,
-                            itemBuilder: (context, index) {
-                              return Semantics(
-                                image: true,
-                                excludeSemantics: true,
-                                label:
-                                    '${product.name} image ${index + 1} of ${imageUrls.length}',
-                                child: ColorFiltered(
-                                  colorFilter: isOutOfStock
-                                      ? const ColorFilter.mode(
-                                          DesignTokens.textSecondary,
-                                          BlendMode.saturation,
-                                        )
-                                      : const ColorFilter.mode(
-                                          DesignTokens.transparent,
-                                          BlendMode.multiply,
-                                        ),
-                                  child: CachedNetworkImage(
-                                    imageUrl: _isValidImageUrl(imageUrls[index])
-                                        ? resolveMediaUrl(imageUrls[index])
-                                        : '',
-                                    width: double.infinity,
-                                    height: double.infinity,
-                                    fit: BoxFit.cover,
-                                    imageRenderMethodForWeb: kIsWeb
-                                        ? ImageRenderMethodForWeb.HtmlImage
-                                        : ImageRenderMethodForWeb.HttpGet,
-                                    placeholder: (context, url) =>
-                                        ModernSkeletonLoader.imagePlaceholder(),
-                                    errorWidget: (context, url, error) =>
-                                        _placeholderImage(),
-                                  ),
+                child: switch (imageUrls.length) {
+                  0 => _placeholderImage(),
+                  1 => Stack(
+                    children: [
+                      Semantics(
+                        image: true,
+                        excludeSemantics: true,
+                        label: '${product.name} image',
+                        child: ColorFiltered(
+                          colorFilter: isOutOfStock
+                              ? const ColorFilter.mode(
+                                  DesignTokens.textSecondary,
+                                  BlendMode.saturation,
+                                )
+                              : const ColorFilter.mode(
+                                  DesignTokens.transparent,
+                                  BlendMode.multiply,
                                 ),
-                              );
-                            },
-                          ),
-                          if (isOutOfStock) _outOfStockOverlay(),
-                          if (imageUrls.length > 1)
-                            Positioned(
-                              bottom: 4,
-                              right: 4,
-                              child: Container(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: isCompact ? 5 : 8,
-                                  vertical: isCompact ? 2 : 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: DesignTokens.black.withValues(
-                                    alpha: 0.5,
-                                  ),
-                                  borderRadius: BorderRadius.circular(
-                                    isCompact ? 8 : 12,
-                                  ),
-                                ),
-                                child: Text(
-                                  '${currentImageIndex + 1}/${imageUrls.length}',
-                                  style: TextStyle(
-                                    color: DesignTokens.white,
-                                    fontSize: isCompact ? 10 : 12,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
+                          child: _networkImage(imageUrls.single),
+                        ),
+                      ),
+                      if (isOutOfStock) _outOfStockOverlay(),
+                    ],
+                  ),
+                  _ => Stack(
+                    children: [
+                      PageView.builder(
+                        itemCount: imageUrls.length,
+                        onPageChanged: (index) =>
+                            ref
+                                    .read(
+                                      _productCardImageIndexProvider(
+                                        productId,
+                                      ).notifier,
+                                    )
+                                    .state =
+                                index,
+                        itemBuilder: (context, index) {
+                          return Semantics(
+                            image: true,
+                            excludeSemantics: true,
+                            label:
+                                '${product.name} image ${index + 1} of ${imageUrls.length}',
+                            child: ColorFiltered(
+                              colorFilter: isOutOfStock
+                                  ? const ColorFilter.mode(
+                                      DesignTokens.textSecondary,
+                                      BlendMode.saturation,
+                                    )
+                                  : const ColorFilter.mode(
+                                      DesignTokens.transparent,
+                                      BlendMode.multiply,
+                                    ),
+                              child: CachedNetworkImage(
+                                imageUrl: imageUrls[index],
+                                width: double.infinity,
+                                height: double.infinity,
+                                fit: BoxFit.cover,
+                                imageRenderMethodForWeb: kIsWeb
+                                    ? ImageRenderMethodForWeb.HtmlImage
+                                    : ImageRenderMethodForWeb.HttpGet,
+                                placeholder: (context, url) =>
+                                    ModernSkeletonLoader.imagePlaceholder(),
+                                errorWidget: (context, url, error) =>
+                                    _placeholderImage(),
                               ),
                             ),
-                        ],
-                      )
-                    : _placeholderImage(),
+                          );
+                        },
+                      ),
+                      if (isOutOfStock) _outOfStockOverlay(),
+                      if (imageUrls.length > 1)
+                        Positioned(
+                          bottom: 4,
+                          right: 4,
+                          child: Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: isCompact ? 5 : 8,
+                              vertical: isCompact ? 2 : 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: DesignTokens.black.withValues(alpha: 0.5),
+                              borderRadius: BorderRadius.circular(
+                                isCompact ? 8 : 12,
+                              ),
+                            ),
+                            child: Text(
+                              '${currentImageIndex + 1}/${imageUrls.length}',
+                              style: TextStyle(
+                                color: DesignTokens.white,
+                                fontSize: isCompact ? 10 : 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                },
               ),
             ),
           ),
@@ -199,6 +222,20 @@ class _ProductCardImageSection extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _networkImage(String imageUrl) {
+    return CachedNetworkImage(
+      imageUrl: imageUrl,
+      width: double.infinity,
+      height: double.infinity,
+      fit: BoxFit.cover,
+      imageRenderMethodForWeb: kIsWeb
+          ? ImageRenderMethodForWeb.HtmlImage
+          : ImageRenderMethodForWeb.HttpGet,
+      placeholder: (context, url) => ModernSkeletonLoader.imagePlaceholder(),
+      errorWidget: (context, url, error) => _placeholderImage(),
     );
   }
 

@@ -17,6 +17,15 @@ const BTN_CART = /btn-cart|cart/i;
 
 let browser: AgentBrowser;
 
+function readPageState() {
+  const raw = browser.run([
+    'eval',
+    'JSON.stringify({href:window.location.href,marker:window.__orignaScrollMarker||null,splash:!!document.getElementById("splash"),body:document.body.innerText.slice(0,500)})',
+  ], 5_000).trim();
+  const parsed = JSON.parse(raw);
+  return typeof parsed === 'string' ? JSON.parse(parsed) : parsed;
+}
+
 async function bestEffortAdminLogin() {
   try {
     await browser.loginViaApi(ADMIN_EMAIL, ADMIN_PASSWORD);
@@ -146,6 +155,34 @@ describe('PW IT Replica — Smoke Home + Profile (admin)', () => {
     const snap = await browser.snapshot({ interactive: true, compact: true });
     expect(snap.refs.length > 0 || snap.raw.length > 0).toBe(true);
   }, 30_000);
+
+  test('A08b: aggressive home scroll does not reload shell or show splash', async () => {
+    await browser.open(`${TARGET_URL}/`);
+    await browser.waitForFlutter();
+    await browser.enableAccessibilityIfPresent().catch(() => false);
+
+    browser.run([
+      'eval',
+      'window.__orignaScrollMarker="home-scroll-stability"; true',
+    ], 5_000);
+
+    for (let i = 0; i < 5; i += 1) {
+      await browser.scrollAndWait('down', 2_500);
+    }
+    for (let i = 0; i < 3; i += 1) {
+      await browser.scrollAndWait('up', 2_500);
+    }
+
+    const state = readPageState();
+    expect(state.href).toBe(`${TARGET_URL}/`);
+    expect(state.marker).toBe('home-scroll-stability');
+    expect(state.splash).toBe(false);
+    expect(String(state.body).toLowerCase()).not.toContain('un problème récurrent');
+    expect(String(state.body).toLowerCase()).not.toContain('problem recurrent');
+
+    const snap = await browser.snapshot({ interactive: true, compact: true });
+    expect(browser.findByLabel(snap, /product-card-|input-home-search|btn-home-sort|btn-cart/i) || snap.refs.length > 0).toBeTruthy();
+  }, 90_000);
 
   test('C009: Profile navigation via settings button', async () => {
     await bestEffortAdminLogin();
