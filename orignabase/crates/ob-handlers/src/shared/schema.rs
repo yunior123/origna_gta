@@ -82,7 +82,7 @@ pub mod email_config {
     pub const URL_PROD: &str = "https://orignagta.ca";
     pub const URL_STAGING: &str = "https://orignagta-staging.web.app";
     pub const URL_DEV: &str = "https://orignagta-dev.web.app";
-    pub const MAILJET_API_VERSION: &str = "v3.1";
+    pub const POSTAL_API_URL: &str = "https://mail.orignagta.ca/api/v1/send/message";
     pub const PHYSICAL_ADDRESS: &str =
         "Origna Ventures Inc., 136 Shaver Ave N, Toronto, ON M9B 4N8, Canada";
     pub const GST_HST_NUMBER: &str = "708286364RC0001";
@@ -1243,7 +1243,7 @@ mod tests {
         let _ = email_config::URL_PROD;
         let _ = email_config::URL_STAGING;
         let _ = email_config::URL_DEV;
-        let _ = email_config::MAILJET_API_VERSION;
+        let _ = email_config::POSTAL_API_URL;
         let _ = email_config::PHYSICAL_ADDRESS;
         let _ = email_config::GST_HST_NUMBER;
         let _ = email_config::UNSUBSCRIBE_URL_PROD;

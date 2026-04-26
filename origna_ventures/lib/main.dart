@@ -2700,7 +2700,6 @@ class _ContactFormBlockState extends State<_ContactFormBlock> {
             ? emails['confirmation'] as Map<String, dynamic>
             : <String, dynamic>{};
         final confirmationStatus = confirmation['status']?.toString();
-        final confirmationSandboxMode = confirmation['sandbox_mode'] == true;
         _nameCtrl.clear();
         _emailCtrl.clear();
         _companyCtrl.clear();
@@ -2708,13 +2707,13 @@ class _ContactFormBlockState extends State<_ContactFormBlock> {
         setState(() {
           _success = true;
           _result = loc.tr(
-            confirmationStatus == 'sent' && !confirmationSandboxMode
+            confirmationStatus == 'sent'
                 ? "Message sent! We also emailed your confirmation and will reply within 24 hours."
                 : "Message sent! We'll be in touch within 24 hours.",
-            confirmationStatus == 'sent' && !confirmationSandboxMode
+            confirmationStatus == 'sent'
                 ? 'Message envoye! Nous avons aussi envoye votre confirmation et nous repondrons dans les 24 heures.'
                 : 'Message envoye! Nous vous repondrons dans les 24 heures.',
-            confirmationStatus == 'sent' && !confirmationSandboxMode
+            confirmationStatus == 'sent'
                 ? 'Mensaje enviado. Tambien enviamos su confirmacion y responderemos en menos de 24 horas.'
                 : 'Mensaje enviado. Le responderemos en menos de 24 horas.',
           );

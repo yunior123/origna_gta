@@ -31,7 +31,7 @@ sqlx = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 
-# HTTP client (Stripe, Mailjet, Geoapify, Turnstile, FCM)
+# HTTP client (Stripe, Postal, Geoapify, Turnstile, FCM)
 reqwest = { workspace = true }
 
 # Time & IDs
@@ -53,7 +53,7 @@ totp-rs = { workspace = true }
 # Stripe
 async-stripe = { version = "0.41", default-features = false, features = ["runtime-tokio-hyper-rustls", "checkout", "connect", "billing", "webhook-events"] }
 
-# Email (SMTP via lettre, or REST via reqwest for Mailjet)
+# Email (SMTP via lettre, or REST via reqwest for Postal)
 lettre = { workspace = true }
 
 # PDF generation

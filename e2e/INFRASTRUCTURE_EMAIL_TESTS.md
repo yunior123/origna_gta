@@ -144,7 +144,7 @@ npm run test:api  # Runs all phase1-api tests
 - Verify database has populated timestamps
 
 **Email trigger returns 500**:
-- Check Mailjet credentials in .env.dev
+- Check Postal credentials in .env.dev
 - Verify email provider is responsive
 - Check logs for email formatting errors
 

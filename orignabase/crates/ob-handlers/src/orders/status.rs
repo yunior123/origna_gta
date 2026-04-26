@@ -205,14 +205,11 @@ fn should_promote_order_to_delivered(payment_status: &str, all_delivered: bool) 
     all_delivered && payment_status == PaymentStatus::Captured.as_str()
 }
 
-fn mailjet_credentials(state: &HandlersState, order_id: &str) -> Option<(String, String)> {
-    match (
-        state.config.require_secret("mailjet_api_key"),
-        state.config.require_secret("mailjet_secret_key"),
-    ) {
-        (Ok(api_key), Ok(secret_key)) => Some((api_key.to_string(), secret_key.to_string())),
-        (Err(err), _) | (_, Err(err)) => {
-            warn!(order_id = %order_id, error = %err, "Mailjet credentials unavailable; skipping payout scheduled email");
+fn postal_api_key(state: &HandlersState, order_id: &str) -> Option<String> {
+    match state.config.require_secret("postal_api_key") {
+        Ok(api_key) => Some(api_key.to_string()),
+        Err(err) => {
+            warn!(order_id = %order_id, error = %err, "Postal API key unavailable; skipping payout scheduled email");
             None
         }
     }
@@ -224,7 +221,7 @@ async fn send_payout_scheduled_notifications(state: &HandlersState, order: &Valu
         .and_then(|v| v.as_str())
         .map(record_key)
         .unwrap_or("");
-    let Some((api_key, secret_key)) = mailjet_credentials(state, order_id) else {
+    let Some(api_key) = postal_api_key(state, order_id) else {
         return;
     };
 
@@ -249,15 +246,8 @@ async fn send_payout_scheduled_notifications(state: &HandlersState, order: &Valu
         } else {
             format!("Payout scheduled for order #{order_id} — Origna")
         };
-        if let Err(err) = email::send_email(
-            &state.http_client,
-            &api_key,
-            &secret_key,
-            &seller_email,
-            &subject,
-            &html,
-        )
-        .await
+        if let Err(err) =
+            email::send_email(&state.http_client, &api_key, &seller_email, &subject, &html).await
         {
             warn!(order_id = %order_id, seller_id = %seller_id, to = %seller_email, error = %err, "Failed to send payout scheduled email");
         }

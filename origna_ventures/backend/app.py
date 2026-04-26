@@ -63,6 +63,7 @@ _EMAIL_STATUS_DEAD = "dead"
 
 _EMAIL_MAX_RETRIES = 3
 _EMAIL_RETRY_BASE_DELAY_SECONDS = 60
+_EMAIL_PROVIDER_POSTAL = "postal"
 
 
 @dataclass
@@ -94,18 +95,17 @@ class Settings:
         "ORIGNA_STRIPE_CANCEL_URL", "https://orignaventures.ca/?status=cancelled"
     )
     environment: str = os.getenv("ENVIRONMENT", "dev")
-    mailjet_sandbox_override: str = os.getenv("ORIGNA_MAILJET_SANDBOX_MODE", "")
-    mailjet_api_key: str = os.getenv("ORIGNA_MAILJET_API_KEY", "")
-    mailjet_secret_key: str = os.getenv("ORIGNA_MAILJET_SECRET_KEY", "")
-    mailjet_api_url: str = os.getenv(
-        "ORIGNA_MAILJET_API_URL", "https://api.mailjet.com/v3.1/send"
+    postal_api_key: str = os.getenv("ORIGNA_POSTAL_API_KEY", "")
+    postal_api_url: str = os.getenv(
+        "ORIGNA_POSTAL_API_URL", "https://mail.orignagta.ca/api/v1/send/message"
     )
-    mailjet_from_email: str = os.getenv(
-        "ORIGNA_MAILJET_FROM_EMAIL", "support@orignaventures.ca"
+    postal_from_email: str = os.getenv(
+        "ORIGNA_POSTAL_FROM_EMAIL", "support@orignaventures.ca"
     )
-    mailjet_from_name: str = os.getenv(
-        "ORIGNA_MAILJET_FROM_NAME", "Origna Ventures Services"
+    postal_from_name: str = os.getenv(
+        "ORIGNA_POSTAL_FROM_NAME", "Origna Ventures Services"
     )
+    email_provider: str = os.getenv("ORIGNA_EMAIL_PROVIDER", _EMAIL_PROVIDER_POSTAL).lower()
     github_token: str = os.getenv("ORIGNA_GITHUB_TOKEN", "")
     github_org: str = os.getenv("ORIGNA_GITHUB_ORG", "")
     github_template_repo: str = os.getenv("ORIGNA_GITHUB_TEMPLATE_REPO", "")
@@ -114,26 +114,10 @@ class Settings:
     admin_api_key: str = os.getenv("ORIGNA_ADMIN_API_KEY", "")
 
     @property
-    def mailjet_sandbox_mode(self) -> bool:
-        override = self.mailjet_sandbox_override.strip().lower()
-        if override:
-            return override in {"1", "true", "yes", "on"}
-
-        environment = self.environment.strip().lower()
-        if environment in {"production", "prod"}:
-            return False
-
-        for candidate in (self.base_url, self.api_base_url):
-            host = urlparse(candidate).hostname or ""
-            normalized = host.lower()
-            if normalized in {
-                "orignaventures.ca",
-                "www.orignaventures.ca",
-                "api.orignaventures.ca",
-            }:
-                return False
-
-        return True
+    def email_provider_configured(self) -> bool:
+        if self.email_provider == _EMAIL_PROVIDER_POSTAL:
+            return bool(self.postal_api_key and self.postal_api_url)
+        return False
 
 
 settings = Settings()
@@ -712,11 +696,11 @@ def generate_receipt_pdf(
     return buffer.getvalue()
 
 
-def build_mailjet_pdf_attachment(filename: str, pdf_bytes: bytes) -> Dict[str, str]:
+def build_email_pdf_attachment(filename: str, pdf_bytes: bytes) -> Dict[str, str]:
     return {
-        "ContentType": "application/pdf",
-        "Filename": filename,
-        "Base64Content": base64.b64encode(pdf_bytes).decode("ascii"),
+        "content_type": "application/pdf",
+        "name": filename,
+        "data": base64.b64encode(pdf_bytes).decode("ascii"),
     }
 
 
@@ -730,7 +714,7 @@ def dispatch_email_jobs(
         return [
             {
                 "to_email": job["to_email"],
-                "result": try_send_mailjet_email(
+                "result": try_send_email(
                     job["to_email"],
                     job["subject"],
                     job["html_body"],
@@ -746,7 +730,7 @@ def dispatch_email_jobs(
     with ThreadPoolExecutor(max_workers=min(4, len(jobs))) as executor:
         future_map = {
             executor.submit(
-                try_send_mailjet_email,
+                try_send_email,
                 job["to_email"],
                 job["subject"],
                 job["html_body"],
@@ -770,7 +754,7 @@ def dispatch_email_jobs(
 def dispatch_email_jobs_async(jobs: List[Dict[str, Any]]) -> None:
     for job in jobs:
         future = _EMAIL_EXECUTOR.submit(
-            try_send_mailjet_email,
+            try_send_email,
             job["to_email"],
             job["subject"],
             job["html_body"],
@@ -877,7 +861,7 @@ def _process_email_queue_entry(email_id: str) -> None:
                     attachments = json.loads(row["attachments_json"])
                 except (json.JSONDecodeError, TypeError):
                     attachments = None
-            result = try_send_mailjet_email(
+            result = try_send_email(
                 row["to_email"],
                 row["subject"],
                 row["html_body"],
@@ -950,7 +934,7 @@ def retry_failed_emails() -> int:
     return retried
 
 
-def try_send_mailjet_email(
+def try_send_email(
     to_email: str,
     subject: str,
     html_body: str,
@@ -959,10 +943,10 @@ def try_send_mailjet_email(
     reply_to_email: Optional[str] = None,
     reply_to_name: Optional[str] = None,
 ) -> Dict[str, Any]:
-    if not settings.mailjet_api_key or not settings.mailjet_secret_key:
-        return {"status": "skipped", "reason": "mailjet_not_configured"}
+    if not settings.email_provider_configured:
+        return {"status": "skipped", "reason": "email_provider_not_configured"}
     try:
-        provider_response = send_mailjet_email(
+        provider_response = send_email(
             to_email,
             subject,
             html_body,
@@ -973,8 +957,7 @@ def try_send_mailjet_email(
         )
         return {
             "status": "sent",
-            "provider": "mailjet",
-            "sandbox_mode": settings.mailjet_sandbox_mode,
+            "provider": settings.email_provider,
             "response": provider_response,
         }
     except Exception as exc:
@@ -982,14 +965,13 @@ def try_send_mailjet_email(
             "status": "failed",
             "reason": exc.__class__.__name__,
             "message": str(exc)[:240],
-            "sandbox_mode": settings.mailjet_sandbox_mode,
         }
 
 
 class EmailTestRequest(BaseModel):
     to_email: EmailStr
     subject: str = Field(default="Origna Ventures test email")
-    body: str = Field(default="Mailjet integration test.")
+    body: str = Field(default="Postal integration test.")
 
 
 app = FastAPI(title="Origna Ventures Payment API")
@@ -1190,7 +1172,7 @@ def submit_contact(payload: ContactFormRequest, request: Request) -> Dict[str, A
                     "html_body": confirmation_html,
                     "text_body": confirmation_text,
                     "reply_to_email": settings.support_email,
-                    "reply_to_name": settings.mailjet_from_name,
+                    "reply_to_name": settings.postal_from_name,
                 },
             ]
         )
@@ -1318,7 +1300,28 @@ def html_escape(value: str) -> str:
     return html.escape(value, quote=True)
 
 
-def send_mailjet_email(
+def normalize_email_attachments(
+    attachments: Optional[List[Dict[str, str]]],
+) -> List[Dict[str, str]]:
+    normalized = []
+    for attachment in attachments or []:
+        normalized.append(
+            {
+                "name": attachment.get("name")
+                or attachment.get("Filename")
+                or attachment.get("filename", "attachment"),
+                "content_type": attachment.get("content_type")
+                or attachment.get("ContentType")
+                or "application/octet-stream",
+                "data": attachment.get("data")
+                or attachment.get("Base64Content")
+                or attachment.get("base64_content", ""),
+            }
+        )
+    return normalized
+
+
+def _send_with_postal(
     to_email: str,
     subject: str,
     html_body: str,
@@ -1327,42 +1330,61 @@ def send_mailjet_email(
     reply_to_email: Optional[str] = None,
     reply_to_name: Optional[str] = None,
 ) -> Dict[str, Any]:
-    if not settings.mailjet_api_key or not settings.mailjet_secret_key:
-        raise HTTPException(status_code=500, detail="Mailjet credentials missing")
+    from_header = f"{settings.postal_from_name} <{settings.postal_from_email}>"
+    payload: Dict[str, Any] = {
+        "to": [to_email],
+        "from": from_header,
+        "subject": subject,
+        "plain_body": text_body,
+        "html_body": html_body,
+    }
+    normalized_attachments = normalize_email_attachments(attachments)
+    if normalized_attachments:
+        payload["attachments"] = normalized_attachments
+    if reply_to_email:
+        if reply_to_name:
+            payload["reply_to"] = f"{reply_to_name} <{reply_to_email}>"
+        else:
+            payload["reply_to"] = reply_to_email
 
     response = requests.post(
-        settings.mailjet_api_url,
-        auth=(settings.mailjet_api_key, settings.mailjet_secret_key),
-        json={
-            "SandboxMode": settings.mailjet_sandbox_mode,
-            "Messages": [
-                {
-                    "From": {
-                        "Email": settings.mailjet_from_email,
-                        "Name": settings.mailjet_from_name,
-                    },
-                    "To": [{"Email": to_email}],
-                    "Subject": subject,
-                    "TextPart": text_body,
-                    "HTMLPart": html_body,
-                    "Attachments": attachments or [],
-                    **(
-                        {
-                            "ReplyTo": {
-                                "Email": reply_to_email,
-                                "Name": reply_to_name or reply_to_email,
-                            }
-                        }
-                        if reply_to_email
-                        else {}
-                    ),
-                }
-            ],
+        settings.postal_api_url,
+        headers={
+            "Content-Type": "application/json",
+            "X-Server-API-Key": settings.postal_api_key,
         },
+        json=payload,
         timeout=30,
     )
     response.raise_for_status()
-    return response.json()
+    data = response.json()
+    if data.get("status") == "error":
+        raise HTTPException(status_code=502, detail="Postal send failed")
+    return data
+
+
+def send_email(
+    to_email: str,
+    subject: str,
+    html_body: str,
+    text_body: str,
+    attachments: Optional[List[Dict[str, str]]] = None,
+    reply_to_email: Optional[str] = None,
+    reply_to_name: Optional[str] = None,
+) -> Dict[str, Any]:
+    if not settings.email_provider_configured:
+        raise HTTPException(status_code=500, detail="Email provider credentials missing")
+    if settings.email_provider == _EMAIL_PROVIDER_POSTAL:
+        return _send_with_postal(
+            to_email,
+            subject,
+            html_body,
+            text_body,
+            attachments=attachments,
+            reply_to_email=reply_to_email,
+            reply_to_name=reply_to_name,
+        )
+    raise HTTPException(status_code=500, detail="Unsupported email provider")
 
 
 def stripe_headers() -> Dict[str, str]:
@@ -1520,7 +1542,7 @@ def email_test(payload: EmailTestRequest, request: Request) -> Dict[str, Any]:
     require_admin_key(request)
     ip = client_ip(request)
     enforce_rate_limit(f"email:{ip}", limit=5, window_seconds=300)
-    send_mailjet_email(
+    send_email(
         payload.to_email,
         payload.subject,
         f"<p>{html_escape(payload.body)}</p>",
@@ -1693,7 +1715,7 @@ async def stripe_webhook(request: Request) -> Dict[str, Any]:
                             developer_count=parsed_developer_count,
                         )
                     )
-                    receipt_attachment = build_mailjet_pdf_attachment(
+                    receipt_attachment = build_email_pdf_attachment(
                         build_receipt_pdf_filename(
                             service_code,
                             session.get("id", ""),

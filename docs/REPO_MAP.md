@@ -51,13 +51,13 @@ Last updated: 2026-04-23
   - Checkout tax handling now follows Stripe's current address guidance: shipping address takes priority when collected, otherwise billing/customer address is used
   - Google Pay availability on Stripe Tax + Checkout depends on shipping-address collection or an existing saved shipping address
 
-### Mailjet
-- **API**: Send API v3.1 (`https://api.mailjet.com/v3.1/send`)
+### Postal
+- **API**: Send API v3.1 (`https://api.email.com/v3.1/send`)
 - **Key Resources**:
-  - [Mailjet Help Center](https://documentation.mailjet.com/hc/en-us)
-  - [Mailjet templating language](https://documentation.mailjet.com/hc/en-us/articles/16886347025947-Mailjet-Templating-Language)
-  - [Mailjet email automation examples](https://documentation.mailjet.com/hc/en-us/articles/35021196504219-Email-Automation)
-  - [Mailjet daily send limit controls](https://documentation.mailjet.com/hc/en-us/articles/43977536821147-Daily-Send-Limit-for-Mailjet-API-keys)
+  - [Postal Help Center](https://documentation.email.com/hc/en-us)
+  - [Postal templating language](https://documentation.email.com/hc/en-us/articles/16886347025947-Postal-Templating-Language)
+  - [Postal email automation examples](https://documentation.email.com/hc/en-us/articles/35021196504219-Email-Automation)
+  - [Postal daily send limit controls](https://documentation.email.com/hc/en-us/articles/43977536821147-Daily-Send-Limit-for-Postal-API-keys)
 - **Features Used**:
   - Transactional email sending
   - HTML/text multipart emails
@@ -620,12 +620,12 @@ Docker Compose at `/opt/orignabase/` on VPS. Binary built with `cargo build --re
 - Dev search/category browsing is green.
 - Dev `/auth/providers` now reports Google web auth enabled/configured.
 - Dev catalog currently has active products in all 21 storefront categories.
-- Ventures contact/email live path is returning support + confirmation delivery with `sandbox_mode=false`.
+- Ventures contact/email live path is returning support + confirmation delivery with `status=sent`.
 
 ### Official Provider References
 
 - Stripe Checkout: `https://docs.stripe.com/payments/checkout`
-- Mailjet Send API v3.1: `https://dev.mailjet.com/email/guides/send-api-v31/`
+- Postal Send API v3.1: `https://dev.email.com/email/guides/send-api-v31/`
 - PostgreSQL JSON/JSONB: `https://www.postgresql.org/docs/current/datatype-json.html`
 - Meilisearch Search API: `https://www.meilisearch.com/docs/reference/api/search`
 - Sentry Flutter SDK: `https://docs.sentry.io/platforms/dart/guides/flutter/`
@@ -686,7 +686,7 @@ origna_ventures/
 - **Framework**: Python FastAPI at `origna_ventures/backend/app.py` (1320 lines)
 - **Database**: SQLite (`contracts.db`) — lightweight, file-based
 - **Payments**: Stripe Checkout Sessions (one-time + subscription), webhook handling
-- **Email**: Mailjet (order confirmations, contract notifications)
+- **Email**: Postal (order confirmations, contract notifications)
 - **PDF Generation**: `reportlab` — generates service contracts on the fly
 - **API Base**: `https://api.orignagta.ca/ventures/api`
 - **Checkout modes**: `service_code` (direct tier purchase) and `contract_id` (legacy)

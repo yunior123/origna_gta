@@ -5,7 +5,7 @@
 - [x] Security enhancement: Switch to manual repo access for clients (no automated emails).
 - [ ] Test Stripe payments (E2E) in OrignaGTA/Ventures (Stripe/Klarna/Webhooks).
 - [x] Backend isolation: OrignaGTA & OrignaVentures independent.
-- [ ] Audit email delivery/cleanup test accounts (Mailjet).
+- [ ] Audit email delivery/cleanup test accounts (Postal).
 
 ## Priority: Regional Support (Cuba)
 - [x] Cuba Shipping (Havana City/Pickup only implemented in AddressViewModel).

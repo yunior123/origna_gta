@@ -5,7 +5,7 @@
 - [x] Security enhancement: Switch to manual repo access for clients (no automated emails)
 - [x] Backend isolation: OrignaGTA & OrignaVentures independent
 - [ ] Test Stripe payments (E2E) in OrignaGTA/Ventures (Stripe/Klarna/Webhooks)
-- [ ] Audit email delivery/cleanup test accounts (Mailjet)
+- [ ] Audit email delivery/cleanup test accounts (Postal)
 - [ ] Audit all Stripe webhooks
 - [ ] Increase security so source code exposure doesn't allow hacking
 
@@ -68,7 +68,7 @@
 - [ ] Audit VSCode setup (tasks/launch/extensions)
 - [ ] Fix VSCode warnings/issues
 - [ ] Always keep VPS updated with latest deployment
-- [ ] Delete users not in Mailjet API to restart free tier (<1000 users)
+- [ ] Delete users not in Postal API to restart free tier (<1000 users)
 - [ ] Commit and push all to GitHub
 
 ## Priority: Testing

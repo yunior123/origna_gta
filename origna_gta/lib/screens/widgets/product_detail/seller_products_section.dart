@@ -46,7 +46,7 @@ class SellerProductsSection extends ConsumerWidget {
             ),
             const SizedBox(height: 12),
             SizedBox(
-              height: 220,
+              height: 260,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: products.length,
@@ -54,7 +54,7 @@ class SellerProductsSection extends ConsumerWidget {
                 itemBuilder: (context, idx) {
                   final p = products[idx];
                   return SizedBox(
-                    width: 150,
+                    width: 170,
                     child: ProductCard(
                       productId: p.productId,
                       product: p,

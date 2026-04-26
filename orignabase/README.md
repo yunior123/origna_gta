@@ -320,7 +320,7 @@ Cluster behavior is intentional:
 Current notification behavior:
 
 - in-app notifications are written to `notifications`
-- email attempts go through Mailjet when configured
+- email attempts go through Postal when configured
 - push attempts go through FCM when configured
 - fallback records are written to `_mail_logs` and `_pending_notifications`
 

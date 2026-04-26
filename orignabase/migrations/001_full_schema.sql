@@ -612,7 +612,7 @@ CREATE TABLE _mail_logs (
     subject             TEXT,
     template_id         TEXT,
     status              TEXT,
-    mailjet_message_id  TEXT,
+    email_message_id  TEXT,
     error_message       TEXT,
     created_at          TIMESTAMPTZ DEFAULT now(),
     updated_at          TIMESTAMPTZ DEFAULT now()

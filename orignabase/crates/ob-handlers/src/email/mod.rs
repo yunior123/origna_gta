@@ -1,14 +1,13 @@
-//! Mailjet email service — Rust port of Python email_service.py.
+//! Postal email service.
 //!
 //! Provides:
-//! - `send_email()` — POST to Mailjet REST API v3.1 with Basic auth
+//! - `send_email()` — POST to Postal HTTP API with server API key auth
 //! - HTML template generators for order confirmation, seller notification,
 //!   low stock alert, and abandoned cart (bilingual EN/FR, CASL compliant)
 
 pub mod helpers;
 mod templates;
 
-use base64::{Engine, engine::general_purpose::STANDARD as B64};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use thiserror::Error;
@@ -30,7 +29,7 @@ pub use templates::shipping_notification_html;
 #[derive(Debug, Error)]
 pub enum EmailError {
     #[error("Email service error (status {status})")]
-    MailjetApi { status: u16 },
+    PostalApi { status: u16 },
     #[error("HTTP request failed: {0}")]
     Http(#[from] reqwest::Error),
     #[error("Missing credentials")]
@@ -228,46 +227,34 @@ pub(crate) fn email_wrapper(title: &str, content: &str, include_gst: bool, lang:
 }
 
 // ---------------------------------------------------------------------------
-// Core send function — Mailjet REST API v3.1
+// Core send function — Postal HTTP API
 // ---------------------------------------------------------------------------
 
-/// Send an email via Mailjet REST API v3.1.
-///
-/// Uses HTTP Basic auth (api_key:secret_key) and JSON payload.
+/// Send an email via Postal HTTP API.
 pub async fn send_email(
     http_client: &reqwest::Client,
     api_key: &str,
-    secret_key: &str,
     to_email: &str,
     subject: &str,
     html_body: &str,
 ) -> Result<()> {
-    if api_key.is_empty() || secret_key.is_empty() {
+    if api_key.is_empty() {
         return Err(EmailError::MissingCredentials);
     }
 
-    let credentials = B64.encode(format!("{api_key}:{secret_key}"));
-
     let payload = json!({
-        "Messages": [{
-            "From": {
-                "Email": email_config::SUPPORT_EMAIL,
-                "Name": email_config::SENDER_NAME,
-            },
-            "To": [{
-                "Email": to_email,
-            }],
-            "Subject": subject,
-            "HTMLPart": html_body,
-        }]
+        "to": [to_email],
+        "from": format!("{} <{}>", email_config::SENDER_NAME, email_config::SUPPORT_EMAIL),
+        "subject": subject,
+        "html_body": html_body,
     });
 
-    let url = std::env::var("MAILJET_API_URL")
-        .unwrap_or_else(|_| "https://api.mailjet.com/v3.1/send".to_string());
+    let url = std::env::var("POSTAL_API_URL")
+        .unwrap_or_else(|_| email_config::POSTAL_API_URL.to_string());
 
     let resp = http_client
         .post(url)
-        .header("Authorization", format!("Basic {credentials}"))
+        .header("X-Server-API-Key", api_key)
         .header("Content-Type", "application/json")
         .json(&payload)
         .send()
@@ -275,7 +262,7 @@ pub async fn send_email(
 
     let status = resp.status().as_u16();
     if status >= 400 {
-        return Err(EmailError::MailjetApi { status });
+        return Err(EmailError::PostalApi { status });
     }
 
     Ok(())
@@ -774,7 +761,7 @@ mod tests {
     struct EnvGuard;
     impl Drop for EnvGuard {
         fn drop(&mut self) {
-            unsafe { std::env::remove_var("MAILJET_API_URL") };
+            unsafe { std::env::remove_var("POSTAL_API_URL") };
         }
     }
 
@@ -786,7 +773,7 @@ mod tests {
         let _lock = ENV_MUTEX.lock().await;
         let server = MockServer::start().await;
         let _guard = EnvGuard;
-        unsafe { std::env::set_var("MAILJET_API_URL", server.uri()) };
+        unsafe { std::env::set_var("POSTAL_API_URL", server.uri()) };
 
         Mock::given(method("POST"))
             .and(path("/"))
@@ -797,7 +784,7 @@ mod tests {
             .await;
 
         let client = reqwest::Client::new();
-        let result = send_email(&client, "key", "secret", "test@test.com", "Hi", "<p>Hi</p>").await;
+        let result = send_email(&client, "key", "test@test.com", "Hi", "<p>Hi</p>").await;
 
         assert!(result.is_ok());
     }
@@ -810,7 +797,7 @@ mod tests {
         let _lock = ENV_MUTEX.lock().await;
         let server = MockServer::start().await;
         let _guard = EnvGuard;
-        unsafe { std::env::set_var("MAILJET_API_URL", server.uri()) };
+        unsafe { std::env::set_var("POSTAL_API_URL", server.uri()) };
 
         Mock::given(method("POST"))
             .and(path("/"))
@@ -819,20 +806,12 @@ mod tests {
             .await;
 
         let client = reqwest::Client::new();
-        let result = send_email(
-            &client,
-            "fake_api",
-            "fake_secret",
-            "test@test.com",
-            "Hi",
-            "<p>Hello</p>",
-        )
-        .await;
+        let result = send_email(&client, "fake_api", "test@test.com", "Hi", "<p>Hello</p>").await;
         match result {
-            Err(EmailError::MailjetApi { status }) => {
+            Err(EmailError::PostalApi { status }) => {
                 assert_eq!(status, 401);
             }
-            _ => panic!("Expected MailjetApi error 401, got {:?}", result),
+            _ => panic!("Expected PostalApi error 401, got {:?}", result),
         }
     }
 
@@ -949,7 +928,7 @@ mod tests {
     #[tokio::test]
     async fn test_send_email_missing_credentials() {
         let client = reqwest::Client::new();
-        let result = send_email(&client, "", "secret", "test@test.com", "Hi", "<p>Hello</p>").await;
+        let result = send_email(&client, "", "test@test.com", "Hi", "<p>Hello</p>").await;
         assert!(matches!(result, Err(EmailError::MissingCredentials)));
     }
 
@@ -958,7 +937,7 @@ mod tests {
         let err = EmailError::MissingCredentials;
         assert_eq!(err.to_string(), "Missing credentials");
 
-        let err2 = EmailError::MailjetApi { status: 400 };
+        let err2 = EmailError::PostalApi { status: 400 };
         assert_eq!(err2.to_string(), "Email service error (status 400)");
     }
 

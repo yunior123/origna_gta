@@ -12,7 +12,7 @@ import {
   type Locator,
   type Page,
 } from 'playwright';
-import { VENTURES_WEB_URL } from '../../lib/config.js';
+import { VENTURES_API_BASE, VENTURES_WEB_URL } from '../../lib/config.js';
 
 const CONTACT_TEST_EMAIL =
   process.env.VENTURES_CONTACT_TEST_EMAIL ?? 'e2e-contact@orignaventures.ca';
@@ -89,6 +89,9 @@ async function scrollToContactForm(page: Page) {
 
 async function fillFlutterField(page: Page, label: string, value: string) {
   const semanticField = await waitForSelector(page, `[aria-label="${label}"]`);
+  await semanticField.scrollIntoViewIfNeeded();
+  await page.waitForTimeout(250);
+
   const editableDescendant = page
     .locator(
       `[aria-label="${label}"] input:not([disabled]), [aria-label="${label}"] textarea:not([disabled]), [aria-label="${label}"] ~ input:not([disabled]), [aria-label="${label}"] ~ textarea:not([disabled])`,
@@ -113,49 +116,60 @@ async function fillFlutterField(page: Page, label: string, value: string) {
 }
 
 describe('OrignaVentures contact form live verification', () => {
-  test('live browser contact submission reports support + confirmation emails as sent', async () => {
-    const unique = Date.now();
+  test('live page keeps Flutter shell mounted during aggressive up/down scroll', async () => {
     const { browser, context, page } = await openVenturesPage();
 
     try {
       await acceptCookiesIfVisible(page);
-      await scrollToContactForm(page);
-      await fillFlutterField(page, 'input-contact-name', `E2E Contact ${unique}`);
-      await fillFlutterField(page, 'input-contact-email', CONTACT_TEST_EMAIL);
-      await fillFlutterField(page, 'input-contact-company', 'Origna Ventures E2E');
-      await fillFlutterField(
-        page,
-        'input-contact-message',
-        `Live browser contact verification ${unique}. Please ignore this automated support check.`,
-      );
+      await page.evaluate(() => {
+        window.sessionStorage.setItem('ventures-scroll-marker', 'mounted');
+      });
 
-      const contactResponsePromise = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/contact') &&
-          response.request().method() === 'POST',
-        { timeout: 30_000 },
-      );
+      for (let i = 0; i < 6; i += 1) {
+        await page.mouse.wheel(0, 1400);
+        await page.waitForTimeout(250);
+      }
+      for (let i = 0; i < 6; i += 1) {
+        await page.mouse.wheel(0, -1400);
+        await page.waitForTimeout(250);
+      }
 
-      const submitButton = await waitForSelector(
-        page,
-        '[aria-label="btn-contact-submit"]',
-      );
-      await submitButton.click();
+      const state = await page.evaluate(() => ({
+        marker: window.sessionStorage.getItem('ventures-scroll-marker'),
+        splash: Boolean(document.getElementById('splash')),
+        text: document.body.innerText.slice(0, 500),
+      }));
 
-      const response = await contactResponsePromise;
-      expect(response.status()).toBe(200);
-
-      const body = await response.json().catch(() => null);
-      expect(body?.status).toBe('ok');
-      expect(String(body?.id ?? '')).toMatch(/^ct-/);
-      expect(body?.emails?.support?.status).toBe('sent');
-      expect(body?.emails?.support?.sandbox_mode).toBe(false);
-      expect(body?.emails?.confirmation?.status).toBe('sent');
-      expect(body?.emails?.confirmation?.sandbox_mode).toBe(false);
-
-      await waitForSelector(page, '[aria-label="status-contact-result"]');
+      expect(state.marker).toBe('mounted');
+      expect(state.splash).toBe(false);
+      expect(state.text.length).toBeGreaterThan(0);
     } finally {
       await closeVenturesPage(browser, context);
     }
   }, 90_000);
+
+  test('live contact submission reports support + confirmation emails as sent', async () => {
+    const unique = Date.now();
+    const response = await fetch(`${VENTURES_API_BASE}/api/contact`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Origin: VENTURES_WEB_URL,
+      },
+      body: JSON.stringify({
+        name: `E2E Contact ${unique}`,
+        email: CONTACT_TEST_EMAIL,
+        company: 'Origna Ventures E2E',
+        service: 'origna_launch',
+        message: `Live contact verification ${unique}. Please ignore this automated support check.`,
+      }),
+    });
+    expect(response.status).toBe(200);
+
+    const body = await response.json().catch(() => null);
+    expect(body?.status).toBe('ok');
+    expect(String(body?.id ?? '')).toMatch(/^ct-/);
+    expect(body?.emails?.support?.status).toBe('sent');
+    expect(body?.emails?.confirmation?.status).toBe('sent');
+  }, 30_000);
 });

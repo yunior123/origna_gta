@@ -157,7 +157,7 @@ cd origna_ventures && flutter analyze --no-fatal-infos
 - Python FastAPI at `origna_ventures/backend/app.py` (1320 lines)
 - Database: SQLite (`contracts.db`) — file-based
 - Stripe checkout sessions, PDF generation (reportlab), webhook handling
-- Email: Mailjet for order confirmations and contract notifications
+- Email: Postal for order confirmations and contract notifications
 - Supports `service_code` (direct) and `contract_id` (legacy) for checkout
 - API base: `https://api.orignagta.ca/ventures/api`
 - Security: admin API key required for `/api/contracts` and `/api/contracts/{id}/pdf`; email test endpoint requires admin auth

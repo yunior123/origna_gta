@@ -82,9 +82,9 @@ Current public expectation:
 - redirect to Stripe-hosted checkout
 - webhook-driven fulfillment/state update
 
-### 3. Mailjet remains an operational dependency to verify separately
+### 3. Postal remains an operational dependency to verify separately
 
-- Mailjet is still relevant for confirmations/notifications.
+- Postal is still relevant for confirmations/notifications.
 - Credential validity and delivery behavior should be verified with current production secrets, not stale dev assumptions.
 
 ### 4. Stripe-docs alignment verified on 2026-04-22
@@ -124,14 +124,14 @@ Repo-wide audit notes:
 
 1. Re-run live payment verification against all three public service codes.
 2. Re-verify webhook handling on the currently deployed production backend.
-3. Verify current Mailjet delivery with valid production credentials and literal inbox receipt evidence.
+3. Verify current Postal delivery with valid production credentials and literal inbox receipt evidence.
 4. Re-run the focused mobile Stripe redirect cases after deploy to confirm the mixed-run `PW13` timeout remains only a flake.
 
 ### Medium priority
 
 1. Keep public PDFs and homepage pricing copy regenerated together after any tier change.
 2. Keep legacy contract/admin flows documented as internal/backoffice only.
-3. Add explicit evidence links/logs when live Stripe or Mailjet passes are re-run.
+3. Add explicit evidence links/logs when live Stripe or Postal passes are re-run.
 
 ## Files involved
 

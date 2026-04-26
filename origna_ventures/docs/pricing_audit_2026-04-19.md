@@ -28,7 +28,7 @@ This audit reflects the external services visibly used across `origna_gta`, `ori
 | Apple Developer Program | 99 USD/year | Free Apple developer account exists, but not App Store distribution | Required for iOS release |
 | Google Play Console | 25 USD one-time | None for public publishing | Required for Android release |
 | Stripe Payments (Canada) | 2.9% + CA$0.30 domestic cards | No monthly fee | Required if card checkout is used |
-| Mailjet | Premium 27 USD/month | 6,000 emails/month, 200/day | Optional upgrade; free tier may be enough at launch |
+| Postal | Premium 27 USD/month | 6,000 emails/month, 200/day | Optional upgrade; free tier may be enough at launch |
 | Cloudflare Turnstile | Enterprise contact sales | Free | Optional but recommended |
 | Cloudflare R2 | 0.015 USD/GB-month + request pricing | 10 GB-month + 1M Class A + 10M Class B ops/month | Optional |
 | Sentry | Team 26 USD/month | Developer 0 USD | Optional |
@@ -48,7 +48,7 @@ Included by default:
 
 Optional upgrades, not assumed mandatory in the 3,000 CAD base:
 
-- Mailjet Premium
+- Postal Premium
 - Sentry Team or Business
 - Cloudflare R2 paid usage beyond free tier
 - Meilisearch Cloud instead of self-hosted search
@@ -57,7 +57,7 @@ Optional upgrades, not assumed mandatory in the 3,000 CAD base:
 ## Verified project stack signals
 
 - Payments: Stripe Checkout + webhooks
-- Email: Mailjet
+- Email: Postal
 - Search: Meilisearch
 - Bot protection: Cloudflare Turnstile
 - Storage: local + S3/R2-compatible

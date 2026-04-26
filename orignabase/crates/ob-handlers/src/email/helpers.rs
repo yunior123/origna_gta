@@ -259,18 +259,11 @@ pub async fn resolve_seller_contact(
     Some((email, seller_name, lang))
 }
 
-fn mailjet_credentials(
-    state: &HandlersState,
-    order_id: &str,
-    log_message: &str,
-) -> Option<(String, String)> {
-    match (
-        state.config.require_secret("mailjet_api_key"),
-        state.config.require_secret("mailjet_secret_key"),
-    ) {
-        (Ok(api_key), Ok(secret_key)) => Some((api_key.to_string(), secret_key.to_string())),
-        (Err(err), _) | (_, Err(err)) => {
-            warn!(order_id = %order_id, error = %err, context = log_message, "Mailjet credentials unavailable");
+fn postal_api_key(state: &HandlersState, order_id: &str, log_message: &str) -> Option<String> {
+    match state.config.require_secret("postal_api_key") {
+        Ok(api_key) => Some(api_key.to_string()),
+        Err(err) => {
+            warn!(order_id = %order_id, error = %err, context = log_message, "Postal API key unavailable");
             None
         }
     }
@@ -285,10 +278,10 @@ pub async fn send_order_confirmation_emails(
         .and_then(|v| v.as_str())
         .map(record_key)
         .unwrap_or("");
-    let Some((api_key, secret_key)) = mailjet_credentials(
+    let Some(api_key) = postal_api_key(
         state,
         order_id,
-        "Mailjet credentials unavailable; skipping payment success emails",
+        "Postal API key unavailable; skipping payment success emails",
     ) else {
         return Ok(());
     };
@@ -301,15 +294,8 @@ pub async fn send_order_confirmation_emails(
             "Your order is confirmed — Origna"
         };
         let html = order_confirmation_html(&order_summary, &buyer_name, &lang);
-        if let Err(err) = send_email(
-            &state.http_client,
-            &api_key,
-            &secret_key,
-            &buyer_email,
-            subject,
-            &html,
-        )
-        .await
+        if let Err(err) =
+            send_email(&state.http_client, &api_key, &buyer_email, subject, &html).await
         {
             warn!(order_id = %order_id, to = %buyer_email, error = %err, "Failed to send buyer order confirmation email");
         }
@@ -341,15 +327,8 @@ pub async fn send_order_confirmation_emails(
             format!("[Origna] New order received #{order_id}")
         };
         let html = seller_notification_html(&seller_summary, &seller_name, &seller_lang);
-        if let Err(err) = send_email(
-            &state.http_client,
-            &api_key,
-            &secret_key,
-            &seller_email,
-            &subject,
-            &html,
-        )
-        .await
+        if let Err(err) =
+            send_email(&state.http_client, &api_key, &seller_email, &subject, &html).await
         {
             warn!(order_id = %order_id, seller_id = %seller_id, to = %seller_email, error = %err, "Failed to send seller order notification email");
         }
@@ -370,10 +349,10 @@ pub async fn send_shipping_notification(
         .and_then(|v| v.as_str())
         .map(record_key)
         .unwrap_or("");
-    let Some((api_key, secret_key)) = mailjet_credentials(
+    let Some(api_key) = postal_api_key(
         state,
         order_id,
-        "Mailjet credentials unavailable; skipping order status email",
+        "Postal API key unavailable; skipping order status email",
     ) else {
         return;
     };
@@ -397,15 +376,7 @@ pub async fn send_shipping_notification(
         format!("Order #{} shipped — Origna", summary.order_id)
     };
     let html = shipping_notification_html(&summary, &buyer_name, tracking_number, carrier, lang);
-    if let Err(err) = send_email(
-        &state.http_client,
-        &api_key,
-        &secret_key,
-        &buyer_email,
-        &subject,
-        &html,
-    )
-    .await
+    if let Err(err) = send_email(&state.http_client, &api_key, &buyer_email, &subject, &html).await
     {
         warn!(order_id = %order_id, to = %buyer_email, error = %err, "Failed to send shipping notification email");
     }
@@ -426,11 +397,7 @@ mod tests {
         config
             .secrets
             .values
-            .insert("mailjet_api_key".into(), "test_api_key".into());
-        config
-            .secrets
-            .values
-            .insert("mailjet_secret_key".into(), "test_secret_key".into());
+            .insert("postal_api_key".into(), "test_api_key".into());
         let db = ob_database::DatabaseClient::new_mem().await;
         HandlersState::new(Arc::new(config), db)
     }
@@ -1074,7 +1041,7 @@ mod tests {
 
         let _lock = ENV_MUTEX.lock().await;
         let server = MockServer::start().await;
-        unsafe { std::env::set_var("MAILJET_API_URL", server.uri()) };
+        unsafe { std::env::set_var("POSTAL_API_URL", server.uri()) };
 
         Mock::given(method("POST"))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!({"status":"success"})))
@@ -1112,7 +1079,7 @@ mod tests {
         let result = send_order_confirmation_emails(&state, &order).await;
         assert!(result.is_ok());
 
-        unsafe { std::env::remove_var("MAILJET_API_URL") };
+        unsafe { std::env::remove_var("POSTAL_API_URL") };
     }
 
     #[tokio::test]
@@ -1122,7 +1089,7 @@ mod tests {
 
         let _lock = ENV_MUTEX.lock().await;
         let server = MockServer::start().await;
-        unsafe { std::env::set_var("MAILJET_API_URL", server.uri()) };
+        unsafe { std::env::set_var("POSTAL_API_URL", server.uri()) };
 
         Mock::given(method("POST"))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!({"status":"success"})))
@@ -1143,7 +1110,7 @@ mod tests {
         let result = send_order_confirmation_emails(&state, &order).await;
         assert!(result.is_ok());
 
-        unsafe { std::env::remove_var("MAILJET_API_URL") };
+        unsafe { std::env::remove_var("POSTAL_API_URL") };
     }
 
     #[tokio::test]
@@ -1153,7 +1120,7 @@ mod tests {
 
         let _lock = ENV_MUTEX.lock().await;
         let server = MockServer::start().await;
-        unsafe { std::env::set_var("MAILJET_API_URL", server.uri()) };
+        unsafe { std::env::set_var("POSTAL_API_URL", server.uri()) };
 
         Mock::given(method("POST"))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!({"status":"success"})))
@@ -1188,7 +1155,7 @@ mod tests {
         let result = send_order_confirmation_emails(&state, &order).await;
         assert!(result.is_ok());
 
-        unsafe { std::env::remove_var("MAILJET_API_URL") };
+        unsafe { std::env::remove_var("POSTAL_API_URL") };
     }
 
     #[tokio::test]
@@ -1229,7 +1196,7 @@ mod tests {
 
         let _lock = ENV_MUTEX.lock().await;
         let server = MockServer::start().await;
-        unsafe { std::env::set_var("MAILJET_API_URL", server.uri()) };
+        unsafe { std::env::set_var("POSTAL_API_URL", server.uri()) };
 
         Mock::given(method("POST"))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!({"status":"success"})))
@@ -1254,7 +1221,7 @@ mod tests {
         let order = sample_order_with_items();
         send_shipping_notification(&state, &order, "TN123456", Some("UPS"), None).await;
 
-        unsafe { std::env::remove_var("MAILJET_API_URL") };
+        unsafe { std::env::remove_var("POSTAL_API_URL") };
     }
 
     #[tokio::test]
@@ -1276,7 +1243,7 @@ mod tests {
 
         let _lock = ENV_MUTEX.lock().await;
         let server = MockServer::start().await;
-        unsafe { std::env::set_var("MAILJET_API_URL", server.uri()) };
+        unsafe { std::env::set_var("POSTAL_API_URL", server.uri()) };
 
         Mock::given(method("POST"))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!({"status":"success"})))
@@ -1300,40 +1267,33 @@ mod tests {
         let order = sample_order_with_items();
         send_shipping_notification(&state, &order, "TN789", Some("FedEx"), Some("fr")).await;
 
-        unsafe { std::env::remove_var("MAILJET_API_URL") };
+        unsafe { std::env::remove_var("POSTAL_API_URL") };
     }
 
-    // --- mailjet_credentials ---
+    // --- postal_api_key ---
 
     #[test]
-    fn test_mailjet_credentials_present() {
+    fn test_postal_api_key_present() {
         let mut config = ob_core::Config::load(None).unwrap();
         config
             .secrets
             .values
-            .insert("mailjet_api_key".into(), "key".into());
-        config
-            .secrets
-            .values
-            .insert("mailjet_secret_key".into(), "secret".into());
+            .insert("postal_api_key".into(), "key".into());
         let db_fut = ob_database::DatabaseClient::new_mem();
         let rt = tokio::runtime::Runtime::new().unwrap();
         let db = rt.block_on(db_fut);
         let state = HandlersState::new(Arc::new(config), db);
-        let creds = mailjet_credentials(&state, "order1", "test");
-        assert!(creds.is_some());
-        let (k, s) = creds.unwrap();
-        assert_eq!(k, "key");
-        assert_eq!(s, "secret");
+        let api_key = postal_api_key(&state, "order1", "test");
+        assert_eq!(api_key.as_deref(), Some("key"));
     }
 
     #[test]
-    fn test_mailjet_credentials_missing() {
+    fn test_postal_api_key_missing() {
         let config = ob_core::Config::load(None).unwrap();
         let rt = tokio::runtime::Runtime::new().unwrap();
         let db = rt.block_on(ob_database::DatabaseClient::new_mem());
         let state = HandlersState::new(Arc::new(config), db);
-        let creds = mailjet_credentials(&state, "order1", "test");
-        assert!(creds.is_none());
+        let api_key = postal_api_key(&state, "order1", "test");
+        assert!(api_key.is_none());
     }
 }

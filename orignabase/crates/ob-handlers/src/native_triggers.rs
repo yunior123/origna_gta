@@ -710,20 +710,12 @@ impl NativeTriggerExecutor {
             )
             .await;
 
-        let result = match (
-            self.state.config.secret("mailjet_api_key"),
-            self.state.config.secret("mailjet_secret_key"),
-        ) {
-            (Some(api_key), Some(secret_key)) => email::send_email(
-                &self.state.http_client,
-                api_key,
-                secret_key,
-                to_email,
-                title,
-                &html,
-            )
-            .await
-            .map(|_| "sent"),
+        let result = match self.state.config.secret("postal_api_key") {
+            Some(api_key) => {
+                email::send_email(&self.state.http_client, api_key, to_email, title, &html)
+                    .await
+                    .map(|_| "sent")
+            }
             _ => Err(email::EmailError::MissingCredentials),
         };
 
@@ -3389,8 +3381,8 @@ mod tests {
             .await;
     }
 
-    // ── Coverage: dispatch_email with mailjet creds (lines 677-686) ──
-    // Note: We can't actually have mailjet creds in test config, but we can cover the
+    // ── Coverage: dispatch_email with postal creds (lines 677-686) ──
+    // Note: We can't actually have postal creds in test config, but we can cover the
     // code path via dispatch_email which is called by create_notification_once.
     // The existing test already covers the no-creds path. dispatch_email line 636 is
     // covered when user lookup fails.
@@ -4873,19 +4865,15 @@ mod tests {
         let _ = executor.handle_event(event).await;
     }
 
-    // ── Coverage: dispatch_email with mailjet credentials (lines 677-686) ──
+    // ── Coverage: dispatch_email with postal credentials (lines 677-686) ──
 
     #[tokio::test]
-    async fn dispatch_email_with_mailjet_creds_creates_mail_log_and_attempts_send() {
+    async fn dispatch_email_with_postal_creds_creates_mail_log_and_attempts_send() {
         let mut config = Config::load(None).unwrap();
         config
             .secrets
             .values
-            .insert("mailjet_api_key".to_string(), "mj_test_key".to_string());
-        config.secrets.values.insert(
-            "mailjet_secret_key".to_string(),
-            "mj_test_secret".to_string(),
-        );
+            .insert("postal_api_key".to_string(), "postal_test_key".to_string());
         let state = HandlersState {
             config: Arc::new(config),
             db: DatabaseClient::new_mem().await,
@@ -4912,10 +4900,10 @@ mod tests {
             .await
             .unwrap();
 
-        // Set MAILJET_API_URL to unreachable so we exercise the code path
+        // Set POSTAL_API_URL to unreachable so we exercise the code path
         // but the actual HTTP call fails
         unsafe {
-            std::env::set_var("MAILJET_API_URL", "http://127.0.0.1:1/v3.1/send");
+            std::env::set_var("POSTAL_API_URL", "http://127.0.0.1:1/v3.1/send");
         }
 
         executor
@@ -4930,7 +4918,7 @@ mod tests {
             .await;
 
         unsafe {
-            std::env::remove_var("MAILJET_API_URL");
+            std::env::remove_var("POSTAL_API_URL");
         }
 
         // Mail log should exist

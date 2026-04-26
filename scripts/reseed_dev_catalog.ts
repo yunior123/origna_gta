@@ -163,6 +163,56 @@ function validateMadeInCanadaCoverage(products: SeedProduct[]): void {
   }
 }
 
+function validateProductImageUrls(products: SeedProduct[]): string[] {
+  const uniqueUrls = new Set<string>();
+  const missing = products.filter((product) => product.imageUrls.length === 0);
+  if (missing.length > 0) {
+    throw new Error(
+      `Every seed product must have at least one image. Missing: ${missing
+        .map((product) => product.title)
+        .join(', ')}`,
+    );
+  }
+
+  for (const product of products) {
+    for (const rawUrl of product.imageUrls) {
+      const url = rawUrl.trim();
+      const parsed = URL.canParse(url) ? new URL(url) : null;
+      if (!parsed || !['http:', 'https:'].includes(parsed.protocol)) {
+        throw new Error(`Invalid image URL for "${product.title}": ${rawUrl}`);
+      }
+      uniqueUrls.add(url);
+    }
+  }
+
+  return [...uniqueUrls].sort();
+}
+
+async function assertImageUrlsReachable(urls: string[]): Promise<void> {
+  const failures: string[] = [];
+
+  await Promise.all(
+    urls.map(async (url) => {
+      try {
+        let response = await fetch(url, { method: 'HEAD' });
+        if (response.status === 405 || response.status === 403) {
+          response = await fetch(url, { method: 'GET' });
+        }
+        const contentType = response.headers.get('content-type') ?? '';
+        if (!response.ok || !contentType.toLowerCase().startsWith('image/')) {
+          failures.push(`${url} -> ${response.status} ${contentType || 'missing content-type'}`);
+        }
+      } catch (error) {
+        failures.push(`${url} -> ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }),
+  );
+
+  if (failures.length > 0) {
+    throw new Error(`Seed image URL validation failed:\n${failures.join('\n')}`);
+  }
+}
+
 function buildCatalog(sellers: Array<{ localId: string; email: string }>): SeedProduct[] {
   const templates: SeedTemplate[] = [
     {
@@ -665,6 +715,7 @@ function buildCatalog(sellers: Array<{ localId: string; email: string }>): SeedP
     }
   }
   validateMadeInCanadaCoverage(products);
+  validateProductImageUrls(products);
   return products;
 }
 
@@ -740,19 +791,26 @@ async function createProducts(products: SeedProduct[], token: string) {
 
 async function run() {
   console.log(`Connecting to ${ORIGNABASE_URL}`);
-  const admin = await signIn(ADMIN_EMAIL, ADMIN_PASSWORD);
-  const seller = await signIn(SELLER_EMAIL, SELLER_PASSWORD);
-  const deleted = await deleteAllProducts(admin.idToken);
-  console.log(`Deleted total products: ${deleted}`);
+  console.log(`Signing in seed admin ${ADMIN_EMAIL}`);
+  const adminAuth = await signIn(ADMIN_EMAIL, ADMIN_PASSWORD);
+  console.log(`Signing in seed seller ${SELLER_EMAIL}`);
+  const sellerAuth = await signIn(SELLER_EMAIL, SELLER_PASSWORD);
+  const admin = { localId: adminAuth.localId, email: ADMIN_EMAIL, idToken: adminAuth.idToken };
+  const seller = { localId: sellerAuth.localId, email: SELLER_EMAIL, idToken: sellerAuth.idToken };
   const catalog = buildCatalog([
     { localId: admin.localId, email: admin.email },
     { localId: seller.localId, email: seller.email },
   ]);
+  const imageUrls = validateProductImageUrls(catalog);
+  await assertImageUrlsReachable(imageUrls);
+  console.log('Deleting existing dev products');
+  const deleted = await deleteAllProducts(admin.idToken);
+  console.log(`Deleted total products: ${deleted}`);
   await createProducts(catalog, admin.idToken);
   console.log(`Seeded total products: ${catalog.length}`);
 }
 
 run().catch((error) => {
-  console.error(error instanceof Error ? error.message : String(error));
+  console.error(error instanceof Error ? (error.stack ?? error.message) : String(error));
   process.exit(1);
 });

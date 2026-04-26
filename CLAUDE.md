@@ -105,7 +105,7 @@ cd e2e && ORIGNABASE_URL=http://127.0.0.1:8080 bun run lib/seed-dev.ts
 - 3 tiers: OrignaCode ($500 CAD), OrignaLaunch ($3,000 CAD), OrignaTeam ($1,000 CAD/month)
 - Never hardcode colors — use `ThemeConfig.*`
 - Never `print()` — use `debugPrint()`
-- Backend: Python FastAPI — Stripe checkout, PDF generation (reportlab), Mailjet email
+- Backend: Python FastAPI — Stripe checkout, PDF generation (reportlab), Postal email
 
 ## Common Pitfalls (DO NOT)
 
@@ -181,7 +181,7 @@ Make them audit full codebase in depth. Use all agents and skills for it.
   - `/auth/providers` only reports Google enabled for a valid `.apps.googleusercontent.com` client ID
   - the deployed login page no longer contains the literal `__GOOGLE_WEB_CLIENT_ID__`
 - Email/password login API works on dev; registration still needs a fresh browser-level verification because direct API probes without Turnstile are not representative of the web flow.
-- OrignaVentures contact/email sending is live-green again; direct live API responses report support + confirmation emails with `sandbox_mode=false`.
+- OrignaVentures contact/email sending is live-green again; direct live API responses report support + confirmation emails with `status=sent`.
 - Production checkout/payment verification remains a manual final gate; use non-destructive probes unless explicit approval is given for a real charge.
 - Remaining active investigation item: home cart badge update after add-to-cart still needs deeper live audit.
 

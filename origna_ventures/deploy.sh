@@ -43,8 +43,11 @@ if [[ "$BACKEND_ONLY" != true ]]; then
   cd "$SCRIPT_DIR"
   if [[ "$SKIP_BUILD" != true ]]; then
     command -v flutter &>/dev/null || fail "Flutter not found"
-    log "Building Flutter web (release)..."
+    log "Fetching Flutter dependencies..."
     flutter pub get
+    log "Running frontend regression checks..."
+    flutter analyze --no-fatal-infos
+    log "Building Flutter web (release)..."
     flutter build web --release \
       --dart-define=ENVIRONMENT=production
     ok "Build complete → build/web/"
@@ -109,6 +112,15 @@ fi
 log "Verifying deployment..."
 DEPLOYED_FILES=$(ssh -i "$SSH_KEY" "$VPS" "ls $VPS_WEB_DIR | wc -l" 2>/dev/null || echo "?")
 ok "Deployed $DEPLOYED_FILES frontend files"
+
+if [[ "$BACKEND_ONLY" != true && "${SKIP_SCROLL_REGRESSION_CHECK:-0}" != "1" ]]; then
+  log "Running OrignaVentures scroll/contact regression check..."
+  (
+    cd "$SCRIPT_DIR/../e2e"
+    bun x tsc --noEmit
+    VENTURES_TARGET_URL="https://orignaventures.ca" bun test specs/phase6-stripe/origna-ventures-contact-live.spec.ts -t "live page keeps Flutter shell mounted"
+  )
+fi
 
 echo ""
 echo -e "${GREEN}OrignaVentures deployed!${NC}"

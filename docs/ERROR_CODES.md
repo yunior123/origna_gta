@@ -216,7 +216,7 @@ Append the code in the error message body so the Flutter SDK surfaces it automat
 ### Official References
 
 - Stripe Checkout: `https://docs.stripe.com/payments/checkout`
-- Mailjet Send API v3.1: `https://dev.mailjet.com/email/guides/send-api-v31/`
+- Postal Send API v3.1: `https://dev.postal.com/email/guides/send-api-v31/`
 - PostgreSQL JSON/JSONB: `https://www.postgresql.org/docs/current/datatype-json.html`
 - Sentry Flutter SDK: `https://docs.sentry.io/platforms/dart/guides/flutter/`
 - Sentry user feedback: `https://docs.sentry.io/platforms/dart/guides/flutter/user-feedback`

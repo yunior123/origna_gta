@@ -123,7 +123,7 @@ We engage third-party service providers who process personal information on our 
 |---------|---------|----------|
 | **Stripe** | Payment processing, Stripe Connect (seller payouts) | USA |
 | **Cloudflare** | CDN, DDoS protection, Turnstile bot protection | USA / Global |
-| **Mailjet** | Transactional and marketing email delivery | USA / EU |
+| **Postal** | Transactional and marketing email delivery | USA / EU |
 | **Sentry** | Error tracking and performance monitoring | USA |
 | **Google Analytics** (optional) | Website traffic and user behavior analysis | USA |
 
@@ -419,7 +419,7 @@ Nous utilisons vos informations pour :
 Nous partageons vos informations avec :
 
 - **Vendeurs :** informations minimales nécessaires pour l'exécution des commandes
-- **Prestataires de Services :** Stripe, Cloudflare, Mailjet, Sentry (tous contractuellement tenus de respecter PIPEDA)
+- **Prestataires de Services :** Stripe, Cloudflare, Postal, Sentry (tous contractuellement tenus de respecter PIPEDA)
 - **Autorités Légales :** si exigé par la loi ou ordonnance du tribunal
 
 ### 5. Combien de Temps Nous Conservons Vos Informations

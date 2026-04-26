@@ -1071,24 +1071,16 @@ pub async fn check_low_stock_alerts(state: &HandlersState) {
                 .unwrap_or("");
 
             // Generate and send low stock email
-            if let Some(api_key) = state.config.secret("mailjet_api_key")
-                && let Some(secret_key) = state.config.secret("mailjet_secret_key")
-            {
+            if let Some(api_key) = state.config.secret("postal_api_key") {
                 let html = crate::email::low_stock_alert_html(product_name, *stock as u32, lang);
                 let subject = if lang == "fr" {
                     format!("[Origna] Alerte de stock bas : {product_name}")
                 } else {
                     format!("[Origna] Low stock alert: {product_name}")
                 };
-                let _ = crate::email::send_email(
-                    &state.http_client,
-                    api_key,
-                    secret_key,
-                    email,
-                    &subject,
-                    &html,
-                )
-                .await;
+                let _ =
+                    crate::email::send_email(&state.http_client, api_key, email, &subject, &html)
+                        .await;
 
                 // Update cooldown timestamp
                 let _ = state
@@ -1125,7 +1117,7 @@ pub async fn check_low_stock_alerts(state: &HandlersState) {
 ///
 /// Identifies carts untouched for more than 24 hours, fetches product
 /// details for the top 3 items, and sends a personalized HTML email
-/// via Mailjet. A 72-hour cooldown per user prevents spamming.
+/// via Postal. A 72-hour cooldown per user prevents spamming.
 /// Lock TTL: 30 minutes.
 pub async fn send_abandoned_cart_emails(state: &HandlersState) {
     info!("Running send_abandoned_cart_emails");
@@ -1221,9 +1213,7 @@ pub async fn send_abandoned_cart_emails(state: &HandlersState) {
                     .and_then(|v| v.as_str())
                     .unwrap_or("en");
 
-                if let Some(api_key) = state.config.secret("mailjet_api_key")
-                    && let Some(secret_key) = state.config.secret("mailjet_secret_key")
-                {
+                if let Some(api_key) = state.config.secret("postal_api_key") {
                     let html = crate::email::abandoned_cart_html(&items, buyer_name, lang);
                     let subject = if lang == "fr" {
                         "Votre panier vous attend — Origna"
@@ -1234,7 +1224,6 @@ pub async fn send_abandoned_cart_emails(state: &HandlersState) {
                     let _ = crate::email::send_email(
                         &state.http_client,
                         api_key,
-                        secret_key,
                         email,
                         subject,
                         &html,
@@ -1707,7 +1696,7 @@ pub async fn escalate_stale_return_requests(state: &HandlersState) {
 /// 1 day before the billing cycle renews.
 ///
 /// Queries active subscriptions approaching `currentPeriodEnd` and
-/// sends a reminder via Mailjet. Deduplication is handled by storing
+/// sends a reminder via Postal. Deduplication is handled by storing
 /// `lastRenewalReminderSentAt` on the subscription record. Lock TTL:
 /// 30 minutes.
 pub async fn send_premium_renewal_reminders(state: &HandlersState) {
@@ -1781,11 +1770,8 @@ pub async fn send_premium_renewal_reminders(state: &HandlersState) {
                         )
                     };
 
-                    // Send via Mailjet
-                    if let (Some(api_key), Some(secret_key)) = (
-                        state.config.secret("mailjet_api_key"),
-                        state.config.secret("mailjet_secret_key"),
-                    ) {
+                    // Send via Postal
+                    if let Some(api_key) = state.config.secret("postal_api_key") {
                         let price = business_rules::PREMIUM_SUBSCRIPTION_PRICE_CAD;
                         let buyer_name = user
                             .get(fields::NAME)
@@ -1801,7 +1787,6 @@ pub async fn send_premium_renewal_reminders(state: &HandlersState) {
                         let _ = crate::email::send_email(
                             &state.http_client,
                             api_key,
-                            secret_key,
                             email,
                             &subject,
                             &html,
@@ -4759,7 +4744,7 @@ mod tests {
     }
 
     // -----------------------------------------------------------------------
-    // Coverage: check_low_stock — with email + consent + mailjet keys (lines 950-983)
+    // Coverage: check_low_stock — with email + consent + postal keys (lines 950-983)
     // -----------------------------------------------------------------------
     #[tokio::test]
     #[serial_test::serial]
@@ -4775,18 +4760,14 @@ mod tests {
             .await;
 
         unsafe {
-            std::env::set_var("MAILJET_API_URL", format!("{}/v3.1/send", server.uri()));
+            std::env::set_var("POSTAL_API_URL", format!("{}/v3.1/send", server.uri()));
         }
 
         let mut config = Config::load(None).unwrap();
         config
             .secrets
             .values
-            .insert("mailjet_api_key".to_string(), "mj_key".to_string());
-        config
-            .secrets
-            .values
-            .insert("mailjet_secret_key".to_string(), "mj_secret".to_string());
+            .insert("postal_api_key".to_string(), "postal_key".to_string());
         let state = setup_state_with_config(config, server.uri()).await;
 
         let product_id = uuid::Uuid::new_v4().to_string();
@@ -5054,18 +5035,14 @@ mod tests {
             .await;
 
         unsafe {
-            std::env::set_var("MAILJET_API_URL", format!("{}/v3.1/send", server.uri()));
+            std::env::set_var("POSTAL_API_URL", format!("{}/v3.1/send", server.uri()));
         }
 
         let mut config = Config::load(None).unwrap();
         config
             .secrets
             .values
-            .insert("mailjet_api_key".to_string(), "mj_key".to_string());
-        config
-            .secrets
-            .values
-            .insert("mailjet_secret_key".to_string(), "mj_secret".to_string());
+            .insert("postal_api_key".to_string(), "postal_key".to_string());
         let state = setup_state_with_config(config, server.uri()).await;
         let user_id = format!(
             "test_send_abandoned_cart_full_flow_en_{}",
@@ -5135,18 +5112,14 @@ mod tests {
             .await;
 
         unsafe {
-            std::env::set_var("MAILJET_API_URL", format!("{}/v3.1/send", server.uri()));
+            std::env::set_var("POSTAL_API_URL", format!("{}/v3.1/send", server.uri()));
         }
 
         let mut config = Config::load(None).unwrap();
         config
             .secrets
             .values
-            .insert("mailjet_api_key".to_string(), "mj_key".to_string());
-        config
-            .secrets
-            .values
-            .insert("mailjet_secret_key".to_string(), "mj_secret".to_string());
+            .insert("postal_api_key".to_string(), "postal_key".to_string());
         let state = setup_state_with_config(config, server.uri()).await;
         let user_id = format!(
             "test_send_abandoned_cart_full_flow_fr_{}",
@@ -5694,18 +5667,14 @@ mod tests {
             .await;
 
         unsafe {
-            std::env::set_var("MAILJET_API_URL", format!("{}/v3.1/send", server.uri()));
+            std::env::set_var("POSTAL_API_URL", format!("{}/v3.1/send", server.uri()));
         }
 
         let mut config = Config::load(None).unwrap();
         config
             .secrets
             .values
-            .insert("mailjet_api_key".to_string(), "mj_key".to_string());
-        config
-            .secrets
-            .values
-            .insert("mailjet_secret_key".to_string(), "mj_secret".to_string());
+            .insert("postal_api_key".to_string(), "postal_key".to_string());
         let state = setup_state_with_config(config, server.uri()).await;
 
         let user_id = uuid::Uuid::new_v4().to_string();
@@ -5768,18 +5737,14 @@ mod tests {
             .await;
 
         unsafe {
-            std::env::set_var("MAILJET_API_URL", format!("{}/v3.1/send", server.uri()));
+            std::env::set_var("POSTAL_API_URL", format!("{}/v3.1/send", server.uri()));
         }
 
         let mut config = Config::load(None).unwrap();
         config
             .secrets
             .values
-            .insert("mailjet_api_key".to_string(), "mj_key".to_string());
-        config
-            .secrets
-            .values
-            .insert("mailjet_secret_key".to_string(), "mj_secret".to_string());
+            .insert("postal_api_key".to_string(), "postal_key".to_string());
         let state = setup_state_with_config(config, server.uri()).await;
 
         let user_id = uuid::Uuid::new_v4().to_string();
@@ -6424,20 +6389,20 @@ mod tests {
     }
 
     // -----------------------------------------------------------------------
-    // Coverage: premium renewal — no mailjet keys (no send)
+    // Coverage: premium renewal — no postal keys (no send)
     // -----------------------------------------------------------------------
     #[tokio::test]
     #[serial_test::serial]
-    async fn test_premium_renewal_no_mailjet_keys() {
+    async fn test_premium_renewal_no_postal_keys() {
         let state = setup_state().await;
         let user_id = format!(
-            "test_premium_renewal_no_mailjet_keys_{}",
+            "test_premium_renewal_no_postal_keys_{}",
             uuid::Uuid::new_v4()
         );
         let now = Utc::now();
         // Use 7-day renewal window but verify the cron doesn't crash without
-        // mailjet keys. Don't assert field absence because a concurrent test
-        // with mailjet keys could process this subscription via the shared DB.
+        // postal keys. Don't assert field absence because a concurrent test
+        // with postal keys could process this subscription via the shared DB.
         let renewal_date = now + Duration::days(7);
 
         state
@@ -6466,7 +6431,7 @@ mod tests {
             .await
             .unwrap();
 
-        // The cron should complete without error even without mailjet keys.
+        // The cron should complete without error even without postal keys.
         // In concurrent testing, another test's cron (with keys) may process
         // this subscription first, so we only verify the cron doesn't crash.
         run_cron_with_retry!(
@@ -6493,18 +6458,14 @@ mod tests {
             .await;
 
         unsafe {
-            std::env::set_var("MAILJET_API_URL", format!("{}/v3.1/send", server.uri()));
+            std::env::set_var("POSTAL_API_URL", format!("{}/v3.1/send", server.uri()));
         }
 
         let mut config = Config::load(None).unwrap();
         config
             .secrets
             .values
-            .insert("mailjet_api_key".to_string(), "mj_key".to_string());
-        config
-            .secrets
-            .values
-            .insert("mailjet_secret_key".to_string(), "mj_secret".to_string());
+            .insert("postal_api_key".to_string(), "postal_key".to_string());
         let state = setup_state_with_config(config, server.uri()).await;
 
         let user_id = uuid::Uuid::new_v4().to_string();
@@ -7026,18 +6987,14 @@ mod tests {
             .await;
 
         unsafe {
-            std::env::set_var("MAILJET_API_URL", format!("{}/v3.1/send", server.uri()));
+            std::env::set_var("POSTAL_API_URL", format!("{}/v3.1/send", server.uri()));
         }
 
         let mut config = Config::load(None).unwrap();
         config
             .secrets
             .values
-            .insert("mailjet_api_key".to_string(), "mj_key".to_string());
-        config
-            .secrets
-            .values
-            .insert("mailjet_secret_key".to_string(), "mj_secret".to_string());
+            .insert("postal_api_key".to_string(), "postal_key".to_string());
         let state = setup_state_with_config(config, server.uri()).await;
 
         let now = Utc::now();
@@ -7095,18 +7052,14 @@ mod tests {
             .await;
 
         unsafe {
-            std::env::set_var("MAILJET_API_URL", format!("{}/v3.1/send", server.uri()));
+            std::env::set_var("POSTAL_API_URL", format!("{}/v3.1/send", server.uri()));
         }
 
         let mut config = Config::load(None).unwrap();
         config
             .secrets
             .values
-            .insert("mailjet_api_key".to_string(), "mj_key".to_string());
-        config
-            .secrets
-            .values
-            .insert("mailjet_secret_key".to_string(), "mj_secret".to_string());
+            .insert("postal_api_key".to_string(), "postal_key".to_string());
         let state = setup_state_with_config(config, server.uri()).await;
 
         let now = Utc::now();

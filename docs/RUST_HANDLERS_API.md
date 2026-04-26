@@ -362,11 +362,11 @@ Province-based pricing tiers, distance calculation via Geoapify, weight/volumetr
 
 ## Email — `ob-handlers/src/email/`
 
-### mod.rs — Mailjet Integration
+### mod.rs — Postal Integration
 
 Bilingual (EN/FR) email templates, CASL-compliant.
 
-- `send_email(to, subject, html)` — POST to Mailjet REST API v3.1 (Basic auth)
+- `send_email(to, subject, html)` — POST to Postal REST API v3.1 (Basic auth)
 - `order_confirmation_html(order)` — Order confirmation template
 - `seller_notification_html(order)` — Seller new-order notification
 - `low_stock_alert_html(product)` — Low stock alert

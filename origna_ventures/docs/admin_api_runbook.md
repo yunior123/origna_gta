@@ -56,7 +56,7 @@ curl -s -X POST \
   -d '{
     "to_email": "support@orignaventures.ca",
     "subject": "Admin API smoke test",
-    "body": "Mailjet integration is working."
+    "body": "Postal integration is working."
   }'
 ```
 

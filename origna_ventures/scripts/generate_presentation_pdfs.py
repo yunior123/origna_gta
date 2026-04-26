@@ -960,12 +960,20 @@ def screenshot_files(paths: Iterable[Path]) -> List[Path]:
 
 
 def create_full_deck(
-    path: Path, screenshot_paths: Iterable[Path], max_screenshots: int
+    path: Path,
+    screenshot_paths: Iterable[Path],
+    max_screenshots: int,
+    min_screenshots: int,
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     screenshots = screenshot_files(screenshot_paths)
     if max_screenshots > 0:
         screenshots = screenshots[:max_screenshots]
+    if len(screenshots) < min_screenshots:
+        raise ValueError(
+            f"Full deck requires at least {min_screenshots} valid screenshots; "
+            f"found {len(screenshots)}."
+        )
     w, h = landscape(A4)
     c = canvas.Canvas(str(path), pagesize=landscape(A4))
 
@@ -984,7 +992,7 @@ def create_full_deck(
         "Pricing-first service landing page with direct Stripe checkout from tier cards.",
         "Source-code delivery and repo ownership for buyers who choose OrignaCode or OrignaLaunch.",
         "Cross-platform product surface: web, iOS, Android, and desktop from one stack.",
-        "Operational stack proof: Flutter, Rust, PostgreSQL, Stripe, Mailjet, and webhook handling.",
+        "Operational stack proof: Flutter, Rust, PostgreSQL, Stripe, Postal, and webhook handling.",
         f"Public contact path: {SUPPORT_EMAIL} · SMS {display_phone(SUPPORT_PHONE)}.",
         "Offer set: 500 CAD code, 3,000 CAD launch, or 1,000 CAD/month dedicated team.",
         "Included assets: live demo, pricing proof, PDF deck, and validated UI screenshots.",
@@ -1096,7 +1104,13 @@ if __name__ == "__main__":
     )
     parser.add_argument("--screenshots", type=Path, nargs="*", default=[])
     parser.add_argument("--max-screenshots", type=int, default=360)
+    parser.add_argument("--min-screenshots", type=int, default=300)
     args = parser.parse_args()
     create_onepager(args.onepager)
     if args.screenshots:
-        create_full_deck(args.deck, args.screenshots, args.max_screenshots)
+        create_full_deck(
+            args.deck,
+            args.screenshots,
+            args.max_screenshots,
+            args.min_screenshots,
+        )

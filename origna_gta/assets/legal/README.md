@@ -14,7 +14,7 @@
 **Key Topics:**
 - What personal data is collected (account, address, payment via Stripe, browsing, usage)
 - How data is used (service delivery, compliance, marketing, fraud prevention)
-- Third-party sharing (Stripe, Cloudflare, Mailjet, Sentry)
+- Third-party sharing (Stripe, Cloudflare, Postal, Sentry)
 - Data retention (7 years for tax, 90 days for logs)
 - PIPEDA rights (access, correction, deletion, complaint)
 - Breach notification procedures
@@ -71,7 +71,7 @@
 - Marketplace seller marketing (seller responsible for own CASL compliance)
 - Penalties ($1M individual / $10M organization per violation)
 - Audit and compliance monitoring (monthly email audit)
-- Mailjet vendor compliance requirements
+- Postal vendor compliance requirements
 - Training requirements for staff
 
 **Action Items:**
@@ -80,7 +80,7 @@
 - [ ] Store `consentTimestamp`, `consentSource` for every opt-in user (SurrealDB schema)
 - [ ] Set up monthly CASL audit process (query transactional vs. promotional emails)
 - [ ] Train marketing and support teams on CASL rules (annual requirement)
-- [ ] Verify Mailjet contract includes CASL compliance obligations
+- [ ] Verify Postal contract includes CASL compliance obligations
 
 ---
 

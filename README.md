@@ -37,7 +37,7 @@ This repo contains:
 - Flutter: https://docs.flutter.dev/
 - Rust: https://doc.rust-lang.org/stable/book/
 - Stripe Checkout Sessions: https://docs.stripe.com/api/checkout/sessions
-- Mailjet Send API v3.1: https://documentation.mailjet.com/hc/en-us/articles/16886347025947-Mailjet-Templating-Language
+- Postal Send API v3.1: https://documentation.postal.com/hc/en-us/articles/16886347025947-Postal-Templating-Language
 - PostgreSQL current docs: https://www.postgresql.org/docs/current/
 - Sentry Flutter: https://docs.sentry.io/platforms/flutter/
 

@@ -311,7 +311,7 @@ If OrignaGTA discovers a CASL violation:
 
 ### 9.3 Vendor Compliance (Email Service Provider)
 
-OrignaGTA uses **Mailjet** for email delivery. Mailjet is contractually required to:
+OrignaGTA uses **Postal** for email delivery. Postal is contractually required to:
 
 - Provide bounce and unsubscribe reports daily
 - Not re-send to unsubscribed addresses

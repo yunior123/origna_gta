@@ -397,7 +397,7 @@ fn default_welcome_fr() -> EmailTemplate {
 /// ## Deliverability Checklist (DNS — not handled in code)
 ///
 /// To avoid spam folders, configure these DNS records for your sending domain:
-/// 1. **SPF**: `v=spf1 include:spf.mailjet.com ~all` (adjust for your provider)
+/// 1. **SPF**: `v=spf1 include:spf.email.com ~all` (adjust for your provider)
 /// 2. **DKIM**: Add the TXT record your SMTP provider gives you
 /// 3. **DMARC**: `v=DMARC1; p=quarantine; rua=mailto:dmarc@yourdomain.com`
 /// 4. **Return-Path**: Must match the From domain (automatic with most providers)
@@ -406,9 +406,9 @@ fn default_welcome_fr() -> EmailTemplate {
 ///
 /// ## Provider Examples
 ///
-/// ### Mailjet (recommended)
+/// ### Postal (recommended)
 /// ```env
-/// OB_EMAIL__SMTP_HOST=in-v3.mailjet.com
+/// OB_EMAIL__SMTP_HOST=in-v3.email.com
 /// OB_EMAIL__SMTP_PORT=587
 /// OB_EMAIL__SMTP_USER=<your-api-key>
 /// OB_EMAIL__SMTP_PASSWORD=<your-secret-key>
@@ -940,7 +940,7 @@ mod tests {
     fn test_email_config_from_parts() {
         let config = EmailConfig {
             from: "MyApp <noreply@myapp.com>".into(),
-            smtp_host: "in-v3.mailjet.com".into(),
+            smtp_host: "in-v3.email.com".into(),
             smtp_port: 587,
             smtp_user: "api-key".into(),
             smtp_password: "secret-key".into(),

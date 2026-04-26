@@ -25,4 +25,4 @@
 - [ ] Hetzner Migration (OrignaVentures): Move from Firebase to Hetzner.
 - [ ] Database tests (add many).
 - [ ] Security enhancement: Manual repo access for clients (no auto-invites).
-- [ ] Audit email delivery/cleanup test accounts (Mailjet).
+- [ ] Audit email delivery/cleanup test accounts (Postal).
